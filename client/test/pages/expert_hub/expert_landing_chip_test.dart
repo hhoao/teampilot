@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing_compose_card.dart';
 import 'package:teampilot/widgets/menu/sidebar_action_menu.dart';
 
@@ -59,6 +60,10 @@ void main() {
           onVoice: () {},
           onVoiceCancel: () {},
           onVoiceStop: () {},
+          workspaceRoot: '/tmp',
+          skills: const [],
+          plugins: const [],
+          slashBundle: const ConfigBundle(),
         ),
       ),
     );

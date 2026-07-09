@@ -2300,12 +2300,6 @@ abstract class AppLocalizations {
   /// **'Changes apply to this team\'s global configuration.'**
   String get landingTeamSettingsGlobalHint;
 
-  /// No description provided for @workspaceChatLandingMixedLaunchBlocked.
-  ///
-  /// In en, this message translates to:
-  /// **'Complete member machine assignment in Team Settings before sending.'**
-  String get workspaceChatLandingMixedLaunchBlocked;
-
   /// No description provided for @workspaceChatLandingTeamLaunchBlocked.
   ///
   /// In en, this message translates to:
@@ -3773,13 +3767,13 @@ abstract class AppLocalizations {
   /// No description provided for @mixedWorkspaceRequiresTeamLaunch.
   ///
   /// In en, this message translates to:
-  /// **'Mixed workspaces can only be started with a team identity. Switch to a team and assign each member to a machine.'**
+  /// **'Mixed workspaces can only be started with a team identity. Switch to a team and confirm machine assignment in Team Settings.'**
   String get mixedWorkspaceRequiresTeamLaunch;
 
   /// No description provided for @mixedWorkspacePersonalLaunchBlockedHint.
   ///
   /// In en, this message translates to:
-  /// **'This is a mixed workspace. Switch to a team tab to start conversations and assign members to machines.'**
+  /// **'This is a mixed workspace. Switch to a team tab to start conversations and confirm machine assignment.'**
   String get mixedWorkspacePersonalLaunchBlockedHint;
 
   /// No description provided for @mixedWorkspaceMemberAssignmentTitle.
@@ -3797,8 +3791,14 @@ abstract class AppLocalizations {
   /// No description provided for @mixedWorkspaceMemberAssignmentIncomplete.
   ///
   /// In en, this message translates to:
-  /// **'Every member instance must be assigned to a machine.'**
+  /// **'Confirm machine assignment once before starting this team in a mixed workspace.'**
   String get mixedWorkspaceMemberAssignmentIncomplete;
+
+  /// No description provided for @mixedWorkspaceLeadPlacementInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Team lead must be assigned to the local machine when this workspace has a local folder.'**
+  String get mixedWorkspaceLeadPlacementInvalid;
 
   /// No description provided for @mixedWorkspaceMemberAssignmentConfirm.
   ///
@@ -3848,6 +3848,12 @@ abstract class AppLocalizations {
   /// **'Not assigned'**
   String get workspaceMemberTargetsUnassigned;
 
+  /// No description provided for @workspaceMemberTargetsNeedsConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs confirmation'**
+  String get workspaceMemberTargetsNeedsConfirmation;
+
   /// No description provided for @workspaceMemberTargetsPartiallyAssigned.
   ///
   /// In en, this message translates to:
@@ -3857,13 +3863,13 @@ abstract class AppLocalizations {
   /// No description provided for @mixedWorkspaceCreateSessionBlocked.
   ///
   /// In en, this message translates to:
-  /// **'Complete member machine assignment in workspace settings before starting a conversation.'**
+  /// **'Confirm machine assignment in Team Settings before starting a conversation in this mixed workspace.'**
   String get mixedWorkspaceCreateSessionBlocked;
 
   /// No description provided for @mixedWorkspaceSessionLaunchBlocked.
   ///
   /// In en, this message translates to:
-  /// **'This conversation has incomplete member assignments. Configure assignment in workspace settings and start a new conversation.'**
+  /// **'Machine assignment for this conversation is no longer valid. Confirm assignment in Team Settings and start a new conversation.'**
   String get mixedWorkspaceSessionLaunchBlocked;
 
   /// No description provided for @sessionLaunchMissingWorkspace.
@@ -7291,18 +7297,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Extra flags applied only when this member starts.'**
   String get memberExtraArgsSubtitle;
-
-  /// No description provided for @memberReplicas.
-  ///
-  /// In en, this message translates to:
-  /// **'Replicas'**
-  String get memberReplicas;
-
-  /// No description provided for @memberReplicasSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Run this role as N interchangeable instances (pods) that share its task queue. 1 = a single instance.'**
-  String get memberReplicasSubtitle;
 
   /// No description provided for @workspaceAdvancedSettings.
   ///

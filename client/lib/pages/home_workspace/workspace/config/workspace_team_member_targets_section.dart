@@ -41,15 +41,23 @@ class WorkspaceTeamMemberTargetsSection extends StatelessWidget {
       instances: instances,
       targets: targets,
     );
-    final complete = memberTargetsComplete(
-      workspaceFolders: live.folders,
-      members: team.members,
-      targets: targets,
+    final needsInit = workspaceNeedsMixedPlacementInit(
+      folders: live.folders,
+      teamId: team.id,
+      initializedByTeam: live.memberPlacementInitializedByTeam,
+    );
+    final status = workspaceMemberTargetsStatus(
+      needsMixedInit: needsInit,
+      placed: placed,
+      total: total,
     );
 
-    final subtitle = total > 0 && !complete
+    final subtitle = !needsInit && total > 0 && placed < total
         ? '${l10n.workspaceMemberTargetsSectionSubtitle}\n'
               '${l10n.mixedWorkspaceMemberPlacementProgress(placed, total)}'
+        : needsInit
+        ? '${l10n.workspaceMemberTargetsSectionSubtitle}\n'
+              '${l10n.mixedWorkspaceMemberAssignmentIncomplete}'
         : l10n.workspaceMemberTargetsSectionSubtitle;
 
     return SettingsSurfaceCard(
@@ -59,11 +67,7 @@ class WorkspaceTeamMemberTargetsSection extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _AssignmentStatusChip(
-              complete: complete,
-              placed: placed,
-              total: total,
-            ),
+            _AssignmentStatusChip(status: status),
             const SizedBox(width: 12),
             FilledButton(
               onPressed: () => _openAssignDialog(context, live),
@@ -91,6 +95,33 @@ class WorkspaceTeamMemberTargetsSection extends StatelessWidget {
   }
 }
 
+/// Chip / summary status for the workspace member-targets section.
+enum WorkspaceMemberTargetsStatus {
+  /// Mixed workspace has not confirmed Machines yet.
+  needsConfirmation,
+
+  /// Placement initialized (or non-mixed) and every instance has a pin.
+  assigned,
+
+  /// Placement initialized but some instances lack pins (stale drift).
+  partiallyAssigned,
+}
+
+/// Derives section chip status from mixed-init flag and placement counts.
+///
+/// After init, incomplete pins are soft (partial), not a hard unassigned failure.
+WorkspaceMemberTargetsStatus workspaceMemberTargetsStatus({
+  required bool needsMixedInit,
+  required int placed,
+  required int total,
+}) {
+  if (needsMixedInit) return WorkspaceMemberTargetsStatus.needsConfirmation;
+  if (total > 0 && placed < total) {
+    return WorkspaceMemberTargetsStatus.partiallyAssigned;
+  }
+  return WorkspaceMemberTargetsStatus.assigned;
+}
+
 int _placedInstanceCount({
   required List<WorkspaceFolder> workspaceFolders,
   required List<MemberInstance> instances,
@@ -108,37 +139,31 @@ int _placedInstanceCount({
 }
 
 class _AssignmentStatusChip extends StatelessWidget {
-  const _AssignmentStatusChip({
-    required this.complete,
-    required this.placed,
-    required this.total,
-  });
+  const _AssignmentStatusChip({required this.status});
 
-  final bool complete;
-  final int placed;
-  final int total;
+  final WorkspaceMemberTargetsStatus status;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final (label, icon, color) = complete
-        ? (
-            l10n.workspaceMemberTargetsAssigned,
-            Icons.check_circle_outline,
-            cs.primary,
-          )
-        : placed > 0
-        ? (
-            l10n.workspaceMemberTargetsPartiallyAssigned,
-            Icons.pending_outlined,
-            cs.tertiary,
-          )
-        : (
-            l10n.workspaceMemberTargetsUnassigned,
-            Icons.error_outline,
-            cs.error,
-          );
+    final (label, icon, color) = switch (status) {
+      WorkspaceMemberTargetsStatus.assigned => (
+        l10n.workspaceMemberTargetsAssigned,
+        Icons.check_circle_outline,
+        cs.primary,
+      ),
+      WorkspaceMemberTargetsStatus.partiallyAssigned => (
+        l10n.workspaceMemberTargetsPartiallyAssigned,
+        Icons.pending_outlined,
+        cs.tertiary,
+      ),
+      WorkspaceMemberTargetsStatus.needsConfirmation => (
+        l10n.workspaceMemberTargetsNeedsConfirmation,
+        Icons.error_outline,
+        cs.error,
+      ),
+    };
 
     final labelStyle = Theme.of(
       context,

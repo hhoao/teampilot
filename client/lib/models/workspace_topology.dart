@@ -41,8 +41,134 @@ bool workspaceTopologyRequiresMemberAssignment(List<WorkspaceFolder> folders) =>
     workspaceTopologyOf(folders) == WorkspaceTopology.mixed;
 
 /// Effective pool size for [type] (leader is always a singleton).
-int memberTypeReplicaCount(TeamMemberConfig type) =>
-    TeamMemberNaming.isTeamLead(type) || type.replicas < 1 ? 1 : type.replicas;
+int memberTypeReplicaCount(TeamMemberConfig type) {
+  if (TeamMemberNaming.isTeamLead(type)) return 1;
+  return type.replicas < 0 ? 0 : type.replicas;
+}
+
+/// Preferred host for the team lead: local when present, else first target.
+String? preferredLeadHost(List<WorkspaceFolder> folders) {
+  final ids = workspaceTargetIds(folders);
+  if (ids.isEmpty) return null;
+  if (ids.contains(WorkspaceFolder.localTargetId)) {
+    return WorkspaceFolder.localTargetId;
+  }
+  return ids.first;
+}
+
+/// Default Machines placement when remembered targets are empty.
+///
+/// local/remote: each valid member type count `1` on the sole/preferred host.
+/// mixed: lead `1` on preferred lead host; other types start at `0`.
+MemberPlacementByTarget defaultMemberPlacement({
+  required List<WorkspaceFolder> folders,
+  required List<TeamMemberConfig> members,
+}) {
+  final host = preferredLeadHost(folders);
+  if (host == null) return const {};
+  final roster = [
+    for (final m in members)
+      if (m.isValid) m,
+  ];
+  if (roster.isEmpty) return const {};
+
+  final byType = <String, int>{};
+  final mixed = workspaceTopologyOf(folders) == WorkspaceTopology.mixed;
+  for (final type in roster) {
+    if (TeamMemberNaming.isTeamLead(type)) {
+      byType[type.id] = 1;
+    } else if (!mixed) {
+      byType[type.id] = 1;
+    }
+  }
+  if (byType.isEmpty) return const {};
+  return {host: byType};
+}
+
+/// Whether the lead instance is pinned to a valid preferred host.
+///
+/// Returns true when no lead member is present. When a local folder exists,
+/// lead must be on local; otherwise lead must be on a folder-backed target.
+bool leadPlacementValid({
+  required List<WorkspaceFolder> folders,
+  required List<TeamMemberConfig> members,
+  required MemberTargetAssignments targets,
+}) {
+  TeamMemberConfig? lead;
+  for (final m in members) {
+    if (m.isValid && TeamMemberNaming.isTeamLead(m)) {
+      lead = m;
+      break;
+    }
+  }
+  if (lead == null) return true;
+
+  final leadTarget = memberTargetForInstanceId(targets, lead.id);
+  if (leadTarget == null) return false;
+
+  final ids = workspaceTargetIds(folders);
+  if (ids.isEmpty || !ids.contains(leadTarget)) return false;
+
+  if (ids.contains(WorkspaceFolder.localTargetId)) {
+    return leadTarget == WorkspaceFolder.localTargetId;
+  }
+  return true;
+}
+
+/// Mixed workspaces need an explicit Machines confirmation before team launch.
+bool workspaceNeedsMixedPlacementInit({
+  required List<WorkspaceFolder> folders,
+  required String teamId,
+  required Map<String, bool> initializedByTeam,
+}) {
+  if (workspaceTopologyOf(folders) != WorkspaceTopology.mixed) return false;
+  return initializedByTeam[teamId.trim()] != true;
+}
+
+/// Writes placement totals onto [members] (`replicas`); lead always stays `1`.
+List<TeamMemberConfig> applyPlacementReplicasToMembers({
+  required List<TeamMemberConfig> members,
+  required MemberPlacementByTarget placement,
+}) {
+  return [
+    for (final m in members)
+      if (TeamMemberNaming.isTeamLead(m))
+        m.copyWith(replicas: 1)
+      else
+        m.copyWith(replicas: memberPlacementCountForType(placement, m.id)),
+  ];
+}
+
+/// Infer mixed first-init from remembered targets (migration / load path).
+bool inferMemberPlacementInitialized({
+  required List<WorkspaceFolder> folders,
+  required List<TeamMemberConfig> members,
+  required MemberTargetAssignments targets,
+  required bool alreadyInitialized,
+}) {
+  if (alreadyInitialized) return true;
+  if (workspaceTopologyOf(folders) != WorkspaceTopology.mixed) return false;
+  if (targets.isEmpty) return false;
+
+  final ids = workspaceTargetIds(folders).toSet();
+  for (final targetId in targets.values) {
+    final trimmed = targetId.trim();
+    if (trimmed.isEmpty || !ids.contains(trimmed)) return false;
+  }
+
+  final hasLead = members.any(
+    (m) => m.isValid && TeamMemberNaming.isTeamLead(m),
+  );
+  if (hasLead &&
+      !leadPlacementValid(
+        folders: folders,
+        members: members,
+        targets: targets,
+      )) {
+    return false;
+  }
+  return true;
+}
 
 List<String> workspaceTargetIds(List<WorkspaceFolder> folders) {
   final seen = <String>[];
@@ -252,14 +378,15 @@ bool memberPlacementComplete({
   return true;
 }
 
+/// Whether every expanded roster instance has a folder-backed target pin.
+///
+/// Pure completeness check for UI progress — not a launch gate. Launch uses
+/// [workspaceNeedsMixedPlacementInit] + [leadPlacementValid] instead.
 bool memberTargetsComplete({
   required List<WorkspaceFolder> workspaceFolders,
   required List<TeamMemberConfig> members,
   required MemberTargetAssignments targets,
 }) {
-  if (!workspaceTopologyRequiresMemberAssignment(workspaceFolders)) {
-    return true;
-  }
   final roster = [
     for (final m in members)
       if (m.isValid) m,

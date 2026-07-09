@@ -110,7 +110,7 @@ void main() {
   });
 
   test(
-    'createSession rejects mixed workspace when team targets incomplete',
+    'createSession rejects mixed workspace when placement not initialized',
     () async {
       final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
       addTearDown(() => tmp.deleteSync(recursive: true));
@@ -125,16 +125,51 @@ void main() {
         () => repo.createSession(
           ws.workspaceId,
           sessionTeam: 'team-a',
-          rosterMembers: const [TeamMemberConfig(id: 'lead', name: 'Lead')],
+          rosterMembers: const [
+            TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+          ],
         ),
         throwsA(
           isA<StateError>().having(
             (e) => e.message,
             'message',
-            'mixed_workspace_member_targets_incomplete',
+            'mixed_workspace_member_placement_uninitialized',
           ),
         ),
       );
+    },
+  );
+
+  test(
+    'updateWorkspaceFolders clears init flags when host set changes to mixed',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
+
+      final ws = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/local'),
+      ]);
+      await repo.updateWorkspaceMemberPlacement(
+        ws.workspaceId,
+        'team-a',
+        targets: const {'team-lead': 'local'},
+      );
+      expect(
+        (await repo.loadWorkspaces())
+            .single
+            .memberPlacementInitializedByTeam['team-a'],
+        isTrue,
+      );
+
+      await repo.updateWorkspaceFolders(ws.workspaceId, [
+        const WorkspaceFolder(path: '/local'),
+        const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+      ]);
+
+      final reloaded = (await repo.loadWorkspaces()).single;
+      // Explicit false survives load-time infer so users must re-confirm.
+      expect(reloaded.memberPlacementInitializedByTeam['team-a'], isFalse);
     },
   );
 
@@ -147,25 +182,27 @@ void main() {
       const WorkspaceFolder(path: '/local'),
       const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
     ]);
-    await repo.updateWorkspaceMemberTargets(
+    await repo.updateWorkspaceMemberPlacement(
       ws.workspaceId,
       'team-a',
-      targets: const {'lead': 'local'},
+      targets: const {'team-lead': 'local'},
     );
     final session = await repo.createSession(
       ws.workspaceId,
       sessionTeam: 'team-a',
-      rosterMembers: const [TeamMemberConfig(id: 'lead', name: 'Lead')],
+      rosterMembers: const [
+        TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+      ],
     );
-    expect(session.memberTargets['lead'], 'local');
+    expect(session.memberTargets['team-lead'], 'local');
 
     await repo.updateWorkspaceMemberTargets(
       ws.workspaceId,
       'team-a',
-      targets: const {'lead': 'ssh:p1'},
+      targets: const {'team-lead': 'ssh:p1'},
     );
     final reloaded = (await repo.loadSessions()).single;
-    expect(reloaded.memberTargets['lead'], 'local');
+    expect(reloaded.memberTargets['team-lead'], 'local');
   });
 
   test('updateWorkspaceFolders replaces folders wholesale', () async {
@@ -209,22 +246,74 @@ void main() {
         const WorkspaceFolder(path: '/local'),
         const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
       ]);
-      await repo.updateWorkspaceMemberTargets(
+      await repo.updateWorkspaceMemberPlacement(
         ws.workspaceId,
         'team-a',
-        targets: const {'lead': 'local', 'dev': 'ssh:p1'},
+        targets: const {'team-lead': 'local', 'dev': 'ssh:p1'},
       );
 
       final session = await repo.createSession(
         ws.workspaceId,
         sessionTeam: 'team-a',
         rosterMembers: const [
-          TeamMemberConfig(id: 'lead', name: 'Lead'),
+          TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
           TeamMemberConfig(id: 'dev', name: 'Dev'),
         ],
       );
-      expect(session.memberTargets['lead'], 'local');
+      expect(session.memberTargets['team-lead'], 'local');
       expect(session.memberTargets['dev'], 'ssh:p1');
+    },
+  );
+
+  test(
+    'updateWorkspaceMemberPlacement writes targets and init flag together',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
+
+      final ws = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/local'),
+        const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+      ]);
+      expect(ws.memberPlacementInitializedByTeam['team-a'], isNot(true));
+
+      await repo.updateWorkspaceMemberPlacement(
+        ws.workspaceId,
+        'team-a',
+        targets: const {'team-lead': 'local', 'dev-0': 'local', 'dev-1': 'ssh:p1'},
+      );
+
+      final reloaded = (await repo.loadWorkspaces()).single;
+      expect(reloaded.memberTargetsByTeam['team-a']?['team-lead'], 'local');
+      expect(reloaded.memberTargetsByTeam['team-a']?['dev-0'], 'local');
+      expect(reloaded.memberTargetsByTeam['team-a']?['dev-1'], 'ssh:p1');
+      expect(reloaded.memberPlacementInitializedByTeam['team-a'], isTrue);
+    },
+  );
+
+  test(
+    'updateWorkspaceMemberTargets leaves disk uninitialized; load may infer',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
+
+      final ws = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/local'),
+        const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+      ]);
+      await repo.updateWorkspaceMemberTargets(
+        ws.workspaceId,
+        'team-a',
+        targets: const {'team-lead': 'local'},
+      );
+
+      final reloaded = (await repo.loadWorkspaces()).single;
+      expect(reloaded.memberTargetsByTeam['team-a']?['team-lead'], 'local');
+      // Valid remembered targets are inferred initialized on load (migration).
+      // Disk still lacks an explicit Machines save flag until placement save.
+      expect(reloaded.memberPlacementInitializedByTeam['team-a'], isTrue);
     },
   );
 }

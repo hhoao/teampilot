@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../cubits/launch_profile_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../../../models/team_config.dart';
 import '../../../../models/workspace.dart';
 import '../../../../models/workspace_topology.dart';
 import '../../../../repositories/session_repository.dart';
+import '../../../../services/launch/member_placement_save.dart';
 import '../../../../widgets/app_dialog.dart';
 import '../mixed_workspace_member_placement_panel.dart';
 
@@ -57,33 +60,58 @@ class _WorkspaceTeamMemberTargetsDialogState
       workspace.memberTargetsByTeam,
       widget.team.id,
     );
+    if (remembered.isEmpty) {
+      // In-memory defaults only — persist on Save via prepareMemberPlacementSave.
+      _placement = defaultMemberPlacement(
+        folders: workspace.folders,
+        members: widget.team.members,
+      );
+      return;
+    }
     _placement = memberPlacementFromMemberTargets(
       members: widget.team.members,
       targets: remembered,
     );
   }
 
-  bool get _complete => memberPlacementComplete(
-    workspaceFolders: widget.workspace.folders,
-    members: widget.team.members,
+  PreparedMemberPlacementSave get _preparedSave => prepareMemberPlacementSave(
+    team: widget.team,
+    folders: widget.workspace.folders,
     placement: _placement,
   );
 
-  MemberTargetAssignments get _memberTargets =>
-      memberTargetsFromMemberPlacement(
-        workspaceFolders: widget.workspace.folders,
-        members: widget.team.members,
-        placement: _placement,
-      );
+  bool get _canSave => !_saving && _preparedSave.leadValid;
+
+  bool get _needsMixedInit => workspaceNeedsMixedPlacementInit(
+    folders: widget.workspace.folders,
+    teamId: widget.team.id,
+    initializedByTeam: widget.workspace.memberPlacementInitializedByTeam,
+  );
 
   Future<void> _save() async {
-    if (!_complete || _saving) return;
+    if (!_canSave) return;
     setState(() => _saving = true);
     try {
-      await widget.repository.updateWorkspaceMemberTargets(
+      final prepared = prepareMemberPlacementSave(
+        team: widget.team,
+        folders: widget.workspace.folders,
+        placement: _placement,
+      );
+      if (!prepared.leadValid) return;
+
+      final cubit = context.read<LaunchProfileCubit>();
+      await cubit.selectTeam(
+        widget.team.id,
+        silent: true,
+        syncResources: false,
+      );
+      await cubit.updateSelected(
+        widget.team.copyWith(members: prepared.members),
+      );
+      await widget.repository.updateWorkspaceMemberPlacement(
         widget.workspace.workspaceId,
         widget.team.id,
-        targets: _memberTargets,
+        targets: prepared.targets,
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -122,11 +150,13 @@ class _WorkspaceTeamMemberTargetsDialogState
               ),
             ),
           ),
-          if (!_complete)
+          if (!_preparedSave.leadValid || _needsMixedInit)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Text(
-                l10n.mixedWorkspaceMemberAssignmentIncomplete,
+                !_preparedSave.leadValid
+                    ? l10n.mixedWorkspaceLeadPlacementInvalid
+                    : l10n.mixedWorkspaceMemberAssignmentIncomplete,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.error,
                 ),
@@ -141,7 +171,7 @@ class _WorkspaceTeamMemberTargetsDialogState
                 child: Text(l10n.cancel),
               ),
               FilledButton(
-                onPressed: !_complete || _saving ? null : _save,
+                onPressed: !_canSave ? null : _save,
                 child: _saving
                     ? const SizedBox(
                         width: 18,

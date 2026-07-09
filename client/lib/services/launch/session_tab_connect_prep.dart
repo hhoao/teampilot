@@ -44,7 +44,7 @@ typedef SessionTabConnectPrepCallbacks = ({
     required AppSession launchSession,
     required SessionOpenRequest request,
   })
-  onMixedMemberTargetsIncomplete,
+  onMixedPlacementNotReady,
   Future<ResolvedLaunchMembers> Function({
     required AppSession session,
     required SessionOpenRequest request,
@@ -95,7 +95,7 @@ Future<TabConnectPrepResult?> runSessionTabConnectPrep({
   );
   if (!callbacks.launchStillValid(tab, generation)) return null;
   if (ready == null) {
-    callbacks.onMixedMemberTargetsIncomplete(
+    callbacks.onMixedPlacementNotReady(
       tab: tab,
       launchSession: launchSession,
       request: request,

@@ -5,8 +5,41 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/runtime_target.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
+import '../../../models/workspace_folder.dart';
 import '../../../models/workspace_topology.dart';
 import '../../../services/storage/home_target_controller.dart';
+import '../../../utils/team_member_naming.dart';
+
+/// Practical per-host cap for non-lead replica placement in mixed workspaces.
+const memberPlacementMaxPerHost = 99;
+
+bool canIncrementMemberPlacement({
+  required TeamMemberConfig member,
+  required List<WorkspaceFolder> folders,
+  required String selectedTargetId,
+  required int countOnMachine,
+}) {
+  if (TeamMemberNaming.isTeamLead(member)) {
+    final preferred = preferredLeadHost(folders);
+    if (preferred == null || selectedTargetId != preferred) return false;
+    return countOnMachine < 1;
+  }
+  return countOnMachine < memberPlacementMaxPerHost;
+}
+
+bool canDecrementMemberPlacement({
+  required TeamMemberConfig member,
+  required List<WorkspaceFolder> folders,
+  required String selectedTargetId,
+  required int countOnMachine,
+}) {
+  if (countOnMachine <= 0) return false;
+  if (TeamMemberNaming.isTeamLead(member)) {
+    final preferred = preferredLeadHost(folders);
+    if (preferred != null && selectedTargetId == preferred) return false;
+  }
+  return true;
+}
 
 /// Left: workspace machines. Right: roster members with +/- instance counts on
 /// the selected machine.
@@ -81,6 +114,7 @@ class _MixedWorkspaceMemberPlacementPanelState
     final controller = context.read<HomeTargetController>();
     final targetIds = workspaceTargetIds(widget.workspace.folders);
     final members = widget.members.where((m) => m.isValid).toList();
+    final folders = widget.workspace.folders;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -118,32 +152,55 @@ class _MixedWorkspaceMemberPlacementPanelState
             padding: const EdgeInsets.only(left: 8),
             children: [
               for (final member in members)
-                _MemberPlacementRow(
-                  memberLabel: member.name.isEmpty
-                      ? l10n.memberName
-                      : member.name,
-                  needed: memberTypeReplicaCount(member),
-                  placedTotal: memberPlacementCountForType(
-                    widget.placement,
-                    member.id,
-                  ),
-                  countOnMachine:
-                      widget.placement[_selectedTargetId]?[member.id] ?? 0,
-                  onIncrement: () {
-                    final onMachine =
-                        widget.placement[_selectedTargetId]?[member.id] ?? 0;
-                    final total = memberPlacementCountForType(
+                Builder(
+                  builder: (context) {
+                    final placedTotal = memberPlacementCountForType(
                       widget.placement,
                       member.id,
                     );
-                    if (total >= memberTypeReplicaCount(member)) return;
-                    _setCount(member.id, onMachine + 1);
-                  },
-                  onDecrement: () {
-                    final onMachine =
+                    final countOnMachine =
                         widget.placement[_selectedTargetId]?[member.id] ?? 0;
-                    if (onMachine <= 0) return;
-                    _setCount(member.id, onMachine - 1);
+                    return _MemberPlacementRow(
+                      memberLabel: member.name.isEmpty
+                          ? l10n.memberName
+                          : member.name,
+                      placedTotal: placedTotal,
+                      countOnMachine: countOnMachine,
+                      canIncrement: canIncrementMemberPlacement(
+                        member: member,
+                        folders: folders,
+                        selectedTargetId: _selectedTargetId,
+                        countOnMachine: countOnMachine,
+                      ),
+                      canDecrement: canDecrementMemberPlacement(
+                        member: member,
+                        folders: folders,
+                        selectedTargetId: _selectedTargetId,
+                        countOnMachine: countOnMachine,
+                      ),
+                      onIncrement: () {
+                        if (!canIncrementMemberPlacement(
+                          member: member,
+                          folders: folders,
+                          selectedTargetId: _selectedTargetId,
+                          countOnMachine: countOnMachine,
+                        )) {
+                          return;
+                        }
+                        _setCount(member.id, countOnMachine + 1);
+                      },
+                      onDecrement: () {
+                        if (!canDecrementMemberPlacement(
+                          member: member,
+                          folders: folders,
+                          selectedTargetId: _selectedTargetId,
+                          countOnMachine: countOnMachine,
+                        )) {
+                          return;
+                        }
+                        _setCount(member.id, countOnMachine - 1);
+                      },
+                    );
                   },
                 ),
             ],
@@ -207,25 +264,25 @@ class _TargetTile extends StatelessWidget {
 class _MemberPlacementRow extends StatelessWidget {
   const _MemberPlacementRow({
     required this.memberLabel,
-    required this.needed,
     required this.placedTotal,
     required this.countOnMachine,
+    required this.canIncrement,
+    required this.canDecrement,
     required this.onIncrement,
     required this.onDecrement,
   });
 
   final String memberLabel;
-  final int needed;
   final int placedTotal;
   final int countOnMachine;
+  final bool canIncrement;
+  final bool canDecrement;
   final VoidCallback onIncrement;
   final VoidCallback onDecrement;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
-    final complete = placedTotal == needed;
     return Material(
       color: Colors.transparent,
       child: ListTile(
@@ -235,10 +292,11 @@ class _MemberPlacementRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              l10n.mixedWorkspaceMemberPlacementProgress(placedTotal, needed),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: complete ? cs.onSurfaceVariant : cs.error,
+              l10n.mixedWorkspaceMemberPlacementProgress(
+                placedTotal,
+                placedTotal,
               ),
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             Text(
               l10n.mixedWorkspaceMemberPlacementOnMachine(countOnMachine),
@@ -248,8 +306,8 @@ class _MemberPlacementRow extends StatelessWidget {
         ),
         trailing: _PlacementStepper(
           value: countOnMachine,
-          canIncrement: placedTotal < needed,
-          canDecrement: countOnMachine > 0,
+          canIncrement: canIncrement,
+          canDecrement: canDecrement,
           onIncrement: onIncrement,
           onDecrement: onDecrement,
         ),

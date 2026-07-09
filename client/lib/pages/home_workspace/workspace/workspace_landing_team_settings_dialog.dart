@@ -19,6 +19,7 @@ import '../../../repositories/session_repository.dart';
 import '../../../services/cli/preset_resolver.dart';
 import '../../../services/cli/registry/cli_display_name.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../../services/launch/member_placement_save.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/team_member_naming.dart';
 import '../../../widgets/cli/cli_brand_icon.dart';
@@ -55,21 +56,33 @@ Future<bool?> showLandingTeamSettingsDialog(
   );
 }
 
-/// Whether the landing gear should show an attention dot (mixed placement incomplete).
+/// Whether the landing gear should show an attention dot.
+///
+/// Mixed workspaces need a first Machines confirmation; any topology with
+/// remembered pins must keep the lead on a valid preferred host. Empty
+/// local/remote targets do not alert (defaults materialize at session create).
 bool landingTeamSettingsNeedsAttention({
   required Workspace workspace,
   required TeamProfile team,
 }) {
-  if (!workspaceTopologyRequiresMemberAssignment(workspace.folders)) {
-    return false;
+  if (workspaceNeedsMixedPlacementInit(
+    folders: workspace.folders,
+    teamId: team.id,
+    initializedByTeam: workspace.memberPlacementInitializedByTeam,
+  )) {
+    return true;
   }
   final targets = rememberedMemberTargets(
     workspace.memberTargetsByTeam,
     team.id,
   );
-  return !memberTargetsComplete(
-    workspaceFolders: workspace.folders,
-    members: team.members,
+  if (targets.isEmpty &&
+      workspaceTopologyOf(workspace.folders) != WorkspaceTopology.mixed) {
+    return false;
+  }
+  return !leadPlacementValid(
+    folders: workspace.folders,
+    members: team.members.where((m) => m.isValid).toList(),
     targets: targets,
   );
 }
@@ -96,23 +109,29 @@ class _LandingTeamSettingsDialogState extends State<_LandingTeamSettingsDialog> 
   var _saving = false;
   var _cubitDirty = false;
 
-  bool get _isMixed =>
-      workspaceTopologyOf(widget.workspace.folders) == WorkspaceTopology.mixed;
+  bool get _needsMixedInit => workspaceNeedsMixedPlacementInit(
+    folders: widget.workspace.folders,
+    teamId: widget.team.id,
+    initializedByTeam: widget.workspace.memberPlacementInitializedByTeam,
+  );
 
   List<_LandingTeamSettingsSection> get _sections => [
     _LandingTeamSettingsSection.team,
     _LandingTeamSettingsSection.members,
-    if (_isMixed) _LandingTeamSettingsSection.machines,
+    _LandingTeamSettingsSection.machines,
   ];
 
   @override
   void initState() {
     super.initState();
-    _selectedIndex = ValueNotifier(0);
     final cubit = context.read<LaunchProfileCubit>();
     _initialTeam = _teamFromCubit(cubit) ?? widget.team;
     _teamDraft = _initialTeam;
     _placement = _placementFromWorkspace(widget.workspace, _teamDraft);
+    final initialIndex = _needsMixedInit
+        ? _sections.indexOf(_LandingTeamSettingsSection.machines)
+        : 0;
+    _selectedIndex = ValueNotifier(initialIndex);
     unawaited(
       cubit.selectTeam(widget.team.id, silent: true, syncResources: false),
     );
@@ -139,26 +158,26 @@ class _LandingTeamSettingsDialogState extends State<_LandingTeamSettingsDialog> 
       workspace.memberTargetsByTeam,
       team.id,
     );
+    if (remembered.isEmpty) {
+      // In-memory defaults only — persist on Save via prepareMemberPlacementSave.
+      return defaultMemberPlacement(
+        folders: workspace.folders,
+        members: team.members,
+      );
+    }
     return memberPlacementFromMemberTargets(
       members: team.members,
       targets: remembered,
     );
   }
 
-  bool get _placementComplete => memberPlacementComplete(
-    workspaceFolders: widget.workspace.folders,
-    members: _teamDraft.members,
+  PreparedMemberPlacementSave get _preparedSave => prepareMemberPlacementSave(
+    team: _teamDraft,
+    folders: widget.workspace.folders,
     placement: _placement,
   );
 
-  MemberTargetAssignments get _memberTargets =>
-      memberTargetsFromMemberPlacement(
-        workspaceFolders: widget.workspace.folders,
-        members: _teamDraft.members,
-        placement: _placement,
-      );
-
-  bool get _canSave => !_saving && (!_isMixed || _placementComplete);
+  bool get _canSave => !_saving && _preparedSave.leadValid;
 
   Future<void> _syncDraftToCubit() async {
     final cubit = context.read<LaunchProfileCubit>();
@@ -262,17 +281,22 @@ class _LandingTeamSettingsDialogState extends State<_LandingTeamSettingsDialog> 
     try {
       final cubit = context.read<LaunchProfileCubit>();
       final sessions = context.read<SessionRepository>();
+      final prepared = prepareMemberPlacementSave(
+        team: _teamDraft,
+        folders: widget.workspace.folders,
+        placement: _placement,
+      );
+      if (!prepared.leadValid) return;
       await cubit.selectTeam(widget.team.id, silent: true, syncResources: false);
+      _teamDraft = _teamDraft.copyWith(members: prepared.members);
       await cubit.updateSelected(_teamDraft);
-      if (_isMixed) {
-        await sessions.updateWorkspaceMemberTargets(
-          widget.workspace.workspaceId,
-          widget.team.id,
-          targets: _memberTargets,
-        );
-        if (mounted) {
-          await context.read<ChatCubit>().loadWorkspaceData(sessions);
-        }
+      await sessions.updateWorkspaceMemberPlacement(
+        widget.workspace.workspaceId,
+        widget.team.id,
+        targets: prepared.targets,
+      );
+      if (mounted) {
+        await context.read<ChatCubit>().loadWorkspaceData(sessions);
       }
       _cubitDirty = false;
       _initialTeam = _teamDraft;
@@ -328,8 +352,15 @@ class _LandingTeamSettingsDialogState extends State<_LandingTeamSettingsDialog> 
                           _PaneHeader(
                             section: section,
                             team: _teamDraft,
-                            placementComplete: _placementComplete,
-                            isMixed: _isMixed,
+                            machinesHint: !_preparedSave.leadValid
+                                ? context
+                                      .l10n
+                                      .mixedWorkspaceLeadPlacementInvalid
+                                : _needsMixedInit
+                                ? context
+                                      .l10n
+                                      .mixedWorkspaceMemberAssignmentIncomplete
+                                : null,
                             placement: _placement,
                             onClose: _cancel,
                           ),
@@ -377,7 +408,15 @@ class _LandingTeamSettingsDialogState extends State<_LandingTeamSettingsDialog> 
                           _Footer(
                             canSave: _canSave,
                             saving: _saving,
-                            showPlacementHint: _isMixed && !_placementComplete,
+                            placementHint: !_preparedSave.leadValid
+                                ? context
+                                      .l10n
+                                      .mixedWorkspaceLeadPlacementInvalid
+                                : _needsMixedInit
+                                ? context
+                                      .l10n
+                                      .mixedWorkspaceMemberAssignmentIncomplete
+                                : null,
                             onCancel: _cancel,
                             onSave: _save,
                           ),
@@ -480,16 +519,14 @@ class _PaneHeader extends StatelessWidget {
   const _PaneHeader({
     required this.section,
     required this.team,
-    required this.placementComplete,
-    required this.isMixed,
+    required this.machinesHint,
     required this.placement,
     required this.onClose,
   });
 
   final _LandingTeamSettingsSection section;
   final TeamProfile team;
-  final bool placementComplete;
-  final bool isMixed;
+  final String? machinesHint;
   final MemberPlacementByTarget placement;
   final VoidCallback onClose;
 
@@ -548,12 +585,11 @@ class _PaneHeader extends StatelessWidget {
                     ),
                   ),
                 ],
-                if (isMixed &&
-                    section == _LandingTeamSettingsSection.machines &&
-                    !placementComplete) ...[
+                if (machinesHint != null &&
+                    section == _LandingTeamSettingsSection.machines) ...[
                   const SizedBox(height: 6),
                   Text(
-                    l10n.mixedWorkspaceMemberAssignmentIncomplete,
+                    machinesHint!,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: cs.error,
                     ),
@@ -578,14 +614,13 @@ class _PaneHeader extends StatelessWidget {
     TeamProfile team,
     MemberPlacementByTarget placement,
   ) {
-    var needed = 0;
     var placed = 0;
     for (final member in team.members) {
       if (!member.isValid) continue;
-      needed += memberTypeReplicaCount(member);
       placed += memberPlacementCountForType(placement, member.id);
     }
-    return l10n.mixedWorkspaceMemberPlacementProgress(placed, needed);
+    // Placement is source of truth: total == placed (may be 0 for non-leads).
+    return l10n.mixedWorkspaceMemberPlacementProgress(placed, placed);
   }
 }
 
@@ -1113,14 +1148,14 @@ class _Footer extends StatelessWidget {
   const _Footer({
     required this.canSave,
     required this.saving,
-    required this.showPlacementHint,
+    required this.placementHint,
     required this.onCancel,
     required this.onSave,
   });
 
   final bool canSave;
   final bool saving;
-  final bool showPlacementHint;
+  final String? placementHint;
   final VoidCallback onCancel;
   final VoidCallback onSave;
 
@@ -1137,10 +1172,10 @@ class _Footer extends StatelessWidget {
       ),
       child: Row(
         children: [
-          if (showPlacementHint)
+          if (placementHint != null)
             Expanded(
               child: Text(
-                l10n.mixedWorkspaceMemberAssignmentIncomplete,
+                placementHint!,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: cs.error,
                 ),

@@ -40,13 +40,16 @@ class MemberInstance {
 }
 
 /// The single Deployment→Pod fan-out. The team-lead is always a singleton; any
-/// other type yields `max(1, replicas)` instances.
+/// other type yields `replicas` instances (0 when replicas is 0).
 List<MemberInstance> expandTeamRoster(List<TeamMemberConfig> members) {
   final out = <MemberInstance>[];
   for (final type in members) {
-    final n = TeamMemberNaming.isTeamLead(type) || type.replicas < 1
-        ? 1
-        : type.replicas;
+    if (TeamMemberNaming.isTeamLead(type)) {
+      out.add(MemberInstance(type: type, ordinal: 0, replicas: 1));
+      continue;
+    }
+    final n = type.replicas;
+    if (n < 1) continue;
     for (var i = 0; i < n; i++) {
       out.add(MemberInstance(type: type, ordinal: i, replicas: n));
     }

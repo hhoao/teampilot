@@ -11,8 +11,10 @@ String landingLaunchBlockMessage(
 ) {
   return switch (block) {
     TeamNotSelectedLaunchBlock() => l10n.selectTeam,
-    MixedMemberTargetsIncompleteLaunchBlock() =>
-      l10n.workspaceChatLandingMixedLaunchBlocked,
+    MixedMemberPlacementUninitializedLaunchBlock() =>
+      l10n.mixedWorkspaceMemberAssignmentIncomplete,
+    LeadPlacementInvalidLaunchBlock() =>
+      l10n.mixedWorkspaceLeadPlacementInvalid,
     TeamConfigIncompleteLaunchBlock() =>
       l10n.workspaceChatLandingTeamLaunchBlocked,
   };

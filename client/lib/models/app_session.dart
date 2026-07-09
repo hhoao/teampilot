@@ -1,9 +1,25 @@
 import 'package:flutter/foundation.dart';
 
+import 'member_instance.dart';
 import 'session_member_binding.dart';
 import 'team_config.dart';
 import 'workspace_folder.dart';
 import 'workspace_topology.dart';
+
+/// Runtime roster filtered to instance ids present in [session.members].
+///
+/// Lives here (not [member_instance.dart]) to avoid an AppSession import cycle
+/// through [workspace_topology].
+List<TeamMemberConfig> sessionRosterMembers(
+  AppSession session,
+  TeamProfile team,
+) {
+  final ids = {for (final b in session.members) b.rosterMemberId};
+  return [
+    for (final m in runtimeRosterMembers(team))
+      if (ids.contains(m.id)) m,
+  ];
+}
 
 enum AppSessionLaunchState { created, started }
 

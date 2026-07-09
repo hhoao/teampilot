@@ -18,14 +18,26 @@ SessionOpenStatus? validateSessionOpenRequest({
   } else {
     final workspace = request.workspace ?? workspaceById(session.workspaceId);
     final team = request.team!;
-    if (workspace != null &&
-        workspaceTopologyRequiresMemberAssignment(workspace.folders) &&
-        !memberTargetsComplete(
-          workspaceFolders: workspace.folders,
-          members: team.members.where((m) => m.isValid).toList(),
-          targets: session.memberTargets,
-        )) {
-      return SessionOpenStatus.blockedMixedMemberTargets;
+    if (workspace != null) {
+      if (workspaceNeedsMixedPlacementInit(
+        folders: workspace.folders,
+        teamId: team.id,
+        initializedByTeam: workspace.memberPlacementInitializedByTeam,
+      )) {
+        return SessionOpenStatus.blockedMixedMemberTargets;
+      }
+      final validMembers = team.members.where((m) => m.isValid).toList();
+      final mustValidateLead =
+          session.memberTargets.isNotEmpty ||
+          workspaceTopologyOf(workspace.folders) == WorkspaceTopology.mixed;
+      if (mustValidateLead &&
+          !leadPlacementValid(
+            folders: workspace.folders,
+            members: validMembers,
+            targets: session.memberTargets,
+          )) {
+        return SessionOpenStatus.blockedMixedMemberTargets;
+      }
     }
   }
   return null;

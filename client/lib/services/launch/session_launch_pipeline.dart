@@ -159,19 +159,30 @@ class SessionLaunchPipeline {
     final sessionTeamId = request.isPersonal
         ? ''
         : (request.team?.id ?? '').trim();
-    if (!request.isPersonal &&
-        workspaceTopologyRequiresMemberAssignment(request.workspace.folders)) {
+    if (!request.isPersonal) {
       final team = request.team!;
+      final workspace = request.workspace;
+      if (workspaceNeedsMixedPlacementInit(
+        folders: workspace.folders,
+        teamId: team.id,
+        initializedByTeam: workspace.memberPlacementInitializedByTeam,
+      )) {
+        return LaunchOpened(SessionOpenStatus.blockedMixedMemberTargets);
+      }
       final valid = team.members.where((m) => m.isValid).toList();
       final targets = rememberedMemberTargets(
-        request.workspace.memberTargetsByTeam,
+        workspace.memberTargetsByTeam,
         sessionTeamId,
       );
-      if (!memberTargetsComplete(
-        workspaceFolders: request.workspace.folders,
-        members: valid,
-        targets: targets,
-      )) {
+      final mustValidateLead =
+          targets.isNotEmpty ||
+          workspaceTopologyOf(workspace.folders) == WorkspaceTopology.mixed;
+      if (mustValidateLead &&
+          !leadPlacementValid(
+            folders: workspace.folders,
+            members: valid,
+            targets: targets,
+          )) {
         return LaunchOpened(SessionOpenStatus.blockedMixedMemberTargets);
       }
     }

@@ -1,5 +1,4 @@
 import '../../models/app_session.dart';
-import '../../models/member_instance.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
@@ -52,7 +51,7 @@ class TabTeamBusCoordinator {
     TeamProfile team,
     AppSession session,
   ) async {
-    final runtimeMembers = runtimeRosterMembers(team);
+    final runtimeMembers = sessionRosterMembers(session, team);
     final memberCount = runtimeMembers.length;
     appLogger.d(
       '[session-launch] installBusForTab start '
