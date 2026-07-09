@@ -130,6 +130,7 @@ final class TeampilotNodeInstall {
 
   static String _unixBootstrapScript() {
     final base = unixToolchainNodeBase;
+    // curl exit 18 = partial transfer; retry + npmmirror fallback for flaky links.
     return '''
 set -e
 os="\$(uname -s)"
@@ -148,18 +149,43 @@ version="$version"
 base="$base"
 target="\$base/\$version"
 archive="node-\$version-\$platform-\$node_arch.tar.xz"
-url="https://nodejs.org/dist/\$version/\$archive"
 mkdir -p "\$base" "\$HOME/.local/bin"
 tmp="\$(mktemp -d)"
 cleanup() { rm -rf "\$tmp"; }
 trap cleanup EXIT
-if command -v curl >/dev/null 2>&1; then
-  curl -fsSL "\$url" -o "\$tmp/\$archive"
-elif command -v wget >/dev/null 2>&1; then
-  wget -q "\$url" -O "\$tmp/\$archive"
-else
+if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
   echo "curl or wget is required to download Node.js" >&2
   exit 3
+fi
+download_ok=0
+for url in \\
+  "https://nodejs.org/dist/\$version/\$archive" \\
+  "https://npmmirror.com/mirrors/node/\$version/\$archive"
+do
+  for attempt in 1 2 3 4 5; do
+    echo "Downloading Node.js from \$url (attempt \$attempt)" >&2
+    rm -f "\$tmp/\$archive"
+    if command -v curl >/dev/null 2>&1; then
+      if curl -fsSL --connect-timeout 30 --max-time 600 \\
+        "\$url" -o "\$tmp/\$archive"; then
+        download_ok=1
+        break
+      fi
+    else
+      if wget -q --timeout=30 -O "\$tmp/\$archive" "\$url"; then
+        download_ok=1
+        break
+      fi
+    fi
+    sleep 2
+  done
+  if [ "\$download_ok" -eq 1 ]; then
+    break
+  fi
+done
+if [ "\$download_ok" -ne 1 ]; then
+  echo "Failed to download Node.js archive after retries" >&2
+  exit 18
 fi
 tar -xJf "\$tmp/\$archive" -C "\$tmp"
 rm -rf "\$target"
@@ -181,13 +207,31 @@ PATH="\$target/bin:\$HOME/.local/bin:\$PATH" npm --version
 \$base = Join-Path \$env:LOCALAPPDATA '$base'
 \$target = Join-Path \$base \$version
 \$archive = "node-\$version-win-\$arch.zip"
-\$url = "https://nodejs.org/dist/\$version/\$archive"
+\$urls = @(
+  "https://nodejs.org/dist/\$version/\$archive",
+  "https://npmmirror.com/mirrors/node/\$version/\$archive"
+)
 \$tmp = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
 New-Item -ItemType Directory -Force -Path \$base, \$tmp | Out-Null
 try {
-  Invoke-WebRequest -Uri \$url -OutFile (Join-Path \$tmp \$archive)
+  \$archivePath = Join-Path \$tmp \$archive
+  \$downloaded = \$false
+  foreach (\$url in \$urls) {
+    for (\$attempt = 1; \$attempt -le 5; \$attempt++) {
+      try {
+        Write-Host "Downloading Node.js from \$url (attempt \$attempt)"
+        Invoke-WebRequest -Uri \$url -OutFile \$archivePath
+        \$downloaded = \$true
+        break
+      } catch {
+        Start-Sleep -Seconds 2
+      }
+    }
+    if (\$downloaded) { break }
+  }
+  if (-not \$downloaded) { throw "Failed to download Node.js archive after retries" }
   if (Test-Path \$target) { Remove-Item -Recurse -Force \$target }
-  Expand-Archive -Path (Join-Path \$tmp \$archive) -DestinationPath \$tmp -Force
+  Expand-Archive -Path \$archivePath -DestinationPath \$tmp -Force
   Move-Item -Path (Join-Path \$tmp "node-\$version-win-\$arch") -Destination \$target
   & (Join-Path \$target 'npm.cmd') --version
 } finally {

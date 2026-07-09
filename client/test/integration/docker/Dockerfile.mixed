@@ -31,10 +31,23 @@ RUN set -eux; \
   base="$HOME/.local/share/com.hhoa.teampilot/toolchain/node"; \
   target="$base/$version"; \
   archive="node-$version-$platform-$node_arch.tar.xz"; \
-  url="https://nodejs.org/dist/$version/$archive"; \
   mkdir -p "$base" "$HOME/.local/bin"; \
   tmp="$(mktemp -d)"; \
-  curl -fsSL "$url" -o "$tmp/$archive"; \
+  download_ok=0; \
+  for url in \
+    "https://nodejs.org/dist/$version/$archive" \
+    "https://npmmirror.com/mirrors/node/$version/$archive"; do \
+    for attempt in 1 2 3 4 5; do \
+      rm -f "$tmp/$archive"; \
+      if curl -fsSL --connect-timeout 30 --max-time 600 \
+        "$url" -o "$tmp/$archive"; then \
+        download_ok=1; break; \
+      fi; \
+      sleep 2; \
+    done; \
+    if [ "$download_ok" = 1 ]; then break; fi; \
+  done; \
+  test "$download_ok" = 1; \
   tar -xJf "$tmp/$archive" -C "$tmp"; \
   mv "$tmp/node-$version-$platform-$node_arch" "$target"; \
   ln -sf "$target/bin/node" "$HOME/.local/bin/node"; \

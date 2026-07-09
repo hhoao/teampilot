@@ -13,6 +13,8 @@ void main() {
     ).scriptRunner;
     final unix = node.localBootstrapCommand(unixRunner);
     expect(unix.commandLine, contains('nodejs.org/dist/'));
+    expect(unix.commandLine, contains('npmmirror.com/mirrors/node/'));
+    expect(unix.commandLine, contains('attempt \$attempt'));
     expect(unix.commandLine, contains(TeampilotNodeInstall.version));
     expect(
       unix.commandLine,
@@ -33,6 +35,8 @@ void main() {
     expect(command.executable, 'sh');
     final script = command.arguments.last;
     expect(script, contains('nodejs.org/dist/'));
+    expect(script, contains('npmmirror.com/mirrors/node/'));
+    expect(script, contains('attempt \$attempt'));
     expect(script, contains(TeampilotNodeInstall.version));
   });
 
