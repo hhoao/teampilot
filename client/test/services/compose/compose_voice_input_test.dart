@@ -42,4 +42,12 @@ void main() {
       );
     });
   });
+
+  group('ComposeVoiceInput', () {
+    test('starts unavailable until initialize', () {
+      final input = ComposeVoiceInput(onFinalTranscript: (_) {});
+      expect(input.isAvailable, isFalse);
+      input.dispose();
+    });
+  });
 }

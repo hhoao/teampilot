@@ -12,6 +12,7 @@ import '../../../services/workspace/workspace_tools_scope_registry.dart';
 import '../../../services/workspace/workspace_worktree_registry.dart';
 import '../../../utils/app_keys.dart';
 import '../../../utils/workspace_active_context.dart';
+import '../../../widgets/deferred_mount_shell.dart';
 import '../../../widgets/right_tools/right_tools_panel.dart';
 import '../../../widgets/workspace_terminal_panel.dart';
 import '../../chat_page.dart';
@@ -76,20 +77,28 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
                 workspaceId: widget.workspace.workspaceId,
                 tabScopeId: widget.tabScopeId,
               ),
-              right: _WorkspaceRightToolsPane(
-                cwd: cwd,
-                additionalPaths: widget.workspace.extraFolderPaths,
-                workspaceId: widget.workspace.workspaceId,
-                tabScopeId: widget.tabScopeId,
+              // Side panes are off the first-open critical path: chrome +
+              // landing paint first, then tools / terminal mount.
+              right: DeferredMountShell(
+                delayFrames: 2,
+                child: _WorkspaceRightToolsPane(
+                  cwd: cwd,
+                  additionalPaths: widget.workspace.extraFolderPaths,
+                  workspaceId: widget.workspace.workspaceId,
+                  tabScopeId: widget.tabScopeId,
+                ),
               ),
               // Keyed by workspace-group identity (never cwd): a same-workspace
               // cwd change keeps the panel State so the update flows through
               // didUpdateWidget instead of recreating (and stranding) sessions.
-              bottom: WorkspaceTerminalPanel(
-                key: ValueKey('workspace-terminal-${widget.tabScopeId}'),
-                workspaceId: widget.tabScopeId,
-                workingDirectory: cwd,
-                holdHandle: _terminalHold,
+              bottom: DeferredMountShell(
+                delayFrames: 2,
+                child: WorkspaceTerminalPanel(
+                  key: ValueKey('workspace-terminal-${widget.tabScopeId}'),
+                  workspaceId: widget.tabScopeId,
+                  workingDirectory: cwd,
+                  holdHandle: _terminalHold,
+                ),
               ),
             ),
           );

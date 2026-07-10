@@ -9,6 +9,7 @@ import '../../../theme/app_text_styles.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../services/workspace_dnd/workspace_drop_target.dart';
 import '../../../widgets/compose/compose_trigger_field.dart';
+import '../../../widgets/deferred_mount_shell.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
 import '../../../widgets/workspace_dnd/external_file_drop_region.dart';
 import '../../../widgets/workspace_dnd/workspace_file_drop_region.dart';
@@ -278,21 +279,30 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                ComposeTriggerField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  hint: hint,
-                  enabled: !isSubmitting,
-                  onChanged: onChanged,
-                  onSubmit: onSubmit,
-                  canSubmit: () => canSubmit,
-                  workspaceRoot: workspaceRoot,
-                  skills: skills,
-                  plugins: plugins,
-                  slashBundle: slashBundle,
-                  mutedColor: palette.muted,
-                  hintColor: palette.hint,
-                  onPasteImage: onPasteImage,
+                // Defer EditableText past the first workspace paint so
+                // Clipboard/LiveText/ProcessText probes are off the open path.
+                DeferredMountShell(
+                  delayFrames: 2,
+                  placeholder: _ComposeFieldPlaceholder(
+                    hint: hint,
+                    hintColor: palette.hint,
+                  ),
+                  child: ComposeTriggerField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    hint: hint,
+                    enabled: !isSubmitting,
+                    onChanged: onChanged,
+                    onSubmit: onSubmit,
+                    canSubmit: () => canSubmit,
+                    workspaceRoot: workspaceRoot,
+                    skills: skills,
+                    plugins: plugins,
+                    slashBundle: slashBundle,
+                    mutedColor: palette.muted,
+                    hintColor: palette.hint,
+                    onPasteImage: onPasteImage,
+                  ),
                 ),
                 SizedBox(height: spacing.md),
                 Row(
@@ -625,6 +635,35 @@ class _ComposeActionIcon extends StatelessWidget {
                     color: color,
                   ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Non-interactive stand-in matching ~3-line compose field height.
+class _ComposeFieldPlaceholder extends StatelessWidget {
+  const _ComposeFieldPlaceholder({
+    required this.hint,
+    required this.hintColor,
+  });
+
+  final String hint;
+  final Color hintColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final styles = AppTextStyles.of(context);
+    final lineHeight = styles.body.fontSize! * 1.5;
+    return SizedBox(
+      width: double.infinity,
+      // InlineTokenTextField defaults to minLines: 3.
+      height: lineHeight * 3,
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: Text(
+          hint,
+          style: styles.body.copyWith(color: hintColor, height: 1.5),
         ),
       ),
     );

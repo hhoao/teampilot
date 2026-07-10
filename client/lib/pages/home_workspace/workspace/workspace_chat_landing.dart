@@ -150,7 +150,8 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
         _applyVoiceListening(false);
       },
     );
-    unawaited(_voiceInput.initialize());
+    // Speech init is deferred to first mic tap (_toggleVoice) so workspace
+    // open does not block on speech_to_text platform channels.
     unawaited(_loadDraft());
     unawaited(_loadWorkspaceProjectBundle());
   }
