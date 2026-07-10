@@ -45,6 +45,8 @@ class FakeHubPublishService implements HubPublishApi {
     String? author,
     String? category,
     List<String>? skillIds,
+    List<String>? pluginIds,
+    List<String>? mcpServerIds,
   }) async {
     publishExpertCalls++;
     if (lastError != null) throw lastError!;

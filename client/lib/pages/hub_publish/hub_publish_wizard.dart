@@ -262,6 +262,8 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
           tags: _parseTags(_tags.text),
           member: member.member,
           skillDeps: member.skillDeps,
+          pluginDeps: member.pluginDeps,
+          mcpDeps: member.mcpDeps,
           author: _author.text.trim().isEmpty
               ? member.author
               : _author.text.trim(),

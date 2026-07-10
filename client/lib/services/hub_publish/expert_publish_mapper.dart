@@ -23,43 +23,74 @@ class ExpertPublishMapper {
 
   /// Maps [member] for publish.
   ///
-  /// When [skillIds] is provided, resolves them via [lookup] (same portability
-  /// rules as team publish). Otherwise keeps only already-portable
-  /// [DiscoverableMember.skillDeps] (those with non-empty repo fields).
+  /// When [skillIds] / [pluginIds] / [mcpServerIds] are provided, resolves them
+  /// via [lookup] (same portability rules as team publish). Otherwise keeps
+  /// only already-portable deps on [member].
   static ExpertPublishMapResult map({
     required DiscoverableMember member,
     required BundleProvenanceLookup lookup,
     required String key,
     List<String>? skillIds,
+    List<String>? pluginIds,
+    List<String>? mcpServerIds,
     String? author,
     String? category,
     int? updatedAt,
   }) {
     final reasons = <String>[];
     late final List<SkillDependencyRef> skillDeps;
+    late final List<PluginDependencyRef> pluginDeps;
+    late final List<McpDependencyRef> mcpDeps;
 
-    if (skillIds != null) {
+    final resolveFromIds =
+        skillIds != null || pluginIds != null || mcpServerIds != null;
+    if (resolveFromIds) {
       final deps = lookup.resolve(
-        skillIds: skillIds,
-        pluginIds: const [],
-        mcpServerIds: const [],
+        skillIds: skillIds ?? const [],
+        pluginIds: pluginIds ?? const [],
+        mcpServerIds: mcpServerIds ?? const [],
       );
       for (final id in deps.nonPortableIds) {
         reasons.add('Non-portable bundle dependency: $id');
       }
       skillDeps = deps.skillDeps;
+      pluginDeps = deps.pluginDeps;
+      mcpDeps = deps.mcpDeps;
     } else {
       skillDeps = [
         for (final dep in member.skillDeps)
           if (_isPortableSkillDep(dep)) dep,
       ];
-      // If the member carried skillDeps that aren't portable, block.
+      pluginDeps = [
+        for (final dep in member.pluginDeps)
+          if (_isPortablePluginDep(dep)) dep,
+      ];
+      mcpDeps = [
+        for (final dep in member.mcpDeps)
+          if (_isPortableMcpDep(dep)) dep,
+      ];
       if (skillDeps.length != member.skillDeps.length) {
         for (final dep in member.skillDeps) {
           if (!_isPortableSkillDep(dep)) {
             reasons.add(
               'Non-portable skill dependency: ${dep.repoOwner}/${dep.repoName}:${dep.directory}',
             );
+          }
+        }
+      }
+      if (pluginDeps.length != member.pluginDeps.length) {
+        for (final dep in member.pluginDeps) {
+          if (!_isPortablePluginDep(dep)) {
+            reasons.add(
+              'Non-portable plugin dependency: ${dep.marketplaceOwner}/${dep.marketplaceName}/${dep.entryName}',
+            );
+          }
+        }
+      }
+      if (mcpDeps.length != member.mcpDeps.length) {
+        for (final dep in member.mcpDeps) {
+          if (!_isPortableMcpDep(dep)) {
+            reasons.add('Non-portable MCP dependency: ${dep.id}');
           }
         }
       }
@@ -80,6 +111,8 @@ class ExpertPublishMapper {
         tags: member.tags,
         member: member.member,
         skillDeps: skillDeps,
+        pluginDeps: pluginDeps,
+        mcpDeps: mcpDeps,
         source: ExpertMemberSource.registry,
         originTeamKey: null,
       ),
@@ -91,4 +124,14 @@ bool _isPortableSkillDep(SkillDependencyRef dep) {
   return dep.repoOwner.trim().isNotEmpty &&
       dep.repoName.trim().isNotEmpty &&
       dep.directory.trim().isNotEmpty;
+}
+
+bool _isPortablePluginDep(PluginDependencyRef dep) {
+  return dep.marketplaceOwner.trim().isNotEmpty &&
+      dep.marketplaceName.trim().isNotEmpty &&
+      dep.entryName.trim().isNotEmpty;
+}
+
+bool _isPortableMcpDep(McpDependencyRef dep) {
+  return dep.id.trim().isNotEmpty && dep.server.isNotEmpty;
 }

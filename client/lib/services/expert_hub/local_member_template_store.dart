@@ -54,6 +54,8 @@ class LocalMemberTemplateStore {
       tags: member.tags,
       member: member.member,
       skillDeps: member.skillDeps,
+      pluginDeps: member.pluginDeps,
+      mcpDeps: member.mcpDeps,
       source: ExpertMemberSource.local,
       originTeamKey: member.originTeamKey,
     );

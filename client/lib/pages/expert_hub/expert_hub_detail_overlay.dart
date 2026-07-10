@@ -129,6 +129,18 @@ class ExpertHubDetailOverlay extends StatelessWidget {
                                     label:
                                         '${member.skillDeps.length} ${l10n.teamHubSkillsLabel}',
                                   ),
+                                if (member.pluginDeps.isNotEmpty)
+                                  TeamStatChip(
+                                    icon: Icons.extension_outlined,
+                                    label:
+                                        '${member.pluginDeps.length} ${l10n.teamHubPluginsLabel}',
+                                  ),
+                                if (member.mcpDeps.isNotEmpty)
+                                  TeamStatChip(
+                                    icon: Icons.cable_outlined,
+                                    label:
+                                        '${member.mcpDeps.length} ${l10n.teamHubMcpLabel}',
+                                  ),
                               ],
                             ),
                           ],
@@ -210,6 +222,30 @@ class ExpertHubDetailOverlay extends StatelessWidget {
                             installed: installedDepIds.contains(
                               s.expectedLocalId,
                             ),
+                          ),
+                      ],
+                    ),
+                  if (member.pluginDeps.isNotEmpty)
+                    _DepSection(
+                      title: l10n.teamHubPluginsLabel,
+                      rows: [
+                        for (final p in member.pluginDeps)
+                          _DepRow(
+                            label: p.name,
+                            installed: installedDepIds.contains(
+                              p.expectedLocalId,
+                            ),
+                          ),
+                      ],
+                    ),
+                  if (member.mcpDeps.isNotEmpty)
+                    _DepSection(
+                      title: l10n.teamHubMcpLabel,
+                      rows: [
+                        for (final m in member.mcpDeps)
+                          _DepRow(
+                            label: m.name,
+                            installed: installedDepIds.contains(m.id),
                           ),
                       ],
                     ),

@@ -144,6 +144,8 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
           extraArgs: initial?.member.extraArgs ?? '',
         ),
         skillDeps: initial?.skillDeps ?? const [],
+        pluginDeps: initial?.pluginDeps ?? const [],
+        mcpDeps: initial?.mcpDeps ?? const [],
         author: initial?.author,
         originTeamKey: initial?.originTeamKey,
       );

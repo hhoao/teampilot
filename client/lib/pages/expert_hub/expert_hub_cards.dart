@@ -165,6 +165,18 @@ class _ExpertHubCardState extends State<ExpertHubCard> {
                         label: '${member.skillDeps.length}',
                         tooltip: context.l10n.teamHubSkillsLabel,
                       ),
+                    if (member.pluginDeps.isNotEmpty)
+                      TeamStatChip(
+                        icon: Icons.extension_outlined,
+                        label: '${member.pluginDeps.length}',
+                        tooltip: context.l10n.teamHubPluginsLabel,
+                      ),
+                    if (member.mcpDeps.isNotEmpty)
+                      TeamStatChip(
+                        icon: Icons.cable_outlined,
+                        label: '${member.mcpDeps.length}',
+                        tooltip: context.l10n.teamHubMcpLabel,
+                      ),
                     if (member.category.isNotEmpty)
                       TeamStatChip(label: member.category, accent: accent),
                   ],

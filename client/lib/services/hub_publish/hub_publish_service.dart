@@ -18,6 +18,8 @@ abstract interface class HubPublishApi {
     String? author,
     String? category,
     List<String>? skillIds,
+    List<String>? pluginIds,
+    List<String>? mcpServerIds,
   });
 
   Future<HubPublishResult> publishTeam({
@@ -60,6 +62,8 @@ class HubPublishService implements HubPublishApi {
     String? author,
     String? category,
     List<String>? skillIds,
+    List<String>? pluginIds,
+    List<String>? mcpServerIds,
   }) async {
     final resolvedUpstream = upstream ?? kDefaultExpertHubRegistry;
     final token = await _requireToken();
@@ -71,6 +75,8 @@ class HubPublishService implements HubPublishApi {
       author: author,
       category: category,
       skillIds: skillIds,
+      pluginIds: pluginIds,
+      mcpServerIds: mcpServerIds,
       updatedAt: _nowMs(),
     );
     if (mapped is PublishBlockedExpert) {

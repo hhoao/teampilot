@@ -82,6 +82,34 @@ void main() {
     expect(await store.getByKey('local/to-keep'), isNotNull);
   });
 
+  test('save preserves pluginDeps and mcpDeps', () async {
+    final saved = await store.save(
+      _sampleMember().copyWith(
+        pluginDeps: const [
+          PluginDependencyRef(
+            marketplaceOwner: 'acme',
+            marketplaceName: 'tools',
+            marketplaceBranch: 'main',
+            entryName: 'lint',
+            name: 'Lint',
+          ),
+        ],
+        mcpDeps: const [
+          McpDependencyRef(
+            id: 'mcp-fs',
+            name: 'Filesystem',
+            description: 'fs',
+            server: {'command': 'npx'},
+          ),
+        ],
+      ),
+    );
+
+    expect(saved.pluginDeps.single.entryName, 'lint');
+    expect(saved.mcpDeps.single.id, 'mcp-fs');
+    expect(await store.getByKey(saved.key), saved);
+  });
+
   test('persists across store instances', () async {
     final saved = await store.save(_sampleMember());
 
@@ -101,6 +129,9 @@ extension on DiscoverableMember {
     String? category,
     ExpertMemberSource? source,
     DiscoverableTeamMember? member,
+    List<SkillDependencyRef>? skillDeps,
+    List<PluginDependencyRef>? pluginDeps,
+    List<McpDependencyRef>? mcpDeps,
   }) {
     return DiscoverableMember(
       key: key ?? this.key,
@@ -111,7 +142,9 @@ extension on DiscoverableMember {
       updatedAt: updatedAt,
       tags: tags,
       member: member ?? this.member,
-      skillDeps: skillDeps,
+      skillDeps: skillDeps ?? this.skillDeps,
+      pluginDeps: pluginDeps ?? this.pluginDeps,
+      mcpDeps: mcpDeps ?? this.mcpDeps,
       source: source ?? this.source,
       originTeamKey: originTeamKey,
     );
