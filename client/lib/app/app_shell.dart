@@ -90,6 +90,7 @@ import '../services/expert_hub/member_roster_service.dart';
 import '../services/cli/cli_executable_discovery.dart';
 import '../services/commands/command_bus.dart';
 import '../services/commands/layout_command_registrar.dart';
+import '../services/commands/session_command_registrar.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/provider/claude/claude_provider_credentials_service.dart';
@@ -787,6 +788,8 @@ Future<AppShell> buildAppShell({
       runtimePlanBuilder: sessionRuntimePlanBuilder,
     ),
   );
+
+  registerSessionCommands(commandBus, chatCubit);
 
   memberPresenceCubit = MemberPresenceCubit();
   chatCubit.bindPresenceCubit(memberPresenceCubit);
