@@ -10,92 +10,22 @@ import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
-import '../../cubits/layout_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/automation_tab_scope.dart';
-import '../../models/layout_preferences.dart';
 import '../../models/team_config.dart';
-import '../../models/workspace.dart';
-import '../../services/app/platform_utils.dart';
 import '../../services/workbench/workbench_shell_actions.dart';
 import '../../services/workbench/workbench_tab_projection.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/workspace_active_context.dart';
 import '../../cubits/workspace_landing_context_cubit.dart';
-import '../../widgets/right_tools/right_tools_panel.dart';
 import '../../widgets/workbench/workbench_session_sync.dart';
 import '../workbench/workbench_body.dart';
 import '../workspace_shell/workspace_shell.dart';
-import 'right_tools_host.dart';
 import 'chat_scoped_tab_view.dart';
 import 'session_tab_cli.dart';
 import 'team_config_incomplete_dialog.dart';
-
-/// Layout fields that affect [ChatPageShell] and its right-tools subtree.
-/// Subscribes narrowly so persistence-only prefs (e.g. [LayoutPreferences.lastOpenedWorkspaceId])
-/// do not rebuild the workbench shell on every workspace tab switch.
-@immutable
-class _ChatPageShellLayoutView {
-  const _ChatPageShellLayoutView({
-    required this.rightToolsVisible,
-    required this.rightToolsWidth,
-    required this.fileTreeVisible,
-    required this.gitVisible,
-    required this.membersVisible,
-    required this.boardVisible,
-  });
-
-  final bool rightToolsVisible;
-  final double rightToolsWidth;
-  final bool fileTreeVisible;
-  final bool gitVisible;
-  final bool membersVisible;
-  final bool boardVisible;
-
-  factory _ChatPageShellLayoutView.from(LayoutPreferences preferences) {
-    return _ChatPageShellLayoutView(
-      rightToolsVisible: preferences.rightToolsVisible,
-      rightToolsWidth: preferences.rightToolsWidth,
-      fileTreeVisible: preferences.fileTreeVisible,
-      gitVisible: preferences.gitVisible,
-      membersVisible: preferences.membersVisible,
-      boardVisible: preferences.boardVisible,
-    );
-  }
-
-  LayoutPreferences get asPreferences => LayoutPreferences(
-    rightToolsVisible: rightToolsVisible,
-    rightToolsWidth: rightToolsWidth,
-    fileTreeVisible: fileTreeVisible,
-    gitVisible: gitVisible,
-    membersVisible: membersVisible,
-    boardVisible: boardVisible,
-  );
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        other is _ChatPageShellLayoutView &&
-            rightToolsVisible == other.rightToolsVisible &&
-            rightToolsWidth == other.rightToolsWidth &&
-            fileTreeVisible == other.fileTreeVisible &&
-            gitVisible == other.gitVisible &&
-            membersVisible == other.membersVisible &&
-            boardVisible == other.boardVisible;
-  }
-
-  @override
-  int get hashCode => Object.hash(
-    rightToolsVisible,
-    rightToolsWidth,
-    fileTreeVisible,
-    gitVisible,
-    membersVisible,
-    boardVisible,
-  );
-}
 
 class ChatPageShell extends StatelessWidget {
   const ChatPageShell({
@@ -128,182 +58,19 @@ class ChatPageShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = _activeContext(context);
-    final isPersonalContext = active.isPersonal;
-    final team = active.team;
-    final toolsAsDrawer = useRightToolsAsDrawer(context);
-
-    if (!toolsAsDrawer) {
-      return _chatLaunchListener(
-        context,
-        _ChatPageSplitLayout(
-          cwd: cwd,
-          additionalPaths: additionalPaths,
-          sessionId: sessionId,
-          isPersonalContext: isPersonalContext,
-          workspaceId: workspaceId,
-          tabScopeId: tabScopeId,
-          routeActive: routeActive,
-          team: team,
-        ),
-      );
-    }
-
+    // Center-only: geometry (sidebar / right tools / bottom terminal) is owned
+    // by `WorkspaceIdeShell` above this widget. `ChatPageShell` now renders just
+    // the center workbench column.
     return _chatLaunchListener(
       context,
-      _ChatPageDrawerLayout(
+      _ChatWorkspaceShell(
         cwd: cwd,
-        additionalPaths: additionalPaths,
         sessionId: sessionId,
-        isPersonalContext: isPersonalContext,
+        isPersonalContext: active.isPersonal,
         workspaceId: workspaceId,
         tabScopeId: tabScopeId,
         routeActive: routeActive,
-        team: team,
-      ),
-    );
-  }
-}
-
-/// Desktop split: [RightToolsHost] owns layout prefs; center and right tools
-/// are separate subtrees so chat/layout churn does not cross-rebuild.
-class _ChatPageSplitLayout extends StatelessWidget {
-  const _ChatPageSplitLayout({
-    required this.cwd,
-    required this.additionalPaths,
-    required this.sessionId,
-    required this.isPersonalContext,
-    required this.workspaceId,
-    required this.tabScopeId,
-    required this.routeActive,
-    required this.team,
-  });
-
-  final String cwd;
-  final List<String> additionalPaths;
-  final String? sessionId;
-  final bool isPersonalContext;
-  final String workspaceId;
-  final String tabScopeId;
-  final bool routeActive;
-  final TeamProfile? team;
-
-  @override
-  Widget build(BuildContext context) {
-    return RightToolsHost(
-      onRightToolsWidthChanged: (w) =>
-          context.read<LayoutCubit>().setRightToolsWidth(w),
-      center: _ChatWorkspaceShell(
-        cwd: cwd,
-        sessionId: sessionId,
-        isPersonalContext: isPersonalContext,
-        workspaceId: workspaceId,
-        tabScopeId: tabScopeId,
-        routeActive: routeActive,
-        team: team,
-      ),
-      rightTools: _ChatRightToolsPanelSlot(
-        cwd: cwd,
-        additionalPaths: additionalPaths,
-        isPersonalContext: isPersonalContext,
-        team: team,
-        workspaceId: workspaceId,
-        tabScopeId: tabScopeId,
-      ),
-    );
-  }
-}
-
-/// Narrow layout subscription for the right tools panel only.
-class _ChatRightToolsPanelSlot extends StatelessWidget {
-  const _ChatRightToolsPanelSlot({
-    required this.cwd,
-    required this.additionalPaths,
-    required this.isPersonalContext,
-    required this.team,
-    required this.workspaceId,
-    required this.tabScopeId,
-  });
-
-  final String cwd;
-  final List<String> additionalPaths;
-  final bool isPersonalContext;
-  final TeamProfile? team;
-  final String workspaceId;
-  final String tabScopeId;
-
-  @override
-  Widget build(BuildContext context) {
-    final layout = context.select<LayoutCubit, _ChatPageShellLayoutView>(
-      (c) => _ChatPageShellLayoutView.from(c.state.preferences),
-    );
-    return RightToolsPanel(
-      cwd: cwd,
-      additionalPaths: additionalPaths,
-      preferences: layout.asPreferences,
-      panelKey: AppKeys.rightToolsPanel,
-      dismissDrawerOnAction: false,
-      isPersonalContext: isPersonalContext,
-      team: team,
-      workspaceId: workspaceId,
-      toolsScopeId: tabScopeId,
-    );
-  }
-}
-
-class _ChatPageDrawerLayout extends StatelessWidget {
-  const _ChatPageDrawerLayout({
-    required this.cwd,
-    required this.additionalPaths,
-    required this.sessionId,
-    required this.isPersonalContext,
-    required this.workspaceId,
-    required this.tabScopeId,
-    required this.routeActive,
-    required this.team,
-  });
-
-  final String cwd;
-  final List<String> additionalPaths;
-  final String? sessionId;
-  final bool isPersonalContext;
-  final String workspaceId;
-  final String tabScopeId;
-  final bool routeActive;
-  final TeamProfile? team;
-
-  @override
-  Widget build(BuildContext context) {
-    final layout = context.select<LayoutCubit, _ChatPageShellLayoutView>(
-      (c) => _ChatPageShellLayoutView.from(c.state.preferences),
-    );
-    final preferences = layout.asPreferences;
-    final rightToolsPanel = RightToolsPanel(
-      cwd: cwd,
-      additionalPaths: additionalPaths,
-      preferences: preferences,
-      panelKey: AppKeys.rightToolsPanel,
-      dismissDrawerOnAction: true,
-      isPersonalContext: isPersonalContext,
-      team: team,
-      workspaceId: workspaceId,
-      toolsScopeId: tabScopeId,
-    );
-
-    return Scaffold(
-      endDrawer: preferences.rightToolsVisible
-          ? Drawer(
-              width: rightToolsDrawerWidth(context, preferences),
-              child: SafeArea(child: rightToolsPanel),
-            )
-          : null,
-      body: _ChatWorkspaceShell(
-        cwd: cwd,
-        sessionId: sessionId,
-        isPersonalContext: isPersonalContext,
-        workspaceId: workspaceId,
-        tabScopeId: tabScopeId,
-        routeActive: routeActive,
-        team: team,
+        team: active.team,
       ),
     );
   }
@@ -439,8 +206,6 @@ class _ChatWorkspaceShell extends StatelessWidget {
                   : order.indexOf(activeId).clamp(0, tabs.isEmpty ? 0 : tabs.length - 1);
 
               return WorkspaceShell(
-                workspaceTerminalWorkingDirectory: cwd,
-                workspaceWorkspaceId: tabScopeId,
                 showHeader: false,
                 breadcrumb: isPersonalContext
                     ? 'Personal / Chat / Shell chat workbench'
@@ -512,6 +277,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
                       }
                     : null,
                 showRightToolsVisibilityToggle: true,
+                showSidebarVisibilityToggle: true,
                 actions: isPersonalContext || teamConfig == null
                     ? const []
                     : _chatActions(context, teamConfig),

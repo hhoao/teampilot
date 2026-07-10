@@ -2,15 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../cubits/chat_cubit.dart';
+import '../../../cubits/launch_profile_cubit.dart';
+import '../../../cubits/layout_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
+import '../../../models/layout_preferences.dart';
 import '../../../models/workspace.dart';
 import '../../../services/git/git_worktree_service.dart';
-import '../../../models/layout_preferences.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../services/workspace/workspace_tools_scope_registry.dart';
 import '../../../services/workspace/workspace_worktree_registry.dart';
-import '../../../widgets/resizable_split_view.dart';
+import '../../../utils/app_keys.dart';
+import '../../../utils/workspace_active_context.dart';
+import '../../../widgets/right_tools/right_tools_panel.dart';
+import '../../../widgets/workspace_terminal_panel.dart';
 import '../../chat_page.dart';
+import '../../workspace_ide/workspace_ide_shell.dart';
 import 'workspace_sidebar.dart';
 import 'workspace_tools_scope_sync.dart';
 
@@ -29,8 +35,11 @@ class WorkspaceSplitPane extends StatefulWidget {
 }
 
 class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
-  double? _sidebarWidth;
   var _initialWorktreeBindDone = false;
+
+  /// Bridges an IDE-shell split drag to the bottom terminal's PTY resize hold.
+  /// Owned here so it shares a lifetime with the terminal panel instance.
+  final _terminalHold = WorkspaceTerminalHoldHandle();
 
   @override
   void didChangeDependencies() {
@@ -76,36 +85,35 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
             workspace: widget.workspace,
             cwd: cwd,
             tabScopeId: widget.tabScopeId,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final maxW = constraints.maxWidth;
-                const minMain = LayoutPreferences.minWorkbenchMainWidth;
-                const minSidebar = WorkspaceSidebarLayout.minWidth;
-                const maxSidebarCap = WorkspaceSidebarLayout.maxWidth;
-                final maxSidebar = (maxW - minMain).clamp(
-                  minSidebar,
-                  maxSidebarCap,
-                );
-                final initialSidebar =
-                    (_sidebarWidth ?? WorkspaceSidebarLayout.defaultWidth)
-                        .clamp(minSidebar, maxSidebar);
-                return ResizableSplitView(
-                  first: WorkspaceSidebar(
-                    workspace: widget.workspace,
-                    tabScopeId: widget.tabScopeId,
-                  ),
-                  second: _WorkspaceMainPane(
-                    workspace: widget.workspace,
-                    tabScopeId: widget.tabScopeId,
-                    cwd: cwd,
-                  ),
-                  initialPrimarySize: initialSidebar,
-                  minPrimarySize: minSidebar,
-                  minSecondarySize: minMain,
-                  maxPrimarySize: maxSidebar,
-                  onPrimarySizeChanged: (width) => _sidebarWidth = width,
-                );
-              },
+            child: WorkspaceIdeShell(
+              terminalHold: _terminalHold,
+              left: WorkspaceSidebar(
+                workspace: widget.workspace,
+                tabScopeId: widget.tabScopeId,
+              ),
+              center: ChatPage(
+                cwd: cwd,
+                additionalPaths: widget.workspace.extraFolderPaths,
+                workspaceId: widget.workspace.workspaceId,
+                tabScopeId: widget.tabScopeId,
+              ),
+              right: _WorkspaceRightToolsPane(
+                cwd: cwd,
+                additionalPaths: widget.workspace.extraFolderPaths,
+                workspaceId: widget.workspace.workspaceId,
+                tabScopeId: widget.tabScopeId,
+              ),
+              // Keyed by workspace-group identity (never cwd): a same-workspace
+              // cwd change keeps the panel State so the update flows through
+              // didUpdateWidget instead of recreating (and stranding) sessions.
+              bottom: WorkspaceTerminalPanel(
+                key: ValueKey(
+                  'workspace-terminal-${widget.tabScopeId}',
+                ),
+                workspaceId: widget.tabScopeId,
+                workingDirectory: cwd,
+                holdHandle: _terminalHold,
+              ),
             ),
           );
         },
@@ -114,25 +122,41 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
   }
 }
 
-/// Right pane of the workspace split: compose landing or session workbench.
-class _WorkspaceMainPane extends StatelessWidget {
-  const _WorkspaceMainPane({
-    required this.workspace,
-    required this.tabScopeId,
+/// Right-tools pane for the IDE shell. Resolves its own active context so chat
+/// churn only rebuilds this subtree, not the whole shell / center.
+class _WorkspaceRightToolsPane extends StatelessWidget {
+  const _WorkspaceRightToolsPane({
     required this.cwd,
+    required this.additionalPaths,
+    required this.workspaceId,
+    required this.tabScopeId,
   });
 
-  final Workspace workspace;
-  final String tabScopeId;
   final String cwd;
+  final List<String> additionalPaths;
+  final String workspaceId;
+  final String tabScopeId;
 
   @override
   Widget build(BuildContext context) {
-    return ChatPage(
-      cwd: cwd,
-      additionalPaths: workspace.extraFolderPaths,
-      workspaceId: workspace.workspaceId,
+    final active = WorkspaceActiveContext.resolve(
+      chat: context.watch<ChatCubit>(),
+      launchProfiles: context.read<LaunchProfileCubit>(),
       tabScopeId: tabScopeId,
+    );
+    final preferences = context.select<LayoutCubit, LayoutPreferences>(
+      (c) => c.state.preferences,
+    );
+    return RightToolsPanel(
+      cwd: cwd,
+      additionalPaths: additionalPaths,
+      preferences: preferences,
+      panelKey: AppKeys.rightToolsPanel,
+      dismissDrawerOnAction: false,
+      isPersonalContext: active.isPersonal,
+      team: active.team,
+      workspaceId: workspaceId,
+      toolsScopeId: tabScopeId,
     );
   }
 }

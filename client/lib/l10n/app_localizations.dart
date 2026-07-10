@@ -206,6 +206,18 @@ abstract class AppLocalizations {
   /// **'Hide tools panel'**
   String get rightToolsPanelHidden;
 
+  /// No description provided for @sidebarPanelVisible.
+  ///
+  /// In en, this message translates to:
+  /// **'Show sidebar'**
+  String get sidebarPanelVisible;
+
+  /// No description provided for @sidebarPanelHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide sidebar'**
+  String get sidebarPanelHidden;
+
   /// No description provided for @bottomTray.
   ///
   /// In en, this message translates to:

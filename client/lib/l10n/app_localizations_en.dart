@@ -65,6 +65,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rightToolsPanelHidden => 'Hide tools panel';
 
   @override
+  String get sidebarPanelVisible => 'Show sidebar';
+
+  @override
+  String get sidebarPanelHidden => 'Hide sidebar';
+
+  @override
   String get bottomTray => 'Bottom Tray';
 
   @override

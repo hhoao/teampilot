@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../models/layout_preferences.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
-import 'workspace_shell_layout.dart';
 import 'workspace_shell_models.dart';
 import 'workspace_shell_tabs.dart';
 
@@ -25,10 +23,8 @@ class WorkspaceShell extends StatelessWidget {
     this.onTabClosed,
     this.onTabCloseOthers,
     this.onTabCloseRight,
-    this.layoutPreferences = const LayoutPreferences(),
     this.showRightToolsVisibilityToggle = false,
-    this.workspaceTerminalWorkingDirectory,
-    this.workspaceWorkspaceId,
+    this.showSidebarVisibilityToggle = false,
     this.showNewChatButton = false,
     this.newChatTooltip = '',
     this.onNewChatPressed,
@@ -47,17 +43,8 @@ class WorkspaceShell extends StatelessWidget {
   final ValueChanged<int>? onTabClosed;
   final ValueChanged<int>? onTabCloseOthers;
   final ValueChanged<int>? onTabCloseRight;
-  final LayoutPreferences layoutPreferences;
   final bool showRightToolsVisibilityToggle;
-
-  /// When set (e.g. home-v2 workspace page), the bottom shell terminal follows
-  /// this path instead of [ChatCubit.activeTabWorkingDirectory].
-  final String? workspaceTerminalWorkingDirectory;
-
-  /// When set, the workspace terminal panel is keyed by this workspace ID so it
-  /// is recreated when switching between workspaces. Falls back to keying by
-  /// [workspaceTerminalWorkingDirectory] / active tab cwd when null.
-  final String? workspaceWorkspaceId;
+  final bool showSidebarVisibilityToggle;
 
   /// "+" action at the end of the session tab row — opens landing; not a tab.
   final bool showNewChatButton;
@@ -143,6 +130,9 @@ class WorkspaceShell extends StatelessWidget {
                     onPressed: onNewChatPressed,
                   )
                 : null,
+            leading: showSidebarVisibilityToggle
+                ? const WorkspaceShellSidebarVisibilityToggle()
+                : null,
             trailing: WorkspaceShellTabRowTrailing(
               actions: actions.isNotEmpty && showHeader
                   ? Padding(
@@ -155,15 +145,7 @@ class WorkspaceShell extends StatelessWidget {
           ),
         if (tabs.isEmpty && !showNewChatButton && actions.isNotEmpty && showHeader)
           WorkspaceShellActionsBar(actions: actions),
-        Expanded(
-          child: WorkspaceShellMainWithTerminal(
-            preferences: layoutPreferences,
-            workspaceTerminalWorkingDirectory:
-                workspaceTerminalWorkingDirectory,
-            workspaceWorkspaceId: workspaceWorkspaceId,
-            child: child,
-          ),
-        ),
+        Expanded(child: child),
       ],
     );
   }

@@ -13,4 +13,11 @@ void main() {
     expect(prefs.membersVisible, isTrue);
     expect(prefs.fileTreeVisible, isTrue);
   });
+
+  test('sidebarVisible defaults true and round-trips', () {
+    expect(const LayoutPreferences().sidebarVisible, isTrue);
+    final parsed = LayoutPreferences.fromJson(const {'sidebarVisible': false});
+    expect(parsed.sidebarVisible, isFalse);
+    expect(parsed.toJson()['sidebarVisible'], isFalse);
+  });
 }
