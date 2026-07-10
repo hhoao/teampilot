@@ -86,7 +86,7 @@ ExpertMemberResolver.resolve(expertKey)
 
 | Surface | Responsibility |
 |---------|----------------|
-| **Expert Hub** | Browse atomic experts; favorite; add expert **reference** to team; Personal launch; save local template |
+| **Expert Hub** | Browse atomic experts; favorite; add expert **reference** to team; Simple launch; save local template |
 | **Team Hub** | Browse team templates (`DiscoverableTeam.roster[]`); clone → new `TeamProfile` with same keys |
 | **Team config** | Reorder roster; pick `expertKey` per slot; edit **overrides** only; edit persona in Expert Hub |
 
