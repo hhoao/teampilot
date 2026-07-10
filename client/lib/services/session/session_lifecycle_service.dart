@@ -33,6 +33,7 @@ import '../io/filesystem.dart';
 import '../launch/layered_config_bundle.dart';
 import '../launch/session_runtime_plan.dart';
 import '../launch/session_runtime_plan_builder.dart';
+import '../expert_hub/builtin_member_templates.dart';
 import 'shell_launch_spec.dart';
 
 export 'shell_launch_spec.dart';
@@ -414,6 +415,7 @@ class SessionLifecycleService {
         team: team,
         slot: teamRosterSlotForMember(team, member),
         presetId: member.activePresetId,
+        member: member,
       );
       return plan.runtimeBundle;
     }
@@ -1074,6 +1076,7 @@ class SessionLifecycleService {
         team: team,
         slot: teamRosterSlotForMember(team, member),
         presetId: member.activePresetId,
+        member: member,
       );
     }
     final workspaceBundle = await _projectBundle(workspace.workspaceId);
@@ -1082,9 +1085,7 @@ class SessionLifecycleService {
       workspaceId: workspace.workspaceId,
       sessionId: session.sessionId,
       memberId: member.id,
-      expertKey: member.agentType.trim().isNotEmpty
-          ? member.agentType
-          : (member.agent.trim().isNotEmpty ? member.agent : member.id),
+      expertKey: kBuiltinDefaultExpertKey,
       teamId: team.id,
       presetId: member.activePresetId,
       runtimeBundle: LayeredConfigBundle.merge(

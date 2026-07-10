@@ -95,6 +95,53 @@ void main() {
     expect(plan.member.id, 'e');
   });
 
+  test('synthesized slot without roster uses builtin default expertKey', () {
+    const team = TeamProfile(id: 'team-1', name: 'Team');
+    const member = TeamMemberConfig(
+      id: 'team-lead',
+      name: 'Lead',
+      prompt: 'You are the lead',
+    );
+
+    final slot = teamRosterSlotForMember(team, member);
+
+    expect(slot.id, 'team-lead');
+    expect(slot.expertKey, isEmpty);
+  });
+
+  test('team seat with empty slot expertKey uses builtin default pack', () async {
+    resolver.packs[kBuiltinDefaultExpertKey] = ExpertCapabilityPack(
+      member: const TeamMemberConfig(id: 'default', name: 'Default'),
+      bundle: const ConfigBundle(skillIds: ['def']),
+    );
+    workspaceBundles['ws-1'] = const ConfigBundle(skillIds: ['w']);
+
+    const team = TeamProfile(
+      id: 'team-1',
+      name: 'Team',
+      skillIds: ['t'],
+    );
+    const member = TeamMemberConfig(
+      id: 'team-lead',
+      name: 'Lead',
+      prompt: 'You are the lead',
+    );
+    final slot = teamRosterSlotForMember(team, member);
+
+    final plan = await builder.buildTeamSeat(
+      workspaceId: 'ws-1',
+      sessionId: 'sess-1',
+      team: team,
+      slot: slot,
+      member: member,
+    );
+
+    expect(plan.expertKey, kBuiltinDefaultExpertKey);
+    expect(plan.runtimeBundle.skillIds, ['t', 'def', 'w']);
+    expect(plan.member.id, 'team-lead');
+    expect(plan.member.prompt, 'You are the lead');
+  });
+
   test('unknown expert key throws StateError', () async {
     workspaceBundles['ws-1'] = const ConfigBundle(skillIds: ['ws']);
 

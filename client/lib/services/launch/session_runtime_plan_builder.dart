@@ -11,7 +11,9 @@ import 'session_runtime_plan.dart';
 /// Maps a roster [TeamMemberConfig] to a [TeamRosterSlot] for plan building.
 ///
 /// Prefers an existing [TeamProfile.roster] entry; otherwise synthesizes a slot
-/// from member agent/override fields (preview / legacy roster shapes).
+/// from member override fields only. [TeamRosterSlot.expertKey] is left empty so
+/// [SessionRuntimePlanBuilder.buildTeamSeat] resolves the builtin default pack —
+/// never use [TeamMemberConfig.id] (e.g. `team-lead`) as a catalog key.
 TeamRosterSlot teamRosterSlotForMember(
   TeamProfile team,
   TeamMemberConfig member,
@@ -21,9 +23,7 @@ TeamRosterSlot teamRosterSlotForMember(
   }
   return TeamRosterSlot(
     id: member.id,
-    expertKey: member.agentType.trim().isNotEmpty
-        ? member.agentType
-        : (member.agent.trim().isNotEmpty ? member.agent : member.id),
+    expertKey: '',
     overrides: TeamRosterSlotOverrides(
       provider: member.provider,
       model: member.model,
@@ -95,12 +95,18 @@ class SessionRuntimePlanBuilder {
   }
 
   /// One team roster seat: merge team > expert(slot) > workspace.
+  ///
+  /// Pack deps/bundle come from [slot.expertKey] (empty → builtin default).
+  /// When [member] is provided (materialized connect seat), it becomes
+  /// [SessionRuntimePlan.member] so role prompt / CLI come from the team
+  /// member while the expert pack still supplies the runtime bundle layer.
   Future<SessionRuntimePlan> buildTeamSeat({
     required String workspaceId,
     required String sessionId,
     required TeamProfile team,
     required TeamRosterSlot slot,
     String? presetId,
+    TeamMemberConfig? member,
   }) async {
     final resolvedKey = _normalizeExpertKey(slot.expertKey);
     final workspaceBundle = await _loadWorkspaceBundle(workspaceId);
@@ -127,7 +133,7 @@ class SessionRuntimePlanBuilder {
       teamId: team.id,
       presetId: presetId,
       runtimeBundle: runtimeBundle,
-      member: pack.member,
+      member: member ?? pack.member,
     );
   }
 

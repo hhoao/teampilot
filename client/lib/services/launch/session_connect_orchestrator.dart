@@ -104,6 +104,7 @@ class SessionConnectOrchestrator {
       team: team,
       slot: slot,
       presetId: member.activePresetId,
+      member: member,
     );
     return _prepareConnectFromPlan(
       session: session,

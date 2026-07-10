@@ -64,6 +64,8 @@ import 'package:teampilot/services/storage/home_target_controller.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 import 'support/test_runtime_context.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/launch/session_runtime_plan.dart';
+import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
@@ -437,6 +439,32 @@ class _FixedResumeLifecycleService extends SessionLifecycleService {
       member: member,
       memberBinding: memberBinding,
       workspace: workspace,
+      extraMcpServers: extraMcpServers,
+      busIdle: busIdle,
+    );
+    return _withFixedResume(spec);
+  }
+
+  @override
+  Future<ShellLaunchSpec> prepareShellLaunchFromEnvironmentPlan({
+    required AppSession session,
+    required Workspace workspace,
+    required SessionRuntimePlan plan,
+    TeamProfile? team,
+    SessionMemberBinding? memberBinding,
+    CliPreset? preset,
+    required Map<String, String> environment,
+    Map<String, Map<String, Object?>>? extraMcpServers,
+    MemberBusIdleEndpoint? busIdle,
+  }) async {
+    final spec = await super.prepareShellLaunchFromEnvironmentPlan(
+      session: session,
+      workspace: workspace,
+      plan: plan,
+      team: team,
+      memberBinding: memberBinding,
+      preset: preset,
+      environment: environment,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
     );
