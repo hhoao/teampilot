@@ -12,11 +12,11 @@ void main() {
     const expert = ConfigBundle(
       skillIds: ['ex-b', 'shared'],
       pluginIds: ['ex-p'],
-      mcpServerIds: const [],
+      mcpServerIds: [],
     );
     const team = ConfigBundle(
       skillIds: ['team-c', 'shared'],
-      pluginIds: const [],
+      pluginIds: [],
       mcpServerIds: ['team-m'],
     );
 

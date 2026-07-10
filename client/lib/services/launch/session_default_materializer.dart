@@ -1,10 +1,8 @@
 import '../../cubits/chat/model/session_open_request.dart';
 import '../../cubits/chat/model/session_open_status.dart';
 import '../../cubits/chat/session_launch_host.dart';
-import '../../models/app_session.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
-import '../../models/workspace_folder.dart';
 import '../../repositories/session_repository.dart';
 import '../../utils/logger.dart';
 import 'session_launch_workspace_index.dart';

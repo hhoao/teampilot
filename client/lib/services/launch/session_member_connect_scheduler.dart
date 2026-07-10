@@ -1,19 +1,14 @@
-import 'dart:async';
-
 import '../../cubits/chat/chat_tab_store.dart';
 import '../../cubits/chat/model/chat_state.dart';
 import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/chat/session_launch_host.dart';
 import '../../models/app_session.dart';
-import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
-import '../../models/workspace_launch_context.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/launch/connect_shell_result.dart';
 import '../../services/launch/session_shell_connector.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logger.dart';
-import 'session_launch_workspace_index.dart';
 
 typedef ShellForLaunchFn =
     TerminalSession Function({

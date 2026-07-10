@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/automation.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/automation/automation_schedule_calculator.dart';
-import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 
 Automation _automation({
   AutomationSchedulePreset preset = AutomationSchedulePreset.daily,

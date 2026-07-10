@@ -2,7 +2,6 @@ import 'package:teampilot/models/automation_tab_scope.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/automation.dart';
 import 'package:teampilot/services/automation/automation_launch_session_binding.dart';
-import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 
 Automation _launchPrompt({bool reuseSession = false, String? sessionId}) {
   return Automation(

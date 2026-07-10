@@ -1,7 +1,7 @@
 # Expert Capability Pack & Launch Model design
 
 **Date:** 2026-07-10  
-**Status:** Approved (implemented in progress)  
+**Status:** Approved (implementation complete)  
 **Supersedes (in part):** Personal summon semantics in [2026-07-05-expert-hub-design.md](./2026-07-05-expert-hub-design.md) — experts become full capability packs; `PersonalProfile` is removed as a launch identity.
 
 ## Summary

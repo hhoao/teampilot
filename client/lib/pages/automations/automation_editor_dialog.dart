@@ -11,7 +11,6 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/automation_tab_scope.dart';
 import '../../models/automation.dart';
 import '../../models/launch_profile.dart';
-import '../../models/launch_profile_kind.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../cubits/chat_cubit.dart';
