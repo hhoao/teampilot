@@ -45,13 +45,14 @@ final class ClaudeSessionHistory implements SessionHistoryCapability {
       );
     }
 
+    final toolNamesById = <String, String>{};
     final turns = <SessionHistoryTurn>[];
     for (final line in const LineSplitter().convert(content)) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) continue;
       final event = _tryDecodeObject(trimmed);
       if (event == null) continue;
-      turns.addAll(_turnsFromEvent(event));
+      turns.addAll(_turnsFromEvent(event, toolNamesById));
     }
 
     return SessionHistorySnapshot(
@@ -72,7 +73,10 @@ Map<String, dynamic>? _tryDecodeObject(String line) {
   return null;
 }
 
-Iterable<SessionHistoryTurn> _turnsFromEvent(Map<String, dynamic> event) {
+Iterable<SessionHistoryTurn> _turnsFromEvent(
+  Map<String, dynamic> event,
+  Map<String, String> toolNamesById,
+) {
   final type = event['type'];
   if (type != 'user' && type != 'assistant') return const [];
 
@@ -118,6 +122,10 @@ Iterable<SessionHistoryTurn> _turnsFromEvent(Map<String, dynamic> event) {
         );
       case 'tool_use':
         final name = '${blockMap['name'] ?? 'tool'}';
+        final id = blockMap['id'];
+        if (id is String && id.isNotEmpty) {
+          toolNamesById[id] = name;
+        }
         final input = blockMap['input'];
         final inputMarkdown = input == null
             ? ''
@@ -148,10 +156,14 @@ Iterable<SessionHistoryTurn> _turnsFromEvent(Map<String, dynamic> event) {
           null => '',
           _ => '$resultContent',
         };
+        final toolUseId = blockMap['tool_use_id'];
+        final correlatedName = toolUseId is String
+            ? toolNamesById[toolUseId]
+            : null;
         turns.add(
           SessionHistoryTurn(
             role: SessionHistoryRole.tool,
-            toolName: 'result',
+            toolName: correlatedName,
             markdown: markdown,
             timestamp: timestamp,
             collapsedByDefault: true,

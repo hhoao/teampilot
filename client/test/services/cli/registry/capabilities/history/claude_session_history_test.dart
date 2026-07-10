@@ -60,6 +60,12 @@ void main() {
       snap.turns.where((t) => t.role == SessionHistoryRole.tool),
       isNotEmpty,
     );
+    final toolNames = snap.turns
+        .where((t) => t.role == SessionHistoryRole.tool)
+        .map((t) => t.toolName)
+        .toList();
+    expect(toolNames, isNot(contains('result')));
+    expect(toolNames.where((n) => n == 'Bash').length, greaterThanOrEqualTo(2));
   });
 
   test('missing transcript file is empty', () async {
