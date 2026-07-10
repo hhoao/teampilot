@@ -27,6 +27,7 @@ import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/notification_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/utils/workspace_tab_session_scope.dart';
 import 'package:teampilot/main.dart';
 import 'package:teampilot/models/llm_config.dart';
@@ -52,6 +53,9 @@ import 'package:teampilot/services/file_tree/workspace_file_tree_store.dart';
 import 'package:teampilot/services/home_workspace/home_workspace_ui_cache.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/installer_types.dart';
+import 'package:teampilot/services/ssh/ssh_client_factory.dart';
+import 'package:teampilot/services/ssh/ssh_connection_events.dart';
+import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/storage/home_target_controller.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
@@ -105,6 +109,14 @@ class PerformanceScenarioApp {
         );
     final presence = MemberPresenceCubit();
     chat.bindPresenceCubit(presence);
+    final sshEvents = SshConnectionEvents();
+    final sshCredentialStore = InMemorySshCredentialStore();
+    final sshKnownHosts = InMemorySshKnownHostRepository();
+    final sshClientFactory = SshClientFactory(
+      credentialStore: sshCredentialStore,
+      knownHostRepository: sshKnownHosts,
+      events: sshEvents,
+    );
 
     return BlocProvider(
       create: (_) => AppBootstrapCubit(),
@@ -134,10 +146,20 @@ class PerformanceScenarioApp {
             create: (_) => WorkspaceShellConnector(
               transportFactory: TerminalTransportFactory(
                 sshProfileRepository: SshProfileRepository(),
-                sshCredentialStore: InMemorySshCredentialStore(),
-                sshKnownHostRepository: InMemorySshKnownHostRepository(),
+                sshCredentialStore: sshCredentialStore,
+                sshKnownHostRepository: sshKnownHosts,
               ),
               sshProfileRepository: SshProfileRepository(),
+            ),
+          ),
+          RepositoryProvider<SshProfileRepository>(
+            create: (_) => SshProfileRepository(),
+          ),
+          RepositoryProvider<SshProfileConnectionCoordinator>(
+            create: (_) => SshProfileConnectionCoordinator(
+              factory: sshClientFactory,
+              events: sshEvents,
+              profileResolver: (_) => null,
             ),
           ),
           RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
@@ -176,6 +198,7 @@ class PerformanceScenarioApp {
               create: (_) => AiFeatureSettingsCubit(repository: settings),
             ),
             BlocProvider(create: (_) => EditorCubit(fs: LocalFilesystem())),
+            BlocProvider(create: (_) => WorkbenchCubit()),
             BlocProvider(
               create: (_) => ExtensionCubit(
                 ExtensionRepository(

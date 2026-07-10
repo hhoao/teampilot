@@ -183,6 +183,8 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   }
 
   void _reloadDraftIfRouteExpertChanged() {
+    // Widget tests may mount landing under MaterialApp without a GoRouter.
+    if (GoRouter.maybeOf(context) == null) return;
     final location = GoRouterState.of(context).uri.toString();
     final routeExpert = HomeWorkspaceRoute.expert(location);
     if (routeExpert == _lastRouteExpert) return;

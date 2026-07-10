@@ -141,14 +141,10 @@ class AppDialogActions extends StatelessWidget {
         ],
         Padding(
           padding: EdgeInsets.only(top: showDividerAbove ? 16 : 24),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              for (var i = 0; i < children.length; i++) ...[
-                if (i > 0) const SizedBox(width: 8),
-                children[i],
-              ],
-            ],
+          child: OverflowBar(
+            alignment: MainAxisAlignment.end,
+            spacing: 8,
+            children: children,
           ),
         ),
       ],

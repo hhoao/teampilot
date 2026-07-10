@@ -17,6 +17,7 @@ import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/plugin_cubit.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/repositories/plugin_repository.dart';
 import 'package:teampilot/repositories/skill_repository.dart';
 import 'package:teampilot/services/plugin/plugin_repo_service.dart';
@@ -60,6 +61,9 @@ import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/git/git_command_runner.dart';
 import 'package:teampilot/services/home_workspace/home_workspace_ui_cache.dart';
+import 'package:teampilot/services/ssh/ssh_client_factory.dart';
+import 'package:teampilot/services/ssh/ssh_connection_events.dart';
+import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/storage/home_target_controller.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 import 'support/test_runtime_context.dart';
@@ -149,6 +153,14 @@ Widget buildTestApp({
       );
   final presence = memberPresenceCubit ?? MemberPresenceCubit();
   chat.bindPresenceCubit(presence);
+  final sshEvents = SshConnectionEvents();
+  final sshCredentialStore = InMemorySshCredentialStore();
+  final sshKnownHosts = InMemorySshKnownHostRepository();
+  final sshClientFactory = SshClientFactory(
+    credentialStore: sshCredentialStore,
+    knownHostRepository: sshKnownHosts,
+    events: sshEvents,
+  );
 
   return MultiRepositoryProvider(
     providers: [
@@ -175,10 +187,20 @@ Widget buildTestApp({
         create: (_) => WorkspaceShellConnector(
           transportFactory: TerminalTransportFactory(
             sshProfileRepository: SshProfileRepository(),
-            sshCredentialStore: InMemorySshCredentialStore(),
-            sshKnownHostRepository: InMemorySshKnownHostRepository(),
+            sshCredentialStore: sshCredentialStore,
+            sshKnownHostRepository: sshKnownHosts,
           ),
           sshProfileRepository: SshProfileRepository(),
+        ),
+      ),
+      RepositoryProvider<SshProfileRepository>(
+        create: (_) => SshProfileRepository(),
+      ),
+      RepositoryProvider<SshProfileConnectionCoordinator>(
+        create: (_) => SshProfileConnectionCoordinator(
+          factory: sshClientFactory,
+          events: sshEvents,
+          profileResolver: (_) => null,
         ),
       ),
       RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
@@ -211,6 +233,7 @@ Widget buildTestApp({
         BlocProvider.value(value: sessionPreferencesCubit),
         BlocProvider.value(value: aiFeatures),
         BlocProvider(create: (_) => EditorCubit(fs: LocalFilesystem())),
+        BlocProvider(create: (_) => WorkbenchCubit()),
         BlocProvider.value(value: extensionCubit ?? _testExtensionCubit()),
         BlocProvider(
           create: (_) => CliPresetsCubit(
@@ -595,14 +618,23 @@ void main() {
       sessionRepository: _widgetTestSessionRepo,
     );
     late final Workspace workspace;
+    late final Directory workspaceDir;
     await tester.runAsync(() async {
+      workspaceDir = await Directory.systemTemp.createTemp('widget_ws_');
       workspace = await _widgetTestSessionRepo.createWorkspace([
-        WorkspaceFolder(path: '/work/current'),
+        WorkspaceFolder(path: workspaceDir.path),
       ]);
       chatCubit.ingestWorkspaceSessionSnapshot(
         workspaces: [workspace],
         sessions: const [],
       );
+    });
+    addTearDown(() {
+      try {
+        if (workspaceDir.existsSync()) {
+          workspaceDir.deleteSync(recursive: true);
+        }
+      } on Object catch (_) {}
     });
     await pumpDesktopApp(tester, teamCubit, chatCubit: chatCubit);
     appRouter.go('/home-v2/workspace/${workspace.workspaceId}');
@@ -610,11 +642,10 @@ void main() {
     await pumpPhaseTransitions(tester);
 
     expect(find.byKey(AppKeys.chatWorkspace), findsOneWidget);
-    // Compose landing is default until a session tab is opened.
-    expect(find.byKey(AppKeys.rightToolsPanel), findsNothing);
+    // IDE shell mounts right tools (default visible) with file tree as default tab.
+    expect(find.byKey(AppKeys.rightToolsPanel), findsOneWidget);
     expect(find.byKey(AppKeys.membersPanel), findsNothing);
-    // Lazy TabbedPanel mounts only the selected tool tab; file tree is off-tab.
-    expect(find.byKey(AppKeys.fileTreePanel), findsNothing);
+    expect(find.byKey(AppKeys.fileTreePanel), findsOneWidget);
     final selectedTeam = teamCubit.state.selectedTeam;
     expect(selectedTeam, isNotNull);
     expect(chatCubit.state.tabs.length, 0);
