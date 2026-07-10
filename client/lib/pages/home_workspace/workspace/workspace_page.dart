@@ -10,14 +10,17 @@ import '../../../cubits/expert_hub_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/workspace_landing_context_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
+import '../../../models/app_session.dart';
 import '../../../models/landing_launch_context.dart';
 import '../../../models/workspace.dart';
 import '../../../models/launch_profile_kind.dart';
 import '../../../models/launch_profile.dart';
 import '../../../pages/home_workspace/home_workspace_route.dart';
+import '../../../repositories/session_repository.dart';
 import '../../../services/expert_hub/expert_landing_deep_link.dart';
 import '../../../theme/workspace_surface_layers.dart';
 import '../../../theme/app_toast_theme.dart';
+import '../../../utils/logger.dart';
 import '../../../widgets/app_toast/app_toast.dart';
 import '../../../utils/workspace_chrome_profile.dart';
 import 'workspace_config_workspace.dart';
@@ -49,6 +52,8 @@ class _WorkspacePageState extends State<WorkspacePage> {
   bool _activationScheduled = false;
   String? _lastSyncedRouteExpert;
   bool _expertSyncScheduled = false;
+  String? _lastSyncedRouteSession;
+  bool _sessionSyncScheduled = false;
 
   WorkspaceRouteActiveScope? _readScope(BuildContext context) {
     return context.getInheritedWidgetOfExactType<WorkspaceRouteActiveScope>();
@@ -78,6 +83,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
     _lastScopeView = view;
     _syncProfileFromRoute();
     _syncExpertFromRoute();
+    _syncSessionFromRoute();
   }
 
   void _syncProfileFromRoute() {
@@ -167,6 +173,80 @@ class _WorkspacePageState extends State<WorkspacePage> {
         );
         return;
     }
+  }
+
+  void _syncSessionFromRoute() {
+    final location = GoRouterState.of(context).uri.toString();
+    final sessionId = HomeWorkspaceRoute.session(location);
+    if (sessionId == _lastSyncedRouteSession) return;
+    _lastSyncedRouteSession = sessionId;
+    if (sessionId == null) return;
+    if (_sessionSyncScheduled) return;
+    _sessionSyncScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _sessionSyncScheduled = false;
+      if (!mounted) return;
+      unawaited(_applySessionFromRoute(sessionId));
+    });
+  }
+
+  Future<void> _applySessionFromRoute(String sessionId) async {
+    final workspace = context.read<ChatCubit>().state.workspaces
+        .where((w) => w.workspaceId == widget.workspaceId)
+        .firstOrNull;
+    if (workspace == null) {
+      _clearSessionQuery();
+      return;
+    }
+
+    await context.read<ChatCubit>().ensureSessionsForWorkspace(
+      widget.workspaceId,
+    );
+    if (!mounted) return;
+
+    final session = await _resolveSessionForDeepLink(sessionId);
+    if (!mounted) return;
+    if (session == null) {
+      appLogger.w(
+        '[session-deep-link] session not found '
+        'session=$sessionId workspace=${widget.workspaceId}',
+      );
+      _clearSessionQuery();
+      return;
+    }
+
+    await openWorkspaceSessionTab(context, workspace, session);
+    if (!mounted) return;
+    _clearSessionQuery();
+  }
+
+  Future<AppSession?> _resolveSessionForDeepLink(String sessionId) async {
+    final fromState = context
+        .read<ChatCubit>()
+        .state
+        .sessions
+        .where(
+          (s) =>
+              s.sessionId == sessionId && s.workspaceId == widget.workspaceId,
+        )
+        .firstOrNull;
+    if (fromState != null) return fromState;
+
+    final loaded = await context
+        .read<SessionRepository>()
+        .loadSessionsForWorkspace(widget.workspaceId);
+    return loaded.where((s) => s.sessionId == sessionId).firstOrNull;
+  }
+
+  void _clearSessionQuery() {
+    final current = GoRouterState.of(context).uri.toString();
+    final next = HomeWorkspaceRoute.locationWithoutSession(current);
+    if (current == next) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (GoRouterState.of(context).uri.toString() != current) return;
+      context.go(next);
+    });
   }
 
   WorkspaceSection _sectionFromRoute(String? view) {

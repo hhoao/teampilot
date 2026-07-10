@@ -1626,7 +1626,7 @@
   },
   "teamMcpManage": "All MCP servers",
   "mcpNavTitle": "MCP Servers",
-  "mcpSubtitle": "Manage MCP servers for Claude and FlashskyAI sessions.",
+  "mcpSubtitle": "Manage MCP servers for agent sessions.",
   "mcpNavInstalled": "Installed",
   "mcpNavDiscovery": "Discovery",
   "mcpNavRegistries": "Registry",

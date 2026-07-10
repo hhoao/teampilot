@@ -43,6 +43,33 @@ abstract final class HomeWorkspaceRoute {
     return raw.isEmpty ? null : raw;
   }
 
+  /// Session id for workbench deep-link (`?session=`).
+  static String? session(String location) {
+    final raw = parse(location).queryParameters['session']?.trim() ?? '';
+    return raw.isEmpty ? null : raw;
+  }
+
+  /// `/home-v2/workspace/:id?session=:sessionId` — opens a session from OS
+  /// notification taps (and other deep links).
+  static String sessionLocation({
+    required String workspaceId,
+    required String sessionId,
+  }) => Uri(
+    path: '/home-v2/workspace/$workspaceId',
+    queryParameters: {'session': sessionId},
+  ).toString();
+
+  /// Same path/query as [location] with `session` removed (avoids re-open loops).
+  static String locationWithoutSession(String location) {
+    final uri = parse(location);
+    final params = Map<String, String>.from(uri.queryParameters)
+      ..remove('session');
+    return Uri(
+      path: uri.path,
+      queryParameters: params.isEmpty ? null : params,
+    ).toString();
+  }
+
   static HomeGlobalView? homeGlobalView(String location) =>
       HomeGlobalView.fromSegment(
         parse(location).queryParameters[HomeGlobalView.globalQueryParam],

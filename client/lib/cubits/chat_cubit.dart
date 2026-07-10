@@ -1229,6 +1229,7 @@ class ChatCubit extends Cubit<ChatState>
         ),
       );
     } else if (_tabStore.activeTabsIsEmpty) {
+      _tabStore.setComposeActive(_tabStore.activeWorkspaceId, true);
       _emitSnapshot(
         _dataStore.deriveSnapshot(
           workspaces: state.workspaces,
@@ -1238,6 +1239,7 @@ class ChatCubit extends Cubit<ChatState>
           tabs: [],
           activeTabIndex: 0,
           clearActiveSessionId: true,
+          composeActive: true,
         ),
       );
     } else {

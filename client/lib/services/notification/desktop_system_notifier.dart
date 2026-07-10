@@ -5,6 +5,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../utils/logger.dart';
 
+typedef NotificationTapHandler = void Function(String? payload);
+
 /// OS-level notifications via [flutter_local_notifications].
 class DesktopSystemNotifier {
   DesktopSystemNotifier({
@@ -14,6 +16,7 @@ class DesktopSystemNotifier {
       required String title,
       required String body,
       String? subtitle,
+      String? payload,
     })?
     show,
   }) : _plugin = plugin,
@@ -24,6 +27,7 @@ class DesktopSystemNotifier {
 
   static bool _initialized = false;
   static FlutterLocalNotificationsPlugin? _sharedPlugin;
+  static NotificationTapHandler? _onNotificationTap;
 
   static const _androidChannelId = 'session_idle';
   static const _androidChannelName = 'Agent updates';
@@ -37,6 +41,7 @@ class DesktopSystemNotifier {
     required String title,
     required String body,
     String? subtitle,
+    String? payload,
   })?
   _show;
 
@@ -45,24 +50,56 @@ class DesktopSystemNotifier {
   FlutterLocalNotificationsPlugin get _effectivePlugin =>
       _plugin ?? _sharedPlugin ?? FlutterLocalNotificationsPlugin();
 
-  static Future<void> ensureInitialized({String appName = 'TeamPilot'}) async {
+  /// Registers [onNotificationTap] for subsequent OS notification clicks.
+  ///
+  /// Hot-start only: does not consume [getNotificationAppLaunchDetails].
+  static Future<void> ensureInitialized({
+    String appName = 'TeamPilot',
+    NotificationTapHandler? onNotificationTap,
+  }) async {
+    if (onNotificationTap != null) {
+      _onNotificationTap = onNotificationTap;
+    }
     if (kIsWeb || _initialized) return;
     _sharedPlugin ??= FlutterLocalNotificationsPlugin();
     await _initializePlugin(_sharedPlugin!, appName);
     _initialized = true;
   }
 
+  @visibleForTesting
+  static void debugResetForTest() {
+    _initialized = false;
+    _sharedPlugin = null;
+    _onNotificationTap = null;
+  }
+
+  @visibleForTesting
+  static void debugDispatchTap(String? payload) {
+    _onNotificationTap?.call(payload);
+  }
+
   Future<void> showNotification({
     required String title,
     required String body,
     String? subtitle,
+    String? payload,
   }) async {
     final show = _show;
     if (show != null) {
-      await show(title: title, body: body, subtitle: subtitle);
+      await show(
+        title: title,
+        body: body,
+        subtitle: subtitle,
+        payload: payload,
+      );
       return;
     }
-    await _defaultShow(title: title, body: body, subtitle: subtitle);
+    await _defaultShow(
+      title: title,
+      body: body,
+      subtitle: subtitle,
+      payload: payload,
+    );
   }
 
   Future<void> _ensureReady() async {
@@ -100,6 +137,7 @@ class DesktopSystemNotifier {
               )
             : null,
       ),
+      onDidReceiveNotificationResponse: _onDidReceiveNotificationResponse,
     );
     if (ok != true) {
       appLogger.w('[system-notifier] flutter_local_notifications init failed');
@@ -129,10 +167,17 @@ class DesktopSystemNotifier {
     }
   }
 
+  static void _onDidReceiveNotificationResponse(NotificationResponse response) {
+    final payload = response.payload;
+    appLogger.d('[system-notifier] notification tap payload=$payload');
+    _onNotificationTap?.call(payload);
+  }
+
   Future<void> _defaultShow({
     required String title,
     required String body,
     String? subtitle,
+    String? payload,
   }) async {
     await _ensureReady();
 
@@ -182,7 +227,8 @@ class DesktopSystemNotifier {
       title: title,
       body: body,
       notificationDetails: details,
+      payload: payload,
     );
-    appLogger.d('[system-notifier] showed id=$id title=$title');
+    appLogger.d('[system-notifier] showed id=$id title=$title payload=$payload');
   }
 }

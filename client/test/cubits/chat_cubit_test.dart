@@ -701,6 +701,69 @@ void main() {
     );
 
     test(
+      'deleteSession of the active open tab enters compose landing',
+      () async {
+        const team = TeamProfile(
+          id: 'team-a',
+          name: 'A',
+          members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
+        );
+        final tmp = await Directory.systemTemp.createTemp(
+          'chat_cubit_delete_active_',
+        );
+        final repo = SessionRepository(rootDir: tmp.path);
+        final workspace = await repo.createWorkspace([
+          WorkspaceFolder(path: '/a'),
+        ]);
+        final session = await repo.createSession(
+          workspace.workspaceId,
+          sessionTeam: team.id,
+          rosterMembers: team.members,
+        );
+        final postFrame = PostFrameTestHarness();
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
+          sessionRepository: repo,
+          terminalSessionFactory:
+              ({required String executable, int scrollbackLines = 10000}) =>
+                  _FakeTerminalSession(executable: executable),
+          postFrameScheduler: postFrame.scheduler,
+        );
+        _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+        await cubit.loadWorkspaceData(repo);
+        cubit.setActiveWorkspace(workspace.workspaceId);
+        await cubit.requestOpenSession(
+          SessionOpenRequest(
+            session: session,
+            team: team,
+            member: team.members.first,
+            repo: repo,
+          ),
+        );
+        await drainPendingAsyncWork();
+        await postFrame.flush();
+
+        expect(cubit.state.tabs, hasLength(1));
+        expect(cubit.state.composeActive, isFalse);
+        expect(cubit.state.activeSessionId, session.sessionId);
+
+        await cubit.deleteSession(repo, session.sessionId);
+        await drainPendingAsyncWork();
+        await postFrame.flush();
+
+        expect(cubit.state.tabs, isEmpty);
+        expect(cubit.state.composeActive, isTrue);
+        expect(cubit.state.activeSessionId, isNull);
+        expect(
+          cubit.state.sessions.any((s) => s.sessionId == session.sessionId),
+          isFalse,
+        );
+      },
+    );
+
+    test(
       'connectSession auto-launch does not reconnect queued member shells',
       () async {
         final scheduled = <void Function()>[];

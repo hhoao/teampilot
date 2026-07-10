@@ -48,6 +48,7 @@ import 'services/terminal/workspace_shell_connector.dart';
 import 'services/terminal/workspace_terminal_registry.dart';
 import 'services/notification/desktop_system_notifier.dart';
 import 'services/notification/notification_recorder.dart';
+import 'services/notification/session_idle_notification_tap.dart';
 import 'widgets/notification/session_idle_notification_listener.dart';
 import 'services/terminal/terminal_fonts.dart';
 import 'theme/app_icon_sizes.dart';
@@ -377,7 +378,21 @@ void main() async {
   if (!Platform.isAndroid) {
     await windowManager.setPreventClose(true);
   }
-  await DesktopSystemNotifier.ensureInitialized();
+  await DesktopSystemNotifier.ensureInitialized(
+    onNotificationTap: (payload) {
+      unawaited(
+        handleSessionIdleNotificationTap(
+          payload: payload,
+          go: appRouter.go,
+          focusWindow: () async {
+            if (Platform.isAndroid) return;
+            await windowManager.show();
+            await windowManager.focus();
+          },
+        ),
+      );
+    },
+  );
 
   runApp(
     BlocProvider.value(

@@ -1334,7 +1334,7 @@
   },
   "teamMcpManage": "管理 MCP",
   "mcpNavTitle": "MCP 服务器",
-  "mcpSubtitle": "为 Claude 与 FlashskyAI 会话管理 MCP 服务器配置。",
+  "mcpSubtitle": "为 Agent 会话管理 MCP 服务器配置。",
   "mcpNavInstalled": "已安装",
   "mcpNavDiscovery": "发现",
   "mcpNavRegistries": "注册中心",

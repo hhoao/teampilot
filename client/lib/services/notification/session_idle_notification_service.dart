@@ -1,4 +1,5 @@
 import '../../models/app_session.dart';
+import '../../pages/home_workspace/home_workspace_route.dart';
 import '../../theme/app_toast_theme.dart';
 import '../../utils/logger.dart';
 import 'desktop_system_notifier.dart';
@@ -46,11 +47,17 @@ class SessionIdleNotificationService {
 
       if (!systemNotificationEnabled) continue;
 
+      final payload = HomeWorkspaceRoute.sessionLocation(
+        workspaceId: session.workspaceId,
+        sessionId: session.sessionId,
+      );
+
       try {
         await _desktop.showNotification(
           title: sessionTitle,
           body: notificationSubtitle,
           subtitle: notificationBadge,
+          payload: payload,
         );
       } on Object catch (error, stackTrace) {
         appLogger.w(

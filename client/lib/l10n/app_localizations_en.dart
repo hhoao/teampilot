@@ -3552,8 +3552,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mcpNavTitle => 'MCP Servers';
 
   @override
-  String get mcpSubtitle =>
-      'Manage MCP servers for Claude and FlashskyAI sessions.';
+  String get mcpSubtitle => 'Manage MCP servers for agent sessions.';
 
   @override
   String get mcpNavInstalled => 'Installed';

@@ -3429,7 +3429,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mcpNavTitle => 'MCP 服务器';
 
   @override
-  String get mcpSubtitle => '为 Claude 与 FlashskyAI 会话管理 MCP 服务器配置。';
+  String get mcpSubtitle => '为 Agent 会话管理 MCP 服务器配置。';
 
   @override
   String get mcpNavInstalled => '已安装';

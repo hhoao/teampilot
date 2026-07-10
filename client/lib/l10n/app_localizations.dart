@@ -6443,7 +6443,7 @@ abstract class AppLocalizations {
   /// No description provided for @mcpSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Manage MCP servers for Claude and FlashskyAI sessions.'**
+  /// **'Manage MCP servers for agent sessions.'**
   String get mcpSubtitle;
 
   /// No description provided for @mcpNavInstalled.
