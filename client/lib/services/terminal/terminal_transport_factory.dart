@@ -1,4 +1,4 @@
-import 'package:flutter_pty/flutter_pty.dart';
+import 'package:flutter_pty_new/flutter_pty_new.dart';
 import '../../models/connection_mode.dart';
 import '../../models/launch_target.dart';
 import '../../repositories/ssh_credential_store.dart';

@@ -79,7 +79,7 @@ class MixedTeamIntegrationHarness {
 
   int get mockPort => _mockServer!.port;
 
-  /// True when `libflutter_pty` is on the loader path (e.g. after `flutter build linux`).
+  /// True when `libflutter_pty_new` is on the loader path (e.g. after `flutter build linux`).
   static bool get nativePtyAvailable =>
       IntegrationPrerequisites.nativePtyAvailable;
 

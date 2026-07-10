@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter_pty/flutter_pty.dart';
+import 'package:flutter_pty_new/flutter_pty_new.dart';
 
 import '../cli/cli_tool_locator.dart';
 import '../../utils/logger.dart';

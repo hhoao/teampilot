@@ -355,7 +355,7 @@ packages:
       path: "packages/flutter_alacritty"
       relative: true
     source: path
-    version: "2.2.1"
+    version: "2.3.2"
   flutter_animate:
     dependency: "direct main"
     description:
@@ -446,13 +446,13 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.0.35"
-  flutter_pty:
+  flutter_pty_new:
     dependency: "direct main"
     description:
-      path: "packages/flutter_pty"
+      path: "packages/flutter_pty_new"
       relative: true
     source: path
-    version: "0.4.3"
+    version: "1.0.0"
   flutter_rust_bridge:
     dependency: "direct dev"
     description:

@@ -91,7 +91,7 @@ Declared in `client/dart_test.yaml`. Every integration test has the `integration
 | Secondary tag | Tests | Needs |
 |---------------|-------|--------|
 | `cross-platform` | L1 bus ping/pong | Nothing (HTTP loopback only) |
-| `linux-pty` | L2 local Claude PTY; L3 also carries this tag | `flutter build linux`, `libflutter_pty.so` on loader path, `claude` on PATH |
+| `linux-pty` | L2 local Claude PTY; L3 also carries this tag | `flutter build linux`, `libflutter_pty_new.so` on loader path, `claude` on PATH |
 | `docker` | L3 mixed SSH worker; remote CLI install | Docker daemon (+ outbound network for install test) |
 
 Examples:

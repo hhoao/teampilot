@@ -12,7 +12,7 @@ import 'support/mixed_team_task_scenario.dart';
 /// remote preflight (Node bootstrap + Claude install) and bus ping/pong.
 ///
 /// Run from `client/` (Docker daemon, outbound network, local `claude` on PATH,
-/// `libflutter_pty.so` after `flutter build linux --debug`):
+/// `libflutter_pty_new.so` after `flutter build linux --debug`):
 /// ```bash
 /// flutter test test/integration/mixed_team_claude_docker_integration_test.dart --tags "integration && docker"
 /// ```

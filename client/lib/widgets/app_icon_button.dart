@@ -61,6 +61,9 @@ class AppIconButton extends StatelessWidget {
         borderRadius: radius,
         hoverColor: effectiveColor.withValues(alpha: 0.12),
         splashColor: effectiveColor.withValues(alpha: 0.2),
+        mouseCursor: enabled && onTap != null
+            ? SystemMouseCursors.click
+            : SystemMouseCursors.basic,
         onTap: enabled ? onTap : null,
         child: Center(child: iconChild),
       ),

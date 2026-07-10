@@ -23,8 +23,8 @@ dependencies:
   re_highlight: ^0.0.3
   flutter_alacritty:
     path: packages/flutter_alacritty
-  flutter_pty:
-    path: packages/flutter_pty
+  flutter_pty_new:
+    path: packages/flutter_pty_new
   dartssh2:
     path: packages/dartssh2
   flutter_bloc: ^9.1.0
@@ -69,8 +69,8 @@ dependencies:
   flutter_native_splash: any
   pasteboard: ^0.5.0
 dependency_overrides:
-  flutter_pty:
-    path: packages/flutter_pty
+  flutter_pty_new:
+    path: packages/flutter_pty_new
   rust_lib_flutter_alacritty:
     path: packages/flutter_alacritty/packages/rust_lib_flutter_alacritty
 

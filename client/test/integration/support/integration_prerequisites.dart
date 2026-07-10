@@ -6,20 +6,20 @@ import 'package:flutter_test/flutter_test.dart';
 /// Shared skip gates and PATH resolution for integration tests.
 abstract final class IntegrationPrerequisites {
   static const skipWithoutNativePty =
-      'Requires flutter_pty native library (run `flutter build linux` or '
+      'Requires flutter_pty_new native library (run `flutter build linux` or '
       '`flutter build windows` and set loader path as in DEVELOPMENT.md)';
 
   static void resetHttpOverrides() {
     HttpOverrides.global = null;
   }
 
-  /// True when `libflutter_pty` / `flutter_pty.dll` is on the loader path.
+  /// True when `libflutter_pty_new` / `flutter_pty_new.dll` is on the loader path.
   static bool get nativePtyAvailable {
     if (Platform.isLinux) {
       const candidates = [
-        'libflutter_pty.so',
-        'build/linux/x64/debug/bundle/lib/libflutter_pty.so',
-        'build/linux/x64/debug/plugins/flutter_pty/shared/libflutter_pty.so',
+        'libflutter_pty_new.so',
+        'build/linux/x64/debug/bundle/lib/libflutter_pty_new.so',
+        'build/linux/x64/debug/plugins/flutter_pty_new/shared/libflutter_pty_new.so',
       ];
       for (final path in candidates) {
         try {
@@ -31,9 +31,9 @@ abstract final class IntegrationPrerequisites {
     }
     if (Platform.isWindows) {
       for (final path in [
-        'flutter_pty.dll',
-        r'build\windows\x64\debug\flutter_pty.dll',
-        r'build\windows\x64\runner\Debug\flutter_pty.dll',
+        'flutter_pty_new.dll',
+        r'build\windows\x64\debug\flutter_pty_new.dll',
+        r'build\windows\x64\runner\Debug\flutter_pty_new.dll',
       ]) {
         try {
           DynamicLibrary.open(path);

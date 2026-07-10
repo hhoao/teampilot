@@ -7,10 +7,6 @@
 	path = client/packages/dartssh2
 	url = https://github.com/hhoao/dartssh2.git
 
-[submodule "client/packages/flutter_pty"]
-	path = client/packages/flutter_pty
-	url = https://github.com/hhoao/flutter_pty.git
-
 [submodule "client/packages/re-editor"]
 	path = client/packages/re-editor
 	url = https://github.com/hhoao/re-editor.git
@@ -19,3 +15,7 @@
 	path = client/packages/native_splash_screen
 	url = https://github.com/hhoa/native_splash_screen.git
 	branch = main
+
+[submodule "client/packages/flutter_pty_new"]
+	path = client/packages/flutter_pty_new
+	url = https://github.com/hhoao/flutter_pty_new.git

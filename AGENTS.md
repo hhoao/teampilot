@@ -13,7 +13,7 @@ Guidance for Claude Code and other AI assistants working in this repository.
 | [docs/PERFORMANCE_ANALYSIS.md](docs/PERFORMANCE_ANALYSIS.md) | DevTools performance JSON offline analysis (`tool/analyze_performance_json.dart`) |
 | [docs/workspace-storage-layout.md](docs/workspace-storage-layout.md) | On-disk layout under `<teampilotRoot>` |
 
-All app code lives under `client/lib/` (cubits, pages, repositories, services, models). Vendored deps: `client/packages/` (git submodules: xterm, flutter_pty, dartssh2, re-editor, flutter_alacritty).
+All app code lives under `client/lib/` (cubits, pages, repositories, services, models). Vendored deps: `client/packages/` (git submodules: xterm, flutter_pty_new, dartssh2, re-editor, flutter_alacritty).
 
 ## Core concepts
 
@@ -64,7 +64,7 @@ main.dart
 
 | Mode | When | Implementation |
 |------|------|----------------|
-| Local PTY | Desktop default | `flutter_pty` → `LocalPtyTransport` |
+| Local PTY | Desktop default | `flutter_pty_new` → `LocalPtyTransport` |
 | SSH | Android always; desktop optional | `dartssh2` → `SshPtyTransport`; remote CLI via `RemoteFlashskyaiCommandBuilder` |
 
 Embedded terminals render with **flutter_alacritty** (Alacritty-based Rust engine). Fullscreen submit uses `TerminalFullscreenInputChannel` / `TerminalFullscreenPtyPort`. See `terminal_transport_factory.dart`, `terminal_session.dart`.
