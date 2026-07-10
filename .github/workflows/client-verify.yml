@@ -5,12 +5,14 @@ on:
     branches: [main]
     paths:
       - "client/**"
+      - ".gitmodules"
       - ".github/workflows/client-verify.yml"
       - ".github/workflows/release.yml"
       - ".github/workflows/auto-tag.yml"
   pull_request:
     paths:
       - "client/**"
+      - ".gitmodules"
       - ".github/workflows/client-verify.yml"
       - ".github/workflows/release.yml"
       - ".github/workflows/auto-tag.yml"
