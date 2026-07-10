@@ -40,6 +40,8 @@ class DiscoverableMember {
     this.updatedAt = 0,
     this.tags = const {},
     this.skillDeps = const [],
+    this.pluginDeps = const [],
+    this.mcpDeps = const [],
     this.originTeamKey,
   });
 
@@ -53,6 +55,8 @@ class DiscoverableMember {
   final Set<String> tags;
   final DiscoverableTeamMember member;
   final List<SkillDependencyRef> skillDeps;
+  final List<PluginDependencyRef> pluginDeps;
+  final List<McpDependencyRef> mcpDeps;
   final ExpertMemberSource source;
   final String? originTeamKey;
 
@@ -79,6 +83,8 @@ class DiscoverableMember {
         (json['member'] as Map?)?.cast<String, Object?>() ?? const {},
       ),
       skillDeps: list(json['skillDeps'], SkillDependencyRef.fromJson),
+      pluginDeps: list(json['pluginDeps'], PluginDependencyRef.fromJson),
+      mcpDeps: list(json['mcpDeps'], McpDependencyRef.fromJson),
       source: ExpertMemberSource.decode(json['source']),
       originTeamKey: json['originTeamKey'] as String?,
     );
@@ -94,6 +100,9 @@ class DiscoverableMember {
     if (tags.isNotEmpty) 'tags': tags.toList(),
     'member': member.toJson(),
     if (skillDeps.isNotEmpty) 'skillDeps': skillDeps.map((d) => d.toJson()).toList(),
+    if (pluginDeps.isNotEmpty)
+      'pluginDeps': pluginDeps.map((d) => d.toJson()).toList(),
+    if (mcpDeps.isNotEmpty) 'mcpDeps': mcpDeps.map((d) => d.toJson()).toList(),
     'source': source.value,
     if (originTeamKey != null && originTeamKey!.isNotEmpty)
       'originTeamKey': originTeamKey,
@@ -121,6 +130,8 @@ class DiscoverableMember {
       setEquals(tags, other.tags) &&
       member == other.member &&
       listEquals(skillDeps, other.skillDeps) &&
+      listEquals(pluginDeps, other.pluginDeps) &&
+      listEquals(mcpDeps, other.mcpDeps) &&
       source == other.source &&
       originTeamKey == other.originTeamKey;
 
@@ -135,6 +146,8 @@ class DiscoverableMember {
     Object.hashAllUnordered(tags),
     member,
     Object.hashAll(skillDeps),
+    Object.hashAll(pluginDeps),
+    Object.hashAll(mcpDeps),
     source,
     originTeamKey,
   );
