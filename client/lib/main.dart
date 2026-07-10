@@ -35,6 +35,7 @@ import 'services/commands/command_bus.dart';
 import 'services/commands/key_chord.dart';
 import 'services/commands/shortcut_context.dart';
 import 'services/commands/shortcut_dispatcher.dart';
+import 'services/commands/shortcut_focus.dart';
 import 'services/expert_hub/expert_capability_resolver.dart';
 import 'services/home_workspace/home_workspace_ui_cache.dart';
 import 'services/storage/app_storage.dart';
@@ -69,22 +70,39 @@ import 'widgets/app_text_scale_boundary.dart';
 import 'widgets/app_update_available_dialog.dart';
 import 'widgets/ui_zoom.dart';
 
-/// Live [ShortcutContext] used by [ShortcutDispatcherHost] until the focus
-/// wiring (Task 6) and session/workspace tab plumbing (Tasks 8, 11) land.
+/// Live [ShortcutContext] used by [ShortcutDispatcherHost] until the
+/// session/workspace tab plumbing (Tasks 8, 11) lands.
 ///
-/// `inCompose` is forced `false` (rather than left to a stub focus reader) so
-/// bare Enter is never accidentally swallowed by `compose.submit` before
-/// compose focus tracking exists; `inTerminal` / `inTextInput` /
-/// `hasOpenWorkspaceTabs` are stubbed `false` for the same reason — matching
-/// nothing is always safer than matching the wrong thing. `hasWorkspace` and
-/// `hasSessionTab` are cheap to derive correctly today, so they are.
+/// `inCompose` / `inTextInput` are derived by walking up from
+/// [FocusManager.instance.primaryFocus]'s element to the nearest
+/// [ShortcutFocus] ancestor (see `ShortcutFocus.maybeOf`) — compose fields
+/// wrap themselves in `ShortcutFocus(kind: ShortcutFocusKind.compose, ...)`
+/// on build, so this needs no static registry. `inTerminal` /
+/// `hasOpenWorkspaceTabs` are stubbed `false` until terminal focus tracking
+/// and workspace tab plumbing land — matching nothing is always safer than
+/// matching the wrong thing. `hasWorkspace` and `hasSessionTab` are cheap to
+/// derive correctly today, so they are.
 ShortcutContext _liveShortcutContext(ChatCubit chatCubit) {
   final location = appRouter.routerDelegate.currentConfiguration.uri
       .toString();
+  final focusKind = _primaryShortcutFocusKind();
   return ShortcutContext(
+    inCompose: focusKind == ShortcutFocusKind.compose,
+    inTextInput:
+        focusKind == ShortcutFocusKind.compose ||
+        focusKind == ShortcutFocusKind.text,
     hasWorkspace: location.contains('/home-v2/workspace/'),
     hasSessionTab: chatCubit.state.activeSessionId != null,
   );
+}
+
+/// Returns the [ShortcutFocusKind] of the nearest [ShortcutFocus] ancestor
+/// of the primary focus's element, or `null` if there is none (e.g. no
+/// focused widget, or the focused widget sits outside any `ShortcutFocus`).
+ShortcutFocusKind? _primaryShortcutFocusKind() {
+  final focusContext = FocusManager.instance.primaryFocus?.context;
+  if (focusContext == null) return null;
+  return ShortcutFocus.maybeOf(focusContext)?.kind;
 }
 
 /// Installs the root [ShortcutDispatcher]: attaches a [HardwareKeyboard]

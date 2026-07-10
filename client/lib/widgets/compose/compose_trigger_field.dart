@@ -2,10 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../models/config_bundle.dart';
+import '../../services/commands/command_bus.dart';
+import '../../services/commands/shortcut_focus.dart';
 import '../../services/storage/app_storage.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
@@ -79,6 +82,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   Timer? _focusClearTimer;
   Offset _menuAnchor = Offset.zero;
   BoxConstraints? _fieldConstraints;
+  VoidCallback? _composeCommandsDisposer;
 
   @override
   void initState() {
@@ -86,6 +90,9 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     widget.controller.addListener(_handleControllerChanged);
     widget.focusNode.addListener(_handleFocusChanged);
     HardwareKeyboard.instance.addHandler(_handleHardwareKey);
+    if (widget.focusNode.hasFocus) {
+      _registerComposeCommands();
+    }
   }
 
   @override
@@ -98,6 +105,12 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     if (oldWidget.focusNode != widget.focusNode) {
       oldWidget.focusNode.removeListener(_handleFocusChanged);
       widget.focusNode.addListener(_handleFocusChanged);
+    }
+    if (widget.focusNode.hasFocus &&
+        (oldWidget.controller != widget.controller ||
+            oldWidget.onSubmit != widget.onSubmit ||
+            oldWidget.canSubmit != widget.canSubmit)) {
+      _registerComposeCommands();
     }
     if (oldWidget.workspaceRoot != widget.workspaceRoot ||
         oldWidget.skills != widget.skills ||
@@ -114,7 +127,23 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     HardwareKeyboard.instance.removeHandler(_handleHardwareKey);
     widget.controller.removeListener(_handleControllerChanged);
     widget.focusNode.removeListener(_handleFocusChanged);
+    _unregisterComposeCommands();
     super.dispose();
+  }
+
+  void _registerComposeCommands() {
+    _composeCommandsDisposer?.call();
+    _composeCommandsDisposer = ComposeCommandBindings.register(
+      bus: context.read<CommandBus>(),
+      controller: widget.controller,
+      onSubmit: widget.onSubmit,
+      canSubmit: widget.canSubmit,
+    );
+  }
+
+  void _unregisterComposeCommands() {
+    _composeCommandsDisposer?.call();
+    _composeCommandsDisposer = null;
   }
 
   bool _handleHardwareKey(KeyEvent event) {
@@ -131,8 +160,10 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   void _handleFocusChanged() {
     if (widget.focusNode.hasFocus) {
       _focusClearTimer?.cancel();
+      _registerComposeCommands();
       return;
     }
+    _unregisterComposeCommands();
     // Defer closing so overlay pointer events can select an item first.
     _focusClearTimer?.cancel();
     _focusClearTimer = Timer(const Duration(milliseconds: 150), () {
@@ -295,11 +326,10 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
       }
     }
 
-    return ComposeKeyboardShortcutHandler.keyHandler(
-      controller: widget.controller,
-      onSubmit: widget.onSubmit,
-      canSubmit: widget.canSubmit,
-    )(node, event);
+    // Enter / Mod+Enter (compose.submit / compose.newline) are matched by
+    // the root ShortcutDispatcher and dispatched to the handlers registered
+    // in _registerComposeCommands — nothing left to do here.
+    return KeyEventResult.ignored;
   }
 
   bool _isPasteShortcut(KeyEvent event) {
@@ -342,35 +372,38 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
       });
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        _fieldConstraints = constraints;
-        return InlineTokenTextField(
-          fieldKey: _fieldKey,
-          controller: widget.controller,
-          focusNode: widget.focusNode,
-          hint: widget.hint,
-          enabled: widget.enabled,
-          onChanged: widget.onChanged,
-          textStyle: textStyle,
-          hintStyle: styles.body.copyWith(
-            color: widget.hintColor,
-            height: 1.5,
-          ),
-          cursorColor: widget.mutedColor,
-          onKeyEvent: _handleComposeKey,
-          overlayVisible: _overlayVisible,
-          overlayAnchor: _menuAnchor,
-          overlayBuilder: _overlayVisible
-              ? (context) => _ComposeTriggerSuggestionPanel(
-                  suggestions: _suggestions,
-                  selectedIndex: _selectedIndex,
-                  onSelected: _selectSuggestion,
-                  onHover: (index) => setState(() => _selectedIndex = index),
-                )
-              : null,
-        );
-      },
+    return ShortcutFocus(
+      kind: ShortcutFocusKind.compose,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          _fieldConstraints = constraints;
+          return InlineTokenTextField(
+            fieldKey: _fieldKey,
+            controller: widget.controller,
+            focusNode: widget.focusNode,
+            hint: widget.hint,
+            enabled: widget.enabled,
+            onChanged: widget.onChanged,
+            textStyle: textStyle,
+            hintStyle: styles.body.copyWith(
+              color: widget.hintColor,
+              height: 1.5,
+            ),
+            cursorColor: widget.mutedColor,
+            onKeyEvent: _handleComposeKey,
+            overlayVisible: _overlayVisible,
+            overlayAnchor: _menuAnchor,
+            overlayBuilder: _overlayVisible
+                ? (context) => _ComposeTriggerSuggestionPanel(
+                    suggestions: _suggestions,
+                    selectedIndex: _selectedIndex,
+                    onSelected: _selectSuggestion,
+                    onHover: (index) => setState(() => _selectedIndex = index),
+                  )
+                : null,
+          );
+        },
+      ),
     );
   }
 }
