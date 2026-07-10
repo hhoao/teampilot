@@ -16,11 +16,11 @@ Typical `<teampilotRoot>` paths:
 ```
 <teampilotRoot>/
   cli-defaults/{tool}/           # app-level CLI runtime templates
-  identities-runtime/{profileId}/  # per launch-identity inherited CLI trees
+  identities-runtime/{profileId}/  # per **team** launch-identity inherited CLI trees
     session-counter.json         # monotonic cliTeamName allocator
     {tool}/
     mcp/servers.json
-  launch-profiles/{id}/profile.json
+  launch-profiles/{id}/profile.json  # TeamProfile documents only
   launch-profiles-index.json     # derived snapshot for fast startup
   workspace/
     workspaces-index.json
@@ -50,18 +50,18 @@ Each workspace is self-contained; deleting `workspace/workspaces/{workspaceId}/`
 workspace/workspaces/{workspaceId}/
   manifest.json                  # Workspace (folders, defaultProfileId, session ids, …)
   project-config.json            # workspace-scoped skill/plugin/mcp/extension bindings
-  profile.json                   # optional embedded PersonalProfile (legacy / migration)
   assets/icon.*                  # custom workspace icon
   config/                        # workspace-level CLI overrides (inherits app → identity)
     mcp/servers.json
     {tool}/plugins/
   automations/
-    {launchProfileId}.json       # automation rules + run history for one tab scope
+    simple.json                  # Simple (unteamed) automation rules + run history
+    {teamProfileId}.json         # team-scoped automation rules + run history
   sessions/{sessionId}/
     session.json
     bus/mail/{memberId}.jsonl
     bus/tasks/tasks.jsonl
-    runtime/{tool}/                # personal / native single-agent CONFIG_DIR
+    runtime/{tool}/                # Simple / native single-agent CONFIG_DIR
     runtime/{memberId}/{tool}/     # mixed-mode per-member CONFIG_DIR
     runtime/_shared/{tool}/        # session-level shared CLI state (e.g. cursor warm tier)
 ```
@@ -71,11 +71,13 @@ workspace/workspaces/{workspaceId}/
 At launch, `RuntimeLayout` links each layer into the session runtime tree (PTY `CONFIG_DIR`):
 
 1. **App** — `cli-defaults/{tool}/`
-2. **Identity** — `identities-runtime/{profileId}/{tool}/`
+2. **Identity** — `identities-runtime/{profileId}/{tool}/` (**team** profiles only; Simple skips)
 3. **Workspace** — `workspace/workspaces/{workspaceId}/config/{tool}/`
 4. **Session** — `workspace/workspaces/{workspaceId}/sessions/{sessionId}/runtime/…`
 
-Persona prompt/playbook is **not** stored at layers 1–3 for teams; it is resolved from the expert catalog at connect and written into layer 4 via `MemberRoleProvision`.
+Session skills/plugins/MCP ids merge as `team > expert > workspace` via `LayeredConfigBundle` / `SessionRuntimePlan` (see [2026-07-10 expert capability pack](superpowers/specs/2026-07-10-expert-capability-pack-design.md)).
+
+Persona prompt/playbook is **not** stored at layers 1–3; it is resolved from the expert catalog at connect and written into layer 4 via `MemberRoleProvision`.
 
 ## Team Hub (`team-hub/`)
 
@@ -162,13 +164,13 @@ Teams persist **references** to catalog experts:
 - `overrides` may set provider/model/cli/effort/replicas/capabilities — **not** prompt/playbook.
 - `TeamMemberConfig` exists only in memory after `materializeRosterSlot()` at connect.
 
-### Personal profile (`PersonalProfile`)
+### Simple launch (unteamed)
 
-Single-agent identity (`agent`, `activePresetId`). Optional session-level `expertKey` selects a catalog expert for Simple launch without mutating this file.
+Simple mode is **not** a `PersonalProfile` / launch-identity document. Optional session-level `expertKey` selects a catalog expert capability pack; CLI preset is a dial only. Automations for Simple use fixed file `automations/simple.json`.
 
 ## Session (`session.json`)
 
-Personal Simple launch with expert:
+Simple launch with expert:
 
 ```json
 {
@@ -178,10 +180,11 @@ Personal Simple launch with expert:
 }
 ```
 
-No persisted overlay blob — persona is live-resolved from catalog at connect (same as team roster slots).
+No persisted overlay blob — persona + pack deps are live-resolved from catalog at connect (same as team roster slots).
 
 ## Related docs
 
+- [Expert capability pack design](superpowers/specs/2026-07-10-expert-capability-pack-design.md) — Simple = unteamed + expert pack; merge `team > expert > workspace`
 - [Expert Hub design spec](superpowers/specs/2026-07-05-expert-hub-design.md) — teams as expert collections
 - [AGENTS.md](../AGENTS.md) — architecture overview for AI assistants
 - [README.md](../README.md) — user-facing feature descriptions

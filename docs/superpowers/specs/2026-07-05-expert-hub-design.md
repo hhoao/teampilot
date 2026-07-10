@@ -1,7 +1,7 @@
 # Expert Hub (Member Discovery) design
 
 **Date:** 2026-07-05  
-**Status:** Approved; **canonical architecture revised 2026-07-09** (reference-only rosters, no embedded member copies, no backward compatibility)
+**Status:** Approved; **canonical architecture revised 2026-07-09** (reference-only rosters, no embedded member copies, no backward compatibility). **Personal summon / Simple launch semantics superseded** by [2026-07-10-expert-capability-pack-design.md](./2026-07-10-expert-capability-pack-design.md) (experts are full capability packs; `PersonalProfile` removed).
 
 ## Summary
 
@@ -32,7 +32,7 @@ Expert Hub complements **Team Hub** (curated team templates that are themselves 
 | Expert | `DiscoverableMember` (catalog atom; canonical `key`) |
 | Expert Team | `DiscoverableTeam` = metadata + `roster[]` of expert keys |
 | User team | `TeamProfile` = metadata + `roster[]` of expert keys |
-| Summon (Personal) | `AppSession.expertKey` → resolve at connect (same pipeline as team slots) |
+| Summon (Simple) | `AppSession.expertKey` → resolve capability pack at connect (see 2026-07-10 spec) |
 | My experts | Local templates + favorites under `member-hub/` |
 
 ## Teams as expert collections (canonical architecture)
@@ -47,7 +47,7 @@ Expert Hub complements **Team Hub** (curated team templates that are themselves 
 | **Roster slot** | `TeamRosterSlot { id, expertKey, overrides?, joinedAt }` | → `TeamMemberConfig` (runtime only) |
 | **Team** | `TeamProfile { …team bundle…, roster: TeamRosterSlot[] }` | per slot |
 | **Team template** | `DiscoverableTeam { …meta…, roster: TeamRosterSlot[] }` | clone → new `TeamProfile` |
-| **Personal session** | optional `AppSession.expertKey` | → materialized member for Simple launch |
+| **Simple session** | optional `AppSession.expertKey` | → capability pack + materialized member for Simple launch |
 
 **Rule:** `prompt`, `playbook`, and display `name` for a roster seat come **only** from the resolved expert (plus optional slot `overrides` for provider/model/cli/effort/replicas — never duplicate persona prose on the team).
 
@@ -166,11 +166,18 @@ DiscoverableMember {
 
 ### Personal summon
 
-Simple-mode landing only; does not mutate `PersonalProfile`:
+> **Superseded:** Simple / Personal summon is defined by
+> [2026-07-10-expert-capability-pack-design.md](./2026-07-10-expert-capability-pack-design.md).
+> Experts are full capability packs (`skillDeps` / `pluginDeps` / `mcpDeps`);
+> there is no `PersonalProfile` launch identity. Session config merges as
+> `team > expert > workspace`. Keep the flow sketch below only as historical
+> context for the 2026-07-05 landing UX.
+
+Simple-mode landing only (unteamed; empty `sessionTeam`):
 
 1. `LandingLaunchContext.expertKey` — optional; persisted in `LandingPrefsStore`.
 2. `AppSession.expertKey` — set at session create (no separate overlay blob).
-3. Connect: `materializeRosterSlot(session.expertKey)` merged with personal preset base → `MemberRoleProvision`.
+3. Connect: `ExpertCapabilityResolver` → `SessionRuntimePlan` → persona provision + pack merge.
 
 Team-mode landing has no expert chip. `?expert=` on team landing → toast + ignore.
 
@@ -303,12 +310,14 @@ ExpertHubCubit.load()
 
 ```
 Landing submit (Simple + expertKey)
-  → validate key resolves (toast + abort if not)
-  → create AppSession with expertKey
-  → connect: materializeRosterSlot + personal preset base
+  → ExpertCapabilityResolver.preflight / resolve (install pack deps to app global library)
+  → create AppSession with expertKey (empty sessionTeam)
+  → connect: SessionRuntimePlan (merge team > expert > workspace) + MemberRoleProvision
   → deliverUserCommandToMember(message)
   → ExpertHubRecentStore.touch(key)
 ```
+
+See [2026-07-10-expert-capability-pack-design.md](./2026-07-10-expert-capability-pack-design.md).
 
 ### Team session connect
 
@@ -359,7 +368,7 @@ Under `<teampilotRoot>/member-hub/` (see also [workspace-storage-layout.md](../.
 }
 ```
 
-**Personal session** — optional `expertKey` on `session.json` (no `expertOverlay` object).
+**Simple session** — optional `expertKey` on `session.json` (no `expertOverlay` object; no `PersonalProfile`).
 
 **Team Hub registry** — `team-hub/…/team.json` uses the same `roster[]` shape (not `members[]` with inline prompts).
 
@@ -376,7 +385,7 @@ Single refactor — no parallel legacy paths:
 
 1. **Models:** `TeamRosterSlot`; `TeamProfile.roster`; `DiscoverableTeam.roster`; drop embedded roster copies.
 2. **Materialization:** `ExpertMemberMaterializer.materializeRosterSlot` at all connect entry points.
-3. **Expert Hub UI:** discovery, favorites, add reference to team, Personal launch, local templates.
+3. **Expert Hub UI:** discovery, favorites, add reference to team, Simple launch, local templates.
 4. **Team Hub:** template JSON + clone → roster of keys; registry schema update.
 5. **Team config UI:** roster editor (expert picker + overrides only).
 6. **Remove:** `MemberCloneService`, `ExpertSessionOverlay`, `indexMembersFromTeams`, inline prompt copy flows.
@@ -416,7 +425,7 @@ Run: `cd client && flutter analyze && flutter test --exclude-tags integration`
 
 - **Scope:** Discovery + launch (C)
 - **Sources:** Built-in + registry + team extract + user local (C+D)
-- **Launch context:** Workspace = Personal only; main window = add to team or workspace Personal (user confirmed)
+- **Launch context:** Workspace = Simple only; main window = add to team or workspace Simple (user confirmed)
 - **User templates:** Local + export + publish path (A+B+C phased)
 - **Team = expert collection:** reference-only `TeamProfile.roster[]`; no embedded copies (2026-07-09)
 

@@ -2,7 +2,7 @@
 
 Guidance for Claude Code and other AI assistants working in this repository.
 
-**TeamPilot** is a Flutter client (`client/`, package `teampilot`, data ID `com.hhoa.teampilot`) that manages **workspaces**, **launch identities** (personal or team), sessions, skills, plugins, and extensions, and embeds terminals running AI agent CLIs (local PTY on desktop, or SSH — always on Android, optional on desktop). The home UI is an Apifox-style workspace shell with a built-in IDE (file tree, editor, Git, worktrees).
+**TeamPilot** is a Flutter client (`client/`, package `teampilot`, data ID `com.hhoa.teampilot`) that manages **workspaces**, **team launch identities**, sessions, skills, plugins, and extensions, and embeds terminals running AI agent CLIs (local PTY on desktop, or SSH — always on Android, optional on desktop). The home UI is an Apifox-style workspace shell with a built-in IDE (file tree, editor, Git, worktrees).
 
 | Docs | Purpose |
 |------|---------|
@@ -20,12 +20,19 @@ All app code lives under `client/lib/` (cubits, pages, repositories, services, m
 | Concept | Model / cubit | Role |
 |---------|---------------|------|
 | **Workspace** | `Workspace`, `SessionRepository` | *Where* work happens: repo folder(s), sessions, workspace-scoped resource bindings (`project-config.json`). |
-| **Launch profile** | `LaunchProfile` (`PersonalProfile` / `TeamProfile`), `LaunchProfileCubit` | *Who/how* to launch: CLI, roster, `ConfigBundle`, per-tool provider/model/effort (personal), skills/plugins/MCP selections. Persisted under `launch-profiles/{id}/profile.json`. |
+| **Launch profile** | `TeamProfile` (`LaunchProfile`), `LaunchProfileCubit` | *Who/how* to launch a **team**: roster of expert keys, `ConfigBundle`, per-tool provider/model/effort, skills/plugins/MCP. Persisted under `launch-profiles/{id}/profile.json`. |
+| **Expert** | `DiscoverableMember`, `ExpertCapabilityPack` | Capability pack: persona + `skillDeps` / `pluginDeps` / `mcpDeps`. Resolved via `ExpertCapabilityResolver` into session config. |
 | **Session** | `AppSession`, `ChatCubit` | One chat workbench tab; owns member terminals, TeamBus (mixed teams), and session runtime dirs. |
 
-**Simple mode** = launch with a `PersonalProfile` (no roster). Built-in identity id: `LaunchProfileProvisioner.defaultPersonalId` (`personal-default`), ensured at bootstrap. **Team mode** = launch with a `TeamProfile` and one PTY per roster member.
+**Simple mode** = unteamed launch (empty `sessionTeam`) — not a launch-identity document. Optional `AppSession.expertKey` / CLI preset selects an expert pack; automations use fixed scope key `AutomationTabScope.simpleLaunchProfileId` (`simple`). **Team mode** = launch with a `TeamProfile` and one PTY per roster member.
 
-Personal identities keep **per-tool** `providerIdsByTool` / `modelsByTool` / `effortsByTool` plus an **agent** config and optional **CLI preset** (`activePresetId`). Team identities configure members, skills, plugins, MCP, and extensions under `/team-config`.
+Session config merge (skills / plugins / MCP ids):
+
+```
+SessionRuntimeBundle = merge(team > expert > workspace)
+```
+
+See [docs/superpowers/specs/2026-07-10-expert-capability-pack-design.md](docs/superpowers/specs/2026-07-10-expert-capability-pack-design.md). Team identities configure members, skills, plugins, MCP, and extensions under `/team-config`.
 
 ## Architecture
 
@@ -74,7 +81,7 @@ Embedded terminals render with **flutter_alacritty** (Alacritty-based Rust engin
 
 **`<teampilotRoot>`** = `AppPaths.basePath` / `AppStorage.appDataRoot`. Full tree: [docs/workspace-storage-layout.md](docs/workspace-storage-layout.md); code: `WorkspaceLayout` + `RuntimeLayout`.
 
-**CLI config inheritance** (see `RuntimeLayout.ensure*Inherits*`): **app** (`cli-defaults/{tool}/`) → **identity** (`identities-runtime/{profileId}/{tool}/`) → **workspace** (`workspace/workspaces/{id}/config/{tool}/`) → **session** (`…/sessions/{sessionId}/runtime/…`). `SessionLifecycleService` materializes the final PTY `CONFIG_DIR`.
+**CLI config inheritance** (see `RuntimeLayout.ensure*Inherits*`): **app** (`cli-defaults/{tool}/`) → **identity** (`identities-runtime/{profileId}/{tool}/` — **team** launch profiles only; Simple skips this layer) → **workspace** (`workspace/workspaces/{id}/config/{tool}/`) → **session** (`…/sessions/{sessionId}/runtime/…`). `SessionLifecycleService` materializes the final PTY `CONFIG_DIR` from a `SessionRuntimePlan`.
 
 ### Supported CLIs
 
@@ -138,8 +145,8 @@ Session runtime dirs: `workspace/workspaces/{workspaceId}/sessions/{sessionId}/r
 | **File tree / editor / Git** | `WorkspaceFileTreeStore`, `GitRepoStore`, `EditorCubit`, `pages/home_workspace/workspace/` right-tools panels |
 | **Git worktrees** | `WorkspaceWorktreeRegistry`, `WorkspaceWorktreeStore`; disk under `<teampilotRoot>/worktrees/{repo}/{branch}`; sidebar groups sessions by worktree |
 | **Workspace shell terminal** | `WorkspaceTerminalRegistry`, `WorkspaceShellConnector` — bottom-shell PTY scoped to active workspace folder |
-| **Automations** | `AutomationCubit`, `AutomationScheduler`, `AutomationDispatcher`; rules per workspace tab scope under `workspace/workspaces/{id}/automations/{launchProfileId}.json` |
-| **CLI presets** | `CliPresetsCubit`, `cli-presets.json`; personal `activePresetId` on `PersonalProfile`, per-member on `TeamMemberConfig` |
+| **Automations** | `AutomationCubit`, `AutomationScheduler`, `AutomationDispatcher`; rules per workspace tab scope under `workspace/workspaces/{id}/automations/{launchProfileId}.json` (Simple uses fixed key `simple`) |
+| **CLI presets** | `CliPresetsCubit`, `cli-presets.json`; Simple launch may pin a global preset; per-member `activePresetId` on `TeamMemberConfig` |
 
 ## Where to change code
 
