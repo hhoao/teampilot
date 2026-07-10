@@ -35,11 +35,6 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
   Future<ConfigProfileLaunchContribution> contributeLaunch(
     ConfigProfileLaunchContext ctx,
   ) async {
-    final standalone = ctx.standaloneScope;
-    if (standalone != null) {
-      return _contributeStandaloneLaunch(ctx, standalone);
-    }
-
     final paths = ctx.paths;
     final codexHome = paths.sessionToolDir(
       ctx.scope.workspaceId,
@@ -61,106 +56,39 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
       additionalDirectories: ctx.additionalDirectories,
     );
 
+    final resolver = _codexResolver(ctx.catalog);
+    AppProviderConfig? provider;
     if (team != null) {
-      final resolver = _codexResolver(ctx.catalog);
-      final provider = await resolver.resolveForLaunch(
+      provider = await resolver.resolveForLaunch(
         team: team,
         member: member,
       );
-      if (provider == null) {
-        warnings.add('codex_provider_missing');
-      } else {
-        final busIdle = mixed ? ctx.busIdle : null;
-        final busOverlay = busIdle != null && member != null && member.isValid
-            ? (busIdle.isRemote
-                  ? CodexTeamBusOverlay.buildStopHook(
-                      memberId: member.id,
-                      idle: busIdle,
-                    )
-                  : CodexTeamBusOverlay.buildLocal(
-                      memberId: member.id,
-                      idle: busIdle,
-                    ))
-            : null;
-        final trustedDirectories = await _trustedProjectDirectories(
-          paths: paths,
-          workingDirectory: ctx.workingDirectory ?? '',
-          additionalDirectories: ctx.additionalDirectories,
-        );
-        try {
-          if (ctx.crossMachine && isOfficialCodexOAuthProvider(provider)) {
-            await CrossMachineCredentialBridge.materializeCodexAuth(
-              catalog: ctx.catalog,
-              work: paths,
-              providerId: provider.id,
-            );
-          }
-          await CodexHomeProvisioner(fs: paths.fs).provision(
-            codexHome: codexHome,
-            provider: provider,
-            busOverlayToml: busOverlay,
-            trustedProjectDirectories: trustedDirectories,
-            storedAuthPath: _storedCodexAuthPath(paths, provider),
-            reasoningEffortOverride: _resolveCodexEffort(
-              team: team,
-              member: member,
-              provider: provider,
-            ),
-          );
-        } on CodexHomeProvisionException catch (e) {
-          warnings.add('codex_config_invalid: $e');
-        }
-      }
-    } else {
-      warnings.add('codex_provider_missing');
+    } else if (ctx.isSimple) {
+      final required =
+          member ?? (throw StateError('Simple launch requires plan.member'));
+      final fromPreset = presetProviderId(ctx.preset);
+      final fromMember = required.provider.trim();
+      provider = await resolver.findById(
+        fromPreset.isNotEmpty ? fromPreset : fromMember,
+      );
+      provider ??= await _resolveSoleCodexProvider(ctx.catalog);
     }
 
-    if (member != null && member.isValid) {
-      final prompt = MemberRoleProvision.composeRolePrompt(
-        member: member,
-        forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
-        mixed: mixed,
-      ).trim();
-      if (prompt.isNotEmpty) {
-        await paths.fs.atomicWrite(
-          paths.joinWork(codexHome, agentsFileName),
-          '$prompt\n',
-        );
-      }
-    }
-
-    return ConfigProfileLaunchContribution(
-      environment: {
-        'CODEX_HOME': paths.normalizeWork(codexHome),
-        ...await McpCredentialsStore(fs: paths.fs).readOAuthEnv(codexHome),
-      },
-      warnings: warnings,
-    );
-  }
-
-  Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
-    ConfigProfileLaunchContext ctx,
-    StandaloneLaunchProfileScope standalone,
-  ) async {
-    final paths = ctx.paths;
-    final member = ctx.member ?? (throw StateError('Simple launch requires plan.member'));
-    final codexHome = standaloneSessionToolDir(paths, standalone, toolId);
-    final warnings = <String>[];
-
-    await paths.fs.ensureDir(codexHome);
-    await _provisionWorkspaceTrust(
-      paths: paths,
-      workspaceId: standalone.workspaceId,
-      workingDirectory: ctx.workingDirectory ?? '',
-      additionalDirectories: ctx.additionalDirectories,
-    );
-
-    final resolver = _codexResolver(ctx.catalog);
-    var provider = await resolver.findById(standaloneProviderId(ctx.preset));
-    provider ??= await _resolveSoleCodexProvider(ctx.catalog);
     if (provider == null) {
       warnings.add('codex_provider_missing');
     } else {
+      final busIdle = mixed ? ctx.busIdle : null;
+      final busOverlay = busIdle != null && member != null && member.isValid
+          ? (busIdle.isRemote
+                ? CodexTeamBusOverlay.buildStopHook(
+                    memberId: member.id,
+                    idle: busIdle,
+                  )
+                : CodexTeamBusOverlay.buildLocal(
+                    memberId: member.id,
+                    idle: busIdle,
+                  ))
+          : null;
       final trustedDirectories = await _trustedProjectDirectories(
         paths: paths,
         workingDirectory: ctx.workingDirectory ?? '',
@@ -177,10 +105,11 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
         await CodexHomeProvisioner(fs: paths.fs).provision(
           codexHome: codexHome,
           provider: provider,
+          busOverlayToml: busOverlay,
           trustedProjectDirectories: trustedDirectories,
           storedAuthPath: _storedCodexAuthPath(paths, provider),
           reasoningEffortOverride: _resolveCodexEffort(
-            team: null,
+            team: team,
             member: member,
             provider: provider,
             profileEffort: ctx.preset?.effort ?? '',
@@ -191,10 +120,11 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
       }
     }
 
-    if (member.isValid) {
+    if (member != null && member.isValid) {
       final prompt = MemberRoleProvision.composeRolePrompt(
         member: member,
-        mixed: false,
+        forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
+        mixed: mixed,
       ).trim();
       if (prompt.isNotEmpty) {
         await paths.fs.atomicWrite(

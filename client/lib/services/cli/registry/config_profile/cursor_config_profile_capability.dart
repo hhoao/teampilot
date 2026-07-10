@@ -16,8 +16,8 @@ import '../capabilities/config_profile_capability.dart';
 
 /// Cursor CLI launch profile.
 ///
-/// **Standalone:** isolates config under `$CURSOR_CONFIG_DIR` (auth is global /
-/// keychain, shared across config dirs) and pre-trusts the workspace workspace
+/// **Simple:** isolates config under a fake `$HOME` (auth is global /
+/// keychain, shared across config dirs) and pre-trusts the workspace
 /// under the runtime user home.
 ///
 /// **Mixed mode:** isolates each member under a fake `HOME` with native
@@ -35,23 +35,26 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
   Future<ConfigProfileLaunchContribution> contributeLaunch(
     ConfigProfileLaunchContext ctx,
   ) async {
-    final standalone = ctx.standaloneScope;
-    if (standalone != null) {
-      return _contributeStandaloneLaunch(ctx, standalone);
+    if (ctx.isSimple) {
+      return _contributeSimpleLaunch(ctx);
     }
     return _contributeTeamLaunch(ctx);
   }
 
-  Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
+  Future<ConfigProfileLaunchContribution> _contributeSimpleLaunch(
     ConfigProfileLaunchContext ctx,
-    StandaloneLaunchProfileScope standalone,
   ) async {
     final paths = ctx.paths;
     final warnings = <String>[];
     // Isolate under a fake `$HOME` (like mixed mode) so cursor reads the
     // session's `~/.cursor` — plugins/MCP/skills are materialized there.
     // CURSOR_CONFIG_DIR alone does NOT relocate the `.cursor` data dir.
-    final toolDir = standaloneSessionToolDir(paths, standalone, toolId);
+    final toolDir = paths.sessionToolDir(
+      ctx.scope.workspaceId,
+      ctx.scope.sessionId,
+      toolId,
+      memberId: ctx.scope.memberId,
+    );
     final home = paths.joinWork(
       toolDir,
       CursorSessionConfigDir.homeSegment,
@@ -64,7 +67,7 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       fs: paths.fs,
       basePath: paths.basePath,
     );
-    final provider = await _resolveStandaloneCursorProvider(ctx);
+    final provider = await _resolveSimpleCursorProvider(ctx);
     final providerId = provider?.id.trim() ?? '';
 
     // Provision provider auth into the isolated home so cursor can authenticate
@@ -109,16 +112,17 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
     );
   }
 
-  Future<AppProviderConfig?> _resolveStandaloneCursorProvider(
+  Future<AppProviderConfig?> _resolveSimpleCursorProvider(
     ConfigProfileLaunchContext ctx,
   ) async {
     final resolver = CursorProviderSettingsResolver(
       basePath: ctx.catalog.basePath,
       repository: providerCatalogRepository(ctx.catalog),
     );
-    var provider = await resolver.findById(standaloneProviderId(ctx.preset));
-    provider ??= await resolver.findById(
-      '',
+    final fromPreset = presetProviderId(ctx.preset);
+    final fromMember = ctx.member?.provider.trim() ?? '';
+    var provider = await resolver.findById(
+      fromPreset.isNotEmpty ? fromPreset : fromMember,
     );
     if (provider != null) return provider;
 

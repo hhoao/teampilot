@@ -18,18 +18,7 @@ String effectiveLaunchWorkspaceId({
   return '_adhoc-$team';
 }
 
-/// Resolved launch path scope for a personal workspace session.
-class StandaloneLaunchProfileScope {
-  const StandaloneLaunchProfileScope({
-    required this.workspaceId,
-    required this.sessionId,
-  });
-
-  final String workspaceId;
-  final String sessionId;
-}
-
-/// Resolved launch path scope for a team session.
+/// Resolved launch path scope for a session (Simple or Team).
 class LaunchProfileScope {
   const LaunchProfileScope({
     required this.workspaceId,

@@ -187,6 +187,12 @@ void main() {
         isFalse,
         reason: 'Simple mode must skip identities-runtime/',
       );
+      expect(
+        await Directory(
+          p.join(base.path, 'identities-runtime', 'personal-default'),
+        ).exists(),
+        isFalse,
+      );
       final claudeDir = layout.sessionRuntimeToolDir(
         workspaceId,
         sessionId,
@@ -195,6 +201,46 @@ void main() {
       expect(await Directory(claudeDir).exists(), isTrue);
     },
   );
+
+  test(
+    'prepareShellLaunch throws without a valid team member',
+    () async {
+      final session = AppSession(
+        sessionId: 'team-sess',
+        workspaceId: 'proj',
+        folders: const [WorkspaceFolder(path: '/work/team')],
+        sessionTeam: 'tid',
+        cliTeamName: 'tid-1',
+        createdAt: 1,
+      );
+
+      expect(
+        () => service().prepareShellLaunch(
+          session: session,
+          team: const TeamProfile(id: 'tid', name: 'Team', members: []),
+        ),
+        throwsA(isA<StateError>()),
+      );
+    },
+  );
+
+  test('destroyStandaloneCliState removes session runtime tree', () async {
+    const workspaceId = 'ws-simple';
+    const sessionId = 'sess-simple';
+    final sessionRoot = p.dirname(
+      layout.sessionRuntimeToolDir(workspaceId, sessionId, 'claude'),
+    );
+    await File(
+      p.join(sessionRoot, 'claude', 'workspaces', 'bucket', '$sessionId.jsonl'),
+    ).create(recursive: true);
+
+    expect(await Directory(sessionRoot).exists(), isTrue);
+    await service().destroyStandaloneCliState(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+    );
+    expect(await Directory(sessionRoot).exists(), isFalse);
+  });
 
   test(
     'simple prepareLaunch returns CLAUDE_CONFIG_DIR under session runtime',

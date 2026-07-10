@@ -16,7 +16,7 @@ import 'package:teampilot/services/host/host_execution_environment.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
-/// Repro (now GREEN): enabled skills ARE materialized into the personal-mode
+/// Repro (now GREEN): enabled skills ARE materialized into the simple-mode
 /// session leaf CONFIG_DIR at launch via ResourceProvisioningService.
 void main() {
   setUp(() {
@@ -28,7 +28,7 @@ void main() {
   });
 
   test(
-    'enabled skill is materialized into personal-mode leaf CONFIG_DIR/skills/',
+    'enabled skill is materialized into simple-mode leaf CONFIG_DIR/skills/',
     () async {
       final root = AppStorage.paths.basePath;
       final fs = AppStorage.fs;

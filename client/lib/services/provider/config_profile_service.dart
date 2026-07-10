@@ -122,7 +122,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
   final Future<List<Skill>> Function()? _loadInstalledSkills;
   final Future<List<CliPreset>> Function() _loadGlobalPresets;
   final WorkspaceProjectConfigRepository? _projectConfigRepository;
-  StandaloneLaunchProfileScope? _activeStandaloneScope;
 
   /// Control-plane paths for provider catalog reads (home when work != home).
   ConfigProfilePaths get catalog => _catalogOverride ?? _infra;
@@ -209,7 +208,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
   String workspaceConfigDir(String workspaceId) =>
       layout.workspace.workspaceConfigDir(workspaceId);
 
-  String standaloneSessionToolDir(
+  String sessionRuntimeToolDir(
     String workspaceId,
     String sessionId,
     String tool,
@@ -221,23 +220,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String sessionId,
     String tool, {
     String? memberId,
-  }) {
-    final scope = _activeStandaloneScope;
-    if (scope != null) {
-      return layout.sessionRuntimeToolDir(
-        scope.workspaceId,
-        scope.sessionId,
-        tool,
-        memberId: memberId,
-      );
-    }
-    return _infra.sessionToolDir(
-      workspaceId,
-      sessionId,
-      tool,
-      memberId: memberId,
-    );
-  }
+  }) => _infra.sessionToolDir(
+    workspaceId,
+    sessionId,
+    tool,
+    memberId: memberId,
+  );
 
   String _launchResourceConfigDir({
     required CliTool cli,
@@ -406,7 +394,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     }
   }
 
-  Future<void> ensureStandaloneWorkspaceProfile(
+  Future<void> ensureWorkspaceProfile(
     String workspaceId, {
     CliTool cli = CliTool.claude,
   }) async {
@@ -426,7 +414,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final trimmedWorkspaceId = workspaceId.trim();
     if (trimmedWorkspaceId.isEmpty) return;
 
-    await ensureStandaloneWorkspaceProfile(trimmedWorkspaceId, cli: cli);
+    await ensureWorkspaceProfile(trimmedWorkspaceId, cli: cli);
 
     final paths = [
       for (final directory in trustedDirectories)
@@ -462,72 +450,65 @@ class ConfigProfileService implements ConfigProfileDelegate {
     }
 
     final warnings = <String>[];
-    final standaloneScope = StandaloneLaunchProfileScope(
-      workspaceId: trimmedWorkspaceId,
-      sessionId: trimmedSessionId,
+    await layout.ensureSessionRuntimeInheritsWorkspace(
+      trimmedWorkspaceId,
+      trimmedSessionId,
+      cli.value,
     );
 
-    return _withStandaloneScope(standaloneScope, () async {
-      await layout.ensureSessionRuntimeInheritsWorkspace(
-        trimmedWorkspaceId,
-        trimmedSessionId,
-        cli.value,
-      );
-
-      final pluginProvisioner = _cliRegistry
-          .capability<PluginProvisionerCapability>(cli);
-      if (pluginProvisioner != null) {
-        await pluginProvisioner.provision(
-          PluginProvisionContext(
-            fs: fs,
-            teampilotRoot: basePath,
-            configDir: _launchResourceConfigDir(
-              cli: cli,
-              workspaceId: trimmedWorkspaceId,
-              sessionId: trimmedSessionId,
-            ),
-            bundlePoolDir: layout.sessionRuntimePluginsDir(
-              trimmedWorkspaceId,
-              trimmedSessionId,
-              cli.value,
-            ),
-            enabledPluginIds: runtimeBundle.pluginIds,
-            installedCatalog: await InstalledPluginCatalog.load(fs, basePath),
-            layout: layout,
-            tool: cli,
-          ),
-        );
-      }
-
-      final provisionResult =
-          await ResourceProvisioningService(
-            fs: fs,
-            registry: _cliRegistry,
-          ).provisionForLaunch(
-            scope: WorkspaceResourceScope(bundle: runtimeBundle),
+    final pluginProvisioner = _cliRegistry
+        .capability<PluginProvisionerCapability>(cli);
+    if (pluginProvisioner != null) {
+      await pluginProvisioner.provision(
+        PluginProvisionContext(
+          fs: fs,
+          teampilotRoot: basePath,
+          configDir: _launchResourceConfigDir(
             cli: cli,
-            configDir: _launchResourceConfigDir(
-              cli: cli,
-              workspaceId: trimmedWorkspaceId,
-              sessionId: trimmedSessionId,
-            ),
-            catalog: await _skillCatalog(),
-          );
-      warnings.addAll(provisionResult.warnings);
-
-      await McpRegistryService(
-        fs: fs,
-        layout: layout,
-      ).writeForSimpleSession(
-        workspaceId: trimmedWorkspaceId,
-        sessionId: trimmedSessionId,
-        mcpServerIds: runtimeBundle.mcpServerIds,
-        extraServers: extraMcpServers,
-        projectMcpRoots: projectMcpRoots,
+            workspaceId: trimmedWorkspaceId,
+            sessionId: trimmedSessionId,
+          ),
+          bundlePoolDir: layout.sessionRuntimePluginsDir(
+            trimmedWorkspaceId,
+            trimmedSessionId,
+            cli.value,
+          ),
+          enabledPluginIds: runtimeBundle.pluginIds,
+          installedCatalog: await InstalledPluginCatalog.load(fs, basePath),
+          layout: layout,
+          tool: cli,
+        ),
       );
+    }
 
-      return warnings;
-    });
+    final provisionResult =
+        await ResourceProvisioningService(
+          fs: fs,
+          registry: _cliRegistry,
+        ).provisionForLaunch(
+          scope: SimpleResourceScope(bundle: runtimeBundle),
+          cli: cli,
+          configDir: _launchResourceConfigDir(
+            cli: cli,
+            workspaceId: trimmedWorkspaceId,
+            sessionId: trimmedSessionId,
+          ),
+          catalog: await _skillCatalog(),
+        );
+    warnings.addAll(provisionResult.warnings);
+
+    await McpRegistryService(
+      fs: fs,
+      layout: layout,
+    ).writeForSimpleSession(
+      workspaceId: trimmedWorkspaceId,
+      sessionId: trimmedSessionId,
+      mcpServerIds: runtimeBundle.mcpServerIds,
+      extraServers: extraMcpServers,
+      projectMcpRoots: projectMcpRoots,
+    );
+
+    return warnings;
   }
 
   /// Phase B (control plane): session config JSON + env from CLI capabilities.
@@ -550,10 +531,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
     final warnings = <String>[];
     final cli = member.cli ?? preset?.cli ?? CliTool.claude;
-    final standaloneScope = StandaloneLaunchProfileScope(
-      workspaceId: trimmedWorkspaceId,
-      sessionId: trimmedSessionId,
-    );
+    // Path keys only — Simple has no team identity; teamId mirrors workspaceId
+    // so sessionToolDir / append-prompt helpers keep a stable scope.
     final scope = LaunchProfileScope(
       workspaceId: trimmedWorkspaceId,
       teamId: trimmedWorkspaceId,
@@ -561,46 +540,44 @@ class ConfigProfileService implements ConfigProfileDelegate {
       cliTeamName: trimmedSessionId,
     );
 
-    return _withStandaloneScope(standaloneScope, () async {
-      final cap = _cliRegistry.capability<ConfigProfileCapability>(cli);
-      if (cap == null) {
-        return TeamLaunchOutcome(
-          environment: const {},
-          warnings: [...warnings, 'unknown_cli_${cli.value}'],
-        );
-      }
-
-      ConfigProfileLaunchContribution contribution;
-      try {
-        contribution = await cap.contributeLaunch(
-          ConfigProfileLaunchContext(
-            workspaceId: trimmedWorkspaceId,
-            teamId: '',
-            sessionId: trimmedSessionId,
-            scope: scope,
-            member: member,
-            standaloneScope: standaloneScope,
-            members: [member],
-            workingDirectory: workingDirectory,
-            additionalDirectories: additionalDirectories,
-            paths: this,
-            catalog: catalog,
-            busIdle: busIdle,
-            preset: preset,
-          ),
-        );
-      } on Object catch (e) {
-        return TeamLaunchOutcome(
-          environment: const {},
-          warnings: [...warnings, 'config_profile_${cli.value}: $e'],
-        );
-      }
-
+    final cap = _cliRegistry.capability<ConfigProfileCapability>(cli);
+    if (cap == null) {
       return TeamLaunchOutcome(
-        environment: contribution.environment,
-        warnings: [...warnings, ...contribution.warnings],
+        environment: const {},
+        warnings: [...warnings, 'unknown_cli_${cli.value}'],
       );
-    });
+    }
+
+    ConfigProfileLaunchContribution contribution;
+    try {
+      contribution = await cap.contributeLaunch(
+        ConfigProfileLaunchContext(
+          workspaceId: trimmedWorkspaceId,
+          teamId: '',
+          sessionId: trimmedSessionId,
+          scope: scope,
+          team: null,
+          member: member,
+          members: [member],
+          workingDirectory: workingDirectory,
+          additionalDirectories: additionalDirectories,
+          paths: this,
+          catalog: catalog,
+          busIdle: busIdle,
+          preset: preset,
+        ),
+      );
+    } on Object catch (e) {
+      return TeamLaunchOutcome(
+        environment: const {},
+        warnings: [...warnings, 'config_profile_${cli.value}: $e'],
+      );
+    }
+
+    return TeamLaunchOutcome(
+      environment: contribution.environment,
+      warnings: [...warnings, ...contribution.warnings],
+    );
   }
 
   /// Stages Simple session launch mutations into [LaunchManifest].
@@ -692,21 +669,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final executor = manifestExecutor ?? const ManifestExecutor();
     await executor.flush(manifest: staged.manifest, targetFs: fs, sourceFs: fs);
     return staged.outcome;
-  }
-
-  Future<T> _withStandaloneScope<T>(
-    StandaloneLaunchProfileScope scope,
-    Future<T> Function() action,
-  ) async {
-    if (_activeStandaloneScope != null) {
-      return action();
-    }
-    _activeStandaloneScope = scope;
-    try {
-      return await action();
-    } finally {
-      _activeStandaloneScope = null;
-    }
   }
 
   /// Stages team launch mutations into [LaunchManifest] without touching the

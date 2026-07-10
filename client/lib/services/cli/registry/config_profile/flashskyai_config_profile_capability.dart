@@ -51,14 +51,6 @@ final class FlashskyaiConfigProfileCapability
   Future<void> ensureSessionProfile(ConfigProfileSessionContext ctx) async {
     final delegate = ctx.paths;
     await delegate.layout.ensureAppToolLayout(toolId);
-    final standalone = ctx.standaloneScope;
-    if (standalone != null) {
-      await _ensureSessionDefaultsAt(
-        delegate,
-        standaloneSessionToolDir(delegate, standalone, toolId),
-      );
-      return;
-    }
     await _ensureSessionDefaults(
       delegate,
       ctx.workspaceId,
@@ -71,11 +63,6 @@ final class FlashskyaiConfigProfileCapability
   Future<ConfigProfileLaunchContribution> contributeLaunch(
     ConfigProfileLaunchContext ctx,
   ) async {
-    final standalone = ctx.standaloneScope;
-    if (standalone != null) {
-      return _contributeStandaloneLaunch(ctx, standalone);
-    }
-
     final delegate = ctx.paths;
     final scope = ctx.scope;
     final workingDirectory = ctx.workingDirectory ?? '';
@@ -110,11 +97,15 @@ final class FlashskyaiConfigProfileCapability
       launchedMember: ctx.member,
       forceTeamLeadDelegateMode: ctx.team?.forceTeamLeadDelegateMode ?? false,
       mixed: ctx.team?.teamMode == TeamMode.mixed,
+      simple: ctx.isSimple,
       busIdle: ctx.busIdle,
       effortLevel: _resolveFlashskyaiEffort(
         team: ctx.team,
         member: ctx.member,
-        model: ctx.member?.model ?? '',
+        model: presetModelId(ctx.preset).isNotEmpty
+            ? presetModelId(ctx.preset)
+            : (ctx.member?.model ?? ''),
+        profileEffort: ctx.preset?.effort ?? '',
       ),
     );
 
@@ -164,142 +155,6 @@ final class FlashskyaiConfigProfileCapability
     await delegate.writeJsonIfChanged(file, {...defaultMetadata, ...existing});
   }
 
-  Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
-    ConfigProfileLaunchContext ctx,
-    StandaloneLaunchProfileScope standalone,
-  ) async {
-    final delegate = ctx.paths;
-    final member = ctx.member ?? (throw StateError('Simple launch requires plan.member'));
-    final memberToolDir = standaloneSessionToolDir(
-      delegate,
-      standalone,
-      toolId,
-    );
-    final scope = launchScopeForStandalone(standalone);
-    final workingDirectory = ctx.workingDirectory ?? '';
-    final warnings = <String>[];
-    if (ctx.crossMachine) {
-      final copied =
-          await CrossMachineCredentialBridge.materializeFlashskyaiLlmConfig(
-            catalog: ctx.catalog,
-            work: delegate,
-          );
-      if (!copied) {
-        warnings.add('flashskyai_llm_config_missing');
-      }
-    }
-
-    await _provisionWorkspaceTrust(
-      delegate: delegate,
-      workspaceId: scope.workspaceId,
-      workingDirectory: workingDirectory,
-      additionalDirectories: ctx.additionalDirectories,
-    );
-    await _writeMetadataAt(
-      delegate,
-      memberToolDir,
-      workingDirectory,
-      additionalDirectories: ctx.additionalDirectories,
-    );
-    await _writeStandaloneMemberProfile(
-      delegate: delegate,
-      memberToolDir: memberToolDir,
-      scope: scope,
-      member: member,
-      effortLevel: _resolveFlashskyaiEffort(
-        team: null,
-        member: member,
-        model: member.model,
-        profileEffort: ctx.preset?.effort ?? '',
-      ),
-    );
-
-    final environment = _standaloneLaunchEnvironment(delegate, memberToolDir);
-    if (member.isValid) {
-      final appendPath = await delegate.resolveAppendSystemPromptPath(
-        scope: scope,
-        tool: toolId,
-        member: member,
-      );
-      if (appendPath != null) {
-        environment[MemberRoleProvision.appendSystemPromptFileEnvKey] =
-            appendPath;
-      }
-    }
-
-    return ConfigProfileLaunchContribution(
-      environment: environment,
-      warnings: warnings,
-    );
-  }
-
-  Future<void> _writeMetadataAt(
-    ConfigProfileDelegate delegate,
-    String memberToolDir,
-    String workingDirectory, {
-    List<String> additionalDirectories = const [],
-  }) async {
-    final metadataPath = delegate.joinWork(
-      memberToolDir,
-      metadataFileName,
-    );
-    final directories = [workingDirectory, ...additionalDirectories];
-    if (await delegate.trustedProjectsAlreadyCurrent(
-      metadataPath,
-      directories,
-      defaultMetadata: defaultMetadata,
-    )) {
-      return;
-    }
-    final metadata = await delegate.metadataWithTrustedProjects(
-      metadataPath: metadataPath,
-      defaultMetadata: defaultMetadata,
-      defaultProjectConfig: defaultProjectConfig,
-      directories: directories,
-    );
-    await delegate.writeJsonIfChanged(metadataPath, metadata);
-  }
-
-  Future<void> _writeStandaloneMemberProfile({
-    required ConfigProfileDelegate delegate,
-    required String memberToolDir,
-    required LaunchProfileScope scope,
-    required TeamMemberConfig member,
-    required String effortLevel,
-  }) async {
-    await MemberRoleProvision.syncRolePromptFile(
-      fs: delegate.fs,
-      memberToolDir: memberToolDir,
-      member: member,
-      forceTeamLeadDelegateMode: false,
-      mixed: false,
-    );
-    final settingsFile = delegate.joinWork(
-      memberToolDir,
-      settingsFileName,
-    );
-    final settings = _memberSettings(member, effortLevel: effortLevel);
-    await delegate.writeSettingsFile(
-      settingsFile,
-      settings,
-      memberToolDir: memberToolDir,
-      tool: toolId,
-      workspaceId: scope.teamId,
-    );
-  }
-
-  Map<String, String> _standaloneLaunchEnvironment(
-    ConfigProfileDelegate delegate,
-    String memberToolDir,
-  ) {
-    return {
-      configDirEnvKey: memberToolDir,
-      sessionHomeDirEnvKey: memberToolDir,
-      'LLM_CONFIG_PATH': delegate.layout.appFlashskyaiLlmConfigFile,
-      'FLASHSKYAI_CODE_NO_FLICKER': '1',
-    };
-  }
-
   Future<void> _writeMetadata(
     ConfigProfileDelegate delegate,
     LaunchProfileScope scope,
@@ -337,6 +192,7 @@ final class FlashskyaiConfigProfileCapability
     required TeamMemberConfig? launchedMember,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
+    bool simple = false,
     MemberBusIdleEndpoint? busIdle,
     required String effortLevel,
   }) async {
@@ -351,6 +207,7 @@ final class FlashskyaiConfigProfileCapability
       member: selected,
       forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
       mixed: mixed,
+      simple: simple,
       busIdle: busIdle,
       effortLevel: effortLevel,
     );
@@ -404,6 +261,7 @@ final class FlashskyaiConfigProfileCapability
     required TeamMemberConfig member,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
+    bool simple = false,
     MemberBusIdleEndpoint? busIdle,
     required String effortLevel,
   }) async {
@@ -444,7 +302,8 @@ final class FlashskyaiConfigProfileCapability
       settings,
       memberToolDir: memberToolDir,
       tool: toolId,
-      teamId: scope.teamId,
+      teamId: simple ? null : scope.teamId,
+      workspaceId: simple ? scope.workspaceId : null,
     );
   }
 

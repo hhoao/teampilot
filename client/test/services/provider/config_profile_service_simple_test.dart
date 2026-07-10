@@ -16,7 +16,7 @@ import 'package:teampilot/services/storage/runtime_context.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
-String _standaloneSessionClaudeDir(
+String _simpleSessionClaudeDir(
   String base,
   String workspaceId,
   String sessionId,
@@ -56,10 +56,11 @@ void main() {
   });
 
   test(
-    'prepareSessionLaunch for flashskyai sets FLASHSKYAI_CONFIG_DIR under session runtime',
+    'prepareSimpleSessionLaunch for flashskyai sets FLASHSKYAI_CONFIG_DIR '
+    'under session runtime',
     () async {
-      const workspaceId = 'proj-standalone-fs';
-      const sessionId = 'sess-standalone-fs';
+      const workspaceId = 'proj-simple-fs';
+      const sessionId = 'sess-simple-fs';
       const flashskyaiPreset = CliPreset(
         id: 'p-fs',
         name: 'FlashskyAI',
@@ -73,9 +74,9 @@ void main() {
       final outcome = await service.prepareSimpleSessionLaunch(
         workspaceId: workspaceId,
         sessionId: sessionId,
-      runtimeBundle: const ConfigBundle(),
-      member: const TeamMemberConfig(id: 'solo', name: 'solo', agent: 'solo'),
-        workingDirectory: '/workspace/personal',
+        runtimeBundle: const ConfigBundle(),
+        member: const TeamMemberConfig(id: 'solo', name: 'solo', agent: 'solo'),
+        workingDirectory: '/workspace/simple',
         preset: flashskyaiPreset,
       );
 
@@ -95,23 +96,30 @@ void main() {
         flashskyaiDir,
       );
       expect(outcome.warnings, isEmpty);
+      expect(
+        await Directory(
+          p.join(base.path, 'identities-runtime', 'personal-default'),
+        ).exists(),
+        isFalse,
+      );
     },
   );
 
   test(
-    'prepareSessionLaunch for claude sets CLAUDE_CONFIG_DIR under session runtime',
+    'prepareSimpleSessionLaunch for claude sets CLAUDE_CONFIG_DIR under '
+    'session runtime without identities-runtime',
     () async {
-      const workspaceId = 'proj-standalone';
-      const sessionId = 'sess-standalone';
+      const workspaceId = 'proj-simple';
+      const sessionId = 'sess-simple';
       final outcome = await service.prepareSimpleSessionLaunch(
         workspaceId: workspaceId,
         sessionId: sessionId,
-      runtimeBundle: const ConfigBundle(),
-      member: const TeamMemberConfig(id: 'solo', name: 'solo', agent: 'solo'),
-        workingDirectory: '/workspace/personal',
+        runtimeBundle: const ConfigBundle(),
+        member: const TeamMemberConfig(id: 'solo', name: 'solo', agent: 'solo'),
+        workingDirectory: '/workspace/simple',
       );
 
-      final claudeDir = _standaloneSessionClaudeDir(
+      final claudeDir = _simpleSessionClaudeDir(
         base.path,
         workspaceId,
         sessionId,
@@ -119,14 +127,19 @@ void main() {
       expect(await Directory(claudeDir).exists(), isTrue);
       expect(outcome.environment['CLAUDE_CONFIG_DIR'], claudeDir);
       expect(outcome.warnings, isEmpty);
+      expect(
+        await Directory(p.join(base.path, 'identities-runtime')).exists(),
+        isFalse,
+      );
     },
   );
 
   test(
-    'prepareSessionLaunch for cursor pre-trusts workspace under runtime home',
+    'prepareSimpleSessionLaunch for cursor pre-trusts workspace under '
+    'runtime home',
     () async {
-      const workspaceId = 'proj-standalone-cursor';
-      const sessionId = 'sess-standalone-cursor';
+      const workspaceId = 'proj-simple-cursor';
+      const sessionId = 'sess-simple-cursor';
       const workspace = '/home/hhoa/git/hhoa/teampilot';
       const cursorPreset = CliPreset(
         id: 'p-cursor',
@@ -147,8 +160,8 @@ void main() {
       final outcome = await service.prepareSimpleSessionLaunch(
         workspaceId: workspaceId,
         sessionId: sessionId,
-      runtimeBundle: const ConfigBundle(),
-      member: const TeamMemberConfig(id: 'solo', name: 'solo', agent: 'solo'),
+        runtimeBundle: const ConfigBundle(),
+        member: const TeamMemberConfig(id: 'solo', name: 'solo', agent: 'solo'),
         workingDirectory: workspace,
         preset: cursorPreset,
       );

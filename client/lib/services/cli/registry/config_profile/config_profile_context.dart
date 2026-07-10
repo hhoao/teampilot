@@ -1,6 +1,5 @@
 import 'package:path/path.dart' as p;
 
-import '../../../../models/config_bundle.dart';
 import '../../../../models/cli_preset.dart';
 import '../../../../models/discoverable_member.dart';
 import '../../../../models/team_config.dart';
@@ -13,29 +12,7 @@ import 'config_profile_scope.dart';
 
 export 'config_profile_scope.dart';
 
-/// Personal workspace PTY CONFIG_DIR for [tool].
-String standaloneSessionToolDir(
-  ConfigProfilePaths paths,
-  StandaloneLaunchProfileScope scope,
-  String tool,
-) => paths.layout.sessionRuntimeToolDir(
-  scope.workspaceId,
-  scope.sessionId,
-  tool,
-);
-
-/// [LaunchProfileScope] for personal sessions (path keys only; use
-/// [standaloneSessionToolDir] for CONFIG_DIR).
-LaunchProfileScope launchScopeForStandalone(
-  StandaloneLaunchProfileScope scope,
-) => LaunchProfileScope(
-  workspaceId: scope.workspaceId,
-  teamId: scope.workspaceId,
-  sessionId: scope.sessionId,
-  cliTeamName: scope.sessionId,
-);
-
-/// Resolve CLI/provider/model/effort for a personal workspace from its active preset.
+/// Resolve CLI/provider/model/effort for a session from its active preset.
 /// Returns null if no preset is active, not found, or [activePresetId] is empty.
 CliPreset? resolveActivePreset(
   String? activePresetId,
@@ -48,18 +25,17 @@ CliPreset? resolveActivePreset(
   return null;
 }
 
-String standaloneProviderId(CliPreset? preset) {
+String presetProviderId(CliPreset? preset) {
   return preset?.provider.trim() ?? '';
 }
 
-String standaloneModelId(CliPreset? preset) {
+String presetModelId(CliPreset? preset) {
   return preset?.model.trim() ?? '';
 }
 
-CliTool standaloneCli(CliPreset? preset, {CliTool fallback = CliTool.claude}) {
+CliTool presetCli(CliPreset? preset, {CliTool fallback = CliTool.claude}) {
   return preset?.cli ?? fallback;
 }
-
 
 /// Path facade for [ConfigProfileCapability] implementations.
 abstract interface class ConfigProfilePaths {
@@ -154,7 +130,6 @@ class ConfigProfileSessionContext {
     required this.members,
     required this.paths,
     this.team,
-    this.standaloneScope,
     this.memberId,
   });
 
@@ -164,7 +139,6 @@ class ConfigProfileSessionContext {
   final List<TeamMemberConfig> members;
   final ConfigProfileDelegate paths;
   final TeamProfile? team;
-  final StandaloneLaunchProfileScope? standaloneScope;
   final String? memberId;
 }
 
@@ -183,7 +157,6 @@ class ConfigProfileLaunchContext {
     required this.catalog,
     this.leadSessionId,
     this.busIdle,
-    this.standaloneScope,
     this.preset,
     this.memberId,
     this.sessionExpertKey,
@@ -207,11 +180,14 @@ class ConfigProfileLaunchContext {
   final ConfigProfilePaths catalog;
   final String? leadSessionId;
   final MemberBusIdleEndpoint? busIdle;
-  final StandaloneLaunchProfileScope? standaloneScope;
   final CliPreset? preset;
   final String? memberId;
   final String? sessionExpertKey;
   final DiscoverableMember? resolvedExpert;
 
   bool get crossMachine => configProfileCrossMachine(catalog, paths);
+
+  /// True when launching Simple (unteamed). Team launches always pass a
+  /// non-empty [teamId] even when the [TeamProfile] object is omitted.
+  bool get isSimple => teamId.trim().isEmpty;
 }

@@ -127,14 +127,6 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
 
   @override
   Future<void> ensureSessionProfile(ConfigProfileSessionContext ctx) async {
-    final standalone = ctx.standaloneScope;
-    if (standalone != null) {
-      await _ensureSessionDefaultsAt(
-        ctx.paths,
-        standaloneSessionToolDir(ctx.paths, standalone, toolId),
-      );
-      return;
-    }
     await _ensureSessionDefaults(
       ctx.paths,
       ctx.workspaceId,
@@ -147,18 +139,21 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   Future<ConfigProfileLaunchContribution> contributeLaunch(
     ConfigProfileLaunchContext ctx,
   ) async {
-    final standalone = ctx.standaloneScope;
-    if (standalone != null) {
-      return _contributeStandaloneLaunch(ctx, standalone);
-    }
-
     final delegate = ctx.paths;
     final catalog = ctx.catalog;
     final scope = ctx.scope;
     final workingDirectory = ctx.workingDirectory ?? '';
     final team = ctx.team;
+    final simple = ctx.isSimple;
     final warnings = <String>[];
     final mixed = team?.teamMode == TeamMode.mixed;
+    final sessionId = scope.sessionId;
+    final stepSw = simple ? (Stopwatch()..start()) : null;
+    if (simple) {
+      appLogger.d(
+        '[session-lifecycle] contributeLaunch start session=$sessionId cli=claude',
+      );
+    }
 
     ClaudeLaunchExtras? claude;
     if (team != null) {
@@ -181,6 +176,39 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
           warnings.add('claude_provider_missing:${launched.id}');
         }
       }
+    } else if (simple) {
+      final member =
+          ctx.member ?? (throw StateError('Simple launch requires plan.member'));
+      final resolver = _claudeResolver(catalog);
+      final fromPreset = presetProviderId(ctx.preset);
+      final providerId = fromPreset.isNotEmpty
+          ? fromPreset
+          : member.provider.trim();
+      final settings = await resolver.resolve(
+        providerId.isNotEmpty ? providerId : null,
+      );
+      final resolvedProviderId = providerId.isNotEmpty
+          ? providerId
+          : (settings != null
+                ? (await _resolveSoleClaudeProviderId(catalog))
+                : null);
+      if (stepSw != null) {
+        _logClaudeContributeLaunchStep(
+          stepSw,
+          'resolveProviderSettings',
+          sessionId,
+          extra: 'providerId=${resolvedProviderId ?? ''}',
+        );
+      }
+      claude = ClaudeLaunchExtras(
+        settings: settings,
+        providerId: resolvedProviderId,
+        settingsByMember: settings == null
+            ? const {}
+            : {member.id: settings},
+      );
+    } else {
+      claude = const ClaudeLaunchExtras();
     }
 
     await _provisionWorkspaceTrust(
@@ -189,26 +217,43 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       workingDirectory: workingDirectory,
       additionalDirectories: ctx.additionalDirectories,
     );
+    if (stepSw != null) {
+      _logClaudeContributeLaunchStep(
+        stepSw,
+        'provisionWorkspaceTrust',
+        sessionId,
+      );
+    }
     await _writeMetadata(
       delegate,
       scope,
       workingDirectory,
       additionalDirectories: ctx.additionalDirectories,
     );
+    if (stepSw != null) {
+      _logClaudeContributeLaunchStep(stepSw, 'writeMetadata', sessionId);
+    }
     final effortLevel = _resolveClaudeEffort(
       team: team,
       member: ctx.member,
-      model: ctx.member?.model ?? '',
+      model: presetModelId(ctx.preset).isNotEmpty
+          ? presetModelId(ctx.preset)
+          : (ctx.member?.model ?? ''),
+      profileEffort: ctx.preset?.effort ?? '',
     );
     await _writeSettings(
       delegate,
       scope,
-      claude?.settings,
+      claude.settings,
       effortLevel: effortLevel,
       teammateMode: team?.claudeTeammateMode ?? 'in-process',
       mixed: mixed,
+      simple: simple,
     );
-    if (!mixed) {
+    if (stepSw != null) {
+      _logClaudeContributeLaunchStep(stepSw, 'writeSettings', sessionId);
+    }
+    if (!mixed && !simple) {
       await _writeRoster(
         delegate: delegate,
         scope: scope,
@@ -225,12 +270,20 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       team: team,
       members: ctx.members,
       launchedMember: ctx.member,
-      providerSettings: claude?.settings,
-      providerSettingsByMember: claude?.settingsByMember ?? const {},
+      providerSettings: claude.settings,
+      providerSettingsByMember: claude.settingsByMember,
       forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
       mixed: mixed,
+      simple: simple,
       busIdle: ctx.busIdle,
     );
+    if (stepSw != null) {
+      _logClaudeContributeLaunchStep(
+        stepSw,
+        'writeMemberProfiles',
+        sessionId,
+      );
+    }
 
     await _maybeLinkOfficialCredentials(
       delegate: delegate,
@@ -241,6 +294,14 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       launchedMember: ctx.member,
       warnings: warnings,
     );
+    if (stepSw != null) {
+      _logClaudeContributeLaunchStep(
+        stepSw,
+        'linkOfficialCredentials',
+        sessionId,
+        extra: 'warnings=${warnings.length}',
+      );
+    }
 
     final member = ctx.member;
     final environment = <String, String>{
@@ -258,7 +319,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
           member,
           memberId: scope.memberId,
         ),
-      if (!mixed) 'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
+      if (!mixed && !simple) 'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
       'CLAUDE_CODE_NO_FLICKER': '1',
       'MCP_TOOL_TIMEOUT': '$busToolTimeoutMs',
     };
@@ -269,10 +330,24 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         tool: toolId,
         member: member,
       );
+      if (stepSw != null) {
+        _logClaudeContributeLaunchStep(
+          stepSw,
+          'resolveAppendSystemPrompt',
+          sessionId,
+        );
+      }
       if (appendPath != null) {
         environment[MemberRoleProvision.appendSystemPromptFileEnvKey] =
             appendPath;
       }
+    }
+
+    if (stepSw != null) {
+      stepSw.stop();
+      appLogger.d(
+        '[session-lifecycle] contributeLaunch done session=$sessionId cli=claude',
+      );
     }
 
     return ConfigProfileLaunchContribution(
@@ -305,156 +380,6 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final file = delegate.joinWork(memberToolDir, metadataFileName);
     final existing = await delegate.readMetadataFile(file, defaultMetadata);
     await delegate.writeJsonIfChanged(file, {...defaultMetadata, ...existing});
-  }
-
-  Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
-    ConfigProfileLaunchContext ctx,
-    StandaloneLaunchProfileScope standalone,
-  ) async {
-    final sessionId = standalone.sessionId;
-    final stepSw = Stopwatch()..start();
-    appLogger.d(
-      '[session-lifecycle] contributeLaunch start session=$sessionId cli=claude',
-    );
-
-    final delegate = ctx.paths;
-    final catalog = ctx.catalog;
-    final member = ctx.member ?? (throw StateError('Simple launch requires plan.member'));
-    final memberToolDir = standaloneSessionToolDir(
-      delegate,
-      standalone,
-      toolId,
-    );
-    final scope = launchScopeForStandalone(standalone);
-    final workingDirectory = ctx.workingDirectory ?? '';
-    final warnings = <String>[];
-
-    final resolver = _claudeResolver(catalog);
-    final providerId = standaloneProviderId(ctx.preset);
-    final settings = await resolver.resolve(
-      providerId.isNotEmpty ? providerId : null,
-    );
-    final resolvedProviderId = providerId.isNotEmpty
-        ? providerId
-        : (settings != null
-              ? (await _resolveSoleClaudeProviderId(catalog))
-              : null);
-    _logClaudeContributeLaunchStep(
-      stepSw,
-      'resolveProviderSettings',
-      sessionId,
-      extra: 'providerId=${resolvedProviderId ?? ''}',
-    );
-
-    await _provisionWorkspaceTrust(
-      delegate: delegate,
-      workspaceId: scope.workspaceId,
-      workingDirectory: workingDirectory,
-      additionalDirectories: ctx.additionalDirectories,
-    );
-    _logClaudeContributeLaunchStep(
-      stepSw,
-      'provisionWorkspaceTrust',
-      sessionId,
-    );
-
-    await _writeMetadataAt(
-      delegate,
-      memberToolDir,
-      workingDirectory,
-      additionalDirectories: ctx.additionalDirectories,
-    );
-    _logClaudeContributeLaunchStep(stepSw, 'writeMetadata', sessionId);
-
-    final effortLevel = _resolveClaudeEffort(
-      team: null,
-      member: member,
-      model: ctx.preset?.model ?? member.model,
-      profileEffort: ctx.preset?.effort ?? '',
-    );
-    await _writeSettingsAt(
-      delegate,
-      memberToolDir,
-      scope,
-      settings,
-      effortLevel: effortLevel,
-      standalone: true,
-    );
-    _logClaudeContributeLaunchStep(stepSw, 'writeSettings', sessionId);
-
-    await _writeStandaloneMemberProfile(
-      delegate: delegate,
-      memberToolDir: memberToolDir,
-      scope: scope,
-      member: member,
-      providerSettings: settings,
-      team: null,
-      effortLevel: effortLevel,
-    );
-    _logClaudeContributeLaunchStep(
-      stepSw,
-      'writeStandaloneMemberProfile',
-      sessionId,
-    );
-
-    final trimmedProviderId = resolvedProviderId?.trim() ?? '';
-    if (trimmedProviderId.isNotEmpty &&
-        settings != null &&
-        isOfficialClaudeSettings(settings)) {
-      await _linkOfficialClaudeCredentials(
-        delegate: delegate,
-        catalog: catalog,
-        crossMachine: ctx.crossMachine,
-        sessionClaudeDir: memberToolDir,
-        providerId: trimmedProviderId,
-        warnings: warnings,
-      );
-      _logClaudeContributeLaunchStep(
-        stepSw,
-        'linkOfficialCredentials',
-        sessionId,
-        extra: 'warnings=${warnings.length}',
-      );
-    }
-
-    final environment = <String, String>{
-      'CLAUDE_CONFIG_DIR': memberToolDir,
-      if (member.isValid)
-        settingsFileEnvKey: delegate.joinWork(
-          memberToolDir,
-          'settings',
-          '${ClaudeTeamRosterService.safeClaudePathSegment(member.id)}.json',
-        ),
-      'CLAUDE_CODE_NO_FLICKER': '1',
-      'MCP_TOOL_TIMEOUT': '$busToolTimeoutMs',
-    };
-
-    if (member.isValid) {
-      final appendPath = await delegate.resolveAppendSystemPromptPath(
-        scope: scope,
-        tool: toolId,
-        member: member,
-      );
-      _logClaudeContributeLaunchStep(
-        stepSw,
-        'resolveAppendSystemPrompt',
-        sessionId,
-      );
-      if (appendPath != null) {
-        environment[MemberRoleProvision.appendSystemPromptFileEnvKey] =
-            appendPath;
-      }
-    }
-
-    stepSw.stop();
-    appLogger.d(
-      '[session-lifecycle] contributeLaunch done session=$sessionId cli=claude',
-    );
-
-    return ConfigProfileLaunchContribution(
-      environment: environment,
-      warnings: warnings,
-    );
   }
 
   Future<String?> _resolveSoleClaudeProviderId(
@@ -579,103 +504,6 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     return resolveCredentialBinding(provider);
   }
 
-  Future<void> _writeMetadataAt(
-    ConfigProfileDelegate delegate,
-    String memberToolDir,
-    String workingDirectory, {
-    List<String> additionalDirectories = const [],
-  }) async {
-    final metadataPath = delegate.joinWork(
-      memberToolDir,
-      metadataFileName,
-    );
-    final metadata = await delegate.metadataWithTrustedProjects(
-      metadataPath: metadataPath,
-      defaultMetadata: defaultMetadata,
-      defaultProjectConfig: defaultProjectConfig,
-      directories: [workingDirectory, ...additionalDirectories],
-    );
-    await delegate.fs.atomicWrite(
-      metadataPath,
-      const JsonEncoder.withIndent('  ').convert(metadata),
-    );
-  }
-
-  Future<void> _writeSettingsAt(
-    ConfigProfileDelegate delegate,
-    String memberToolDir,
-    LaunchProfileScope scope,
-    Map<String, Object?>? providerSettings, {
-    required String effortLevel,
-    String teammateMode = 'in-process',
-    bool mixed = false,
-    bool standalone = false,
-  }) async {
-    final file = delegate.joinWork(memberToolDir, 'settings.json');
-    final settings = _teamSettings(
-      providerSettings,
-      effortLevel: effortLevel,
-      teammateMode: teammateMode,
-      mixed: mixed,
-      standalone: standalone,
-    );
-    await delegate.writeSettingsFile(
-      file,
-      settings,
-      memberToolDir: memberToolDir,
-      tool: toolId,
-      teamId: standalone ? null : scope.teamId,
-      workspaceId: standalone ? scope.teamId : null,
-    );
-    await _approveProviderApiKeyInMetadata(
-      delegate,
-      memberToolDir,
-      providerSettings,
-    );
-  }
-
-  Future<void> _writeStandaloneMemberProfile({
-    required ConfigProfileDelegate delegate,
-    required String memberToolDir,
-    required LaunchProfileScope scope,
-    required TeamMemberConfig member,
-    required Map<String, Object?>? providerSettings,
-    required TeamProfile? team,
-    required String effortLevel,
-  }) async {
-    await MemberRoleProvision.syncRolePromptFile(
-      fs: delegate.fs,
-      memberToolDir: memberToolDir,
-      member: member,
-      forceTeamLeadDelegateMode: false,
-      mixed: false,
-    );
-    final file = delegate.joinWork(
-      memberToolDir,
-      'settings',
-      '${ClaudeTeamRosterService.safeClaudePathSegment(member.id)}.json',
-    );
-    final settings = _memberSettings(
-      providerSettings,
-      member,
-      effortLevel: effortLevel,
-      mixed: false,
-      standalone: true,
-    );
-    await delegate.writeSettingsFile(
-      file,
-      settings,
-      memberToolDir: memberToolDir,
-      tool: toolId,
-      workspaceId: scope.teamId,
-    );
-    await _approveProviderApiKeyInMetadata(
-      delegate,
-      memberToolDir,
-      providerSettings,
-    );
-  }
-
   Future<void> _writeSettings(
     ConfigProfileDelegate delegate,
     LaunchProfileScope scope,
@@ -683,42 +511,33 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required String effortLevel,
     required String teammateMode,
     required bool mixed,
+    bool simple = false,
   }) async {
-    final file = delegate.joinWork(
-      delegate.sessionToolDir(
-        scope.workspaceId,
-        scope.sessionId,
-        toolId,
-        memberId: scope.memberId,
-      ),
-      'settings.json',
+    final memberToolDir = delegate.sessionToolDir(
+      scope.workspaceId,
+      scope.sessionId,
+      toolId,
+      memberId: scope.memberId,
     );
+    final file = delegate.joinWork(memberToolDir, 'settings.json');
     final settings = _teamSettings(
       providerSettings,
       effortLevel: effortLevel,
       teammateMode: teammateMode,
       mixed: mixed,
+      simple: simple,
     );
     await delegate.writeSettingsFile(
       file,
       settings,
-      memberToolDir: delegate.sessionToolDir(
-        scope.workspaceId,
-        scope.sessionId,
-        toolId,
-        memberId: scope.memberId,
-      ),
+      memberToolDir: memberToolDir,
       tool: toolId,
-      teamId: scope.teamId,
+      teamId: simple ? null : scope.teamId,
+      workspaceId: simple ? scope.workspaceId : null,
     );
     await _approveProviderApiKeyInMetadata(
       delegate,
-      delegate.sessionToolDir(
-        scope.workspaceId,
-        scope.sessionId,
-        toolId,
-        memberId: scope.memberId,
-      ),
+      memberToolDir,
       providerSettings,
     );
   }
@@ -815,6 +634,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required Map<String, Map<String, Object?>> providerSettingsByMember,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
+    bool simple = false,
     MemberBusIdleEndpoint? busIdle,
   }) async {
     final selected = launchedMember;
@@ -838,6 +658,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
             providerSettingsByMember[member.id] ?? providerSettings,
         forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
         mixed: mixed,
+        simple: simple,
         busIdle: busIdle,
       );
     }
@@ -851,6 +672,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required Map<String, Object?>? providerSettings,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
+    bool simple = false,
     MemberBusIdleEndpoint? busIdle,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
@@ -888,6 +710,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       member,
       effortLevel: effortLevel,
       mixed: mixed,
+      simple: simple,
     );
     settings = MemberRoleProvision.applyTeamSessionPolicy(
       settings,
@@ -907,7 +730,8 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       settings,
       memberToolDir: memberToolDir,
       tool: toolId,
-      teamId: scope.teamId,
+      teamId: simple ? null : scope.teamId,
+      workspaceId: simple ? scope.workspaceId : null,
     );
     await _approveProviderApiKeyInMetadata(
       delegate,
@@ -950,7 +774,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required String effortLevel,
     required String teammateMode,
     required bool mixed,
-    bool standalone = false,
+    bool simple = false,
   }) {
     final settings = <String, Object?>{
       if (providerSettings != null) ...providerSettings,
@@ -965,7 +789,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         }
       }
     }
-    if (mixed || standalone) {
+    if (mixed || simple) {
       env.remove('CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS');
     } else {
       env['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'] = '1';
@@ -976,7 +800,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     settings['env'] = env;
     settings['effortLevel'] = effortLevel;
     settings['skipDangerousModePermissionPrompt'] = true;
-    if (mixed || standalone) {
+    if (mixed || simple) {
       settings.remove('teammateMode');
     } else {
       settings['teammateMode'] = teammateMode;
@@ -1006,14 +830,14 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     TeamMemberConfig member, {
     required String effortLevel,
     required bool mixed,
-    bool standalone = false,
+    bool simple = false,
   }) {
     final settings = _teamSettings(
       providerSettings,
       effortLevel: effortLevel,
       teammateMode: 'in-process',
       mixed: mixed,
-      standalone: standalone,
+      simple: simple,
     );
     final model = member.model.trim();
     if (model.isNotEmpty) {

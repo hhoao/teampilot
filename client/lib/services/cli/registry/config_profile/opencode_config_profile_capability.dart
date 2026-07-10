@@ -237,16 +237,6 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
   Future<ConfigProfileLaunchContribution> contributeLaunch(
     ConfigProfileLaunchContext ctx,
   ) async {
-    final standalone = ctx.standaloneScope;
-    if (standalone != null) {
-      return _contributeStandaloneLaunch(ctx, standalone);
-    }
-    return _contributeTeamLaunch(ctx);
-  }
-
-  Future<ConfigProfileLaunchContribution> _contributeTeamLaunch(
-    ConfigProfileLaunchContext ctx,
-  ) async {
     final paths = ctx.paths;
     final opencodeDir = paths.sessionToolDir(
       ctx.scope.workspaceId,
@@ -275,24 +265,36 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
       ).resolveForLaunch(team: team, member: member);
       if (launchProvider == null) {
         warnings.add('opencode_provider_missing');
-      } else {
-        config = mergeOpencodeProvider(config, launchProvider);
-        final effort = _resolveOpencodeEffort(
-          team: team,
-          member: member,
-          provider: launchProvider,
-          profileEffort: '',
-        );
-        if (effort.isNotEmpty) {
-          config = mergeOpencodeReasoningEffort(
-            config,
-            launchProvider,
-            effort,
-            memberModel: member?.model,
-          );
-        }
-        changed = true;
       }
+    } else if (ctx.isSimple) {
+      final required =
+          member ?? (throw StateError('Simple launch requires plan.member'));
+      final resolver = _resolver(ctx.catalog);
+      final fromPreset = presetProviderId(ctx.preset);
+      final fromMember = required.provider.trim();
+      launchProvider = await resolver.findById(
+        fromPreset.isNotEmpty ? fromPreset : fromMember,
+      );
+      launchProvider ??= await resolver.resolveSole();
+    }
+
+    if (launchProvider != null) {
+      config = mergeOpencodeProvider(config, launchProvider);
+      final effort = _resolveOpencodeEffort(
+        team: team,
+        member: member,
+        provider: launchProvider,
+        profileEffort: ctx.preset?.effort ?? '',
+      );
+      if (effort.isNotEmpty) {
+        config = mergeOpencodeReasoningEffort(
+          config,
+          launchProvider,
+          effort,
+          memberModel: member?.model,
+        );
+      }
+      changed = true;
     }
 
     if (await _writeMemberIdentity(
@@ -360,87 +362,6 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     final authContent = launchProvider == null
         ? null
         : await _readStoredAuthContent(paths, launchProvider);
-    if (authContent != null) {
-      environment[authContentEnv] = authContent;
-    }
-
-    return ConfigProfileLaunchContribution(
-      environment: environment,
-      warnings: warnings,
-    );
-  }
-
-  Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
-    ConfigProfileLaunchContext ctx,
-    StandaloneLaunchProfileScope standalone,
-  ) async {
-    final paths = ctx.paths;
-    final opencodeDir = standaloneSessionToolDir(paths, standalone, toolId);
-    await paths.fs.ensureDir(opencodeDir);
-
-    final configPath = paths.joinWork(
-      opencodeDir,
-      opencodeConfigFileName,
-    );
-    var config = await paths.readSettingsFile(configPath);
-    var changed = false;
-
-    final resolver = _resolver(ctx.catalog);
-    var provider = await resolver.findById(standaloneProviderId(ctx.preset));
-    provider ??= await resolver.resolveSole();
-    if (provider != null) {
-      config = mergeOpencodeProvider(config, provider);
-      final member = (ctx.member ?? (throw StateError('Simple launch requires plan.member')));
-      final effort = _resolveOpencodeEffort(
-        team: null,
-        member: member,
-        provider: provider,
-        profileEffort: ctx.preset?.effort ?? '',
-      );
-      if (effort.isNotEmpty) {
-        config = mergeOpencodeReasoningEffort(
-          config,
-          provider,
-          effort,
-          memberModel: member.model,
-        );
-      }
-      changed = true;
-    }
-
-    if (await _writeMemberIdentity(
-      paths: paths,
-      opencodeDir: opencodeDir,
-      member: (ctx.member ?? (throw StateError('Simple launch requires plan.member'))),
-      forceTeamLeadDelegateMode: false,
-      mixed: false,
-    )) {
-      changed = true;
-    }
-
-    if (changed) {
-      await paths.writeJsonIfChanged(configPath, config);
-    }
-
-    final warnings = <String>[];
-    if (provider != null && provider.isOfficial && ctx.crossMachine) {
-      final copied = await CrossMachineCredentialBridge.materializeOpencodeAuth(
-        catalog: ctx.catalog,
-        work: paths,
-        providerId: provider.id,
-      );
-      if (!copied) {
-        warnings.add('opencode_credentials_missing');
-      }
-    }
-
-    final environment = <String, String>{
-      configDirEnv: paths.normalizeWork(opencodeDir),
-      dataDirEnv: paths.normalizeWork(opencodeDir),
-    };
-    final authContent = provider == null
-        ? null
-        : await _readStoredAuthContent(paths, provider);
     if (authContent != null) {
       environment[authContentEnv] = authContent;
     }
