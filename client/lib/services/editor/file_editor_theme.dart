@@ -1,18 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
-import 'package:re_highlight/languages/bash.dart';
-import 'package:re_highlight/languages/dart.dart';
-import 'package:re_highlight/languages/json.dart';
-import 'package:re_highlight/languages/markdown.dart';
-import 'package:re_highlight/languages/python.dart';
-import 'package:re_highlight/languages/rust.dart';
-import 'package:re_highlight/languages/typescript.dart';
-import 'package:re_highlight/languages/xml.dart';
-import 'package:re_highlight/languages/yaml.dart';
-import 'package:re_highlight/re_highlight.dart';
-import 'package:re_highlight/styles/atom-one-dark.dart';
-import 'package:re_highlight/styles/atom-one-light.dart';
 
 import '../../theme/app_fonts.dart';
 import '../../theme/app_typography_scale.dart';
@@ -166,35 +154,6 @@ String? highlightLanguageKeyForPath(String filePath) {
   };
 }
 
-Mode? highlightModeForKey(String key) => switch (key) {
-  'dart' => langDart,
-  'json' => langJson,
-  'yaml' => langYaml,
-  'markdown' => langMarkdown,
-  'python' => langPython,
-  'rust' => langRust,
-  'typescript' => langTypescript,
-  'bash' => langBash,
-  'xml' => langXml,
-  _ => null,
-};
-
-CodeHighlightTheme? codeHighlightThemeFor(
-  BuildContext context,
-  String filePath,
-) {
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-  final key = highlightLanguageKeyForPath(filePath);
-  final mode = key == null ? null : highlightModeForKey(key);
-  if (mode == null || key == null) {
-    return null;
-  }
-  return CodeHighlightTheme(
-    languages: {key: CodeHighlightThemeMode(mode: mode)},
-    theme: isDark ? atomOneDarkTheme : atomOneLightTheme,
-  );
-}
-
 /// Editor monospace size from [AppTypographyTheme.mono].
 double fileEditorFontSize(BuildContext context) => context.appTypography.mono;
 
@@ -217,6 +176,5 @@ CodeEditorStyle codeEditorStyleFor(
     highlightColor: cs.tertiary.withValues(alpha: 0.35),
     cursorColor: cs.primary,
     cursorLineColor: cs.primary.withValues(alpha: 0.12),
-    codeTheme: codeHighlightThemeFor(context, filePath),
   );
 }
