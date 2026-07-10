@@ -27,12 +27,28 @@ TextEditingValue insertNewlineAtSelection(TextEditingController controller) {
 /// owns matching Enter / Mod+Enter against the catalog and invokes these ids
 /// unconditionally when `inCompose` is true; the field only needs to own
 /// *what happens* when its command fires, for as long as it holds focus.
+///
+/// `compose.submit` and `compose.newline` are registered independently so a
+/// field can keep newline active while temporarily un-registering submit
+/// (e.g. while its own `@` / `/` suggestion overlay wants to claim bare
+/// Enter to pick a suggestion instead of submitting).
 abstract final class ComposeCommandBindings {
-  /// Registers handlers for the currently-focused compose field and returns
-  /// a disposer that unregisters them — call on focus loss / widget dispose.
-  static VoidCallback register({
+  /// Registers the `compose.newline` handler and returns a disposer.
+  static VoidCallback registerNewline({
     required CommandBus bus,
     required TextEditingController controller,
+  }) {
+    void newlineHandler() {
+      controller.value = insertNewlineAtSelection(controller);
+    }
+
+    bus.register(CommandIds.composeNewline, newlineHandler);
+    return () => bus.unregister(CommandIds.composeNewline, newlineHandler);
+  }
+
+  /// Registers the `compose.submit` handler and returns a disposer.
+  static VoidCallback registerSubmit({
+    required CommandBus bus,
     required VoidCallback onSubmit,
     required bool Function() canSubmit,
   }) {
@@ -40,16 +56,30 @@ abstract final class ComposeCommandBindings {
       if (canSubmit()) onSubmit();
     }
 
-    void newlineHandler() {
-      controller.value = insertNewlineAtSelection(controller);
-    }
-
     bus.register(CommandIds.composeSubmit, submitHandler);
-    bus.register(CommandIds.composeNewline, newlineHandler);
+    return () => bus.unregister(CommandIds.composeSubmit, submitHandler);
+  }
 
+  /// Registers both handlers for the currently-focused compose field and
+  /// returns a disposer that unregisters them — call on focus loss / widget
+  /// dispose. Convenience for callers with no suggestion overlay to gate
+  /// submit against; see [registerSubmit] / [registerNewline] to gate them
+  /// independently.
+  static VoidCallback register({
+    required CommandBus bus,
+    required TextEditingController controller,
+    required VoidCallback onSubmit,
+    required bool Function() canSubmit,
+  }) {
+    final disposeNewline = registerNewline(bus: bus, controller: controller);
+    final disposeSubmit = registerSubmit(
+      bus: bus,
+      onSubmit: onSubmit,
+      canSubmit: canSubmit,
+    );
     return () {
-      bus.unregister(CommandIds.composeSubmit, submitHandler);
-      bus.unregister(CommandIds.composeNewline, newlineHandler);
+      disposeNewline();
+      disposeSubmit();
     };
   }
 }

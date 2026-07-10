@@ -82,7 +82,8 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   Timer? _focusClearTimer;
   Offset _menuAnchor = Offset.zero;
   BoxConstraints? _fieldConstraints;
-  VoidCallback? _composeCommandsDisposer;
+  VoidCallback? _newlineDisposer;
+  VoidCallback? _submitDisposer;
 
   @override
   void initState() {
@@ -132,18 +133,37 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   }
 
   void _registerComposeCommands() {
-    _composeCommandsDisposer?.call();
-    _composeCommandsDisposer = ComposeCommandBindings.register(
+    _newlineDisposer?.call();
+    _newlineDisposer = ComposeCommandBindings.registerNewline(
       bus: context.read<CommandBus>(),
       controller: widget.controller,
-      onSubmit: widget.onSubmit,
-      canSubmit: widget.canSubmit,
     );
+    _syncSubmitRegistration();
   }
 
   void _unregisterComposeCommands() {
-    _composeCommandsDisposer?.call();
-    _composeCommandsDisposer = null;
+    _newlineDisposer?.call();
+    _newlineDisposer = null;
+    _submitDisposer?.call();
+    _submitDisposer = null;
+  }
+
+  /// Keeps `compose.submit` registered only while focused and the `@` / `/`
+  /// suggestion overlay is closed. While the overlay is open, Enter must
+  /// only pick the highlighted suggestion (handled locally in
+  /// [_handleComposeKey]) — not also fire `compose.submit` via the root
+  /// dispatcher, so submit is un-registered rather than made a no-op (a
+  /// registered no-op would still mark the key "handled" on the bus without
+  /// telling the dispatcher/focus chain anything changed).
+  void _syncSubmitRegistration() {
+    _submitDisposer?.call();
+    _submitDisposer = (widget.focusNode.hasFocus && !_overlayVisible)
+        ? ComposeCommandBindings.registerSubmit(
+            bus: context.read<CommandBus>(),
+            onSubmit: widget.onSubmit,
+            canSubmit: widget.canSubmit,
+          )
+        : null;
   }
 
   bool _handleHardwareKey(KeyEvent event) {
@@ -214,6 +234,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
       _suggestions = const [];
       _selectedIndex = 0;
     });
+    _syncSubmitRegistration();
   }
 
   void _refreshSuggestions({bool immediate = false}) {
@@ -275,6 +296,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
           ? 0
           : _selectedIndex.clamp(0, suggestions.length - 1);
     });
+    _syncSubmitRegistration();
     _scheduleMenuAnchorUpdate();
   }
 
