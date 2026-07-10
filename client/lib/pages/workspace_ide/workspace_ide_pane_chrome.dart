@@ -2,20 +2,38 @@ import 'package:flutter/material.dart';
 
 import 'package:panes/panes.dart';
 
-/// Minimal "Islands" chrome wrapper for a single [WorkspaceIdeShell] region.
+/// Medium "Islands" chrome for a single [WorkspaceIdeShell] region.
 ///
-/// Task 5 keeps this deliberately thin: it isolates each region behind a
-/// [RepaintBoundary] (so toggling a sibling pane does not repaint the whole
-/// tree) and lets Task 7 layer in gutters / rounded surfaces without touching
-/// the shell wiring.
+/// Applies a shared gutter and rounded clip so panes read as floating panels
+/// without replacing TeamPilot product chrome (tab strips, tool rails, etc.).
 class WorkspaceIdePaneChrome extends StatelessWidget {
   const WorkspaceIdePaneChrome({required this.child, super.key});
+
+  /// Half-gutter on each pane edge → ~[gutter] between adjacent panes.
+  static const double paneInset = 4;
+
+  /// Outer padding around the whole IDE shell content.
+  static const double shellGutter = 8;
+
+  static const double paneRadius = 10;
 
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(child: child);
+    final cs = Theme.of(context).colorScheme;
+    return RepaintBoundary(
+      child: Padding(
+        padding: const EdgeInsets.all(paneInset),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(paneRadius),
+          child: ColoredBox(
+            color: cs.surface,
+            child: child,
+          ),
+        ),
+      ),
+    );
   }
 }
 

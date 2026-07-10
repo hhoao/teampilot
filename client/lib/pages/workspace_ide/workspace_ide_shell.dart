@@ -278,21 +278,24 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
             final prefs = layoutState.preferences;
             return PaneTheme(
               data: workspaceIdePaneTheme(cs),
-              child: PaneOverlayHost(
-                showLeft: effective.overlayLeft,
-                showRight: effective.overlayRight,
-                leftWidth: prefs.sidebarWidth,
-                rightWidth: prefs.rightToolsWidth,
-                left: WorkspaceIdePaneChrome(child: widget.left),
-                right: WorkspaceIdePaneChrome(child: widget.right),
-                onDismissLeft: () =>
-                    context.read<LayoutCubit>().setSidebarVisible(false),
-                onDismissRight: () =>
-                    context.read<LayoutCubit>().setRightToolsVisible(false),
-                child: MultiPane(
-                  direction: Axis.vertical,
-                  controller: _rootController,
-                  paneBuilder: _rootPaneBuilder,
+              child: Padding(
+                padding: const EdgeInsets.all(WorkspaceIdePaneChrome.shellGutter),
+                child: PaneOverlayHost(
+                  showLeft: effective.overlayLeft,
+                  showRight: effective.overlayRight,
+                  leftWidth: prefs.sidebarWidth,
+                  rightWidth: prefs.rightToolsWidth,
+                  left: WorkspaceIdePaneChrome(child: widget.left),
+                  right: WorkspaceIdePaneChrome(child: widget.right),
+                  onDismissLeft: () =>
+                      context.read<LayoutCubit>().setSidebarVisible(false),
+                  onDismissRight: () =>
+                      context.read<LayoutCubit>().setRightToolsVisible(false),
+                  child: MultiPane(
+                    direction: Axis.vertical,
+                    controller: _rootController,
+                    paneBuilder: _rootPaneBuilder,
+                  ),
                 ),
               ),
             );

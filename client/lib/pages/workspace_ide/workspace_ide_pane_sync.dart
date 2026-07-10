@@ -73,8 +73,9 @@ class WorkspaceIdeDragCommit {
 /// Holds the in-progress size for a pane drag so the shell only writes to
 /// `LayoutCubit` on drag end, instead of on every intermediate frame.
 ///
-/// No Flutter dependency: the shell wires `onDragStart` / `onDragUpdate` /
-/// `onDragEnd` callbacks from `panes` into [start] / [update] / [end].
+/// No Flutter dependency. Unit-tested helper for drag-end commits; the current
+/// [WorkspaceIdeShell] instead listens to `PaneController.isResizing` and reads
+/// visual pixel sizes on drag end. Keep this for tests / alternate wiring.
 class WorkspaceIdePendingDrag {
   WorkspaceIdeDragTarget? _target;
   double? _value;
