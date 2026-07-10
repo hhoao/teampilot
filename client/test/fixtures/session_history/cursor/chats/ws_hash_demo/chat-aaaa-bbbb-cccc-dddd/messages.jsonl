@@ -1,0 +1,3 @@
+{"role":"user","message":{"content":[{"type":"text","text":"hello cursor"}]}}
+{"role":"assistant","message":{"content":[{"type":"text","text":"hi from cursor"},{"type":"tool_use","id":"toolu_c1","name":"Shell","input":{"command":"pwd"}}]}}
+{"role":"user","message":{"content":[{"type":"tool_result","tool_use_id":"toolu_c1","content":"/tmp/proj"}]}}
