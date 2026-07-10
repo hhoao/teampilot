@@ -298,7 +298,7 @@ void main() {
     expect(result.run.status, AutomationRunStatus.completed);
     expect(createdSessionId, isNotNull);
     expect(result.automation.sessionId, createdSessionId);
-    final persisted = await repo.listForTabScope(personalAutomationTabScope);
+    final persisted = await repo.listForTabScope(simpleAutomationTabScope);
     expect(persisted.single.sessionId, createdSessionId);
   });
 

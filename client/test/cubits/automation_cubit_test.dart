@@ -139,14 +139,14 @@ void main() {
     await repo.upsert(
       _sampleAutomation(id: 'a1', enabled: true, nextRunAtMs: 123),
     );
-    await cubit.loadForTabScope(personalAutomationTabScope);
-    await cubit.toggleEnabled(personalAutomationTabScope, 'a1');
+    await cubit.loadForTabScope(simpleAutomationTabScope);
+    await cubit.toggleEnabled(simpleAutomationTabScope, 'a1');
 
     final item = cubit.state.automations.single;
     expect(item.enabled, isFalse);
     expect(item.nextRunAtMs, isNull);
 
-    await cubit.toggleEnabled(personalAutomationTabScope, 'a1');
+    await cubit.toggleEnabled(simpleAutomationTabScope, 'a1');
     final reenabled = cubit.state.automations.single;
     expect(reenabled.enabled, isTrue);
     expect(reenabled.nextRunAtMs, isNotNull);

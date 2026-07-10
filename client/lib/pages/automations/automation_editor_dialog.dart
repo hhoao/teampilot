@@ -116,7 +116,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
   bool get _showsLaunchProfilePicker =>
       widget.pickLaunchProfile && !_isEditing && !_isScheduledMessage;
 
-  bool get _isPersonalLaunch =>
+  bool get _isSimpleLaunch =>
       _launchProfileId == AutomationTabScope.simpleLaunchProfileId;
 
   TeamProfile? get _teamProfile {
@@ -219,7 +219,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       return;
     }
 
-    if (_isPersonalLaunch) {
+    if (_isSimpleLaunch) {
       final presets = context.read<CliPresetsCubit>().state.presets;
       if (initial?.cli != null) {
         final match = presets.where((p) => p.cli == initial!.cli).firstOrNull;
@@ -270,7 +270,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       return;
     }
 
-    if (!_isScheduledMessage && _isPersonalLaunch) {
+    if (!_isScheduledMessage && _isSimpleLaunch) {
       final presetId = _cliPresetId?.trim() ?? '';
       if (presetId.isEmpty) {
         setState(() => _errorMessage = l10n.workspaceCliPresetsEmptyHint);
@@ -325,10 +325,10 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       workspaceId: workspaceId,
       launchProfileId: launchProfileId,
       sessionId: launchSessionId,
-      targetMemberId: _isPersonalLaunch ? 'team-lead' : _targetMemberId,
+      targetMemberId: _isSimpleLaunch ? 'team-lead' : _targetMemberId,
       message: message,
       cli: null,
-      cliPresetId: _isPersonalLaunch ? presetId : null,
+      cliPresetId: _isSimpleLaunch ? presetId : null,
       reuseSession: _isScheduledMessage ? false : _reuseSession,
       preset: _schedule.preset,
       customCron: _schedule.customCron,
@@ -460,7 +460,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
           ],
           if (!_isScheduledMessage) ...[
             const SizedBox(height: 16),
-            if (_isPersonalLaunch) ...[
+            if (_isSimpleLaunch) ...[
               CliPresetDropdownField(
                 label: l10n.presetPickerTitle,
                 selectedPresetId: _cliPresetId,

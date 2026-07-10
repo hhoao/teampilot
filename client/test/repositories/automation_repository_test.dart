@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/automation.dart';
+import 'package:teampilot/models/automation_tab_scope.dart';
 import 'package:teampilot/repositories/automation_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
@@ -34,12 +35,19 @@ void main() {
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final automation = sampleAutomation(id: 'a1', workspaceId: 'ws1');
     await repo.upsert(automation);
-    final loaded = await repo.listForTabScope(personalAutomationTabScope);
+    final loaded = await repo.listForTabScope(simpleAutomationTabScope);
     expect(loaded, hasLength(1));
     expect(loaded.first.id, 'a1');
     expect(
       loaded.first.launchProfileId,
-      personalAutomationTabScope.launchProfileId,
+      simpleAutomationTabScope.launchProfileId,
+    );
+    expect(
+      layout.workspaceTabAutomationsFile(
+        'ws1',
+        AutomationTabScope.simpleLaunchProfileId,
+      ),
+      endsWith('/automations/simple.json'),
     );
   });
 
@@ -60,7 +68,7 @@ void main() {
     await repo.upsert(sampleAutomation(id: 'a1', workspaceId: 'ws1'));
     const runId = 'run-1';
     await repo.upsertRun(
-      personalAutomationTabScope,
+      simpleAutomationTabScope,
       AutomationRun(
         id: runId,
         automationId: 'a1',
@@ -71,7 +79,7 @@ void main() {
       ),
     );
     await repo.upsertRun(
-      personalAutomationTabScope,
+      simpleAutomationTabScope,
       AutomationRun(
         id: runId,
         automationId: 'a1',
@@ -82,7 +90,7 @@ void main() {
       ),
     );
     final runs = await repo.runsFor(
-      personalAutomationTabScope,
+      simpleAutomationTabScope,
       automationId: 'a1',
     );
     expect(runs, hasLength(1));
@@ -99,7 +107,7 @@ void main() {
     await repo.upsert(sampleAutomation(id: 'a1', workspaceId: 'ws1'));
     for (var i = 0; i < 3; i++) {
       await repo.appendRun(
-        personalAutomationTabScope,
+        simpleAutomationTabScope,
         AutomationRun(
           id: 'r$i',
           automationId: 'a1',
@@ -110,7 +118,7 @@ void main() {
         ),
       );
     }
-    final runs = await repo.runsFor(personalAutomationTabScope);
+    final runs = await repo.runsFor(simpleAutomationTabScope);
     expect(runs, hasLength(2));
     expect(runs.map((r) => r.id), ['r1', 'r2']);
   });
@@ -127,8 +135,8 @@ void main() {
           sessionId: 's1',
         ).copyWith(nextRunAtMs: 9_000),
       );
-      await repo.disableForSession(personalAutomationTabScope, 's1');
-      final loaded = await repo.listForTabScope(personalAutomationTabScope);
+      await repo.disableForSession(simpleAutomationTabScope, 's1');
+      final loaded = await repo.listForTabScope(simpleAutomationTabScope);
       expect(loaded.single.enabled, isFalse);
       expect(loaded.single.nextRunAtMs, isNull);
     },
@@ -146,8 +154,8 @@ void main() {
         nextRunAtMs: 9_000,
       ),
     );
-    await repo.disableForSession(personalAutomationTabScope, 's1');
-    final loaded = await repo.listForTabScope(personalAutomationTabScope);
+    await repo.disableForSession(simpleAutomationTabScope, 's1');
+    final loaded = await repo.listForTabScope(simpleAutomationTabScope);
     expect(loaded.single.enabled, isTrue);
     expect(loaded.single.sessionId, isNull);
     expect(loaded.single.nextRunAtMs, 9_000);
@@ -160,6 +168,6 @@ void main() {
     expect(await repo.listAll(), hasLength(1));
     await repo.removeWorkspace('ws1');
     expect(await repo.listAll(), isEmpty);
-    expect(await repo.listForTabScope(personalAutomationTabScope), isEmpty);
+    expect(await repo.listForTabScope(simpleAutomationTabScope), isEmpty);
   });
 }

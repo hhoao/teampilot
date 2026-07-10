@@ -245,6 +245,8 @@ class AutomationDispatcher {
     final plannedSessionId = _uuid.v4();
     final SessionOpenStatus status;
     if (isSimple) {
+      // Simple = unteamed SessionCreateRequest (empty sessionTeam); connect
+      // builds SessionRuntimePlan — no personalIdentityId / PersonalProfile.
       final presetId = automation.cliPresetId?.trim() ?? '';
       final legacyCli = presetId.isEmpty ? automation.cli : null;
       status = await _requestCreateAndOpenSession(

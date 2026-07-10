@@ -4,7 +4,7 @@ import 'package:teampilot/models/launch_profile_kind.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/automation/automation_dispatcher.dart';
 
-const personalAutomationTabScope = AutomationTabScope(
+const simpleAutomationTabScope = AutomationTabScope(
   workspaceId: 'ws1',
   launchProfileId: AutomationTabScope.simpleLaunchProfileId,
 );
