@@ -48,10 +48,24 @@ This is not coding-only: docs, research, ops triage, or any **multi-step pipelin
 - **Tiered models**: Set different providers/models for `team-lead`, implementer, and reviewer; switch member tabs to switch terminal and model—no global retuning each time.
 - **Parallel roles**: `team-lead` coordinates and delegates (Claude Code expects a member named exactly `team-lead`); other members handle implementation, review, etc.—switch terminals in one window.
 - **Mixed CLIs**: In a **mixed** team, members can run different CLIs (Claude Code, Codex, opencode, cursor, flashskyai) and still coordinate through an in-process team bus—use each tool where it's strongest.
-- **Scenario presets**: Maintain teams for “daily dev”, “deep refactor”, “docs”—switch teams instead of retyping models and prompts. Browse and import shareable team templates from the built-in **Team Hub**.
+- **Machine assignment**: On the landing **Machine assignment** panel (and workspace member targets), pin each replica to **local** or an **SSH** host. Mixed sessions only start pinned instances; unpinned roles stay off the bus until you place them.
+- **Scenario presets**: Maintain teams for “daily dev”, “deep refactor”, “docs”—switch teams instead of retyping models and prompts. Browse and import shareable templates from **Team Hub** / **Expert Hub** (below).
 - **Session binding**: Opening a workspace session injects the active launch identity into CLI args (e.g. `--team-name` / per-member session id, per-member `CONFIG_DIR`) and can resume prior CLI sessions.
 
-Configure under **Settings → Team configuration** (route `/team-config`). Team launch identities persist under `launch-profiles/{id}/profile.json`; per-identity runtime CLI trees under `identities-runtime/{profileId}/`. See [workspace storage layout](docs/workspace-storage-layout.md).
+Configure under **Settings → Team configuration** (route `/team-config`), or edit a team from **My Teams** on the home sidebar. Team launch identities persist under `launch-profiles/{id}/profile.json`; per-identity runtime CLI trees under `identities-runtime/{profileId}/`. See [workspace storage layout](docs/workspace-storage-layout.md).
+
+### Discover, reuse, and publish
+
+Home sidebar globals (`/home-v2?global=…`) cover local libraries and public catalogs:
+
+| View | What it is |
+|------|------------|
+| **My Teams** | Your local team launch identities—create, edit, and open team config. |
+| **My Experts** | Reusable expert personas (prompts / defaults) you can attach across teams. |
+| **Team Hub** | Browse public team templates and clone them into My Teams (skills/plugins/MCP deps can install with the clone). |
+| **Expert Hub** | Browse public expert templates and add them to My Experts. |
+
+Default public catalogs live in this repo under [`team-hub/`](team-hub/) and [`member-hub/`](member-hub/) (`hhoao/teampilot` on `main`). From My Teams / My Experts you can **upload** a local team or expert to open a PR against those registries when a GitHub token is configured.
 
 ## Workspace & built-in IDE
 
@@ -140,7 +154,7 @@ sudo dpkg -i teampilot-*-linux.deb
 sudo apt install -f
 ```
 
-Launch **TeamPilot** from the app menu. Uninstall: `sudo apt remove flashskyai-client` (exact package name is in the deb metadata).
+Launch **TeamPilot** from the app menu. Uninstall: `sudo apt remove teampilot` (exact package name is in the deb metadata).
 
 **AppImage (portable)**
 

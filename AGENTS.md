@@ -40,7 +40,7 @@ main.dart
       → CliBootstrap(...)                     # provision cli-defaults trees
       → LaunchProfileRepository, SessionRepository, SessionLifecycleService
       → TeammateBusMcpGateway.ensureStarted()
-      → LaunchProfileCubit, ChatCubit, TeamHubCubit,
+      → LaunchProfileCubit, ChatCubit, TeamHubCubit, ExpertHubCubit,
         MemberPresenceCubit, MailboxCubit, BoardCubit,
         AutomationCubit, WorkspaceTerminalRegistry, …
   → MaterialApp.router (GoRouter)
@@ -106,9 +106,20 @@ Provider catalogs: `providers/{tool}/providers.json` per CLI (`AppProviderReposi
 - `effectiveForceWaitBeforeStop`: **Cursor defaults to `false`** — doorbell delivery via stdin inject + `read_messages`.
 - `MemberPresenceCubit` / `MailboxCubit` / `BoardCubit` surface bus presence, messages, and task cards in the UI.
 
-### TeamHub (discoverable teams)
+### TeamHub & Expert Hub (discoverable catalogs)
 
-`client/lib/services/team_hub/` provides shareable team templates. `CompositeTeamHubSource.withDefaults(GitRegistryTeamHubSource())` merges built-in templates with a remote git registry. Built-in keys (`teampilot/builtin/*`) win on collision. UI under `client/lib/pages/team_hub/`; state in `TeamHubCubit`.
+| Hub | Code | Default registry |
+|-----|------|------------------|
+| **Team Hub** | `client/lib/services/team_hub/`, `TeamHubCubit`, UI `pages/team_hub/` | `TeamHubRegistry` → `hhoao/teampilot` + `rootPath: team-hub` ([`team-hub/`](team-hub/)) |
+| **Expert Hub** | `client/lib/services/expert_hub/`, `ExpertHubCubit`, UI `pages/expert_hub/` | `ExpertHubRegistry` → `hhoao/teampilot` + `rootPath: member-hub` ([`member-hub/`](member-hub/)) |
+
+Both registries support a subdirectory via `rootPath` / `catalogPrefix` / `repoPath`. `Composite*Source.withDefaults(GitRegistry*Source())` merges built-ins with the remote git catalog; built-in keys (`teampilot/builtin/*`) win on collision.
+
+**My Teams / My Experts** (`pages/my_teams/`, `pages/my_experts/`) manage local launch identities and expert personas. **Hub publish** (`services/hub_publish/`, `pages/hub_publish/`) opens a PR against the default registry when a GitHub token is configured.
+
+### Member placement (Machines)
+
+Workspace + landing **Machine assignment** pins each roster replica to `local` or an SSH profile. Placement writes `roster.overrides.replicas` and host targets; mixed session create omits unpinned instances from `AppSession.members` and TeamBus. Prefer **`sessionRosterMembers(session, team)`** (in `app_session.dart`) for UI / presence / materialize — do **not** re-expand stale `TeamMemberConfig.replicas` from an in-memory team after placement saves.
 
 ### Team session CLI identity
 
@@ -143,6 +154,10 @@ Session runtime dirs: `workspace/workspaces/{workspaceId}/sessions/{sessionId}/r
 | Launch identities (personal + team) | `client/lib/repositories/launch_profile_repository.dart`, `client/lib/cubits/launch_profile_cubit.dart` |
 | Workspace project config | `client/lib/repositories/workspace_project_config_repository.dart`, `cubits/workspace_project_config_cubit.dart` |
 | Team templates / hub | `client/lib/services/team_hub/`, `client/lib/cubits/team_hub_cubit.dart` |
+| Expert hub | `client/lib/services/expert_hub/`, `client/lib/cubits/expert_hub_cubit.dart` |
+| My Teams / My Experts | `client/lib/pages/my_teams/`, `client/lib/pages/my_experts/` |
+| Hub publish | `client/lib/services/hub_publish/`, `client/lib/pages/hub_publish/` |
+| Member placement | landing Machines UI + workspace member targets; `sessionRosterMembers` in `models/app_session.dart` |
 | Mixed-CLI coordination | `client/lib/services/team_bus/`, `member_presence_cubit.dart`, `mailbox_cubit.dart`, `board_cubit.dart` |
 | CLI registry & capabilities | `client/lib/services/cli/registry/` |
 | Launch plan | `client/lib/services/session/session_lifecycle_service.dart` |
@@ -160,11 +175,13 @@ Session runtime dirs: `workspace/workspaces/{workspaceId}/sessions/{sessionId}/r
 **Routes** (`app_router.dart`):
 
 - `/home-v2` — workspace home (library, identity/team config, global views via `?global=` query)
+- `/home-v2?global=myTeams` / `myExperts` / `teamHub` / `expertHub` — local libraries and public catalogs (`HomeGlobalView`; optional `&team=` / `&member=` deep links via `HomeWorkspaceRoute`)
+- `/home-v2?global=skills` / `plugins` / `mcp` / `extensions` / `providers` / `automations` — other home globals
 - `/home-v2/workspace/:workspaceId` — workspace workbench (`?view=manage&section=…&profile=…` for config)
 - `/config/*` — app settings (layout, AI features, SSH profiles, logs, …)
 - `/providers/:cli/…` — per-CLI provider catalog and credential forms
 - `/team-config/*` — team identity (members, skills, plugins, mcp, extensions)
-- `/skills/*`, `/plugins/*`, `/extensions/*`, `/mcp/*` — global libraries
+- `/skills/*`, `/plugins/*`, `/extensions/*`, `/mcp/*` — global libraries (also reachable via `?global=`)
 
 ## Debugging
 
