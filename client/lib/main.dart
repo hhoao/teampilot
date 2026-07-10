@@ -29,6 +29,7 @@ import 'repositories/ssh_known_host_repository.dart';
 import 'repositories/ssh_profile_repository.dart';
 import 'router/app_router.dart';
 import 'services/cli/registry/cli_tool_registry_scope.dart';
+import 'services/expert_hub/expert_capability_resolver.dart';
 import 'services/home_workspace/home_workspace_ui_cache.dart';
 import 'services/storage/app_storage.dart';
 import 'services/app/boot_splash.dart';
@@ -491,6 +492,9 @@ void main() async {
                 ),
                 RepositoryProvider<WorkspaceToolsScopeRegistry>.value(
                   value: shell.workspaceToolsScopeRegistry,
+                ),
+                RepositoryProvider<ExpertCapabilityResolver>.value(
+                  value: shell.expertCapabilityResolver,
                 ),
               ],
               child: MultiBlocProvider(

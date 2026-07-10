@@ -77,6 +77,7 @@ import '../services/team_hub/composite_team_hub_source.dart';
 import '../services/team_hub/git_registry_team_hub_source.dart';
 import '../services/team_hub/team_hub_favorites_store.dart';
 import '../services/expert_hub/composite_expert_hub_source.dart';
+import '../services/expert_hub/expert_capability_resolver.dart';
 import '../services/expert_hub/expert_hub_favorites_store.dart';
 import '../services/expert_hub/git_registry_expert_hub_source.dart';
 import '../services/expert_hub/member_roster_service.dart';
@@ -159,6 +160,7 @@ class AppShell {
     required this.mcpCubit,
     required this.teamHubCubit,
     required this.expertHubCubit,
+    required this.expertCapabilityResolver,
     required this.extensionCubit,
     required this.appUpdateCubit,
     required this.sshProfileCubit,
@@ -211,6 +213,7 @@ class AppShell {
   final McpCubit mcpCubit;
   final TeamHubCubit teamHubCubit;
   final ExpertHubCubit expertHubCubit;
+  final ExpertCapabilityResolver expertCapabilityResolver;
   final ExtensionCubit extensionCubit;
   final AppUpdateCubit appUpdateCubit;
   final SshProfileCubit sshProfileCubit;
@@ -662,6 +665,12 @@ Future<AppShell> buildAppShell({
     registry: GitRegistryExpertHubSource(),
     teamIndex: teamHubSource.fetchTeams,
   );
+  final expertCapabilityResolver = ExpertCapabilityResolver(
+    installSkill: skillCubit.installTeamDependency,
+    installPlugin: pluginCubit.installTeamDependency,
+    installMcp: mcpCubit.installTeamDependency,
+    source: compositeExpertHubSource,
+  );
   expertHubCubit = ExpertHubCubit(
     source: compositeExpertHubSource,
     loadFavorites: expertHubFavorites.load,
@@ -990,6 +999,7 @@ Future<AppShell> buildAppShell({
     mcpCubit: mcpCubit,
     teamHubCubit: teamHubCubit,
     expertHubCubit: expertHubCubit,
+    expertCapabilityResolver: expertCapabilityResolver,
     extensionCubit: extensionCubit,
     appUpdateCubit: appUpdateCubit,
     sshProfileCubit: sshProfileCubit,
