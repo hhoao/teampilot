@@ -277,6 +277,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
                       }
                     : null,
                 showRightToolsVisibilityToggle: true,
+                showSidebarVisibilityToggle: true,
                 actions: isPersonalContext || teamConfig == null
                     ? const []
                     : _chatActions(context, teamConfig),

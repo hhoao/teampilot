@@ -6,6 +6,7 @@ import '../../cubits/layout_cubit.dart';
 import '../../models/layout_preferences.dart';
 import '../../services/workspace/workspace_pane_policy.dart';
 import '../../widgets/workspace_terminal_panel.dart';
+import 'pane_overlay_host.dart';
 import 'workspace_ide_pane_chrome.dart';
 import 'workspace_ide_pane_sync.dart';
 
@@ -60,6 +61,12 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
 
   bool _rowResizing = false;
   bool _rootResizing = false;
+
+  /// When narrow, the side regions render as overlays (see [PaneOverlayHost]),
+  /// so the docked panes render nothing for left/right to avoid double-mounting
+  /// the sidebar / right-tools panel. Set each build before the pane builders
+  /// run (during layout of the root `MultiPane`).
+  bool _narrow = false;
 
   @override
   void initState() {
@@ -227,8 +234,12 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
 
   Widget _rowPaneBuilder(BuildContext context, String id, double progress) {
     return switch (id) {
-      _leftId => WorkspaceIdePaneChrome(child: widget.left),
-      _rightId => WorkspaceIdePaneChrome(child: widget.right),
+      _leftId => _narrow
+          ? const SizedBox.shrink()
+          : WorkspaceIdePaneChrome(child: widget.left),
+      _rightId => _narrow
+          ? const SizedBox.shrink()
+          : WorkspaceIdePaneChrome(child: widget.right),
       _ => WorkspaceIdePaneChrome(child: widget.center),
     };
   }
@@ -261,12 +272,28 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
               effective: effective,
             );
             _scheduleSync(snapshot);
+            // Set before building `MultiPane`: the pane builders run during the
+            // root pane's layout, which is after this synchronous assignment.
+            _narrow = effective.isNarrow;
+            final prefs = layoutState.preferences;
             return PaneTheme(
               data: workspaceIdePaneTheme(cs),
-              child: MultiPane(
-                direction: Axis.vertical,
-                controller: _rootController,
-                paneBuilder: _rootPaneBuilder,
+              child: PaneOverlayHost(
+                showLeft: effective.overlayLeft,
+                showRight: effective.overlayRight,
+                leftWidth: prefs.sidebarWidth,
+                rightWidth: prefs.rightToolsWidth,
+                left: WorkspaceIdePaneChrome(child: widget.left),
+                right: WorkspaceIdePaneChrome(child: widget.right),
+                onDismissLeft: () =>
+                    context.read<LayoutCubit>().setSidebarVisible(false),
+                onDismissRight: () =>
+                    context.read<LayoutCubit>().setRightToolsVisible(false),
+                child: MultiPane(
+                  direction: Axis.vertical,
+                  controller: _rootController,
+                  paneBuilder: _rootPaneBuilder,
+                ),
               ),
             );
           },

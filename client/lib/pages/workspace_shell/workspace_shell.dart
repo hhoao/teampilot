@@ -24,6 +24,7 @@ class WorkspaceShell extends StatelessWidget {
     this.onTabCloseOthers,
     this.onTabCloseRight,
     this.showRightToolsVisibilityToggle = false,
+    this.showSidebarVisibilityToggle = false,
     this.showNewChatButton = false,
     this.newChatTooltip = '',
     this.onNewChatPressed,
@@ -43,6 +44,7 @@ class WorkspaceShell extends StatelessWidget {
   final ValueChanged<int>? onTabCloseOthers;
   final ValueChanged<int>? onTabCloseRight;
   final bool showRightToolsVisibilityToggle;
+  final bool showSidebarVisibilityToggle;
 
   /// "+" action at the end of the session tab row — opens landing; not a tab.
   final bool showNewChatButton;
@@ -127,6 +129,9 @@ class WorkspaceShell extends StatelessWidget {
                     tooltip: newChatTooltip,
                     onPressed: onNewChatPressed,
                   )
+                : null,
+            leading: showSidebarVisibilityToggle
+                ? const WorkspaceShellSidebarVisibilityToggle()
                 : null,
             trailing: WorkspaceShellTabRowTrailing(
               actions: actions.isNotEmpty && showHeader

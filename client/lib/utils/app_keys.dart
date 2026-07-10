@@ -182,6 +182,7 @@ class AppKeys {
   static const rightToolsVisibilityButton = Key(
     'right-tools-visibility-button',
   );
+  static const sidebarVisibilityButton = Key('sidebar-visibility-button');
 
   static const teamNameField = Key('team-name-field');
   static const teamNameDialogField = Key('team-name-dialog-field');

@@ -18,6 +18,8 @@
   "openRightTools": "工具",
   "rightToolsPanelVisible": "显示工具栏",
   "rightToolsPanelHidden": "隐藏工具栏",
+  "sidebarPanelVisible": "显示侧边栏",
+  "sidebarPanelHidden": "隐藏侧边栏",
   "bottomTray": "底部托盘",
   "stacked": "堆叠",
   "tabs": "标签页",

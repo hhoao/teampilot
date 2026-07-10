@@ -9,10 +9,14 @@ void main() {
   const centerKey = ValueKey('center-smoke');
   const rightKey = ValueKey('right-smoke');
 
-  Future<LayoutCubit> pumpShell(WidgetTester tester) async {
+  Future<LayoutCubit> pumpShell(
+    WidgetTester tester, {
+    Size size = const Size(1400, 900),
+  }) async {
     final layout = LayoutCubit();
-    // Wide viewport so the policy docks all intent-visible panes.
-    tester.view.physicalSize = const Size(1400, 900);
+    // Default wide viewport so the policy docks all intent-visible panes;
+    // callers pass a narrow size to exercise the overlay path.
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -74,6 +78,56 @@ void main() {
       identical(tester.element(find.byKey(centerKey)), centerBefore),
       isTrue,
       reason: 'center workbench was reparented on right-tools toggle',
+    );
+  });
+
+  testWidgets('narrow viewport presents left as an overlay, not docked', (
+    tester,
+  ) async {
+    // Narrow width (< WorkspacePanePolicy.narrowBreakpointWidth) forces the
+    // side regions into overlays; sidebar intent defaults to visible.
+    await pumpShell(tester, size: const Size(600, 900));
+
+    // The single mounted `left` is the overlay copy (docked pane renders
+    // nothing for the sides on narrow), and center/bottom still mount.
+    expect(find.text('left'), findsOneWidget);
+    expect(find.byKey(centerKey), findsOneWidget);
+    expect(find.byKey(bottomKey), findsOneWidget);
+  });
+
+  testWidgets('dismissing the narrow left overlay clears sidebar intent', (
+    tester,
+  ) async {
+    final layout = await pumpShell(tester, size: const Size(600, 900));
+    // Isolate the left overlay so the scrim tap can only dismiss the sidebar
+    // (default sidebarWidth 260 → scrim covers the right side of the viewport).
+    await layout.setRightToolsVisible(false);
+    await tester.pumpAndSettle();
+    expect(layout.state.preferences.sidebarVisible, isTrue);
+    expect(find.text('left'), findsOneWidget);
+
+    await tester.tapAt(const Offset(500, 450));
+    await tester.pumpAndSettle();
+
+    expect(layout.state.preferences.sidebarVisible, isFalse);
+    expect(find.text('left'), findsNothing);
+  });
+
+  testWidgets('narrow overlay toggle keeps the bottom terminal identity', (
+    tester,
+  ) async {
+    final layout = await pumpShell(tester, size: const Size(600, 900));
+    final bottomBefore = tester.element(find.byKey(bottomKey));
+
+    await layout.setSidebarVisible(false);
+    await tester.pumpAndSettle();
+    await layout.setSidebarVisible(true);
+    await tester.pumpAndSettle();
+
+    expect(
+      identical(tester.element(find.byKey(bottomKey)), bottomBefore),
+      isTrue,
+      reason: 'bottom terminal was reparented when overlay toggled on narrow',
     );
   });
 }

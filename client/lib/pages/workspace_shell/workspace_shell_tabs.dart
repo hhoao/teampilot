@@ -75,6 +75,31 @@ class WorkspaceShellRightToolsVisibilityToggle extends StatelessWidget {
   }
 }
 
+class WorkspaceShellSidebarVisibilityToggle extends StatelessWidget {
+  const WorkspaceShellSidebarVisibilityToggle({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    return BlocBuilder<LayoutCubit, LayoutState>(
+      builder: (context, state) {
+        final visible = state.preferences.sidebarVisible;
+        return AppIconButton(
+          key: AppKeys.sidebarVisibilityButton,
+          icon: Icons.view_sidebar_outlined,
+          tooltip: visible ? l10n.sidebarPanelHidden : l10n.sidebarPanelVisible,
+          color: visible ? cs.primary : cs.onSurfaceVariant,
+          backgroundColor: visible
+              ? cs.primaryContainer.withValues(alpha: 0.45)
+              : Colors.transparent,
+          onTap: () => context.read<LayoutCubit>().setSidebarVisible(!visible),
+        );
+      },
+    );
+  }
+}
+
 class WorkspaceShellTabRow extends StatelessWidget {
   const WorkspaceShellTabRow({
     super.key,
@@ -85,6 +110,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
     this.onTabCloseOthers,
     this.onTabCloseRight,
     this.newChatButton,
+    this.leading,
     this.trailing,
   });
 
@@ -95,6 +121,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
   final ValueChanged<int>? onTabCloseOthers;
   final ValueChanged<int>? onTabCloseRight;
   final Widget? newChatButton;
+  final Widget? leading;
   final Widget? trailing;
 
   @override
@@ -110,6 +137,10 @@ class WorkspaceShellTabRow extends StatelessWidget {
       ),
       child: Row(
         children: [
+          if (leading != null) ...[
+            leading!,
+            const SizedBox(width: 2),
+          ],
           Expanded(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
