@@ -19,6 +19,8 @@ import '../../../provider/cursor/cursor_provider_model_capability.dart';
 import '../capabilities/headless_run_capability.dart';
 import '../capabilities/provider_credential_capability.dart';
 import '../capabilities/session_resume_capability.dart';
+import '../capabilities/session_history_capability.dart';
+import '../capabilities/history/cursor_session_history.dart';
 import '../capabilities/resume/cursor_resume_strategy.dart';
 import '../installer/cursor_installer_capability.dart';
 import '../config_profile/cursor_config_profile_capability.dart';
@@ -45,6 +47,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.configProfile = const CursorConfigProfileCapability(),
     this.sessionLifecycle = const CursorSessionLifecycleCapability(),
     this.sessionResume = const CursorResumeStrategy(),
+    this.sessionHistory = const CursorSessionHistory(),
     this.executableResolver = const CursorExecutableResolver(),
     this.installer = const CursorInstallerCapability(),
     this.presence = const CursorPresence(),
@@ -71,6 +74,7 @@ final class CursorCliTool implements CliToolDefinition {
   final ConfigProfileCapability configProfile;
   final CliSessionLifecycleCapability sessionLifecycle;
   final SessionResumeCapability sessionResume;
+  final SessionHistoryCapability sessionHistory;
   final ExecutableResolverCapability executableResolver;
   final InstallerCapability installer;
   final PresenceCapability presence;
@@ -102,6 +106,7 @@ final class CursorCliTool implements CliToolDefinition {
     configProfile,
     sessionLifecycle,
     sessionResume,
+    sessionHistory,
     executableResolver,
     installer,
     presence,
