@@ -41,6 +41,7 @@ abstract final class LayeredConfigBundle {
       }
     }
 
+    // Priority-layer-first (team→expert→workspace), not workspace-base append.
     // Higher layers first so first-seen wins = precedence.
     addAll(team);
     addAll(expert);
