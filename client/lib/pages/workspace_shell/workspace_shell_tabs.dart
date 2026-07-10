@@ -18,29 +18,18 @@ import '../../widgets/menu/sidebar_action_menu.dart';
 import '../../widgets/session_working_spinner.dart';
 import 'workspace_shell_models.dart';
 
-class WorkspaceShellTabRowTrailing extends StatelessWidget {
-  const WorkspaceShellTabRowTrailing({
-    super.key,
-    this.actions,
-    required this.showRightToolsToggle,
-  });
-
-  final Widget? actions;
-  final bool showRightToolsToggle;
+/// Sidebar + right-tools visibility toggles for the workspace IDE shell.
+class WorkspaceShellPaneVisibilityToggles extends StatelessWidget {
+  const WorkspaceShellPaneVisibilityToggles({super.key});
 
   @override
   Widget build(BuildContext context) {
-    if (actions == null && !showRightToolsToggle) {
-      return const SizedBox.shrink();
-    }
-    return Row(
+    return const Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (actions != null) actions!,
-        if (showRightToolsToggle) ...[
-          if (actions != null) const SizedBox(width: 4),
-          const WorkspaceShellRightToolsVisibilityToggle(),
-        ],
+        WorkspaceShellSidebarVisibilityToggle(),
+        SizedBox(width: 2),
+        WorkspaceShellRightToolsVisibilityToggle(),
       ],
     );
   }

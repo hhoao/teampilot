@@ -59,6 +59,10 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
   bool _syncScheduled = false;
   WorkspaceIdePaneSnapshot? _pending;
 
+  /// Last viewport width from [LayoutBuilder]; used by [BlocListener] to derive
+  /// [WorkspacePanePolicy.effective] before the next layout pass.
+  double _viewportWidth = WorkspacePanePolicy.narrowBreakpointWidth;
+
   bool _rowResizing = false;
   bool _rootResizing = false;
 
@@ -67,6 +71,11 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
   /// the sidebar / right-tools panel. Set each build before the pane builders
   /// run (during layout of the root `MultiPane`).
   bool _narrow = false;
+
+  /// Effective dock flags from the latest [LayoutBuilder] frame. Chrome uses
+  /// this instead of [PaneController.isVisible] so padding/radius track user
+  /// intent immediately — the controller sync is intentionally post-frame.
+  WorkspaceIdePaneSnapshot? _layoutSnapshot;
 
   @override
   void initState() {
@@ -167,18 +176,63 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
     }
   }
 
-  // --- Prefs/effective → controllers (post-frame, never during build) -------
+  // --- Prefs/effective → controllers ----------------------------------------
 
-  void _scheduleSync(WorkspaceIdePaneSnapshot snapshot) {
+  WorkspaceIdePaneSnapshot _snapshotFor(LayoutPreferences preferences) {
+    return WorkspaceIdePaneSnapshot.from(
+      preferences: preferences,
+      effective: WorkspacePanePolicy.effective(
+        preferences: preferences,
+        viewportWidth: _viewportWidth,
+      ),
+    );
+  }
+
+  bool _isDockOnlyChange(WorkspaceIdePaneSnapshot next) {
+    final applied = _applied;
+    if (applied == null) return false;
+    return applied.sidebarWidth == next.sidebarWidth &&
+        applied.rightToolsWidth == next.rightToolsWidth &&
+        applied.workspaceTerminalHeight == next.workspaceTerminalHeight &&
+        (applied.dockLeft != next.dockLeft ||
+            applied.dockRight != next.dockRight ||
+            applied.dockBottom != next.dockBottom ||
+            applied.isNarrow != next.isNarrow);
+  }
+
+  void _onLayoutPreferencesChanged() {
+    if (!mounted) return;
+    _requestSync(_snapshotFor(context.read<LayoutCubit>().state.preferences));
+  }
+
+  void _requestSync(WorkspaceIdePaneSnapshot snapshot) {
     if (_sameAsApplied(snapshot)) return;
     _pending = snapshot;
+    if (_rowController.isResizing || _rootController.isResizing) {
+      _scheduleSyncPostFrame();
+      return;
+    }
+    if (_isDockOnlyChange(snapshot)) {
+      _applySnapshot(snapshot);
+      _pending = null;
+      return;
+    }
+    _scheduleSyncPostFrame();
+  }
+
+  void _scheduleSyncPostFrame() {
     if (_syncScheduled) return;
     _syncScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncScheduled = false;
       final pending = _pending;
-      if (!mounted || pending == null) return;
+      if (!mounted || pending == null || _sameAsApplied(pending)) return;
+      if (_rowController.isResizing || _rootController.isResizing) {
+        _scheduleSyncPostFrame();
+        return;
+      }
       _applySnapshot(pending);
+      _pending = null;
     });
   }
 
@@ -232,21 +286,130 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
 
   // --- Build ----------------------------------------------------------------
 
+  bool get _leftDocked => _layoutSnapshot?.dockLeft ?? false;
+
+  bool get _rightDocked => _layoutSnapshot?.dockRight ?? false;
+
+  bool get _bottomDocked => _layoutSnapshot?.dockBottom ?? false;
+
+  EdgeInsets _shellPadding() {
+    const g = WorkspaceIdePaneChrome.shellGutter;
+    return EdgeInsets.fromLTRB(
+      _leftDocked ? g : 0,
+      g,
+      _rightDocked ? g : 0,
+      _bottomDocked ? g : 0,
+    );
+  }
+
+  static BorderRadius _paneRadiusOnly({
+    required bool topLeft,
+    required bool bottomLeft,
+    required bool topRight,
+    required bool bottomRight,
+  }) {
+    const r = Radius.circular(WorkspaceIdePaneChrome.paneRadius);
+    return BorderRadius.only(
+      topLeft: topLeft ? r : Radius.zero,
+      bottomLeft: bottomLeft ? r : Radius.zero,
+      topRight: topRight ? r : Radius.zero,
+      bottomRight: bottomRight ? r : Radius.zero,
+    );
+  }
+
+  Widget _sideChrome({
+    required Widget child,
+    required bool leadingOuter,
+    required bool trailingOuter,
+  }) {
+    const inset = WorkspaceIdePaneChrome.paneInset;
+    return WorkspaceIdePaneChrome(
+      padding: EdgeInsets.fromLTRB(
+        leadingOuter ? inset : 0,
+        inset,
+        trailingOuter ? inset : 0,
+        inset,
+      ),
+      borderRadius: _paneRadiusOnly(
+        topLeft: leadingOuter,
+        bottomLeft: leadingOuter,
+        topRight: trailingOuter,
+        bottomRight: trailingOuter,
+      ),
+      child: child,
+    );
+  }
+
+  Widget _centerChrome() {
+    const inset = WorkspaceIdePaneChrome.paneInset;
+    return WorkspaceIdePaneChrome(
+      padding: EdgeInsets.fromLTRB(
+        _leftDocked ? inset : 0,
+        inset,
+        _rightDocked ? inset : 0,
+        inset,
+      ),
+      borderRadius: _paneRadiusOnly(
+        topLeft: _leftDocked,
+        bottomLeft: _leftDocked,
+        topRight: _rightDocked,
+        bottomRight: _rightDocked,
+      ),
+      child: widget.center,
+    );
+  }
+
   Widget _rowPaneBuilder(BuildContext context, String id, double progress) {
     return switch (id) {
       _leftId => _narrow
           ? const SizedBox.shrink()
-          : WorkspaceIdePaneChrome(child: widget.left),
+          : !_leftDocked
+          ? widget.left
+          : _sideChrome(
+              child: widget.left,
+              leadingOuter: true,
+              trailingOuter: false,
+            ),
       _rightId => _narrow
           ? const SizedBox.shrink()
-          : WorkspaceIdePaneChrome(child: widget.right),
-      _ => WorkspaceIdePaneChrome(child: widget.center),
+          : !_rightDocked
+          ? widget.right
+          : _sideChrome(
+              child: widget.right,
+              leadingOuter: false,
+              trailingOuter: true,
+            ),
+      _ => _centerChrome(),
     };
+  }
+
+  Widget _bottomChrome() {
+    const inset = WorkspaceIdePaneChrome.paneInset;
+    return WorkspaceIdePaneChrome(
+      padding: EdgeInsets.fromLTRB(
+        _leftDocked ? inset : 0,
+        inset,
+        _rightDocked ? inset : 0,
+        inset,
+      ),
+      borderRadius: _paneRadiusOnly(
+        topLeft: false,
+        bottomLeft: _leftDocked,
+        topRight: false,
+        bottomRight: _rightDocked,
+      ),
+      child: widget.bottom,
+    );
   }
 
   Widget _rootPaneBuilder(BuildContext context, String id, double progress) {
     if (id == _bottomId) {
-      return WorkspaceIdePaneChrome(child: widget.bottom);
+      // Always mount [bottom] so the workspace PTY survives hide toggles;
+      // [PaneController.hide] collapses height while keeping this subtree.
+      if (!_bottomDocked) {
+        return widget.bottom;
+      }
+      return _bottomChrome();
     }
     return MultiPane(
       direction: Axis.horizontal,
@@ -258,50 +421,56 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return BlocBuilder<LayoutCubit, LayoutState>(
-      buildWhen: (a, b) => _relevantPrefsChanged(a.preferences, b.preferences),
-      builder: (context, layoutState) {
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final effective = WorkspacePanePolicy.effective(
-              preferences: layoutState.preferences,
-              viewportWidth: constraints.maxWidth,
-            );
-            final snapshot = WorkspaceIdePaneSnapshot.from(
-              preferences: layoutState.preferences,
-              effective: effective,
-            );
-            _scheduleSync(snapshot);
-            // Set before building `MultiPane`: the pane builders run during the
-            // root pane's layout, which is after this synchronous assignment.
-            _narrow = effective.isNarrow;
-            final prefs = layoutState.preferences;
-            return PaneTheme(
-              data: workspaceIdePaneTheme(cs),
-              child: Padding(
-                padding: const EdgeInsets.all(WorkspaceIdePaneChrome.shellGutter),
-                child: PaneOverlayHost(
-                  showLeft: effective.overlayLeft,
-                  showRight: effective.overlayRight,
-                  leftWidth: prefs.sidebarWidth,
-                  rightWidth: prefs.rightToolsWidth,
-                  left: WorkspaceIdePaneChrome(child: widget.left),
-                  right: WorkspaceIdePaneChrome(child: widget.right),
-                  onDismissLeft: () =>
-                      context.read<LayoutCubit>().setSidebarVisible(false),
-                  onDismissRight: () =>
-                      context.read<LayoutCubit>().setRightToolsVisible(false),
-                  child: MultiPane(
-                    direction: Axis.vertical,
-                    controller: _rootController,
-                    paneBuilder: _rootPaneBuilder,
+    return BlocListener<LayoutCubit, LayoutState>(
+      listenWhen: (a, b) => _relevantPrefsChanged(a.preferences, b.preferences),
+      listener: (context, _) => _onLayoutPreferencesChanged(),
+      child: BlocBuilder<LayoutCubit, LayoutState>(
+        buildWhen: (a, b) => _relevantPrefsChanged(a.preferences, b.preferences),
+        builder: (context, layoutState) {
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              _viewportWidth = constraints.maxWidth;
+              final effective = WorkspacePanePolicy.effective(
+                preferences: layoutState.preferences,
+                viewportWidth: constraints.maxWidth,
+              );
+              final snapshot = WorkspaceIdePaneSnapshot.from(
+                preferences: layoutState.preferences,
+                effective: effective,
+              );
+              _layoutSnapshot = snapshot;
+              _requestSync(snapshot);
+              // Set before building `MultiPane`: the pane builders run during the
+              // root pane's layout, which is after this synchronous assignment.
+              _narrow = effective.isNarrow;
+              final prefs = layoutState.preferences;
+              return PaneTheme(
+                data: workspaceIdePaneTheme(cs),
+                child: Padding(
+                  padding: _shellPadding(),
+                  child: PaneOverlayHost(
+                    showLeft: effective.overlayLeft,
+                    showRight: effective.overlayRight,
+                    leftWidth: prefs.sidebarWidth,
+                    rightWidth: prefs.rightToolsWidth,
+                    left: WorkspaceIdePaneChrome(child: widget.left),
+                    right: WorkspaceIdePaneChrome(child: widget.right),
+                    onDismissLeft: () =>
+                        context.read<LayoutCubit>().setSidebarVisible(false),
+                    onDismissRight: () =>
+                        context.read<LayoutCubit>().setRightToolsVisible(false),
+                    child: MultiPane(
+                      direction: Axis.vertical,
+                      controller: _rootController,
+                      paneBuilder: _rootPaneBuilder,
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
-        );
-      },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 

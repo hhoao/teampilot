@@ -23,6 +23,7 @@ import '../../widgets/team_pilot_brand_logo.dart';
 import '../../widgets/window_chrome_controls.dart';
 import '../../widgets/window_drag_area.dart';
 import '../config/config_workspace.dart';
+import '../workspace_shell/workspace_shell_tabs.dart';
 
 /// Height of the Apifox-style workspace title bar.
 const double kHomeTitleBarHeight = 58;
@@ -373,6 +374,10 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
                   },
                 ),
               ),
+            if (widget.activeTabKey != null) ...[
+              const WorkspaceShellPaneVisibilityToggles(),
+              const SizedBox(width: 4),
+            ],
             const SizedBox(width: 8),
             const NotificationBellButton(),
             _ActionGlyph(

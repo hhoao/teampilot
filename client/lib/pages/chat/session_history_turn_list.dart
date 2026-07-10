@@ -26,6 +26,8 @@ class SessionHistoryTurnList extends StatefulWidget {
 
 class _SessionHistoryTurnListState extends State<SessionHistoryTurnList> {
   final _scrollController = ScrollController();
+  double? _scrollExtentBeforeOlderLoad;
+  double? _scrollPixelsBeforeOlderLoad;
 
   @override
   void dispose() {
@@ -36,15 +38,50 @@ class _SessionHistoryTurnListState extends State<SessionHistoryTurnList> {
   @override
   void didUpdateWidget(covariant SessionHistoryTurnList oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.state.status != SessionHistoryViewStatus.ready) return;
+
+    final oldTurns = oldWidget.state.turns;
+    final newTurns = widget.state.turns;
+    if (newTurns.isEmpty) return;
+
     final becameReady =
-        oldWidget.state.status != SessionHistoryViewStatus.ready &&
-        widget.state.status == SessionHistoryViewStatus.ready;
-    if (becameReady && widget.state.turns.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || !_scrollController.hasClients) return;
-        _scrollController.jumpTo(0);
-      });
+        oldWidget.state.status != SessionHistoryViewStatus.ready;
+    final loadedOlder =
+        !becameReady &&
+        newTurns.length > oldTurns.length &&
+        oldTurns.isNotEmpty &&
+        newTurns.first.markdown != oldTurns.first.markdown;
+
+    if (!becameReady && !loadedOlder) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      if (becameReady) {
+        _scrollToBottomIfOverflow();
+        return;
+      }
+      _restoreScrollAfterOlderLoad();
+    });
+  }
+
+  void _scrollToBottomIfOverflow() {
+    if (!_scrollController.hasClients) return;
+    final max = _scrollController.position.maxScrollExtent;
+    if (max > 0) {
+      _scrollController.jumpTo(max);
     }
+  }
+
+  void _restoreScrollAfterOlderLoad() {
+    final beforeExtent = _scrollExtentBeforeOlderLoad;
+    final beforePixels = _scrollPixelsBeforeOlderLoad;
+    _scrollExtentBeforeOlderLoad = null;
+    _scrollPixelsBeforeOlderLoad = null;
+    if (beforeExtent == null || beforePixels == null) return;
+    if (!_scrollController.hasClients) return;
+
+    final delta = _scrollController.position.maxScrollExtent - beforeExtent;
+    _scrollController.jumpTo(beforePixels + delta);
   }
 
   bool _onScroll(ScrollNotification notification) {
@@ -54,12 +91,12 @@ class _SessionHistoryTurnListState extends State<SessionHistoryTurnList> {
     if (widget.onLoadOlder == null) return false;
 
     final metrics = notification.metrics;
-    if (metrics.maxScrollExtent <= 0) return false;
-    if (metrics.pixels <
-        metrics.maxScrollExtent - kSessionHistoryLoadOlderScrollThreshold) {
+    if (metrics.pixels > kSessionHistoryLoadOlderScrollThreshold) {
       return false;
     }
 
+    _scrollExtentBeforeOlderLoad = metrics.maxScrollExtent;
+    _scrollPixelsBeforeOlderLoad = metrics.pixels;
     widget.onLoadOlder!();
     return false;
   }
@@ -139,7 +176,6 @@ class _SessionHistoryTurnListState extends State<SessionHistoryTurnList> {
           onNotification: _onScroll,
           child: ListView.builder(
             controller: _scrollController,
-            reverse: true,
             padding: EdgeInsets.fromLTRB(
               context.appSpacing.xl,
               context.appSpacing.md,
@@ -148,13 +184,13 @@ class _SessionHistoryTurnListState extends State<SessionHistoryTurnList> {
             ),
             itemCount: turns.length + sentinelCount,
             itemBuilder: (context, index) {
-              if (widget.state.hasOlder && index == turns.length) {
+              if (widget.state.hasOlder && index == 0) {
                 return _LoadOlderSentinel(
                   isLoading: widget.state.isLoadingOlder,
                 );
               }
-              final turn = turns[turns.length - 1 - index];
-              return SessionHistoryTurnTile(turn: turn);
+              final turnIndex = widget.state.hasOlder ? index - 1 : index;
+              return SessionHistoryTurnTile(turn: turns[turnIndex]);
             },
           ),
         );
@@ -198,7 +234,7 @@ class _LoadOlderSentinel extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     return Padding(
-      padding: EdgeInsets.only(bottom: spacing.md, top: spacing.xs),
+      padding: EdgeInsets.only(bottom: spacing.md),
       child: Center(
         child: isLoading
             ? const SizedBox(

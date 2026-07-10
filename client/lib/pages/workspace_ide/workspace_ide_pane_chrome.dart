@@ -7,7 +7,12 @@ import 'package:panes/panes.dart';
 /// Applies a shared gutter and rounded clip so panes read as floating panels
 /// without replacing TeamPilot product chrome (tab strips, tool rails, etc.).
 class WorkspaceIdePaneChrome extends StatelessWidget {
-  const WorkspaceIdePaneChrome({required this.child, super.key});
+  const WorkspaceIdePaneChrome({
+    required this.child,
+    this.padding,
+    this.borderRadius,
+    super.key,
+  });
 
   /// Half-gutter on each pane edge → ~[gutter] between adjacent panes.
   static const double paneInset = 4;
@@ -19,14 +24,23 @@ class WorkspaceIdePaneChrome extends StatelessWidget {
 
   final Widget child;
 
+  /// Per-edge inset; defaults to [paneInset] on all sides.
+  final EdgeInsetsGeometry? padding;
+
+  /// Clip radius; defaults to [paneRadius] on all corners.
+  final BorderRadiusGeometry? borderRadius;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final effectivePadding = padding ?? const EdgeInsets.all(paneInset);
+    final effectiveRadius =
+        borderRadius ?? BorderRadius.circular(paneRadius);
     return RepaintBoundary(
       child: Padding(
-        padding: const EdgeInsets.all(paneInset),
+        padding: effectivePadding,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(paneRadius),
+          borderRadius: effectiveRadius,
           child: ColoredBox(
             color: cs.surface,
             child: child,
