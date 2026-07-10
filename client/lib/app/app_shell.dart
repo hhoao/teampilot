@@ -130,6 +130,7 @@ import '../services/workspace/workspace_worktree_registry.dart';
 import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
 import '../utils/logger.dart';
+import 'ui_zoom_baseline.dart';
 
 /// Fully wired app dependencies produced after async bootstrap.
 class AppShell {
@@ -189,6 +190,7 @@ class AppShell {
     required this.commandBus,
     required this.shortcutCubit,
     required this.workspaceChromeCommands,
+    required this.uiZoomBaseline,
   });
 
   final CliToolRegistry cliToolRegistry;
@@ -246,6 +248,7 @@ class AppShell {
   final CommandBus commandBus;
   final ShortcutCubit shortcutCubit;
   final WorkspaceChromeCommands workspaceChromeCommands;
+  final UiZoomBaseline uiZoomBaseline;
 }
 
 Future<AppShell> buildAppShell({
@@ -723,7 +726,12 @@ Future<AppShell> buildAppShell({
   final commandBus = CommandBus();
   final shortcutCubit = ShortcutCubit();
   final workspaceChromeCommands = WorkspaceChromeCommands();
-  registerLayoutCommands(commandBus, layoutCubit);
+  final uiZoomBaseline = UiZoomBaseline();
+  registerLayoutCommands(
+    commandBus,
+    layoutCubit,
+    uiZoomBaseline: () => uiZoomBaseline.value,
+  );
   registerShortcutsUiCommands(commandBus);
 
   final transportFactory = TerminalTransportFactory(
@@ -1068,6 +1076,7 @@ Future<AppShell> buildAppShell({
     commandBus: commandBus,
     shortcutCubit: shortcutCubit,
     workspaceChromeCommands: workspaceChromeCommands,
+    uiZoomBaseline: uiZoomBaseline,
   );
 }
 

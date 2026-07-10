@@ -3,16 +3,23 @@ import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/commands/command_ids.dart';
 import 'package:teampilot/services/commands/layout_command_registrar.dart';
+import 'package:teampilot/theme/app_typography_scale.dart';
 
 void main() {
   group('registerLayoutCommands', () {
     late CommandBus bus;
     late LayoutCubit layout;
+    late double baseline;
 
     setUp(() {
       bus = CommandBus();
       layout = LayoutCubit();
-      registerLayoutCommands(bus, layout);
+      baseline = 1.0;
+      registerLayoutCommands(
+        bus,
+        layout,
+        uiZoomBaseline: () => baseline,
+      );
     });
 
     tearDown(() => layout.close());
@@ -38,6 +45,34 @@ void main() {
         closeTo(0.9, 0.0001),
       );
     });
+
+    test(
+      'zoomIn clamps differently for baseline 0.5 than 1.0 near the edge',
+      () async {
+        baseline = 0.5;
+        for (var i = 0; i < 20; i++) {
+          bus.invoke(CommandIds.zoomIn);
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        final atHalfBaseline =
+            layout.state.preferences.uiZoomCustomMultiplier;
+
+        await layout.zoomReset();
+        baseline = 1.0;
+        for (var i = 0; i < 20; i++) {
+          bus.invoke(CommandIds.zoomIn);
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        final atUnitBaseline =
+            layout.state.preferences.uiZoomCustomMultiplier;
+
+        expect(atHalfBaseline, closeTo(kTypographyCustomMultiplierMax, 0.0001));
+        expect(atUnitBaseline, closeTo(kUiZoomMax, 0.0001));
+        expect(atHalfBaseline, isNot(closeTo(atUnitBaseline, 0.0001)));
+      },
+    );
 
     test('zoomReset command resets the scale id to standard', () async {
       bus.invoke(CommandIds.zoomIn);

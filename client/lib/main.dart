@@ -10,6 +10,7 @@ import 'package:toastification/toastification.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app/app_shell.dart';
+import 'app/ui_zoom_baseline.dart';
 import 'app/home_index_prefetch.dart';
 import 'cubits/app_bootstrap_cubit.dart';
 import 'cubits/app_update_cubit.dart';
@@ -601,6 +602,9 @@ void main() async {
                 RepositoryProvider<WorkspaceChromeCommands>.value(
                   value: shell.workspaceChromeCommands,
                 ),
+                RepositoryProvider<UiZoomBaseline>.value(
+                  value: shell.uiZoomBaseline,
+                ),
               ],
               child: MultiBlocProvider(
                 providers: [
@@ -807,11 +811,13 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
               // compensating for OS display scaling); compact/comfortable/custom
               // are relative to it.
               final dpr = MediaQuery.of(context).devicePixelRatio;
+              final baseline = autoUiZoomForDevicePixelRatio(dpr);
+              context.read<UiZoomBaseline>().value = baseline;
               final effectiveZoom = clampUiZoom(
                 resolveRelativeScale(
                   scaleId: zoomBundle.uiZoomScale,
                   customMultiplier: zoomBundle.uiZoomCustomMultiplier,
-                  baseline: autoUiZoomForDevicePixelRatio(dpr),
+                  baseline: baseline,
                 ),
               );
               Widget content = AppTextScaleBoundary(
