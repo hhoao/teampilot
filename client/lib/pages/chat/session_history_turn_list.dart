@@ -1,28 +1,75 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../../cubits/session_history_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../services/cli/registry/capabilities/session_history_capability.dart';
+import '../../services/session/session_history_pagination.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
+import 'session_history_turn_tile.dart';
 
 /// Read-only transcript turns for session history review.
-class SessionHistoryTurnList extends StatelessWidget {
+class SessionHistoryTurnList extends StatefulWidget {
   const SessionHistoryTurnList({
     required this.state,
     required this.onRetry,
+    this.onLoadOlder,
     super.key,
   });
 
   final SessionHistoryState state;
   final VoidCallback onRetry;
+  final VoidCallback? onLoadOlder;
+
+  @override
+  State<SessionHistoryTurnList> createState() => _SessionHistoryTurnListState();
+}
+
+class _SessionHistoryTurnListState extends State<SessionHistoryTurnList> {
+  final _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant SessionHistoryTurnList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final becameReady =
+        oldWidget.state.status != SessionHistoryViewStatus.ready &&
+        widget.state.status == SessionHistoryViewStatus.ready;
+    if (becameReady && widget.state.turns.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_scrollController.hasClients) return;
+        _scrollController.jumpTo(0);
+      });
+    }
+  }
+
+  bool _onScroll(ScrollNotification notification) {
+    final state = widget.state;
+    if (state.status != SessionHistoryViewStatus.ready) return false;
+    if (!state.hasOlder || state.isLoadingOlder) return false;
+    if (widget.onLoadOlder == null) return false;
+
+    final metrics = notification.metrics;
+    if (metrics.maxScrollExtent <= 0) return false;
+    if (metrics.pixels <
+        metrics.maxScrollExtent - kSessionHistoryLoadOlderScrollThreshold) {
+      return false;
+    }
+
+    widget.onLoadOlder!();
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
-    switch (state.status) {
+    switch (widget.state.status) {
       case SessionHistoryViewStatus.loading:
         return _HistoryStatusPane(
+          icon: Icons.history_rounded,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -44,6 +91,7 @@ class SessionHistoryTurnList extends StatelessWidget {
         );
       case SessionHistoryViewStatus.empty:
         return _HistoryStatusPane(
+          icon: Icons.chat_bubble_outline_rounded,
           child: Text(
             context.l10n.sessionHistoryEmpty,
             style: AppTextStyles.of(context).body.copyWith(
@@ -53,8 +101,9 @@ class SessionHistoryTurnList extends StatelessWidget {
           ),
         );
       case SessionHistoryViewStatus.error:
-        final detail = state.errorMessage?.trim();
+        final detail = widget.state.errorMessage?.trim();
         return _HistoryStatusPane(
+          icon: Icons.error_outline_rounded,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -77,113 +126,93 @@ class SessionHistoryTurnList extends StatelessWidget {
               ],
               SizedBox(height: context.appSpacing.md),
               TextButton(
-                onPressed: onRetry,
+                onPressed: widget.onRetry,
                 child: Text(context.l10n.sessionHistoryRetry),
               ),
             ],
           ),
         );
       case SessionHistoryViewStatus.ready:
-        return ListView.builder(
-          padding: EdgeInsets.fromLTRB(
-            context.appSpacing.lg,
-            context.appSpacing.md,
-            context.appSpacing.lg,
-            context.appSpacing.md,
+        final turns = widget.state.turns;
+        final sentinelCount = widget.state.hasOlder ? 1 : 0;
+        return NotificationListener<ScrollNotification>(
+          onNotification: _onScroll,
+          child: ListView.builder(
+            controller: _scrollController,
+            reverse: true,
+            padding: EdgeInsets.fromLTRB(
+              context.appSpacing.xl,
+              context.appSpacing.md,
+              context.appSpacing.xl,
+              0,
+            ),
+            itemCount: turns.length + sentinelCount,
+            itemBuilder: (context, index) {
+              if (widget.state.hasOlder && index == turns.length) {
+                return _LoadOlderSentinel(
+                  isLoading: widget.state.isLoadingOlder,
+                );
+              }
+              final turn = turns[turns.length - 1 - index];
+              return SessionHistoryTurnTile(turn: turn);
+            },
           ),
-          itemCount: state.turns.length,
-          itemBuilder: (context, index) =>
-              _HistoryTurnTile(turn: state.turns[index]),
         );
     }
   }
 }
 
 class _HistoryStatusPane extends StatelessWidget {
-  const _HistoryStatusPane({required this.child});
+  const _HistoryStatusPane({required this.icon, required this.child});
 
+  final IconData icon;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: context.appSpacing.xl),
-        child: child,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 32, color: cs.onSurfaceVariant.withValues(alpha: 0.55)),
+            SizedBox(height: context.appSpacing.md),
+            child,
+          ],
+        ),
       ),
     );
   }
 }
 
-class _HistoryTurnTile extends StatelessWidget {
-  const _HistoryTurnTile({required this.turn});
+class _LoadOlderSentinel extends StatelessWidget {
+  const _LoadOlderSentinel({required this.isLoading});
 
-  final SessionHistoryTurn turn;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
     final spacing = context.appSpacing;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
-
-    if (turn.role == SessionHistoryRole.tool) {
-      final title = turn.toolName?.trim().isNotEmpty == true
-          ? turn.toolName!.trim()
-          : context.l10n.sessionHistoryToolTurn;
-      return Padding(
-        padding: EdgeInsets.only(bottom: spacing.sm),
-        child: Theme(
-          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-          child: ExpansionTile(
-            initiallyExpanded: !turn.collapsedByDefault,
-            tilePadding: EdgeInsets.symmetric(horizontal: spacing.sm),
-            childrenPadding: EdgeInsets.fromLTRB(
-              spacing.sm,
-              0,
-              spacing.sm,
-              spacing.sm,
-            ),
-            title: Text(
-              title,
-              style: styles.bodySmall.copyWith(
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: MarkdownBody(data: turn.markdown),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final l10n = context.l10n;
-    final label = switch (turn.role) {
-      SessionHistoryRole.user => l10n.sessionHistoryRoleUser,
-      SessionHistoryRole.assistant => l10n.sessionHistoryRoleAssistant,
-      SessionHistoryRole.system => l10n.sessionHistoryRoleSystem,
-      SessionHistoryRole.tool => l10n.sessionHistoryToolTurn,
-    };
 
     return Padding(
-      padding: EdgeInsets.only(bottom: spacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            label,
-            style: styles.bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: spacing.xs),
-          MarkdownBody(data: turn.markdown),
-        ],
+      padding: EdgeInsets.only(bottom: spacing.md, top: spacing.xs),
+      child: Center(
+        child: isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Text(
+                context.l10n.sessionHistoryLoadOlderHint,
+                style: AppTextStyles.of(context).bodySmall.copyWith(
+                  color: cs.onSurfaceVariant.withValues(alpha: 0.75),
+                ),
+                textAlign: TextAlign.center,
+              ),
       ),
     );
   }

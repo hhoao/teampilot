@@ -82,6 +82,7 @@ void main() {
                 markdown: 'Hello **assistant**',
               ),
             ],
+            totalTurnCount: 2,
           ),
           onRetry: _noop,
         ),
@@ -90,6 +91,30 @@ void main() {
 
     expect(find.text('Hello user turn'), findsOneWidget);
     expect(find.textContaining('assistant'), findsWidgets);
+  });
+
+  testWidgets('hasOlder shows load older hint at top', (tester) async {
+    await tester.pumpWidget(
+      _wrap(
+        const SessionHistoryTurnList(
+          state: SessionHistoryState(
+            status: SessionHistoryViewStatus.ready,
+            turns: [
+              SessionHistoryTurn(
+                role: SessionHistoryRole.user,
+                markdown: 'recent',
+              ),
+            ],
+            totalTurnCount: 40,
+            hasOlder: true,
+          ),
+          onRetry: _noop,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Scroll up for earlier messages'), findsOneWidget);
   });
 
   testWidgets('tool turns start collapsed', (tester) async {
@@ -106,6 +131,7 @@ void main() {
                 collapsedByDefault: true,
               ),
             ],
+            totalTurnCount: 1,
           ),
           onRetry: _noop,
         ),

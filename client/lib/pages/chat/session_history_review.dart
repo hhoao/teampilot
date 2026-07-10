@@ -383,18 +383,21 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                 return SessionHistoryTurnList(
                   state: state,
                   onRetry: () => _loadHistory(force: true),
+                  onLoadOlder: () =>
+                      context.read<SessionHistoryCubit>().loadOlder(),
                 );
               },
             ),
           ),
           Padding(
             padding: EdgeInsets.fromLTRB(
-              spacing.lg,
-              spacing.sm,
-              spacing.lg,
+              spacing.xl,
+              0,
+              spacing.xl,
               spacing.lg,
             ),
             child: SessionReviewComposeCard(
+              floating: true,
               controller: _controller,
               focusNode: _focusNode,
               hint: l10n.sessionHistoryComposeHint,

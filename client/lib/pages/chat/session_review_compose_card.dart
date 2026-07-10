@@ -40,6 +40,7 @@ class SessionReviewComposeCard extends StatelessWidget {
     this.isSubmitting = false,
     this.launchError,
     this.onPasteImage,
+    this.floating = false,
     super.key,
   });
 
@@ -70,6 +71,7 @@ class SessionReviewComposeCard extends StatelessWidget {
   final bool isSubmitting;
   final String? launchError;
   final Future<bool> Function()? onPasteImage;
+  final bool floating;
 
   bool get _composeActionsEnabled => !isSubmitting && !isEnhancing;
 
@@ -78,13 +80,18 @@ class SessionReviewComposeCard extends StatelessWidget {
     final palette = WorkspaceChatLandingPalette(Theme.of(context).colorScheme);
     final spacing = context.appSpacing;
     final error = launchError?.trim();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Material(
       color: palette.elevated,
+      elevation: floating ? 8 : 0,
+      shadowColor: floating
+          ? Colors.black.withValues(alpha: isDark ? 0.45 : 0.14)
+          : Colors.transparent,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: palette.border),
+        side: floating ? BorderSide.none : BorderSide(color: palette.border),
       ),
       child: Padding(
         padding: EdgeInsets.fromLTRB(

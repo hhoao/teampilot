@@ -1152,6 +1152,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Continue this conversation… @ reference files, / invoke skills';
 
   @override
+  String get sessionHistoryLoadOlderHint => 'Scroll up for earlier messages';
+
+  @override
   String get sessionReadyTitle => 'Ready to chat';
 
   @override

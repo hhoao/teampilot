@@ -191,4 +191,46 @@ void main() {
       expect(cubit.state.status, SessionHistoryViewStatus.ready);
     },
   );
+
+  test('windows to recent turns and loadOlder expands slice', () async {
+    final turns = [
+      for (var i = 0; i < 50; i++)
+        SessionHistoryTurn(
+          role: SessionHistoryRole.user,
+          markdown: 'turn-$i',
+        ),
+    ];
+    fakeCap.snapshot = SessionHistorySnapshot(
+      turns: turns,
+      status: SessionHistoryLoadStatus.ready,
+    );
+
+    await cubit.load(session: simpleSession(), memberId: '');
+    expect(cubit.state.totalTurnCount, 50);
+    expect(cubit.state.turns, hasLength(30));
+    expect(cubit.state.turns.first.markdown, 'turn-20');
+    expect(cubit.state.turns.last.markdown, 'turn-49');
+    expect(cubit.state.hasOlder, isTrue);
+
+    cubit.loadOlder();
+    expect(cubit.state.turns, hasLength(50));
+    expect(cubit.state.hasOlder, isFalse);
+    expect(cubit.state.isLoadingOlder, isFalse);
+  });
+
+  test('short history has no older pages', () async {
+    fakeCap.snapshot = SessionHistorySnapshot(
+      turns: const [
+        SessionHistoryTurn(role: SessionHistoryRole.user, markdown: 'only'),
+      ],
+      status: SessionHistoryLoadStatus.ready,
+    );
+
+    await cubit.load(session: simpleSession(), memberId: '');
+    expect(cubit.state.turns, hasLength(1));
+    expect(cubit.state.hasOlder, isFalse);
+
+    cubit.loadOlder();
+    expect(cubit.state.turns, hasLength(1));
+  });
 }

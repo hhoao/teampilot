@@ -467,6 +467,7 @@
   "sessionHistoryRoleAssistant": "助手",
   "sessionHistoryRoleSystem": "系统",
   "sessionHistoryComposeHint": "继续对话… @ 引用文件，/ 调用技能与指令",
+  "sessionHistoryLoadOlderHint": "上滑查看更早消息",
   "sessionReadyTitle": "准备开始对话",
   "sessionReadySubtitle": "与 {memberName} 在此工作区中开始对话",
   "@sessionReadySubtitle": {

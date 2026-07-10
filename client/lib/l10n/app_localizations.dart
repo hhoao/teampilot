@@ -2156,6 +2156,12 @@ abstract class AppLocalizations {
   /// **'Continue this conversation… @ reference files, / invoke skills'**
   String get sessionHistoryComposeHint;
 
+  /// No description provided for @sessionHistoryLoadOlderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll up for earlier messages'**
+  String get sessionHistoryLoadOlderHint;
+
   /// No description provided for @sessionReadyTitle.
   ///
   /// In en, this message translates to:
