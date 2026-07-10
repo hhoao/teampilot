@@ -323,6 +323,7 @@ void main() {
       requestOpenSession: (request) async {
         openCalls++;
         expect(request.session.sessionId, 'bound-sess');
+        expect(request.connectImmediately, isTrue);
         return SessionOpenStatus.opened;
       },
       requestCreateAndOpenSession: (_) async {

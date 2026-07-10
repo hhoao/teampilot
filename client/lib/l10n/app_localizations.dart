@@ -2126,6 +2126,60 @@ abstract class AppLocalizations {
   /// **'Starting session…'**
   String get sessionStarting;
 
+  /// No description provided for @sessionHistoryLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading conversation history…'**
+  String get sessionHistoryLoading;
+
+  /// No description provided for @sessionHistoryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No prior messages for this member yet.'**
+  String get sessionHistoryEmpty;
+
+  /// No description provided for @sessionHistoryError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load conversation history.'**
+  String get sessionHistoryError;
+
+  /// No description provided for @sessionHistoryRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get sessionHistoryRetry;
+
+  /// No description provided for @sessionHistoryToolTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool'**
+  String get sessionHistoryToolTurn;
+
+  /// No description provided for @sessionHistoryRoleUser.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get sessionHistoryRoleUser;
+
+  /// No description provided for @sessionHistoryRoleAssistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Assistant'**
+  String get sessionHistoryRoleAssistant;
+
+  /// No description provided for @sessionHistoryRoleSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get sessionHistoryRoleSystem;
+
+  /// No description provided for @sessionHistoryComposeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue this conversation… @ reference files, / invoke skills'**
+  String get sessionHistoryComposeHint;
+
   /// No description provided for @sessionReadyTitle.
   ///
   /// In en, this message translates to:

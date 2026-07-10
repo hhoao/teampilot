@@ -1,0 +1,1 @@
+{"id":"msg_asst1","sessionID":"ses_demo001","role":"assistant","parentID":"msg_user1","time":{"created":1720612802000,"completed":1720612805000},"agent":"build","modelID":"claude-sonnet-4","providerID":"anthropic","cost":0.01,"tokens":{"input":10,"output":20,"reasoning":0,"cache":{"read":0,"write":0}}}

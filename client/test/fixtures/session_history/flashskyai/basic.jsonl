@@ -1,0 +1,4 @@
+{"type":"user","message":{"role":"user","content":"hello flashsky"},"uuid":"u-1","timestamp":"2026-07-10T11:00:00.000Z"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"hi from flashsky"}]},"uuid":"a-1","timestamp":"2026-07-10T11:00:01.000Z"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_fs1","name":"Bash","input":{"command":"pwd"}}]},"uuid":"a-2","timestamp":"2026-07-10T11:00:02.000Z"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_fs1","content":"/tmp"}]},"uuid":"u-2","timestamp":"2026-07-10T11:00:03.000Z"}

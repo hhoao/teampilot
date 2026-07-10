@@ -54,7 +54,8 @@ void main() {
     expect(resolved!.key, kBuiltinDefaultExpertKey);
     expect(resolved.name, 'Default');
     expect(resolved.member.prompt, expectedPrompt);
-    expect(resolved.skillDeps, isEmpty);
+    expect(resolved.skillDeps, hasLength(1));
+    expect(resolved.skillDeps.single.name, 'Using Superpowers');
     expect(resolved.pluginDeps, isEmpty);
     expect(resolved.mcpDeps, isEmpty);
   });

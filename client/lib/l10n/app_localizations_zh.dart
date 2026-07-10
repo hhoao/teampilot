@@ -1082,6 +1082,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionStarting => '正在启动会话…';
 
   @override
+  String get sessionHistoryLoading => '正在加载对话历史…';
+
+  @override
+  String get sessionHistoryEmpty => '该成员暂无历史消息。';
+
+  @override
+  String get sessionHistoryError => '无法加载对话历史。';
+
+  @override
+  String get sessionHistoryRetry => '重试';
+
+  @override
+  String get sessionHistoryToolTurn => '工具';
+
+  @override
+  String get sessionHistoryRoleUser => '你';
+
+  @override
+  String get sessionHistoryRoleAssistant => '助手';
+
+  @override
+  String get sessionHistoryRoleSystem => '系统';
+
+  @override
+  String get sessionHistoryComposeHint => '继续对话… @ 引用文件，/ 调用技能与指令';
+
+  @override
   String get sessionReadyTitle => '准备开始对话';
 
   @override

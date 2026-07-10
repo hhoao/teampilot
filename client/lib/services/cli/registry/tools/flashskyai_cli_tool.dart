@@ -19,6 +19,8 @@ import '../capabilities/launch_args_capability.dart';
 import '../capabilities/presence_capability.dart';
 import '../capabilities/provider_model_capability.dart';
 import '../capabilities/session_resume_capability.dart';
+import '../capabilities/session_history_capability.dart';
+import '../capabilities/history/flashskyai_session_history.dart';
 import '../capabilities/resume/transcript_resume_strategy.dart';
 import '../capabilities/headless_provision_capability.dart';
 import '../config_profile/flashskyai_config_profile_capability.dart';
@@ -42,6 +44,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.launchArgs = const FlashskyaiCliToolAdapter(),
     this.configProfile = const FlashskyaiConfigProfileCapability(),
     this.sessionResume = const TranscriptResumeStrategy(),
+    this.sessionHistory = const FlashskyaiSessionHistory(),
     this.executableResolver = const FlashskyaiExecutableResolver(),
     this.installer = const UnsupportedInstallerCapability(),
     this.presence = const FlashskyaiPresence(),
@@ -62,6 +65,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
   final SessionResumeCapability sessionResume;
+  final SessionHistoryCapability sessionHistory;
   final ExecutableResolverCapability executableResolver;
   final InstallerCapability installer;
   final PresenceCapability presence;
@@ -99,6 +103,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     launchArgs,
     configProfile,
     sessionResume,
+    sessionHistory,
     executableResolver,
     installer,
     presence,

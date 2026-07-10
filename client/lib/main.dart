@@ -19,6 +19,7 @@ import 'cubits/chat_cubit.dart';
 import 'cubits/layout_cubit.dart';
 import 'cubits/mailbox_cubit.dart';
 import 'cubits/notification_cubit.dart';
+import 'cubits/session_history_cubit.dart';
 import 'l10n/l10n_extensions.dart';
 import 'repositories/app_settings_repository.dart';
 import 'repositories/launch_profile_repository.dart';
@@ -110,6 +111,7 @@ class _AppShutdownScope extends StatefulWidget {
     required this.automationCubit,
     required this.mailboxCubit,
     required this.boardCubit,
+    required this.sessionHistoryCubit,
     required this.notificationCubit,
     required this.workspaceTerminalRegistry,
     required this.gitRepoStore,
@@ -124,6 +126,7 @@ class _AppShutdownScope extends StatefulWidget {
   final AutomationCubit automationCubit;
   final MailboxCubit mailboxCubit;
   final BoardCubit boardCubit;
+  final SessionHistoryCubit sessionHistoryCubit;
   final NotificationCubit notificationCubit;
   final WorkspaceTerminalRegistry workspaceTerminalRegistry;
   final GitRepoStore gitRepoStore;
@@ -144,6 +147,7 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
     unawaited(widget.automationCubit.close());
     unawaited(widget.mailboxCubit.close());
     unawaited(widget.boardCubit.close());
+    unawaited(widget.sessionHistoryCubit.close());
     unawaited(widget.notificationCubit.close());
     NotificationRecorder.install(null);
     widget.workspaceTerminalRegistry.disposeAll();
@@ -424,6 +428,7 @@ void main() async {
             automationCubit: shell.automationCubit,
             mailboxCubit: shell.mailboxCubit,
             boardCubit: shell.boardCubit,
+            sessionHistoryCubit: shell.sessionHistoryCubit,
             notificationCubit: shell.notificationCubit,
             workspaceTerminalRegistry: shell.workspaceTerminalRegistry,
             gitRepoStore: shell.gitRepoStore,
@@ -504,6 +509,7 @@ void main() async {
                   BlocProvider.value(value: shell.memberPresenceCubit),
                   BlocProvider.value(value: shell.mailboxCubit),
                   BlocProvider.value(value: shell.boardCubit),
+                  BlocProvider.value(value: shell.sessionHistoryCubit),
                   BlocProvider.value(value: shell.notificationCubit),
                   BlocProvider.value(value: shell.editorCubit),
                   BlocProvider.value(value: shell.workbenchCubit),

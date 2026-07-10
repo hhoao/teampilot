@@ -1,0 +1,1 @@
+{"id":"prt_tool1","sessionID":"ses_demo001","messageID":"msg_asst1","type":"tool","tool":"bash","callID":"call_1","state":{"status":"completed","input":{"command":"ls"},"output":"a.txt\nb.txt","title":"ls","metadata":{},"time":{"start":1720612803000,"end":1720612804000}}}
