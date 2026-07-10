@@ -7,6 +7,7 @@ import '../cubits/chat/model/chat_tab.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/launch_profile_cubit.dart';
+import '../cubits/session_preferences_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
 import '../models/team_config.dart';
@@ -78,6 +79,11 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
   void _consumeRouteSession(ChatState state) {
     if (!mounted) return;
+    final connectImmediately = context
+        .read<SessionPreferencesCubit>()
+        .state
+        .preferences
+        .openExistingSessionStartsTerminal;
     consumeChatWorkbenchRouteSession(
       routeSessionId: widget.sessionId,
       handledRouteSession: _handledRouteSession,
@@ -87,6 +93,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       sessionRepo: context.read<SessionRepository>(),
       l10n: AppLocalizations.of(context),
       onHandled: (handled) => _handledRouteSession = handled,
+      connectImmediately: connectImmediately,
     );
   }
 
@@ -401,14 +408,20 @@ class _ChatWorkbenchBody extends StatelessWidget {
         : _tabSelectedMemberId(chatCubit);
 
     final isPersonal = appSession.sessionTeam.trim().isEmpty;
+    // Simple seats use sessionId as selectedMemberId for PTY shells; history
+    // locate treats non-empty memberId as a team roster seat.
+    final historyMemberId = isPersonal ? '' : memberId;
+    final resolvedTeam = isPersonal
+        ? null
+        : (team ?? _teamProfileForSession(context, appSession));
     final connectRequest = isPersonal
         ? PersonalSessionConnect(workspaceId: workspaceId)
-        : TeamSessionConnect(team!);
+        : TeamSessionConnect(resolvedTeam!);
 
     return SessionHistoryReview(
       session: appSession,
-      selectedMemberId: memberId,
-      team: team,
+      selectedMemberId: historyMemberId,
+      team: resolvedTeam,
       launchError: launchError,
       onSubmit: (message) => submitSessionHistoryReviewMessage(
         sessionId: appSession.sessionId,
@@ -435,6 +448,13 @@ class _ChatWorkbenchBody extends StatelessWidget {
         applyFirstPromptTitle: chatCubit.applyFirstPromptTitle,
       ),
     );
+  }
+
+  TeamProfile? _teamProfileForSession(BuildContext context, AppSession session) {
+    final teamId = session.sessionTeam.trim();
+    if (teamId.isEmpty) return null;
+    final profile = context.read<LaunchProfileCubit>().byId(teamId);
+    return profile is TeamProfile ? profile : null;
   }
 
   String _tabSelectedMemberId(ChatCubit chatCubit) {

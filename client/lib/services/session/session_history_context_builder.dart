@@ -2,6 +2,7 @@ import 'package:path/path.dart' as p;
 
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
+import '../../utils/logger.dart';
 import '../cli/registry/capabilities/session_history_capability.dart';
 import '../io/filesystem.dart';
 import '../provider/codex/codex_session_config_dir.dart';
@@ -29,21 +30,22 @@ final class SessionHistoryContextBuilder {
   }) {
     final workspaceId = session.workspaceId.trim();
     final sessionId = session.sessionId.trim();
-    assert(
-      workspaceId.isNotEmpty,
-      'SessionHistoryContextBuilder requires workspaceId',
-    );
-    assert(
-      sessionId.isNotEmpty,
-      'SessionHistoryContextBuilder requires sessionId',
-    );
+    if (workspaceId.isEmpty) {
+      throw StateError('SessionHistoryContextBuilder requires workspaceId');
+    }
+    if (sessionId.isEmpty) {
+      throw StateError('SessionHistoryContextBuilder requires sessionId');
+    }
 
     final trimmedMember = memberId.trim();
     final isSimple = trimmedMember.isEmpty;
     final resolvedTeamId = (teamId ?? session.sessionTeam).trim();
-    if (!isSimple) {
-      assert(
-        resolvedTeamId.isNotEmpty,
+    if (!isSimple && resolvedTeamId.isEmpty) {
+      appLogger.e(
+        '[session-history] context build missing teamId for member '
+        '$trimmedMember session=$sessionId',
+      );
+      throw StateError(
         'SessionHistoryContextBuilder requires teamId for member $trimmedMember',
       );
     }
@@ -66,10 +68,15 @@ final class SessionHistoryContextBuilder {
       final fromBinding = binding.taskId.trim();
       final fromArg = taskId?.trim() ?? '';
       final chosen = fromArg.isNotEmpty ? fromArg : fromBinding;
-      assert(
-        chosen.isNotEmpty,
-        'SessionHistoryContextBuilder requires taskId for member $trimmedMember',
-      );
+      if (chosen.isEmpty) {
+        appLogger.e(
+          '[session-history] context build missing taskId for member '
+          '$trimmedMember session=$sessionId',
+        );
+        throw StateError(
+          'SessionHistoryContextBuilder requires taskId for member $trimmedMember',
+        );
+      }
       resolvedTaskId = chosen;
       resolvedNativeId = persistedNativeId?.trim().isNotEmpty == true
           ? persistedNativeId!.trim()

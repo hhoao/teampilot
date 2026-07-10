@@ -26,6 +26,9 @@ class AppKeys {
   static const autoLaunchAllMembersOnConnectSwitch = Key(
     'auto-launch-all-members-on-connect-switch',
   );
+  static const openExistingSessionStartsTerminalSwitch = Key(
+    'open-existing-session-starts-terminal-switch',
+  );
   static const scopeSessionsToSelectedTeamSwitch = Key(
     'scope-sessions-to-selected-team-switch',
   );

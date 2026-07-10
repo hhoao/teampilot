@@ -11,6 +11,7 @@ void main() {
       expect(prefs.autoLaunchAllMembersOnConnect, true);
       expect(prefs.scopeSessionsToSelectedTeam, true);
       expect(prefs.notifyOnSessionIdle, true);
+      expect(prefs.openExistingSessionStartsTerminal, false);
     });
 
     test('toJson/fromJson round-trips', () {
@@ -25,6 +26,7 @@ void main() {
         autoLaunchAllMembersOnConnect: true,
         scopeSessionsToSelectedTeam: true,
         notifyOnSessionIdle: false,
+        openExistingSessionStartsTerminal: true,
       );
       final restored = SessionPreferences.fromJson(prefs.toJson());
       expect(restored.cliExecutablePaths, {
@@ -37,6 +39,7 @@ void main() {
       expect(restored.autoLaunchAllMembersOnConnect, true);
       expect(restored.scopeSessionsToSelectedTeam, true);
       expect(restored.notifyOnSessionIdle, false);
+      expect(restored.openExistingSessionStartsTerminal, true);
     });
 
     test('toJson is free of legacy runtime knobs', () {
@@ -52,12 +55,14 @@ void main() {
       expect(restored.sshUseLoginShell, false);
       expect(restored.autoLaunchAllMembersOnConnect, true);
       expect(restored.scopeSessionsToSelectedTeam, true);
+      expect(restored.openExistingSessionStartsTerminal, false);
     });
 
     test('copyWith updates only specified fields', () {
       final prefs = SessionPreferences();
       final next = prefs.copyWith(
         cliExecutablePaths: const {'flashskyai': '/a/b', 'claude': '/c/d'},
+        openExistingSessionStartsTerminal: true,
       );
       expect(next.cliExecutablePathFor('flashskyai'), '/a/b');
       expect(next.cliExecutablePaths, {'flashskyai': '/a/b', 'claude': '/c/d'});
@@ -65,6 +70,7 @@ void main() {
       expect(next.sshUseLoginShell, false);
       expect(next.autoLaunchAllMembersOnConnect, true);
       expect(next.scopeSessionsToSelectedTeam, true);
+      expect(next.openExistingSessionStartsTerminal, true);
     });
 
     test('fromJson ignores non-string cli executable path entries', () {

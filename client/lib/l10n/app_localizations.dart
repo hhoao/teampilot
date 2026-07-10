@@ -3620,6 +3620,18 @@ abstract class AppLocalizations {
   /// **'When enabled, Connect and Restart launch every valid member shell; otherwise only the selected member starts.'**
   String get autoLaunchAllMembersDescription;
 
+  /// No description provided for @openExistingSessionStartsTerminalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open existing sessions in terminal'**
+  String get openExistingSessionStartsTerminalTitle;
+
+  /// No description provided for @openExistingSessionStartsTerminalDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'When enabled, opening a conversation from the sidebar connects the terminal immediately. When off (default), open the history review panel first; submit from compose to start the terminal.'**
+  String get openExistingSessionStartsTerminalDescription;
+
   /// No description provided for @scopeSessionsToSelectedTeamTitle.
   ///
   /// In en, this message translates to:

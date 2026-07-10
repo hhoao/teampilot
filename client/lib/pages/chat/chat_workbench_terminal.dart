@@ -202,6 +202,7 @@ void consumeChatWorkbenchRouteSession({
   required SessionRepository sessionRepo,
   required AppLocalizations l10n,
   required void Function(bool handled) onHandled,
+  bool connectImmediately = false,
 }) {
   if (routeSessionId == null || handledRouteSession) return;
 
@@ -227,6 +228,7 @@ void consumeChatWorkbenchRouteSession({
           session: session,
           repo: sessionRepo,
           emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+          connectImmediately: connectImmediately,
         ),
       ),
     );
@@ -260,6 +262,7 @@ void consumeChatWorkbenchRouteSession({
         member: lead,
         repo: sessionRepo,
         emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+        connectImmediately: connectImmediately,
       ),
     ),
   );

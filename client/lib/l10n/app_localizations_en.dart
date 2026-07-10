@@ -1946,6 +1946,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'When enabled, Connect and Restart launch every valid member shell; otherwise only the selected member starts.';
 
   @override
+  String get openExistingSessionStartsTerminalTitle =>
+      'Open existing sessions in terminal';
+
+  @override
+  String get openExistingSessionStartsTerminalDescription =>
+      'When enabled, opening a conversation from the sidebar connects the terminal immediately. When off (default), open the history review panel first; submit from compose to start the terminal.';
+
+  @override
   String get scopeSessionsToSelectedTeamTitle =>
       'Scope sessions to selected team';
 

@@ -178,4 +178,17 @@ void main() {
     await cubit.load(session: session, memberId: '');
     expect(fakeCap.calls, 2);
   });
+
+  test(
+    'simple session with sessionId-as-memberId loads as simple seat',
+    () async {
+      // Personal PTY shells key by sessionId; history must not treat that as
+      // a team roster member (no teamId).
+      final session = simpleSession(id: '48394cec-eaa6-4ab1-bb05-5db7e7e97cde');
+      await cubit.load(session: session, memberId: session.sessionId);
+      expect(fakeCap.calls, 1);
+      expect(fakeCap.callMemberIds.single, isNull);
+      expect(cubit.state.status, SessionHistoryViewStatus.ready);
+    },
+  );
 }

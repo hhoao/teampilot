@@ -1,6 +1,7 @@
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
+import '../../utils/logger.dart';
 import '../cli/preset_resolver.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
 import '../cli/registry/capabilities/session_history_capability.dart';
@@ -58,10 +59,26 @@ final class SessionHistoryLoader {
     String? workingDirectory,
     bool force = false,
   }) async {
+    final sessionTeam = session.sessionTeam.trim();
+    final teamId = () {
+      final fromTeam = team?.id.trim() ?? '';
+      if (fromTeam.isNotEmpty) return fromTeam;
+      return sessionTeam;
+    }();
+    var effectiveMemberId = memberId.trim();
+    // Selected-member UUID without a team id cannot locate team runtime roots.
+    if (effectiveMemberId.isNotEmpty && teamId.isEmpty) {
+      appLogger.w(
+        '[session-history] drop memberId=$effectiveMemberId without teamId '
+        'session=${session.sessionId} (treating as simple seat)',
+      );
+      effectiveMemberId = '';
+    }
+
     final cli = SessionMemberCliResolver.resolve(
       persistedSession: session,
       team: team,
-      memberId: memberId,
+      memberId: effectiveMemberId,
       globalPresets: _globalPresets?.call() ?? const [],
       cliForMember: (t, id, {List<CliPreset> globalPresets = const []}) {
         for (final m in t.members) {
@@ -78,23 +95,26 @@ final class SessionHistoryLoader {
     );
 
     final cap = _registry.capability<SessionHistoryCapability>(cli);
-    assert(
-      cap != null,
-      'SessionHistoryCapability missing for launch CLI $cli',
-    );
+    if (cap == null) {
+      appLogger.e(
+        '[session-history] SessionHistoryCapability missing for CLI $cli '
+        'session=${session.sessionId}',
+      );
+      throw StateError('SessionHistoryCapability missing for launch CLI $cli');
+    }
 
     final ctx = _contextBuilder.build(
       fs: _fs(),
       layout: _layout(),
       appDataRoot: _appDataRoot(),
       session: session,
-      memberId: memberId,
+      memberId: effectiveMemberId,
       cli: cli,
       workingDirectory: workingDirectory,
-      teamId: team?.id,
+      teamId: teamId.isEmpty ? null : teamId,
     );
 
-    final cacheKey = _cacheKey(session.sessionId, memberId);
+    final cacheKey = _cacheKey(session.sessionId, effectiveMemberId);
     final token = await (_resolveCacheToken ?? _defaultCacheToken)(ctx);
     if (!force) {
       final hit = _cache[cacheKey];
@@ -103,9 +123,19 @@ final class SessionHistoryLoader {
       }
     }
 
-    final snapshot = await cap!.loadHistory(ctx);
-    _cache[cacheKey] = _HistoryCacheEntry(token: token, snapshot: snapshot);
-    return snapshot;
+    try {
+      final snapshot = await cap.loadHistory(ctx);
+      _cache[cacheKey] = _HistoryCacheEntry(token: token, snapshot: snapshot);
+      return snapshot;
+    } on Object catch (e, st) {
+      appLogger.e(
+        '[session-history] loadHistory failed session=${session.sessionId} '
+        'member=$effectiveMemberId cli=$cli: $e',
+        error: e,
+        stackTrace: st,
+      );
+      rethrow;
+    }
   }
 
   void invalidate({required String sessionId, String? memberId}) {

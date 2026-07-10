@@ -12,6 +12,7 @@ import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/expert_hub_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
+import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/landing_launch_context.dart';
@@ -31,8 +32,10 @@ import '../../../utils/workspace_path_utils.dart';
 const _uuid = Uuid();
 
 /// Builds the [SessionOpenRequest] for opening a persisted session from the
-/// sidebar / session list. Always [connectImmediately]: false so history review
-/// can load without starting a PTY.
+/// sidebar / session list.
+///
+/// [connectImmediately] defaults to false (history review). Pass true when
+/// [SessionPreferences.openExistingSessionStartsTerminal] is enabled.
 SessionOpenRequest buildOpenExistingSessionRequest({
   required AppSession session,
   Workspace? workspace,
@@ -40,6 +43,7 @@ SessionOpenRequest buildOpenExistingSessionRequest({
   TeamMemberConfig? member,
   SessionRepository? repo,
   required String emptyDisplayTitleFallback,
+  bool connectImmediately = false,
 }) {
   return SessionOpenRequest(
     session: session,
@@ -48,7 +52,7 @@ SessionOpenRequest buildOpenExistingSessionRequest({
     member: member,
     repo: repo,
     emptyDisplayTitleFallback: emptyDisplayTitleFallback,
-    connectImmediately: false,
+    connectImmediately: connectImmediately,
   );
 }
 
@@ -70,6 +74,11 @@ Future<void> openWorkspaceSessionTab(
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
   final fallback = context.l10n.defaultNewChatSessionTitle;
+  final connectImmediately = context
+      .read<SessionPreferencesCubit>()
+      .state
+      .preferences
+      .openExistingSessionStartsTerminal;
   if (team != null) {
     unawaited(chatCubit.scheduleTeamConfigValidation(team));
   }
@@ -82,6 +91,7 @@ Future<void> openWorkspaceSessionTab(
       member: isPersonal ? null : _teamLead(team),
       repo: repo,
       emptyDisplayTitleFallback: fallback,
+      connectImmediately: connectImmediately,
     ),
   );
   if (!context.mounted) return;

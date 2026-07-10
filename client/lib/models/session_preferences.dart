@@ -9,6 +9,7 @@ class SessionPreferences {
     this.terminalScrollbackLines = 10000,
     this.terminalLinkClickOpensInApp = true,
     this.notifyOnSessionIdle = true,
+    this.openExistingSessionStartsTerminal = false,
   }) : cliExecutablePaths = Map.unmodifiable(
          _normalizeCliExecutablePaths(cliExecutablePaths),
        ),
@@ -38,6 +39,8 @@ class SessionPreferences {
       terminalLinkClickOpensInApp:
           json['terminalLinkClickOpensInApp'] as bool? ?? true,
       notifyOnSessionIdle: json['notifyOnSessionIdle'] as bool? ?? true,
+      openExistingSessionStartsTerminal:
+          json['openExistingSessionStartsTerminal'] as bool? ?? false,
     );
   }
 
@@ -78,6 +81,11 @@ class SessionPreferences {
   /// When true, show an OS notification when a session leaves the working state.
   final bool notifyOnSessionIdle;
 
+  /// When true, opening an existing conversation from the sidebar/search/deep
+  /// link connects the PTY immediately. When false (default), the session opens
+  /// in history-review mode until the user submits from slim compose.
+  final bool openExistingSessionStartsTerminal;
+
   String cliExecutablePathFor(String toolId) =>
       cliExecutablePaths[toolId]?.trim() ?? '';
 
@@ -91,6 +99,7 @@ class SessionPreferences {
     int? terminalScrollbackLines,
     bool? terminalLinkClickOpensInApp,
     bool? notifyOnSessionIdle,
+    bool? openExistingSessionStartsTerminal,
   }) {
     return SessionPreferences(
       cliExecutablePaths: cliExecutablePaths ?? this.cliExecutablePaths,
@@ -107,6 +116,9 @@ class SessionPreferences {
       terminalLinkClickOpensInApp:
           terminalLinkClickOpensInApp ?? this.terminalLinkClickOpensInApp,
       notifyOnSessionIdle: notifyOnSessionIdle ?? this.notifyOnSessionIdle,
+      openExistingSessionStartsTerminal:
+          openExistingSessionStartsTerminal ??
+          this.openExistingSessionStartsTerminal,
     );
   }
 
@@ -121,6 +133,7 @@ class SessionPreferences {
       'terminalScrollbackLines': terminalScrollbackLines,
       'terminalLinkClickOpensInApp': terminalLinkClickOpensInApp,
       'notifyOnSessionIdle': notifyOnSessionIdle,
+      'openExistingSessionStartsTerminal': openExistingSessionStartsTerminal,
     };
   }
 

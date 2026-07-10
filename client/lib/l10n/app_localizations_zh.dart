@@ -1863,6 +1863,13 @@ class AppLocalizationsZh extends AppLocalizations {
       '开启后，点击连接或重启会为每个有效成员启动终端；关闭则仅启动当前选中的成员。';
 
   @override
+  String get openExistingSessionStartsTerminalTitle => '打开已有会话时直接启动终端';
+
+  @override
+  String get openExistingSessionStartsTerminalDescription =>
+      '开启后，从侧边栏打开对话会立即连接终端。关闭（默认）时先显示历史回顾面板，在输入框发送后才启动终端。';
+
+  @override
   String get scopeSessionsToSelectedTeamTitle => '按所选团队筛选会话';
 
   @override

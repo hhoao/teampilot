@@ -263,6 +263,17 @@ class _SessionControlsState extends State<_SessionControls> {
                   showDividerBelow: true,
                 ),
                 SettingsLabeledRow(
+                  title: l10n.openExistingSessionStartsTerminalTitle,
+                  subtitle: l10n.openExistingSessionStartsTerminalDescription,
+                  trailing: Switch(
+                    key: AppKeys.openExistingSessionStartsTerminalSwitch,
+                    value: snapshot.openExistingSessionStartsTerminal,
+                    onChanged: (value) =>
+                        cubit.setOpenExistingSessionStartsTerminal(value),
+                  ),
+                  showDividerBelow: true,
+                ),
+                SettingsLabeledRow(
                   title: l10n.scopeSessionsToSelectedTeamTitle,
                   subtitle: l10n.scopeSessionsToSelectedTeamDescription,
                   trailing: Switch(
@@ -298,6 +309,7 @@ class _SessionControlsSnapshot {
     required this.terminalScrollbackLines,
     required this.terminalLinkClickOpensInApp,
     required this.autoLaunchAllMembersOnConnect,
+    required this.openExistingSessionStartsTerminal,
     required this.scopeSessionsToSelectedTeam,
     required this.notifyOnSessionIdle,
   });
@@ -307,6 +319,7 @@ class _SessionControlsSnapshot {
   final int terminalScrollbackLines;
   final bool terminalLinkClickOpensInApp;
   final bool autoLaunchAllMembersOnConnect;
+  final bool openExistingSessionStartsTerminal;
   final bool scopeSessionsToSelectedTeam;
   final bool notifyOnSessionIdle;
 
@@ -317,6 +330,8 @@ class _SessionControlsSnapshot {
       terminalScrollbackLines: preferences.terminalScrollbackLines,
       terminalLinkClickOpensInApp: preferences.terminalLinkClickOpensInApp,
       autoLaunchAllMembersOnConnect: preferences.autoLaunchAllMembersOnConnect,
+      openExistingSessionStartsTerminal:
+          preferences.openExistingSessionStartsTerminal,
       scopeSessionsToSelectedTeam: preferences.scopeSessionsToSelectedTeam,
       notifyOnSessionIdle: preferences.notifyOnSessionIdle,
     );
@@ -330,6 +345,8 @@ class _SessionControlsSnapshot {
         other.terminalScrollbackLines == terminalScrollbackLines &&
         other.terminalLinkClickOpensInApp == terminalLinkClickOpensInApp &&
         other.autoLaunchAllMembersOnConnect == autoLaunchAllMembersOnConnect &&
+        other.openExistingSessionStartsTerminal ==
+            openExistingSessionStartsTerminal &&
         other.scopeSessionsToSelectedTeam == scopeSessionsToSelectedTeam &&
         other.notifyOnSessionIdle == notifyOnSessionIdle;
   }
@@ -341,6 +358,7 @@ class _SessionControlsSnapshot {
     terminalScrollbackLines,
     terminalLinkClickOpensInApp,
     autoLaunchAllMembersOnConnect,
+    openExistingSessionStartsTerminal,
     scopeSessionsToSelectedTeam,
     notifyOnSessionIdle,
   );

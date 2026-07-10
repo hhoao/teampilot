@@ -100,6 +100,26 @@ void main() {
     },
   );
 
+  test(
+    'sidebar open-existing builder can request connectImmediately: true',
+    () {
+      final session = AppSession(
+        sessionId: 'sess-1',
+        workspaceId: 'ws-1',
+        folders: const [WorkspaceFolder(path: '/tmp')],
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      final request = buildOpenExistingSessionRequest(
+        session: session,
+        workspace: Workspace(workspaceId: 'ws-1', createdAt: 1),
+        emptyDisplayTitleFallback: 'New Chat',
+        connectImmediately: true,
+      );
+      expect(request.connectImmediately, isTrue);
+    },
+  );
+
   group('open-existing gate with ChatCubit', () {
     late Directory tmp;
     late SessionRepository repo;
@@ -171,6 +191,37 @@ void main() {
         expect(handled, isTrue);
         expect(chatCubit.openRequests, hasLength(1));
         expect(chatCubit.openRequests.single.connectImmediately, isFalse);
+      },
+    );
+
+    test(
+      'route deep-link respects connectImmediately: true',
+      () async {
+        await boot(forwardOpen: false);
+        addTearDown(shutdown);
+
+        final workspace = await repo.createWorkspace([
+          WorkspaceFolder(path: '/tmp'),
+        ]);
+        final session = await repo.createSession(workspace.workspaceId);
+        await chatCubit.loadWorkspaceData(repo);
+
+        final l10n = lookupAppLocalizations(const Locale('en'));
+        consumeChatWorkbenchRouteSession(
+          routeSessionId: session.sessionId,
+          handledRouteSession: false,
+          state: chatCubit.state,
+          chatCubit: chatCubit,
+          teamCubit: launchProfiles,
+          sessionRepo: repo,
+          l10n: l10n,
+          onHandled: (_) {},
+          connectImmediately: true,
+        );
+        await drainPendingAsyncWork();
+
+        expect(chatCubit.openRequests, hasLength(1));
+        expect(chatCubit.openRequests.single.connectImmediately, isTrue);
       },
     );
 

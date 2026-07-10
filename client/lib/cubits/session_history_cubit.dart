@@ -5,6 +5,7 @@ import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../services/cli/registry/capabilities/session_history_capability.dart';
 import '../services/session/session_history_loader.dart';
+import '../utils/logger.dart';
 
 /// Host-local review history status — not session connect / "starting…".
 enum SessionHistoryViewStatus { loading, ready, empty, error }
@@ -85,7 +86,13 @@ class SessionHistoryCubit extends Cubit<SessionHistoryState> {
       );
       if (gen != _loadGeneration || isClosed) return;
       emit(_stateFromSnapshot(snapshot, session.sessionId, memberId));
-    } catch (e) {
+    } catch (e, st) {
+      appLogger.e(
+        '[session-history] cubit load failed session=${session.sessionId} '
+        'member=$memberId team=${team?.id ?? session.sessionTeam}: $e',
+        error: e,
+        stackTrace: st,
+      );
       if (gen != _loadGeneration || isClosed) return;
       emit(
         SessionHistoryState(

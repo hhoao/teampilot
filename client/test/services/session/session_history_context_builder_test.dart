@@ -300,7 +300,7 @@ void main() {
         cli: CliTool.claude,
         workingDirectory: '/work/project',
       ),
-      throwsA(isA<AssertionError>().having(
+      throwsA(isA<StateError>().having(
         (e) => e.message,
         'message',
         contains('teamId'),
@@ -326,7 +326,7 @@ void main() {
         cli: CliTool.claude,
         workingDirectory: '/work/project',
       ),
-      throwsA(isA<AssertionError>().having(
+      throwsA(isA<StateError>().having(
         (e) => e.message,
         'message',
         contains('workspaceId'),
