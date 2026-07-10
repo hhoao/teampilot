@@ -86,8 +86,40 @@ void main() {
     await pumpEventQueue();
 
     // Stale line-0 reply was dropped; the fresh line-1 reply was applied.
+    // Staleness is judged from the worker-echoed `TsQueryResult.editSeq`
+    // (not a UI-side snapshot taken when the query was issued), so this also
+    // covers a worker that replies with an editSeq older than what the UI
+    // most recently sent.
     expect(session.tokensForLine(0), isEmpty);
     expect(session.tokensForLine(1), isNotEmpty);
+  });
+
+  test('reopening a session detaches the previous worker attachment', () async {
+    final pool = FakeTsWorkerPool(autoRespond: false);
+    final session = newSession(pool);
+    addTearDown(session.dispose);
+
+    await session.open(path: 'a.json', text: '{"a": "b"}');
+    final firstHandle = pool.handles.single;
+    expect(firstHandle.isClosed, isFalse);
+
+    // Issue a query on the first attachment and await it (bounded by the
+    // frame budget) — it must resolve once re-open tears the attachment
+    // down, rather than hanging or leaking into the new session.
+    final pending = session.ensureTokensForLines(0, 0, awaitResult: true);
+
+    await session.open(path: 'b.json', text: '{"c": "d"}');
+    await pending;
+
+    expect(firstHandle.isClosed, isTrue);
+    expect(firstHandle.disposeSent, isTrue);
+    expect(pool.handles.length, 2);
+    final secondHandle = pool.handles.last;
+    expect(secondHandle.isClosed, isFalse);
+
+    // The new attachment is a clean slate: no leftover tokens/pending state
+    // from the previous document.
+    expect(session.tokensForLine(0), isEmpty);
   });
 
   test('unknown extension opens as plain text with no tokens', () async {

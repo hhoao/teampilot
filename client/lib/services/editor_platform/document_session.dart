@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
+import '../../utils/logger.dart';
 import 'language_pack.dart';
 import 'language_registry.dart';
 import 'token_span.dart';
@@ -76,21 +77,54 @@ class DocumentSession extends ChangeNotifier {
   /// Resolves the language pack for [path], initializes local text state, and
   /// asks the worker to parse the document. Does **not** wait for tokens — call
   /// [colorizeAfterOpen] for viewport-first coloring.
+  ///
+  /// Re-opening an already-open session (e.g. the same `DocumentSession`
+  /// reused for a different file) is supported: any previous worker
+  /// attachment is disposed and its pending queries are cancelled first, so
+  /// callers never need to `dispose()` between opens.
   Future<void> open({required String path, required String text}) async {
     if (_disposed) return;
+    await _detachWorker();
     _pack = _registry.resolve(path);
     _indexMap = Utf8IndexMap(text);
     _lineStarts = _computeLineStarts(text);
     _tokensByLine.clear();
+    _viewportStartLine = null;
+    _viewportEndLine = null;
     _opened = true;
     final pack = _pack;
     if (pack == null) {
       // Plain text: no grammar, no worker.
       return;
     }
-    _highlightsQuery = await _highlightsLoader(pack.highlightsAsset);
+    String highlightsQuery;
+    try {
+      highlightsQuery = await _highlightsLoader(pack.highlightsAsset);
+    } on Object catch (error, stackTrace) {
+      appLogger.e(
+        'DocumentSession: failed to load highlights asset '
+        '${pack.highlightsAsset} for $path',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      // Degrade to plain text rather than crashing the open.
+      _pack = null;
+      return;
+    }
     if (_disposed) return;
-    final handle = _pool.openSession(_sessionId);
+    _highlightsQuery = highlightsQuery;
+    final TsSessionHandle handle;
+    try {
+      handle = _pool.openSession(_sessionId);
+    } on Object catch (error, stackTrace) {
+      appLogger.e(
+        'DocumentSession: failed to open worker session for $path',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _pack = null;
+      return;
+    }
     _handle = handle;
     _resultsSub = handle.results.listen(_onResult);
     final seq = ++_seq;
@@ -213,7 +247,6 @@ class DocumentSession extends ChangeNotifier {
       completer: completer,
       startLine: start,
       endLine: end,
-      editSeqAtQuery: _latestEditSeq,
     );
     _handle?.send(
       TsQueryRange(
@@ -260,17 +293,31 @@ class DocumentSession extends ChangeNotifier {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
+    unawaited(_detachWorker());
+    super.dispose();
+  }
+
+  /// Tears down the current worker attachment: sends `dispose` for the
+  /// session's tree, closes the pool handle, cancels the results
+  /// subscription, and completes (without applying) any in-flight queries.
+  ///
+  /// Called both from [dispose] and from [open] (to support clean re-open on
+  /// an already-open session) — always safe to call when there is no
+  /// attachment.
+  Future<void> _detachWorker() async {
     final handle = _handle;
+    _handle = null;
     if (handle != null) {
       handle.send(TsDispose(sessionId: _sessionId, seq: ++_seq));
       handle.close();
     }
-    unawaited(_resultsSub?.cancel());
+    final sub = _resultsSub;
+    _resultsSub = null;
+    await sub?.cancel();
     for (final pending in _pending.values) {
       if (!pending.completer.isCompleted) pending.completer.complete();
     }
     _pending.clear();
-    super.dispose();
   }
 
   void _onResult(TsQueryResult result) {
@@ -278,8 +325,10 @@ class DocumentSession extends ChangeNotifier {
     final pending = _pending.remove(result.requestId);
     if (pending == null) return;
 
-    // Stale: a newer edit landed after this query was issued. Keep prior tokens.
-    if (pending.editSeqAtQuery < _latestEditSeq) {
+    // Stale: the worker computed this reply against an older edit than the
+    // most recent one the UI has sent (per-command monotonic `seq`, echoed by
+    // the worker as `TsQueryResult.editSeq`). Keep prior tokens.
+    if (result.editSeq < _latestEditSeq) {
       if (!pending.completer.isCompleted) pending.completer.complete();
       return;
     }
@@ -397,11 +446,9 @@ class _PendingQuery {
     required this.completer,
     required this.startLine,
     required this.endLine,
-    required this.editSeqAtQuery,
   });
 
   final Completer<void> completer;
   final int startLine;
   final int endLine;
-  final int editSeqAtQuery;
 }

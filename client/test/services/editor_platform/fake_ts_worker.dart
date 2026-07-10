@@ -64,6 +64,15 @@ class FakeTsSessionHandle implements TsSessionHandle {
   Uint8List _bytes = Uint8List(0);
   int _editSeq = 0;
   bool _closed = false;
+  bool _disposeSent = false;
+
+  /// Whether [close] has been called (e.g. by a `DocumentSession` re-open or
+  /// dispose). Lets tests assert the old attachment was torn down.
+  bool get isClosed => _closed;
+
+  /// Whether a [TsDispose] command was sent (i.e. the owning session asked
+  /// the worker to free this tree) before the handle was closed.
+  bool get disposeSent => _disposeSent;
 
   @override
   Stream<TsQueryResult> get results => _controller.stream;
@@ -89,7 +98,7 @@ class FakeTsSessionHandle implements TsSessionHandle {
           _queued.add(result);
         }
       case TsDispose():
-        break;
+        _disposeSent = true;
     }
   }
 

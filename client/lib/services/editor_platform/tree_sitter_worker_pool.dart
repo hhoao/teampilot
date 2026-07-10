@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:teampilot_tree_sitter/teampilot_tree_sitter.dart';
 
+import '../../utils/logger.dart';
 import 'worker_protocol.dart';
 
 /// Production [TsWorkerPool] backed by up to [maxIsolates] worker isolates
@@ -66,11 +67,29 @@ class _WorkerIsolate {
   SendPort? _toWorker;
   int sessionCount = 0;
 
+  /// Set by [shutdown] when it runs while [Isolate.spawn] is still in
+  /// flight, so the `then` callback below kills the isolate the moment it
+  /// spawns instead of leaking a running isolate the pool no longer tracks.
+  bool _shutdownRequested = false;
+
   void start() {
     _fromWorker.listen(_onMessage);
-    Isolate.spawn(_workerEntry, _fromWorker.sendPort).then((isolate) {
-      _isolate = isolate;
-    });
+    Isolate.spawn(_workerEntry, _fromWorker.sendPort).then(
+      (isolate) {
+        if (_shutdownRequested) {
+          isolate.kill(priority: Isolate.immediate);
+          return;
+        }
+        _isolate = isolate;
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        appLogger.e(
+          'TreeSitterWorkerPool: worker isolate spawn failed',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      },
+    );
   }
 
   void _onMessage(dynamic message) {
@@ -112,11 +131,15 @@ class _WorkerIsolate {
   }
 
   void shutdown() {
+    _shutdownRequested = true;
     for (final controller in _controllers.values) {
       unawaited(controller.close());
     }
     _controllers.clear();
     _fromWorker.close();
+    // If spawn hasn't resolved yet, the `then` callback in start() checks
+    // `_shutdownRequested` and kills it there instead — no isolate leaks
+    // even when shutdown races the spawn.
     _isolate?.kill(priority: Isolate.immediate);
     _isolate = null;
   }
