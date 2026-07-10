@@ -128,6 +128,7 @@ class WorktreeGroupSection extends StatelessWidget {
             key: ValueKey('wt-sessions-${worktreeGroupCollapseKey(group)}'),
             sessions: group.sessions,
             workspace: workspace,
+            tabScopeId: tabScopeId,
             highlightSessionId: highlightSessionId,
           ),
       ],
@@ -377,12 +378,14 @@ class _GroupSessionList extends StatefulWidget {
   const _GroupSessionList({
     required this.sessions,
     required this.workspace,
+    required this.tabScopeId,
     this.highlightSessionId,
     super.key,
   });
 
   final List<AppSession> sessions;
   final Workspace workspace;
+  final String tabScopeId;
   final String? highlightSessionId;
 
   @override
@@ -412,7 +415,12 @@ class _GroupSessionListState extends State<_GroupSessionList> {
             tapThrottleKeyPrefix: 'worktree_sidebar_session',
             onTap: () {
               unawaited(
-                openWorkspaceSessionTab(context, widget.workspace, session),
+                openWorkspaceSessionTab(
+                  context,
+                  widget.workspace,
+                  session,
+                  tabScopeId: widget.tabScopeId,
+                ),
               );
             },
           ),

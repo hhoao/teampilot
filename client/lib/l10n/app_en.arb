@@ -495,6 +495,8 @@
   "sessionHistoryRoleSystem": "System",
   "sessionHistoryComposeHint": "Continue this conversation… @ reference files, / invoke skills",
   "sessionHistoryLoadOlderHint": "Scroll up for earlier messages",
+  "sessionWorkbenchShowTerminal": "Show terminal",
+  "sessionWorkbenchShowHistory": "Show history",
   "sessionReadyTitle": "Ready to chat",
   "sessionReadySubtitle": "Start a conversation with {memberName} in this workspace.",
   "@sessionReadySubtitle": {

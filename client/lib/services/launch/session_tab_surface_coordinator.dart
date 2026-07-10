@@ -6,6 +6,7 @@ import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/chat/model/chat_tab_info.dart';
 import '../../cubits/chat/model/session_open_request.dart';
 import '../../cubits/chat/model/session_open_status.dart';
+import '../../cubits/chat/model/session_workbench_view.dart';
 import '../../cubits/chat/session_launch_host.dart';
 import '../../models/app_session.dart';
 import '../../models/workspace.dart';
@@ -110,6 +111,7 @@ class SessionTabSurfaceCoordinator {
       );
       return SessionOpenStatus.opened;
     }
+    existing.workbenchView = SessionWorkbenchView.terminal;
     if (_shouldAutoConnect(request) && !connectAlreadyScheduled) {
       _host.beginSessionConnect(session.sessionId);
     }
@@ -185,6 +187,7 @@ class SessionTabSurfaceCoordinator {
       return SessionOpenStatus.opened;
     }
 
+    tab.workbenchView = SessionWorkbenchView.terminal;
     if (_shouldAutoConnect(request)) {
       _host.beginSessionConnect(session.sessionId);
       unawaited(

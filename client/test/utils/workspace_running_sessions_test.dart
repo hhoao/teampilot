@@ -13,7 +13,7 @@ void main() {
       updatedAt: 0,
     );
 
-    test('returns working sessions first then open-tab-only sessions', () {
+    test('returns working sessions first then listed open-tab sessions', () {
       final sessions = [session('a'), session('b'), session('c')];
       final result = workspaceRunningSessions(
         sessions: sessions,

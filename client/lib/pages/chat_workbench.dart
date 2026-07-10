@@ -9,6 +9,8 @@ import '../cubits/chat_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/launch_profile_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
+import '../cubits/workbench/workbench_cubit.dart';
+import '../cubits/workbench/workbench_tab.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
 import '../models/team_config.dart';
@@ -264,6 +266,15 @@ class _ChatWorkbenchBody extends StatelessWidget {
         ? (chatCubit.activeLaunchError ?? slice.sessionLaunchError)
         : slice.sessionLaunchError;
 
+    final workbenchView = context.select<ChatCubit, SessionWorkbenchView>((c) {
+      final activeId = slice.activeSessionId;
+      if (activeId == null || activeId.isEmpty) {
+        return SessionWorkbenchView.history;
+      }
+      final tab = c.tabStore.openTabBySessionId(activeId);
+      return tab?.workbenchView ?? SessionWorkbenchView.history;
+    });
+
     return Container(
       key: AppKeys.chatWorkspace,
       color: cs.surface,
@@ -277,6 +288,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
           team: team,
           sessionConnectInProgress: sessionConnectInProgress,
           launchError: launchError,
+          workbenchView: workbenchView,
         ),
       ),
     );
@@ -342,6 +354,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
     required TeamProfile? team,
     required bool sessionConnectInProgress,
     required String? launchError,
+    required SessionWorkbenchView workbenchView,
   }) {
     final routeForeground =
         routeActive && WorkspaceRouteActiveScope.routeActiveOf(context);
@@ -350,9 +363,13 @@ class _ChatWorkbenchBody extends StatelessWidget {
 
     final mountTerminalForLayout =
         sessionConnectInProgress || session.isRunning;
+    final showHistory =
+        workbenchView == SessionWorkbenchView.history &&
+        !sessionConnectInProgress;
 
     // Keep Alacritty mounted across title-bar workspace tab switches; hide with
     // [Offstage] so scrollback survives when the tab returns to foreground.
+    // Also keep it mounted while History is shown over a running PTY.
     return DeferredForegroundMount(
       active: terminalVisible,
       retainWhenInactive: true,
@@ -366,21 +383,23 @@ class _ChatWorkbenchBody extends StatelessWidget {
             children: [
               if (mountTerminalForLayout)
                 Offstage(
-                  offstage: sessionConnectInProgress,
+                  offstage: sessionConnectInProgress || showHistory,
                   child: buildRunningTerminal(
                     session: session,
                     terminalTheme: terminalTheme,
                     chatCubit: chatCubit,
                     isPersonal: isPersonalContext,
                     team: team,
-                    autofocus: !sessionConnectInProgress && terminalVisible,
+                    autofocus: !sessionConnectInProgress &&
+                        !showHistory &&
+                        terminalVisible,
                   ),
                 ),
               if (sessionConnectInProgress)
                 ChatWorkbenchSessionLoadingView(
                   message: context.l10n.sessionStarting,
                 )
-              else if (!session.isRunning)
+              else if (showHistory)
                 _buildHistoryReview(
                   context,
                   chatCubit: chatCubit,
@@ -443,30 +462,41 @@ class _ChatWorkbenchBody extends StatelessWidget {
       selectedMemberId: historyMemberId,
       team: resolvedTeam,
       launchError: launchError,
-      onSubmit: (message) => submitSessionHistoryReviewMessage(
-        sessionId: appSession.sessionId,
-        memberId: shellMemberId,
-        message: message,
-        connectRequest: connectRequest,
-        connectWorkspaceSession: chatCubit.connectWorkspaceSession,
-        ensureMemberInputReady:
-            (sessionId, mid, {bool directToPty = false}) => chatCubit
-                .memberMaterializer
-                .ensureMemberInputReady(
-                  sessionId,
-                  mid,
-                  directToPty: directToPty,
-                ),
-        deliverUserCommandToMember:
-            (sessionId, mid, text, {bool directToPty = false}) =>
-                chatCubit.sessionRuntime.deliverUserCommandToMember(
-                  sessionId,
-                  mid,
-                  text,
-                  directToPty: directToPty,
-                ),
-        applyFirstPromptTitle: chatCubit.applyFirstPromptTitle,
-      ),
+      onSubmit: (message) async {
+        chatCubit.setSessionWorkbenchView(
+          appSession.sessionId,
+          SessionWorkbenchView.terminal,
+        );
+        context.read<WorkbenchCubit>().ensureTab(
+          workspaceId,
+          WorkbenchTabId.session(appSession.sessionId),
+          preview: false,
+        );
+        return submitSessionHistoryReviewMessage(
+          sessionId: appSession.sessionId,
+          memberId: shellMemberId,
+          message: message,
+          connectRequest: connectRequest,
+          connectWorkspaceSession: chatCubit.connectWorkspaceSession,
+          ensureMemberInputReady:
+              (sessionId, mid, {bool directToPty = false}) => chatCubit
+                  .memberMaterializer
+                  .ensureMemberInputReady(
+                    sessionId,
+                    mid,
+                    directToPty: directToPty,
+                  ),
+          deliverUserCommandToMember:
+              (sessionId, mid, text, {bool directToPty = false}) =>
+                  chatCubit.sessionRuntime.deliverUserCommandToMember(
+                    sessionId,
+                    mid,
+                    text,
+                    directToPty: directToPty,
+                  ),
+          applyFirstPromptTitle: chatCubit.applyFirstPromptTitle,
+        );
+      },
     );
   }
 

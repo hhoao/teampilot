@@ -26,6 +26,7 @@ List<TabInfo> projectWorkbenchTabs({
           cli: sessionCli[tab.id],
           accentColor: sessionAccent,
           icon: Icons.terminal_rounded,
+          preview: previewTabIds.contains(tab),
         ),
         WorkbenchTabKind.file => TabInfo(
           id: tab.id,

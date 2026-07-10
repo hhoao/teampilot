@@ -13,7 +13,9 @@ class WorkbenchWorkspaceState extends Equatable {
   final List<WorkbenchTabId> tabOrder;
   final WorkbenchTabId? activeTabId;
 
-  /// File/diff tabs that are still preview (replaceable) until pinned.
+  /// Tabs that are still preview (replaceable) until pinned.
+  ///
+  /// Shared across session / file / diff — at most one preview slot.
   final Set<WorkbenchTabId> previewTabIds;
 
   bool isPreview(WorkbenchTabId tab) => previewTabIds.contains(tab);
@@ -68,9 +70,13 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
 
   /// Ensures [tab] is in the bar and active.
   ///
-  /// When [preview] is true and another file/diff preview exists, that preview
+  /// When [preview] is true and another preview exists (any kind), that preview
   /// is replaced in-place and returned so callers can close its domain state.
   /// When [preview] is false, the tab is permanent (pinned).
+  ///
+  /// If [tab] already exists as a permanent tab and [preview] is true, it is
+  /// adopted into the shared preview slot (used after [syncSessions] appends a
+  /// session before the open path marks it preview).
   WorkbenchTabId? ensureTab(
     String workspaceId,
     WorkbenchTabId tab, {
@@ -84,25 +90,39 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     if (existing >= 0) {
       if (!preview) {
         previews.remove(tab);
-      }
-      emit(
-        state.withBucket(
-          workspaceId,
-          bucket.copyWith(
-            tabOrder: order,
-            activeTabId: tab,
-            previewTabIds: previews,
+        emit(
+          state.withBucket(
+            workspaceId,
+            bucket.copyWith(
+              tabOrder: order,
+              activeTabId: tab,
+              previewTabIds: previews,
+            ),
           ),
-        ),
-      );
-      return null;
+        );
+        return null;
+      }
+      if (previews.contains(tab)) {
+        emit(
+          state.withBucket(
+            workspaceId,
+            bucket.copyWith(
+              tabOrder: order,
+              activeTabId: tab,
+              previewTabIds: previews,
+            ),
+          ),
+        );
+        return null;
+      }
+      // Exists but not preview — drop and re-insert into the preview slot.
+      order.removeAt(existing);
     }
 
     WorkbenchTabId? replaced;
     if (preview) {
       for (final candidate in order) {
-        if (previews.contains(candidate) &&
-            candidate.kind != WorkbenchTabKind.session) {
+        if (previews.contains(candidate)) {
           replaced = candidate;
           break;
         }

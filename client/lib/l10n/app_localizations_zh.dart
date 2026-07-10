@@ -1105,6 +1105,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionHistoryLoadOlderHint => '上滑查看更早消息';
 
   @override
+  String get sessionWorkbenchShowTerminal => '显示终端';
+
+  @override
+  String get sessionWorkbenchShowHistory => '显示历史';
+
+  @override
   String get sessionReadyTitle => '准备开始对话';
 
   @override

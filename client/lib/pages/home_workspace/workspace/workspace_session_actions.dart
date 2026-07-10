@@ -13,6 +13,8 @@ import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/expert_hub_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/session_preferences_cubit.dart';
+import '../../../cubits/workbench/workbench_cubit.dart';
+import '../../../cubits/workbench/workbench_tab.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/cli_preset.dart';
@@ -26,6 +28,7 @@ import '../../../services/cli/preset_resolver.dart';
 import '../../../services/expert_hub/expert_hub_recent_store.dart';
 import '../../../services/expert_hub/expert_landing_preflight.dart';
 import '../../../services/expert_hub/expert_member_resolver.dart';
+import '../../../services/workbench/workbench_shell_actions.dart';
 import '../../../utils/landing_draft_resolver.dart';
 import '../../../utils/team_member_naming.dart';
 import '../../../utils/logger.dart';
@@ -61,8 +64,9 @@ SessionOpenRequest buildOpenExistingSessionRequest({
 Future<void> openWorkspaceSessionTab(
   BuildContext context,
   Workspace workspace,
-  AppSession session,
-) async {
+  AppSession session, {
+  String? tabScopeId,
+}) async {
   final isPersonal = session.sessionTeam.trim().isEmpty;
   appLogger.d(
     '[session-launch] openWorkspaceSessionTab start '
@@ -101,6 +105,37 @@ Future<void> openWorkspaceSessionTab(
     context,
     status,
     blockedMixedMessage: context.l10n.mixedWorkspaceSessionLaunchBlocked,
+  );
+  if (status != SessionOpenStatus.opened) return;
+
+  final scopeId = tabScopeId ?? workspace.workspaceId;
+  final workbench = context.read<WorkbenchCubit>();
+  final tabId = WorkbenchTabId.session(session.sessionId);
+  final asPreview = !connectImmediately;
+  if (connectImmediately) {
+    chatCubit.setSessionWorkbenchView(
+      session.sessionId,
+      SessionWorkbenchView.terminal,
+    );
+  } else {
+    final existing = chatCubit.tabStore.openTabBySessionId(session.sessionId);
+    // Already live: focus + pin, keep whatever History/Terminal view the user set.
+    if (existing != null && existing.isRunning) {
+      workbench.ensureTab(workspace.workspaceId, tabId, preview: false);
+      return;
+    }
+  }
+  final replaced = workbench.ensureTab(
+    workspace.workspaceId,
+    tabId,
+    preview: asPreview,
+  );
+  if (!context.mounted) return;
+  await WorkbenchShellActions.closeReplacedPreview(
+    context: context,
+    workspaceId: workspace.workspaceId,
+    tabScopeId: scopeId,
+    replaced: replaced,
   );
 }
 

@@ -1161,6 +1161,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionHistoryLoadOlderHint => 'Scroll up for earlier messages';
 
   @override
+  String get sessionWorkbenchShowTerminal => 'Show terminal';
+
+  @override
+  String get sessionWorkbenchShowHistory => 'Show history';
+
+  @override
   String get sessionReadyTitle => 'Ready to chat';
 
   @override

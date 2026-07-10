@@ -55,12 +55,14 @@ import 'chat/model/session_connect_request.dart';
 import 'chat/model/session_create_request.dart';
 import 'chat/model/session_open_request.dart';
 import 'chat/model/session_open_status.dart';
+import 'chat/model/session_workbench_view.dart';
 
 export 'chat/model/chat_state.dart';
 export 'chat/model/chat_tab_info.dart';
 export 'chat/model/session_create_request.dart';
 export 'chat/model/session_open_request.dart';
 export 'chat/model/session_open_status.dart';
+export 'chat/model/session_workbench_view.dart';
 
 class ChatCubit extends Cubit<ChatState>
     with ChatConnectStateMixin
@@ -1015,6 +1017,17 @@ class ChatCubit extends Cubit<ChatState>
       ),
     );
     _pushPresenceTarget();
+  }
+
+  /// Sets History vs Terminal center body for an open session tab.
+  void setSessionWorkbenchView(
+    String sessionId,
+    SessionWorkbenchView view,
+  ) {
+    final tab = _tabStore.openTabBySessionId(sessionId);
+    if (tab == null || tab.workbenchView == view) return;
+    tab.workbenchView = view;
+    emit(state.copyWith(stateVersion: state.stateVersion + 1));
   }
 
   /// Shows the compose landing for [workspaceId] without closing open tabs.

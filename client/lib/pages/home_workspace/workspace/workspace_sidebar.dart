@@ -93,15 +93,14 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
         workspace: widget.workspace,
       ).sessions;
       final working = c.state.workingSessionIds;
-      final openTabIds = openTabSessionIdsForWorkspace(
-        c.tabStore
-            .tabsForWorkspace(widget.tabScopeId)
-            .map((tab) => tab.info.id),
-      );
+      final runningTabIds = c.tabStore
+          .tabsForWorkspace(widget.tabScopeId)
+          .where((tab) => tab.isRunning)
+          .map((tab) => tab.info.id);
       return workspaceRunningSessions(
         sessions: sessions,
         workingSessionIds: working,
-        openTabSessionIds: openTabIds,
+        openTabSessionIds: openTabSessionIdsForWorkspace(runningTabIds),
       ).map((s) => s.sessionId).toList();
     });
     final runningSessions = runningSessionIds
@@ -430,7 +429,14 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       ),
       tapThrottleKeyPrefix: 'workspace_sidebar_session',
       onTap: () {
-        unawaited(openWorkspaceSessionTab(context, widget.workspace, session));
+        unawaited(
+          openWorkspaceSessionTab(
+            context,
+            widget.workspace,
+            session,
+            tabScopeId: widget.tabScopeId,
+          ),
+        );
       },
     );
   }
@@ -485,7 +491,14 @@ class _RunningSessionsSection extends StatelessWidget {
             ),
             tapThrottleKeyPrefix: 'workspace_running_session',
             onTap: () {
-              unawaited(openWorkspaceSessionTab(context, workspace, session));
+              unawaited(
+                openWorkspaceSessionTab(
+                  context,
+                  workspace,
+                  session,
+                  tabScopeId: tabScopeId,
+                ),
+              );
             },
           ),
       ],

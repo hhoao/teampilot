@@ -25,6 +25,7 @@ import '../workbench/workbench_body.dart';
 import '../workspace_shell/workspace_shell.dart';
 import 'chat_scoped_tab_view.dart';
 import 'session_tab_cli.dart';
+import 'session_workbench_view_toggle.dart';
 import 'team_config_incomplete_dialog.dart';
 
 class ChatPageShell extends StatelessWidget {
@@ -276,6 +277,14 @@ class _ChatWorkspaceShell extends StatelessWidget {
                         );
                       }
                     : null,
+                tabBarTrailing: Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: SessionWorkbenchViewToggle(
+                    workspaceId: workspaceId,
+                    tabScopeId: tabScopeId,
+                    team: teamConfig,
+                  ),
+                ),
                 actions: isPersonalContext || teamConfig == null
                     ? const []
                     : _chatActions(context, teamConfig),

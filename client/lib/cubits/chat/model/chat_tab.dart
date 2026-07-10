@@ -7,6 +7,7 @@ import '../../../services/team_bus/remote/remote_bus_mount.dart';
 import '../../../services/team_bus/team_bus.dart';
 import '../../../services/terminal/terminal_session.dart';
 import 'chat_tab_info.dart';
+import 'session_workbench_view.dart';
 
 /// Per-tab runtime aggregate shared by ChatCubit and its collaborators.
 /// (Formerly the private `_InternalTab`.)
@@ -16,11 +17,15 @@ class ChatTab {
     required this.cliTeamName,
     this.selectedMemberId = '',
     this.workspaceId = '',
+    this.workbenchView = SessionWorkbenchView.history,
   });
 
   ChatTabInfo info;
   TerminalSession? resumeSession;
   String selectedMemberId;
+
+  /// Center body: history review vs live terminal (independent of [isRunning]).
+  SessionWorkbenchView workbenchView;
 
   /// Owning workspace bucket in [ChatTabStore]. Empty for legacy/local scratch
   /// tabs created without a workspace context.

@@ -74,7 +74,7 @@ class WorkbenchEditorOpener {
     if (replaced == null) return;
     switch (replaced.kind) {
       case WorkbenchTabKind.session:
-        break;
+        _chat?.closeSessionTab(replaced.id);
       case WorkbenchTabKind.file:
         _editor.closeFile(workspaceId, replaced.id, force: true);
       case WorkbenchTabKind.diff:

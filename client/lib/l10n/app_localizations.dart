@@ -2174,6 +2174,18 @@ abstract class AppLocalizations {
   /// **'Scroll up for earlier messages'**
   String get sessionHistoryLoadOlderHint;
 
+  /// No description provided for @sessionWorkbenchShowTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Show terminal'**
+  String get sessionWorkbenchShowTerminal;
+
+  /// No description provided for @sessionWorkbenchShowHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Show history'**
+  String get sessionWorkbenchShowHistory;
+
   /// No description provided for @sessionReadyTitle.
   ///
   /// In en, this message translates to:

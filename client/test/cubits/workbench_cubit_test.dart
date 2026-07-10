@@ -187,6 +187,40 @@ void main() {
       expect(cubit.isPreview(ws, diff), isTrue);
     });
 
+    test('session preview replaces file preview and vice versa', () {
+      const ws = 'ws-a';
+      final file = WorkbenchTabId.file('/a.dart');
+      final session = WorkbenchTabId.session('s1');
+
+      cubit.ensureTab(ws, file, preview: true);
+      final replacedFile = cubit.ensureTab(ws, session, preview: true);
+      expect(replacedFile, file);
+      expect(cubit.tabOrder(ws), [session]);
+      expect(cubit.isPreview(ws, session), isTrue);
+
+      final other = WorkbenchTabId.file('/b.dart');
+      final replacedSession = cubit.ensureTab(ws, other, preview: true);
+      expect(replacedSession, session);
+      expect(cubit.tabOrder(ws), [other]);
+      expect(cubit.isPreview(ws, other), isTrue);
+    });
+
+    test('ensureTab preview adopts synced permanent session into preview slot',
+        () {
+      const ws = 'ws-a';
+      final session = WorkbenchTabId.session('s1');
+      final file = WorkbenchTabId.file('/a.dart');
+
+      cubit.ensureTab(ws, session, preview: false);
+      cubit.ensureTab(ws, file, preview: true);
+      expect(cubit.tabOrder(ws), [session, file]);
+
+      final replaced = cubit.ensureTab(ws, session, preview: true);
+      expect(replaced, file);
+      expect(cubit.tabOrder(ws), [session]);
+      expect(cubit.isPreview(ws, session), isTrue);
+    });
+
     test('pinTab clears preview flag', () {
       const ws = 'ws-a';
       final file = WorkbenchTabId.file('/a.dart');

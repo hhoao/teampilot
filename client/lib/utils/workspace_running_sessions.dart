@@ -1,6 +1,10 @@
 import '../../models/app_session.dart';
 
-/// Sessions with an open terminal tab and/or an agent currently in a turn.
+/// Sessions with an agent currently in a turn and/or a live PTY tab.
+///
+/// [openTabSessionIds] should be session ids that are actually running (or
+/// otherwise belong in the sidebar “running” list) — not every open history
+/// preview tab.
 List<AppSession> workspaceRunningSessions({
   required List<AppSession> sessions,
   required Set<String> workingSessionIds,

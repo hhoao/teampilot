@@ -470,6 +470,8 @@
   "sessionHistoryRoleSystem": "系统",
   "sessionHistoryComposeHint": "继续对话… @ 引用文件，/ 调用技能与指令",
   "sessionHistoryLoadOlderHint": "上滑查看更早消息",
+  "sessionWorkbenchShowTerminal": "显示终端",
+  "sessionWorkbenchShowHistory": "显示历史",
   "sessionReadyTitle": "准备开始对话",
   "sessionReadySubtitle": "与 {memberName} 在此工作区中开始对话",
   "@sessionReadySubtitle": {
