@@ -1256,35 +1256,11 @@ abstract class AppLocalizations {
   /// **'AI generate'**
   String get homeWorkspaceNewTeamMethodAi;
 
-  /// No description provided for @homeWorkspaceNewTeamMethodSolo.
-  ///
-  /// In en, this message translates to:
-  /// **'Solo'**
-  String get homeWorkspaceNewTeamMethodSolo;
-
   /// No description provided for @homeWorkspaceNewTeamSubtitleAi.
   ///
   /// In en, this message translates to:
   /// **'Describe your team and generate a draft with AI.'**
   String get homeWorkspaceNewTeamSubtitleAi;
-
-  /// No description provided for @homeWorkspaceNewTeamSubtitleSolo.
-  ///
-  /// In en, this message translates to:
-  /// **'Simple single-CLI chat — switch CLI, model, and provider freely.'**
-  String get homeWorkspaceNewTeamSubtitleSolo;
-
-  /// No description provided for @homeWorkspaceNewSoloNameHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter a team name'**
-  String get homeWorkspaceNewSoloNameHint;
-
-  /// No description provided for @homeWorkspaceCreateSolo.
-  ///
-  /// In en, this message translates to:
-  /// **'Create solo team'**
-  String get homeWorkspaceCreateSolo;
 
   /// No description provided for @homeWorkspaceNewTeamRecommended.
   ///

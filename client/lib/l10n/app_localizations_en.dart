@@ -633,21 +633,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceNewTeamMethodAi => 'AI generate';
 
   @override
-  String get homeWorkspaceNewTeamMethodSolo => 'Solo';
-
-  @override
   String get homeWorkspaceNewTeamSubtitleAi =>
       'Describe your team and generate a draft with AI.';
-
-  @override
-  String get homeWorkspaceNewTeamSubtitleSolo =>
-      'Simple single-CLI chat — switch CLI, model, and provider freely.';
-
-  @override
-  String get homeWorkspaceNewSoloNameHint => 'Enter a team name';
-
-  @override
-  String get homeWorkspaceCreateSolo => 'Create solo team';
 
   @override
   String get homeWorkspaceNewTeamRecommended => 'Recommended';
