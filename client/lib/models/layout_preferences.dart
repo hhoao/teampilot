@@ -16,6 +16,7 @@ class LayoutPreferences {
     this.gitVisible = true,
     this.boardVisible = true,
     this.rightToolsVisible = true,
+    this.sidebarVisible = true,
     this.rightToolsWidth = defaultRightToolsWidth,
     this.sidebarWidth = defaultSidebarWidth,
     this.workspaceNavWidth = defaultWorkspaceNavWidth,
@@ -46,6 +47,7 @@ class LayoutPreferences {
       gitVisible: json['gitVisible'] as bool? ?? true,
       boardVisible: json['boardVisible'] as bool? ?? true,
       rightToolsVisible: json['rightToolsVisible'] as bool? ?? true,
+      sidebarVisible: json['sidebarVisible'] as bool? ?? true,
       rightToolsWidth: _doubleValue(
         json['rightToolsWidth'],
       ).clamp(minRightToolsWidth, maxRightToolsWidth),
@@ -121,6 +123,7 @@ class LayoutPreferences {
   final bool gitVisible;
   final bool boardVisible;
   final bool rightToolsVisible;
+  final bool sidebarVisible;
   final double rightToolsWidth;
   final double sidebarWidth;
   final double workspaceNavWidth;
@@ -149,6 +152,7 @@ class LayoutPreferences {
     bool? gitVisible,
     bool? boardVisible,
     bool? rightToolsVisible,
+    bool? sidebarVisible,
     double? rightToolsWidth,
     double? sidebarWidth,
     double? workspaceNavWidth,
@@ -174,6 +178,7 @@ class LayoutPreferences {
       gitVisible: gitVisible ?? this.gitVisible,
       boardVisible: boardVisible ?? this.boardVisible,
       rightToolsVisible: rightToolsVisible ?? this.rightToolsVisible,
+      sidebarVisible: sidebarVisible ?? this.sidebarVisible,
       rightToolsWidth: (rightToolsWidth ?? this.rightToolsWidth).clamp(
         minRightToolsWidth,
         maxRightToolsWidth,
@@ -228,6 +233,7 @@ class LayoutPreferences {
       gitVisible: gitVisible,
       boardVisible: boardVisible,
       rightToolsVisible: rightToolsVisible,
+      sidebarVisible: sidebarVisible,
       rightToolsWidth: rightToolsWidth,
       sidebarWidth: sidebarWidth,
       workspaceNavWidth: workspaceNavWidth,
@@ -255,6 +261,7 @@ class LayoutPreferences {
       'gitVisible': gitVisible,
       'boardVisible': boardVisible,
       'rightToolsVisible': rightToolsVisible,
+      'sidebarVisible': sidebarVisible,
       'rightToolsWidth': rightToolsWidth,
       'sidebarWidth': sidebarWidth,
       'workspaceNavWidth': workspaceNavWidth,
