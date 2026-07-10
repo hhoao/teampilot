@@ -141,7 +141,10 @@ final class PersonalMemberCoordination extends ShellLatchCoordination {
   @override
   bool countsAsSessionWorkingWhileBooting() {
     if (availability() != MemberAvailability.booting) return false;
-    return shell.userTurnActive || shell.activityTracker.isWorking;
+    // Only a latched user turn counts while the boot frame is still settling.
+    // Startup PTY churn must not light session-working (that false edge fires
+    // the "ready to chat" idle notification when opening a stopped session).
+    return shell.userTurnActive;
   }
 }
 

@@ -5,17 +5,47 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/team/terminal_activity_tracker.dart';
 
 void main() {
-  test('isWorking false during boot burst, true after arm', () {
+  test('isWorking false during boot burst, true after arm', () async {
     final tracker = TerminalActivityTracker(
-      idleAfter: const Duration(seconds: 10),
+      idleAfter: const Duration(milliseconds: 40),
     );
     tracker.noteOutput();
     expect(tracker.isWorking, isFalse);
     tracker.reset();
     expect(tracker.isWorking, isFalse);
+    // Post-reset activity is still boot output until the quiet window elapses.
+    tracker.markActive();
+    expect(tracker.isWorking, isFalse);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(tracker.isWorking, isFalse);
     tracker.markActive();
     expect(tracker.isWorking, isTrue);
   });
+
+  test(
+    'reading isWorking after reset does not arm before first PTY output',
+    () async {
+      final tracker = TerminalActivityTracker(
+        idleAfter: const Duration(milliseconds: 40),
+      );
+      tracker.reset();
+
+      // Idle-watch polls isWorking while the shell is still silent after
+      // onConfirmedRunning → reset(). That must not arm the tracker, or the
+      // first startup banner is treated as a finished agent turn.
+      expect(tracker.isWorking, isFalse);
+
+      tracker.notePtyBytes(Uint8List.fromList('welcome\n'.codeUnits));
+      expect(tracker.isWorking, isFalse);
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(
+        tracker.isWorking,
+        isFalse,
+        reason: 'boot quiet arm must not invent activity without post-arm PTY',
+      );
+    },
+  );
 
   test('boot output burst does not show working until quiet', () async {
     final tracker = TerminalActivityTracker(
@@ -101,7 +131,11 @@ void main() {
     );
     tracker.reset();
     expect(tracker.isWorking, isFalse);
-    tracker.markActive();
+    tracker.markActive(); // boot output
+    expect(tracker.isWorking, isFalse);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(tracker.isWorking, isFalse);
+    tracker.markActive(); // post-boot activity
     expect(tracker.isWorking, isTrue);
     await Future<void>.delayed(const Duration(milliseconds: 60));
     expect(tracker.isWorking, isFalse);
@@ -113,10 +147,11 @@ void main() {
     );
     tracker.reset();
     expect(tracker.isWorking, isFalse);
-    tracker.markActive();
+    tracker.markActive(); // boot output
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(tracker.isWorking, isFalse);
 
     final frame = Uint8List.fromList([0x1b, ...'[Kspinner'.codeUnits]);
-    await Future<void>.delayed(const Duration(milliseconds: 25));
     tracker.notePtyBytes(frame);
     expect(tracker.isWorking, isTrue);
 
@@ -144,9 +179,10 @@ void main() {
     );
     tracker.reset();
     expect(tracker.isWorking, isFalse);
-    tracker.markActive();
+    tracker.markActive(); // boot output
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(tracker.isWorking, isFalse);
 
-    await Future<void>.delayed(const Duration(milliseconds: 25));
     tracker.notePtyBytes(a);
     expect(tracker.isWorking, isTrue);
 

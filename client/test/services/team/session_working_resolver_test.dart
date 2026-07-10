@@ -142,6 +142,41 @@ void main() {
       );
     });
 
+    test(
+      'personal startup PTY while booting is not session-working',
+      () {
+        final shell = _ConnectedShell();
+        shell.activityTracker.reset();
+        // Simulate the false-arm path: idle-watch reads isWorking before the
+        // first banner, then startup output arrives and looks "active".
+        expect(shell.activityTracker.isWorking, isFalse);
+        shell.activityTracker.markActive();
+
+        final tab = ChatTab(
+          info: ChatTabInfo(id: 'personal-1', title: 'P', subtitle: ''),
+          cliTeamName: '',
+        )
+          ..persistedSession = AppSession(
+            sessionId: 'personal-1',
+            workspaceId: 'ws',
+            folders: const [],
+            createdAt: 0,
+          )
+          ..memberShells['agent'] = shell;
+
+        expect(
+          resolver.tabHasWorkingMember(
+            tab: tab,
+            team: null,
+            globalPresets: const [],
+          ),
+          isFalse,
+          reason:
+              'opening an idle session must not light working from boot banner',
+        );
+      },
+    );
+
     test('mixed bus in-turn is session-working after doorbell submitted', () {
       final shell = _ConnectedShell()
         ..activityTracker.latchBootFrameReadyForTest(

@@ -332,11 +332,12 @@ class TerminalActivityTracker {
 
   void _tryArmAfterBootQuiet() {
     if (_armed) return;
+    // Stay unarmed until we have seen boot output and it has been quiet for
+    // [idleAfter]. Reading [isWorking] before the first PTY chunk (common right
+    // after [reset] on connect) must not arm — otherwise the startup banner is
+    // recorded as post-boot activity and falsely lights session-working.
     final bootAt = _bootOutputAt;
-    if (bootAt == null) {
-      _armed = true;
-      return;
-    }
+    if (bootAt == null) return;
     if (DateTime.now().difference(bootAt) >= idleAfter) {
       _armed = true;
       _bootOutputAt = null;
