@@ -1,0 +1,10 @@
+{"timestamp":"2026-07-10T12:00:00.000Z","type":"session_meta","payload":{"id":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee","cwd":"/home/me/proj","originator":"codex-tui","cli_version":"0.121.0","source":"cli","model_provider":"openai"}}
+{"timestamp":"2026-07-10T12:00:01.000Z","type":"turn_context","payload":{"turn_id":"t1","model":"gpt-5.4","cwd":"/home/me/proj"}}
+{"timestamp":"2026-07-10T12:00:02.000Z","type":"event_msg","payload":{"type":"user_message","message":"<environment_context>\ncwd: /home/me/proj\n</environment_context>"}}
+{"timestamp":"2026-07-10T12:00:03.000Z","type":"response_item","payload":{"type":"message","role":"developer","content":[{"type":"input_text","text":"developer noise"}]}}
+{"timestamp":"2026-07-10T12:00:04.000Z","type":"event_msg","payload":{"type":"user_message","message":"list files"}}
+{"timestamp":"2026-07-10T12:00:05.000Z","type":"response_item","payload":{"type":"function_call","name":"exec_command","arguments":"{\"cmd\":\"ls\"}","call_id":"call_1"}}
+{"timestamp":"2026-07-10T12:00:06.000Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call_1","output":"a.txt\nb.txt"}}
+{"timestamp":"2026-07-10T12:00:07.000Z","type":"event_msg","payload":{"type":"agent_message","message":"Here are the files."}}
+{"timestamp":"2026-07-10T12:00:08.000Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"total_tokens":100},"model_context_window":200000}}}
+{"timestamp":"2026-07-10T12:00:09.000Z","type":"event_msg","payload":{"type":"task_complete","turn_id":"t1","last_agent_message":"Here are the files."}}
