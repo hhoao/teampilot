@@ -5299,4 +5299,163 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationsLaunchProfile => 'Launch identity';
+
+  @override
+  String get shortcutsWorkspaceNextTab => 'Next Workspace Tab';
+
+  @override
+  String get shortcutsWorkspacePrevTab => 'Previous Workspace Tab';
+
+  @override
+  String get shortcutsWorkspaceCloseTab => 'Close Workspace Tab';
+
+  @override
+  String get shortcutsWorkspaceReopenClosed => 'Reopen Closed Workspace Tab';
+
+  @override
+  String get shortcutsSessionNextTab => 'Next Session Tab';
+
+  @override
+  String get shortcutsSessionPrevTab => 'Previous Session Tab';
+
+  @override
+  String get shortcutsSessionNewTab => 'New Session Tab';
+
+  @override
+  String get shortcutsSessionCloseTab => 'Close Session Tab';
+
+  @override
+  String get shortcutsToggleSidebar => 'Toggle Sidebar';
+
+  @override
+  String get shortcutsTogglePanel => 'Toggle Terminal Panel';
+
+  @override
+  String get shortcutsToggleSecondarySidebar => 'Toggle Secondary Sidebar';
+
+  @override
+  String get shortcutsZoomIn => 'Zoom In';
+
+  @override
+  String get shortcutsZoomOut => 'Zoom Out';
+
+  @override
+  String get shortcutsZoomReset => 'Reset Zoom';
+
+  @override
+  String get shortcutsComposeSubmit => 'Send Message';
+
+  @override
+  String get shortcutsComposeNewline => 'Insert Newline';
+
+  @override
+  String get shortcutsShowCheatsheet => 'Show Keyboard Shortcuts';
+
+  @override
+  String get shortcutsCategoryNavigation => 'Navigation';
+
+  @override
+  String get shortcutsCategoryTabs => 'Tabs';
+
+  @override
+  String get shortcutsCategoryView => 'View';
+
+  @override
+  String get shortcutsCategoryZoom => 'Zoom';
+
+  @override
+  String get shortcutsCategoryCompose => 'Compose';
+
+  @override
+  String get shortcutsCategoryMeta => 'General';
+
+  @override
+  String get shortcutsSettingsTitle => 'Keyboard Shortcuts';
+
+  @override
+  String get shortcutsPageSubtitle =>
+      'View and customize keyboard shortcuts for navigation, tabs, zoom, and compose.';
+
+  @override
+  String get shortcutsSearchHint => 'Search shortcuts';
+
+  @override
+  String get shortcutsChangeAction => 'Change…';
+
+  @override
+  String get shortcutsResetAction => 'Reset to Default';
+
+  @override
+  String get shortcutsUnbindAction => 'Unbind';
+
+  @override
+  String get shortcutsNotSet => 'Not set';
+
+  @override
+  String get shortcutsResetAll => 'Reset All';
+
+  @override
+  String get shortcutsResetAllConfirmTitle => 'Reset All Shortcuts?';
+
+  @override
+  String get shortcutsResetAllConfirmMessage =>
+      'This restores every keyboard shortcut to its default binding.';
+
+  @override
+  String get shortcutsExport => 'Export…';
+
+  @override
+  String get shortcutsImport => 'Import…';
+
+  @override
+  String get shortcutsExportSuccess => 'Shortcuts exported.';
+
+  @override
+  String get shortcutsExportFailed => 'Couldn\'t export shortcuts.';
+
+  @override
+  String get shortcutsImportSuccess => 'Shortcuts imported.';
+
+  @override
+  String get shortcutsImportInvalidFile =>
+      'That file isn\'t a valid shortcuts export.';
+
+  @override
+  String get shortcutsImportConflictTitle => 'Replace Conflicting Shortcuts?';
+
+  @override
+  String shortcutsImportConflictMessage(int count) {
+    return 'The imported shortcuts conflict with $count existing binding(s). Replace them?';
+  }
+
+  @override
+  String get shortcutsCheatsheetButton => 'View Cheatsheet';
+
+  @override
+  String get shortcutsCheatsheetTitle => 'Keyboard Shortcuts';
+
+  @override
+  String get shortcutsCheatsheetEmpty => 'No shortcuts match your search.';
+
+  @override
+  String get shortcutsPressShortcutTitle => 'Press a Shortcut';
+
+  @override
+  String get shortcutsPressShortcutHint =>
+      'Press a key combination to bind it. Press Escape to cancel, Backspace to unbind.';
+
+  @override
+  String get shortcutsPressShortcutUnsupportedKey =>
+      'That key can\'t be bound.';
+
+  @override
+  String shortcutsConflictMessage(String title) {
+    return 'Already used by \"$title\".';
+  }
+
+  @override
+  String get shortcutsReplaceAction => 'Replace';
+
+  @override
+  String get shortcutsConflictBadgeTooltip => 'Conflicts with another shortcut';
 }

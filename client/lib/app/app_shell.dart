@@ -91,6 +91,7 @@ import '../services/cli/cli_executable_discovery.dart';
 import '../services/commands/command_bus.dart';
 import '../services/commands/layout_command_registrar.dart';
 import '../services/commands/session_command_registrar.dart';
+import '../services/commands/shortcuts_ui_commands.dart';
 import '../pages/home_workspace/workspace_chrome_commands.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
@@ -723,6 +724,7 @@ Future<AppShell> buildAppShell({
   final shortcutCubit = ShortcutCubit();
   final workspaceChromeCommands = WorkspaceChromeCommands();
   registerLayoutCommands(commandBus, layoutCubit);
+  registerShortcutsUiCommands(commandBus);
 
   final transportFactory = TerminalTransportFactory(
     sshProfileRepository: sshProfileRepo,

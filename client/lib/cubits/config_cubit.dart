@@ -9,6 +9,7 @@ enum ConfigSection {
   cli,
   aiFeatures,
   sshProfiles,
+  shortcuts,
   about,
   logs,
 }
@@ -36,6 +37,7 @@ class ConfigState extends Equatable {
     ConfigSection.cli => 'CLI Configuration',
     ConfigSection.aiFeatures => 'AI Features',
     ConfigSection.sshProfiles => 'SSH Servers',
+    ConfigSection.shortcuts => 'Keyboard Shortcuts',
     ConfigSection.about => 'About',
     ConfigSection.logs => 'Logs',
   };
@@ -46,6 +48,7 @@ class ConfigState extends Equatable {
     ConfigSection.cli => 'Config / CLI',
     ConfigSection.aiFeatures => 'Config / AI Features',
     ConfigSection.sshProfiles => 'Config / SSH Servers',
+    ConfigSection.shortcuts => 'Config / Keyboard Shortcuts',
     ConfigSection.about => 'Config / About',
     ConfigSection.logs => 'Config / Logs',
   };

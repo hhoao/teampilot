@@ -35,6 +35,7 @@ import 'services/commands/command_bus.dart';
 import 'services/commands/key_chord.dart';
 import 'services/commands/shortcut_context.dart';
 import 'services/commands/shortcut_dispatcher.dart';
+import 'services/commands/shortcut_dispatcher_handle.dart';
 import 'services/commands/shortcut_focus.dart';
 import 'services/expert_hub/expert_capability_resolver.dart';
 import 'services/home_workspace/home_workspace_ui_cache.dart';
@@ -144,10 +145,14 @@ class _ShortcutDispatcherHostState extends State<ShortcutDispatcherHost> {
     );
     dispatcher.attach();
     _dispatcher = dispatcher;
+    ShortcutDispatcherHandle.instance = dispatcher;
   }
 
   @override
   void dispose() {
+    if (ShortcutDispatcherHandle.instance == _dispatcher) {
+      ShortcutDispatcherHandle.instance = null;
+    }
     _dispatcher?.detach();
     super.dispose();
   }

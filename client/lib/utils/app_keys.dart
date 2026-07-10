@@ -56,6 +56,9 @@ class AppKeys {
   static const configSshProfilesSectionButton = Key(
     'config-ssh-profiles-section-button',
   );
+  static const configShortcutsSectionButton = Key(
+    'config-shortcuts-section-button',
+  );
   static const configLogsSectionButton = Key('config-logs-section-button');
   static const configAboutSectionButton = Key('config-about-section-button');
   static const aboutPage = Key('about-page');
