@@ -41,6 +41,24 @@ void main() {
     );
   });
 
+  test('resolveMember returns builtin default expert', () async {
+    const expectedPrompt =
+        'You are a helpful coding agent in TeamPilot. Follow the user\'s '
+        'instructions carefully. Prefer reading the repo before editing.';
+
+    final resolved = await ExpertMemberResolver.resolveMember(
+      key: kBuiltinDefaultExpertKey,
+    );
+
+    expect(resolved, isNotNull);
+    expect(resolved!.key, kBuiltinDefaultExpertKey);
+    expect(resolved.name, 'Default');
+    expect(resolved.member.prompt, expectedPrompt);
+    expect(resolved.skillDeps, isEmpty);
+    expect(resolved.pluginDeps, isEmpty);
+    expect(resolved.mcpDeps, isEmpty);
+  });
+
   test('resolveMember returns full builtin snapshot', () async {
     const member = DiscoverableMember(
       key: 'teampilot/builtin/developer',

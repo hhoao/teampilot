@@ -2,6 +2,9 @@ import '../../models/discoverable_member.dart';
 import '../../models/discoverable_team.dart';
 import '../team_hub/builtin_team_templates.dart';
 
+/// Built-in expert key for Simple launch when no expert is selected.
+const kBuiltinDefaultExpertKey = '$kBuiltinTeamHubKeyPrefix/default';
+
 DiscoverableMember _builtinMember({
   required String slug,
   required String name,
@@ -31,6 +34,16 @@ DiscoverableMember _builtinMember({
 /// Built-in expert personas shipped inside TeamPilot (prepended in
 /// [CompositeExpertHubSource]).
 List<DiscoverableMember> builtinExpertMembers() => [
+  _builtinMember(
+    slug: 'default',
+    name: 'Default',
+    description:
+        'Neutral unteamed agent for Simple launch when no expert is selected.',
+    category: 'Workflow',
+    prompt:
+        'You are a helpful coding agent in TeamPilot. Follow the user\'s '
+        'instructions carefully. Prefer reading the repo before editing.',
+  ),
   _builtinMember(
     slug: 'team-lead',
     name: 'Team lead',
