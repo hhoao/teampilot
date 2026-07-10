@@ -14,7 +14,6 @@ import '../../../models/app_session.dart';
 import '../../../models/landing_launch_context.dart';
 import '../../../models/workspace.dart';
 import '../../../models/launch_profile_kind.dart';
-import '../../../models/launch_profile.dart';
 import '../../../pages/home_workspace/home_workspace_route.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../services/expert_hub/expert_capability_resolver.dart';
@@ -307,7 +306,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
   void _onSectionChanged(
     WorkspaceSection section,
     Workspace workspace,
-    LaunchProfile workspaceIdentity,
+    String chromeProfileId,
   ) {
     setState(() {
       _section = section;
@@ -317,7 +316,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
     });
 
     final params = <String, String>{
-      'profile': workspaceIdentity.id,
+      'profile': chromeProfileId,
       if (section == WorkspaceSection.manage) 'view': 'manage',
     };
     final path = Uri(
@@ -378,17 +377,10 @@ class _WorkspacePageState extends State<WorkspacePage> {
 
     final location = GoRouterState.of(context).uri.toString();
     final routeProfile = HomeWorkspaceRoute.profile(location);
-    final workspaceIdentity = resolveWorkspaceChromeProfile(
-      context.watch<LaunchProfileCubit>(),
+    final chromeProfileId = workspaceChromeProfileId(
       workspace,
       routeProfileId: routeProfile,
     );
-    if (workspaceIdentity == null) {
-      return WorkspacePageCardShell(
-        chrome: WorkspacePageChrome.workspace,
-        child: const Center(child: CircularProgressIndicator()),
-      );
-    }
 
     final cardBody = _buildCardBody(workspace: workspace);
 
@@ -398,7 +390,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
         WorkspaceRail(
           section: _section,
           onSectionChanged: (section) =>
-              _onSectionChanged(section, workspace, workspaceIdentity),
+              _onSectionChanged(section, workspace, chromeProfileId),
           onLogoTap: () => context.go('/home-v2'),
         ),
         Expanded(
