@@ -25,6 +25,8 @@ import '../../../models/workspace.dart';
 import '../../../models/runtime_target.dart';
 import '../../../services/ai/headless_ai_service.dart';
 import '../../../services/compose/compose_file_attach.dart';
+import '../../../services/compose/compose_landing_drop_ingestor.dart';
+import '../../../services/storage/app_storage.dart';
 import '../../../services/compose/compose_landing_bundle.dart';
 import '../../../services/compose/compose_prompt_enhance.dart';
 import '../../../services/compose/compose_text_edit.dart';
@@ -41,6 +43,7 @@ import '../../../widgets/menu/sidebar_action_menu.dart';
 import '../../../services/launch/workspace_landing_launch_gate.dart';
 import '../../../repositories/workspace_project_config_repository.dart';
 import '../../expert_hub/expert_landing_picker_sheet.dart';
+import 'config/cli_presets_manage_dialog.dart';
 import 'workspace_chat_landing_compose_card.dart';
 import 'workspace_landing_launch_feedback.dart';
 import 'workspace_landing_selectors.dart';
@@ -51,6 +54,8 @@ enum _LandingConversationMode { team, simple }
 enum _LandingPermissionMode { defaultPermissions, fullAccess }
 
 enum _ExpertChipAction { clear, browseAll }
+
+enum _PresetChipAction { manage }
 
 typedef LandingComposeSubmit =
     void Function(String message, LandingLaunchContext draft);
@@ -253,10 +258,35 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     await pickAndInsertComposeFileReferences(
       controller: _controller,
       workspaceRoot: _activeLaunchDirectory(),
+      filesystem: AppStorage.fs,
     );
     if (!mounted) return;
     setState(() {});
     _focusNode.requestFocus();
+  }
+
+  ComposeLandingDropIngestor _composeDropIngestor() {
+    return ComposeLandingDropIngestor(
+      workspaceRoot: _activeLaunchDirectory(),
+      onInsertReferences: _insertComposeReferences,
+    );
+  }
+
+  void _insertComposeReferences(List<String> references) {
+    insertComposeReferences(_controller, references);
+    if (!mounted) return;
+    setState(() {});
+    _focusNode.requestFocus();
+  }
+
+  Future<bool> _pasteComposeImage() async {
+    if (widget.isSubmitting || _enhancing) return false;
+    final pasted = await pasteComposeImageAttachment(
+      controller: _controller,
+      workspaceRoot: _activeLaunchDirectory(),
+    );
+    if (pasted && mounted) setState(() {});
+    return pasted;
   }
 
   Future<void> _enhancePrompt() async {
@@ -745,6 +775,13 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     _persistDraft();
   }
 
+  void _openPresetsManageDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (_) => const CliPresetsManageDialog(),
+    );
+  }
+
   void _selectTeam(String teamId) {
     setState(() => _selectedTeamId = teamId);
     _persistDraft();
@@ -894,24 +931,28 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     required List<TeamProfile> teams,
   }) {
     if (_conversationMode == _LandingConversationMode.simple) {
-      if (presets.isEmpty) {
-        return [
+      return [
+        if (presets.isEmpty)
           SidebarActionMenuSpec.item(
             value: null,
             icon: Icons.tune,
             label: l10n.workspaceCliPresetsEmptyHint,
             enabled: false,
-          ),
-        ];
-      }
-      return [
-        for (final preset in presets)
-          SidebarActionMenuSpec.item(
-            value: preset.id,
-            icon: Icons.tune,
-            label: preset.name,
-            selected: preset.id == _selectedPresetId,
-          ),
+          )
+        else
+          for (final preset in presets)
+            SidebarActionMenuSpec.item(
+              value: preset.id,
+              icon: Icons.tune,
+              label: preset.name,
+              selected: preset.id == _selectedPresetId,
+            ),
+        const SidebarActionMenuSpec.divider(),
+        SidebarActionMenuSpec.item(
+          value: _PresetChipAction.manage,
+          icon: Icons.add,
+          label: l10n.workspaceCliAddPresetTitle,
+        ),
       ];
     }
 
@@ -1059,6 +1100,10 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
                         }
                       },
                       onAutoChipSelected: (value) {
+                        if (value == _PresetChipAction.manage) {
+                          _openPresetsManageDialog();
+                          return;
+                        }
                         if (value is! String || value.isEmpty) return;
                         if (_conversationMode ==
                             _LandingConversationMode.simple) {
@@ -1093,6 +1138,8 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
                       onVoice: () => unawaited(_toggleVoice()),
                       onVoiceCancel: () => unawaited(_cancelVoice()),
                       onVoiceStop: () => unawaited(_stopVoice()),
+                      dropTarget: _composeDropIngestor(),
+                      onPasteImage: _pasteComposeImage,
                       workspaceRoot: _activeLaunchDirectory(),
                       skills: skills,
                       plugins: plugins,

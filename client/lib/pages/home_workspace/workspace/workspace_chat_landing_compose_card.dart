@@ -7,8 +7,11 @@ import '../../../models/config_bundle.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/debounce/debounce.dart';
+import '../../../services/workspace_dnd/workspace_drop_target.dart';
 import '../../../widgets/compose/compose_trigger_field.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
+import '../../../widgets/workspace_dnd/external_file_drop_region.dart';
+import '../../../widgets/workspace_dnd/workspace_file_drop_region.dart';
 import 'workspace_chat_landing_palette.dart';
 import 'workspace_chat_landing_voice_bar.dart';
 
@@ -56,6 +59,8 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
     this.onTeamSettings,
     this.showTeamSettingsAttention = false,
     this.submitBlockedTooltip,
+    this.dropTarget,
+    this.onPasteImage,
     super.key,
   });
 
@@ -100,6 +105,8 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
   final VoidCallback? onTeamSettings;
   final bool showTeamSettingsAttention;
   final String? submitBlockedTooltip;
+  final WorkspaceDropTarget? dropTarget;
+  final Future<bool> Function()? onPasteImage;
 
   bool get _composeActionsEnabled => !isSubmitting && !isEnhancing;
 
@@ -250,10 +257,11 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
     final palette = WorkspaceChatLandingPalette(Theme.of(context).colorScheme);
     final spacing = context.appSpacing;
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Material(
+    return _wrapDropTarget(
+      Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Material(
           color: palette.elevated,
           clipBehavior: Clip.antiAlias,
           shape: RoundedRectangleBorder(
@@ -284,6 +292,7 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
                   slashBundle: slashBundle,
                   mutedColor: palette.muted,
                   hintColor: palette.hint,
+                  onPasteImage: onPasteImage,
                 ),
                 SizedBox(height: spacing.md),
                 Row(
@@ -320,6 +329,19 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
           ),
         ),
       ],
+    ),
+    );
+  }
+
+  Widget _wrapDropTarget(Widget child) {
+    final target = dropTarget;
+    if (target == null) return child;
+    return ExternalFileDropRegion(
+      target: target,
+      child: WorkspaceFileDropRegion(
+        target: target,
+        child: child,
+      ),
     );
   }
 }

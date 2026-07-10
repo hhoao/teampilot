@@ -4,7 +4,14 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 
+import 'package:uuid/uuid.dart';
+
+import '../io/filesystem.dart';
+import '../io/local_filesystem.dart';
+import '../storage/app_storage.dart';
 import '../../utils/workspace_path_utils.dart';
+import 'compose_image_attachment.dart';
+import 'compose_image_clipboard.dart';
 import 'compose_text_edit.dart';
 
 bool _isWindowsStylePath(String path) =>
@@ -65,11 +72,91 @@ bool _isUnderRoot(String path, String root) {
   return _pathKey(path).startsWith(_pathKey(rootWithSep));
 }
 
+/// Inserts `@` file references at the compose cursor.
+void insertComposeReferences(
+  TextEditingController controller,
+  Iterable<String> references,
+) {
+  final refs = references.map((r) => r.trim()).where((r) => r.isNotEmpty).toList();
+  if (refs.isEmpty) return;
+  controller.value = insertTextAtSelection(
+    controller,
+    '${refs.join(' ')} ',
+    separatorBefore: ' ',
+  );
+}
+
+Future<String?> resolveComposeFileReference({
+  required String absolutePath,
+  required String workspaceRoot,
+  Filesystem? filesystem,
+}) async {
+  if (isComposeImagePath(absolutePath)) {
+    return resolveComposeImageReference(
+      absolutePath: absolutePath,
+      workspaceRoot: workspaceRoot,
+    );
+  }
+  return formatComposeFileReference(absolutePath, workspaceRoot: workspaceRoot);
+}
+
+/// Pastes a clipboard image (or copied image file) into compose as an `@` reference.
+Future<bool> pasteComposeImageAttachment({
+  required TextEditingController controller,
+  required String workspaceRoot,
+  ComposeImageClipboardReader? clipboardReader,
+  ComposeImageIdGenerator? idGenerator,
+  String? attachmentsDir,
+  Future<String> Function()? resolveAttachmentsDir,
+  Filesystem? importFilesystem,
+}) async {
+  final reader = clipboardReader ?? const PasteboardComposeImageClipboardReader();
+  final generateId = idGenerator ?? _defaultComposeImageId;
+
+  final payload = await reader.readImageBytes();
+  if (payload != null) {
+    final importDir = attachmentsDir ??
+        await (resolveAttachmentsDir ??
+            DefaultWorkspaceDirectory.resolveTeamPilotAttachmentsPath)();
+    final writeFs = importFilesystem ?? LocalFilesystem();
+    final ref = await importComposeImageBytes(
+      bytes: payload.bytes,
+      extension: payload.extension,
+      attachmentsDir: importDir,
+      workspaceRoot: workspaceRoot,
+      filesystem: writeFs,
+      idGenerator: generateId,
+    );
+    if (ref != null) {
+      insertComposeReferences(controller, [ref]);
+      return true;
+    }
+  }
+
+  final refs = <String>[];
+  for (final path in await reader.readImageFilePaths()) {
+    if (!isComposeImagePath(path)) continue;
+    final ref = await resolveComposeImageReference(
+      absolutePath: path,
+      workspaceRoot: workspaceRoot,
+    );
+    if (ref != null) refs.add(ref);
+  }
+  if (refs.isNotEmpty) {
+    insertComposeReferences(controller, refs);
+    return true;
+  }
+
+  return false;
+}
+
 /// Opens a multi-file picker and inserts `@` references at the compose cursor.
 Future<void> pickAndInsertComposeFileReferences({
   required TextEditingController controller,
   required String workspaceRoot,
+  Filesystem? filesystem,
 }) async {
+  final fs = filesystem ?? AppStorage.fs;
   final result = await FilePicker.platform.pickFiles(
     allowMultiple: true,
     type: FileType.any,
@@ -80,16 +167,18 @@ Future<void> pickAndInsertComposeFileReferences({
   for (final file in result.files) {
     final path = file.path?.trim() ?? '';
     if (path.isEmpty) continue;
-    refs.add(
-      formatComposeFileReference(path, workspaceRoot: workspaceRoot),
+    final ref = await resolveComposeFileReference(
+      absolutePath: path,
+      workspaceRoot: workspaceRoot,
+      filesystem: fs,
     );
+    if (ref != null) refs.add(ref);
   }
   if (refs.isEmpty) return;
 
-  final insertion = '${refs.join(' ')} ';
-  controller.value = insertTextAtSelection(
-    controller,
-    insertion,
-    separatorBefore: ' ',
-  );
+  insertComposeReferences(controller, refs);
 }
+
+const _composeImageUuid = Uuid();
+
+String _defaultComposeImageId() => _composeImageUuid.v4();

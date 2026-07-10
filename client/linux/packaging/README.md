@@ -54,7 +54,7 @@ sudo dpkg -i dist/1.0.0+1/teampilot-1.0.0+1-linux.deb
 # 启动后查看 dock：应显示 "TeamPilot" 名称和应用图标
 ```
 
-卸载：`sudo apt remove flashskyai-client`
+卸载：`sudo apt remove teampilot`
 
 ### AppImage
 

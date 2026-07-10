@@ -22,15 +22,27 @@ class _RecordingNotifier implements NotificationRecorder {
   }
 }
 
+typedef _Shown = ({
+  String title,
+  String body,
+  String? subtitle,
+  String? payload,
+});
+
 void main() {
   test('notifySessionsBecameIdle records and shows OS notification', () async {
     final recorder = _RecordingNotifier();
-    final shown = <({String title, String body, String? subtitle})>[];
+    final shown = <_Shown>[];
     final service = SessionIdleNotificationService(
       recorder: recorder,
       desktopNotifier: DesktopSystemNotifier(
-        show: ({required title, required body, subtitle}) async =>
-            shown.add((title: title, body: body, subtitle: subtitle)),
+        show: ({required title, required body, subtitle, payload}) async =>
+            shown.add((
+              title: title,
+              body: body,
+              subtitle: subtitle,
+              payload: payload,
+            )),
       ),
     );
 
@@ -57,6 +69,7 @@ void main() {
         title: 'Fix login bug',
         body: 'Ready for your next message',
         subtitle: 'Agent ready',
+        payload: '/home-v2/workspace/w1?session=s1',
       ),
     ]);
   });
@@ -65,12 +78,17 @@ void main() {
     'notifySessionsBecameIdle always shows OS notification even when focused',
     () async {
       final recorder = _RecordingNotifier();
-      final shown = <({String title, String body, String? subtitle})>[];
+      final shown = <_Shown>[];
       final service = SessionIdleNotificationService(
         recorder: recorder,
         desktopNotifier: DesktopSystemNotifier(
-          show: ({required title, required body, subtitle}) async =>
-              shown.add((title: title, body: body, subtitle: subtitle)),
+          show: ({required title, required body, subtitle, payload}) async =>
+              shown.add((
+                title: title,
+                body: body,
+                subtitle: subtitle,
+                payload: payload,
+              )),
         ),
       );
 
@@ -87,6 +105,7 @@ void main() {
       expect(recorder.titles, ['New Chat']);
       expect(recorder.messages, ['Ready for your next message']);
       expect(shown, hasLength(1));
+      expect(shown.single.payload, '/home-v2/workspace/w1?session=s1');
     },
   );
 
@@ -94,12 +113,17 @@ void main() {
     'notifySessionsBecameIdle skips OS notification when disabled',
     () async {
       final recorder = _RecordingNotifier();
-      final shown = <({String title, String body, String? subtitle})>[];
+      final shown = <_Shown>[];
       final service = SessionIdleNotificationService(
         recorder: recorder,
         desktopNotifier: DesktopSystemNotifier(
-          show: ({required title, required body, subtitle}) async =>
-              shown.add((title: title, body: body, subtitle: subtitle)),
+          show: ({required title, required body, subtitle, payload}) async =>
+              shown.add((
+                title: title,
+                body: body,
+                subtitle: subtitle,
+                payload: payload,
+              )),
         ),
       );
 
@@ -130,7 +154,7 @@ void main() {
     final service = SessionIdleNotificationService(
       recorder: recorder,
       desktopNotifier: DesktopSystemNotifier(
-        show: ({required title, required body, subtitle}) async {},
+        show: ({required title, required body, subtitle, payload}) async {},
       ),
     );
 

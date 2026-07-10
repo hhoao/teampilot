@@ -11,6 +11,7 @@ import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../services/compose/compose_file_search.dart';
 import '../../services/compose/compose_slash_catalog.dart';
+import '../../services/compose/compose_text_edit.dart';
 import '../../services/compose/compose_trigger_caret.dart';
 import '../../services/compose/compose_trigger_insert.dart';
 import '../../services/compose/compose_trigger_query.dart';
@@ -45,6 +46,7 @@ class ComposeTriggerField extends StatefulWidget {
     required this.slashBundle,
     required this.mutedColor,
     required this.hintColor,
+    this.onPasteImage,
     super.key,
   });
 
@@ -61,6 +63,7 @@ class ComposeTriggerField extends StatefulWidget {
   final ConfigBundle slashBundle;
   final Color mutedColor;
   final Color hintColor;
+  final Future<bool> Function()? onPasteImage;
 
   @override
   State<ComposeTriggerField> createState() => _ComposeTriggerFieldState();
@@ -82,6 +85,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     super.initState();
     widget.controller.addListener(_handleControllerChanged);
     widget.focusNode.addListener(_handleFocusChanged);
+    HardwareKeyboard.instance.addHandler(_handleHardwareKey);
   }
 
   @override
@@ -107,9 +111,21 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   void dispose() {
     _searchDebounce?.cancel();
     _focusClearTimer?.cancel();
+    HardwareKeyboard.instance.removeHandler(_handleHardwareKey);
     widget.controller.removeListener(_handleControllerChanged);
     widget.focusNode.removeListener(_handleFocusChanged);
     super.dispose();
+  }
+
+  bool _handleHardwareKey(KeyEvent event) {
+    if (widget.onPasteImage == null || !widget.focusNode.hasFocus) {
+      return false;
+    }
+    if (event is! KeyDownEvent || !_isPasteShortcut(event)) {
+      return false;
+    }
+    unawaited(_handlePasteShortcut());
+    return true;
   }
 
   void _handleFocusChanged() {
@@ -284,6 +300,32 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
       onSubmit: widget.onSubmit,
       canSubmit: widget.canSubmit,
     )(node, event);
+  }
+
+  bool _isPasteShortcut(KeyEvent event) {
+    return event.logicalKey == LogicalKeyboardKey.keyV &&
+        (HardwareKeyboard.instance.isControlPressed ||
+            HardwareKeyboard.instance.isMetaPressed);
+  }
+
+  Future<void> _handlePasteShortcut() async {
+    final onPasteImage = widget.onPasteImage;
+    if (onPasteImage == null) return;
+    final pastedImage = await onPasteImage();
+    if (pastedImage) {
+      widget.onChanged(widget.controller.text);
+      if (mounted) setState(() {});
+      return;
+    }
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text;
+    if (text == null || text.isEmpty) return;
+    widget.controller.value = insertTextAtSelection(
+      widget.controller,
+      text,
+    );
+    widget.onChanged(widget.controller.text);
+    if (mounted) setState(() {});
   }
 
   @override

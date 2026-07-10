@@ -67,6 +67,7 @@ dependencies:
   mocktail: ^1.0.5
   flutter_local_notifications: ^20.1.0
   flutter_native_splash: any
+  pasteboard: ^0.5.0
 dependency_overrides:
   flutter_pty:
     path: packages/flutter_pty

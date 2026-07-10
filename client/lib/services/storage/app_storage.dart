@@ -433,6 +433,14 @@ class DefaultWorkspaceDirectory {
     return path;
   }
 
+  /// Shared landing compose import folder: `<Documents>/TeamPilot/Attachments`.
+  static Future<String> resolveTeamPilotAttachmentsPath() async {
+    final docs = await resolve();
+    final path = p.join(docs, 'TeamPilot', 'Attachments');
+    await Directory(path).create(recursive: true);
+    return path;
+  }
+
   @visibleForTesting
   static void setForTesting(String path) {
     _cachedPath = path;

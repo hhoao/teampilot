@@ -73,6 +73,7 @@ class _InlineTokenTextFieldState extends State<InlineTokenTextField> {
   void initState() {
     super.initState();
     _attachKeyHandler(widget.focusNode);
+    widget.controller.addListener(_handleControllerChanged);
   }
 
   @override
@@ -82,13 +83,22 @@ class _InlineTokenTextFieldState extends State<InlineTokenTextField> {
       _detachKeyHandler(oldWidget.focusNode);
       _attachKeyHandler(widget.focusNode);
     }
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_handleControllerChanged);
+      widget.controller.addListener(_handleControllerChanged);
+    }
   }
 
   @override
   void dispose() {
+    widget.controller.removeListener(_handleControllerChanged);
     _detachKeyHandler(widget.focusNode);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _handleControllerChanged() {
+    if (mounted) setState(() {});
   }
 
   void _attachKeyHandler(FocusNode node) {
