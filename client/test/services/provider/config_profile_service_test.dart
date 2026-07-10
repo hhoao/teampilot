@@ -24,6 +24,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/member_role_provision.dart';
 import 'package:teampilot/services/team/team_lead_delegate_settings_merge.dart';
 import 'package:teampilot/services/team/team_lead_settings_merge.dart';
+import 'package:teampilot/models/config_bundle.dart';
 
 Future<void> _seedClaudeProvider(
   String basePath, {
@@ -170,6 +171,7 @@ void main() {
       cliTeamName: 'team-a',
       cli: CliTool.flashskyai,
       workingDirectory: '/workspace/flashskyai',
+      runtimeBundle: const ConfigBundle(),
     )).environment;
 
     final memberFlashskyaiDir = _sessionFlashskyaiDir(
@@ -261,7 +263,8 @@ requires_openai_auth = true
         name: 'worker',
         provider: 'deepseek',
       ),
-    );
+      runtimeBundle: const ConfigBundle(),
+      );
 
     final codexDir = _sessionToolDir(
       base.path,
@@ -315,6 +318,7 @@ base_url = "https://api.example.com/v1"
           provider: 'p1',
         ),
         busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:59999/idle'),
+        runtimeBundle: const ConfigBundle(),
       );
 
       final codexDir = _sessionToolDir(
@@ -346,6 +350,7 @@ base_url = "https://api.example.com/v1"
       members: const [lead],
       member: lead,
       workingDirectory: '/workspace',
+      runtimeBundle: const ConfigBundle(),
     )).environment;
 
     final claudeDir = _sessionClaudeDir(base.path, sessionId);
@@ -401,7 +406,8 @@ base_url = "https://api.example.com/v1"
         members: const [lead],
         member: lead,
         team: team,
-      )).environment;
+        runtimeBundle: team.bundle,
+    )).environment;
 
       final claudeDir = _sessionClaudeDir(base.path, sessionId);
       final roleText = await File(
@@ -455,7 +461,8 @@ base_url = "https://api.example.com/v1"
         members: const [lead],
         member: lead,
         workingDirectory: '/workspace',
-      )).environment;
+        runtimeBundle: const ConfigBundle(),
+    )).environment;
 
       final flashskyaiDir = _sessionFlashskyaiDir(base.path, sessionId);
       final roleFile = p.join(flashskyaiDir, 'prompts', 'team-lead', 'role.md');
@@ -517,6 +524,7 @@ base_url = "https://api.example.com/v1"
         members: const [lead],
         member: lead,
         team: team,
+        runtimeBundle: team.bundle,
       );
 
       final flashskyaiDir = _sessionFlashskyaiDir(base.path, sessionId);
@@ -563,6 +571,7 @@ base_url = "https://api.example.com/v1"
           dev,
         ],
         member: dev,
+        runtimeBundle: const ConfigBundle(),
       );
 
       final claudeDir = _sessionClaudeDir(base.path, sessionId);
@@ -610,6 +619,7 @@ base_url = "https://api.example.com/v1"
         ),
       ],
       workingDirectory: '/workspace/workspace',
+      runtimeBundle: const ConfigBundle(),
     )).environment;
 
     final claudeDir = _sessionClaudeDir(base.path, sessionId);
@@ -692,7 +702,8 @@ base_url = "https://api.example.com/v1"
       cli: CliTool.claude,
       members: members,
       workingDirectory: '/ws',
-    );
+      runtimeBundle: const ConfigBundle(),
+      );
     final rosterPath = p.join(
       _sessionClaudeDir(base.path, sessionId),
       'teams',
@@ -718,7 +729,8 @@ base_url = "https://api.example.com/v1"
         description: 'Research squad',
       ),
       leadSessionId: 'chat-session-uuid',
-    );
+      runtimeBundle: const ConfigBundle(),
+      );
     final second =
         jsonDecode(await File(rosterPath).readAsString())
             as Map<String, Object?>;
@@ -760,7 +772,8 @@ base_url = "https://api.example.com/v1"
           cli: CliTool.claude,
           providerIdsByTool: const {'claude': 'custom'},
         ),
-      )).environment;
+        runtimeBundle: const ConfigBundle(),
+    )).environment;
 
       final claudeDir = _sessionClaudeDir(base.path, sessionId);
       final developerSettings = p.join(claudeDir, 'settings', 'developer.json');
@@ -845,6 +858,7 @@ base_url = "https://api.example.com/v1"
           members: [builder],
         ),
         workingDirectory: '/ws',
+        runtimeBundle: const ConfigBundle(),
       );
 
       final builderSettings = p.join(
@@ -943,6 +957,7 @@ base_url = "https://api.example.com/v1"
           teamMode: TeamMode.mixed,
           providerIdsByTool: {'claude': 'deepseek'},
         ),
+        runtimeBundle: const ConfigBundle(),
       );
 
       final settingsPath = p.join(
@@ -984,6 +999,7 @@ base_url = "https://api.example.com/v1"
         teamId: 'team-a',
         cli: CliTool.claude,
         members: const [TeamMemberConfig(id: 'developer', name: 'developer')],
+        runtimeBundle: const ConfigBundle(),
       );
 
       final claudeDir = _sessionClaudeDir(
@@ -1006,7 +1022,8 @@ base_url = "https://api.example.com/v1"
       cliTeamName: 'sess-1',
       cli: CliTool.claude,
       members: const [TeamMemberConfig(id: 'developer', name: 'developer')],
-    );
+      runtimeBundle: const ConfigBundle(),
+      );
 
     final roster = File(
       p.join(
@@ -1052,6 +1069,7 @@ base_url = "https://api.example.com/v1"
         cli: CliTool.claude,
         workingDirectory: '/workspace/new',
         additionalDirectories: const ['/workspace/extra'],
+        runtimeBundle: const ConfigBundle(),
       );
 
       final metadata =
@@ -1103,6 +1121,7 @@ base_url = "https://api.example.com/v1"
         cliTeamName: sessionId,
         cli: CliTool.claude,
         workingDirectory: r'C:\Users\haung\Documents',
+        runtimeBundle: const ConfigBundle(),
       );
 
       final metadataPath = p.join(
@@ -1143,6 +1162,7 @@ base_url = "https://api.example.com/v1"
         cliTeamName: sessionId,
         cli: CliTool.flashskyai,
         workingDirectory: r'C:\Users\haung\Documents',
+        runtimeBundle: const ConfigBundle(),
       );
 
       final metadataPath = p.join(

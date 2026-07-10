@@ -302,26 +302,6 @@ class SessionConnectOrchestrator {
     }
   }
 
-  TeamRosterSlot _slotForMember(TeamProfile team, TeamMemberConfig member) {
-    for (final slot in team.roster) {
-      if (slot.id == member.id) return slot;
-    }
-    return TeamRosterSlot(
-      id: member.id,
-      expertKey: member.agentType.trim().isNotEmpty
-          ? member.agentType
-          : (member.agent.trim().isNotEmpty ? member.agent : member.id),
-      overrides: TeamRosterSlotOverrides(
-        provider: member.provider,
-        model: member.model,
-        effort: member.effort,
-        extraArgs: member.extraArgs,
-        cli: member.cli,
-        replicas: member.replicas,
-        capabilities: member.capabilities,
-        activePresetId: member.activePresetId,
-      ),
-      joinedAt: member.joinedAt,
-    );
-  }
+  TeamRosterSlot _slotForMember(TeamProfile team, TeamMemberConfig member) =>
+      teamRosterSlotForMember(team, member);
 }

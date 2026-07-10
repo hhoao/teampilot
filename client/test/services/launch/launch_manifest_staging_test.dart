@@ -98,6 +98,7 @@ void main() {
         teamMode: TeamMode.mixed,
         members: [builder],
       ),
+      runtimeBundle: const ConfigBundle(),
     );
     expect(staged.manifest.entries, isNotEmpty);
     final settingsWrites = staged.manifest.entries

@@ -58,6 +58,7 @@ void main() {
         cliTeamName: 't1-1',
         cli: CliTool.flashskyai,
         team: team,
+        runtimeBundle: team.bundle,
       );
 
       final leafSkillsDir = fs.pathContext.join(

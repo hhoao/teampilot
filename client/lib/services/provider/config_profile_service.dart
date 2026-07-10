@@ -124,13 +124,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
   final WorkspaceProjectConfigRepository? _projectConfigRepository;
   StandaloneLaunchProfileScope? _activeStandaloneScope;
 
-  Future<ConfigBundle> _projectBundle(String workspaceId) async {
-    final repo =
-        _projectConfigRepository ??
-        WorkspaceProjectConfigRepository(fs: fs, layout: layout.workspace);
-    return (await repo.load(workspaceId)).bundle;
-  }
-
   /// Control-plane paths for provider catalog reads (home when work != home).
   ConfigProfilePaths get catalog => _catalogOverride ?? _infra;
 
@@ -329,8 +322,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final warmTier = CursorWorkspaceWarmTier.applies(team: team, cli: cli);
     if (pluginProvisioner != null) {
       final enabledPlugins =
-          runtimeBundle?.pluginIds ??
-          (await _projectBundle(trimmedWorkspaceId)).pluginIds;
+          runtimeBundle?.pluginIds ?? const <String>[];
       await pluginProvisioner.provision(
         PluginProvisionContext(
           fs: fs,
@@ -733,7 +725,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
     TeamProfile? team,
-    ConfigBundle? runtimeBundle,
+    required ConfigBundle runtimeBundle,
     String? leadSessionId,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
@@ -814,14 +806,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
 
     if (team != null) {
-      final bundle =
-          runtimeBundle ?? await _projectBundle(trimmedWorkspaceId);
       final provisionResult =
           await ResourceProvisioningService(
             fs: stagingFs,
             registry: _cliRegistry,
           ).provisionForLaunch(
-            scope: WorkspaceResourceScope(bundle: bundle),
+            scope: WorkspaceResourceScope(bundle: runtimeBundle),
             cli: launchCli,
             configDir: staging._launchResourceConfigDir(
               cli: launchCli,
@@ -896,7 +886,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
     TeamProfile? team,
-    ConfigBundle? runtimeBundle,
+    required ConfigBundle runtimeBundle,
     String? leadSessionId,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,

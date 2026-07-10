@@ -9,6 +9,7 @@ import 'package:teampilot/services/storage/app_storage.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
+import 'package:teampilot/models/config_bundle.dart';
 
 void main() {
   setUp(setUpTestAppStorage);
@@ -76,6 +77,7 @@ void main() {
           teamMode: TeamMode.mixed,
           members: [builder],
         ),
+        runtimeBundle: const ConfigBundle(),
       );
       expect(staged.manifest.entries, isNotEmpty);
       for (final entry in staged.manifest.entries) {

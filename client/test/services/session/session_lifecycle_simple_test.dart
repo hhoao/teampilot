@@ -5,12 +5,14 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/config_bundle.dart';
+import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/services/launch/session_runtime_plan.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
@@ -228,6 +230,76 @@ void main() {
       expect(launchPlan.memberConfigDir, claudeDir);
       expect(launchPlan.taskId, sessionId);
       expect(launchPlan.cliTeamName, sessionId);
+    },
+  );
+
+  test(
+    'prepareLaunchFromRuntimePlan provisions expert pack skills from '
+    'plan.runtimeBundle',
+    () async {
+      const workspaceId = 'ws-pack';
+      const sessionId = 'sess-pack';
+      final skillsRoot = AppPaths.skillsDirForTeampilotRoot(base.path);
+      final skillDir = p.join(skillsRoot, 'expert-skill-dir');
+      await Directory(skillDir).create(recursive: true);
+      await File(p.join(skillDir, 'SKILL.md')).writeAsString('# expert-skill');
+
+      final workspace = Workspace(
+        workspaceId: workspaceId,
+        folders: const [WorkspaceFolder(path: '/work/pack')],
+        createdAt: 1,
+      );
+      final session = AppSession(
+        sessionId: sessionId,
+        workspaceId: workspaceId,
+        folders: const [WorkspaceFolder(path: '/work/pack')],
+        sessionTeam: '',
+        expertKey: 'teampilot/builtin/default',
+        createdAt: 1,
+      );
+      final plan = simplePlan(
+        workspaceId: workspaceId,
+        sessionId: sessionId,
+        runtimeBundle: const ConfigBundle(skillIds: ['expert-skill']),
+        member: const TeamMemberConfig(
+          id: 'architect',
+          name: 'Architect',
+          agent: 'architect',
+          cli: CliTool.flashskyai,
+        ),
+      );
+
+      await SessionLifecycleService(
+        appDataBasePath: base.path,
+        storageRootsResolver: () async => _roots(base.path),
+        loadInstalledSkills: () async => [
+          Skill(
+            id: 'expert-skill',
+            name: 'Expert Skill',
+            description: '',
+            directory: 'expert-skill-dir',
+            installedAt: 0,
+            updatedAt: 0,
+          ),
+        ],
+      ).prepareLaunchFromRuntimePlan(
+        session: session,
+        workspace: workspace,
+        plan: plan,
+      );
+
+      final leafSkills = p.join(
+        layout.sessionRuntimeToolDir(workspaceId, sessionId, 'flashskyai'),
+        'skills',
+      );
+      final entries = await Directory(leafSkills).list().toList();
+      expect(
+        entries.map((e) => p.basename(e.path)),
+        contains('expert-skill-dir'),
+        reason:
+            'expert pack skill from plan.runtimeBundle must be provisioned '
+            '(not workspace-only)',
+      );
     },
   );
 }

@@ -519,7 +519,6 @@ Future<AppShell> buildAppShell({
     presetsPath: AppStorage.paths.cliPresetsJson,
   );
   sessionLifecycleService = SessionLifecycleService(
-    llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     storageRootsResolver: () async => AppStorage.context,
     catalogContextResolver: () async => runtimeContextRegistry.home(),
     // P2: launch resolves the work-plane on the workspace's target machine.
@@ -687,6 +686,7 @@ Future<AppShell> buildAppShell({
     expertResolver: expertCapabilityResolver,
     workspaceProjectConfig: workspaceProjectConfigRepository,
   );
+  sessionLifecycleService.attachRuntimePlanBuilder(sessionRuntimePlanBuilder);
 
   final appUpdateCubit = AppUpdateCubit(settings: appSettings);
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));

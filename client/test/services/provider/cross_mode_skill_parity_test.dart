@@ -74,6 +74,7 @@ void main() {
           cli: CliTool.flashskyai,
           skillIds: ['demo'],
         ),
+        runtimeBundle: const ConfigBundle(skillIds: ['demo']),
       );
 
       const mixedMember = TeamMemberConfig(id: 'm1', name: 'M1');
@@ -91,6 +92,7 @@ void main() {
           teamMode: TeamMode.mixed,
           skillIds: ['demo'],
         ),
+        runtimeBundle: const ConfigBundle(skillIds: ['demo']),
       );
 
       final personal = await namesIn(

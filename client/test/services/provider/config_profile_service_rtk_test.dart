@@ -12,6 +12,7 @@ import 'package:teampilot/services/extension/extension_detector.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/host/script_file_hook_provisioner.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
+import 'package:teampilot/models/config_bundle.dart';
 
 const _testWorkspaceId = 'workspace-1';
 
@@ -74,6 +75,7 @@ void main() {
         teamId: 'team-a',
         cliTeamName: 'team-a',
         cli: CliTool.flashskyai,
+        runtimeBundle: const ConfigBundle(),
       );
 
       expect(outcome.warnings, isEmpty);
@@ -118,6 +120,7 @@ void main() {
         teamId: 'team-b',
         cliTeamName: 'team-b',
         cli: CliTool.flashskyai,
+        runtimeBundle: const ConfigBundle(),
       );
 
       expect(outcome.warnings, contains('rtk_enabled_not_found'));

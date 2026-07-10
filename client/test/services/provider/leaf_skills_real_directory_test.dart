@@ -102,6 +102,7 @@ void main() {
           cli: CliTool.flashskyai,
           skillIds: ['demo'],
         ),
+        runtimeBundle: const ConfigBundle(skillIds: ['demo']),
       );
 
       final leafSkills = fs.pathContext.join(

@@ -75,7 +75,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
              appDataBasePath: appDataBasePath.isNotEmpty
                  ? appDataBasePath
                  : null,
-             llmConfigPathOverride: llmConfigPathOverride,
              configProfileService: configProfileService,
              storageRootsResolver: storageRootsResolver,
            ),

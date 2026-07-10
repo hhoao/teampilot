@@ -294,16 +294,17 @@ void main() {
     expect(plan.resumeSessionId, taskId);
   });
 
-  test('prepareLaunch preserves llm override for non-team launches', () async {
-    final plan = await SessionLifecycleService(
-      appDataBasePath: base.path,
-      llmConfigPathOverride: () => '/global/llm_config.json',
-      storageRootsResolver: () async => _roots(base.path),
-    ).prepareLaunch(session: _session(), team: null);
-
-    expect(plan.env, {'LLM_CONFIG_PATH': '/global/llm_config.json'});
-    expect(plan.memberConfigDir, isEmpty);
-    expect(plan.resume, isFalse);
+  test('prepareLaunch requires a team identity', () async {
+    await expectLater(
+      () => SessionLifecycleService(
+        appDataBasePath: base.path,
+        storageRootsResolver: () async => _roots(base.path),
+      ).prepareLaunch(
+        session: _session(),
+        team: const TeamProfile(id: '', name: ''),
+      ),
+      throwsA(isA<StateError>()),
+    );
   });
 
   test('hasCliState finds workspace transcripts in member roots', () async {
@@ -340,7 +341,9 @@ void main() {
         id: 'team-a',
         name: 'Team A',
         cli: CliTool.flashskyai,
+        members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
       ),
+      member: const TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
     );
     expect(plan.resume, isTrue);
   });
@@ -389,7 +392,9 @@ void main() {
           id: 'team-a',
           name: 'Team A',
           cli: CliTool.flashskyai,
+          members: [TeamMemberConfig(id: 'lead', name: 'lead')],
         ),
+        member: const TeamMemberConfig(id: 'lead', name: 'lead'),
         memberBinding: binding,
       );
       expect(plan.resume, isTrue);

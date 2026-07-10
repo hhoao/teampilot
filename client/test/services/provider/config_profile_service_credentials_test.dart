@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
+import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
@@ -91,6 +92,7 @@ void main() {
       cliTeamName: 'session-a',
       cli: CliTool.claude,
       team: teamWithProvider('team-a', 'work'),
+      runtimeBundle: const ConfigBundle(),
     );
     final personalOutcome = await service.prepareTeamLaunch(
       teamId: 'team-b',
@@ -99,6 +101,7 @@ void main() {
       cliTeamName: 'session-b',
       cli: CliTool.claude,
       team: teamWithProvider('team-b', 'personal'),
+      runtimeBundle: const ConfigBundle(),
     );
 
     final workSessionDir = workOutcome.environment['CLAUDE_CONFIG_DIR']!;
@@ -137,6 +140,7 @@ void main() {
       cliTeamName: 'session-a',
       cli: CliTool.claude,
       team: teamWithProvider('team-a', 'work'),
+      runtimeBundle: const ConfigBundle(),
     );
 
     expect(outcome.warnings, contains('claude_credentials_missing'));
@@ -192,6 +196,7 @@ void main() {
           provider: 'official',
           model: 'sonnet',
         ),
+        runtimeBundle: const ConfigBundle(),
       );
 
       final sessionDir = outcome.environment['CLAUDE_CONFIG_DIR']!;

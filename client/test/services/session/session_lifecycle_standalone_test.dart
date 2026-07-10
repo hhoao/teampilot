@@ -101,7 +101,7 @@ void main() {
   });
 
   test(
-    'prepareShellLaunch throws without team and member for non-simple sessions',
+    'prepareShellLaunch throws without a valid team member',
     () async {
       final session = AppSession(
         sessionId: 'team-sess',
@@ -113,7 +113,10 @@ void main() {
       );
 
       expect(
-        () => service().prepareShellLaunch(session: session, team: null),
+        () => service().prepareShellLaunch(
+          session: session,
+          team: const TeamProfile(id: 'tid', name: 'Team', members: []),
+        ),
         throwsA(isA<StateError>()),
       );
     },

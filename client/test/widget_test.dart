@@ -425,13 +425,10 @@ class _FixedResumeLifecycleService extends SessionLifecycleService {
   @override
   Future<ShellLaunchSpec> prepareShellLaunch({
     required AppSession session,
-    TeamProfile? team,
+    required TeamProfile team,
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
     Workspace? workspace,
-    PersonalProfile? personal,
-    String? profileId,
-    String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
   }) async {
@@ -441,8 +438,6 @@ class _FixedResumeLifecycleService extends SessionLifecycleService {
       member: member,
       memberBinding: memberBinding,
       workspace: workspace,
-      personal: personal,
-      llmConfigPathOverride: llmConfigPathOverride,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
     );
