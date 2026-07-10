@@ -131,6 +131,42 @@ class LayoutCubit extends Cubit<LayoutState> {
     ),
   );
 
+  double get _currentUiZoomMultiplier => typographyScaleForPreferences(
+    scaleId: state.preferences.uiZoomScale,
+    customMultiplier: state.preferences.uiZoomCustomMultiplier,
+  ).multiplier;
+
+  /// Steps whole-UI zoom in by [kUiZoomStep], switching to `custom`. [baseline]
+  /// is the per-display auto zoom ([autoUiZoomForDevicePixelRatio]) so the
+  /// effective (on-screen) zoom stays within [kUiZoomMin]/[kUiZoomMax] —
+  /// callers without device context (e.g. tests) may omit it.
+  Future<void> zoomIn({double baseline = 1.0}) =>
+      _stepUiZoom(kUiZoomStep, baseline: baseline);
+
+  /// See [zoomIn].
+  Future<void> zoomOut({double baseline = 1.0}) =>
+      _stepUiZoom(-kUiZoomStep, baseline: baseline);
+
+  Future<void> _stepUiZoom(double delta, {required double baseline}) {
+    final next = clampUiZoomMultiplierForBaseline(
+      _currentUiZoomMultiplier + delta,
+      baseline: baseline,
+    );
+    return setUiZoomCustom(next);
+  }
+
+  /// Resets whole-UI zoom back to the auto per-display baseline.
+  Future<void> zoomReset() => setUiZoomScale(kDefaultTypographyScaleId);
+
+  Future<void> toggleSidebar() =>
+      setSidebarVisible(!state.preferences.sidebarVisible);
+
+  Future<void> toggleRightTools() =>
+      setRightToolsVisible(!state.preferences.rightToolsVisible);
+
+  Future<void> toggleWorkspaceTerminal() =>
+      setWorkspaceTerminalVisible(!state.preferences.workspaceTerminalVisible);
+
   Future<void> setTerminalThemeMode(String mode) =>
       _save(state.preferences.copyWith(terminalThemeMode: mode));
 

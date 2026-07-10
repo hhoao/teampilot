@@ -89,6 +89,7 @@ import '../services/expert_hub/git_registry_expert_hub_source.dart';
 import '../services/expert_hub/member_roster_service.dart';
 import '../services/cli/cli_executable_discovery.dart';
 import '../services/commands/command_bus.dart';
+import '../services/commands/layout_command_registrar.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/provider/claude/claude_provider_credentials_service.dart';
@@ -716,6 +717,7 @@ Future<AppShell> buildAppShell({
   final configCubit = ConfigCubit();
   final commandBus = CommandBus();
   final shortcutCubit = ShortcutCubit();
+  registerLayoutCommands(commandBus, layoutCubit);
 
   final transportFactory = TerminalTransportFactory(
     sshProfileRepository: sshProfileRepo,

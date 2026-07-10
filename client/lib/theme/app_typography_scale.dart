@@ -34,6 +34,23 @@ const double kUiZoomMax = 1.5;
 
 double clampUiZoom(double value) => value.clamp(kUiZoomMin, kUiZoomMax);
 
+/// Fixed step applied per press by the `workbench.zoom.in`/`.out` commands.
+const double kUiZoomStep = 0.1;
+
+/// Clamps a `uiZoomCustomMultiplier` candidate so the *effective* zoom
+/// (`baseline × multiplier`, i.e. what [UiZoom] actually renders) stays
+/// within [kUiZoomMin]/[kUiZoomMax], expressed back in multiplier space so
+/// the stored preference stays baseline-independent. Callers without a
+/// device [baseline] (e.g. tests, or code that hasn't resolved
+/// [autoUiZoomForDevicePixelRatio] yet) may pass the default `1.0`.
+double clampUiZoomMultiplierForBaseline(
+  double multiplier, {
+  double baseline = 1.0,
+}) {
+  if (baseline <= 0) return multiplier.clamp(kUiZoomMin, kUiZoomMax);
+  return clampUiZoom(baseline * multiplier) / baseline;
+}
+
 /// `standard` whole-UI zoom baseline for a display [devicePixelRatio]. The
 /// `standard` preset maps to this; compact/comfortable/custom are relative to
 /// it. Compensates for OS scaling so density is consistent across platforms:
