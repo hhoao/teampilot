@@ -6,12 +6,12 @@ import 'package:teampilot/services/commands/key_chord_formatter.dart';
 
 void main() {
   test('round-trips JSON', () {
-    const chord = KeyChord(key: 'w', mods: [KeyChordMod.mod]);
+    final chord = KeyChord(key: 'w', mods: [KeyChordMod.mod]);
     expect(KeyChord.fromJson(chord.toJson()), chord);
   });
 
   test('mod resolves to meta on macOS target, control otherwise', () {
-    final activator = const KeyChord(
+    final activator = KeyChord(
       key: 'w',
       mods: [KeyChordMod.mod],
     ).toActivator(isMacOS: true);
@@ -21,7 +21,7 @@ void main() {
     expect(mac.meta, isTrue);
     expect(mac.control, isFalse);
 
-    final win = const KeyChord(
+    final win = KeyChord(
       key: 'w',
       mods: [KeyChordMod.mod],
     ).toActivator(isMacOS: false) as SingleActivator;
@@ -30,7 +30,7 @@ void main() {
   });
 
   test('explicit ctrl stays ctrl on macOS', () {
-    final a = const KeyChord(
+    final a = KeyChord(
       key: 'tab',
       mods: [KeyChordMod.ctrl],
     ).toActivator(isMacOS: true) as SingleActivator;
@@ -41,14 +41,14 @@ void main() {
   test('formatter uses symbols on macOS', () {
     expect(
       formatKeyChord(
-        const KeyChord(key: 'w', mods: [KeyChordMod.mod]),
+        KeyChord(key: 'w', mods: [KeyChordMod.mod]),
         isMacOS: true,
       ),
       '⌘W',
     );
     expect(
       formatKeyChord(
-        const KeyChord(key: 'w', mods: [KeyChordMod.mod]),
+        KeyChord(key: 'w', mods: [KeyChordMod.mod]),
         isMacOS: false,
       ),
       'Ctrl+W',
@@ -56,10 +56,18 @@ void main() {
   });
 
   test('hasModifiers is false only for bare keys', () {
-    expect(const KeyChord(key: 'enter').hasModifiers, isFalse);
+    expect(KeyChord(key: 'enter').hasModifiers, isFalse);
     expect(
-      const KeyChord(key: 'enter', mods: [KeyChordMod.mod]).hasModifiers,
+      KeyChord(key: 'enter', mods: [KeyChordMod.mod]).hasModifiers,
       isTrue,
     );
+  });
+
+  test('canonicalizes mods order and key case for equality', () {
+    expect(
+      KeyChord(key: 'w', mods: [KeyChordMod.mod, KeyChordMod.shift]),
+      KeyChord(key: 'w', mods: [KeyChordMod.shift, KeyChordMod.mod]),
+    );
+    expect(KeyChord(key: 'W'), KeyChord(key: 'w'));
   });
 }

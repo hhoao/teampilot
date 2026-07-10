@@ -11,7 +11,14 @@ enum KeyChordMod { mod, shift, alt, ctrl, meta }
 
 /// Platform-neutral keyboard chord persisted in keybinding overrides.
 class KeyChord {
-  const KeyChord({required this.key, this.mods = const []});
+  const KeyChord._({required this.key, required this.mods});
+
+  factory KeyChord({required String key, List<KeyChordMod> mods = const []}) {
+    return KeyChord._(
+      key: canonicalChordKey(key),
+      mods: canonicalChordMods(mods),
+    );
+  }
 
   final String key;
   final List<KeyChordMod> mods;
@@ -77,6 +84,33 @@ class KeyChord {
 
   @override
   int get hashCode => Object.hash(key, Object.hashAll(mods));
+}
+
+const _modOrder = <KeyChordMod>[
+  KeyChordMod.mod,
+  KeyChordMod.ctrl,
+  KeyChordMod.meta,
+  KeyChordMod.alt,
+  KeyChordMod.shift,
+];
+
+String canonicalChordKey(String key) {
+  if (key.length == 1) {
+    final codeUnit = key.codeUnitAt(0);
+    if ((codeUnit >= 0x41 && codeUnit <= 0x5A) ||
+        (codeUnit >= 0x61 && codeUnit <= 0x7A)) {
+      return key.toLowerCase();
+    }
+  }
+  return key;
+}
+
+List<KeyChordMod> canonicalChordMods(Iterable<KeyChordMod> mods) {
+  final present = mods.toSet();
+  return [
+    for (final mod in _modOrder)
+      if (present.contains(mod)) mod,
+  ];
 }
 
 /// Default platform probe for production callers that do not inject [isMacOS].
