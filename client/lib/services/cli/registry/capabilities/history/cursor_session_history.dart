@@ -7,23 +7,27 @@ import '../session_history_capability.dart';
 
 /// Cursor agent history from the **session-isolated** cursor config tree.
 ///
-/// Chosen on-disk path (primary — not global `~/.cursor/projects/...`):
-/// ```
-/// {CURSOR_CONFIG_DIR|HOME/.cursor}/chats/{workspaceHash}/{chatId}/messages.jsonl
-/// ```
-/// Chat id comes from [SessionHistoryContext.persistedNativeId] or a
-/// `meta.json` scan under `chats/` (same discovery as CursorResumeStrategy).
+/// Chat id discovery (same as CursorResumeStrategy):
+/// [SessionHistoryContext.persistedNativeId], else `meta.json` scan under
+/// `{cursorRoot}/chats/{workspaceHash}/{chatId}/`.
 ///
-/// `messages.jsonl` lines follow the Cursor Agent transcript / tokenuse shape:
+/// Transcript path (primary — under the isolated tree, not the user's global
+/// home):
+/// ```
+/// {CURSOR_CONFIG_DIR|HOME/.cursor}/projects/{projectSlug}/agent-transcripts/{chatId}/{chatId}.jsonl
+/// ```
+/// Also accepts a flat sibling `{chatId}.jsonl` directly under
+/// `agent-transcripts/` when present. Chat dirs themselves hold `meta.json` +
+/// `store.db` only — this adapter does not parse `store.db`.
+///
+/// JSONL lines follow the Cursor Agent transcript / tokenuse shape:
 /// `{ role, message: { content: [ text | tool_use | tool_result ] } }`.
 final class CursorSessionHistory implements SessionHistoryCapability {
   const CursorSessionHistory();
 
-  static const _messagesFileName = 'messages.jsonl';
-
   @override
   Future<SessionHistorySnapshot> loadHistory(SessionHistoryContext ctx) async {
-    final transcriptPath = await _locateMessagesJsonl(ctx);
+    final transcriptPath = await _locateAgentTranscript(ctx);
     if (transcriptPath == null) {
       return const SessionHistorySnapshot(
         turns: [],
@@ -55,7 +59,7 @@ final class CursorSessionHistory implements SessionHistoryCapability {
     );
   }
 
-  Future<String?> _locateMessagesJsonl(SessionHistoryContext ctx) async {
+  Future<String?> _locateAgentTranscript(SessionHistoryContext ctx) async {
     final configDir = _cursorConfigRoot(ctx.env, ctx.fs.pathContext);
     if (configDir == null) return null;
     final path = ctx.fs.pathContext;
@@ -64,16 +68,19 @@ final class CursorSessionHistory implements SessionHistoryCapability {
     final chatId = await _resolveChatId(ctx, chatsRoot);
     if (chatId == null || chatId.isEmpty) return null;
 
+    final projectsRoot = path.join(configDir, 'projects');
     try {
-      for (final wsHash in await ctx.fs.listDir(chatsRoot)) {
-        if (!wsHash.isDirectory) continue;
-        final candidate = path.join(
-          chatsRoot,
-          wsHash.name,
-          chatId,
-          _messagesFileName,
+      for (final project in await ctx.fs.listDir(projectsRoot)) {
+        if (!project.isDirectory) continue;
+        final transcriptsRoot = path.join(
+          projectsRoot,
+          project.name,
+          'agent-transcripts',
         );
-        if ((await ctx.fs.stat(candidate)).isFile) return candidate;
+        final nested = path.join(transcriptsRoot, chatId, '$chatId.jsonl');
+        if ((await ctx.fs.stat(nested)).isFile) return nested;
+        final flat = path.join(transcriptsRoot, '$chatId.jsonl');
+        if ((await ctx.fs.stat(flat)).isFile) return flat;
       }
     } on Object {
       return null;

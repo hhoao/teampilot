@@ -43,7 +43,7 @@ void main() {
     }
   }
 
-  test('parses isolated chats messages.jsonl', () async {
+  test('parses isolated projects agent-transcripts jsonl', () async {
     await copyFixtureTree();
 
     final snap = await const CursorSessionHistory().loadHistory(
