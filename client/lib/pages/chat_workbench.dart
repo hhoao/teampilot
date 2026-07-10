@@ -22,6 +22,7 @@ import 'chat/chat_workbench_placeholders.dart';
 import 'chat/chat_workbench_slice.dart';
 import 'chat/chat_workbench_terminal.dart';
 import 'chat/session_history_review.dart';
+import 'chat/session_history_review_submit.dart';
 
 class ChatWorkbench extends StatefulWidget {
   const ChatWorkbench({
@@ -398,13 +399,40 @@ class _ChatWorkbenchBody extends StatelessWidget {
         ? slice.selectedMemberId
         : _tabSelectedMemberId(chatCubit);
 
+    final isPersonal = appSession.sessionTeam.trim().isEmpty;
+    final connectRequest = isPersonal
+        ? PersonalSessionConnect(workspaceId: workspaceId)
+        : TeamSessionConnect(team!);
+
     return SessionHistoryReview(
       session: appSession,
       selectedMemberId: memberId,
       team: team,
       launchError: launchError,
-      // Task 9 wires connect + inject; Task 8 only mounts the review UI.
-      onSubmit: (_) {},
+      onSubmit: (message) => submitSessionHistoryReviewMessage(
+        sessionId: appSession.sessionId,
+        memberId: memberId,
+        message: message,
+        connectRequest: connectRequest,
+        connectWorkspaceSession: chatCubit.connectWorkspaceSession,
+        ensureMemberInputReady:
+            (sessionId, mid, {bool directToPty = false}) => chatCubit
+                .memberMaterializer
+                .ensureMemberInputReady(
+                  sessionId,
+                  mid,
+                  directToPty: directToPty,
+                ),
+        deliverUserCommandToMember:
+            (sessionId, mid, text, {bool directToPty = false}) =>
+                chatCubit.sessionRuntime.deliverUserCommandToMember(
+                  sessionId,
+                  mid,
+                  text,
+                  directToPty: directToPty,
+                ),
+        applyFirstPromptTitle: chatCubit.applyFirstPromptTitle,
+      ),
     );
   }
 

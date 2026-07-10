@@ -44,7 +44,8 @@ class SessionHistoryReview extends StatefulWidget {
   final AppSession session;
   final String selectedMemberId;
   final TeamProfile? team;
-  final ValueChanged<String> onSubmit;
+  /// Returns `true` after successful connect+inject so compose can clear.
+  final Future<bool> Function(String message) onSubmit;
   final String? launchError;
   final bool isSubmitting;
 
@@ -351,10 +352,14 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     await _voiceInput.endSession(discard: false);
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
     final text = _controller.text.trim();
     if (text.isEmpty || widget.isSubmitting) return;
-    widget.onSubmit(text);
+    final ok = await widget.onSubmit(text);
+    if (!ok || !mounted) return;
+    // Clear only after successful inject; keep text on connect/inject failure.
+    _controller.clear();
+    setState(() {});
   }
 
   @override
@@ -395,7 +400,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
               hint: l10n.sessionHistoryComposeHint,
               canSubmit: canSubmit,
               isSubmitting: widget.isSubmitting,
-              onSubmit: _handleSubmit,
+              onSubmit: () => unawaited(_handleSubmit()),
               onChanged: (_) => setState(() {}),
               attachTooltip: l10n.workspaceChatLandingAttach,
               enhanceTooltip: l10n.workspaceChatLandingEnhance,
