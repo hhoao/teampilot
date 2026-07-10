@@ -30,6 +30,8 @@ import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 import 'package:teampilot/services/git/git_repo_store.dart';
 import 'package:teampilot/services/file_tree/workspace_file_tree_store.dart';
 import 'package:teampilot/services/workspace/workspace_tools_scope_registry.dart';
+import 'package:teampilot/services/commands/command_bus.dart';
+import 'package:teampilot/pages/home_workspace/workspace_chrome_commands.dart';
 import 'package:teampilot/services/workspace/workspace_worktree_registry.dart';
 import 'package:teampilot/cubits/llm_config_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
@@ -212,6 +214,10 @@ Widget buildTestApp({
       ),
       RepositoryProvider<WorkspaceToolsScopeRegistry>(
         create: (_) => WorkspaceToolsScopeRegistry(),
+      ),
+      RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
+      RepositoryProvider<WorkspaceChromeCommands>(
+        create: (_) => WorkspaceChromeCommands(),
       ),
     ],
     child: MultiBlocProvider(

@@ -91,6 +91,7 @@ import '../services/cli/cli_executable_discovery.dart';
 import '../services/commands/command_bus.dart';
 import '../services/commands/layout_command_registrar.dart';
 import '../services/commands/session_command_registrar.dart';
+import '../pages/home_workspace/workspace_chrome_commands.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/provider/claude/claude_provider_credentials_service.dart';
@@ -186,6 +187,7 @@ class AppShell {
     required this.automationScheduler,
     required this.commandBus,
     required this.shortcutCubit,
+    required this.workspaceChromeCommands,
   });
 
   final CliToolRegistry cliToolRegistry;
@@ -242,6 +244,7 @@ class AppShell {
   final AutomationScheduler automationScheduler;
   final CommandBus commandBus;
   final ShortcutCubit shortcutCubit;
+  final WorkspaceChromeCommands workspaceChromeCommands;
 }
 
 Future<AppShell> buildAppShell({
@@ -718,6 +721,7 @@ Future<AppShell> buildAppShell({
   final configCubit = ConfigCubit();
   final commandBus = CommandBus();
   final shortcutCubit = ShortcutCubit();
+  final workspaceChromeCommands = WorkspaceChromeCommands();
   registerLayoutCommands(commandBus, layoutCubit);
 
   final transportFactory = TerminalTransportFactory(
@@ -1061,6 +1065,7 @@ Future<AppShell> buildAppShell({
     automationScheduler: automationScheduler,
     commandBus: commandBus,
     shortcutCubit: shortcutCubit,
+    workspaceChromeCommands: workspaceChromeCommands,
   );
 }
 

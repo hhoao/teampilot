@@ -38,6 +38,7 @@ import 'services/commands/shortcut_dispatcher.dart';
 import 'services/commands/shortcut_focus.dart';
 import 'services/expert_hub/expert_capability_resolver.dart';
 import 'services/home_workspace/home_workspace_ui_cache.dart';
+import 'pages/home_workspace/workspace_chrome_commands.dart';
 import 'services/storage/app_storage.dart';
 import 'services/app/boot_splash.dart';
 import 'services/app/windows_keyboard_workaround.dart';
@@ -71,18 +72,23 @@ import 'widgets/app_update_available_dialog.dart';
 import 'widgets/ui_zoom.dart';
 
 /// Live [ShortcutContext] used by [ShortcutDispatcherHost] until the
-/// session/workspace tab plumbing (Tasks 8, 11) lands.
+/// terminal focus plumbing (Task 11) lands.
 ///
 /// `inCompose` / `inTextInput` are derived by walking up from
 /// [FocusManager.instance.primaryFocus]'s element to the nearest
 /// [ShortcutFocus] ancestor (see `ShortcutFocus.maybeOf`) — compose fields
 /// wrap themselves in `ShortcutFocus(kind: ShortcutFocusKind.compose, ...)`
-/// on build, so this needs no static registry. `inTerminal` /
-/// `hasOpenWorkspaceTabs` are stubbed `false` until terminal focus tracking
-/// and workspace tab plumbing land — matching nothing is always safer than
-/// matching the wrong thing. `hasWorkspace` and `hasSessionTab` are cheap to
-/// derive correctly today, so they are.
-ShortcutContext _liveShortcutContext(ChatCubit chatCubit) {
+/// on build, so this needs no static registry. `inTerminal` is stubbed
+/// `false` until terminal focus tracking lands — matching nothing is always
+/// safer than matching the wrong thing. `hasWorkspace` and `hasSessionTab`
+/// are cheap to derive correctly today, so they are.
+/// `hasOpenWorkspaceTabs` reads [WorkspaceChromeCommands.openTabCount],
+/// which `HomeShell` keeps in sync with its title-bar tabs (`0` whenever no
+/// `HomeShell` is mounted).
+ShortcutContext _liveShortcutContext(
+  ChatCubit chatCubit,
+  WorkspaceChromeCommands workspaceChromeCommands,
+) {
   final location = appRouter.routerDelegate.currentConfiguration.uri
       .toString();
   final focusKind = _primaryShortcutFocusKind();
@@ -92,6 +98,7 @@ ShortcutContext _liveShortcutContext(ChatCubit chatCubit) {
         focusKind == ShortcutFocusKind.compose ||
         focusKind == ShortcutFocusKind.text,
     hasWorkspace: location.contains('/home-v2/workspace/'),
+    hasOpenWorkspaceTabs: workspaceChromeCommands.openTabCount >= 1,
     hasSessionTab: chatCubit.state.activeSessionId != null,
   );
 }
@@ -127,11 +134,12 @@ class _ShortcutDispatcherHostState extends State<ShortcutDispatcherHost> {
     super.initState();
     final shortcutCubit = context.read<ShortcutCubit>();
     final chatCubit = context.read<ChatCubit>();
+    final workspaceChromeCommands = context.read<WorkspaceChromeCommands>();
     final dispatcher = ShortcutDispatcher(
       bus: context.read<CommandBus>(),
       effectiveChords: (commandId) =>
           shortcutCubit.effective[commandId] ?? const [],
-      context: () => _liveShortcutContext(chatCubit),
+      context: () => _liveShortcutContext(chatCubit, workspaceChromeCommands),
       isMacOS: defaultIsMacOS,
     );
     dispatcher.attach();
@@ -586,6 +594,9 @@ void main() async {
                   value: shell.expertCapabilityResolver,
                 ),
                 RepositoryProvider<CommandBus>.value(value: shell.commandBus),
+                RepositoryProvider<WorkspaceChromeCommands>.value(
+                  value: shell.workspaceChromeCommands,
+                ),
               ],
               child: MultiBlocProvider(
                 providers: [

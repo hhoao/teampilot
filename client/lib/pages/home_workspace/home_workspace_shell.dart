@@ -15,6 +15,8 @@ import '../../models/workspace.dart';
 import '../../models/workspace_tab_ref.dart';
 import '../../models/workspace_topology.dart';
 import '../../models/home_closed_workspace_entry.dart';
+import '../../services/commands/command_bus.dart';
+import '../../services/commands/command_ids.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/workspace_display_name.dart';
 import '../../services/home_workspace/home_closed_workspaces_store.dart';
@@ -30,6 +32,7 @@ import 'home_workspace_body_stack.dart';
 import 'home_workspace_tab_scope.dart';
 import 'home_workspace_title_bar.dart';
 import 'open_workspace_tab_actions.dart';
+import 'workspace_chrome_commands.dart';
 
 /// Persistent chrome for the workspace-home route family.
 class HomeShell extends StatefulWidget {
@@ -58,6 +61,37 @@ class HomeShell extends StatefulWidget {
     if (routeTab != null) add(routeTab);
     return merged;
   }
+
+  /// Tab to activate for `workbench.workspace.nextTab`: the tab after
+  /// [activeTabKey] in [tabs], wrapping from the last tab back to the
+  /// first. Returns the first tab when [activeTabKey] is `null` or not
+  /// found (e.g. currently on the home landing), and `null` when [tabs] is
+  /// empty.
+  @visibleForTesting
+  static WorkspaceTabRef? nextTab({
+    required List<WorkspaceTabRef> tabs,
+    required String? activeTabKey,
+  }) {
+    if (tabs.isEmpty) return null;
+    final idx = tabs.indexWhere((t) => t.tabKey == activeTabKey);
+    if (idx == -1) return tabs.first;
+    return tabs[(idx + 1) % tabs.length];
+  }
+
+  /// Tab to activate for `workbench.workspace.prevTab`: the tab before
+  /// [activeTabKey] in [tabs], wrapping from the first tab back to the
+  /// last. Returns the last tab when [activeTabKey] is `null` or not found,
+  /// and `null` when [tabs] is empty.
+  @visibleForTesting
+  static WorkspaceTabRef? prevTab({
+    required List<WorkspaceTabRef> tabs,
+    required String? activeTabKey,
+  }) {
+    if (tabs.isEmpty) return null;
+    final idx = tabs.indexWhere((t) => t.tabKey == activeTabKey);
+    if (idx == -1) return tabs.last;
+    return tabs[(idx - 1 + tabs.length) % tabs.length];
+  }
 }
 
 class _HomeShellState extends State<HomeShell> {
@@ -68,6 +102,9 @@ class _HomeShellState extends State<HomeShell> {
   late List<WorkspaceTabRef> _openTabs;
   List<HomeClosedWorkspaceEntry> _recentlyClosed = const [];
 
+  late CommandBus _commandBus;
+  late WorkspaceChromeCommands _chromeCommands;
+
   @override
   void initState() {
     super.initState();
@@ -77,6 +114,7 @@ class _HomeShellState extends State<HomeShell> {
       persisted: cache.openWorkspaceTabs,
       routeTab: routeTab,
     );
+    _registerChromeCommands();
     unawaited(_finishOpenTabsBootstrap(routeTab));
     if (routeTab == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -84,6 +122,74 @@ class _HomeShellState extends State<HomeShell> {
         _syncTeamSessionScope(context);
       });
     }
+  }
+
+  void _registerChromeCommands() {
+    _commandBus = context.read<CommandBus>();
+    _chromeCommands = context.read<WorkspaceChromeCommands>();
+    _commandBus
+      ..register(CommandIds.workspaceNextTab, _nextWorkspaceTab)
+      ..register(CommandIds.workspacePrevTab, _prevWorkspaceTab)
+      ..register(CommandIds.workspaceCloseTab, _closeActiveWorkspaceTab)
+      ..register(
+        CommandIds.workspaceReopenClosed,
+        _reopenClosedWorkspaceTab,
+      );
+    _chromeCommands
+      ..nextWorkspaceTab = _nextWorkspaceTab
+      ..prevWorkspaceTab = _prevWorkspaceTab
+      ..closeActiveWorkspaceTab = _closeActiveWorkspaceTab
+      ..reopenClosedWorkspaceTab = _reopenClosedWorkspaceTab
+      ..openTabCount = _openTabs.length;
+  }
+
+  void _nextWorkspaceTab() {
+    final target = HomeShell.nextTab(
+      tabs: _openTabs,
+      activeTabKey: WorkspaceTabRef.fromLocation(widget.location)?.tabKey,
+    );
+    if (target != null) _selectTab(target);
+  }
+
+  void _prevWorkspaceTab() {
+    final target = HomeShell.prevTab(
+      tabs: _openTabs,
+      activeTabKey: WorkspaceTabRef.fromLocation(widget.location)?.tabKey,
+    );
+    if (target != null) _selectTab(target);
+  }
+
+  void _closeActiveWorkspaceTab() {
+    final activeTab = WorkspaceTabRef.fromLocation(widget.location);
+    if (activeTab == null) return;
+    unawaited(_closeTab(activeTab.tabKey));
+  }
+
+  void _reopenClosedWorkspaceTab() {
+    final entry = _recentlyClosed.firstOrNull;
+    if (entry == null) return;
+    unawaited(_reopenClosedTab(entry.tabKey));
+  }
+
+  /// Updates [_openTabs] and keeps [_chromeCommands] in sync — every mutation
+  /// of the open-tab list must go through this instead of a bare `setState`.
+  void _setOpenTabs(List<WorkspaceTabRef> next) {
+    setState(() => _openTabs = next);
+    _chromeCommands.openTabCount = next.length;
+  }
+
+  @override
+  void dispose() {
+    _commandBus
+      ..unregister(CommandIds.workspaceNextTab, _nextWorkspaceTab)
+      ..unregister(CommandIds.workspacePrevTab, _prevWorkspaceTab)
+      ..unregister(CommandIds.workspaceCloseTab, _closeActiveWorkspaceTab)
+      ..unregister(
+        CommandIds.workspaceReopenClosed,
+        _reopenClosedWorkspaceTab,
+      );
+    _chromeCommands.clear();
+    super.dispose();
   }
 
   Future<void> _finishOpenTabsBootstrap(WorkspaceTabRef? routeTab) async {
@@ -133,7 +239,7 @@ class _HomeShellState extends State<HomeShell> {
       final routeTab = WorkspaceTabRef.fromLocation(widget.location);
       if (routeTab != null) {
         if (!_openTabs.any((t) => t.tabKey == routeTab.tabKey)) {
-          setState(() => _openTabs = [..._openTabs, routeTab]);
+          _setOpenTabs([..._openTabs, routeTab]);
           unawaited(_persistOpenTabs());
         }
         unawaited(_recentWorkspacesStore.recordVisit(routeTab));
@@ -152,7 +258,7 @@ class _HomeShellState extends State<HomeShell> {
 
   void _openTab(WorkspaceTabRef tab, {required bool activate}) {
     if (!_openTabs.any((t) => t.tabKey == tab.tabKey)) {
-      setState(() => _openTabs = [..._openTabs, tab]);
+      _setOpenTabs([..._openTabs, tab]);
       unawaited(_persistOpenTabs());
     }
     unawaited(_recentWorkspacesStore.recordVisit(tab));
@@ -205,7 +311,7 @@ class _HomeShellState extends State<HomeShell> {
     final activeTab = WorkspaceTabRef.fromLocation(widget.location);
     final wasActive = activeTab?.tabKey == tabKey;
     final next = [..._openTabs]..removeAt(idx);
-    setState(() => _openTabs = next);
+    _setOpenTabs(next);
     await _persistOpenTabs();
     await _reloadRecentlyClosed();
     if (!mounted) return;
