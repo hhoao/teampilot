@@ -1,7 +1,7 @@
 # Workbench Center Tabs (Orca-style) design
 
 **Date:** 2026-07-10  
-**Status:** Draft  
+**Status:** Approved (spec review)  
 **Related:** Floating `WorkspaceFloatingEditor`, modal `GitDiffDialog`, `WorkspaceShell` session tabs, Orca unified editor/diff/terminal tabs
 
 ## Summary
@@ -20,10 +20,11 @@ No backward compatibility. Delete the floating editor host, the modal diff entry
 | Diff as a tab | Source Control opens a diff tab, not `GitDiffDialog` |
 | Single file surface | No floating window; no second tab strip inside the editor |
 | Clean delete | Remove floating editor + modal-diff open path entirely |
+| Preview replace | Single-click file/diff opens a replaceable preview tab (italic); another preview replaces it; double-click or edit pins |
 
 ## Non-goals
 
-- Orca preview-tab replace, split groups, combined multi-file diff tabs
+- Split groups, combined multi-file diff tabs
 - Persisting open file/diff tabs across app restart (model may allow later; not required now)
 - Changing right-tools layout, file-tree panel chrome, or git stage/commit flows
 - Browser / simulator tab kinds (Orca-only)
@@ -160,7 +161,7 @@ class DiffTabState {
 
 `WorkbenchCubit` keeps an explicit `List<WorkbenchTabId> tabOrder` per workspace:
 
-- Opening a **new** session/file/diff **appends** (or inserts next to active — prefer append for predictability unless product later wants Orca preview replace).
+- Opening a **new** session always **appends**. File/diff opens default to **preview**: a new preview replaces the existing file/diff preview in-place; permanent opens append (or activate + pin if already open).
 - Re-opening an existing id **activates** it; does not duplicate.
 - Closing removes from `tabOrder` and domain store.
 - Session tabs that appear from chat still register into `tabOrder` when created; removing a session removes that id from `tabOrder`.

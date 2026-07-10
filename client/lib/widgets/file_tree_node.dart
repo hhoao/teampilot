@@ -5,12 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
-import '../cubits/editor_cubit.dart';
 import '../cubits/file_tree_cubit.dart';
+import '../cubits/workbench/workbench_cubit.dart';
+import '../cubits/workbench/workbench_tab.dart';
 import '../services/editor/file_editor_theme.dart';
 import '../services/file_tree/file_tree_visible_rows.dart';
 import '../services/io/filesystem.dart';
 import '../services/storage/runtime_context.dart';
+import '../services/workbench/workbench_editor_opener.dart';
 import '../services/workspace_dnd/path_namespace.dart';
 import '../services/workspace_dnd/workspace_file_ref.dart';
 import '../theme/app_text_styles.dart';
@@ -27,6 +29,7 @@ class FileTreeNode extends StatefulWidget {
     required this.depth,
     required this.cubit,
     required this.textColor,
+    required this.workspaceId,
     this.desktopShellActions = false,
     this.remoteFileManagerActions = false,
     required this.workContext,
@@ -41,6 +44,7 @@ class FileTreeNode extends StatefulWidget {
   final int depth;
   final FileTreeCubit cubit;
   final Color textColor;
+  final String workspaceId;
   final bool desktopShellActions;
   final bool remoteFileManagerActions;
   final RuntimeContext workContext;
@@ -59,6 +63,10 @@ class FileTreeNode extends StatefulWidget {
 
 class _FileTreeNodeState extends State<FileTreeNode> {
   var _hovered = false;
+  DateTime? _lastTapAt;
+  String? _lastTapPath;
+
+  static const _doubleTapWindow = Duration(milliseconds: 300);
 
   @override
   void didUpdateWidget(covariant FileTreeNode oldWidget) {
@@ -75,11 +83,28 @@ class _FileTreeNodeState extends State<FileTreeNode> {
 
   bool _isActiveEditorFile(BuildContext context) {
     if (widget.entry.isDirectory) return false;
-    final active = context.select<EditorCubit, String?>(
-      (c) => c.state.activePath,
+    final active = context.select<WorkbenchCubit, WorkbenchTabId?>(
+      (c) => c.activeTabId(widget.workspaceId),
     );
-    if (active == null) return false;
-    return fileTreePathsEqual(widget.cubit.fs.pathContext, widget.path, active);
+    if (active == null || active.kind != WorkbenchTabKind.file) return false;
+    return fileTreePathsEqual(
+      widget.cubit.fs.pathContext,
+      widget.path,
+      active.id,
+    );
+  }
+
+  /// Manual double-tap so single-click preview is not delayed by
+  /// [GestureDetector.onDoubleTap] (~[kDoubleTapTimeout]).
+  void _handleFileTap(BuildContext context, String filePath) {
+    final now = DateTime.now();
+    final isDouble =
+        _lastTapPath == filePath &&
+        _lastTapAt != null &&
+        now.difference(_lastTapAt!) < _doubleTapWindow;
+    _lastTapAt = now;
+    _lastTapPath = filePath;
+    _openFile(context, filePath, preview: !isDouble);
   }
 
   @override
@@ -134,7 +159,7 @@ class _FileTreeNodeState extends State<FileTreeNode> {
               if (isDir) {
                 widget.cubit.toggleExpand(widget.path);
               } else {
-                _openFile(context, widget.path);
+                _handleFileTap(context, widget.path);
               }
             },
             onSecondaryTapDown: (details) => unawaited(
@@ -148,6 +173,7 @@ class _FileTreeNodeState extends State<FileTreeNode> {
                 desktopShellActions: widget.desktopShellActions,
                 remoteFileManagerActions: widget.remoteFileManagerActions,
                 workContext: widget.workContext,
+                workspaceId: widget.workspaceId,
               ),
             ),
             child: Container(
@@ -245,15 +271,21 @@ class _FileTreeNodeState extends State<FileTreeNode> {
     );
   }
 
-  void _openFile(BuildContext context, String filePath) {
+  void _openFile(
+    BuildContext context,
+    String filePath, {
+    required bool preview,
+  }) {
     if (!isEditorOpenableFilePath(filePath)) {
       _openFileExternally(filePath);
       return;
     }
     unawaited(
-      context.read<EditorCubit>().openFile(
+      context.read<WorkbenchEditorOpener>().openFile(
+        widget.workspaceId,
         filePath,
         fs: widget.cubit.fsFor(filePath),
+        preview: preview,
       ),
     );
   }

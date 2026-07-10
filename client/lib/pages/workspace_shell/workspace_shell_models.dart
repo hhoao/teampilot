@@ -12,6 +12,7 @@ class TabInfo {
     this.icon = Icons.terminal_rounded,
     this.cli,
     this.accentColor,
+    this.preview = false,
   });
 
   final String id;
@@ -30,4 +31,7 @@ class TabInfo {
   /// Color of the 3px left accent bar. When null, falls back to
   /// [ColorScheme.primary].
   final Color? accentColor;
+
+  /// Preview (replaceable) editor/diff tab — rendered italic like VS Code/Orca.
+  final bool preview;
 }

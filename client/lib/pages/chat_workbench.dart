@@ -7,7 +7,6 @@ import 'package:flutter_alacritty/flutter_alacritty.dart';
 import '../cubits/chat/model/session_connect_request.dart';
 import '../cubits/chat/model/chat_tab.dart';
 import '../cubits/chat_cubit.dart';
-import '../cubits/editor_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/launch_profile_cubit.dart';
 import '../l10n/l10n_extensions.dart';
@@ -15,6 +14,7 @@ import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/terminal_theme_mapper.dart';
+import '../services/workbench/workbench_editor_opener.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/app_keys.dart';
 import '../widgets/deferred_foreground_mount.dart';
@@ -69,7 +69,8 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     await openChatWorkbenchTerminalLink(
       link: link,
       chatCubit: context.read<ChatCubit>(),
-      editorCubit: context.read<EditorCubit>(),
+      editorOpener: context.read<WorkbenchEditorOpener>(),
+      workspaceId: widget.workspaceId,
       isMounted: () => mounted,
     );
   }

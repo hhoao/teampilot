@@ -106,4 +106,59 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'fromUnifiedDiff remounts when key changes for a different file',
+    (tester) async {
+      const first = '''
+--- a/a.dart
++++ b/a.dart
+@@ -1 +1 @@
+-old-a
++new-a
+''';
+      const second = '''
+--- a/b.dart
++++ b/b.dart
+@@ -1 +1 @@
+-old-b
++new-b
+''';
+      Future<void> pumpDiff(String diff, String path) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: SizedBox(
+                width: 800,
+                height: 400,
+                child: DiffViewer.fromUnifiedDiff(
+                  key: ValueKey(path),
+                  diffText: diff,
+                  filePath: path,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+      }
+
+      await pumpDiff(first, 'a.dart');
+      expect(find.byType(DiffViewer), findsOneWidget);
+      expect(
+        tester.widget<DiffViewer>(find.byType(DiffViewer)).filePath,
+        'a.dart',
+      );
+
+      await pumpDiff(second, 'b.dart');
+      expect(
+        tester.widget<DiffViewer>(find.byType(DiffViewer)).filePath,
+        'b.dart',
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

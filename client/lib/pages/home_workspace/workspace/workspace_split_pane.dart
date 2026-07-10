@@ -9,10 +9,8 @@ import '../../../models/layout_preferences.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../services/workspace/workspace_tools_scope_registry.dart';
 import '../../../services/workspace/workspace_worktree_registry.dart';
-import '../../../utils/workspace_compose_active.dart';
 import '../../../widgets/resizable_split_view.dart';
 import '../../chat_page.dart';
-import 'workspace_compose_landing_pane.dart';
 import 'workspace_sidebar.dart';
 import 'workspace_tools_scope_sync.dart';
 
@@ -130,12 +128,6 @@ class _WorkspaceMainPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final composeActive = context.select<ChatCubit, bool>(
-      (c) => workspaceComposeActive(c, tabScopeId),
-    );
-    if (composeActive) {
-      return WorkspaceComposeLandingPane(workspace: workspace);
-    }
     return ChatPage(
       cwd: cwd,
       additionalPaths: workspace.extraFolderPaths,

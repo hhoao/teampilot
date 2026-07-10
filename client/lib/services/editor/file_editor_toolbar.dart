@@ -6,6 +6,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:re_editor/re_editor.dart';
 
 import '../../cubits/editor_cubit.dart';
+import '../../cubits/workbench/workbench_cubit.dart';
+import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import 'file_editor_ai_context.dart';
@@ -28,8 +30,20 @@ class FileEditorContextMenuController implements SelectionToolbarController {
   }) {
     final l10n = context.l10n;
     final editorCubit = context.read<EditorCubit>();
-    final path = editorCubit.state.activePath;
-    final readOnly = path != null && editorCubit.isReadOnly(path);
+    final workbench = context.read<WorkbenchCubit>();
+    String? path;
+    String? workspaceId;
+    for (final entry in workbench.state.byWorkspace.entries) {
+      final active = entry.value.activeTabId;
+      if (active?.kind == WorkbenchTabKind.file) {
+        path = active!.id;
+        workspaceId = entry.key;
+        break;
+      }
+    }
+    final readOnly = path != null &&
+        workspaceId != null &&
+        editorCubit.isReadOnly(workspaceId, path);
 
     final specs = <SidebarActionMenuSpec>[
       if (!readOnly)
@@ -51,7 +65,7 @@ class FileEditorContextMenuController implements SelectionToolbarController {
             Clipboard.setData(
               ClipboardData(
                 text: formatEditorAiContext(
-                  filePath: path,
+                  filePath: path!,
                   controller: controller,
                 ),
               ),

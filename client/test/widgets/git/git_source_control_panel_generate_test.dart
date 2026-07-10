@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
+import 'package:teampilot/cubits/editor_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/git_status.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/services/git/git_repo_store.dart';
 import 'package:teampilot/services/git/git_service.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
+import 'package:teampilot/services/workbench/workbench_editor_opener.dart';
 import 'package:teampilot/widgets/git/git_source_control_panel.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -83,13 +86,29 @@ void main() {
   });
 
   Widget wrap(AiFeatureSettingsCubit aiSettingsCubit, Widget child) {
+    final editor = EditorCubit();
+    final workbench = WorkbenchCubit();
+    addTearDown(editor.close);
+    addTearDown(workbench.close);
     return MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: RepositoryProvider<GitRepoStore>.value(
-        value: store,
-        child: BlocProvider.value(
-          value: aiSettingsCubit,
+      home: MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider<GitRepoStore>.value(value: store),
+          RepositoryProvider<WorkbenchEditorOpener>.value(
+            value: WorkbenchEditorOpener(
+              editor: editor,
+              workbench: workbench,
+            ),
+          ),
+        ],
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: aiSettingsCubit),
+            BlocProvider.value(value: editor),
+            BlocProvider.value(value: workbench),
+          ],
           child: Scaffold(body: child),
         ),
       ),
@@ -104,7 +123,11 @@ void main() {
     await tester.pumpWidget(
       wrap(
         aiSettingsCubit,
-        GitSourceControlPanel(roots: const ['/repo'], workContext: workContext),
+        GitSourceControlPanel(
+          roots: const ['/repo'],
+          workContext: workContext,
+          workspaceId: 'ws-test',
+        ),
       ),
     );
     await tester.pump();
@@ -132,6 +155,7 @@ void main() {
         GitSourceControlPanel(
           roots: const ['/work/repoA', '/work/repoB'],
           workContext: workContext,
+          workspaceId: 'ws-test',
         ),
       ),
     );

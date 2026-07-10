@@ -121,6 +121,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
                       title: tabs[i].title,
                       working: tabs[i].working,
                       active: activeIndex >= 0 && i == activeIndex,
+                      preview: tabs[i].preview,
                       onTap: () => onTabSelected?.call(i),
                       onClose: () => onTabClosed?.call(i),
                       onCloseOthers: () => onTabCloseOthers?.call(i),
@@ -177,6 +178,7 @@ class WorkspaceShellTabChip extends StatefulWidget {
     this.onCloseOthers,
     this.onCloseRight,
     this.working = false,
+    this.preview = false,
     this.icon = Icons.terminal_rounded,
     this.cli,
     this.accentColor,
@@ -185,6 +187,7 @@ class WorkspaceShellTabChip extends StatefulWidget {
   final String title;
   final bool working;
   final bool active;
+  final bool preview;
   final VoidCallback onTap;
   final VoidCallback onClose;
   final VoidCallback? onCloseOthers;
@@ -365,7 +368,12 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
                       widget.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.bodySmall.copyWith(color: fg),
+                      style: styles.bodySmall.copyWith(
+                        color: fg,
+                        fontStyle: widget.preview
+                            ? FontStyle.italic
+                            : FontStyle.normal,
+                      ),
                     ),
                   ),
                   // Close button

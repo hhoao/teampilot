@@ -1063,6 +1063,18 @@ class ChatCubit extends Cubit<ChatState>
     _pushPresenceTarget();
   }
 
+  /// Clears compose without selecting a session (e.g. opening a file/diff tab).
+  void dismissCompose() {
+    final workspaceId = _tabStore.activeWorkspaceId;
+    if (!_tabStore.isComposeActive(workspaceId) && !state.composeActive) {
+      return;
+    }
+    _tabStore.setComposeActive(workspaceId, false);
+    if (state.composeActive) {
+      emit(state.copyWith(composeActive: false));
+    }
+  }
+
   void syncTeam(TeamProfile team) {
     if (team.members.isEmpty) {
       emit(state.copyWith(selectedMemberId: ''));

@@ -10,8 +10,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
-import '../../cubits/editor_cubit.dart';
 import '../../cubits/file_tree_cubit.dart';
+import '../../cubits/workbench/workbench_cubit.dart';
+import '../../cubits/workbench/workbench_tab.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../services/file_tree/file_tree_visible_rows.dart';
@@ -34,11 +35,13 @@ class FileTreePanel extends StatefulWidget {
   const FileTreePanel({
     required this.cubit,
     required this.workContext,
+    required this.workspaceId,
     super.key,
   });
 
   final FileTreeCubit cubit;
   final RuntimeContext workContext;
+  final String workspaceId;
 
   @override
   State<FileTreePanel> createState() => _FileTreePanelState();
@@ -48,7 +51,6 @@ class _FileTreePanelState extends State<FileTreePanel> {
   final _filterController = TextEditingController();
   final _listScrollController = ScrollController();
   final _horizontalScrollController = ScrollController();
-  EditorCubit? _editorCubit;
   bool _filterVisible = false;
   bool _listReady = false;
 
@@ -77,19 +79,13 @@ class _FileTreePanelState extends State<FileTreePanel> {
     });
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _editorCubit = context.read<EditorCubit>();
-  }
-
   Future<void> _revealActiveEditorFile() async {
     if (!mounted) return;
-    final active = _editorCubit?.state.activePath;
-    if (active == null) return;
+    final active = context.read<WorkbenchCubit>().activeTabId(widget.workspaceId);
+    if (active == null || active.kind != WorkbenchTabKind.file) return;
 
     _filterController.clear();
-    final ok = await _cubit.revealPath(active);
+    final ok = await _cubit.revealPath(active.id);
     if (!mounted) return;
     if (!ok) {
       AppToast.show(
@@ -309,6 +305,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
                                 remoteFileManagerActions:
                                     _remoteFileManagerActionsFor(_workContext),
                                 workContext: _workContext,
+                                workspaceId: widget.workspaceId,
                               );
                             },
                           ),
@@ -454,6 +451,7 @@ class _FileTreeList extends StatefulWidget {
     required this.desktopShellActions,
     required this.remoteFileManagerActions,
     required this.workContext,
+    required this.workspaceId,
   });
 
   final List<FileTreeVisibleRow> rows;
@@ -464,6 +462,7 @@ class _FileTreeList extends StatefulWidget {
   final bool desktopShellActions;
   final bool remoteFileManagerActions;
   final RuntimeContext workContext;
+  final String workspaceId;
 
   @override
   State<_FileTreeList> createState() => _FileTreeListState();
@@ -592,6 +591,7 @@ class _FileTreeListState extends State<_FileTreeList> {
                           depth: row.depth,
                           cubit: widget.cubit,
                           textColor: widget.textColor,
+                          workspaceId: widget.workspaceId,
                           desktopShellActions: _desktopShellActionsFor(
                             widget.cubit.workContextFor(row.path) ??
                                 widget.workContext,

@@ -21,6 +21,8 @@ import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
 import '../cubits/notification_cubit.dart';
 import '../cubits/editor_cubit.dart';
+import '../cubits/workbench/workbench_cubit.dart';
+import '../services/workbench/workbench_editor_opener.dart';
 import '../cubits/ai_feature_settings_cubit.dart';
 import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
@@ -131,6 +133,8 @@ class AppShell {
     required this.boardCubit,
     required this.notificationCubit,
     required this.editorCubit,
+    required this.workbenchCubit,
+    required this.workbenchEditorOpener,
     required this.sessionRepo,
     required this.workspaceProjectConfigRepository,
     required this.sshProfileRepo,
@@ -184,6 +188,8 @@ class AppShell {
   final BoardCubit boardCubit;
   final NotificationCubit notificationCubit;
   final EditorCubit editorCubit;
+  final WorkbenchCubit workbenchCubit;
+  final WorkbenchEditorOpener workbenchEditorOpener;
   final SessionRepository sessionRepo;
   final WorkspaceProjectConfigRepository workspaceProjectConfigRepository;
   final SshProfileRepository sshProfileRepo;
@@ -940,6 +946,12 @@ Future<AppShell> buildAppShell({
   }
 
   editorCubit = EditorCubit();
+  final workbenchCubit = WorkbenchCubit();
+  final workbenchEditorOpener = WorkbenchEditorOpener(
+    editor: editorCubit,
+    workbench: workbenchCubit,
+    chat: chatCubit,
+  );
 
   // P1: switching the home target persists the id, rebinds the home context,
   // then reinstalls + reloads all remote-backed app data (same chain the old
@@ -972,6 +984,8 @@ Future<AppShell> buildAppShell({
     boardCubit: boardCubit,
     notificationCubit: notificationCubit,
     editorCubit: editorCubit,
+    workbenchCubit: workbenchCubit,
+    workbenchEditorOpener: workbenchEditorOpener,
     sessionRepo: sessionRepo,
     workspaceProjectConfigRepository: workspaceProjectConfigRepository,
     sshProfileRepo: sshProfileRepo,

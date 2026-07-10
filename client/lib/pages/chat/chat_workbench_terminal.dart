@@ -6,7 +6,6 @@ import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/chat_cubit.dart';
-import '../../cubits/editor_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -17,6 +16,7 @@ import '../../utils/team_member_naming.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../services/terminal/terminal_uri_opener.dart';
 import '../../services/terminal/terminal_fonts.dart';
+import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workspace_dnd/terminal_drop_ingestor.dart';
 import '../../services/workspace_dnd/workspace_drop_target.dart';
 import '../../widgets/terminal/parked_send_overlay.dart';
@@ -178,7 +178,8 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
 Future<void> openChatWorkbenchTerminalLink({
   required String link,
   required ChatCubit chatCubit,
-  required EditorCubit editorCubit,
+  required WorkbenchEditorOpener editorOpener,
+  required String workspaceId,
   required bool Function() isMounted,
 }) async {
   await TerminalUriOpener.open(
@@ -186,7 +187,7 @@ Future<void> openChatWorkbenchTerminalLink({
     workingDirectory: chatCubit.activeTabWorkingDirectory,
     openInEditor: (path) async {
       if (!isMounted()) return;
-      await editorCubit.openFile(path);
+      await editorOpener.openFile(workspaceId, path);
     },
   );
 }

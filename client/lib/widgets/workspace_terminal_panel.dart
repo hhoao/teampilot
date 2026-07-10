@@ -434,6 +434,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
             theme: theme,
             terminalViewKey: _terminalViewKey,
             siblings: _group.entries,
+            workspaceId: widget.workspaceId,
             onContextMenu: (position, cell) =>
                 _showContextMenu(context, active, position, cell),
           );

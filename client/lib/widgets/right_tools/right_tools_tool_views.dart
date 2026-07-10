@@ -470,6 +470,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
             key: const ValueKey('workspace-file-tree'),
             cubit: widget.fileTreeCubit,
             workContext: widget.workContext,
+            workspaceId: widget.workspaceId,
           ),
         ),
       );
@@ -483,6 +484,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
           child: GitSourceControlPanel(
             roots: widget.scope.roots,
             workContext: widget.workContext,
+            workspaceId: widget.workspaceId,
           ),
         ),
       );

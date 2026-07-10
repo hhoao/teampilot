@@ -7,7 +7,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
-import '../../cubits/editor_cubit.dart';
 import '../../cubits/file_tree_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/editor/file_editor_theme.dart';
@@ -15,6 +14,7 @@ import '../../services/io/runtime_folder_opener.dart';
 import '../../services/io/system_folder_opener.dart';
 import '../../services/io/system_terminal_opener.dart';
 import '../../services/storage/runtime_context.dart';
+import '../../services/workbench/workbench_editor_opener.dart';
 import '../../utils/debounce/debounce.dart';
 import '../app_dialog.dart';
 import '../menu/sidebar_action_menu.dart';
@@ -29,6 +29,7 @@ abstract final class FileTreeContextMenu {
     required String targetName,
     required bool isDirectory,
     required bool desktopShellActions,
+    required String workspaceId,
     bool remoteFileManagerActions = false,
     required RuntimeContext workContext,
   }) async {
@@ -121,6 +122,7 @@ abstract final class FileTreeContextMenu {
           cubit: cubit,
           parentDir: parentDir,
           isFolder: false,
+          workspaceId: workspaceId,
         );
       case 'new_folder':
         await _promptCreate(
@@ -128,6 +130,7 @@ abstract final class FileTreeContextMenu {
           cubit: cubit,
           parentDir: parentDir,
           isFolder: true,
+          workspaceId: workspaceId,
         );
       case 'cut':
         cubit.cutItem(targetPath);
@@ -174,6 +177,7 @@ abstract final class FileTreeContextMenu {
     required FileTreeCubit cubit,
     required String parentDir,
     required bool isFolder,
+    required String workspaceId,
   }) async {
     final l10n = context.l10n;
     final name = await showAppTextPromptDialog(
@@ -196,7 +200,12 @@ abstract final class FileTreeContextMenu {
               final created = cubit.fs.pathContext.join(parentDir, name.trim());
               if (isEditorOpenableFilePath(created)) {
                 unawaited(
-                  context.read<EditorCubit>().openFile(created, fs: cubit.fs),
+                  context.read<WorkbenchEditorOpener>().openFile(
+                    workspaceId,
+                    created,
+                    fs: cubit.fs,
+                    preview: false,
+                  ),
                 );
               }
             },

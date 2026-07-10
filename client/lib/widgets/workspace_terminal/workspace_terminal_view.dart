@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../cubits/editor_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../services/terminal/terminal_fonts.dart';
 import '../../services/terminal/terminal_uri_opener.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../services/terminal/workspace_terminal_title_resolver.dart';
+import '../../services/workbench/workbench_editor_opener.dart';
 import '../terminal/terminal_with_history_scrollbar.dart';
 
 class WorkspaceTerminalView extends StatelessWidget {
@@ -19,6 +19,7 @@ class WorkspaceTerminalView extends StatelessWidget {
     required this.terminalViewKey,
     required this.siblings,
     required this.onContextMenu,
+    required this.workspaceId,
     super.key,
   });
 
@@ -27,6 +28,7 @@ class WorkspaceTerminalView extends StatelessWidget {
   final GlobalKey<TerminalViewState> terminalViewKey;
   final List<WorkspaceTerminalEntry> siblings;
   final void Function(Offset globalPosition, CellOffset? cell) onContextMenu;
+  final String workspaceId;
 
   @override
   Widget build(BuildContext context) {
@@ -60,12 +62,12 @@ class WorkspaceTerminalView extends StatelessWidget {
                 .terminalLinkClickOpensInApp,
             onPtyResize: entry.session.onTerminalPtyResize,
             onLinkActivate: (uri) {
-              final editorCubit = context.read<EditorCubit>();
+              final opener = context.read<WorkbenchEditorOpener>();
               unawaited(
                 TerminalUriOpener.open(
                   uri,
                   workingDirectory: entry.cwd,
-                  openInEditor: (path) => editorCubit.openFile(path),
+                  openInEditor: (path) => opener.openFile(workspaceId, path),
                 ),
               );
             },

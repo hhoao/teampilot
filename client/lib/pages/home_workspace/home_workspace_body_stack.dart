@@ -5,7 +5,6 @@ import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/workspace_landing_context_cubit.dart';
 import '../../../models/workspace.dart';
 import '../../../models/workspace_tab_ref.dart';
-import '../../../widgets/file_editor_panel.dart';
 import 'home_workspace_route.dart';
 import 'home_workspace_page.dart';
 import 'workspace/workspace_page.dart';
@@ -28,8 +27,6 @@ class HomeWorkspaceBodyStack extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeTab = WorkspaceTabRef.fromLocation(location);
-    final showEditor =
-        activeTab != null && HomeWorkspaceRoute.view(location) != 'manage';
 
     return Stack(
       fit: StackFit.expand,
@@ -53,7 +50,6 @@ class HomeWorkspaceBodyStack extends StatelessWidget {
             ],
           ),
         ),
-        if (showEditor) const WorkspaceFloatingEditor(),
       ],
     );
   }

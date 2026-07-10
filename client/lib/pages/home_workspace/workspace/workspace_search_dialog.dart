@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../cubits/chat_cubit.dart';
-import '../../../cubits/editor_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
 import '../../../services/file_tree/workspace_file_search.dart';
 import '../../../services/storage/app_storage.dart';
+import '../../../services/workbench/workbench_editor_opener.dart';
 import '../../../theme/app_icon_sizes.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/debounce/debounce.dart';
@@ -28,7 +28,7 @@ Future<void> showWorkspaceSearchDialog(
   required Workspace workspace,
 }) {
   final chatCubit = context.read<ChatCubit>();
-  final editorCubit = context.read<EditorCubit>();
+  final opener = context.read<WorkbenchEditorOpener>();
   final fallback = context.l10n.defaultNewChatSessionTitle;
   final sessions = sessionsForWorkspace(workspace, chatCubit.state.sessions);
 
@@ -45,7 +45,7 @@ Future<void> showWorkspaceSearchDialog(
       },
       onOpenFile: (path) {
         Navigator.of(dialogContext).pop();
-        unawaited(editorCubit.openFile(path));
+        unawaited(opener.openFile(workspace.workspaceId, path));
       },
     ),
   );

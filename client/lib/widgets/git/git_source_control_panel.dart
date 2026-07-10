@@ -9,7 +9,6 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/ai_feature_settings_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
-import '../../cubits/editor_cubit.dart';
 import '../../cubits/git_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../models/ai_feature_setting.dart';
@@ -19,12 +18,12 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/git_status.dart';
 import '../../services/git/git_repo_store.dart';
 import '../../services/storage/runtime_context.dart';
+import '../../services/workbench/workbench_editor_opener.dart';
 import '../../theme/app_text_styles.dart';
 import '../app_dialog.dart';
 import '../app_icon_button.dart';
 import 'git_branch_menu.dart';
 import 'git_changes_tree_list.dart';
-import 'git_diff_view.dart';
 
 /// VSCode-style "Source Control" panel for the editor workbench left rail.
 ///
@@ -40,6 +39,7 @@ class GitSourceControlPanel extends StatefulWidget {
   const GitSourceControlPanel({
     required this.roots,
     required this.workContext,
+    required this.workspaceId,
     super.key,
   });
 
@@ -48,6 +48,8 @@ class GitSourceControlPanel extends StatefulWidget {
 
   /// Work-plane context for git commands (ssh/wsl/local).
   final RuntimeContext workContext;
+
+  final String workspaceId;
 
   @override
   State<GitSourceControlPanel> createState() => _GitSourceControlPanelState();
@@ -97,6 +99,7 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
       return _GitRepoBody(
         cubit: _cubitFor(roots.first),
         workContext: _workContext,
+        workspaceId: widget.workspaceId,
       );
     }
     final active = _activeRoot;
@@ -117,6 +120,7 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
             key: ValueKey('git-repo:$active'),
             cubit: _cubitFor(active),
             workContext: _workContext,
+            workspaceId: widget.workspaceId,
           ),
         ),
       ],
@@ -243,11 +247,13 @@ class _GitRepoBody extends StatefulWidget {
   const _GitRepoBody({
     required this.cubit,
     required this.workContext,
+    required this.workspaceId,
     super.key,
   });
 
   final GitCubit cubit;
   final RuntimeContext workContext;
+  final String workspaceId;
 
   @override
   State<_GitRepoBody> createState() => _GitRepoBodyState();
@@ -279,21 +285,19 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
   }
 
   Future<void> _openDiff(GitFileChange change) async {
-    final editor = context.read<EditorCubit>();
     final diff = await _cubit.diff(change);
     if (!mounted || diff == null) return;
     final absolutePath = p.join(_cubit.state.repoRoot, change.path);
-    await GitDiffDialog.show(
-      context,
+    context.read<WorkbenchEditorOpener>().openDiff(
+      workspaceId: widget.workspaceId,
+      absolutePath: absolutePath,
+      staged: change.staged,
       title: change.path,
-      diff: diff,
+      diffText: diff,
       reloadDiff: (ignoreWhitespace, fullContext) => _cubit.diff(
         change,
         ignoreWhitespace: ignoreWhitespace,
         fullContext: fullContext,
-      ),
-      onOpenSource: () => unawaited(
-        editor.openFile(absolutePath, fs: widget.workContext.filesystem),
       ),
     );
   }
