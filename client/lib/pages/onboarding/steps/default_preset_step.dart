@@ -89,18 +89,7 @@ class OnboardingDefaultPresetStepState
     if (!mounted || _hasSyncedFromState) return;
     _hasSyncedFromState = true;
     final presets = _presets;
-    final personal = context.read<LaunchProfileCubit>().activePersonal;
-    final activePresetId = personal?.activePresetId?.trim();
-    CliPreset? initialPreset;
-    if (activePresetId != null && activePresetId.isNotEmpty) {
-      for (final preset in presets) {
-        if (preset.id == activePresetId) {
-          initialPreset = preset;
-          break;
-        }
-      }
-    }
-    initialPreset ??= presets.firstOrNull;
+    CliPreset? initialPreset = presets.firstOrNull;
 
     if (initialPreset != null) {
       _loadFieldsFromPreset(initialPreset);

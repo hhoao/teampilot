@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/config_bundle.dart';
-import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
 
@@ -23,49 +22,39 @@ void main() {
   });
   tearDown(() async => deleteTempDirBestEffort(tmp));
 
-  test('saves and loads both kinds', () async {
+  test('saves and loads team profiles', () async {
     await repo.save(
-      const PersonalProfile(
-        id: 'coding',
-        display: 'Coding',
-        bundle: ConfigBundle(skillIds: ['s']),
+      const TeamProfile(
+        id: 'squad',
+        name: 'Squad',
+        skillIds: ['s'],
       ),
     );
-    await repo.save(const TeamProfile(id: 'squad', name: 'Squad'));
 
     final all = await repo.loadAll();
-    expect(all.map((e) => e.id).toSet(), {'coding', 'squad'});
-    expect(all.whereType<PersonalProfile>().single.bundle.skillIds, ['s']);
-    expect(all.whereType<TeamProfile>().single.display, 'Squad');
+    expect(all.map((e) => e.id).toSet(), {'squad'});
+    expect(all.whereType<TeamProfile>().single.skillIds, ['s']);
   });
 
   test('delete removes the identity dir', () async {
-    await repo.save(const PersonalProfile(id: 'coding', display: 'Coding'));
-    await repo.delete('coding');
+    await repo.save(const TeamProfile(id: 'squad', name: 'Squad'));
+    await repo.delete('squad');
     expect(await repo.loadAll(), isEmpty);
   });
 
-  test('sorts personals by sortOrder when any has a custom order', () async {
-    await repo.save(const PersonalProfile(id: 'b', display: 'B', sortOrder: 2));
-    await repo.save(const PersonalProfile(id: 'a', display: 'A', sortOrder: 1));
-
-    final personals = await repo.loadPersonalProfiles();
-    expect(personals.map((p) => p.id).toList(), ['a', 'b']);
-  });
-
   test('loadAll maintains launch-profiles-index.json snapshot', () async {
-    await repo.save(const PersonalProfile(id: 'coding', display: 'Coding'));
     await repo.save(const TeamProfile(id: 'squad', name: 'Squad'));
+    await repo.save(const TeamProfile(id: 'alpha', name: 'Alpha'));
 
     final resolvedIndex = p.join(tmp.path, 'launch-profiles-index.json');
     expect(File(resolvedIndex).existsSync(), isTrue);
 
     final fromSnapshot = await repo.loadAll();
-    expect(fromSnapshot.map((e) => e.id).toSet(), {'coding', 'squad'});
+    expect(fromSnapshot.map((e) => e.id).toSet(), {'squad', 'alpha'});
 
-    await repo.delete('coding');
+    await repo.delete('squad');
     final afterDelete = await repo.loadAll();
-    expect(afterDelete.map((e) => e.id).toList(), ['squad']);
+    expect(afterDelete.map((e) => e.id).toList(), ['alpha']);
     final decoded = jsonDecode(File(resolvedIndex).readAsStringSync());
     expect((decoded as Map)['profiles'], hasLength(1));
   });

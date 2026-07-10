@@ -104,7 +104,6 @@ class SessionDefaultMaterializer {
     Workspace workspace,
     SessionRepository repo, {
     required bool connectImmediately,
-    String personalIdentityId = '',
     CliTool? cliOverride,
   }) async {
     if (!_isTabsEmpty()) return;
@@ -127,7 +126,6 @@ class SessionDefaultMaterializer {
 
     final session = await repo.createSession(
       workspace.workspaceId,
-      personalIdentityId: personalIdentityId,
       cli: cli,
     );
     if (_host.isClosed) return;

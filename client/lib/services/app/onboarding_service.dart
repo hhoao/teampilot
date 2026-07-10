@@ -47,8 +47,7 @@ class OnboardingService {
     required LaunchProfileCubit launchProfileCubit,
     required AppProviderCubit appProviderCubit,
   }) async {
-    final presetId =
-        launchProfileCubit.activePersonal?.activePresetId?.trim() ?? '';
+    final presetId = '';
     if (presetId.isNotEmpty &&
         cliPresetsCubit.state.presetById(presetId) != null) {
       await applyDefaultPreset(

@@ -1,3 +1,4 @@
+import 'package:teampilot/models/automation_tab_scope.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -8,7 +9,6 @@ import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/cli_preset.dart';
-import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/automations/automation_editor_dialog.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
@@ -61,11 +61,7 @@ LaunchProfileCubit _personalLaunchProfileCubit() {
     LaunchProfileState(
       isLoading: false,
       identities: [
-        PersonalProfile(
-          id: LaunchProfileProvisioner.defaultPersonalId,
-          display: 'Personal',
-          activePresetId: _testPresetId,
-        ),
+        
       ],
     ),
   );
@@ -148,7 +144,7 @@ void main() {
         child: AutomationEditorDialog(
           kind: AutomationEditorKind.scheduledMessage,
           workspaceId: 'ws1',
-          launchProfileId: LaunchProfileProvisioner.defaultPersonalId,
+          launchProfileId: AutomationTabScope.simpleLaunchProfileId,
           sessionId: 'sess-1',
           defaultName: 'Daily ping',
         ),
@@ -186,7 +182,7 @@ void main() {
         cliPresetsCubit: cliPresetsCubit,
         child: AutomationEditorDialog(
           workspaceId: 'ws1',
-          launchProfileId: LaunchProfileProvisioner.defaultPersonalId,
+          launchProfileId: AutomationTabScope.simpleLaunchProfileId,
         ),
       ),
     );
@@ -246,7 +242,7 @@ void main() {
         child: AutomationEditorDialog(
           kind: AutomationEditorKind.scheduledMessage,
           workspaceId: 'ws1',
-          launchProfileId: LaunchProfileProvisioner.defaultPersonalId,
+          launchProfileId: AutomationTabScope.simpleLaunchProfileId,
           sessionId: 'sess-1',
           defaultName: 'Daily ping',
         ),

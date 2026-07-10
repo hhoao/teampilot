@@ -476,7 +476,7 @@ void main() {
     expect((await repo.loadSessions()).single.sessionTeam, 't2');
   });
 
-  test('personal session persists its launch profileId', () async {
+  test('simple session persists empty profileId', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
@@ -484,16 +484,15 @@ void main() {
     final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
     final session = await repo.createSession(
       workspace.workspaceId,
-      personalIdentityId: 'writing',
     );
 
-    // In memory and after reload from disk.
-    expect(session.profileId, 'writing');
-    expect((await repo.loadSessions()).single.profileId, 'writing');
+    // Simple / unteamed sessions have no launch-profile identity.
+    expect(session.profileId, '');
+    expect((await repo.loadSessions()).single.profileId, '');
   });
 
   test(
-    'team session ignores personalIdentityId (profileId stays empty)',
+    'team session keeps profileId empty',
     () async {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
       addTearDown(() => tmp.deleteSync(recursive: true));
@@ -505,7 +504,6 @@ void main() {
       final session = await repo.createSession(
         workspace.workspaceId,
         sessionTeam: 'team-a',
-        personalIdentityId: 'writing',
         rosterMembers: [const TeamMemberConfig(id: 'team-lead', name: 'Lead')],
       );
 

@@ -66,12 +66,6 @@ class _WorkspaceComposeLandingPaneState extends State<WorkspaceComposeLandingPan
         if (teamId.isNotEmpty) {
           await launchProfiles.selectTeam(teamId, silent: true);
         }
-      } else {
-        final profileId = draft.personalProfileId.trim();
-        final presetId = draft.presetId?.trim() ?? '';
-        if (profileId.isNotEmpty && presetId.isNotEmpty) {
-          await launchProfiles.setPersonalPreset(profileId, presetId);
-        }
       }
 
       await persistLandingDraft(workspace.workspaceId, draft);

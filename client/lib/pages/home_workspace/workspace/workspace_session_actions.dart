@@ -17,7 +17,6 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/landing_launch_context.dart';
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
-import '../../../models/personal_profile.dart';
 import '../../../models/team_config.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../services/cli/preset_resolver.dart';
@@ -147,7 +146,6 @@ Future<void> createAndOpenWorkspaceConversation(
   Workspace workspace, {
   required bool isPersonal,
   String sessionTeamId = '',
-  String personalIdentityId = '',
   CliTool? cli,
   String? workingDirectory,
 }) async {
@@ -156,7 +154,6 @@ Future<void> createAndOpenWorkspaceConversation(
     workspace,
     isPersonal: isPersonal,
     sessionTeamId: sessionTeamId,
-    personalIdentityId: personalIdentityId,
     cli: cli,
     workingDirectory: workingDirectory,
   );
@@ -238,7 +235,6 @@ Future<void> submitWorkspaceLandingMessage(
   );
   final isPersonal = launch.isPersonal;
   final sessionTeamId = isPersonal ? '' : (launch.teamId?.trim() ?? '');
-  final personalIdentityId = launch.personalProfileId.trim();
   final personalPresetId = launch.presetId?.trim() ?? '';
   final team = isPersonal ? null : _teamProfileById(context, sessionTeamId);
 
@@ -268,7 +264,6 @@ Future<void> submitWorkspaceLandingMessage(
     liveWorkspace,
     isPersonal: isPersonal,
     sessionTeamId: sessionTeamId,
-    personalIdentityId: personalIdentityId,
     personalPresetId: personalPresetId.isNotEmpty ? personalPresetId : null,
     workingDirectory: workingDirectory,
     fixedSessionId: plannedSessionId,
@@ -313,7 +308,6 @@ Future<void> submitWorkspaceLandingMessage(
     workspace: liveWorkspace,
     isPersonal: isPersonal,
     team: team,
-    personalIdentityId: personalIdentityId,
     personalPresetId: personalPresetId.isNotEmpty ? personalPresetId : null,
   );
 
@@ -382,7 +376,6 @@ Future<String> _resolveLandingMemberId({
   required Workspace workspace,
   required bool isPersonal,
   required TeamProfile? team,
-  required String personalIdentityId,
   String? personalPresetId,
 }) async {
   if (isPersonal) {
@@ -419,7 +412,6 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
   Workspace workspace, {
   required bool isPersonal,
   String sessionTeamId = '',
-  String personalIdentityId = '',
   String? personalPresetId,
   CliTool? cli,
   String? workingDirectory,
@@ -435,7 +427,6 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
       ? _resolvePersonalSessionCli(
           context,
           personalPresetId: personalPresetId,
-          personalIdentityId: personalIdentityId,
           cliOverride: cli,
         )
       : null;
@@ -452,7 +443,6 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
         team: team,
         member: isPersonal ? null : _teamLead(team),
         repo: repo,
-        personalIdentityId: personalIdentityId,
         cli: effectiveCli,
         personalPresetId: personalPresetId,
         workingDirectory: workingDirectory,
@@ -486,42 +476,28 @@ Future<void> createSessionInWorktree(
   required bool isPersonal,
   required String worktreePath,
   String sessionTeamId = '',
-  String personalIdentityId = '',
   CliTool? cli,
 }) => createAndOpenWorkspaceConversation(
   context,
   workspace,
   isPersonal: isPersonal,
   sessionTeamId: sessionTeamId,
-  personalIdentityId: personalIdentityId,
   cli: cli,
   workingDirectory: worktreePath,
 );
 
-/// Pins CLI for a new personal session.
+/// Pins CLI for a new Simple session.
 ///
 /// [personalPresetId] wins when set (landing / automation). Otherwise falls
-/// back to the identity's saved active preset, then [cliOverride], then Claude.
+/// back to [cliOverride], then Claude.
 CliTool _resolvePersonalSessionCli(
   BuildContext context, {
   String? personalPresetId,
-  String personalIdentityId = '',
   CliTool? cliOverride,
 }) {
   final presets = context.read<CliPresetsCubit>().state.presets;
   final pinned = cliForPresetId(personalPresetId, presets);
   if (pinned != null) return pinned;
   if (cliOverride != null) return cliOverride;
-
-  final cubit = context.read<LaunchProfileCubit>();
-  final byId = personalIdentityId.isEmpty
-      ? null
-      : cubit.state.byId(personalIdentityId);
-  final personal = byId is PersonalProfile ? byId : cubit.activePersonal;
-  final activePresetId = personal?.activePresetId;
-  if (activePresetId != null && activePresetId.isNotEmpty) {
-    final fromProfile = cliForPresetId(activePresetId, presets);
-    if (fromProfile != null) return fromProfile;
-  }
   return CliTool.claude;
 }

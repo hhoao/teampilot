@@ -1,7 +1,6 @@
 import 'package:path/path.dart' as p;
 
 import '../../models/config_bundle.dart';
-import '../../models/personal_profile.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
 
@@ -11,10 +10,11 @@ sealed class ResourceScope {
   const ResourceScope();
 }
 
-/// Personal / simple mode: enable lists come from a [PersonalProfile].
-class PersonalResourceScope extends ResourceScope {
-  const PersonalResourceScope({required this.personal});
-  final PersonalProfile personal;
+/// Simple / unteamed mode: enable lists come from a merged [ConfigBundle]
+/// (workspace + expert pack).
+class SimpleResourceScope extends ResourceScope {
+  const SimpleResourceScope({required this.bundle});
+  final ConfigBundle bundle;
 }
 
 /// Native or mixed team mode: enable lists come from [TeamProfile].

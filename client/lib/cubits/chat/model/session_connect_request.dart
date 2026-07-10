@@ -10,15 +10,13 @@ final class TeamSessionConnect extends SessionConnectRequest {
   final TeamProfile team;
 }
 
-/// Connect the active personal workspace session (materialize when tabs are empty).
+/// Connect the active Simple (unteamed) workspace session.
 final class PersonalSessionConnect extends SessionConnectRequest {
   PersonalSessionConnect({
     required this.workspaceId,
-    this.personalIdentityId = '',
     this.cliOverride,
   });
 
   final String workspaceId;
-  final String personalIdentityId;
   final CliTool? cliOverride;
 }

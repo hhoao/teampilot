@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/team/launch_profile_selectors.dart';
 import '../../models/launch_profile_kind.dart';
-import '../../models/personal_profile.dart';
 import '../../models/team_config.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../team_config/team_config_section.dart';
@@ -13,7 +12,6 @@ import 'home_workspace_content.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_library_section.dart';
 import 'home_workspace_library_view.dart';
-import 'home_workspace_personal_content.dart';
 import 'home_workspace_sidebar.dart';
 import 'workspace_pane_animations.dart';
 
@@ -267,9 +265,6 @@ class _HomeRightPaneState extends State<_HomeRightPane> {
     );
 
     return switch (identityKind) {
-      LaunchProfileKind.personal => WorkspaceRightPaneDescriptor.personal(
-        resolvedProfileId ?? '',
-      ),
       LaunchProfileKind.team => WorkspaceRightPaneDescriptor.team(
         resolvedProfileId ?? '',
       ),
@@ -290,10 +285,6 @@ class _HomeRightPaneState extends State<_HomeRightPane> {
       WorkspaceRightPaneKind.library => HomeLibrarySection(
         view: descriptor.libraryView!,
       ),
-      WorkspaceRightPaneKind.personal => _HomePersonalPane(
-        profileId: descriptor.identityId ?? '',
-        onSelectGlobalView: widget.onSelectGlobalView,
-      ),
       WorkspaceRightPaneKind.team => () {
         final deepLink = _takeTeamDeepLink();
         final teamId = descriptor.identityId ?? '';
@@ -309,31 +300,6 @@ class _HomeRightPaneState extends State<_HomeRightPane> {
   }
 }
 
-class _HomePersonalPane extends StatelessWidget {
-  const _HomePersonalPane({
-    required this.profileId,
-    required this.onSelectGlobalView,
-  });
-
-  final String profileId;
-  final ValueChanged<HomeGlobalView> onSelectGlobalView;
-
-  @override
-  Widget build(BuildContext context) {
-    final personal = context.select<LaunchProfileCubit, PersonalProfile?>((c) {
-      final identity = c.byId(profileId);
-      return identity is PersonalProfile ? identity : null;
-    });
-    if (personal == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    return HomePersonalContent(
-      personal: personal,
-      cubit: context.read<LaunchProfileCubit>(),
-      onSelectGlobalView: onSelectGlobalView,
-    );
-  }
-}
 
 class _HomeTeamPane extends StatelessWidget {
   const _HomeTeamPane({

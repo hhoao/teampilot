@@ -13,7 +13,7 @@ import 'app_storage.dart';
 /// workspace/workspaces/{workspaceId}/
 ///   manifest.json       # Workspace
 ///   project-config.json # Project-scoped skills/plugins/mcp/extensions
-///   profile.json        # PersonalProfile (personal workspaces)
+///   profile.json        # legacy; unused after identity-model removal
 ///   assets/icon.*       # custom workspace icon
 ///   config/             # workspace-level CLI overrides
 ///     mcp/servers.json

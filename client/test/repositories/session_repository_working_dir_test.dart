@@ -15,7 +15,6 @@ void main() {
     ]);
     final session = await repo.createSession(
       ws.workspaceId,
-      personalIdentityId: 'p',
       workingDirectory: '/repo/main/../wt/feat',
     );
     // normalizeWorkspacePath collapses '..' → '/repo/wt/feat'
@@ -34,7 +33,6 @@ void main() {
       ]);
       final session = await repo.createSession(
         ws.workspaceId,
-        personalIdentityId: 'p',
       );
       expect(session.firstFolderPath, '/repo/main');
     },

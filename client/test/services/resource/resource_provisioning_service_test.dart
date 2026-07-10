@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/config_bundle.dart';
-import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -34,12 +33,8 @@ void main() {
       );
 
       await service.provisionForLaunch(
-        scope: const PersonalResourceScope(
-          personal: PersonalProfile(
-            id: 'p',
-            display: 'p',
-            bundle: ConfigBundle(skillIds: ['demo']),
-          ),
+        scope: const SimpleResourceScope(
+          bundle: ConfigBundle(skillIds: ['demo']),
         ),
         cli: CliTool.flashskyai,
         configDir: configDir,

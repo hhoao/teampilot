@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../../../../models/app_provider_config.dart';
-import '../../../../models/personal_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../launch/work_plane_paths.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
@@ -391,15 +390,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     provider ??= await resolver.resolveSole();
     if (provider != null) {
       config = mergeOpencodeProvider(config, provider);
-      final member = (ctx.member ??
-          (ctx.personal != null
-              ? personalMemberForSession(
-                  ctx.personal!,
-                  preset: ctx.preset,
-                  sessionExpertKey: ctx.sessionExpertKey,
-                  resolvedExpert: ctx.resolvedExpert,
-                )
-              : throw StateError('Simple launch requires plan.member')));
+      final member = (ctx.member ?? (throw StateError('Simple launch requires plan.member')));
       final effort = _resolveOpencodeEffort(
         team: null,
         member: member,
@@ -420,15 +411,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     if (await _writeMemberIdentity(
       paths: paths,
       opencodeDir: opencodeDir,
-      member: (ctx.member ??
-          (ctx.personal != null
-              ? personalMemberForSession(
-                  ctx.personal!,
-                  preset: ctx.preset,
-                  sessionExpertKey: ctx.sessionExpertKey,
-                  resolvedExpert: ctx.resolvedExpert,
-                )
-              : throw StateError('Simple launch requires plan.member'))),
+      member: (ctx.member ?? (throw StateError('Simple launch requires plan.member'))),
       forceTeamLeadDelegateMode: false,
       mixed: false,
     )) {

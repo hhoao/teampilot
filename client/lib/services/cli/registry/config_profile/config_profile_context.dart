@@ -3,11 +3,7 @@ import 'package:path/path.dart' as p;
 import '../../../../models/config_bundle.dart';
 import '../../../../models/cli_preset.dart';
 import '../../../../models/discoverable_member.dart';
-import '../../../../models/personal_profile.dart';
-import '../../../../models/workspace_agent_config.dart';
 import '../../../../models/team_config.dart';
-import '../../../../utils/team_member_naming.dart';
-import '../../../expert_hub/expert_member_materializer.dart';
 import '../../../io/filesystem.dart';
 import '../../../host/host_execution_environment.dart';
 import '../../../provider/provider_catalog_access.dart';
@@ -64,97 +60,6 @@ CliTool standaloneCli(CliPreset? preset, {CliTool fallback = CliTool.claude}) {
   return preset?.cli ?? fallback;
 }
 
-/// Minimal [TeamProfile] for personal / standalone PTY launch args.
-TeamProfile standaloneTeamFromPersonal(
-  PersonalProfile personal, {
-  required String profileId,
-  required String sessionTeamName,
-  required CliPreset? preset,
-  ConfigBundle projectBundle = const ConfigBundle(),
-  String? sessionExpertKey,
-  DiscoverableMember? resolvedExpert,
-}) {
-  final member = personalMemberForSession(
-    personal,
-    preset: preset,
-    sessionExpertKey: sessionExpertKey,
-    resolvedExpert: resolvedExpert,
-  );
-  final bundle = projectBundle;
-  return TeamProfile(
-    id: profileId.trim(),
-    name: sessionTeamName.trim(),
-    cli: preset?.cli ?? CliTool.claude,
-    members: [member],
-    skillIds: bundle.skillIds,
-    pluginIds: bundle.pluginIds,
-    mcpServerIds: bundle.mcpServerIds,
-    teamMode: TeamMode.native,
-    forceTeamLeadDelegateMode: false,
-  );
-}
-
-/// Single-agent stand-in from [PersonalProfile.agent] for standalone launch.
-TeamMemberConfig standaloneMemberFromPersonal(
-  PersonalProfile personal, {
-  required CliPreset? preset,
-}) {
-  final agent = personal.agent;
-  final name = _standaloneMemberDisplayName(agent);
-  return TeamMemberConfig(
-    id: TeamMemberNaming.slugMemberName(name),
-    name: name,
-    provider: preset?.provider.trim() ?? '',
-    model: preset?.model.trim() ?? '',
-    agent: agent.agent,
-    agentType: agent.agentType,
-    extraArgs: agent.extraArgs,
-    prompt: agent.prompt,
-    dangerouslySkipPermissions: agent.dangerouslySkipPermissions,
-    cli: preset?.cli ?? CliTool.claude,
-    effort: preset?.effort.trim() ?? '',
-  );
-}
-
-/// Personal stand-in for launch, with optional session expert materialized at connect.
-TeamMemberConfig personalMemberForSession(
-  PersonalProfile personal, {
-  required CliPreset? preset,
-  String? sessionExpertKey,
-  DiscoverableMember? resolvedExpert,
-}) => ExpertMemberMaterializer.personalMemberForSession(
-  personal: personal,
-  preset: preset,
-  sessionExpertKey: sessionExpertKey,
-  resolvedExpert: resolvedExpert,
-);
-
-@Deprecated('Use standaloneTeamFromPersonal')
-TeamProfile standaloneTeamFromProfile(
-  PersonalProfile personal, {
-  required String workspaceId,
-  required String sessionTeamName,
-  required CliPreset? preset,
-}) => standaloneTeamFromPersonal(
-  personal,
-  profileId: workspaceId,
-  sessionTeamName: sessionTeamName,
-  preset: preset,
-);
-
-@Deprecated('Use standaloneMemberFromPersonal')
-TeamMemberConfig standaloneMemberFromProfile(
-  PersonalProfile personal, {
-  required CliPreset? preset,
-}) => standaloneMemberFromPersonal(personal, preset: preset);
-
-String _standaloneMemberDisplayName(WorkspaceAgentConfig agent) {
-  final fromAgent = agent.agent.trim();
-  if (fromAgent.isNotEmpty) return fromAgent;
-  final fromType = agent.agentType.trim();
-  if (fromType.isNotEmpty) return fromType;
-  return 'agent';
-}
 
 /// Path facade for [ConfigProfileCapability] implementations.
 abstract interface class ConfigProfilePaths {
@@ -250,7 +155,6 @@ class ConfigProfileSessionContext {
     required this.paths,
     this.team,
     this.standaloneScope,
-    this.personal,
     this.memberId,
   });
 
@@ -261,7 +165,6 @@ class ConfigProfileSessionContext {
   final ConfigProfileDelegate paths;
   final TeamProfile? team;
   final StandaloneLaunchProfileScope? standaloneScope;
-  final PersonalProfile? personal;
   final String? memberId;
 }
 
@@ -281,7 +184,6 @@ class ConfigProfileLaunchContext {
     this.leadSessionId,
     this.busIdle,
     this.standaloneScope,
-    this.personal,
     this.preset,
     this.memberId,
     this.sessionExpertKey,
@@ -306,7 +208,6 @@ class ConfigProfileLaunchContext {
   final String? leadSessionId;
   final MemberBusIdleEndpoint? busIdle;
   final StandaloneLaunchProfileScope? standaloneScope;
-  final PersonalProfile? personal;
   final CliPreset? preset;
   final String? memberId;
   final String? sessionExpertKey;

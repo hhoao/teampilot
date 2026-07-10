@@ -170,7 +170,6 @@ class _HomeSidebarIdentityScroll extends StatelessWidget {
         .select<LaunchProfileCubit, HomeSidebarIdentitySnapshot>(
           (c) => LaunchProfileSelectors.sidebarIdentities(c.state),
         );
-    final personals = identities.personals;
     final teams = identities.teams;
     final onIdentity = this.onIdentity;
     final onGlobal = this.onGlobal;
@@ -181,34 +180,9 @@ class _HomeSidebarIdentityScroll extends StatelessWidget {
 
     return CustomScrollView(
       slivers: [
-        if (teamsExpanded && personals.isNotEmpty)
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
-            sliver: SliverReorderableList(
-              itemCount: personals.length,
-              onReorder: (oldIndex, newIndex) {
-                unawaited(identityCubit.reorderPersonals(oldIndex, newIndex));
-              },
-              itemBuilder: (context, index) {
-                final personal = personals[index];
-                return _IdentityRow(
-                  key: ValueKey(personal.id),
-                  index: index,
-                  name: _sidebarDisplayName(l10n, personal),
-                  isTeam: false,
-                  selected:
-                      !allWorkspacesActive &&
-                      activeGlobalView == null &&
-                      activeLibraryView == null &&
-                      personal.id == selectedIdentityId,
-                  onTap: () => onIdentity?.call(personal.id),
-                );
-              },
-            ),
-          ),
         if (teamsExpanded && teams.isNotEmpty)
           SliverPadding(
-            padding: EdgeInsets.fromLTRB(0, personals.isEmpty ? 8 : 0, 0, 0),
+            padding: EdgeInsets.fromLTRB(0, 8, 0, 0),
             sliver: SliverReorderableList(
               itemCount: teams.length,
               onReorder: (oldIndex, newIndex) {
@@ -242,7 +216,7 @@ class _HomeSidebarIdentityScroll extends StatelessWidget {
                   ? Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (personals.isEmpty && teams.isEmpty)
+                        if (teams.isEmpty)
                           const SizedBox(height: 8),
                         _NewTeamRow(
                           label: l10n.homeWorkspaceNewTeam,
@@ -706,10 +680,6 @@ class _ProvidersButtonState extends State<_ProvidersButton> {
 }
 
 String _sidebarDisplayName(AppLocalizations l10n, IdentitySidebarEntry entry) {
-  if (entry.kind == LaunchProfileKind.personal &&
-      entry.id == LaunchProfileProvisioner.defaultPersonalId) {
-    return l10n.homeWorkspaceDefaultPersonalWorkspaceName;
-  }
   if (entry.kind == LaunchProfileKind.team) {
     final builtIn = builtInTeamDisplayName(l10n, entry.id);
     if (builtIn != null) return builtIn;

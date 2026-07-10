@@ -129,7 +129,7 @@ class _FakeExpertResolver extends ExpertCapabilityResolver {
 
   @override
   Future<ExpertCapabilityPack?> resolveKey(
-    String expertKey, {
+    String expertKey, {void Function(String)? onDepProgress, 
     TeamRosterSlotOverrides? overrides,
     TeamProfile? team,
     String? slotId,

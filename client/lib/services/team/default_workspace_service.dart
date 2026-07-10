@@ -5,13 +5,12 @@ import '../../models/workspace.dart';
 import '../../models/workspace_folder.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/storage/app_storage.dart';
-import '../../services/storage/launch_profile_provisioner.dart';
 import '../../utils/workspace_path_utils.dart';
 import '../expert_hub/expert_member_materializer.dart';
 
 /// First-launch bootstrap for the built-in workspace and starter sessions.
 ///
-/// Workspaces and launch identities (personal / team) are otherwise independent:
+/// Workspaces and launch identities (team) are otherwise independent:
 /// creating a team does not create a workspace.
 abstract final class DefaultWorkspaceService {
   DefaultWorkspaceService._();
@@ -22,13 +21,12 @@ abstract final class DefaultWorkspaceService {
   static Future<String> resolvePrimaryPath() =>
       DefaultWorkspaceDirectory.resolveDefaultWorkspacePath();
 
-  /// Ensures the default workspace exists with personal + team launch sessions.
+  /// Ensures the default workspace exists with Simple + team launch sessions.
   /// Returns whether storage was mutated. Pass [knownWorkspaces] when the index
   /// was just loaded to avoid a second full scan.
   static Future<bool> ensureDefault(
     SessionRepository repository, {
     required TeamProfile defaultTeam,
-    String personalIdentityId = LaunchProfileProvisioner.defaultPersonalId,
     List<Workspace>? knownWorkspaces,
   }) async {
     final primaryPath = await resolvePrimaryPath();
@@ -45,27 +43,13 @@ abstract final class DefaultWorkspaceService {
       mutated = true;
     }
 
-    final trimmedPersonalId = personalIdentityId.trim();
-    if (trimmedPersonalId.isNotEmpty &&
-        workspace.defaultProfileId.trim().isEmpty) {
-      await repository.updateWorkspaceMetadata(
-        workspace.workspaceId,
-        defaultProfileId: trimmedPersonalId,
-      );
-      workspace = workspace.copyWith(defaultProfileId: trimmedPersonalId);
-      mutated = true;
-    }
-
     final workspaceSessions = await repository.loadSessionsForWorkspace(
       workspace.workspaceId,
     );
 
-    final hasPersonal = workspaceSessions.any((s) => s.sessionTeam.isEmpty);
-    if (!hasPersonal) {
-      await repository.createSession(
-        workspace.workspaceId,
-        personalIdentityId: trimmedPersonalId,
-      );
+    final hasSimple = workspaceSessions.any((s) => s.sessionTeam.isEmpty);
+    if (!hasSimple) {
+      await repository.createSession(workspace.workspaceId);
       mutated = true;
     }
 
@@ -93,13 +77,11 @@ abstract final class DefaultWorkspaceService {
   static Future<Workspace> seed(
     SessionRepository repository, {
     required TeamProfile defaultTeam,
-    String personalIdentityId = LaunchProfileProvisioner.defaultPersonalId,
   }) async {
     final primaryPath = await resolvePrimaryPath();
     await ensureDefault(
       repository,
       defaultTeam: defaultTeam,
-      personalIdentityId: personalIdentityId,
     );
     final workspaces = await repository.loadWorkspaces();
     return workspaces

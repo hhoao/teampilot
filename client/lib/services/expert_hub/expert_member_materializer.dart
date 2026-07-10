@@ -1,9 +1,6 @@
-import '../../models/cli_preset.dart';
 import '../../models/discoverable_member.dart';
-import '../../models/personal_profile.dart';
 import '../../models/team_config.dart';
 import '../../models/team_roster_slot.dart';
-import '../cli/registry/config_profile/config_profile_context.dart';
 import 'composite_expert_hub_source.dart';
 import 'expert_member_resolver.dart';
 import 'local_member_template_store.dart';
@@ -65,33 +62,6 @@ abstract final class ExpertMemberMaterializer {
     return out;
   }
 
-  /// Personal Simple launch: optional session expert merged onto personal stand-in.
-  static TeamMemberConfig personalMemberForSession({
-    required PersonalProfile personal,
-    required CliPreset? preset,
-    String? sessionExpertKey,
-    DiscoverableMember? resolvedExpert,
-  }) {
-    var member = standaloneMemberFromPersonal(personal, preset: preset);
-    final key = sessionExpertKey?.trim() ?? '';
-    if (key.isEmpty || resolvedExpert == null) return member;
-
-    final slot = TeamRosterSlot(
-      id: member.id,
-      expertKey: key,
-      joinedAt: DateTime.now().millisecondsSinceEpoch,
-    );
-    return materializeRosterSlot(
-      slot: slot,
-      expert: resolvedExpert,
-      team: TeamProfile(
-        id: personal.id,
-        name: personal.display,
-        cli: preset?.cli ?? CliTool.claude,
-        roster: const [],
-      ),
-    );
-  }
 
   static TeamMemberConfig _applyTeamInheritance(
     TeamMemberConfig member,

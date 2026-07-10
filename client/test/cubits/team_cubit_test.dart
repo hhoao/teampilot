@@ -1,3 +1,4 @@
+import 'package:teampilot/models/automation_tab_scope.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -354,44 +355,6 @@ void main() {
     },
   );
 
-  test('load creates built-in teams without seeding a workspace', () async {
-    final base = await Directory.systemTemp.createTemp(
-      'team_default_workspace_',
-    );
-    final sessionRepo = SessionRepository();
-    final cubit = LaunchProfileCubit(
-      repository: _repo(base),
-      sessionRepository: sessionRepo,
-      executableResolver: () => 'flashskyai',
-      pluginLinker: _RecordingPluginLinker(),
-    );
-
-    await cubit.load();
-
-    expect(cubit.state.personals, hasLength(1));
-    expect(
-      cubit.state.personals.single.id,
-      LaunchProfileProvisioner.defaultPersonalId,
-    );
-    expect(cubit.state.teams, hasLength(2));
-    expect(
-      cubit.state.teams.map((t) => t.id).toSet(),
-      {
-        LaunchProfileProvisioner.defaultNativeTeamId,
-        LaunchProfileProvisioner.defaultMixedTeamId,
-      },
-    );
-    expect(
-      cubit.state.teams
-          .singleWhere((t) => t.id == LaunchProfileProvisioner.defaultNativeTeamId)
-          .name,
-      'Default Native Team',
-    );
-    expect(await sessionRepo.loadWorkspaces(), isEmpty);
-
-    await _drainAndCloseTeamCubit(cubit);
-    await base.delete(recursive: true);
-  });
 
   test('addTeam creates team runtime profile directories', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_');
@@ -816,35 +779,4 @@ void main() {
     await dir.delete(recursive: true);
   });
 
-  test('savePersonal rematerializes team member prompts from roster', () async {
-    final dir = await Directory.systemTemp.createTemp('team-cubit-reload-');
-    final repo = _repo(dir);
-    final cubit = LaunchProfileCubit(
-      repository: repo,
-      sessionRepository: SessionRepository(),
-      executableResolver: () => 'claude',
-    );
-
-    const team = TeamProfile(
-      id: 't',
-      name: 'T',
-      roster: _soloRoster,
-    );
-    await repo.saveTeamProfiles([team]);
-    await cubit.load();
-    final before = _teamById(cubit.state.teams, 't');
-    expect(before.members, isNotEmpty);
-    expect(before.members.first.prompt.trim(), isNotEmpty);
-
-    final personal = cubit.state.personals.first;
-    await cubit.savePersonal(personal.copyWith(display: '${personal.display}x'));
-
-    final after = _teamById(cubit.state.teams, 't');
-    expect(after.members, isNotEmpty);
-    expect(after.members.first.prompt.trim(), isNotEmpty);
-    expect(after.members.first.prompt, before.members.first.prompt);
-
-    await _drainAndCloseTeamCubit(cubit);
-    await dir.delete(recursive: true);
-  });
 }

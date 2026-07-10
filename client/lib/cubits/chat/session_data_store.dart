@@ -166,7 +166,6 @@ class SessionDataStore {
     String workspaceId,
     SessionRepository repo, {
     String sessionTeamId = '',
-    String personalIdentityId = '',
     List<TeamMemberConfig> rosterMembers = const [],
     CliTool? cli,
     String? workingDirectory,
@@ -175,7 +174,6 @@ class SessionDataStore {
     return repo.createSession(
       workspaceId,
       sessionTeam: sessionTeamId,
-      personalIdentityId: personalIdentityId,
       rosterMembers: rosterMembers,
       cli: cli,
       workingDirectory: workingDirectory,

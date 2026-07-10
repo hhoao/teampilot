@@ -406,7 +406,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     }
   }
 
-  Future<void> ensureStandalonePersonalProfile(
+  Future<void> ensureStandaloneWorkspaceProfile(
     String workspaceId, {
     CliTool cli = CliTool.claude,
   }) async {
@@ -426,7 +426,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final trimmedWorkspaceId = workspaceId.trim();
     if (trimmedWorkspaceId.isEmpty) return;
 
-    await ensureStandalonePersonalProfile(trimmedWorkspaceId, cli: cli);
+    await ensureStandaloneWorkspaceProfile(trimmedWorkspaceId, cli: cli);
 
     final paths = [
       for (final directory in trustedDirectories)

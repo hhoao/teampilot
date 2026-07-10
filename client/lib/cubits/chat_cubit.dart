@@ -705,7 +705,6 @@ class ChatCubit extends Cubit<ChatState>
     String workspaceId,
     SessionRepository repo, {
     String sessionTeamId = '',
-    String personalIdentityId = '',
     List<TeamMemberConfig> rosterMembers = const [],
     CliTool? cli,
     String? workingDirectory,
@@ -715,7 +714,6 @@ class ChatCubit extends Cubit<ChatState>
       workspaceId,
       repo,
       sessionTeamId: sessionTeamId,
-      personalIdentityId: personalIdentityId,
       rosterMembers: rosterMembers,
       cli: cli,
       workingDirectory: workingDirectory,

@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:teampilot/models/workspace_agent_config.dart';
-import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/services/cli/cli_tool_adapter.dart';
 import 'package:teampilot/services/cli/registry/config_profile/config_profile_context.dart';
 import 'package:teampilot/services/session/launch_command_builder.dart';
@@ -406,58 +405,4 @@ void main() {
     expect(Directory(cwd).existsSync(), isTrue);
   });
 
-  test('ShellLaunchSpec builds full personal CLI launch args', () {
-    // TODO: migrate to presets — cli, model, providerIdsByTool removed
-    const profile = PersonalProfile(
-      id: 'proj-1',
-      display: 'proj-1',
-      agent: WorkspaceAgentConfig(agent: 'builder'),
-    );
-    const sessionTeam = 'sess-personal-1';
-    final shellLaunch = ShellLaunchSpec(
-      plan: LaunchPlan(
-        env: {
-          ClaudeConfigProfileCapability.settingsFileEnvKey:
-              '/tmp/settings.json',
-        },
-        resume: false,
-        taskId: sessionTeam,
-        cliTeamName: sessionTeam,
-        memberConfigDir: '/tmp/claude',
-        resolvedRoots: const [],
-      ),
-      launchContext: CliLaunchContext(
-        team: standaloneTeamFromProfile(
-          profile,
-          workspaceId: profile.id,
-          sessionTeamName: sessionTeam,
-          preset: null,
-        ),
-        member: standaloneMemberFromProfile(profile, preset: null),
-        sessionTeam: sessionTeam,
-        workingDirectory: '/home/dev/workspace',
-      ),
-      sessionTeam: sessionTeam,
-    );
-
-    expect(
-      LaunchCommandBuilder.buildShellArguments(
-        shellLaunch,
-        fixedSessionId: sessionTeam,
-        environment: shellLaunch.plan.env,
-      ),
-      [
-        '--session-id',
-        sessionTeam,
-        '--team-name',
-        sessionTeam,
-        '--agent-name',
-        'builder',
-        '--agent-id',
-        'builder@$sessionTeam',
-        '--settings',
-        '/tmp/settings.json',
-      ],
-    );
-  });
 }

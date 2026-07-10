@@ -41,10 +41,7 @@ void main() {
         workspace.firstFolderPath,
         normalizeWorkspacePath(p.join(base.path, 'Documents', 'TeamPilot')),
       );
-      expect(
-        workspace.defaultProfileId,
-        LaunchProfileProvisioner.defaultPersonalId,
-      );
+      expect(workspace.defaultProfileId, isEmpty);
 
       final sessions = await repo.loadSessions();
       final workspaceSessions = sessions
@@ -55,7 +52,7 @@ void main() {
       final personal = workspaceSessions.singleWhere(
         (s) => s.sessionTeam.isEmpty,
       );
-      expect(personal.profileId, LaunchProfileProvisioner.defaultPersonalId);
+      expect(personal.profileId, isEmpty);
 
       final teamSession = workspaceSessions.singleWhere(
         (s) => s.sessionTeam == team.id,

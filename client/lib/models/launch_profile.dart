@@ -4,11 +4,10 @@ import 'workspace_icon_ref.dart';
 
 /// A named, reusable launch identity. A directory ([Workspace]) is *where*
 /// work happens; a [LaunchProfile] is *who/how* — the CLI config bundle a
-/// session launches with. Subtypes: [PersonalProfile] or [TeamProfile].
+/// session launches with.
 ///
-/// Not `sealed` because the subtypes live in separate libraries; callers that
-/// need to discriminate switch on [kind] (an exhaustive enum) rather than the
-/// runtime type.
+/// Only [TeamProfile] implements this. Simple (unteamed) launch is a session
+/// mode, not a profile kind.
 abstract class LaunchProfile {
   String get id;
   LaunchProfileKind get kind;

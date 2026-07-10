@@ -1,9 +1,8 @@
 import '../../../../models/app_provider_config.dart';
-import '../../../../models/personal_profile.dart';
 import '../../../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../../../services/cli/registry/cli_tool_registry.dart';
 
-/// Personal-workspace CLI defaults: show when the tool exposes any effort UI.
+/// Show effort picker when the tool exposes any effort UI for [provider]/[model].
 bool workspaceCliShowsEffortPicker({
   required CliToolRegistry registry,
   required CliTool cli,
@@ -23,10 +22,6 @@ bool workspaceCliShowsEffortPicker({
       ? model.trim()
       : provider.defaultModel.trim();
   return capability.isApplicable(model: resolvedModel);
-}
-
-String workspaceCliEffortId(PersonalProfile personal, CliTool cli) {
-  return personal.effortsByTool[cli.value]?.trim() ?? '';
 }
 
 List<String> workspaceCliEffortCandidates({

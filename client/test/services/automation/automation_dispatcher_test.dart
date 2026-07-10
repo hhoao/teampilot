@@ -266,7 +266,7 @@ void main() {
         return AppSession(
           sessionId: sessionId,
           workspaceId: workspaceId,
-          profileId: LaunchProfileProvisioner.defaultPersonalId,
+          profileId: AutomationTabScope.simpleLaunchProfileId,
           createdAt: 1,
         );
       },
@@ -278,7 +278,7 @@ void main() {
       name: 'Daily prompt',
       action: AutomationAction.launchPrompt,
       workspaceId: 'ws1',
-      launchProfileId: LaunchProfileProvisioner.defaultPersonalId,
+      launchProfileId: AutomationTabScope.simpleLaunchProfileId,
       cliPresetId: 'preset-1',
       message: 'summarize inbox',
       reuseSession: true,
@@ -308,7 +308,7 @@ void main() {
     final session = AppSession(
       sessionId: 'bound-sess',
       workspaceId: 'ws1',
-      profileId: LaunchProfileProvisioner.defaultPersonalId,
+      profileId: AutomationTabScope.simpleLaunchProfileId,
       createdAt: 1,
     );
     final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
@@ -341,7 +341,7 @@ void main() {
       name: 'Reuse',
       action: AutomationAction.launchPrompt,
       workspaceId: 'ws1',
-      launchProfileId: LaunchProfileProvisioner.defaultPersonalId,
+      launchProfileId: AutomationTabScope.simpleLaunchProfileId,
       cliPresetId: 'preset-1',
       sessionId: 'bound-sess',
       message: 'continue',

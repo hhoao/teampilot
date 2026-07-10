@@ -1,9 +1,10 @@
+import 'package:teampilot/models/automation_tab_scope.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/automation.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 
-const _defaultLaunchProfileId = LaunchProfileProvisioner.defaultPersonalId;
+const _defaultLaunchProfileId = AutomationTabScope.simpleLaunchProfileId;
 
 void main() {
   test('Automation round-trips JSON', () {

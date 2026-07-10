@@ -5,7 +5,6 @@ import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
-import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';

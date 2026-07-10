@@ -10,7 +10,6 @@ class SessionCreateRequest {
     this.team,
     this.member,
     this.repo,
-    this.personalIdentityId = '',
     this.cli,
     this.personalPresetId,
     this.workingDirectory,
@@ -20,14 +19,15 @@ class SessionCreateRequest {
   });
 
   final Workspace workspace;
+
+  /// True for Simple (unteamed) launch — empty [sessionTeam].
   final bool isPersonal;
   final TeamProfile? team;
   final TeamMemberConfig? member;
   final SessionRepository? repo;
-  final String personalIdentityId;
   final CliTool? cli;
 
-  /// Personal launch: pin provider/model via a global CLI preset.
+  /// Simple launch: pin provider/model via a global CLI preset.
   final String? personalPresetId;
   final String? workingDirectory;
   final String emptyDisplayTitleFallback;
@@ -35,6 +35,6 @@ class SessionCreateRequest {
   /// When set, the staged session uses this id instead of a fresh UUID.
   final String? fixedSessionId;
 
-  /// Personal summon: catalog expert key resolved at connect.
+  /// Simple summon: catalog expert key resolved at connect.
   final String? expertKey;
 }

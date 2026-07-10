@@ -1,3 +1,4 @@
+import 'package:teampilot/models/automation_tab_scope.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/automation.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -16,7 +17,7 @@ Automation _automation({
     name: 'Test',
     action: AutomationAction.launchPrompt,
     workspaceId: 'ws1',
-    launchProfileId: LaunchProfileProvisioner.defaultPersonalId,
+    launchProfileId: AutomationTabScope.simpleLaunchProfileId,
     cli: CliTool.claude,
     message: 'hi',
     preset: preset,

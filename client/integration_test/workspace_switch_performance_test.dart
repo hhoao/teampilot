@@ -85,7 +85,7 @@ void main() {
       chatCubit: chatCubit,
     );
 
-    final personalAs = LaunchProfileProvisioner.defaultPersonalId;
+    final personalAs = '';
     final capture = VmPerformanceCapture();
     await capture.start();
 

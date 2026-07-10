@@ -4,7 +4,6 @@ import 'package:synchronized/synchronized.dart';
 
 import '../models/launch_profile.dart';
 import '../models/launch_profile_kind.dart';
-import '../models/personal_profile.dart';
 import '../models/team_config.dart';
 import '../services/io/filesystem.dart';
 import '../services/io/local_filesystem.dart';
@@ -34,11 +33,13 @@ class LaunchProfileIndexStore {
   Lock get _mutationLock =>
       _mutationLocks.putIfAbsent(_indexFile, Lock.new);
 
+  /// Decodes a team profile. Legacy `personal` kind records throw and must be
+  /// skipped by callers.
   static LaunchProfile decodeProfile(Map<String, Object?> json) {
-    return switch (LaunchProfileKind.decode(json['kind'])) {
-      LaunchProfileKind.personal => PersonalProfile.fromJson(json),
-      LaunchProfileKind.team => TeamProfile.fromJson(json),
-    };
+    switch (LaunchProfileKind.decode(json['kind'])) {
+      case LaunchProfileKind.team:
+        return TeamProfile.fromJson(json);
+    }
   }
 
   /// Reads the derived index.
@@ -91,9 +92,13 @@ class LaunchProfileIndexStore {
     if (maps == null) return null;
     final profiles = <LaunchProfile>[];
     for (final item in maps) {
-      final profile = decodeProfile(item);
-      if (profile.id.trim().isEmpty) return null;
-      profiles.add(profile);
+      try {
+        final profile = decodeProfile(item);
+        if (profile.id.trim().isEmpty) return null;
+        profiles.add(profile);
+      } on FormatException {
+        // Skip legacy personal / unknown kinds.
+      }
     }
     return profiles;
   }

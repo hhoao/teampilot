@@ -1,3 +1,4 @@
+import 'package:teampilot/models/automation_tab_scope.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/automation_state.dart';
@@ -49,7 +50,7 @@ Automation _sampleAutomation({
     name: 'Test $id',
     action: AutomationAction.scheduledMessage,
     workspaceId: 'ws1',
-    launchProfileId: LaunchProfileProvisioner.defaultPersonalId,
+    launchProfileId: AutomationTabScope.simpleLaunchProfileId,
     sessionId: 'sess-1',
     message: 'ping',
     preset: AutomationSchedulePreset.daily,

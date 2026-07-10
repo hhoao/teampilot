@@ -19,7 +19,6 @@ import '../../../models/config_bundle.dart';
 import '../../../models/landing_launch_context.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/cli_preset.dart';
-import '../../../models/personal_profile.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../models/runtime_target.dart';
@@ -409,15 +408,8 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     LaunchProfileCubit launchProfiles,
     List<TeamProfile> teams,
   ) {
-    PersonalProfile? personal;
     TeamProfile? team;
-    if (draft.isPersonal) {
-      final profileId = draft.personalProfileId.trim().isNotEmpty
-          ? draft.personalProfileId.trim()
-          : LaunchProfileProvisioner.defaultPersonalId;
-      final opened = launchProfiles.byId(profileId);
-      if (opened is PersonalProfile) personal = opened;
-    } else {
+    if (!draft.isPersonal) {
       final teamId = draft.teamId?.trim() ?? '';
       if (teamId.isNotEmpty) {
         team = teams.where((t) => t.id == teamId).firstOrNull;
@@ -425,7 +417,6 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     }
     final identityBundle = identityBundleForLanding(
       draft: draft,
-      personal: personal,
       team: team,
     );
     return unionConfigBundles(identityBundle, _workspaceProjectBundle);
@@ -544,12 +535,8 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       if (teams.isNotEmpty) _selectedTeamId = teams.first.id;
     }
 
-    final personalId = draft.personalProfileId.trim();
-    if (personalId.isNotEmpty) {
-      final opened = context.read<LaunchProfileCubit>().byId(personalId);
-      if (opened is PersonalProfile) {
-        _selectedPresetId ??= opened.activePresetId;
-      }
+    if (draft.isPersonal) {
+      _selectedPresetId ??= draft.presetId;
     }
   }
 
@@ -648,9 +635,6 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   }
 
   LandingLaunchContext _currentDraft() {
-    final defaultProfile = widget.workspace.defaultProfileId.trim().isNotEmpty
-        ? widget.workspace.defaultProfileId.trim()
-        : LaunchProfileProvisioner.defaultPersonalId;
     WorktreeState? worktreeState;
     try {
       worktreeState = context.read<WorktreeCubit>().state;
@@ -664,7 +648,6 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     final isSimple = _conversationMode == _LandingConversationMode.simple;
     return LandingLaunchContext(
       isPersonal: isSimple,
-      personalProfileId: defaultProfile,
       presetId: _selectedPresetId,
       teamId: _selectedTeamId,
       expertKey: isSimple ? _selectedExpertKey : null,

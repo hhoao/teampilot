@@ -578,7 +578,6 @@ class SessionRepository {
   Future<AppSession> createSession(
     String workspaceId, {
     String sessionTeam = '',
-    String personalIdentityId = '',
     List<TeamMemberConfig> rosterMembers = const [],
     CliTool? cli,
     String? workingDirectory,
@@ -688,7 +687,7 @@ class SessionRepository {
       ),
       display: '',
       sessionTeam: sessionTeam,
-      profileId: trimmedTeam.isEmpty ? personalIdentityId.trim() : '',
+      profileId: '',
       cliTeamName: cliTeamName,
       cli: trimmedTeam.isEmpty ? cli : null,
       members: members,

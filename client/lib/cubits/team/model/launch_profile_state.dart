@@ -1,7 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
 
-import '../../../models/personal_profile.dart';
 import '../../../models/team_config.dart';
 import '../../../models/launch_profile.dart';
 
@@ -29,9 +28,6 @@ class LaunchProfileState extends Equatable {
   List<TeamProfile> get teams =>
       identities.whereType<TeamProfile>().toList(growable: false);
 
-  List<PersonalProfile> get personals =>
-      identities.whereType<PersonalProfile>().toList(growable: false);
-
   LaunchProfile? byId(String id) =>
       identities.where((e) => e.id == id).firstOrNull;
 
@@ -44,7 +40,6 @@ class LaunchProfileState extends Equatable {
 
   LaunchProfileState copyWith({
     List<LaunchProfile>? identities,
-    List<PersonalProfile>? personals,
     List<TeamProfile>? teams,
     String? selectedTeamId,
     String? statusMessage,
@@ -56,11 +51,7 @@ class LaunchProfileState extends Equatable {
   }) {
     final nextIdentities =
         identities ??
-        (personals != null
-            ? [...personals, ...teams ?? this.teams]
-            : teams != null
-            ? [...this.personals, ...teams]
-            : this.identities);
+        (teams != null ? List<LaunchProfile>.from(teams) : this.identities);
     return LaunchProfileState(
       identities: nextIdentities,
       selectedTeamId: clearSelectedTeamId

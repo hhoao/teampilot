@@ -92,15 +92,7 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
     ).provision(
       memberHome: home,
       providerId: providerId.isEmpty ? null : providerId,
-      member: ctx.member ??
-          (ctx.personal != null
-              ? personalMemberForSession(
-                  ctx.personal!,
-                  preset: ctx.preset,
-                  sessionExpertKey: ctx.sessionExpertKey,
-                  resolvedExpert: ctx.resolvedExpert,
-                )
-              : throw StateError('Simple launch requires plan.member')),
+      member: ctx.member ?? (throw StateError('Simple launch requires plan.member')),
       busIdle: null,
       forceTeamLeadDelegateMode: false,
       mixed: false,
@@ -126,7 +118,7 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
     );
     var provider = await resolver.findById(standaloneProviderId(ctx.preset));
     provider ??= await resolver.findById(
-      ctx.personal?.providerIdsByTool[toolId] ?? '',
+      '',
     );
     if (provider != null) return provider;
 

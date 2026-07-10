@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/models/personal_profile.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/index_snapshot_isolate.dart';
 import 'package:teampilot/repositories/launch_profile_index_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -32,19 +32,28 @@ void main() {
         launchProfilesDir: profilesDir,
         fs: LocalFilesystem(),
       );
-      final profile = PersonalProfile(
-        id: 'personal-default',
-        display: 'Personal',
+      const profile = TeamProfile(
+        id: 'default-native-team',
+        name: 'Native',
         createdAt: 1,
       );
 
-      await store
-          .upsert(profile)
-          .timeout(const Duration(seconds: 2));
+      await store.upsert(profile).timeout(const Duration(seconds: 2));
 
       final loaded = await store.tryRead(preferIsolate: false);
       expect(loaded, isNotNull);
-      expect(loaded!.single.id, 'personal-default');
+      expect(loaded!.single.id, 'default-native-team');
     },
   );
+
+  test('decodeProfile rejects legacy personal kind', () {
+    expect(
+      () => LaunchProfileIndexStore.decodeProfile({
+        'id': 'p1',
+        'kind': 'personal',
+        'display': 'Personal',
+      }),
+      throwsA(isA<FormatException>()),
+    );
+  });
 }

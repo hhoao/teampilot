@@ -92,12 +92,12 @@ Future<ExpertDeepLinkResult> applyExpertDeepLink({
   return ExpertDeepLinkResult(ExpertDeepLinkOutcome.applied, pack: pack);
 }
 
-/// Whether [profileId] from `?profile=` refers to a team (not personal).
+/// Whether [profileId] from `?profile=` refers to a team (not Simple).
 bool routeProfileIsTeamKind({
   required String? profileId,
-  required bool Function(String id) isPersonalProfile,
+  required bool Function(String id) isTeamProfile,
 }) {
   final id = profileId?.trim() ?? '';
-  if (id.isEmpty) return false;
-  return !isPersonalProfile(id);
+  if (id.isEmpty || id == 'simple') return false;
+  return isTeamProfile(id);
 }

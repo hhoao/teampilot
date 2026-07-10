@@ -199,7 +199,6 @@ class SessionLaunchService
     final persisted = await repo.createSession(
       session.workspaceId,
       sessionTeam: params.sessionTeamId,
-      personalIdentityId: params.personalIdentityId,
       rosterMembers: params.rosterMembers,
       cli: params.cli,
       workingDirectory: params.workingDirectory,

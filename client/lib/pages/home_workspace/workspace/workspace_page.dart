@@ -98,9 +98,10 @@ class _WorkspacePageState extends State<WorkspacePage> {
     final launchProfiles = context.read<LaunchProfileCubit>();
     final profile = launchProfiles.byId(routeProfile);
     if (profile == null) return;
-    final next = profile.kind == LaunchProfileKind.personal
-        ? LandingLaunchContext(isPersonal: true, personalProfileId: profile.id)
-        : LandingLaunchContext(isPersonal: false, teamId: profile.id);
+    final next = LandingLaunchContext(
+      isPersonal: false,
+      teamId: profile.id,
+    );
     cubit.update(next);
   }
 

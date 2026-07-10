@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import '../../models/workspace.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
-import '../../models/personal_profile.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
@@ -12,7 +11,6 @@ import '../../repositories/cli_presets_repository.dart';
 import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/workspace_project_config_repository.dart';
 import '../../models/config_bundle.dart';
-import '../../services/storage/launch_profile_provisioner.dart';
 import '../../utils/team_member_naming.dart';
 import '../../utils/logger.dart';
 import '../../models/workspace_topology.dart';
@@ -114,17 +112,6 @@ class SessionLifecycleService {
 
   CliToolRegistry get cliToolRegistry => _cliToolRegistry;
 
-  /// Resolves the active [CliPreset] for a personal workspace profile.
-  /// Returns `null` when no preset is active or the repository is unavailable.
-  Future<CliPreset?> resolveActivePresetForPersonal(
-    PersonalProfile personal,
-  ) async {
-    final repo = _cliPresetsRepository;
-    if (repo == null) return null;
-    final presets = await repo.load();
-    return resolveActivePreset(personal.activePresetId, presets);
-  }
-
   /// Resolves a global CLI preset by id.
   Future<CliPreset?> resolvePresetById(String presetId) async {
     final trimmed = presetId.trim();
@@ -133,57 +120,6 @@ class SessionLifecycleService {
     if (repo == null) return null;
     final presets = await repo.load();
     return resolveActivePreset(trimmed, presets);
-  }
-
-  Future<CliPreset?> _resolvePersonalPreset(
-    AppSession session,
-    PersonalProfile personal,
-  ) async {
-    final repo = _cliPresetsRepository;
-    if (repo == null) return null;
-    final presets = await repo.load();
-    final active = resolveActivePreset(personal.activePresetId, presets);
-    final pinnedCli = session.cli;
-    if (pinnedCli == null || active?.cli == pinnedCli) return active;
-    for (final preset in presets) {
-      if (preset.cli == pinnedCli) return preset;
-    }
-    return null;
-  }
-
-  Future<CliPreset?> resolveActivePresetForSession(
-    AppSession session,
-    PersonalProfile personal,
-  ) => _resolvePersonalPreset(session, personal);
-
-  Future<PersonalProfile> loadPersonalProfile(
-    String profileId, {
-    PersonalProfile? override,
-  }) async {
-    if (override != null) return override;
-    final trimmed = profileId.trim();
-    final repo = _identityRepository;
-    PersonalProfile? defaultPersonal;
-    if (repo != null) {
-      final all = await repo.loadAll();
-      for (final identity in all) {
-        if (identity is! PersonalProfile) continue;
-        if (identity.id == trimmed) return identity;
-        if (identity.id == LaunchProfileProvisioner.defaultPersonalId) {
-          defaultPersonal = identity;
-        }
-      }
-    }
-    // Unknown / dangling id (e.g. the identity was deleted after the session
-    // launched): fall back to the default personal identity *with its bundle*
-    // rather than a synthetic empty one.
-    if (defaultPersonal != null) return defaultPersonal;
-    return PersonalProfile(
-      id: trimmed.isEmpty
-          ? LaunchProfileProvisioner.defaultPersonalId
-          : trimmed,
-      display: trimmed.isEmpty ? 'Personal' : trimmed,
-    );
   }
 
   Future<LaunchProfile?> loadIdentity(String profileId) async {
@@ -1166,7 +1102,6 @@ class SessionLifecycleService {
     CliTool? cli,
     SessionMemberBinding? memberBinding,
     Workspace? workspace,
-    PersonalProfile? personal,
   }) async {
     final roots = await _resolveRoots(
       session: session,
@@ -1182,10 +1117,7 @@ class SessionLifecycleService {
         memberBinding?.taskId.trim() ?? session.sessionId.trim();
     CliTool? resolvedCli;
     if (isPersonal) {
-      final preset = personal != null
-          ? await _resolvePersonalPreset(session, personal)
-          : null;
-      resolvedCli = session.cli ?? preset?.cli ?? CliTool.claude;
+      resolvedCli = session.cli ?? CliTool.claude;
     } else {
       resolvedCli = cli;
     }

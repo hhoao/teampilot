@@ -4,7 +4,6 @@ import '../../../models/team_config.dart';
 class SessionPersistParams {
   const SessionPersistParams({
     required this.sessionTeamId,
-    this.personalIdentityId = '',
     this.rosterMembers = const [],
     this.cli,
     this.personalPresetId,
@@ -13,7 +12,6 @@ class SessionPersistParams {
   });
 
   final String sessionTeamId;
-  final String personalIdentityId;
   final List<TeamMemberConfig> rosterMembers;
   final CliTool? cli;
   final String? personalPresetId;

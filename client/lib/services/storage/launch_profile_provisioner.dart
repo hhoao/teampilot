@@ -1,7 +1,6 @@
 import 'package:collection/collection.dart';
 
 import '../../models/launch_profile.dart';
-import '../../models/personal_profile.dart';
 import '../../models/team_config.dart';
 import '../../repositories/launch_profile_repository.dart';
 
@@ -11,7 +10,6 @@ class LaunchProfileProvisioner {
   LaunchProfileProvisioner({required LaunchProfileRepository repository})
     : _repository = repository;
 
-  static const defaultPersonalId = 'personal-default';
   static const defaultNativeTeamId = 'default-native-team';
   static const defaultMixedTeamId = 'default-mixed-team';
 
@@ -23,25 +21,6 @@ class LaunchProfileProvisioner {
   static bool isBuiltInTeamId(String id) => builtInTeamIds.contains(id);
 
   final LaunchProfileRepository _repository;
-
-  Future<PersonalProfile> ensureDefaultPersonal({
-    List<LaunchProfile>? loaded,
-  }) async {
-    final all = loaded ?? await _repository.loadAll();
-    final existing = all
-        .whereType<PersonalProfile>()
-        .where((p) => p.id == defaultPersonalId)
-        .firstOrNull;
-    if (existing != null) return existing;
-
-    final defaultIdentity = PersonalProfile(
-      id: defaultPersonalId,
-      display: 'Personal',
-      createdAt: DateTime.now().millisecondsSinceEpoch,
-    );
-    await _repository.save(defaultIdentity);
-    return defaultIdentity;
-  }
 
   /// Ensures both built-in team identities exist. [buildNative] / [buildMixed]
   /// are invoked only when the corresponding profile is missing from storage.

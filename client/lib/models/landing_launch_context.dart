@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../services/storage/launch_profile_provisioner.dart';
+import 'automation_tab_scope.dart';
 
 /// Snapshot of compose-landing choices used to create a new session.
 @immutable
@@ -9,7 +9,6 @@ class LandingLaunchContext {
 
   const LandingLaunchContext({
     required this.isPersonal,
-    this.personalProfileId = '',
     this.presetId,
     this.teamId,
     this.projectFolderPath,
@@ -17,13 +16,8 @@ class LandingLaunchContext {
     this.workingDirectoryPath,
   });
 
+  /// True when launching Simple (unteamed) mode — empty [sessionTeam].
   final bool isPersonal;
-
-  /// Personal launch identity ([PersonalProfile.id]).
-  ///
-  /// Optional for Simple expert summon — empty falls back to the builtin
-  /// personal id via [profileId]. Full PersonalProfile removal is a later task.
-  final String personalProfileId;
 
   /// Active preset when [isPersonal] is true.
   final String? presetId;
@@ -41,17 +35,16 @@ class LandingLaunchContext {
   final String? workingDirectoryPath;
 
   /// Profile id for manage panel / automation scope.
+  ///
+  /// Simple uses the fixed [AutomationTabScope.simpleLaunchProfileId] key;
+  /// team uses [teamId].
   String get profileId {
-    if (isPersonal) {
-      final id = personalProfileId.trim();
-      return id.isNotEmpty ? id : LaunchProfileProvisioner.defaultPersonalId;
-    }
+    if (isPersonal) return AutomationTabScope.simpleLaunchProfileId;
     return teamId?.trim() ?? '';
   }
 
   LandingLaunchContext copyWith({
     bool? isPersonal,
-    String? personalProfileId,
     String? presetId,
     String? teamId,
     Object? projectFolderPath = _unset,
@@ -60,7 +53,6 @@ class LandingLaunchContext {
   }) {
     return LandingLaunchContext(
       isPersonal: isPersonal ?? this.isPersonal,
-      personalProfileId: personalProfileId ?? this.personalProfileId,
       presetId: presetId ?? this.presetId,
       teamId: teamId ?? this.teamId,
       projectFolderPath: projectFolderPath == _unset
@@ -78,7 +70,6 @@ class LandingLaunchContext {
       identical(this, other) ||
       other is LandingLaunchContext &&
           isPersonal == other.isPersonal &&
-          personalProfileId == other.personalProfileId &&
           presetId == other.presetId &&
           teamId == other.teamId &&
           projectFolderPath == other.projectFolderPath &&
@@ -88,7 +79,6 @@ class LandingLaunchContext {
   @override
   int get hashCode => Object.hash(
     isPersonal,
-    personalProfileId,
     presetId,
     teamId,
     projectFolderPath,

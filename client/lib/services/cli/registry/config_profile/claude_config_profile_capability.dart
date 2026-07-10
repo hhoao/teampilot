@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import '../../../../models/claude_credential_link_result.dart';
-import '../../../../models/personal_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
 import '../../../provider/claude/claude_effort_capability.dart';
@@ -320,15 +319,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
 
     final delegate = ctx.paths;
     final catalog = ctx.catalog;
-    final member = ctx.member ??
-        (ctx.personal != null
-            ? personalMemberForSession(
-                ctx.personal!,
-                preset: ctx.preset,
-                sessionExpertKey: ctx.sessionExpertKey,
-                resolvedExpert: ctx.resolvedExpert,
-              )
-            : throw StateError('Simple launch requires plan.member'));
+    final member = ctx.member ?? (throw StateError('Simple launch requires plan.member'));
     final memberToolDir = standaloneSessionToolDir(
       delegate,
       standalone,

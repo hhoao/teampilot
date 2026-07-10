@@ -4,7 +4,7 @@ import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
-import '../../support/stub_member_roster_service.dart';
+import '../support/stub_member_roster_service.dart';
 
 class _FakeSource extends CompositeExpertHubSource {
   _FakeSource(this.members)

@@ -8,10 +8,10 @@ import '../../cubits/automation_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/automation_tab_scope.dart';
 import '../../models/automation.dart';
 import '../../models/launch_profile.dart';
 import '../../models/launch_profile_kind.dart';
-import '../../models/personal_profile.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../cubits/chat_cubit.dart';
@@ -116,14 +116,8 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
   bool get _showsLaunchProfilePicker =>
       widget.pickLaunchProfile && !_isEditing && !_isScheduledMessage;
 
-  LaunchProfileKind get _launchKind {
-    final profile = context.read<LaunchProfileCubit>().state.byId(
-      _launchProfileId,
-    );
-    return profile?.kind ?? LaunchProfileKind.personal;
-  }
-
-  bool get _isPersonalLaunch => _launchKind == LaunchProfileKind.personal;
+  bool get _isPersonalLaunch =>
+      _launchProfileId == AutomationTabScope.simpleLaunchProfileId;
 
   TeamProfile? get _teamProfile {
     final profile = context.read<LaunchProfileCubit>().state.byId(
@@ -227,16 +221,6 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
 
     if (_isPersonalLaunch) {
       final presets = context.read<CliPresetsCubit>().state.presets;
-      final profile = context.read<LaunchProfileCubit>().state.byId(
-        _launchProfileId,
-      );
-      final personal = profile is PersonalProfile ? profile : null;
-      final activePresetId = personal?.activePresetId?.trim() ?? '';
-      if (activePresetId.isNotEmpty &&
-          presets.any((p) => p.id == activePresetId)) {
-        setState(() => _cliPresetId = activePresetId);
-        return;
-      }
       if (initial?.cli != null) {
         final match = presets.where((p) => p.cli == initial!.cli).firstOrNull;
         if (match != null) {

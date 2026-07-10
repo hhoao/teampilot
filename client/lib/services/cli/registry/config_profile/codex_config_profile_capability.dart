@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../../models/app_provider_config.dart';
-import '../../../../models/personal_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../provider/codex/codex_auth_artifacts.dart';
 import '../../../mcp/mcp_credentials_store.dart';
@@ -144,15 +143,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     StandaloneLaunchProfileScope standalone,
   ) async {
     final paths = ctx.paths;
-    final member = ctx.member ??
-        (ctx.personal != null
-            ? personalMemberForSession(
-                ctx.personal!,
-                preset: ctx.preset,
-                sessionExpertKey: ctx.sessionExpertKey,
-                resolvedExpert: ctx.resolvedExpert,
-              )
-            : throw StateError('Simple launch requires plan.member'));
+    final member = ctx.member ?? (throw StateError('Simple launch requires plan.member'));
     final codexHome = standaloneSessionToolDir(paths, standalone, toolId);
     final warnings = <String>[];
 

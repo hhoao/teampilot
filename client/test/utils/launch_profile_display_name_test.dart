@@ -1,43 +1,25 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations_en.dart';
-import 'package:teampilot/l10n/app_localizations_zh.dart';
-import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 import 'package:teampilot/utils/launch_profile_display_name.dart';
 
 void main() {
-  test('built-in defaults use l10n labels', () {
-    final en = AppLocalizationsEn();
-    final zh = AppLocalizationsZh();
+  final l10n = AppLocalizationsEn();
 
-    final personal = PersonalProfile(
-      id: LaunchProfileProvisioner.defaultPersonalId,
-      display: 'Personal',
-    );
+  test('built-in team ids use l10n names', () {
     final native = TeamProfile(
       id: LaunchProfileProvisioner.defaultNativeTeamId,
-      name: 'Default Native Team',
+      name: 'Native',
     );
-    final mixed = TeamProfile(
-      id: LaunchProfileProvisioner.defaultMixedTeamId,
-      name: 'Default Mixed Team',
+    expect(
+      launchProfileDisplayName(l10n, native),
+      l10n.homeWorkspaceDefaultNativeTeamName,
     );
-
-    expect(launchProfileDisplayName(en, personal), 'Personal assistant');
-    expect(launchProfileDisplayName(zh, personal), '个人助手');
-    expect(launchProfileDisplayName(en, native), 'Default Native Team');
-    expect(launchProfileDisplayName(zh, native), '默认原生团队');
-    expect(launchProfileDisplayName(en, mixed), 'Default Mixed Team');
-    expect(launchProfileDisplayName(zh, mixed), '默认混合团队');
   });
 
-  test('user-created identities use persisted display', () {
-    final en = AppLocalizationsEn();
-    final personal = PersonalProfile(id: 'solo-1', display: 'My Solo');
-    final team = TeamProfile(id: 'alpha', name: 'Alpha');
-
-    expect(launchProfileDisplayName(en, personal), 'My Solo');
-    expect(launchProfileDisplayName(en, team), 'Alpha');
+  test('custom team uses persisted name', () {
+    final team = TeamProfile(id: 'custom', name: 'My Team');
+    expect(launchProfileDisplayName(l10n, team), 'My Team');
   });
 }

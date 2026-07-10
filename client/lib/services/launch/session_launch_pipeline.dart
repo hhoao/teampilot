@@ -195,7 +195,6 @@ class SessionLaunchPipeline {
       sessionId: sessionId,
       workspace: request.workspace,
       isPersonal: request.isPersonal,
-      personalIdentityId: request.personalIdentityId,
       cli: request.cli,
       workingDirectory: request.workingDirectory,
       sessionTeamId: sessionTeamId,
@@ -205,7 +204,6 @@ class SessionLaunchPipeline {
 
     final persistParams = SessionPersistParams(
       sessionTeamId: sessionTeamId,
-      personalIdentityId: request.personalIdentityId,
       rosterMembers: request.isPersonal
           ? const []
           : (request.team?.members ?? const []),
@@ -244,12 +242,10 @@ class SessionLaunchPipeline {
         await _connectTeamSession(team, repo: repo);
       case PersonalSessionConnect(
         :final workspaceId,
-        :final personalIdentityId,
-        :final cliOverride,
+                :final cliOverride,
       ):
         await _connectPersonalSession(
           workspaceId: workspaceId,
-          personalIdentityId: personalIdentityId,
           cliOverride: cliOverride,
           repo: repo,
         );
@@ -358,7 +354,6 @@ class SessionLaunchPipeline {
 
   Future<void> _connectPersonalSession({
     required String workspaceId,
-    String personalIdentityId = '',
     CliTool? cliOverride,
     SessionRepository? repo,
   }) async {
@@ -379,7 +374,6 @@ class SessionLaunchPipeline {
           workspace,
           r,
           connectImmediately: true,
-          personalIdentityId: personalIdentityId,
           cliOverride: cliOverride,
         );
       } on Object catch (e, st) {

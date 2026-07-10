@@ -1,17 +1,19 @@
-/// Discriminator for [LaunchProfile]: a solo personal setup or a team.
+/// Discriminator for [LaunchProfile]. Only team identities remain; Simple
+/// launch is a session mode, not a profile kind.
 enum LaunchProfileKind {
-  personal('personal'),
   team('team');
 
   const LaunchProfileKind(this.value);
 
   final String value;
 
+  /// Decodes a persisted kind. Unknown / legacy `personal` values throw —
+  /// callers that scan disk should skip those records.
   static LaunchProfileKind decode(Object? raw) {
     final normalized = raw?.toString().trim().toLowerCase() ?? '';
-    for (final kind in LaunchProfileKind.values) {
-      if (kind.value == normalized) return kind;
+    if (normalized == team.value || normalized.isEmpty) {
+      return LaunchProfileKind.team;
     }
-    return LaunchProfileKind.personal;
+    throw FormatException('Unknown LaunchProfileKind: $raw');
   }
 }

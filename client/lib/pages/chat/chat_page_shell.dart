@@ -12,6 +12,7 @@ import '../../cubits/editor_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/automation_tab_scope.dart';
 import '../../models/layout_preferences.dart';
 import '../../models/team_config.dart';
 import '../../services/app/platform_utils.dart';
@@ -341,7 +342,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
       if (workspace == null) return null;
       final defaultId = workspace.defaultProfileId.trim();
       if (defaultId.isNotEmpty) return defaultId;
-      return LaunchProfileProvisioner.defaultPersonalId;
+      return AutomationTabScope.simpleLaunchProfileId;
     }
   }
 
@@ -490,10 +491,8 @@ List<ChatTab> _runtimeTabsForScope(ChatCubit cubit, String tabScopeId) {
 }
 
 CliTool? _personalPresetCli(BuildContext context) {
-  final personal = context.read<LaunchProfileCubit>().activePersonal;
-  final activePresetId = personal?.activePresetId;
-  if (activePresetId == null || activePresetId.isEmpty) return null;
-  return context.read<CliPresetsCubit>().state.presetById(activePresetId)?.cli;
+  // Simple mode presets are session/landing-scoped, not identity-scoped.
+  return null;
 }
 
 Widget _chatLaunchListener(BuildContext context, Widget child) {

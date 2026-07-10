@@ -1,4 +1,3 @@
-import '../../../../models/personal_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
 import '../../../launch/work_plane_paths.dart';
@@ -170,15 +169,7 @@ final class FlashskyaiConfigProfileCapability
     StandaloneLaunchProfileScope standalone,
   ) async {
     final delegate = ctx.paths;
-    final member = ctx.member ??
-        (ctx.personal != null
-            ? personalMemberForSession(
-                ctx.personal!,
-                preset: ctx.preset,
-                sessionExpertKey: ctx.sessionExpertKey,
-                resolvedExpert: ctx.resolvedExpert,
-              )
-            : throw StateError('Simple launch requires plan.member'));
+    final member = ctx.member ?? (throw StateError('Simple launch requires plan.member'));
     final memberToolDir = standaloneSessionToolDir(
       delegate,
       standalone,

@@ -2,7 +2,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/landing_launch_context.dart';
 import '../models/workspace.dart';
-import '../services/storage/launch_profile_provisioner.dart';
 
 class WorkspaceLandingContextState {
   const WorkspaceLandingContextState({
@@ -35,10 +34,7 @@ class WorkspaceLandingContextCubit extends Cubit<WorkspaceLandingContextState> {
          WorkspaceLandingContextState(
            context:
                initial ??
-               const LandingLaunchContext(
-                 isPersonal: true,
-                 personalProfileId: LaunchProfileProvisioner.defaultPersonalId,
-               ),
+               const LandingLaunchContext(isPersonal: true),
          ),
        );
 
@@ -46,16 +42,10 @@ class WorkspaceLandingContextCubit extends Cubit<WorkspaceLandingContextState> {
 
   Future<void> initialize(Workspace workspace) async {
     if (state.initialized) return;
-    final defaultId = workspace.defaultProfileId.trim().isNotEmpty
-        ? workspace.defaultProfileId.trim()
-        : LaunchProfileProvisioner.defaultPersonalId;
     emit(
-      WorkspaceLandingContextState(
+      const WorkspaceLandingContextState(
         initialized: true,
-        context: LandingLaunchContext(
-          isPersonal: true,
-          personalProfileId: defaultId,
-        ),
+        context: LandingLaunchContext(isPersonal: true),
       ),
     );
   }

@@ -1,17 +1,16 @@
 import '../../models/config_bundle.dart';
 import '../../models/landing_launch_context.dart';
-import '../../models/personal_profile.dart';
 import '../../models/team_config.dart';
 
-/// Enable lists from the active landing identity (personal profile or team).
+/// Enable lists from the active landing identity.
+///
+/// Simple mode has no identity bundle — workspace + expert pack supply deps.
+/// Team mode uses the team [ConfigBundle].
 ConfigBundle identityBundleForLanding({
   required LandingLaunchContext draft,
-  PersonalProfile? personal,
   TeamProfile? team,
 }) {
-  if (draft.isPersonal) {
-    return personal?.bundle ?? const ConfigBundle();
-  }
+  if (draft.isPersonal) return const ConfigBundle();
   if (team == null) return const ConfigBundle();
   return ConfigBundle(
     skillIds: team.skillIds,

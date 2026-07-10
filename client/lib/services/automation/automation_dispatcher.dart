@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../../cubits/chat/model/session_create_request.dart';
 import '../../cubits/chat/model/session_open_request.dart';
 import '../../cubits/chat/model/session_open_status.dart';
+import '../../models/automation_tab_scope.dart';
 import '../../models/app_session.dart';
 import '../../models/automation.dart';
 import '../../models/launch_profile_kind.dart';
@@ -200,15 +201,23 @@ class AutomationDispatcher {
   Future<AppSession?> _resolveSession(Automation automation) async {
     final sessionId = automation.sessionId?.trim();
     if (sessionId == null || sessionId.isEmpty) return null;
-    final kind = _launchProfileKindById(automation.launchProfileId);
-    if (kind == null) return null;
+    final isSimple =
+        automation.launchProfileId == AutomationTabScope.simpleLaunchProfileId;
+    final kind = isSimple
+        ? LaunchProfileKind.team // unused for simple ownsSession filter
+        : _launchProfileKindById(automation.launchProfileId);
+    if (!isSimple && kind == null) return null;
 
     AppSession? session = _sessionById?.call(sessionId, automation.workspaceId);
     session ??= (await _sessionRepository.loadSessionsForWorkspace(
       automation.workspaceId,
     )).where((s) => s.sessionId == sessionId).firstOrNull;
     if (session == null) return null;
-    if (!automation.tabScope.ownsSession(session, kind)) return null;
+    if (isSimple) {
+      if (session.sessionTeam.trim().isNotEmpty) return null;
+    } else if (!automation.tabScope.ownsSession(session, kind!)) {
+      return null;
+    }
     return session;
   }
 
@@ -226,19 +235,22 @@ class AutomationDispatcher {
     final workspace = _workspaceById(automation.workspaceId);
     if (workspace == null) return null;
 
-    final kind = _launchProfileKindById(automation.launchProfileId);
-    if (kind == null) return null;
+    final isSimple =
+        automation.launchProfileId == AutomationTabScope.simpleLaunchProfileId;
+    final kind = isSimple
+        ? null
+        : _launchProfileKindById(automation.launchProfileId);
+    if (!isSimple && kind == null) return null;
 
     final plannedSessionId = _uuid.v4();
     final SessionOpenStatus status;
-    if (kind == LaunchProfileKind.personal) {
+    if (isSimple) {
       final presetId = automation.cliPresetId?.trim() ?? '';
       final legacyCli = presetId.isEmpty ? automation.cli : null;
       status = await _requestCreateAndOpenSession(
         SessionCreateRequest(
           workspace: workspace,
           isPersonal: true,
-          personalIdentityId: automation.launchProfileId,
           repo: _sessionRepository,
           cli: legacyCli,
           personalPresetId: presetId.isNotEmpty ? presetId : null,

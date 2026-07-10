@@ -8,15 +8,13 @@ import 'model/launch_profile_state.dart';
 /// Sidebar identity list — stable across per-member field edits.
 class HomeSidebarIdentitySnapshot extends Equatable {
   const HomeSidebarIdentitySnapshot({
-    required this.personals,
     required this.teams,
   });
 
-  final List<IdentitySidebarEntry> personals;
   final List<IdentitySidebarEntry> teams;
 
   @override
-  List<Object?> get props => [personals, teams];
+  List<Object?> get props => [teams];
 }
 
 class IdentitySidebarEntry extends Equatable {
@@ -174,14 +172,6 @@ abstract final class LaunchProfileSelectors {
     LaunchProfileState state,
   ) {
     return HomeSidebarIdentitySnapshot(
-      personals: [
-        for (final personal in state.personals)
-          IdentitySidebarEntry(
-            id: personal.id,
-            display: personal.display,
-            kind: personal.kind,
-          ),
-      ],
       teams: [
         for (final team in state.teams)
           IdentitySidebarEntry(

@@ -3,26 +3,28 @@ import 'package:teampilot/models/automation_tab_scope.dart';
 import 'package:teampilot/models/launch_profile_kind.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/automation/automation_dispatcher.dart';
-import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 
 const personalAutomationTabScope = AutomationTabScope(
   workspaceId: 'ws1',
-  launchProfileId: LaunchProfileProvisioner.defaultPersonalId,
+  launchProfileId: AutomationTabScope.simpleLaunchProfileId,
 );
 
 AutomationLaunchProfileKindResolver testLaunchProfileKindResolver({
   String teamProfileId = 'team-1',
 }) {
   return (profileId) {
+    if (profileId == AutomationTabScope.simpleLaunchProfileId) {
+      return null;
+    }
     if (profileId == teamProfileId) return LaunchProfileKind.team;
-    return LaunchProfileKind.personal;
+    return LaunchProfileKind.team;
   };
 }
 
 Automation sampleAutomation({
   required String id,
   required String workspaceId,
-  String launchProfileId = LaunchProfileProvisioner.defaultPersonalId,
+  String launchProfileId = AutomationTabScope.simpleLaunchProfileId,
   String? sessionId,
 }) {
   return Automation(
@@ -48,7 +50,7 @@ Automation sampleAutomation({
 
 AutomationTabScope automationTabScopeFor({
   required String workspaceId,
-  String launchProfileId = LaunchProfileProvisioner.defaultPersonalId,
+  String launchProfileId = AutomationTabScope.simpleLaunchProfileId,
 }) {
   return AutomationTabScope(
     workspaceId: workspaceId,

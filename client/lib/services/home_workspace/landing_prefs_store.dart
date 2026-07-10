@@ -9,7 +9,6 @@ class LandingPrefs {
     this.isPersonal = true,
     this.presetId,
     this.teamId,
-    this.personalProfileId,
     this.projectFolderPath,
     this.expertKey,
     this.workingDirectoryPath,
@@ -18,7 +17,6 @@ class LandingPrefs {
   final bool isPersonal;
   final String? presetId;
   final String? teamId;
-  final String? personalProfileId;
   final String? projectFolderPath;
   final String? expertKey;
   final String? workingDirectoryPath;
@@ -27,8 +25,6 @@ class LandingPrefs {
     'isPersonal': isPersonal,
     if (presetId != null && presetId!.isNotEmpty) 'presetId': presetId,
     if (teamId != null && teamId!.isNotEmpty) 'teamId': teamId,
-    if (personalProfileId != null && personalProfileId!.isNotEmpty)
-      'personalProfileId': personalProfileId,
     if (projectFolderPath != null && projectFolderPath!.isNotEmpty)
       'projectFolderPath': projectFolderPath,
     if (expertKey != null && expertKey!.isNotEmpty) 'expertKey': expertKey,
@@ -64,7 +60,6 @@ class LandingPrefsStore {
           isPersonal: m['isPersonal'] as bool? ?? true,
           presetId: m['presetId'] as String?,
           teamId: m['teamId'] as String?,
-          personalProfileId: m['personalProfileId'] as String?,
           projectFolderPath: m['projectFolderPath'] as String?,
           expertKey: m['expertKey'] as String?,
           workingDirectoryPath: m['workingDirectoryPath'] as String?,

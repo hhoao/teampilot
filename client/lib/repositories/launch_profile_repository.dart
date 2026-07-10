@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import '../models/personal_profile.dart';
 import '../models/team_config.dart';
 import '../models/launch_profile.dart';
 import '../services/io/filesystem.dart';
@@ -10,7 +9,7 @@ import '../services/storage/app_storage.dart';
 import '../utils/logger.dart';
 import 'launch_profile_index_store.dart';
 
-/// Persists [LaunchProfile] records (both kinds) at
+/// Persists [LaunchProfile] records (team identities) at
 /// `launch-profiles/{id}/profile.json`.
 class LaunchProfileRepository {
   LaunchProfileRepository({
@@ -213,30 +212,10 @@ class LaunchProfileRepository {
     return a.name.compareTo(b.name);
   }
 
-  static int _comparePersonals(
-    PersonalProfile a,
-    PersonalProfile b, {
-    required bool hasCustomOrder,
-  }) {
-    if (hasCustomOrder) {
-      final order = a.sortOrder.compareTo(b.sortOrder);
-      if (order != 0) return order;
-    }
-    if (a.createdAt != b.createdAt) {
-      return a.createdAt.compareTo(b.createdAt);
-    }
-    return a.display.toLowerCase().compareTo(b.display.toLowerCase());
-  }
-
   static int _compareProfiles(LaunchProfile a, LaunchProfile b) {
     if (a is TeamProfile && b is TeamProfile) {
       return _compareTeams(a, b, hasCustomOrder: false);
     }
-    if (a is PersonalProfile && b is PersonalProfile) {
-      return _comparePersonals(a, b, hasCustomOrder: false);
-    }
-    if (a is TeamProfile) return -1;
-    if (b is TeamProfile) return 1;
     return a.display.toLowerCase().compareTo(b.display.toLowerCase());
   }
 
@@ -263,15 +242,6 @@ class LaunchProfileRepository {
     final hasCustomOrder = teams.any((team) => team.sortOrder > 0);
     teams.sort((a, b) => _compareTeams(a, b, hasCustomOrder: hasCustomOrder));
     return List.unmodifiable(teams);
-  }
-
-  Future<List<PersonalProfile>> loadPersonalProfiles() async {
-    final personals = (await loadAll()).whereType<PersonalProfile>().toList();
-    final hasCustomOrder = personals.any((personal) => personal.sortOrder > 0);
-    personals.sort(
-      (a, b) => _comparePersonals(a, b, hasCustomOrder: hasCustomOrder),
-    );
-    return List.unmodifiable(personals);
   }
 
   Future<void> saveTeamProfiles(List<TeamProfile> teams) async {

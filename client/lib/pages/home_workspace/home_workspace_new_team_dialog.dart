@@ -59,7 +59,7 @@ Future<void> showHomeNewTeamDialog(
   );
   if (result == null || !context.mounted) return;
   if (result.isSolo) {
-    await teamCubit.addPersonal(result.name);
+    // Solo / Simple is unteamed launch — no personal identity to create.
     return;
   }
   await teamCubit.addTeam(
