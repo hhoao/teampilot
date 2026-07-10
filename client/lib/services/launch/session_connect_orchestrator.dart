@@ -1,26 +1,34 @@
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
-import '../../models/personal_profile.dart';
 import '../../models/runtime_target.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
+import '../../models/team_roster_slot.dart';
 import '../../models/workspace.dart';
 import '../../utils/team_member_naming.dart';
+import '../cli/registry/config_profile/config_profile_scope.dart';
 import '../cli/registry/mcp_writers/claude_project_mcp_cleanup.dart';
-import '../team_bus/member_bus_idle_endpoint.dart';
+import '../cli/preset_resolver.dart';
 import '../provider/config_profile_service.dart';
-import '../../services/cli/preset_resolver.dart';
-import '../expert_hub/expert_member_resolver.dart';
 import '../session/session_lifecycle_service.dart';
+import '../session/shell_launch_spec.dart';
 import '../storage/runtime_context.dart';
+import '../team_bus/member_bus_idle_endpoint.dart';
+import 'launch_manifest.dart';
 import 'launch_manifest_paths.dart';
 import 'manifest_executor.dart';
+import 'session_runtime_plan.dart';
+import 'session_runtime_plan_builder.dart';
 import 'workspace_provision_coordinator.dart';
+
+export '../provider/config_profile_service.dart' show TeamLaunchOutcome;
 
 typedef ConfigProfileServiceFactory =
     Future<ConfigProfileService> Function(RuntimeContext context);
 
-/// Phase A + B orchestration for personal and team session connect.
+/// Phase A + B orchestration for simple and team session connect.
+///
+/// Both modes build a [SessionRuntimePlan] first, then stage/provision from it.
 class SessionConnectOrchestrator {
   SessionConnectOrchestrator({
     required this.lifecycle,
@@ -28,6 +36,7 @@ class SessionConnectOrchestrator {
     required this.configProfileFor,
     required this.homeContext,
     required this.manifestExecutor,
+    required this.runtimePlanBuilder,
   });
 
   final SessionLifecycleService lifecycle;
@@ -35,95 +44,34 @@ class SessionConnectOrchestrator {
   final ConfigProfileServiceFactory configProfileFor;
   final RuntimeContext Function() homeContext;
   final ManifestExecutor manifestExecutor;
+  final SessionRuntimePlanBuilder runtimePlanBuilder;
 
   Future<
     ({ShellLaunchSpec shellLaunch, List<String> warnings, String remoteCliPath})
   >
-  preparePersonalConnect({
+  prepareSimpleConnect({
     required AppSession session,
     required Workspace workspace,
-    required PersonalProfile personal,
-    required CliPreset? preset,
     required RuntimeTarget launchTarget,
+    CliPreset? preset,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
   }) async {
-    final cli = session.cli ?? preset?.cli ?? CliTool.claude;
-    final trustedDirectories = [
-      for (final folder in workspace.folders) folder.path,
-    ];
-
-    final offHome = workspaceProvision.isOffHome(launchTarget);
-    late final RuntimeContext workContext;
-    late final String remoteCliPath;
-
-    if (offHome) {
-      final provision = await workspaceProvision.ensureReady(
-        target: launchTarget,
-        workspaceId: workspace.workspaceId,
-        cli: cli,
-        personal: personal,
-        trustedDirectories: trustedDirectories,
-      );
-      workContext = provision.workContext;
-      remoteCliPath = provision.remoteCliPath;
-    } else {
-      workContext = await lifecycle.resolveWorkContextForTargetId(
-        launchTarget.id,
-      );
-      remoteCliPath = await workspaceProvision.provisioner.localCliPath(cli);
-    }
-
-    final catalogProfile = await configProfileFor(
-      offHome ? homeContext() : workContext,
-    );
-    final resolvedExpert = session.expertKey.trim().isNotEmpty
-        ? await ExpertMemberResolver.resolveMember(key: session.expertKey)
-        : null;
-    final staged = await catalogProfile.stageSessionLaunch(
-      readDelegate: offHome ? homeContext().fs : workContext.fs,
-      workTeampilotRoot: workContext.appDataRoot,
+    final plan = await runtimePlanBuilder.buildSimple(
       workspaceId: workspace.workspaceId,
       sessionId: session.sessionId,
-      profileId: personal.id,
-      personal: personal,
-      workingDirectory: session.firstFolderPath,
-      additionalDirectories: session.extraFolderPaths,
-      extraMcpServers: extraMcpServers,
-      busIdle: busIdle,
-      preset: preset,
-      sessionExpertKey: session.expertKey,
-      resolvedExpert: resolvedExpert,
+      memberId: session.sessionId,
+      expertKey: session.expertKey,
+      presetId: preset?.id,
     );
-
-    await manifestExecutor.flush(
-      manifest: staged.manifest,
-      targetFs: workContext.fs,
-      sourceFs: offHome ? homeContext().fs : workContext.fs,
-      sshProfileId: offHome ? launchTarget.sshProfileId : null,
-    );
-
-    final environment = offHome
-        ? normalizeWorkEnvironment(
-            workContext.fs,
-            staged.outcome.environment,
-          )
-        : staged.outcome.environment;
-
-    final shellLaunch = await lifecycle.prepareShellLaunchFromEnvironment(
+    return _prepareConnectFromPlan(
       session: session,
       workspace: workspace,
-      personal: personal,
+      plan: plan,
+      launchTarget: launchTarget,
       preset: preset,
-      environment: environment,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
-    );
-
-    return (
-      shellLaunch: shellLaunch,
-      warnings: [...staged.outcome.warnings, ...shellLaunch.plan.warnings],
-      remoteCliPath: remoteCliPath,
     );
   }
 
@@ -142,11 +90,61 @@ class SessionConnectOrchestrator {
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
   }) async {
-    final cli = memberLaunchCli(
+    final resolvedWorkspace =
+        workspace ??
+        Workspace(
+          workspaceId: session.workspaceId,
+          folders: session.folders,
+          createdAt: session.createdAt,
+        );
+    final slot = _slotForMember(team, member);
+    final plan = await runtimePlanBuilder.buildTeamSeat(
+      workspaceId: resolvedWorkspace.workspaceId,
+      sessionId: session.sessionId,
       team: team,
-      member: member,
-      globalPresets: lifecycle.globalPresets,
+      slot: slot,
+      presetId: member.activePresetId,
     );
+    return _prepareConnectFromPlan(
+      session: session,
+      workspace: resolvedWorkspace,
+      plan: plan,
+      team: team,
+      memberBinding: memberBinding,
+      launchTarget: launchTarget,
+      workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
+      extraMcpServers: extraMcpServers,
+      busIdle: busIdle,
+    );
+  }
+
+  Future<
+    ({ShellLaunchSpec shellLaunch, List<String> warnings, String remoteCliPath})
+  >
+  _prepareConnectFromPlan({
+    required AppSession session,
+    required Workspace workspace,
+    required SessionRuntimePlan plan,
+    TeamProfile? team,
+    SessionMemberBinding? memberBinding,
+    required RuntimeTarget launchTarget,
+    CliPreset? preset,
+    String workingDirectory = '',
+    List<String> additionalDirectories = const [],
+    Map<String, Map<String, Object?>>? extraMcpServers,
+    MemberBusIdleEndpoint? busIdle,
+  }) async {
+    final isSimple = plan.mode == SessionRuntimeMode.simple;
+    final member = plan.member;
+    final cli = isSimple
+        ? (session.cli ?? member.cli ?? preset?.cli ?? CliTool.claude)
+        : memberLaunchCli(
+            team: team!,
+            member: member,
+            globalPresets: lifecycle.globalPresets,
+          );
+
     final offHome = workspaceProvision.isOffHome(launchTarget);
     late final RuntimeContext workContext;
     late final String remoteCliPath;
@@ -154,9 +152,11 @@ class SessionConnectOrchestrator {
     if (offHome) {
       final provision = await workspaceProvision.ensureReady(
         target: launchTarget,
-        workspaceId: session.workspaceId,
+        workspaceId: workspace.workspaceId,
         cli: cli,
-        personal: null,
+        trustedDirectories: [
+          for (final folder in workspace.folders) folder.path,
+        ],
       );
       workContext = provision.workContext;
       remoteCliPath = provision.remoteCliPath;
@@ -167,40 +167,71 @@ class SessionConnectOrchestrator {
       remoteCliPath = await workspaceProvision.provisioner.localCliPath(cli);
     }
 
-    final teamId = team.id.trim();
-    final cliTeamName = session.cliTeamName.trim();
-    final runtimeTeamId = cliTeamName.isNotEmpty
-        ? cliTeamName
-        : session.sessionId;
-    final leadTaskId = memberBinding?.taskId.trim() ?? '';
-    final leadSessionId =
-        TeamMemberNaming.isTeamLead(member) && leadTaskId.isNotEmpty
-        ? leadTaskId
-        : null;
-
     final catalogProfile = await configProfileFor(
       offHome ? homeContext() : workContext,
     );
-    final staged = await catalogProfile.stageTeamLaunch(
-      readDelegate: offHome ? homeContext().fs : workContext.fs,
-      workTeampilotRoot: workContext.appDataRoot,
-      workspaceId: effectiveLaunchWorkspaceId(
-        workspaceId: session.workspaceId,
+
+    late final ({TeamLaunchOutcome outcome, LaunchManifest manifest}) staged;
+    if (isSimple) {
+      staged = await catalogProfile.stageSimpleSessionLaunch(
+        readDelegate: offHome ? homeContext().fs : workContext.fs,
+        workTeampilotRoot: workContext.appDataRoot,
+        workspaceId: workspace.workspaceId,
+        sessionId: session.sessionId,
+        runtimeBundle: plan.runtimeBundle,
+        member: member,
+        workingDirectory: workingDirectory.isNotEmpty
+            ? workingDirectory
+            : session.firstFolderPath,
+        additionalDirectories: additionalDirectories.isNotEmpty
+            ? additionalDirectories
+            : session.extraFolderPaths,
+        extraMcpServers: extraMcpServers,
+        busIdle: busIdle,
+        preset: preset,
+      );
+    } else {
+      final teamId = team!.id.trim();
+      final cliTeamName = session.cliTeamName.trim();
+      final runtimeTeamId = cliTeamName.isNotEmpty
+          ? cliTeamName
+          : session.sessionId;
+      final leadTaskId = memberBinding?.taskId.trim() ?? '';
+      final leadSessionId =
+          TeamMemberNaming.isTeamLead(member) && leadTaskId.isNotEmpty
+          ? leadTaskId
+          : null;
+      staged = await catalogProfile.stageTeamLaunch(
+        readDelegate: offHome ? homeContext().fs : workContext.fs,
+        workTeampilotRoot: workContext.appDataRoot,
+        workspaceId: effectiveLaunchWorkspaceId(
+          workspaceId: session.workspaceId,
+          teamId: teamId,
+        ),
+        sessionId: session.sessionId,
         teamId: teamId,
-      ),
-      sessionId: session.sessionId,
-      teamId: teamId,
-      cliTeamName: runtimeTeamId,
-      cli: cli,
-      members: team.members,
-      member: member,
-      workingDirectory: workingDirectory,
-      additionalDirectories: additionalDirectories,
-      team: team,
-      leadSessionId: leadSessionId,
-      extraMcpServers: extraMcpServers,
-      busIdle: busIdle,
-    );
+        cliTeamName: runtimeTeamId,
+        cli: cli,
+        members: team.members,
+        member: member,
+        workingDirectory: workingDirectory,
+        additionalDirectories: additionalDirectories,
+        team: team,
+        runtimeBundle: plan.runtimeBundle,
+        leadSessionId: leadSessionId,
+        extraMcpServers: extraMcpServers,
+        busIdle: busIdle,
+      );
+
+      await maybeRemoveStaleProjectTeammateBus(
+        fs: workContext.fs,
+        extraServers: extraMcpServers,
+        projectRoots: projectMcpRootsFromLaunch(
+          workingDirectory: workingDirectory,
+          additionalDirectories: additionalDirectories,
+        ),
+      );
+    }
 
     await manifestExecutor.flush(
       manifest: staged.manifest,
@@ -209,31 +240,20 @@ class SessionConnectOrchestrator {
       sshProfileId: offHome ? launchTarget.sshProfileId : null,
     );
 
-    // Off-home staging reads the control-plane catalog; project `.mcp.json` lives
-    // on the work machine — scrub stale teammate-bus there after flush.
-    await maybeRemoveStaleProjectTeammateBus(
-      fs: workContext.fs,
-      extraServers: extraMcpServers,
-      projectRoots: projectMcpRootsFromLaunch(
-        workingDirectory: workingDirectory,
-        additionalDirectories: additionalDirectories,
-      ),
-    );
-
     final environment = offHome
-        ? normalizeWorkEnvironment(
-            workContext.fs,
-            staged.outcome.environment,
-          )
+        ? normalizeWorkEnvironment(workContext.fs, staged.outcome.environment)
         : staged.outcome.environment;
 
-    final shellLaunch = await lifecycle.prepareTeamShellLaunchFromEnvironment(
+    final shellLaunch = await lifecycle.prepareShellLaunchFromEnvironmentPlan(
       session: session,
-      team: team,
-      member: member,
-      memberBinding: memberBinding,
       workspace: workspace,
+      plan: plan,
+      team: team,
+      memberBinding: memberBinding,
+      preset: preset,
       environment: environment,
+      extraMcpServers: extraMcpServers,
+      busIdle: busIdle,
     );
 
     return (
@@ -246,14 +266,12 @@ class SessionConnectOrchestrator {
   void scheduleWorkspaceProvision({
     required RuntimeTarget launchTarget,
     required Workspace workspace,
-    required PersonalProfile personal,
     required CliTool cli,
   }) {
     workspaceProvision.schedule(
       target: launchTarget,
       workspaceId: workspace.workspaceId,
       cli: cli,
-      personal: personal,
       trustedDirectories: [for (final folder in workspace.folders) folder.path],
     );
   }
@@ -268,7 +286,6 @@ class SessionConnectOrchestrator {
       target: launchTarget,
       workspaceId: workspace.workspaceId,
       cli: cli,
-      personal: null,
       trustedDirectories: [for (final folder in workspace.folders) folder.path],
     );
   }
@@ -283,5 +300,28 @@ class SessionConnectOrchestrator {
         workspaceId: workspace.workspaceId,
       );
     }
+  }
+
+  TeamRosterSlot _slotForMember(TeamProfile team, TeamMemberConfig member) {
+    for (final slot in team.roster) {
+      if (slot.id == member.id) return slot;
+    }
+    return TeamRosterSlot(
+      id: member.id,
+      expertKey: member.agentType.trim().isNotEmpty
+          ? member.agentType
+          : (member.agent.trim().isNotEmpty ? member.agent : member.id),
+      overrides: TeamRosterSlotOverrides(
+        provider: member.provider,
+        model: member.model,
+        effort: member.effort,
+        extraArgs: member.extraArgs,
+        cli: member.cli,
+        replicas: member.replicas,
+        capabilities: member.capabilities,
+        activePresetId: member.activePresetId,
+      ),
+      joinedAt: member.joinedAt,
+    );
   }
 }

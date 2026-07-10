@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import '../../models/personal_profile.dart';
 import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
 import '../../utils/logger.dart';
@@ -33,7 +32,6 @@ class WorkspaceProvisionCoordinator {
     required RuntimeTarget target,
     required String workspaceId,
     required CliTool cli,
-    required PersonalProfile? personal,
     Iterable<String> trustedDirectories = const [],
   }) {
     final key = WorkspaceProvisionKey(
@@ -46,7 +44,6 @@ class WorkspaceProvisionCoordinator {
     final work = _start(
       key,
       target: target,
-      personal: personal,
       trustedDirectories: trustedDirectories,
     );
     unawaited(
@@ -64,7 +61,6 @@ class WorkspaceProvisionCoordinator {
     required RuntimeTarget target,
     required String workspaceId,
     required CliTool cli,
-    PersonalProfile? personal,
     Iterable<String> trustedDirectories = const [],
   }) async {
     final key = WorkspaceProvisionKey(
@@ -87,7 +83,6 @@ class WorkspaceProvisionCoordinator {
     return _start(
       key,
       target: target,
-      personal: personal,
       trustedDirectories: trustedDirectories,
     );
   }
@@ -95,13 +90,11 @@ class WorkspaceProvisionCoordinator {
   Future<WorkspaceProvisionResult> _start(
     WorkspaceProvisionKey key, {
     required RuntimeTarget target,
-    required PersonalProfile? personal,
     Iterable<String> trustedDirectories = const [],
   }) {
     final future = _runProvision(
       key,
       target: target,
-      personal: personal,
       trustedDirectories: trustedDirectories,
     );
     _inFlight[key.cacheKey] = future;
@@ -111,7 +104,6 @@ class WorkspaceProvisionCoordinator {
   Future<WorkspaceProvisionResult> _runProvision(
     WorkspaceProvisionKey key, {
     required RuntimeTarget target,
-    required PersonalProfile? personal,
     Iterable<String> trustedDirectories = const [],
   }) async {
     try {
@@ -119,7 +111,6 @@ class WorkspaceProvisionCoordinator {
         target: target,
         workspaceId: key.workspaceId,
         cli: key.cli,
-        personal: personal,
         trustedDirectories: trustedDirectories,
       );
       _ready[key.cacheKey] = result;

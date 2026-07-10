@@ -70,7 +70,7 @@ import '../services/automation/automation_bus_gateway.dart';
 import '../services/automation/automation_dispatcher.dart';
 import '../services/automation/automation_schedule_calculator.dart';
 import '../services/automation/automation_scheduler.dart';
-import '../services/launch/personal_launch_context_resolver.dart';
+import '../services/launch/session_runtime_plan_builder.dart';
 import '../services/home_workspace/home_workspace_ui_cache.dart';
 import '../services/team/team_clone_service.dart';
 import '../services/team_hub/composite_team_hub_source.dart';
@@ -683,6 +683,10 @@ Future<AppShell> buildAppShell({
     },
   );
   expertCapabilityResolver.attachHubCubit(expertHubCubit);
+  final sessionRuntimePlanBuilder = SessionRuntimePlanBuilder(
+    expertResolver: expertCapabilityResolver,
+    workspaceProjectConfig: workspaceProjectConfigRepository,
+  );
 
   final appUpdateCubit = AppUpdateCubit(settings: appSettings);
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
@@ -759,6 +763,7 @@ Future<AppShell> buildAppShell({
       loadLocalCredentials: (cli) => LocalCredentialExporter().export(cli),
       localCliPath: (cli) async =>
           sessionPreferencesCubit.resolveExecutable(cli),
+      runtimePlanBuilder: sessionRuntimePlanBuilder,
     ),
   );
 
@@ -780,9 +785,6 @@ Future<AppShell> buildAppShell({
   );
 
   final scheduleCalculator = AutomationScheduleCalculator();
-  final personalLaunchContextResolver = PersonalLaunchContextResolver(
-    sessionLifecycleService,
-  );
   final automationDispatcher = AutomationDispatcher(
     repository: automationRepo,
     scheduleCalculator: scheduleCalculator,
@@ -803,7 +805,6 @@ Future<AppShell> buildAppShell({
     launchProfileKindById: (profileId) {
       return teamCubit.state.byId(profileId)?.kind;
     },
-    personalContextResolver: personalLaunchContextResolver,
     sessionById: (sessionId, workspaceId) => chatCubit.state.sessions
         .where((s) => s.sessionId == sessionId && s.workspaceId == workspaceId)
         .firstOrNull,

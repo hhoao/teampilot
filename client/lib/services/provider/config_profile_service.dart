@@ -1,10 +1,8 @@
 import 'package:path/path.dart' as p;
 
-import '../../models/discoverable_member.dart';
 import '../../models/config_bundle.dart';
 import '../../models/cli_preset.dart';
 import '../../models/extension_manifest.dart';
-import '../../models/personal_profile.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
@@ -17,8 +15,6 @@ import '../cli/registry/capabilities/config_profile_capability.dart';
 import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../plugin/installed_plugin_catalog.dart';
-import '../mcp/profile_mcp_linker_service.dart';
-import '../../repositories/mcp_repository.dart';
 import '../../repositories/workspace_project_config_repository.dart';
 import '../io/filesystem.dart';
 import '../cli/registry/mcp_writers/claude_project_mcp_cleanup.dart';
@@ -289,6 +285,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String teamId, {
     CliTool cli = CliTool.claude,
     TeamProfile? team,
+    ConfigBundle? runtimeBundle,
     String? memberId,
     Map<String, Map<String, Object?>>? extraMcpServers,
     Iterable<String> projectMcpRoots = const [],
@@ -331,7 +328,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
         .capability<PluginProvisionerCapability>(cli);
     final warmTier = CursorWorkspaceWarmTier.applies(team: team, cli: cli);
     if (pluginProvisioner != null) {
-      final projectPlugins = (await _projectBundle(trimmedWorkspaceId)).pluginIds;
+      final enabledPlugins =
+          runtimeBundle?.pluginIds ??
+          (await _projectBundle(trimmedWorkspaceId)).pluginIds;
       await pluginProvisioner.provision(
         PluginProvisionContext(
           fs: fs,
@@ -349,7 +348,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             cli.value,
             memberId: memberId,
           ),
-          enabledPluginIds: projectPlugins,
+          enabledPluginIds: enabledPlugins,
           installedCatalog: await InstalledPluginCatalog.load(fs, basePath),
           layout: layout,
           tool: cli,
@@ -425,27 +424,17 @@ class ConfigProfileService implements ConfigProfileDelegate {
   }
 
   /// Phase A: workspace-level profile on the work machine (not per-session).
+  ///
+  /// Simple mode skips `identities-runtime/` — only workspace inherit + trust.
   Future<void> provisionWorkspace({
     required String workspaceId,
     required CliTool cli,
-    required PersonalProfile personal,
     Iterable<String> trustedDirectories = const [],
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     if (trimmedWorkspaceId.isEmpty) return;
 
     await ensureStandalonePersonalProfile(trimmedWorkspaceId, cli: cli);
-
-    final profileId = personal.id.trim();
-    final projectBundle = await _projectBundle(trimmedWorkspaceId);
-    if (profileId.isNotEmpty) {
-      await ProfileMcpLinkerService(fs: fs).syncForProfile(
-        profileId: profileId,
-        mcpServerIds: projectBundle.mcpServerIds,
-        catalog: await McpRepository().loadAll(),
-        layout: layout,
-      );
-    }
 
     final paths = [
       for (final directory in trustedDirectories)
@@ -463,11 +452,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
     }
   }
 
-  /// Phase B (work fs): inheritance, plugins, skills, MCP — not config JSON bodies.
-  Future<List<String>> applySessionFilesystem({
+  /// Phase B (work fs) for Simple: cli-defaults → workspace → session only.
+  ///
+  /// [runtimeBundle] is the sole skills/plugins/MCP id source (already merged).
+  Future<List<String>> applySimpleSessionFilesystem({
     required String workspaceId,
     required String sessionId,
-    required PersonalProfile personal,
+    required ConfigBundle runtimeBundle,
     CliTool cli = CliTool.claude,
     Map<String, Map<String, Object?>>? extraMcpServers,
     Iterable<String> projectMcpRoots = const [],
@@ -479,30 +470,17 @@ class ConfigProfileService implements ConfigProfileDelegate {
     }
 
     final warnings = <String>[];
-    final personalProfileId = personal.id.trim();
     final standaloneScope = StandaloneLaunchProfileScope(
       workspaceId: trimmedWorkspaceId,
       sessionId: trimmedSessionId,
     );
 
     return _withStandaloneScope(standaloneScope, () async {
-      String? sessionProvisionJson;
-      final projectBundle = await _projectBundle(trimmedWorkspaceId);
-      await Future.wait([
-        layout.ensureSessionRuntimeInheritsWorkspace(
-          trimmedWorkspaceId,
-          trimmedSessionId,
-          cli.value,
-        ),
-        layout
-            .provisionSessionPluginsFromIdentity(
-              trimmedWorkspaceId,
-              trimmedSessionId,
-              personalProfileId,
-              cli.value,
-            )
-            .then((json) => sessionProvisionJson = json),
-      ]);
+      await layout.ensureSessionRuntimeInheritsWorkspace(
+        trimmedWorkspaceId,
+        trimmedSessionId,
+        cli.value,
+      );
 
       final pluginProvisioner = _cliRegistry
           .capability<PluginProvisionerCapability>(cli);
@@ -521,11 +499,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
               trimmedSessionId,
               cli.value,
             ),
-            enabledPluginIds: projectBundle.pluginIds,
+            enabledPluginIds: runtimeBundle.pluginIds,
             installedCatalog: await InstalledPluginCatalog.load(fs, basePath),
             layout: layout,
             tool: cli,
-            memberProvisionJson: sessionProvisionJson,
           ),
         );
       }
@@ -535,7 +512,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             fs: fs,
             registry: _cliRegistry,
           ).provisionForLaunch(
-            scope: WorkspaceResourceScope(bundle: projectBundle),
+            scope: WorkspaceResourceScope(bundle: runtimeBundle),
             cli: cli,
             configDir: _launchResourceConfigDir(
               cli: cli,
@@ -549,10 +526,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
       await McpRegistryService(
         fs: fs,
         layout: layout,
-      ).writeForStandaloneWorkspace(
+      ).writeForSimpleSession(
         workspaceId: trimmedWorkspaceId,
         sessionId: trimmedSessionId,
-        profileId: personalProfileId,
+        mcpServerIds: runtimeBundle.mcpServerIds,
         extraServers: extraMcpServers,
         projectMcpRoots: projectMcpRoots,
       );
@@ -562,17 +539,16 @@ class ConfigProfileService implements ConfigProfileDelegate {
   }
 
   /// Phase B (control plane): session config JSON + env from CLI capabilities.
-  Future<TeamLaunchOutcome> contributeSessionLaunch({
+  ///
+  /// [member] comes from [SessionRuntimePlan.member] (expert pack persona).
+  Future<TeamLaunchOutcome> contributeSimpleSessionLaunch({
     required String workspaceId,
     required String sessionId,
-    required String profileId,
-    required PersonalProfile personal,
+    required TeamMemberConfig member,
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
     MemberBusIdleEndpoint? busIdle,
     CliPreset? preset,
-    String? sessionExpertKey,
-    DiscoverableMember? resolvedExpert,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -581,9 +557,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     }
 
     final warnings = <String>[];
-    await _infra.collectExtensionWarnings(warnings, teamId: profileId.trim());
-
-    final cli = preset?.cli ?? CliTool.claude;
+    final cli = member.cli ?? preset?.cli ?? CliTool.claude;
     final standaloneScope = StandaloneLaunchProfileScope(
       workspaceId: trimmedWorkspaceId,
       sessionId: trimmedSessionId,
@@ -612,17 +586,15 @@ class ConfigProfileService implements ConfigProfileDelegate {
             teamId: '',
             sessionId: trimmedSessionId,
             scope: scope,
-            personal: personal,
+            member: member,
             standaloneScope: standaloneScope,
-            members: const [],
+            members: [member],
             workingDirectory: workingDirectory,
             additionalDirectories: additionalDirectories,
             paths: this,
             catalog: catalog,
             busIdle: busIdle,
             preset: preset,
-            sessionExpertKey: sessionExpertKey,
-            resolvedExpert: resolvedExpert,
           ),
         );
       } on Object catch (e) {
@@ -639,23 +611,20 @@ class ConfigProfileService implements ConfigProfileDelegate {
     });
   }
 
-  /// Stages session launch mutations into [LaunchManifest] without touching the
-  /// work filesystem. [readDelegate] supplies catalog reads (home or work).
+  /// Stages Simple session launch mutations into [LaunchManifest].
   Future<({TeamLaunchOutcome outcome, LaunchManifest manifest})>
-  stageSessionLaunch({
+  stageSimpleSessionLaunch({
     required Filesystem readDelegate,
     required String workTeampilotRoot,
     required String workspaceId,
     required String sessionId,
-    required String profileId,
-    required PersonalProfile personal,
+    required ConfigBundle runtimeBundle,
+    required TeamMemberConfig member,
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
     CliPreset? preset,
-    String? sessionExpertKey,
-    DiscoverableMember? resolvedExpert,
   }) async {
     final manifestCtx = workPathContextFor(
       readDelegate: readDelegate,
@@ -672,28 +641,26 @@ class ConfigProfileService implements ConfigProfileDelegate {
       workTeampilotRoot: workTeampilotRoot,
     );
 
-    final fsWarnings = await staging.applySessionFilesystem(
+    final cli = member.cli ?? preset?.cli ?? CliTool.claude;
+    final fsWarnings = await staging.applySimpleSessionFilesystem(
       workspaceId: workspaceId,
       sessionId: sessionId,
-      personal: personal,
-      cli: preset?.cli ?? CliTool.claude,
+      runtimeBundle: runtimeBundle,
+      cli: cli,
       extraMcpServers: extraMcpServers,
       projectMcpRoots: projectMcpRootsFromLaunch(
         workingDirectory: workingDirectory,
         additionalDirectories: additionalDirectories,
       ),
     );
-    final outcome = await staging.contributeSessionLaunch(
+    final outcome = await staging.contributeSimpleSessionLaunch(
       workspaceId: workspaceId,
       sessionId: sessionId,
-      profileId: profileId,
-      personal: personal,
+      member: member,
       workingDirectory: workingDirectory,
       additionalDirectories: additionalDirectories,
       busIdle: busIdle,
       preset: preset,
-      sessionExpertKey: sessionExpertKey,
-      resolvedExpert: resolvedExpert,
     );
     return (
       outcome: TeamLaunchOutcome(
@@ -704,35 +671,31 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
   }
 
-  /// Phase B: full session launch — stage then flush to [fs].
-  Future<TeamLaunchOutcome> prepareSessionLaunch({
+  /// Phase B: full Simple session launch — stage then flush to [fs].
+  Future<TeamLaunchOutcome> prepareSimpleSessionLaunch({
     required String workspaceId,
     required String sessionId,
-    required String profileId,
-    required PersonalProfile personal,
+    required ConfigBundle runtimeBundle,
+    required TeamMemberConfig member,
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
     CliPreset? preset,
-    String? sessionExpertKey,
-    DiscoverableMember? resolvedExpert,
     ManifestExecutor? manifestExecutor,
   }) async {
-    final staged = await stageSessionLaunch(
+    final staged = await stageSimpleSessionLaunch(
       readDelegate: fs,
       workTeampilotRoot: basePath,
       workspaceId: workspaceId,
       sessionId: sessionId,
-      profileId: profileId,
-      personal: personal,
+      runtimeBundle: runtimeBundle,
+      member: member,
       workingDirectory: workingDirectory,
       additionalDirectories: additionalDirectories,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
       preset: preset,
-      sessionExpertKey: sessionExpertKey,
-      resolvedExpert: resolvedExpert,
     );
     final executor = manifestExecutor ?? const ManifestExecutor();
     await executor.flush(manifest: staged.manifest, targetFs: fs, sourceFs: fs);
@@ -770,6 +733,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
     TeamProfile? team,
+    ConfigBundle? runtimeBundle,
     String? leadSessionId,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
@@ -838,6 +802,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       trimmedTeamId,
       cli: launchCli,
       team: team,
+      runtimeBundle: runtimeBundle,
       memberId: memberId,
       extraMcpServers: extraMcpServers,
       projectMcpRoots: projectMcpRootsFromLaunch(
@@ -849,13 +814,14 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
 
     if (team != null) {
-      final projectBundle = await _projectBundle(trimmedWorkspaceId);
+      final bundle =
+          runtimeBundle ?? await _projectBundle(trimmedWorkspaceId);
       final provisionResult =
           await ResourceProvisioningService(
             fs: stagingFs,
             registry: _cliRegistry,
           ).provisionForLaunch(
-            scope: WorkspaceResourceScope(bundle: projectBundle),
+            scope: WorkspaceResourceScope(bundle: bundle),
             cli: launchCli,
             configDir: staging._launchResourceConfigDir(
               cli: launchCli,
@@ -930,6 +896,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
     TeamProfile? team,
+    ConfigBundle? runtimeBundle,
     String? leadSessionId,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
@@ -948,6 +915,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       workingDirectory: workingDirectory,
       additionalDirectories: additionalDirectories,
       team: team,
+      runtimeBundle: runtimeBundle,
       leadSessionId: leadSessionId,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,

@@ -129,8 +129,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   @override
   Future<void> ensureSessionProfile(ConfigProfileSessionContext ctx) async {
     final standalone = ctx.standaloneScope;
-    final personal = ctx.personal;
-    if (standalone != null && personal != null) {
+    if (standalone != null) {
       await _ensureSessionDefaultsAt(
         ctx.paths,
         standaloneSessionToolDir(ctx.paths, standalone, toolId),
@@ -150,9 +149,8 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     ConfigProfileLaunchContext ctx,
   ) async {
     final standalone = ctx.standaloneScope;
-    final personal = ctx.personal;
-    if (standalone != null && personal != null) {
-      return _contributeStandaloneLaunch(ctx, standalone, personal);
+    if (standalone != null) {
+      return _contributeStandaloneLaunch(ctx, standalone);
     }
 
     final delegate = ctx.paths;
@@ -313,7 +311,6 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
     ConfigProfileLaunchContext ctx,
     StandaloneLaunchProfileScope standalone,
-    PersonalProfile personal,
   ) async {
     final sessionId = standalone.sessionId;
     final stepSw = Stopwatch()..start();
@@ -323,7 +320,15 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
 
     final delegate = ctx.paths;
     final catalog = ctx.catalog;
-    final member = personalMemberForSession(personal, preset: ctx.preset, sessionExpertKey: ctx.sessionExpertKey, resolvedExpert: ctx.resolvedExpert);
+    final member = ctx.member ??
+        (ctx.personal != null
+            ? personalMemberForSession(
+                ctx.personal!,
+                preset: ctx.preset,
+                sessionExpertKey: ctx.sessionExpertKey,
+                resolvedExpert: ctx.resolvedExpert,
+              )
+            : throw StateError('Simple launch requires plan.member'));
     final memberToolDir = standaloneSessionToolDir(
       delegate,
       standalone,

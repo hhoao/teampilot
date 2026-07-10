@@ -3,16 +3,15 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../models/cli_preset.dart';
 import '../../models/runtime_target.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
 import '../../models/workspace_folder.dart';
 import '../../models/app_session.dart';
 import '../../models/member_instance.dart';
-import '../../models/personal_profile.dart';
 import '../../models/team_config.dart';
 import '../../repositories/session_repository.dart';
-import '../../services/launch/personal_launch_context_resolver.dart';
 import '../../services/launch/session_launch_readiness.dart';
 import '../../services/launch/connect_shell_result.dart';
 import '../../services/launch/launch_operation.dart';
@@ -48,11 +47,9 @@ import 'member_connector.dart';
 /// [MemberConnector] for mid-connect lifecycle callbacks.
 class SessionLaunchService
     implements MemberConnector, SessionShellConnectorDelegate {
-  SessionLaunchService(this._h)
-    : _personalContext = PersonalLaunchContextResolver(_h.lifecycle);
+  SessionLaunchService(this._h);
 
   final SessionLaunchHost _h;
-  final PersonalLaunchContextResolver _personalContext;
   late final SessionShellConnector _shellConnector = SessionShellConnector(
     _h,
     this,
@@ -69,7 +66,6 @@ class SessionLaunchService
   late final SessionLaunchBundle _launch = SessionLaunchBundle.create(
     SessionLaunchBundleDeps(
       host: _h,
-      personalContext: _personalContext,
       tabStore: _tabStore,
       state: () => _h.state,
       workspaceIndex: () => _workspaceIndex,
@@ -99,7 +95,6 @@ class SessionLaunchService
   late final SessionSshProfileReconnect _sshReconnect = SessionSshProfileReconnect(
     host: _h,
     shellConnector: _shellConnector,
-    personalContext: _personalContext,
     launchContextFor: launchContextFor,
     scheduleMemberConnect: _memberConnectScheduler.schedule,
     workspaceIndex: () => _workspaceIndex,
@@ -269,24 +264,24 @@ class SessionLaunchService
       final resolvedWorkspace =
           workspace ?? _workspaceById(session.workspaceId);
       if (resolvedWorkspace == null) {
-        throw StateError('Personal session requires workspace');
+        throw StateError('Simple session requires workspace');
       }
-      final personalCtx = await _personalContext.resolve(
-        session: session,
-        workspace: resolvedWorkspace,
-        presetIdOverride: _personalPresetIdOverride(request),
-      );
       final presetOverride = _personalPresetIdOverride(request);
-      final cli = presetOverride.isNotEmpty
-          ? (personalCtx.personalPreset?.cli ?? CliTool.claude)
-          : (session.cli ??
-                personalCtx.personalPreset?.cli ??
-                CliTool.claude);
+      CliPreset? preset;
+      if (presetOverride.isNotEmpty) {
+        preset = await _h.lifecycle.resolvePresetById(presetOverride);
+      }
+      final cli = session.cli ?? preset?.cli ?? CliTool.claude;
+      // Member persona comes from SessionRuntimePlan at connect time.
+      final member = TeamMemberConfig(
+        id: session.sessionId,
+        name: session.sessionId,
+        cli: cli,
+      );
       return (
         team: null,
-        member: personalCtx.personalMember,
+        member: member,
         cli: cli,
-        personalIdentity: personalCtx.personalIdentity,
       );
     }
     final team = request.team!;
@@ -299,7 +294,6 @@ class SessionLaunchService
         member: member,
         globalPresets: _h.lifecycle.globalPresets,
       ),
-      personalIdentity: null,
     );
   }
 
@@ -335,7 +329,6 @@ class SessionLaunchService
     required SessionOpenRequest request,
     required bool launched,
     required Workspace? workspace,
-    required PersonalProfile? personal,
     required TeamProfile? team,
     required TeamMemberConfig? member,
     VoidCallback? onFinally,
@@ -360,7 +353,6 @@ class SessionLaunchService
           team: team,
           member: member,
           workspace: workspace,
-          personal: personal,
         );
         switch (result) {
           case ConnectShellResult.attached:

@@ -35,6 +35,7 @@ import '../io/filesystem.dart';
 import '../../models/discoverable_member.dart';
 import '../cli/cli_tool_adapter.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
+import '../launch/session_runtime_plan.dart';
 import '../expert_hub/expert_member_resolver.dart';
 import 'shell_launch_spec.dart';
 
@@ -103,14 +104,6 @@ class SessionLifecycleService {
   Future<ConfigBundle> _projectBundle(String workspaceId) async {
     final repo = _projectConfigRepository ?? WorkspaceProjectConfigRepository();
     return (await repo.load(workspaceId)).bundle;
-  }
-
-  TeamProfile _teamWithProjectBundle(TeamProfile team, ConfigBundle bundle) {
-    return team.copyWith(
-      skillIds: bundle.skillIds,
-      pluginIds: bundle.pluginIds,
-      mcpServerIds: bundle.mcpServerIds,
-    );
   }
 
   /// Global CLI presets used by [resolveMemberLaunch] and launch validation.
@@ -281,6 +274,104 @@ class SessionLifecycleService {
     );
   }
 
+  /// Prepare PTY [LaunchPlan] from an already-built [SessionRuntimePlan].
+  Future<LaunchPlan> prepareLaunchFromRuntimePlan({
+    required AppSession session,
+    required Workspace workspace,
+    required SessionRuntimePlan plan,
+    TeamProfile? team,
+    SessionMemberBinding? memberBinding,
+    CliPreset? preset,
+    Map<String, Map<String, Object?>>? extraMcpServers,
+    MemberBusIdleEndpoint? busIdle,
+  }) async {
+    return (await _prepareLaunchPlanFromRuntimePlan(
+      session: session,
+      workspace: workspace,
+      plan: plan,
+      team: team,
+      memberBinding: memberBinding,
+      preset: preset,
+      extraMcpServers: extraMcpServers,
+      busIdle: busIdle,
+    )).plan;
+  }
+
+  /// Prepare [ShellLaunchSpec] from an already-built [SessionRuntimePlan].
+  Future<ShellLaunchSpec> prepareShellLaunchFromRuntimePlan({
+    required AppSession session,
+    required Workspace workspace,
+    required SessionRuntimePlan plan,
+    TeamProfile? team,
+    SessionMemberBinding? memberBinding,
+    CliPreset? preset,
+    Map<String, Map<String, Object?>>? extraMcpServers,
+    MemberBusIdleEndpoint? busIdle,
+  }) async {
+    final prepared = await _prepareLaunchPlanFromRuntimePlan(
+      session: session,
+      workspace: workspace,
+      plan: plan,
+      team: team,
+      memberBinding: memberBinding,
+      preset: preset,
+      extraMcpServers: extraMcpServers,
+      busIdle: busIdle,
+    );
+    final isSimple = plan.mode == SessionRuntimeMode.simple;
+    return ShellLaunchSpec(
+      plan: prepared.plan,
+      launchContext: _buildShellLaunchContextFromPlan(
+        session: session,
+        plan: prepared.plan,
+        runtimePlan: plan,
+        workspace: workspace,
+        team: team,
+        preset: prepared.activePreset,
+      ),
+      sessionTeam: _resolveSessionTeam(session, prepared.plan, isSimple),
+    );
+  }
+
+  /// Builds [ShellLaunchSpec] after session config was applied on the work
+  /// machine (Phase B). Consumes [SessionRuntimePlan] for member + bundle.
+  Future<ShellLaunchSpec> prepareShellLaunchFromEnvironmentPlan({
+    required AppSession session,
+    required Workspace workspace,
+    required SessionRuntimePlan plan,
+    TeamProfile? team,
+    SessionMemberBinding? memberBinding,
+    CliPreset? preset,
+    required Map<String, String> environment,
+    Map<String, Map<String, Object?>>? extraMcpServers,
+    MemberBusIdleEndpoint? busIdle,
+  }) async {
+    final prepared = await _prepareLaunchPlanFromEnvironmentPlan(
+      session: session,
+      workspace: workspace,
+      plan: plan,
+      team: team,
+      memberBinding: memberBinding,
+      preset: preset,
+      environment: environment,
+      extraMcpServers: extraMcpServers,
+      busIdle: busIdle,
+    );
+    final isSimple = plan.mode == SessionRuntimeMode.simple;
+    return ShellLaunchSpec(
+      plan: prepared.plan,
+      launchContext: _buildShellLaunchContextFromPlan(
+        session: session,
+        plan: prepared.plan,
+        runtimePlan: plan,
+        workspace: workspace,
+        team: team,
+        preset: prepared.activePreset,
+      ),
+      sessionTeam: _resolveSessionTeam(session, prepared.plan, isSimple),
+    );
+  }
+
   /// Builds [ShellLaunchSpec] after session config was applied on the work
   /// machine (Phase B). Only resolves resume ids and assembles launch context.
   Future<ShellLaunchSpec> prepareShellLaunchFromEnvironment({
@@ -410,6 +501,439 @@ class SessionLifecycleService {
       globalPresets: _loadPresets?.call() ?? const [],
     );
   }
+
+
+  Future<
+    ({
+      LaunchPlan plan,
+      CliPreset? activePreset,
+      TeamMemberConfig resolvedMember,
+    })
+  >
+  _prepareLaunchPlanFromRuntimePlan({
+    required AppSession session,
+    required Workspace workspace,
+    required SessionRuntimePlan plan,
+    TeamProfile? team,
+    SessionMemberBinding? memberBinding,
+    CliPreset? preset,
+    Map<String, Map<String, Object?>>? extraMcpServers,
+    MemberBusIdleEndpoint? busIdle,
+  }) async {
+    final sessionId = session.sessionId.trim();
+    final isSimple = plan.mode == SessionRuntimeMode.simple;
+    final launchMember = _memberWithPreset(plan.member, preset);
+    final taskId = isSimple
+        ? sessionId
+        : (memberBinding?.taskId.trim().isNotEmpty == true
+              ? memberBinding!.taskId.trim()
+              : sessionId);
+    final memberWork = session.workDirsForMember(
+      isSimple ? null : (memberBinding?.rosterMemberId ?? launchMember.id),
+      folders: workspace.folders,
+    );
+
+    appLogger.d(
+      '[session-lifecycle] prepareLaunchFromRuntimePlan start '
+      'session=$sessionId mode=${plan.mode.name} member=${launchMember.id}',
+    );
+
+    final roots = await _resolveRoots(
+      session: session,
+      memberId: isSimple
+          ? null
+          : (memberBinding?.rosterMemberId ?? launchMember.id),
+    );
+    final service = await _configProfileServiceFor(
+      roots,
+      launchWorkspaceId: isSimple ? workspace.workspaceId : null,
+    );
+
+    final activePreset = preset ??
+        (plan.presetId != null && plan.presetId!.trim().isNotEmpty
+            ? await resolvePresetById(plan.presetId!)
+            : null);
+    final memberForLaunch = _memberWithPreset(launchMember, activePreset);
+
+    final cliTeamName = session.cliTeamName.trim();
+    final runtimeTeamId = isSimple
+        ? sessionId
+        : (cliTeamName.isNotEmpty ? cliTeamName : sessionId);
+    final cli = isSimple
+        ? (session.cli ??
+              memberForLaunch.cli ??
+              activePreset?.cli ??
+              CliTool.claude)
+        : (team != null
+              ? _memberLaunchCli(team, memberForLaunch)
+              : (memberForLaunch.cli ?? CliTool.claude));
+    final tools = [cli.value];
+    final teamId = (team?.id ?? plan.teamId ?? session.sessionTeam).trim();
+
+    final transcriptRoots = isSimple
+        ? _standaloneTranscriptSearchRoots(
+            layout: roots.layout,
+            workspaceId: workspace.workspaceId,
+            sessionId: sessionId,
+            tools: tools,
+          )
+        : roots.layout.transcriptSearchRoots(
+            workspaceId: session.workspaceId.trim(),
+            sessionId: session.sessionId.trim(),
+            profileId: teamId,
+            tools: tools,
+          );
+
+    final prepared = await _prepareEnvFromRuntimePlan(
+      service: service,
+      session: session,
+      workspace: workspace,
+      plan: plan,
+      team: team,
+      member: memberForLaunch,
+      memberBinding: memberBinding,
+      runtimeTeamId: runtimeTeamId,
+      workingDirectory: memberWork.workingDirectory,
+      extraMcpServers: extraMcpServers,
+      busIdle: busIdle,
+      preset: activePreset,
+    );
+
+    final memberConfigDir = _memberConfigDirFromEnv(prepared.env);
+    final rootsForResume = <String>{
+      ...transcriptRoots,
+      if (memberConfigDir.isNotEmpty) memberConfigDir,
+    }.toList(growable: false);
+
+    final resume = await _resolveResume(
+      roots: roots,
+      cli: cli,
+      taskId: taskId,
+      env: prepared.env,
+      transcriptRoots: rootsForResume,
+      bucket: RuntimeLayout.workspaceBucketForPrimaryPath(
+        memberWork.workingDirectory,
+      ),
+      persistedNativeId: isSimple
+          ? session.nativeSessionIds[cli.value]
+          : memberBinding?.nativeSessionIds[cli.value],
+      previouslyLaunched: session.launchState == AppSessionLaunchState.started,
+      workspaceId: session.workspaceId,
+      sessionId: sessionId,
+      memberId: isSimple
+          ? null
+          : (memberBinding?.rosterMemberId ?? memberForLaunch.id),
+      teamId: isSimple ? null : teamId,
+    );
+
+    final launchPlan = LaunchPlan(
+      env: prepared.env,
+      resume: resume.resumeSessionId != null,
+      taskId: taskId,
+      createSessionId: resume.createSessionId,
+      resumeSessionId: resume.resumeSessionId,
+      nativeSessionIdToPersist: resume.nativeSessionIdToPersist,
+      isFreshConversation: resume.isFreshConversation,
+      toolValue: cli.value,
+      cliTeamName: runtimeTeamId,
+      memberConfigDir: memberConfigDir,
+      resolvedRoots: rootsForResume,
+      warnings: prepared.warnings,
+    );
+
+    appLogger.d(
+      '[session-lifecycle] prepareLaunchFromRuntimePlan ready '
+      'session=$sessionId resume=${launchPlan.resume}',
+    );
+
+    return (
+      plan: launchPlan,
+      activePreset: activePreset,
+      resolvedMember: memberForLaunch,
+    );
+  }
+
+  Future<
+    ({
+      LaunchPlan plan,
+      CliPreset? activePreset,
+      TeamMemberConfig resolvedMember,
+    })
+  >
+  _prepareLaunchPlanFromEnvironmentPlan({
+    required AppSession session,
+    required Workspace workspace,
+    required SessionRuntimePlan plan,
+    TeamProfile? team,
+    SessionMemberBinding? memberBinding,
+    CliPreset? preset,
+    required Map<String, String> environment,
+    Map<String, Map<String, Object?>>? extraMcpServers,
+    MemberBusIdleEndpoint? busIdle,
+  }) async {
+    final sessionId = session.sessionId.trim();
+    final isSimple = plan.mode == SessionRuntimeMode.simple;
+    final launchMember = _memberWithPreset(plan.member, preset);
+    final taskId = isSimple
+        ? sessionId
+        : (memberBinding?.taskId.trim().isNotEmpty == true
+              ? memberBinding!.taskId.trim()
+              : sessionId);
+    final memberWork = session.workDirsForMember(
+      isSimple ? null : (memberBinding?.rosterMemberId ?? launchMember.id),
+      folders: workspace.folders,
+    );
+
+    final roots = await _resolveRoots(
+      session: session,
+      memberId: isSimple
+          ? null
+          : (memberBinding?.rosterMemberId ?? launchMember.id),
+    );
+    final activePreset = preset ??
+        (plan.presetId != null && plan.presetId!.trim().isNotEmpty
+            ? await resolvePresetById(plan.presetId!)
+            : null);
+    final memberForLaunch = _memberWithPreset(launchMember, activePreset);
+    final cliTeamName = session.cliTeamName.trim();
+    final runtimeTeamId = isSimple
+        ? sessionId
+        : (cliTeamName.isNotEmpty ? cliTeamName : sessionId);
+    final cli = isSimple
+        ? (session.cli ??
+              memberForLaunch.cli ??
+              activePreset?.cli ??
+              CliTool.claude)
+        : (team != null
+              ? _memberLaunchCli(team, memberForLaunch)
+              : (memberForLaunch.cli ?? CliTool.claude));
+    final tools = [cli.value];
+    final teamId = (team?.id ?? plan.teamId ?? session.sessionTeam).trim();
+    final transcriptRoots = isSimple
+        ? _standaloneTranscriptSearchRoots(
+            layout: roots.layout,
+            workspaceId: workspace.workspaceId,
+            sessionId: sessionId,
+            tools: tools,
+          )
+        : roots.layout.transcriptSearchRoots(
+            workspaceId: session.workspaceId.trim(),
+            sessionId: session.sessionId.trim(),
+            profileId: teamId,
+            tools: tools,
+          );
+    final memberConfigDir = _memberConfigDirFromEnv(environment);
+    final rootsForResume = <String>{
+      ...transcriptRoots,
+      if (memberConfigDir.isNotEmpty) memberConfigDir,
+    }.toList(growable: false);
+
+    final resume = await _resolveResume(
+      roots: roots,
+      cli: cli,
+      taskId: taskId,
+      env: environment,
+      transcriptRoots: rootsForResume,
+      bucket: RuntimeLayout.workspaceBucketForPrimaryPath(
+        memberWork.workingDirectory,
+      ),
+      persistedNativeId: isSimple
+          ? session.nativeSessionIds[cli.value]
+          : memberBinding?.nativeSessionIds[cli.value],
+      previouslyLaunched: session.launchState == AppSessionLaunchState.started,
+      workspaceId: isSimple ? workspace.workspaceId : session.workspaceId,
+      sessionId: sessionId,
+      memberId: isSimple
+          ? null
+          : (memberBinding?.rosterMemberId ?? memberForLaunch.id),
+      teamId: isSimple ? null : teamId,
+    );
+
+    final launchPlan = LaunchPlan(
+      env: environment,
+      resume: resume.resumeSessionId != null,
+      taskId: taskId,
+      createSessionId: resume.createSessionId,
+      resumeSessionId: resume.resumeSessionId,
+      nativeSessionIdToPersist: resume.nativeSessionIdToPersist,
+      isFreshConversation: resume.isFreshConversation,
+      toolValue: cli.value,
+      cliTeamName: runtimeTeamId,
+      memberConfigDir: memberConfigDir,
+      resolvedRoots: rootsForResume,
+      warnings: const [],
+    );
+
+    return (
+      plan: launchPlan,
+      activePreset: activePreset,
+      resolvedMember: memberForLaunch,
+    );
+  }
+
+  Future<_PreparedLaunch> _prepareEnvFromRuntimePlan({
+    required ConfigProfileService service,
+    required AppSession session,
+    required Workspace workspace,
+    required SessionRuntimePlan plan,
+    TeamProfile? team,
+    required TeamMemberConfig member,
+    SessionMemberBinding? memberBinding,
+    required String runtimeTeamId,
+    required String workingDirectory,
+    Map<String, Map<String, Object?>>? extraMcpServers,
+    MemberBusIdleEndpoint? busIdle,
+    CliPreset? preset,
+  }) async {
+    final catalog = WorkspaceLaunchContext(
+      session: session,
+      workspace: workspace,
+    ).folderCatalog;
+    final memberDirs = session.workDirsForMember(
+      plan.mode == SessionRuntimeMode.simple
+          ? null
+          : (memberBinding?.rosterMemberId ?? member.id),
+      folders: catalog,
+    );
+    final cwd = workingDirectory.isNotEmpty
+        ? workingDirectory
+        : memberDirs.workingDirectory;
+
+    if (plan.mode == SessionRuntimeMode.simple) {
+      final outcome = await service.prepareSimpleSessionLaunch(
+        workspaceId: workspace.workspaceId,
+        sessionId: session.sessionId,
+        runtimeBundle: plan.runtimeBundle,
+        member: member,
+        workingDirectory: cwd,
+        additionalDirectories: memberDirs.addDirs,
+        extraMcpServers: extraMcpServers,
+        busIdle: busIdle,
+        preset: preset,
+      );
+      return _PreparedLaunch(
+        env: outcome.environment,
+        warnings: outcome.warnings,
+      );
+    }
+
+    final teamId = (team?.id ?? plan.teamId ?? '').trim();
+    if (team == null || teamId.isEmpty) {
+      throw StateError('Team SessionRuntimePlan requires team');
+    }
+    final launchCli = _memberLaunchCli(team, member);
+    final leadTaskId = memberBinding?.taskId.trim() ?? '';
+    final leadSessionId =
+        TeamMemberNaming.isTeamLead(member) && leadTaskId.isNotEmpty
+            ? leadTaskId
+            : null;
+    final outcome = await service.prepareTeamLaunch(
+      workspaceId: effectiveLaunchWorkspaceId(
+        workspaceId: session.workspaceId,
+        teamId: teamId,
+      ),
+      sessionId: session.sessionId.trim(),
+      teamId: teamId,
+      cliTeamName: runtimeTeamId,
+      cli: launchCli,
+      members: team.members,
+      member: member,
+      workingDirectory: memberDirs.workingDirectory.isNotEmpty
+          ? memberDirs.workingDirectory
+          : cwd,
+      additionalDirectories: memberDirs.addDirs,
+      team: team,
+      runtimeBundle: plan.runtimeBundle,
+      leadSessionId: leadSessionId,
+      extraMcpServers: extraMcpServers,
+      busIdle: busIdle,
+    );
+    return _PreparedLaunch(
+      env: outcome.environment,
+      warnings: outcome.warnings,
+    );
+  }
+
+  CliLaunchContext _buildShellLaunchContextFromPlan({
+    required AppSession session,
+    required LaunchPlan plan,
+    required SessionRuntimePlan runtimePlan,
+    required Workspace workspace,
+    TeamProfile? team,
+    CliPreset? preset,
+  }) {
+    final member = _memberWithPreset(runtimePlan.member, preset);
+    final catalog = WorkspaceLaunchContext(
+      session: session,
+      workspace: workspace,
+    ).folderCatalog;
+
+    if (runtimePlan.mode == SessionRuntimeMode.simple) {
+      final personalDirs = session.workDirsForMember(null, folders: catalog);
+      final launchTeam = TeamProfile(
+        id: workspace.workspaceId,
+        name: plan.cliTeamName.trim().isNotEmpty
+            ? plan.cliTeamName.trim()
+            : session.sessionId,
+        cli: member.cli ?? preset?.cli ?? session.cli ?? CliTool.claude,
+        members: [member],
+        skillIds: runtimePlan.runtimeBundle.skillIds,
+        pluginIds: runtimePlan.runtimeBundle.pluginIds,
+        mcpServerIds: runtimePlan.runtimeBundle.mcpServerIds,
+        teamMode: TeamMode.native,
+        forceTeamLeadDelegateMode: false,
+      );
+      return CliLaunchContext(
+        team: launchTeam,
+        member: member,
+        sessionTeam: plan.cliTeamName,
+        workingDirectory: personalDirs.workingDirectory,
+        additionalDirectories: personalDirs.addDirs,
+        isFreshConversation: plan.isFreshConversation,
+      );
+    }
+
+    if (team == null) {
+      throw StateError(
+        'prepareShellLaunch requires team for team SessionRuntimePlan',
+      );
+    }
+    final memberDirs = session.workDirsForMember(member.id, folders: catalog);
+    final launchTeam = team.copyWith(
+      skillIds: runtimePlan.runtimeBundle.skillIds,
+      pluginIds: runtimePlan.runtimeBundle.pluginIds,
+      mcpServerIds: runtimePlan.runtimeBundle.mcpServerIds,
+    );
+    return CliLaunchContext(
+      team: launchTeam,
+      member: member,
+      sessionTeam: _resolveSessionTeam(session, plan, false),
+      workingDirectory: memberDirs.workingDirectory.isNotEmpty
+          ? memberDirs.workingDirectory
+          : session.firstFolderPath,
+      additionalDirectories: memberDirs.addDirs,
+      isFreshConversation: plan.isFreshConversation,
+    );
+  }
+
+  TeamMemberConfig _memberWithPreset(
+    TeamMemberConfig member,
+    CliPreset? preset,
+  ) {
+    if (preset == null) return member;
+    return member.copyWith(
+      provider: preset.provider.trim().isNotEmpty
+          ? preset.provider.trim()
+          : member.provider,
+      model: preset.model.trim().isNotEmpty ? preset.model.trim() : member.model,
+      effort: preset.effort.trim().isNotEmpty
+          ? preset.effort.trim()
+          : member.effort,
+      cli: preset.cli,
+      updateCli: true,
+    );
+  }
+
 
   _prepareLaunchPlanFromEnvironment({
     required AppSession session,
@@ -1057,7 +1581,9 @@ class SessionLifecycleService {
         : session.folders;
     final memberDirs = session.workDirsForMember(member.id, folders: catalog);
     return CliLaunchContext(
-      team: _teamWithProjectBundle(team, projectBundle),
+      // Bundle ids come from SessionRuntimePlan at connect; do not overwrite
+      // team.bundle with workspace project-config here.
+      team: team,
       member: member,
       sessionTeam: _resolveSessionTeam(session, plan, false),
       workingDirectory: memberDirs.workingDirectory.isNotEmpty
@@ -1100,6 +1626,8 @@ class SessionLifecycleService {
     CliPreset? preset,
   }) async {
     if (isPersonal) {
+      // Legacy prepareLaunch(personal:) path — prefer prepare*FromRuntimePlan.
+      // Still used by older call sites/tests until Task 9 deletes PersonalProfile.
       final personalWorkspace = workspace!;
       final resolvedPersonal =
           personal ??
@@ -1110,11 +1638,18 @@ class SessionLifecycleService {
       ).folderCatalog;
       final personalDirs = session.workDirsForMember(null, folders: catalog);
       final resolvedExpert = await _resolveSessionExpert(session);
-      final outcome = await service.prepareSessionLaunch(
+      final member = personalMemberForSession(
+        resolvedPersonal,
+        preset: preset,
+        sessionExpertKey: session.expertKey,
+        resolvedExpert: resolvedExpert,
+      );
+      final projectBundle = await _projectBundle(personalWorkspace.workspaceId);
+      final outcome = await service.prepareSimpleSessionLaunch(
         workspaceId: personalWorkspace.workspaceId,
         sessionId: session.sessionId,
-        profileId: resolvedPersonal.id,
-        personal: resolvedPersonal,
+        runtimeBundle: projectBundle,
+        member: member,
         workingDirectory: workingDirectory.isNotEmpty
             ? workingDirectory
             : personalDirs.workingDirectory,
@@ -1122,8 +1657,6 @@ class SessionLifecycleService {
         extraMcpServers: extraMcpServers,
         busIdle: busIdle,
         preset: preset,
-        sessionExpertKey: session.expertKey,
-        resolvedExpert: resolvedExpert,
       );
       return _PreparedLaunch(
         env: outcome.environment,

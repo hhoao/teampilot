@@ -1,4 +1,3 @@
-import '../../models/personal_profile.dart';
 import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
@@ -83,7 +82,6 @@ class WorkspaceProvisioner {
     required RuntimeTarget target,
     required String workspaceId,
     required CliTool cli,
-    PersonalProfile? personal,
     Iterable<String> trustedDirectories = const [],
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
@@ -105,15 +103,12 @@ class WorkspaceProvisioner {
         optInCredentials: await isCredentialOptIn(target.id),
       );
     }
-    if (personal != null) {
-      final configProfile = await configProfileFactory(workContext);
-      await configProfile.provisionWorkspace(
-        workspaceId: trimmedWorkspaceId,
-        cli: cli,
-        personal: personal,
-        trustedDirectories: trustedDirectories,
-      );
-    }
+    final configProfile = await configProfileFactory(workContext);
+    await configProfile.provisionWorkspace(
+      workspaceId: trimmedWorkspaceId,
+      cli: cli,
+      trustedDirectories: trustedDirectories,
+    );
     appLogger.d(
       '[workspace-provision] done target=${target.id} '
       'workspace=$trimmedWorkspaceId cli=${cli.value}',

@@ -13,7 +13,6 @@ import '../../services/launch/connect_shell_result.dart';
 import '../../services/launch/session_shell_connector.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logger.dart';
-import 'personal_launch_context_resolver.dart';
 import 'session_launch_workspace_index.dart';
 
 typedef ShellForLaunchFn =

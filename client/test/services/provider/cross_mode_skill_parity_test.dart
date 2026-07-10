@@ -3,7 +3,6 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/config_bundle.dart';
-import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
@@ -56,15 +55,11 @@ void main() {
         ],
       );
 
-      await service.prepareSessionLaunch(
+      await service.prepareSimpleSessionLaunch(
         workspaceId: 'p',
         sessionId: 's',
-        profileId: 'personal-default',
-        personal: const PersonalProfile(
-          id: 'p',
-          display: 'p',
-          bundle: ConfigBundle(skillIds: ['demo']),
-        ),
+        runtimeBundle: const ConfigBundle(skillIds: ['demo']),
+        member: const TeamMemberConfig(id: 'solo', name: 'solo', cli: CliTool.flashskyai),
       );
 
       await service.prepareTeamLaunch(

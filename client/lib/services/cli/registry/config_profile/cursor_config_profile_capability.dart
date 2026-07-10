@@ -36,8 +36,7 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
     ConfigProfileLaunchContext ctx,
   ) async {
     final standalone = ctx.standaloneScope;
-    final personal = ctx.personal;
-    if (standalone != null && personal != null) {
+    if (standalone != null) {
       return _contributeStandaloneLaunch(ctx, standalone);
     }
     return _contributeTeamLaunch(ctx);
@@ -48,7 +47,6 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
     StandaloneLaunchProfileScope standalone,
   ) async {
     final paths = ctx.paths;
-    final personal = ctx.personal!;
     final warnings = <String>[];
     // Isolate under a fake `$HOME` (like mixed mode) so cursor reads the
     // session's `~/.cursor` — plugins/MCP/skills are materialized there.
@@ -94,7 +92,15 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
     ).provision(
       memberHome: home,
       providerId: providerId.isEmpty ? null : providerId,
-      member: personalMemberForSession(personal, preset: ctx.preset, sessionExpertKey: ctx.sessionExpertKey, resolvedExpert: ctx.resolvedExpert),
+      member: ctx.member ??
+          (ctx.personal != null
+              ? personalMemberForSession(
+                  ctx.personal!,
+                  preset: ctx.preset,
+                  sessionExpertKey: ctx.sessionExpertKey,
+                  resolvedExpert: ctx.resolvedExpert,
+                )
+              : throw StateError('Simple launch requires plan.member')),
       busIdle: null,
       forceTeamLeadDelegateMode: false,
       mixed: false,

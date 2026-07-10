@@ -53,8 +53,7 @@ final class FlashskyaiConfigProfileCapability
     final delegate = ctx.paths;
     await delegate.layout.ensureAppToolLayout(toolId);
     final standalone = ctx.standaloneScope;
-    final personal = ctx.personal;
-    if (standalone != null && personal != null) {
+    if (standalone != null) {
       await _ensureSessionDefaultsAt(
         delegate,
         standaloneSessionToolDir(delegate, standalone, toolId),
@@ -74,9 +73,8 @@ final class FlashskyaiConfigProfileCapability
     ConfigProfileLaunchContext ctx,
   ) async {
     final standalone = ctx.standaloneScope;
-    final personal = ctx.personal;
-    if (standalone != null && personal != null) {
-      return _contributeStandaloneLaunch(ctx, standalone, personal);
+    if (standalone != null) {
+      return _contributeStandaloneLaunch(ctx, standalone);
     }
 
     final delegate = ctx.paths;
@@ -170,10 +168,17 @@ final class FlashskyaiConfigProfileCapability
   Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
     ConfigProfileLaunchContext ctx,
     StandaloneLaunchProfileScope standalone,
-    PersonalProfile personal,
   ) async {
     final delegate = ctx.paths;
-    final member = personalMemberForSession(personal, preset: ctx.preset, sessionExpertKey: ctx.sessionExpertKey, resolvedExpert: ctx.resolvedExpert);
+    final member = ctx.member ??
+        (ctx.personal != null
+            ? personalMemberForSession(
+                ctx.personal!,
+                preset: ctx.preset,
+                sessionExpertKey: ctx.sessionExpertKey,
+                resolvedExpert: ctx.resolvedExpert,
+              )
+            : throw StateError('Simple launch requires plan.member'));
     final memberToolDir = standaloneSessionToolDir(
       delegate,
       standalone,

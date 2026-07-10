@@ -239,9 +239,8 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     ConfigProfileLaunchContext ctx,
   ) async {
     final standalone = ctx.standaloneScope;
-    final personal = ctx.personal;
-    if (standalone != null && personal != null) {
-      return _contributeStandaloneLaunch(ctx, standalone, personal);
+    if (standalone != null) {
+      return _contributeStandaloneLaunch(ctx, standalone);
     }
     return _contributeTeamLaunch(ctx);
   }
@@ -375,7 +374,6 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
   Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
     ConfigProfileLaunchContext ctx,
     StandaloneLaunchProfileScope standalone,
-    PersonalProfile personal,
   ) async {
     final paths = ctx.paths;
     final opencodeDir = standaloneSessionToolDir(paths, standalone, toolId);
@@ -393,7 +391,15 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     provider ??= await resolver.resolveSole();
     if (provider != null) {
       config = mergeOpencodeProvider(config, provider);
-      final member = personalMemberForSession(personal, preset: ctx.preset, sessionExpertKey: ctx.sessionExpertKey, resolvedExpert: ctx.resolvedExpert);
+      final member = (ctx.member ??
+          (ctx.personal != null
+              ? personalMemberForSession(
+                  ctx.personal!,
+                  preset: ctx.preset,
+                  sessionExpertKey: ctx.sessionExpertKey,
+                  resolvedExpert: ctx.resolvedExpert,
+                )
+              : throw StateError('Simple launch requires plan.member')));
       final effort = _resolveOpencodeEffort(
         team: null,
         member: member,
@@ -414,7 +420,15 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     if (await _writeMemberIdentity(
       paths: paths,
       opencodeDir: opencodeDir,
-      member: personalMemberForSession(personal, preset: ctx.preset, sessionExpertKey: ctx.sessionExpertKey, resolvedExpert: ctx.resolvedExpert),
+      member: (ctx.member ??
+          (ctx.personal != null
+              ? personalMemberForSession(
+                  ctx.personal!,
+                  preset: ctx.preset,
+                  sessionExpertKey: ctx.sessionExpertKey,
+                  resolvedExpert: ctx.resolvedExpert,
+                )
+              : throw StateError('Simple launch requires plan.member'))),
       forceTeamLeadDelegateMode: false,
       mixed: false,
     )) {

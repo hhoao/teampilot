@@ -1,0 +1,233 @@
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/cli_preset.dart';
+import 'package:teampilot/models/config_bundle.dart';
+import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_folder.dart';
+import 'package:teampilot/repositories/cli_presets_repository.dart';
+import 'package:teampilot/services/launch/session_runtime_plan.dart';
+import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
+
+import '../../support/in_memory_filesystem.dart';
+import '../../support/post_frame_test_harness.dart';
+import '../../support/test_runtime_context.dart';
+
+RuntimeContext _roots(String basePath) => testRuntimeContext(basePath);
+
+Future<CliPresetsRepository> _seededPresetsRepo({
+  required String presetId,
+  required CliTool cli,
+  required String provider,
+  required String model,
+}) async {
+  final fs = InMemoryFilesystem();
+  final repo = CliPresetsRepository(fs: fs, presetsPath: '/cli-presets.json');
+  await repo.save([
+    CliPreset(
+      id: presetId,
+      name: presetId,
+      cli: cli,
+      provider: provider,
+      model: model,
+      createdAt: 1,
+      updatedAt: 1,
+    ),
+  ]);
+  return repo;
+}
+
+void main() {
+  late Directory base;
+  late RuntimeLayout layout;
+
+  setUp(() async {
+    setUpTestAppStorage();
+    base = await Directory.systemTemp.createTemp('session_lifecycle_simple_');
+    layout = RuntimeLayout(teampilotRoot: base.path);
+  });
+
+  tearDown(() async {
+    if (await base.exists()) {
+      await base.delete(recursive: true);
+    }
+    tearDownTestAppStorage();
+  });
+
+  SessionLifecycleService service({CliPresetsRepository? cliPresetsRepository}) =>
+      SessionLifecycleService(
+        appDataBasePath: base.path,
+        storageRootsResolver: () async => _roots(base.path),
+        cliPresetsRepository: cliPresetsRepository,
+      );
+
+  SessionRuntimePlan simplePlan({
+    required String workspaceId,
+    required String sessionId,
+    ConfigBundle runtimeBundle = const ConfigBundle(),
+    TeamMemberConfig? member,
+    String? presetId,
+  }) {
+    return SessionRuntimePlan(
+      mode: SessionRuntimeMode.simple,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      memberId: member?.id ?? 'seat-1',
+      expertKey: 'teampilot/builtin/default',
+      presetId: presetId,
+      runtimeBundle: runtimeBundle,
+      member:
+          member ??
+          const TeamMemberConfig(
+            id: 'default',
+            name: 'Default',
+            prompt: 'You are the default expert.',
+            agent: 'default',
+          ),
+    );
+  }
+
+  test(
+    'prepareShellLaunchFromRuntimePlan uses plan.member and runtimeBundle',
+    () async {
+      const workspaceId = 'ws-simple';
+      const sessionId = 'sess-simple';
+      final presetsRepo = await _seededPresetsRepo(
+        presetId: 'preset-claude',
+        cli: CliTool.claude,
+        provider: 'anthropic',
+        model: 'sonnet',
+      );
+      final workspace = Workspace(
+        workspaceId: workspaceId,
+        folders: const [WorkspaceFolder(path: '/work/simple')],
+        createdAt: 1,
+      );
+      final session = AppSession(
+        sessionId: sessionId,
+        workspaceId: workspaceId,
+        folders: const [WorkspaceFolder(path: '/work/simple')],
+        sessionTeam: '',
+        expertKey: 'teampilot/builtin/default',
+        createdAt: 1,
+      );
+      final plan = simplePlan(
+        workspaceId: workspaceId,
+        sessionId: sessionId,
+        presetId: 'preset-claude',
+        runtimeBundle: const ConfigBundle(skillIds: ['ex-skill', 'ws-skill']),
+        member: const TeamMemberConfig(
+          id: 'architect',
+          name: 'Architect',
+          prompt: 'design systems',
+          playbook: 'approved patterns',
+          agent: 'architect',
+          provider: 'anthropic',
+          model: 'sonnet',
+          cli: CliTool.claude,
+        ),
+      );
+
+      final shellLaunch = await service(
+        cliPresetsRepository: presetsRepo,
+      ).prepareShellLaunchFromRuntimePlan(
+        session: session,
+        workspace: workspace,
+        plan: plan,
+        preset: await presetsRepo.load().then(
+          (list) => list.firstWhere((p) => p.id == 'preset-claude'),
+        ),
+      );
+
+      expect(shellLaunch.sessionTeam, sessionId);
+      expect(shellLaunch.launchContext.member.id, 'architect');
+      expect(shellLaunch.launchContext.member.prompt, contains('design'));
+      expect(shellLaunch.launchContext.member.playbook, contains('approved'));
+      expect(shellLaunch.launchContext.team.skillIds, ['ex-skill', 'ws-skill']);
+      expect(shellLaunch.launchContext.team.cli, CliTool.claude);
+      expect(shellLaunch.plan.env['CLAUDE_CONFIG_DIR'], isNotEmpty);
+    },
+  );
+
+  test(
+    'simple prepare does not create identities-runtime directory',
+    () async {
+      const workspaceId = 'ws-simple';
+      const sessionId = 'sess-simple';
+      final workspace = Workspace(
+        workspaceId: workspaceId,
+        folders: const [WorkspaceFolder(path: '/work/simple')],
+        createdAt: 1,
+      );
+      final session = AppSession(
+        sessionId: sessionId,
+        workspaceId: workspaceId,
+        folders: const [WorkspaceFolder(path: '/work/simple')],
+        sessionTeam: '',
+        createdAt: 1,
+      );
+      final plan = simplePlan(workspaceId: workspaceId, sessionId: sessionId);
+
+      await service().prepareShellLaunchFromRuntimePlan(
+        session: session,
+        workspace: workspace,
+        plan: plan,
+      );
+
+      final identityRoot = Directory(p.join(base.path, 'identities-runtime'));
+      expect(
+        await identityRoot.exists(),
+        isFalse,
+        reason: 'Simple mode must skip identities-runtime/',
+      );
+      final claudeDir = layout.sessionRuntimeToolDir(
+        workspaceId,
+        sessionId,
+        'claude',
+      );
+      expect(await Directory(claudeDir).exists(), isTrue);
+    },
+  );
+
+  test(
+    'simple prepareLaunch returns CLAUDE_CONFIG_DIR under session runtime',
+    () async {
+      const workspaceId = 'ws-simple';
+      const sessionId = 'sess-simple';
+      final workspace = Workspace(
+        workspaceId: workspaceId,
+        folders: const [WorkspaceFolder(path: '/work/simple')],
+        createdAt: 1,
+      );
+      final session = AppSession(
+        sessionId: sessionId,
+        workspaceId: workspaceId,
+        folders: const [WorkspaceFolder(path: '/work/simple')],
+        sessionTeam: '',
+        createdAt: 1,
+      );
+      final plan = simplePlan(workspaceId: workspaceId, sessionId: sessionId);
+
+      final launchPlan = await service().prepareLaunchFromRuntimePlan(
+        session: session,
+        workspace: workspace,
+        plan: plan,
+      );
+
+      final claudeDir = layout.sessionRuntimeToolDir(
+        workspaceId,
+        sessionId,
+        'claude',
+      );
+      expect(launchPlan.env['CLAUDE_CONFIG_DIR'], claudeDir);
+      expect(launchPlan.memberConfigDir, claudeDir);
+      expect(launchPlan.taskId, sessionId);
+      expect(launchPlan.cliTeamName, sessionId);
+    },
+  );
+}

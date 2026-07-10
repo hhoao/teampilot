@@ -3,13 +3,16 @@ import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_known_host_repository.dart';
+import '../../repositories/workspace_project_config_repository.dart';
 import '../cli/registry/cli_tool_registry.dart';
+import '../expert_hub/expert_capability_resolver.dart';
 import '../remote/remote_app_data_materializer.dart';
 import '../session/session_lifecycle_service.dart';
 import '../ssh/ssh_client_factory.dart';
 import '../storage/app_storage.dart';
 import '../storage/runtime_context.dart';
 import 'session_connect_orchestrator.dart';
+import 'session_runtime_plan_builder.dart';
 import 'manifest_executor.dart';
 import 'workspace_provision_coordinator.dart';
 import 'workspace_provisioner.dart';
@@ -31,6 +34,7 @@ SessionConnectOrchestrator buildSessionConnectOrchestrator({
   setCliPathOverride,
   required LocalCredentialsLoader loadLocalCredentials,
   required Future<String> Function(CliTool cli) localCliPath,
+  required SessionRuntimePlanBuilder runtimePlanBuilder,
   RemoteResourceLinker? linkResources,
   RemoteRelayProvisioner? provisionRelay,
 }) {
@@ -67,6 +71,7 @@ SessionConnectOrchestrator buildSessionConnectOrchestrator({
     configProfileFor: lifecycle.configProfileServiceFor,
     homeContext: homeContext,
     manifestExecutor: manifestExecutor,
+    runtimePlanBuilder: runtimePlanBuilder,
   );
 }
 
@@ -75,6 +80,7 @@ SessionConnectOrchestrator buildSessionConnectOrchestrator({
 SessionConnectOrchestrator buildDefaultSessionConnectOrchestrator({
   required SessionLifecycleService lifecycle,
   required Future<String> Function(CliTool cli) localCliPath,
+  SessionRuntimePlanBuilder? runtimePlanBuilder,
   SshClientFactory? sshClientFactory,
   SshProfile? Function(String profileId)? profileById,
   RuntimeTarget Function()? homeTarget,
@@ -90,6 +96,17 @@ SessionConnectOrchestrator buildDefaultSessionConnectOrchestrator({
       paths: paths,
     );
   }
+
+  final builder =
+      runtimePlanBuilder ??
+      SessionRuntimePlanBuilder(
+        expertResolver: ExpertCapabilityResolver(
+          installSkill: (_) async => null,
+          installPlugin: (_) async => null,
+          installMcp: (_) async => null,
+        ),
+        workspaceProjectConfig: WorkspaceProjectConfigRepository(),
+      );
 
   return buildSessionConnectOrchestrator(
     lifecycle: lifecycle,
@@ -111,5 +128,6 @@ SessionConnectOrchestrator buildDefaultSessionConnectOrchestrator({
     setCliPathOverride: (_, __, ___) async {},
     loadLocalCredentials: (_) async => const [],
     localCliPath: localCliPath,
+    runtimePlanBuilder: builder,
   );
 }

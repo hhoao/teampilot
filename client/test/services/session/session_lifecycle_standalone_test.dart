@@ -2,52 +2,20 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/app_session.dart';
-import 'package:teampilot/models/workspace_folder.dart';
-import 'package:teampilot/models/cli_preset.dart';
-import 'package:teampilot/models/workspace_agent_config.dart';
-import 'package:teampilot/models/personal_profile.dart';
+import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/repositories/cli_presets_repository.dart';
-import 'package:teampilot/repositories/launch_profile_repository.dart';
-import 'package:teampilot/services/storage/runtime_layout.dart';
+import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_folder.dart';
+import 'package:teampilot/services/launch/session_runtime_plan.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
+
+import '../../support/post_frame_test_harness.dart';
 import '../../support/test_runtime_context.dart';
 
-import '../../support/in_memory_filesystem.dart';
-import '../../support/post_frame_test_harness.dart';
-
 RuntimeContext _roots(String basePath) => testRuntimeContext(basePath);
-
-/// Creates an [InMemoryFilesystem]-backed [CliPresetsRepository] seeded with
-/// a single preset so that [SessionLifecycleService] can resolve it via
-/// [PersonalProfile.activePresetId].
-Future<CliPresetsRepository> _seededPresetsRepo({
-  required String presetId,
-  required String name,
-  required CliTool cli,
-  required String provider,
-  required String model,
-  String effort = '',
-}) async {
-  final fs = InMemoryFilesystem();
-  final presetsPath = '/cli-presets.json';
-  final preset = CliPreset(
-    id: presetId,
-    name: name,
-    cli: cli,
-    provider: provider,
-    model: model,
-    effort: effort,
-    createdAt: 1,
-    updatedAt: 1,
-  );
-  final repo = CliPresetsRepository(fs: fs, presetsPath: presetsPath);
-  await repo.save([preset]);
-  return repo;
-}
 
 void main() {
   late Directory base;
@@ -55,9 +23,7 @@ void main() {
 
   setUp(() async {
     setUpTestAppStorage();
-    base = await Directory.systemTemp.createTemp(
-      'session_lifecycle_standalone_',
-    );
+    base = await Directory.systemTemp.createTemp('session_lifecycle_standalone_');
     layout = RuntimeLayout(teampilotRoot: base.path);
   });
 
@@ -68,278 +34,74 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  SessionLifecycleService service({
-    LaunchProfileRepository? identityRepository,
-    CliPresetsRepository? cliPresetsRepository,
-  }) => SessionLifecycleService(
-    appDataBasePath: base.path,
-    storageRootsResolver: () async => _roots(base.path),
-    identityRepository: identityRepository,
-    cliPresetsRepository: cliPresetsRepository,
-  );
+  SessionLifecycleService service() => SessionLifecycleService(
+        appDataBasePath: base.path,
+        storageRootsResolver: () async => _roots(base.path),
+      );
 
-  test('prepareShellLaunch loads persisted profile from repository', () async {
-    const workspaceId = 'personal-proj';
-    const sessionId = 'personal-sess';
-    final repo = testLaunchProfileRepository(base);
-    // Seed a preset for flashskyai so the resolved member/provider/model/cli
-    // come from the active preset instead of the (now-removed) profile fields.
-    final presetsRepo = await _seededPresetsRepo(
-      presetId: 'preset-fs',
-      name: 'FlashskyAI Work',
-      cli: CliTool.flashskyai,
-      provider: 'custom-provider',
-      model: 'opus',
+  SessionRuntimePlan simplePlan({
+    required String workspaceId,
+    required String sessionId,
+    TeamMemberConfig? member,
+  }) {
+    return SessionRuntimePlan(
+      mode: SessionRuntimeMode.simple,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      memberId: member?.id ?? 'seat-1',
+      expertKey: 'teampilot/builtin/default',
+      runtimeBundle: const ConfigBundle(),
+      member: member ??
+          const TeamMemberConfig(
+            id: 'default',
+            name: 'Default',
+            agent: 'default',
+          ),
     );
-    await repo.save(
-      PersonalProfile(
-        id: workspaceId,
-        display: workspaceId,
-        activePresetId: 'preset-fs',
-        agent: const WorkspaceAgentConfig(agent: 'persisted-agent'),
-      ),
-    );
+  }
+
+  test('prepareShellLaunchFromRuntimePlan includes CliLaunchContext', () async {
+    const workspaceId = 'ws-simple';
+    const sessionId = 'sess-simple';
     final workspace = Workspace(
       workspaceId: workspaceId,
-      folders: const [WorkspaceFolder(path: '/work/personal')],
+      folders: const [WorkspaceFolder(path: '/work/simple')],
       createdAt: 1,
     );
     final session = AppSession(
       sessionId: sessionId,
       workspaceId: workspaceId,
-      folders: const [WorkspaceFolder(path: '/work/personal')],
+      folders: const [WorkspaceFolder(path: '/work/simple')],
       sessionTeam: '',
       createdAt: 1,
     );
 
-    final shellLaunch =
-        await service(
-          identityRepository: repo,
-          cliPresetsRepository: presetsRepo,
-        ).prepareShellLaunch(
-          session: session,
-          workspace: workspace,
-          personal: (await repo.loadAll())
-              .whereType<PersonalProfile>()
-              .firstWhere((p) => p.id == workspaceId),
-        );
-
-    expect(shellLaunch.launchContext.member.model, 'opus');
-    expect(shellLaunch.launchContext.member.agent, 'persisted-agent');
-    expect(shellLaunch.launchContext.member.provider, 'custom-provider');
-    expect(shellLaunch.launchContext.team.cli, CliTool.flashskyai);
-  });
-
-  test(
-    'personal session prepareLaunch returns CLAUDE_CONFIG_DIR under standalone/',
-    () async {
-      const workspaceId = 'personal-proj';
-      const sessionId = 'personal-sess';
-      const profile = PersonalProfile(
-        id: workspaceId,
-        display: workspaceId,
-        agent: WorkspaceAgentConfig(agent: 'solo'),
-      );
-      final workspace = Workspace(
+    final shellLaunch = await service().prepareShellLaunchFromRuntimePlan(
+      session: session,
+      workspace: workspace,
+      plan: simplePlan(
         workspaceId: workspaceId,
-        folders: const [WorkspaceFolder(path: '/work/personal')],
-        createdAt: 1,
-      );
-      final session = AppSession(
         sessionId: sessionId,
-        workspaceId: workspaceId,
-        folders: const [WorkspaceFolder(path: '/work/personal')],
-        sessionTeam: '',
-        createdAt: 1,
-      );
-
-      final plan = await service().prepareLaunch(
-        session: session,
-        workspace: workspace,
-        personal: profile,
-      );
-
-      final claudeDir = layout.sessionRuntimeToolDir(
-        workspaceId,
-        sessionId,
-        'claude',
-      );
-      expect(plan.env['CLAUDE_CONFIG_DIR'], claudeDir);
-      expect(plan.memberConfigDir, claudeDir);
-      expect(plan.taskId, sessionId);
-      expect(plan.cliTeamName, sessionId);
-      expect(plan.resume, isFalse);
-      expect(plan.resolvedRoots, contains(claudeDir));
-    },
-  );
-
-  test(
-    'prepareShellLaunch includes CliLaunchContext for personal sessions',
-    () async {
-      const workspaceId = 'personal-proj';
-      const sessionId = 'personal-sess';
-      // Seed a claude preset so the resolved model/provider/cli match.
-      final presetsRepo = await _seededPresetsRepo(
-        presetId: 'preset-claude',
-        name: 'Claude Work',
-        cli: CliTool.claude,
-        provider: 'anthropic',
-        model: 'sonnet',
-      );
-      const profile = PersonalProfile(
-        id: workspaceId,
-        display: workspaceId,
-        activePresetId: 'preset-claude',
-        agent: WorkspaceAgentConfig(agent: 'solo'),
-      );
-      final workspace = Workspace(
-        workspaceId: workspaceId,
-        folders: const [WorkspaceFolder(path: '/work/personal')],
-        createdAt: 1,
-      );
-      final session = AppSession(
-        sessionId: sessionId,
-        workspaceId: workspaceId,
-        folders: const [WorkspaceFolder(path: '/work/personal')],
-        sessionTeam: '',
-        createdAt: 1,
-      );
-
-      final shellLaunch = await service(cliPresetsRepository: presetsRepo)
-          .prepareShellLaunch(
-            session: session,
-            workspace: workspace,
-            personal: profile,
-          );
-
-      expect(shellLaunch.sessionTeam, sessionId);
-      expect(shellLaunch.launchContext.member.model, 'sonnet');
-      expect(shellLaunch.launchContext.member.agent, 'solo');
-      expect(shellLaunch.launchContext.member.provider, 'anthropic');
-      expect(shellLaunch.launchContext.team.cli, CliTool.claude);
-      expect(shellLaunch.plan.env['CLAUDE_CONFIG_DIR'], isNotEmpty);
-    },
-  );
-
-  test('personal session resumes under its pinned CLI even after the active '
-      'preset switches to another CLI', () async {
-    const workspaceId = 'personal-proj';
-    const sessionId = 'personal-sess';
-    // The workspace's active preset is now Codex, but the session was created
-    // with (and is pinned to) Claude. Switching the active CLI must not
-    // re-bind the existing session: its launch + resume probe must still
-    // target Claude, or the prior transcript would be orphaned (data loss).
-    final fs = InMemoryFilesystem();
-    final presetsRepo = CliPresetsRepository(
-      fs: fs,
-      presetsPath: '/cli-presets.json',
-    );
-    await presetsRepo.save([
-      CliPreset(
-        id: 'preset-claude',
-        name: 'Claude Work',
-        cli: CliTool.claude,
-        provider: 'anthropic',
-        model: 'sonnet',
-        createdAt: 1,
-        updatedAt: 1,
-      ),
-      CliPreset(
-        id: 'preset-codex',
-        name: 'Codex Work',
-        cli: CliTool.codex,
-        provider: 'openai',
-        model: 'gpt',
-        createdAt: 2,
-        updatedAt: 2,
-      ),
-    ]);
-    const profile = PersonalProfile(
-      id: workspaceId,
-      display: workspaceId,
-      activePresetId: 'preset-codex',
-    );
-    final workspace = Workspace(
-      workspaceId: workspaceId,
-      folders: const [WorkspaceFolder(path: '/work/personal')],
-      createdAt: 1,
-    );
-    final session = AppSession(
-      sessionId: sessionId,
-      workspaceId: workspaceId,
-      folders: const [WorkspaceFolder(path: '/work/personal')],
-      sessionTeam: '',
-      cli: CliTool.claude,
-      createdAt: 1,
-    );
-
-    final plan = await service(
-      cliPresetsRepository: presetsRepo,
-    ).prepareLaunch(session: session, workspace: workspace, personal: profile);
-
-    final claudeDir = layout.sessionRuntimeToolDir(
-      workspaceId,
-      sessionId,
-      'claude',
-    );
-    // Resolved under Claude (session.cli), not Codex (active preset).
-    expect(plan.env['CLAUDE_CONFIG_DIR'], claudeDir);
-    expect(plan.memberConfigDir, claudeDir);
-    expect(
-      plan.resolvedRoots.any((r) => r.contains('codex')),
-      isFalse,
-      reason: 'must not probe the active preset CLI (codex) for resume',
-    );
-  });
-
-  test(
-    'personal claude session resumes when transcript lives under projects/',
-    () async {
-      const workspaceId = 'personal-proj';
-      const sessionId = 'personal-sess';
-      const profile = PersonalProfile(id: workspaceId, display: workspaceId);
-      final workspace = Workspace(
-        workspaceId: workspaceId,
-        folders: const [WorkspaceFolder(path: '/home/hhoa/git/hhoa/teampilot')],
-        createdAt: 1,
-      );
-      final session = AppSession(
-        sessionId: sessionId,
-        workspaceId: workspaceId,
-        folders: const [WorkspaceFolder(path: '/home/hhoa/git/hhoa/teampilot')],
-        sessionTeam: '',
-        cli: CliTool.claude,
-        launchState: AppSessionLaunchState.started,
-        createdAt: 1,
-      );
-      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
-        session.firstFolderPath,
-      );
-      final transcript = File(
-        p.join(
-          layout.sessionRuntimeToolDir(workspaceId, sessionId, 'claude'),
-          'projects',
-          bucket,
-          '$sessionId.jsonl',
+        member: const TeamMemberConfig(
+          id: 'solo',
+          name: 'solo',
+          agent: 'solo',
+          provider: 'anthropic',
+          model: 'sonnet',
+          cli: CliTool.claude,
         ),
-      );
-      await transcript.parent.create(recursive: true);
-      await transcript.writeAsString('{}\n');
+      ),
+    );
 
-      final plan = await service().prepareLaunch(
-        session: session,
-        workspace: workspace,
-        personal: profile,
-      );
-
-      expect(plan.resume, isTrue);
-      expect(plan.resumeSessionId, sessionId);
-      expect(plan.createSessionId, isNull);
-    },
-  );
+    expect(shellLaunch.sessionTeam, sessionId);
+    expect(shellLaunch.launchContext.member.model, 'sonnet');
+    expect(shellLaunch.launchContext.member.agent, 'solo');
+    expect(shellLaunch.launchContext.team.cli, CliTool.claude);
+    expect(shellLaunch.plan.env['CLAUDE_CONFIG_DIR'], isNotEmpty);
+  });
 
   test(
-    'prepareShellLaunch throws without team and member for non-personal sessions',
+    'prepareShellLaunch throws without team and member for non-simple sessions',
     () async {
       final session = AppSession(
         sessionId: 'team-sess',
@@ -357,47 +119,9 @@ void main() {
     },
   );
 
-  test('prepareShellLaunch applies expert overlay to launch member', () async {
-    const workspaceId = 'personal-proj';
-    const sessionId = 'personal-sess';
-    const profile = PersonalProfile(
-      id: workspaceId,
-      display: workspaceId,
-      agent: WorkspaceAgentConfig(
-        agent: 'solo',
-        prompt: 'Base prompt.',
-      ),
-    );
-    final workspace = Workspace(
-      workspaceId: workspaceId,
-      folders: const [WorkspaceFolder(path: '/work/personal')],
-      createdAt: 1,
-    );
-    final session = AppSession(
-      sessionId: sessionId,
-      workspaceId: workspaceId,
-      folders: const [WorkspaceFolder(path: '/work/personal')],
-      sessionTeam: '',
-      expertKey: 'teampilot/builtin/architect',
-      createdAt: 1,
-    );
-
-    final shellLaunch = await service().prepareShellLaunch(
-      session: session,
-      workspace: workspace,
-      personal: profile,
-    );
-
-    expect(shellLaunch.launchContext.member.name, 'Architect');
-    expect(shellLaunch.launchContext.member.prompt, contains('design'));
-    expect(shellLaunch.launchContext.member.playbook, contains('approved'));
-    expect(shellLaunch.launchContext.team.members.single.prompt,
-        contains('design'));
-  });
-
-  test('destroyStandaloneCliState removes standalone session tree', () async {
-    const workspaceId = 'personal-proj';
-    const sessionId = 'personal-sess';
+  test('destroyStandaloneCliState removes session runtime tree', () async {
+    const workspaceId = 'ws-simple';
+    const sessionId = 'sess-simple';
     final sessionRoot = p.dirname(
       layout.sessionRuntimeToolDir(workspaceId, sessionId, 'claude'),
     );

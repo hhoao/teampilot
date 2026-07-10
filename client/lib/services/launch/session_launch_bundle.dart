@@ -8,13 +8,11 @@ import '../../cubits/chat/model/session_open_request.dart';
 import '../../cubits/chat/model/session_open_status.dart';
 import '../../cubits/chat/session_launch_host.dart';
 import '../../models/app_session.dart';
-import '../../models/personal_profile.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../services/terminal/terminal_session.dart';
 import 'launch_operation.dart';
 import 'launch_outcome.dart';
-import 'personal_launch_context_resolver.dart';
 import 'session_default_materializer.dart';
 import 'session_launch_connect_prep_runner.dart';
 import 'session_launch_pipeline.dart';
@@ -29,7 +27,6 @@ typedef ScheduleMemberConnectFn =
 class SessionLaunchBundleDeps {
   const SessionLaunchBundleDeps({
     required this.host,
-    required this.personalContext,
     required this.tabStore,
     required this.state,
     required this.workspaceIndex,
@@ -55,7 +52,6 @@ class SessionLaunchBundleDeps {
   });
 
   final SessionLaunchHost host;
-  final PersonalLaunchContextResolver personalContext;
   final ChatTabStore tabStore;
   final ChatState Function() state;
   final SessionLaunchWorkspaceIndex Function() workspaceIndex;
@@ -70,7 +66,6 @@ class SessionLaunchBundleDeps {
     required SessionOpenRequest request,
     required bool launched,
     required Workspace? workspace,
-    required PersonalProfile? personal,
     required TeamProfile? team,
     required TeamMemberConfig? member,
     VoidCallback? onFinally,
@@ -170,7 +165,6 @@ class SessionLaunchBundle {
 
     final materializer = SessionDefaultMaterializer(
       host: deps.host,
-      personalContext: deps.personalContext,
       openSession: openSession,
       workspaceIndex: deps.workspaceIndex,
       isTabsEmpty: deps.isTabsEmpty,

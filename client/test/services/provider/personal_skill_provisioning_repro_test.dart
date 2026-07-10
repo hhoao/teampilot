@@ -6,7 +6,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/config_bundle.dart';
-import 'package:teampilot/models/personal_profile.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
@@ -61,20 +61,16 @@ void main() {
         ],
       );
 
-      // --- Profile with skill 'demo' enabled ---
-      const profile = PersonalProfile(
-        id: 'p1',
-        display: 'p1',
-        // TODO: migrate to presets — cli removed
-        bundle: ConfigBundle(skillIds: ['demo']),
-      );
-
-      // --- Act: run personal-mode launch prep ---
-      await service.prepareSessionLaunch(
+      // --- Act: run simple-mode launch prep with runtimeBundle ---
+      await service.prepareSimpleSessionLaunch(
         workspaceId: 'p1',
         sessionId: 's1',
-        profileId: 'personal-default',
-        personal: profile,
+        runtimeBundle: const ConfigBundle(skillIds: ['demo']),
+        member: const TeamMemberConfig(
+          id: 'solo',
+          name: 'solo',
+          cli: CliTool.flashskyai,
+        ),
       );
 
       // --- Assert: the leaf CONFIG_DIR/skills/ must contain demo-skill ---
@@ -124,20 +120,16 @@ void main() {
         ],
       );
 
-      // --- Profile with skill 'ghost' enabled ---
-      const profile = PersonalProfile(
-        id: 'p2',
-        display: 'p2',
-        // TODO: migrate to presets — cli removed
-        bundle: ConfigBundle(skillIds: ['ghost']),
-      );
-
       // --- Act ---
-      final outcome = await service.prepareSessionLaunch(
+      final outcome = await service.prepareSimpleSessionLaunch(
         workspaceId: 'p2',
         sessionId: 's2',
-        profileId: 'personal-default',
-        personal: profile,
+        runtimeBundle: const ConfigBundle(skillIds: ['ghost']),
+        member: const TeamMemberConfig(
+          id: 'solo',
+          name: 'solo',
+          cli: CliTool.flashskyai,
+        ),
       );
 
       // --- Assert: warning mentioning the missing skill id must surface ---

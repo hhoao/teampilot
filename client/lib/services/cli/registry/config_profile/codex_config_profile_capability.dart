@@ -37,9 +37,8 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     ConfigProfileLaunchContext ctx,
   ) async {
     final standalone = ctx.standaloneScope;
-    final personal = ctx.personal;
-    if (standalone != null && personal != null) {
-      return _contributeStandaloneLaunch(ctx, standalone, personal);
+    if (standalone != null) {
+      return _contributeStandaloneLaunch(ctx, standalone);
     }
 
     final paths = ctx.paths;
@@ -143,10 +142,17 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
   Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
     ConfigProfileLaunchContext ctx,
     StandaloneLaunchProfileScope standalone,
-    PersonalProfile personal,
   ) async {
     final paths = ctx.paths;
-    final member = personalMemberForSession(personal, preset: ctx.preset, sessionExpertKey: ctx.sessionExpertKey, resolvedExpert: ctx.resolvedExpert);
+    final member = ctx.member ??
+        (ctx.personal != null
+            ? personalMemberForSession(
+                ctx.personal!,
+                preset: ctx.preset,
+                sessionExpertKey: ctx.sessionExpertKey,
+                resolvedExpert: ctx.resolvedExpert,
+              )
+            : throw StateError('Simple launch requires plan.member'));
     final codexHome = standaloneSessionToolDir(paths, standalone, toolId);
     final warnings = <String>[];
 

@@ -7,7 +7,6 @@ import '../../models/workspace.dart';
 import '../../models/workspace_folder.dart';
 import '../../repositories/session_repository.dart';
 import '../../utils/logger.dart';
-import 'personal_launch_context_resolver.dart';
 import 'session_launch_workspace_index.dart';
 
 typedef SessionOpenFn = Future<SessionOpenStatus> Function(SessionOpenRequest);
@@ -16,20 +15,17 @@ typedef SessionOpenFn = Future<SessionOpenStatus> Function(SessionOpenRequest);
 class SessionDefaultMaterializer {
   SessionDefaultMaterializer({
     required SessionLaunchHost host,
-    required PersonalLaunchContextResolver personalContext,
     required SessionOpenFn openSession,
     required SessionLaunchWorkspaceIndex Function() workspaceIndex,
     required bool Function() isTabsEmpty,
     required String Function() activeBucketKey,
   }) : _host = host,
-       _personalContext = personalContext,
        _openSession = openSession,
        _workspaceIndex = workspaceIndex,
        _isTabsEmpty = isTabsEmpty,
        _activeBucketKey = activeBucketKey;
 
   final SessionLaunchHost _host;
-  final PersonalLaunchContextResolver _personalContext;
   final SessionOpenFn _openSession;
   final SessionLaunchWorkspaceIndex Function() _workspaceIndex;
   final bool Function() _isTabsEmpty;
@@ -127,28 +123,11 @@ class SessionDefaultMaterializer {
       return;
     }
 
-    final personalCtx = await _personalContext.resolve(
-      session: AppSession(
-        sessionId: '',
-        workspaceId: workspace.workspaceId,
-        folders: [
-          if (workspace.firstFolderPath.isNotEmpty)
-            WorkspaceFolder(path: workspace.firstFolderPath),
-        ],
-        sessionTeam: '',
-        cliTeamName: '',
-        createdAt: 0,
-        profileId: personalIdentityId,
-      ),
-      workspace: workspace,
-      personalIdentityIdOverride: personalIdentityId,
-    );
-    final cli =
-        cliOverride ?? personalCtx.personalPreset?.cli ?? CliTool.claude;
+    final cli = cliOverride ?? CliTool.claude;
 
     final session = await repo.createSession(
       workspace.workspaceId,
-      personalIdentityId: personalCtx.personalIdentity.id,
+      personalIdentityId: personalIdentityId,
       cli: cli,
     );
     if (_host.isClosed) return;

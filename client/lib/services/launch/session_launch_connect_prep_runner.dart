@@ -4,7 +4,6 @@ import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/chat/model/session_open_request.dart';
 import '../../cubits/chat/session_launch_host.dart';
 import '../../models/app_session.dart';
-import '../../models/personal_profile.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../services/terminal/terminal_session.dart';
@@ -20,7 +19,6 @@ typedef ScheduleShellConnectFn =
       required SessionOpenRequest request,
       required bool launched,
       required Workspace? workspace,
-      required PersonalProfile? personal,
       required TeamProfile? team,
       required TeamMemberConfig? member,
       VoidCallback? onFinally,
@@ -103,7 +101,6 @@ class SessionLaunchConnectPrepRunner {
         request: request,
         launched: launched,
         workspace: workspace,
-        personal: prep.resolved.personalIdentity,
         team: prep.resolved.team,
         member: request.isPersonal ? null : prep.resolved.member,
       );
@@ -217,7 +214,6 @@ class SessionLaunchConnectPrepRunner {
         request: request,
         launched: launched,
         workspace: workspace,
-        personal: prep.resolved.personalIdentity,
         team: prep.resolved.team,
         member: request.isPersonal ? null : prep.resolved.member,
         onFinally: () =>

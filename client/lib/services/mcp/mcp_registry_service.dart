@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../models/mcp_registry_source.dart';
 import '../../models/team_config.dart';
+import '../../repositories/mcp_repository.dart';
 import '../cli/registry/capabilities/mcp_config_writer_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../provider/cursor/cursor_workspace_warm_tier.dart';
@@ -165,28 +166,22 @@ class McpRegistryService {
     );
   }
 
-  Future<void> writeForStandaloneWorkspace({
+  /// Simple mode: resolve MCP specs from catalog ids (no identities-runtime).
+  Future<void> writeForSimpleSession({
     required String workspaceId,
     required String sessionId,
-    required String profileId,
+    required List<String> mcpServerIds,
     Map<String, Map<String, Object?>>? extraServers,
     Iterable<String> projectMcpRoots = const [],
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
-    final trimmedProfileId = profileId.trim();
-    if (trimmedWorkspaceId.isEmpty ||
-        trimmedSessionId.isEmpty ||
-        trimmedProfileId.isEmpty) {
+    if (trimmedWorkspaceId.isEmpty || trimmedSessionId.isEmpty) {
       return;
     }
 
-    // Personal-profile MCP servers are snapshotted into the profile's identity
-    // file (ProfileMcpLinkerService → identityMcpServersFile), matching the
-    // team flow's identity-scoped snapshot.
-    final snapshotPath = layout.identityMcpServersFile(trimmedProfileId);
-    final specs = await _resolveSpecs(
-      snapshotPath: snapshotPath,
+    final specs = await _resolveSpecsFromCatalogIds(
+      mcpServerIds: mcpServerIds,
       extraServers: extraServers,
     );
     if (specs.isEmpty) return;
@@ -203,12 +198,51 @@ class McpRegistryService {
       projectRoots: projectMcpRoots,
     );
 
-    if (await _hasCatalogSnapshot(snapshotPath)) {
+    if (mcpServerIds.isNotEmpty) {
       await _mergeAppCredentialsForAllTools(
         workspaceId: trimmedWorkspaceId,
         sessionId: trimmedSessionId,
       );
     }
+  }
+
+  Future<List<McpServerSpec>> _resolveSpecsFromCatalogIds({
+    required List<String> mcpServerIds,
+    Map<String, Map<String, Object?>>? extraServers,
+  }) async {
+    final mergedServers = <String, Map<String, Object?>>{};
+    if (mcpServerIds.isNotEmpty) {
+      final catalog = await McpRepository().loadAll();
+      final byId = {for (final s in catalog) s.id: s};
+      final registry = await _registryConfigService.load();
+      final smitheryToken = registry
+          .byKind(McpRegistrySourceKind.smithery)
+          ?.apiToken;
+      final catalogServers = <String, Map<String, Object?>>{};
+      for (final id in mcpServerIds) {
+        final server = byId[id];
+        if (server == null || !server.enabled) continue;
+        catalogServers[server.configKey] = Map<String, Object?>.from(
+          server.server,
+        );
+      }
+      if (catalogServers.isNotEmpty) {
+        mergedServers.addAll(
+          SmitheryMcpAuth.applyToCatalogServers(catalogServers, smitheryToken),
+        );
+      }
+    }
+    if (extraServers != null) {
+      for (final entry in extraServers.entries) {
+        mergedServers[entry.key] = Map<String, Object?>.from(entry.value);
+      }
+    }
+    return [
+      for (final entry in mergedServers.entries)
+        if (McpServerSpec.fromCatalogJson(entry.key, entry.value)
+            case final spec?)
+          spec,
+    ];
   }
 
   Future<List<McpServerSpec>> _resolveSpecs({

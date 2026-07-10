@@ -24,7 +24,6 @@ import '../../../services/cli/preset_resolver.dart';
 import '../../../services/expert_hub/expert_hub_recent_store.dart';
 import '../../../services/expert_hub/expert_landing_preflight.dart';
 import '../../../services/expert_hub/expert_member_resolver.dart';
-import '../../../services/launch/personal_launch_context_resolver.dart';
 import '../../../utils/landing_draft_resolver.dart';
 import '../../../utils/team_member_naming.dart';
 import '../../../utils/logger.dart';
@@ -387,14 +386,7 @@ Future<String> _resolveLandingMemberId({
   String? personalPresetId,
 }) async {
   if (isPersonal) {
-    final resolver = PersonalLaunchContextResolver(chatCubit.lifecycle);
-    final ctx = await resolver.resolve(
-      session: session,
-      workspace: workspace,
-      personalIdentityIdOverride: personalIdentityId,
-      presetIdOverride: personalPresetId ?? '',
-    );
-    return ctx.personalMember.id;
+    return session.sessionId;
   }
   final lead = _teamLead(team);
   return lead?.id ?? 'team-lead';

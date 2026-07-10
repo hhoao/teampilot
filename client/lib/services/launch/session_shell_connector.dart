@@ -7,7 +7,6 @@ import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/chat/session_launch_host.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
-import '../../models/personal_profile.dart';
 import '../../models/runtime_target.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
@@ -102,7 +101,6 @@ class SessionShellConnector {
     TeamProfile? team,
     TeamMemberConfig? member,
     Workspace? workspace,
-    PersonalProfile? personal,
   }) async {
     var connectSession = tab.persistedSession ?? session;
     final isPersonal = connectSession.sessionTeam.trim().isEmpty;
@@ -114,19 +112,7 @@ class SessionShellConnector {
       'session=${tab.info.id} member=$memberLabel personal=$isPersonal '
       'launched=$launched',
     );
-    if (isPersonal) {
-      if (personal == null) {
-        appLogger.d(
-          '[session-launch] connectShell aborted session=${tab.info.id} '
-          'reason=missing_personal_identity',
-        );
-        _host.failSessionConnect(
-          tab.info.id,
-          'Personal session is missing personal identity.',
-        );
-        return ConnectShellResult.failed;
-      }
-    } else if (team == null || member == null) {
+    if (!isPersonal && (team == null || member == null)) {
       appLogger.d(
         '[session-launch] connectShell aborted session=${tab.info.id} '
         'reason=missing_team_or_member',
@@ -198,12 +184,10 @@ class SessionShellConnector {
     CliPreset? personalLaunchPreset;
     if (isPersonal) {
       final pinnedPresetId = tab.personalPresetId?.trim() ?? '';
-      personalLaunchPreset = pinnedPresetId.isNotEmpty
-          ? await _host.lifecycle.resolvePresetById(pinnedPresetId)
-          : await _host.lifecycle.resolveActivePresetForSession(
-              activeSession,
-              personal!,
-            );
+      if (pinnedPresetId.isNotEmpty) {
+        personalLaunchPreset =
+            await _host.lifecycle.resolvePresetById(pinnedPresetId);
+      }
     }
     final launchCli = isPersonal
         ? (personalLaunchPreset?.cli ?? activeSession.cli ?? CliTool.claude)
@@ -248,10 +232,16 @@ class SessionShellConnector {
       final launchWarnings = <String>[];
 
       if (isPersonal) {
-        final connectResult = await _host.sessionConnect.preparePersonalConnect(
+        if (workspace == null) {
+          _host.failSessionConnect(
+            tab.info.id,
+            'Simple session requires workspace to connect.',
+          );
+          return ConnectShellResult.failed;
+        }
+        final connectResult = await _host.sessionConnect.prepareSimpleConnect(
           session: activeSession,
-          workspace: workspace!,
-          personal: personal!,
+          workspace: workspace,
           preset: personalLaunchPreset,
           launchTarget: launchTarget,
         );

@@ -16,6 +16,9 @@ import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/launch/launch_factory.dart';
+import 'package:teampilot/services/launch/session_runtime_plan_builder.dart';
+import 'package:teampilot/services/expert_hub/expert_capability_resolver.dart';
+import 'package:teampilot/repositories/workspace_project_config_repository.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_context_registry.dart';
@@ -186,6 +189,14 @@ class MixedTeamIntegrationHarness {
         setCliPathOverride: (_, __, ___) async {},
         loadLocalCredentials: (_) async => const [],
         localCliPath: (_) async => claudePath,
+        runtimePlanBuilder: SessionRuntimePlanBuilder(
+          expertResolver: ExpertCapabilityResolver(
+            installSkill: (_) async => null,
+            installPlugin: (_) async => null,
+            installMcp: (_) async => null,
+          ),
+          workspaceProjectConfig: WorkspaceProjectConfigRepository(),
+        ),
       ),
     );
     cubit = created;

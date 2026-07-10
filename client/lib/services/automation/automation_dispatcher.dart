@@ -13,7 +13,6 @@ import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../repositories/automation_repository.dart';
 import '../../repositories/session_repository.dart';
-import '../../services/launch/personal_launch_context_resolver.dart';
 import '../../utils/logger.dart';
 import 'automation_bus_gateway.dart';
 import 'automation_dispatch_result.dart';
@@ -43,7 +42,6 @@ class AutomationDispatcher {
     required AutomationWorkspaceResolver workspaceById,
     required AutomationTeamResolver teamById,
     required AutomationLaunchProfileKindResolver launchProfileKindById,
-    PersonalLaunchContextResolver? personalContextResolver,
     AutomationSessionLookup? sessionById,
     int Function()? nowMs,
     Duration memberReadyTimeout = const Duration(seconds: 60),
@@ -56,7 +54,6 @@ class AutomationDispatcher {
        _workspaceById = workspaceById,
        _teamById = teamById,
        _launchProfileKindById = launchProfileKindById,
-       _personalContextResolver = personalContextResolver,
        _sessionById = sessionById,
        _nowMs = nowMs ?? _automationDefaultNowMs,
        _memberReadyTimeout = memberReadyTimeout;
@@ -75,7 +72,6 @@ class AutomationDispatcher {
   final AutomationWorkspaceResolver _workspaceById;
   final AutomationTeamResolver _teamById;
   final AutomationLaunchProfileKindResolver _launchProfileKindById;
-  final PersonalLaunchContextResolver? _personalContextResolver;
   final AutomationSessionLookup? _sessionById;
   final int Function() _nowMs;
   final Duration _memberReadyTimeout;
@@ -318,15 +314,6 @@ class AutomationDispatcher {
 
   Future<String> _resolveLeadMemberId(AppSession session) async {
     if (session.sessionTeam.trim().isEmpty) {
-      final workspace = _workspaceById(session.workspaceId);
-      final resolver = _personalContextResolver;
-      if (workspace != null && resolver != null) {
-        final ctx = await resolver.resolve(
-          session: session,
-          workspace: workspace,
-        );
-        return ctx.personalMember.id;
-      }
       return session.sessionId;
     }
     return _leadMemberId;
@@ -337,16 +324,6 @@ class AutomationDispatcher {
     AppSession session,
   ) async {
     if (session.sessionTeam.trim().isEmpty) {
-      final workspace = _workspaceById(session.workspaceId);
-      final resolver = _personalContextResolver;
-      if (workspace != null && resolver != null) {
-        final ctx = await resolver.resolve(
-          session: session,
-          workspace: workspace,
-          presetIdOverride: automation.cliPresetId?.trim() ?? '',
-        );
-        return ctx.personalMember.id;
-      }
       return session.sessionId;
     }
     final target = automation.targetMemberId.trim();

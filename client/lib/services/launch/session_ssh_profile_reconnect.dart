@@ -8,7 +8,6 @@ import '../../models/team_config.dart';
 import '../../models/workspace_launch_context.dart';
 import '../../services/launch/session_shell_connector.dart';
 import '../../utils/logger.dart';
-import 'personal_launch_context_resolver.dart';
 import 'session_launch_workspace_index.dart';
 
 typedef ScheduleMemberConnectFn =
@@ -19,14 +18,12 @@ class SessionSshProfileReconnect {
   SessionSshProfileReconnect({
     required SessionLaunchHost host,
     required SessionShellConnector shellConnector,
-    required PersonalLaunchContextResolver personalContext,
     required WorkspaceLaunchContext Function(AppSession session) launchContextFor,
     required ScheduleMemberConnectFn scheduleMemberConnect,
     required SessionLaunchWorkspaceIndex Function() workspaceIndex,
     required Iterable<ChatTab> Function() openTabs,
   }) : _host = host,
        _shellConnector = shellConnector,
-       _personalContext = personalContext,
        _launchContextFor = launchContextFor,
        _scheduleMemberConnect = scheduleMemberConnect,
        _workspaceIndex = workspaceIndex,
@@ -34,7 +31,6 @@ class SessionSshProfileReconnect {
 
   final SessionLaunchHost _host;
   final SessionShellConnector _shellConnector;
-  final PersonalLaunchContextResolver _personalContext;
   final WorkspaceLaunchContext Function(AppSession session) _launchContextFor;
   final ScheduleMemberConnectFn _scheduleMemberConnect;
   final SessionLaunchWorkspaceIndex Function() _workspaceIndex;
@@ -116,11 +112,6 @@ class SessionSshProfileReconnect {
     final workspace = _workspaceIndex().byId(session.workspaceId);
     if (workspace == null) return;
 
-    final personalCtx = await _personalContext.resolve(
-      session: session,
-      workspace: workspace,
-    );
-
     tab.membersPendingConnect.add(session.sessionId);
     _host.beginSessionConnect(tab.info.id);
     try {
@@ -130,7 +121,6 @@ class SessionSshProfileReconnect {
         shell: shell,
         launched: session.launchState == AppSessionLaunchState.started,
         workspace: workspace,
-        personal: personalCtx.personalIdentity,
       );
       _host.updateTabRunning(tab.info.id);
     } on Object catch (e, st) {
