@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -52,6 +53,55 @@ void main() {
     );
     expect(probe.isReady, isTrue);
     expect(probe.credentialPath, global);
+  });
+
+  test('probe missing when oauth tokens are empty stubs', () async {
+    final global = fs.pathContext.join(home, '.claude', '.credentials.json');
+    await fs.writeString(
+      global,
+      jsonEncode({
+        'claudeAiOauth': {
+          'accessToken': '',
+          'refreshToken': '',
+          'expiresAt': 0,
+          'scopes': ['user:inference'],
+          'subscriptionType': 'pro',
+        },
+      }),
+    );
+
+    final probe = await service.probe(
+      'work',
+      binding: CredentialBindingKind.linked,
+      homeDirectory: home,
+    );
+    expect(probe.isReady, isFalse);
+  });
+
+  test('ensureLinked returns missing for empty oauth stub', () async {
+    final global = fs.pathContext.join(home, '.claude', '.credentials.json');
+    await fs.writeString(
+      global,
+      '{"claudeAiOauth":{"accessToken":"","refreshToken":"","expiresAt":0}}',
+    );
+    await fs.createSymlink(
+      target: global,
+      linkPath: fs.pathContext.join(
+        base,
+        'providers',
+        'claude',
+        'claude-official',
+        '.credentials.json',
+      ),
+    );
+
+    final result = await service.ensureLinked(
+      '/tmp/session-claude',
+      'claude-official',
+      binding: CredentialBindingKind.linked,
+      homeDirectory: home,
+    );
+    expect(result, CredentialLinkResult.missing);
   });
 
   test('probe ready when provider dir has credentials', () async {

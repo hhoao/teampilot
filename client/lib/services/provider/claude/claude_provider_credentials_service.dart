@@ -88,7 +88,8 @@ class ClaudeProviderCredentialsService {
       homeDirectory: homeDirectory,
     );
     final stat = await _fs.stat(path);
-    final ready = await _credentialExistsAt(path);
+    final ready =
+        await _credentialExistsAt(path) && await _credentialHasUsableAuth(path);
     return CredentialProbe(
       providerId: providerId,
       status: ready ? CredentialStatus.ready : CredentialStatus.missing,
@@ -261,6 +262,11 @@ class ClaudeProviderCredentialsService {
     if (!(await _credentialExistsAt(src))) {
       return CredentialLinkResult.missing;
     }
+    if (!await _credentialHasUsableAuth(src)) {
+      // File/symlink exists but OAuth tokens are empty/expired stubs — Claude
+      // still shows the login screen. Treat as missing so launch warns.
+      return CredentialLinkResult.missing;
+    }
 
     final sessionStat = await _fs.stat(sessionPath);
     if (sessionStat.isFile || sessionStat.isSymlink) {
@@ -287,6 +293,38 @@ class ClaudeProviderCredentialsService {
     final target = await _fs.readSymlinkTarget(path);
     if (target == null || target.trim().isEmpty) return false;
     return (await _fs.stat(target)).isFile;
+  }
+
+  /// True when [.credentials.json] has a non-empty OAuth access or refresh token.
+  ///
+  /// Claude Code writes a stub file after logout / failed refresh
+  /// (`accessToken: ""`, `expiresAt: 0`). Linking that stub still leaves the
+  /// TUI on the login screen — existence alone is not "ready".
+  Future<bool> _credentialHasUsableAuth(String path) async {
+    final resolved = await _resolveCredentialFilePath(path);
+    if (resolved == null) return false;
+    final bytes = await _fs.readBytes(resolved);
+    if (bytes == null || bytes.isEmpty) return false;
+    try {
+      final decoded = jsonDecode(utf8.decode(bytes));
+      if (decoded is! Map) return false;
+      final oauth = decoded['claudeAiOauth'];
+      if (oauth is! Map) return false;
+      final access = '${oauth['accessToken'] ?? ''}'.trim();
+      final refresh = '${oauth['refreshToken'] ?? ''}'.trim();
+      return access.isNotEmpty || refresh.isNotEmpty;
+    } on FormatException {
+      return false;
+    }
+  }
+
+  Future<String?> _resolveCredentialFilePath(String path) async {
+    final stat = await _fs.stat(path);
+    if (stat.isFile) return path;
+    if (!stat.isSymlink) return null;
+    final target = await _fs.readSymlinkTarget(path);
+    if (target == null || target.trim().isEmpty) return null;
+    return (await _fs.stat(target)).isFile ? target : null;
   }
 
   Future<bool> _sessionCredentialNeedsRelink(
