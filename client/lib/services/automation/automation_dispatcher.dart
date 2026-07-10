@@ -9,7 +9,9 @@ import '../../cubits/chat/model/session_open_status.dart';
 import '../../models/automation_tab_scope.dart';
 import '../../models/app_session.dart';
 import '../../models/automation.dart';
+import '../../models/cli_preset.dart';
 import '../../models/launch_profile_kind.dart';
+import '../../models/simple_launch_identity.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../repositories/automation_repository.dart';
@@ -43,6 +45,7 @@ class AutomationDispatcher {
     required AutomationWorkspaceResolver workspaceById,
     required AutomationTeamResolver teamById,
     required AutomationLaunchProfileKindResolver launchProfileKindById,
+    CliPreset? Function(String id)? resolveCliPreset,
     AutomationSessionLookup? sessionById,
     int Function()? nowMs,
     Duration memberReadyTimeout = const Duration(seconds: 60),
@@ -55,6 +58,7 @@ class AutomationDispatcher {
        _workspaceById = workspaceById,
        _teamById = teamById,
        _launchProfileKindById = launchProfileKindById,
+       _resolveCliPreset = resolveCliPreset,
        _sessionById = sessionById,
        _nowMs = nowMs ?? _automationDefaultNowMs,
        _memberReadyTimeout = memberReadyTimeout;
@@ -73,6 +77,7 @@ class AutomationDispatcher {
   final AutomationWorkspaceResolver _workspaceById;
   final AutomationTeamResolver _teamById;
   final AutomationLaunchProfileKindResolver _launchProfileKindById;
+  final CliPreset? Function(String id)? _resolveCliPreset;
   final AutomationSessionLookup? _sessionById;
   final int Function() _nowMs;
   final Duration _memberReadyTimeout;
@@ -248,14 +253,19 @@ class AutomationDispatcher {
       // Simple = unteamed SessionCreateRequest (empty sessionTeam); connect
       // builds SessionRuntimePlan — no personalIdentityId / PersonalProfile.
       final presetId = automation.cliPresetId?.trim() ?? '';
-      final legacyCli = presetId.isEmpty ? automation.cli : null;
+      final preset = presetId.isEmpty ? null : _resolveCliPreset?.call(presetId);
+      final simpleIdentity = SimpleLaunchIdentity.resolve(
+        cli: automation.cli,
+        preset: preset,
+        presetId: presetId,
+      );
       status = await _requestCreateAndOpenSession(
         SessionCreateRequest(
           workspace: workspace,
           isPersonal: true,
           repo: _sessionRepository,
-          cli: legacyCli,
-          personalPresetId: presetId.isNotEmpty ? presetId : null,
+          cli: simpleIdentity.cli,
+          simpleIdentity: simpleIdentity,
           fixedSessionId: plannedSessionId,
         ),
       );

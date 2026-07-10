@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/config_bundle.dart';
+import 'package:teampilot/models/simple_launch_identity.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/team_roster_slot.dart';
 import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
@@ -35,7 +36,10 @@ void main() {
       workspaceId: 'ws-1',
       sessionId: 'sess-1',
       memberId: 'seat-1',
-      expertKey: 'ex-key',
+      identity: const SimpleLaunchIdentity(
+        cli: CliTool.claude,
+        expertKey: 'ex-key',
+      ),
     );
 
     expect(plan.mode, SessionRuntimeMode.simple);
@@ -59,11 +63,45 @@ void main() {
       workspaceId: 'ws-1',
       sessionId: 'sess-1',
       memberId: 'seat-1',
-      expertKey: '  ',
+      identity: const SimpleLaunchIdentity(
+        cli: CliTool.claude,
+        expertKey: '  ',
+      ),
     );
 
     expect(plan.expertKey, kBuiltinDefaultExpertKey);
     expect(plan.runtimeBundle.skillIds, ['def', 'ws']);
+  });
+
+  test('simple plan applies identity fields to expert pack member', () async {
+    resolver.packs['ex-key'] = ExpertCapabilityPack(
+      member: const TeamMemberConfig(
+        id: 'ex',
+        name: 'Expert',
+        // Packs often omit cli; staging would otherwise fall back to Claude.
+      ),
+      bundle: const ConfigBundle(),
+    );
+
+    final plan = await builder.buildSimple(
+      workspaceId: 'ws-1',
+      sessionId: 'sess-1',
+      memberId: 'seat-1',
+      identity: const SimpleLaunchIdentity(
+        cli: CliTool.cursor,
+        provider: 'cursor-account',
+        model: 'gpt-5.5',
+        effort: 'high',
+        expertKey: 'ex-key',
+        presetId: 'preset-1',
+      ),
+    );
+
+    expect(plan.member.cli, CliTool.cursor);
+    expect(plan.member.provider, 'cursor-account');
+    expect(plan.member.model, 'gpt-5.5');
+    expect(plan.member.effort, 'high');
+    expect(plan.presetId, 'preset-1');
   });
 
   test('team plan merges team > expert > workspace per seat', () async {
@@ -150,7 +188,10 @@ void main() {
         workspaceId: 'ws-1',
         sessionId: 'sess-1',
         memberId: 'seat-1',
-        expertKey: 'missing/expert',
+        identity: const SimpleLaunchIdentity(
+          cli: CliTool.claude,
+          expertKey: 'missing/expert',
+        ),
       ),
       throwsA(
         isA<StateError>().having(

@@ -15,7 +15,6 @@ class SessionOpenRequest {
     this.emptyDisplayTitleFallback = 'New Chat',
     this.connectImmediately = true,
     this.persistParams,
-    this.personalPresetId,
   });
 
   final AppSession session;
@@ -29,9 +28,6 @@ class SessionOpenRequest {
   /// When set, the session is staged in memory first; disk write runs in prepare.
   final SessionPersistParams? persistParams;
 
-  /// Personal launch: global CLI preset id for provider/model resolution.
-  final String? personalPresetId;
-
   bool get isPersonal => session.sessionTeam.trim().isEmpty;
 
   SessionOpenRequest withSession(AppSession next) {
@@ -44,7 +40,6 @@ class SessionOpenRequest {
       emptyDisplayTitleFallback: emptyDisplayTitleFallback,
       connectImmediately: connectImmediately,
       persistParams: persistParams,
-      personalPresetId: personalPresetId,
     );
   }
 }

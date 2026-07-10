@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../models/cli_preset.dart';
 import '../../models/runtime_target.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
@@ -75,7 +74,6 @@ class SessionLaunchService
       scheduleShellConnect: _scheduleShellConnect,
       rollbackStagedLaunch: _rollbackStagedLaunch,
       installTeamRuntimeIfNeeded: _installTeamRuntimeIfNeeded,
-      personalPresetIdOverride: _personalPresetIdOverride,
       scheduleMemberConnect: _memberConnectScheduler.schedule,
       disconnectSession: disconnectSession,
       ensureSession: ensureSession,
@@ -200,10 +198,14 @@ class SessionLaunchService
       session.workspaceId,
       sessionTeam: params.sessionTeamId,
       rosterMembers: params.rosterMembers,
-      cli: params.cli,
+      cli: params.simpleIdentity?.cli ?? params.cli,
+      provider: params.simpleIdentity?.provider,
+      model: params.simpleIdentity?.model,
+      effort: params.simpleIdentity?.effort,
+      presetId: params.simpleIdentity?.presetId,
       workingDirectory: params.workingDirectory,
       fixedSessionId: session.sessionId,
-      expertKey: params.expertKey,
+      expertKey: params.simpleIdentity?.expertKey ?? params.expertKey,
     );
     tab.persistedSession = persisted;
     _h.replaceSessionSnapshot(persisted);
@@ -265,12 +267,8 @@ class SessionLaunchService
       if (resolvedWorkspace == null) {
         throw StateError('Simple session requires workspace');
       }
-      final presetOverride = _personalPresetIdOverride(request);
-      CliPreset? preset;
-      if (presetOverride.isNotEmpty) {
-        preset = await _h.lifecycle.resolvePresetById(presetOverride);
-      }
-      final cli = session.cli ?? preset?.cli ?? CliTool.claude;
+      final identity = session.simpleIdentity;
+      final cli = identity.cli;
       // Member persona comes from SessionRuntimePlan at connect time.
       final member = TeamMemberConfig(
         id: session.sessionId,
@@ -294,12 +292,6 @@ class SessionLaunchService
         globalPresets: _h.lifecycle.globalPresets,
       ),
     );
-  }
-
-  String _personalPresetIdOverride(SessionOpenRequest request) {
-    final direct = request.personalPresetId?.trim() ?? '';
-    if (direct.isNotEmpty) return direct;
-    return request.persistParams?.personalPresetId?.trim() ?? '';
   }
 
   Future<void> _installTeamRuntimeIfNeeded({

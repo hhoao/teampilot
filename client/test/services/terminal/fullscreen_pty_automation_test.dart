@@ -73,6 +73,27 @@ void main() {
             'and paints a fresh composer below it',
       );
     });
+
+    test('pastes even when resume transcript already shows the same text', () async {
+      // Simulates Cursor --resume: prior user line "hello" still near composer.
+      final port = FakeFullscreenPtyDeliveryPort()..staged = 'hello';
+
+      final outcome = await automation.deliverPasteAndSubmit(
+        port: port,
+        text: 'hello',
+        pasteSettle: Duration.zero,
+      );
+
+      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
+      expect(
+        port.pasteCount,
+        1,
+        reason:
+            'must not CR-only on a transcript false-positive; always paste '
+            'on first deliver',
+      );
+      expect(port.clearCount, greaterThanOrEqualTo(1));
+    });
   });
 
   group('nudgeCrUntilClear', () {
@@ -115,7 +136,7 @@ void main() {
       expect(port.pasteCount, 1);
     });
 
-    test('nudges CR when text already visible', () async {
+    test('repastes when text already visible', () async {
       final port = FakeFullscreenPtyDeliveryPort()
         ..staged = TeamBus.doorbellNotice;
 
@@ -126,8 +147,9 @@ void main() {
       );
 
       expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
-      expect(port.pasteCount, 0);
-      expect(port.crCount, 1);
+      expect(port.pasteCount, 1);
+      expect(port.clearCount, greaterThanOrEqualTo(1));
+      expect(port.crCount, greaterThanOrEqualTo(1));
     });
   });
 

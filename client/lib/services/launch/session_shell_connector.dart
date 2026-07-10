@@ -6,7 +6,6 @@ import '../../cubits/chat/chat_tab_store.dart';
 import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/chat/session_launch_host.dart';
 import '../../models/app_session.dart';
-import '../../models/cli_preset.dart';
 import '../../models/runtime_target.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
@@ -181,16 +180,8 @@ class SessionShellConnector {
       _delegate.launchContextFor(activeSession),
       memberId: isPersonal ? null : (rosterMemberId ?? launchMember?.id),
     );
-    CliPreset? personalLaunchPreset;
-    if (isPersonal) {
-      final pinnedPresetId = tab.personalPresetId?.trim() ?? '';
-      if (pinnedPresetId.isNotEmpty) {
-        personalLaunchPreset =
-            await _host.lifecycle.resolvePresetById(pinnedPresetId);
-      }
-    }
     final launchCli = isPersonal
-        ? (personalLaunchPreset?.cli ?? activeSession.cli ?? CliTool.claude)
+        ? activeSession.simpleIdentity.cli
         : memberLaunchCli(
             team: team!,
             member: launchMember!,
@@ -242,7 +233,6 @@ class SessionShellConnector {
         final connectResult = await _host.sessionConnect.prepareSimpleConnect(
           session: activeSession,
           workspace: workspace,
-          preset: personalLaunchPreset,
           launchTarget: launchTarget,
         );
         shellLaunch = connectResult.shellLaunch;
@@ -431,7 +421,6 @@ class SessionShellConnector {
             tab.teamBus?.markMemberRunning(member.id);
             _host.memberMaterializer.markMemberReady(tab.info.id, member.id);
           } else if (isPersonal) {
-            tab.personalPresetId = null;
             final personalMemberId = tab.selectedMemberId.trim();
             if (personalMemberId.isNotEmpty) {
               _host.memberMaterializer.markMemberReady(

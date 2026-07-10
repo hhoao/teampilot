@@ -1,4 +1,5 @@
 import '../../models/app_session.dart';
+import '../../models/simple_launch_identity.dart';
 import '../../models/workspace.dart';
 import '../../models/team_config.dart';
 
@@ -8,6 +9,7 @@ AppSession buildProvisionalSession({
   required Workspace workspace,
   required bool isPersonal,
   CliTool? cli,
+  SimpleLaunchIdentity? simpleIdentity,
   String? workingDirectory,
   String sessionTeamId = '',
   String? expertKey,
@@ -18,6 +20,13 @@ AppSession buildProvisionalSession({
     workspace.folders,
     workingDirectory ?? '',
   );
+  final identity = isPersonal
+      ? (simpleIdentity ??
+            SimpleLaunchIdentity.resolve(
+              cli: cli,
+              expertKey: expertKey,
+            ))
+      : null;
 
   return AppSession(
     sessionId: sessionId,
@@ -27,12 +36,18 @@ AppSession buildProvisionalSession({
     sessionTeam: trimmedTeam,
     profileId: '',
     cliTeamName: '',
-    cli: isPersonal ? cli : null,
+    cli: isPersonal ? (identity?.cli ?? cli) : null,
+    provider: identity?.provider ?? '',
+    model: identity?.model ?? '',
+    effort: identity?.effort ?? '',
+    presetId: identity?.presetId ?? '',
     members: const [],
     memberTargets: const {},
     launchState: AppSessionLaunchState.created,
     createdAt: now,
     updatedAt: now,
-    expertKey: expertKey?.trim() ?? '',
+    expertKey: identity?.expertKey.isNotEmpty == true
+        ? identity!.expertKey
+        : (expertKey?.trim() ?? ''),
   );
 }

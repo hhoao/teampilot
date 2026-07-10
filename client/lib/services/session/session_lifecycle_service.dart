@@ -462,7 +462,9 @@ class SessionLifecycleService {
   }) async {
     final sessionId = session.sessionId.trim();
     final isSimple = plan.mode == SessionRuntimeMode.simple;
-    final launchMember = _memberWithPreset(plan.member, preset);
+    final launchMember = isSimple
+        ? plan.member
+        : _memberWithPreset(plan.member, preset);
     final taskId = isSimple
         ? sessionId
         : (memberBinding?.taskId.trim().isNotEmpty == true
@@ -489,11 +491,15 @@ class SessionLifecycleService {
       launchWorkspaceId: isSimple ? workspace.workspaceId : null,
     );
 
-    final activePreset = preset ??
-        (plan.presetId != null && plan.presetId!.trim().isNotEmpty
-            ? await resolvePresetById(plan.presetId!)
-            : null);
-    final memberForLaunch = _memberWithPreset(launchMember, activePreset);
+    final activePreset = isSimple
+        ? null
+        : preset ??
+              (plan.presetId != null && plan.presetId!.trim().isNotEmpty
+                  ? await resolvePresetById(plan.presetId!)
+                  : null);
+    final memberForLaunch = isSimple
+        ? launchMember
+        : _memberWithPreset(launchMember, activePreset);
 
     final cliTeamName = session.cliTeamName.trim();
     final runtimeTeamId = isSimple
@@ -536,7 +542,6 @@ class SessionLifecycleService {
       workingDirectory: memberWork.workingDirectory,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
-      preset: activePreset,
     );
 
     final memberConfigDir = _memberConfigDirFromEnv(prepared.env);
@@ -612,7 +617,9 @@ class SessionLifecycleService {
   }) async {
     final sessionId = session.sessionId.trim();
     final isSimple = plan.mode == SessionRuntimeMode.simple;
-    final launchMember = _memberWithPreset(plan.member, preset);
+    final launchMember = isSimple
+        ? plan.member
+        : _memberWithPreset(plan.member, preset);
     final taskId = isSimple
         ? sessionId
         : (memberBinding?.taskId.trim().isNotEmpty == true
@@ -629,11 +636,15 @@ class SessionLifecycleService {
           ? null
           : (memberBinding?.rosterMemberId ?? launchMember.id),
     );
-    final activePreset = preset ??
-        (plan.presetId != null && plan.presetId!.trim().isNotEmpty
-            ? await resolvePresetById(plan.presetId!)
-            : null);
-    final memberForLaunch = _memberWithPreset(launchMember, activePreset);
+    final activePreset = isSimple
+        ? null
+        : preset ??
+              (plan.presetId != null && plan.presetId!.trim().isNotEmpty
+                  ? await resolvePresetById(plan.presetId!)
+                  : null);
+    final memberForLaunch = isSimple
+        ? launchMember
+        : _memberWithPreset(launchMember, activePreset);
     final cliTeamName = session.cliTeamName.trim();
     final runtimeTeamId = isSimple
         ? sessionId
@@ -721,7 +732,6 @@ class SessionLifecycleService {
     required String workingDirectory,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
-    CliPreset? preset,
   }) async {
     final catalog = WorkspaceLaunchContext(
       session: session,
@@ -747,7 +757,6 @@ class SessionLifecycleService {
         additionalDirectories: memberDirs.addDirs,
         extraMcpServers: extraMcpServers,
         busIdle: busIdle,
-        preset: preset,
       );
       return _PreparedLaunch(
         env: outcome.environment,
@@ -800,7 +809,9 @@ class SessionLifecycleService {
     TeamProfile? team,
     CliPreset? preset,
   }) {
-    final member = _memberWithPreset(runtimePlan.member, preset);
+    final member = runtimePlan.mode == SessionRuntimeMode.simple
+        ? runtimePlan.member
+        : _memberWithPreset(runtimePlan.member, preset);
     final catalog = WorkspaceLaunchContext(
       session: session,
       workspace: workspace,
@@ -813,7 +824,7 @@ class SessionLifecycleService {
         name: plan.cliTeamName.trim().isNotEmpty
             ? plan.cliTeamName.trim()
             : session.sessionId,
-        cli: member.cli ?? preset?.cli ?? session.cli ?? CliTool.claude,
+        cli: member.cli ?? session.cli ?? CliTool.claude,
         members: [member],
         skillIds: runtimePlan.runtimeBundle.skillIds,
         pluginIds: runtimePlan.runtimeBundle.pluginIds,

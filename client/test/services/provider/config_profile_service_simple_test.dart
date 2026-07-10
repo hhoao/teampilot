@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -61,23 +60,18 @@ void main() {
     () async {
       const workspaceId = 'proj-simple-fs';
       const sessionId = 'sess-simple-fs';
-      const flashskyaiPreset = CliPreset(
-        id: 'p-fs',
-        name: 'FlashskyAI',
-        cli: CliTool.flashskyai,
-        provider: '',
-        model: '',
-        createdAt: 0,
-        updatedAt: 0,
-      );
 
       final outcome = await service.prepareSimpleSessionLaunch(
         workspaceId: workspaceId,
         sessionId: sessionId,
         runtimeBundle: const ConfigBundle(),
-        member: const TeamMemberConfig(id: 'solo', name: 'solo', agent: 'solo'),
+        member: const TeamMemberConfig(
+          id: 'solo',
+          name: 'solo',
+          agent: 'solo',
+          cli: CliTool.flashskyai,
+        ),
         workingDirectory: '/workspace/simple',
-        preset: flashskyaiPreset,
       );
 
       final flashskyaiDir = p.join(
@@ -141,15 +135,6 @@ void main() {
       const workspaceId = 'proj-simple-cursor';
       const sessionId = 'sess-simple-cursor';
       const workspace = '/home/hhoa/git/hhoa/teampilot';
-      const cursorPreset = CliPreset(
-        id: 'p-cursor',
-        name: 'Cursor',
-        cli: CliTool.cursor,
-        provider: '',
-        model: '',
-        createdAt: 0,
-        updatedAt: 0,
-      );
 
       await service.provisionWorkspace(
         workspaceId: workspaceId,
@@ -161,9 +146,13 @@ void main() {
         workspaceId: workspaceId,
         sessionId: sessionId,
         runtimeBundle: const ConfigBundle(),
-        member: const TeamMemberConfig(id: 'solo', name: 'solo', agent: 'solo'),
+        member: const TeamMemberConfig(
+          id: 'solo',
+          name: 'solo',
+          agent: 'solo',
+          cli: CliTool.cursor,
+        ),
         workingDirectory: workspace,
-        preset: cursorPreset,
       );
 
       final cursorDir = p.join(

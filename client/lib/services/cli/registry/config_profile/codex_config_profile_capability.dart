@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../../models/app_provider_config.dart';
+import '../../../../models/simple_launch_identity.dart';
 import '../../../../models/team_config.dart';
 import '../../../provider/codex/codex_auth_artifacts.dart';
 import '../../../mcp/mcp_credentials_store.dart';
@@ -66,10 +67,12 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     } else if (ctx.isSimple) {
       final required =
           member ?? (throw StateError('Simple launch requires plan.member'));
-      final fromPreset = presetProviderId(ctx.preset);
-      final fromMember = required.provider.trim();
+      var fromMember = required.provider.trim();
+      if (fromMember.isEmpty) {
+        fromMember = SimpleLaunchIdentity.officialProviderIdFor(CliTool.codex) ?? '';
+      }
       provider = await resolver.findById(
-        fromPreset.isNotEmpty ? fromPreset : fromMember,
+        fromMember,
       );
       provider ??= await _resolveSoleCodexProvider(ctx.catalog);
     }
@@ -112,7 +115,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
             team: team,
             member: member,
             provider: provider,
-            profileEffort: ctx.preset?.effort ?? '',
+            profileEffort: member?.effort ?? '',
           ),
         );
       } on CodexHomeProvisionException catch (e) {

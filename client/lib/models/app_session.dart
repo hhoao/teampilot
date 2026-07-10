@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'member_instance.dart';
 import 'session_member_binding.dart';
+import 'simple_launch_identity.dart';
 import 'team_config.dart';
 import 'workspace_folder.dart';
 import 'workspace_topology.dart';
@@ -88,6 +89,10 @@ class AppSession {
     this.profileId = '',
     this.cliTeamName = '',
     this.cli,
+    this.provider = '',
+    this.model = '',
+    this.effort = '',
+    this.presetId = '',
     this.members = const [],
     this.nativeSessionIds = const {},
     this.launchState = AppSessionLaunchState.created,
@@ -108,6 +113,10 @@ class AppSession {
     String profileId = '',
     String cliTeamName = '',
     CliTool? cli,
+    String provider = '',
+    String model = '',
+    String effort = '',
+    String presetId = '',
     List<SessionMemberBinding> members = const [],
     Map<String, String> nativeSessionIds = const {},
     AppSessionLaunchState launchState = AppSessionLaunchState.created,
@@ -131,6 +140,10 @@ class AppSession {
       profileId: profileId,
       cliTeamName: cliTeamName,
       cli: cli,
+      provider: provider.trim(),
+      model: model.trim(),
+      effort: effort.trim(),
+      presetId: presetId.trim(),
       members: members,
       nativeSessionIds: nativeSessionIds,
       launchState: launchState,
@@ -184,6 +197,10 @@ class AppSession {
       profileId: json['profileId'] as String? ?? '',
       cliTeamName: json['cliTeamName'] as String? ?? '',
       cli: CliTool.tryParse(json['cli'] as String?),
+      provider: json['provider'] as String? ?? '',
+      model: json['model'] as String? ?? '',
+      effort: json['effort'] as String? ?? '',
+      presetId: json['presetId'] as String? ?? '',
       members: members,
       nativeSessionIds: native,
       launchState: launch,
@@ -234,6 +251,15 @@ class AppSession {
   final String profileId;
   final String cliTeamName;
   final CliTool? cli;
+
+  /// Simple launch: denormalized provider/model/effort (see [simpleIdentity]).
+  final String provider;
+  final String model;
+  final String effort;
+
+  /// Simple launch: provenance of the global CLI preset chosen at create.
+  final String presetId;
+
   final List<SessionMemberBinding> members;
   final Map<String, String> nativeSessionIds;
 
@@ -252,6 +278,30 @@ class AppSession {
 
   /// Expert Hub discovery key when this personal session summons an expert.
   final String expertKey;
+
+  /// True when this session has no team roster (Simple / unteamed).
+  bool get isSimple => sessionTeam.trim().isEmpty;
+
+  /// Denormalized Simple launch identity. Throws if this is a team session.
+  SimpleLaunchIdentity get simpleIdentity {
+    if (!isSimple) {
+      throw StateError('simpleIdentity requires a Simple (unteamed) session');
+    }
+    final resolvedCli = cli ?? CliTool.claude;
+    var resolvedProvider = provider.trim();
+    if (resolvedProvider.isEmpty) {
+      resolvedProvider =
+          SimpleLaunchIdentity.officialProviderIdFor(resolvedCli) ?? '';
+    }
+    return SimpleLaunchIdentity(
+      cli: resolvedCli,
+      provider: resolvedProvider,
+      model: model.trim(),
+      effort: effort.trim(),
+      expertKey: expertKey.trim(),
+      presetId: presetId.trim(),
+    );
+  }
 
   String resolveDisplayTitle(String whenDisplayEmpty) =>
       display.isNotEmpty ? display : whenDisplayEmpty;
@@ -277,6 +327,10 @@ class AppSession {
     String? profileId,
     String? cliTeamName,
     CliTool? cli,
+    String? provider,
+    String? model,
+    String? effort,
+    String? presetId,
     List<SessionMemberBinding>? members,
     Map<String, String>? nativeSessionIds,
     AppSessionLaunchState? launchState,
@@ -296,6 +350,10 @@ class AppSession {
       profileId: profileId ?? this.profileId,
       cliTeamName: cliTeamName ?? this.cliTeamName,
       cli: cli ?? this.cli,
+      provider: provider ?? this.provider,
+      model: model ?? this.model,
+      effort: effort ?? this.effort,
+      presetId: presetId ?? this.presetId,
       members: members ?? this.members,
       nativeSessionIds: nativeSessionIds ?? this.nativeSessionIds,
       launchState: launchState ?? this.launchState,
@@ -319,6 +377,10 @@ class AppSession {
       if (profileId.isNotEmpty) 'profileId': profileId,
       if (cliTeamName.isNotEmpty) 'cliTeamName': cliTeamName,
       if (cli != null) 'cli': cli!.value,
+      if (provider.isNotEmpty) 'provider': provider,
+      if (model.isNotEmpty) 'model': model,
+      if (effort.isNotEmpty) 'effort': effort,
+      if (presetId.isNotEmpty) 'presetId': presetId,
       if (members.isNotEmpty)
         'members': members.map((m) => m.toJson()).toList(),
       if (nativeSessionIds.isNotEmpty) 'nativeSessionIds': nativeSessionIds,
@@ -345,6 +407,10 @@ class AppSession {
             profileId == other.profileId &&
             cliTeamName == other.cliTeamName &&
             cli == other.cli &&
+            provider == other.provider &&
+            model == other.model &&
+            effort == other.effort &&
+            presetId == other.presetId &&
             listEquals(members, other.members) &&
             mapEquals(nativeSessionIds, other.nativeSessionIds) &&
             launchState == other.launchState &&
@@ -356,7 +422,7 @@ class AppSession {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     sessionId,
     workspaceId,
     Object.hashAll(folders),
@@ -366,6 +432,10 @@ class AppSession {
     profileId,
     cliTeamName,
     cli,
+    provider,
+    model,
+    effort,
+    presetId,
     Object.hashAll(members),
     Object.hashAll(
       nativeSessionIds.entries.map((e) => Object.hash(e.key, e.value)),
@@ -376,5 +446,5 @@ class AppSession {
     pinned,
     sortOrder,
     expertKey,
-  );
+  ]);
 }

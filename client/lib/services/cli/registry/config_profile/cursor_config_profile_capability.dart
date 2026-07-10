@@ -1,4 +1,5 @@
 import '../../../../models/app_provider_config.dart';
+import '../../../../models/simple_launch_identity.dart';
 import '../../../../models/team_config.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/cursor/cursor_home_layout.dart';
@@ -119,11 +120,12 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       basePath: ctx.catalog.basePath,
       repository: providerCatalogRepository(ctx.catalog),
     );
-    final fromPreset = presetProviderId(ctx.preset);
-    final fromMember = ctx.member?.provider.trim() ?? '';
-    var provider = await resolver.findById(
-      fromPreset.isNotEmpty ? fromPreset : fromMember,
-    );
+    var providerId = ctx.member?.provider.trim() ?? '';
+    if (providerId.isEmpty) {
+      providerId =
+          SimpleLaunchIdentity.officialProviderIdFor(CliTool.cursor) ?? '';
+    }
+    var provider = await resolver.findById(providerId);
     if (provider != null) return provider;
 
     final providers = await providerCatalogRepository(

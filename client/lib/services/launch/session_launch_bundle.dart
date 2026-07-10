@@ -36,7 +36,6 @@ class SessionLaunchBundleDeps {
     required this.scheduleShellConnect,
     required this.rollbackStagedLaunch,
     required this.installTeamRuntimeIfNeeded,
-    required this.personalPresetIdOverride,
     required this.scheduleMemberConnect,
     required this.disconnectSession,
     required this.ensureSession,
@@ -85,7 +84,6 @@ class SessionLaunchBundleDeps {
     required int generation,
   })
   installTeamRuntimeIfNeeded;
-  final String Function(SessionOpenRequest request) personalPresetIdOverride;
   final ScheduleMemberConnectFn scheduleMemberConnect;
   final void Function() disconnectSession;
   final TerminalSession? Function(TeamProfile team) ensureSession;
@@ -144,7 +142,6 @@ class SessionLaunchBundle {
       tabStore: deps.tabStore,
       state: deps.state,
       workspaceById: deps.workspaceById,
-      personalPresetIdOverride: deps.personalPresetIdOverride,
       shouldAutoConnect: deps.shouldAutoConnect,
       prepareNewTabConnect: prepRunner.prepareNewTabConnect,
       prepareExistingTabConnect:

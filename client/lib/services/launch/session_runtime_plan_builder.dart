@@ -1,4 +1,5 @@
 import '../../models/config_bundle.dart';
+import '../../models/simple_launch_identity.dart';
 import '../../models/team_config.dart';
 import '../../models/team_roster_slot.dart';
 import '../../repositories/workspace_project_config_repository.dart';
@@ -66,14 +67,22 @@ class SessionRuntimePlanBuilder {
   final Future<ConfigBundle> Function(String workspaceId) _loadWorkspaceBundle;
 
   /// Simple (unteamed) seat. Empty [expertKey] → [kBuiltinDefaultExpertKey].
+  ///
+  /// [identity] is the session-pinned launch identity. Expert packs do not own
+  /// the Simple CLI/provider/model — without this override, staging falls back
+  /// to Claude and Cursor/Codex resume breaks.
   Future<SessionRuntimePlan> buildSimple({
     required String workspaceId,
     required String sessionId,
     required String memberId,
+    SimpleLaunchIdentity? identity,
     String? expertKey,
-    String? presetId,
   }) async {
-    final resolvedKey = _normalizeExpertKey(expertKey);
+    final resolvedKey = _normalizeExpertKey(
+      identity?.expertKey.trim().isNotEmpty == true
+          ? identity!.expertKey
+          : expertKey,
+    );
     final workspaceBundle = await _loadWorkspaceBundle(workspaceId);
     final pack = await _resolvePackOrThrow(resolvedKey);
 
@@ -82,15 +91,17 @@ class SessionRuntimePlanBuilder {
       workspace: workspaceBundle,
     );
 
+    final member = identity?.applyToMember(pack.member) ?? pack.member;
+
     return SessionRuntimePlan(
       mode: SessionRuntimeMode.simple,
       workspaceId: workspaceId,
       sessionId: sessionId,
       memberId: memberId,
       expertKey: resolvedKey,
-      presetId: presetId,
+      presetId: identity?.presetId,
       runtimeBundle: runtimeBundle,
-      member: pack.member,
+      member: member,
     );
   }
 

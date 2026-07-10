@@ -94,10 +94,6 @@ class ChatTab {
   /// Member ids with a scheduled or in-flight member connect.
   final Set<String> membersPendingConnect = {};
 
-  /// Pinned global CLI preset for the first personal connect on this tab
-  /// (landing / automation). Cleared after a successful connect.
-  String? personalPresetId;
-
   /// Incremented when a new open/connect is requested; async prep aborts when
   /// this no longer matches.
   int launchGeneration = 0;

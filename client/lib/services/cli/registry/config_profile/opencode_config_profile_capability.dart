@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../../../../models/app_provider_config.dart';
+import '../../../../models/simple_launch_identity.dart';
 import '../../../../models/team_config.dart';
 import '../../../launch/work_plane_paths.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
@@ -270,11 +271,12 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
       final required =
           member ?? (throw StateError('Simple launch requires plan.member'));
       final resolver = _resolver(ctx.catalog);
-      final fromPreset = presetProviderId(ctx.preset);
-      final fromMember = required.provider.trim();
-      launchProvider = await resolver.findById(
-        fromPreset.isNotEmpty ? fromPreset : fromMember,
-      );
+      var fromMember = required.provider.trim();
+      if (fromMember.isEmpty) {
+        fromMember =
+            SimpleLaunchIdentity.officialProviderIdFor(CliTool.opencode) ?? '';
+      }
+      launchProvider = await resolver.findById(fromMember);
       launchProvider ??= await resolver.resolveSole();
     }
 
@@ -284,7 +286,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
         team: team,
         member: member,
         provider: launchProvider,
-        profileEffort: ctx.preset?.effort ?? '',
+        profileEffort: member?.effort ?? '',
       );
       if (effort.isNotEmpty) {
         config = mergeOpencodeReasoningEffort(

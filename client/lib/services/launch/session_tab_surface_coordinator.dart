@@ -45,7 +45,6 @@ class SessionTabSurfaceCoordinator {
     required ChatTabStore tabStore,
     required ChatState Function() state,
     required Workspace? Function(String workspaceId) workspaceById,
-    required String Function(SessionOpenRequest request) personalPresetIdOverride,
     required bool Function(SessionOpenRequest request) shouldAutoConnect,
     required PrepareNewTabConnectFn prepareNewTabConnect,
     required PrepareExistingTabConnectFn prepareExistingTabConnect,
@@ -54,7 +53,6 @@ class SessionTabSurfaceCoordinator {
        _tabStore = tabStore,
        _state = state,
        _workspaceById = workspaceById,
-       _personalPresetIdOverride = personalPresetIdOverride,
        _shouldAutoConnect = shouldAutoConnect,
        _prepareNewTabConnect = prepareNewTabConnect,
        _prepareExistingTabConnect = prepareExistingTabConnect,
@@ -64,7 +62,6 @@ class SessionTabSurfaceCoordinator {
   final ChatTabStore _tabStore;
   final ChatState Function() _state;
   final Workspace? Function(String workspaceId) _workspaceById;
-  final String Function(SessionOpenRequest request) _personalPresetIdOverride;
   final bool Function(SessionOpenRequest request) _shouldAutoConnect;
   final PrepareNewTabConnectFn _prepareNewTabConnect;
   final PrepareExistingTabConnectFn _prepareExistingTabConnect;
@@ -159,10 +156,6 @@ class SessionTabSurfaceCoordinator {
           )
           ..persistedSession = session
           ..selectedMemberId = placeholderMemberId;
-    final pinnedPresetId = _personalPresetIdOverride(request);
-    if (pinnedPresetId.isNotEmpty) {
-      tab.personalPresetId = pinnedPresetId;
-    }
     tab.bumpLaunchGeneration();
     final generation = tab.launchGeneration;
 

@@ -372,4 +372,97 @@ void main() {
       );
     },
   );
+
+  test(
+    'simple launch without provider links claude-official credentials',
+    () async {
+      final base = await Directory.systemTemp.createTemp('claude_cap_simple_');
+      addTearDown(() async {
+        if (await base.exists()) await base.delete(recursive: true);
+      });
+
+      final fs = LocalFilesystem();
+      final home = p.join(base.path, 'home');
+      final service = ConfigProfileService(
+        basePath: base.path,
+        fs: fs,
+        home: home,
+        layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+      );
+      const capability = ClaudeConfigProfileCapability();
+      final repository = AppProviderRepository(basePath: base.path, fs: fs);
+      await repository.saveProviders(CliTool.claude, [
+        const AppProviderConfig(
+          id: 'third',
+          cli: CliTool.claude,
+          name: 'third',
+          category: AppProviderCategory.thirdParty,
+          config: {
+            'env': {'ANTHROPIC_BASE_URL': 'https://api.example.com'},
+          },
+        ),
+        AppProviderConfig(
+          id: 'claude-official',
+          cli: CliTool.claude,
+          name: 'Claude Official',
+          category: AppProviderCategory.official,
+          isOfficial: true,
+          config: withCredentialBinding({
+            'env': {},
+          }, CredentialBindingKind.linked),
+        ),
+        AppProviderConfig(
+          id: 'default',
+          cli: CliTool.claude,
+          name: 'Default',
+          category: AppProviderCategory.official,
+          isOfficial: true,
+          config: withCredentialBinding({
+            'env': {},
+          }, CredentialBindingKind.linked),
+        ),
+      ]);
+      await fs.writeString(
+        p.join(home, '.claude', '.credentials.json'),
+        '{"claudeAiOauth":{"accessToken":"global"}}',
+      );
+
+      // Expert pack member with no provider — matches Simple history resume.
+      const member = TeamMemberConfig(id: 'architect', name: 'Architect');
+      final scope = LaunchProfileScope(
+        workspaceId: 'workspace-1',
+        teamId: 'workspace-1',
+        sessionId: 'session-simple',
+        cliTeamName: 'session-simple',
+      );
+
+      final contribution = await capability.contributeLaunch(
+        ConfigProfileLaunchContext(
+          workspaceId: 'workspace-1',
+          teamId: '',
+          sessionId: scope.sessionId,
+          scope: scope,
+          team: null,
+          member: member,
+          members: const [member],
+          workingDirectory: '/workspace/workspace',
+          paths: service,
+          catalog: service,
+        ),
+      );
+
+      expect(
+        contribution.warnings,
+        isNot(contains('claude_credentials_missing')),
+      );
+      final claudeDir = contribution.environment['CLAUDE_CONFIG_DIR']!;
+      final credPath = p.join(claudeDir, '.credentials.json');
+      expect(await File(credPath).exists(), isTrue);
+      final linkTarget = await Link(credPath).target();
+      expect(
+        p.normalize(linkTarget),
+        p.normalize(p.join(home, '.claude', '.credentials.json')),
+      );
+    },
+  );
 }

@@ -1,3 +1,4 @@
+import '../../../models/simple_launch_identity.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../repositories/session_repository.dart';
@@ -11,7 +12,7 @@ class SessionCreateRequest {
     this.member,
     this.repo,
     this.cli,
-    this.personalPresetId,
+    this.simpleIdentity,
     this.workingDirectory,
     this.emptyDisplayTitleFallback = 'New Chat',
     this.fixedSessionId,
@@ -27,14 +28,14 @@ class SessionCreateRequest {
   final SessionRepository? repo;
   final CliTool? cli;
 
-  /// Simple launch: pin provider/model via a global CLI preset.
-  final String? personalPresetId;
+  /// Simple launch: resolved identity (cli/provider/model/effort/expert/preset).
+  final SimpleLaunchIdentity? simpleIdentity;
   final String? workingDirectory;
   final String emptyDisplayTitleFallback;
 
   /// When set, the staged session uses this id instead of a fresh UUID.
   final String? fixedSessionId;
 
-  /// Simple summon: catalog expert key resolved at connect.
+  /// Simple summon: catalog expert key (also on [simpleIdentity.expertKey]).
   final String? expertKey;
 }

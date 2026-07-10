@@ -197,6 +197,7 @@ class SessionLaunchPipeline {
       workspace: request.workspace,
       isPersonal: request.isPersonal,
       cli: request.cli,
+      simpleIdentity: request.simpleIdentity,
       workingDirectory: request.workingDirectory,
       sessionTeamId: sessionTeamId,
       expertKey: request.expertKey,
@@ -209,7 +210,7 @@ class SessionLaunchPipeline {
           ? const []
           : (request.team?.members ?? const []),
       cli: request.cli,
-      personalPresetId: request.personalPresetId,
+      simpleIdentity: request.simpleIdentity,
       workingDirectory: request.workingDirectory,
       expertKey: request.expertKey,
     );
@@ -223,7 +224,6 @@ class SessionLaunchPipeline {
         repo: request.repo,
         emptyDisplayTitleFallback: request.emptyDisplayTitleFallback,
         persistParams: persistParams,
-        personalPresetId: request.personalPresetId,
       ),
       session: provisional,
     );

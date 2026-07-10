@@ -94,6 +94,11 @@ class FullscreenPtyAutomation {
   }
 
   /// Clear → paste → locate needle → CR until anchor clears.
+  ///
+  /// Always pastes on first deliver — never treat a pre-existing needle as
+  /// staged input. After `--resume`, the same user text often still sits in
+  /// the transcript near the composer; skipping paste then only nudges CR and
+  /// the new message never reaches the prompt (retry/nudge may CR-only).
   Future<FullscreenPtyDeliveryOutcome> deliverPasteAndSubmit({
     required FullscreenPtyDeliveryPort port,
     required String text,
@@ -110,18 +115,14 @@ class FullscreenPtyAutomation {
       }
 
       await port.syncDisplayGrid();
-      final scanRows = _probeScanRows(port);
-      var anchor = port.locateNeedle(needle, scanRows: scanRows);
-      if (anchor == null) {
-        await port.clearStagedInput();
-        await Future<void>.delayed(_timing.afterClear);
-        await port.pasteText(text);
-        anchor = await _pollForNeedle(
-          port,
-          needle,
-          minSettle: pasteSettle + _timing.afterPaste,
-        );
-      }
+      await port.clearStagedInput();
+      await Future<void>.delayed(_timing.afterClear);
+      await port.pasteText(text);
+      final anchor = await _pollForNeedle(
+        port,
+        needle,
+        minSettle: pasteSettle + _timing.afterPaste,
+      );
 
       if (anchor == null) {
         if (reinject < maxReinject) continue;
@@ -183,16 +184,13 @@ class FullscreenPtyAutomation {
     return FullscreenPtyDeliveryOutcome.crStuck;
   }
 
-  /// Screen-gated retry: visible → CR nudge; missing → full paste+submit.
+  /// Retry always re-pastes; visible text can be transcript history after
+  /// resume, not staged input.
   Future<FullscreenPtyDeliveryOutcome> retry({
     required FullscreenPtyDeliveryPort port,
     required String text,
     required Duration pasteSettle,
   }) async {
-    await port.syncDisplayGrid();
-    if (isTextVisible(port, text)) {
-      return nudgeCrUntilClear(port: port, text: text);
-    }
     return deliverPasteAndSubmit(
       port: port,
       text: text,

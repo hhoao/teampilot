@@ -180,18 +180,17 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       final member =
           ctx.member ?? (throw StateError('Simple launch requires plan.member'));
       final resolver = _claudeResolver(catalog);
-      final fromPreset = presetProviderId(ctx.preset);
-      final providerId = fromPreset.isNotEmpty
-          ? fromPreset
-          : member.provider.trim();
+      var providerId = member.provider.trim();
+      // Expert packs / empty presets often omit provider. Without a fallback,
+      // official OAuth credentials are never linked into CLAUDE_CONFIG_DIR and
+      // resume shows the login screen.
+      if (providerId.isEmpty) {
+        providerId = (await _resolveDefaultClaudeProviderId(catalog)) ?? '';
+      }
       final settings = await resolver.resolve(
         providerId.isNotEmpty ? providerId : null,
       );
-      final resolvedProviderId = providerId.isNotEmpty
-          ? providerId
-          : (settings != null
-                ? (await _resolveSoleClaudeProviderId(catalog))
-                : null);
+      final resolvedProviderId = providerId.isNotEmpty ? providerId : null;
       if (stepSw != null) {
         _logClaudeContributeLaunchStep(
           stepSw,
@@ -236,10 +235,8 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final effortLevel = _resolveClaudeEffort(
       team: team,
       member: ctx.member,
-      model: presetModelId(ctx.preset).isNotEmpty
-          ? presetModelId(ctx.preset)
-          : (ctx.member?.model ?? ''),
-      profileEffort: ctx.preset?.effort ?? '',
+      model: ctx.member?.model ?? '',
+      profileEffort: ctx.member?.effort ?? '',
     );
     await _writeSettings(
       delegate,
@@ -382,13 +379,25 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     await delegate.writeJsonIfChanged(file, {...defaultMetadata, ...existing});
   }
 
-  Future<String?> _resolveSoleClaudeProviderId(
+  /// Default Claude provider when Simple launch has none pinned.
+  ///
+  /// Prefer Anthropic official (`claude-official` / official category) so
+  /// OAuth credentials can be linked; sole-provider fallback last.
+  Future<String?> _resolveDefaultClaudeProviderId(
     ConfigProfilePaths catalog,
   ) async {
     final providers = await providerCatalogRepository(
       catalog,
     ).loadProviders(CliTool.claude);
+    if (providers.isEmpty) return null;
     if (providers.length == 1) return providers.first.id;
+
+    for (final provider in providers) {
+      if (provider.id.trim() == 'claude-official') return provider.id;
+    }
+    for (final provider in providers) {
+      if (isOfficialClaudeProvider(provider)) return provider.id;
+    }
     return null;
   }
 
@@ -401,11 +410,15 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required TeamMemberConfig? launchedMember,
     required List<String> warnings,
   }) async {
-    final providerId = _credentialProviderId(claude, launchedMember);
+    var providerId = _credentialProviderId(claude, launchedMember);
+    if (providerId.isEmpty) {
+      providerId = (await _resolveDefaultClaudeProviderId(catalog)) ?? '';
+    }
     if (providerId.isEmpty) return;
 
     final settings = _credentialSettings(claude, launchedMember);
-    if (settings == null || !isOfficialClaudeSettings(settings)) return;
+    // Null settings = no third-party env → official login still needs a link.
+    if (settings != null && !isOfficialClaudeSettings(settings)) return;
 
     final sessionClaudeDir = delegate.sessionToolDir(
       scope.workspaceId,

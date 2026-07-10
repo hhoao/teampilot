@@ -1,3 +1,4 @@
+import '../../../models/simple_launch_identity.dart';
 import '../../../models/team_config.dart';
 
 /// Disk-write parameters for a session that is already surfaced in the UI.
@@ -6,7 +7,7 @@ class SessionPersistParams {
     required this.sessionTeamId,
     this.rosterMembers = const [],
     this.cli,
-    this.personalPresetId,
+    this.simpleIdentity,
     this.workingDirectory,
     this.expertKey,
   });
@@ -14,7 +15,9 @@ class SessionPersistParams {
   final String sessionTeamId;
   final List<TeamMemberConfig> rosterMembers;
   final CliTool? cli;
-  final String? personalPresetId;
+
+  /// Simple launch: denormalized identity written to [AppSession].
+  final SimpleLaunchIdentity? simpleIdentity;
   final String? workingDirectory;
   final String? expertKey;
 }

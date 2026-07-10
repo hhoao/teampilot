@@ -816,6 +816,9 @@ Future<AppShell> buildAppShell({
     launchProfileKindById: (profileId) {
       return teamCubit.state.byId(profileId)?.kind;
     },
+    resolveCliPreset: (presetId) => cliPresetsCubit.state.presets
+        .where((preset) => preset.id == presetId.trim())
+        .firstOrNull,
     sessionById: (sessionId, workspaceId) => chatCubit.state.sessions
         .where((s) => s.sessionId == sessionId && s.workspaceId == workspaceId)
         .firstOrNull,

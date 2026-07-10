@@ -521,7 +521,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
     MemberBusIdleEndpoint? busIdle,
-    CliPreset? preset,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -530,7 +529,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     }
 
     final warnings = <String>[];
-    final cli = member.cli ?? preset?.cli ?? CliTool.claude;
+    final cli = member.cli ?? CliTool.claude;
     // Path keys only — Simple has no team identity; teamId mirrors workspaceId
     // so sessionToolDir / append-prompt helpers keep a stable scope.
     final scope = LaunchProfileScope(
@@ -564,7 +563,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
           paths: this,
           catalog: catalog,
           busIdle: busIdle,
-          preset: preset,
         ),
       );
     } on Object catch (e) {
@@ -593,7 +591,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
     List<String> additionalDirectories = const [],
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
-    CliPreset? preset,
   }) async {
     final manifestCtx = workPathContextFor(
       readDelegate: readDelegate,
@@ -610,7 +607,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       workTeampilotRoot: workTeampilotRoot,
     );
 
-    final cli = member.cli ?? preset?.cli ?? CliTool.claude;
+    final cli = member.cli ?? CliTool.claude;
     final fsWarnings = await staging.applySimpleSessionFilesystem(
       workspaceId: workspaceId,
       sessionId: sessionId,
@@ -629,7 +626,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
       workingDirectory: workingDirectory,
       additionalDirectories: additionalDirectories,
       busIdle: busIdle,
-      preset: preset,
     );
     return (
       outcome: TeamLaunchOutcome(
@@ -650,7 +646,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
     List<String> additionalDirectories = const [],
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
-    CliPreset? preset,
     ManifestExecutor? manifestExecutor,
   }) async {
     final staged = await stageSimpleSessionLaunch(
@@ -664,7 +659,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
       additionalDirectories: additionalDirectories,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
-      preset: preset,
     );
     final executor = manifestExecutor ?? const ManifestExecutor();
     await executor.flush(manifest: staged.manifest, targetFs: fs, sourceFs: fs);

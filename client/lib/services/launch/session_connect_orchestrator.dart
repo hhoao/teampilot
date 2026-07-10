@@ -1,17 +1,14 @@
 import '../../models/app_session.dart';
-import '../../models/cli_preset.dart';
 import '../../models/runtime_target.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
 import '../../models/team_roster_slot.dart';
 import '../../models/workspace.dart';
 import '../../utils/team_member_naming.dart';
-import '../cli/registry/config_profile/config_profile_scope.dart';
 import '../cli/registry/mcp_writers/claude_project_mcp_cleanup.dart';
 import '../cli/preset_resolver.dart';
 import '../provider/config_profile_service.dart';
 import '../session/session_lifecycle_service.dart';
-import '../session/shell_launch_spec.dart';
 import '../storage/runtime_context.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
 import 'launch_manifest.dart';
@@ -53,23 +50,21 @@ class SessionConnectOrchestrator {
     required AppSession session,
     required Workspace workspace,
     required RuntimeTarget launchTarget,
-    CliPreset? preset,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
   }) async {
+    final identity = session.simpleIdentity;
     final plan = await runtimePlanBuilder.buildSimple(
       workspaceId: workspace.workspaceId,
       sessionId: session.sessionId,
       memberId: session.sessionId,
-      expertKey: session.expertKey,
-      presetId: preset?.id,
+      identity: identity,
     );
     return _prepareConnectFromPlan(
       session: session,
       workspace: workspace,
       plan: plan,
       launchTarget: launchTarget,
-      preset: preset,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
     );
@@ -130,7 +125,6 @@ class SessionConnectOrchestrator {
     TeamProfile? team,
     SessionMemberBinding? memberBinding,
     required RuntimeTarget launchTarget,
-    CliPreset? preset,
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
     Map<String, Map<String, Object?>>? extraMcpServers,
@@ -139,7 +133,7 @@ class SessionConnectOrchestrator {
     final isSimple = plan.mode == SessionRuntimeMode.simple;
     final member = plan.member;
     final cli = isSimple
-        ? (session.cli ?? member.cli ?? preset?.cli ?? CliTool.claude)
+        ? (session.cli ?? member.cli ?? CliTool.claude)
         : memberLaunchCli(
             team: team!,
             member: member,
@@ -189,7 +183,6 @@ class SessionConnectOrchestrator {
             : session.extraFolderPaths,
         extraMcpServers: extraMcpServers,
         busIdle: busIdle,
-        preset: preset,
       );
     } else {
       final teamId = team!.id.trim();
@@ -251,7 +244,6 @@ class SessionConnectOrchestrator {
       plan: plan,
       team: team,
       memberBinding: memberBinding,
-      preset: preset,
       environment: environment,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
