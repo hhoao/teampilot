@@ -3532,6 +3532,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get expertHubNotFound => 'Expert not found.';
 
   @override
+  String expertHubPreflightPartial(
+    Object name,
+    int failedCount,
+    Object failedNames,
+  ) {
+    return 'Selected \"$name\". $failedCount capabilities could not be installed: $failedNames.';
+  }
+
+  @override
   String get expertHubAddFromHub => 'Add from Expert Hub';
 
   @override

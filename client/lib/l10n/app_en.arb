@@ -1614,6 +1614,14 @@
   "expertHubRecent": "Recent",
   "expertHubIgnoredInTeamMode": "Experts are only available in Simple mode. Switch to Simple to summon an expert.",
   "expertHubNotFound": "Expert not found.",
+  "expertHubPreflightPartial": "Selected \"{name}\". {failedCount} capabilities could not be installed: {failedNames}.",
+  "@expertHubPreflightPartial": {
+    "placeholders": {
+      "name": {},
+      "failedCount": {"type": "int"},
+      "failedNames": {}
+    }
+  },
   "expertHubAddFromHub": "Add from Expert Hub",
   "expertHubViewInHub": "View in Expert Hub",
   "expertHubViewOriginTeam": "View origin team",

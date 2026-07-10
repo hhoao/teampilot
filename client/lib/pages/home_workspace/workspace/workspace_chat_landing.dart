@@ -31,6 +31,8 @@ import '../../../services/compose/compose_landing_bundle.dart';
 import '../../../services/compose/compose_prompt_enhance.dart';
 import '../../../services/compose/compose_text_edit.dart';
 import '../../../services/compose/compose_voice_input.dart';
+import '../../../services/expert_hub/expert_capability_resolver.dart';
+import '../../../services/expert_hub/expert_landing_preflight.dart';
 import '../../../services/expert_hub/expert_member_resolver.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/storage/launch_profile_provisioner.dart';
@@ -43,6 +45,7 @@ import '../../../widgets/menu/sidebar_action_menu.dart';
 import '../../../services/launch/workspace_landing_launch_gate.dart';
 import '../../../repositories/workspace_project_config_repository.dart';
 import '../../expert_hub/expert_landing_picker_sheet.dart';
+import '../../expert_hub/expert_landing_preflight_feedback.dart';
 import 'config/cli_presets_manage_dialog.dart';
 import 'workspace_chat_landing_compose_card.dart';
 import 'workspace_landing_launch_feedback.dart';
@@ -815,13 +818,61 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     _persistDraft();
   }
 
+  Future<void> _selectExpertWithPreflight(String expertKey) async {
+    final trimmed = expertKey.trim();
+    if (trimmed.isEmpty) {
+      _selectExpert(null);
+      return;
+    }
+
+    // Keep selection even when some deps fail (soft fail policy).
+    _selectExpert(trimmed);
+
+    ExpertCapabilityResolver? resolver;
+    try {
+      resolver = context.read<ExpertCapabilityResolver>();
+    } on ProviderNotFoundException {
+      return;
+    }
+
+    final result = await preflightLandingExpert(
+      resolver: resolver,
+      expertKey: trimmed,
+    );
+    if (!mounted) return;
+
+    final l10n = context.l10n;
+    if (result.notFound) {
+      AppToast.show(
+        context,
+        message: l10n.expertHubNotFound,
+        variant: AppToastVariant.warning,
+      );
+      return;
+    }
+
+    final pack = result.pack;
+    if (pack == null || !pack.hasFailures) return;
+    final message = expertLandingPreflightToastMessage(
+      l10n,
+      expertName: pack.member.name,
+      pack: pack,
+    );
+    if (message.isEmpty) return;
+    AppToast.show(
+      context,
+      message: message,
+      variant: AppToastVariant.warning,
+    );
+  }
+
   Future<void> _openExpertPicker() async {
     final key = await showExpertLandingPickerSheet(
       context,
       selectedKey: _selectedExpertKey,
     );
     if (!mounted || key == null) return;
-    _selectExpert(key);
+    await _selectExpertWithPreflight(key);
   }
 
   void _onExpertChipSelected(Object? value) {
@@ -834,7 +885,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       return;
     }
     if (value is String && value.isNotEmpty) {
-      _selectExpert(value);
+      unawaited(_selectExpertWithPreflight(value));
     }
   }
 

@@ -20,6 +20,9 @@ class LandingLaunchContext {
   final bool isPersonal;
 
   /// Personal launch identity ([PersonalProfile.id]).
+  ///
+  /// Optional for Simple expert summon — empty falls back to the builtin
+  /// personal id via [profileId]. Full PersonalProfile removal is a later task.
   final String personalProfileId;
 
   /// Active preset when [isPersonal] is true.

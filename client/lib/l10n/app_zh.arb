@@ -1322,6 +1322,14 @@
   "expertHubRecent": "最近使用",
   "expertHubIgnoredInTeamMode": "专家仅在简单模式下可用。请切换到简单模式以召唤专家。",
   "expertHubNotFound": "未找到该专家。",
+  "expertHubPreflightPartial": "已选择「{name}」。{failedCount} 个能力无法安装：{failedNames}。",
+  "@expertHubPreflightPartial": {
+    "placeholders": {
+      "name": {},
+      "failedCount": {"type": "int"},
+      "failedNames": {}
+    }
+  },
   "expertHubAddFromHub": "从专家中心添加",
   "expertHubViewInHub": "在专家中心查看",
   "expertHubViewOriginTeam": "查看来源团队",

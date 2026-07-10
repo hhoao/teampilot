@@ -22,6 +22,7 @@ import '../../../models/team_config.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../services/cli/preset_resolver.dart';
 import '../../../services/expert_hub/expert_hub_recent_store.dart';
+import '../../../services/expert_hub/expert_landing_preflight.dart';
 import '../../../services/expert_hub/expert_member_resolver.dart';
 import '../../../services/launch/personal_launch_context_resolver.dart';
 import '../../../utils/landing_draft_resolver.dart';
@@ -242,9 +243,11 @@ Future<void> submitWorkspaceLandingMessage(
   final personalPresetId = launch.presetId?.trim() ?? '';
   final team = isPersonal ? null : _teamProfileById(context, sessionTeamId);
 
-  final trimmedExpert =
-      expertKey?.trim() ?? launch.expertKey?.trim() ?? '';
-  if (isPersonal && trimmedExpert.isNotEmpty) {
+  // Simple always carries a resolved expert key (selected or builtin default).
+  final trimmedExpert = isPersonal
+      ? resolveLandingSessionExpertKey(expertKey ?? launch.expertKey)
+      : (expertKey?.trim() ?? launch.expertKey?.trim() ?? '');
+  if (isPersonal) {
     final resolved = await ExpertMemberResolver.resolveMember(
       key: trimmedExpert,
       hubState: context.mounted ? context.read<ExpertHubCubit>().state : null,

@@ -3409,6 +3409,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get expertHubNotFound => '未找到该专家。';
 
   @override
+  String expertHubPreflightPartial(
+    Object name,
+    int failedCount,
+    Object failedNames,
+  ) {
+    return '已选择「$name」。$failedCount 个能力无法安装：$failedNames。';
+  }
+
+  @override
   String get expertHubAddFromHub => '从专家中心添加';
 
   @override

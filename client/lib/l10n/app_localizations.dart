@@ -6404,6 +6404,16 @@ abstract class AppLocalizations {
   /// **'Expert not found.'**
   String get expertHubNotFound;
 
+  /// No description provided for @expertHubPreflightPartial.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected \"{name}\". {failedCount} capabilities could not be installed: {failedNames}.'**
+  String expertHubPreflightPartial(
+    Object name,
+    int failedCount,
+    Object failedNames,
+  );
+
   /// No description provided for @expertHubAddFromHub.
   ///
   /// In en, this message translates to:

@@ -17,12 +17,14 @@ import '../../../models/launch_profile_kind.dart';
 import '../../../models/launch_profile.dart';
 import '../../../pages/home_workspace/home_workspace_route.dart';
 import '../../../repositories/session_repository.dart';
+import '../../../services/expert_hub/expert_capability_resolver.dart';
 import '../../../services/expert_hub/expert_landing_deep_link.dart';
 import '../../../theme/workspace_surface_layers.dart';
 import '../../../theme/app_toast_theme.dart';
 import '../../../utils/logger.dart';
 import '../../../widgets/app_toast/app_toast.dart';
 import '../../../utils/workspace_chrome_profile.dart';
+import '../../expert_hub/expert_landing_preflight_feedback.dart';
 import 'workspace_config_workspace.dart';
 import 'workspace_rail.dart';
 import 'workspace_section.dart';
@@ -131,32 +133,54 @@ class _WorkspacePageState extends State<WorkspacePage> {
         ? profile.kind == LaunchProfileKind.team
         : false;
 
-    final outcome = await applyExpertDeepLink(
+    ExpertCapabilityResolver? resolver;
+    try {
+      resolver = context.read<ExpertCapabilityResolver>();
+    } on ProviderNotFoundException {
+      resolver = null;
+    }
+
+    final result = await applyExpertDeepLink(
       expertKey: expertKey,
       workspaceId: widget.workspaceId,
       workspace: workspace,
       routeProfileIsTeam: routeProfileIsTeam,
       hubState: context.mounted ? context.read<ExpertHubCubit>().state : null,
+      resolver: resolver,
     );
     if (!mounted) return;
 
     final l10n = context.l10n;
-    switch (outcome) {
+    switch (result.outcome) {
       case ExpertDeepLinkOutcome.none:
+        return;
       case ExpertDeepLinkOutcome.applied:
-        if (outcome == ExpertDeepLinkOutcome.applied) {
-          context.read<WorkspaceLandingContextCubit>().update(
-            context.read<WorkspaceLandingContextCubit>().state.context.copyWith(
-              isPersonal: true,
-              expertKey: expertKey,
-            ),
+        context.read<WorkspaceLandingContextCubit>().update(
+          context.read<WorkspaceLandingContextCubit>().state.context.copyWith(
+            isPersonal: true,
+            expertKey: expertKey,
+          ),
+        );
+        final pack = result.pack;
+        if (pack != null && pack.hasFailures) {
+          final message = expertLandingPreflightToastMessage(
+            l10n,
+            expertName: pack.member.name,
+            pack: pack,
           );
-          await showWorkspaceComposeLanding(
-            context,
-            workspace,
-            tabScopeId: widget.tabKey,
-          );
+          if (message.isNotEmpty) {
+            AppToast.show(
+              context,
+              message: message,
+              variant: AppToastVariant.warning,
+            );
+          }
         }
+        await showWorkspaceComposeLanding(
+          context,
+          workspace,
+          tabScopeId: widget.tabKey,
+        );
         return;
       case ExpertDeepLinkOutcome.ignoredTeamMode:
         AppToast.show(
