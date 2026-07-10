@@ -30,6 +30,28 @@ import '../../../utils/workspace_path_utils.dart';
 
 const _uuid = Uuid();
 
+/// Builds the [SessionOpenRequest] for opening a persisted session from the
+/// sidebar / session list. Always [connectImmediately]: false so history review
+/// can load without starting a PTY.
+SessionOpenRequest buildOpenExistingSessionRequest({
+  required AppSession session,
+  Workspace? workspace,
+  TeamProfile? team,
+  TeamMemberConfig? member,
+  SessionRepository? repo,
+  required String emptyDisplayTitleFallback,
+}) {
+  return SessionOpenRequest(
+    session: session,
+    workspace: workspace,
+    team: team,
+    member: member,
+    repo: repo,
+    emptyDisplayTitleFallback: emptyDisplayTitleFallback,
+    connectImmediately: false,
+  );
+}
+
 Future<void> openWorkspaceSessionTab(
   BuildContext context,
   Workspace workspace,
@@ -53,7 +75,7 @@ Future<void> openWorkspaceSessionTab(
   }
 
   final status = await chatCubit.requestOpenSession(
-    SessionOpenRequest(
+    buildOpenExistingSessionRequest(
       session: session,
       workspace: workspace,
       team: team,

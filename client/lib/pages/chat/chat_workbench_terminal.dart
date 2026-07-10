@@ -24,6 +24,7 @@ import '../../widgets/terminal/terminal_with_history_scrollbar.dart';
 import '../../widgets/terminal_find_bar.dart';
 import '../../widgets/workspace_dnd/external_file_drop_region.dart';
 import '../../widgets/workspace_dnd/workspace_file_drop_region.dart';
+import '../home_workspace/workspace/workspace_session_actions.dart';
 import 'chat_workbench_context_menu.dart';
 
 class ChatWorkbenchRunningTerminal extends StatelessWidget {
@@ -221,7 +222,7 @@ void consumeChatWorkbenchRouteSession({
   if (session.sessionTeam.trim().isEmpty) {
     unawaited(
       chatCubit.requestOpenSession(
-        SessionOpenRequest(
+        buildOpenExistingSessionRequest(
           session: session,
           repo: sessionRepo,
           emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
@@ -252,7 +253,7 @@ void consumeChatWorkbenchRouteSession({
   unawaited(chatCubit.scheduleTeamConfigValidation(profile));
   unawaited(
     chatCubit.requestOpenSession(
-      SessionOpenRequest(
+      buildOpenExistingSessionRequest(
         session: session,
         team: profile,
         member: lead,
