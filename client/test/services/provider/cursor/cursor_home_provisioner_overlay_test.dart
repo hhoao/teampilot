@@ -124,7 +124,7 @@ void main() {
       expect(allow, contains(CursorCliConfigPolicy.teamBusMcpAllowEntry));
     });
 
-    test('skips bus files when busIdle is null', () async {
+    test('writes role.mdc but skips bus hooks/mcp when busIdle is null', () async {
       await provisioner.provisionOverlayOnly(
         memberHome: memberHome,
         member: member,
@@ -132,7 +132,7 @@ void main() {
         forceTeamLeadDelegateMode: false,
       );
 
-      expect((await fs.stat(layout.roleRule(memberHome))).isFile, isFalse);
+      expect((await fs.stat(layout.roleRule(memberHome))).isFile, isTrue);
       expect((await fs.stat(layout.mcpConfig(memberHome))).isFile, isFalse);
       expect((await fs.stat(layout.cliConfig(memberHome))).isFile, isTrue);
     });

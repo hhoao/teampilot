@@ -105,7 +105,6 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
           createSessionId: plan.createSessionId,
           resumeSessionId: plan.resumeSessionId,
           nativeSessionIdToPersist: plan.nativeSessionIdToPersist,
-          isFreshConversation: plan.isFreshConversation,
           toolValue: plan.toolValue,
           warnings: plan.warnings,
         ),
@@ -126,7 +125,6 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
           createSessionId: plan.createSessionId,
           resumeSessionId: plan.resumeSessionId,
           nativeSessionIdToPersist: plan.nativeSessionIdToPersist,
-          isFreshConversation: plan.isFreshConversation,
           toolValue: plan.toolValue,
           warnings: [
             ...plan.warnings,

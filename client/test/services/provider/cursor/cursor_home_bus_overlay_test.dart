@@ -74,12 +74,5 @@ void main() {
       );
       expect(s, contains('X-Bus-Token: sess-tok'));
     });
-
-    test('roleRule has alwaysApply frontmatter', () {
-      final rule = CursorHomeBusOverlay.roleRule('只做代码审查');
-
-      expect(rule, startsWith('---\nalwaysApply: true\n---\n'));
-      expect(rule, contains('只做代码审查'));
-    });
   });
 }

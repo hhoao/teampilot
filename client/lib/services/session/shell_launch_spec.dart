@@ -12,7 +12,6 @@ class LaunchPlan {
     this.createSessionId,
     this.resumeSessionId,
     this.nativeSessionIdToPersist,
-    this.isFreshConversation = true,
     this.toolValue,
     this.warnings = const [],
   });
@@ -38,11 +37,6 @@ class LaunchPlan {
   /// (cursor pre-allocated / codex+opencode captured). `null` for `clientPinned`
   /// CLIs (native id == [taskId]) and when nothing new was resolved.
   final String? nativeSessionIdToPersist;
-
-  /// Whether this launch starts a conversation with no prior history. Drives
-  /// one-time identity seeding for CLIs that inject identity as the opening
-  /// prompt (cursor). See `docs/session-resume-architecture.md`.
-  final bool isFreshConversation;
 
   /// Resolved CLI [CliTool.value] for this launch; keys
   /// [nativeSessionIdToPersist] on the session/binding.

@@ -195,7 +195,6 @@ void main() {
       expect(plan.resume, isFalse);
       expect(plan.resumeSessionId, isNull);
       expect(plan.createSessionId, isNull);
-      expect(plan.isFreshConversation, isTrue);
     },
   );
 

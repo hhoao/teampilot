@@ -80,6 +80,25 @@ void main() {
       expect((await fs.stat(layout.cursorDir(memberHome))).isDirectory, isTrue);
     });
 
+    test('provision writes role.mdc in simple mode', () async {
+      const memberHome = '/data/tp/members/planner/cursor/home';
+
+      await provisioner.provision(
+        memberHome: memberHome,
+        providerId: null,
+        member: member,
+        busIdle: null,
+        forceTeamLeadDelegateMode: false,
+        mixed: false,
+      );
+
+      final roleRule = await fs.readString(layout.roleRule(memberHome));
+      expect(roleRule, startsWith('---\nalwaysApply: true\n---\n'));
+      expect(roleRule, contains('只做代码审查'));
+      expect((await fs.stat(layout.hooksConfig(memberHome))).isFile, isFalse);
+      expect((await fs.stat(layout.mcpConfig(memberHome))).isFile, isFalse);
+    });
+
     test('provision writes bus files when port set (no provider)', () async {
       const memberHome = '/data/tp/members/planner/cursor/home';
 
@@ -214,7 +233,7 @@ void main() {
       expect((bus['headers'] as Map)['X-Member'], 'planner');
     });
 
-    test('skips bus files when busIdle null in mixed mode', () async {
+    test('writes role.mdc but skips bus hooks/mcp when busIdle null', () async {
       const memberHome = '/data/tp/members/planner/cursor/home';
 
       await provisioner.provision(
@@ -226,8 +245,9 @@ void main() {
         mixed: true,
       );
 
-      expect((await fs.stat(layout.roleRule(memberHome))).isFile, isFalse);
+      expect((await fs.stat(layout.roleRule(memberHome))).isFile, isTrue);
       expect((await fs.stat(layout.mcpConfig(memberHome))).isFile, isFalse);
+      expect((await fs.stat(layout.hooksConfig(memberHome))).isFile, isFalse);
     });
 
     test('ignores missing auth sync result without throwing', () async {

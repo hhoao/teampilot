@@ -1,12 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_tool_adapter.dart';
-import 'package:teampilot/services/session/member_role_provision.dart';
 
 void main() {
   const team = TeamProfile(id: 't', name: 'agent', cli: CliTool.cursor);
 
-  test('fresh launch: --workspace, --model, --force, identity prompt last', () {
+  test('fresh launch: --workspace, --model, --force; no identity prompt', () {
     const member = TeamMemberConfig(
       id: 'm',
       name: 'planner',
@@ -24,11 +23,11 @@ void main() {
       '--model',
       'gpt-5.2',
       '--force',
-      MemberRoleProvision.composeRolePrompt(member: member).trim(),
     ]);
+    expect(args, isNot(contains('You are the planner.')));
   });
 
-  test('resume: uses --resume and does NOT re-seed the identity prompt', () {
+  test('resume: uses --resume without identity prompt', () {
     const member = TeamMemberConfig(
       id: 'm',
       name: 'planner',
@@ -42,9 +41,6 @@ void main() {
         member: member,
         workingDirectory: '/work',
         resumeSessionId: 'chat-1',
-        // Resuming a chat that already has history: identity already lives in
-        // the conversation, so it must not be re-seeded.
-        isFreshConversation: false,
       ),
     );
 
@@ -58,7 +54,7 @@ void main() {
     ]);
   });
 
-  test('emits nothing when no workspace/model/prompt and not resuming', () {
+  test('emits nothing when no workspace/model and not resuming', () {
     const member = TeamMemberConfig(
       id: 'm',
       name: 'planner',
@@ -71,7 +67,7 @@ void main() {
     expect(args, isEmpty);
   });
 
-  test('mixed: no plugin-dir, identity NOT seeded as initial prompt', () {
+  test('mixed: --approve-mcps, no plugin-dir, no identity prompt', () {
     const mixedTeam = TeamProfile(
       id: 't',
       name: 'agent',

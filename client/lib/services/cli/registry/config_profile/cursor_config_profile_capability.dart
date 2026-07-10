@@ -16,9 +16,9 @@ import '../capabilities/config_profile_capability.dart';
 
 /// Cursor CLI launch profile.
 ///
-/// **Simple:** isolates config under a fake `$HOME` (auth is global /
-/// keychain, shared across config dirs) and pre-trusts the workspace
-/// under the runtime user home.
+/// **Simple:** isolates config under a fake `$HOME`, writes member identity to
+/// `~/.cursor/rules/role.mdc`, and pre-trusts the workspace under the runtime
+/// user home. Auth is global / keychain, shared across config dirs.
 ///
 /// **Mixed mode:** isolates each member under a fake `HOME` with native
 /// `~/.cursor/` files (rules, hooks, mcp, cli-config) — see

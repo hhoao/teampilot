@@ -2,15 +2,16 @@ import 'dart:convert';
 
 import '../../../models/team_config.dart';
 import '../../io/filesystem.dart';
-import '../../session/member_role_provision.dart';
 import '../../team_bus/member_bus_idle_endpoint.dart';
 import 'cursor_cli_config_policy.dart';
 import 'cursor_home_bus_overlay.dart';
 import 'cursor_home_layout.dart';
 import 'cursor_member_home_passthrough.dart';
 import 'cursor_provider_credentials_service.dart';
+import 'cursor_role_rule_writer.dart';
 
-/// Merges provider auth and mixed-mode team-bus overlay into a member fake HOME.
+/// Merges provider auth, role rule, and mixed-mode team-bus overlay into a
+/// member fake HOME.
 final class CursorHomeProvisioner {
   CursorHomeProvisioner({
     required Filesystem fs,
@@ -44,7 +45,18 @@ final class CursorHomeProvisioner {
       await _credentials?.syncAuthToMemberHome(id, memberHome);
     }
 
-    if (!mixed || !member.isValid) return;
+    if (!member.isValid) return;
+
+    if (!mixed) {
+      await _syncRoleRule(
+        memberHome: memberHome,
+        member: member,
+        forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+        mixed: false,
+        pushDelivery: false,
+      );
+      return;
+    }
 
     await provisionOverlayOnly(
       memberHome: memberHome,
@@ -54,7 +66,7 @@ final class CursorHomeProvisioner {
     );
   }
 
-  /// Writes per-member bus overlay files and merged [cli-config.json] only.
+  /// Writes role rule, merged [cli-config.json], and optional bus overlay.
   ///
   /// Does not sync auth or touch member-private paths such as `chats/`.
   Future<void> provisionOverlayOnly({
@@ -72,6 +84,13 @@ final class CursorHomeProvisioner {
       memberHome,
       cliConfigJson: cliConfigJson,
     );
+    await _syncRoleRule(
+      memberHome: memberHome,
+      member: member,
+      forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+      mixed: true,
+      pushDelivery: true,
+    );
 
     if (busIdle == null) return;
 
@@ -83,7 +102,22 @@ final class CursorHomeProvisioner {
       memberHome: memberHome,
       member: member,
       busIdle: busIdle,
+    );
+  }
+
+  Future<void> _syncRoleRule({
+    required String memberHome,
+    required TeamMemberConfig member,
+    required bool forceTeamLeadDelegateMode,
+    required bool mixed,
+    required bool pushDelivery,
+  }) {
+    return CursorRoleRuleWriter(fs: _fs, layout: _layout).sync(
+      memberHome: memberHome,
+      member: member,
       forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+      mixed: mixed,
+      pushDelivery: pushDelivery,
     );
   }
 
@@ -146,21 +180,9 @@ final class CursorHomeProvisioner {
     required String memberHome,
     required TeamMemberConfig member,
     required MemberBusIdleEndpoint busIdle,
-    required bool forceTeamLeadDelegateMode,
   }) async {
     final idleScriptPath = _layout.idleScript(memberHome);
 
-    final rolePrompt = MemberRoleProvision.composeRolePrompt(
-      member: member,
-      forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
-      mixed: true,
-      pushDelivery: true,
-    ).trim();
-
-    await _fs.atomicWrite(
-      _layout.roleRule(memberHome),
-      CursorHomeBusOverlay.roleRule(rolePrompt),
-    );
     await _fs.atomicWrite(
       idleScriptPath,
       CursorHomeBusOverlay.idleScript(memberId: member.id, idle: busIdle),

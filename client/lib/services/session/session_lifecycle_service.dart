@@ -573,7 +573,6 @@ class SessionLifecycleService {
       createSessionId: resume.createSessionId,
       resumeSessionId: resume.resumeSessionId,
       nativeSessionIdToPersist: resume.nativeSessionIdToPersist,
-      isFreshConversation: resume.isFreshConversation,
       toolValue: cli.value,
       cliTeamName: runtimeTeamId,
       memberConfigDir: memberConfigDir,
@@ -696,7 +695,6 @@ class SessionLifecycleService {
       createSessionId: resume.createSessionId,
       resumeSessionId: resume.resumeSessionId,
       nativeSessionIdToPersist: resume.nativeSessionIdToPersist,
-      isFreshConversation: resume.isFreshConversation,
       toolValue: cli.value,
       cliTeamName: runtimeTeamId,
       memberConfigDir: memberConfigDir,
@@ -829,7 +827,6 @@ class SessionLifecycleService {
         sessionTeam: plan.cliTeamName,
         workingDirectory: personalDirs.workingDirectory,
         additionalDirectories: personalDirs.addDirs,
-        isFreshConversation: plan.isFreshConversation,
       );
     }
 
@@ -852,7 +849,6 @@ class SessionLifecycleService {
           ? memberDirs.workingDirectory
           : session.firstFolderPath,
       additionalDirectories: memberDirs.addDirs,
-      isFreshConversation: plan.isFreshConversation,
     );
   }
 
@@ -949,7 +945,6 @@ class SessionLifecycleService {
       createSessionId: resume.createSessionId,
       resumeSessionId: resume.resumeSessionId,
       nativeSessionIdToPersist: resume.nativeSessionIdToPersist,
-      isFreshConversation: resume.isFreshConversation,
       toolValue: cli.value,
       cliTeamName: runtimeTeamId,
       memberConfigDir: memberConfigDir,
@@ -1450,7 +1445,6 @@ class SessionLifecycleService {
         resumeSessionId: nativeId,
         // clientPinned native id == taskId; nothing extra to persist.
         nativeSessionIdToPersist: pinned ? null : nativeId,
-        isFreshConversation: false,
       );
     }
     // Fresh launch: clientPinned pins our id; others let the CLI mint one.
@@ -1575,15 +1569,9 @@ class _ResumeResolution {
     this.createSessionId,
     this.resumeSessionId,
     this.nativeSessionIdToPersist,
-    this.isFreshConversation = true,
   });
 
   final String? createSessionId;
   final String? resumeSessionId;
   final String? nativeSessionIdToPersist;
-
-  /// Whether this launch starts a conversation with no prior history. Drives
-  /// one-time identity seeding for CLIs that inject identity as the opening
-  /// prompt (cursor).
-  final bool isFreshConversation;
 }

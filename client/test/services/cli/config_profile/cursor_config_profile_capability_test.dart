@@ -72,6 +72,40 @@ void main() {
   }
 
   group('CursorConfigProfileCapability', () {
+    test('simple contributeLaunch writes role.mdc under fake HOME', () async {
+      final scope = resolveLaunchProfileScope(
+        workspaceId: 'workspace-1',
+        teamId: '',
+        appSessionId: 'session-1',
+        cliTeamName: 'session-1',
+      );
+      final toolDir = paths.sessionToolDir(
+        scope.workspaceId,
+        scope.sessionId,
+        CursorConfigProfileCapability.toolId,
+        memberId: scope.memberId,
+      );
+      final home = paths.pathContext.join(toolDir, 'home');
+
+      final contribution = await capability.contributeLaunch(
+        ConfigProfileLaunchContext(
+          workspaceId: 'workspace-1',
+          teamId: '',
+          sessionId: scope.sessionId,
+          scope: scope,
+          member: member,
+          members: const [member],
+          paths: paths,
+          catalog: paths,
+        ),
+      );
+
+      expect(contribution.environment['HOME'], home);
+      final roleRule = await fs.readString(layout.roleRule(home));
+      expect(roleRule, startsWith('---\nalwaysApply: true\n---\n'));
+      expect(roleRule, contains('只做代码审查'));
+    });
+
     test(
       'mixed contributeLaunch sets HOME without provisioning overlay files',
       () async {

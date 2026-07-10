@@ -30,7 +30,6 @@ void main() {
         member: member,
         workingDirectory: '/work',
         resumeSessionId: 'sess-42',
-        isFreshConversation: false,
       ),
     );
     expect(args, ['resume', 'sess-42', '--cd', '/work', '-m', 'gpt-5.2']);

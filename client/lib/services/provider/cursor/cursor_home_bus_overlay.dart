@@ -69,13 +69,4 @@ exit 0
 ''';
   }
 
-  static String roleRule(String body) {
-    final buffer = StringBuffer()
-      ..writeln('---')
-      ..writeln('alwaysApply: true')
-      ..writeln('---')
-      ..writeln();
-    if (body.isNotEmpty) buffer.writeln(body);
-    return buffer.toString();
-  }
 }
