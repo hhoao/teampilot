@@ -27,6 +27,8 @@ dependencies:
     path: packages/flutter_pty_new
   dartssh2:
     path: packages/dartssh2
+  teampilot_tree_sitter:
+    path: packages/teampilot_tree_sitter
   flutter_bloc: ^9.1.0
   bloc_concurrency: ^0.3.0
   equatable: ^2.0.5

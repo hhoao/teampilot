@@ -1,0 +1,24 @@
+# Run with `dart run ffigen --config ffigen.yaml`.
+name: TeampilotTreeSitterBindings
+description: |
+  Bindings for the vendored tree-sitter C API plus the `tp_ts_language_*`
+  grammar shims in `src/teampilot_ts_api.h`.
+
+  Regenerate bindings with `dart run ffigen --config ffigen.yaml`.
+output: 'lib/teampilot_tree_sitter_bindings_generated.dart'
+ffi-native:
+headers:
+  entry-points:
+    - 'third_party/tree-sitter/lib/include/tree_sitter/api.h'
+    - 'src/teampilot_ts_api.h'
+  include-directives:
+    - '**/tree_sitter/api.h'
+    - '**/teampilot_ts_api.h'
+compiler-opts:
+  - '-Ithird_party/tree-sitter/lib/include'
+# tree-sitter enums are only used as `unsigned int` out-params in the ABI we
+# bind, so the implementation-defined enum size does not reach the FFI surface.
+silence-enum-warning: true
+comments:
+  style: any
+  length: full
