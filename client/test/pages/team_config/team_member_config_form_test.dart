@@ -19,7 +19,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
-import 'package:teampilot/services/expert_hub/member_roster_service.dart';
+import '../../support/stub_member_roster_service.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -47,7 +47,7 @@ Future<void> _pumpMemberForm(
     ),
     loadFavorites: () async => const {},
     saveFavoriteToggle: (_) async => true,
-    memberRosterService: MemberRosterService(installSkill: (_) async => null),
+    memberRosterService: stubMemberRosterService(),
     launchProfiles: () => launchCubit,
   );
   addTearDown(expertHubCubit.close);

@@ -16,7 +16,7 @@ import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/local_expert_writer.dart';
 import 'package:teampilot/services/expert_hub/local_member_template_store.dart';
-import 'package:teampilot/services/expert_hub/member_roster_service.dart';
+import '../../support/stub_member_roster_service.dart';
 import 'package:teampilot/services/hub_publish/hub_publish_record_store.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -62,7 +62,7 @@ ExpertHubCubit _hubCubit() => ExpertHubCubit(
   source: _FakeSource(),
   loadFavorites: () async => const {},
   saveFavoriteToggle: (_) async => true,
-  memberRosterService: MemberRosterService(installSkill: (_) async => null),
+  memberRosterService: stubMemberRosterService(),
   launchProfiles: () => throw UnimplementedError('not used'),
 );
 

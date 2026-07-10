@@ -657,9 +657,6 @@ Future<AppShell> buildAppShell({
   );
 
   final expertHubFavorites = ExpertHubFavoritesStore();
-  final memberRosterService = MemberRosterService(
-    installSkill: skillCubit.installTeamDependency,
-  );
   final compositeExpertHubSource = CompositeExpertHubSource.withDefaults(
     registry: GitRegistryExpertHubSource(),
     teamIndex: teamHubSource.fetchTeams,
@@ -669,6 +666,9 @@ Future<AppShell> buildAppShell({
     installPlugin: pluginCubit.installTeamDependency,
     installMcp: mcpCubit.installTeamDependency,
     source: compositeExpertHubSource,
+  );
+  final memberRosterService = MemberRosterService(
+    resolver: expertCapabilityResolver,
   );
   expertHubCubit = ExpertHubCubit(
     source: compositeExpertHubSource,

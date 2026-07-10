@@ -1,18 +1,23 @@
 import '../../cubits/launch_profile_cubit.dart';
 import '../../models/discoverable_member.dart';
 import '../team/team_clone_service.dart';
+import 'expert_capability_resolver.dart';
 
 class MemberAddResult {
   const MemberAddResult({
     required this.memberId,
     required this.expertKey,
     required this.installedSkillIds,
+    required this.installedPluginIds,
+    required this.installedMcpServerIds,
     required this.failedDeps,
   });
 
   final String memberId;
   final String expertKey;
   final List<String> installedSkillIds;
+  final List<String> installedPluginIds;
+  final List<String> installedMcpServerIds;
   final List<DependencyFailure> failedDeps;
 
   bool get hasFailures => failedDeps.isNotEmpty;
@@ -27,9 +32,10 @@ class MemberAddException implements Exception {
 
 /// Adds an expert **reference** to an existing team roster (no persona copy).
 class MemberRosterService {
-  MemberRosterService({required this.installSkill});
+  MemberRosterService({required ExpertCapabilityResolver resolver})
+    : _resolver = resolver;
 
-  final SkillDepInstaller installSkill;
+  final ExpertCapabilityResolver _resolver;
 
   Future<MemberAddResult> addExpertToTeam({
     required String teamId,
@@ -37,8 +43,10 @@ class MemberRosterService {
     required LaunchProfileCubit launchProfiles,
     void Function(CloneProgress)? onProgress,
   }) async {
-    final failed = <DependencyFailure>[];
-    final total = expert.skillDeps.length;
+    final total =
+        expert.skillDeps.length +
+        expert.pluginDeps.length +
+        expert.mcpDeps.length;
     var done = 0;
 
     void progress(String msg) {
@@ -46,14 +54,15 @@ class MemberRosterService {
       onProgress?.call(CloneProgress(msg, done, total));
     }
 
-    final installedSkillIds = <String>[];
+    final pack = await _resolver.resolve(expert);
+
     for (final dep in expert.skillDeps) {
-      final id = await installSkill(dep);
-      if (id != null) {
-        installedSkillIds.add(id);
-      } else {
-        failed.add(DependencyFailure(DependencyKind.skill, dep.name));
-      }
+      progress(dep.name);
+    }
+    for (final dep in expert.pluginDeps) {
+      progress(dep.name);
+    }
+    for (final dep in expert.mcpDeps) {
       progress(dep.name);
     }
 
@@ -71,8 +80,10 @@ class MemberRosterService {
     return MemberAddResult(
       memberId: added.id,
       expertKey: expert.key,
-      installedSkillIds: installedSkillIds,
-      failedDeps: failed,
+      installedSkillIds: pack.bundle.skillIds,
+      installedPluginIds: pack.bundle.pluginIds,
+      installedMcpServerIds: pack.bundle.mcpServerIds,
+      failedDeps: pack.failedDeps,
     );
   }
 }

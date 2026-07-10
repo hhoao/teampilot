@@ -22,7 +22,7 @@ import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/local_member_template_store.dart';
-import 'package:teampilot/services/expert_hub/member_roster_service.dart';
+import '../../support/stub_member_roster_service.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -114,9 +114,7 @@ void main() {
         source: _FakeSource([expert]),
         loadFavorites: () async => const {},
         saveFavoriteToggle: (_) async => true,
-        memberRosterService: MemberRosterService(
-          installSkill: (_) async => null,
-        ),
+        memberRosterService: stubMemberRosterService(),
         launchProfiles: () => launchCubit,
       );
       addTearDown(expertHubCubit.close);

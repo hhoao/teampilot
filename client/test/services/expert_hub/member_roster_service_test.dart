@@ -7,10 +7,30 @@ import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/expert_hub/member_roster_service.dart';
+import 'package:teampilot/services/team/team_clone_service.dart';
 
 import '../../support/post_frame_test_harness.dart';
+import '../../support/stub_member_roster_service.dart';
 
-DiscoverableMember member({List<SkillDependencyRef> skillDeps = const []}) =>
+const _pluginDep = PluginDependencyRef(
+  marketplaceOwner: 'o',
+  marketplaceName: 'n',
+  marketplaceBranch: 'main',
+  entryName: 'plug',
+  name: 'Plug',
+);
+
+const _mcpDep = McpDependencyRef(
+  id: 'context7',
+  name: 'Context7',
+  server: {'command': 'npx'},
+);
+
+DiscoverableMember member({
+  List<SkillDependencyRef> skillDeps = const [],
+  List<PluginDependencyRef> pluginDeps = const [],
+  List<McpDependencyRef> mcpDeps = const [],
+}) =>
     DiscoverableMember(
       key: 'teampilot/builtin/developer',
       name: 'Developer',
@@ -22,7 +42,19 @@ DiscoverableMember member({List<SkillDependencyRef> skillDeps = const []}) =>
         prompt: 'You implement code.',
       ),
       skillDeps: skillDeps,
+      pluginDeps: pluginDeps,
+      mcpDeps: mcpDeps,
     );
+
+MemberRosterService buildService({
+  SkillDepInstaller? installSkill,
+  PluginDepInstaller? installPlugin,
+  McpDepInstaller? installMcp,
+}) => stubMemberRosterService(
+  installSkill: installSkill,
+  installPlugin: installPlugin,
+  installMcp: installMcp,
+);
 
 LaunchProfileCubit buildCubit(LaunchProfileRepository repo) =>
     LaunchProfileCubit(
@@ -42,8 +74,9 @@ void main() {
     await cubit.load();
     final teamId = cubit.state.teams.first.id;
 
-    final service = MemberRosterService(
-      installSkill: (d) async => 'anthropics/skills:${d.directory.split('/').last}',
+    final service = buildService(
+      installSkill: (d) async =>
+          'anthropics/skills:${d.directory.split('/').last}',
     );
 
     final result = await service.addExpertToTeam(
@@ -91,7 +124,7 @@ void main() {
     final teamId = cubit.state.teams.first.id;
     final beforeCount = cubit.state.teams.first.roster.length;
 
-    final service = MemberRosterService(installSkill: (d) async => null);
+    final service = buildService(installSkill: (d) async => null);
 
     final result = await service.addExpertToTeam(
       teamId: teamId,
@@ -125,7 +158,7 @@ void main() {
     final cubit = buildCubit(repo);
     await cubit.load();
 
-    final service = MemberRosterService(installSkill: (d) async => 'skill-id');
+    final service = buildService(installSkill: (d) async => 'skill-id');
 
     expect(
       () => service.addExpertToTeam(
@@ -139,6 +172,58 @@ void main() {
     await cubit.close();
     await dir.delete(recursive: true);
   });
+
+  test(
+    'addExpertToTeam installs plugin/mcp deps without mutating team bundle',
+    () async {
+      final dir = await Directory.systemTemp.createTemp('member-roster-pack-');
+      final repo = testLaunchProfileRepository(dir);
+      final cubit = buildCubit(repo);
+      await cubit.load();
+      final teamId = cubit.state.teams.first.id;
+      final before = cubit.state.teams.firstWhere((t) => t.id == teamId);
+      final beforeSkillIds = List<String>.from(before.skillIds);
+      final beforePluginIds = List<String>.from(before.pluginIds);
+      final beforeMcpIds = List<String>.from(before.mcpServerIds);
+
+      var pluginCalled = false;
+      var mcpCalled = false;
+      final service = buildService(
+        installPlugin: (dep) async {
+          pluginCalled = true;
+          expect(dep, _pluginDep);
+          return 'o/n/plug';
+        },
+        installMcp: (dep) async {
+          mcpCalled = true;
+          expect(dep, _mcpDep);
+          return 'context7';
+        },
+      );
+
+      final result = await service.addExpertToTeam(
+        teamId: teamId,
+        expert: member(pluginDeps: const [_pluginDep], mcpDeps: const [_mcpDep]),
+        launchProfiles: cubit,
+      );
+
+      expect(pluginCalled, isTrue);
+      expect(mcpCalled, isTrue);
+      expect(result.installedSkillIds, isEmpty);
+      expect(result.installedPluginIds, ['o/n/plug']);
+      expect(result.installedMcpServerIds, ['context7']);
+      expect(result.failedDeps, isEmpty);
+      expect(result.memberId, isNotEmpty);
+
+      final after = cubit.state.teams.firstWhere((t) => t.id == teamId);
+      expect(after.skillIds, beforeSkillIds);
+      expect(after.pluginIds, beforePluginIds);
+      expect(after.mcpServerIds, beforeMcpIds);
+
+      await cubit.close();
+      await dir.delete(recursive: true);
+    },
+  );
 
   test('addExpertToTeam persists roster slot to repository', () async {
     final dir = await Directory.systemTemp.createTemp('member-add-team-');
