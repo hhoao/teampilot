@@ -1,0 +1,348 @@
+import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
+
+import '../../models/config_bundle.dart';
+import '../../models/plugin.dart';
+import '../../models/skill.dart';
+import '../../theme/app_spacing.dart';
+import '../../utils/debounce/debounce.dart';
+import '../../widgets/compose/compose_trigger_field.dart';
+import '../home_workspace/workspace/workspace_chat_landing_palette.dart';
+import '../home_workspace/workspace/workspace_chat_landing_voice_bar.dart';
+
+/// Slim continue-compose for session history review (no landing chrome).
+class SessionReviewComposeCard extends StatelessWidget {
+  const SessionReviewComposeCard({
+    required this.controller,
+    required this.focusNode,
+    required this.hint,
+    required this.canSubmit,
+    required this.onSubmit,
+    required this.onChanged,
+    required this.attachTooltip,
+    required this.enhanceTooltip,
+    required this.voiceTooltip,
+    required this.voiceCancelTooltip,
+    required this.voiceStopTooltip,
+    required this.isEnhancing,
+    required this.isVoiceListening,
+    required this.voiceElapsed,
+    required this.voiceSoundLevel,
+    required this.onAttach,
+    required this.onEnhance,
+    required this.onVoice,
+    required this.onVoiceCancel,
+    required this.onVoiceStop,
+    required this.workspaceRoot,
+    required this.skills,
+    required this.plugins,
+    required this.slashBundle,
+    this.isSubmitting = false,
+    this.launchError,
+    this.onPasteImage,
+    super.key,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final String hint;
+  final bool canSubmit;
+  final VoidCallback onSubmit;
+  final ValueChanged<String> onChanged;
+  final String attachTooltip;
+  final String enhanceTooltip;
+  final String voiceTooltip;
+  final String voiceCancelTooltip;
+  final String voiceStopTooltip;
+  final bool isEnhancing;
+  final bool isVoiceListening;
+  final Duration voiceElapsed;
+  final double voiceSoundLevel;
+  final VoidCallback onAttach;
+  final VoidCallback onEnhance;
+  final VoidCallback onVoice;
+  final VoidCallback onVoiceCancel;
+  final VoidCallback onVoiceStop;
+  final String workspaceRoot;
+  final List<Skill> skills;
+  final List<Plugin> plugins;
+  final ConfigBundle slashBundle;
+  final bool isSubmitting;
+  final String? launchError;
+  final Future<bool> Function()? onPasteImage;
+
+  bool get _composeActionsEnabled => !isSubmitting && !isEnhancing;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = WorkspaceChatLandingPalette(Theme.of(context).colorScheme);
+    final spacing = context.appSpacing;
+    final error = launchError?.trim();
+
+    return Material(
+      color: palette.elevated,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: palette.border),
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          spacing.lg,
+          spacing.lg,
+          spacing.lg,
+          spacing.md,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (error != null && error.isNotEmpty) ...[
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.errorContainer.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.error.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: spacing.md,
+                    vertical: spacing.sm,
+                  ),
+                  child: Text(
+                    error,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onErrorContainer,
+                      height: 1.45,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: spacing.md),
+            ],
+            ComposeTriggerField(
+              controller: controller,
+              focusNode: focusNode,
+              hint: hint,
+              enabled: !isSubmitting,
+              onChanged: onChanged,
+              onSubmit: onSubmit,
+              canSubmit: () => canSubmit,
+              workspaceRoot: workspaceRoot,
+              skills: skills,
+              plugins: plugins,
+              slashBundle: slashBundle,
+              mutedColor: palette.muted,
+              hintColor: palette.hint,
+              onPasteImage: onPasteImage,
+            ),
+            SizedBox(height: spacing.md),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: isVoiceListening
+                  ? _voiceRecordingActions(palette: palette, spacing: spacing)
+                  : _idleActions(palette: palette, spacing: spacing),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _idleActions({
+    required WorkspaceChatLandingPalette palette,
+    required AppSpacingTheme spacing,
+  }) {
+    return [
+      const Spacer(),
+      _ComposeActionIcon(
+        palette: palette,
+        tooltip: attachTooltip,
+        icon: Icons.add,
+        enabled: _composeActionsEnabled,
+        onTap: onAttach,
+      ),
+      _ComposeActionIcon(
+        palette: palette,
+        tooltip: enhanceTooltip,
+        icon: Icons.auto_awesome_outlined,
+        enabled: _composeActionsEnabled && controller.text.trim().isNotEmpty,
+        isLoading: isEnhancing,
+        onTap: onEnhance,
+      ),
+      _ComposeActionIcon(
+        palette: palette,
+        tooltip: voiceTooltip,
+        icon: Icons.mic_none_outlined,
+        enabled: _composeActionsEnabled,
+        onTap: onVoice,
+      ),
+      SizedBox(width: spacing.xs),
+      _SendButton(
+        palette: palette,
+        canSubmit: canSubmit,
+        isSubmitting: isSubmitting,
+        onSubmit: onSubmit,
+      ),
+    ];
+  }
+
+  List<Widget> _voiceRecordingActions({
+    required WorkspaceChatLandingPalette palette,
+    required AppSpacingTheme spacing,
+  }) {
+    return [
+      _ComposeActionIcon(
+        palette: palette,
+        tooltip: attachTooltip,
+        icon: Icons.add,
+        enabled: _composeActionsEnabled,
+        onTap: onAttach,
+      ),
+      _ComposeActionIcon(
+        palette: palette,
+        tooltip: enhanceTooltip,
+        icon: Icons.auto_awesome_outlined,
+        enabled: _composeActionsEnabled && controller.text.trim().isNotEmpty,
+        isLoading: isEnhancing,
+        onTap: onEnhance,
+      ),
+      Expanded(
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: ComposeVoiceRecordingStatus(
+            palette: palette,
+            elapsed: voiceElapsed,
+            soundLevel: voiceSoundLevel,
+            cancelTooltip: voiceCancelTooltip,
+            stopTooltip: voiceStopTooltip,
+            onCancel: onVoiceCancel,
+            onStop: onVoiceStop,
+          ),
+        ),
+      ),
+      SizedBox(width: spacing.xs),
+      _SendButton(
+        palette: palette,
+        canSubmit: canSubmit,
+        isSubmitting: isSubmitting,
+        onSubmit: onSubmit,
+      ),
+    ];
+  }
+}
+
+class _SendButton extends StatelessWidget {
+  const _SendButton({
+    required this.palette,
+    required this.canSubmit,
+    required this.isSubmitting,
+    required this.onSubmit,
+  });
+
+  final WorkspaceChatLandingPalette palette;
+  final bool canSubmit;
+  final bool isSubmitting;
+  final VoidCallback onSubmit;
+
+  static const double _size = 36;
+
+  @override
+  Widget build(BuildContext context) {
+    final icons = context.appIconSizes;
+    final active = canSubmit && !isSubmitting;
+
+    return Material(
+      color: active ? palette.sendActive : palette.sendIdle,
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: active
+            ? throttledOnPressed('session_review_compose_send', onSubmit)
+            : null,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: _size,
+          height: _size,
+          child: Center(
+            child: isSubmitting
+                ? SizedBox(
+                    width: icons.sm,
+                    height: icons.sm,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: palette.sendIcon,
+                    ),
+                  )
+                : Icon(
+                    Icons.arrow_upward_rounded,
+                    color: active ? palette.sendIcon : palette.disabled,
+                    size: icons.md,
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ComposeActionIcon extends StatelessWidget {
+  const _ComposeActionIcon({
+    required this.palette,
+    required this.tooltip,
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+    this.isLoading = false,
+  });
+
+  final WorkspaceChatLandingPalette palette;
+  final String tooltip;
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+  final bool isLoading;
+
+  static const double _size = 36;
+
+  @override
+  Widget build(BuildContext context) {
+    final icons = context.appIconSizes;
+    final interactive = enabled && !isLoading;
+    final color = !enabled ? palette.disabled : palette.muted;
+
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        clipBehavior: Clip.antiAlias,
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: interactive ? onTap : null,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: _size,
+            height: _size,
+            child: isLoading
+                ? Center(
+                    child: SizedBox(
+                      width: icons.sm,
+                      height: icons.sm,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: palette.muted,
+                      ),
+                    ),
+                  )
+                : Icon(icon, size: icons.md, color: color),
+          ),
+        ),
+      ),
+    );
+  }
+}

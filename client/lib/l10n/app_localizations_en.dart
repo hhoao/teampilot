@@ -1137,6 +1137,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionStarting => 'Starting session…';
 
   @override
+  String get sessionHistoryLoading => 'Loading conversation history…';
+
+  @override
+  String get sessionHistoryEmpty => 'No prior messages for this member yet.';
+
+  @override
+  String get sessionHistoryError => 'Couldn\'t load conversation history.';
+
+  @override
+  String get sessionHistoryRetry => 'Retry';
+
+  @override
+  String get sessionHistoryToolTurn => 'Tool';
+
+  @override
+  String get sessionHistoryRoleUser => 'You';
+
+  @override
+  String get sessionHistoryRoleAssistant => 'Assistant';
+
+  @override
+  String get sessionHistoryRoleSystem => 'System';
+
+  @override
+  String get sessionHistoryComposeHint =>
+      'Continue this conversation… @ reference files, / invoke skills';
+
+  @override
   String get sessionReadyTitle => 'Ready to chat';
 
   @override

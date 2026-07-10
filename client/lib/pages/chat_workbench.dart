@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
@@ -11,6 +9,7 @@ import '../cubits/editor_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/launch_profile_cubit.dart';
 import '../l10n/l10n_extensions.dart';
+import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../services/terminal/terminal_session.dart';
@@ -22,6 +21,7 @@ import 'home_workspace/workspace/workspace_route_active_scope.dart';
 import 'chat/chat_workbench_placeholders.dart';
 import 'chat/chat_workbench_slice.dart';
 import 'chat/chat_workbench_terminal.dart';
+import 'chat/session_history_review.dart';
 
 class ChatWorkbench extends StatefulWidget {
   const ChatWorkbench({
@@ -98,16 +98,6 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     return TeamSessionConnect(team!);
   }
 
-  Future<void> _connectWorkspace({
-    required bool isPersonal,
-    TeamProfile? team,
-  }) async {
-    await context.read<ChatCubit>().connectWorkspaceSession(
-      _connectRequest(isPersonal: isPersonal, team: team),
-      repo: context.read<SessionRepository>(),
-    );
-  }
-
   Future<void> _restartWorkspace({
     required bool isPersonal,
     TeamProfile? team,
@@ -181,7 +171,6 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
         findVisible: _findVisible,
         onSyncTerminalTheme: _syncTerminalTheme,
         buildRunningTerminal: _buildRunningTerminal,
-        onConnect: _connectWorkspace,
       ),
     );
   }
@@ -200,7 +189,6 @@ class _ChatWorkbenchBody extends StatelessWidget {
     required this.findVisible,
     required this.onSyncTerminalTheme,
     required this.buildRunningTerminal,
-    required this.onConnect,
   });
 
   final String workspaceId;
@@ -223,8 +211,6 @@ class _ChatWorkbenchBody extends StatelessWidget {
     required bool autofocus,
   })
   buildRunningTerminal;
-  final Future<void> Function({required bool isPersonal, TeamProfile? team})
-  onConnect;
 
   @override
   Widget build(BuildContext context) {
@@ -318,6 +304,25 @@ class _ChatWorkbenchBody extends StatelessWidget {
     return null;
   }
 
+  AppSession? _resolveAppSession({
+    required ChatCubit chatCubit,
+    required ChatWorkbenchSlice slice,
+  }) {
+    final activeId = slice.activeSessionId;
+    if (activeId == null || activeId.isEmpty) return null;
+
+    for (final session in chatCubit.state.sessions) {
+      if (session.sessionId == activeId) return session;
+    }
+
+    for (final tab in chatCubit.tabStore.tabsForWorkspace(tabScopeId)) {
+      if (tab.info.id == activeId) {
+        return tab.persistedSession;
+      }
+    }
+    return null;
+  }
+
   Widget _buildTerminalBody(
     BuildContext context, {
     required TerminalSession session,
@@ -365,17 +370,10 @@ class _ChatWorkbenchBody extends StatelessWidget {
                   message: context.l10n.sessionStarting,
                 )
               else if (!session.isRunning)
-                ChatWorkbenchTerminalPlaceholder(
-                  onConnect: () => unawaited(
-                    onConnect(
-                      isPersonal: isPersonalContext,
-                      team: team,
-                    ),
-                  ),
-                  connectDisabled: sessionConnectInProgress,
-                  memberName: isPersonalContext
-                      ? context.l10n.homeWorkspaceWorkspaceAgent
-                      : chatCubit.selectedMemberName(team!),
+                _buildHistoryReview(
+                  context,
+                  chatCubit: chatCubit,
+                  team: team,
                   launchError: launchError,
                 ),
             ],
@@ -383,5 +381,39 @@ class _ChatWorkbenchBody extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildHistoryReview(
+    BuildContext context, {
+    required ChatCubit chatCubit,
+    required TeamProfile? team,
+    required String? launchError,
+  }) {
+    final appSession = _resolveAppSession(chatCubit: chatCubit, slice: slice);
+    if (appSession == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final memberId = slice.selectedMemberId.isNotEmpty
+        ? slice.selectedMemberId
+        : _tabSelectedMemberId(chatCubit);
+
+    return SessionHistoryReview(
+      session: appSession,
+      selectedMemberId: memberId,
+      team: team,
+      launchError: launchError,
+      // Task 9 wires connect + inject; Task 8 only mounts the review UI.
+      onSubmit: (_) {},
+    );
+  }
+
+  String _tabSelectedMemberId(ChatCubit chatCubit) {
+    final activeId = slice.activeSessionId;
+    if (activeId == null) return '';
+    for (final tab in chatCubit.tabStore.tabsForWorkspace(tabScopeId)) {
+      if (tab.info.id == activeId) return tab.selectedMemberId;
+    }
+    return '';
   }
 }
