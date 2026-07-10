@@ -35,7 +35,10 @@ class ExpertCapabilityResolver {
   final McpDepInstaller _installMcp;
   final CompositeExpertHubSource? _source;
   final LocalMemberTemplateStore? _localStore;
-  final ExpertHubCubit? _cubit;
+  ExpertHubCubit? _cubit;
+
+  /// Late-bind hub cubit after bootstrap constructs [ExpertHubCubit].
+  void attachHubCubit(ExpertHubCubit cubit) => _cubit = cubit;
 
   /// Resolve catalog key → pack (install deps). Returns null if expert not found.
   Future<ExpertCapabilityPack?> resolveKey(
@@ -109,12 +112,12 @@ class ExpertCapabilityResolver {
 
     final now = DateTime.now().millisecondsSinceEpoch;
     final TeamMemberConfig member;
-    if (team != null && overrides != null) {
+    if (team != null) {
       member = ExpertMemberMaterializer.materializeRosterSlot(
         slot: TeamRosterSlot(
           id: slotId ?? expert.member.name,
           expertKey: expert.key,
-          overrides: overrides,
+          overrides: overrides ?? const TeamRosterSlotOverrides(),
           joinedAt: joinedAt ?? now,
         ),
         expert: expert,

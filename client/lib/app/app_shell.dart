@@ -682,6 +682,7 @@ Future<AppShell> buildAppShell({
       return skills.map((s) => s.id).toSet();
     },
   );
+  expertCapabilityResolver.attachHubCubit(expertHubCubit);
 
   final appUpdateCubit = AppUpdateCubit(settings: appSettings);
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));

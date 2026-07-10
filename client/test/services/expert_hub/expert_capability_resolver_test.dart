@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/models/discoverable_team.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/expert_hub/expert_capability_pack.dart';
 import 'package:teampilot/services/expert_hub/expert_capability_resolver.dart';
 import 'package:teampilot/services/team/team_clone_service.dart';
@@ -141,6 +142,32 @@ void main() {
     expect(pack.bundle.mcpServerIds, ['context7']);
     expect(pack.failedDeps, isEmpty);
     expect(pack, isA<ExpertCapabilityPack>());
+  });
+
+  test('resolve with team but no overrides → materialize path (slot id + inheritance)', () async {
+    final resolver = ExpertCapabilityResolver(
+      installSkill: (_) async => null,
+      installPlugin: (_) async => null,
+      installMcp: (_) async => null,
+    );
+    const team = TeamProfile(
+      id: 'team-1',
+      name: 'Test Team',
+      cli: CliTool.claude,
+      providerIdsByTool: {'claude': 'anthropic'},
+      modelsByTool: {'claude': 'claude-sonnet-4'},
+    );
+
+    final pack = await resolver.resolve(
+      expert(),
+      team: team,
+      slotId: 'slot-alpha',
+    );
+
+    expect(pack.member.id, 'slot-alpha');
+    expect(pack.member.provider, 'anthropic');
+    expect(pack.member.model, 'claude-sonnet-4');
+    expect(pack.member.activePresetId, TeamProfile.inheritPresetId);
   });
 
   test('resolveKey for builtin default returns a pack', () async {
