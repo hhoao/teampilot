@@ -21,6 +21,7 @@ import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
 import '../cubits/notification_cubit.dart';
 import '../cubits/session_history_cubit.dart';
+import '../cubits/shortcut_cubit.dart';
 import '../cubits/editor_cubit.dart';
 import '../cubits/workbench/workbench_cubit.dart';
 import '../services/workbench/workbench_editor_opener.dart';
@@ -87,6 +88,7 @@ import '../services/expert_hub/expert_hub_favorites_store.dart';
 import '../services/expert_hub/git_registry_expert_hub_source.dart';
 import '../services/expert_hub/member_roster_service.dart';
 import '../services/cli/cli_executable_discovery.dart';
+import '../services/commands/command_bus.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/provider/claude/claude_provider_credentials_service.dart';
@@ -180,6 +182,8 @@ class AppShell {
     required this.homeWorkspaceUiCache,
     required this.automationCubit,
     required this.automationScheduler,
+    required this.commandBus,
+    required this.shortcutCubit,
   });
 
   final CliToolRegistry cliToolRegistry;
@@ -234,6 +238,8 @@ class AppShell {
   final Future<void> Function() bootstrapAppData;
   final AutomationCubit automationCubit;
   final AutomationScheduler automationScheduler;
+  final CommandBus commandBus;
+  final ShortcutCubit shortcutCubit;
 }
 
 Future<AppShell> buildAppShell({
@@ -708,6 +714,8 @@ Future<AppShell> buildAppShell({
   final workspaceWorktreeRegistry = WorkspaceWorktreeRegistry();
   final workspaceToolsScopeRegistry = WorkspaceToolsScopeRegistry();
   final configCubit = ConfigCubit();
+  final commandBus = CommandBus();
+  final shortcutCubit = ShortcutCubit();
 
   final transportFactory = TerminalTransportFactory(
     sshProfileRepository: sshProfileRepo,
@@ -863,6 +871,7 @@ Future<AppShell> buildAppShell({
 
   boot('loading layout');
   await layoutCubit.load();
+  await shortcutCubit.load();
   unawaited(notificationBootstrap);
   boot('layout ready (home index prefetched in background)');
   applyWorkspaceEntryMode(
@@ -1045,6 +1054,8 @@ Future<AppShell> buildAppShell({
     homeWorkspaceUiCache: homeWorkspaceUiCache,
     automationCubit: automationCubit,
     automationScheduler: automationScheduler,
+    commandBus: commandBus,
+    shortcutCubit: shortcutCubit,
   );
 }
 

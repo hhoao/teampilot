@@ -20,6 +20,7 @@ import 'cubits/layout_cubit.dart';
 import 'cubits/mailbox_cubit.dart';
 import 'cubits/notification_cubit.dart';
 import 'cubits/session_history_cubit.dart';
+import 'cubits/shortcut_cubit.dart';
 import 'l10n/l10n_extensions.dart';
 import 'repositories/app_settings_repository.dart';
 import 'repositories/launch_profile_repository.dart';
@@ -30,6 +31,10 @@ import 'repositories/ssh_known_host_repository.dart';
 import 'repositories/ssh_profile_repository.dart';
 import 'router/app_router.dart';
 import 'services/cli/registry/cli_tool_registry_scope.dart';
+import 'services/commands/command_bus.dart';
+import 'services/commands/key_chord.dart';
+import 'services/commands/shortcut_context.dart';
+import 'services/commands/shortcut_dispatcher.dart';
 import 'services/expert_hub/expert_capability_resolver.dart';
 import 'services/home_workspace/home_workspace_ui_cache.dart';
 import 'services/storage/app_storage.dart';
@@ -63,6 +68,67 @@ import 'utils/logger.dart';
 import 'widgets/app_text_scale_boundary.dart';
 import 'widgets/app_update_available_dialog.dart';
 import 'widgets/ui_zoom.dart';
+
+/// Live [ShortcutContext] used by [ShortcutDispatcherHost] until the focus
+/// wiring (Task 6) and session/workspace tab plumbing (Tasks 8, 11) land.
+///
+/// `inCompose` is forced `false` (rather than left to a stub focus reader) so
+/// bare Enter is never accidentally swallowed by `compose.submit` before
+/// compose focus tracking exists; `inTerminal` / `inTextInput` /
+/// `hasOpenWorkspaceTabs` are stubbed `false` for the same reason — matching
+/// nothing is always safer than matching the wrong thing. `hasWorkspace` and
+/// `hasSessionTab` are cheap to derive correctly today, so they are.
+ShortcutContext _liveShortcutContext(ChatCubit chatCubit) {
+  final location = appRouter.routerDelegate.currentConfiguration.uri
+      .toString();
+  return ShortcutContext(
+    hasWorkspace: location.contains('/home-v2/workspace/'),
+    hasSessionTab: chatCubit.state.activeSessionId != null,
+  );
+}
+
+/// Installs the root [ShortcutDispatcher]: attaches a [HardwareKeyboard]
+/// handler on mount and detaches it on dispose. Must sit under the
+/// [CommandBus] / [ShortcutCubit] / [ChatCubit] providers so it can read them
+/// once in [initState] — matching + dispatch itself needs no `BuildContext`.
+class ShortcutDispatcherHost extends StatefulWidget {
+  const ShortcutDispatcherHost({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<ShortcutDispatcherHost> createState() =>
+      _ShortcutDispatcherHostState();
+}
+
+class _ShortcutDispatcherHostState extends State<ShortcutDispatcherHost> {
+  ShortcutDispatcher? _dispatcher;
+
+  @override
+  void initState() {
+    super.initState();
+    final shortcutCubit = context.read<ShortcutCubit>();
+    final chatCubit = context.read<ChatCubit>();
+    final dispatcher = ShortcutDispatcher(
+      bus: context.read<CommandBus>(),
+      effectiveChords: (commandId) =>
+          shortcutCubit.effective[commandId] ?? const [],
+      context: () => _liveShortcutContext(chatCubit),
+      isMacOS: defaultIsMacOS,
+    );
+    dispatcher.attach();
+    _dispatcher = dispatcher;
+  }
+
+  @override
+  void dispose() {
+    _dispatcher?.detach();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
 
 class _CleanupWindowListener extends WindowListener {
   _CleanupWindowListener(
@@ -501,6 +567,7 @@ void main() async {
                 RepositoryProvider<ExpertCapabilityResolver>.value(
                   value: shell.expertCapabilityResolver,
                 ),
+                RepositoryProvider<CommandBus>.value(value: shell.commandBus),
               ],
               child: MultiBlocProvider(
                 providers: [
@@ -531,11 +598,12 @@ void main() async {
                   BlocProvider.value(value: shell.sshProfileCubit),
                   BlocProvider.value(value: shell.cliPresetsCubit),
                   BlocProvider.value(value: shell.aiFeatureSettingsCubit),
+                  BlocProvider.value(value: shell.shortcutCubit),
                 ],
                 child: CliToolRegistryScope(
                   registry: shell.cliToolRegistry,
                   child: const SessionIdleNotificationListener(
-                    child: TeamPilotApp(),
+                    child: ShortcutDispatcherHost(child: TeamPilotApp()),
                   ),
                 ),
               ),
