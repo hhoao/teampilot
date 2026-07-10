@@ -280,6 +280,61 @@ void main() {
   );
 
   test(
+    'simple cursor resumes chat even when launchState is still created',
+    () async {
+      // History-review reconnect can keep a stale launchState=created on the
+      // tab cache. postCaptured must still scan CURSOR_CONFIG_DIR for --resume.
+      const workspaceId = 'ws-cursor';
+      const sessionId = 'sess-cursor';
+      final workspace = Workspace(
+        workspaceId: workspaceId,
+        folders: const [WorkspaceFolder(path: '/work/cursor')],
+        createdAt: 1,
+      );
+      final session = AppSession(
+        sessionId: sessionId,
+        workspaceId: workspaceId,
+        folders: const [WorkspaceFolder(path: '/work/cursor')],
+        sessionTeam: '',
+        cli: CliTool.cursor,
+        launchState: AppSessionLaunchState.created,
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      final plan = simplePlan(
+        workspaceId: workspaceId,
+        sessionId: sessionId,
+        member: TeamMemberConfig(
+          id: sessionId,
+          name: sessionId,
+          cli: CliTool.cursor,
+        ),
+      );
+
+      final cursorRoot = p.join(
+        layout.sessionRuntimeToolDir(workspaceId, sessionId, 'cursor'),
+        'home',
+        '.cursor',
+      );
+      final chatDir = p.join(cursorRoot, 'chats', 'wshash', 'chat-abc');
+      await Directory(chatDir).create(recursive: true);
+      await File(p.join(chatDir, 'meta.json')).writeAsString(
+        '{"schemaVersion":1,"hasConversation":true,"updatedAtMs":100}',
+      );
+
+      final launchPlan = await service().prepareLaunchFromRuntimePlan(
+        session: session,
+        workspace: workspace,
+        plan: plan,
+      );
+
+      expect(launchPlan.resume, isTrue);
+      expect(launchPlan.resumeSessionId, 'chat-abc');
+      expect(launchPlan.nativeSessionIdToPersist, 'chat-abc');
+    },
+  );
+
+  test(
     'prepareLaunchFromRuntimePlan provisions expert pack skills from '
     'plan.runtimeBundle',
     () async {

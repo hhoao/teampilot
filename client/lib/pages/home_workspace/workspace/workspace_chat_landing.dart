@@ -437,6 +437,12 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     if (projectPath.trim().isEmpty) return;
     try {
       final cubit = context.read<WorktreeCubit>();
+      // WorktreeCubit is bound by WorkspaceToolsScopeSync once the tools plane
+      // resolves (loading stays true until that first bind+load completes).
+      if (cubit.state.loading) {
+        await cubit.stream.firstWhere((s) => !s.loading);
+        if (!mounted) return;
+      }
       await cubit.selectProject(
         projectPath,
         preferWorktreePath: _selectedWorktreePath,

@@ -75,6 +75,33 @@ void main() {
     },
   );
 
+  test(
+    'deferred bindWorktreeService unblocks a waiter then selectProject',
+    () async {
+      // Compose landing waits for the tools-scope bind (loading→false) before
+      // selectProject; the early local GitWorktreeService() bind is gone.
+      final cubit = WorktreeCubit(
+        workspaceId: 'w1',
+        initialRepoPath: '/remote/repo',
+      );
+      expect(cubit.state.loading, isTrue);
+
+      final firstLoadDone = cubit.stream.firstWhere((s) => !s.loading);
+      cubit.bindWorktreeService(
+        _StubGitWorktreeService([
+          _wt('/remote/repo', main: true),
+          _wt('/remote/wt'),
+        ]),
+        repoPath: '/remote/repo',
+      );
+      await firstLoadDone;
+
+      await cubit.selectProject('/remote/repo');
+      expect(cubit.state.loading, isFalse);
+      expect(cubit.state.worktrees, hasLength(2));
+    },
+  );
+
   test('hydration runs in parallel with git list on first load', () async {
     final svc = _DelayedLister([
       _wt('/repo', main: true),

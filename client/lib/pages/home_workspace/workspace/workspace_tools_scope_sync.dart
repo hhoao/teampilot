@@ -95,8 +95,9 @@ class _WorkspaceToolsScopeSyncState extends State<WorkspaceToolsScopeSync> {
 
     final tools = scopeCubit.state.tools;
     if (tools == null) return;
-    // Git worktree list is per storage target; session cwd selection is handled
-    // separately via WorktreeCubit.syncCurrentForSessionPath on tab open.
+    // Git worktree list is per storage target; bind only with the runner for
+    // this tools plane (never a default local runner against a remote path).
+    // Session cwd selection uses WorktreeCubit.syncCurrentForSessionPath.
     if (_lastWorktreeTargetId != tools.targetId) {
       _lastWorktreeTargetId = tools.targetId;
       final worktreeCubit = context.read<WorktreeCubit>();
@@ -113,9 +114,17 @@ class _WorkspaceToolsScopeSyncState extends State<WorkspaceToolsScopeSync> {
         repoPath: repoPath,
         preferCurrentPath: session?.firstFolderPath ?? widget.cwd,
       );
+      final prefetchPaths = [
+        for (final folder in widget.workspace.folders)
+          if (folder.targetId == tools.targetId) folder.path,
+      ];
+      if (prefetchPaths.length > 1) {
+        unawaited(worktreeCubit.prefetchProjects(prefetchPaths));
+      }
     }
   }
 
+  /// Test harnesses may inject [GitCommandRunner]; production uses [toolsContext].
   GitWorktreeService _worktreeServiceFor(
     BuildContext context,
     RuntimeContext toolsContext,

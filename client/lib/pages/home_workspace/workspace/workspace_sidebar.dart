@@ -67,18 +67,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       context.read<WorkspaceLandingContextCubit>().state.context.profileId;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (widget.workspace.folders.length > 1) {
-      unawaited(
-        context.read<WorktreeCubit>().prefetchProjects(
-          widget.workspace.folders.map((f) => f.path),
-        ),
-      );
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;

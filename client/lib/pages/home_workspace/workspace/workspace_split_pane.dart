@@ -7,7 +7,6 @@ import '../../../cubits/layout_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../models/layout_preferences.dart';
 import '../../../models/workspace.dart';
-import '../../../services/git/git_worktree_service.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../services/workspace/workspace_tools_scope_registry.dart';
 import '../../../services/workspace/workspace_worktree_registry.dart';
@@ -35,29 +34,9 @@ class WorkspaceSplitPane extends StatefulWidget {
 }
 
 class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
-  var _initialWorktreeBindDone = false;
-
   /// Bridges an IDE-shell split drag to the bottom terminal's PTY resize hold.
   /// Owned here so it shares a lifetime with the terminal panel instance.
   final _terminalHold = WorkspaceTerminalHoldHandle();
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_initialWorktreeBindDone) return;
-    _initialWorktreeBindDone = true;
-    // Bind before child initState (e.g. compose landing draft restore) so
-    // WorktreeCubit.load is never called on an unbound lister. Tools-scope
-    // sync re-binds when the storage target changes.
-    final repoPath = widget.workspace.firstFolderPath;
-    context.read<WorkspaceWorktreeRegistry>().cubitFor(
-      workspaceId: widget.workspace.workspaceId,
-      repoPath: repoPath,
-    ).bindWorktreeService(
-      GitWorktreeService(),
-      repoPath: repoPath,
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,9 +86,7 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
               // cwd change keeps the panel State so the update flows through
               // didUpdateWidget instead of recreating (and stranding) sessions.
               bottom: WorkspaceTerminalPanel(
-                key: ValueKey(
-                  'workspace-terminal-${widget.tabScopeId}',
-                ),
+                key: ValueKey('workspace-terminal-${widget.tabScopeId}'),
                 workspaceId: widget.tabScopeId,
                 workingDirectory: cwd,
                 holdHandle: _terminalHold,

@@ -448,6 +448,17 @@ class SessionLaunchPipeline {
       _host.selectMember(memberId);
     }
 
+    // Prefer the freshest in-memory snapshot (launchState / native ids) over a
+    // stale tab.persistedSession left at create-time.
+    AppSession launchSession = tab.persistedSession ?? session;
+    for (final s in _state().sessions) {
+      if (s.sessionId == session.sessionId) {
+        launchSession = s;
+        break;
+      }
+    }
+    tab.persistedSession = launchSession;
+
     if (_tabStore.activeIndexOfSession(session.sessionId) == -1) {
       appLogger.w(
         '[session-launch] existing session connect tab not in foreground bucket '
@@ -463,7 +474,7 @@ class SessionLaunchPipeline {
 
     await _runOpen(
       SessionOpenRequest(
-        session: tab.persistedSession ?? session,
+        session: launchSession,
         workspace: workspace ?? _workspaceById(session.workspaceId),
         team: isPersonal ? null : team,
         member: isPersonal ? null : member,

@@ -1434,7 +1434,16 @@ class SessionLifecycleService {
     );
 
     String? nativeId;
-    if (previouslyLaunched || (persistedNativeId?.trim().isNotEmpty ?? false)) {
+    // postCaptured CLIs (cursor/codex/opencode) mint ids into a per-session
+    // isolated store. Always probe that store: a stale launchState=created on
+    // the in-memory tab must not skip --resume when chats already exist.
+    // clientPinned / transcript probes stay gated so a fresh launch does not
+    // latch onto shared global transcript roots.
+    final shouldDetect =
+        previouslyLaunched ||
+        (persistedNativeId?.trim().isNotEmpty ?? false) ||
+        cap.binding == ResumeBinding.postCaptured;
+    if (shouldDetect) {
       nativeId = (await cap.detectNativeId(ctx))?.trim();
       if (nativeId != null && nativeId.isEmpty) nativeId = null;
     }

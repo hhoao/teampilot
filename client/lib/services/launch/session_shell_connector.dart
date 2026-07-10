@@ -554,6 +554,16 @@ class SessionShellConnector {
         updatedAt: now,
       );
     }).toList();
+    // Keep the open tab's cached session in sync — history-review reconnect
+    // reads tab.persistedSession for previouslyLaunched / resume decisions.
+    final tab = _host.tabStore.openTabBySessionId(sessionId);
+    final cached = tab?.persistedSession;
+    if (tab != null && cached != null && cached.sessionId == sessionId) {
+      tab.persistedSession = cached.copyWith(
+        launchState: AppSessionLaunchState.started,
+        updatedAt: now,
+      );
+    }
     _host.emitSnapshot(
       _host.dataStore.deriveSnapshot(
         workspaces: state.workspaces,
