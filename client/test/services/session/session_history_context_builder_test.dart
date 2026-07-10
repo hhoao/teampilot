@@ -276,6 +276,38 @@ void main() {
     );
   });
 
+  test('memberId without teamId throws', () {
+    const binding = SessionMemberBinding(
+      rosterMemberId: 'builder-0',
+      taskId: 'task-builder-0',
+    );
+    final session = AppSession(
+      sessionId: 'session-team',
+      workspaceId: 'ws-1',
+      folders: const [WorkspaceFolder(path: '/work/project')],
+      sessionTeam: '',
+      members: const [binding],
+      createdAt: 1,
+    );
+
+    expect(
+      () => builder.build(
+        fs: fs,
+        layout: layout,
+        appDataRoot: base.path,
+        session: session,
+        memberId: 'builder-0',
+        cli: CliTool.claude,
+        workingDirectory: '/work/project',
+      ),
+      throwsA(isA<AssertionError>().having(
+        (e) => e.message,
+        'message',
+        contains('teamId'),
+      )),
+    );
+  });
+
   test('empty workspaceId throws', () {
     final session = AppSession(
       sessionId: 'session-1',

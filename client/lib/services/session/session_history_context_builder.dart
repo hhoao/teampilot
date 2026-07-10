@@ -41,9 +41,13 @@ final class SessionHistoryContextBuilder {
     final trimmedMember = memberId.trim();
     final isSimple = trimmedMember.isEmpty;
     final resolvedTeamId = (teamId ?? session.sessionTeam).trim();
-    final effectiveTeamId = isSimple
-        ? null
-        : (resolvedTeamId.isNotEmpty ? resolvedTeamId : null);
+    if (!isSimple) {
+      assert(
+        resolvedTeamId.isNotEmpty,
+        'SessionHistoryContextBuilder requires teamId for member $trimmedMember',
+      );
+    }
+    final effectiveTeamId = isSimple ? null : resolvedTeamId;
 
     final String resolvedTaskId;
     final String? resolvedNativeId;
