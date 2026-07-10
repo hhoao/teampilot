@@ -72,6 +72,57 @@ void main() {
       expect(result.pack, isNull);
     });
   });
+
+  group('selectLandingExpert', () {
+    test('chip-select path invokes resolver.preflight', () async {
+      final calls = <String>[];
+      final resolver = _RecordingResolver(
+        onPreflight: (key) async {
+          calls.add(key);
+          return ExpertCapabilityPack(
+            member: const TeamMemberConfig(
+              id: 'm1',
+              name: 'Dev',
+              prompt: 'p',
+              joinedAt: 1,
+            ),
+            bundle: const ConfigBundle(skillIds: ['s1']),
+          );
+        },
+      );
+
+      final result = await selectLandingExpert(
+        resolver: resolver,
+        expertKey: 'teampilot/builtin/developer',
+      );
+
+      expect(calls, ['teampilot/builtin/developer']);
+      expect(result.cleared, isFalse);
+      expect(result.selectedKey, 'teampilot/builtin/developer');
+      expect(result.preflight?.pack, isNotNull);
+      expect(result.preflight?.notFound, isFalse);
+    });
+
+    test('clears selection for blank key without preflight', () async {
+      var preflightCalled = false;
+      final resolver = _RecordingResolver(
+        onPreflight: (_) async {
+          preflightCalled = true;
+          return null;
+        },
+      );
+
+      final result = await selectLandingExpert(
+        resolver: resolver,
+        expertKey: '   ',
+      );
+
+      expect(result.cleared, isTrue);
+      expect(result.selectedKey, isNull);
+      expect(result.preflight, isNull);
+      expect(preflightCalled, isFalse);
+    });
+  });
 }
 
 class _RecordingResolver extends ExpertCapabilityResolver {

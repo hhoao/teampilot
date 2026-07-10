@@ -31,3 +31,37 @@ Future<LandingExpertPreflightResult> preflightLandingExpert({
   }
   return LandingExpertPreflightResult(pack: pack);
 }
+
+/// Result of Landing expert chip / picker selection with preflight.
+class LandingExpertSelectResult {
+  const LandingExpertSelectResult({
+    this.selectedKey,
+    this.cleared = false,
+    this.preflight,
+  });
+
+  final String? selectedKey;
+  final bool cleared;
+  final LandingExpertPreflightResult? preflight;
+}
+
+/// Chip-select / picker path — same [preflightLandingExpert] as deep link.
+Future<LandingExpertSelectResult> selectLandingExpert({
+  required ExpertCapabilityResolver resolver,
+  required String expertKey,
+}) async {
+  final trimmed = expertKey.trim();
+  if (trimmed.isEmpty) {
+    return const LandingExpertSelectResult(cleared: true);
+  }
+
+  final preflight = await preflightLandingExpert(
+    resolver: resolver,
+    expertKey: trimmed,
+  );
+
+  return LandingExpertSelectResult(
+    selectedKey: trimmed,
+    preflight: preflight,
+  );
+}

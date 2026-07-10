@@ -835,14 +835,17 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       return;
     }
 
-    final result = await preflightLandingExpert(
+    final result = await selectLandingExpert(
       resolver: resolver,
       expertKey: trimmed,
     );
     if (!mounted) return;
 
+    final preflight = result.preflight;
+    if (preflight == null) return;
+
     final l10n = context.l10n;
-    if (result.notFound) {
+    if (preflight.notFound) {
       AppToast.show(
         context,
         message: l10n.expertHubNotFound,
@@ -851,7 +854,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       return;
     }
 
-    final pack = result.pack;
+    final pack = preflight.pack;
     if (pack == null || !pack.hasFailures) return;
     final message = expertLandingPreflightToastMessage(
       l10n,
