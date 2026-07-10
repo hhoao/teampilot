@@ -13,6 +13,7 @@ DiscoverableMember _builtinMember({
   required String prompt,
   String playbook = '',
   Set<String> capabilities = const {},
+  List<SkillDependencyRef> skillDeps = const [],
 }) {
   return DiscoverableMember(
     key: '$kBuiltinTeamHubKeyPrefix/$slug',
@@ -28,8 +29,13 @@ DiscoverableMember _builtinMember({
       playbook: playbook,
       capabilities: capabilities,
     ),
+    skillDeps: skillDeps,
   );
 }
+
+List<SkillDependencyRef> _skills(List<(String, String)> entries) => [
+  for (final e in entries) superpowersSkillDep(e.$1, e.$2),
+];
 
 /// Built-in expert personas shipped inside TeamPilot (prepended in
 /// [CompositeExpertHubSource]).
@@ -43,6 +49,9 @@ List<DiscoverableMember> builtinExpertMembers() => [
     prompt:
         'You are a helpful coding agent in TeamPilot. Follow the user\'s '
         'instructions carefully. Prefer reading the repo before editing.',
+    skillDeps: _skills([
+      ('using-superpowers', 'Using Superpowers'),
+    ]),
   ),
   _builtinMember(
     slug: 'team-lead',
@@ -61,6 +70,10 @@ List<DiscoverableMember> builtinExpertMembers() => [
         'work to yourself. After teammates finish, reply to the user with '
         'conclusions, relevant files, and next steps.',
     capabilities: {'coordination', 'dispatch'},
+    skillDeps: _skills([
+      ('using-superpowers', 'Using Superpowers'),
+      ('dispatching-parallel-agents', 'Dispatching Parallel Agents'),
+    ]),
   ),
   _builtinMember(
     slug: 'developer',
@@ -79,6 +92,10 @@ List<DiscoverableMember> builtinExpertMembers() => [
         'edits; stop at agreed checkpoints. If a test-driven-development skill '
         'is available, follow it.',
     capabilities: {'implementation'},
+    skillDeps: _skills([
+      ('test-driven-development', 'Test-Driven Development'),
+      ('executing-plans', 'Executing Plans'),
+    ]),
   ),
   _builtinMember(
     slug: 'reviewer',
@@ -96,6 +113,10 @@ List<DiscoverableMember> builtinExpertMembers() => [
         'concrete fix—no vague praise and no nit without a fix. Flag missing '
         'tests explicitly.',
     capabilities: {'review'},
+    skillDeps: _skills([
+      ('requesting-code-review', 'Requesting Code Review'),
+      ('verification-before-completion', 'Verification Before Completion'),
+    ]),
   ),
   _builtinMember(
     slug: 'researcher',
@@ -115,6 +136,9 @@ List<DiscoverableMember> builtinExpertMembers() => [
         'If a brainstorming skill is available, use it to frame the problem '
         'first.',
     capabilities: {'research'},
+    skillDeps: _skills([
+      ('brainstorming', 'Brainstorming'),
+    ]),
   ),
   _builtinMember(
     slug: 'architect',
@@ -135,6 +159,10 @@ List<DiscoverableMember> builtinExpertMembers() => [
         'possible. Report the approved design and plan with acceptance '
         'criteria; never write production code.',
     capabilities: {'design', 'planning'},
+    skillDeps: _skills([
+      ('brainstorming', 'Brainstorming'),
+      ('writing-plans', 'Writing Plans'),
+    ]),
   ),
   _builtinMember(
     slug: 'pm',
@@ -154,6 +182,10 @@ List<DiscoverableMember> builtinExpertMembers() => [
         'questions and decisions; escalate trade-offs to the user. Keep backlog '
         'items small, testable, and ordered by value vs. risk.',
     capabilities: {'product', 'planning'},
+    skillDeps: _skills([
+      ('brainstorming', 'Brainstorming'),
+      ('writing-plans', 'Writing Plans'),
+    ]),
   ),
   _builtinMember(
     slug: 'qa',
@@ -172,6 +204,9 @@ List<DiscoverableMember> builtinExpertMembers() => [
         'output or screenshots. File bugs with severity, steps, expected vs. '
         'actual, and environment notes. Re-verify fixes before sign-off.',
     capabilities: {'qa', 'verification'},
+    skillDeps: _skills([
+      ('verification-before-completion', 'Verification Before Completion'),
+    ]),
   ),
   _builtinMember(
     slug: 'devops',
@@ -190,6 +225,9 @@ List<DiscoverableMember> builtinExpertMembers() => [
         'required env vars, and deploy steps. Report what changed, how to '
         'verify, and blast radius.',
     capabilities: {'devops', 'infrastructure'},
+    skillDeps: _skills([
+      ('verification-before-completion', 'Verification Before Completion'),
+    ]),
   ),
   _builtinMember(
     slug: 'data-analyst',
@@ -208,6 +246,9 @@ List<DiscoverableMember> builtinExpertMembers() => [
         'findings with recommended next steps—no speculative claims without '
         'evidence.',
     capabilities: {'data', 'analysis'},
+    skillDeps: _skills([
+      ('brainstorming', 'Brainstorming'),
+    ]),
   ),
   _builtinMember(
     slug: 'technical-writer',
@@ -242,6 +283,9 @@ List<DiscoverableMember> builtinExpertMembers() => [
         'severity (critical/high/medium/low) and concrete remediation. Flag '
         'missing tests for security-sensitive paths.',
     capabilities: {'security', 'review'},
+    skillDeps: _skills([
+      ('requesting-code-review', 'Requesting Code Review'),
+    ]),
   ),
   _builtinMember(
     slug: 'ux-designer',
@@ -260,6 +304,9 @@ List<DiscoverableMember> builtinExpertMembers() => [
         'Deliver actionable specs: component behavior, layout constraints, and '
         'acceptance checks designers and developers can verify.',
     capabilities: {'design', 'ux'},
+    skillDeps: _skills([
+      ('brainstorming', 'Brainstorming'),
+    ]),
   ),
   _builtinMember(
     slug: 'superpowers-lead',
@@ -281,6 +328,10 @@ List<DiscoverableMember> builtinExpertMembers() => [
         'Honor phase gates (design approved → plan ready → implementation done → '
         'review pass). Never stand down; escalate blockers to the user.',
     capabilities: {'coordination', 'dispatch'},
+    skillDeps: _skills([
+      ('using-superpowers', 'Using Superpowers'),
+      ('dispatching-parallel-agents', 'Dispatching Parallel Agents'),
+    ]),
   ),
   _builtinMember(
     slug: 'superpowers-architect',
@@ -299,6 +350,10 @@ List<DiscoverableMember> builtinExpertMembers() => [
         'design is approved, then writing-plans. Deliver a phased plan the '
         'builder can execute as independent tasks where possible.',
     capabilities: {'design', 'planning'},
+    skillDeps: _skills([
+      ('brainstorming', 'Brainstorming'),
+      ('writing-plans', 'Writing Plans'),
+    ]),
   ),
   _builtinMember(
     slug: 'superpowers-builder',
@@ -317,6 +372,11 @@ List<DiscoverableMember> builtinExpertMembers() => [
         'them concurrently. Smallest correct diff; run the suite before '
         'update_task(done).',
     capabilities: {'implementation'},
+    skillDeps: _skills([
+      ('executing-plans', 'Executing Plans'),
+      ('test-driven-development', 'Test-Driven Development'),
+      ('dispatching-parallel-agents', 'Dispatching Parallel Agents'),
+    ]),
   ),
   _builtinMember(
     slug: 'superpowers-reviewer',
@@ -334,5 +394,9 @@ List<DiscoverableMember> builtinExpertMembers() => [
         'is attached. update_task with structured pass/fail and blocking '
         'items; never patch code yourself.',
     capabilities: {'review', 'verification'},
+    skillDeps: _skills([
+      ('requesting-code-review', 'Requesting Code Review'),
+      ('verification-before-completion', 'Verification Before Completion'),
+    ]),
   ),
 ];

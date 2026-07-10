@@ -1518,6 +1518,18 @@
   "expertEditorTagsHint": "Comma-separated",
   "expertEditorNameRequired": "Name is required.",
   "expertEditorPromptRequired": "Prompt is required.",
+  "expertEditorSkillsSection": "Skills",
+  "expertEditorPluginsSection": "Plugins",
+  "expertEditorMcpSection": "MCP",
+  "expertEditorDepsHint": "Select from your installed library. Items without a portable source are skipped on save.",
+  "expertEditorNonPortableSkipped": "Skipped {count} local-only item(s) without portable provenance.",
+  "@expertEditorNonPortableSkipped": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "expertEditorOrphanDeps": "Attached (not installed locally)",
+  "expertEditorOrphanRemove": "Remove",
   "teamHubNav": "TeamHub",
   "teamHubSubtitle": "Discover more public teams",
   "teamHubTitle": "TeamHub",

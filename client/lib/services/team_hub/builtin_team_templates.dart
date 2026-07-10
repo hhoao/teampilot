@@ -6,7 +6,8 @@ import '../../models/team_roster_slot.dart';
 /// remote TeamHub registry).
 const kBuiltinTeamHubKeyPrefix = 'teampilot/builtin';
 
-SkillDependencyRef _superpowersSkill(String slug, String displayName) =>
+/// Portable Superpowers skill ref shared by Team Hub + Expert Hub builtins.
+SkillDependencyRef superpowersSkillDep(String slug, String displayName) =>
     SkillDependencyRef(
       repoOwner: 'obra',
       repoName: 'superpowers',
@@ -57,17 +58,17 @@ final DiscoverableTeam kSuperpowersTrioTeamTemplate = DiscoverableTeam(
     ),
   ],
   skillDeps: [
-    _superpowersSkill('using-superpowers', 'Using Superpowers'),
-    _superpowersSkill('brainstorming', 'Brainstorming'),
-    _superpowersSkill('writing-plans', 'Writing Plans'),
-    _superpowersSkill('executing-plans', 'Executing Plans'),
-    _superpowersSkill('test-driven-development', 'Test-Driven Development'),
-    _superpowersSkill(
+    superpowersSkillDep('using-superpowers', 'Using Superpowers'),
+    superpowersSkillDep('brainstorming', 'Brainstorming'),
+    superpowersSkillDep('writing-plans', 'Writing Plans'),
+    superpowersSkillDep('executing-plans', 'Executing Plans'),
+    superpowersSkillDep('test-driven-development', 'Test-Driven Development'),
+    superpowersSkillDep(
       'verification-before-completion',
       'Verification Before Completion',
     ),
-    _superpowersSkill('requesting-code-review', 'Requesting Code Review'),
-    _superpowersSkill(
+    superpowersSkillDep('requesting-code-review', 'Requesting Code Review'),
+    superpowersSkillDep(
       'dispatching-parallel-agents',
       'Dispatching Parallel Agents',
     ),

@@ -5,6 +5,7 @@ import 'package:teampilot/cubits/expert_hub_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/models/discoverable_team.dart';
+import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/pages/expert_hub/expert_editor_dialog.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
@@ -156,6 +157,79 @@ void main() {
     expect(result!.tags, {'docs', 'archive'});
     expect(LocalMemberTemplateStore.isLocalKey(result!.key), isTrue);
     expect(hub.forceRefreshCalls, 1);
+  });
+
+  testWidgets('toggling portable skill saves skillDeps', (tester) async {
+    _largeSurface(tester);
+
+    final fs = InMemoryFilesystem();
+    final writer = _SpyWriter(
+      store: LocalMemberTemplateStore(fs: fs, dirOverride: '/t'),
+    );
+
+    DiscoverableMember? result;
+    final skill = Skill(
+      id: 'obra/superpowers:brainstorming',
+      name: 'Brainstorming',
+      description: '',
+      directory: 'skills/brainstorming',
+      repoOwner: 'obra',
+      repoName: 'superpowers',
+      repoBranch: 'main',
+      installedAt: 1,
+      updatedAt: 1,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () async {
+                result = await showExpertEditorDialog(
+                  context,
+                  writer: writer,
+                  skills: [skill],
+                  plugins: const [],
+                  mcps: const [],
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('expert-editor-name')),
+      'Planner',
+    );
+    await tester.enterText(
+      find.byKey(const Key('expert-editor-prompt')),
+      'Plan carefully.',
+    );
+
+    final switchFinder = find.descendant(
+      of: find.byKey(Key('expert-editor-skill-${skill.id}')),
+      matching: find.byType(Switch),
+    );
+    await tester.ensureVisible(switchFinder);
+    await tester.tap(switchFinder);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('expert-editor-submit')));
+    await tester.pumpAndSettle();
+
+    expect(result, isNotNull);
+    expect(result!.skillDeps, hasLength(1));
+    expect(result!.skillDeps.single.name, 'Brainstorming');
+    expect(result!.skillDeps.single.expectedLocalId, skill.id);
   });
 
   testWidgets('edit mode updates existing local expert', (tester) async {

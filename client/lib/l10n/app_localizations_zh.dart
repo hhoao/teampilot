@@ -3194,6 +3194,29 @@ class AppLocalizationsZh extends AppLocalizations {
   String get expertEditorPromptRequired => '提示词为必填项。';
 
   @override
+  String get expertEditorSkillsSection => '技能';
+
+  @override
+  String get expertEditorPluginsSection => '插件';
+
+  @override
+  String get expertEditorMcpSection => 'MCP';
+
+  @override
+  String get expertEditorDepsHint => '从本机已安装库中勾选。没有可移植来源的项会在保存时跳过。';
+
+  @override
+  String expertEditorNonPortableSkipped(int count) {
+    return '已跳过 $count 个没有可移植来源的本地项。';
+  }
+
+  @override
+  String get expertEditorOrphanDeps => '已挂载（本机未安装）';
+
+  @override
+  String get expertEditorOrphanRemove => '移除';
+
+  @override
   String get teamHubNav => '团队中心';
 
   @override

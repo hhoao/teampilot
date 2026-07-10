@@ -3313,6 +3313,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get expertEditorPromptRequired => 'Prompt is required.';
 
   @override
+  String get expertEditorSkillsSection => 'Skills';
+
+  @override
+  String get expertEditorPluginsSection => 'Plugins';
+
+  @override
+  String get expertEditorMcpSection => 'MCP';
+
+  @override
+  String get expertEditorDepsHint =>
+      'Select from your installed library. Items without a portable source are skipped on save.';
+
+  @override
+  String expertEditorNonPortableSkipped(int count) {
+    return 'Skipped $count local-only item(s) without portable provenance.';
+  }
+
+  @override
+  String get expertEditorOrphanDeps => 'Attached (not installed locally)';
+
+  @override
+  String get expertEditorOrphanRemove => 'Remove';
+
+  @override
   String get teamHubNav => 'TeamHub';
 
   @override

@@ -6015,6 +6015,48 @@ abstract class AppLocalizations {
   /// **'Prompt is required.'**
   String get expertEditorPromptRequired;
 
+  /// No description provided for @expertEditorSkillsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Skills'**
+  String get expertEditorSkillsSection;
+
+  /// No description provided for @expertEditorPluginsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugins'**
+  String get expertEditorPluginsSection;
+
+  /// No description provided for @expertEditorMcpSection.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP'**
+  String get expertEditorMcpSection;
+
+  /// No description provided for @expertEditorDepsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select from your installed library. Items without a portable source are skipped on save.'**
+  String get expertEditorDepsHint;
+
+  /// No description provided for @expertEditorNonPortableSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped {count} local-only item(s) without portable provenance.'**
+  String expertEditorNonPortableSkipped(int count);
+
+  /// No description provided for @expertEditorOrphanDeps.
+  ///
+  /// In en, this message translates to:
+  /// **'Attached (not installed locally)'**
+  String get expertEditorOrphanDeps;
+
+  /// No description provided for @expertEditorOrphanRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get expertEditorOrphanRemove;
+
   /// No description provided for @teamHubNav.
   ///
   /// In en, this message translates to:

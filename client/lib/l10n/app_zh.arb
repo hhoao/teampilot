@@ -1227,6 +1227,18 @@
   "expertEditorTagsHint": "逗号分隔",
   "expertEditorNameRequired": "名称为必填项。",
   "expertEditorPromptRequired": "提示词为必填项。",
+  "expertEditorSkillsSection": "技能",
+  "expertEditorPluginsSection": "插件",
+  "expertEditorMcpSection": "MCP",
+  "expertEditorDepsHint": "从本机已安装库中勾选。没有可移植来源的项会在保存时跳过。",
+  "expertEditorNonPortableSkipped": "已跳过 {count} 个没有可移植来源的本地项。",
+  "@expertEditorNonPortableSkipped": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "expertEditorOrphanDeps": "已挂载（本机未安装）",
+  "expertEditorOrphanRemove": "移除",
   "teamHubNav": "团队中心",
   "teamHubSubtitle": "发现更多公开团队",
   "teamHubTitle": "团队中心",
