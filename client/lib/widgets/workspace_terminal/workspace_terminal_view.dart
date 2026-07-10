@@ -5,6 +5,10 @@ import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/session_preferences_cubit.dart';
+import '../../cubits/shortcut_cubit.dart';
+import '../../services/commands/key_chord.dart';
+import '../../services/commands/shortcut_focus.dart';
+import '../../services/commands/terminal_passthrough_shortcuts.dart';
 import '../../services/terminal/terminal_fonts.dart';
 import '../../services/terminal/terminal_uri_opener.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
@@ -38,42 +42,57 @@ class WorkspaceTerminalView extends StatelessWidget {
       siblings: siblings,
       baseLabel: entry.titleLabel.isEmpty ? '…' : entry.titleLabel,
     );
-    return ColoredBox(
-      color: background,
-      child: Semantics(
-        label: title,
-        child: TerminalWithHistoryScrollbar(
-          engine: entry.session.engine,
-          controller: entry.controller,
-          child: TerminalView(
-            entry.session.engine,
-            key: terminalViewKey,
+    final shortcutCubit = context.watch<ShortcutCubit>();
+    final terminalShortcuts = <ShortcutActivator, Intent>{
+      ...defaultTerminalShortcuts,
+      ...terminalPassthroughShortcutOverlay(
+        effectiveByCommand: shortcutCubit.effective,
+        isMacOS: defaultIsMacOS(),
+      ),
+    };
+    return ShortcutFocus(
+      kind: ShortcutFocusKind.terminal,
+      child: ColoredBox(
+        color: background,
+        child: Semantics(
+          label: title,
+          child: TerminalWithHistoryScrollbar(
+            engine: entry.session.engine,
             controller: entry.controller,
-            theme: theme,
-            backgroundOpacity: 0.98,
-            padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 8),
-            textStyle: appTerminalTextStyle(context),
-            autofocus: true,
-            linkProviders: entry.session.linkProviders,
-            primaryTapActivatesLink: context
-                .watch<SessionPreferencesCubit>()
-                .state
-                .preferences
-                .terminalLinkClickOpensInApp,
-            onPtyResize: entry.session.onTerminalPtyResize,
-            onLinkActivate: (uri) {
-              final opener = context.read<WorkbenchEditorOpener>();
-              unawaited(
-                TerminalUriOpener.open(
-                  uri,
-                  workingDirectory: entry.cwd,
-                  openInEditor: (path) => opener.openFile(workspaceId, path),
-                ),
-              );
-            },
-            onSecondaryTapDown: (details, offset) {
-              onContextMenu(details.globalPosition, offset);
-            },
+            child: TerminalView(
+              entry.session.engine,
+              key: terminalViewKey,
+              controller: entry.controller,
+              theme: theme,
+              backgroundOpacity: 0.98,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 36,
+                vertical: 8,
+              ),
+              textStyle: appTerminalTextStyle(context),
+              autofocus: true,
+              shortcuts: terminalShortcuts,
+              linkProviders: entry.session.linkProviders,
+              primaryTapActivatesLink: context
+                  .watch<SessionPreferencesCubit>()
+                  .state
+                  .preferences
+                  .terminalLinkClickOpensInApp,
+              onPtyResize: entry.session.onTerminalPtyResize,
+              onLinkActivate: (uri) {
+                final opener = context.read<WorkbenchEditorOpener>();
+                unawaited(
+                  TerminalUriOpener.open(
+                    uri,
+                    workingDirectory: entry.cwd,
+                    openInEditor: (path) => opener.openFile(workspaceId, path),
+                  ),
+                );
+              },
+              onSecondaryTapDown: (details, offset) {
+                onContextMenu(details.globalPosition, offset);
+              },
+            ),
           ),
         ),
       ),

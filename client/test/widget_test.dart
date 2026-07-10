@@ -15,6 +15,7 @@ import 'package:teampilot/cubits/extension_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/plugin_cubit.dart';
+import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
@@ -238,6 +239,7 @@ Widget buildTestApp({
         BlocProvider.value(value: layoutCubit ?? LayoutCubit()),
         BlocProvider.value(value: sessionPreferencesCubit),
         BlocProvider.value(value: aiFeatures),
+        BlocProvider(create: (_) => ShortcutCubit()),
         BlocProvider(create: (_) => EditorCubit(fs: LocalFilesystem())),
         BlocProvider(create: (_) => WorkbenchCubit()),
         BlocProvider.value(value: extensionCubit ?? _testExtensionCubit()),

@@ -72,20 +72,18 @@ import 'widgets/app_text_scale_boundary.dart';
 import 'widgets/app_update_available_dialog.dart';
 import 'widgets/ui_zoom.dart';
 
-/// Live [ShortcutContext] used by [ShortcutDispatcherHost] until the
-/// terminal focus plumbing (Task 11) lands.
+/// Live [ShortcutContext] used by [ShortcutDispatcherHost].
 ///
-/// `inCompose` / `inTextInput` are derived by walking up from
-/// [FocusManager.instance.primaryFocus]'s element to the nearest
+/// `inCompose` / `inTerminal` / `inTextInput` are derived by walking up
+/// from [FocusManager.instance.primaryFocus]'s element to the nearest
 /// [ShortcutFocus] ancestor (see `ShortcutFocus.maybeOf`) — compose fields
 /// wrap themselves in `ShortcutFocus(kind: ShortcutFocusKind.compose, ...)`
-/// on build, so this needs no static registry. `inTerminal` is stubbed
-/// `false` until terminal focus tracking lands — matching nothing is always
-/// safer than matching the wrong thing. `hasWorkspace` and `hasSessionTab`
-/// are cheap to derive correctly today, so they are.
-/// `hasOpenWorkspaceTabs` reads [WorkspaceChromeCommands.openTabCount],
-/// which `HomeShell` keeps in sync with its title-bar tabs (`0` whenever no
-/// `HomeShell` is mounted).
+/// and agent / workspace-shell terminal views wrap themselves in
+/// `ShortcutFocus(kind: ShortcutFocusKind.terminal, ...)` on build, so this
+/// needs no static registry. `hasWorkspace` and `hasSessionTab` are cheap
+/// to derive correctly today, so they are. `hasOpenWorkspaceTabs` reads
+/// [WorkspaceChromeCommands.openTabCount], which `HomeShell` keeps in sync
+/// with its title-bar tabs (`0` whenever no `HomeShell` is mounted).
 ShortcutContext _liveShortcutContext(
   ChatCubit chatCubit,
   WorkspaceChromeCommands workspaceChromeCommands,
@@ -94,6 +92,7 @@ ShortcutContext _liveShortcutContext(
       .toString();
   final focusKind = _primaryShortcutFocusKind();
   return ShortcutContext(
+    inTerminal: focusKind == ShortcutFocusKind.terminal,
     inCompose: focusKind == ShortcutFocusKind.compose,
     inTextInput:
         focusKind == ShortcutFocusKind.compose ||
