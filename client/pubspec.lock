@@ -898,6 +898,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "3.2.1"
+  panes:
+    dependency: "direct main"
+    description:
+      name: panes
+      sha256: "084f25b3af0780eac5a0661eb1b00582119faeb10a92ab404080b64965b90260"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "1.3.0"
   pasteboard:
     dependency: "direct main"
     description:
