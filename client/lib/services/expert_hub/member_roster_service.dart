@@ -54,17 +54,10 @@ class MemberRosterService {
       onProgress?.call(CloneProgress(msg, done, total));
     }
 
-    final pack = await _resolver.resolve(expert);
-
-    for (final dep in expert.skillDeps) {
-      progress(dep.name);
-    }
-    for (final dep in expert.pluginDeps) {
-      progress(dep.name);
-    }
-    for (final dep in expert.mcpDeps) {
-      progress(dep.name);
-    }
+    final pack = await _resolver.resolve(
+      expert,
+      onDepProgress: progress,
+    );
 
     final added = await launchProfiles.addExpertToTeam(
       teamId,

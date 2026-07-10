@@ -173,6 +173,52 @@ void main() {
     await dir.delete(recursive: true);
   });
 
+  test('addExpertToTeam reports per-dep progress during install', () async {
+    final dir = await Directory.systemTemp.createTemp('member-roster-progress-');
+    final repo = testLaunchProfileRepository(dir);
+    final cubit = buildCubit(repo);
+    await cubit.load();
+    final teamId = cubit.state.teams.first.id;
+
+    final service = buildService(
+      installSkill: (d) async => 'skill-${d.name}',
+      installPlugin: (d) async => 'plugin-${d.name}',
+      installMcp: (d) async => 'mcp-${d.name}',
+    );
+
+    final progress = <CloneProgress>[];
+    await service.addExpertToTeam(
+      teamId: teamId,
+      expert: member(
+        skillDeps: const [
+          SkillDependencyRef(
+            repoOwner: 'anthropics',
+            repoName: 'skills',
+            repoBranch: 'main',
+            directory: 'skills/deep-research',
+            name: 'deep-research',
+          ),
+        ],
+        pluginDeps: const [_pluginDep],
+        mcpDeps: const [_mcpDep],
+      ),
+      launchProfiles: cubit,
+      onProgress: progress.add,
+    );
+
+    expect(progress.map((p) => p.message).toList(), [
+      'deep-research',
+      'Plug',
+      'Context7',
+    ]);
+    expect(progress.map((p) => p.done).toList(), [1, 2, 3]);
+    expect(progress.first.total, 3);
+    expect(progress.last.total, 3);
+
+    await cubit.close();
+    await dir.delete(recursive: true);
+  });
+
   test(
     'addExpertToTeam installs plugin/mcp deps without mutating team bundle',
     () async {

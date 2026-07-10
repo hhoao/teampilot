@@ -182,4 +182,46 @@ void main() {
     expect(pack!.member.id, isNotEmpty);
     expect(pack.bundle, const ConfigBundle());
   });
+
+  test(
+    'onDepProgress fires after each install in skill→plugin→mcp order',
+    () async {
+      final progressNames = <String>[];
+      var progressCount = 0;
+      final installProgressAtInstall = <String, int>{};
+
+      final resolver = ExpertCapabilityResolver(
+        installSkill: (dep) async {
+          installProgressAtInstall[dep.name] = progressCount;
+          return 'anthropics/skills:deep-research';
+        },
+        installPlugin: (dep) async {
+          installProgressAtInstall[dep.name] = progressCount;
+          return 'o/n/plug';
+        },
+        installMcp: (dep) async {
+          installProgressAtInstall[dep.name] = progressCount;
+          return 'context7';
+        },
+      );
+
+      await resolver.resolve(
+        expert(
+          skillDeps: const [skillDep],
+          pluginDeps: const [pluginDep],
+          mcpDeps: const [mcpDep],
+        ),
+        onDepProgress: (name) {
+          progressCount++;
+          progressNames.add(name);
+        },
+      );
+
+      expect(progressNames, ['deep-research', 'Plug', 'Context7']);
+      expect(progressCount, 3);
+      expect(installProgressAtInstall['deep-research'], 0);
+      expect(installProgressAtInstall['Plug'], 1);
+      expect(installProgressAtInstall['Context7'], 2);
+    },
+  );
 }

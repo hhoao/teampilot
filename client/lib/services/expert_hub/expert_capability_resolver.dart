@@ -47,6 +47,7 @@ class ExpertCapabilityResolver {
     TeamProfile? team,
     String? slotId,
     int? joinedAt,
+    void Function(String depName)? onDepProgress,
   }) async {
     final expert = await ExpertMemberResolver.resolveMember(
       key: expertKey,
@@ -62,6 +63,7 @@ class ExpertCapabilityResolver {
       team: team,
       slotId: slotId,
       joinedAt: joinedAt,
+      onDepProgress: onDepProgress,
     );
   }
 
@@ -72,11 +74,13 @@ class ExpertCapabilityResolver {
     TeamProfile? team,
     String? slotId,
     int? joinedAt,
+    void Function(String depName)? onDepProgress,
   }) async {
     final failed = <DependencyFailure>[];
     final skillIds = <String>[];
     for (final dep in expert.skillDeps) {
       final id = await _installSkill(dep);
+      onDepProgress?.call(dep.name);
       if (id != null) {
         skillIds.add(id);
       } else {
@@ -87,6 +91,7 @@ class ExpertCapabilityResolver {
     final pluginIds = <String>[];
     for (final dep in expert.pluginDeps) {
       final id = await _installPlugin(dep);
+      onDepProgress?.call(dep.name);
       if (id != null) {
         pluginIds.add(id);
       } else {
@@ -97,6 +102,7 @@ class ExpertCapabilityResolver {
     final mcpServerIds = <String>[];
     for (final dep in expert.mcpDeps) {
       final id = await _installMcp(dep);
+      onDepProgress?.call(dep.name);
       if (id != null) {
         mcpServerIds.add(id);
       } else {
