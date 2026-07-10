@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
+import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/chat/session_history_review_submit.dart';
 
 void main() {
   group('submitSessionHistoryReviewMessage', () {
-    late PersonalSessionConnect connectRequest;
+    late ExistingSessionConnect connectRequest;
     late List<SessionConnectRequest> connectCalls;
     late List<(String, String, bool)> readyCalls;
     late List<(String, String, String, bool)> deliverCalls;
@@ -14,7 +16,15 @@ void main() {
     late int openSessionCalls;
 
     setUp(() {
-      connectRequest = PersonalSessionConnect(workspaceId: 'ws-1');
+      connectRequest = ExistingSessionConnect(
+        session: AppSession(
+          sessionId: 'sess-1',
+          workspaceId: 'ws-1',
+          folders: const [WorkspaceFolder(path: '/tmp')],
+          createdAt: 1,
+          updatedAt: 1,
+        ),
+      );
       connectCalls = [];
       readyCalls = [];
       deliverCalls = [];

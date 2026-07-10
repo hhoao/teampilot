@@ -11,6 +11,7 @@ import '../../cubits/chat/model/session_open_request.dart';
 import '../../cubits/chat/model/session_open_status.dart';
 import '../../cubits/chat/model/session_persist_params.dart';
 import '../../cubits/chat/session_launch_host.dart';
+import '../../models/app_session.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_topology.dart';
@@ -242,11 +243,24 @@ class SessionLaunchPipeline {
         await _connectTeamSession(team, repo: repo);
       case PersonalSessionConnect(
         :final workspaceId,
-                :final cliOverride,
+        :final cliOverride,
       ):
         await _connectPersonalSession(
           workspaceId: workspaceId,
           cliOverride: cliOverride,
+          repo: repo,
+        );
+      case ExistingSessionConnect(
+        :final session,
+        :final team,
+        :final member,
+        :final workspace,
+      ):
+        await _connectExistingSession(
+          session: session,
+          team: team,
+          member: member,
+          workspace: workspace,
           repo: repo,
         );
     }
@@ -261,6 +275,9 @@ class SessionLaunchPipeline {
       case TeamSessionConnect(:final team):
         await _restartTeamSession(team, repo: repo);
       case PersonalSessionConnect():
+        _disconnectSession();
+        await _runConnect(request, repo: repo);
+      case ExistingSessionConnect():
         _disconnectSession();
         await _runConnect(request, repo: repo);
     }
@@ -395,6 +412,61 @@ class SessionLaunchPipeline {
       SessionOpenRequest(
         session: session,
         workspace: _workspaceById(session.workspaceId),
+        repo: r,
+        connectImmediately: true,
+      ),
+    );
+  }
+
+  Future<void> _connectExistingSession({
+    required AppSession session,
+    TeamProfile? team,
+    TeamMemberConfig? member,
+    Workspace? workspace,
+    SessionRepository? repo,
+  }) async {
+    final r = repo ?? _host.sessionRepository;
+    if (r == null) {
+      _host.failSessionConnect(session.sessionId, 'Session repository unavailable.');
+      return;
+    }
+
+    final tab = _tabStore.openTabBySessionId(session.sessionId);
+    if (tab == null) {
+      _host.failSessionConnect(session.sessionId, 'Session tab is not open.');
+      return;
+    }
+
+    final isPersonal = session.sessionTeam.trim().isEmpty;
+    final memberId = isPersonal
+        ? session.sessionId
+        : (member?.id.trim().isNotEmpty == true
+              ? member!.id.trim()
+              : tab.selectedMemberId.trim());
+    if (memberId.isNotEmpty) {
+      tab.selectedMemberId = memberId;
+      _host.selectMember(memberId);
+    }
+
+    if (_tabStore.activeIndexOfSession(session.sessionId) == -1) {
+      appLogger.w(
+        '[session-launch] existing session connect tab not in foreground bucket '
+        'session=${session.sessionId} active=${_tabStore.activeWorkspaceId} '
+        'tabWorkspace=${tab.workspaceId}',
+      );
+      _host.failSessionConnect(
+        session.sessionId,
+        'Session tab is not active in this workspace.',
+      );
+      return;
+    }
+
+    await _runOpen(
+      SessionOpenRequest(
+        session: tab.persistedSession ?? session,
+        workspace: workspace ?? _workspaceById(session.workspaceId),
+        team: isPersonal ? null : team,
+        member: isPersonal ? null : member,
         repo: r,
         connectImmediately: true,
       ),

@@ -6,6 +6,7 @@ import '../../utils/logger.dart';
 /// Connects an already-open review tab, waits for the selected member, then
 /// injects [message] at the PTY prompt.
 ///
+/// [connectRequest] must be [ExistingSessionConnect] for the open session tab.
 /// Must not call [ChatCubit.requestOpenSession] with `connectImmediately: true`
 /// — that path is for landing create / automation only.
 ///

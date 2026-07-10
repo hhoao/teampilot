@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
@@ -18,6 +19,7 @@ import '../services/workbench/workbench_editor_opener.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/app_keys.dart';
 import '../widgets/deferred_foreground_mount.dart';
+import '../utils/team_member_naming.dart';
 import 'home_workspace/workspace/workspace_route_active_scope.dart';
 import 'chat/chat_workbench_placeholders.dart';
 import 'chat/chat_workbench_slice.dart';
@@ -414,9 +416,27 @@ class _ChatWorkbenchBody extends StatelessWidget {
     final resolvedTeam = isPersonal
         ? null
         : (team ?? _teamProfileForSession(context, appSession));
-    final connectRequest = isPersonal
-        ? PersonalSessionConnect(workspaceId: workspaceId)
-        : TeamSessionConnect(resolvedTeam!);
+    TeamMemberConfig? connectMember;
+    if (!isPersonal && resolvedTeam != null) {
+      final mid = memberId.trim();
+      if (mid.isNotEmpty) {
+        connectMember = resolvedTeam.members
+            .where((m) => m.id == mid)
+            .firstOrNull;
+      }
+      connectMember ??= resolvedTeam.members
+          .where((m) => TeamMemberNaming.isTeamLead(m))
+          .firstOrNull;
+      connectMember ??= resolvedTeam.members.firstOrNull;
+    }
+    final shellMemberId = isPersonal
+        ? appSession.sessionId
+        : (connectMember?.id ?? memberId);
+    final connectRequest = ExistingSessionConnect(
+      session: appSession,
+      team: resolvedTeam,
+      member: connectMember,
+    );
 
     return SessionHistoryReview(
       session: appSession,
@@ -425,7 +445,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
       launchError: launchError,
       onSubmit: (message) => submitSessionHistoryReviewMessage(
         sessionId: appSession.sessionId,
-        memberId: memberId,
+        memberId: shellMemberId,
         message: message,
         connectRequest: connectRequest,
         connectWorkspaceSession: chatCubit.connectWorkspaceSession,
