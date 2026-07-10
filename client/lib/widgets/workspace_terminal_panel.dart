@@ -30,16 +30,43 @@ import 'workspace_terminal/workspace_terminal_view.dart';
 /// Debug label for the workspace panel's stable [GlobalKey<TerminalViewState>].
 const String kWorkspaceTerminalViewDebugLabel = 'workspace-terminal-view';
 
+/// Lets an outer layout host (e.g. `WorkspaceIdeShell`) bracket PTY resizes of
+/// the workspace terminal while a split divider is dragged, without exposing the
+/// panel's private [TerminalLayoutCoordinator].
+///
+/// The panel binds itself on mount and unbinds on dispose; calls before the
+/// terminal view registers (or after dispose) are safe no-ops.
+class WorkspaceTerminalHoldHandle {
+  _WorkspaceTerminalPanelState? _state;
+
+  void _bind(_WorkspaceTerminalPanelState state) => _state = state;
+
+  void _unbind(_WorkspaceTerminalPanelState state) {
+    if (identical(_state, state)) _state = null;
+  }
+
+  /// Begin holding PTY resizes for the bound terminal (drag start).
+  void beginPtyHold() => _state?._beginExternalHold();
+
+  /// End the hold, flushing the final grid to the PTY when [flush] (drag end).
+  void endPtyHold({bool flush = true}) => _state?._endExternalHold(flush: flush);
+}
+
 /// IntelliJ-style bottom panel: tab row + shell PTY (not chat agent terminals).
 class WorkspaceTerminalPanel extends StatefulWidget {
   const WorkspaceTerminalPanel({
     required this.workspaceId,
     required this.workingDirectory,
+    this.holdHandle,
     super.key,
   });
 
   final String workspaceId;
   final String workingDirectory;
+
+  /// Optional hold bridge so a split-drag in an outer shell can suppress PTY
+  /// SIGWINCH thrash across the drag (forwarded to [TerminalLayoutCoordinator]).
+  final WorkspaceTerminalHoldHandle? holdHandle;
 
   @override
   State<WorkspaceTerminalPanel> createState() => _WorkspaceTerminalPanelState();
@@ -74,6 +101,12 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       WorkspaceTerminalConnectCoordinator(connector: _connector);
 
   @override
+  void initState() {
+    super.initState();
+    widget.holdHandle?._bind(this);
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_sshReconnectHooked) {
@@ -91,14 +124,27 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   @override
   void didUpdateWidget(WorkspaceTerminalPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.holdHandle, widget.holdHandle)) {
+      oldWidget.holdHandle?._unbind(this);
+      widget.holdHandle?._bind(this);
+    }
     if (oldWidget.workingDirectory != widget.workingDirectory ||
         oldWidget.workspaceId != widget.workspaceId) {
       _syncActiveEntryCwd();
     }
   }
 
+  /// Drag-start hook from an outer split host: hold PTY resizes for this panel's
+  /// terminal view(s). No-op until a terminal view has registered.
+  void _beginExternalHold() => _coordinator?.beginAllTransactions();
+
+  /// Drag-end hook: release the hold, flushing the final grid to the PTY.
+  void _endExternalHold({bool flush = true}) =>
+      _coordinator?.endAllTransactions(flush: flush);
+
   @override
   void dispose() {
+    widget.holdHandle?._unbind(this);
     unawaited(_sshReconnectSub?.cancel());
     if (_registeredHoldTarget != null) {
       _coordinator?.unregister(_registeredHoldTarget!);
