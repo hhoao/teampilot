@@ -64,9 +64,7 @@ class _DiffEditorSurfaceState extends State<DiffEditorSurface> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   '${tab.title}$stagedLabel',
-                  style: AppTextStyles.of(context).body.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: AppTextStyles.of(context).bodySmall,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
