@@ -24,12 +24,16 @@ abstract interface class ComposeImageClipboardReader {
 }
 
 /// Desktop/mobile clipboard reader backed by [Pasteboard].
-class PasteboardComposeImageClipboardReader implements ComposeImageClipboardReader {
+class PasteboardComposeImageClipboardReader
+    implements ComposeImageClipboardReader {
   const PasteboardComposeImageClipboardReader();
 
   static bool get supported =>
       !kIsWeb &&
-      (Platform.isLinux || Platform.isMacOS || Platform.isWindows || Platform.isAndroid);
+      (Platform.isLinux ||
+          Platform.isMacOS ||
+          Platform.isWindows ||
+          Platform.isAndroid);
 
   @override
   Future<ComposeImageClipboardPayload?> readImageBytes() async {
@@ -47,10 +51,7 @@ class PasteboardComposeImageClipboardReader implements ComposeImageClipboardRead
     if (!supported) return const [];
     final paths = await Pasteboard.files();
     final text = await Pasteboard.text;
-    return parseClipboardImageFilePaths(
-      filePaths: paths,
-      clipboardText: text,
-    );
+    return parseClipboardImageFilePaths(filePaths: paths, clipboardText: text);
   }
 }
 
@@ -76,8 +77,8 @@ List<String> parseClipboardImageFilePaths({
   if (text == null || text.isEmpty) return resolved;
 
   final lines = text.split('\n');
-  final start = lines.isNotEmpty &&
-          (lines.first == 'copy' || lines.first == 'cut')
+  final start =
+      lines.isNotEmpty && (lines.first == 'copy' || lines.first == 'cut')
       ? 1
       : 0;
   for (var i = start; i < lines.length; i++) {
@@ -92,7 +93,13 @@ String _normalizeClipboardPath(String raw) {
   if (trimmed.isEmpty) return '';
   if (trimmed.startsWith('file://')) {
     try {
-      return Uri.parse(trimmed).toFilePath(windows: Platform.isWindows);
+      final uri = Uri.parse(trimmed);
+      final looksLikeWindowsFileUri = RegExp(
+        r'^/[A-Za-z]:/',
+      ).hasMatch(uri.path);
+      return uri.toFilePath(
+        windows: Platform.isWindows && looksLikeWindowsFileUri,
+      );
     } on Object {
       return trimmed.substring('file://'.length);
     }

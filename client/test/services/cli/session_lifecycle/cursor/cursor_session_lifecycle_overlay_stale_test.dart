@@ -1,4 +1,3 @@
-import 'package:path/path.dart' as p;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_session_lifecycle_capability.dart';
@@ -53,7 +52,11 @@ void main() {
       );
       await fs.ensureDir(
         fs.pathContext.join(
-          layout.workspaceRuntimeToolDir(workspaceId, cursorTestTeamId, 'cursor'),
+          layout.workspaceRuntimeToolDir(
+            workspaceId,
+            cursorTestTeamId,
+            'cursor',
+          ),
           'projects',
           slug,
         ),
@@ -72,7 +75,9 @@ void main() {
           shared: cursorTestSharedManifest(slug: slug),
           members: {
             TeamMemberNaming.teamLeadName: CliSessionManifestMember(
-              homeRoot: cursorTestMemberHomeRelative(TeamMemberNaming.teamLeadName),
+              homeRoot: cursorTestMemberHomeRelative(
+                TeamMemberNaming.teamLeadName,
+              ),
             ),
           },
           sessionOverlays: {
@@ -91,10 +96,15 @@ void main() {
         TeamMemberNaming.teamLeadName,
         'cursor',
       );
-      final memberAuthDir = p.join(memberHome, 'home', '.config', 'cursor');
+      final memberAuthDir = fs.pathContext.join(
+        memberHome,
+        'home',
+        '.config',
+        'cursor',
+      );
       await fs.ensureDir(memberAuthDir);
       await fs.writeString(
-        p.join(memberAuthDir, CursorHomeLayout.authFileName),
+        fs.pathContext.join(memberAuthDir, CursorHomeLayout.authFileName),
         '{"accessToken":"test","email":"user@example.com"}',
       );
 
@@ -111,10 +121,7 @@ void main() {
             cli: CliTool.cursor,
             teamMode: TeamMode.mixed,
             members: const [
-              TeamMemberConfig(
-                id: TeamMemberNaming.teamLeadName,
-                name: 'Lead',
-              ),
+              TeamMemberConfig(id: TeamMemberNaming.teamLeadName, name: 'Lead'),
             ],
           ),
           busIdle: newBus,
@@ -136,10 +143,7 @@ void main() {
             cli: CliTool.cursor,
             teamMode: TeamMode.mixed,
             members: const [
-              TeamMemberConfig(
-                id: TeamMemberNaming.teamLeadName,
-                name: 'Lead',
-              ),
+              TeamMemberConfig(id: TeamMemberNaming.teamLeadName, name: 'Lead'),
             ],
           ),
           busIdle: newBus,
@@ -161,10 +165,7 @@ void main() {
             cli: CliTool.cursor,
             teamMode: TeamMode.mixed,
             members: const [
-              TeamMemberConfig(
-                id: TeamMemberNaming.teamLeadName,
-                name: 'Lead',
-              ),
+              TeamMemberConfig(id: TeamMemberNaming.teamLeadName, name: 'Lead'),
             ],
           ),
           busIdle: newBus,

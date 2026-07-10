@@ -21,6 +21,8 @@ import '../../support/post_frame_test_harness.dart';
 
 RuntimeContext _roots(String basePath) => testRuntimeContext(basePath);
 
+String _slashPath(String path) => path.replaceAll(r'\', '/');
+
 const _workspaceId = 'workspace-1';
 
 AppSession _session({
@@ -167,9 +169,12 @@ void main() {
         'cursor',
       );
       final memberHome = p.join(cursorDir, 'home');
-      expect(plan.memberConfigDir, memberHome);
-      expect(plan.env['HOME'], memberHome);
-      expect(plan.resolvedRoots, contains(memberHome));
+      expect(_slashPath(plan.memberConfigDir), _slashPath(memberHome));
+      expect(_slashPath(plan.env['HOME']!), _slashPath(memberHome));
+      expect(
+        plan.resolvedRoots.map(_slashPath),
+        contains(_slashPath(memberHome)),
+      );
     },
   );
 
@@ -295,13 +300,14 @@ void main() {
 
   test('prepareLaunch requires a team identity', () async {
     await expectLater(
-      () => SessionLifecycleService(
-        appDataBasePath: base.path,
-        storageRootsResolver: () async => _roots(base.path),
-      ).prepareLaunch(
-        session: _session(),
-        team: const TeamProfile(id: '', name: ''),
-      ),
+      () =>
+          SessionLifecycleService(
+            appDataBasePath: base.path,
+            storageRootsResolver: () async => _roots(base.path),
+          ).prepareLaunch(
+            session: _session(),
+            team: const TeamProfile(id: '', name: ''),
+          ),
       throwsA(isA<StateError>()),
     );
   });

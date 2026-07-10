@@ -1,6 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/compose/compose_image_attachment.dart';
-import 'package:teampilot/services/compose/compose_file_attach.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
@@ -19,24 +20,31 @@ void main() {
   });
 
   group('resolveComposeImageReference', () {
-    test('uses relative @ reference for images already under workspace', () async {
-      final fs = InMemoryFilesystem();
-      const root = '/repo';
-      const image = '/repo/docs/screenshot.png';
-      await fs.writeBytes(image, [1, 2, 3]);
+    test(
+      'uses relative @ reference for images already under workspace',
+      () async {
+        final fs = InMemoryFilesystem();
+        final root = Platform.isWindows ? r'C:\repo' : '/repo';
+        final image = Platform.isWindows
+            ? r'C:\repo\docs\screenshot.png'
+            : '/repo/docs/screenshot.png';
+        await fs.writeBytes(image, [1, 2, 3]);
 
-      final ref = await resolveComposeImageReference(
-        absolutePath: image,
-        workspaceRoot: root,
-      );
+        final ref = await resolveComposeImageReference(
+          absolutePath: image,
+          workspaceRoot: root,
+        );
 
-      expect(ref, '@docs/screenshot.png');
-    });
+        expect(ref, '@docs/screenshot.png');
+      },
+    );
 
     test('keeps original absolute path for external images', () async {
       final fs = InMemoryFilesystem();
-      const root = '/repo';
-      const external = '/tmp/paste.png';
+      final root = Platform.isWindows ? r'C:\repo' : '/repo';
+      final external = Platform.isWindows
+          ? r'C:\tmp\paste.png'
+          : '/tmp/paste.png';
       await fs.writeBytes(external, [9, 8, 7]);
 
       final ref = await resolveComposeImageReference(
@@ -44,7 +52,7 @@ void main() {
         workspaceRoot: root,
       );
 
-      expect(ref, '@/tmp/paste.png');
+      expect(ref, '@${external.replaceAll(r'\', '/')}');
       expect((await fs.stat('$root/.teampilot/attachments')).exists, isFalse);
       expect((await fs.stat('/docs/TeamPilot/Attachments')).exists, isFalse);
     });
@@ -78,10 +86,7 @@ void main() {
       );
 
       expect(ref, '@/docs/TeamPilot/Attachments/clip-1.png');
-      expect(
-        await fs.readBytes('$attachmentsDir/clip-1.png'),
-        [0x89, 0x50],
-      );
+      expect(await fs.readBytes('$attachmentsDir/clip-1.png'), [0x89, 0x50]);
     });
   });
 }

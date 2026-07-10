@@ -90,6 +90,8 @@ class PostFrameTestHarness {
 
   PostFrameScheduler get scheduler => _queue.add;
 
+  bool get hasPendingCallbacks => _queue.isNotEmpty;
+
   Future<void> flush() async {
     while (_queue.isNotEmpty) {
       await runScheduledCallback(_queue.removeAt(0));

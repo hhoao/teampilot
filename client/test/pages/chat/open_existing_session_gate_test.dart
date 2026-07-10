@@ -81,24 +81,21 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
-  test(
-    'sidebar open-existing builder sets connectImmediately: false',
-    () {
-      final session = AppSession(
-        sessionId: 'sess-1',
-        workspaceId: 'ws-1',
-        folders: const [WorkspaceFolder(path: '/tmp')],
-        createdAt: 1,
-        updatedAt: 1,
-      );
-      final request = buildOpenExistingSessionRequest(
-        session: session,
-        workspace: Workspace(workspaceId: 'ws-1', createdAt: 1),
-        emptyDisplayTitleFallback: 'New Chat',
-      );
-      expect(request.connectImmediately, isFalse);
-    },
-  );
+  test('sidebar open-existing builder sets connectImmediately: false', () {
+    final session = AppSession(
+      sessionId: 'sess-1',
+      workspaceId: 'ws-1',
+      folders: const [WorkspaceFolder(path: '/tmp')],
+      createdAt: 1,
+      updatedAt: 1,
+    );
+    final request = buildOpenExistingSessionRequest(
+      session: session,
+      workspace: Workspace(workspaceId: 'ws-1', createdAt: 1),
+      emptyDisplayTitleFallback: 'New Chat',
+    );
+    expect(request.connectImmediately, isFalse);
+  });
 
   test(
     'sidebar open-existing builder can request connectImmediately: true',
@@ -194,36 +191,33 @@ void main() {
       },
     );
 
-    test(
-      'route deep-link respects connectImmediately: true',
-      () async {
-        await boot(forwardOpen: false);
-        addTearDown(shutdown);
+    test('route deep-link respects connectImmediately: true', () async {
+      await boot(forwardOpen: false);
+      addTearDown(shutdown);
 
-        final workspace = await repo.createWorkspace([
-          WorkspaceFolder(path: '/tmp'),
-        ]);
-        final session = await repo.createSession(workspace.workspaceId);
-        await chatCubit.loadWorkspaceData(repo);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/tmp'),
+      ]);
+      final session = await repo.createSession(workspace.workspaceId);
+      await chatCubit.loadWorkspaceData(repo);
 
-        final l10n = lookupAppLocalizations(const Locale('en'));
-        consumeChatWorkbenchRouteSession(
-          routeSessionId: session.sessionId,
-          handledRouteSession: false,
-          state: chatCubit.state,
-          chatCubit: chatCubit,
-          teamCubit: launchProfiles,
-          sessionRepo: repo,
-          l10n: l10n,
-          onHandled: (_) {},
-          connectImmediately: true,
-        );
-        await drainPendingAsyncWork();
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      consumeChatWorkbenchRouteSession(
+        routeSessionId: session.sessionId,
+        handledRouteSession: false,
+        state: chatCubit.state,
+        chatCubit: chatCubit,
+        teamCubit: launchProfiles,
+        sessionRepo: repo,
+        l10n: l10n,
+        onHandled: (_) {},
+        connectImmediately: true,
+      );
+      await drainPendingAsyncWork();
 
-        expect(chatCubit.openRequests, hasLength(1));
-        expect(chatCubit.openRequests.single.connectImmediately, isTrue);
-      },
-    );
+      expect(chatCubit.openRequests, hasLength(1));
+      expect(chatCubit.openRequests.single.connectImmediately, isTrue);
+    });
 
     test(
       'open-existing with connectImmediately: false does not begin session connect',
@@ -251,10 +245,7 @@ void main() {
 
         expect(chatCubit.state.sessionConnectingId, isNull);
         expect(chatCubit.state.isActiveSessionConnecting, isFalse);
-        expect(
-          shells.fold<int>(0, (sum, s) => sum + s.connectCalls),
-          0,
-        );
+        expect(shells.fold<int>(0, (sum, s) => sum + s.connectCalls), 0);
       },
     );
 
@@ -276,9 +267,12 @@ void main() {
             repo: repo,
           ),
         );
-        await drainPendingAsyncWork();
+        await waitUntil(() => postFrame.hasPendingCallbacks);
         await postFrame.flush();
-        await drainPendingAsyncWork();
+        await waitUntil(
+          () => shells.fold<int>(0, (sum, s) => sum + s.connectCalls) > 0,
+        );
+        await postFrame.flush();
 
         expect(status, SessionOpenStatus.opened);
         expect(

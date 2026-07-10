@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/models/automation.dart';
 import 'package:teampilot/models/automation_tab_scope.dart';
 import 'package:teampilot/repositories/automation_repository.dart';
@@ -12,23 +13,26 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
-  test('listForWorkspace aggregates every launch profile in workspace', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
-    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
-    await repo.upsert(sampleAutomation(id: 'personal', workspaceId: 'ws1'));
-    await repo.upsert(
-      sampleAutomation(
-        id: 'team',
-        workspaceId: 'ws1',
-        launchProfileId: 'team-1',
-      ),
-    );
-    await repo.upsert(sampleAutomation(id: 'other', workspaceId: 'ws2'));
+  test(
+    'listForWorkspace aggregates every launch profile in workspace',
+    () async {
+      final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+      final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+      await repo.upsert(sampleAutomation(id: 'personal', workspaceId: 'ws1'));
+      await repo.upsert(
+        sampleAutomation(
+          id: 'team',
+          workspaceId: 'ws1',
+          launchProfileId: 'team-1',
+        ),
+      );
+      await repo.upsert(sampleAutomation(id: 'other', workspaceId: 'ws2'));
 
-    final loaded = await repo.listForWorkspace('ws1');
-    expect(loaded.map((a) => a.id), containsAll(['personal', 'team']));
-    expect(loaded.map((a) => a.id), isNot(contains('other')));
-  });
+      final loaded = await repo.listForWorkspace('ws1');
+      expect(loaded.map((a) => a.id), containsAll(['personal', 'team']));
+      expect(loaded.map((a) => a.id), isNot(contains('other')));
+    },
+  );
 
   test('upsert and listForTabScope round-trip', () async {
     final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
@@ -47,7 +51,7 @@ void main() {
         'ws1',
         AutomationTabScope.simpleLaunchProfileId,
       ),
-      endsWith('/automations/simple.json'),
+      endsWith(p.join('automations', 'simple.json')),
     );
   });
 

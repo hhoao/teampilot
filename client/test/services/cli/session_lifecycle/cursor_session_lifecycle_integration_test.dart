@@ -1,4 +1,3 @@
-import 'package:path/path.dart' as p;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_session_lifecycle_capability.dart';
@@ -62,10 +61,15 @@ void main() {
       memberId,
       'cursor',
     );
-    final authDir = p.join(memberHome, 'home', '.config', 'cursor');
+    final authDir = fs.pathContext.join(
+      memberHome,
+      'home',
+      '.config',
+      'cursor',
+    );
     await fs.ensureDir(authDir);
     await fs.writeString(
-      p.join(authDir, CursorHomeLayout.authFileName),
+      fs.pathContext.join(authDir, CursorHomeLayout.authFileName),
       '{"accessToken":"test","email":"user@example.com"}',
     );
   }
