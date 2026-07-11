@@ -24,7 +24,11 @@ void main() {
     Map<String, Object?> json,
   ) {
     final path = LaunchConfigStore.launchConfigPath(folder);
-    return memoryIo.writeString(path, jsonEncode(json));
+    return memoryIo.writeString(
+      path,
+      jsonEncode(json),
+      targetId: folder.targetId,
+    );
   }
 
   test('merges configs from multiple folders with owner tags', () async {
@@ -115,7 +119,7 @@ void main() {
 
     await store.writeDocument(folder: folderA, document: doc);
     final path = LaunchConfigStore.launchConfigPath(folderA);
-    final raw = await memoryIo.readString(path);
+    final raw = await memoryIo.readString(path, targetId: folderA.targetId);
     expect(raw, isNotNull);
 
     final parsed = LaunchConfigDocument.fromJson(

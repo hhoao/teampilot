@@ -6,6 +6,7 @@ import 'launch_adapter_protocol.dart';
 import 'launch_config_store.dart';
 import 'launch_type_registrar.dart';
 import 'launch_type_registry.dart';
+import 'launch_type_unavailable.dart';
 import 'process_launch_schema.dart';
 import 'run_session_manager.dart';
 
@@ -241,15 +242,11 @@ class RunPlatform implements RunPlatformApi {
 
   @override
   String? unavailableReason(String type, {required String targetId}) {
-    if (isTypeAvailable(type, targetId: targetId)) return null;
-    final contribution = registry.get(type);
-    if (contribution == null) {
-      return 'Unknown launch type: $type';
-    }
-    if (targetId != WorkspaceFolder.localTargetId) {
-      return 'Launch type "$type" is not available on remote targets';
-    }
-    return 'Launch type "$type" is not available on this target';
+    return launchTypeUnavailableCode(
+      registry,
+      type: type,
+      targetId: targetId,
+    );
   }
 }
 

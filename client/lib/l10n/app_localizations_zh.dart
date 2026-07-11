@@ -5263,4 +5263,93 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get shortcutsConflictBadgeTooltip => '与另一个快捷键冲突';
+
+  @override
+  String get runAction => '运行';
+
+  @override
+  String get runStop => '停止';
+
+  @override
+  String get runRestart => '重新运行';
+
+  @override
+  String get runNewInstance => '新实例';
+
+  @override
+  String get runSelectConfiguration => '选择配置';
+
+  @override
+  String get runConfigurationTooltip => '运行配置';
+
+  @override
+  String get runOpenLaunchJson => '打开 launch.json';
+
+  @override
+  String get runAlreadyRunningTitle => '配置已在运行';
+
+  @override
+  String get runAlreadyRunningMessage => '重新运行当前会话，还是再启动一个新实例？';
+
+  @override
+  String get runStopSessionTitle => '停止正在运行的会话？';
+
+  @override
+  String runStopSessionMessage(String name) {
+    return '“$name”仍在运行。停止并关闭此标签页？';
+  }
+
+  @override
+  String get runStopAndClose => '停止并关闭';
+
+  @override
+  String get runNoSessions => '暂无运行会话';
+
+  @override
+  String get runClearExited => '清除已退出的会话';
+
+  @override
+  String get runLoadingOutput => '正在加载运行输出…';
+
+  @override
+  String get runEmptyOutputHint => '运行配置后，输出将显示在这里';
+
+  @override
+  String runTypeUnknown(String type) {
+    return '未知启动类型：$type';
+  }
+
+  @override
+  String runTypeUnavailable(String type) {
+    return '启动类型“$type”在此目标上不可用';
+  }
+
+  @override
+  String runTypeUnavailableRemote(String type) {
+    return '启动类型“$type”在远程目标上不可用';
+  }
+
+  @override
+  String get runErrorNoConfiguration => '未选择配置';
+
+  @override
+  String get runErrorNoFolder => '没有工作区文件夹';
+
+  @override
+  String get runErrorSshProfileMissing => '找不到此运行目标的 SSH 配置';
+
+  @override
+  String get runErrorSshSpawnerMissing => '未配置 SSH 进程执行';
+
+  @override
+  String get shortcutsRunSelected => '运行所选配置';
+
+  @override
+  String get shortcutsRunStop => '停止运行';
+
+  @override
+  String get shortcutsRunRestart => '重新运行';
+
+  @override
+  String get shortcutsCategoryRun => '运行';
 }

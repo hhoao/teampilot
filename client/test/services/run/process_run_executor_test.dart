@@ -121,30 +121,4 @@ void main() {
     await result.stop();
     expect(spawner.killCount, 1);
   });
-
-  test('process executor rejects non-local targets', () async {
-    final exec = ProcessRunExecutor(spawner: FakeSpawner());
-    final remotePlan = RunTargetPlan(
-      workingDirectory: '/proj',
-      runtimeTarget: RuntimeTarget.wsl('Ubuntu'),
-      targetId: 'wsl:Ubuntu',
-      useWslPaths: true,
-    );
-    await expectLater(
-      exec.start(
-        sessionId: 's1',
-        command: 'true',
-        args: const [],
-        plan: remotePlan,
-        onOutput: (_) {},
-      ),
-      throwsA(
-        isA<UnsupportedError>().having(
-          (e) => e.message,
-          'message',
-          'remote process execution: Task 10',
-        ),
-      ),
-    );
-  });
 }

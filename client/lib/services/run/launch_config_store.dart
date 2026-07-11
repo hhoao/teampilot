@@ -4,51 +4,125 @@ import '../../models/run/launch_config_document.dart';
 import '../../models/run/launch_configuration.dart';
 import '../../models/workspace_folder.dart';
 import '../io/filesystem.dart';
+import '../storage/app_storage.dart';
 
-/// Local read/write surface for per-folder `.teampilot/launch.json`.
+/// Read/write surface for per-folder `.teampilot/launch.json`.
 ///
-/// v1 uses in-memory or host filesystem only. Production wiring will route
-/// through each [WorkspaceFolder.targetId] (WSL/SSH) in a later task.
+/// [targetId] selects the owning folder's machine (local / WSL / SSH) so IO
+/// routes through the matching [Filesystem] (same family as workspace shell).
 abstract class LaunchConfigIo {
-  Future<bool> exists(String path);
+  Future<bool> exists(String path, {required String targetId});
 
-  Future<String?> readString(String path);
+  Future<String?> readString(String path, {required String targetId});
 
-  Future<void> writeString(String path, String content);
+  Future<void> writeString(
+    String path,
+    String content, {
+    required String targetId,
+  });
 }
 
-/// In-memory [LaunchConfigIo] for unit tests.
+/// In-memory [LaunchConfigIo] for unit tests (ignores [targetId]).
 class MemoryLaunchConfigIo implements LaunchConfigIo {
   final Map<String, String> files = {};
 
   @override
-  Future<bool> exists(String path) async => files.containsKey(path);
+  Future<bool> exists(String path, {required String targetId}) async =>
+      files.containsKey(path);
 
   @override
-  Future<String?> readString(String path) async => files[path];
+  Future<String?> readString(String path, {required String targetId}) async =>
+      files[path];
 
   @override
-  Future<void> writeString(String path, String content) async {
+  Future<void> writeString(
+    String path,
+    String content, {
+    required String targetId,
+  }) async {
     files[path] = content;
   }
 }
 
-/// [LaunchConfigIo] backed by a [Filesystem] (local AppStorage / work-plane).
+/// [LaunchConfigIo] backed by a single [Filesystem] (tests / local-only).
 class FilesystemLaunchConfigIo implements LaunchConfigIo {
   FilesystemLaunchConfigIo(this._fs);
 
   final Filesystem _fs;
 
   @override
-  Future<bool> exists(String path) async => (await _fs.stat(path)).exists;
+  Future<bool> exists(String path, {required String targetId}) async =>
+      (await _fs.stat(path)).exists;
 
   @override
-  Future<String?> readString(String path) => _fs.readString(path);
+  Future<String?> readString(String path, {required String targetId}) =>
+      _fs.readString(path);
 
   @override
-  Future<void> writeString(String path, String content) async {
+  Future<void> writeString(
+    String path,
+    String content, {
+    required String targetId,
+  }) async {
     await _fs.ensureDir(_fs.pathContext.dirname(path));
     await _fs.writeString(path, content);
+  }
+}
+
+/// Resolves a [Filesystem] for a workspace folder [targetId].
+typedef LaunchConfigFilesystemResolver =
+    Future<Filesystem> Function(String targetId);
+
+/// Routes launch.json IO through each folder's [targetId] filesystem.
+class TargetAwareLaunchConfigIo implements LaunchConfigIo {
+  TargetAwareLaunchConfigIo({
+    required LaunchConfigFilesystemResolver resolveFilesystem,
+  }) : _resolveFilesystem = resolveFilesystem;
+
+  final LaunchConfigFilesystemResolver _resolveFilesystem;
+
+  /// Convenience: AppStorage home FS for local; inject resolver for WSL/SSH.
+  factory TargetAwareLaunchConfigIo.localFallback({
+    LaunchConfigFilesystemResolver? resolveFilesystem,
+  }) {
+    return TargetAwareLaunchConfigIo(
+      resolveFilesystem:
+          resolveFilesystem ??
+          (targetId) async {
+            if (targetId == WorkspaceFolder.localTargetId ||
+                targetId.trim().isEmpty) {
+              return AppStorage.fs;
+            }
+            throw StateError(
+              'No filesystem resolver for launch.json targetId=$targetId',
+            );
+          },
+    );
+  }
+
+  Future<Filesystem> _fsFor(String targetId) => _resolveFilesystem(targetId);
+
+  @override
+  Future<bool> exists(String path, {required String targetId}) async {
+    final fs = await _fsFor(targetId);
+    return (await fs.stat(path)).exists;
+  }
+
+  @override
+  Future<String?> readString(String path, {required String targetId}) async {
+    final fs = await _fsFor(targetId);
+    return fs.readString(path);
+  }
+
+  @override
+  Future<void> writeString(
+    String path,
+    String content, {
+    required String targetId,
+  }) async {
+    final fs = await _fsFor(targetId);
+    await fs.ensureDir(fs.pathContext.dirname(path));
+    await fs.writeString(path, content);
   }
 }
 
@@ -117,13 +191,13 @@ class LaunchConfigStore {
     final normalized = document.normalized();
     final path = launchConfigPath(folder);
     final json = const JsonEncoder.withIndent('  ').convert(normalized.toJson());
-    await _io.writeString(path, json);
+    await _io.writeString(path, json, targetId: folder.targetId);
   }
 
   Future<LaunchConfigDocument?> _readDocument(WorkspaceFolder folder) async {
     final path = launchConfigPath(folder);
-    if (!await _io.exists(path)) return null;
-    final raw = await _io.readString(path);
+    if (!await _io.exists(path, targetId: folder.targetId)) return null;
+    final raw = await _io.readString(path, targetId: folder.targetId);
     if (raw == null || raw.trim().isEmpty) return null;
     try {
       final json = jsonDecode(raw);

@@ -10,6 +10,7 @@ import '../../../cubits/run_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../models/layout_preferences.dart';
 import '../../../models/workspace.dart';
+import '../../../services/commands/run_command_registrar.dart';
 import '../../../services/run/launch_adapter_protocol.dart';
 import '../../../services/workspace/workspace_run_registry.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
@@ -24,6 +25,7 @@ import '../../../widgets/workspace_bottom_dock.dart';
 import '../../../widgets/workspace_terminal_panel.dart';
 import '../../chat_page.dart';
 import '../../workspace_ide/workspace_ide_shell.dart';
+import 'workspace_route_active_scope.dart';
 import 'workspace_sidebar.dart';
 import 'workspace_tools_scope_sync.dart';
 
@@ -56,6 +58,44 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
   /// Bridges an IDE-shell split drag to the bottom terminal's PTY resize hold.
   /// Owned here so it shares a lifetime with the terminal panel instance.
   final _terminalHold = WorkspaceTerminalHoldHandle();
+  RunCubit? _boundRunCubit;
+  RunCommandHost? _runCommandHost;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _runCommandHost = context.read<RunCommandHost>();
+    _syncRunCommandHost();
+  }
+
+  @override
+  void dispose() {
+    final cubit = _boundRunCubit;
+    final host = _runCommandHost;
+    if (cubit != null && host != null) {
+      host.unbind(cubit);
+    }
+    _boundRunCubit = null;
+    super.dispose();
+  }
+
+  void _syncRunCommandHost() {
+    final host = _runCommandHost;
+    if (host == null) return;
+    final routeActive = WorkspaceRouteActiveScope.routeActiveOf(context);
+    final runCubit = context.read<WorkspaceRunRegistry>().cubitFor(
+      tabScopeId: widget.tabScopeId,
+      workspaceId: widget.workspace.workspaceId,
+      folders: widget.workspace.folders,
+    );
+    if (routeActive) {
+      host.bind(runCubit);
+      _boundRunCubit = runCubit;
+    } else if (identical(_boundRunCubit, runCubit)) {
+      host.unbind(runCubit);
+      _boundRunCubit = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

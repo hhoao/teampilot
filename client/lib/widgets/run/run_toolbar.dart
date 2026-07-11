@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/run_cubit.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../models/run/launch_configuration.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_folder.dart';
 import '../../services/run/launch_adapter_protocol.dart';
+import '../../services/run/launch_type_unavailable.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../theme/app_control_theme.dart';
 import '../../widgets/app_dialog.dart';
@@ -126,6 +128,7 @@ class _ConfigDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final cubit = context.read<RunCubit>();
     final entries = <_DropdownEntry>[
       for (final config in state.configurations) _ConfigEntry(config),
@@ -135,14 +138,14 @@ class _ConfigDropdown extends StatelessWidget {
 
     final selected = state.selectedConfiguration;
     final label = selected == null
-        ? 'Select configuration'
+        ? l10n.runSelectConfiguration
         : _configLabel(selected, showFolderLabels: showFolderLabels);
 
     final cs = Theme.of(context).colorScheme;
     final control = context.appControl;
     return PopupMenuButton<_DropdownEntry>(
       key: const Key('run-config-dropdown'),
-      tooltip: 'Run configuration',
+      tooltip: l10n.runConfigurationTooltip,
       onSelected: (entry) => unawaited(_onSelected(context, cubit, entry)),
       itemBuilder: (context) {
         return [
@@ -150,7 +153,7 @@ class _ConfigDropdown extends StatelessWidget {
             PopupMenuItem<_DropdownEntry>(
               value: entry,
               enabled: _isEnabled(cubit, entry),
-              child: _itemChild(cubit, entry),
+              child: _itemChild(context, cubit, entry),
             ),
         ];
       },
@@ -184,18 +187,29 @@ class _ConfigDropdown extends StatelessWidget {
     };
   }
 
-  Widget _itemChild(RunCubit cubit, _DropdownEntry entry) {
-    final (text, reason) = switch (entry) {
+  Widget _itemChild(
+    BuildContext context,
+    RunCubit cubit,
+    _DropdownEntry entry,
+  ) {
+    final (text, type, reasonCode) = switch (entry) {
       _ConfigEntry(:final owned) => (
         _configLabel(owned, showFolderLabels: showFolderLabels),
+        owned.configuration.type,
         cubit.unavailableReason(owned),
       ),
       _ActionEntry(:final action) => (
         action.name,
+        action.type,
         cubit.actionUnavailableReason(action),
       ),
     };
     final child = Text(text);
+    final reason = localizeLaunchTypeUnavailable(
+      context.l10n,
+      reasonCode,
+      type: type,
+    );
     if (reason == null || reason.isEmpty) return child;
     return HoverTextTooltip(message: reason, child: child);
   }
@@ -268,6 +282,7 @@ class _RunButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final enabled = state.selectedConfiguration != null;
     return SizedBox(
       height: context.appControl.height,
@@ -276,7 +291,7 @@ class _RunButton extends StatelessWidget {
             ? () => unawaited(_onRun(context))
             : null,
         icon: const Icon(Icons.play_arrow, size: 18),
-        label: const Text('Run'),
+        label: Text(l10n.runAction),
       ),
     );
   }
@@ -285,6 +300,7 @@ class _RunButton extends StatelessWidget {
     final cubit = context.read<RunCubit>();
     final selected = cubit.state.selectedConfiguration;
     if (selected == null) return;
+    final l10n = context.l10n;
 
     if (cubit.hasRunning(selected.selectionKey)) {
       final choice = await showDialog<_RerunChoice>(
@@ -296,30 +312,28 @@ class _RunButton extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AppDialogHeader(
-                title: 'Configuration already running',
+                title: l10n.runAlreadyRunningTitle,
                 onClose: () => Navigator.of(dialogContext).pop(),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Restart the running session, or start a new instance?',
-              ),
+              Text(l10n.runAlreadyRunningMessage),
               AppDialogActions(
                 children: [
                   TextButton(
                     onPressed: () => Navigator.of(dialogContext).pop(),
-                    child: const Text('Cancel'),
+                    child: Text(l10n.cancel),
                   ),
                   TextButton(
                     onPressed: () => Navigator.of(
                       dialogContext,
                     ).pop(_RerunChoice.newInstance),
-                    child: const Text('New instance'),
+                    child: Text(l10n.runNewInstance),
                   ),
                   FilledButton(
                     onPressed: () => Navigator.of(
                       dialogContext,
                     ).pop(_RerunChoice.restart),
-                    child: const Text('Restart'),
+                    child: Text(l10n.runRestart),
                   ),
                 ],
               ),
@@ -349,6 +363,7 @@ class _StopButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final cubit = context.read<RunCubit>();
     final selected = state.selectedConfiguration;
     final running = selected != null && cubit.hasRunning(selected.selectionKey);
@@ -364,7 +379,7 @@ class _StopButton extends StatelessWidget {
               }
             : null,
         icon: const Icon(Icons.stop, size: 18),
-        label: const Text('Stop'),
+        label: Text(l10n.runStop),
       ),
     );
   }
@@ -381,11 +396,12 @@ class _OpenLaunchJsonButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return SizedBox(
       height: context.appControl.height,
       width: context.appControl.height,
       child: IconButton(
-        tooltip: 'Open launch.json',
+        tooltip: l10n.runOpenLaunchJson,
         onPressed: () => unawaited(_open(context)),
         icon: const Icon(Icons.settings_outlined, size: 18),
       ),
@@ -418,6 +434,7 @@ class _OpenLaunchJsonButton extends StatelessWidget {
     BuildContext context,
     List<WorkspaceFolder> folders,
   ) {
+    final l10n = context.l10n;
     return showDialog<WorkspaceFolder>(
       context: context,
       builder: (dialogContext) => AppDialog(
@@ -427,7 +444,7 @@ class _OpenLaunchJsonButton extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AppDialogHeader(
-              title: 'Open launch.json',
+              title: l10n.runOpenLaunchJson,
               onClose: () => Navigator.of(dialogContext).pop(),
             ),
             const SizedBox(height: 8),

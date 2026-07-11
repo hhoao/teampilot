@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/run_cubit.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../models/run/run_session.dart';
 import '../../pages/workspace_shell/workspace_shell_tabs.dart';
 import '../../services/run/run_platform.dart';
@@ -86,6 +87,7 @@ class _RunPanelState extends State<RunPanel> {
         session.status == RunSessionStatus.running ||
         session.status == RunSessionStatus.starting;
     if (running) {
+      final l10n = context.l10n;
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AppDialog(
@@ -95,23 +97,22 @@ class _RunPanelState extends State<RunPanel> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               AppDialogHeader(
-                title: 'Stop running session?',
+                title: l10n.runStopSessionTitle,
                 onClose: () => Navigator.of(dialogContext).pop(false),
               ),
               const SizedBox(height: 12),
               Text(
-                '"${session.owned.configuration.name}" is still running. '
-                'Stop it and close this tab?',
+                l10n.runStopSessionMessage(session.owned.configuration.name),
               ),
               AppDialogActions(
                 children: [
                   TextButton(
                     onPressed: () => Navigator.of(dialogContext).pop(false),
-                    child: const Text('Cancel'),
+                    child: Text(l10n.cancel),
                   ),
                   FilledButton(
                     onPressed: () => Navigator.of(dialogContext).pop(true),
-                    child: const Text('Stop and close'),
+                    child: Text(l10n.runStopAndClose),
                   ),
                 ],
               ),
@@ -149,6 +150,7 @@ class _RunPanelState extends State<RunPanel> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
     return BlocConsumer<RunCubit, RunState>(
       listenWhen: (prev, next) => prev.sessions != next.sessions,
       listener: (context, state) => _onSessions(state.sessions),
@@ -191,7 +193,7 @@ class _RunPanelState extends State<RunPanel> {
                               child: Align(
                                 alignment: Alignment.centerLeft,
                                 child: Text(
-                                  'No run sessions',
+                                  l10n.runNoSessions,
                                   style: TextStyle(
                                     color: cs.onSurfaceVariant,
                                     fontSize: 12,
@@ -232,7 +234,7 @@ class _RunPanelState extends State<RunPanel> {
                       icon: Icons.close,
                       color: cs.onSurfaceVariant,
                       size: AppIconButton.kCompactSize,
-                      tooltip: 'Clear exited sessions',
+                      tooltip: l10n.runClearExited,
                       onTap: () => unawaited(_clearExited()),
                     ),
                   ],
@@ -244,7 +246,7 @@ class _RunPanelState extends State<RunPanel> {
                         color: cs.surfaceContainerLowest,
                         child: Center(
                           child: Text(
-                            'Loading run output…',
+                            l10n.runLoadingOutput,
                             style: TextStyle(color: cs.onSurfaceVariant),
                           ),
                         ),
@@ -254,7 +256,7 @@ class _RunPanelState extends State<RunPanel> {
                         color: cs.surfaceContainerLowest,
                         child: Center(
                           child: Text(
-                            'Run a configuration to see output here',
+                            l10n.runEmptyOutputHint,
                             style: TextStyle(color: cs.onSurfaceVariant),
                           ),
                         ),

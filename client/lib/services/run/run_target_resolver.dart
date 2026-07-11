@@ -15,10 +15,19 @@ class RunTargetPlan {
     required this.useWslPaths,
   });
 
+  /// Target-native working directory (POSIX path on WSL/SSH).
   final String workingDirectory;
+
   final RuntimeTarget runtimeTarget;
   final String targetId;
   final bool useWslPaths;
+
+  /// CreateProcess cwd for local/`wsl.exe` spawn (may differ on Windows+WSL).
+  String get hostProcessWorkingDirectory =>
+      LaunchCommandBuilder.workingDirectoryForProcess(
+        workingDirectory,
+        useWslPaths: useWslPaths,
+      );
 }
 
 /// Maps an owning [WorkspaceFolder] to a process/adapter execution plan.
@@ -37,13 +46,9 @@ class RunTargetResolver {
       env: env,
     );
     final useWslPaths = runtimeTarget.kind == RuntimeKind.wsl;
-    final workingDirectory = LaunchCommandBuilder.workingDirectoryForProcess(
-      expandedCwd,
-      useWslPaths: useWslPaths,
-    );
 
     return RunTargetPlan(
-      workingDirectory: workingDirectory,
+      workingDirectory: expandedCwd,
       runtimeTarget: runtimeTarget,
       targetId: owner.targetId,
       useWslPaths: useWslPaths,

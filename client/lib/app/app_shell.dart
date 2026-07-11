@@ -91,6 +91,7 @@ import '../services/expert_hub/member_roster_service.dart';
 import '../services/cli/cli_executable_discovery.dart';
 import '../services/commands/command_bus.dart';
 import '../services/commands/layout_command_registrar.dart';
+import '../services/commands/run_command_registrar.dart';
 import '../services/commands/session_command_registrar.dart';
 import '../services/commands/shortcuts_ui_commands.dart';
 import '../pages/home_workspace/workspace_chrome_commands.dart';
@@ -194,6 +195,7 @@ class AppShell {
     required this.commandBus,
     required this.shortcutCubit,
     required this.workspaceChromeCommands,
+    required this.runCommandHost,
     required this.uiZoomBaseline,
   });
 
@@ -253,6 +255,7 @@ class AppShell {
   final CommandBus commandBus;
   final ShortcutCubit shortcutCubit;
   final WorkspaceChromeCommands workspaceChromeCommands;
+  final RunCommandHost runCommandHost;
   final UiZoomBaseline uiZoomBaseline;
 }
 
@@ -731,12 +734,16 @@ Future<AppShell> buildAppShell({
     platformFactory: WorkspaceRunPlatformFactory(
       extensionRepository: extensionRepository,
       projectConfigRepository: workspaceProjectConfigRepository,
+      resolveWorkContext: sessionLifecycleService.resolveWorkContextForTargetId,
+      sshProfileRepository: sshProfileRepo,
+      sshClientFactory: sshClientFactory,
     ),
   );
   final configCubit = ConfigCubit();
   final commandBus = CommandBus();
   final shortcutCubit = ShortcutCubit();
   final workspaceChromeCommands = WorkspaceChromeCommands();
+  final runCommandHost = RunCommandHost();
   final uiZoomBaseline = UiZoomBaseline();
   registerLayoutCommands(
     commandBus,
@@ -744,6 +751,7 @@ Future<AppShell> buildAppShell({
     uiZoomBaseline: () => uiZoomBaseline.value,
   );
   registerShortcutsUiCommands(commandBus);
+  registerRunCommands(commandBus, runCommandHost);
 
   final transportFactory = TerminalTransportFactory(
     sshProfileRepository: sshProfileRepo,
@@ -1091,6 +1099,7 @@ Future<AppShell> buildAppShell({
     commandBus: commandBus,
     shortcutCubit: shortcutCubit,
     workspaceChromeCommands: workspaceChromeCommands,
+    runCommandHost: runCommandHost,
     uiZoomBaseline: uiZoomBaseline,
   );
 }

@@ -41,4 +41,9 @@ abstract final class CommandIds {
 
   // Meta
   static const String showCheatsheet = 'workbench.shortcuts.showCheatsheet';
+
+  // Run
+  static const String runRunSelected = 'run.runSelected';
+  static const String runStop = 'run.stop';
+  static const String runRestart = 'run.restart';
 }

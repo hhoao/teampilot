@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/run_cubit.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/run/launch_configuration.dart';
 import 'package:teampilot/models/run/run_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -277,6 +278,9 @@ class _DeferredFakePlatform implements RunPlatformApi, RunPlatformDeferred {
 
 Widget _host({required RunCubit cubit}) {
   return MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    locale: const Locale('en'),
     home: Scaffold(
       body: BlocProvider<RunCubit>.value(
         value: cubit,

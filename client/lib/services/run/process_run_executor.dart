@@ -2,10 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../models/runtime_target.dart';
+import '../host/host_shell_argv.dart';
+import '../host/host_wsl_argv.dart';
 import '../session/launch_command_builder.dart';
+import '../storage/remote_file_store.dart';
 import 'run_target_resolver.dart';
 
 /// One chunk of child process output for a run session.
@@ -42,6 +46,13 @@ typedef ProcessSpawner =
       bool includeParentEnvironment,
     });
 
+/// Opens a streaming SSH exec for a run on an `ssh:*` folder target.
+typedef SshProcessSpawner =
+    Future<ProcessRunHandle> Function({
+      required String sshProfileId,
+      required String shellCommand,
+    });
+
 class _ProcessRunHandle implements ProcessRunHandle {
   _ProcessRunHandle(this._process);
 
@@ -60,6 +71,36 @@ class _ProcessRunHandle implements ProcessRunHandle {
   void kill() => _process.kill();
 }
 
+/// [ProcessRunHandle] over a dartssh2 [SSHSession] (non-PTY exec).
+class SshProcessRunHandle implements ProcessRunHandle {
+  SshProcessRunHandle(this._session);
+
+  final SSHSession _session;
+
+  @override
+  Future<int> get exitCode async {
+    await _session.done;
+    return _session.exitCode ?? 0;
+  }
+
+  @override
+  Stream<List<int>> get stdout => _session.stdout.map(_asList);
+
+  @override
+  Stream<List<int>> get stderr => _session.stderr.map(_asList);
+
+  @override
+  void kill() {
+    try {
+      _session.kill(SSHSignal.KILL);
+    } catch (_) {
+      _session.close();
+    }
+  }
+
+  static List<int> _asList(Uint8List data) => data;
+}
+
 class ProcessRunResult {
   const ProcessRunResult({
     required this.exitCode,
@@ -70,12 +111,17 @@ class ProcessRunResult {
   final Future<void> Function() stop;
 }
 
-/// Spawns built-in `process` launch configs on the resolved local target.
+/// Spawns built-in `process` launch configs on the resolved local / WSL / SSH
+/// target (mirrors [WorkspaceShellConnector] transport selection).
 class ProcessRunExecutor {
-  ProcessRunExecutor({ProcessSpawner? spawner})
-    : _spawner = spawner ?? _defaultSpawner;
+  ProcessRunExecutor({
+    ProcessSpawner? spawner,
+    SshProcessSpawner? sshSpawner,
+  }) : _spawner = spawner ?? _defaultSpawner,
+       _sshSpawner = sshSpawner;
 
   final ProcessSpawner _spawner;
+  final SshProcessSpawner? _sshSpawner;
 
   Future<ProcessRunResult> start({
     required String sessionId,
@@ -86,17 +132,12 @@ class ProcessRunExecutor {
     bool shell = false,
     required void Function(ProcessRunOutput output) onOutput,
   }) async {
-    if (plan.runtimeTarget.kind != RuntimeKind.local) {
-      throw UnsupportedError('remote process execution: Task 10');
-    }
-
-    final handle = await _spawner(
-      executable: command,
-      arguments: args,
-      workingDirectory: plan.workingDirectory,
-      environment: LaunchCommandBuilder.launchEnvironmentForProcess(env),
-      runInShell: shell,
-      includeParentEnvironment: true,
+    final handle = await _spawn(
+      command: command,
+      args: args,
+      plan: plan,
+      env: env,
+      shell: shell,
     );
 
     final subscriptions = <StreamSubscription<List<int>>>[];
@@ -122,6 +163,103 @@ class ProcessRunExecutor {
     }
 
     return ProcessRunResult(exitCode: handle.exitCode, stop: stop);
+  }
+
+  Future<ProcessRunHandle> _spawn({
+    required String command,
+    required List<String> args,
+    required RunTargetPlan plan,
+    Map<String, String>? env,
+    required bool shell,
+  }) {
+    final launchEnv = LaunchCommandBuilder.launchEnvironmentForProcess(env);
+    return switch (plan.runtimeTarget.kind) {
+      RuntimeKind.local => _spawner(
+        executable: command,
+        arguments: args,
+        workingDirectory: plan.hostProcessWorkingDirectory,
+        environment: launchEnv,
+        runInShell: shell,
+        includeParentEnvironment: true,
+      ),
+      RuntimeKind.wsl => _spawnWsl(
+        command: command,
+        args: args,
+        plan: plan,
+        environment: launchEnv,
+        shell: shell,
+      ),
+      RuntimeKind.ssh => _spawnSsh(
+        command: command,
+        args: args,
+        plan: plan,
+        environment: launchEnv,
+      ),
+    };
+  }
+
+  Future<ProcessRunHandle> _spawnWsl({
+    required String command,
+    required List<String> args,
+    required RunTargetPlan plan,
+    Map<String, String>? environment,
+    required bool shell,
+  }) {
+    final String executable;
+    final List<String> arguments;
+    if (shell) {
+      final script = [
+        command,
+        ...args,
+      ].map(RemoteFileStore.shellSingleQuote).join(' ');
+      executable = 'wsl.exe';
+      arguments = HostWslArgv.processInvocation(
+        distro: plan.runtimeTarget.wslDistro,
+        workingDirectory: plan.workingDirectory,
+        executable: 'sh',
+        arguments: ['-c', script],
+      );
+    } else {
+      executable = 'wsl.exe';
+      arguments = HostWslArgv.processInvocation(
+        distro: plan.runtimeTarget.wslDistro,
+        workingDirectory: plan.workingDirectory,
+        executable: command,
+        arguments: args,
+      );
+    }
+
+    return _spawner(
+      executable: executable,
+      arguments: arguments,
+      workingDirectory: plan.hostProcessWorkingDirectory,
+      environment: environment,
+      runInShell: false,
+      includeParentEnvironment: true,
+    );
+  }
+
+  Future<ProcessRunHandle> _spawnSsh({
+    required String command,
+    required List<String> args,
+    required RunTargetPlan plan,
+    Map<String, String>? environment,
+  }) {
+    final opener = _sshSpawner;
+    if (opener == null) {
+      throw StateError('SSH process execution is not configured');
+    }
+    final profileId = plan.runtimeTarget.sshProfileId?.trim() ?? '';
+    if (profileId.isEmpty) {
+      throw StateError('SSH profile not found for this run target');
+    }
+    final shellCommand = HostShellArgv.command(
+      executable: command,
+      arguments: args,
+      workingDirectory: plan.workingDirectory,
+      environment: environment,
+    );
+    return opener(sshProfileId: profileId, shellCommand: shellCommand);
   }
 
   static Future<ProcessRunHandle> _defaultSpawner({

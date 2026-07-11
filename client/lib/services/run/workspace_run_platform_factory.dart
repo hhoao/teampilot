@@ -1,13 +1,19 @@
 import '../../models/extension_manifest.dart';
+import '../../models/ssh_profile.dart';
+import '../../models/workspace_folder.dart';
 import '../../repositories/extension_repository.dart';
+import '../../repositories/ssh_profile_repository.dart';
 import '../../repositories/workspace_project_config_repository.dart';
 import '../extension/extension_detector.dart';
 import '../io/filesystem.dart';
+import '../ssh/ssh_client_factory.dart';
 import '../storage/app_storage.dart';
+import '../storage/runtime_context.dart';
 import 'launch_adapter_client.dart';
 import 'launch_config_store.dart';
 import 'launch_type_registrar.dart';
 import 'launch_type_registry.dart';
+import 'process_run_executor.dart';
 import 'run_platform.dart';
 import 'run_session_manager.dart';
 
@@ -23,17 +29,26 @@ class WorkspaceRunPlatformFactory {
     Filesystem? fs,
     ExtensionDetector? detector,
     String Function(String extensionId)? extensionPathFor,
+    Future<RuntimeContext> Function(String targetId)? resolveWorkContext,
+    SshProfileRepository? sshProfileRepository,
+    SshClientFactory? sshClientFactory,
   }) : _extensionRepository = extensionRepository,
        _projectConfigRepository = projectConfigRepository,
        _fs = fs,
        _detector = detector ?? ExtensionDetector(),
-       _extensionPathFor = extensionPathFor;
+       _extensionPathFor = extensionPathFor,
+       _resolveWorkContext = resolveWorkContext,
+       _sshProfileRepository = sshProfileRepository,
+       _sshClientFactory = sshClientFactory;
 
   final ExtensionRepository _extensionRepository;
   final WorkspaceProjectConfigRepository _projectConfigRepository;
   final Filesystem? _fs;
   final ExtensionDetector _detector;
   final String Function(String extensionId)? _extensionPathFor;
+  final Future<RuntimeContext> Function(String targetId)? _resolveWorkContext;
+  final SshProfileRepository? _sshProfileRepository;
+  final SshClientFactory? _sshClientFactory;
 
   Filesystem get _filesystem => _fs ?? AppStorage.fs;
 
@@ -50,9 +65,11 @@ class WorkspaceRunPlatformFactory {
       extensionPathResolver: pathFor,
     );
     final store = LaunchConfigStore(
-      io: FilesystemLaunchConfigIo(_filesystem),
+      io: TargetAwareLaunchConfigIo(resolveFilesystem: _filesystemForTarget),
     );
+    final executor = ProcessRunExecutor(sshSpawner: _sshSpawner);
     final sessionManager = RunSessionManager(
+      executor: DefaultRunProcessLauncher(executor: executor),
       launchAdapterClient: adapterClient,
       resolveLaunchType: registry.get,
     );
@@ -65,6 +82,35 @@ class WorkspaceRunPlatformFactory {
     );
     await platform.rebuildLaunchTypes();
     return platform;
+  }
+
+  Future<Filesystem> _filesystemForTarget(String targetId) async {
+    final resolver = _resolveWorkContext;
+    if (resolver == null ||
+        targetId == WorkspaceFolder.localTargetId ||
+        targetId.trim().isEmpty) {
+      return _filesystem;
+    }
+    final ctx = await resolver(targetId);
+    return ctx.filesystem;
+  }
+
+  Future<ProcessRunHandle> _sshSpawner({
+    required String sshProfileId,
+    required String shellCommand,
+  }) async {
+    final profiles = _sshProfileRepository;
+    final factory = _sshClientFactory;
+    if (profiles == null || factory == null) {
+      throw StateError('SSH process execution is not configured');
+    }
+    final SshProfile? profile = await profiles.findById(sshProfileId);
+    if (profile == null) {
+      throw StateError('SSH profile not found for this run target');
+    }
+    final client = await factory.clientForStorage(profile);
+    final session = await client.execute(shellCommand);
+    return SshProcessRunHandle(session);
   }
 
   String _resolveExtensionPath(String extensionId) {
