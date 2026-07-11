@@ -602,6 +602,18 @@ abstract class AppLocalizations {
   /// **'Ubuntu Sans Mono'**
   String get fontOptionUbuntuSansMono;
 
+  /// No description provided for @fontInstalledSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get fontInstalledSection;
+
+  /// No description provided for @fontSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search fonts'**
+  String get fontSearchHint;
+
   /// No description provided for @uiZoomTitle.
   ///
   /// In en, this message translates to:

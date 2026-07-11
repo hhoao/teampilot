@@ -79,6 +79,18 @@ void main() {
     expect(parsed.monoFontId, 'jetbrainsMono');
   });
 
+  test('installed font ids normalize and round-trip', () {
+    expect(normalizeUiFontId('installed:Foo'), 'installed:Foo');
+    expect(normalizeUiFontId('installed:'), 'system');
+    final prefs = const LayoutPreferences().copyWith(
+      uiFontId: 'installed:NotoSansCJK-Regular',
+      monoFontId: 'installed:JetBrainsMonoNL-Regular',
+    );
+    final parsed = LayoutPreferences.fromJson(prefs.toJson());
+    expect(parsed.uiFontId, 'installed:NotoSansCJK-Regular');
+    expect(parsed.monoFontId, 'installed:JetBrainsMonoNL-Regular');
+  });
+
   test('homeSidebarWidth defaults, clamps min, keeps large', () {
     expect(
       const LayoutPreferences().homeSidebarWidth,

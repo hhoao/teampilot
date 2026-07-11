@@ -98,6 +98,8 @@
   "fontOptionNotoSansSc": "Noto Sans SC",
   "fontOptionJetbrainsMono": "JetBrains Mono",
   "fontOptionUbuntuSansMono": "Ubuntu Sans Mono",
+  "fontInstalledSection": "已安装",
+  "fontSearchHint": "搜索字体",
   "uiZoomTitle": "界面缩放",
   "uiZoomDescription": "整体缩放界面——文字、图标与间距一起。「标准」按系统缩放自动匹配。",
   "themePresetGraphite": "石墨",

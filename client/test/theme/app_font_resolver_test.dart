@@ -70,4 +70,20 @@ void main() {
     expect(win.uiFamily, 'Segoe UI');
     expect(win.monoFamily, 'Consolas');
   });
+
+  test('installed ids resolve to family key without collapsing to system', () {
+    final r = AppFontResolver.resolve(
+      uiFontId: 'installed:DejaVuSans',
+      monoFontId: 'installed:DejaVuSansMono',
+      platform: TargetPlatform.linux,
+    );
+    expect(r.resolvedUiId, 'installed:DejaVuSans');
+    expect(r.resolvedMonoId, 'installed:DejaVuSansMono');
+    expect(r.uiFamily, 'DejaVuSans');
+    expect(r.monoFamily, 'DejaVuSansMono');
+    expect(r.uiNeedsInstalledLoad, isTrue);
+    expect(r.monoNeedsInstalledLoad, isTrue);
+    expect(r.uiNeedsBundledLoad, isFalse);
+    expect(r.monoNeedsBundledLoad, isFalse);
+  });
 }

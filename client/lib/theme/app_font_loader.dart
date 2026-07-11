@@ -1,11 +1,12 @@
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:system_fonts/system_fonts.dart';
 
 import '../utils/logger.dart';
 import 'app_font_resolver.dart';
 import 'font_catalog.dart';
 
-/// Loads bundled UI / mono assets required by [fonts].
+/// Loads bundled / installed fonts required by [fonts].
 ///
 /// - Bundled mono primary (`monoNeedsBundledLoad`): JetBrains / Ubuntu assets
 ///   from [FontCatalog].
@@ -14,6 +15,8 @@ import 'font_catalog.dart';
 ///   the preference as a bundled primary.
 /// - Bundled UI (`uiNeedsBundledLoad`): Noto Sans SC via GoogleFonts local
 ///   pipeline.
+/// - Installed faces (`*NeedsInstalledLoad`): [SystemFonts.loadFont] for the
+///   resolved family key.
 ///
 /// Asset load failures are logged; family names on [fonts] are left unchanged
 /// so Flutter can fall through [ResolvedFonts] fallbacks.
@@ -46,6 +49,28 @@ Future<void> loadFontsFor(ResolvedFonts fonts) async {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  if (fonts.uiNeedsInstalledLoad) {
+    await _loadInstalledFamily(fonts.uiFamily);
+  }
+  if (fonts.monoNeedsInstalledLoad) {
+    await _loadInstalledFamily(fonts.monoFamily);
+  }
+}
+
+Future<void> _loadInstalledFamily(String family) async {
+  try {
+    final loaded = await SystemFonts().loadFont(family);
+    if (loaded == null) {
+      appLogger.w('Installed font not found or failed to load: $family');
+    }
+  } on Object catch (error, stackTrace) {
+    appLogger.w(
+      'Failed to load installed font: $family',
+      error: error,
+      stackTrace: stackTrace,
+    );
   }
 }
 

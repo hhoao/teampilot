@@ -18,6 +18,23 @@ class FontCatalogEntry {
   final List<String> assetPaths;
 }
 
+/// Preference prefix for a face discovered via `system_fonts` (`installed:<key>`).
+const kInstalledFontIdPrefix = 'installed:';
+
+bool isInstalledFontId(String? id) {
+  if (id == null || !id.startsWith(kInstalledFontIdPrefix)) return false;
+  return installedFontKey(id) != null;
+}
+
+/// Key after `installed:`, or null if malformed / empty.
+String? installedFontKey(String id) {
+  if (!id.startsWith(kInstalledFontIdPrefix)) return null;
+  final key = id.substring(kInstalledFontIdPrefix.length);
+  return key.isEmpty ? null : key;
+}
+
+String installedFontId(String key) => '$kInstalledFontIdPrefix$key';
+
 abstract final class FontCatalog {
   static const systemId = 'system';
 

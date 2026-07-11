@@ -273,6 +273,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fontOptionUbuntuSansMono => 'Ubuntu Sans Mono';
 
   @override
+  String get fontInstalledSection => '已安装';
+
+  @override
+  String get fontSearchHint => '搜索字体';
+
+  @override
   String get uiZoomTitle => '界面缩放';
 
   @override

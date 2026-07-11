@@ -107,6 +107,8 @@
   "fontOptionNotoSansSc": "Noto Sans SC",
   "fontOptionJetbrainsMono": "JetBrains Mono",
   "fontOptionUbuntuSansMono": "Ubuntu Sans Mono",
+  "fontInstalledSection": "Installed",
+  "fontSearchHint": "Search fonts",
   "uiZoomTitle": "Interface zoom",
   "uiZoomDescription": "Zoom the whole UI together — text, icons, and spacing. Standard follows your display scaling.",
   "themePresetGraphite": "Graphite",

@@ -354,6 +354,7 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
     this.itemKeys,
     this.itemBuilder,
     this.listItemBuilder,
+    this.searchHintText,
   });
 
   final T value;
@@ -362,6 +363,7 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
   final Map<T, Key>? itemKeys;
   final Widget Function(BuildContext context, T item)? itemBuilder;
   final Widget Function(BuildContext context, T item)? listItemBuilder;
+  final String? searchHintText;
 
   @override
   Widget build(BuildContext context) {
@@ -383,6 +385,7 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
         itemLabel: labelOf,
         itemBuilder: itemBuilder,
         listItemBuilder: listItemBuilder,
+        searchHintText: searchHintText,
       ),
     );
   }

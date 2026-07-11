@@ -285,6 +285,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fontOptionUbuntuSansMono => 'Ubuntu Sans Mono';
 
   @override
+  String get fontInstalledSection => 'Installed';
+
+  @override
+  String get fontSearchHint => 'Search fonts';
+
+  @override
   String get uiZoomTitle => 'Interface zoom';
 
   @override

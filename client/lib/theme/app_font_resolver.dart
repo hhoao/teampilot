@@ -12,6 +12,8 @@ final class ResolvedFonts {
     required this.monoFallback,
     required this.uiNeedsBundledLoad,
     required this.monoNeedsBundledLoad,
+    required this.uiNeedsInstalledLoad,
+    required this.monoNeedsInstalledLoad,
     required this.resolvedUiId,
     required this.resolvedMonoId,
   });
@@ -22,6 +24,8 @@ final class ResolvedFonts {
   final List<String> monoFallback;
   final bool uiNeedsBundledLoad;
   final bool monoNeedsBundledLoad;
+  final bool uiNeedsInstalledLoad;
+  final bool monoNeedsInstalledLoad;
   final String resolvedUiId;
   final String resolvedMonoId;
 }
@@ -40,21 +44,67 @@ abstract final class AppFontResolver {
     TargetPlatform? platform,
   }) {
     final resolvedPlatform = platform ?? defaultTargetPlatform;
-    final uiEntry = FontCatalog.entry(FontRole.ui, uiFontId);
-    final monoEntry = FontCatalog.entry(FontRole.mono, monoFontId);
-
-    final ui = _resolveUi(uiEntry, resolvedPlatform);
-    final mono = _resolveMono(monoEntry, resolvedPlatform);
+    final ui = _resolveRole(
+      fontId: uiFontId,
+      role: FontRole.ui,
+      platform: resolvedPlatform,
+    );
+    final mono = _resolveRole(
+      fontId: monoFontId,
+      role: FontRole.mono,
+      platform: resolvedPlatform,
+    );
 
     return ResolvedFonts(
       uiFamily: ui.family,
       uiFallback: ui.fallback,
       monoFamily: mono.family,
       monoFallback: mono.fallback,
-      uiNeedsBundledLoad: uiEntry.source == FontSourceKind.bundled,
-      monoNeedsBundledLoad: monoEntry.source == FontSourceKind.bundled,
-      resolvedUiId: uiEntry.id,
-      resolvedMonoId: monoEntry.id,
+      uiNeedsBundledLoad: ui.needsBundledLoad,
+      monoNeedsBundledLoad: mono.needsBundledLoad,
+      uiNeedsInstalledLoad: ui.needsInstalledLoad,
+      monoNeedsInstalledLoad: mono.needsInstalledLoad,
+      resolvedUiId: ui.resolvedId,
+      resolvedMonoId: mono.resolvedId,
+    );
+  }
+
+  static ({
+    String family,
+    List<String> fallback,
+    bool needsBundledLoad,
+    bool needsInstalledLoad,
+    String resolvedId,
+  })
+  _resolveRole({
+    required String fontId,
+    required FontRole role,
+    required TargetPlatform platform,
+  }) {
+    final installedKey = installedFontKey(fontId);
+    if (installedKey != null) {
+      final fallback = role == FontRole.ui
+          ? _systemUiFallback(platform)
+          : monoCjkFallback(platform);
+      return (
+        family: installedKey,
+        fallback: fallback,
+        needsBundledLoad: false,
+        needsInstalledLoad: true,
+        resolvedId: installedFontId(installedKey),
+      );
+    }
+
+    final entry = FontCatalog.entry(role, fontId);
+    final resolved = role == FontRole.ui
+        ? _resolveUi(entry, platform)
+        : _resolveMono(entry, platform);
+    return (
+      family: resolved.family,
+      fallback: resolved.fallback,
+      needsBundledLoad: entry.source == FontSourceKind.bundled,
+      needsInstalledLoad: false,
+      resolvedId: entry.id,
     );
   }
 
@@ -178,7 +228,6 @@ abstract final class AppFontResolver {
         ],
       ),
       TargetPlatform.android => (
-        // SC-capable mono primary; SC faces before bare monospace last.
         family: 'Noto Sans Mono CJK SC',
         fallback: const [
           ubuntuSansMonoFamily,
@@ -187,7 +236,6 @@ abstract final class AppFontResolver {
           'monospace',
         ],
       ),
-      // Linux and other desktops: never use bare monospace as primary.
       _ => (
         family: 'Noto Sans Mono CJK SC',
         fallback: const [
