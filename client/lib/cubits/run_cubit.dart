@@ -360,6 +360,110 @@ class RunCubit extends Cubit<RunState> {
     }
   }
 
+  /// Persists [owned], reloads, and selects the saved configuration.
+  ///
+  /// Id may be assigned on write via [LaunchConfigDocument.normalized]; after
+  /// reload, selection matches by id when present, else name/type/owner.
+  Future<void> saveConfiguration(OwnedLaunchConfiguration owned) async {
+    final errors = _platform.validateConfiguration(owned);
+    if (errors.isNotEmpty) {
+      emit(state.copyWith(errorMessage: errors.join('; ')));
+      return;
+    }
+
+    try {
+      await _platform.persistConfiguration(
+        folder: owned.owner,
+        configuration: owned.configuration,
+      );
+      await load();
+      if (isClosed) return;
+      final selectionKey = _selectionKeyAfterPersist(owned);
+      if (selectionKey != null) {
+        await select(selectionKey);
+      }
+    } catch (error) {
+      if (!isClosed) {
+        emit(state.copyWith(errorMessage: error.toString()));
+      }
+    }
+  }
+
+  /// Removes [owned] from its folder's `launch.json` (no UI confirm).
+  ///
+  /// Stops a running session for this config first, then deletes and reloads.
+  /// Clears selection when the deleted config was selected.
+  Future<void> deleteConfiguration(OwnedLaunchConfiguration owned) async {
+    final deletedKey = owned.selectionKey;
+    final running = runningSessionFor(deletedKey);
+    if (running != null) {
+      await stopSession(running.id);
+    }
+
+    try {
+      await _platform.deleteConfiguration(
+        folder: owned.owner,
+        id: owned.configId,
+      );
+      final wasSelected = state.selectedKey == deletedKey;
+      await load();
+      if (isClosed) return;
+      if (wasSelected) {
+        emit(
+          state.copyWith(
+            clearSelectedKey: true,
+            options: const [],
+            optionValues: const {},
+            clearError: true,
+          ),
+        );
+      }
+    } catch (error) {
+      if (!isClosed) {
+        emit(state.copyWith(errorMessage: error.toString()));
+      }
+    }
+  }
+
+  /// In-memory draft; id is assigned on [saveConfiguration] via document normalize.
+  OwnedLaunchConfiguration createConfiguration({
+    required WorkspaceFolder folder,
+    required String type,
+  }) {
+    return OwnedLaunchConfiguration(
+      owner: folder,
+      configuration: LaunchConfiguration(
+        id: '',
+        name: '',
+        type: type,
+        command: type == ProcessLaunchSchema.typeName ? '' : null,
+      ),
+    );
+  }
+
+  String? _selectionKeyAfterPersist(OwnedLaunchConfiguration owned) {
+    final id = owned.configuration.id.trim();
+    if (id.isNotEmpty) {
+      final byId = state.configurations
+          .where(
+            (item) =>
+                item.owner == owned.owner && item.configuration.id == id,
+          )
+          .firstOrNull;
+      if (byId != null) return byId.selectionKey;
+    }
+
+    final byIdentity = state.configurations
+        .where(
+          (item) =>
+              item.owner == owned.owner &&
+              item.configuration.type == owned.configuration.type &&
+              item.configuration.name == owned.configuration.name,
+        )
+        .firstOrNull;
+    return byIdentity?.selectionKey;
+  }
+
   Future<void> configureAction({
     required String actionId,
     required String type,

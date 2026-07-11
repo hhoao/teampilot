@@ -173,6 +173,12 @@ class _FakePlatform implements RunPlatformApi {
   }) async {}
 
   @override
+  Future<void> deleteConfiguration({
+    required WorkspaceFolder folder,
+    required String id,
+  }) async {}
+
+  @override
   String launchJsonPath(WorkspaceFolder folder) =>
       LaunchConfigStore.launchConfigPath(folder);
 
@@ -283,6 +289,12 @@ class _DeferredFakePlatform implements RunPlatformApi, RunPlatformDeferred {
   Future<void> persistConfiguration({
     required WorkspaceFolder folder,
     required LaunchConfiguration configuration,
+  }) async {}
+
+  @override
+  Future<void> deleteConfiguration({
+    required WorkspaceFolder folder,
+    required String id,
   }) async {}
 
   @override

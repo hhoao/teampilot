@@ -74,6 +74,11 @@ abstract class RunPlatformApi {
     required LaunchConfiguration configuration,
   });
 
+  Future<void> deleteConfiguration({
+    required WorkspaceFolder folder,
+    required String id,
+  });
+
   String launchJsonPath(WorkspaceFolder folder);
 
   Future<void> rebuildLaunchTypes();
@@ -249,6 +254,14 @@ class RunPlatform implements RunPlatformApi {
       folder: folder,
       configuration: configuration,
     );
+  }
+
+  @override
+  Future<void> deleteConfiguration({
+    required WorkspaceFolder folder,
+    required String id,
+  }) {
+    return store.deleteConfiguration(folder: folder, id: id);
   }
 
   @override

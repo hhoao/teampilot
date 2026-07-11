@@ -203,6 +203,15 @@ class _DeferredRunPlatform implements RunPlatformApi, RunPlatformDeferred {
   );
 
   @override
+  Future<void> deleteConfiguration({
+    required WorkspaceFolder folder,
+    required String id,
+  }) async => (await _awaitInner()).deleteConfiguration(
+    folder: folder,
+    id: id,
+  );
+
+  @override
   String launchJsonPath(WorkspaceFolder folder) {
     final inner = _inner;
     if (inner != null) return inner.launchJsonPath(folder);
