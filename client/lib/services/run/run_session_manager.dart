@@ -4,7 +4,9 @@ import 'package:uuid/uuid.dart';
 
 import '../../models/run/launch_config_document.dart';
 import '../../models/run/launch_configuration.dart';
+import '../../models/run/launch_type_contribution.dart';
 import '../../models/run/run_session.dart';
+import 'launch_adapter_client.dart';
 import 'launch_variable_expander.dart';
 import 'process_launch_schema.dart';
 import 'process_run_executor.dart';
@@ -84,8 +86,77 @@ class DefaultRunProcessLauncher implements RunProcessLauncher {
   }
 }
 
-class _StubRunAdapterLauncher implements RunAdapterLauncher {
-  const _StubRunAdapterLauncher();
+/// Default [RunAdapterLauncher] backed by [LaunchAdapterClient].
+class DefaultRunAdapterLauncher implements RunAdapterLauncher {
+  DefaultRunAdapterLauncher({
+    required LaunchAdapterClient client,
+    required LaunchTypeContribution? Function(String type) resolveType,
+  }) : _client = client,
+       _resolveType = resolveType;
+
+  final LaunchAdapterClient _client;
+  final LaunchTypeContribution? Function(String type) _resolveType;
+
+  @override
+  Future<RunLaunchHandle> launch({
+    required String sessionId,
+    required OwnedLaunchConfiguration owned,
+    required void Function(ProcessRunOutput output) onOutput,
+  }) async {
+    final contribution = _resolveType(owned.configuration.type);
+    if (contribution == null || contribution.extensionId == null) {
+      throw StateError(
+        'no launch adapter registered for type ${owned.configuration.type}',
+      );
+    }
+
+    final sub = _client.outputStream
+        .where((event) => event.sessionId == sessionId)
+        .listen((event) {
+          onOutput(
+            ProcessRunOutput(
+              sessionId: event.sessionId,
+              category: event.category,
+              data: event.data,
+            ),
+          );
+        });
+
+    await _client.initialize(
+      type: contribution.type,
+      targetId: owned.owner.targetId,
+      adapterCommand: contribution.adapterCommand,
+      extensionId: contribution.extensionId,
+      lifecycle: contribution.lifecycle,
+    );
+
+    await _client.launch(
+      sessionId: sessionId,
+      configuration: owned.configuration.toJson(),
+      type: contribution.type,
+      targetId: owned.owner.targetId,
+      adapterCommand: contribution.adapterCommand,
+      extensionId: contribution.extensionId,
+      lifecycle: contribution.lifecycle,
+    );
+
+    final exitCode = _client.waitExited(sessionId).then((event) async {
+      await sub.cancel();
+      return event.exitCode;
+    });
+
+    return RunLaunchHandle(
+      exitCode: exitCode,
+      stop: () async {
+        await _client.stop(sessionId);
+        await sub.cancel();
+      },
+    );
+  }
+}
+
+class _MissingRunAdapterLauncher implements RunAdapterLauncher {
+  const _MissingRunAdapterLauncher();
 
   @override
   Future<RunLaunchHandle> launch({
@@ -93,7 +164,9 @@ class _StubRunAdapterLauncher implements RunAdapterLauncher {
     required OwnedLaunchConfiguration owned,
     required void Function(ProcessRunOutput output) onOutput,
   }) {
-    throw UnimplementedError('Launch adapter: Task 6');
+    throw StateError(
+      'no launch adapter registered for type ${owned.configuration.type}',
+    );
   }
 }
 
@@ -108,9 +181,18 @@ class RunSessionManager {
   RunSessionManager({
     RunProcessLauncher? executor,
     RunAdapterLauncher? adapters,
+    LaunchAdapterClient? launchAdapterClient,
+    LaunchTypeContribution? Function(String type)? resolveLaunchType,
     String Function()? uuidFactory,
   }) : _processLauncher = executor ?? DefaultRunProcessLauncher(),
-       _adapterLauncher = adapters ?? const _StubRunAdapterLauncher(),
+       _adapterLauncher =
+           adapters ??
+           (launchAdapterClient != null
+               ? DefaultRunAdapterLauncher(
+                   client: launchAdapterClient,
+                   resolveType: resolveLaunchType ?? (_) => null,
+                 )
+               : const _MissingRunAdapterLauncher()),
        _uuidFactory = uuidFactory ?? (() => const Uuid().v4());
 
   final RunProcessLauncher _processLauncher;
