@@ -8,9 +8,11 @@ import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
+import '../services/editor_platform/fake_ts_worker.dart';
 import '../support/in_memory_filesystem.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   const ws = 'ws-test';
 
   test('openFile loads text and marks dirty after edit', () async {
@@ -123,6 +125,87 @@ void main() {
     await cubit.openFile('ws-a', file.path);
     expect(cubit.state.bucket('ws-a').openFilePaths, [file.path]);
     expect(cubit.state.bucket('ws-b').openFilePaths, isEmpty);
+  });
+
+  test('wires a DocumentSession + token provider for a highlightable file',
+      () async {
+    final dir = await Directory.systemTemp.createTemp('teampilot_editor_ts_');
+    addTearDown(() => dir.delete(recursive: true));
+    final file = File('${dir.path}/a.json')
+      ..writeAsStringSync('{"hello": "world"}');
+
+    final pool = FakeTsWorkerPool();
+    final cubit = EditorCubit(fs: LocalFilesystem(), workerPool: pool);
+    addTearDown(cubit.close);
+
+    await cubit.openFile(ws, file.path);
+
+    // JSON resolves to the json pack, so a worker session is opened and the
+    // viewport is colored before the file reports "open".
+    expect(cubit.documentSessionFor(ws, file.path), isNotNull);
+    expect(pool.handles, hasLength(1));
+    final provider = cubit.tokenProviderFor(ws, file.path);
+    expect(provider, isNotNull);
+    expect(provider!.tokensForLine(0), isNotEmpty);
+  });
+
+  test('plain-text file opens with no worker session or token provider',
+      () async {
+    final dir = await Directory.systemTemp.createTemp('teampilot_editor_txt_');
+    addTearDown(() => dir.delete(recursive: true));
+    final file = File('${dir.path}/notes.txt')..writeAsStringSync('hello');
+
+    final pool = FakeTsWorkerPool();
+    final cubit = EditorCubit(fs: LocalFilesystem(), workerPool: pool);
+    addTearDown(cubit.close);
+
+    await cubit.openFile(ws, file.path);
+
+    // A session object exists but the file is plain text: no worker attach.
+    expect(pool.handles, isEmpty);
+    expect(cubit.tokenProviderFor(ws, file.path)!.tokensForLine(0), isEmpty);
+  });
+
+  test('editing forwards an incremental edit to the session', () async {
+    final dir = await Directory.systemTemp.createTemp('teampilot_editor_edit_');
+    addTearDown(() => dir.delete(recursive: true));
+    final file = File('${dir.path}/a.json')..writeAsStringSync('{"a": "b"}');
+
+    final pool = FakeTsWorkerPool();
+    final cubit = EditorCubit(fs: LocalFilesystem(), workerPool: pool);
+    addTearDown(cubit.close);
+
+    await cubit.openFile(ws, file.path);
+    final queriesAfterOpen = pool.queryCount;
+
+    // Insert before the closing quote of the value: {"a": "b"} -> {"a": "bX"}.
+    cubit.controllerFor(ws, file.path)!.text = '{"a": "bX"}';
+    await pumpEventQueue();
+
+    // applyEdit enqueues a re-tokenization query for the edited/viewport lines.
+    expect(pool.queryCount, greaterThan(queriesAfterOpen));
+    expect(cubit.state.bucket(ws).isDirty(file.path), isTrue);
+  });
+
+  test('closeFile disposes the DocumentSession worker attachment', () async {
+    final dir = await Directory.systemTemp.createTemp('teampilot_editor_close_');
+    addTearDown(() => dir.delete(recursive: true));
+    final file = File('${dir.path}/a.json')..writeAsStringSync('{"a": "b"}');
+
+    final pool = FakeTsWorkerPool();
+    final cubit = EditorCubit(fs: LocalFilesystem(), workerPool: pool);
+    addTearDown(cubit.close);
+
+    await cubit.openFile(ws, file.path);
+    final handle = pool.handles.single;
+    expect(handle.isClosed, isFalse);
+
+    cubit.closeFile(ws, file.path, force: true);
+
+    expect(cubit.documentSessionFor(ws, file.path), isNull);
+    expect(cubit.tokenProviderFor(ws, file.path), isNull);
+    expect(handle.isClosed, isTrue);
+    expect(handle.disposeSent, isTrue);
   });
 
   test('closeFile cancels in-flight open so late read does not reopen', () async {

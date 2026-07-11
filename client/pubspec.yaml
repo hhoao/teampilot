@@ -20,13 +20,14 @@ dependencies:
   flutter_secure_storage: ^10.2.0
   re_editor:
     path: packages/re-editor
-  re_highlight: ^0.0.3
   flutter_alacritty:
     path: packages/flutter_alacritty
   flutter_pty_new:
     path: packages/flutter_pty_new
   dartssh2:
     path: packages/dartssh2
+  teampilot_tree_sitter:
+    path: packages/teampilot_tree_sitter
   flutter_bloc: ^9.1.0
   bloc_concurrency: ^0.3.0
   equatable: ^2.0.5
@@ -105,6 +106,17 @@ flutter:
     - assets/file_icons/
     - assets/providers/
     - assets/geometry/
+    - assets/editor_languages/json/
+    - assets/editor_languages/dart/
+    - assets/editor_languages/yaml/
+    - assets/editor_languages/markdown/
+    - assets/editor_languages/python/
+    - assets/editor_languages/rust/
+    - assets/editor_languages/typescript/
+    - assets/editor_languages/bash/
+    - assets/editor_languages/xml/
+    - assets/editor_languages/toml/
+    - assets/editor_languages/css/
     - assets/fonts/terminal/
     - assets/rtk/rtk-rewrite.sh
     - assets/rtk/rtk-rewrite.ps1

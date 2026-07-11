@@ -1,9 +1,16 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:re_editor/re_editor.dart';
 
 import '../../services/diff/diff_decoration_mapper.dart';
 import '../../services/diff/diff_model.dart';
 import '../../services/editor/file_editor_theme.dart';
+import '../../services/editor_platform/document_session.dart';
+import '../../services/editor_platform/document_session_token_provider.dart';
+import '../../services/editor_platform/editor_platform.dart';
+import '../../services/editor_platform/editor_viewport_token_binder.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'diff_overview_ruler.dart';
 import 'diff_view_controller.dart';
@@ -39,6 +46,14 @@ class _UnifiedDiffViewState extends State<UnifiedDiffView> {
   late UnifiedPane _pane;
   double _lineHeightCache = 16;
 
+  DocumentSession? _session;
+  DocumentSessionTokenProvider? _tokenProvider;
+
+  /// Bumped on every reopen so a stale async [_openSession] call (superseded
+  /// by a newer result before it finished opening) discards its session
+  /// instead of publishing it.
+  int _sessionGeneration = 0;
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +62,7 @@ class _UnifiedDiffViewState extends State<UnifiedDiffView> {
     _scroll = CodeScrollController();
     widget.controller?.addListener(_onNavigate);
     _publishChangeCount();
+    unawaited(_openSession());
   }
 
   @override
@@ -60,6 +76,7 @@ class _UnifiedDiffViewState extends State<UnifiedDiffView> {
       _build();
       _controller.text = _pane.text;
       _publishChangeCount();
+      unawaited(_openSession());
     }
   }
 
@@ -68,6 +85,44 @@ class _UnifiedDiffViewState extends State<UnifiedDiffView> {
     // Text/numbers/block starts are color-independent; decorations are rebuilt
     // with the real palette in build().
     _pane = buildUnifiedPane(_rows, _transparentColors);
+  }
+
+  /// Opens a fresh read-only [DocumentSession] for the current unified pane
+  /// text and swaps it in once viewport coloring is ready. Never awaited by
+  /// callers — a bumped [_sessionGeneration] lets an in-flight call from a
+  /// superseded result discard its session on completion instead of racing
+  /// with a newer one.
+  Future<void> _openSession() async {
+    final generation = ++_sessionGeneration;
+    final path = widget.filePath ?? 'untitled.txt';
+    final text = _pane.text;
+
+    final session = DocumentSession(
+      registry: EditorPlatform.registry,
+      pool: EditorPlatform.workerPool,
+    );
+    await session.open(path: path, text: text);
+    if (generation != _sessionGeneration) {
+      session.dispose();
+      return;
+    }
+
+    await session.colorizeAfterOpen(
+      viewportEndLine: math.min(80, session.lineCount - 1),
+    );
+    if (!mounted || generation != _sessionGeneration) {
+      session.dispose();
+      return;
+    }
+
+    final oldSession = _session;
+    final oldProvider = _tokenProvider;
+    setState(() {
+      _session = session;
+      _tokenProvider = DocumentSessionTokenProvider(session);
+    });
+    oldProvider?.dispose();
+    oldSession?.dispose();
   }
 
   void _publishChangeCount() {
@@ -104,18 +159,24 @@ class _UnifiedDiffViewState extends State<UnifiedDiffView> {
     widget.controller?.removeListener(_onNavigate);
     _controller.dispose();
     _scroll.dispose();
+    // Invalidate any in-flight _openSession() so it discards rather than
+    // setState()s on a disposed widget.
+    _sessionGeneration++;
+    _tokenProvider?.dispose();
+    _session?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final path = widget.filePath ?? '';
+    final path = widget.filePath ?? 'untitled.txt';
     final shellSurface = cs.workspaceCardChrome(widget.chrome);
     final style = codeEditorStyleFor(
       context,
       path,
       backgroundColor: shellSurface,
+      tokenProvider: _tokenProvider,
     );
     _lineHeightCache = _unifiedLineHeight(style);
 
@@ -136,16 +197,11 @@ class _UnifiedDiffViewState extends State<UnifiedDiffView> {
             lineDecorations: pane.decorations,
             indicatorBuilder:
                 (context, editingController, chunkController, notifier) {
-                  return DefaultCodeLineNumber(
+                  return _UnifiedLineNumbers(
                     controller: editingController,
                     notifier: notifier,
-                    customLineIndex2Text: (lineIndex) {
-                      if (lineIndex < 0 || lineIndex >= pane.numbers.length) {
-                        return '';
-                      }
-                      final no = pane.numbers[lineIndex];
-                      return no == null ? '' : '$no';
-                    },
+                    session: _session,
+                    numbers: pane.numbers,
                   );
                 },
           ),
@@ -159,6 +215,76 @@ class _UnifiedDiffViewState extends State<UnifiedDiffView> {
           trackColor: cs.workspaceSubtleSurface,
         ),
       ],
+    );
+  }
+}
+
+/// Gutter line numbers for the unified pane; keeps an
+/// [EditorViewportTokenBinder] bound to [session] so the visible line band
+/// stays colored as the user scrolls (same pattern as `FileEditorSurface`'s
+/// indicator wrapper).
+class _UnifiedLineNumbers extends StatefulWidget {
+  const _UnifiedLineNumbers({
+    required this.controller,
+    required this.notifier,
+    required this.session,
+    required this.numbers,
+  });
+
+  final CodeLineEditingController controller;
+  final CodeIndicatorValueNotifier notifier;
+  final DocumentSession? session;
+  final List<int?> numbers;
+
+  @override
+  State<_UnifiedLineNumbers> createState() => _UnifiedLineNumbersState();
+}
+
+class _UnifiedLineNumbersState extends State<_UnifiedLineNumbers> {
+  EditorViewportTokenBinder? _binder;
+
+  @override
+  void initState() {
+    super.initState();
+    _bind();
+  }
+
+  @override
+  void didUpdateWidget(_UnifiedLineNumbers oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.session != widget.session ||
+        oldWidget.notifier != widget.notifier) {
+      _bind();
+    }
+  }
+
+  void _bind() {
+    _binder?.dispose();
+    final session = widget.session;
+    _binder = session == null
+        ? null
+        : EditorViewportTokenBinder(
+            session: session,
+            notifier: widget.notifier,
+          );
+  }
+
+  @override
+  void dispose() {
+    _binder?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultCodeLineNumber(
+      controller: widget.controller,
+      notifier: widget.notifier,
+      customLineIndex2Text: (lineIndex) {
+        if (lineIndex < 0 || lineIndex >= widget.numbers.length) return '';
+        final no = widget.numbers[lineIndex];
+        return no == null ? '' : '$no';
+      },
     );
   }
 }

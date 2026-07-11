@@ -14,6 +14,7 @@ import '../cubits/chat_cubit.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/remote/local_credential_exporter.dart';
+import '../services/editor_platform/editor_platform.dart';
 import '../services/launch/launch_factory.dart';
 import '../cubits/board_cubit.dart';
 import '../utils/workspace_tab_session_scope.dart';
@@ -992,6 +993,9 @@ Future<AppShell> buildAppShell({
   }
 
   editorCubit = EditorCubit();
+  // Fire-and-forget: warm the common tree-sitter grammars so the first file
+  // open paints colored instead of cold. Never blocks app start.
+  unawaited(EditorPlatform.bootstrap());
   final workbenchCubit = WorkbenchCubit();
   final workbenchEditorOpener = WorkbenchEditorOpener(
     editor: editorCubit,

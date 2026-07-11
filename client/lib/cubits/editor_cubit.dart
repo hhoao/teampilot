@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -6,6 +8,11 @@ import 'package:re_editor/re_editor.dart';
 
 import '../services/editor/editor_messages.dart';
 import '../services/editor/file_editor_theme.dart';
+import '../services/editor_platform/document_session.dart';
+import '../services/editor_platform/document_session_token_provider.dart';
+import '../services/editor_platform/editor_platform.dart';
+import '../services/editor_platform/language_registry.dart';
+import '../services/editor_platform/worker_protocol.dart';
 import '../services/io/filesystem.dart';
 import '../services/storage/app_storage.dart';
 import 'workbench/workbench_tab.dart';
@@ -139,16 +146,67 @@ class _OpenFileHandle {
   String? savedText;
   VoidCallback? _listener;
 
+  /// Tree-sitter syntax state for this document (null for plain-text files or
+  /// while still loading).
+  DocumentSession? session;
+
+  /// Adapter exposing [session]'s tokens to re-editor.
+  DocumentSessionTokenProvider? tokenProvider;
+
+  /// Snapshot of the controller text after the last processed change, used to
+  /// derive the incremental code-unit edit forwarded to [session].
+  String _previousText = '';
+
   /// Stable per-file identity for the [CodeEditor] element.
   final GlobalKey editorKey = GlobalKey(debugLabel: 'file-editor');
 
   void attachListener() {
     _listener ??= () {
-      if (savedText != null && controller.text != savedText) {
+      final newText = controller.text;
+      if (newText != _previousText) {
+        _forwardEditToSession(_previousText, newText);
+        _previousText = newText;
+      }
+      if (savedText != null && newText != savedText) {
         onDirty();
       }
     };
     controller.addListener(_listener!);
+  }
+
+  /// Computes the minimal code-unit replacement between [oldText] and [newText]
+  /// (longest common prefix/suffix) and mirrors it to the tree-sitter session.
+  void _forwardEditToSession(String oldText, String newText) {
+    final session = this.session;
+    if (session == null) return;
+
+    final oldLen = oldText.length;
+    final newLen = newText.length;
+    final maxCommon = oldLen < newLen ? oldLen : newLen;
+
+    var prefix = 0;
+    while (prefix < maxCommon &&
+        oldText.codeUnitAt(prefix) == newText.codeUnitAt(prefix)) {
+      prefix++;
+    }
+
+    var suffix = 0;
+    final maxSuffix = maxCommon - prefix;
+    while (suffix < maxSuffix &&
+        oldText.codeUnitAt(oldLen - 1 - suffix) ==
+            newText.codeUnitAt(newLen - 1 - suffix)) {
+      suffix++;
+    }
+
+    final deleteCount = oldLen - prefix - suffix;
+    final insert = newText.substring(prefix, newLen - suffix);
+    if (deleteCount == 0 && insert.isEmpty) return;
+
+    session.applyEdit(
+      codeUnitStart: prefix,
+      codeUnitDeleteCount: deleteCount,
+      insert: insert,
+    );
   }
 
   void dispose() {
@@ -156,6 +214,10 @@ class _OpenFileHandle {
       controller.removeListener(_listener!);
     }
     controller.dispose();
+    tokenProvider?.dispose();
+    session?.dispose();
+    tokenProvider = null;
+    session = null;
   }
 }
 
@@ -163,14 +225,29 @@ typedef DiffReload =
     Future<String?> Function(bool ignoreWhitespace, bool fullContext);
 
 class EditorCubit extends Cubit<EditorState> {
-  EditorCubit({Filesystem? fs})
-    : _fs = fs ?? AppStorage.fs,
-      super(const EditorState());
+  EditorCubit({
+    Filesystem? fs,
+    TsWorkerPool? workerPool,
+    LanguageRegistry? languageRegistry,
+  })  : _fs = fs ?? AppStorage.fs,
+        _injectedPool = workerPool,
+        _injectedRegistry = languageRegistry,
+        super(const EditorState());
 
   final Filesystem _fs;
+
+  /// Injected in tests; falls back to the shared [EditorPlatform] pool/registry
+  /// in the app. Resolved lazily so tests that never open a highlighted file do
+  /// not construct the native [EditorPlatform.workerPool].
+  final TsWorkerPool? _injectedPool;
+  final LanguageRegistry? _injectedRegistry;
+
   final Map<String, Filesystem> _fsByHandle = {};
   final Map<String, _OpenFileHandle> _handles = {};
   final Map<String, DiffReload> _diffReloadByKey = {};
+
+  TsWorkerPool get _pool => _injectedPool ?? EditorPlatform.workerPool;
+  LanguageRegistry get _registry => _injectedRegistry ?? EditorPlatform.registry;
 
   String _handleKey(String workspaceId, String path) => '$workspaceId\x00$path';
 
@@ -179,6 +256,16 @@ class EditorCubit extends Cubit<EditorState> {
 
   GlobalKey? editorKeyFor(String workspaceId, String path) =>
       _handles[_handleKey(workspaceId, path)]?.editorKey;
+
+  /// Syntax token provider for an open file, or null when the file is plain
+  /// text, still loading, or not open.
+  CodeTokenProvider? tokenProviderFor(String workspaceId, String path) =>
+      _handles[_handleKey(workspaceId, path)]?.tokenProvider;
+
+  /// The live [DocumentSession] for an open file, used by the viewport binder to
+  /// request tokens for newly visible lines. Null for plain text / not open.
+  DocumentSession? documentSessionFor(String workspaceId, String path) =>
+      _handles[_handleKey(workspaceId, path)]?.session;
 
   bool isReadOnly(String workspaceId, String path) =>
       state.bucket(workspaceId).readOnlyPaths.contains(path);
@@ -241,10 +328,30 @@ class EditorCubit extends Cubit<EditorState> {
       final handle = _OpenFileHandle(
         controller: controller,
         onDirty: () => _markDirty(workspaceId, normalized),
-      )..savedText = content;
-      handle.attachListener();
+      )
+        ..savedText = content
+        .._previousText = content;
       _handles[key] = handle;
       _fsByHandle[key] = filesystem;
+
+      final session = DocumentSession(registry: _registry, pool: _pool);
+      handle.session = session;
+      handle.tokenProvider = DocumentSessionTokenProvider(session);
+
+      await session.open(path: normalized, text: content);
+      if (!_stillLoading(workspaceId, normalized) ||
+          _handles[key] != handle) {
+        return;
+      }
+      await session.colorizeAfterOpen(
+        viewportEndLine: math.min(80, session.lineCount - 1),
+      );
+      if (!_stillLoading(workspaceId, normalized) ||
+          _handles[key] != handle) {
+        return;
+      }
+
+      handle.attachListener();
 
       final current = state.bucket(workspaceId);
       final paths = [...current.openFilePaths, normalized];
@@ -266,6 +373,11 @@ class EditorCubit extends Cubit<EditorState> {
             .copyWith(clearSnackbar: true),
       );
     } on Object catch (e) {
+      // A handle may have been registered before an await threw; drop it so its
+      // session/controller are not leaked (the file never became "open").
+      if (!state.bucket(workspaceId).openFilePaths.contains(normalized)) {
+        _disposeHandle(workspaceId, normalized);
+      }
       if (!_stillLoading(workspaceId, normalized)) return;
       emit(_clearLoading(workspaceId, normalized, error: e.toString()));
     }

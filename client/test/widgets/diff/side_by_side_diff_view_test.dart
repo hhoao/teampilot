@@ -30,7 +30,9 @@ void main() {
         ),
       ),
     );
-    await tester.pump();
+    // Settle the async DocumentSession opens + viewport colorize (fires the
+    // frame-budget timers) so no timer outlives the test body.
+    await tester.pumpAndSettle();
   }
 
   testWidgets('renders two code editors for a modification', (tester) async {
@@ -58,6 +60,16 @@ void main() {
   testWidgets('updates when inputs change', (tester) async {
     await pump(tester, oldText: 'x', newText: 'y');
     await pump(tester, oldText: 'hello', newText: 'hello world');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('disposes cleanly while a session open is still in flight', (
+    tester,
+  ) async {
+    await pump(tester, oldText: 'x', newText: 'y');
+    // Unmount immediately, before the async open/colorize chain resolves.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 }

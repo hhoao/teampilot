@@ -1105,14 +1105,6 @@ packages:
       relative: true
     source: path
     version: "0.8.0"
-  re_highlight:
-    dependency: "direct main"
-    description:
-      name: re_highlight
-      sha256: "6c4ac3f76f939fb7ca9df013df98526634e17d8f7460e028bd23a035870024f2"
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "0.0.3"
   record_use:
     dependency: transitive
     description:
@@ -1365,6 +1357,13 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "3.4.1"
+  teampilot_tree_sitter:
+    dependency: "direct main"
+    description:
+      path: "packages/teampilot_tree_sitter"
+      relative: true
+    source: path
+    version: "0.0.1"
   term_glyph:
     dependency: transitive
     description:
@@ -1629,5 +1628,5 @@ packages:
     source: hosted
     version: "3.1.3"
 sdks:
-  dart: ">=3.12.0 <4.0.0"
+  dart: ">=3.12.2 <4.0.0"
   flutter: ">=3.44.0"
