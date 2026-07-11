@@ -9,6 +9,19 @@ import 'launch_type_registry.dart';
 import 'process_launch_schema.dart';
 import 'run_session_manager.dart';
 
+/// Platforms that bind asynchronously (e.g. workspace tab scope) expose [whenReady].
+abstract mixin class RunPlatformDeferred {
+  Future<void> get whenReady;
+}
+
+/// Completes immediately for eager platforms; awaits deferred initialization otherwise.
+Future<void> whenRunPlatformReady(RunPlatformApi platform) {
+  if (platform is RunPlatformDeferred) {
+    return (platform as RunPlatformDeferred).whenReady;
+  }
+  return Future<void>.value();
+}
+
 /// Narrow surface [RunCubit] uses — concrete [RunPlatform] or test fakes.
 abstract class RunPlatformApi {
   RunSessionManager get sessionManager;

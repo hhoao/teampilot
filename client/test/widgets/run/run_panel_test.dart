@@ -12,6 +12,7 @@ import 'package:teampilot/services/run/launch_config_store.dart';
 import 'package:teampilot/services/run/process_run_executor.dart';
 import 'package:teampilot/services/run/run_platform.dart';
 import 'package:teampilot/services/run/run_session_manager.dart';
+
 import 'package:teampilot/widgets/run/run_panel.dart';
 
 const _folder = WorkspaceFolder(path: '/proj');
@@ -173,6 +174,107 @@ class _FakePlatform implements RunPlatformApi {
   String? unavailableReason(String type, {required String targetId}) => null;
 }
 
+/// Mirrors [_DeferredRunPlatform]: sessionManager throws until [bind].
+class _DeferredFakePlatform implements RunPlatformApi, RunPlatformDeferred {
+  _DeferredFakePlatform() : _ready = Completer<void>();
+
+  final Completer<void> _ready;
+  RunPlatformApi? _inner;
+
+  @override
+  Future<void> get whenReady => _ready.future;
+
+  void bind(RunPlatformApi platform) {
+    _inner = platform;
+    if (!_ready.isCompleted) _ready.complete();
+  }
+
+  @override
+  RunSessionManager get sessionManager {
+    final inner = _inner;
+    if (inner != null) return inner.sessionManager;
+    throw StateError('Run platform is still initializing');
+  }
+
+  @override
+  Future<List<OwnedLaunchConfiguration>> listConfigurations(
+    List<WorkspaceFolder> folders,
+  ) async => (await whenReady.then((_) => _inner!)).listConfigurations(folders);
+
+  @override
+  Future<List<OwnedLaunchCompound>> listCompounds(
+    List<WorkspaceFolder> folders,
+  ) async => (await whenReady.then((_) => _inner!)).listCompounds(folders);
+
+  @override
+  Stream<List<RunSession>> get sessionsStream =>
+      _inner?.sessionsStream ?? const Stream.empty();
+
+  @override
+  List<RunSession> get sessions => _inner?.sessions ?? const [];
+
+  @override
+  Stream<List<LaunchAdapterConfigurationEntry>> get actionsStream =>
+      const Stream.empty();
+
+  @override
+  Future<List<LaunchOption>> provideOptions(
+    OwnedLaunchConfiguration owned,
+  ) async => const [];
+
+  @override
+  Stream<List<LaunchOption>> optionsChangedFor(
+    OwnedLaunchConfiguration owned,
+  ) => const Stream.empty();
+
+  @override
+  List<String> validateConfiguration(OwnedLaunchConfiguration owned) =>
+      const ['Run platform is still initializing'];
+
+  @override
+  Future<RunSession> start(OwnedLaunchConfiguration owned) =>
+      throw StateError('not ready');
+
+  @override
+  Future<void> stop(String sessionId) => throw StateError('not ready');
+
+  @override
+  Future<RunSession> restart(String sessionId) =>
+      throw StateError('not ready');
+
+  @override
+  Future<void> stopCompound(List<String> sessionIds) =>
+      throw StateError('not ready');
+
+  @override
+  Future<ConfigureActionResult> configureAction({
+    required String actionId,
+    required String workspaceFolder,
+    required Map<String, Object?> result,
+    required String type,
+    String targetId = WorkspaceFolder.localTargetId,
+  }) async => const ConfigureActionResult(cancelled: true);
+
+  @override
+  Future<void> persistConfiguration({
+    required WorkspaceFolder folder,
+    required LaunchConfiguration configuration,
+  }) async {}
+
+  @override
+  String launchJsonPath(WorkspaceFolder folder) =>
+      LaunchConfigStore.launchConfigPath(folder);
+
+  @override
+  Future<void> rebuildLaunchTypes() async {}
+
+  @override
+  bool isTypeAvailable(String type, {required String targetId}) => true;
+
+  @override
+  String? unavailableReason(String type, {required String targetId}) => null;
+}
+
 Widget _host({required RunCubit cubit}) {
   return MaterialApp(
     home: Scaffold(
@@ -185,6 +287,32 @@ Widget _host({required RunCubit cubit}) {
 }
 
 void main() {
+  testWidgets('mounts without error while platform is still initializing', (
+    tester,
+  ) async {
+    final deferred = _DeferredFakePlatform();
+    final cubit = RunCubit(platform: deferred, folders: const [_folder]);
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_host(cubit: cubit));
+    await tester.pump();
+
+    expect(find.byKey(const Key('run-panel')), findsOneWidget);
+    expect(find.text('Loading run output…'), findsOneWidget);
+
+    final platform = _FakePlatform(configurations: const []);
+    addTearDown(platform.sessionManager.dispose);
+    deferred.bind(platform);
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Loading run output…'), findsNothing);
+    expect(
+      find.text('Run a configuration to see output here'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('new session focuses a Run page', (tester) async {
     final platform = _FakePlatform(configurations: [_processConfig()]);
     final cubit = RunCubit(platform: platform, folders: const [_folder]);

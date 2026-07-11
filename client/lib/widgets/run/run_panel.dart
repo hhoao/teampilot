@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/run_cubit.dart';
 import '../../models/run/run_session.dart';
 import '../../pages/workspace_shell/workspace_shell_tabs.dart';
+import '../../services/run/run_platform.dart';
 import '../../services/run/run_terminal_bridge.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_icon_button.dart';
@@ -24,7 +25,8 @@ class RunPanel extends StatefulWidget {
 
 class _RunPanelState extends State<RunPanel> {
   RunTerminalBridge? _ownedBridge;
-  late RunTerminalBridge _bridge;
+  RunTerminalBridge? _bridge;
+  bool _bridgeInitStarted = false;
   String? _activeSessionId;
   List<String> _seenSessionIds = const [];
 
@@ -32,13 +34,25 @@ class _RunPanelState extends State<RunPanel> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (widget.bridge != null) {
-      _bridge = widget.bridge!;
+      _bridge = widget.bridge;
       return;
     }
-    if (_ownedBridge != null) return;
-    final manager = context.read<RunCubit>().platform.sessionManager;
-    _ownedBridge = RunTerminalBridge(outputStream: manager.outputStream);
-    _bridge = _ownedBridge!;
+    if (_ownedBridge != null || _bridgeInitStarted) return;
+    _bridgeInitStarted = true;
+    unawaited(_bindOutputBridge());
+  }
+
+  Future<void> _bindOutputBridge() async {
+    final cubit = context.read<RunCubit>();
+    await whenRunPlatformReady(cubit.platform);
+    if (!mounted || _ownedBridge != null) return;
+
+    final manager = cubit.platform.sessionManager;
+    final bridge = RunTerminalBridge(outputStream: manager.outputStream);
+    setState(() {
+      _ownedBridge = bridge;
+      _bridge = bridge;
+    });
   }
 
   @override
@@ -110,10 +124,13 @@ class _RunPanelState extends State<RunPanel> {
 
     final cubit = context.read<RunCubit>();
     await cubit.dismissSession(session.id);
-    _bridge.clear(session.id);
+    _bridge?.clear(session.id);
   }
 
   Future<void> _clearExited() async {
+    final bridge = _bridge;
+    if (bridge == null) return;
+
     final cubit = context.read<RunCubit>();
     final exited = cubit.state.sessions
         .where(
@@ -125,7 +142,7 @@ class _RunPanelState extends State<RunPanel> {
         .toList();
     for (final id in exited) {
       await cubit.dismissSession(id);
-      _bridge.clear(id);
+      bridge.clear(id);
     }
   }
 
@@ -222,7 +239,17 @@ class _RunPanelState extends State<RunPanel> {
                 ),
               ),
               Expanded(
-                child: activeSession == null
+                child: _bridge == null
+                    ? ColoredBox(
+                        color: cs.surfaceContainerLowest,
+                        child: Center(
+                          child: Text(
+                            'Loading run output…',
+                            style: TextStyle(color: cs.onSurfaceVariant),
+                          ),
+                        ),
+                      )
+                    : activeSession == null
                     ? ColoredBox(
                         color: cs.surfaceContainerLowest,
                         child: Center(
@@ -235,7 +262,7 @@ class _RunPanelState extends State<RunPanel> {
                     : RunSessionPage(
                         key: Key('run-session-page-${activeSession.id}'),
                         sessionId: activeSession.id,
-                        bridge: _bridge,
+                        bridge: _bridge!,
                       ),
               ),
             ],

@@ -83,10 +83,13 @@ class WorkspaceRunRegistry {
 }
 
 /// Forwards to a real [RunPlatformApi] once [bind] is called.
-class _DeferredRunPlatform implements RunPlatformApi {
+class _DeferredRunPlatform implements RunPlatformApi, RunPlatformDeferred {
   RunPlatformApi? _inner;
   Object? _error;
   final Completer<void> _ready = Completer<void>();
+
+  @override
+  Future<void> get whenReady => _ready.future;
 
   void bind(RunPlatformApi platform) {
     _inner = platform;
