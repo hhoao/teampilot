@@ -25,6 +25,11 @@ final class AppTextStyles {
   TextStyle captionColored(Color color, {FontWeight? fontWeight}) =>
       caption.copyWith(color: color, fontWeight: fontWeight);
 
+  /// 11px semibold — badges, counters (replaces fontSize 9 literals).
+  TextStyle get badge => caption.copyWith(fontWeight: FontWeight.w600, height: 1.2);
+
+  TextStyle badgeColored(Color color) => badge.copyWith(color: color);
+
   /// 11px bold tracked — right-tool panel headers (file tree, git, members).
   TextStyle get toolPanelTitle =>
       caption.copyWith(fontWeight: FontWeight.w700, letterSpacing: 0.8);
@@ -64,6 +69,11 @@ final class AppTextStyles {
   TextStyle bodyColored(Color color, {FontWeight? fontWeight}) =>
       body.copyWith(color: color, fontWeight: fontWeight);
 
+  /// 14px — form field labels.
+  TextStyle get formLabel => _resolve(_t.labelLarge, height: 1.25);
+
+  TextStyle formLabelColored(Color color) => formLabel.copyWith(color: color);
+
   /// 14px semibold — row titles, primary list names.
   TextStyle get bodyStrong =>
       body.copyWith(fontWeight: FontWeight.w600, height: 1.25);
@@ -88,6 +98,12 @@ final class AppTextStyles {
 
   /// 16px — in-page subtitles.
   TextStyle get subtitle => _resolve(_t.titleMedium, height: 1.25);
+
+  /// 20px — page titles.
+  TextStyle get pageTitle => _resolve(_t.titleLarge, height: 1.25);
+
+  /// 24px — page headlines.
+  TextStyle get pageHeadline => _resolve(_t.headlineSmall, height: 1.25);
 
   /// 16px semibold — dialog titles ([AlertDialog] theme uses the same scale).
   TextStyle get dialogTitle => _resolve(
