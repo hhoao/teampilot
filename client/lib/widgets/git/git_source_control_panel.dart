@@ -207,8 +207,8 @@ class _RepoChip extends StatelessWidget {
           visualDensity: VisualDensity.compact,
           onSelected: (_) => onTap(),
           tooltip: root,
-          labelStyle: TextStyle(
-            color: selected ? cs.onSecondaryContainer : cs.onSurfaceVariant,
+          labelStyle: AppTextStyles.of(context).bodySmallColored(
+            selected ? cs.onSecondaryContainer : cs.onSurfaceVariant,
           ),
         ),
       ),

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/workspace_tools_cubit.dart';
 import '../../theme/app_icon_sizes.dart';
+import '../../theme/app_text_styles.dart';
 import '../hover_widget.dart';
 import 'tool_view.dart';
 
@@ -112,6 +113,7 @@ class _SwitcherButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
     final color = active ? cs.primary : cs.onSurfaceVariant;
     return Tooltip(
       message: view.label,
@@ -151,11 +153,7 @@ class _SwitcherButton extends StatelessWidget {
                     child: Text(
                       '${view.badgeCount}',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: cs.onError,
-                        fontSize: 9,
-                        height: 1.2,
-                      ),
+                      style: styles.badgeColored(cs.onError),
                     ),
                   ),
                 ),

@@ -54,6 +54,7 @@ class MembersPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
     final l10n = context.l10n;
     final registry = CliToolRegistryScope.maybeOf(context);
     return Container(
@@ -163,7 +164,7 @@ class MembersPanel extends StatelessWidget {
                         iconColor: titleColor,
                         subtitle: Text(
                           subtitle,
-                          style: TextStyle(color: subtitleColor),
+                          style: styles.bodyColored(subtitleColor),
                         ),
                         trailing: MemberPresenceIndicator(presence: presence),
                         onTap: () => onSelected(member.id),

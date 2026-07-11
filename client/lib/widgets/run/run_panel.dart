@@ -9,6 +9,7 @@ import '../../models/run/run_session.dart';
 import '../../pages/workspace_shell/workspace_shell_tabs.dart';
 import '../../services/run/run_platform.dart';
 import '../../services/run/run_terminal_bridge.dart';
+import '../../theme/app_text_styles.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_icon_button.dart';
 import 'run_session_page.dart';
@@ -150,6 +151,7 @@ class _RunPanelState extends State<RunPanel> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
     final l10n = context.l10n;
     return BlocConsumer<RunCubit, RunState>(
       listenWhen: (prev, next) => prev.sessions != next.sessions,
@@ -194,10 +196,7 @@ class _RunPanelState extends State<RunPanel> {
                                 alignment: Alignment.centerLeft,
                                 child: Text(
                                   l10n.runNoSessions,
-                                  style: TextStyle(
-                                    color: cs.onSurfaceVariant,
-                                    fontSize: 12,
-                                  ),
+                                  style: styles.mutedBodySmall,
                                 ),
                               ),
                             )
@@ -247,7 +246,7 @@ class _RunPanelState extends State<RunPanel> {
                         child: Center(
                           child: Text(
                             l10n.runLoadingOutput,
-                            style: TextStyle(color: cs.onSurfaceVariant),
+                            style: styles.mutedBody,
                           ),
                         ),
                       )
@@ -257,7 +256,7 @@ class _RunPanelState extends State<RunPanel> {
                         child: Center(
                           child: Text(
                             l10n.runEmptyOutputHint,
-                            style: TextStyle(color: cs.onSurfaceVariant),
+                            style: styles.mutedBody,
                           ),
                         ),
                       )

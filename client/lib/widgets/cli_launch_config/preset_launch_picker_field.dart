@@ -4,6 +4,7 @@ import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/cli_preset.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
+import '../../theme/app_text_styles.dart';
 import '../../pages/team_config/team_config_helpers.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/dropdown/app_dropdown_field.dart';
@@ -142,6 +143,7 @@ class _PresetDropdownOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
     final alpha = enabled ? 1.0 : 0.38;
     return Opacity(
       opacity: alpha,
@@ -149,13 +151,11 @@ class _PresetDropdownOption extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(title, style: TextStyle(color: cs.onSurface)),
+          Text(title, style: styles.bodyColored(cs.onSurface)),
           if (subtitle != null)
             Text(
               subtitle!,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              style: styles.mutedBodySmall,
             ),
         ],
       ),

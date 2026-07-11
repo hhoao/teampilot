@@ -29,20 +29,17 @@ List<double> computeToggleSegmentWidths({
   required List<String> labels,
   required double fontSize,
   required double iconSize,
+  required TextStyle textStyle,
   List<IconData?>? icons,
   double minSegmentWidth = 100,
-  TextStyle? textStyle,
 }) {
   final iconList = icons;
   final hasIcons = iconList != null && iconList.isNotEmpty;
-  final style = (textStyle ?? TextStyle(fontSize: fontSize)).copyWith(
-    fontSize: fontSize,
-  );
   return List.generate(labels.length, (i) {
     final label = labels[i];
     final hasIcon = hasIcons && i < iconList.length && iconList[i] != null;
     final painter = TextPainter(
-      text: TextSpan(text: label, style: style),
+      text: TextSpan(text: label, style: textStyle),
       textDirection: TextDirection.ltr,
       maxLines: 1,
     )..layout();
@@ -84,13 +81,12 @@ class AppToggleSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
     final textBase = cs.onSurface;
     final inactiveFg = textBase.withValues(alpha: 0.72);
     final n = totalSwitches;
     final resolvedMinWidth = minWidth ?? (n == 2 ? 112.0 : 100.0);
-    final fontSize =
-        Theme.of(context).textTheme.bodyMedium?.fontSize ??
-        AppTextStyles.of(context).body.fontSize!;
+    final fontSize = styles.body.fontSize!;
     final iconSize = context.appIconSizes.md;
     final resolvedCustomWidths =
         customWidths ??
@@ -100,7 +96,7 @@ class AppToggleSwitch extends StatelessWidget {
           iconSize: iconSize,
           icons: icons,
           minSegmentWidth: resolvedMinWidth,
-          textStyle: Theme.of(context).textTheme.bodyMedium,
+          textStyle: styles.body,
         );
 
     return ToggleSwitch(

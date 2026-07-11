@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/board_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../theme/app_text_styles.dart';
 import '../../models/board_column.dart';
 import '../../models/team_config.dart';
 import '../../services/team_bus/tasks/team_task.dart';
@@ -43,6 +44,7 @@ class BoardPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
     final l10n = context.l10n;
     final state = context.watch<BoardCubit>().state;
 
@@ -57,7 +59,7 @@ class BoardPanel extends StatelessWidget {
               color: cs.onSurfaceVariant,
             ),
             const SizedBox(height: 8),
-            Text(l10n.boardEmpty, style: TextStyle(color: cs.onSurfaceVariant)),
+            Text(l10n.boardEmpty, style: styles.mutedBody),
           ],
         ),
       );

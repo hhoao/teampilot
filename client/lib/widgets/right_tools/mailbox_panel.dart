@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/mailbox_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../theme/app_text_styles.dart';
 import '../../models/team_config.dart';
 import '../../services/team_bus/bus_feed_entry.dart';
 import '../../services/team_bus/team_bus.dart';
@@ -35,13 +36,14 @@ class MailboxPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
     final l10n = context.l10n;
     final entries = context.watch<MailboxCubit>().state.entries;
     if (entries.isEmpty) {
       return Center(
         child: Text(
           l10n.mailboxEmpty,
-          style: TextStyle(color: cs.onSurfaceVariant),
+          style: styles.mutedBody,
         ),
       );
     }

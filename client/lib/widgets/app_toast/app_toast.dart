@@ -3,6 +3,7 @@ import 'package:toastification/toastification.dart';
 
 import '../../router/app_router.dart';
 import '../../services/notification/notification_recorder.dart';
+import '../../theme/app_text_styles.dart';
 import '../../theme/app_toast_theme.dart';
 
 /// Optional action button on a toast.
@@ -89,7 +90,6 @@ abstract final class AppToast {
 
     final theme = Theme.of(context);
     final style = appToastStyleFor(theme, variant);
-    final textTheme = theme.textTheme;
     final effectiveDuration =
         duration ?? defaultAppToastDuration(variant, hasAction: action != null);
 
@@ -116,8 +116,8 @@ abstract final class AppToast {
       ),
       closeButton: const ToastCloseButton(showType: CloseButtonShowType.always),
       title: _buildTitle(
+        context: context,
         message: message,
-        textTheme: textTheme,
         foregroundColor: style.foregroundColor,
         accentColor: style.accentColor,
         action: action,
@@ -138,16 +138,14 @@ abstract final class AppToast {
   }
 
   static Widget _buildTitle({
+    required BuildContext context,
     required String message,
-    required TextTheme textTheme,
     required Color foregroundColor,
     required Color accentColor,
     AppToastAction? action,
   }) {
-    final messageStyle = (textTheme.bodyMedium ?? const TextStyle()).copyWith(
-      color: foregroundColor,
-      height: 1.35,
-    );
+    final styles = AppTextStyles.of(context);
+    final messageStyle = styles.bodyColored(foregroundColor);
 
     if (action == null) {
       return Text(message, style: messageStyle, maxLines: 3);
@@ -170,7 +168,7 @@ abstract final class AppToast {
           ),
           child: Text(
             action.label,
-            style: messageStyle.copyWith(fontWeight: FontWeight.w600),
+            style: styles.bodyStrongColored(foregroundColor),
           ),
         ),
       ],

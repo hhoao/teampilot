@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/notification_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_icon_sizes.dart';
+import '../../theme/app_text_styles.dart';
 import '../menu/sidebar_action_menu.dart';
 import 'notification_list_tile.dart';
 
@@ -75,6 +76,7 @@ class _BellGlyphState extends State<_BellGlyph> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
     final hasUnread = widget.unread > 0;
     final badgeLabel = widget.unread > 9 ? '9+' : '${widget.unread}';
 
@@ -120,12 +122,7 @@ class _BellGlyphState extends State<_BellGlyph> {
                     alignment: Alignment.center,
                     child: Text(
                       badgeLabel,
-                      style: TextStyle(
-                        color: cs.onError,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600,
-                        height: 1,
-                      ),
+                      style: styles.badgeColored(cs.onError).copyWith(height: 1),
                     ),
                   ),
                 ),
@@ -145,6 +142,7 @@ class _NotificationDropdownPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
     final cubit = context.read<NotificationCubit>();
     final items = context.select((NotificationCubit c) => c.state.items);
 
@@ -179,7 +177,7 @@ class _NotificationDropdownPanel extends StatelessWidget {
               child: Text(
                 l10n.notificationEmpty,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: cs.onSurfaceVariant),
+                style: styles.mutedBody,
               ),
             )
           else

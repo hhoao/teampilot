@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/run_cubit.dart';
+import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 import 'run/run_panel.dart';
 import 'workspace_terminal_panel.dart';
@@ -119,6 +120,7 @@ class _DockSegment extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
     return Material(
       color: selected
           ? cs.primaryContainer.withValues(alpha: 0.55)
@@ -131,10 +133,9 @@ class _DockSegment extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           child: Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
+            style: styles.bodySmallColored(
+              selected ? cs.primary : cs.workspaceMutedText,
               fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-              color: selected ? cs.primary : cs.workspaceMutedText,
             ),
           ),
         ),
