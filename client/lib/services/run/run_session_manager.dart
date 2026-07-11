@@ -138,7 +138,8 @@ class RunSessionManager {
   bool hasRunning(String selectionKey) => _sessions.values.any(
     (session) =>
         session.selectionKey == selectionKey &&
-        session.status == RunSessionStatus.running,
+        (session.status == RunSessionStatus.running ||
+            session.status == RunSessionStatus.starting),
   );
 
   Future<RunSession> start(
@@ -161,8 +162,19 @@ class RunSessionManager {
         owned: owned,
         onOutput: (_) {},
       );
+      final current = _sessions[sessionId];
+      if (current == null || current.status != RunSessionStatus.starting) {
+        await handle.stop();
+        return current ??
+            RunSession(
+              id: sessionId,
+              owned: owned,
+              status: RunSessionStatus.exited,
+              compoundId: compoundId,
+            );
+      }
       _activeRuns[sessionId] = _ActiveRun(stop: handle.stop);
-      _upsert(_sessions[sessionId]!.copyWith(status: RunSessionStatus.running));
+      _upsert(current.copyWith(status: RunSessionStatus.running));
       unawaited(_watchExit(sessionId: sessionId, handle: handle));
       return _sessions[sessionId]!;
     } catch (error) {
@@ -210,18 +222,27 @@ class RunSessionManager {
     final startedIds = <String>[];
     final errors = <String>[];
 
-    for (final configId in compound.configurationIds) {
-      final owned = byId[configId];
-      if (owned == null) {
-        errors.add('missing configuration: $configId');
-        continue;
-      }
+    final results = await Future.wait(
+      compound.configurationIds.map((configId) async {
+        final owned = byId[configId];
+        if (owned == null) {
+          return (id: null as String?, error: 'missing configuration: $configId');
+        }
+        try {
+          final session = await start(owned, compoundId: compound.id);
+          return (id: session.id, error: null as String?);
+        } catch (error) {
+          return (id: null as String?, error: error.toString());
+        }
+      }),
+    );
 
-      try {
-        final session = await start(owned, compoundId: compound.id);
-        startedIds.add(session.id);
-      } catch (error) {
-        errors.add(error.toString());
+    for (final result in results) {
+      if (result.id != null) {
+        startedIds.add(result.id!);
+      }
+      if (result.error != null) {
+        errors.add(result.error!);
       }
     }
 
