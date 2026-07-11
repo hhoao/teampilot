@@ -23,7 +23,7 @@ Architecture: **select ≠ connect** as the interaction rule; **`SessionHistoryC
 ## Non-goals
 
 - Live-tailing history UI while the PTY is running
-- Permission / project / worktree / expert / preset chips on review compose (permission deferred)
+- Project / worktree / expert / Team↔Simple chips on review compose (session-fixed). Permission and same-CLI preset/model continue chrome: see [Session History Continue Chrome](2026-07-11-session-history-continue-chrome-design.md)
 - TeamPilot-owned message DB replacing CLI transcripts
 - New workbench tab kind for history (stays inside session body)
 - Vendoring Python/TS parser packages into Flutter (port schemas to Dart instead)
@@ -82,15 +82,18 @@ SessionWorkbench (review)
 │  (Markdown assistant turns) │
 ├─────────────────────────────┤
 │  Slim compose card          │
-│  [input + attach/enhance/   │
-│   voice / send]             │
-│  Removed: project, worktree,│
-│  team/simple, expert,       │
-│  preset, permission, Start  │
+│  [continue chrome + input + │
+│   attach/enhance/voice/send]│
+│  Continue: identity (ro),   │
+│  same-CLI model/preset,     │
+│  permission [, team settings]│
+│  Absent: project, worktree, │
+│  team/simple, expert edit,  │
+│  CLI switch, Start button   │
 └─────────────────────────────┘
 ```
 
-Reuse landing compose primitives (`ComposeTriggerField`, attach/enhance/voice) behind a review-specific shell — do not mount full `WorkspaceChatLanding`.
+Reuse landing compose primitives (`ComposeTriggerField`, attach/enhance/voice) behind a review-specific shell — do not mount full `WorkspaceChatLanding`. Permission / same-CLI model continue chrome: [Session History Continue Chrome](2026-07-11-session-history-continue-chrome-design.md).
 
 ## Data model and `SessionHistoryCapability`
 
