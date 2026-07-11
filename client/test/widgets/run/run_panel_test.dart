@@ -173,6 +173,12 @@ class _FakePlatform implements RunPlatformApi {
   }) async {}
 
   @override
+  Future<void> deleteConfiguration({
+    required WorkspaceFolder folder,
+    required String id,
+  }) async {}
+
+  @override
   String launchJsonPath(WorkspaceFolder folder) =>
       LaunchConfigStore.launchConfigPath(folder);
 
@@ -190,6 +196,12 @@ class _FakePlatform implements RunPlatformApi {
 
   @override
   String? unavailableReason(String type, {required String targetId}) => null;
+
+  @override
+  Map<String, Object?>? configurationSchema(String type) => null;
+
+  @override
+  List<String> kindsFor(String type) => const ['run'];
 }
 
 /// Mirrors [_DeferredRunPlatform]: sessionManager throws until [bind].
@@ -286,6 +298,12 @@ class _DeferredFakePlatform implements RunPlatformApi, RunPlatformDeferred {
   }) async {}
 
   @override
+  Future<void> deleteConfiguration({
+    required WorkspaceFolder folder,
+    required String id,
+  }) async {}
+
+  @override
   String launchJsonPath(WorkspaceFolder folder) =>
       LaunchConfigStore.launchConfigPath(folder);
 
@@ -303,6 +321,13 @@ class _DeferredFakePlatform implements RunPlatformApi, RunPlatformDeferred {
 
   @override
   String? unavailableReason(String type, {required String targetId}) => null;
+
+  @override
+  Map<String, Object?>? configurationSchema(String type) => null;
+
+  @override
+  List<String> kindsFor(String type) =>
+      _inner?.kindsFor(type) ?? const ['run'];
 }
 
 Widget _host({required RunCubit cubit}) {

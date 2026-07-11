@@ -17,6 +17,7 @@ import 'package:teampilot/services/run/run_session_manager.dart';
 import 'package:teampilot/theme/app_control_theme.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 import 'package:teampilot/widgets/menu/sidebar_action_menu.dart';
+import 'package:teampilot/widgets/run/run_config_editor_dialog.dart';
 import 'package:teampilot/widgets/run/run_toolbar.dart';
 
 const _folder = WorkspaceFolder(path: '/proj');
@@ -68,7 +69,11 @@ class _RecordingPlatform implements RunPlatformApi {
     this.actions = const [],
     this.options = const [],
     this.recommendations = const [],
-  }) : sessionManager = RunSessionManager(
+    List<String> Function(OwnedLaunchConfiguration owned)? validate,
+    Map<String, List<String>>? kindsByType,
+  }) : _validate = validate ?? ((_) => const []),
+       _kindsByType = kindsByType ?? const {},
+       sessionManager = RunSessionManager(
          executor: _FakeProcessLauncher(),
          adapters: _FakeAdapterLauncher(),
        );
@@ -78,13 +83,17 @@ class _RecordingPlatform implements RunPlatformApi {
   final List<LaunchAdapterConfigurationEntry> actions;
   final List<LaunchOption> options;
   final List<OwnedLaunchConfiguration> recommendations;
+  final List<String> Function(OwnedLaunchConfiguration owned) _validate;
+  final Map<String, List<String>> _kindsByType;
 
   @override
   final RunSessionManager sessionManager;
 
   var runSelectedCalls = 0;
   var configureActionCalls = 0;
+  var deleteConfigurationCalls = 0;
   String? lastConfigureActionId;
+  String? lastDeletedId;
 
   final _actionsController =
       StreamController<List<LaunchAdapterConfigurationEntry>>.broadcast();
@@ -125,7 +134,7 @@ class _RecordingPlatform implements RunPlatformApi {
 
   @override
   List<String> validateConfiguration(OwnedLaunchConfiguration owned) =>
-      const [];
+      _validate(owned);
 
   @override
   Future<RunSession> start(OwnedLaunchConfiguration owned) async {
@@ -175,6 +184,15 @@ class _RecordingPlatform implements RunPlatformApi {
   }) async {}
 
   @override
+  Future<void> deleteConfiguration({
+    required WorkspaceFolder folder,
+    required String id,
+  }) async {
+    deleteConfigurationCalls++;
+    lastDeletedId = id;
+  }
+
+  @override
   String launchJsonPath(WorkspaceFolder folder) =>
       LaunchConfigStore.launchConfigPath(folder);
 
@@ -192,18 +210,46 @@ class _RecordingPlatform implements RunPlatformApi {
 
   @override
   String? unavailableReason(String type, {required String targetId}) => null;
+
+  @override
+  Map<String, Object?>? configurationSchema(String type) => null;
+
+  @override
+  List<String> kindsFor(String type) =>
+      List<String>.from(_kindsByType[type] ?? const ['run']);
 }
 
 class _RecordingCubit extends RunCubit {
   _RecordingCubit({required super.platform, required super.folders});
 
   final setOptionCalls = <MapEntry<String, Object?>>[];
+  var acceptRecommendationCalls = 0;
+  var deleteConfigurationCalls = 0;
 
   @override
   void setOption(String id, Object? value) {
     setOptionCalls.add(MapEntry(id, value));
     super.setOption(id, value);
   }
+
+  @override
+  Future<void> acceptRecommendation(
+    OwnedLaunchConfiguration recommendation,
+  ) async {
+    acceptRecommendationCalls++;
+    await super.acceptRecommendation(recommendation);
+  }
+
+  @override
+  Future<void> deleteConfiguration(OwnedLaunchConfiguration owned) async {
+    deleteConfigurationCalls++;
+    await super.deleteConfiguration(owned);
+  }
+}
+
+Future<void> _openConfigDropdown(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('run-config-dropdown')));
+  await tester.pumpAndSettle();
 }
 
 Widget _host({required RunCubit cubit, RunActionPicker? pickActionResult}) {
@@ -221,7 +267,6 @@ Widget _host({required RunCubit cubit, RunActionPicker? pickActionResult}) {
         child: RunToolbar(
           workspaceId: 'ws-1',
           pickActionResult: pickActionResult,
-          openLaunchJson: (_) async {},
         ),
       ),
     ),
@@ -250,13 +295,10 @@ void main() {
     platform.emitActions(platform.actions);
     await tester.pump();
 
-    final buttonFinder = find.byKey(const Key('run-config-dropdown'));
-    expect(buttonFinder, findsOneWidget);
-    final button = tester.widget<SidebarActionMenuButton>(buttonFinder);
-    expect(
-      button.specs.where((s) => !s.isDivider),
-      hasLength(2),
-    );
+    expect(find.byKey(const Key('run-config-dropdown')), findsOneWidget);
+    await _openConfigDropdown(tester);
+    expect(find.text('API'), findsWidgets);
+    expect(find.text('Select entry…'), findsOneWidget);
   });
 
   testWidgets('dropdown lists recommendations as suggested entries', (
@@ -283,11 +325,179 @@ void main() {
     await tester.pumpWidget(_host(cubit: cubit));
     await tester.pump();
 
-    final buttonFinder = find.byKey(const Key('run-config-dropdown'));
-    final button = tester.widget<SidebarActionMenuButton>(buttonFinder);
-    final items = button.specs.where((s) => !s.isDivider).toList();
-    expect(items, hasLength(2));
-    expect(items.last.label, 'Flutter (Suggested)');
+    await _openConfigDropdown(tester);
+    expect(find.text('Flutter (Suggested)'), findsOneWidget);
+  });
+
+  testWidgets('config menu includes add footer', (tester) async {
+    final platform = _RecordingPlatform(
+      configurations: [_processConfig()],
+    );
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    addTearDown(cubit.close);
+    addTearDown(platform._actionsController.close);
+
+    await cubit.load();
+    await tester.pumpWidget(_host(cubit: cubit));
+    await tester.pump();
+
+    await _openConfigDropdown(tester);
+    expect(find.byKey(const Key('run-config-add')), findsOneWidget);
+    expect(find.text('Add configuration…'), findsOneWidget);
+  });
+
+  testWidgets('edit opens editor dialog', (tester) async {
+    final config = _processConfig();
+    final platform = _RecordingPlatform(configurations: [config]);
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    addTearDown(cubit.close);
+    addTearDown(platform._actionsController.close);
+
+    await cubit.load();
+    await tester.pumpWidget(_host(cubit: cubit));
+    await tester.pump();
+
+    await _openConfigDropdown(tester);
+    await tester.tap(
+      find.byKey(Key('run-config-edit-${config.selectionKey}')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit Configurations'), findsOneWidget);
+  });
+
+  testWidgets('delete confirms and calls cubit.deleteConfiguration', (
+    tester,
+  ) async {
+    final config = _processConfig();
+    final platform = _RecordingPlatform(configurations: [config]);
+    final cubit = _RecordingCubit(
+      platform: platform,
+      folders: const [_folder],
+    );
+    addTearDown(cubit.close);
+    addTearDown(platform._actionsController.close);
+
+    await cubit.load();
+    await tester.pumpWidget(_host(cubit: cubit));
+    await tester.pump();
+
+    await _openConfigDropdown(tester);
+    await tester.tap(
+      find.byKey(Key('run-config-delete-${config.selectionKey}')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delete configuration "API"?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.pumpAndSettle();
+
+    expect(cubit.deleteConfigurationCalls, 1);
+    expect(platform.deleteConfigurationCalls, 1);
+    expect(platform.lastDeletedId, 'api');
+  });
+
+  testWidgets('edit and delete taps do not change selection', (tester) async {
+    final api = _processConfig(id: 'api', name: 'API');
+    final web = _processConfig(id: 'web', name: 'Web');
+    final platform = _RecordingPlatform(configurations: [api, web]);
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    addTearDown(cubit.close);
+    addTearDown(platform._actionsController.close);
+
+    await cubit.load();
+    await cubit.select(api.selectionKey);
+    await tester.pumpWidget(_host(cubit: cubit));
+    await tester.pump();
+
+    await _openConfigDropdown(tester);
+    await tester.tap(find.byKey(Key('run-config-edit-${web.selectionKey}')));
+    await tester.pumpAndSettle();
+    expect(cubit.state.selectedKey, api.selectionKey);
+
+    await tester.tap(find.byKey(const Key('run-config-editor-cancel')));
+    await tester.pumpAndSettle();
+
+    await _openConfigDropdown(tester);
+    await tester.tap(find.byKey(Key('run-config-delete-${web.selectionKey}')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(cubit.state.selectedKey, api.selectionKey);
+  });
+
+  testWidgets('recommendation edit opens editor without acceptRecommendation', (
+    tester,
+  ) async {
+    final recommendation = OwnedLaunchConfiguration(
+      owner: _folder,
+      configuration: const LaunchConfiguration(
+        id: 'flutter',
+        name: 'Flutter',
+        type: 'flutter',
+        extras: {'device': 'linux'},
+      ),
+    );
+    final platform = _RecordingPlatform(
+      configurations: [_processConfig()],
+      recommendations: [recommendation],
+    );
+    final cubit = _RecordingCubit(
+      platform: platform,
+      folders: const [_folder],
+    );
+    addTearDown(cubit.close);
+    addTearDown(platform._actionsController.close);
+
+    await cubit.load();
+    await tester.pumpWidget(_host(cubit: cubit));
+    await tester.pump();
+
+    await _openConfigDropdown(tester);
+    expect(
+      find.byKey(Key('run-config-delete-${recommendation.selectionKey}')),
+      findsNothing,
+    );
+    await tester.tap(
+      find.byKey(Key('run-config-edit-${recommendation.selectionKey}')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit Configurations'), findsOneWidget);
+    expect(cubit.acceptRecommendationCalls, 0);
+  });
+
+  testWidgets('compound rows have no edit or delete', (tester) async {
+    final compound = OwnedLaunchCompound(
+      owner: _folder,
+      compound: const LaunchCompound(
+        id: 'all',
+        name: 'All services',
+        configurationIds: ['api'],
+      ),
+    );
+    final platform = _RecordingPlatform(
+      configurations: [_processConfig()],
+      compounds: [compound],
+    );
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    addTearDown(cubit.close);
+    addTearDown(platform._actionsController.close);
+
+    await cubit.load();
+    await tester.pumpWidget(_host(cubit: cubit));
+    await tester.pump();
+
+    await _openConfigDropdown(tester);
+    expect(
+      find.byKey(Key('run-config-edit-${compound.selectionKey}')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(Key('run-config-delete-${compound.selectionKey}')),
+      findsNothing,
+    );
   });
 
   testWidgets('choosing isAction calls configureAction via picker', (
@@ -318,10 +528,8 @@ void main() {
     platform.emitActions(platform.actions);
     await tester.pump();
 
-    final buttonFinder = find.byKey(const Key('run-config-dropdown'));
-    final button = tester.widget<SidebarActionMenuButton>(buttonFinder);
-    final actionSpec = button.specs.where((s) => !s.isDivider).last;
-    button.onSelected(actionSpec.value);
+    await _openConfigDropdown(tester);
+    await tester.tap(find.text('Select entry…'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
@@ -329,7 +537,26 @@ void main() {
     expect(platform.lastConfigureActionId, 'pick-entry');
   });
 
-  testWidgets('choice option can be set via cubit', (tester) async {
+  testWidgets('does not show build debug or more by default', (tester) async {
+    final platform = _RecordingPlatform(
+      configurations: [_processConfig()],
+    );
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    addTearDown(cubit.close);
+    addTearDown(platform._actionsController.close);
+
+    await cubit.load();
+    await cubit.select(platform.configurations.single.selectionKey);
+    await tester.pumpWidget(_host(cubit: cubit));
+    await tester.pump();
+
+    expect(find.byKey(const Key('run-toolbar-build')), findsNothing);
+    expect(find.byKey(const Key('run-toolbar-debug')), findsNothing);
+    expect(find.byKey(const Key('run-toolbar-more')), findsNothing);
+    expect(find.byKey(const Key('run-toolbar-run')), findsOneWidget);
+  });
+
+  testWidgets('choice option appears as compact selector', (tester) async {
     final platform = _RecordingPlatform(
       configurations: [
         OwnedLaunchConfiguration(
@@ -366,12 +593,18 @@ void main() {
     await tester.pumpWidget(_host(cubit: cubit));
     await tester.pump();
 
-    cubit.setOption('device', 'chrome');
+    final optionFinder = find.byKey(const Key('run-toolbar-option-device'));
+    expect(optionFinder, findsOneWidget);
+    expect(find.byKey(const Key('run-toolbar-more')), findsNothing);
+
+    final button = tester.widget<SidebarActionMenuButton>(optionFinder);
+    final chrome = button.specs.where((s) => !s.isDivider).last;
+    expect(chrome.label, 'Chrome');
+    button.onSelected(chrome.value);
     await tester.pump();
 
     expect(cubit.setOptionCalls.last.key, 'device');
     expect(cubit.setOptionCalls.last.value, 'chrome');
-    expect(find.byKey(const Key('run-toolbar-more')), findsOneWidget);
   });
 
   testWidgets('Run button calls runSelected', (tester) async {
@@ -393,6 +626,75 @@ void main() {
 
     expect(platform.runSelectedCalls, 1);
     expect(cubit.state.sessions, isNotEmpty);
+  });
+
+  testWidgets(
+    'schema validation failure dialog offers Edit configuration',
+    (tester) async {
+      final invalid = OwnedLaunchConfiguration(
+        owner: _folder,
+        configuration: const LaunchConfiguration(
+          id: 'bad',
+          name: 'Bad',
+          type: 'process',
+          command: '',
+        ),
+      );
+      final platform = _RecordingPlatform(
+        configurations: [invalid],
+        validate: (_) => const ['command is required'],
+      );
+      final cubit = RunCubit(platform: platform, folders: const [_folder]);
+      addTearDown(cubit.close);
+      addTearDown(platform._actionsController.close);
+
+      await cubit.load();
+      await cubit.select(invalid.selectionKey);
+      await tester.pumpWidget(_host(cubit: cubit));
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('run-toolbar-run')));
+      await tester.pumpAndSettle();
+
+      expect(platform.runSelectedCalls, 0);
+      expect(find.text('command is required'), findsOneWidget);
+      expect(find.text('Edit Configurations'), findsWidgets);
+      expect(find.textContaining('launch.json'), findsNothing);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Edit Configurations'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RunConfigEditorDialog), findsOneWidget);
+    },
+  );
+
+  testWidgets('debug kind shows debug glyph via kindsFor', (tester) async {
+    final platform = _RecordingPlatform(
+      configurations: [
+        OwnedLaunchConfiguration(
+          owner: _folder,
+          configuration: const LaunchConfiguration(
+            id: 'app',
+            name: 'App',
+            type: 'flutter',
+          ),
+        ),
+      ],
+      kindsByType: const {
+        'flutter': ['run', 'debug'],
+      },
+    );
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    addTearDown(cubit.close);
+    addTearDown(platform._actionsController.close);
+
+    await cubit.load();
+    await cubit.select(platform.configurations.single.selectionKey);
+    await tester.pumpWidget(_host(cubit: cubit));
+    await tester.pump();
+
+    expect(find.byKey(const Key('run-toolbar-debug')), findsOneWidget);
+    expect(find.byKey(const Key('run-toolbar-build')), findsNothing);
   });
 
   testWidgets('dropdown lists compounds and Run starts compound', (
@@ -422,13 +724,11 @@ void main() {
     await tester.pumpWidget(_host(cubit: cubit));
     await tester.pump();
 
-    final buttonFinder = find.byKey(const Key('run-config-dropdown'));
-    final button = tester.widget<SidebarActionMenuButton>(buttonFinder);
-    expect(
-      button.specs.where((s) => !s.isDivider),
-      hasLength(3),
-    );
-    expect(find.text('All services (compound)'), findsOneWidget);
+    await _openConfigDropdown(tester);
+    expect(find.text('All services (compound)'), findsWidgets);
+    // Close menu before tapping Run.
+    await tester.tapAt(const Offset(1, 1));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('run-toolbar-run')));
     await tester.pump();

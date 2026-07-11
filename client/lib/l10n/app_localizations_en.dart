@@ -40,6 +40,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get save => 'Save';
 
   @override
+  String get ok => 'OK';
+
+  @override
   String get layoutPageSubtitle =>
       'Structure controls are global and apply across teams.';
 
@@ -5624,6 +5627,45 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get runErrorSshSpawnerMissing =>
       'SSH process execution is not configured';
+
+  @override
+  String get runEditConfigurations => 'Edit Configurations';
+
+  @override
+  String get runAddConfiguration => 'Add configuration…';
+
+  @override
+  String get runDeleteConfiguration => 'Delete';
+
+  @override
+  String runDeleteConfigurationConfirm(String name) {
+    return 'Delete configuration \"$name\"?';
+  }
+
+  @override
+  String get runStopAndDelete => 'Stop and delete';
+
+  @override
+  String get runApply => 'Apply';
+
+  @override
+  String get runDiscard => 'Discard';
+
+  @override
+  String get runDiscardChangesTitle => 'Discard changes?';
+
+  @override
+  String get runDiscardChangesMessage =>
+      'You have unsaved changes to this configuration. Apply them, discard them, or cancel?';
+
+  @override
+  String get runSelectFolder => 'Select folder';
+
+  @override
+  String get runConfigurationName => 'Name';
+
+  @override
+  String get runConfigurationType => 'Type';
 
   @override
   String get shortcutsRunSelected => 'Run Selected Configuration';

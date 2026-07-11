@@ -158,6 +158,12 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get save;
 
+  /// No description provided for @ok.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get ok;
+
   /// No description provided for @layoutPageSubtitle.
   ///
   /// In en, this message translates to:
@@ -10121,6 +10127,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'SSH process execution is not configured'**
   String get runErrorSshSpawnerMissing;
+
+  /// No description provided for @runEditConfigurations.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Configurations'**
+  String get runEditConfigurations;
+
+  /// No description provided for @runAddConfiguration.
+  ///
+  /// In en, this message translates to:
+  /// **'Add configuration…'**
+  String get runAddConfiguration;
+
+  /// No description provided for @runDeleteConfiguration.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get runDeleteConfiguration;
+
+  /// No description provided for @runDeleteConfigurationConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete configuration \"{name}\"?'**
+  String runDeleteConfigurationConfirm(String name);
+
+  /// No description provided for @runStopAndDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop and delete'**
+  String get runStopAndDelete;
+
+  /// No description provided for @runApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get runApply;
+
+  /// No description provided for @runDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get runDiscard;
+
+  /// No description provided for @runDiscardChangesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes?'**
+  String get runDiscardChangesTitle;
+
+  /// No description provided for @runDiscardChangesMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You have unsaved changes to this configuration. Apply them, discard them, or cancel?'**
+  String get runDiscardChangesMessage;
+
+  /// No description provided for @runSelectFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Select folder'**
+  String get runSelectFolder;
+
+  /// No description provided for @runConfigurationName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get runConfigurationName;
+
+  /// No description provided for @runConfigurationType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get runConfigurationType;
 
   /// No description provided for @shortcutsRunSelected.
   ///

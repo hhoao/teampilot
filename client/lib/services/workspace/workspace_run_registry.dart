@@ -203,6 +203,15 @@ class _DeferredRunPlatform implements RunPlatformApi, RunPlatformDeferred {
   );
 
   @override
+  Future<void> deleteConfiguration({
+    required WorkspaceFolder folder,
+    required String id,
+  }) async => (await _awaitInner()).deleteConfiguration(
+    folder: folder,
+    id: id,
+  );
+
+  @override
   String launchJsonPath(WorkspaceFolder folder) {
     final inner = _inner;
     if (inner != null) return inner.launchJsonPath(folder);
@@ -229,4 +238,12 @@ class _DeferredRunPlatform implements RunPlatformApi, RunPlatformDeferred {
   @override
   String? unavailableReason(String type, {required String targetId}) =>
       _inner?.unavailableReason(type, targetId: targetId);
+
+  @override
+  Map<String, Object?>? configurationSchema(String type) =>
+      _inner?.configurationSchema(type);
+
+  @override
+  List<String> kindsFor(String type) =>
+      _inner?.kindsFor(type) ?? const ['run'];
 }

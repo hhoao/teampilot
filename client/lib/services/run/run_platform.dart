@@ -74,6 +74,11 @@ abstract class RunPlatformApi {
     required LaunchConfiguration configuration,
   });
 
+  Future<void> deleteConfiguration({
+    required WorkspaceFolder folder,
+    required String id,
+  });
+
   String launchJsonPath(WorkspaceFolder folder);
 
   Future<void> rebuildLaunchTypes();
@@ -88,6 +93,14 @@ abstract class RunPlatformApi {
 
   /// Human-readable reason when [isTypeAvailable] is false; null when available.
   String? unavailableReason(String type, {required String targetId});
+
+  /// JSON-schema map for [type], or null when the type is unknown.
+  Map<String, Object?>? configurationSchema(String type);
+
+  /// Capability kinds for [type] (e.g. `run`, `debug`, `build`).
+  ///
+  /// Unknown types default to `['run']` so the toolbar stays Run-only.
+  List<String> kindsFor(String type);
 }
 
 /// Facade wiring store, registry, session manager, adapter client, registrar.
@@ -252,6 +265,14 @@ class RunPlatform implements RunPlatformApi {
   }
 
   @override
+  Future<void> deleteConfiguration({
+    required WorkspaceFolder folder,
+    required String id,
+  }) {
+    return store.deleteConfiguration(folder: folder, id: id);
+  }
+
+  @override
   String launchJsonPath(WorkspaceFolder folder) =>
       LaunchConfigStore.launchConfigPath(folder);
 
@@ -281,6 +302,23 @@ class RunPlatform implements RunPlatformApi {
       type: type,
       targetId: targetId,
     );
+  }
+
+  @override
+  Map<String, Object?>? configurationSchema(String type) {
+    if (type == ProcessLaunchSchema.typeName) {
+      return Map<String, Object?>.from(ProcessLaunchSchema.configurationSchema);
+    }
+    final contribution = registry.get(type);
+    if (contribution == null) return null;
+    return Map<String, Object?>.from(contribution.configurationSchema);
+  }
+
+  @override
+  List<String> kindsFor(String type) {
+    final contribution = registry.get(type);
+    if (contribution == null) return const ['run'];
+    return List<String>.from(contribution.kinds);
   }
 }
 

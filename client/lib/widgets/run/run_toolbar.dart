@@ -5,33 +5,21 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/run_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/run/launch_configuration.dart';
-import '../../models/workspace.dart';
-import '../../models/workspace_folder.dart';
 import '../../services/run/launch_adapter_protocol.dart';
-import '../../services/run/launch_config_store.dart';
-import '../../services/run/launch_type_unavailable.dart';
-import '../../services/workbench/workbench_editor_opener.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_icon_button.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
+import 'run_config_editor_dialog.dart';
+import 'run_toolbar_config_dropdown.dart';
 
-/// Host file-pick result for an `isAction` dropdown entry.
-typedef RunActionPicker =
-    Future<Map<String, Object?>?> Function(
-      LaunchAdapterConfigurationEntry action,
-    );
+export 'run_toolbar_config_dropdown.dart' show RunActionPicker;
 
-/// Opens a `launch.json` path in the editor (or creates it).
-typedef RunOpenLaunchJson = Future<void> Function(String path);
-
-/// IDEA-style title-bar Run chrome: Build · config · Run · Debug · More.
+/// IDEA-style title-bar Run chrome: config · options · Run · kinds-gated Debug/Build.
 class RunToolbar extends StatelessWidget {
   const RunToolbar({
     required this.workspaceId,
     this.showFolderLabels = false,
     this.pickActionResult,
-    this.openLaunchJson,
     super.key,
   });
 
@@ -41,9 +29,6 @@ class RunToolbar extends StatelessWidget {
   /// Host UI for `isAction` items. When null, action selection is a no-op.
   final RunActionPicker? pickActionResult;
 
-  /// Injected for tests; defaults to [WorkbenchEditorOpener.openFile].
-  final RunOpenLaunchJson? openLaunchJson;
-
   /// IntelliJ-like run/debug accent (works on light and dark chrome).
   static const Color _actionGreen = Color(0xFF59A869);
 
@@ -51,23 +36,32 @@ class RunToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<RunCubit, RunState>(
       builder: (context, state) {
+        final cubit = context.read<RunCubit>();
+        final kinds = _kindsForSelection(cubit, state);
+        final choiceOptions = state.options
+            .where(
+              (o) =>
+                  o.type == LaunchOptionType.choice && o.choices.isNotEmpty,
+            )
+            .toList();
+
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const _BuildGlyph(),
-            _ConfigDropdown(
+            RunToolbarConfigDropdown(
               state: state,
               showFolderLabels: showFolderLabels,
+              workspaceId: workspaceId,
               pickActionResult: pickActionResult,
             ),
+            for (final option in choiceOptions) ...[
+              const SizedBox(width: 2),
+              _ChoiceOptionSelector(option: option, state: state),
+            ],
             const SizedBox(width: 2),
-            _RunOrStopGlyph(state: state),
-            const _DebugGlyph(),
-            _MoreMenu(
-              workspaceId: workspaceId,
-              state: state,
-              openLaunchJson: openLaunchJson,
-            ),
+            _RunOrStopGlyph(state: state, workspaceId: workspaceId),
+            if (kinds.contains('debug')) const _DebugGlyph(),
+            if (kinds.contains('build')) const _BuildGlyph(),
           ],
         );
       },
@@ -75,95 +69,52 @@ class RunToolbar extends StatelessWidget {
   }
 }
 
-sealed class _DropdownEntry {
-  const _DropdownEntry();
+/// Launch-type kinds for the selected configuration (empty when none selected).
+List<String> _kindsForSelection(RunCubit cubit, RunState state) {
+  final selected = state.selectedConfiguration;
+  if (selected == null) return const [];
+  return cubit.kindsForType(selected.configuration.type);
 }
 
-final class _ConfigEntry extends _DropdownEntry {
-  const _ConfigEntry(this.owned);
-  final OwnedLaunchConfiguration owned;
-}
-
-final class _CompoundEntry extends _DropdownEntry {
-  const _CompoundEntry(this.owned);
-  final OwnedLaunchCompound owned;
-}
-
-final class _ActionEntry extends _DropdownEntry {
-  const _ActionEntry(this.action);
-  final LaunchAdapterConfigurationEntry action;
-}
-
-final class _RecommendationEntry extends _DropdownEntry {
-  const _RecommendationEntry(this.owned);
-  final OwnedLaunchConfiguration owned;
-}
-
-class _ConfigDropdown extends StatelessWidget {
-  const _ConfigDropdown({
+class _ChoiceOptionSelector extends StatelessWidget {
+  const _ChoiceOptionSelector({
+    required this.option,
     required this.state,
-    required this.showFolderLabels,
-    this.pickActionResult,
   });
 
+  final LaunchOption option;
   final RunState state;
-  final bool showFolderLabels;
-  final RunActionPicker? pickActionResult;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
     final cubit = context.read<RunCubit>();
-    final entries = <_DropdownEntry>[
-      for (final config in state.configurations) _ConfigEntry(config),
-      for (final compound in state.compounds) _CompoundEntry(compound),
-      for (final recommendation in state.recommendations)
-        _RecommendationEntry(recommendation),
-      for (final action in state.actions)
-        if (action.isAction) _ActionEntry(action),
-    ];
-
-    final selected = state.selectedConfiguration;
-    final selectedCompound = state.selectedCompound;
-    final label = selectedCompound != null
-        ? _compoundLabel(
-            context,
-            selectedCompound,
-            showFolderLabels: showFolderLabels,
-          )
-        : selected == null
-        ? l10n.runSelectConfiguration
-        : _entryLabel(
-            context,
-            selected,
-            showFolderLabels: showFolderLabels,
-            isSuggested: state.isRecommendation(selected),
-          );
-
-    final selectedKey =
-        selectedCompound?.selectionKey ?? selected?.selectionKey;
+    final current =
+        (state.optionValues[option.id] ?? option.value)?.toString();
+    final selectedLabel = option.choices
+        .where((choice) => choice.value == current)
+        .map((choice) => choice.label)
+        .firstOrNull;
+    final label = selectedLabel ?? option.label;
 
     final specs = <SidebarActionMenuSpec>[
-      for (final entry in entries)
+      for (final choice in option.choices)
         SidebarActionMenuSpec.item(
-          value: entry,
-          icon: _entryIcon(entry),
-          label: _entryText(context, entry),
-          enabled: _isEnabled(cubit, entry),
-          selected: _isSelected(entry, selectedKey),
-          tooltip: _entryTooltip(context, cubit, entry),
+          value: choice.value,
+          icon: Icons.circle_outlined,
+          label: choice.label,
+          selected: choice.value == current,
         ),
     ];
 
     final cs = Theme.of(context).colorScheme;
     return SidebarActionMenuButton(
-      key: const Key('run-config-dropdown'),
-      tooltip: l10n.runConfigurationTooltip,
-      minWidth: 240,
+      key: Key('run-toolbar-option-${option.id}'),
+      tooltip: option.label,
+      minWidth: 120,
       specs: specs,
       onSelected: (value) {
-        if (value is _DropdownEntry) {
-          unawaited(_onSelected(context, cubit, value));
+        if (value is String) {
+          cubit.setOption(option.id, value);
         }
       },
       triggerBuilder: (context, controller) {
@@ -181,10 +132,8 @@ class _ConfigDropdown extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.web_asset_outlined, color: cs.primary),
-                const SizedBox(width: 6),
                 ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 200),
+                  constraints: const BoxConstraints(maxWidth: 120),
                   child: Text(
                     label,
                     overflow: TextOverflow.ellipsis,
@@ -200,111 +149,6 @@ class _ConfigDropdown extends StatelessWidget {
         );
       },
     );
-  }
-
-  IconData _entryIcon(_DropdownEntry entry) {
-    return switch (entry) {
-      _ConfigEntry() => Icons.play_arrow_outlined,
-      _CompoundEntry() => Icons.account_tree_outlined,
-      _RecommendationEntry() => Icons.auto_awesome_outlined,
-      _ActionEntry() => Icons.add_circle_outline,
-    };
-  }
-
-  String _entryText(BuildContext context, _DropdownEntry entry) {
-    return switch (entry) {
-      _ConfigEntry(:final owned) => _entryLabel(
-        context,
-        owned,
-        showFolderLabels: showFolderLabels,
-        isSuggested: false,
-      ),
-      _CompoundEntry(:final owned) => _compoundLabel(
-        context,
-        owned,
-        showFolderLabels: showFolderLabels,
-      ),
-      _RecommendationEntry(:final owned) => _entryLabel(
-        context,
-        owned,
-        showFolderLabels: showFolderLabels,
-        isSuggested: true,
-      ),
-      _ActionEntry(:final action) => action.name,
-    };
-  }
-
-  String? _entryTooltip(
-    BuildContext context,
-    RunCubit cubit,
-    _DropdownEntry entry,
-  ) {
-    final (type, reasonCode) = switch (entry) {
-      _ConfigEntry(:final owned) => (
-        owned.configuration.type,
-        cubit.unavailableReason(owned),
-      ),
-      _CompoundEntry() => ('', null),
-      _RecommendationEntry(:final owned) => (
-        owned.configuration.type,
-        cubit.unavailableReason(owned),
-      ),
-      _ActionEntry(:final action) => (
-        action.type,
-        cubit.actionUnavailableReason(action),
-      ),
-    };
-    final reason = localizeLaunchTypeUnavailable(
-      context.l10n,
-      reasonCode,
-      type: type,
-    );
-    if (reason == null || reason.isEmpty) return null;
-    return reason;
-  }
-
-  bool _isEnabled(RunCubit cubit, _DropdownEntry entry) {
-    return switch (entry) {
-      _ConfigEntry(:final owned) => cubit.isConfigurationAvailable(owned),
-      _CompoundEntry() => true,
-      _RecommendationEntry(:final owned) =>
-        cubit.isConfigurationAvailable(owned),
-      _ActionEntry(:final action) => cubit.isActionAvailable(action),
-    };
-  }
-
-  bool _isSelected(_DropdownEntry entry, String? selectedKey) {
-    if (selectedKey == null) return false;
-    return switch (entry) {
-      _ConfigEntry(:final owned) => owned.selectionKey == selectedKey,
-      _CompoundEntry(:final owned) => owned.selectionKey == selectedKey,
-      _RecommendationEntry(:final owned) => owned.selectionKey == selectedKey,
-      _ActionEntry() => false,
-    };
-  }
-
-  Future<void> _onSelected(
-    BuildContext context,
-    RunCubit cubit,
-    _DropdownEntry entry,
-  ) async {
-    switch (entry) {
-      case _ConfigEntry(:final owned):
-      case _RecommendationEntry(:final owned):
-        await cubit.select(owned.selectionKey);
-      case _CompoundEntry(:final owned):
-        await cubit.select(owned.selectionKey);
-      case _ActionEntry(:final action):
-        final picker = pickActionResult;
-        if (picker == null) return;
-        final result = await picker(action);
-        if (result == null) return;
-        await cubit.configureAction(
-          actionId: action.id,
-          type: action.type,
-          result: result,
-        );
-    }
   }
 }
 
@@ -339,9 +183,13 @@ class _ToolbarGlyph extends StatelessWidget {
 }
 
 class _RunOrStopGlyph extends StatelessWidget {
-  const _RunOrStopGlyph({required this.state});
+  const _RunOrStopGlyph({
+    required this.state,
+    required this.workspaceId,
+  });
 
   final RunState state;
+  final String workspaceId;
 
   @override
   Widget build(BuildContext context) {
@@ -449,11 +297,63 @@ class _RunOrStopGlyph extends StatelessWidget {
       }
     }
     await cubit.runSelected();
+    if (!context.mounted) return;
+    await _offerEditOnSchemaFailure(context, cubit);
+  }
+
+  Future<void> _offerEditOnSchemaFailure(
+    BuildContext context,
+    RunCubit cubit,
+  ) async {
+    final error = cubit.state.errorMessage;
+    final selected = cubit.state.selectedConfiguration;
+    if (error == null || selected == null || !cubit.selectedHasSchemaErrors) {
+      return;
+    }
+
+    final l10n = context.l10n;
+    final edit = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AppDialog(
+        maxWidth: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppDialogHeader(
+              title: l10n.runEditConfigurations,
+              onClose: () => Navigator.of(dialogContext).pop(false),
+            ),
+            const SizedBox(height: 12),
+            Text(error),
+            AppDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: Text(l10n.runEditConfigurations),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!context.mounted || edit != true) return;
+    await showRunConfigEditorDialog(
+      context,
+      workspaceId: workspaceId,
+      initial: selected,
+    );
   }
 }
 
 enum _RerunChoice { restart, newInstance }
 
+/// Shown only when selected type kinds include `build` (execution deferred).
 class _BuildGlyph extends StatelessWidget {
   const _BuildGlyph();
 
@@ -463,12 +363,13 @@ class _BuildGlyph extends StatelessWidget {
     return _ToolbarGlyph(
       keyId: const Key('run-toolbar-build'),
       icon: Icons.build_outlined,
-      tooltip: l10n.runBuildUnavailable,
-      enabled: false,
+      tooltip: l10n.runBuild,
+      onTap: () {},
     );
   }
 }
 
+/// Shown only when selected type kinds include `debug` (execution deferred).
 class _DebugGlyph extends StatelessWidget {
   const _DebugGlyph();
 
@@ -478,203 +379,9 @@ class _DebugGlyph extends StatelessWidget {
     return _ToolbarGlyph(
       keyId: const Key('run-toolbar-debug'),
       icon: Icons.bug_report_outlined,
-      tooltip: l10n.runDebugUnavailable,
+      tooltip: l10n.runDebug,
       color: RunToolbar._actionGreen,
-      enabled: false,
+      onTap: () {},
     );
   }
-}
-
-enum _MoreAction {
-  openLaunchJson,
-  refreshDiscover,
-  acceptRecommendation,
-}
-
-class _MoreMenu extends StatelessWidget {
-  const _MoreMenu({
-    required this.workspaceId,
-    required this.state,
-    this.openLaunchJson,
-  });
-
-  final String workspaceId;
-  final RunState state;
-  final RunOpenLaunchJson? openLaunchJson;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final cubit = context.read<RunCubit>();
-    final selected = state.selectedConfiguration;
-    final canAccept = selected != null && state.isRecommendation(selected);
-    final choiceOptions = state.options
-        .where(
-          (o) => o.type == LaunchOptionType.choice && o.choices.isNotEmpty,
-        )
-        .toList();
-
-    final specs = <SidebarActionMenuSpec>[
-      SidebarActionMenuSpec.item(
-        value: _MoreAction.openLaunchJson,
-        icon: Icons.description_outlined,
-        label: l10n.runOpenLaunchJson,
-      ),
-      SidebarActionMenuSpec.item(
-        value: _MoreAction.refreshDiscover,
-        icon: Icons.refresh,
-        label: l10n.runRefreshDiscover,
-      ),
-      if (canAccept)
-        SidebarActionMenuSpec.item(
-          value: _MoreAction.acceptRecommendation,
-          icon: Icons.check_circle_outline,
-          label: l10n.runAcceptRecommendation,
-        ),
-      for (final option in choiceOptions) ...[
-        const SidebarActionMenuSpec.divider(),
-        SidebarActionMenuSpec.item(
-          icon: Icons.tune,
-          label: option.label,
-          enabled: false,
-        ),
-        for (final choice in option.choices)
-          SidebarActionMenuSpec.item(
-            value: MapEntry(option.id, choice.value),
-            icon: Icons.circle_outlined,
-            label: choice.label,
-            selected:
-                (state.optionValues[option.id] ?? option.value)?.toString() ==
-                choice.value,
-          ),
-      ],
-    ];
-
-    final cs = Theme.of(context).colorScheme;
-    return SidebarActionMenuButton(
-      key: const Key('run-toolbar-more'),
-      tooltip: l10n.runMoreActions,
-      specs: specs,
-      onSelected: (value) {
-        if (value is _MoreAction) {
-          unawaited(_onAction(context, value));
-          return;
-        }
-        if (value is MapEntry<String, String>) {
-          cubit.setOption(value.key, value.value);
-        }
-      },
-      triggerBuilder: (context, controller) {
-        return AppIconButton(
-          icon: Icons.more_vert,
-          backgroundColor: cs.onSurface.withValues(alpha: 0.06),
-          onTap: () {
-            if (controller.isOpen) {
-              controller.close();
-            } else {
-              controller.open();
-            }
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _onAction(BuildContext context, _MoreAction action) async {
-    final cubit = context.read<RunCubit>();
-    switch (action) {
-      case _MoreAction.openLaunchJson:
-        await _openLaunchJson(context);
-      case _MoreAction.refreshDiscover:
-        await cubit.refreshDiscover();
-      case _MoreAction.acceptRecommendation:
-        final selected = cubit.state.selectedConfiguration;
-        if (selected != null) {
-          await cubit.acceptRecommendation(selected);
-        }
-    }
-  }
-
-  Future<void> _openLaunchJson(BuildContext context) async {
-    final cubit = context.read<RunCubit>();
-    var path = await cubit.openLaunchJson();
-    if (path == null || path.isEmpty) {
-      if (cubit.folders.length > 1) {
-        if (!context.mounted) return;
-        final folder = await _pickFolder(context, cubit.folders);
-        if (folder == null) return;
-        path = await cubit.openLaunchJson(folder: folder);
-      }
-    }
-    if (path == null || path.isEmpty) return;
-
-    final opener = openLaunchJson;
-    if (opener != null) {
-      await opener(path);
-      return;
-    }
-    if (!context.mounted) return;
-    await context.read<WorkbenchEditorOpener>().openFile(workspaceId, path);
-  }
-
-  Future<WorkspaceFolder?> _pickFolder(
-    BuildContext context,
-    List<WorkspaceFolder> folders,
-  ) {
-    final l10n = context.l10n;
-    return showDialog<WorkspaceFolder>(
-      context: context,
-      builder: (dialogContext) => AppDialog(
-        maxWidth: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppDialogHeader(
-              title: l10n.runOpenLaunchJson,
-              onClose: () => Navigator.of(dialogContext).pop(),
-            ),
-            const SizedBox(height: 8),
-            for (final folder in folders)
-              ListTile(
-                title: Text(Workspace.directoryName(folder.path)),
-                subtitle: Text(folder.path, maxLines: 1),
-                onTap: () => Navigator.of(dialogContext).pop(folder),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-String _compoundLabel(
-  BuildContext context,
-  OwnedLaunchCompound owned, {
-  required bool showFolderLabels,
-}) {
-  final base = context.l10n.runCompoundConfiguration(owned.compound.name);
-  if (!showFolderLabels) return base;
-  final folder = Workspace.directoryName(owned.owner.path);
-  return '$base ($folder)';
-}
-
-String _entryLabel(
-  BuildContext context,
-  OwnedLaunchConfiguration owned, {
-  required bool showFolderLabels,
-  required bool isSuggested,
-}) {
-  final base = _configLabel(owned, showFolderLabels: showFolderLabels);
-  if (!isSuggested) return base;
-  return context.l10n.runSuggestedConfiguration(base);
-}
-
-String _configLabel(
-  OwnedLaunchConfiguration owned, {
-  required bool showFolderLabels,
-}) {
-  if (!showFolderLabels) return owned.configuration.name;
-  final folder = Workspace.directoryName(owned.owner.path);
-  return '${owned.configuration.name} ($folder)';
 }

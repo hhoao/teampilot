@@ -86,6 +86,41 @@ RunPlatform _platform({
 }
 
 void main() {
+  test('kindsFor and configurationSchema expose registry metadata', () {
+    final reg = LaunchTypeRegistry.withBuiltIns();
+    reg.registerExtension(
+      LaunchTypeContribution(
+        extensionId: 'ext.debug',
+        type: 'debuggable',
+        kinds: const ['run', 'debug'],
+        adapterCommand: r'${extensionPath}/bin/adapter',
+        adapterRuntime: 'workspace',
+        lifecycle: LaunchAdapterLifecycle.sticky,
+        configurationSchema: const {
+          'type': 'object',
+          'required': ['target'],
+          'properties': {
+            'target': {'type': 'string'},
+          },
+        },
+      ),
+    );
+    final platform = _platform(registry: reg);
+
+    expect(platform.kindsFor('process'), ['run']);
+    expect(platform.kindsFor('debuggable'), ['run', 'debug']);
+    expect(platform.kindsFor('unknown'), ['run']);
+
+    final processSchema = platform.configurationSchema('process');
+    expect(processSchema, isNotNull);
+    expect(processSchema!['required'], contains('command'));
+
+    final debugSchema = platform.configurationSchema('debuggable');
+    expect(debugSchema, isNotNull);
+    expect(debugSchema!['required'], ['target']);
+    expect(platform.configurationSchema('unknown'), isNull);
+  });
+
   test('validateConfiguration reports extension schema errors', () {
     final reg = LaunchTypeRegistry.withBuiltIns();
     reg.registerExtension(_flutterContrib());

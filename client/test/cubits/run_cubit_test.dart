@@ -230,6 +230,12 @@ class FakeRunPlatform implements RunPlatformApi {
   }
 
   @override
+  Future<void> deleteConfiguration({
+    required WorkspaceFolder folder,
+    required String id,
+  }) async {}
+
+  @override
   String launchJsonPath(WorkspaceFolder folder) =>
       LaunchConfigStore.launchConfigPath(folder);
 
@@ -247,6 +253,12 @@ class FakeRunPlatform implements RunPlatformApi {
 
   @override
   String? unavailableReason(String type, {required String targetId}) => null;
+
+  @override
+  Map<String, Object?>? configurationSchema(String type) => null;
+
+  @override
+  List<String> kindsFor(String type) => const ['run'];
 }
 
 void main() {

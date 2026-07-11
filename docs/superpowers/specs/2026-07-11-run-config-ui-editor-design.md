@@ -1,7 +1,7 @@
 # Run Config UI Editor
 
 **Date:** 2026-07-11  
-**Status:** Ready for planning  
+**Status:** Implemented  
 **Related:** [Workspace Run Platform](2026-07-11-workspace-run-platform-design.md)  
 **Owner decision:** Prefer best architecture / UX / extensibility over workload or backward compatibility. Users configure runs **only through UI** (never guided to edit `.teampilot/launch.json`). Toolbar stays minimal; config management uses a schema-driven Edit Configurations dialog (IDEA-like dual pane) opened from the config dropdown.
 
