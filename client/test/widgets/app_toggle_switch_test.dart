@@ -10,6 +10,7 @@ void main() {
         labels: labels,
         fontSize: 14,
         iconSize: 18,
+        textStyle: const TextStyle(fontSize: 14),
         icons: const [
           Icons.light_mode_outlined,
           Icons.dark_mode_outlined,
@@ -20,6 +21,7 @@ void main() {
         labels: labels,
         fontSize: 22,
         iconSize: 18,
+        textStyle: const TextStyle(fontSize: 22),
         icons: const [
           Icons.light_mode_outlined,
           Icons.dark_mode_outlined,
@@ -35,6 +37,7 @@ void main() {
         labels: const ['A'],
         fontSize: 12,
         iconSize: 16,
+        textStyle: const TextStyle(fontSize: 12),
         minSegmentWidth: 120,
       );
       expect(widths.single, 120);
