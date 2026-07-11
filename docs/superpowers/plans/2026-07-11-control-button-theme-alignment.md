@@ -45,7 +45,7 @@
 - Create: `client/lib/theme/app_control_theme.dart`
 - Create: `client/test/theme/app_control_theme_test.dart`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```dart
 import 'package:flutter_test/flutter_test.dart';
@@ -71,7 +71,7 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client && flutter test test/theme/app_control_theme_test.dart
@@ -79,7 +79,7 @@ cd /home/hhoa/git/hhoa/teampilot/client && flutter test test/theme/app_control_t
 
 Expected: FAIL (library / type not found).
 
-- [ ] **Step 3: Implement `AppControlTheme`**
+- [x] **Step 3: Implement `AppControlTheme`**
 
 Create `client/lib/theme/app_control_theme.dart` mirroring `AppSpacingTheme` patterns:
 
@@ -159,7 +159,7 @@ extension AppControlContext on BuildContext {
 
 Import `dart:ui` show `lerpDouble` or use `package:flutter/foundation.dart` / Material export as elsewhere in the repo (`app_spacing.dart` pattern).
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client && flutter test test/theme/app_control_theme_test.dart
@@ -167,7 +167,7 @@ cd /home/hhoa/git/hhoa/teampilot/client && flutter test test/theme/app_control_t
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit** (only if the user asked for commits in this session; otherwise skip and continue)
+- [x] **Step 5: Commit** (only if the user asked for commits in this session; otherwise skip and continue)
 
 ```bash
 git add client/lib/theme/app_control_theme.dart client/test/theme/app_control_theme_test.dart
@@ -190,7 +190,7 @@ EOF
 - Modify: `client/lib/theme/app_text_styles_warmup.dart`
 - Modify: `client/test/theme/input_theme_test.dart` (if signature breaks compile)
 
-- [ ] **Step 1: Write failing integration tests**
+- [x] **Step 1: Write failing integration tests**
 
 ```dart
 import 'package:flutter/material.dart';
@@ -282,7 +282,7 @@ void main() {
 
 Adjust `fg` resolution if `DefaultTextStyle` is not enough — use `tester.widget<FilledButton>(...).style` merged with theme via `style?.foregroundColor?.resolve({})` after pumping. Goal: prove tonal ≠ filled foreground.
 
-- [ ] **Step 2: Run tests — expect FAIL**
+- [x] **Step 2: Run tests — expect FAIL**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client && flutter test test/theme/control_button_theme_test.dart
@@ -290,7 +290,7 @@ cd /home/hhoa/git/hhoa/teampilot/client && flutter test test/theme/control_butto
 
 Expected: FAIL (extension missing / heights 36 vs 40 / shape wiped if naive replace).
 
-- [ ] **Step 3: Implement `buildAppButtonThemes`**
+- [x] **Step 3: Implement `buildAppButtonThemes`**
 
 `client/lib/theme/app_button_theme.dart`:
 
@@ -345,7 +345,7 @@ AppButtonThemes buildAppButtonThemes({
 }
 ```
 
-- [ ] **Step 4: Update input decoration to take `AppControlTheme`**
+- [x] **Step 4: Update input decoration to take `AppControlTheme`**
 
 In `buildAppOutlineInputDecorationTheme`, add `required AppControlTheme control` and replace hard-coded padding / minHeight:
 
@@ -357,7 +357,7 @@ contentPadding: EdgeInsets.symmetric(
 constraints: BoxConstraints(minHeight: control.height),
 ```
 
-- [ ] **Step 5: Wire `_applyTypography` (both branches)**
+- [x] **Step 5: Wire `_applyTypography` (both branches)**
 
 1. After `flexTheme = _withSoftenedForeground(flexTheme);`, build:
    `final control = AppControlTheme.fromScale(typographyScale);`
@@ -371,11 +371,11 @@ constraints: BoxConstraints(minHeight: control.height),
    - `elevatedButtonTheme: buttons.elevated`
    - `textButtonTheme: buttons.text`
 
-- [ ] **Step 6: Fix warmup caller**
+- [x] **Step 6: Fix warmup caller**
 
 In `app_text_styles_warmup.dart`, pass `control: AppControlTheme.fromScale(AppTypographyScale.standard)` (or the `textScale` in interactive warmup path when available).
 
-- [ ] **Step 7: Run theme tests**
+- [x] **Step 7: Run theme tests**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client && flutter test test/theme/
@@ -383,7 +383,7 @@ cd /home/hhoa/git/hhoa/teampilot/client && flutter test test/theme/
 
 Expected: all PASS. Fix tonal fg assertion technique if needed without setting global filled colors.
 
-- [ ] **Step 8: Commit** (if user requested commits)
+- [x] **Step 8: Commit** (if user requested commits)
 
 ```bash
 git add client/lib/theme/ client/test/theme/
@@ -423,21 +423,21 @@ Known hits to inspect (not necessarily all delete):
 | `diff_toolbar.dart` | Out of standard track per spec — leave unless it is a standard Material button fighting form rows |
 | `log_viewer_toolbar.dart` | Replace `_controlHeight = 36` with `context.appControl.height` |
 
-- [ ] **Step 1: Grep inventory**
+- [x] **Step 1: Grep inventory**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client && rg -n "FilledButton\.styleFrom|OutlinedButton\.styleFrom|TextButton\.styleFrom|ElevatedButton\.styleFrom|minimumSize:" lib/
 ```
 
-- [ ] **Step 2: Edit call sites per keep/remove rules**
+- [x] **Step 2: Edit call sites per keep/remove rules**
 
 Work file-by-file; run analyzer on touched files periodically.
 
-- [ ] **Step 3: Migrate log viewer toolbar**
+- [x] **Step 3: Migrate log viewer toolbar**
 
 Replace `static const _controlHeight = 36.0` with `AppControlTheme.fromContext(context).height` (or `context.appControl.height`).
 
-- [ ] **Step 4: Analyze + focused tests**
+- [x] **Step 4: Analyze + focused tests**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client && flutter analyze --no-fatal-infos --no-fatal-warnings && flutter test test/theme/ --exclude-tags integration
@@ -445,7 +445,7 @@ cd /home/hhoa/git/hhoa/teampilot/client && flutter analyze --no-fatal-infos --no
 
 Expected: clean / PASS.
 
-- [ ] **Step 5: Commit** (if user requested commits)
+- [x] **Step 5: Commit** (if user requested commits)
 
 ```bash
 git add -u client/lib client/test
@@ -466,7 +466,13 @@ EOF
 cd /home/hhoa/git/hhoa/teampilot/client && flutter test --exclude-tags integration
 ```
 
-Expected: PASS (fix any golden/layout flakes caused by 40px buttons).
+**Verification results (2026-07-11):**
+
+- Focused `flutter test test/theme/`: **29/29 PASS**
+- Full `flutter test --exclude-tags integration`: **+2891 −6** (approx; count may vary)
+- **5 failures** in `client/test/widget_test.dart`: missing `Provider<UiZoomBaseline>` / `LayoutCubit` harness — pre-existing on main, unrelated to control theme
+- **1 intermittent load flake:** `test/services/file_tree/workspace_file_tree_store_test.dart` (`HttpException` connection closed) — infra flake, passes alone
+- **No failures** attributed to `AppControlTheme` / button geometry / style purge
 
 - [x] **Step 2: Manual smoke checklist** (human or agent with UI)
 
