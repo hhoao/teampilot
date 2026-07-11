@@ -1449,13 +1449,44 @@ external void ts_set_allocator(
   new_free,
 );
 
-/// Returns the tree-sitter JSON language, statically linked into this asset.
+/// Returns a bundled tree-sitter language, statically linked into this asset.
 ///
-/// Wrapping `tree_sitter_json` behind a stable `tp_`-prefixed symbol keeps the
+/// Wrapping each `tree_sitter_*` behind a stable `tp_`-prefixed symbol keeps the
 /// FFI surface independent of per-grammar symbol naming and lets ffigen bind a
 /// single header without pulling every grammar's generated declarations.
 @ffi.Native<ffi.Pointer<TSLanguage> Function()>()
 external ffi.Pointer<TSLanguage> tp_ts_language_json();
+
+@ffi.Native<ffi.Pointer<TSLanguage> Function()>()
+external ffi.Pointer<TSLanguage> tp_ts_language_dart();
+
+@ffi.Native<ffi.Pointer<TSLanguage> Function()>()
+external ffi.Pointer<TSLanguage> tp_ts_language_yaml();
+
+@ffi.Native<ffi.Pointer<TSLanguage> Function()>()
+external ffi.Pointer<TSLanguage> tp_ts_language_markdown();
+
+@ffi.Native<ffi.Pointer<TSLanguage> Function()>()
+external ffi.Pointer<TSLanguage> tp_ts_language_python();
+
+@ffi.Native<ffi.Pointer<TSLanguage> Function()>()
+external ffi.Pointer<TSLanguage> tp_ts_language_rust();
+
+/// The `tsx` grammar backs the `typescript` pack (parses .ts/.tsx/.js/.jsx).
+@ffi.Native<ffi.Pointer<TSLanguage> Function()>()
+external ffi.Pointer<TSLanguage> tp_ts_language_typescript();
+
+@ffi.Native<ffi.Pointer<TSLanguage> Function()>()
+external ffi.Pointer<TSLanguage> tp_ts_language_bash();
+
+@ffi.Native<ffi.Pointer<TSLanguage> Function()>()
+external ffi.Pointer<TSLanguage> tp_ts_language_xml();
+
+@ffi.Native<ffi.Pointer<TSLanguage> Function()>()
+external ffi.Pointer<TSLanguage> tp_ts_language_toml();
+
+@ffi.Native<ffi.Pointer<TSLanguage> Function()>()
+external ffi.Pointer<TSLanguage> tp_ts_language_css();
 
 /// /
 /// /* Section - Types */

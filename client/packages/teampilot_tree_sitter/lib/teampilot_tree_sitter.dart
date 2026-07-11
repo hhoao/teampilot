@@ -25,6 +25,39 @@ class TsLanguage {
 
   /// The bundled JSON grammar.
   static TsLanguage json() => TsLanguage._(bindings.tp_ts_language_json());
+
+  /// The bundled Dart grammar.
+  static TsLanguage dart() => TsLanguage._(bindings.tp_ts_language_dart());
+
+  /// The bundled YAML grammar.
+  static TsLanguage yaml() => TsLanguage._(bindings.tp_ts_language_yaml());
+
+  /// The bundled Markdown (block) grammar.
+  static TsLanguage markdown() =>
+      TsLanguage._(bindings.tp_ts_language_markdown());
+
+  /// The bundled Python grammar.
+  static TsLanguage python() => TsLanguage._(bindings.tp_ts_language_python());
+
+  /// The bundled Rust grammar.
+  static TsLanguage rust() => TsLanguage._(bindings.tp_ts_language_rust());
+
+  /// The bundled TypeScript grammar (the `tsx` grammar, which also parses
+  /// `.ts` / `.js` / `.jsx`).
+  static TsLanguage typescript() =>
+      TsLanguage._(bindings.tp_ts_language_typescript());
+
+  /// The bundled Bash grammar.
+  static TsLanguage bash() => TsLanguage._(bindings.tp_ts_language_bash());
+
+  /// The bundled XML grammar (also used for HTML this phase).
+  static TsLanguage xml() => TsLanguage._(bindings.tp_ts_language_xml());
+
+  /// The bundled TOML grammar.
+  static TsLanguage toml() => TsLanguage._(bindings.tp_ts_language_toml());
+
+  /// The bundled CSS grammar.
+  static TsLanguage css() => TsLanguage._(bindings.tp_ts_language_css());
 }
 
 /// A parsed syntax tree (`TSTree *`). Call [dispose] when done.

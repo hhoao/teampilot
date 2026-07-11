@@ -108,6 +108,16 @@ flutter:
     - assets/providers/
     - assets/geometry/
     - assets/editor_languages/json/
+    - assets/editor_languages/dart/
+    - assets/editor_languages/yaml/
+    - assets/editor_languages/markdown/
+    - assets/editor_languages/python/
+    - assets/editor_languages/rust/
+    - assets/editor_languages/typescript/
+    - assets/editor_languages/bash/
+    - assets/editor_languages/xml/
+    - assets/editor_languages/toml/
+    - assets/editor_languages/css/
     - assets/fonts/terminal/
     - assets/rtk/rtk-rewrite.sh
     - assets/rtk/rtk-rewrite.ps1

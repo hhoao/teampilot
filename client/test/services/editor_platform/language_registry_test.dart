@@ -10,6 +10,45 @@ void main() {
     expect(LanguageRegistry.builtins().resolve('/x/a.scss'), isNull);
   });
 
+  test('resolves first-wave extensions to their packs', () {
+    final reg = LanguageRegistry.builtins();
+    final cases = <String, String>{
+      '/x/a.dart': 'dart',
+      '/x/a.yaml': 'yaml',
+      '/x/a.yml': 'yaml',
+      '/x/a.md': 'markdown',
+      '/x/a.markdown': 'markdown',
+      '/x/a.py': 'python',
+      '/x/a.rs': 'rust',
+      '/x/a.ts': 'typescript',
+      '/x/a.tsx': 'typescript',
+      '/x/a.js': 'typescript',
+      '/x/a.jsx': 'typescript',
+      '/x/a.mjs': 'typescript',
+      '/x/a.cjs': 'typescript',
+      '/x/a.sh': 'bash',
+      '/x/a.bash': 'bash',
+      '/x/a.xml': 'xml',
+      '/x/a.html': 'xml',
+      '/x/a.htm': 'xml',
+      '/x/a.toml': 'toml',
+      '/x/a.css': 'css',
+    };
+    cases.forEach((path, id) {
+      expect(reg.resolve(path)?.id, id, reason: '$path should resolve to $id');
+    });
+  });
+
+  test('every builtin pack points at an existing highlights asset', () {
+    for (final pack in LanguageRegistry.builtins().packs) {
+      expect(
+        pack.highlightsAsset,
+        'assets/editor_languages/${pack.id}/highlights.scm',
+        reason: 'unexpected highlights asset path for ${pack.id}',
+      );
+    }
+  });
+
   test('resolve is case-insensitive on extension', () {
     expect(LanguageRegistry.builtins().resolve('/x/A.JSON')?.id, 'json');
   });

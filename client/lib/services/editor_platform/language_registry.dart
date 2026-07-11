@@ -7,8 +7,9 @@ import 'package:teampilot/services/editor_platform/language_pack.dart';
 class LanguageRegistry {
   LanguageRegistry(List<LanguagePack> packs) : _packs = List.unmodifiable(packs);
 
-  /// Built-in packs shipped with the app. Task 3 registers `json` only;
-  /// later tasks extend this list without changing the registry API.
+  /// Built-in packs shipped with the app. First-wave grammars (Task 10) cover
+  /// common config/code file types; `.scss` intentionally stays plain text
+  /// (no pack). Later tasks extend this list without changing the registry API.
   factory LanguageRegistry.builtins() {
     return LanguageRegistry(const [
       LanguagePack(
@@ -16,6 +17,68 @@ class LanguageRegistry {
         extensions: {'json'},
         grammarId: 'json',
         highlightsAsset: 'assets/editor_languages/json/highlights.scm',
+      ),
+      LanguagePack(
+        id: 'dart',
+        extensions: {'dart'},
+        grammarId: 'dart',
+        highlightsAsset: 'assets/editor_languages/dart/highlights.scm',
+      ),
+      LanguagePack(
+        id: 'yaml',
+        extensions: {'yaml', 'yml'},
+        grammarId: 'yaml',
+        highlightsAsset: 'assets/editor_languages/yaml/highlights.scm',
+      ),
+      LanguagePack(
+        id: 'markdown',
+        extensions: {'md', 'markdown'},
+        grammarId: 'markdown',
+        highlightsAsset: 'assets/editor_languages/markdown/highlights.scm',
+      ),
+      LanguagePack(
+        id: 'python',
+        extensions: {'py'},
+        grammarId: 'python',
+        highlightsAsset: 'assets/editor_languages/python/highlights.scm',
+      ),
+      LanguagePack(
+        id: 'rust',
+        extensions: {'rs'},
+        grammarId: 'rust',
+        highlightsAsset: 'assets/editor_languages/rust/highlights.scm',
+      ),
+      // The tsx grammar backs .ts/.tsx and also handles .js/.jsx/.mjs/.cjs.
+      LanguagePack(
+        id: 'typescript',
+        extensions: {'ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs'},
+        grammarId: 'typescript',
+        highlightsAsset: 'assets/editor_languages/typescript/highlights.scm',
+      ),
+      LanguagePack(
+        id: 'bash',
+        extensions: {'sh', 'bash'},
+        grammarId: 'bash',
+        highlightsAsset: 'assets/editor_languages/bash/highlights.scm',
+      ),
+      // One xml pack covers .xml plus .html/.htm this phase.
+      LanguagePack(
+        id: 'xml',
+        extensions: {'xml', 'html', 'htm'},
+        grammarId: 'xml',
+        highlightsAsset: 'assets/editor_languages/xml/highlights.scm',
+      ),
+      LanguagePack(
+        id: 'toml',
+        extensions: {'toml'},
+        grammarId: 'toml',
+        highlightsAsset: 'assets/editor_languages/toml/highlights.scm',
+      ),
+      LanguagePack(
+        id: 'css',
+        extensions: {'css'},
+        grammarId: 'css',
+        highlightsAsset: 'assets/editor_languages/css/highlights.scm',
       ),
     ]);
   }

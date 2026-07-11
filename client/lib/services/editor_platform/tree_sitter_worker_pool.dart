@@ -315,6 +315,26 @@ TsLanguage? _languageFor(String grammarId) {
   switch (grammarId) {
     case 'json':
       return TsLanguage.json();
+    case 'dart':
+      return TsLanguage.dart();
+    case 'yaml':
+      return TsLanguage.yaml();
+    case 'markdown':
+      return TsLanguage.markdown();
+    case 'python':
+      return TsLanguage.python();
+    case 'rust':
+      return TsLanguage.rust();
+    case 'typescript':
+      return TsLanguage.typescript();
+    case 'bash':
+      return TsLanguage.bash();
+    case 'xml':
+      return TsLanguage.xml();
+    case 'toml':
+      return TsLanguage.toml();
+    case 'css':
+      return TsLanguage.css();
     default:
       return null;
   }

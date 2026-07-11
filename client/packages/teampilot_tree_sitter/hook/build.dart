@@ -9,6 +9,9 @@ void main(List<String> args) async {
     // Everything links into a single dynamic library asset whose id matches
     // the generated bindings file, so the `@Native` externals resolve without
     // an explicit asset id. See ffigen.yaml `ffi-native` + `assetName` below.
+    //
+    // Every bundled grammar (and its external scanner) is plain C, so the whole
+    // asset builds as C11. See third_party/README.md for the pinned versions.
     final cbuilder = CBuilder.library(
       name: packageName,
       assetName: '${packageName}_bindings_generated.dart',
@@ -22,15 +25,54 @@ void main(List<String> args) async {
       sources: [
         // tree-sitter core amalgamation (`lib.c` #includes every core .c).
         'third_party/tree-sitter/lib/src/lib.c',
-        // tree-sitter-json generated parser (no external scanner).
+        // Bundled grammars: generated parser.c plus their C external scanner
+        // (json has no external scanner). Each scanner includes its grammar's
+        // own vendored `tree_sitter/*.h` via the include paths below.
         'third_party/tree-sitter-json/src/parser.c',
+        'third_party/tree-sitter-dart/src/parser.c',
+        'third_party/tree-sitter-dart/src/scanner.c',
+        'third_party/tree-sitter-yaml/src/parser.c',
+        'third_party/tree-sitter-yaml/src/scanner.c',
+        'third_party/tree-sitter-python/src/parser.c',
+        'third_party/tree-sitter-python/src/scanner.c',
+        'third_party/tree-sitter-rust/src/parser.c',
+        'third_party/tree-sitter-rust/src/scanner.c',
+        'third_party/tree-sitter-bash/src/parser.c',
+        'third_party/tree-sitter-bash/src/scanner.c',
+        'third_party/tree-sitter-toml/src/parser.c',
+        'third_party/tree-sitter-toml/src/scanner.c',
+        'third_party/tree-sitter-css/src/parser.c',
+        'third_party/tree-sitter-css/src/scanner.c',
+        // typescript: the `tsx` grammar (parses .ts/.tsx/.js/.jsx). Its scanner
+        // #includes ../../common/scanner.h.
+        'third_party/tree-sitter-typescript/tsx/src/parser.c',
+        'third_party/tree-sitter-typescript/tsx/src/scanner.c',
+        // xml: the `xml` grammar; scanner #includes ../../common/scanner.h.
+        'third_party/tree-sitter-xml/xml/src/parser.c',
+        'third_party/tree-sitter-xml/xml/src/scanner.c',
+        // markdown: block grammar only (headings/code/lists).
+        'third_party/tree-sitter-markdown/src/parser.c',
+        'third_party/tree-sitter-markdown/src/scanner.c',
         // Stable C ABI shim binding grammars behind `tp_`-prefixed symbols.
         'src/teampilot_ts_api.c',
       ],
       includes: [
         'third_party/tree-sitter/lib/include',
         'third_party/tree-sitter/lib/src',
+        // Per-grammar src dirs expose each grammar's vendored `tree_sitter/`
+        // ABI headers. The typescript/xml `tsx/src` & `xml/src` entries also
+        // satisfy `#include "tree_sitter/parser.h"` from their common scanner.
         'third_party/tree-sitter-json/src',
+        'third_party/tree-sitter-dart/src',
+        'third_party/tree-sitter-yaml/src',
+        'third_party/tree-sitter-python/src',
+        'third_party/tree-sitter-rust/src',
+        'third_party/tree-sitter-bash/src',
+        'third_party/tree-sitter-toml/src',
+        'third_party/tree-sitter-css/src',
+        'third_party/tree-sitter-typescript/tsx/src',
+        'third_party/tree-sitter-xml/xml/src',
+        'third_party/tree-sitter-markdown/src',
         'src',
       ],
     );

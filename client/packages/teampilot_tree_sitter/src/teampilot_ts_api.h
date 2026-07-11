@@ -13,12 +13,23 @@
 extern "C" {
 #endif
 
-// Returns the tree-sitter JSON language, statically linked into this asset.
+// Returns a bundled tree-sitter language, statically linked into this asset.
 //
-// Wrapping `tree_sitter_json` behind a stable `tp_`-prefixed symbol keeps the
+// Wrapping each `tree_sitter_*` behind a stable `tp_`-prefixed symbol keeps the
 // FFI surface independent of per-grammar symbol naming and lets ffigen bind a
 // single header without pulling every grammar's generated declarations.
 FFI_PLUGIN_EXPORT const TSLanguage *tp_ts_language_json(void);
+FFI_PLUGIN_EXPORT const TSLanguage *tp_ts_language_dart(void);
+FFI_PLUGIN_EXPORT const TSLanguage *tp_ts_language_yaml(void);
+FFI_PLUGIN_EXPORT const TSLanguage *tp_ts_language_markdown(void);
+FFI_PLUGIN_EXPORT const TSLanguage *tp_ts_language_python(void);
+FFI_PLUGIN_EXPORT const TSLanguage *tp_ts_language_rust(void);
+// The `tsx` grammar backs the `typescript` pack (parses .ts/.tsx/.js/.jsx).
+FFI_PLUGIN_EXPORT const TSLanguage *tp_ts_language_typescript(void);
+FFI_PLUGIN_EXPORT const TSLanguage *tp_ts_language_bash(void);
+FFI_PLUGIN_EXPORT const TSLanguage *tp_ts_language_xml(void);
+FFI_PLUGIN_EXPORT const TSLanguage *tp_ts_language_toml(void);
+FFI_PLUGIN_EXPORT const TSLanguage *tp_ts_language_css(void);
 
 #ifdef __cplusplus
 }
