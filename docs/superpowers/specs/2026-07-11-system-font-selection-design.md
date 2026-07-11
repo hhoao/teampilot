@@ -130,12 +130,14 @@ Rules:
 
 **`system` mono**
 
-| Platform | Primary | Fallback |
-|----------|---------|----------|
-| macOS | `Menlo` | Existing CJK-aware mono fallback idea (`PingFang SC`, …) |
-| Windows | `Consolas` | `Microsoft YaHei`, `monospace` |
-| Linux | `monospace` | Prefer **`Noto Sans Mono CJK SC`** before generic `monospace` JP mapping (keep current punctuation rationale) |
-| Android | `monospace` | Same SC-preferring CJK chain |
+On Linux/Android, **do not** use bare `monospace` as the primary family. fontconfig often maps `monospace` (even with `lang=zh`) to *Noto Sans Mono CJK JP*, which covers CJK so SC fallbacks never run and Chinese punctuation is wrong. Put an SC-capable face **before** the generic `monospace` alias (same rationale as today’s `AppFonts.monoFamilyFallback`).
+
+| Platform | Primary | Fallback (order matters) |
+|----------|---------|--------------------------|
+| macOS | `Menlo` | `Ubuntu Sans Mono` (if loaded), `PingFang SC`, `Heiti SC`, `monospace` |
+| Windows | `Consolas` | `Ubuntu Sans Mono` (if loaded), `Microsoft YaHei`, `monospace` |
+| Linux | `Noto Sans Mono CJK SC` (or `Ubuntu Sans Mono` when that bundled face is loaded as a silent fallback) | `Noto Sans CJK SC`, `WenQuanYi Zen Hei Mono`, then `monospace` last |
+| Android | Prefer an SC-capable mono/sans if the platform exposes one; otherwise a Latin mono | SC CJK faces, then `monospace` **last** |
 
 Bundled mono fallbacks reuse today’s CJK mono list (move from `AppFonts.monoFamilyFallback` into shared constants owned by catalog/resolver). UI `notoSansSc` uses the existing GoogleFonts / local `google_fonts/` pipeline.
 
@@ -189,13 +191,18 @@ In `LayoutAppearanceInLayoutSection` (near typography scale):
 |------|------|
 | Catalog + resolver | `client/lib/theme/font_catalog.dart`, `app_font_resolver.dart` (names flexible) |
 | Prefs / cubit | `layout_preferences.dart`, `layout_cubit.dart` |
-| Theme | `app_fonts.dart`, `app_theme.dart`, `app_text_styles_warmup.dart`, `main.dart` |
+| Theme | `app_fonts.dart`, `app_theme.dart`, `app_text_styles_warmup.dart`, any other `GoogleFonts.notoSansSc` warmup helpers, `main.dart` |
 | Terminal | `terminal_fonts.dart` |
 | Settings | `layout_appearance_in_layout_section.dart` + small setting widget |
 | l10n | `app_en.arb`, `app_zh.arb` |
 | Tests | `test/theme/`, `test/models/`, cubit coverage as needed |
 
+## Out of scope (UI surfaces)
+
+- **Onboarding appearance** stays unchanged in v1 — font pickers live only under layout/appearance settings (`LayoutAppearanceInLayoutSection`). Do not add a second font UI on the onboarding step unless a follow-up explicitly asks for it.
+
 ## Open implementation notes
 
 - Exact macOS UI primary (`.AppleSystemUIFont` vs `PingFang SC`) can be tuned in resolver constants during implementation as long as CJK remains readable.
 - Whether Ubuntu Sans Mono stays a **user-visible mono preset** and/or a silent fallback asset is catalog data; v1 exposes it as a preset because assets already ship.
+- Audit other hard-coded `GoogleFonts.notoSansSc` call sites (e.g. interactive warmup helpers) so boot/warmup stay on the single `ResolvedFonts` path.
