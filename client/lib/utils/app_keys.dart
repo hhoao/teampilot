@@ -117,6 +117,7 @@ class AppKeys {
   static const cursorCliExecutablePathResetButton = Key(
     'cursor-cli-executable-path-reset-button',
   );
+  static const cursorCliInstallButton = Key('cursor-cli-install-button');
   static const gitToolchainPathField = Key('git-toolchain-path-field');
   static const gitToolchainPathBrowseButton = Key(
     'git-toolchain-path-browse-button',
