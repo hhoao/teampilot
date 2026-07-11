@@ -183,6 +183,50 @@ class LaunchAdapterExitedEvent {
   }
 }
 
+/// Adapter → platform `error` notification (and crash-derived failures).
+@immutable
+class LaunchAdapterErrorEvent {
+  const LaunchAdapterErrorEvent({
+    required this.type,
+    required this.targetId,
+    required this.message,
+    this.sessionId,
+  });
+
+  final String type;
+  final String targetId;
+  final String message;
+  final String? sessionId;
+}
+
+/// Scoped `optionsChanged` push from one adapter connection.
+@immutable
+class LaunchAdapterOptionsChangedEvent {
+  const LaunchAdapterOptionsChangedEvent({
+    required this.type,
+    required this.targetId,
+    required this.options,
+  });
+
+  final String type;
+  final String targetId;
+  final List<LaunchOption> options;
+}
+
+/// Scoped `configurationsChanged` push from one adapter connection.
+@immutable
+class LaunchAdapterConfigurationsChangedEvent {
+  const LaunchAdapterConfigurationsChangedEvent({
+    required this.type,
+    required this.targetId,
+    required this.configurations,
+  });
+
+  final String type;
+  final String targetId;
+  final List<LaunchAdapterConfigurationEntry> configurations;
+}
+
 /// Result of `configureAction`.
 @immutable
 class ConfigureActionResult {
@@ -246,7 +290,6 @@ abstract final class LaunchAdapterProtocol {
   }) {
     return jsonEncode({
       'jsonrpc': jsonrpc,
-      'id': null,
       'method': method,
       if (params != null) 'params': params,
     });

@@ -7,7 +7,7 @@ import 'dart:io';
 
 void main() async {
   final sessions = <String>{};
-  var stopped = false;
+  final stoppedSessions = <String>{};
 
   await for (final line in stdin.transform(utf8.decoder).transform(const LineSplitter())) {
     if (line.trim().isEmpty) continue;
@@ -55,13 +55,15 @@ void main() async {
         final sessionId = params['sessionId'] as String? ?? 'unknown';
         sessions.add(sessionId);
         _respond(id, {'accepted': true});
-        if (stopped) break;
+        if (stoppedSessions.contains(sessionId)) break;
         _notify('output', {
           'sessionId': sessionId,
           'category': 'stdout',
           'data': 'ok\n',
         });
-        if (stopped || !sessions.contains(sessionId)) break;
+        if (stoppedSessions.contains(sessionId) || !sessions.contains(sessionId)) {
+          break;
+        }
         sessions.remove(sessionId);
         _notify('exited', {
           'sessionId': sessionId,
@@ -70,12 +72,14 @@ void main() async {
       case 'stop':
         final params = _params(message);
         final sessionId = params['sessionId'] as String?;
-        stopped = true;
-        if (sessionId != null && sessions.remove(sessionId)) {
-          _notify('exited', {
-            'sessionId': sessionId,
-            'exitCode': 130,
-          });
+        if (sessionId != null) {
+          stoppedSessions.add(sessionId);
+          if (sessions.remove(sessionId)) {
+            _notify('exited', {
+              'sessionId': sessionId,
+              'exitCode': 130,
+            });
+          }
         }
         _respond(id, {'stopped': true});
       case 'provideOptions':

@@ -110,6 +110,12 @@ class DefaultRunAdapterLauncher implements RunAdapterLauncher {
       );
     }
 
+    final expanded = LaunchVariableExpander.expandConfiguration(
+      owned.configuration,
+      workspaceFolder: owned.owner.path,
+      env: owned.configuration.env,
+    );
+
     final sub = _client.outputStream
         .where((event) => event.sessionId == sessionId)
         .listen((event) {
@@ -132,7 +138,7 @@ class DefaultRunAdapterLauncher implements RunAdapterLauncher {
 
     await _client.launch(
       sessionId: sessionId,
-      configuration: owned.configuration.toJson(),
+      configuration: expanded.toJson(),
       type: contribution.type,
       targetId: owned.owner.targetId,
       adapterCommand: contribution.adapterCommand,

@@ -3,99 +3,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../models/run/launch_type_contribution.dart';
+import '../../utils/logger.dart';
 import 'launch_adapter_protocol.dart';
 
-/// stdin/stdout handle for one Launch Adapter child process.
-class LaunchAdapterProcess {
-  LaunchAdapterProcess({
-    required this.stdin,
-    required Stream<List<int>> stdout,
-    required Stream<List<int>> stderr,
-    required this.exitCode,
-    required void Function([ProcessSignal signal]) kill,
-  }) : _stdout = stdout,
-       _stderr = stderr,
-       _kill = kill;
-
-  factory LaunchAdapterProcess.fromIo({
-    required IOSink stdin,
-    required Stream<List<int>> stdout,
-    required Stream<List<int>> stderr,
-    required Future<int> exitCode,
-    required void Function([ProcessSignal signal]) kill,
-  }) {
-    return LaunchAdapterProcess(
-      stdin: stdin,
-      stdout: stdout,
-      stderr: stderr,
-      exitCode: exitCode,
-      kill: kill,
-    );
-  }
-
-  final IOSink stdin;
-  final Stream<List<int>> _stdout;
-  final Stream<List<int>> _stderr;
-  final Future<int> exitCode;
-  final void Function([ProcessSignal signal]) _kill;
-
-  Stream<List<int>> get stdout => _stdout;
-  Stream<List<int>> get stderr => _stderr;
-
-  void kill([ProcessSignal signal = ProcessSignal.sigterm]) => _kill(signal);
-}
-
-/// Spawns (or returns) an adapter process for the given expanded command.
-typedef LaunchAdapterProcessStarter =
-    Future<LaunchAdapterProcess> Function({
-      required String command,
-      required List<String> args,
-    });
-
-class _PoolKey {
-  const _PoolKey(this.type, this.targetId);
-
-  final String type;
-  final String targetId;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is _PoolKey && type == other.type && targetId == other.targetId;
-
-  @override
-  int get hashCode => Object.hash(type, targetId);
-}
-
-class _PendingRequest {
-  _PendingRequest(this.completer);
-
-  final Completer<Map<String, Object?>> completer;
-}
-
-class _AdapterConnection {
-  _AdapterConnection({
-    required this.process,
-    required this.lifecycle,
-    required this.type,
-    required this.targetId,
-  });
-
-  final LaunchAdapterProcess process;
-  final LaunchAdapterLifecycle lifecycle;
-  final String type;
-  final String targetId;
-
-  final Map<Object, _PendingRequest> pending = {};
-  final Set<String> activeSessions = {};
-  var nextId = 1;
-  var initialized = false;
-  StreamSubscription<String>? _stdoutSub;
-  StreamSubscription<List<int>>? _stderrSub;
-  var closed = false;
-
-  Object allocId() => nextId++;
-}
+part 'launch_adapter_connection.dart';
 
 /// JSON-RPC Launch Adapter client with sticky/oneshot process pooling.
 class LaunchAdapterClient {
@@ -118,29 +29,41 @@ class LaunchAdapterClient {
   final Duration _launchTimeout;
   final Duration _requestTimeout;
 
-  final Map<_PoolKey, _AdapterConnection> _pool = {};
+  /// Sticky adapters only — keyed by `(type, targetId)`.
+  final Map<_StickyPoolKey, _AdapterConnection> _stickyPool = {};
+
+  /// Oneshot adapters — one process per session; never share sticky keys.
+  final Map<String, _AdapterConnection> _oneshotBySession = {};
+
   final Map<String, Completer<LaunchAdapterExitedEvent>> _exitWaiters = {};
   final Map<String, LaunchAdapterExitedEvent> _exitedEvents = {};
-  final Map<String, _PoolKey> _sessionPool = {};
+  final Map<String, _AdapterConnection> _sessionConnection = {};
 
   final StreamController<LaunchAdapterOutputEvent> _outputController =
       StreamController<LaunchAdapterOutputEvent>.broadcast();
-  final StreamController<List<LaunchOption>> _optionsChangedController =
-      StreamController<List<LaunchOption>>.broadcast();
-  final StreamController<List<LaunchAdapterConfigurationEntry>>
+  final StreamController<LaunchAdapterOptionsChangedEvent>
+  _optionsChangedController =
+      StreamController<LaunchAdapterOptionsChangedEvent>.broadcast();
+  final StreamController<LaunchAdapterConfigurationsChangedEvent>
   _configurationsChangedController =
-      StreamController<List<LaunchAdapterConfigurationEntry>>.broadcast();
+      StreamController<LaunchAdapterConfigurationsChangedEvent>.broadcast();
   final StreamController<LaunchAdapterExitedEvent> _exitedController =
       StreamController<LaunchAdapterExitedEvent>.broadcast();
+  final StreamController<LaunchAdapterErrorEvent> _errorController =
+      StreamController<LaunchAdapterErrorEvent>.broadcast();
 
   Stream<LaunchAdapterOutputEvent> get outputStream => _outputController.stream;
-  Stream<List<LaunchOption>> get optionsChanged =>
+  Stream<LaunchAdapterOptionsChangedEvent> get optionsChanged =>
       _optionsChangedController.stream;
-  Stream<List<LaunchAdapterConfigurationEntry>> get configurationsChanged =>
+  Stream<LaunchAdapterConfigurationsChangedEvent> get configurationsChanged =>
       _configurationsChangedController.stream;
   Stream<LaunchAdapterExitedEvent> get exited => _exitedController.stream;
+  Stream<LaunchAdapterErrorEvent> get errorStream => _errorController.stream;
 
-  /// Ensures a sticky (or fresh oneshot) adapter is initialized for the key.
+  /// Ensures a sticky adapter is initialized for `(type, targetId)`.
+  ///
+  /// Oneshot lifecycle is a no-op here — oneshot processes are spawned per
+  /// [launch] so concurrent sessions never share a pool slot.
   Future<void> initialize({
     required String type,
     required String targetId,
@@ -148,48 +71,44 @@ class LaunchAdapterClient {
     String? extensionId,
     LaunchAdapterLifecycle lifecycle = LaunchAdapterLifecycle.sticky,
   }) async {
-    final key = _PoolKey(type, targetId);
-    final existing = _pool[key];
+    if (lifecycle == LaunchAdapterLifecycle.oneshot) {
+      return;
+    }
+
+    final key = _StickyPoolKey(type, targetId);
+    final existing = _stickyPool[key];
     if (existing != null &&
         !existing.closed &&
-        existing.initialized &&
-        lifecycle == LaunchAdapterLifecycle.sticky) {
+        existing.initialized) {
       return;
     }
 
     if (existing != null) {
-      await _disposeConnection(existing, removeFromPool: true);
+      await _disposeConnection(existing);
     }
 
-    final expanded = LaunchAdapterProtocol.expandAdapterCommand(
-      command: adapterCommand,
-      extensionId: extensionId,
-      resolver: _extensionPathResolver,
-    );
-    final (executable, arguments) = LaunchAdapterProtocol.splitCommand(expanded);
-    final process = await _startProcess(command: executable, args: arguments);
-    final connection = _AdapterConnection(
-      process: process,
-      lifecycle: lifecycle,
+    final connection = await _spawnConnection(
       type: type,
       targetId: targetId,
+      adapterCommand: adapterCommand,
+      extensionId: extensionId,
+      lifecycle: LaunchAdapterLifecycle.sticky,
     );
-    _pool[key] = connection;
-    _attachReaders(connection);
+    _stickyPool[key] = connection;
 
-    unawaited(
-      process.exitCode.then((code) {
-        _onProcessExit(connection, code);
-      }),
-    );
-
-    await _request(
-      connection,
-      method: LaunchAdapterProtocol.methodInitialize,
-      params: {'protocolVersion': 1},
-      timeout: _initializeTimeout,
-    );
-    connection.initialized = true;
+    try {
+      await _request(
+        connection,
+        method: LaunchAdapterProtocol.methodInitialize,
+        params: {'protocolVersion': 1},
+        timeout: _initializeTimeout,
+        killOnTimeout: true,
+      );
+      connection.initialized = true;
+    } catch (_) {
+      await _disposeConnection(connection);
+      rethrow;
+    }
   }
 
   Future<void> launch({
@@ -203,26 +122,53 @@ class LaunchAdapterClient {
   }) async {
     final resolvedType = type ?? configuration['type']?.toString() ?? '';
     final resolvedTarget = targetId ?? 'local';
-    final key = _PoolKey(resolvedType, resolvedTarget);
 
-    if (lifecycle == LaunchAdapterLifecycle.oneshot || !_pool.containsKey(key)) {
-      final command = adapterCommand ?? '';
-      await initialize(
+    final _AdapterConnection connection;
+    if (lifecycle == LaunchAdapterLifecycle.oneshot) {
+      connection = await _spawnConnection(
         type: resolvedType,
         targetId: resolvedTarget,
-        adapterCommand: command,
+        adapterCommand: adapterCommand ?? '',
         extensionId: extensionId,
-        lifecycle: lifecycle,
+        lifecycle: LaunchAdapterLifecycle.oneshot,
+        oneshotSessionId: sessionId,
       );
-    }
-
-    final connection = _pool[key];
-    if (connection == null || connection.closed) {
-      throw StateError('adapter not initialized for $resolvedType@$resolvedTarget');
+      _oneshotBySession[sessionId] = connection;
+      try {
+        await _request(
+          connection,
+          method: LaunchAdapterProtocol.methodInitialize,
+          params: {'protocolVersion': 1},
+          timeout: _initializeTimeout,
+          killOnTimeout: true,
+        );
+        connection.initialized = true;
+      } catch (_) {
+        await _disposeConnection(connection);
+        rethrow;
+      }
+    } else {
+      final key = _StickyPoolKey(resolvedType, resolvedTarget);
+      if (!_stickyPool.containsKey(key)) {
+        await initialize(
+          type: resolvedType,
+          targetId: resolvedTarget,
+          adapterCommand: adapterCommand ?? '',
+          extensionId: extensionId,
+          lifecycle: LaunchAdapterLifecycle.sticky,
+        );
+      }
+      final sticky = _stickyPool[key];
+      if (sticky == null || sticky.closed) {
+        throw StateError(
+          'adapter not initialized for $resolvedType@$resolvedTarget',
+        );
+      }
+      connection = sticky;
     }
 
     connection.activeSessions.add(sessionId);
-    _sessionPool[sessionId] = key;
+    _sessionConnection[sessionId] = connection;
     _exitWaiters.putIfAbsent(
       sessionId,
       () => Completer<LaunchAdapterExitedEvent>(),
@@ -237,13 +183,17 @@ class LaunchAdapterClient {
           'configuration': configuration,
         },
         timeout: _launchTimeout,
+        killOnTimeout: true,
       );
     } catch (error) {
       connection.activeSessions.remove(sessionId);
-      _sessionPool.remove(sessionId);
+      _sessionConnection.remove(sessionId);
       final waiter = _exitWaiters.remove(sessionId);
       if (waiter != null && !waiter.isCompleted) {
         waiter.completeError(error);
+      }
+      if (connection.isOneshot) {
+        await _disposeConnection(connection);
       }
       rethrow;
     }
@@ -255,7 +205,7 @@ class LaunchAdapterClient {
     String? type,
     String? targetId,
   }) async {
-    final connection = _requireConnection(
+    final connection = _requireStickyConnection(
       type: type ?? configuration['type']?.toString() ?? '',
       targetId: targetId ?? 'local',
     );
@@ -272,15 +222,15 @@ class LaunchAdapterClient {
   }
 
   Future<ConfigureActionResult> configureAction({
+    required String type,
     required String actionId,
     required String workspaceFolder,
     required Map<String, Object?> result,
-    String? type,
-    String? targetId,
+    String targetId = 'local',
   }) async {
-    final connection = _requireConnection(
-      type: type ?? 'flutter',
-      targetId: targetId ?? 'local',
+    final connection = _requireStickyConnection(
+      type: type,
+      targetId: targetId,
     );
     final response = await _request(
       connection,
@@ -296,9 +246,7 @@ class LaunchAdapterClient {
   }
 
   Future<void> stop(String sessionId) async {
-    final key = _sessionPool[sessionId];
-    if (key == null) return;
-    final connection = _pool[key];
+    final connection = _sessionConnection[sessionId];
     if (connection == null || connection.closed) return;
 
     await _request(
@@ -310,7 +258,7 @@ class LaunchAdapterClient {
   }
 
   Future<LaunchAdapterExitedEvent> waitExited(String sessionId) {
-    final already = _exitedEvents[sessionId];
+    final already = _exitedEvents.remove(sessionId);
     if (already != null) return Future.value(already);
     final existing = _exitWaiters[sessionId];
     if (existing != null) return existing.future;
@@ -323,8 +271,8 @@ class LaunchAdapterClient {
     required String type,
     required String targetId,
   }) async {
-    final key = _PoolKey(type, targetId);
-    final connection = _pool[key];
+    final key = _StickyPoolKey(type, targetId);
+    final connection = _stickyPool[key];
     if (connection == null) return;
     try {
       if (!connection.closed) {
@@ -338,25 +286,60 @@ class LaunchAdapterClient {
     } catch (_) {
       // Best-effort shutdown.
     }
-    await _disposeConnection(connection, removeFromPool: true);
+    await _disposeConnection(connection);
   }
 
   Future<void> dispose() async {
-    final connections = _pool.values.toList();
-    for (final connection in connections) {
-      await _disposeConnection(connection, removeFromPool: true);
+    final sticky = _stickyPool.values.toList();
+    final oneshot = _oneshotBySession.values.toList();
+    for (final connection in [...sticky, ...oneshot]) {
+      await _disposeConnection(connection);
     }
     await _outputController.close();
     await _optionsChangedController.close();
     await _configurationsChangedController.close();
     await _exitedController.close();
+    await _errorController.close();
   }
 
-  _AdapterConnection _requireConnection({
+  Future<_AdapterConnection> _spawnConnection({
+    required String type,
+    required String targetId,
+    required String adapterCommand,
+    required LaunchAdapterLifecycle lifecycle,
+    String? extensionId,
+    String? oneshotSessionId,
+  }) async {
+    final expanded = LaunchAdapterProtocol.expandAdapterCommand(
+      command: adapterCommand,
+      extensionId: extensionId,
+      resolver: _extensionPathResolver,
+    );
+    final (executable, arguments) = LaunchAdapterProtocol.splitCommand(
+      expanded,
+    );
+    final process = await _startProcess(command: executable, args: arguments);
+    final connection = _AdapterConnection(
+      process: process,
+      lifecycle: lifecycle,
+      type: type,
+      targetId: targetId,
+      oneshotSessionId: oneshotSessionId,
+    );
+    _attachReaders(connection);
+    unawaited(
+      process.exitCode.then((code) {
+        _onProcessExit(connection, code);
+      }),
+    );
+    return connection;
+  }
+
+  _AdapterConnection _requireStickyConnection({
     required String type,
     required String targetId,
   }) {
-    final connection = _pool[_PoolKey(type, targetId)];
+    final connection = _stickyPool[_StickyPoolKey(type, targetId)];
     if (connection == null || connection.closed || !connection.initialized) {
       throw StateError('adapter not initialized for $type@$targetId');
     }
@@ -364,7 +347,7 @@ class LaunchAdapterClient {
   }
 
   void _attachReaders(_AdapterConnection connection) {
-    connection._stdoutSub = connection.process.stdout
+    connection.stdoutSub = connection.process.stdout
         .transform(utf8.decoder)
         .transform(const LineSplitter())
         .listen(
@@ -376,7 +359,15 @@ class LaunchAdapterClient {
             }
           },
         );
-    connection._stderrSub = connection.process.stderr.listen((_) {});
+    connection.stderrSub = connection.process.stderr
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .listen((line) {
+          if (line.trim().isEmpty) return;
+          AppLogger.instance.w(
+            '[LaunchAdapter] stderr ${connection.type}@${connection.targetId}: $line',
+          );
+        });
   }
 
   void _onLine(_AdapterConnection connection, String line) {
@@ -422,24 +413,38 @@ class LaunchAdapterClient {
       case LaunchAdapterProtocol.notifyOptionsChanged:
         if (!_optionsChangedController.isClosed) {
           _optionsChangedController.add(
-            LaunchAdapterProtocol.parseOptions(params['options']),
+            LaunchAdapterOptionsChangedEvent(
+              type: connection.type,
+              targetId: connection.targetId,
+              options: LaunchAdapterProtocol.parseOptions(params['options']),
+            ),
           );
         }
       case LaunchAdapterProtocol.notifyConfigurationsChanged:
         if (!_configurationsChangedController.isClosed) {
           _configurationsChangedController.add(
-            LaunchAdapterProtocol.parseConfigurationEntries(
-              params['configurations'],
+            LaunchAdapterConfigurationsChangedEvent(
+              type: connection.type,
+              targetId: connection.targetId,
+              configurations: LaunchAdapterProtocol.parseConfigurationEntries(
+                params['configurations'],
+              ),
             ),
           );
         }
       case LaunchAdapterProtocol.notifyError:
         final sessionId = params['sessionId']?.toString();
+        final messageText = params['message']?.toString() ?? 'adapter error';
+        _emitError(
+          LaunchAdapterErrorEvent(
+            type: connection.type,
+            targetId: connection.targetId,
+            message: messageText,
+            sessionId: sessionId,
+          ),
+        );
         if (sessionId != null && sessionId.isNotEmpty) {
-          _failSession(
-            sessionId,
-            StateError(params['message']?.toString() ?? 'adapter error'),
-          );
+          _failSession(sessionId, StateError(messageText));
         }
     }
   }
@@ -449,7 +454,8 @@ class LaunchAdapterClient {
     LaunchAdapterExitedEvent event,
   ) {
     connection.activeSessions.remove(event.sessionId);
-    _sessionPool.remove(event.sessionId);
+    _sessionConnection.remove(event.sessionId);
+    // Always retain until waitExited consumes — launch may complete after exited.
     _exitedEvents[event.sessionId] = event;
     if (!_exitedController.isClosed) {
       _exitedController.add(event);
@@ -459,8 +465,8 @@ class LaunchAdapterClient {
       waiter.complete(event);
     }
 
-    if (connection.lifecycle == LaunchAdapterLifecycle.oneshot) {
-      unawaited(_disposeConnection(connection, removeFromPool: true));
+    if (connection.isOneshot) {
+      unawaited(_disposeConnection(connection));
     }
   }
 
@@ -469,7 +475,14 @@ class LaunchAdapterClient {
     if (waiter != null && !waiter.isCompleted) {
       waiter.completeError(error);
     }
-    _sessionPool.remove(sessionId);
+    _sessionConnection.remove(sessionId);
+    _exitedEvents.remove(sessionId);
+  }
+
+  void _emitError(LaunchAdapterErrorEvent event) {
+    if (!_errorController.isClosed) {
+      _errorController.add(event);
+    }
   }
 
   void _onProcessExit(_AdapterConnection connection, int code) {
@@ -511,14 +524,28 @@ class LaunchAdapterClient {
       if (waiter != null && !waiter.isCompleted) {
         waiter.complete(event);
       }
-      _sessionPool.remove(sessionId);
+      _sessionConnection.remove(sessionId);
+      _emitError(
+        LaunchAdapterErrorEvent(
+          type: connection.type,
+          targetId: connection.targetId,
+          message: message,
+          sessionId: sessionId,
+        ),
+      );
     }
 
-    final key = _PoolKey(connection.type, connection.targetId);
-    if (_pool[key] == connection) {
-      _pool.remove(key);
+    if (sessions.isEmpty) {
+      _emitError(
+        LaunchAdapterErrorEvent(
+          type: connection.type,
+          targetId: connection.targetId,
+          message: message,
+        ),
+      );
     }
-    unawaited(_disposeConnection(connection, removeFromPool: false));
+
+    unawaited(_disposeConnection(connection));
   }
 
   Future<Map<String, Object?>> _request(
@@ -526,6 +553,7 @@ class LaunchAdapterClient {
     required String method,
     required Map<String, Object?> params,
     required Duration timeout,
+    bool killOnTimeout = false,
   }) async {
     if (connection.closed) {
       throw StateError('adapter connection closed');
@@ -545,25 +573,29 @@ class LaunchAdapterClient {
       return await pending.completer.future.timeout(timeout);
     } on TimeoutException {
       connection.pending.remove(id);
+      if (killOnTimeout) {
+        await _disposeConnection(connection);
+      }
       throw TimeoutException('Launch adapter $method timed out', timeout);
     }
   }
 
-  Future<void> _disposeConnection(
-    _AdapterConnection connection, {
-    required bool removeFromPool,
-  }) async {
+  Future<void> _disposeConnection(_AdapterConnection connection) async {
     connection.closed = true;
-    if (removeFromPool) {
-      final key = _PoolKey(connection.type, connection.targetId);
-      if (_pool[key] == connection) {
-        _pool.remove(key);
-      }
+
+    final stickyKey = _StickyPoolKey(connection.type, connection.targetId);
+    if (_stickyPool[stickyKey] == connection) {
+      _stickyPool.remove(stickyKey);
     }
-    await connection._stdoutSub?.cancel();
-    await connection._stderrSub?.cancel();
-    connection._stdoutSub = null;
-    connection._stderrSub = null;
+    final oneshotId = connection.oneshotSessionId;
+    if (oneshotId != null && _oneshotBySession[oneshotId] == connection) {
+      _oneshotBySession.remove(oneshotId);
+    }
+
+    await connection.stdoutSub?.cancel();
+    await connection.stderrSub?.cancel();
+    connection.stdoutSub = null;
+    connection.stderrSub = null;
     try {
       connection.process.kill();
     } catch (_) {}
