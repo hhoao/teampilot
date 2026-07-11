@@ -410,7 +410,8 @@ git commit -m "feat(theme): build ThemeData from ResolvedFonts"
 
 - [ ] **Step 1: Implement `loadFontsFor(ResolvedFonts)`**
 
-- Load JetBrains / Ubuntu assets when primary id needs them, or when fallback list includes `Ubuntu Sans Mono` (silent warm for system mono).
+- Load JetBrains / Ubuntu assets when primary id needs them, or when fallback list includes `Ubuntu Sans Mono` (silent warm for system mono — do **not** flip `monoNeedsBundledLoad` for that).
+- On asset load failure: log via `appLogger` (spec error table); keep family names unchanged.
 - If `uiNeedsBundledLoad`, call existing `GoogleFonts.pendingFonts([GoogleFonts.notoSansSc()])` (and keep weight warmup gated the same way).
 - Deprecate/replace unconditional `loadBundledTerminalFonts()` used at boot with `loadFontsFor`.
 
