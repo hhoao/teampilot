@@ -57,6 +57,39 @@ class _FakeProcessLauncher implements RunProcessLauncher {
   }
 }
 
+class FakeRunExecutor implements RunProcessLauncher {
+  FakeRunExecutor({this.hangOnStart = false});
+
+  final bool hangOnStart;
+  final startedSessionIds = <String>[];
+  var stopCount = 0;
+
+  @override
+  Future<RunLaunchHandle> launch({
+    required String sessionId,
+    required OwnedLaunchConfiguration owned,
+    required void Function(ProcessRunOutput output) onOutput,
+  }) async {
+    startedSessionIds.add(sessionId);
+    if (hangOnStart) {
+      final exitCompleter = Completer<int>();
+      return RunLaunchHandle(
+        exitCode: exitCompleter.future,
+        stop: () async {
+          stopCount++;
+          if (!exitCompleter.isCompleted) exitCompleter.complete(130);
+        },
+      );
+    }
+    return RunLaunchHandle(
+      exitCode: Future.value(0),
+      stop: () async {
+        stopCount++;
+      },
+    );
+  }
+}
+
 class _FakeAdapterLauncher implements RunAdapterLauncher {
   @override
   Future<RunLaunchHandle> launch({
@@ -106,6 +139,8 @@ class FakeRunPlatform implements RunPlatformApi {
   var provideOptionsCalls = 0;
   ConfigureActionResult? configureActionResult;
   String? lastOpenLaunchJsonPath;
+  var persistConfigurationCalls = 0;
+  LaunchConfiguration? lastPersistedConfiguration;
 
   @override
   Future<List<OwnedLaunchConfiguration>> listConfigurations(
@@ -177,7 +212,10 @@ class FakeRunPlatform implements RunPlatformApi {
   Future<void> persistConfiguration({
     required WorkspaceFolder folder,
     required LaunchConfiguration configuration,
-  }) async {}
+  }) async {
+    persistConfigurationCalls++;
+    lastPersistedConfiguration = configuration;
+  }
 
   @override
   String launchJsonPath(WorkspaceFolder folder) =>
@@ -271,6 +309,141 @@ void main() {
     await cubit.select(platform.configurations.single.selectionKey);
     final path = await cubit.openLaunchJson();
     expect(path, '/proj/.teampilot/launch.json');
+    await cubit.close();
+  });
+
+  test('stopSession stops running session and updates state', () async {
+    final executor = FakeRunExecutor(hangOnStart: true);
+    final platform = FakeRunPlatform(
+      sessionManager: RunSessionManager(
+        executor: executor,
+        adapters: _FakeAdapterLauncher(),
+      ),
+    );
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    await cubit.load();
+    await cubit.select(platform.configurations.single.selectionKey);
+    await cubit.runSelected();
+    final sessionId = cubit.state.sessions.single.id;
+    expect(cubit.state.sessions.single.status, RunSessionStatus.running);
+
+    await cubit.stopSession(sessionId);
+    expect(cubit.state.sessions.single.status, RunSessionStatus.exited);
+    expect(executor.stopCount, 1);
+    await cubit.close();
+    await platform.sessionManager.dispose();
+  });
+
+  test('restartSession replaces session with a new running one', () async {
+    final executor = FakeRunExecutor(hangOnStart: true);
+    final platform = FakeRunPlatform(
+      sessionManager: RunSessionManager(
+        executor: executor,
+        adapters: _FakeAdapterLauncher(),
+      ),
+    );
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    await cubit.load();
+    await cubit.select(platform.configurations.single.selectionKey);
+    await cubit.runSelected();
+    final originalId = cubit.state.sessions.single.id;
+
+    await cubit.restartSession(originalId);
+    final running = cubit.state.sessions
+        .where((s) => s.status == RunSessionStatus.running)
+        .toList();
+    expect(running, hasLength(1));
+    expect(running.single.id, isNot(originalId));
+    expect(executor.startedSessionIds, hasLength(2));
+    await cubit.close();
+    await platform.sessionManager.dispose();
+  });
+
+  test('stopCompound stops all listed sessions', () async {
+    final executor = FakeRunExecutor(hangOnStart: true);
+    final platform = FakeRunPlatform(
+      configurations: [
+        _processConfig(id: 'a'),
+        _processConfig(id: 'b'),
+      ],
+      sessionManager: RunSessionManager(
+        executor: executor,
+        adapters: _FakeAdapterLauncher(),
+      ),
+    );
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    await cubit.load();
+    await cubit.select(platform.configurations[0].selectionKey);
+    await cubit.runSelected();
+    await cubit.select(platform.configurations[1].selectionKey);
+    await cubit.runSelected();
+    final ids = cubit.state.sessions.map((s) => s.id).toList();
+    expect(ids, hasLength(2));
+
+    await cubit.stopCompound(ids);
+    expect(
+      cubit.state.sessions.every((s) => s.status == RunSessionStatus.exited),
+      isTrue,
+    );
+    await cubit.close();
+    await platform.sessionManager.dispose();
+  });
+
+  test('configureAction persists valid configuration and reloads', () async {
+    final platform = FakeRunPlatform(
+      validate: (config) {
+        final launch = config as LaunchConfiguration;
+        if (launch.type == 'flutter' && !launch.extras.containsKey('device')) {
+          return const ['device is required'];
+        }
+        return const [];
+      },
+    )..configureActionResult = const ConfigureActionResult(
+        persist: true,
+        configuration: {
+          'id': 'app',
+          'name': 'app',
+          'type': 'flutter',
+          'device': 'linux',
+        },
+      );
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    await cubit.load();
+
+    await cubit.configureAction(
+      actionId: 'pick_device',
+      type: 'flutter',
+      result: const {'device': 'linux'},
+    );
+
+    expect(platform.persistConfigurationCalls, 1);
+    expect(platform.lastPersistedConfiguration?.id, 'app');
+    expect(cubit.state.errorMessage, isNull);
+    await cubit.close();
+  });
+
+  test('configureAction sets errorMessage when persisted config fails schema', () async {
+    final platform = FakeRunPlatform(
+      validate: (_) => const ['device is required'],
+    )..configureActionResult = const ConfigureActionResult(
+        persist: true,
+        configuration: {
+          'id': 'app',
+          'name': 'app',
+          'type': 'flutter',
+        },
+      );
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    await cubit.load();
+
+    await cubit.configureAction(
+      actionId: 'pick_device',
+      type: 'flutter',
+      result: const {},
+    );
+
+    expect(platform.persistConfigurationCalls, 0);
+    expect(cubit.state.errorMessage, contains('device'));
     await cubit.close();
   });
 }

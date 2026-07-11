@@ -138,12 +138,16 @@ class RunPlatform implements RunPlatformApi {
   @override
   List<String> validateConfiguration(OwnedLaunchConfiguration owned) {
     final type = owned.configuration.type;
+    final targetId = owned.owner.targetId;
     if (type == ProcessLaunchSchema.typeName) {
       return ProcessLaunchSchema.validate(owned.configuration);
     }
     final contribution = registry.get(type);
     if (contribution == null) {
       return ['unregistered launch type: $type'];
+    }
+    if (!registry.isAvailable(type, targetId: targetId)) {
+      return ['launch type $type is not available on target $targetId'];
     }
     return validateAgainstSchema(
       owned.configuration.toJson(),
@@ -152,8 +156,13 @@ class RunPlatform implements RunPlatformApi {
   }
 
   @override
-  Future<RunSession> start(OwnedLaunchConfiguration owned) =>
-      sessionManager.start(owned);
+  Future<RunSession> start(OwnedLaunchConfiguration owned) async {
+    final errors = validateConfiguration(owned);
+    if (errors.isNotEmpty) {
+      throw StateError(errors.join('; '));
+    }
+    return sessionManager.start(owned);
+  }
 
   @override
   Future<void> stop(String sessionId) => sessionManager.stop(sessionId);

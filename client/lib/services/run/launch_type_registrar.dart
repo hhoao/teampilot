@@ -63,7 +63,9 @@ class LaunchTypeRegistrar {
         );
         if (contribution == null) continue;
 
-        registry.registerExtension(contribution);
+        final result = registry.registerExtension(contribution);
+        if (result.isConflict) continue;
+
         // v1: only local targets can prove adapter presence; remote → unavailable.
         registry.setAvailability(
           contribution.type,

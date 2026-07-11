@@ -103,4 +103,19 @@ void main() {
     );
     expect(registrar.pathResolver('ext.flutter'), '/installed/ext.flutter');
   });
+
+  test('conflicting extension does not override first winner availability', () async {
+    final reg = LaunchTypeRegistry.withBuiltIns();
+    await LaunchTypeRegistrar(
+      extensions: [
+        _flutterExtension(id: 'ext.flutter.a'),
+        _flutterExtension(id: 'ext.flutter.b'),
+      ],
+      detector: (manifest) async => manifest.id == 'ext.flutter.a',
+      extensionPathFor: (_) => '/ext',
+    ).rebuild(reg);
+
+    expect(reg.get('flutter')?.extensionId, 'ext.flutter.a');
+    expect(reg.isAvailable('flutter', targetId: WorkspaceFolder.localTargetId), isTrue);
+  });
 }
