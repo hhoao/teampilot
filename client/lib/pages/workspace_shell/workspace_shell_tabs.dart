@@ -5,6 +5,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../cubits/chat_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -42,10 +43,17 @@ class WorkspaceShellRightToolsVisibilityToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
+    final composeLanding = context.select<ChatCubit, bool>(
+      (c) => c.state.composeActive, // chrome is for the active workspace
+    );
     return BlocBuilder<LayoutCubit, LayoutState>(
+      buildWhen: (a, b) =>
+          a.preferences.rightToolsVisible != b.preferences.rightToolsVisible ||
+          a.landingRightToolsOverride != b.landingRightToolsOverride,
       builder: (context, state) {
-        final prefs = state.preferences;
-        final visible = prefs.rightToolsVisible;
+        final visible = composeLanding
+            ? (state.landingRightToolsOverride ?? false)
+            : state.preferences.rightToolsVisible;
         return AppIconButton(
           key: AppKeys.rightToolsVisibilityButton,
           icon: Icons.vertical_split_outlined,
@@ -56,8 +64,9 @@ class WorkspaceShellRightToolsVisibilityToggle extends StatelessWidget {
           backgroundColor: visible
               ? cs.primaryContainer.withValues(alpha: 0.45)
               : Colors.transparent,
-          onTap: () =>
-              context.read<LayoutCubit>().setRightToolsVisible(!visible),
+          onTap: () => context.read<LayoutCubit>().toggleRightTools(
+                composeLanding: composeLanding,
+              ),
         );
       },
     );

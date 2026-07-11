@@ -47,19 +47,55 @@ void main() {
     expect(e.overlayRight, isFalse);
   });
 
-  test('compose and session visibility match in v1', () {
-    final session = WorkspacePanePolicy.effective(
-      preferences: prefs,
-      viewportWidth: 1200,
-      composeLanding: false,
-    );
-    final compose = WorkspacePanePolicy.effective(
+  test('compose landing defaults right hidden even when prefs visible', () {
+    final e = WorkspacePanePolicy.effective(
       preferences: prefs,
       viewportWidth: 1200,
       composeLanding: true,
     );
-    expect(compose.dockLeft, session.dockLeft);
-    expect(compose.dockRight, session.dockRight);
-    expect(compose.dockBottom, session.dockBottom);
+    expect(e.dockRight, isFalse);
+    expect(e.dockLeft, isTrue);
+    expect(e.dockBottom, isTrue);
+  });
+
+  test('compose landing + override true docks right', () {
+    final e = WorkspacePanePolicy.effective(
+      preferences: prefs,
+      viewportWidth: 1200,
+      composeLanding: true,
+      landingRightToolsOverride: true,
+    );
+    expect(e.dockRight, isTrue);
+  });
+
+  test('session ignores landing override', () {
+    final e = WorkspacePanePolicy.effective(
+      preferences: prefs.copyWith(rightToolsVisible: false),
+      viewportWidth: 1200,
+      composeLanding: false,
+      landingRightToolsOverride: true,
+    );
+    expect(e.dockRight, isFalse);
+  });
+
+  test('narrow compose + override null → no right overlay', () {
+    final e = WorkspacePanePolicy.effective(
+      preferences: prefs,
+      viewportWidth: 700,
+      composeLanding: true,
+    );
+    expect(e.isNarrow, isTrue);
+    expect(e.dockRight, isFalse);
+    expect(e.overlayRight, isFalse);
+  });
+
+  test('narrow compose + override true → overlayRight', () {
+    final e = WorkspacePanePolicy.effective(
+      preferences: prefs,
+      viewportWidth: 700,
+      composeLanding: true,
+      landingRightToolsOverride: true,
+    );
+    expect(e.overlayRight, isTrue);
   });
 }

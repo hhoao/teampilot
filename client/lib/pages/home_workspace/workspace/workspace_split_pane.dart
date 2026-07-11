@@ -6,7 +6,6 @@ import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/layout_cubit.dart';
 import '../../../cubits/run_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
-import '../../../models/layout_preferences.dart';
 import '../../../models/workspace.dart';
 import '../../../services/commands/run_command_registrar.dart';
 import '../../../services/workspace/workspace_run_registry.dart';
@@ -15,6 +14,7 @@ import '../../../services/workspace/workspace_tools_scope_registry.dart';
 import '../../../services/workspace/workspace_worktree_registry.dart';
 import '../../../utils/app_keys.dart';
 import '../../../utils/workspace_active_context.dart';
+import '../../../utils/workspace_compose_active.dart';
 import '../../../widgets/deferred_mount_shell.dart';
 import '../../../widgets/right_tools/right_tools_panel.dart';
 import '../../../widgets/workspace_bottom_dock.dart';
@@ -110,11 +110,15 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
           final cwd = wt.currentWorktreePath.isNotEmpty
               ? wt.currentWorktreePath
               : widget.workspace.firstFolderPath;
+          final composeLanding = context.select<ChatCubit, bool>(
+            (c) => workspaceComposeActive(c, widget.tabScopeId),
+          );
           return WorkspaceToolsScopeSync(
             workspace: widget.workspace,
             cwd: cwd,
             tabScopeId: widget.tabScopeId,
             child: WorkspaceIdeShell(
+              composeLanding: composeLanding,
               terminalHold: _terminalHold,
               left: WorkspaceSidebar(
                 workspace: widget.workspace,
@@ -176,18 +180,23 @@ class _WorkspaceRightToolsPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final chat = context.watch<ChatCubit>();
     final active = WorkspaceActiveContext.resolve(
-      chat: context.watch<ChatCubit>(),
+      chat: chat,
       launchProfiles: context.read<LaunchProfileCubit>(),
       tabScopeId: tabScopeId,
     );
-    final preferences = context.select<LayoutCubit, LayoutPreferences>(
-      (c) => c.state.preferences,
-    );
+    final composeLanding = workspaceComposeActive(chat, tabScopeId);
+    final layoutState = context.watch<LayoutCubit>().state;
+    final effectiveRight = composeLanding
+        ? (layoutState.landingRightToolsOverride ?? false)
+        : layoutState.preferences.rightToolsVisible;
     return RightToolsPanel(
       cwd: cwd,
       additionalPaths: additionalPaths,
-      preferences: preferences,
+      preferences: layoutState.preferences.copyWith(
+        rightToolsVisible: effectiveRight,
+      ),
       panelKey: AppKeys.rightToolsPanel,
       dismissDrawerOnAction: false,
       isPersonalContext: active.isPersonal,

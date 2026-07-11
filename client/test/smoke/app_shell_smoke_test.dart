@@ -5,11 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
 import 'package:teampilot/router/app_router.dart';
+import 'package:teampilot/services/workspace/workspace_pane_policy.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/utils/app_keys.dart';
 
@@ -52,6 +54,8 @@ void main() {
     );
     late final Workspace workspace;
     late final Directory workspaceDir;
+    final layoutCubit = LayoutCubit();
+    addTearDown(layoutCubit.close);
     await tester.runAsync(() async {
       workspaceDir = await Directory.systemTemp.createTemp('widget_ws_');
       workspace = await desktopHarnessSessionRepo.createWorkspace([
@@ -69,22 +73,39 @@ void main() {
         }
       } on Object catch (_) {}
     });
-    await pumpDesktopApp(tester, teamCubit, chatCubit: chatCubit);
+    await pumpDesktopApp(
+      tester,
+      teamCubit,
+      chatCubit: chatCubit,
+      layoutCubit: layoutCubit,
+    );
     appRouter.go('/home-v2/workspace/${workspace.workspaceId}');
     await tester.pump();
     await pumpPhaseTransitions(tester);
 
     expect(find.byKey(AppKeys.chatWorkspace), findsOneWidget);
-    // IDE shell mounts right tools (default visible) with file tree as default tab.
-    expect(find.byKey(AppKeys.rightToolsPanel), findsOneWidget);
     expect(find.byKey(AppKeys.membersPanel), findsNothing);
-    expect(find.byKey(AppKeys.fileTreePanel), findsOneWidget);
     final selectedTeam = teamCubit.state.selectedTeam;
     expect(selectedTeam, isNotNull);
     expect(chatCubit.state.tabs.length, 0);
     final workbenchCtx = tester.element(find.byKey(AppKeys.chatWorkspace));
     final l10n = AppLocalizations.of(workbenchCtx);
     expect(find.text(l10n.workspaceChatLandingInputHint), findsOneWidget);
+    // Compose landing default-hides right tools (prefs stay visible).
+    expect(layoutCubit.state.preferences.rightToolsVisible, isTrue);
+    expect(
+      WorkspacePanePolicy.effective(
+        preferences: layoutCubit.state.preferences,
+        viewportWidth: 1400,
+        composeLanding: true,
+        landingRightToolsOverride: layoutCubit.state.landingRightToolsOverride,
+      ).dockRight,
+      isFalse,
+    );
+    expect(
+      find.byKey(AppKeys.rightToolsPanel).hitTestable(),
+      findsNothing,
+    );
 
     chatCubit.setActiveWorkspace(workspace.workspaceId);
     // Real repository I/O must run inside runAsync in widget tests.
@@ -103,6 +124,18 @@ void main() {
     expect(chatCubit.state.tabs.single.id.startsWith('local-'), isFalse);
     expect(chatCubit.isMemberRunning('team-lead'), isTrue);
     await pumpPhaseTransitions(tester);
+    // Session exits compose: prefs dock restored. Prefer key mount over
+    // hitTestable — pane size sync can lag DeferredMountShell in smoke.
+    expect(chatCubit.state.composeActive, isFalse);
+    expect(
+      WorkspacePanePolicy.effective(
+        preferences: layoutCubit.state.preferences,
+        viewportWidth: 1400,
+        composeLanding: false,
+        landingRightToolsOverride: layoutCubit.state.landingRightToolsOverride,
+      ).dockRight,
+      isTrue,
+    );
     expect(find.byKey(AppKeys.rightToolsPanel), findsOneWidget);
   });
 
