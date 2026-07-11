@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/launch_profile_cubit.dart';
+import '../../cubits/layout_cubit.dart';
 import '../../cubits/team/launch_profile_selectors.dart';
 import '../../models/launch_profile_kind.dart';
+import '../../models/layout_preferences.dart';
 import '../../models/team_config.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/split_layout.dart';
 import '../team_config/team_config_section.dart';
 import 'home_all_workspaces_pane.dart';
 import 'home_workspace_content.dart';
@@ -103,42 +106,44 @@ class _HomePageState extends State<HomePage> {
     final libraryView = _libraryView;
 
     return WorkspacePageCardShell(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          HomeSidebar(
-            activeGlobalView: globalView,
-            activeLibraryView: libraryView,
-            allWorkspacesActive:
-                _allWorkspacesActive &&
-                globalView == null &&
-                libraryView == null,
-            selectedIdentityId: _allWorkspacesActive
-                ? null
-                : (_selectedIdentityId ??
-                      context.select<LaunchProfileCubit, String?>(
-                        (c) => c.state.selectedTeamId,
-                      )),
-            onSelectAllWorkspaces: () => setState(() {
-              _allWorkspacesActive = true;
-              _globalView = null;
-              _libraryView = null;
-              _selectedIdentityId = null;
-            }),
-            onSelectGlobalView: (view) => setState(() {
-              _allWorkspacesActive = false;
-              _globalView = view;
-              _libraryView = null;
-            }),
-            onSelectLibraryView: (view) => setState(() {
-              _allWorkspacesActive = false;
-              _libraryView = view;
-              _globalView = null;
-            }),
-            onSelectIdentity: _selectIdentity,
-          ),
-          Expanded(
-            child: Padding(
+      child: BlocBuilder<LayoutCubit, LayoutState>(
+        buildWhen: (a, b) =>
+            a.preferences.homeSidebarWidth != b.preferences.homeSidebarWidth,
+        builder: (context, layoutState) {
+          return TwoPaneSplitView(
+            axis: Axis.horizontal,
+            first: HomeSidebar(
+              activeGlobalView: globalView,
+              activeLibraryView: libraryView,
+              allWorkspacesActive:
+                  _allWorkspacesActive &&
+                  globalView == null &&
+                  libraryView == null,
+              selectedIdentityId: _allWorkspacesActive
+                  ? null
+                  : (_selectedIdentityId ??
+                        context.select<LaunchProfileCubit, String?>(
+                          (c) => c.state.selectedTeamId,
+                        )),
+              onSelectAllWorkspaces: () => setState(() {
+                _allWorkspacesActive = true;
+                _globalView = null;
+                _libraryView = null;
+                _selectedIdentityId = null;
+              }),
+              onSelectGlobalView: (view) => setState(() {
+                _allWorkspacesActive = false;
+                _globalView = view;
+                _libraryView = null;
+              }),
+              onSelectLibraryView: (view) => setState(() {
+                _allWorkspacesActive = false;
+                _libraryView = view;
+                _globalView = null;
+              }),
+              onSelectIdentity: _selectIdentity,
+            ),
+            second: Padding(
               padding: const EdgeInsets.fromLTRB(44, 48, 42, 18),
               child: _HomeRightPane(
                 globalView: globalView,
@@ -155,8 +160,15 @@ class _HomePageState extends State<HomePage> {
                 onOpenTeam: _selectIdentity,
               ),
             ),
-          ),
-        ],
+            initialSize: layoutState.preferences.homeSidebarWidth,
+            minSize: LayoutPreferences.minHomeSidebarWidth,
+            maxSize: double.infinity,
+            minSecondarySize: LayoutPreferences.minWorkspaceHubContentWidth,
+            onSizeChanged: (width) {
+              context.read<LayoutCubit>().setHomeSidebarWidth(width);
+            },
+          );
+        },
       ),
     );
   }

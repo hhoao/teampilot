@@ -7,6 +7,7 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/team/launch_profile_selectors.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/launch_profile_kind.dart';
+import '../../models/layout_preferences.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
@@ -45,7 +46,7 @@ class HomeSidebar extends StatefulWidget {
   final ValueChanged<HomeLibraryView>? onSelectLibraryView;
   final ValueChanged<String>? onSelectIdentity;
 
-  static const double width = 420;
+  static const double width = LayoutPreferences.defaultHomeSidebarWidth;
 
   @override
   State<HomeSidebar> createState() => _HomeSidebarState();
@@ -68,7 +69,6 @@ class _HomeSidebarState extends State<HomeSidebar> {
     final allWorkspacesActive = widget.allWorkspacesActive;
 
     return Container(
-      width: HomeSidebar.width,
       decoration: BoxDecoration(
         color: cs.workspaceCard,
         border: Border(
