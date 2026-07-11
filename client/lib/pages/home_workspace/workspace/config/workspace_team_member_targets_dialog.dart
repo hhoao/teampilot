@@ -10,6 +10,7 @@ import '../../../../repositories/session_repository.dart';
 import '../../../../services/launch/member_placement_save.dart';
 import '../../../../widgets/app_dialog.dart';
 import '../mixed_workspace_member_placement_panel.dart';
+import '../../../../theme/app_text_styles.dart';
 
 /// Edits workspace + team default member→machine pins (new sessions only).
 Future<bool?> showWorkspaceTeamMemberTargetsDialog(
@@ -138,9 +139,7 @@ class _WorkspaceTeamMemberTargetsDialogState
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Text(
               l10n.mixedWorkspaceMemberAssignmentSubtitle,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+              style: AppTextStyles.of(context).mutedSm,
             ),
           ),
           Expanded(
@@ -161,9 +160,7 @@ class _WorkspaceTeamMemberTargetsDialogState
                 !_preparedSave.leadValid
                     ? l10n.mixedWorkspaceLeadPlacementInvalid
                     : l10n.mixedWorkspaceMemberAssignmentIncomplete,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.error,
-                ),
+                style: AppTextStyles.of(context).smColored(Theme.of(context).colorScheme.error),
               ),
             ),
           AppDialogActions(

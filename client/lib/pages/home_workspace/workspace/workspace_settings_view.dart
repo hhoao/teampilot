@@ -265,7 +265,6 @@ class _WorkspaceSettingsInlineRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
 
     Widget? action;
     if (onEdit != null) {
@@ -286,16 +285,13 @@ class _WorkspaceSettingsInlineRow extends StatelessWidget {
                 width: 168,
                 child: Text(
                   label,
-                  style: tt.bodyMedium?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: AppTextStyles.of(context).mdMediumColored(cs.onSurfaceVariant),
                 ),
               ),
               Expanded(
                 child: Text(
                   value,
-                  style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                  style: AppTextStyles.of(context).mdMedium,
                 ),
               ),
               if (trailing != null) trailing!,

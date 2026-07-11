@@ -166,9 +166,8 @@ class SessionReviewComposeCard extends StatelessWidget {
                   ),
                   child: Text(
                     error,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onErrorContainer,
-                      height: 1.45,
+                    style: AppTextStyles.of(context).smRelaxedColored(
+                      Theme.of(context).colorScheme.onErrorContainer,
                     ),
                   ),
                 ),

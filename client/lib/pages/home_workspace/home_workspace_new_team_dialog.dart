@@ -685,9 +685,7 @@ class _NativeTeamOptionsCard extends StatelessWidget {
               trailing: providerEntries.isEmpty
                   ? Text(
                       l10n.onboardingDefaultPresetEmpty,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                      style: AppTextStyles.of(context).mutedSm,
                     )
                   : SettingsCompactDropdown<String>(
                       value: effectiveProviderId,

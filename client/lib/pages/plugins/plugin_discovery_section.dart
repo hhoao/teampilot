@@ -175,7 +175,7 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
                     Expanded(
                       child: Text(
                         l10n.pluginsDiscoverySyncing,
-                        style: Theme.of(context).textTheme.bodySmall,
+                        style: AppTextStyles.of(context).sm,
                       ),
                     ),
                   ],

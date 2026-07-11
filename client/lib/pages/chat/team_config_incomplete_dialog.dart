@@ -5,6 +5,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../services/team/team_config_launch_validator.dart';
 import '../../widgets/app_dialog.dart';
 import '../team_config/team_config_section.dart';
+import '../../theme/app_text_styles.dart';
 
 /// Shows the "team configuration incomplete" warning for [validation] and, when
 /// the user opts in, navigates to the team-config screen (deep-linked to the
@@ -87,9 +88,7 @@ class _TeamConfigIncompleteDialog extends StatelessWidget {
           Text(
             l10n.teamConfigIncompleteBody(teamName),
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colors.onSurfaceVariant,
-            ),
+            style: AppTextStyles(theme).mutedMd,
           ),
           const SizedBox(height: 16),
           DecoratedBox(
@@ -158,16 +157,12 @@ class _IssueRow extends StatelessWidget {
                 children: [
                   Text(
                     group.title,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: AppTextStyles(theme).mdSemibold,
                   ),
                   const SizedBox(height: 2),
                   Text(
                     aspects,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
+                    style: AppTextStyles(theme).mutedSm,
                   ),
                 ],
               ),

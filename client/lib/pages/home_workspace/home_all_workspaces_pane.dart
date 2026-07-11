@@ -13,6 +13,7 @@ import '../../services/home_workspace/workspace_favorites_store.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'workspace_sort.dart';
 import 'workspaces_tab.dart';
+import '../../theme/app_text_styles.dart';
 
 /// Right-hand pane listing every workspace (no team filter).
 class HomeAllWorkspacesPane extends StatefulWidget {
@@ -97,9 +98,7 @@ class _HomeAllWorkspacesPaneState extends State<HomeAllWorkspacesPane> {
         children: [
           Text(
             l10n.homeWorkspaceAllWorkspaces,
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(color: cs.onSurface),
+            style: AppTextStyles.of(context).xl,
           ),
           const SizedBox(height: 16),
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),

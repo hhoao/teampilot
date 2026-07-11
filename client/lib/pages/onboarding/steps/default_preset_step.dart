@@ -20,6 +20,7 @@ import '../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
 import '../../home_workspace/workspace/config/workspace_cli_config_helpers.dart';
 import '../../home_workspace/workspace/config/workspace_cli_effort_helpers.dart';
+import '../../../theme/app_text_styles.dart';
 
 class OnboardingDefaultPresetStep extends StatefulWidget {
   const OnboardingDefaultPresetStep({super.key, this.isActive = true});
@@ -229,16 +230,14 @@ class OnboardingDefaultPresetStepState
       children: [
         Text(
           l10n.onboardingDefaultPresetTitle,
-          style: Theme.of(context).textTheme.headlineSmall,
+          style: AppTextStyles.of(context).display,
         ),
         const SizedBox(height: 8),
         Text(
           providers.isEmpty
               ? l10n.onboardingDefaultPresetEmpty
               : l10n.onboardingDefaultPresetSubtitle,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: AppTextStyles.of(context).mutedMd,
         ),
         const SizedBox(height: 20),
         SettingsSurfaceCard(
@@ -287,7 +286,7 @@ class OnboardingDefaultPresetStepState
                     body: selectedProvider == null
                         ? Text(
                             l10n.selectModel,
-                            style: Theme.of(context).textTheme.bodyMedium
+                            style: AppTextStyles.of(context).md
                                 ?.copyWith(
                                   color: Theme.of(
                                     context,

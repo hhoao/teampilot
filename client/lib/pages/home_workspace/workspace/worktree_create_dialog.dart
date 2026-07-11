@@ -6,6 +6,7 @@ import '../../../services/git/worktree_branch_options.dart';
 import '../../../services/storage/runtime_context.dart';
 import '../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../widgets/dropdown/app_dropdown_field.dart';
+import '../../../theme/app_text_styles.dart';
 
 export '../../../services/git/worktree_branch_options.dart'
     show suggestWorktreeBranchName;
@@ -280,11 +281,11 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
             ],
             const SizedBox(height: 12),
             if (_previewPath.isNotEmpty) ...[
-              Text(l10n.worktreePathLabel, style: theme.textTheme.labelSmall),
+              Text(l10n.worktreePathLabel, style: AppTextStyles(theme).xs),
               const SizedBox(height: 2),
               Text(
                 _previewPath,
-                style: theme.textTheme.bodySmall,
+                style: AppTextStyles(theme).sm,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),

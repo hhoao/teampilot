@@ -224,7 +224,7 @@ class _McpFormPageState extends State<McpFormPage> {
                     children: [
                       Text(
                         l10n.mcpFormMetadata,
-                        style: Theme.of(context).textTheme.titleSmall,
+                        style: AppTextStyles.of(context).mdSemiboldTightSnug,
                       ),
                       const Spacer(),
                       Icon(
@@ -286,7 +286,7 @@ class _McpFormPageState extends State<McpFormPage> {
                 children: [
                   Text(
                     l10n.mcpFormJsonLabel,
-                    style: Theme.of(context).textTheme.titleSmall,
+                    style: AppTextStyles.of(context).mdSemiboldTightSnug,
                   ),
                   const Spacer(),
                   TextButton(

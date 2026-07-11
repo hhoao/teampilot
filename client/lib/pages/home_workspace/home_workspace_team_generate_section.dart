@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
+import '../../theme/app_text_styles.dart';
 
 typedef TeamDescriptionChanged = void Function(String description);
 
@@ -42,7 +43,7 @@ class _HomeTeamGenerateSectionState extends State<HomeTeamGenerateSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(l10n.teamGenTitle, style: Theme.of(context).textTheme.titleSmall),
+        Text(l10n.teamGenTitle, style: AppTextStyles.of(context).mdSemiboldTightSnug),
         const SizedBox(height: 8),
         TextField(
           key: const ValueKey('team-gen-description'),

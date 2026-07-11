@@ -9,6 +9,7 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_provider_config.dart';
 import '../../../widgets/app_provider/provider_brand_icon.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
+import '../../../theme/app_text_styles.dart';
 
 class OnboardingProviderImportStep extends StatefulWidget {
   const OnboardingProviderImportStep({super.key, this.isActive = true});
@@ -91,14 +92,12 @@ class _OnboardingProviderImportStepState
       children: [
         Text(
           l10n.onboardingProviderImportTitle,
-          style: Theme.of(context).textTheme.headlineSmall,
+          style: AppTextStyles.of(context).display,
         ),
         const SizedBox(height: 8),
         Text(
           l10n.onboardingProviderImportSubtitle,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: AppTextStyles.of(context).mutedMd,
         ),
         const SizedBox(height: 20),
         if (!_importing)

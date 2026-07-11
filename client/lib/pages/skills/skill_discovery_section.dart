@@ -10,6 +10,7 @@ import 'skill_discovery_repos_panel.dart';
 import 'skill_discovery_skills_sh_panel.dart';
 import 'skill_management_cards.dart';
 import 'skill_source_toggle.dart';
+import '../../theme/app_text_styles.dart';
 
 class SkillDiscoverySection extends StatefulWidget {
   const SkillDiscoverySection({super.key, required this.onGoRepos});
@@ -210,7 +211,7 @@ class _SkillDiscoverySyncBanner extends StatelessWidget {
               Expanded(
                 child: Text(
                   context.l10n.skillsDiscoverySyncing,
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: AppTextStyles.of(context).sm,
                 ),
               ),
             ],

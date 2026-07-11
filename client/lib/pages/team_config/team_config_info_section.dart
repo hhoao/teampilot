@@ -159,10 +159,7 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                   body: Text(
                     key: AppKeys.teamNameField,
                     widget.team.name,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
+                    style: AppTextStyles.of(context).mdMedium,
                   ),
                   showDividerBelow: true,
                 ),
@@ -220,7 +217,7 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                         Expanded(
                           child: Text(
                             teamCliDisplayLabel(context, l10n, widget.team.cli),
-                            style: Theme.of(context).textTheme.bodyMedium
+                            style: AppTextStyles.of(context).md
                                 ?.copyWith(
                                   fontWeight: FontWeight.w500,
                                   color: Theme.of(

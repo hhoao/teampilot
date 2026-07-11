@@ -12,6 +12,7 @@ import '../pages/onboarding/onboarding_gate.dart';
 import '../utils/app_keys.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
 import '../widgets/settings/workspace_settings_widgets.dart';
+import '../theme/app_text_styles.dart';
 
 /// About / app update section inside [ConfigWorkspace] (desktop split or Android hub).
 class AboutConfigWorkspace extends StatefulWidget {
@@ -119,7 +120,7 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                                 state.status == AppUpdateStatus.installing
                                     ? l10n.appUpdateInstalling
                                     : l10n.appUpdateDownloading,
-                                style: Theme.of(context).textTheme.bodySmall
+                                style: AppTextStyles.of(context).sm
                                     ?.copyWith(color: cs.onSurfaceVariant),
                               ),
                             ],
@@ -131,9 +132,7 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                           child: Text(
                             state.errorMessage!,
-                            style: Theme.of(
-                              context,
-                            ).textTheme.bodySmall?.copyWith(color: cs.error),
+                            style: AppTextStyles.of(context).smColored(cs.error),
                           ),
                         ),
                       Padding(
@@ -263,7 +262,7 @@ class _ReleaseNotesPreview extends StatelessWidget {
     final preview = text.length > 600 ? '${text.substring(0, 600)}…' : text;
     return SelectableText(
       preview,
-      style: Theme.of(context).textTheme.bodySmall,
+      style: AppTextStyles.of(context).sm,
     );
   }
 }

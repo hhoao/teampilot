@@ -215,9 +215,7 @@ class _ShortcutRow extends StatelessWidget {
           if (chords.isEmpty)
             Text(
               l10n.shortcutsNotSet,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              style: AppTextStyles.of(context).mutedSm,
             )
           else
             Wrap(

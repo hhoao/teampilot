@@ -16,6 +16,7 @@ import '../ssh_profiles_page.dart';
 import 'ssh_profile_connection_status.dart';
 import 'ssh_profile_target_card.dart';
 import 'ssh_profile_target_config_dialog.dart';
+import '../../theme/app_text_styles.dart';
 
 /// Orca-style SSH target list for settings (desktop + Android).
 class SshProfilesSection extends StatefulWidget {
@@ -177,16 +178,12 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                     children: [
                       Text(
                         l10n.sshProfilesTargetsTitle,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: AppTextStyles.of(context).mdBoldTightSnug,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         l10n.sshProfilesTargetsSubtitle,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                        style: AppTextStyles.of(context).mutedSm,
                       ),
                     ],
                   ),
@@ -233,9 +230,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                 ),
                 child: Text(
                   l10n.sshProfilesEmpty,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                  style: AppTextStyles.of(context).mutedMd,
                 ),
               )
             else

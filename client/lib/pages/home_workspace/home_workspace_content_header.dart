@@ -20,9 +20,7 @@ class HomeTeamHeader extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
     final l10n = context.l10n;
-    final titleStyle = Theme.of(
-      context,
-    ).textTheme.titleLarge?.copyWith(color: cs.onSurface);
+    final titleStyle = styles.xl;
     final isMixed = snapshot.teamMode == TeamMode.mixed;
     final modeLabel = isMixed
         ? l10n.teamModeMixedTitle

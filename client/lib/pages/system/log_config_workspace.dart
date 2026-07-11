@@ -105,9 +105,7 @@ class _LogViewerDialogHeader extends StatelessWidget {
                     subtitle,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
+                    style: AppTextStyles.of(context).mutedMd,
                   ),
                 ],
               ],

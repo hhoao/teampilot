@@ -194,7 +194,7 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
               const SizedBox(height: 8),
               Text(
                 l10n.mcpOAuthDiscovering,
-                style: Theme.of(context).textTheme.bodySmall,
+                style: AppTextStyles.of(context).sm,
               ),
             ],
             if (_error != null) ...[
@@ -219,7 +219,7 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
               const SizedBox(height: 8),
               SelectableText(
                 _authorizationUrl!.toString(),
-                style: Theme.of(context).textTheme.bodySmall,
+                style: AppTextStyles.of(context).sm,
               ),
             ],
             if (_showCallbackField) ...[

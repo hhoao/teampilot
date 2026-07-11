@@ -10,6 +10,7 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../widgets/workspace_icon.dart';
+import '../../../theme/app_text_styles.dart';
 
 class WorkspaceIconSettingsRow extends StatelessWidget {
   const WorkspaceIconSettingsRow({
@@ -25,7 +26,6 @@ class WorkspaceIconSettingsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -39,10 +39,7 @@ class WorkspaceIconSettingsRow extends StatelessWidget {
                 width: 168,
                 child: Text(
                   l10n.workspaceIcon,
-                  style: tt.bodyMedium?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: AppTextStyles.of(context).mdMediumColored(cs.onSurfaceVariant),
                 ),
               ),
               WorkspaceIcon.fromWorkspace(

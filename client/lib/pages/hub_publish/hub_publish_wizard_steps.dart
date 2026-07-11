@@ -28,9 +28,7 @@ class HubPublishAuthStep extends StatelessWidget {
         if (hasStoredToken) ...[
           Text(
             l10n.hubPublishTokenStored,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+            style: AppTextStyles.of(context).mutedSm,
           ),
           const SizedBox(height: 8),
         ],
@@ -168,9 +166,7 @@ class HubPublishGatesStep extends StatelessWidget {
           for (final localKey in localExpertKeys) ...[
             Text(
               localKey,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
+              style: AppTextStyles.of(context).mutedSm,
             ),
             const SizedBox(height: 6),
             DropdownButtonFormField<String>(

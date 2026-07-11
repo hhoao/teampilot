@@ -9,6 +9,7 @@ import '../../../models/workspace_folder.dart';
 import '../../../models/workspace_topology.dart';
 import '../../../services/storage/home_target_controller.dart';
 import '../../../utils/team_member_naming.dart';
+import '../../../theme/app_text_styles.dart';
 
 /// Practical per-host cap for non-lead replica placement in mixed workspaces.
 const memberPlacementMaxPerHost = 99;
@@ -241,7 +242,7 @@ class _TargetTile extends StatelessWidget {
           pathPreview,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.bodySmall,
+          style: AppTextStyles.of(context).sm,
         ),
         trailing: instanceCount > 0
             ? CircleAvatar(
@@ -249,9 +250,7 @@ class _TargetTile extends StatelessWidget {
                 backgroundColor: cs.primary,
                 child: Text(
                   '$instanceCount',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.copyWith(color: cs.onPrimary),
+                  style: AppTextStyles.of(context).xsColored(cs.onPrimary),
                 ),
               )
             : null,
@@ -296,11 +295,11 @@ class _MemberPlacementRow extends StatelessWidget {
                 placedTotal,
                 placedTotal,
               ),
-              style: Theme.of(context).textTheme.bodySmall,
+              style: AppTextStyles.of(context).sm,
             ),
             Text(
               l10n.mixedWorkspaceMemberPlacementOnMachine(countOnMachine),
-              style: Theme.of(context).textTheme.bodySmall,
+              style: AppTextStyles.of(context).sm,
             ),
           ],
         ),

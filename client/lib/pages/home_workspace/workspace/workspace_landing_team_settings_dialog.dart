@@ -575,9 +575,7 @@ class _PaneHeader extends StatelessWidget {
                     subtitle,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
+                    style: AppTextStyles.of(context).mutedMd,
                   ),
                 ],
                 if (machinesHint != null &&
@@ -585,9 +583,7 @@ class _PaneHeader extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     machinesHint!,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: cs.error),
+                    style: AppTextStyles.of(context).smColored(cs.error),
                   ),
                 ],
               ],
@@ -689,9 +685,7 @@ class _TeamPane extends StatelessWidget {
         children: [
           Text(
             l10n.landingTeamSettingsGlobalHint,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+            style: AppTextStyles.of(context).mutedSm,
           ),
           const SizedBox(height: 16),
           SettingsSurfaceCard(
@@ -1097,9 +1091,7 @@ class _MachinesPane extends StatelessWidget {
       children: [
         Text(
           l10n.mixedWorkspaceMemberAssignmentSubtitle,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: AppTextStyles.of(context).mutedSm,
         ),
         const SizedBox(height: 12),
         Expanded(
@@ -1147,9 +1139,7 @@ class _Footer extends StatelessWidget {
             Expanded(
               child: Text(
                 placementHint!,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: cs.error),
+                style: AppTextStyles.of(context).smColored(cs.error),
               ),
             )
           else

@@ -20,6 +20,7 @@ import '../../../services/ssh/ssh_client_factory.dart';
 import '../../../utils/app_keys.dart';
 import '../../../widgets/cli_install_progress_panel.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
+import '../../../theme/app_text_styles.dart';
 
 class OnboardingCliStep extends StatefulWidget {
   const OnboardingCliStep({super.key, this.isActive = true});
@@ -202,14 +203,12 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
       children: [
         Text(
           l10n.onboardingCliTitle,
-          style: Theme.of(context).textTheme.headlineSmall,
+          style: AppTextStyles.of(context).display,
         ),
         const SizedBox(height: 8),
         Text(
           l10n.onboardingCliSubtitle,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: AppTextStyles.of(context).mutedMd,
         ),
         const SizedBox(height: 20),
         if (!_detecting)

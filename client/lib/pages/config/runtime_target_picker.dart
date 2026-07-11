@@ -7,6 +7,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/runtime_target.dart';
 import '../../services/storage/home_target_controller.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
+import '../../theme/app_text_styles.dart';
 
 /// Platform-scoped home target selector. Replaces the legacy
 /// connection-mode / Windows-backend / select-profile knobs.
@@ -111,7 +112,7 @@ class _RuntimeTargetPickerState extends State<RuntimeTargetPicker> {
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
                     l10n.homeTargetSingleOptionHint,
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: AppTextStyles.of(context).sm,
                   ),
                 ),
             ],

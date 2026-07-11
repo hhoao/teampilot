@@ -4,6 +4,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/ssh_profile.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'ssh_profile_connection_status.dart';
+import '../../theme/app_text_styles.dart';
 
 class SshProfileTargetCard extends StatelessWidget {
   const SshProfileTargetCard({
@@ -59,7 +60,6 @@ class SshProfileTargetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
     final connected = status == SshProfileConnectionStatus.connected;
     final connecting = status == SshProfileConnectionStatus.connecting;
 
@@ -83,9 +83,7 @@ class SshProfileTargetCard extends StatelessWidget {
                         Flexible(
                           child: Text(
                             profile.name,
-                            style: tt.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: AppTextStyles.of(context).mdSemiboldTightSnug,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -101,23 +99,21 @@ class SshProfileTargetCard extends StatelessWidget {
                         const SizedBox(width: 6),
                         Text(
                           _statusLabel(context),
-                          style: tt.labelSmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
+                          style: AppTextStyles.of(context).mutedXs,
                         ),
                       ],
                     ),
                     const SizedBox(height: 2),
                     Text(
                       profile.hostIdentifier,
-                      style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                      style: AppTextStyles.of(context).mutedSm,
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (statusError != null && statusError!.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
                         statusError!,
-                        style: tt.bodySmall?.copyWith(color: cs.error),
+                        style: AppTextStyles.of(context).smColored(cs.error),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 2,
                       ),

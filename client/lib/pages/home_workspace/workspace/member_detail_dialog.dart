@@ -257,7 +257,7 @@ class _OverviewTab extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               child: Text(
                 source,
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: AppTextStyles.of(context).md,
               ),
             ),
           ),
@@ -282,12 +282,10 @@ class _OverviewTab extends StatelessWidget {
             width: 110,
             child: Text(
               k,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+              style: AppTextStyles(theme).mutedMd,
             ),
           ),
-          Expanded(child: SelectableText(v, style: theme.textTheme.bodyMedium)),
+          Expanded(child: SelectableText(v, style: AppTextStyles(theme).md)),
         ],
       ),
     );
@@ -310,20 +308,18 @@ class _ListTab extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
     final content = items.isEmpty
-        ? Center(child: Text(empty, style: theme.textTheme.bodyMedium))
+        ? Center(child: Text(empty, style: AppTextStyles(theme).md))
         : ListView.builder(
             itemCount: items.length,
             itemBuilder: (_, i) => Material(
               color: Colors.transparent,
               child: ListTile(
-                title: Text(items[i].title, style: theme.textTheme.bodyMedium),
+                title: Text(items[i].title, style: AppTextStyles(theme).md),
                 subtitle: items[i].subtitle.isEmpty
                     ? null
                     : Text(
                         items[i].subtitle,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
+                        style: AppTextStyles(theme).mutedSm,
                       ),
               ),
             ),

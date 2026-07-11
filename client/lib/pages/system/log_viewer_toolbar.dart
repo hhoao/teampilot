@@ -199,10 +199,7 @@ class LogViewerToolbar extends StatelessWidget {
                       ),
                       child: Text(
                         l10n.logViewerLineCount(lineCount),
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: cs.onPrimaryContainer,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: AppTextStyles.of(context).xsSemiboldColored(cs.onPrimaryContainer),
                       ),
                     ),
                   ],

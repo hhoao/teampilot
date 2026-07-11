@@ -143,6 +143,13 @@ final class AppTextStyles {
 
   TextStyle smBoldColored(Color color) => smBold.copyWith(color: color);
 
+  TextStyle get smRelaxed => _compose(
+    size: _TextSize.sm,
+    height: _TextHeight.relaxed,
+  );
+
+  TextStyle smRelaxedColored(Color color) => smRelaxed.copyWith(color: color);
+
   TextStyle get smSemiboldTrack => _compose(
     size: _TextSize.sm,
     weight: _TextWeight.semibold,
@@ -219,6 +226,16 @@ final class AppTextStyles {
 
   TextStyle mdBoldSpreadColored(Color color) =>
       mdBoldSpread.copyWith(color: color);
+
+  TextStyle get mdBoldTightSnug => _compose(
+    size: _TextSize.md,
+    weight: _TextWeight.bold,
+    spacing: _TextSpacing.tight,
+    height: _TextHeight.snug,
+  );
+
+  TextStyle mdBoldTightSnugColored(Color color) =>
+      mdBoldTightSnug.copyWith(color: color);
 
   TextStyle get lg => _compose(size: _TextSize.lg);
 
