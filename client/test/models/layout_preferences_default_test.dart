@@ -54,4 +54,28 @@ void main() {
       LayoutPreferences.minWorkspaceTerminalHeight,
     );
   });
+
+  test('uiFontId and monoFontId default to system', () {
+    expect(const LayoutPreferences().uiFontId, 'system');
+    expect(const LayoutPreferences().monoFontId, 'system');
+  });
+
+  test('fromJson missing font keys → system; unknown → system', () {
+    expect(LayoutPreferences.fromJson(const {}).uiFontId, 'system');
+    expect(
+      LayoutPreferences.fromJson(const {'uiFontId': 'nope'}).uiFontId,
+      'system',
+    );
+  });
+
+  test('font ids round-trip when known', () {
+    final prefs = const LayoutPreferences().copyWith(
+      uiFontId: 'notoSansSc',
+      monoFontId: 'jetbrainsMono',
+    );
+    final json = prefs.toJson();
+    final parsed = LayoutPreferences.fromJson(json);
+    expect(parsed.uiFontId, 'notoSansSc');
+    expect(parsed.monoFontId, 'jetbrainsMono');
+  });
 }

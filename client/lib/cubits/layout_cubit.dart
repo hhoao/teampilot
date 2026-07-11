@@ -173,6 +173,12 @@ class LayoutCubit extends Cubit<LayoutState> {
   Future<void> setLocale(String locale) =>
       _save(state.preferences.copyWith(locale: locale));
 
+  Future<void> setUiFontId(String id) =>
+      _save(state.preferences.copyWith(uiFontId: normalizeUiFontId(id)));
+
+  Future<void> setMonoFontId(String id) =>
+      _save(state.preferences.copyWith(monoFontId: normalizeMonoFontId(id)));
+
   Future<void> setWorkspaceTerminalVisible(bool visible) =>
       _save(state.preferences.copyWith(workspaceTerminalVisible: visible));
 

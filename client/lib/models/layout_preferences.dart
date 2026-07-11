@@ -1,5 +1,6 @@
 import '../theme/app_theme.dart';
 import '../theme/app_typography_scale.dart';
+import '../theme/font_catalog.dart';
 
 enum LayoutPreset { workbench, chatFocus, inspector }
 
@@ -15,6 +16,12 @@ String languagePreferenceUiValue(String locale) {
 String languagePreferenceStoredLocale(String uiValue) {
   return uiValue == 'system' ? '' : uiValue;
 }
+
+String normalizeUiFontId(String? id) =>
+    FontCatalog.isKnown(FontRole.ui, id ?? '') ? id! : FontCatalog.systemId;
+
+String normalizeMonoFontId(String? id) =>
+    FontCatalog.isKnown(FontRole.mono, id ?? '') ? id! : FontCatalog.systemId;
 
 class LayoutPreferences {
   const LayoutPreferences({
@@ -39,6 +46,8 @@ class LayoutPreferences {
     this.uiZoomCustomMultiplier = kDefaultTypographyCustomMultiplier,
     this.terminalThemeMode = 'adaptive',
     this.locale = '',
+    this.uiFontId = FontCatalog.systemId,
+    this.monoFontId = FontCatalog.systemId,
     this.workspaceTerminalVisible = false,
     this.workspaceTerminalHeight = defaultWorkspaceTerminalHeight,
   });
@@ -94,6 +103,8 @@ class LayoutPreferences {
         json['terminalThemeMode'] as String?,
       ),
       locale: json['locale'] as String? ?? '',
+      uiFontId: normalizeUiFontId(json['uiFontId'] as String?),
+      monoFontId: normalizeMonoFontId(json['monoFontId'] as String?),
       workspaceTerminalVisible:
           json['workspaceTerminalVisible'] as bool? ?? false,
       workspaceTerminalHeight: _doubleValue(
@@ -150,6 +161,8 @@ class LayoutPreferences {
   final double uiZoomCustomMultiplier;
   final String terminalThemeMode;
   final String locale;
+  final String uiFontId;
+  final String monoFontId;
   final bool workspaceTerminalVisible;
   final double workspaceTerminalHeight;
 
@@ -175,6 +188,8 @@ class LayoutPreferences {
     double? uiZoomCustomMultiplier,
     String? terminalThemeMode,
     String? locale,
+    String? uiFontId,
+    String? monoFontId,
     bool? workspaceTerminalVisible,
     double? workspaceTerminalHeight,
   }) {
@@ -220,6 +235,12 @@ class LayoutPreferences {
           ? this.terminalThemeMode
           : _terminalThemeModeValue(terminalThemeMode),
       locale: locale ?? this.locale,
+      uiFontId: uiFontId == null
+          ? this.uiFontId
+          : normalizeUiFontId(uiFontId),
+      monoFontId: monoFontId == null
+          ? this.monoFontId
+          : normalizeMonoFontId(monoFontId),
       workspaceTerminalVisible:
           workspaceTerminalVisible ?? this.workspaceTerminalVisible,
       workspaceTerminalHeight:
@@ -256,6 +277,8 @@ class LayoutPreferences {
       uiZoomCustomMultiplier: uiZoomCustomMultiplier,
       terminalThemeMode: terminalThemeMode,
       locale: locale,
+      uiFontId: uiFontId,
+      monoFontId: monoFontId,
       workspaceTerminalVisible: workspaceTerminalVisible,
       workspaceTerminalHeight: workspaceTerminalHeight,
     );
@@ -284,6 +307,8 @@ class LayoutPreferences {
       'uiZoomCustomMultiplier': uiZoomCustomMultiplier,
       'terminalThemeMode': terminalThemeMode,
       'locale': locale,
+      'uiFontId': uiFontId,
+      'monoFontId': monoFontId,
       'workspaceTerminalVisible': workspaceTerminalVisible,
       'workspaceTerminalHeight': workspaceTerminalHeight,
     };
