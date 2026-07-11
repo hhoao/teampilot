@@ -21,7 +21,10 @@
 | `client/lib/services/session/session_continue_overrides_apply.dart` | Pure merge + effective permission resolution |
 | `client/lib/repositories/session_repository.dart` | Persist continue overrides + Simple identity patch |
 | `client/lib/cubits/chat_cubit.dart` (or thin helper under `cubits/chat/`) | Snapshot update + repo call for UI |
-| `client/lib/services/session/session_lifecycle_service.dart` | Call merge after base member resolve |
+| `client/lib/services/home_workspace/landing_prefs_store.dart` | Persist Landing permission in draft prefs |
+| `client/lib/utils/landing_draft_resolver.dart` | Map prefs ↔ `LandingLaunchContext` including permission |
+| `client/lib/services/launch/session_connect_orchestrator.dart` | Finalize `plan.member` before staging |
+| `client/lib/services/session/session_lifecycle_service.dart` | Finalize member in `_buildShellLaunchContextFromPlan` |
 | `client/lib/models/landing_launch_context.dart` | `dangerouslySkipPermissions` on draft |
 | `client/lib/pages/home_workspace/workspace/workspace_chat_landing.dart` | Wire permission into draft + create |
 | `client/lib/pages/home_workspace/workspace/workspace_session_actions.dart` | Pass permission into createSession path |
@@ -218,12 +221,72 @@ test('team merge applies provider/model/effort/preset and permission; CLI unchan
   expect(out.dangerouslySkipPermissions, isFalse);
 });
 
-test('simple merge applies session-level permission only; keeps base provider/model', () {
-  // Simple identity already on base from session.cli/provider/model;
-  // merge sets dangerouslySkipPermissions from session continueOverrides.
+test('simple merge applies session-level permission; keeps base provider/model/cli', () {
+  const base = TeamMemberConfig(
+    id: 's1',
+    name: 'Simple',
+    cli: CliTool.codex,
+    provider: 'openai',
+    model: 'gpt',
+    dangerouslySkipPermissions: true, // would be wrong without override
+  );
+  final session = AppSession(
+    sessionId: 's1',
+    workspaceId: 'w1',
+    cli: CliTool.codex,
+    provider: 'openai',
+    model: 'gpt',
+    createdAt: 1,
+    continueOverrides: const SessionContinueOverrides(
+      dangerouslySkipPermissions: false,
+    ),
+  );
+  final out = applySessionContinueOverrides(
+    baseMember: base,
+    session: session,
+    memberId: 's1',
+    isSimple: true,
+  );
+  expect(out.cli, CliTool.codex);
+  expect(out.provider, 'openai');
+  expect(out.model, 'gpt');
+  expect(out.dangerouslySkipPermissions, isFalse);
 });
 
-test('other member overrides do not affect this member', () { /* ... */ });
+test('other member overrides do not affect this member', () {
+  const base = TeamMemberConfig(
+    id: 'builder-0',
+    name: 'Builder',
+    cli: CliTool.claude,
+    provider: 'keep',
+    model: 'keep-m',
+    dangerouslySkipPermissions: true,
+  );
+  final session = AppSession(
+    sessionId: 's1',
+    workspaceId: 'w1',
+    sessionTeam: 'team',
+    createdAt: 1,
+    continueOverrides: const SessionContinueOverrides(
+      memberOverrides: {
+        'other': SessionMemberContinueOverride(
+          provider: 'x',
+          model: 'y',
+          dangerouslySkipPermissions: false,
+        ),
+      },
+    ),
+  );
+  final out = applySessionContinueOverrides(
+    baseMember: base,
+    session: session,
+    memberId: 'builder-0',
+    isSimple: false,
+  );
+  expect(out.provider, 'keep');
+  expect(out.model, 'keep-m');
+  expect(out.dangerouslySkipPermissions, isTrue); // template / base default
+});
 ```
 
 - [ ] **Step 2: Run tests — expect FAIL**
@@ -314,24 +377,62 @@ EOF
 ### Task 4: Wire merge into every connect path
 
 **Files:**
-- Modify: `client/lib/services/session/session_lifecycle_service.dart` (and/or `session_runtime_plan_builder.dart` / connect orchestrator — **one choke point only**)
-- Test: extend or add `client/test/services/session/session_continue_overrides_launch_test.dart` with mocked presets / minimal session
+- Modify: `client/lib/services/launch/session_connect_orchestrator.dart`
+- Modify: `client/lib/services/session/session_lifecycle_service.dart` (`_buildShellLaunchContextFromPlan`)
+- Optional helper: `client/lib/services/session/session_continue_overrides_apply.dart` (or small `finalize_session_launch_member.dart`)
+- Test: `client/test/services/session/session_continue_overrides_launch_test.dart`
 
-**Rule:** After base `TeamMemberConfig` is resolved (`memberForLaunch` / simple `plan.member` from session identity), call `applySessionContinueOverrides` before env/CLI args use `dangerouslySkipPermissions` or provider/model.
+**Critical (do not skip):** Shell CLI args and SSH permission constraints read the member from `_buildShellLaunchContextFromPlan`, which today does:
 
-- [ ] **Step 1: Locate the single best insertion point**
+```dart
+final member = simple ? runtimePlan.member : _memberWithPreset(runtimePlan.member, preset);
+```
 
-Prefer applying once where both Simple and Team produce the final `launchMember` / `memberForLaunch` (near `_prepareLaunchPlanFromRuntimePlan` or plan builder). Document the chosen call site in a one-line comment: `// session continue overrides (History / Landing permission)`.
+Staging/provision in `SessionConnectOrchestrator` also uses `plan.member` **before** prepare-shell. Wiring merge only onto `resolvedMember` inside `_prepareLaunchPlanFromRuntimePlan` is **not enough** — overrides would never reach `CliToolAdapter` / `remote_ssh_launch_constraints`.
 
-For Simple base member construction: ensure `provider`/`model`/`effort`/`cli` come from `AppSession` **before** merge; merge then applies permission from `continueOverrides`.
+**Required order (override wins over template preset):**
 
-For Team: `memberId` = roster instance id (`memberBinding.rosterMemberId`).
+```text
+base member (plan / memberForLaunch)
+  → _memberWithPreset (team only)
+  → applySessionContinueOverrides   // MUST be last
+```
 
-- [ ] **Step 2: Write a focused test** that builds a session with member override and asserts the staged launch member’s provider/permission after the resolve helper (extract a package-visible helper if lifecycle is hard to unit-test).
+- [ ] **Step 1: Add `finalizeSessionLaunchMember`**
 
-- [ ] **Step 3: Implement wiring**
+```dart
+TeamMemberConfig finalizeSessionLaunchMember({
+  required AppSession session,
+  required TeamMemberConfig baseMember,
+  required String memberId,
+  required bool isSimple,
+  CliPreset? preset,
+  TeamMemberConfig Function(TeamMemberConfig, CliPreset?)? withPreset,
+}) {
+  final afterPreset = (!isSimple && preset != null && withPreset != null)
+      ? withPreset(baseMember, preset)
+      : baseMember;
+  return applySessionContinueOverrides(
+    baseMember: afterPreset,
+    session: session,
+    memberId: memberId,
+    isSimple: isSimple,
+  );
+}
+```
 
-- [ ] **Step 4: Run tests**
+- [ ] **Step 2: Call it in both places**
+
+1. **`SessionConnectOrchestrator`**: after `buildSimple` / team plan build (and any `memberForLaunch`), replace `plan.member` with `finalizeSessionLaunchMember(...)` **before** `_prepareConnectFromPlan` / staging.
+2. **`_buildShellLaunchContextFromPlan`**: after current `_memberWithPreset` line, run `applySessionContinueOverrides` (or call `finalizeSessionLaunchMember` once and **stop** double-applying preset). Shell `CliLaunchContext.member` must be the merged member.
+
+`memberId`: Simple → `session.sessionId`; Team → `memberBinding?.rosterMemberId ?? member.id`.
+
+- [ ] **Step 3: Regression test**
+
+Assert a session with `continueOverrides` (permission + team provider override) yields that provider and `dangerouslySkipPermissions` on the member used for **shell launch context** (and staging plan.member if easily reachable). Fail the test if only an unused `resolvedMember` field would have been updated.
+
+- [ ] **Step 4: Implement + run tests**
 
 Run: `cd client && flutter test test/services/session/session_continue_overrides_apply_test.dart test/services/session/session_continue_overrides_launch_test.dart`
 
@@ -339,7 +440,7 @@ Run: `cd client && flutter test test/services/session/session_continue_overrides
 
 ```bash
 git commit -m "$(cat <<'EOF'
-feat(session): apply continue overrides on connect launch path
+feat(session): apply continue overrides on staging and shell launch member
 
 EOF
 )"
@@ -351,12 +452,14 @@ EOF
 
 **Files:**
 - Modify: `client/lib/models/landing_launch_context.dart`
+- Modify: `client/lib/services/home_workspace/landing_prefs_store.dart` (`LandingPrefs`)
+- Modify: `client/lib/utils/landing_draft_resolver.dart` (`resolveLandingDraft` / `persistLandingDraft`)
 - Modify: `client/lib/pages/home_workspace/workspace/workspace_chat_landing.dart`
 - Modify: `client/lib/pages/home_workspace/workspace/workspace_session_actions.dart` (+ any `SessionPersistParams` / create request types)
 - Modify: `client/lib/cubits/chat/session_launch_service.dart` / `session_persist_params.dart` as needed
 - Test: unit test that draft → create params include `continueOverrides.dangerouslySkipPermissions`
 
-- [ ] **Step 1: Add `bool dangerouslySkipPermissions` to `LandingLaunchContext`** (concrete; default `false`). Include in `copyWith` / `==` / draft persist JSON if drafts are persisted — **permission should be part of draft persistence** so Landing remount restores chip.
+- [ ] **Step 1: Add `bool dangerouslySkipPermissions` to `LandingLaunchContext`** (concrete; default `false`). Mirror the field on `LandingPrefs` and map it in `landing_draft_resolver.dart` (drafts are **not** JSON on the context alone — they go through `LandingPrefsStore`).
 
 - [ ] **Step 2: Wire `_permissionMode` → draft**
 
@@ -374,7 +477,7 @@ Include in `_currentDraft()`. On draft restore, set `_permissionMode` from draft
 
 Do **not** fan out into `memberOverrides` at create.
 
-- [ ] **Step 4: Test** Landing draft / create params carry the bool; Simple create with `true` → session JSON has `continueOverrides.dangerouslySkipPermissions: true`.
+- [ ] **Step 4: Test** Landing draft / create params carry the bool; Simple create with `true` → session JSON has `continueOverrides.dangerouslySkipPermissions: true`. Prefs round-trip restores the permission chip.
 
 - [ ] **Step 5: Commit**
 
@@ -478,9 +581,12 @@ EOF
 
 - [ ] **Step 2: In `SessionHistoryReview`**
 
-  - Resolve `isSimple`, locked CLI (`session.cli` / member launch CLI), effective permission via `resolveContinueSkipPermissions`
-  - Simple model chip: `presetsForCli(presets, lockedCli)`; selection updates via cubit (`setSessionContinuePreset` with `memberId: null`)
-  - Team: same filter for **selected member** CLI; write member override; show team name read-only; wire `onTeamSettings` to existing team settings dialog (same as landing — edits template)
+  - Resolve `isSimple`, locked CLI (`session.cli` / member launch CLI), effective permission via full resolution chain (`resolveContinueSkipPermissions`)
+  - **Permission writes (concrete bools only):**
+    - Simple → session-level `continueOverrides.dangerouslySkipPermissions`
+    - Team → `memberOverrides[selectedMemberId].dangerouslySkipPermissions` (`default`→`false`, `full access`→`true`)
+  - Simple model chip: `presetsForCli(presets, lockedCli)`; selection updates via cubit (`setSessionContinuePreset` with `memberId: null`) → `AppSession.presetId/provider/model/effort`
+  - Team model chip: same CLI filter for **selected member**; write expanded `provider`/`model`/`effort`/`presetId` into `memberOverrides[selectedMemberId]`; show team name read-only; wire `onTeamSettings` to existing team settings dialog (edits **template**, not session overrides)
   - Expert / team identity: read-only label only
   - On persist failure: toast + revert local chip selection
 
