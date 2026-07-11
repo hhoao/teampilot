@@ -8,6 +8,7 @@ import '../models/workspace.dart';
 import '../models/workspace_topology.dart';
 import '../models/workspace_folder.dart';
 import '../models/app_session.dart';
+import '../models/session_continue_overrides.dart';
 import '../models/member_instance.dart';
 import '../models/session_member_binding.dart';
 import '../models/team_config.dart';
@@ -587,6 +588,7 @@ class SessionRepository {
     String? workingDirectory,
     String? fixedSessionId,
     String? expertKey,
+    SessionContinueOverrides? continueOverrides,
   }) async {
     final fs = await _fs();
     var workspace = await _readManifest(fs, workspaceId);
@@ -704,6 +706,7 @@ class SessionRepository {
       createdAt: now,
       updatedAt: now,
       expertKey: resolvedExpertKey,
+      continueOverrides: continueOverrides ?? const SessionContinueOverrides(),
     );
     await fs.ensureSessionDir(workspaceId, sessionId);
     await fs.writeText(
@@ -961,6 +964,48 @@ class SessionRepository {
       await _writeSession(
         fs,
         existing.copyWith(sessionTeam: sessionTeam, updatedAt: now),
+      );
+    });
+  }
+
+  Future<void> updateContinueOverrides(
+    String sessionId,
+    SessionContinueOverrides overrides,
+  ) {
+    return _withSessionFile(sessionId, () async {
+      final fs = await _fs();
+      final existing = await _findSession(fs, sessionId);
+      if (existing == null) return;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await _writeSession(
+        fs,
+        existing.copyWith(continueOverrides: overrides, updatedAt: now),
+      );
+    });
+  }
+
+  /// Patches Simple-launch identity fields without touching [AppSession.continueOverrides].
+  Future<void> updateSimpleLaunchIdentity(
+    String sessionId, {
+    String? presetId,
+    String? provider,
+    String? model,
+    String? effort,
+  }) {
+    return _withSessionFile(sessionId, () async {
+      final fs = await _fs();
+      final existing = await _findSession(fs, sessionId);
+      if (existing == null) return;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await _writeSession(
+        fs,
+        existing.copyWith(
+          presetId: presetId != null ? presetId.trim() : existing.presetId,
+          provider: provider != null ? provider.trim() : existing.provider,
+          model: model != null ? model.trim() : existing.model,
+          effort: effort != null ? effort.trim() : existing.effort,
+          updatedAt: now,
+        ),
       );
     });
   }
