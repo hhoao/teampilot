@@ -78,4 +78,39 @@ void main() {
     expect(parsed.uiFontId, 'notoSansSc');
     expect(parsed.monoFontId, 'jetbrainsMono');
   });
+
+  test('homeSidebarWidth defaults, clamps min, keeps large', () {
+    expect(
+      const LayoutPreferences().homeSidebarWidth,
+      LayoutPreferences.defaultHomeSidebarWidth,
+    );
+    expect(
+      LayoutPreferences.fromJson(const {}).homeSidebarWidth,
+      LayoutPreferences.defaultHomeSidebarWidth,
+    );
+    expect(
+      LayoutPreferences.fromJson(const {
+        'homeSidebarWidth': 'x',
+      }).homeSidebarWidth,
+      LayoutPreferences.defaultHomeSidebarWidth,
+    );
+    expect(
+      LayoutPreferences.fromJson(const {
+        'homeSidebarWidth': 10,
+      }).homeSidebarWidth,
+      LayoutPreferences.minHomeSidebarWidth,
+    );
+    expect(
+      LayoutPreferences.fromJson(const {
+        'homeSidebarWidth': 900,
+      }).homeSidebarWidth,
+      900,
+    );
+    final clamped = const LayoutPreferences().copyWith(homeSidebarWidth: 10);
+    expect(clamped.homeSidebarWidth, LayoutPreferences.minHomeSidebarWidth);
+    final roundTrip = LayoutPreferences.fromJson(
+      const LayoutPreferences(homeSidebarWidth: 500).toJson(),
+    );
+    expect(roundTrip.homeSidebarWidth, 500);
+  });
 }

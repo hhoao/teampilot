@@ -37,6 +37,7 @@ class LayoutPreferences {
     this.sidebarVisible = true,
     this.rightToolsWidth = defaultRightToolsWidth,
     this.sidebarWidth = defaultSidebarWidth,
+    this.homeSidebarWidth = defaultHomeSidebarWidth,
     this.workspaceNavWidth = defaultWorkspaceNavWidth,
     this.themeMode = 'system',
     this.themeColorPreset = kDefaultThemeColorPreset,
@@ -75,6 +76,10 @@ class LayoutPreferences {
         json['sidebarWidth'],
         fallback: defaultSidebarWidth,
       ).clamp(minSidebarWidth, double.infinity),
+      homeSidebarWidth: _doubleValue(
+        json['homeSidebarWidth'],
+        fallback: defaultHomeSidebarWidth,
+      ).clamp(minHomeSidebarWidth, double.infinity),
       workspaceNavWidth: _doubleValue(
         json['workspaceNavWidth'],
         fallback: defaultWorkspaceNavWidth,
@@ -118,6 +123,8 @@ class LayoutPreferences {
   static const minRightToolsWidth = 240.0;
   static const defaultSidebarWidth = 260.0;
   static const minSidebarWidth = 180.0;
+  static const defaultHomeSidebarWidth = 420.0;
+  static const minHomeSidebarWidth = 280.0;
   static const defaultWorkspaceNavWidth = 220.0;
   static const minWorkspaceNavWidth = 200.0;
   static const maxWorkspaceNavWidth = 360.0;
@@ -148,6 +155,7 @@ class LayoutPreferences {
   final bool sidebarVisible;
   final double rightToolsWidth;
   final double sidebarWidth;
+  final double homeSidebarWidth;
   final double workspaceNavWidth;
   final String themeMode;
   final String themeColorPreset;
@@ -179,6 +187,7 @@ class LayoutPreferences {
     bool? sidebarVisible,
     double? rightToolsWidth,
     double? sidebarWidth,
+    double? homeSidebarWidth,
     double? workspaceNavWidth,
     String? themeMode,
     String? themeColorPreset,
@@ -211,6 +220,10 @@ class LayoutPreferences {
       ),
       sidebarWidth: (sidebarWidth ?? this.sidebarWidth).clamp(
         minSidebarWidth,
+        double.infinity,
+      ),
+      homeSidebarWidth: (homeSidebarWidth ?? this.homeSidebarWidth).clamp(
+        minHomeSidebarWidth,
         double.infinity,
       ),
       workspaceNavWidth: (workspaceNavWidth ?? this.workspaceNavWidth).clamp(
@@ -268,6 +281,7 @@ class LayoutPreferences {
       sidebarVisible: sidebarVisible,
       rightToolsWidth: rightToolsWidth,
       sidebarWidth: sidebarWidth,
+      homeSidebarWidth: homeSidebarWidth,
       workspaceNavWidth: workspaceNavWidth,
       themeMode: themeMode,
       themeColorPreset: themeColorPreset,
@@ -298,6 +312,7 @@ class LayoutPreferences {
       'sidebarVisible': sidebarVisible,
       'rightToolsWidth': rightToolsWidth,
       'sidebarWidth': sidebarWidth,
+      'homeSidebarWidth': homeSidebarWidth,
       'workspaceNavWidth': workspaceNavWidth,
       'themeMode': themeMode,
       'themeColorPreset': themeColorPreset,
