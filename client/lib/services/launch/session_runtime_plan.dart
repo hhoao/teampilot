@@ -29,4 +29,28 @@ class SessionRuntimePlan {
   final String? presetId;
   final ConfigBundle runtimeBundle;
   final TeamMemberConfig member;
+
+  SessionRuntimePlan copyWith({
+    SessionRuntimeMode? mode,
+    String? workspaceId,
+    String? sessionId,
+    String? memberId,
+    String? expertKey,
+    String? teamId,
+    String? presetId,
+    ConfigBundle? runtimeBundle,
+    TeamMemberConfig? member,
+  }) {
+    return SessionRuntimePlan(
+      mode: mode ?? this.mode,
+      workspaceId: workspaceId ?? this.workspaceId,
+      sessionId: sessionId ?? this.sessionId,
+      memberId: memberId ?? this.memberId,
+      expertKey: expertKey ?? this.expertKey,
+      teamId: teamId ?? this.teamId,
+      presetId: presetId ?? this.presetId,
+      runtimeBundle: runtimeBundle ?? this.runtimeBundle,
+      member: member ?? this.member,
+    );
+  }
 }

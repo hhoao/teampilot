@@ -34,6 +34,7 @@ import '../launch/layered_config_bundle.dart';
 import '../launch/session_runtime_plan.dart';
 import '../launch/session_runtime_plan_builder.dart';
 import '../expert_hub/builtin_member_templates.dart';
+import 'session_continue_overrides_apply.dart';
 import 'shell_launch_spec.dart';
 
 export 'shell_launch_spec.dart';
@@ -809,9 +810,17 @@ class SessionLifecycleService {
     TeamProfile? team,
     CliPreset? preset,
   }) {
-    final member = runtimePlan.mode == SessionRuntimeMode.simple
-        ? runtimePlan.member
-        : _memberWithPreset(runtimePlan.member, preset);
+    final isSimple = runtimePlan.mode == SessionRuntimeMode.simple;
+    // Overrides must stay last: preset may re-run even when plan.member was
+    // already finalized in SessionConnectOrchestrator.
+    final member = finalizeSessionLaunchMember(
+      session: session,
+      baseMember: runtimePlan.member,
+      memberId: isSimple ? session.sessionId : runtimePlan.member.id,
+      isSimple: isSimple,
+      preset: preset,
+      withPreset: _memberWithPreset,
+    );
     final catalog = WorkspaceLaunchContext(
       session: session,
       workspace: workspace,

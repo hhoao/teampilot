@@ -1,4 +1,5 @@
 import '../../models/app_session.dart';
+import '../../models/cli_preset.dart';
 import '../../models/session_continue_overrides.dart';
 import '../../models/team_config.dart';
 
@@ -8,6 +9,29 @@ bool resolveContinueSkipPermissions({
   required bool launchDefault,
 }) =>
     memberLevel ?? sessionLevel ?? launchDefault;
+
+/// Launch-member merge order: base → optional team preset → continue overrides last.
+///
+/// [withPreset] is team-only; Simple skips preset. Overrides always win over
+/// template preset for permission / provider / model / effort / presetId.
+TeamMemberConfig finalizeSessionLaunchMember({
+  required AppSession session,
+  required TeamMemberConfig baseMember,
+  required String memberId,
+  required bool isSimple,
+  CliPreset? preset,
+  TeamMemberConfig Function(TeamMemberConfig, CliPreset?)? withPreset,
+}) {
+  final afterPreset = (!isSimple && preset != null && withPreset != null)
+      ? withPreset(baseMember, preset)
+      : baseMember;
+  return applySessionContinueOverrides(
+    baseMember: afterPreset,
+    session: session,
+    memberId: memberId,
+    isSimple: isSimple,
+  );
+}
 
 /// [isSimple]: launchDefault for permission is `false`.
 /// Team: launchDefault is [baseMember.dangerouslySkipPermissions] before override.
