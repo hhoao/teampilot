@@ -12,13 +12,15 @@ export 'app_font_resolver.dart' show AppFontResolver, ResolvedFonts;
 /// **Font sizes** are configured in [AppTypographyScale] (`app_typography_scale.dart`)
 /// — edit `*Base` constants or `standard` / `compact` / `comfortable` multipliers.
 ///
-/// Monospace faces must stay in sync with [loadBundledTerminalFonts] asset paths.
-/// Platform CJK mono fallbacks are owned by [AppFontResolver].
+/// Bundled mono catalog family name; active faces come from [ResolvedFonts]
+/// via [loadFontsFor]. Platform CJK mono fallbacks are owned by
+/// [AppFontResolver].
 abstract final class AppFonts {
   /// Primary UI sans (CJK + Latin). Runtime: [GoogleFonts.notoSansSc].
   static const String uiGoogleFontName = 'Noto Sans SC';
 
-  /// Bundled terminal / code editor / log viewer face.
+  /// Bundled JetBrains catalog family (id `jetbrainsMono`), not the active
+  /// terminal face when the user prefers `system` or Ubuntu.
   static const String monoFamily = AppFontResolver.bundledMonoFamily;
 
   /// Mono fallback chain for the bundled [monoFamily]. Delegates to
@@ -43,10 +45,8 @@ final class AppFontTheme extends ThemeExtension<AppFontTheme> {
   final String monoFontFamily;
   final List<String> monoFontFamilyFallback;
 
-  static AppFontTheme get fallback => AppFontTheme(
-    monoFontFamily: AppFonts.monoFamily,
-    monoFontFamilyFallback: AppFonts.monoFamilyFallback,
-  );
+  static AppFontTheme get fallback =>
+      buildAppFontTheme(_defaultResolvedFonts());
 
   @override
   AppFontTheme copyWith({

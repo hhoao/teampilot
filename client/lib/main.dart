@@ -61,7 +61,9 @@ import 'services/notification/desktop_system_notifier.dart';
 import 'services/notification/notification_recorder.dart';
 import 'services/notification/session_idle_notification_tap.dart';
 import 'widgets/notification/session_idle_notification_listener.dart';
-import 'services/terminal/terminal_fonts.dart';
+import 'repositories/layout_repository.dart';
+import 'theme/app_font_loader.dart';
+import 'theme/app_font_resolver.dart';
 import 'theme/app_icon_sizes.dart';
 import 'theme/app_toast_theme.dart';
 import 'theme/app_theme.dart';
@@ -368,37 +370,33 @@ class _DragToResizeWrapperState extends State<_DragToResizeWrapper>
   }
 }
 
-Future<void> _preloadBundledUiFonts() async {
-  try {
-    // Only Regular is awaited before first paint (keeps launch fast). The other
-    // weights are warmed during the boot gate in UiInteractiveWarmup.
-    await GoogleFonts.pendingFonts([GoogleFonts.notoSansSc()]);
-  } on Object {
-    // Run `dart run tool/sync_bundled_google_fonts.dart` from client/, then rebuild.
-  }
-}
-
 /// Builds the engine's text-shaping subsystem before the first frame.
 ///
 /// The *first* text layout in a process pays a large one-time cost: Skia/
-/// HarfBuzz init, system-font enumeration, and constructing the bundled Noto
-/// Sans SC face. Startup traces show this lands inside the first frame's LAYOUT
+/// HarfBuzz init, system-font enumeration, and constructing the active UI
+/// face. Startup traces show this lands inside the first frame's LAYOUT
 /// phase — a single offstage `RenderParagraph` took ~1.3s, dominating cold
 /// start, while every later paragraph (subsystem now warm) was ~150ms.
 ///
 /// One synchronous shaping pass here moves that cost off the first frame. It is
-/// run while startup IO (app paths, prefs) is in flight so part of it overlaps.
-/// Loading the bytes (`_preloadBundledUiFonts`) is not enough — the face/shaper
+/// run while startup IO (app paths) is in flight so part of it overlaps.
+/// Loading the bytes (`loadFontsFor`) is not enough — the face/shaper
 /// is built lazily on first *layout*, which is exactly what we trigger here.
-void _warmTextLayoutSubsystem() {
+void _warmTextLayoutSubsystem(ResolvedFonts fonts) {
   try {
-    // Latin + common CJK so both the system font-manager init and the Noto
-    // Sans SC face are built now, not on first paint. Regular weight only —
+    // Latin + common CJK so both the system font-manager init and the active
+    // UI face are built now, not on first paint. Regular weight only —
     // heavier weights are warmed in UiInteractiveWarmup during the boot gate.
     // enough: the dominant cost is the one-time subsystem/face setup, not the
     // per-glyph shaping.
+    final style = fonts.uiNeedsBundledLoad
+        ? GoogleFonts.notoSansSc()
+        : TextStyle(
+            fontFamily: fonts.uiFamily,
+            fontFamilyFallback: fonts.uiFallback,
+          );
     final painter = TextPainter(
-      text: TextSpan(text: '加载中 Aa1', style: GoogleFonts.notoSansSc()),
+      text: TextSpan(text: '加载中 Aa1', style: style),
       textDirection: TextDirection.ltr,
     )..layout();
     painter.dispose();
@@ -417,8 +415,6 @@ void main() async {
   installWindowsKeyboardWorkaround();
   await RustLib.init();
   GoogleFonts.config.allowRuntimeFetching = false;
-  await loadBundledTerminalFonts();
-  await _preloadBundledUiFonts();
 
   if (!Platform.isAndroid) {
     await windowManager.ensureInitialized();
@@ -434,7 +430,7 @@ void main() async {
       title: 'TeamPilot',
       backgroundColor: const Color(0xFFFFFFFF),
       // Frameless chrome is applied in completeBootSplashTransition() so the
-      // main window does not resize under the native splash.
+      // main window does not resize under the splash.
     );
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
       // Linux paints the splash as an in-window overlay over the Flutter view,
@@ -447,15 +443,23 @@ void main() async {
     });
   }
 
-  // Start startup IO up front so the synchronous text-shaping warm-up below
-  // overlaps it instead of stacking onto the first frame.
+  // Start startup IO up front so font load + text-shaping warm-up below
+  // overlap path init instead of stacking onto the first frame.
   final pathsFuture = AppPathsBootstrapper.init();
   final preferencesFuture = SharedPreferences.getInstance();
 
-  // Build the text-shaping subsystem + Noto Sans SC face now (off the first
-  // frame's LAYOUT phase). Runs while pathsFuture / preferencesFuture are in
-  // flight, hiding part of the cost behind their IO.
-  _warmTextLayoutSubsystem();
+  // Resolve fonts from layout prefs (defaults to system) before first paint.
+  final preferences = await preferencesFuture;
+  final layoutPrefs = await LayoutRepository(preferences).load();
+  final bootFonts = AppFontResolver.resolve(
+    uiFontId: layoutPrefs.uiFontId,
+    monoFontId: layoutPrefs.monoFontId,
+  );
+  await loadFontsFor(bootFonts);
+
+  // Build the text-shaping subsystem + active UI face now (off the first
+  // frame's LAYOUT phase). Runs while pathsFuture is in flight.
+  _warmTextLayoutSubsystem(bootFonts);
 
   late final String nativeAppDataPath;
   try {
@@ -470,7 +474,6 @@ void main() async {
     return;
   }
 
-  final preferences = await preferencesFuture;
   final defaultWorkspaceDirectoryFuture = DefaultWorkspaceDirectory.resolve(
     preferences: preferences,
   );
@@ -665,6 +668,8 @@ class TeamPilotApp extends StatelessWidget {
         String colorPreset,
         String typographyScale,
         double typographyCustomMultiplier,
+        String uiFontId,
+        String monoFontId,
       })
     >(
       selector: (state) {
@@ -680,6 +685,8 @@ class TeamPilotApp extends StatelessWidget {
           colorPreset: normalizeThemeColorPreset(prefs.themeColorPreset),
           typographyScale: normalizeTypographyScale(prefs.typographyScale),
           typographyCustomMultiplier: prefs.typographyScaleCustomMultiplier,
+          uiFontId: prefs.uiFontId,
+          monoFontId: prefs.monoFontId,
         );
       },
       builder: (context, themeBundle) {
@@ -692,6 +699,8 @@ class TeamPilotApp extends StatelessWidget {
               typographyScaleId: themeBundle.typographyScale,
               typographyCustomMultiplier:
                   themeBundle.typographyCustomMultiplier,
+              uiFontId: themeBundle.uiFontId,
+              monoFontId: themeBundle.monoFontId,
               savedLocale: savedLocale,
             );
           },
@@ -707,6 +716,8 @@ class _TeamPilotMaterialApp extends StatefulWidget {
     required this.colorPreset,
     required this.typographyScaleId,
     required this.typographyCustomMultiplier,
+    required this.uiFontId,
+    required this.monoFontId,
     required this.savedLocale,
   });
 
@@ -714,6 +725,8 @@ class _TeamPilotMaterialApp extends StatefulWidget {
   final String colorPreset;
   final String typographyScaleId;
   final double typographyCustomMultiplier;
+  final String uiFontId;
+  final String monoFontId;
   final String savedLocale;
 
   @override
@@ -727,6 +740,23 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
   String? _cachedTypographyScaleId;
   double? _cachedTypographyCustomMultiplier;
   double? _cachedEffectiveTextMult;
+  String? _cachedUiFontId;
+  String? _cachedMonoFontId;
+
+  @override
+  void didUpdateWidget(covariant _TeamPilotMaterialApp oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.uiFontId != widget.uiFontId ||
+        oldWidget.monoFontId != widget.monoFontId) {
+      final fonts = AppFontResolver.resolve(
+        uiFontId: widget.uiFontId,
+        monoFontId: widget.monoFontId,
+      );
+      // First frame after a preference change may still fall through until
+      // assets finish loading; theme rebuild uses the new family names now.
+      unawaited(loadFontsFor(fonts));
+    }
+  }
 
   ({ThemeData light, ThemeData dark}) _resolveThemes() {
     // Text size: scales fonts via the theme. `standard` == the per-system
@@ -752,9 +782,15 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
         _cachedTypographyScaleId == widget.typographyScaleId &&
         _cachedTypographyCustomMultiplier ==
             widget.typographyCustomMultiplier &&
-        _cachedEffectiveTextMult == effectiveTextMult) {
+        _cachedEffectiveTextMult == effectiveTextMult &&
+        _cachedUiFontId == widget.uiFontId &&
+        _cachedMonoFontId == widget.monoFontId) {
       return (light: _lightTheme!, dark: _darkTheme!);
     }
+    final fonts = AppFontResolver.resolve(
+      uiFontId: widget.uiFontId,
+      monoFontId: widget.monoFontId,
+    );
     final textScale = AppTypographyScale(multiplier: effectiveTextMult);
     final iconScale = AppTypographyScale(
       multiplier: AppIconSizes.resolveIconMultiplier(
@@ -766,8 +802,20 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
     _cachedTypographyScaleId = widget.typographyScaleId;
     _cachedTypographyCustomMultiplier = widget.typographyCustomMultiplier;
     _cachedEffectiveTextMult = effectiveTextMult;
-    _lightTheme = buildLightTheme(widget.colorPreset, textScale, iconScale);
-    _darkTheme = buildDarkTheme(widget.colorPreset, textScale, iconScale);
+    _cachedUiFontId = widget.uiFontId;
+    _cachedMonoFontId = widget.monoFontId;
+    _lightTheme = buildLightTheme(
+      widget.colorPreset,
+      textScale,
+      iconScale,
+      fonts,
+    );
+    _darkTheme = buildDarkTheme(
+      widget.colorPreset,
+      textScale,
+      iconScale,
+      fonts,
+    );
     return (light: _lightTheme!, dark: _darkTheme!);
   }
 

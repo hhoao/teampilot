@@ -6,17 +6,26 @@ import 'app_fonts.dart';
 import 'app_outline_input_theme.dart';
 import 'app_text_styles.dart';
 import 'app_typography_scale.dart';
+import 'font_catalog.dart';
+
+ResolvedFonts _fontsFromPreferences(LayoutPreferences? preferences) {
+  return AppFontResolver.resolve(
+    uiFontId: preferences?.uiFontId ?? FontCatalog.systemId,
+    monoFontId: preferences?.monoFontId ?? FontCatalog.systemId,
+  );
+}
 
 /// Bootstrap theme matching production text pipeline (standard scale, light).
-ThemeData bootstrapThemeForTextWarmup() {
+ThemeData bootstrapThemeForTextWarmup([ResolvedFonts? fonts]) {
+  final resolved = fonts ?? _fontsFromPreferences(null);
   final seed = ThemeData(brightness: Brightness.light, useMaterial3: true);
   final control = AppControlTheme.fromScale(AppTypographyScale.standard);
   final textTheme = applyAppInputTextStyles(
-    materializeM3TextThemeSizes(buildAppUiTextTheme(seed.textTheme)),
+    materializeM3TextThemeSizes(buildAppUiTextTheme(seed.textTheme, resolved)),
   );
   return seed.copyWith(
     textTheme: textTheme,
-    extensions: [AppFontTheme.fallback, control],
+    extensions: [buildAppFontTheme(resolved), control],
   );
 }
 
@@ -24,6 +33,7 @@ ThemeData bootstrapThemeForTextWarmup() {
 /// [buildLightTheme] / [buildDarkTheme] during the boot gate (those pull in
 /// Google Fonts and FlexColorScheme and can stall startup for a long time).
 ThemeData themeForInteractiveWarmup(LayoutPreferences preferences) {
+  final fonts = _fontsFromPreferences(preferences);
   final textBaseline = _systemTextBaseline();
   final effectiveTextMult = resolveRelativeScale(
     scaleId: normalizeTypographyScale(preferences.typographyScale),
@@ -31,13 +41,16 @@ ThemeData themeForInteractiveWarmup(LayoutPreferences preferences) {
     baseline: textBaseline,
   );
   final textScale = AppTypographyScale(multiplier: effectiveTextMult);
-  final seed = bootstrapThemeForTextWarmup();
+  final seed = bootstrapThemeForTextWarmup(fonts);
   final textTheme = applyAppInputTextStyles(
     materializeM3TextThemeSizes(seed.textTheme, scale: textScale),
   );
   return seed.copyWith(
     textTheme: textTheme,
-    extensions: [AppFontTheme.fallback, AppControlTheme.fromScale(textScale)],
+    extensions: [
+      buildAppFontTheme(fonts),
+      AppControlTheme.fromScale(textScale),
+    ],
   );
 }
 

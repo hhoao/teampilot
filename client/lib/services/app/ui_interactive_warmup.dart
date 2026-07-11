@@ -7,7 +7,9 @@ import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/layout_preferences.dart';
+import '../../theme/app_font_resolver.dart';
 import '../../theme/app_text_styles_warmup.dart';
+import '../../theme/font_catalog.dart';
 import '../../utils/yield_ui_frame.dart';
 import '../../widgets/warmup_glyphs.g.dart';
 
@@ -23,16 +25,22 @@ abstract final class UiInteractiveWarmup {
   static Future<void> run({LayoutPreferences? layoutPreferences}) async {
     if (_inTest) return;
 
-    try {
-      await GoogleFonts.pendingFonts([
-        GoogleFonts.notoSansSc(fontWeight: FontWeight.w400),
-        GoogleFonts.notoSansSc(fontWeight: FontWeight.w500),
-        GoogleFonts.notoSansSc(fontWeight: FontWeight.w600),
-        GoogleFonts.notoSansSc(fontWeight: FontWeight.w700),
-        GoogleFonts.notoSansSc(fontWeight: FontWeight.w800),
-      ]);
-    } on Object {
-      // Missing bundled weights: see tool/sync_bundled_google_fonts.dart.
+    final fonts = AppFontResolver.resolve(
+      uiFontId: layoutPreferences?.uiFontId ?? FontCatalog.systemId,
+      monoFontId: layoutPreferences?.monoFontId ?? FontCatalog.systemId,
+    );
+    if (fonts.uiNeedsBundledLoad) {
+      try {
+        await GoogleFonts.pendingFonts([
+          GoogleFonts.notoSansSc(fontWeight: FontWeight.w400),
+          GoogleFonts.notoSansSc(fontWeight: FontWeight.w500),
+          GoogleFonts.notoSansSc(fontWeight: FontWeight.w600),
+          GoogleFonts.notoSansSc(fontWeight: FontWeight.w700),
+          GoogleFonts.notoSansSc(fontWeight: FontWeight.w800),
+        ]);
+      } on Object {
+        // Missing bundled weights: see tool/sync_bundled_google_fonts.dart.
+      }
     }
 
     await _warmGlyphs(layoutPreferences: layoutPreferences);
