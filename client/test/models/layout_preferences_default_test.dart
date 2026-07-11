@@ -21,6 +21,17 @@ void main() {
     expect(parsed.toJson()['sidebarVisible'], isFalse);
   });
 
+  test('locale defaults to system (empty) and maps dropdown values', () {
+    expect(const LayoutPreferences().locale, isEmpty);
+    expect(languagePreferenceUiValue(''), 'system');
+    expect(languagePreferenceUiValue('en'), 'en');
+    expect(languagePreferenceUiValue('zh'), 'zh');
+    expect(languagePreferenceUiValue('zh_CN'), 'zh');
+    expect(languagePreferenceStoredLocale('system'), isEmpty);
+    expect(languagePreferenceStoredLocale('en'), 'en');
+    expect(languagePreferenceStoredLocale('zh'), 'zh');
+  });
+
   test('workspace panes keep large sizes and only clamp mins', () {
     final prefs = LayoutPreferences.fromJson(const {
       'sidebarWidth': 900,

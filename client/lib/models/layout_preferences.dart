@@ -5,6 +5,17 @@ enum LayoutPreset { workbench, chatFocus, inspector }
 
 enum WorkspaceEntryMode { home, lastWorkspace }
 
+/// Dropdown value for language preference: `system` | `en` | `zh`.
+String languagePreferenceUiValue(String locale) {
+  if (locale.isEmpty) return 'system';
+  return locale.startsWith('zh') ? 'zh' : 'en';
+}
+
+/// Persisted locale for a language dropdown value (`system` → empty).
+String languagePreferenceStoredLocale(String uiValue) {
+  return uiValue == 'system' ? '' : uiValue;
+}
+
 class LayoutPreferences {
   const LayoutPreferences({
     this.preset = LayoutPreset.workbench,

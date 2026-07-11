@@ -111,6 +111,7 @@
   "themeDark": "深色",
   "themeLight": "浅色",
   "language": "语言",
+  "languageSystem": "跟随系统",
   "languageEnglish": "English",
   "languageChinese": "中文",
   "chatTo": "发送至：",

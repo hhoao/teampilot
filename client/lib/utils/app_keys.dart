@@ -249,6 +249,7 @@ class AppKeys {
   static const themeSystemButton = Key('theme-system-button');
   static const themeDarkButton = Key('theme-dark-button');
   static const themeLightButton = Key('theme-light-button');
+  static const languageSystemButton = Key('language-system-button');
   static const languageEnButton = Key('language-en-button');
   static const languageZhButton = Key('language-zh-button');
 

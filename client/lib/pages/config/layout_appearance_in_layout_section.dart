@@ -32,12 +32,6 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
             themeMode != 'system') {
           themeMode = 'system';
         }
-        final systemLang =
-            WidgetsBinding.instance.platformDispatcher.locale.languageCode;
-        final effectiveLang = state.preferences.locale.isNotEmpty
-            ? state.preferences.locale
-            : systemLang;
-        final langValue = effectiveLang.startsWith('zh') ? 'zh' : 'en';
         return (
           themeMode,
           normalizeThemeColorPreset(state.preferences.themeColorPreset),
@@ -46,7 +40,7 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
           normalizeTypographyScale(state.preferences.uiZoomScale),
           state.preferences.uiZoomCustomMultiplier,
           state.preferences.terminalThemeMode,
-          langValue,
+          languagePreferenceUiValue(state.preferences.locale),
         );
       },
       builder: (context, appearance) {
@@ -162,21 +156,25 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   ),
                   showDividerBelow: true,
                 ),
-                SettingsLabeledRow(
+                  SettingsLabeledRow(
                   title: l10n.language,
                   subtitle: l10n.languageDescription,
                   trailing: SettingsCompactDropdown<String>(
                     value: langValue,
                     entries: [
+                      ('system', l10n.languageSystem),
                       ('en', l10n.languageEnglish),
                       ('zh', l10n.languageChinese),
                     ],
                     itemKeys: const {
+                      'system': AppKeys.languageSystemButton,
                       'en': AppKeys.languageEnButton,
                       'zh': AppKeys.languageZhButton,
                     },
                     onChanged: (v) {
-                      if (v != null) controller.setLocale(v);
+                      if (v != null) {
+                        controller.setLocale(languagePreferenceStoredLocale(v));
+                      }
                     },
                   ),
                   showDividerBelow: false,

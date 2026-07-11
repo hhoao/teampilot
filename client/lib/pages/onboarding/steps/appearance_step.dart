@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../cubits/layout_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
+import '../../../models/layout_preferences.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/app_keys.dart';
 import '../../../widgets/settings/theme_color_preset_picker.dart';
@@ -27,16 +28,10 @@ class OnboardingAppearanceStep extends StatelessWidget {
             themeMode != 'system') {
           themeMode = 'system';
         }
-        final systemLang =
-            WidgetsBinding.instance.platformDispatcher.locale.languageCode;
-        final effectiveLang = state.preferences.locale.isNotEmpty
-            ? state.preferences.locale
-            : systemLang;
-        final langValue = effectiveLang.startsWith('zh') ? 'zh' : 'en';
         return (
           themeMode,
           normalizeThemeColorPreset(state.preferences.themeColorPreset),
-          langValue,
+          languagePreferenceUiValue(state.preferences.locale),
         );
       },
       builder: (context, appearance) {
@@ -101,15 +96,21 @@ class OnboardingAppearanceStep extends StatelessWidget {
                     trailing: SettingsCompactDropdown<String>(
                       value: langValue,
                       entries: [
+                        ('system', l10n.languageSystem),
                         ('en', l10n.languageEnglish),
                         ('zh', l10n.languageChinese),
                       ],
                       itemKeys: const {
+                        'system': AppKeys.languageSystemButton,
                         'en': AppKeys.languageEnButton,
                         'zh': AppKeys.languageZhButton,
                       },
                       onChanged: (v) {
-                        if (v != null) controller.setLocale(v);
+                        if (v != null) {
+                          controller.setLocale(
+                            languagePreferenceStoredLocale(v),
+                          );
+                        }
                       },
                     ),
                     showDividerBelow: false,

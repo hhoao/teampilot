@@ -120,6 +120,7 @@
   "themeDark": "Dark",
   "themeLight": "Light",
   "language": "Language",
+  "languageSystem": "System",
   "languageEnglish": "English",
   "languageChinese": "中文",
   "chatTo": "To:",
