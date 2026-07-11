@@ -11,6 +11,8 @@ import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/editor/file_editor_theme.dart';
 import '../../services/editor/file_editor_toolbar.dart';
+import '../../services/editor_platform/document_session.dart';
+import '../../services/editor_platform/editor_viewport_token_binder.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 
@@ -160,14 +162,83 @@ class _FileEditorBody extends StatelessWidget {
       controller: controller,
       readOnly: model.readOnly,
       toolbarController: const FileEditorContextMenuController(),
-      style: codeEditorStyleFor(context, path),
+      style: codeEditorStyleFor(
+        context,
+        path,
+        tokenProvider: editor.tokenProviderFor(workspaceId, path),
+      ),
       wordWrap: false,
       indicatorBuilder: (context, editingController, chunkController, notifier) {
-        return DefaultCodeLineNumber(
+        return _LineNumberWithViewportBinder(
           controller: editingController,
           notifier: notifier,
+          session: editor.documentSessionFor(workspaceId, path),
         );
       },
+    );
+  }
+}
+
+/// Renders the gutter line numbers and, when the file has a tree-sitter
+/// [DocumentSession], keeps its viewport token requests in sync with the
+/// visible line band published by re-editor's indicator notifier.
+class _LineNumberWithViewportBinder extends StatefulWidget {
+  const _LineNumberWithViewportBinder({
+    required this.controller,
+    required this.notifier,
+    required this.session,
+  });
+
+  final CodeLineEditingController controller;
+  final CodeIndicatorValueNotifier notifier;
+  final DocumentSession? session;
+
+  @override
+  State<_LineNumberWithViewportBinder> createState() =>
+      _LineNumberWithViewportBinderState();
+}
+
+class _LineNumberWithViewportBinderState
+    extends State<_LineNumberWithViewportBinder> {
+  EditorViewportTokenBinder? _binder;
+
+  @override
+  void initState() {
+    super.initState();
+    _bind();
+  }
+
+  @override
+  void didUpdateWidget(_LineNumberWithViewportBinder oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.session != widget.session ||
+        oldWidget.notifier != widget.notifier) {
+      _bind();
+    }
+  }
+
+  void _bind() {
+    _binder?.dispose();
+    final session = widget.session;
+    _binder = session == null
+        ? null
+        : EditorViewportTokenBinder(
+            session: session,
+            notifier: widget.notifier,
+          );
+  }
+
+  @override
+  void dispose() {
+    _binder?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultCodeLineNumber(
+      controller: widget.controller,
+      notifier: widget.notifier,
     );
   }
 }
