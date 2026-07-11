@@ -56,6 +56,8 @@ import 'chat/model/session_create_request.dart';
 import 'chat/model/session_open_request.dart';
 import 'chat/model/session_open_status.dart';
 import 'chat/model/session_workbench_view.dart';
+import 'chat/session_continue_overrides_controller.dart';
+import '../models/cli_preset.dart';
 
 export 'chat/model/chat_state.dart';
 export 'chat/model/chat_tab_info.dart';
@@ -130,6 +132,8 @@ class ChatCubit extends Cubit<ChatState>
   void _notifyAutomationsChanged() => _onAutomationsChanged?.call();
   final ChatTabStore _tabStore = ChatTabStore();
   final SessionDataStore _dataStore = SessionDataStore();
+  static const _continueOverridesController =
+      SessionContinueOverridesController();
   final Map<String, Future<void>> _sessionHydrationByWorkspace = {};
   late final SessionLaunchService _launchService = SessionLaunchService(this);
   late final TabSessionRuntimeCoordinator _sessionRuntime =
@@ -1213,6 +1217,63 @@ class ChatCubit extends Cubit<ChatState>
     if (repo == null) return;
     await repo.touchSession(sessionId);
     _emitSnapshot(await _dataStore.loadWorkspaceData(repo));
+  }
+
+  /// Persists session-level or per-member continue permission overrides.
+  Future<void> setSessionContinuePermission({
+    required String sessionId,
+    required bool dangerouslySkipPermissions,
+    String? memberId,
+  }) async {
+    final repo = _sessionRepository;
+    if (repo == null) return;
+    final session = _continueOverridesController.sessionIn(
+      state.sessions,
+      sessionId,
+    );
+    if (session == null) return;
+    final patched = _continueOverridesController.patchPermission(
+      session: session,
+      dangerouslySkipPermissions: dangerouslySkipPermissions,
+      memberId: memberId,
+    );
+    await _continueOverridesController.persistPermission(
+      repo: repo,
+      patched: patched,
+    );
+    replaceSessionSnapshot(patched);
+  }
+
+  /// Persists a same-CLI preset for Simple identity or a team member override.
+  ///
+  /// Returns false when [preset.cli] does not match [lockedCli] (no disk write).
+  Future<bool> setSessionContinuePreset({
+    required String sessionId,
+    required CliPreset preset,
+    String? memberId,
+    required CliTool lockedCli,
+  }) async {
+    final repo = _sessionRepository;
+    if (repo == null) return false;
+    final session = _continueOverridesController.sessionIn(
+      state.sessions,
+      sessionId,
+    );
+    if (session == null) return false;
+    final patched = _continueOverridesController.patchPreset(
+      session: session,
+      preset: preset,
+      memberId: memberId,
+      lockedCli: lockedCli,
+    );
+    if (patched == null) return false;
+    await _continueOverridesController.persistPreset(
+      repo: repo,
+      patched: patched,
+      memberId: memberId,
+    );
+    replaceSessionSnapshot(patched);
+    return true;
   }
 
   /// Persists a manual session arrangement. [orderedSessionIds] is the new
