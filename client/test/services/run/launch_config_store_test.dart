@@ -130,6 +130,24 @@ void main() {
     expect(parsed.compounds.single.configurationIds, ['one']);
   });
 
+  test('deleteConfiguration removes id and writes document', () async {
+    final io = MemoryLaunchConfigIo();
+    final store = LaunchConfigStore(io: io);
+    const folder = WorkspaceFolder(path: '/proj');
+    await store.upsertConfiguration(
+      folder: folder,
+      configuration: const LaunchConfiguration(
+        id: 'api',
+        name: 'API',
+        type: 'process',
+        command: 'echo',
+      ),
+    );
+    await store.deleteConfiguration(folder: folder, id: 'api');
+    final remaining = await store.listConfigurations(folders: [folder]);
+    expect(remaining, isEmpty);
+  });
+
   test('selectionKey includes path targetId and config id', () {
     const owned = OwnedLaunchConfiguration(
       owner: WorkspaceFolder(path: '/x', targetId: 'ssh:host'),

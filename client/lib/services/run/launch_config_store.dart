@@ -186,6 +186,21 @@ class LaunchConfigStore {
     );
   }
 
+  Future<void> deleteConfiguration({
+    required WorkspaceFolder folder,
+    required String id,
+  }) async {
+    final existing = await _readDocument(folder);
+    if (existing == null) return;
+    final configs =
+        existing.configurations.where((c) => c.id != id).toList();
+    if (configs.length == existing.configurations.length) return;
+    await writeDocument(
+      folder: folder,
+      document: existing.copyWith(configurations: configs),
+    );
+  }
+
   Future<void> writeDocument({
     required WorkspaceFolder folder,
     required LaunchConfigDocument document,
