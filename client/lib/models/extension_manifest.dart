@@ -110,6 +110,29 @@ class ExtensionEffect {
     return raw is Map ? raw.cast<String, Object?>() : null;
   }
 
+  // launch-type accessors.
+  String? get launchType => config['type'] as String?;
+  List<String>? get launchKinds {
+    final raw = config['kinds'];
+    if (raw is! List) return null;
+    return raw.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+  }
+
+  Map<String, Object?>? get launchAdapter {
+    final raw = config['adapter'];
+    return raw is Map ? raw.cast<String, Object?>() : null;
+  }
+
+  Map<String, Object?>? get launchConfigurationSchema {
+    final raw = config['configurationSchema'];
+    return raw is Map ? raw.cast<String, Object?>() : null;
+  }
+
+  Map<String, Object?>? get launchDiscover {
+    final raw = config['discover'];
+    return raw is Map ? raw.cast<String, Object?>() : null;
+  }
+
   factory ExtensionEffect.fromJson(Map<String, Object?> json) {
     final appliesTo = json['appliesTo'];
     return ExtensionEffect(
