@@ -125,7 +125,7 @@ class LlmProviderModelsView extends StatelessWidget {
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(kLlmInsetH),
-                      child: Text(l10n.noModelsConfigured, style: tx.mutedBody),
+                      child: Text(l10n.noModelsConfigured, style: tx.mutedMd),
                     ),
                   )
                 : ListView.separated(
@@ -153,7 +153,7 @@ class LlmProviderModelsView extends StatelessWidget {
                                 children: [
                                   Text(
                                     model.name,
-                                    style: tx.bodyStrongColored(textBase),
+                                    style: tx.mdSemiboldColored(textBase),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
@@ -270,7 +270,7 @@ Future<void> _showValidationDialog(BuildContext context, LlmConfig config) {
                 final tx = LlmWorkspaceText(Theme.of(context));
                 return Text(
                   '${index + 1}. ${messages[index]}',
-                  style: tx.body,
+                  style: tx.md,
                 );
               },
             ),

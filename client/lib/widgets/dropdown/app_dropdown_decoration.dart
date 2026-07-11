@@ -159,7 +159,7 @@ abstract final class AppDropdownDecorations {
           ],
       headerStyle:
           headerStyle ??
-          AppTextStyles.of(context).body.copyWith(
+          AppTextStyles.of(context).md.copyWith(
             fontWeight: headerFontWeight,
           ),
       hintStyle: hintStyle ?? dropdownHintTextStyle(context),
@@ -168,7 +168,7 @@ abstract final class AppDropdownDecorations {
           listItemStyle ??
           AppTextStyles.of(
             context,
-          ).body.copyWith(fontWeight: listItemFontWeight),
+          ).md.copyWith(fontWeight: listItemFontWeight),
       closedSuffixIcon:
           closedSuffixIcon ??
           _suffixIcon(

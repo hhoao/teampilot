@@ -155,8 +155,8 @@ class WorkspaceFolderDirectoryRow extends StatelessWidget {
     required bool muted,
   }) {
     final titleColor = muted ? cs.onSurfaceVariant : cs.onSurface;
-    final title = styles.body.copyWith(color: titleColor);
-    final detail = styles.caption.copyWith(color: cs.onSurfaceVariant);
+    final title = styles.mdColored(titleColor);
+    final detail = styles.xsColored(cs.onSurfaceVariant);
     if (parent.isEmpty) {
       return Text(
         name,
@@ -211,7 +211,7 @@ class _TargetChip extends StatelessWidget {
             targetLabel,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: styles.caption.copyWith(color: cs.onSurfaceVariant),
+            style: styles.xsColored(cs.onSurfaceVariant),
           ),
         ),
       ],

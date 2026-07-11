@@ -34,7 +34,7 @@ class PluginMarketplacesSection extends StatelessWidget {
                     Expanded(
                       child: Text(
                         l10n.pluginsNavMarketplaces,
-                        style: AppTextStyles.of(context).sectionTitle,
+                        style: AppTextStyles.of(context).mdSemiboldTightSnug,
                       ),
                     ),
                     FilledButton.tonalIcon(
@@ -207,7 +207,7 @@ class PluginMarketplaceRow extends StatelessWidget {
                         marketplace.displayName ?? marketplace.fullName,
                         style: AppTextStyles.of(
                           context,
-                        ).bodyStrong.copyWith(color: textBase),
+                        ).mdSemiboldColored(textBase),
                       ),
                     ),
                   ],
@@ -217,13 +217,13 @@ class PluginMarketplaceRow extends StatelessWidget {
                   marketplace.githubUrl,
                   style: AppTextStyles.of(
                     context,
-                  ).caption.copyWith(color: textBase.withValues(alpha: 0.4)),
+                  ).xsColored(textBase.withValues(alpha: 0.4)),
                 ),
                 Text(
                   'branch: ${marketplace.branch}',
                   style: AppTextStyles.of(
                     context,
-                  ).caption.copyWith(color: textBase.withValues(alpha: 0.35)),
+                  ).xsColored(textBase.withValues(alpha: 0.35)),
                 ),
               ],
             ),

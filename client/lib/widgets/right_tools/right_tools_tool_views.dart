@@ -674,10 +674,8 @@ class _WorktreeBreadcrumb extends StatelessWidget {
               branch,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.of(context).bodySmall.copyWith(
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
+              style: AppTextStyles.of(context).smColored(cs.onSurfaceVariant,
+                fontWeight: FontWeight.w600,),
             ),
           ),
         ],

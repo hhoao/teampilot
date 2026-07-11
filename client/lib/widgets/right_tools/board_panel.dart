@@ -59,7 +59,7 @@ class BoardPanel extends StatelessWidget {
               color: cs.onSurfaceVariant,
             ),
             const SizedBox(height: 8),
-            Text(l10n.boardEmpty, style: styles.mutedBody),
+            Text(l10n.boardEmpty, style: styles.mutedMd),
           ],
         ),
       );
@@ -116,12 +116,12 @@ class _ColumnSection extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 label,
-                style: styles.badgeColored(cs.onSurfaceVariant),
+                style: styles.xsSemiboldSnugColored(cs.onSurfaceVariant),
               ),
               const SizedBox(width: 6),
               Text(
                 '(${cards.length})',
-                style: styles.mutedCaption,
+                style: styles.mutedXs,
               ),
             ],
           ),
@@ -168,7 +168,7 @@ class _CardTile extends StatelessWidget {
           children: [
             Text(
               '#${card.seq}',
-              style: styles.captionColored(cs.onSurfaceVariant).copyWith(
+              style: styles.xsColored(cs.onSurfaceVariant).copyWith(
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
@@ -186,7 +186,7 @@ class _CardTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       '› $memberName',
-                      style: styles.mutedCaption,
+                      style: styles.mutedXs,
                     ),
                   ],
                 ],

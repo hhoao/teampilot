@@ -186,7 +186,7 @@ class _DiffViewerState extends State<DiffViewer> {
       return Center(
         child: Text(
           context.l10n.diffNoChanges,
-          style: AppTextStyles.of(context).mutedBody,
+          style: AppTextStyles.of(context).mutedMd,
         ),
       );
     }

@@ -560,7 +560,7 @@ class _ComposeFieldPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final styles = AppTextStyles.of(context);
-    final hintStyle = styles.body.copyWith(color: hintColor);
+    final hintStyle = styles.mdColored(hintColor);
     final lineHeight =
         (hintStyle.fontSize ?? 14) * (hintStyle.height ?? 1.35);
     return SizedBox(

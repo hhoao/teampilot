@@ -170,7 +170,7 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
                 error,
-                style: styles.bodySmall.copyWith(color: cs.error),
+                style: styles.smColored(cs.error),
               ),
             ),
         ],
@@ -255,7 +255,7 @@ class _SwitchRow extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: styles.body.copyWith(fontWeight: FontWeight.w500),
+            style: styles.mdMedium,
           ),
         ),
         Switch(key: switchKey, value: value, onChanged: onChanged),

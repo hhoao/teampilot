@@ -212,7 +212,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     if (fieldBox == null || !fieldBox.hasSize) return;
 
     final styles = AppTextStyles.of(context);
-    final textStyle = styles.body.copyWith(color: widget.mutedColor);
+    final textStyle = styles.mdColored(widget.mutedColor);
     final anchor = composeTriggerMenuAnchor(
       context: context,
       fieldBox: fieldBox,
@@ -380,7 +380,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   @override
   Widget build(BuildContext context) {
     final styles = AppTextStyles.of(context);
-    final textStyle = styles.body.copyWith(color: widget.mutedColor);
+    final textStyle = styles.mdColored(widget.mutedColor);
 
     if (_overlayVisible) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -401,7 +401,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
             enabled: widget.enabled,
             onChanged: widget.onChanged,
             textStyle: textStyle,
-            hintStyle: styles.body.copyWith(color: widget.hintColor),
+            hintStyle: styles.mdColored(widget.hintColor),
             cursorColor: widget.mutedColor,
             onKeyEvent: _handleComposeKey,
             overlayVisible: _overlayVisible,
@@ -539,18 +539,14 @@ class _ComposeTriggerSuggestionPanel extends StatelessWidget {
                       children: [
                         Text(
                           label,
-                          style: styles.bodySmall.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: styles.smSemibold,
                         ),
                         if (subtitle != null && subtitle.trim().isNotEmpty)
                           Text(
                             subtitle,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: styles.bodySmall.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
+                            style: styles.smColored(cs.onSurfaceVariant,),
                           ),
                       ],
                     ),
@@ -591,11 +587,9 @@ class _ComposeTriggerSectionHeader extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: styles.bodySmall.copyWith(
-          color: color,
+        style: styles.smColored(color,
           fontWeight: FontWeight.w600,
-          letterSpacing: 0.2,
-        ),
+          letterSpacing: 0.2,),
       ),
     );
   }

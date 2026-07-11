@@ -100,7 +100,7 @@ class LogViewerToolbar extends StatelessWidget {
             Expanded(
               child: TextField(
                 controller: searchController,
-                style: AppTextStyles.of(context).body,
+                style: AppTextStyles.of(context).md,
                 decoration: _fieldDecoration(
                   context,
                   hintText: l10n.logViewerSearchHint,
@@ -229,7 +229,7 @@ class LogViewerToolbar extends StatelessWidget {
       hintText: hintText,
       hintStyle: AppTextStyles.of(
         context,
-      ).body.copyWith(color: cs.onSurfaceVariant),
+      ).mdColored(cs.onSurfaceVariant),
       prefixIcon: prefixIcon,
       prefixIconConstraints: const BoxConstraints(minWidth: 34, minHeight: 34),
       isDense: true,

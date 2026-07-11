@@ -227,13 +227,12 @@ class _FilterPill extends StatelessWidget {
                   Icon(icon, size: 16, color: fg),
                   const SizedBox(width: 6),
                 ],
-                Text(label, style: styles.body.copyWith(color: fg)),
+                Text(label, style: styles.mdColored(fg)),
                 if (count != null) ...[
                   const SizedBox(width: 6),
                   Text(
                     '$count',
-                    style: styles.caption.copyWith(
-                      color: selected
+                    style: styles.xsColored(selected
                           ? cs.primary.withValues(alpha: 0.8)
                           : cs.onSurfaceVariant,
                     ),

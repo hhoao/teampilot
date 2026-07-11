@@ -165,7 +165,7 @@ class _ShortcutGroupList extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Text(
           l10n.shortcutsCheatsheetEmpty,
-          style: AppTextStyles.of(context).mutedBody,
+          style: AppTextStyles.of(context).mutedMd,
         ),
       );
     }
@@ -282,7 +282,7 @@ class _ChordChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
       ),
-      child: Text(label, style: AppTextStyles.of(context).bodySmall),
+      child: Text(label, style: AppTextStyles.of(context).sm),
     );
   }
 }

@@ -418,8 +418,7 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
                       widget.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.bodySmall.copyWith(
-                        color: widget.preview
+                      style: styles.smColored(widget.preview
                             ? fg.withValues(alpha: 0.72)
                             : fg,
                       ),

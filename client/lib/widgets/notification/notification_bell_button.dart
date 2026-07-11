@@ -122,7 +122,7 @@ class _BellGlyphState extends State<_BellGlyph> {
                     alignment: Alignment.center,
                     child: Text(
                       badgeLabel,
-                      style: styles.badgeColored(cs.onError).copyWith(height: 1),
+                      style: styles.xsSemiboldSnugColored(cs.onError),
                     ),
                   ),
                 ),
@@ -157,7 +157,7 @@ class _NotificationDropdownPanel extends StatelessWidget {
               Expanded(
                 child: Text(
                   l10n.notificationCenterTitle,
-                  style: styles.sectionTitle,
+                  style: styles.mdSemiboldTightSnug,
                 ),
               ),
               IconButton(
@@ -175,7 +175,7 @@ class _NotificationDropdownPanel extends StatelessWidget {
               child: Text(
                 l10n.notificationEmpty,
                 textAlign: TextAlign.center,
-                style: styles.mutedBody,
+                style: styles.mutedMd,
               ),
             )
           else

@@ -70,7 +70,7 @@ class MembersPanel extends StatelessWidget {
                   l10n.members,
                   style: AppTextStyles.of(
                     context,
-                  ).toolPanelTitleColored(cs.onSurfaceVariant),
+                  ).xsBoldWideColored(cs.onSurfaceVariant),
                 ),
               ),
               AppIconButton(
@@ -156,7 +156,7 @@ class MembersPanel extends StatelessWidget {
                         title: MemberTitleRow(
                           member: member,
                           fallbackName: l10n.memberName,
-                          style: styles.body,
+                          style: styles.md,
                           textColor: titleColor,
                           compactBadge: true,
                         ),
@@ -164,7 +164,7 @@ class MembersPanel extends StatelessWidget {
                         iconColor: titleColor,
                         subtitle: Text(
                           subtitle,
-                          style: styles.bodyColored(subtitleColor),
+                          style: styles.mdColored(subtitleColor),
                         ),
                         trailing: MemberPresenceIndicator(presence: presence),
                         onTap: () => onSelected(member.id),

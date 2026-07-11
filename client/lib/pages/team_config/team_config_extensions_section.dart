@@ -86,10 +86,8 @@ class TeamExtensionsSectionState extends State<TeamExtensionsSection> {
                 const SizedBox(height: 6),
                 Text(
                   l10n.teamExtensionsSubtitle,
-                  style: AppTextStyles.of(context).bodySmall.copyWith(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.6),
+                  style: AppTextStyles.of(context).smColored(Theme.of(
+                      context,).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -146,14 +144,13 @@ class TeamExtensionRow extends StatelessWidget {
                     row.name,
                     style: AppTextStyles.of(
                       context,
-                    ).body.copyWith(fontWeight: FontWeight.w700),
+                    ).mdBold,
                   ),
                   Text(
                     effective
                         ? (effectiveOnLabel ?? l10n.teamExtensionEffectiveOn)
                         : (effectiveOffLabel ?? l10n.teamExtensionEffectiveOff),
-                    style: AppTextStyles.of(context).bodySmall.copyWith(
-                      color: cs.onSurface.withValues(alpha: 0.6),
+                    style: AppTextStyles.of(context).smColored(cs.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ],

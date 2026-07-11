@@ -40,7 +40,7 @@ class CliPresetsManageDialog extends StatelessWidget {
               child: Text(
                 l10n.workspaceCliPresetsEmptyHint,
                 textAlign: TextAlign.center,
-                style: AppTextStyles.of(context).body,
+                style: AppTextStyles.of(context).md,
               ),
             )
           else
@@ -136,12 +136,12 @@ class _PresetRow extends StatelessWidget {
               children: [
                 Text(
                   preset.name,
-                  style: styles.prominent.copyWith(color: cs.onSurface),
+                  style: styles.lgColored(cs.onSurface),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '$cliName · $subtitle',
-                  style: styles.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                  style: styles.smColored(cs.onSurfaceVariant),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),

@@ -330,7 +330,7 @@ class _MachineFolderCard extends StatelessWidget {
                     targetLabel,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: styles.bodyStrong.copyWith(color: cs.onSurface),
+                    style: styles.mdSemiboldColored(cs.onSurface),
                   ),
                 ),
                 if (enabled)
@@ -349,8 +349,7 @@ class _MachineFolderCard extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   emptyHint!,
-                  style: styles.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.85),
+                  style: styles.smColored(cs.onSurfaceVariant.withValues(alpha: 0.85),
                   ),
                 ),
               )

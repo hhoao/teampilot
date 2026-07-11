@@ -113,10 +113,8 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
         children: [
           Text(
             title,
-            style: styles.prominent.copyWith(
-              color: cs.onSurface,
-              fontWeight: FontWeight.w700,
-            ),
+            style: styles.lgColored(cs.onSurface,
+              fontWeight: FontWeight.w700,),
           ),
           const SizedBox(height: 20),
           Expanded(
@@ -238,7 +236,7 @@ class _LibraryEmptyState extends StatelessWidget {
             color: cs.onSurfaceVariant.withValues(alpha: 0.55),
           ),
           const SizedBox(height: 12),
-          Text(label, style: styles.body.copyWith(color: cs.onSurfaceVariant)),
+          Text(label, style: styles.mdColored(cs.onSurfaceVariant)),
         ],
       ),
     );

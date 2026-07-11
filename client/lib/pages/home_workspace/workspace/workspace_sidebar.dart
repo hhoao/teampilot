@@ -143,7 +143,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                 Expanded(
                   child: Text(
                     l10n.homeWorkspaceConversationsSection,
-                    style: AppTextStyles.of(context).mutedBodySmall,
+                    style: AppTextStyles.of(context).mutedSm,
                   ),
                 ),
                 _SessionSortButton(
@@ -480,7 +480,7 @@ class _RunningSessionsSection extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(4, 0, 0, 8),
           child: Text(
             l10n.workspaceRunningSessionsSection,
-            style: AppTextStyles.of(context).mutedBodySmall,
+            style: AppTextStyles.of(context).mutedSm,
           ),
         ),
         for (final session in sessions)
@@ -568,7 +568,7 @@ class _SidebarActionTileState extends State<_SidebarActionTile> {
                   color: foreground,
                 ),
                 const SizedBox(width: 10),
-                Expanded(child: Text(widget.label, style: styles.prominent)),
+                Expanded(child: Text(widget.label, style: styles.lg)),
               ],
             ),
           ),
@@ -670,7 +670,7 @@ class _EmptyConversations extends StatelessWidget {
             Text(
               label,
               textAlign: TextAlign.center,
-              style: styles.bodySmall.copyWith(color: cs.onSurfaceVariant),
+              style: styles.smColored(cs.onSurfaceVariant),
             ),
           ],
         ),

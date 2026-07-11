@@ -64,7 +64,7 @@ class TeamPluginsSection extends StatelessWidget {
                   l10n.teamPluginsCliUnsupportedBanner,
                   style: AppTextStyles.of(
                     context,
-                  ).body.copyWith(color: textBase.withValues(alpha: 0.6)),
+                  ).mdColored(textBase.withValues(alpha: 0.6)),
                 ),
               ),
             ),
@@ -102,8 +102,7 @@ class TeamPluginsSection extends StatelessWidget {
                     ),
                     child: Text(
                       l10n.teamPluginsMissing(missingIds.length),
-                      style: AppTextStyles.of(context).bodySmall.copyWith(
-                        color: textBase.withValues(alpha: 0.75),
+                      style: AppTextStyles.of(context).smColored(textBase.withValues(alpha: 0.75),
                       ),
                     ),
                   ),
@@ -200,27 +199,21 @@ class TeamPluginRow extends StatelessWidget {
                           plugin.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.of(context).body.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: textBase,
-                          ),
+                          style: AppTextStyles.of(context).mdBoldColored(textBase,),
                         ),
                       ),
                       if (plugin.version.isNotEmpty) ...[
                         const SizedBox(width: 8),
                         Text(
                           'v${plugin.version}',
-                          style: AppTextStyles.of(context).caption.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: textBase.withValues(alpha: 0.55),
+                          style: AppTextStyles.of(context).xsSemiboldColored(textBase.withValues(alpha: 0.55),
                           ),
                         ),
                       ],
                       const SizedBox(width: 8),
                       Text(
                         sourceLabel,
-                        style: AppTextStyles.of(context).caption.copyWith(
-                          color: textBase.withValues(alpha: 0.5),
+                        style: AppTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.5),
                         ),
                       ),
                     ],
@@ -231,8 +224,7 @@ class TeamPluginRow extends StatelessWidget {
                       plugin.description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.of(context).bodySmall.copyWith(
-                        color: textBase.withValues(alpha: 0.6),
+                      style: AppTextStyles.of(context).smColored(textBase.withValues(alpha: 0.6),
                       ),
                     ),
                   ],
@@ -249,8 +241,7 @@ class TeamPluginRow extends StatelessWidget {
                         Expanded(
                           child: Text(
                             l10n.teamPluginsNameConflict(conflictDir!),
-                            style: AppTextStyles.of(context).caption.copyWith(
-                              color: textBase.withValues(alpha: 0.65),
+                            style: AppTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.65),
                             ),
                           ),
                         ),
@@ -307,9 +298,7 @@ class TeamMissingPluginRow extends StatelessWidget {
                     pluginId,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.of(context).body.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: textBase.withValues(alpha: 0.55),
+                    style: AppTextStyles.of(context).mdSemiboldColored(textBase.withValues(alpha: 0.55),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -317,7 +306,7 @@ class TeamMissingPluginRow extends StatelessWidget {
                     l10n.teamPluginsMissingLabel,
                     style: AppTextStyles.of(
                       context,
-                    ).caption.copyWith(color: cs.error.withValues(alpha: 0.85)),
+                    ).xsColored(cs.error.withValues(alpha: 0.85)),
                   ),
                 ],
               ),

@@ -99,7 +99,7 @@ class RunToolbarConfigDropdown extends StatelessWidget {
                     child: Text(
                       label,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.of(context).bodyColored(cs.onSurface),
+                      style: AppTextStyles.of(context).mdColored(cs.onSurface),
                     ),
                   ),
                   Icon(Icons.arrow_drop_down, color: cs.onSurfaceVariant),

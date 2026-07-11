@@ -305,7 +305,7 @@ class WorkspaceLandingSelectorBar extends StatelessWidget {
       display,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: AppTextStyles.of(context).body.copyWith(color: foreground),
+      style: AppTextStyles.of(context).mdColored(foreground),
     );
     if (!selectable) {
       if (compact) return labelWidget;

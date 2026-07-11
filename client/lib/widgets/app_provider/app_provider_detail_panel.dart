@@ -67,7 +67,7 @@ class AppProviderDetailPanel extends StatelessWidget {
                   children: [
                     Text(
                       provider.name,
-                      style: styles.prominent.copyWith(fontWeight: FontWeight.w700),
+                      style: styles.lgBold,
                     ),
                     if (isOfficialClaudeProvider(provider) ||
                         (provider.cli == CliTool.cursor &&
@@ -102,7 +102,7 @@ class AppProviderDetailPanel extends StatelessWidget {
           ),
           Text(
             provider.id,
-            style: styles.mutedBodySmall,
+            style: styles.mutedSm,
           ),
           const SizedBox(height: 16),
           if (provider.websiteUrl.isNotEmpty)
@@ -158,7 +158,7 @@ class AppProviderDetailPanel extends StatelessWidget {
               Expanded(
                 child: Text(
                   l10n.jsonPreview,
-                  style: styles.formLabel,
+                  style: styles.mdSnug,
                 ),
               ),
               _ProviderJsonPreviewCopyButton(provider: provider),
@@ -225,7 +225,7 @@ class _ProviderJsonPreviewState extends State<_ProviderJsonPreview> {
     final json = _json;
     final textStyle = appMonoTextStyle(
       context,
-      base: AppTextStyles.of(context).bodySmall,
+      base: AppTextStyles.of(context).sm,
     );
     return Container(
       padding: const EdgeInsets.all(12),

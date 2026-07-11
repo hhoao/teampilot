@@ -153,7 +153,7 @@ class _SwitcherButton extends StatelessWidget {
                     child: Text(
                       '${view.badgeCount}',
                       textAlign: TextAlign.center,
-                      style: styles.badgeColored(cs.onError),
+                      style: styles.xsSemiboldSnugColored(cs.onError),
                     ),
                   ),
                 ),

@@ -168,7 +168,7 @@ class _ExpertLandingPickerSheetState extends State<ExpertLandingPickerSheet> {
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
                 child: Text(
                   l10n.expertHubTitle,
-                  style: styles.body.copyWith(fontWeight: FontWeight.w600),
+                  style: styles.mdSemibold,
                 ),
               ),
               Padding(
@@ -220,9 +220,7 @@ class _ExpertLandingPickerSheetState extends State<ExpertLandingPickerSheet> {
                             padding: const EdgeInsets.all(20),
                             child: Text(
                               l10n.expertHubEmptyTitle,
-                              style: styles.bodySmall.copyWith(
-                                color: cs.onSurfaceVariant,
-                              ),
+                              style: styles.smColored(cs.onSurfaceVariant,),
                               textAlign: TextAlign.center,
                             ),
                           )
@@ -264,8 +262,7 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
       child: Text(
         title,
-        style: AppTextStyles.of(context).bodySmall.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        style: AppTextStyles.of(context).smColored(Theme.of(context).colorScheme.onSurfaceVariant,
           fontWeight: FontWeight.w600,
         ),
       ),

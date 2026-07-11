@@ -51,9 +51,9 @@ class _SessionHeading extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(title, style: styles.dialogTitle),
+        Text(title, style: styles.lgSemiboldSnug),
         const SizedBox(height: 6),
-        Text(subtitle, style: styles.mutedBody),
+        Text(subtitle, style: styles.mutedMd),
       ],
     );
   }

@@ -31,7 +31,7 @@ class RunSessionPage extends StatelessWidget {
                 alignment: Alignment.topLeft,
                 child: Text(
                   text.isEmpty ? '' : text,
-                  style: AppTextStyles.of(context).bodySmallColored(
+                  style: AppTextStyles.of(context).smColored(
                     cs.workspacePrimaryText,
                   ),
                 ),

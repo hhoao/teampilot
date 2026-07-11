@@ -157,7 +157,7 @@ class _RemoteDirectoryBrowserDialogState
                 child: SelectableText(
                   listing?.path ?? '…',
                   maxLines: 1,
-                  style: styles.body,
+                  style: styles.md,
                 ),
               ),
             ],
@@ -168,14 +168,14 @@ class _RemoteDirectoryBrowserDialogState
             const SizedBox(height: 8),
             Text(
               _error!,
-              style: styles.bodySmallColored(theme.colorScheme.error),
+              style: styles.smColored(theme.colorScheme.error),
             ),
           ],
           if (!widget.browseOnly) ...[
             const SizedBox(height: 16),
             Text(
               l10n.remoteDirectoryBrowserTypePathLabel,
-              style: styles.formLabel,
+              style: styles.mdSnug,
             ),
             const SizedBox(height: 6),
             Row(
@@ -233,7 +233,7 @@ class _RemoteDirectoryBrowserDialogState
       return Center(
         child: Text(
           l10n.remoteDirectoryBrowserError,
-          style: styles.mutedBodySmall,
+          style: styles.mutedSm,
         ),
       );
     }
@@ -241,7 +241,7 @@ class _RemoteDirectoryBrowserDialogState
       return Center(
         child: Text(
           l10n.remoteDirectoryBrowserEmpty,
-          style: styles.mutedBodySmall,
+          style: styles.mutedSm,
         ),
       );
     }

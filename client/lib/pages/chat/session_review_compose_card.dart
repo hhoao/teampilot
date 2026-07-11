@@ -360,11 +360,9 @@ class _ContinueIdentityChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final spacing = context.appSpacing;
     final icons = context.appIconSizes;
-    final labelStyle = AppTextStyles.of(context).body.copyWith(
-      color: palette.muted,
+    final labelStyle = AppTextStyles.of(context).mdColored(palette.muted,
       fontWeight: FontWeight.w500,
-      height: 1.25,
-    );
+      height: 1.25,);
 
     return Material(
       color: palette.chipFill,

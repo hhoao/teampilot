@@ -248,17 +248,16 @@ class _FileTreeNodeState extends State<FileTreeNode> {
                         widget.entry.name,
                         maxLines: 1,
                         style: widget.isRoot
-                            ? AppTextStyles.of(context).fileTreeRootLabel(
+                            ? AppTextStyles.of(context).mdBoldSpreadColored(
                                 widget.rootMissing
                                     ? cs.onSurfaceVariant.withValues(alpha: 0.5)
                                     : labelColor,
                               )
-                            : AppTextStyles.of(context).fileTreeEntryLabel(
-                                color: widget.rootMissing
+                            : isActive ? AppTextStyles.of(context).mdSemiboldColored(widget.rootMissing
                                     ? cs.onSurfaceVariant.withValues(alpha: 0.5)
-                                    : labelColor,
-                                active: isActive,
-                              ),
+                                    : labelColor) : AppTextStyles.of(context).mdMediumColored(widget.rootMissing
+                                    ? cs.onSurfaceVariant.withValues(alpha: 0.5)
+                                    : labelColor),
                       ),
                     ],
                   ),

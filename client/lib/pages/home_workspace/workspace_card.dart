@@ -132,7 +132,7 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
             displayName,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: styles.prominent.copyWith(fontWeight: FontWeight.w600),
+            style: styles.lgSemibold,
           ),
           const SizedBox(height: 6),
           WorkspaceCardMetaRow(

@@ -113,9 +113,7 @@ class _ExpertHubCardState extends State<ExpertHubCard> {
                             member.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: styles.bodyStrong.copyWith(
-                              color: cs.onSurface,
-                            ),
+                            style: styles.mdSemiboldColored(cs.onSurface,),
                           ),
                           if (member.author != null &&
                               member.author!.isNotEmpty) ...[
@@ -124,7 +122,7 @@ class _ExpertHubCardState extends State<ExpertHubCard> {
                               member.author!,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: styles.mutedCaption,
+                              style: styles.mutedXs,
                             ),
                           ],
                         ],
@@ -143,7 +141,7 @@ class _ExpertHubCardState extends State<ExpertHubCard> {
                     member.description,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: styles.mutedBody,
+                    style: styles.mutedMd,
                   ),
                 ),
                 const SizedBox(height: 10),

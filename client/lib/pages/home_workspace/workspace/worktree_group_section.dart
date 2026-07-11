@@ -530,8 +530,7 @@ class _GroupShowMoreRowState extends State<_GroupShowMoreRow> {
                       widget.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.of(context).body.copyWith(
-                        color: cs.onSurface.withValues(alpha: 0.55),
+                      style: AppTextStyles.of(context).mdColored(cs.onSurface.withValues(alpha: 0.55),
                       ),
                     ),
                   ),

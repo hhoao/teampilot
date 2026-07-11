@@ -87,8 +87,8 @@ class _NotificationListTileState extends State<NotificationListTile> {
     final message = notification.message;
     final hasTitle = notification.hasTitle;
     final expandable = notificationMessageIsExpandable(message);
-    final titleStyle = styles.sectionTitleColored(cs.onSurface);
-    final messageStyle = styles.bodyColored(
+    final titleStyle = styles.mdSemiboldTightSnugColored(cs.onSurface);
+    final messageStyle = styles.mdColored(
       hasTitle ? cs.onSurfaceVariant : cs.onSurface,
     );
 
@@ -167,7 +167,7 @@ class _NotificationListTileState extends State<NotificationListTile> {
                       const SizedBox(height: 6),
                       Text(
                         formatNotificationTime(context, notification.createdAt),
-                        style: styles.mutedCaption,
+                        style: styles.mutedXs,
                       ),
                     ],
                   ),

@@ -345,7 +345,7 @@ class _SectionHeader extends StatelessWidget {
               color: cs.onSurfaceVariant,
             ),
             const SizedBox(width: 8),
-            Expanded(child: Text(label, style: styles.prominent)),
+            Expanded(child: Text(label, style: styles.lg)),
             AnimatedRotation(
               turns: expanded ? 0 : -0.25,
               duration: const Duration(milliseconds: 180),
@@ -433,14 +433,7 @@ class _IdentityRowState extends State<_IdentityRow> {
                           widget.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: (selected
-                                  ? styles.prominent.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    )
-                                  : styles.prominent)
-                              .copyWith(
-                                color: selected ? cs.primary : cs.onSurface,
-                              ),
+                          style: selected ? styles.lgSemiboldColored(cs.primary) : styles.lgColored(cs.onSurface),
                         ),
                       ),
                     ],
@@ -525,7 +518,7 @@ class _NewTeamRow extends StatelessWidget {
               color: cs.primary,
             ),
             const SizedBox(width: 8),
-            Text(label, style: styles.prominent.copyWith(color: cs.primary)),
+            Text(label, style: styles.lgColored(cs.primary)),
           ],
         ),
       ),
@@ -590,12 +583,9 @@ class _ShortcutRowState extends State<_ShortcutRow> {
                 const SizedBox(width: 8),
                 Text(
                   widget.label,
-                  style: (active
-                          ? styles.prominent.copyWith(
-                              fontWeight: FontWeight.w600,
-                            )
-                          : styles.prominent)
-                      .copyWith(color: fg),
+                  style: active
+                      ? styles.lgSemiboldColored(fg)
+                      : styles.lgColored(fg),
                 ),
               ],
             ),
@@ -669,7 +659,7 @@ class _ProvidersButtonState extends State<_ProvidersButton> {
               const SizedBox(width: 8),
               Text(
                 widget.label,
-                style: (active ? styles.bodyStrong : styles.body).copyWith(
+                style: (active ? styles.mdSemibold : styles.md).copyWith(
                   color: fg,
                 ),
               ),

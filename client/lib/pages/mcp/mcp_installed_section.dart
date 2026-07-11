@@ -136,7 +136,7 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Text(
                 state.errorMessage ?? 'Error',
-                style: AppTextStyles.of(context).bodyColored(
+                style: AppTextStyles.of(context).mdColored(
                   Theme.of(context).colorScheme.error,
                 ),
               ),

@@ -125,7 +125,7 @@ class _FocusGatedTextFieldState extends State<FocusGatedTextField> {
     final baseStyle =
         widget.decoration.hintStyle ??
         theme.inputDecorationTheme.hintStyle ??
-        AppTextStyles.of(context).prominent;
+        AppTextStyles.of(context).lg;
     final fontSize = baseStyle?.fontSize ?? 16.0;
     final lineHeight = baseStyle?.height ?? 1.0;
     // Match [TextField] minLines vertical extent while unfocused.

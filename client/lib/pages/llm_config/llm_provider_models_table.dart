@@ -46,7 +46,7 @@ class LlmProviderModelsTable extends StatelessWidget {
                         model.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: tx.bodyStrongColored(textBase),
+                        style: tx.mdSemiboldColored(textBase),
                       ),
                       if (model.model.isNotEmpty &&
                           model.model != model.name) ...[

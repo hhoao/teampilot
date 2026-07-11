@@ -166,7 +166,7 @@ class _McpFormPageState extends State<McpFormPage> {
                   _isEditing ? l10n.mcpEdit : l10n.mcpAddTitle,
                   style: AppTextStyles.of(
                     context,
-                  ).body.copyWith(fontWeight: FontWeight.w800, color: textBase),
+                  ).mdHeavyColored(textBase),
                 ),
               ),
               FilledButton.icon(

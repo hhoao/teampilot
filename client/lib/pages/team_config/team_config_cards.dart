@@ -36,7 +36,7 @@ class TeamConfigCardHeader extends StatelessWidget {
       children: [
         Text(
           title,
-          style: AppTextStyles.of(context).sectionTitleColored(textBase),
+          style: AppTextStyles.of(context).mdSemiboldTightSnugColored(textBase),
         ),
       ],
     );

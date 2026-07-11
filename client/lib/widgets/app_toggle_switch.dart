@@ -86,7 +86,7 @@ class AppToggleSwitch extends StatelessWidget {
     final inactiveFg = textBase.withValues(alpha: 0.72);
     final n = totalSwitches;
     final resolvedMinWidth = minWidth ?? (n == 2 ? 112.0 : 100.0);
-    final fontSize = styles.body.fontSize!;
+    final fontSize = styles.md.fontSize!;
     final iconSize = context.appIconSizes.md;
     final resolvedCustomWidths =
         customWidths ??
@@ -96,7 +96,7 @@ class AppToggleSwitch extends StatelessWidget {
           iconSize: iconSize,
           icons: icons,
           minSegmentWidth: resolvedMinWidth,
-          textStyle: styles.body,
+          textStyle: styles.md,
         );
 
     return ToggleSwitch(

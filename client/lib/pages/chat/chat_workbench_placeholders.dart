@@ -25,7 +25,7 @@ class ChatWorkbenchSessionLoadingView extends StatelessWidget {
             message,
             style: AppTextStyles.of(
               context,
-            ).body.copyWith(color: textBase.withValues(alpha: 0.68)),
+            ).mdColored(textBase.withValues(alpha: 0.68)),
           ),
         ],
       ),

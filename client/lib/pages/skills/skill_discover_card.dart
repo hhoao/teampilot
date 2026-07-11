@@ -43,10 +43,7 @@ class SkillDiscoverCard extends StatelessWidget {
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.of(context).bodyStrong.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: textBase,
-                  ),
+                  style: AppTextStyles.of(context).mdHeavyColored(textBase),
                 ),
               ),
             ],
@@ -56,7 +53,7 @@ class SkillDiscoverCard extends StatelessWidget {
             source,
             style: AppTextStyles.of(
               context,
-            ).caption.copyWith(color: textBase.withValues(alpha: 0.55)),
+            ).xsColored(textBase.withValues(alpha: 0.55)),
           ),
           const SizedBox(height: 6),
           Expanded(
@@ -66,7 +63,7 @@ class SkillDiscoverCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.of(
                 context,
-              ).bodySmall.copyWith(color: textBase.withValues(alpha: 0.7)),
+              ).smColored(textBase.withValues(alpha: 0.7)),
             ),
           ),
           Align(
@@ -92,8 +89,7 @@ class SkillDiscoverCard extends StatelessWidget {
                     ),
                     child: Text(
                       l10n.skillsCardInstalled,
-                      style: AppTextStyles.of(context).bodySmall.copyWith(
-                        color: const Color(0xFF15803D),
+                      style: AppTextStyles.of(context).smColored(const Color(0xFF15803D),
                         fontWeight: FontWeight.w700,
                       ),
                     ),

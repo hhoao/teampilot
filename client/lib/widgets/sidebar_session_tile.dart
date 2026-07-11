@@ -505,7 +505,7 @@ class _SessionCoarseRelativeTime extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: AppTextStyles.of(
           context,
-        ).caption.copyWith(color: textBase.withValues(alpha: 0.52)),
+        ).xsColored(textBase.withValues(alpha: 0.52)),
       ),
     );
   }
@@ -658,9 +658,7 @@ class _SidebarTile extends StatelessWidget {
                               title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.of(context).body.copyWith(
-                                color: textBase,
-                              ),
+                              style: AppTextStyles.of(context).mdColored(textBase,),
                             ),
                           ),
                           if (subtitle.isNotEmpty) ...[
@@ -669,8 +667,7 @@ class _SidebarTile extends StatelessWidget {
                               subtitle,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.of(context).caption.copyWith(
-                                color: textBase.withValues(alpha: 0.52),
+                              style: AppTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.52),
                               ),
                             ),
                           ],

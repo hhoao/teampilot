@@ -452,7 +452,7 @@ class _MissingWorkspace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Text(label, style: AppTextStyles.of(context).mutedBody),
+      child: Text(label, style: AppTextStyles.of(context).mutedMd),
     );
   }
 }

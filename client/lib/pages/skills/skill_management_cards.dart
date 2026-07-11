@@ -44,9 +44,7 @@ class SkillFieldLabel extends StatelessWidget {
     final textBase = cs.onSurface;
     return Text(
       text,
-      style: AppTextStyles.of(context).bodySmall.copyWith(
-        fontWeight: FontWeight.w600,
-        color: textBase.withValues(alpha: 0.7),
+      style: AppTextStyles.of(context).smSemiboldColored(textBase.withValues(alpha: 0.7),
       ),
     );
   }

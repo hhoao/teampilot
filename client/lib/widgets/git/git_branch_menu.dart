@@ -73,7 +73,7 @@ class _GitBranchSheetState extends State<GitBranchSheet> {
                 l10n.gitSwitchBranch,
                 style: AppTextStyles.of(
                   context,
-                ).body.copyWith(fontWeight: FontWeight.w600),
+                ).mdSemibold,
               ),
             ),
             Flexible(

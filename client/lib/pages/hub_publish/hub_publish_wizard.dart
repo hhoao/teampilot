@@ -322,7 +322,7 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
             Text(
               _stepError!,
               key: const Key('hub-publish-step-error'),
-              style: AppTextStyles.of(context).bodyColored(
+              style: AppTextStyles.of(context).mdColored(
                 Theme.of(context).colorScheme.error,
               ),
             ),

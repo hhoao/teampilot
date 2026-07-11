@@ -158,7 +158,7 @@ class _SectionHeaderState extends State<_SectionHeader> {
               Expanded(
                 child: Text.rich(
                   TextSpan(
-                    style: styles.prominent,
+                    style: styles.lg,
                     children: [
                       TextSpan(
                         text: widget.enabledCount > 0
@@ -168,9 +168,7 @@ class _SectionHeaderState extends State<_SectionHeader> {
                       if (subtitle != null)
                         TextSpan(
                           text: ' · $subtitle',
-                          style: styles.prominent.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
+                          style: styles.lgColored(cs.onSurfaceVariant,),
                         ),
                     ],
                   ),

@@ -129,7 +129,7 @@ class _SupportChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AppTextStyles.of(context).captionColored(foreground),
+        style: AppTextStyles.of(context).xsColored(foreground),
       ),
     );
   }

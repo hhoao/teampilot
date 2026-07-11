@@ -408,7 +408,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
           if (_errorMessage != null) ...[
             Text(
               _errorMessage!,
-              style: styles.bodySmall.copyWith(color: cs.error),
+              style: styles.smColored(cs.error),
             ),
             const SizedBox(height: 12),
           ],
@@ -426,13 +426,13 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
           if (_showsLaunchProfilePicker) ...[
             Text(
               l10n.automationsLaunchProfile,
-              style: styles.bodySmall.copyWith(fontWeight: FontWeight.w600),
+              style: styles.smSemibold,
             ),
             const SizedBox(height: 8),
             if (_launchProfileChoices.isEmpty)
               Text(
                 l10n.automationsValidationRequired,
-                style: styles.bodySmall.copyWith(color: cs.error),
+                style: styles.smColored(cs.error),
               )
             else
               AppDropdownField<String>(
@@ -471,13 +471,13 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
             ] else ...[
               Text(
                 l10n.automationsTargetMember,
-                style: styles.bodySmall.copyWith(fontWeight: FontWeight.w600),
+                style: styles.smSemibold,
               ),
               const SizedBox(height: 8),
               if (_teamMemberItems.isEmpty)
                 Text(
                   l10n.automationsValidationRequired,
-                  style: styles.bodySmall.copyWith(color: cs.error),
+                  style: styles.smColored(cs.error),
                 )
               else
                 AppDropdownField<String>(
@@ -580,13 +580,13 @@ class _EditorSwitchRow extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: styles.body.copyWith(fontWeight: FontWeight.w500),
+                style: styles.mdMedium,
               ),
               if (hasSubtitle) ...[
                 const SizedBox(height: 2),
                 Text(
                   subtitle!,
-                  style: styles.caption.copyWith(color: cs.onSurfaceVariant),
+                  style: styles.xsColored(cs.onSurfaceVariant),
                 ),
               ],
             ],

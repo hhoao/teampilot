@@ -106,7 +106,7 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
                       displayName,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.body.copyWith(fontWeight: FontWeight.w600),
+                      style: styles.mdSemibold,
                     ),
                     const SizedBox(height: 4),
                     WorkspaceCardMetaRow(

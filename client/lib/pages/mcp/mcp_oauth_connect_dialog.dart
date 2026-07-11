@@ -201,7 +201,7 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
               const SizedBox(height: 12),
               Text(
                 _error!,
-                style: AppTextStyles.of(context).bodyColored(
+                style: AppTextStyles.of(context).mdColored(
                   Theme.of(context).colorScheme.error,
                 ),
               ),

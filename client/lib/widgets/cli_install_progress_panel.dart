@@ -34,7 +34,7 @@ class CliInstallProgressPanel extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               _phaseLabel(l10n, phase),
-              style: styles.body.copyWith(fontWeight: FontWeight.w500),
+              style: styles.mdMedium,
             ),
             if (logLines.isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -49,7 +49,7 @@ class CliInstallProgressPanel extends StatelessWidget {
                   reverse: true,
                   child: SelectableText(
                     logLines.join('\n'),
-                    style: styles.mutedBodySmall,
+                    style: styles.mutedSm,
                   ),
                 ),
               ),

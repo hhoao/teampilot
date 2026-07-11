@@ -450,9 +450,7 @@ class TeamDefaultPresetRow extends StatelessWidget {
                             l10n.teamDefaultPresetLabel,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: styles.prominent.copyWith(
-                              color: cs.onSurface,
-                            ),
+                            style: styles.lgColored(cs.onSurface,),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -465,10 +463,8 @@ class TeamDefaultPresetRow extends StatelessWidget {
                         l10n.teamDefaultPresetSubtitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: styles.bodySmall.copyWith(
-                          color: cs.onSurfaceVariant,
-                          height: 1.35,
-                        ),
+                        style: styles.smColored(cs.onSurfaceVariant,
+                          height: 1.35,),
                       ),
                     if (configured) ...[
                       const SizedBox(height: 2),
@@ -476,11 +472,9 @@ class TeamDefaultPresetRow extends StatelessWidget {
                         configLine,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: styles.bodySmall.copyWith(
-                          color: cs.onSurfaceVariant,
+                        style: styles.smColored(cs.onSurfaceVariant,
                           fontWeight: FontWeight.w500,
-                          height: 1.35,
-                        ),
+                          height: 1.35,),
                       ),
                     ],
                   ],
@@ -571,7 +565,7 @@ class TeamConfigDangerZone extends StatelessWidget {
             ),
             label: Text(
               l10n.deleteTeam,
-              style: AppTextStyles.of(context).bodyColored(errorColor),
+              style: AppTextStyles.of(context).mdColored(errorColor),
             ),
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: errorColor.withValues(alpha: 0.4)),

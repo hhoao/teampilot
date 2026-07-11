@@ -224,7 +224,7 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
               padding: const EdgeInsets.all(24),
               child: Text(
                 l10n.automationsEmpty,
-                style: styles.body.copyWith(color: cs.onSurfaceVariant),
+                style: styles.mdColored(cs.onSurfaceVariant),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -390,10 +390,8 @@ class _GroupedList extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(0, 12, 0, 6),
                         child: Text(
                           group.label,
-                          style: styles.bodySmall.copyWith(
-                            color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: styles.smColored(cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,),
                         ),
                       ),
                       ...group.automations.map((automation) {
@@ -537,7 +535,7 @@ class AutomationRow extends StatelessWidget {
                     automation.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: styles.prominent,
+                    style: styles.lg,
                   ),
                   if (scopeSubtitle != null && scopeSubtitle!.isNotEmpty) ...[
                     const SizedBox(height: 2),
@@ -545,10 +543,8 @@ class AutomationRow extends StatelessWidget {
                       scopeSubtitle!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.caption.copyWith(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: styles.xsColored(cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,),
                     ),
                   ],
                   const SizedBox(height: 2),
@@ -556,7 +552,7 @@ class AutomationRow extends StatelessWidget {
                     scheduleSummary,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: styles.caption.copyWith(color: cs.onSurfaceVariant),
+                    style: styles.xsColored(cs.onSurfaceVariant),
                   ),
                   if (AutomationLaunchSessionBinding.hasBinding(
                     automation,
@@ -568,9 +564,7 @@ class AutomationRow extends StatelessWidget {
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.caption.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
+                      style: styles.xsColored(cs.onSurfaceVariant,),
                     ),
                   ],
                   if (runCountLabel.isNotEmpty) ...[
@@ -579,9 +573,7 @@ class AutomationRow extends StatelessWidget {
                       runCountLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.caption.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
+                      style: styles.xsColored(cs.onSurfaceVariant,),
                     ),
                   ],
                   if (automation.enabled) ...[
@@ -590,8 +582,7 @@ class AutomationRow extends StatelessWidget {
                       nextRunLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.caption.copyWith(
-                        color: cs.primary.withValues(alpha: 0.85),
+                      style: styles.xsColored(cs.primary.withValues(alpha: 0.85),
                       ),
                     ),
                   ],
@@ -668,7 +659,7 @@ Future<void> showAutomationRunHistoryDialog(
           if (runs.isEmpty)
             Text(
               l10n.automationsRunHistoryEmpty,
-              style: styles.caption.copyWith(color: cs.onSurfaceVariant),
+              style: styles.xsColored(cs.onSurfaceVariant),
             )
           else
             ...runs.map((run) => AutomationRunHistoryRow(run: run)),
@@ -703,16 +694,14 @@ class AutomationRunHistoryRow extends StatelessWidget {
             Expanded(
               child: Text(
                 formatCoarseRelativeTime(l10n, when),
-                style: styles.prominent,
+                style: styles.lg,
               ),
             ),
             const SizedBox(width: 12),
             Text(
               label,
-              style: styles.bodySmall.copyWith(
-                color: statusColor,
-                fontWeight: FontWeight.w600,
-              ),
+              style: styles.smColored(statusColor,
+                fontWeight: FontWeight.w600,),
             ),
           ],
         ),

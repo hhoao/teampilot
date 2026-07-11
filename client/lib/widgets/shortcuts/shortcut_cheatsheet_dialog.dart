@@ -85,7 +85,7 @@ class _CheatsheetCategorySection extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(4, 12, 4, 6),
             child: Text(
               titleForCategory(l10n, category),
-              style: AppTextStyles.of(context).settingsGroupHeaderColored(
+              style: AppTextStyles.of(context).xsTrackColored(
                 Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
@@ -122,7 +122,7 @@ class _CheatsheetRow extends StatelessWidget {
           if (chords.isEmpty)
             Text(
               l10n.shortcutsNotSet,
-              style: AppTextStyles.of(context).mutedBodySmall,
+              style: AppTextStyles.of(context).mutedSm,
             )
           else
             Wrap(
@@ -155,7 +155,7 @@ class _ChordChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AppTextStyles.of(context).bodySmallColored(
+        style: AppTextStyles.of(context).smColored(
           cs.onSurface,
           fontWeight: FontWeight.w600,
         ),

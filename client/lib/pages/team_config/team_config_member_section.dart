@@ -60,7 +60,7 @@ class TeamMemberDetailSection extends StatelessWidget {
           textAlign: TextAlign.center,
           style: AppTextStyles.of(
             context,
-          ).body.copyWith(color: textBase.withValues(alpha: 0.55)),
+          ).mdColored(textBase.withValues(alpha: 0.55)),
         ),
       );
     }
@@ -381,7 +381,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                 : null,
             body: Text(
               member.name.trim().isEmpty ? l10n.memberName : member.name,
-              style: styles.body,
+              style: styles.md,
             ),
             showDividerBelow: true,
           ),
@@ -390,7 +390,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
             subtitle: l10n.expertHubSubtitle,
             body: Row(
               children: [
-                Expanded(child: Text(expertLabel, style: styles.body)),
+                Expanded(child: Text(expertLabel, style: styles.md)),
                 OutlinedButton(
                   onPressed: _openExpertHubPicker,
                   child: Text(l10n.expertHubBrowseAll),
@@ -415,8 +415,8 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
             body: _ReadOnlyMultilineText(
               text: responsibilities,
               emptyHint: emptyPersonaHint ?? l10n.memberResponsibilitiesEmpty,
-              style: styles.body,
-              mutedStyle: styles.body.copyWith(color: muted),
+              style: styles.md,
+              mutedStyle: styles.mdColored(muted),
             ),
             showDividerBelow: true,
           ),
@@ -426,8 +426,8 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
             body: _ReadOnlyMultilineText(
               text: playbook,
               emptyHint: emptyPersonaHint ?? l10n.memberPlaybookEmpty,
-              style: styles.body,
-              mutedStyle: styles.body.copyWith(color: muted),
+              style: styles.md,
+              mutedStyle: styles.mdColored(muted),
             ),
             showDividerBelow: true,
           ),

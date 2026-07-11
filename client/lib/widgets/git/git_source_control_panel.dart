@@ -194,7 +194,7 @@ class _RepoChip extends StatelessWidget {
                 child: Text(
                   name,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.of(context).bodySmall,
+                  style: AppTextStyles.of(context).sm,
                 ),
               ),
               if (count > 0) ...[
@@ -207,7 +207,7 @@ class _RepoChip extends StatelessWidget {
           visualDensity: VisualDensity.compact,
           onSelected: (_) => onTap(),
           tooltip: root,
-          labelStyle: AppTextStyles.of(context).bodySmallColored(
+          labelStyle: AppTextStyles.of(context).smColored(
             selected ? cs.onSecondaryContainer : cs.onSurfaceVariant,
           ),
         ),
@@ -235,10 +235,8 @@ class _DirtyBadge extends StatelessWidget {
       ),
       child: Text(
         '$count',
-        style: AppTextStyles.of(context).caption.copyWith(
-          color: selected ? cs.onSecondaryContainer : cs.onPrimaryContainer,
-          fontWeight: FontWeight.w600,
-        ),
+        style: AppTextStyles.of(context).xsColored(selected ? cs.onSecondaryContainer : cs.onPrimaryContainer,
+          fontWeight: FontWeight.w600,),
       ),
     );
   }
@@ -508,7 +506,7 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                           l10n.gitNoChanges,
                           style: AppTextStyles.of(
                             context,
-                          ).bodySmall.copyWith(color: cs.onSurfaceVariant),
+                          ).smColored(cs.onSurfaceVariant),
                         ),
                       );
                     }
@@ -555,7 +553,7 @@ class _GitCenteredHint extends StatelessWidget {
               textAlign: TextAlign.center,
               style: AppTextStyles.of(
                 context,
-              ).bodySmall.copyWith(color: cs.onSurfaceVariant),
+              ).smColored(cs.onSurfaceVariant),
             ),
           ],
         ),
@@ -617,7 +615,7 @@ class _Header extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.of(
                         context,
-                      ).bodySmall.copyWith(fontWeight: FontWeight.w600),
+                      ).smSemibold,
                     ),
                   ),
                   if (ahead > 0 || behind > 0) ...[
@@ -626,7 +624,7 @@ class _Header extends StatelessWidget {
                       l10n.gitAheadBehind(ahead, behind),
                       style: AppTextStyles.of(
                         context,
-                      ).caption.copyWith(color: cs.onSurfaceVariant),
+                      ).xsColored(cs.onSurfaceVariant),
                     ),
                   ],
                 ],

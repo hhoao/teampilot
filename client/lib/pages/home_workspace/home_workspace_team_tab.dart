@@ -310,10 +310,8 @@ class _MemberChipState extends State<_MemberChip> {
                 const SizedBox(width: 6),
                 Text(
                   widget.member.displayName,
-                  style: styles.bodySmall.copyWith(
-                    color: selected ? cs.primary : cs.onSurface,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                  ),
+                  style: styles.smColored(selected ? cs.primary : cs.onSurface,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,),
                 ),
               ],
             ),

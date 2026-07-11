@@ -186,7 +186,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
                             l10n.fileTree,
                             style: AppTextStyles.of(
                               context,
-                            ).toolPanelTitleColored(cs.onSurfaceVariant),
+                            ).xsBoldWideColored(cs.onSurfaceVariant),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
                           ),
@@ -265,13 +265,12 @@ class _FileTreePanelState extends State<FileTreePanel> {
                             overflow: TextOverflow.ellipsis,
                             style: AppTextStyles.of(
                               context,
-                            ).bodySmall.copyWith(color: cs.onSurfaceVariant),
+                            ).smColored(cs.onSurfaceVariant),
                           );
                         }
                         return Text(
                           'Directory unavailable',
-                          style: AppTextStyles.of(context).bodySmall.copyWith(
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                          style: AppTextStyles.of(context).smColored(cs.onSurfaceVariant.withValues(alpha: 0.7),
                           ),
                         );
                       },
@@ -507,15 +506,15 @@ class _FileTreeListState extends State<_FileTreeList> {
         '(empty)',
         style: AppTextStyles.of(
           context,
-        ).bodySmall.copyWith(color: widget.textColor.withValues(alpha: 0.35)),
+        ).smColored(widget.textColor.withValues(alpha: 0.35)),
       );
     }
     return LayoutBuilder(
       builder: (context, constraints) {
         final labelStyle = AppTextStyles.of(
           context,
-        ).body.copyWith(fontWeight: FontWeight.w500);
-        final emptyLabelStyle = AppTextStyles.of(context).caption;
+        ).mdMedium;
+        final emptyLabelStyle = AppTextStyles.of(context).xs;
         final contentWidth = math.max(
           constraints.maxWidth,
           fileTreeMinContentWidth(
@@ -568,7 +567,7 @@ class _FileTreeListState extends State<_FileTreeList> {
                                 ),
                                 child: Text(
                                   '(empty)',
-                                  style: AppTextStyles.of(context).caption
+                                  style: AppTextStyles.of(context).xs
                                       .copyWith(
                                         color: widget.textColor.withValues(
                                           alpha: 0.35,

@@ -58,10 +58,8 @@ class ExtensionInstalledSection extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   l10n.extensionsSettingsDescription,
-                  style: AppTextStyles.of(context).bodySmall.copyWith(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.6),
+                  style: AppTextStyles.of(context).smColored(Theme.of(
+                      context,).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -116,7 +114,7 @@ class _CountBadge extends StatelessWidget {
         '$count',
         style: AppTextStyles.of(
           context,
-        ).caption.copyWith(color: cs.primary, fontWeight: FontWeight.w700),
+        ).xsColored(cs.primary, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -162,9 +160,7 @@ class _ExtensionRow extends StatelessWidget {
                               row.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: styles.body.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
+                              style: styles.mdBold,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -181,8 +177,7 @@ class _ExtensionRow extends StatelessWidget {
                           subtitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: styles.bodySmall.copyWith(
-                            color: cs.onSurface.withValues(alpha: 0.6),
+                          style: styles.smColored(cs.onSurface.withValues(alpha: 0.6),
                           ),
                         ),
                       ],
@@ -269,8 +264,7 @@ class _DependencyRemediation extends StatelessWidget {
           children: [
             Text(
               l10n.extensionDependencyMissingHint(deps),
-              style: styles.bodySmall.copyWith(
-                color: cs.onSurface.withValues(alpha: 0.75),
+              style: styles.smColored(cs.onSurface.withValues(alpha: 0.75),
               ),
             ),
             const SizedBox(height: 8),
@@ -293,8 +287,7 @@ class _DependencyRemediation extends StatelessWidget {
                       command,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.bodySmall.copyWith(
-                        color: cs.onSurface.withValues(alpha: 0.85),
+                      style: styles.smColored(cs.onSurface.withValues(alpha: 0.85),
                       ),
                     ),
                   ),
@@ -349,7 +342,7 @@ class _StatusChip extends StatelessWidget {
         label,
         style: AppTextStyles.of(
           context,
-        ).caption.copyWith(color: color, fontWeight: FontWeight.w600),
+        ).xsColored(color, fontWeight: FontWeight.w600),
       ),
     );
   }

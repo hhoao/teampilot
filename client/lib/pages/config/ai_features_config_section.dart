@@ -46,8 +46,7 @@ class AiFeaturesConfigWorkspace extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
                     child: Text(
                       l10n.aiFeaturesPageSubtitle,
-                      style: AppTextStyles.of(context).bodySmall.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      style: AppTextStyles.of(context).smColored(Theme.of(context).colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w500,
                         height: 1.35,
                       ),
@@ -175,9 +174,7 @@ class AiFeatureConfigRow extends StatelessWidget {
                             title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: styles.prominent.copyWith(
-                              color: cs.onSurface,
-                            ),
+                            style: styles.lgColored(cs.onSurface,),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -189,21 +186,17 @@ class AiFeatureConfigRow extends StatelessWidget {
                       intro,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
-                        height: 1.35,
-                      ),
+                      style: styles.smColored(cs.onSurfaceVariant,
+                        height: 1.35,),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       configLine,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
+                      style: styles.smColored(cs.onSurfaceVariant,
                         fontWeight: FontWeight.w500,
-                        height: 1.35,
-                      ),
+                        height: 1.35,),
                     ),
                   ],
                 ),

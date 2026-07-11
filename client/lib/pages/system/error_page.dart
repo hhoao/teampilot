@@ -261,7 +261,7 @@ class _ErrorBlock extends StatelessWidget {
                       title,
                       style: AppTextStyles.of(
                         context,
-                      ).bodyStrong.copyWith(color: cs.onSurface),
+                      ).mdSemiboldColored(cs.onSurface),
                     ),
                   ),
                   if (trailing != null) trailing!,

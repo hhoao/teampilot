@@ -103,7 +103,7 @@ class ExpertHubDetailOverlay extends StatelessWidget {
                                 padding: const EdgeInsets.only(bottom: 8),
                                 child: Text(
                                   subtitleParts.join(' · '),
-                                  style: styles.mutedBody,
+                                  style: styles.mutedMd,
                                 ),
                               ),
                             Wrap(
@@ -167,7 +167,7 @@ class ExpertHubDetailOverlay extends StatelessWidget {
                     const SizedBox(height: 16),
                     Text(
                       member.description,
-                      style: styles.body.copyWith(height: 1.45),
+                      style: styles.mdRelaxed,
                     ),
                   ],
                   if (member.originTeamKey != null &&
@@ -298,13 +298,13 @@ class _ExpandableTextSection extends StatelessWidget {
       child: ExpansionTile(
         tilePadding: EdgeInsets.zero,
         childrenPadding: const EdgeInsets.only(bottom: 8),
-        title: Text(title, style: styles.sectionTitle),
+        title: Text(title, style: styles.mdSemiboldTightSnug),
         children: [
           Align(
             alignment: Alignment.centerLeft,
             child: SelectableText(
               body,
-              style: styles.body.copyWith(height: 1.45),
+              style: styles.mdRelaxed,
             ),
           ),
         ],
@@ -326,7 +326,7 @@ class _CapabilitiesSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: styles.sectionTitle.copyWith(color: cs.onSurface)),
+        Text(title, style: styles.mdSemiboldTightSnugColored(cs.onSurface)),
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,
@@ -363,7 +363,7 @@ class _DepSection extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: styles.sectionTitle.copyWith(color: cs.onSurface),
+                  style: styles.mdSemiboldTightSnugColored(cs.onSurface),
                 ),
                 const SizedBox(width: 8),
                 Container(
@@ -379,10 +379,8 @@ class _DepSection extends StatelessWidget {
                   ),
                   child: Text(
                     '${rows.length}',
-                    style: styles.caption.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: styles.xsColored(cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,),
                   ),
                 ),
               ],
@@ -416,7 +414,7 @@ class _DepRow extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: styles.body.copyWith(color: cs.onSurface),
+              style: styles.mdColored(cs.onSurface),
             ),
           ),
           if (installed != null) _StatusBadge(installed: installed!),
@@ -459,10 +457,8 @@ class _StatusBadge extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             installed ? l10n.teamHubDepInstalled : l10n.teamHubDepToInstall,
-            style: styles.caption.copyWith(
-              color: fg,
-              fontWeight: FontWeight.w600,
-            ),
+            style: styles.xsColored(fg,
+              fontWeight: FontWeight.w600,),
           ),
         ],
       ),

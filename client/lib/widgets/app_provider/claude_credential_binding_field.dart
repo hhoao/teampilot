@@ -34,7 +34,7 @@ class ClaudeCredentialBindingField extends StatelessWidget {
       children: [
         Text(
           l10n.appProviderClaudeCredentialBinding,
-          style: styles.formLabel,
+          style: styles.mdSnug,
         ),
         const SizedBox(height: 6),
         AppDropdownField<CredentialBindingKind>(
@@ -57,7 +57,7 @@ class ClaudeCredentialBindingField extends StatelessWidget {
           value == CredentialBindingKind.linked
               ? l10n.appProviderClaudeCredentialBindingLinkedHint
               : l10n.appProviderClaudeCredentialBindingIsolatedHint,
-          style: styles.mutedBodySmall,
+          style: styles.mutedSm,
         ),
       ],
     );

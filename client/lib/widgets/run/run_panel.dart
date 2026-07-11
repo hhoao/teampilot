@@ -196,7 +196,7 @@ class _RunPanelState extends State<RunPanel> {
                                 alignment: Alignment.centerLeft,
                                 child: Text(
                                   l10n.runNoSessions,
-                                  style: styles.mutedBodySmall,
+                                  style: styles.mutedSm,
                                 ),
                               ),
                             )
@@ -246,7 +246,7 @@ class _RunPanelState extends State<RunPanel> {
                         child: Center(
                           child: Text(
                             l10n.runLoadingOutput,
-                            style: styles.mutedBody,
+                            style: styles.mutedMd,
                           ),
                         ),
                       )
@@ -256,7 +256,7 @@ class _RunPanelState extends State<RunPanel> {
                         child: Center(
                           child: Text(
                             l10n.runEmptyOutputHint,
-                            style: styles.mutedBody,
+                            style: styles.mutedMd,
                           ),
                         ),
                       )

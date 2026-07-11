@@ -143,7 +143,7 @@ class _GitChangeFolderTileState extends State<GitChangeFolderTile> {
                     Text(
                       widget.name,
                       maxLines: 1,
-                      style: AppTextStyles.of(context).body,
+                      style: AppTextStyles.of(context).md,
                     ),
                     if (showActions) ...[
                       const SizedBox(width: 8),

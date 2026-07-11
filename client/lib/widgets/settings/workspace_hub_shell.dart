@@ -65,18 +65,16 @@ class WorkspaceHubTitleBar extends StatelessWidget {
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.of(context).dialogTitle.copyWith(
-              color: textBase,
-              height: 1.05,
-            ),
+            style: AppTextStyles.of(context).lgSemiboldSnugColored(textBase,
+              height: 1.05,),
           ),
           const SizedBox(height: 8),
           Text(
             subtitle,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.of(context).mutedBody.copyWith(
-              color: textBase.withValues(alpha: 0.66),
+            style: AppTextStyles.of(context).mdColored(
+              textBase.withValues(alpha: 0.66),
             ),
           ),
         ],
@@ -182,8 +180,8 @@ class WorkspaceHubNavItem extends StatelessWidget {
                                   (hubStyle
                                           ? AppTextStyles.of(
                                               context,
-                                            ).sectionTitle
-                                          : AppTextStyles.of(context).body)
+                                            ).mdSemiboldTightSnug
+                                          : AppTextStyles.of(context).md)
                                       .copyWith(
                                         color: selected ? selectedFg : normalFg,
                                       ),
@@ -415,12 +413,12 @@ class WorkspaceSectionHeading extends StatelessWidget {
       children: [
         Text(
           title,
-          style: styles.dialogTitle.copyWith(color: cs.onSurface),
+          style: styles.lgSemiboldSnugColored(cs.onSurface),
         ),
         const SizedBox(height: 6),
         Text(
           subtitle,
-          style: styles.mutedBody,
+          style: styles.mutedMd,
         ),
       ],
     );

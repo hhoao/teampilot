@@ -65,7 +65,7 @@ Future<bool> pluginConfirmDialog(
                 if (detailHeading != null)
                   Text(
                     detailHeading,
-                    style: AppTextStyles.of(ctx).bodyStrong,
+                    style: AppTextStyles.of(ctx).mdSemibold,
                   ),
                 for (final line in detailLines)
                   Padding(

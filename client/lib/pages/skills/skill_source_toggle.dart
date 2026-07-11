@@ -33,9 +33,9 @@ class SkillSourceToggle extends StatelessWidget {
           ),
           child: Text(
             label,
-            style: AppTextStyles.of(context).body.copyWith(
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-            ),
+            style: selected
+                ? AppTextStyles.of(context).mdBold
+                : AppTextStyles.of(context).mdSemibold,
           ),
         ),
       ),

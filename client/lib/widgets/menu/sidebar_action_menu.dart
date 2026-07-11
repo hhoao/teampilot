@@ -221,11 +221,10 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
     // Match theme bodyMedium color/weight (not dropdownFieldTextStyle's w500).
     final baseFg = widget.destructive
         ? cs.error
-        : (styles.body.color ?? cs.onSurface);
+        : (styles.md.color ?? cs.onSurface);
     final fg = baseFg.withValues(alpha: widget.enabled ? 1 : 0.35);
-    final labelStyle = styles.body.copyWith(color: fg, height: 18 / 14);
-    final suffixStyle = styles.body.copyWith(
-      color: fg.withValues(alpha: widget.enabled ? 0.45 : 0.35),
+    final labelStyle = styles.mdColored(fg, height: 18 / 14);
+    final suffixStyle = styles.mdColored(fg.withValues(alpha: widget.enabled ? 0.45 : 0.35),
       height: 18 / 14,
     );
 
@@ -648,7 +647,7 @@ Widget _specToMenuItem({
       ? Icon(
           Icons.check,
           size: context.appIconSizes.md,
-          color: (AppTextStyles.of(context).body.color ??
+          color: (AppTextStyles.of(context).md.color ??
                   Theme.of(context).colorScheme.onSurface)
               .withValues(alpha: 0.7),
         )

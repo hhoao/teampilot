@@ -84,8 +84,7 @@ class WorkspaceShell extends StatelessWidget {
                         breadcrumb,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.of(context).caption.copyWith(
-                          color: textBase.withValues(alpha: 0.52),
+                        style: AppTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.52),
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -93,18 +92,14 @@ class WorkspaceShell extends StatelessWidget {
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.of(context).body.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: textBase,
-                        ),
+                        style: AppTextStyles.of(context).mdHeavyColored(textBase,),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.of(context).caption.copyWith(
-                          color: textBase.withValues(alpha: 0.58),
+                        style: AppTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.58),
                         ),
                       ),
                     ],

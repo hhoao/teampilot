@@ -46,7 +46,7 @@ MarkdownStyleSheet buildAppMarkdownStyleSheet(ThemeData theme) {
     fontFamilyFallback: fonts.uiFontFamilyFallback,
   );
 
-  final body = withUi(styles.body);
+  final body = withUi(styles.md);
   final code = styles.mono.copyWith(
     backgroundColor: theme.cardTheme.color ?? theme.cardColor,
     fontFamily: fonts.monoFontFamily,
@@ -56,20 +56,20 @@ MarkdownStyleSheet buildAppMarkdownStyleSheet(ThemeData theme) {
   return base.copyWith(
     p: body,
     code: code,
-    h1: withUi(styles.dialogTitle),
-    h2: withUi(styles.subtitle),
-    h3: withUi(styles.sectionTitle),
-    h4: withUi(styles.prominent),
+    h1: withUi(styles.lgSemiboldSnug),
+    h2: withUi(styles.lgSnug),
+    h3: withUi(styles.mdSemiboldTightSnug),
+    h4: withUi(styles.lg),
     h5: body,
     h6: body,
     em: body.copyWith(fontStyle: FontStyle.italic),
-    strong: withUi(styles.bodyStrong),
+    strong: withUi(styles.mdSemibold),
     del: body.copyWith(decoration: TextDecoration.lineThrough),
-    blockquote: withUi(styles.mutedBody),
+    blockquote: withUi(styles.mutedMd),
     img: body,
     checkbox: body.copyWith(color: scheme.primary),
     listBullet: body,
-    tableHead: withUi(styles.bodyStrong),
+    tableHead: withUi(styles.mdSemibold),
     tableBody: body,
     a: body.copyWith(color: scheme.primary),
   );

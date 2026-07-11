@@ -117,7 +117,7 @@ class CliLaunchCustomFields extends StatelessWidget {
             title: providerTitle ?? l10n.provider,
             trailing: Text(
               l10n.onboardingDefaultPresetEmpty,
-              style: AppTextStyles.of(context).mutedBodySmall,
+              style: AppTextStyles.of(context).mutedSm,
             ),
             showDividerBelow: false,
           )

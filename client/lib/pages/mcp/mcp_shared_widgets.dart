@@ -94,7 +94,7 @@ class McpInstalledServerRow extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.of(
                             context,
-                          ).bodyStrong.copyWith(color: textBase),
+                          ).mdSemiboldColored(textBase),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -103,8 +103,7 @@ class McpInstalledServerRow extends StatelessWidget {
                           typeLabel,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.of(context).caption.copyWith(
-                            color: textBase.withValues(alpha: 0.5),
+                          style: AppTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.5),
                           ),
                         ),
                       ),
@@ -121,8 +120,7 @@ class McpInstalledServerRow extends StatelessWidget {
                           ),
                           child: Text(
                             l10n.mcpOAuthStatusNeedsAuth,
-                            style: AppTextStyles.of(context).caption.copyWith(
-                              color: const Color(0xFFB45309),
+                            style: AppTextStyles.of(context).xsColored(const Color(0xFFB45309),
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -141,10 +139,8 @@ class McpInstalledServerRow extends StatelessWidget {
                           ),
                           child: Text(
                             l10n.mcpOAuthStatusConnected,
-                            style: AppTextStyles.of(context).caption.copyWith(
-                              color: cs.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
+                            style: AppTextStyles.of(context).xsColored(cs.primary,
+                              fontWeight: FontWeight.w700,),
                           ),
                         ),
                       ],
@@ -156,8 +152,7 @@ class McpInstalledServerRow extends StatelessWidget {
                       description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.of(context).bodySmall.copyWith(
-                        color: textBase.withValues(alpha: 0.6),
+                      style: AppTextStyles.of(context).smColored(textBase.withValues(alpha: 0.6),
                       ),
                     ),
                   ],
@@ -281,7 +276,7 @@ class McpCatalogListingTile extends StatelessWidget {
                       Flexible(
                         child: Text(
                           listing.title,
-                          style: AppTextStyles.of(context).bodyStrong,
+                          style: AppTextStyles.of(context).mdSemibold,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -307,8 +302,7 @@ class McpCatalogListingTile extends StatelessWidget {
                       listing.description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.of(context).bodySmall.copyWith(
-                        color: cs.onSurface.withValues(alpha: 0.65),
+                      style: AppTextStyles.of(context).smColored(cs.onSurface.withValues(alpha: 0.65),
                       ),
                     ),
                   ],
@@ -316,8 +310,7 @@ class McpCatalogListingTile extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       meta.join(' · '),
-                      style: AppTextStyles.of(context).caption.copyWith(
-                        color: cs.onSurface.withValues(alpha: 0.5),
+                      style: AppTextStyles.of(context).xsColored(cs.onSurface.withValues(alpha: 0.5),
                       ),
                     ),
                   ],
@@ -339,10 +332,7 @@ class McpCatalogListingTile extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Text(
                   l10n.mcpCatalogInstalled,
-                  style: AppTextStyles.of(context).bodySmall.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: cs.primary,
-                  ),
+                  style: AppTextStyles.of(context).smSemiboldColored(cs.primary),
                 ),
               )
             else

@@ -87,7 +87,7 @@ class _FileEditorToolbar extends StatelessWidget {
                 dirty ? '$name •' : name,
                 style: AppTextStyles.of(
                   context,
-                ).body.copyWith(fontWeight: FontWeight.w600),
+                ).mdSemibold,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

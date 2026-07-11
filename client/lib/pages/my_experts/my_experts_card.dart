@@ -106,7 +106,7 @@ class _MyExpertsCardState extends State<MyExpertsCard> {
                       : member.description,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: styles.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                  style: styles.smColored(cs.onSurfaceVariant),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -115,7 +115,7 @@ class _MyExpertsCardState extends State<MyExpertsCard> {
                       : member.category,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: styles.caption.copyWith(color: cs.onSurfaceVariant),
+                  style: styles.xsColored(cs.onSurfaceVariant),
                 ),
                 if (widget.publishRecord != null) ...[
                   const SizedBox(height: 8),

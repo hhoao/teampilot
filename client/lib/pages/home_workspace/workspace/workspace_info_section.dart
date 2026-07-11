@@ -132,7 +132,7 @@ class WorkspaceConfigDangerZone extends StatelessWidget {
             ),
             label: Text(
               l10n.deleteWorkspace,
-              style: AppTextStyles.of(context).bodyColored(errorColor),
+              style: AppTextStyles.of(context).mdColored(errorColor),
             ),
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: errorColor.withValues(alpha: 0.4)),

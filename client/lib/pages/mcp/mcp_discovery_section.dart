@@ -247,7 +247,7 @@ class _McpDiscoveryCatalogBody extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Text(
                       catalog.errorMessage!,
-                      style: AppTextStyles.of(context).bodyColored(
+                      style: AppTextStyles.of(context).mdColored(
                         Theme.of(context).colorScheme.error,
                       ),
                     ),

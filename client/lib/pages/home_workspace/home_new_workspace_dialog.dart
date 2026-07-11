@@ -101,7 +101,7 @@ class _HomeNewWorkspaceDialogState extends State<HomeNewWorkspaceDialog> {
           Text(
             l10n.homeWorkspaceNewWorkspaceSubtitle,
             textAlign: TextAlign.center,
-            style: styles.body.copyWith(color: cs.onSurfaceVariant),
+            style: styles.mdColored(cs.onSurfaceVariant),
           ),
           const SizedBox(height: 28),
           WorkspaceCreateDirectoryPicker(

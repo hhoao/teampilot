@@ -176,9 +176,7 @@ class _MemberLaunchConfigRowBody extends StatelessWidget {
                             l10n.memberLaunchConfigTitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: styles.prominent.copyWith(
-                              color: cs.onSurface,
-                            ),
+                            style: styles.lgColored(cs.onSurface,),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -191,10 +189,8 @@ class _MemberLaunchConfigRowBody extends StatelessWidget {
                         l10n.memberLaunchConfigSubtitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: styles.bodySmall.copyWith(
-                          color: cs.onSurfaceVariant,
-                          height: 1.35,
-                        ),
+                        style: styles.smColored(cs.onSurfaceVariant,
+                          height: 1.35,),
                       ),
                     const SizedBox(height: 2),
                     if (configured)
@@ -202,11 +198,9 @@ class _MemberLaunchConfigRowBody extends StatelessWidget {
                         configLine,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: styles.bodySmall.copyWith(
-                          color: cs.onSurfaceVariant,
+                        style: styles.smColored(cs.onSurfaceVariant,
                           fontWeight: FontWeight.w500,
-                          height: 1.35,
-                        ),
+                          height: 1.35,),
                       ),
                   ],
                 ),

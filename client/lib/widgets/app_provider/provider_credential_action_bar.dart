@@ -70,7 +70,7 @@ class _ProviderCredentialActionBarState
             Expanded(
               child: Text(
                 _sectionTitle(l10n, widget.provider.cli),
-                style: AppTextStyles.of(context).sectionTitle,
+                style: AppTextStyles.of(context).mdSemiboldTightSnug,
               ),
             ),
             ProviderCredentialStatusBadge(
@@ -349,7 +349,7 @@ class ProviderCredentialStatusBadge extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         child: Text(
           label,
-          style: AppTextStyles.of(context).badgeColored(fg).copyWith(height: 1.1),
+          style: AppTextStyles.of(context).xsSemiboldSnugColored(fg),
         ),
       ),
     );

@@ -81,7 +81,7 @@ class _DragFeedback extends StatelessWidget {
               text,
               style: AppTextStyles.of(
                 context,
-              ).bodySmallColored(cs.onSecondaryContainer),
+              ).smColored(cs.onSecondaryContainer),
             ),
           ],
         ),

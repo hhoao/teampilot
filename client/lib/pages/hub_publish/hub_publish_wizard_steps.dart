@@ -199,7 +199,7 @@ class HubPublishGatesStep extends StatelessWidget {
           Text(
             key: const Key('hub-publish-non-portable'),
             l10n.hubPublishNonPortableHint,
-            style: AppTextStyles.of(context).bodyColored(cs.error),
+            style: AppTextStyles.of(context).mdColored(cs.error),
           ),
           const SizedBox(height: 8),
           for (final id in nonPortableIds)
@@ -267,7 +267,7 @@ class HubPublishConfirmStep extends StatelessWidget {
           Text(
             error!,
             key: const Key('hub-publish-error'),
-            style: AppTextStyles.of(context).bodyColored(cs.error),
+            style: AppTextStyles.of(context).mdColored(cs.error),
           ),
         ],
       ],
@@ -284,7 +284,7 @@ class HubPublishConfirmStep extends StatelessWidget {
             width: 100,
             child: Text(
               label,
-              style: AppTextStyles.of(context).bodyStrong,
+              style: AppTextStyles.of(context).mdSemibold,
             ),
           ),
           Expanded(child: Text(value)),

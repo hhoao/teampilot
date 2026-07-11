@@ -68,10 +68,10 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final fileLabelStyle = AppTextStyles.of(context).bodySmall;
+        final fileLabelStyle = AppTextStyles.of(context).sm;
         final folderLabelStyle = AppTextStyles.of(
           context,
-        ).bodySmall.copyWith(fontWeight: FontWeight.w500);
+        ).smMedium;
         final contentWidth = math.max(
           constraints.maxWidth,
           gitChangesMinContentWidth(
@@ -228,7 +228,7 @@ class GitChangesSectionHeader extends StatelessWidget {
               title,
               style: AppTextStyles.of(
                 context,
-              ).toolPanelTitleColored(cs.onSurfaceVariant),
+              ).xsBoldWideColored(cs.onSurfaceVariant),
             ),
           ),
           action,
@@ -259,7 +259,7 @@ class GitChangesCountBadge extends StatelessWidget {
         '$count',
         style: AppTextStyles.of(
           context,
-        ).caption.copyWith(color: cs.onSurfaceVariant),
+        ).xsColored(cs.onSurfaceVariant),
       ),
     );
   }

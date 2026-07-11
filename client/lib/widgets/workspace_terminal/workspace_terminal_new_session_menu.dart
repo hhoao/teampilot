@@ -190,7 +190,7 @@ Future<void> _showTerminalSettingsSheet(BuildContext context) async {
                 children: [
                   Text(
                     context.l10n.workspaceTerminalSettings,
-                    style: AppTextStyles.of(context).sectionTitle,
+                    style: AppTextStyles.of(context).mdSemiboldTightSnug,
                   ),
                   const SizedBox(height: 12),
                   SegmentedButton<String>(

@@ -145,7 +145,7 @@ abstract final class AppToast {
     AppToastAction? action,
   }) {
     final styles = AppTextStyles.of(context);
-    final messageStyle = styles.bodyColored(foregroundColor);
+    final messageStyle = styles.mdColored(foregroundColor);
 
     if (action == null) {
       return Text(message, style: messageStyle, maxLines: 3);
@@ -168,7 +168,7 @@ abstract final class AppToast {
           ),
           child: Text(
             action.label,
-            style: styles.bodyStrongColored(foregroundColor),
+            style: styles.mdSemiboldColored(foregroundColor),
           ),
         ),
       ],

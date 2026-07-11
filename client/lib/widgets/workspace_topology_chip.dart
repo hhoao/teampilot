@@ -41,8 +41,8 @@ class WorkspaceTopologyChip extends StatelessWidget {
     };
     final iconSize = compact ? 14.0 : 18.0;
     final labelStyle = compact
-        ? styles.captionColored(color)
-        : styles.formLabelColored(color);
+        ? styles.xsColored(color)
+        : styles.mdSnugColored(color);
     final content = Row(
       mainAxisSize: MainAxisSize.min,
       children: [

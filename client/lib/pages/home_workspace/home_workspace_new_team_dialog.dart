@@ -359,7 +359,7 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
                 ? l10n.homeWorkspaceNewTeamSubtitle
                 : l10n.homeWorkspaceNewTeamSubtitleAi,
             textAlign: TextAlign.center,
-            style: styles.body.copyWith(color: cs.onSurfaceVariant),
+            style: styles.mdColored(cs.onSurfaceVariant),
           ),
           const SizedBox(height: 28),
           // Team mode is a fundamental decision for both the custom and AI
@@ -561,10 +561,7 @@ class _ModeCardState extends State<_ModeCard> {
                       widget.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.subtitle.copyWith(
-                        color: cs.onSurface,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: styles.lgBoldSnugColored(cs.onSurface),
                     ),
                   ),
                   _Badge(label: widget.badge, primary: widget.badgeIsPrimary),
@@ -573,7 +570,7 @@ class _ModeCardState extends State<_ModeCard> {
               const SizedBox(height: 12),
               Text(
                 widget.description,
-                style: styles.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                style: styles.smColored(cs.onSurfaceVariant),
               ),
             ],
           ),
@@ -602,7 +599,7 @@ class _Badge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: styles.caption.copyWith(color: fg, fontWeight: FontWeight.w600),
+        style: styles.xsColored(fg, fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -762,14 +759,14 @@ class _NameField extends StatelessWidget {
               children: [
                 Text(
                   l10n.teamName,
-                  style: styles.caption.copyWith(color: cs.onSurfaceVariant),
+                  style: styles.xsColored(cs.onSurfaceVariant),
                 ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: controller,
                   autofocus: true,
                   onSubmitted: onSubmitted,
-                  style: styles.prominent.copyWith(color: cs.onSurface),
+                  style: styles.lgColored(cs.onSurface),
                   decoration: InputDecoration(
                     hintText: l10n.homeWorkspaceNewTeamNameHint,
                     isDense: true,

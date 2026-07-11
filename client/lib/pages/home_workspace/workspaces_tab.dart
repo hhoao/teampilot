@@ -437,7 +437,7 @@ class _WorkspacesPrimaryActionState extends State<WorkspacesPrimaryAction> {
               const SizedBox(width: 7),
               Text(
                 widget.label,
-                style: styles.body.copyWith(color: cs.onPrimary),
+                style: styles.mdColored(cs.onPrimary),
               ),
             ],
           ),
@@ -647,12 +647,11 @@ class HomeEmptyWorkspaces extends StatelessWidget {
           const SizedBox(height: 14),
           Text(
             l10n.homeWorkspaceEmptyWorkspaces,
-            style: styles.body.copyWith(color: cs.onSurfaceVariant),
+            style: styles.mdColored(cs.onSurfaceVariant),
           ),
           Text(
             l10n.homeWorkspaceEmptyWorkspacesHint,
-            style: styles.bodySmall.copyWith(
-              color: cs.onSurfaceVariant.withValues(alpha: 0.75),
+            style: styles.smColored(cs.onSurfaceVariant.withValues(alpha: 0.75),
             ),
           ),
         ],

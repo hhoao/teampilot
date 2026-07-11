@@ -118,14 +118,14 @@ class _MyTeamsCardState extends State<MyTeamsCard> {
                 const SizedBox(height: 10),
                 Text(
                   l10n.myTeamsMemberCount(team.roster.length),
-                  style: styles.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                  style: styles.smColored(cs.onSurfaceVariant),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   '$cliLabel · $modeLabel',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: styles.bodySmall.copyWith(color: cs.onSurfaceVariant),
+                  style: styles.smColored(cs.onSurfaceVariant),
                 ),
                 if (widget.publishRecord != null) ...[
                   const SizedBox(height: 8),
@@ -140,7 +140,7 @@ class _MyTeamsCardState extends State<MyTeamsCard> {
                 const Spacer(),
                 Text(
                   l10n.myTeamsCreatedAt(formatMyTeamsTimestamp(team.createdAt)),
-                  style: styles.caption.copyWith(color: cs.onSurfaceVariant),
+                  style: styles.xsColored(cs.onSurfaceVariant),
                 ),
               ],
             ),

@@ -127,9 +127,7 @@ class _TeamHubCardState extends State<TeamHubCard> {
                             team.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: styles.bodyStrong.copyWith(
-                              color: cs.onSurface,
-                            ),
+                            style: styles.mdSemiboldColored(cs.onSurface,),
                           ),
                           if (team.author != null &&
                               team.author!.isNotEmpty) ...[
@@ -138,7 +136,7 @@ class _TeamHubCardState extends State<TeamHubCard> {
                               team.author!,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: styles.mutedCaption,
+                              style: styles.mutedXs,
                             ),
                           ],
                         ],
@@ -158,7 +156,7 @@ class _TeamHubCardState extends State<TeamHubCard> {
                     team.description,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: styles.mutedBody,
+                    style: styles.mutedMd,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -267,10 +265,8 @@ class TeamStatChip extends StatelessWidget {
           ],
           Text(
             label,
-            style: styles.caption.copyWith(
-              color: fg,
-              fontWeight: FontWeight.w600,
-            ),
+            style: styles.xsColored(fg,
+              fontWeight: FontWeight.w600,),
           ),
         ],
       ),

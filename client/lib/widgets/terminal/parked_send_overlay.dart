@@ -120,7 +120,7 @@ class _ParkedSendOverlayState extends State<ParkedSendOverlay> {
                           l10n.terminalParkedSendPending(msg.content),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: styles.bodyColored(cs.onSecondaryContainer),
+                          style: styles.mdColored(cs.onSecondaryContainer),
                         ),
                       ),
                       IconButton(

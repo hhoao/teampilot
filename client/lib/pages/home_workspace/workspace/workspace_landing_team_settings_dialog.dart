@@ -484,10 +484,7 @@ class _Nav extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 22, 20, 14),
               child: Text(
                 title,
-                style: styles.subtitle.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: cs.onSurface,
-                ),
+                style: styles.lgHeavySnugColored(cs.onSurface,),
               ),
             ),
             Expanded(
@@ -570,10 +567,7 @@ class _PaneHeader extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: styles.subtitle.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: cs.onSurface,
-                  ),
+                  style: styles.lgHeavySnugColored(cs.onSurface,),
                 ),
                 if (subtitle.isNotEmpty) ...[
                   const SizedBox(height: 4),
@@ -860,9 +854,7 @@ class _TeamDefaultPresetSummary extends StatelessWidget {
                             l10n.teamDefaultPresetLabel,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: styles.prominent.copyWith(
-                              color: cs.onSurface,
-                            ),
+                            style: styles.lgColored(cs.onSurface,),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -874,12 +866,10 @@ class _TeamDefaultPresetSummary extends StatelessWidget {
                       configured ? configLine : l10n.teamDefaultPresetSubtitle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
+                      style: styles.smColored(cs.onSurfaceVariant,
                         fontWeight: configured
                             ? FontWeight.w500
-                            : FontWeight.w400,
-                      ),
+                            : FontWeight.w400,),
                     ),
                   ],
                 ),
@@ -1030,9 +1020,7 @@ class _MemberRow extends StatelessWidget {
                                 displayName,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: styles.prominent.copyWith(
-                                  color: cs.onSurface,
-                                ),
+                                style: styles.lgColored(cs.onSurface,),
                               ),
                             ),
                             if (TeamMemberNaming.isTeamLead(member)) ...[
@@ -1048,12 +1036,10 @@ class _MemberRow extends StatelessWidget {
                               : l10n.memberLaunchConfigSubtitle,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: styles.bodySmall.copyWith(
-                            color: cs.onSurfaceVariant,
+                          style: styles.smColored(cs.onSurfaceVariant,
                             fontWeight: configured
                                 ? FontWeight.w500
-                                : FontWeight.w400,
-                          ),
+                                : FontWeight.w400,),
                         ),
                       ],
                     ),

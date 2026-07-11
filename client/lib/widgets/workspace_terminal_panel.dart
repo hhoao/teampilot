@@ -471,7 +471,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
         ? Center(
             child: Text(
               l10n.workspaceTerminalNoWorkingDirectory,
-              style: AppTextStyles.of(context).bodySmallColored(
+              style: AppTextStyles.of(context).smColored(
                 terminalForeground.withValues(alpha: 0.65),
               ),
             ),

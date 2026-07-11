@@ -28,7 +28,7 @@ class ClaudeProviderFormSection extends StatelessWidget {
         childrenPadding: EdgeInsets.zero,
         title: Text(
           l10n.appProviderAdvancedOptions,
-          style: styles.sectionTitle,
+          style: styles.mdSemiboldTightSnug,
         ),
         children: [
           const SizedBox(height: 8),
@@ -45,7 +45,7 @@ class ClaudeProviderFormSection extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             l10n.appProviderClaudeAuthFieldHint,
-            style: styles.mutedBodySmall,
+            style: styles.mutedSm,
           ),
         ],
       ),
@@ -62,7 +62,7 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.centerLeft,
-      child: Text(text, style: AppTextStyles.of(context).formLabel),
+      child: Text(text, style: AppTextStyles.of(context).mdSnug),
     );
   }
 }

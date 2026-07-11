@@ -102,7 +102,7 @@ class _DesktopWindowTitleBarState extends State<DesktopWindowTitleBar>
         overflow: TextOverflow.ellipsis,
         style: AppTextStyles.of(
           context,
-        ).bodyStrong.copyWith(color: titleColor.withValues(alpha: 0.9)),
+        ).mdSemiboldColored(titleColor.withValues(alpha: 0.9)),
       ),
     );
 

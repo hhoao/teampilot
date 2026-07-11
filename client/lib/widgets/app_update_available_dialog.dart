@@ -77,7 +77,7 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
                         const SizedBox(height: 12),
                         Text(
                           state.errorMessage!,
-                          style: styles.bodySmall.copyWith(color: cs.error),
+                          style: styles.smColored(cs.error),
                         ),
                       ],
                       const SizedBox(height: 20),
@@ -137,14 +137,11 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
     return Column(
       crossAxisAlignment: align,
       children: [
-        Text(label, style: styles.body.copyWith(color: cs.onSurfaceVariant)),
+        Text(label, style: styles.mdColored(cs.onSurfaceVariant)),
         const SizedBox(height: 4),
         Text(
           value,
-          style: styles.body.copyWith(
-            fontWeight: FontWeight.w600,
-            color: highlight ? cs.primary : cs.onSurface,
-          ),
+          style: styles.mdSemiboldColored(highlight ? cs.primary : cs.onSurface),
         ),
       ],
     );
@@ -168,7 +165,7 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
         collapsedShape: const Border(),
         title: Text(
           context.l10n.appUpdateChangelogTitle,
-          style: styles.bodySmall.copyWith(color: cs.onSurfaceVariant),
+          style: styles.smColored(cs.onSurfaceVariant),
         ),
         collapsedIconColor: cs.onSurfaceVariant,
         iconColor: cs.onSurfaceVariant,
@@ -219,12 +216,12 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
               installing
                   ? context.l10n.appUpdateInstalling
                   : context.l10n.appUpdateDownloading,
-              style: styles.bodySmall.copyWith(color: cs.primary),
+              style: styles.smColored(cs.primary),
             ),
             if (!installing)
               Text(
                 '${(state.downloadProgress * 100).toStringAsFixed(0)}%',
-                style: styles.bodyStrong.copyWith(color: cs.primary),
+                style: styles.mdSemiboldColored(cs.primary),
               ),
           ],
         ),

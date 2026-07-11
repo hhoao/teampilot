@@ -490,7 +490,7 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(l10n.runSelectFolder, style: styles.sectionTitle),
+            Text(l10n.runSelectFolder, style: styles.mdSemiboldTightSnug),
             const SizedBox(height: 12),
             for (final folder in cubit.folders)
               ListTile(
@@ -507,7 +507,7 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
       return Center(
         child: Text(
           l10n.runSelectConfiguration,
-          style: styles.bodySmall,
+          style: styles.sm,
         ),
       );
     }
@@ -524,7 +524,7 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
               border: const OutlineInputBorder(),
               isDense: true,
             ),
-            child: Text(type, style: styles.body),
+            child: Text(type, style: styles.md),
           ),
           const SizedBox(height: 12),
           Expanded(
@@ -625,7 +625,7 @@ class _LeftPane extends StatelessWidget {
                   key: const Key('run-config-editor-add'),
                   onPressed: onAdd,
                   icon: const Icon(Icons.add, size: 18),
-                  label: Text(l10n.runAddConfiguration, style: styles.bodySmall),
+                  label: Text(l10n.runAddConfiguration, style: styles.sm),
                 ),
               ),
               IconButton(
@@ -677,9 +677,7 @@ class _ConfigListTile extends StatelessWidget {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: styles.body.copyWith(
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                ),
+                style: selected ? styles.mdSemibold : styles.mdMedium,
               ),
               if (subtitle != null) ...[
                 const SizedBox(height: 2),
@@ -687,9 +685,7 @@ class _ConfigListTile extends StatelessWidget {
                   subtitle!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: styles.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
+                  style: styles.smColored(cs.onSurfaceVariant,),
                 ),
               ],
             ],

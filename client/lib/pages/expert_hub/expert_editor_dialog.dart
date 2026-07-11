@@ -363,7 +363,7 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
             ),
           ),
           const SizedBox(height: 20),
-          Text(l10n.expertEditorDepsHint, style: styles.bodySmall),
+          Text(l10n.expertEditorDepsHint, style: styles.sm),
           const SizedBox(height: 12),
           _DepSectionTitle(l10n.expertEditorSkillsSection),
           if (orphanSkills.isNotEmpty)
@@ -376,7 +376,7 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
               },
             ),
           if (skills.isEmpty)
-            Text(l10n.skillsNoInstalled, style: styles.bodySmall)
+            Text(l10n.skillsNoInstalled, style: styles.sm)
           else
             for (final skill in skills)
               TeamSkillRow(
@@ -405,7 +405,7 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
               },
             ),
           if (plugins.isEmpty)
-            Text(l10n.pluginsNoInstalled, style: styles.bodySmall)
+            Text(l10n.pluginsNoInstalled, style: styles.sm)
           else
             for (final plugin in plugins)
               TeamPluginRow(
@@ -434,7 +434,7 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
               },
             ),
           if (mcps.isEmpty)
-            Text(l10n.mcpNoInstalled, style: styles.bodySmall)
+            Text(l10n.mcpNoInstalled, style: styles.sm)
           else
             for (final server in mcps)
               TeamMcpRow(
@@ -483,7 +483,7 @@ class _DepSectionTitle extends StatelessWidget {
         title,
         style: AppTextStyles.of(
           context,
-        ).body.copyWith(fontWeight: FontWeight.w700),
+        ).mdBold,
       ),
     );
   }
@@ -509,7 +509,7 @@ class _OrphanDepList extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(title, style: styles.caption),
+          Text(title, style: styles.xs),
           for (var i = 0; i < labels.length; i++)
             ListTile(
               dense: true,

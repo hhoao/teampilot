@@ -55,7 +55,7 @@ class SettingsGroupHeader extends StatelessWidget {
       padding: _settingGroupHeaderPadding,
       child: Text(
         title,
-        style: styles.settingsGroupHeaderColored(cs.onSurfaceVariant),
+        style: styles.xsTrackColored(cs.onSurfaceVariant),
       ),
     );
   }
@@ -99,7 +99,7 @@ class SettingsLabeledStackedRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final hasSubtitle = _hasSettingsSubtitle(subtitle);
-    final subtitleStyle = AppTextStyles.of(context).mutedBodySmall;
+    final subtitleStyle = AppTextStyles.of(context).mutedSm;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -168,7 +168,7 @@ class SettingsLabeledRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final hasSubtitle = _hasSettingsSubtitle(subtitle);
-    final subtitleStyle = AppTextStyles.of(context).mutedBodySmall;
+    final subtitleStyle = AppTextStyles.of(context).mutedSm;
     return RepaintBoundary(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -267,7 +267,7 @@ class ManagementCardHeader extends StatelessWidget {
       title,
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
-      style: AppTextStyles.of(context).sectionTitleColored(textBase),
+      style: AppTextStyles.of(context).mdSemiboldTightSnugColored(textBase),
     );
 
     if (trailing == null) {
@@ -332,7 +332,7 @@ class SettingsConfiguredBadge extends StatelessWidget {
             configured
                 ? l10n.workspaceCliConfigured
                 : l10n.workspaceCliNotConfigured,
-            style: styles.caption.copyWith(color: color),
+            style: styles.xsColored(color),
           ),
         ],
       ),
@@ -430,13 +430,13 @@ class _SettingsAdvancedExpansionState extends State<SettingsAdvancedExpansion> {
         childrenPadding: EdgeInsets.zero,
         collapsedShape: const RoundedRectangleBorder(side: BorderSide.none),
         shape: const RoundedRectangleBorder(side: BorderSide.none),
-        title: Text(widget.title, style: styles.sectionTitle),
+        title: Text(widget.title, style: styles.mdSemiboldTightSnug),
         subtitle: _hasSettingsSubtitle(widget.subtitle)
             ? Padding(
                 padding: const EdgeInsets.only(top: _titleSubtitleGap),
                 child: Text(
                   widget.subtitle!,
-                  style: styles.mutedBodySmall,
+                  style: styles.mutedSm,
                 ),
               )
             : null,

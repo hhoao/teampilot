@@ -110,7 +110,7 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
           const SizedBox(height: 16),
           Text(
             l10n.workspaceFoldersSectionTitle,
-            style: styles.formLabel,
+            style: styles.mdSnug,
           ),
           const SizedBox(height: 8),
           WorkspaceFoldersEditor(
@@ -169,9 +169,9 @@ class _DetailRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: styles.formLabel),
+        Text(label, style: styles.mdSnug),
         const SizedBox(height: 4),
-        SelectableText(value, style: styles.body),
+        SelectableText(value, style: styles.md),
       ],
     );
   }

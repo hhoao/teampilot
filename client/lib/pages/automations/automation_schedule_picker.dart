@@ -165,7 +165,7 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
       children: [
         Text(
           l10n.automationsSchedule,
-          style: styles.bodySmall.copyWith(fontWeight: FontWeight.w600),
+          style: styles.smSemibold,
         ),
         const SizedBox(height: 8),
         AppDropdownField<AutomationSchedulePreset>(

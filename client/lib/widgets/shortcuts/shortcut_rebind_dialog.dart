@@ -205,7 +205,7 @@ class _ShortcutRebindDialogState extends State<ShortcutRebindDialog> {
             const SizedBox(height: 4),
             Text(
               title,
-              style: styles.sectionTitle,
+              style: styles.mdSemiboldTightSnug,
             ),
             const SizedBox(height: 12),
             if (_pendingChord != null)
@@ -227,13 +227,13 @@ class _ShortcutRebindDialogState extends State<ShortcutRebindDialog> {
                 children: [
                   Text(
                     l10n.shortcutsPressShortcutHint,
-                    style: styles.mutedBodySmall,
+                    style: styles.mutedSm,
                   ),
                   if (_unsupportedKeyMessage != null) ...[
                     const SizedBox(height: 8),
                     Text(
                       _unsupportedKeyMessage!,
-                      style: styles.bodySmallColored(
+                      style: styles.smColored(
                         Theme.of(context).colorScheme.error,
                       ),
                     ),
@@ -273,7 +273,7 @@ class _ConflictConfirm extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           chordLabel,
-          style: styles.dialogTitle.copyWith(fontWeight: FontWeight.w700),
+          style: styles.lgBoldSnug,
         ),
         AppDialogActions(
           showDividerAbove: false,

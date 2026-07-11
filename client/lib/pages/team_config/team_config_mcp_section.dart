@@ -123,12 +123,11 @@ class TeamMcpRow extends StatelessWidget {
                     server.name,
                     style: AppTextStyles.of(
                       context,
-                    ).body.copyWith(fontWeight: FontWeight.w700),
+                    ).mdBold,
                   ),
                   Text(
                     server.server['type']?.toString() ?? 'stdio',
-                    style: AppTextStyles.of(context).bodySmall.copyWith(
-                      color: cs.onSurface.withValues(alpha: 0.6),
+                    style: AppTextStyles.of(context).smColored(cs.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ],

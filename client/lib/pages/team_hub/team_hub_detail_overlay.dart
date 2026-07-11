@@ -86,7 +86,7 @@ class TeamHubDetailOverlay extends StatelessWidget {
                                 padding: const EdgeInsets.only(bottom: 8),
                                 child: Text(
                                   subtitleParts.join(' · '),
-                                  style: styles.mutedBody,
+                                  style: styles.mutedMd,
                                 ),
                               ),
                             Wrap(
@@ -129,7 +129,7 @@ class TeamHubDetailOverlay extends StatelessWidget {
                     const SizedBox(height: 16),
                     Text(
                       team.description,
-                      style: styles.body.copyWith(height: 1.45),
+                      style: styles.mdRelaxed,
                     ),
                   ],
                   const SizedBox(height: 24),
@@ -236,7 +236,7 @@ class _DepSection extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: styles.sectionTitle.copyWith(color: cs.onSurface),
+                  style: styles.mdSemiboldTightSnugColored(cs.onSurface),
                 ),
                 const SizedBox(width: 8),
                 Container(
@@ -252,10 +252,8 @@ class _DepSection extends StatelessWidget {
                   ),
                   child: Text(
                     '${rows.length}',
-                    style: styles.caption.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: styles.xsColored(cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,),
                   ),
                 ),
               ],
@@ -294,7 +292,7 @@ class _DepRow extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: styles.body.copyWith(color: cs.onSurface),
+              style: styles.mdColored(cs.onSurface),
             ),
           ),
           if (memberKey != null)
@@ -348,10 +346,8 @@ class _StatusBadge extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             installed ? l10n.teamHubDepInstalled : l10n.teamHubDepToInstall,
-            style: styles.caption.copyWith(
-              color: fg,
-              fontWeight: FontWeight.w600,
-            ),
+            style: styles.xsColored(fg,
+              fontWeight: FontWeight.w600,),
           ),
         ],
       ),

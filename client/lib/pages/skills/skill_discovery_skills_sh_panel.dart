@@ -163,7 +163,7 @@ class SkillDiscoverySkillsShBody extends StatelessWidget {
                         l10n.skillsSkillsShPoweredBy,
                         style: AppTextStyles.of(
                           context,
-                        ).caption.copyWith(color: Theme.of(context).hintColor),
+                        ).xsColored(Theme.of(context).hintColor),
                       ),
                     ],
                   ),

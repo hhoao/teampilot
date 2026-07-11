@@ -206,7 +206,7 @@ class _WorkspaceSettingsBasicSection extends StatelessWidget {
         const SizedBox(height: 12),
         Text(
           l10n.homeWorkspaceWorkspaceSettingsPathsHint,
-          style: styles.caption.copyWith(color: cs.onSurfaceVariant),
+          style: styles.xsColored(cs.onSurfaceVariant),
         ),
       ],
     );

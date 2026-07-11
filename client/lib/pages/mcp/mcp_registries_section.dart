@@ -393,15 +393,14 @@ class _RegistryRow extends StatelessWidget {
                         source.baseUrl,
                         style: AppTextStyles.of(
                           context,
-                        ).bodyStrong.copyWith(color: textBase),
+                        ).mdSemiboldColored(textBase),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
                         label,
-                        style: AppTextStyles.of(context).caption.copyWith(
-                          color: textBase.withValues(alpha: 0.55),
+                        style: AppTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.55),
                         ),
                       ),
                     ],

@@ -283,7 +283,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                 Expanded(
                   child: Text(
                     _isEditing ? l10n.editProvider : l10n.addProvider,
-                    style: AppTextStyles.of(context).prominent,
+                    style: AppTextStyles.of(context).lg,
                   ),
                 ),
                 if (!_isEditing && widget.onCliChanged != null)
@@ -319,7 +319,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
               children: [
                 Text(
                   l10n.appProviderPresetLabel,
-                  style: AppTextStyles.of(context).formLabel,
+                  style: AppTextStyles.of(context).mdSnug,
                 ),
                 const SizedBox(height: 8),
                 AppDropdownField<String>(
@@ -598,7 +598,7 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.centerLeft,
-      child: Text(text, style: AppTextStyles.of(context).formLabel),
+      child: Text(text, style: AppTextStyles.of(context).mdSnug),
     );
   }
 }

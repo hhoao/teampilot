@@ -420,7 +420,7 @@ class _BrandMark extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           l10n.appTitle,
-          style: styles.bodyStrong.copyWith(color: cs.onSurface),
+          style: styles.mdSemiboldColored(cs.onSurface),
         ),
       ],
     );
@@ -462,10 +462,8 @@ class _HomePill extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               label,
-              style: styles.bodySmall.copyWith(
-                color: fg,
-                fontWeight: FontWeight.w600,
-              ),
+              style: styles.smColored(fg,
+                fontWeight: FontWeight.w600,),
             ),
           ],
         ),
@@ -628,7 +626,7 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
                       widget.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.bodySmall.copyWith(color: fg),
+                      style: styles.smColored(fg),
                     ),
                   ),
                   if (widget.closable) ...[
@@ -773,10 +771,8 @@ class _RecentlyClosedOverflowButtonState
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
               child: Text(
                 l10n.homeWorkspaceRecentlyClosed,
-                style: styles.bodySmall.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: styles.smColored(cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,),
               ),
             ),
             if (entries.isEmpty)
@@ -880,7 +876,7 @@ class _RecentlyClosedMenuItem extends StatelessWidget {
               subtitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: styles.caption.copyWith(color: cs.onSurfaceVariant),
+              style: styles.xsColored(cs.onSurfaceVariant),
             ),
       menuController: menuController,
       onTap: () => onReopen?.call(entry.tabKey),

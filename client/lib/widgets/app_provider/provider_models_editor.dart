@@ -192,7 +192,7 @@ class ProviderModelsEditor extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text(l10n.models, style: styles.formLabel),
+              child: Text(l10n.models, style: styles.mdSnug),
             ),
             AppIconButton(
               icon: Icons.add,
@@ -208,7 +208,7 @@ class ProviderModelsEditor extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
               l10n.noModelsConfigured,
-              style: styles.mutedBodySmall,
+              style: styles.mutedSm,
             ),
           )
         else
@@ -320,14 +320,14 @@ class _ModelRow extends StatelessWidget {
                   entry.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: styles.body,
+                  style: styles.md,
                 ),
                 if (entry.model.isNotEmpty && entry.model != entry.name)
                   Text(
                     entry.model,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: styles.bodySmallColored(muted),
+                    style: styles.smColored(muted),
                   ),
               ],
             ),
@@ -405,7 +405,7 @@ class _ProviderModelEntryDialogState extends State<_ProviderModelEntryDialog> {
         children: [
           AppDialogHeader(title: widget.title),
           const SizedBox(height: 16),
-          Text(l10n.modelId, style: AppTextStyles.of(context).formLabel),
+          Text(l10n.modelId, style: AppTextStyles.of(context).mdSnug),
           const SizedBox(height: 8),
           AppDropdownWithCustomInput(
             value: _model,

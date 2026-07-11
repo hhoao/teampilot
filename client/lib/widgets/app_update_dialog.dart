@@ -139,14 +139,14 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                       l10n.aboutCurrentVersion,
                       style: AppTextStyles.of(
                         context,
-                      ).body.copyWith(color: Colors.grey[600]),
+                      ).mdColored(Colors.grey[600]),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       currentApp?.version ?? '—',
                       style: AppTextStyles.of(
                         context,
-                      ).body.copyWith(fontWeight: FontWeight.w500),
+                      ).mdMedium,
                     ),
                   ],
                 ),
@@ -160,15 +160,12 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                       l10n.appUpdateLatestVersion,
                       style: AppTextStyles.of(
                         context,
-                      ).body.copyWith(color: Colors.grey[600]),
+                      ).mdColored(Colors.grey[600]),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       latestApp?.version ?? l10n.appUpdateUnknownVersion,
-                      style: AppTextStyles.of(context).body.copyWith(
-                        fontWeight: FontWeight.w500,
-                        color: Colors.blue,
-                      ),
+                      style: AppTextStyles.of(context).mdMediumColored(Colors.blue),
                     ),
                   ],
                 ),
@@ -192,7 +189,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                   l10n.appUpdateChangelogTitle,
                   style: AppTextStyles.of(
                     context,
-                  ).bodySmall.copyWith(color: Colors.grey[600]),
+                  ).smColored(Colors.grey[600]),
                 ),
                 collapsedIconColor: Colors.grey[600],
                 collapsedTextColor: Colors.grey[600],
@@ -249,14 +246,14 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                   _downloadStatus,
                   style: AppTextStyles.of(
                     context,
-                  ).bodySmall.copyWith(color: Colors.blue[700]),
+                  ).smColored(Colors.blue[700]),
                 ),
               ),
               Text(
                 '${(_downloadProgress * 100).toStringAsFixed(1)}%',
                 style: AppTextStyles.of(
                   context,
-                ).bodyStrong.copyWith(color: Colors.blue[800]),
+                ).mdSemiboldColored(Colors.blue[800]),
               ),
             ],
           ),
@@ -520,7 +517,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (prefix != null) prefix,
-          Text(text, style: AppTextStyles.of(context).body),
+          Text(text, style: AppTextStyles.of(context).md),
         ],
       ),
     );

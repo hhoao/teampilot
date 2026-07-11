@@ -133,12 +133,9 @@ class _FileEditorTabState extends State<FileEditorTab> {
                 const SizedBox(width: 6),
                 Text(
                   label,
-                  style: AppTextStyles.of(context).body.copyWith(
-                    fontWeight: widget.selected
-                        ? FontWeight.w600
-                        : FontWeight.w500,
-                    color: labelColor,
-                  ),
+                  style: widget.selected
+                      ? AppTextStyles.of(context).mdSemiboldColored(labelColor)
+                      : AppTextStyles.of(context).mdMediumColored(labelColor),
                 ),
                 const SizedBox(width: 4),
                 TabCloseButton(

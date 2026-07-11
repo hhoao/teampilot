@@ -216,14 +216,13 @@ class SkillInstalledRow extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.of(
                             context,
-                          ).bodyStrong.copyWith(color: textBase),
+                          ).mdSemiboldColored(textBase),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         sourceLabel,
-                        style: AppTextStyles.of(context).caption.copyWith(
-                          color: textBase.withValues(alpha: 0.5),
+                        style: AppTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.5),
                         ),
                       ),
                       if (hasUpdate) ...[
@@ -239,8 +238,7 @@ class SkillInstalledRow extends StatelessWidget {
                           ),
                           child: Text(
                             l10n.skillsUpdateAvailable,
-                            style: AppTextStyles.of(context).caption.copyWith(
-                              color: const Color(0xFFB45309),
+                            style: AppTextStyles.of(context).xsColored(const Color(0xFFB45309),
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -254,8 +252,7 @@ class SkillInstalledRow extends StatelessWidget {
                       skill.description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.of(context).bodySmall.copyWith(
-                        color: textBase.withValues(alpha: 0.6),
+                      style: AppTextStyles.of(context).smColored(textBase.withValues(alpha: 0.6),
                       ),
                     ),
                   ],

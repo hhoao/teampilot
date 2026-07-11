@@ -111,7 +111,7 @@ class _GitChangeTileState extends State<GitChangeTile> {
                     Text(
                       name,
                       maxLines: 1,
-                      style: AppTextStyles.of(context).body,
+                      style: AppTextStyles.of(context).md,
                     ),
                     const SizedBox(width: 8),
                     if (_hovered) ..._actions(context) else _badge(cs),
@@ -132,7 +132,7 @@ class _GitChangeTileState extends State<GitChangeTile> {
       textAlign: TextAlign.center,
       style: AppTextStyles.of(
         context,
-      ).bodySmall.copyWith(color: _badgeColor(cs), fontWeight: FontWeight.w700),
+      ).smColored(_badgeColor(cs), fontWeight: FontWeight.w700),
     ),
   );
 

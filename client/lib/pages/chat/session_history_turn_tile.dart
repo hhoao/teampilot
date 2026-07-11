@@ -92,7 +92,7 @@ class _AssistantBubble extends StatelessWidget {
             children: [
               Text(
                 context.l10n.sessionHistoryRoleAssistant,
-                style: styles.bodyStrong.copyWith(color: palette.muted),
+                style: styles.mdSemiboldColored(palette.muted),
               ),
               SizedBox(height: spacing.xs),
               _historyMarkdown(context, turn.markdown),
@@ -128,7 +128,7 @@ class _SystemBubble extends StatelessWidget {
           ),
           child: Text(
             turn.markdown.trim(),
-            style: styles.bodySmall.copyWith(color: palette.muted),
+            style: styles.smColored(palette.muted),
             textAlign: TextAlign.center,
           ),
         ),
@@ -182,7 +182,7 @@ class _ToolBubble extends StatelessWidget {
               ),
               title: Text(
                 title,
-                style: styles.bodyStrong.copyWith(color: palette.muted),
+                style: styles.mdSemiboldColored(palette.muted),
               ),
               children: [
                 Align(

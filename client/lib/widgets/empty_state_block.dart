@@ -40,7 +40,7 @@ class EmptyStateBlock extends StatelessWidget {
             title,
             style: AppTextStyles.of(
               context,
-            ).bodyStrong.copyWith(color: textBase),
+            ).mdSemiboldColored(textBase),
           ),
           if (hint != null && hint!.isNotEmpty) ...[
             const SizedBox(height: 6),
@@ -49,7 +49,7 @@ class EmptyStateBlock extends StatelessWidget {
               textAlign: TextAlign.center,
               style: AppTextStyles.of(
                 context,
-              ).bodySmall.copyWith(color: textBase.withValues(alpha: 0.55)),
+              ).smColored(textBase.withValues(alpha: 0.55)),
             ),
           ],
           if (actionLabel != null && onAction != null) ...[

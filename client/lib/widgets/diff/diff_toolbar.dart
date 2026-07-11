@@ -78,7 +78,7 @@ class DiffToolbar extends StatelessWidget {
             Expanded(
               child: Text(
                 titleText,
-                style: styles.bodySmall,
+                style: styles.sm,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -146,7 +146,7 @@ class DiffToolbar extends StatelessWidget {
                           ? l10n.diffChangeCounter(current, total)
                           : l10n.diffNoChanges,
                       textAlign: TextAlign.center,
-                      style: styles.mutedBodySmall,
+                      style: styles.mutedSm,
                     ),
                   ),
                   AppIconButton(

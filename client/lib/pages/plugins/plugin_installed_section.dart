@@ -298,15 +298,14 @@ class PluginInstalledRow extends StatelessWidget {
                         plugin.name,
                         style: AppTextStyles.of(
                           context,
-                        ).bodyStrong.copyWith(color: textBase),
+                        ).mdSemiboldColored(textBase),
                       ),
                     ),
                     if (plugin.version.isNotEmpty) ...[
                       const SizedBox(width: 8),
                       Text(
                         'v${plugin.version}',
-                        style: AppTextStyles.of(context).caption.copyWith(
-                          color: textBase.withValues(alpha: 0.45),
+                        style: AppTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.45),
                         ),
                       ),
                     ],
@@ -318,8 +317,7 @@ class PluginInstalledRow extends StatelessWidget {
                     plugin.description,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.of(context).bodySmall.copyWith(
-                      color: textBase.withValues(alpha: 0.55),
+                    style: AppTextStyles.of(context).smColored(textBase.withValues(alpha: 0.55),
                     ),
                   ),
                 ],

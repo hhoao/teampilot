@@ -160,14 +160,14 @@ class SkillRepoRow extends StatelessWidget {
                     repo.githubUrl,
                     style: AppTextStyles.of(
                       context,
-                    ).body.copyWith(color: textBase),
+                    ).mdColored(textBase),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '@${repo.branch}',
                     style: AppTextStyles.of(
                       context,
-                    ).caption.copyWith(color: textBase.withValues(alpha: 0.55)),
+                    ).xsColored(textBase.withValues(alpha: 0.55)),
                   ),
                 ],
               ),

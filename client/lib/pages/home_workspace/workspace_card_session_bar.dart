@@ -36,7 +36,7 @@ class WorkspaceCardSessionBar extends StatelessWidget {
             '$sessionCount $sessionCountLabel',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: styles.bodySmall.copyWith(color: cs.onSurfaceVariant),
+            style: styles.smColored(cs.onSurfaceVariant),
           ),
         ),
         if (showContextIcon) ...[

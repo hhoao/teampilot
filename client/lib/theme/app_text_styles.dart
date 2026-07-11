@@ -70,6 +70,21 @@ final class AppTextStyles {
 
   TextStyle xsColored(Color color) => xs.copyWith(color: color);
 
+  TextStyle get xsSemibold => _compose(
+    size: _TextSize.xs,
+    weight: _TextWeight.semibold,
+  );
+
+  TextStyle xsSemiboldColored(Color color) =>
+      xsSemibold.copyWith(color: color);
+
+  TextStyle get xsBold => _compose(
+    size: _TextSize.xs,
+    weight: _TextWeight.bold,
+  );
+
+  TextStyle xsBoldColored(Color color) => xsBold.copyWith(color: color);
+
   TextStyle get xsSemiboldSnug => _compose(
     size: _TextSize.xs,
     weight: _TextWeight.semibold,
@@ -99,6 +114,21 @@ final class AppTextStyles {
 
   TextStyle smColored(Color color) => sm.copyWith(color: color);
 
+  TextStyle get smMedium => _compose(
+    size: _TextSize.sm,
+    weight: _TextWeight.medium,
+  );
+
+  TextStyle smMediumColored(Color color) => smMedium.copyWith(color: color);
+
+  TextStyle get smSemibold => _compose(
+    size: _TextSize.sm,
+    weight: _TextWeight.semibold,
+  );
+
+  TextStyle smSemiboldColored(Color color) =>
+      smSemibold.copyWith(color: color);
+
   TextStyle get md => _compose(size: _TextSize.md);
 
   TextStyle mdColored(Color color) => md.copyWith(color: color);
@@ -125,6 +155,25 @@ final class AppTextStyles {
   TextStyle mdSemiboldColored(Color color) =>
       mdSemibold.copyWith(color: color);
 
+  TextStyle get mdBold => _compose(
+    size: _TextSize.md,
+    weight: _TextWeight.bold,
+  );
+
+  TextStyle mdBoldColored(Color color) => mdBold.copyWith(color: color);
+
+  TextStyle get mdHeavy =>
+      _compose(size: _TextSize.md).copyWith(fontWeight: FontWeight.w800);
+
+  TextStyle mdHeavyColored(Color color) => mdHeavy.copyWith(color: color);
+
+  TextStyle get mdRelaxed => _compose(
+    size: _TextSize.md,
+    height: _TextHeight.relaxed,
+  );
+
+  TextStyle mdRelaxedColored(Color color) => mdRelaxed.copyWith(color: color);
+
   TextStyle get mdSemiboldTightSnug => _compose(
     size: _TextSize.md,
     weight: _TextWeight.semibold,
@@ -148,12 +197,45 @@ final class AppTextStyles {
 
   TextStyle lgColored(Color color) => lg.copyWith(color: color);
 
+  TextStyle get lgSemibold => _compose(
+    size: _TextSize.lg,
+    weight: _TextWeight.semibold,
+  );
+
+  TextStyle lgSemiboldColored(Color color) =>
+      lgSemibold.copyWith(color: color);
+
+  TextStyle get lgBold => _compose(
+    size: _TextSize.lg,
+    weight: _TextWeight.bold,
+  );
+
+  TextStyle lgBoldColored(Color color) => lgBold.copyWith(color: color);
+
   TextStyle get lgSnug => _compose(
     size: _TextSize.lg,
     height: _TextHeight.snug,
   );
 
   TextStyle lgSnugColored(Color color) => lgSnug.copyWith(color: color);
+
+  TextStyle get lgBoldSnug => _compose(
+    size: _TextSize.lg,
+    weight: _TextWeight.bold,
+    height: _TextHeight.snug,
+  );
+
+  TextStyle lgBoldSnugColored(Color color) =>
+      lgBoldSnug.copyWith(color: color);
+
+  TextStyle get lgHeavySnug => _compose(
+    size: _TextSize.lg,
+    weight: _TextWeight.bold,
+    height: _TextHeight.snug,
+  ).copyWith(fontWeight: FontWeight.w800);
+
+  TextStyle lgHeavySnugColored(Color color) =>
+      lgHeavySnug.copyWith(color: color);
 
   TextStyle get lgSemiboldSnug => _compose(
     size: _TextSize.lg,

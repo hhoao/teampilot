@@ -255,10 +255,8 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 6),
       child: Text(
         label,
-        style: AppTextStyles.of(context).bodySmall.copyWith(
-          color: cs.onSurfaceVariant,
-          fontWeight: FontWeight.w600,
-        ),
+        style: AppTextStyles.of(context).smColored(cs.onSurfaceVariant,
+          fontWeight: FontWeight.w600,),
       ),
     );
   }
@@ -278,7 +276,7 @@ class _StatusRow extends StatelessWidget {
         label,
         style: AppTextStyles.of(
           context,
-        ).bodySmall.copyWith(color: cs.onSurfaceVariant),
+        ).smColored(cs.onSurfaceVariant),
       ),
     );
   }
@@ -332,18 +330,14 @@ class _FileResultTileState extends State<_FileResultTile> {
                         widget.match.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: styles.body.copyWith(
-                          color: cs.onSurface,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: styles.mdColored(cs.onSurface,
+                          fontWeight: FontWeight.w500,),
                       ),
                       Text(
                         widget.match.relativePath,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: styles.bodySmall.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
+                        style: styles.smColored(cs.onSurfaceVariant,),
                       ),
                     ],
                   ),
@@ -439,7 +433,7 @@ class _EmptyResults extends StatelessWidget {
             Text(
               label,
               textAlign: TextAlign.center,
-              style: styles.bodySmall.copyWith(color: cs.onSurfaceVariant),
+              style: styles.smColored(cs.onSurfaceVariant),
             ),
           ],
         ),

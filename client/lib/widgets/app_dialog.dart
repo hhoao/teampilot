@@ -202,7 +202,7 @@ class AppDialogHeader extends StatelessWidget {
               child: Text(
                 title,
                 textAlign: centered ? TextAlign.center : TextAlign.start,
-                style: styles.dialogTitle.copyWith(color: cs.onSurface),
+                style: styles.lgSemiboldSnugColored(cs.onSurface),
               ),
             ),
             if (trailing != null) ...[trailing!, const SizedBox(width: 4)],

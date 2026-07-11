@@ -133,7 +133,7 @@ class _WorkspaceCreateDirectoryPickerState
                   Expanded(
                     child: Text(
                       l10n.homeWorkspaceNewWorkspaceDirectoryLabel,
-                      style: styles.bodyStrong.copyWith(color: cs.onSurface),
+                      style: styles.mdSemiboldColored(cs.onSurface),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -163,8 +163,7 @@ class _WorkspaceCreateDirectoryPickerState
                   padding: const EdgeInsets.only(left: 58),
                   child: Text(
                     l10n.homeWorkspaceNewWorkspaceDirectoryHint,
-                    style: styles.body.copyWith(
-                      color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                    style: styles.mdColored(cs.onSurfaceVariant.withValues(alpha: 0.7),
                     ),
                   ),
                 ),
@@ -215,13 +214,13 @@ class WorkspaceCreateNameField extends StatelessWidget {
         children: [
           Text(
             l10n.workspaceDisplayName,
-            style: styles.caption.copyWith(color: cs.onSurfaceVariant),
+            style: styles.xsColored(cs.onSurfaceVariant),
           ),
           const SizedBox(height: 6),
           TextField(
             controller: controller,
             onSubmitted: onSubmitted,
-            style: styles.prominent.copyWith(color: cs.onSurface),
+            style: styles.lgColored(cs.onSurface),
             decoration: InputDecoration(hintText: hint),
           ),
         ],

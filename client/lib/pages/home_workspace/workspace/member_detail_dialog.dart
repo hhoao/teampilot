@@ -350,7 +350,7 @@ class _ListTab extends StatelessWidget {
               Expanded(
                 child: Text(
                   l10n.memberDetailLoadError,
-                  style: AppTextStyles.of(context).bodyColored(
+                  style: AppTextStyles.of(context).mdColored(
                     cs.onErrorContainer,
                   ),
                 ),

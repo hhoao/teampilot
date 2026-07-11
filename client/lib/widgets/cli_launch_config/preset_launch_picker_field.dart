@@ -151,11 +151,11 @@ class _PresetDropdownOption extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(title, style: styles.bodyColored(cs.onSurface)),
+          Text(title, style: styles.mdColored(cs.onSurface)),
           if (subtitle != null)
             Text(
               subtitle!,
-              style: styles.mutedBodySmall,
+              style: styles.mutedSm,
             ),
         ],
       ),

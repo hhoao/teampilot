@@ -43,7 +43,7 @@ class MailboxPanel extends StatelessWidget {
       return Center(
         child: Text(
           l10n.mailboxEmpty,
-          style: styles.mutedBody,
+          style: styles.mutedMd,
         ),
       );
     }
@@ -64,7 +64,7 @@ class MailboxPanel extends StatelessWidget {
             ),
             title: Text(
               '${e.from} → ${e.to}',
-              style: styles.caption,
+              style: styles.xs,
             ),
             subtitle: Text(
               e.content,

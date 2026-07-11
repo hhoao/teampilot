@@ -118,8 +118,7 @@ class _SessionHistoryTurnListState extends State<SessionHistoryTurnList> {
               SizedBox(height: context.appSpacing.md),
               Text(
                 context.l10n.sessionHistoryLoading,
-                style: AppTextStyles.of(context).body.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                style: AppTextStyles.of(context).mdColored(Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -131,8 +130,7 @@ class _SessionHistoryTurnListState extends State<SessionHistoryTurnList> {
           icon: Icons.chat_bubble_outline_rounded,
           child: Text(
             context.l10n.sessionHistoryEmpty,
-            style: AppTextStyles.of(context).body.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            style: AppTextStyles.of(context).mdColored(Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             textAlign: TextAlign.center,
           ),
@@ -146,8 +144,7 @@ class _SessionHistoryTurnListState extends State<SessionHistoryTurnList> {
             children: [
               Text(
                 context.l10n.sessionHistoryError,
-                style: AppTextStyles.of(context).body.copyWith(
-                  color: Theme.of(context).colorScheme.error,
+                style: AppTextStyles.of(context).mdColored(Theme.of(context).colorScheme.error,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -155,8 +152,7 @@ class _SessionHistoryTurnListState extends State<SessionHistoryTurnList> {
                 SizedBox(height: context.appSpacing.sm),
                 Text(
                   detail,
-                  style: AppTextStyles.of(context).bodySmall.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  style: AppTextStyles.of(context).smColored(Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -244,8 +240,7 @@ class _LoadOlderSentinel extends StatelessWidget {
               )
             : Text(
                 context.l10n.sessionHistoryLoadOlderHint,
-                style: AppTextStyles.of(context).bodySmall.copyWith(
-                  color: cs.onSurfaceVariant.withValues(alpha: 0.75),
+                style: AppTextStyles.of(context).smColored(cs.onSurfaceVariant.withValues(alpha: 0.75),
                 ),
                 textAlign: TextAlign.center,
               ),

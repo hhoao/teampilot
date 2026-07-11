@@ -13,29 +13,31 @@ class LlmWorkspaceText {
   AppTextStyles get _tx => AppTextStyles(theme);
 
   /// 小：徽章、次要说明、紧凑链接。
-  TextStyle get small => _tx.caption;
+  TextStyle get small => _tx.xs;
 
-  TextStyle smallColored(Color color, {FontWeight? fontWeight}) =>
-      _tx.captionColored(color, fontWeight: fontWeight);
+  TextStyle smallColored(Color color, {FontWeight? fontWeight}) {
+    final style = _tx.xsColored(color);
+    return fontWeight == null ? style : style.copyWith(fontWeight: fontWeight);
+  }
 
   /// 中：正文、只读值。
-  TextStyle get body => _tx.body;
+  TextStyle get body => _tx.md;
 
-  TextStyle bodyColored(Color color) => _tx.bodyColored(color);
+  TextStyle mdColored(Color color) => _tx.mdColored(color);
 
   /// 中强调：行标题、列表主名称。
-  TextStyle get bodyStrong => _tx.bodyStrong;
+  TextStyle get bodyStrong => _tx.mdSemibold;
 
-  TextStyle bodyStrongColored(Color color) => _tx.bodyStrongColored(color);
+  TextStyle mdSemiboldColored(Color color) => _tx.mdSemiboldColored(color);
 
   /// 面板顶栏标题（不做更大字号档位）。
-  TextStyle get panelHeader => _tx.sectionTitle;
+  TextStyle get panelHeader => _tx.mdSemiboldTightSnug;
 
-  TextStyle panelHeaderColored(Color color) => _tx.sectionTitleColored(color);
+  TextStyle panelHeaderColored(Color color) => _tx.mdSemiboldTightSnugColored(color);
 
-  TextStyle get mutedBody => _tx.mutedBody;
+  TextStyle get mutedBody => _tx.mutedMd;
 
-  TextStyle get mutedSmall => _tx.mutedCaption;
+  TextStyle get mutedSmall => _tx.mutedXs;
 }
 
 /// Provider detail pane: typography and [ColorScheme] from app [ThemeData].
@@ -67,13 +69,13 @@ class LlmProviderDetailLook {
   TextStyle get mutedBodyStyle => _tx.mutedSmall;
 
   TextStyle get rowLabelStyle =>
-      _tx.bodyStrongColored(colorScheme.onSurface).copyWith(height: 1.2);
+      _tx.mdSemiboldColored(colorScheme.onSurface).copyWith(height: 1.2);
 
   TextStyle get sectionTitleStyle =>
       _tx.panelHeaderColored(colorScheme.onSurface);
 
   /// 只读字段内文字：中档 + 弱化色。
-  TextStyle get valueBoxStyle => _tx.mutedBody;
+  TextStyle get valueBoxStyle => _tx.mutedMd;
 }
 
 class LlmSettingRow extends StatelessWidget {

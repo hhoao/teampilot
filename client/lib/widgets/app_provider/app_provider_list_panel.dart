@@ -275,7 +275,7 @@ class _ProviderListControls extends StatelessWidget {
                   l10n.providerList,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: styles.sectionTitle,
+                  style: styles.mdSemiboldTightSnug,
                 ),
               ),
               SidebarActionMenuButton(
@@ -376,8 +376,8 @@ class _ProviderListTile extends StatelessWidget {
         ? cs.workspaceSubtleSurface
         : cs.workspaceInset;
     final titleStyle = selected
-        ? styles.bodyStrongColored(titleColor)
-        : styles.bodyColored(titleColor, fontWeight: FontWeight.w500);
+        ? styles.mdSemiboldColored(titleColor)
+        : styles.mdMediumColored(titleColor);
 
     return ListTile(
       selected: selected,
@@ -401,7 +401,7 @@ class _ProviderListTile extends StatelessWidget {
         subtitle,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: styles.bodySmallColored(subtitleColor),
+        style: styles.smColored(subtitleColor),
       ),
       trailing: hubStyle
           ? Icon(Icons.chevron_right, color: titleColor)

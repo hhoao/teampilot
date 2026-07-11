@@ -51,10 +51,8 @@ class HomeTeamHeader extends StatelessWidget {
           ),
           child: Text(
             modeLabel,
-            style: styles.caption.copyWith(
-              color: badgeColor,
-              fontWeight: FontWeight.w600,
-            ),
+            style: styles.xsColored(badgeColor,
+              fontWeight: FontWeight.w600,),
           ),
         ),
       ],
@@ -147,14 +145,12 @@ class HomeContentTabItemState extends State<HomeContentTabItem> {
               widget.label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: styles.prominent.copyWith(
-                color: selected
+              style: styles.lgColored(selected
                     ? cs.primary
                     : _hovered
                     ? cs.onSurface
                     : cs.onSurfaceVariant,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-              ),
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,),
             ),
           ),
         ),
