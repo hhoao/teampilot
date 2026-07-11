@@ -70,7 +70,7 @@ class SshProfileTargetCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Icon(Icons.dns_outlined, size: 20, color: cs.onSurfaceVariant),
               const SizedBox(width: 12),

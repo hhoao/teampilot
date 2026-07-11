@@ -89,8 +89,20 @@ class LaunchProfileRepository {
       final ids = await Future.wait(
         entries.where((e) => e.isDirectory).map((entry) async {
           final file = _profileFile(paths.fs, paths.dir, entry.name);
-          if ((await paths.fs.stat(file)).exists) return entry.name;
-          return null;
+          final content = await paths.fs.readString(file);
+          if (content == null || content.isEmpty) return null;
+          try {
+            final decoded = jsonDecode(content);
+            if (decoded is! Map) return null;
+            // Skip legacy personal / unknown kinds so disk id set matches the
+            // derived index (otherwise every boot logs "snapshot stale").
+            LaunchProfileIndexStore.decodeProfile(
+              Map<String, Object?>.from(decoded),
+            );
+            return entry.name;
+          } on FormatException {
+            return null;
+          }
         }),
       );
       return [

@@ -90,12 +90,6 @@ void main() {
         flashskyaiDir,
       );
       expect(outcome.warnings, isEmpty);
-      expect(
-        await Directory(
-          p.join(base.path, 'identities-runtime', 'personal-default'),
-        ).exists(),
-        isFalse,
-      );
     },
   );
 

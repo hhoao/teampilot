@@ -85,9 +85,9 @@ class _FileEditorToolbar extends StatelessWidget {
             Expanded(
               child: Text(
                 dirty ? '$name •' : name,
-                style: AppTextStyles.of(context).body.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: AppTextStyles.of(
+                  context,
+                ).body.copyWith(fontWeight: FontWeight.w600),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -188,13 +188,14 @@ class _FileEditorBody extends StatelessWidget {
         tokenProvider: editor.tokenProviderFor(workspaceId, path),
       ),
       wordWrap: false,
-      indicatorBuilder: (context, editingController, chunkController, notifier) {
-        return _LineNumberWithViewportBinder(
-          controller: editingController,
-          notifier: notifier,
-          session: editor.documentSessionFor(workspaceId, path),
-        );
-      },
+      indicatorBuilder:
+          (context, editingController, chunkController, notifier) {
+            return _LineNumberWithViewportBinder(
+              controller: editingController,
+              notifier: notifier,
+              session: editor.documentSessionFor(workspaceId, path),
+            );
+          },
     );
   }
 }

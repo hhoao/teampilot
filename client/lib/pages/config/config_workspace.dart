@@ -21,60 +21,58 @@ import 'ssh_profiles_config_section.dart';
 
 /// Opens the workspace quick-settings modal from anywhere (e.g. the title bar).
 Future<void> showWorkspaceSettingsDialog(BuildContext context) {
-  final l10n = context.l10n;
-
   return showSettingsDialog(
     context,
-    navTitle: l10n.settings,
+    navTitle: (l10n) => l10n.settings,
     entries: [
       SettingsDialogEntry(
         icon: Icons.dashboard_customize_outlined,
-        navLabel: l10n.layout,
-        title: l10n.layout,
-        subtitle: l10n.layoutPageSubtitle,
+        navLabel: (l10n) => l10n.layout,
+        title: (l10n) => l10n.layout,
+        subtitle: (l10n) => l10n.layoutPageSubtitle,
         bodyBuilder: (_) => const LayoutConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.terminal_outlined,
-        navLabel: l10n.session,
-        title: l10n.session,
-        subtitle: l10n.sessionPageSubtitle,
+        navLabel: (l10n) => l10n.session,
+        title: (l10n) => l10n.session,
+        subtitle: (l10n) => l10n.sessionPageSubtitle,
         bodyBuilder: (_) => const SessionConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.code_outlined,
-        navLabel: l10n.cliConfig,
-        title: l10n.cliConfig,
-        subtitle: l10n.cliConfigPageSubtitle,
+        navLabel: (l10n) => l10n.cliConfig,
+        title: (l10n) => l10n.cliConfig,
+        subtitle: (l10n) => l10n.cliConfigPageSubtitle,
         bodyBuilder: (_) => const CliConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.auto_awesome_outlined,
-        navLabel: l10n.aiFeatures,
-        title: l10n.aiFeatures,
-        subtitle: l10n.aiFeaturesPageSubtitle,
+        navLabel: (l10n) => l10n.aiFeatures,
+        title: (l10n) => l10n.aiFeatures,
+        subtitle: (l10n) => l10n.aiFeaturesPageSubtitle,
         bodyBuilder: (_) => const AiFeaturesConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.dns_outlined,
-        navLabel: l10n.sshProfilesSettingsTitle,
-        title: l10n.sshProfilesPageTitle,
-        subtitle: l10n.sshProfilesPageSubtitle,
+        navLabel: (l10n) => l10n.sshProfilesSettingsTitle,
+        title: (l10n) => l10n.sshProfilesPageTitle,
+        subtitle: (l10n) => l10n.sshProfilesPageSubtitle,
         bodyBuilder: (_) =>
             const SshProfilesConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.keyboard_outlined,
-        navLabel: l10n.shortcutsSettingsTitle,
-        title: l10n.shortcutsSettingsTitle,
-        subtitle: l10n.shortcutsPageSubtitle,
+        navLabel: (l10n) => l10n.shortcutsSettingsTitle,
+        title: (l10n) => l10n.shortcutsSettingsTitle,
+        subtitle: (l10n) => l10n.shortcutsPageSubtitle,
         bodyBuilder: (_) => const ShortcutsConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.info_outline,
-        navLabel: l10n.aboutTitle,
-        title: l10n.aboutTitle,
-        subtitle: l10n.aboutPageSubtitle,
+        navLabel: (l10n) => l10n.aboutTitle,
+        title: (l10n) => l10n.aboutTitle,
+        subtitle: (l10n) => l10n.aboutPageSubtitle,
         bodyBuilder: (dialogContext) => AboutConfigWorkspace(
           showHeading: false,
           onViewLogs: () => showLogViewerDialog(dialogContext),

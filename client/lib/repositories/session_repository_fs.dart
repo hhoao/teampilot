@@ -4,7 +4,7 @@ import '../services/io/filesystem.dart';
 import '../services/io/local_filesystem.dart';
 import '../services/storage/app_storage.dart';
 import '../services/storage/workspace_layout.dart';
-import 'session_snapshot_isolate.dart';
+import 'session_snapshot_reader.dart';
 
 /// Local or remote file access for [SessionRepository].
 ///
@@ -96,12 +96,11 @@ class SessionRepositoryFs {
     String workspaceId,
   ) async {
     final dir = sessionsDir(workspaceId);
-    // Native: walk + read + decode off the UI isolate so a workspace with many
-    // (or large) sessions never freezes the app while switching tabs. SFTP/WSL
-    // hold non-sendable handles, so they fall through to the async path below.
+    // Native: local disk walk + decode. SFTP/WSL hold non-sendable handles, so
+    // they fall through to the async path below.
     if (fs is LocalFilesystem) {
       try {
-        return await SessionSnapshotIsolate.readSessionMaps(dir);
+        return await SessionSnapshotReader.readSessionMaps(dir);
       } on Object {
         // Fall back to the filesystem abstraction below.
       }

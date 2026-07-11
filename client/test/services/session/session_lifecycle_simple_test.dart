@@ -187,12 +187,6 @@ void main() {
         isFalse,
         reason: 'Simple mode must skip identities-runtime/',
       );
-      expect(
-        await Directory(
-          p.join(base.path, 'identities-runtime', 'personal-default'),
-        ).exists(),
-        isFalse,
-      );
       final claudeDir = layout.sessionRuntimeToolDir(
         workspaceId,
         sessionId,
