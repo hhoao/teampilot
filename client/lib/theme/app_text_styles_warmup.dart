@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/layout_preferences.dart';
+import 'app_control_theme.dart';
 import 'app_fonts.dart';
 import 'app_outline_input_theme.dart';
 import 'app_text_styles.dart';
@@ -9,12 +10,13 @@ import 'app_typography_scale.dart';
 /// Bootstrap theme matching production text pipeline (standard scale, light).
 ThemeData bootstrapThemeForTextWarmup() {
   final seed = ThemeData(brightness: Brightness.light, useMaterial3: true);
+  final control = AppControlTheme.fromScale(AppTypographyScale.standard);
   final textTheme = applyAppInputTextStyles(
     materializeM3TextThemeSizes(buildAppUiTextTheme(seed.textTheme)),
   );
   return seed.copyWith(
     textTheme: textTheme,
-    extensions: [AppFontTheme.fallback],
+    extensions: [AppFontTheme.fallback, control],
   );
 }
 
@@ -33,7 +35,10 @@ ThemeData themeForInteractiveWarmup(LayoutPreferences preferences) {
   final textTheme = applyAppInputTextStyles(
     materializeM3TextThemeSizes(seed.textTheme, scale: textScale),
   );
-  return seed.copyWith(textTheme: textTheme);
+  return seed.copyWith(
+    textTheme: textTheme,
+    extensions: [AppFontTheme.fallback, AppControlTheme.fromScale(textScale)],
+  );
 }
 
 double _systemTextBaseline() {
@@ -51,9 +56,13 @@ List<TextStyle> _textStylesFromTheme(ThemeData theme) {
   final styles = AppTextStyles(theme);
   final textTheme = theme.textTheme;
   final scheme = theme.colorScheme;
+  final control =
+      theme.extension<AppControlTheme>() ??
+      AppControlTheme.fromScale(AppTypographyScale.standard);
   final inputTheme = buildAppOutlineInputDecorationTheme(
     colorScheme: scheme,
     textTheme: textTheme,
+    control: control,
   );
   final bodyMedium = textTheme.bodyMedium ?? const TextStyle();
   final labelLarge = textTheme.labelLarge ?? bodyMedium;

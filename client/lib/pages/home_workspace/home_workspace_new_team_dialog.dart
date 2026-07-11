@@ -456,12 +456,6 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
                     onPressed: enabled
                         ? (isAi ? _generateAndCreate : _submit)
                         : null,
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 28,
-                        vertical: 14,
-                      ),
-                    ),
                     child: _generating
                         ? const SizedBox(
                             width: 18,
@@ -721,10 +715,7 @@ class _NativeTeamOptionsCard extends StatelessWidget {
 }
 
 class _NameField extends StatelessWidget {
-  const _NameField({
-    required this.controller,
-    required this.onSubmitted,
-  });
+  const _NameField({required this.controller, required this.onSubmitted});
 
   final TextEditingController controller;
   final ValueChanged<String> onSubmitted;

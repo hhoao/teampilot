@@ -101,9 +101,6 @@ class SkillDiscoverCard extends StatelessWidget {
                 else
                   FilledButton(
                     onPressed: busy ? null : onInstall,
-                    style: FilledButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
                     child: busy
                         ? const SizedBox(
                             width: 14,

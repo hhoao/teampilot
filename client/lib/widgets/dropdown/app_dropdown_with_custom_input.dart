@@ -133,20 +133,9 @@ class _AppDropdownWithCustomInputState
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        TextButton(
-          onPressed: _cancelCustom,
-          style: TextButton.styleFrom(
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-          ),
-          child: Text(l10n.cancel),
-        ),
+        TextButton(onPressed: _cancelCustom, child: Text(l10n.cancel)),
         FilledButton(
           onPressed: _canConfirm ? _confirmCustom : null,
-          style: FilledButton.styleFrom(
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-          ),
           child: Text(l10n.confirm),
         ),
       ],

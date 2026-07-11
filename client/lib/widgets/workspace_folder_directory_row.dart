@@ -222,14 +222,6 @@ class _TargetChip extends StatelessWidget {
         child: label,
       );
     }
-    return TextButton(
-      onPressed: onChange,
-      style: TextButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        minimumSize: Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-      child: label,
-    );
+    return TextButton(onPressed: onChange, child: label);
   }
 }

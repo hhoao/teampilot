@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_control_theme.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:path/path.dart' as p;
 
@@ -51,7 +52,6 @@ class LogViewerToolbar extends StatelessWidget {
   final Future<void> Function() onClearOld;
   final ValueChanged<bool> onReverseOrderChanged;
 
-  static const _controlHeight = 36.0;
   static const _verticalPadding = 10.0;
   static const _dropdownPadding = EdgeInsets.symmetric(
     vertical: 4,
@@ -62,6 +62,7 @@ class LogViewerToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
+    final controlHeight = context.appControl.height;
     final fileValue =
         selectedFile ?? (logFiles.isNotEmpty ? logFiles.first : null);
 
@@ -79,7 +80,7 @@ class LogViewerToolbar extends StatelessWidget {
         ),
       ),
       child: SizedBox(
-        height: _controlHeight,
+        height: controlHeight,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -275,7 +276,7 @@ class LogViewerToolbar extends StatelessWidget {
   }) {
     return SizedBox(
       width: width,
-      height: _controlHeight,
+      height: context.appControl.height,
       child: AppDropdownField<T>(
         key: ValueKey<T>(value),
         items: items,

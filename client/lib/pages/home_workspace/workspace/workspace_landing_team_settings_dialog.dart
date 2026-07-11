@@ -49,10 +49,8 @@ Future<bool?> showLandingTeamSettingsDialog(
 }) {
   return showDialog<bool>(
     context: context,
-    builder: (_) => _LandingTeamSettingsDialog(
-      workspace: workspace,
-      team: team,
-    ),
+    builder: (_) =>
+        _LandingTeamSettingsDialog(workspace: workspace, team: team),
   );
 }
 
@@ -101,7 +99,8 @@ class _LandingTeamSettingsDialog extends StatefulWidget {
       _LandingTeamSettingsDialogState();
 }
 
-class _LandingTeamSettingsDialogState extends State<_LandingTeamSettingsDialog> {
+class _LandingTeamSettingsDialogState
+    extends State<_LandingTeamSettingsDialog> {
   late final ValueNotifier<int> _selectedIndex;
   late TeamProfile _initialTeam;
   late TeamProfile _teamDraft;
@@ -244,11 +243,8 @@ class _LandingTeamSettingsDialogState extends State<_LandingTeamSettingsDialog> 
     final team = _teamFromCubit(cubit) ?? _teamDraft;
     await showDialog<void>(
       context: context,
-      builder: (ctx) => MemberLaunchConfigureDialog(
-        team: team,
-        member: member,
-        cubit: cubit,
-      ),
+      builder: (ctx) =>
+          MemberLaunchConfigureDialog(team: team, member: member, cubit: cubit),
     );
     if (!mounted) return;
     _cubitDirty = true;
@@ -291,7 +287,11 @@ class _LandingTeamSettingsDialogState extends State<_LandingTeamSettingsDialog> 
         placement: _placement,
       );
       if (!prepared.leadValid) return;
-      await cubit.selectTeam(widget.team.id, silent: true, syncResources: false);
+      await cubit.selectTeam(
+        widget.team.id,
+        silent: true,
+        syncResources: false,
+      );
       // Persist placement totals on roster.overrides.replicas (members alone
       // are runtime-only and would be dropped on the next materialize).
       _teamDraft = prepared.team;
@@ -372,12 +372,7 @@ class _LandingTeamSettingsDialogState extends State<_LandingTeamSettingsDialog> 
                           ),
                           Expanded(
                             child: Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                24,
-                                16,
-                                24,
-                                0,
-                              ),
+                              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                               child: RepaintBoundary(
                                 child: SettingsDialogPaneHost(
                                   key: const ValueKey(
@@ -596,9 +591,9 @@ class _PaneHeader extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     machinesHint!,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: cs.error,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: cs.error),
                   ),
                 ],
               ],
@@ -876,15 +871,14 @@ class _TeamDefaultPresetSummary extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      configured
-                          ? configLine
-                          : l10n.teamDefaultPresetSubtitle,
+                      configured ? configLine : l10n.teamDefaultPresetSubtitle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: styles.bodySmall.copyWith(
                         color: cs.onSurfaceVariant,
-                        fontWeight:
-                            configured ? FontWeight.w500 : FontWeight.w400,
+                        fontWeight: configured
+                            ? FontWeight.w500
+                            : FontWeight.w400,
                       ),
                     ),
                   ],
@@ -895,13 +889,6 @@ class _TeamDefaultPresetSummary extends StatelessWidget {
                 onPressed: onConfigure,
                 icon: Icon(Icons.tune, size: context.appIconSizes.sm),
                 label: Text(l10n.workspaceCliConfigure),
-                style: OutlinedButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                ),
               ),
             ],
           ),
@@ -1063,8 +1050,9 @@ class _MemberRow extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: styles.bodySmall.copyWith(
                             color: cs.onSurfaceVariant,
-                            fontWeight:
-                                configured ? FontWeight.w500 : FontWeight.w400,
+                            fontWeight: configured
+                                ? FontWeight.w500
+                                : FontWeight.w400,
                           ),
                         ),
                       ],
@@ -1075,13 +1063,6 @@ class _MemberRow extends StatelessWidget {
                     onPressed: () => onOpenMemberConfigure(member),
                     icon: Icon(Icons.tune, size: context.appIconSizes.sm),
                     label: Text(l10n.workspaceCliConfigure),
-                    style: OutlinedButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
                   ),
                 ],
               ),
@@ -1182,14 +1163,17 @@ class _Footer extends StatelessWidget {
             Expanded(
               child: Text(
                 placementHint!,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: cs.error,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: cs.error),
               ),
             )
           else
             const Spacer(),
-          TextButton(onPressed: saving ? null : onCancel, child: Text(l10n.cancel)),
+          TextButton(
+            onPressed: saving ? null : onCancel,
+            child: Text(l10n.cancel),
+          ),
           const SizedBox(width: 8),
           FilledButton(
             onPressed: canSave ? onSave : null,
