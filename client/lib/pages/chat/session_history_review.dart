@@ -241,19 +241,26 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     return unionConfigBundles(identity, _workspaceProjectBundle);
   }
 
-  AppSession? _cubitSession(BuildContext context) {
+  AppSession? _sessionFromCubit(ChatCubit cubit) {
     final id = widget.session.sessionId;
-    return context.select<ChatCubit, AppSession?>((cubit) {
-      for (final session in cubit.state.sessions) {
-        if (session.sessionId == id) return session;
-      }
-      return null;
-    });
+    for (final session in cubit.state.sessions) {
+      if (session.sessionId == id) return session;
+    }
+    return null;
   }
+
+  /// Reactive snapshot for [build] only (`context.select`).
+  AppSession? _watchCubitSession(BuildContext context) {
+    return context.select<ChatCubit, AppSession?>(_sessionFromCubit);
+  }
+
+  /// One-shot lookup for event handlers (`context.read`).
+  AppSession? _readCubitSession(BuildContext context) =>
+      _sessionFromCubit(context.read<ChatCubit>());
 
   /// Display-only fallback when the cubit snapshot is not loaded yet.
   AppSession _displaySession(BuildContext context) =>
-      _cubitSession(context) ?? widget.session;
+      _watchCubitSession(context) ?? widget.session;
 
   TeamProfile? _liveTeam(BuildContext context) {
     final session = _displaySession(context);
@@ -403,7 +410,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     required bool value,
     required TeamProfile? team,
   }) async {
-    final session = _cubitSession(context);
+    final session = _readCubitSession(context);
     if (session == null) {
       if (mounted) _toastContinueSaveFailed();
       return;
@@ -428,7 +435,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     required List<CliPreset> sameCliPresets,
     required CliTool lockedCli,
   }) async {
-    final session = _cubitSession(context);
+    final session = _readCubitSession(context);
     if (session == null) {
       if (mounted) _toastContinueSaveFailed();
       return;
