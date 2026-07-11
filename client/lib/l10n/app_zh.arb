@@ -1752,6 +1752,8 @@
   "diffOpenSourceFile": "打开源文件",
   "diffShowAllLines": "显示全部",
   "diffNoChanges": "没有更改",
+  "fileDiffToggleFile": "文件",
+  "fileDiffToggleDiff": "Diff",
   "diffChangeCounter": "{current} / {total}",
   "@diffChangeCounter": {
     "placeholders": {

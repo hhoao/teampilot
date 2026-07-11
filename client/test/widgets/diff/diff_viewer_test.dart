@@ -35,29 +35,29 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('renders toolbar over a side-by-side body by default', (
+  testWidgets('renders toolbar over a unified body by default', (
     tester,
   ) async {
     await pump(tester);
     expect(find.byType(DiffToolbar), findsOneWidget);
-    expect(find.byType(SideBySideDiffView), findsOneWidget);
-    expect(find.byType(UnifiedDiffView), findsNothing);
+    expect(find.byType(UnifiedDiffView), findsOneWidget);
+    expect(find.byType(SideBySideDiffView), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('switches to unified layout', (tester) async {
+  testWidgets('switches to side-by-side layout', (tester) async {
     await pump(tester);
-    await tester.tap(find.byIcon(Icons.view_agenda_outlined));
+    await tester.tap(find.byIcon(Icons.view_column_outlined));
     await tester.pumpAndSettle();
-    expect(find.byType(UnifiedDiffView), findsOneWidget);
-    expect(find.byType(SideBySideDiffView), findsNothing);
+    expect(find.byType(SideBySideDiffView), findsOneWidget);
+    expect(find.byType(UnifiedDiffView), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('toggling ignore whitespace does not throw', (tester) async {
     await pump(tester);
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-    await tester.tap(find.text(l10n.diffIgnoreWhitespace));
+    await tester.tap(find.byTooltip(l10n.diffIgnoreWhitespace));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
@@ -101,9 +101,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-      expect(find.byType(SideBySideDiffView), findsOneWidget);
-      // No reloader => ignore-whitespace chip is hidden.
-      expect(find.text(l10n.diffIgnoreWhitespace), findsNothing);
+      expect(find.byType(UnifiedDiffView), findsOneWidget);
+      // No reloader => ignore-whitespace toggle is hidden.
+      expect(find.byTooltip(l10n.diffIgnoreWhitespace), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );

@@ -439,6 +439,30 @@ class GitCubit extends Cubit<GitState> {
     }
   }
 
+  /// Working tree vs HEAD for [relativePath]. When the path is untracked in
+  /// the current status snapshot, uses `--no-index` like [diff] for untracked.
+  Future<String?> diffAgainstHead(
+    String relativePath, {
+    bool ignoreWhitespace = false,
+    bool fullContext = false,
+  }) async {
+    try {
+      final untracked = state.status.unstaged.any(
+        (c) => c.path == relativePath && c.kind == GitChangeKind.untracked,
+      );
+      return await _service.diffAgainstHead(
+        state.repoRoot,
+        relativePath,
+        ignoreWhitespace: ignoreWhitespace,
+        fullContext: fullContext,
+        untracked: untracked,
+      );
+    } on GitException catch (e) {
+      _publish(state.copyWith(errorMessage: e.message), recomputeRows: false);
+      return null;
+    }
+  }
+
   /// Runs [action], then refreshes. Returns false (and sets an error) on
   /// failure. Guards against re-entrancy via [GitState.busy].
   Future<bool> _mutate(Future<void> Function() action) async {

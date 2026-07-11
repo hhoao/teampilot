@@ -219,28 +219,67 @@ class GitService {
     // lines), so the viewer can show full text instead of only the hunks.
     final context = fullContext ? '-U1000000' : null;
     if (change.kind == GitChangeKind.untracked) {
-      return _run(dir, [
+      return _runDiff(dir, [
         'diff',
         '--no-index',
         if (ignoreWhitespace) '-w',
         if (context != null) context,
         '/dev/null',
         change.path,
-      ]).catchError((Object e) {
-        // `--no-index` exits 1 when files differ; surface the diff text.
-        if (e is GitException) return e.message;
-        throw e;
-      });
+      ]);
     }
-    final args = [
+    return _runDiff(dir, [
       'diff',
       if (change.staged) '--cached',
       if (ignoreWhitespace) '-w',
       if (context != null) context,
       '--',
       change.path,
-    ];
-    return _run(dir, args);
+    ]);
+  }
+
+  /// Uncommitted diff for [relativePath]: working tree vs HEAD (staged +
+  /// unstaged combined). Untracked paths use `--no-index` against `/dev/null`.
+  Future<String> diffAgainstHead(
+    String dir,
+    String relativePath, {
+    bool ignoreWhitespace = false,
+    bool fullContext = false,
+    bool untracked = false,
+  }) async {
+    final context = fullContext ? '-U1000000' : null;
+    if (untracked) {
+      return _runDiff(dir, [
+        'diff',
+        '--no-index',
+        if (ignoreWhitespace) '-w',
+        if (context != null) context,
+        '/dev/null',
+        relativePath,
+      ]);
+    }
+    return _runDiff(dir, [
+      'diff',
+      'HEAD',
+      if (ignoreWhitespace) '-w',
+      if (context != null) context,
+      '--',
+      relativePath,
+    ]);
+  }
+
+  /// `git diff` exits 1 when the sides differ; treat that as success and return
+  /// stdout. Other non-zero exits still throw [GitException].
+  Future<String> _runDiff(String dir, List<String> args) async {
+    final result = await _runner.runInDirectory(dir, args);
+    if (result.exitCode == 0 || result.exitCode == 1) {
+      return result.stdout;
+    }
+    final err = result.stderr.trim();
+    final out = result.stdout.trim();
+    final detail = err.isEmpty ? out : err;
+    appLogger.d('[Git] ${args.join(' ')} exit ${result.exitCode}: $detail');
+    throw GitException(detail.isEmpty ? 'git ${args.first} failed' : detail);
   }
 
   /// Unified diff of staged changes (`git diff --cached`), capped at

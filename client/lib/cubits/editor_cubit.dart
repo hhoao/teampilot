@@ -20,30 +20,32 @@ import 'workbench/workbench_tab.dart';
 class DiffTabState extends Equatable {
   const DiffTabState({
     required this.absolutePath,
-    required this.staged,
+    required this.source,
     required this.title,
     required this.diffText,
   });
 
   final String absolutePath;
-  final bool staged;
+  final WorkbenchDiffSource source;
   final String title;
   final String diffText;
 
+  bool get staged => source == WorkbenchDiffSource.staged;
+
   String get key =>
-      WorkbenchTabId.diffKey(absolutePath, staged: staged);
+      WorkbenchTabId.diffKey(absolutePath, source: source);
 
   DiffTabState copyWith({String? diffText, String? title}) {
     return DiffTabState(
       absolutePath: absolutePath,
-      staged: staged,
+      source: source,
       title: title ?? this.title,
       diffText: diffText ?? this.diffText,
     );
   }
 
   @override
-  List<Object?> get props => [absolutePath, staged, title, diffText];
+  List<Object?> get props => [absolutePath, source, title, diffText];
 }
 
 class WorkspaceEditorBucket extends Equatable {
@@ -389,16 +391,16 @@ class EditorCubit extends Cubit<EditorState> {
   void openDiff({
     required String workspaceId,
     required String absolutePath,
-    required bool staged,
+    required WorkbenchDiffSource source,
     required String title,
     required String diffText,
     DiffReload? reloadDiff,
   }) {
-    final key = WorkbenchTabId.diffKey(absolutePath, staged: staged);
+    final key = WorkbenchTabId.diffKey(absolutePath, source: source);
     final bucket = state.bucket(workspaceId);
     final tab = DiffTabState(
       absolutePath: absolutePath,
-      staged: staged,
+      source: source,
       title: title,
       diffText: diffText,
     );

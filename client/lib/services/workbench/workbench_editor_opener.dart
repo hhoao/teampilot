@@ -1,3 +1,5 @@
+import 'package:path/path.dart' as p;
+
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
@@ -46,7 +48,7 @@ class WorkbenchEditorOpener {
   void openDiff({
     required String workspaceId,
     required String absolutePath,
-    required bool staged,
+    required WorkbenchDiffSource source,
     required String title,
     required String diffText,
     DiffReload? reloadDiff,
@@ -55,12 +57,12 @@ class WorkbenchEditorOpener {
     _editor.openDiff(
       workspaceId: workspaceId,
       absolutePath: absolutePath,
-      staged: staged,
+      source: source,
       title: title,
       diffText: diffText,
       reloadDiff: reloadDiff,
     );
-    final tab = WorkbenchTabId.diff(absolutePath, staged: staged);
+    final tab = WorkbenchTabId.diff(absolutePath, source: source);
     final replaced = _workbench.ensureTab(
       workspaceId,
       tab,
@@ -68,6 +70,39 @@ class WorkbenchEditorOpener {
     );
     _closeReplaced(workspaceId, replaced);
     _chat?.dismissCompose();
+  }
+
+  /// Opens HEAD-vs-working-tree diff for [absolutePath] (File↔Diff toggle).
+  Future<void> openChangesDiff({
+    required String workspaceId,
+    required String absolutePath,
+    required Future<String?> Function({
+      bool ignoreWhitespace,
+      bool fullContext,
+    })
+    loadDiff,
+    String? title,
+    bool preview = true,
+  }) async {
+    final path = absolutePath.trim();
+    if (path.isEmpty) return;
+    final diffText =
+        await loadDiff(ignoreWhitespace: false, fullContext: true) ?? '';
+    if (diffText.isEmpty && preview) {
+      // Still open so the user can see the empty "no changes" state.
+    }
+    openDiff(
+      workspaceId: workspaceId,
+      absolutePath: path,
+      source: WorkbenchDiffSource.changes,
+      title: title ?? p.basename(path),
+      diffText: diffText,
+      reloadDiff: (ignoreWhitespace, fullContext) => loadDiff(
+        ignoreWhitespace: ignoreWhitespace,
+        fullContext: fullContext,
+      ),
+      preview: preview,
+    );
   }
 
   void _closeReplaced(String workspaceId, WorkbenchTabId? replaced) {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
@@ -25,9 +27,12 @@ class DiffViewer extends StatefulWidget {
     required this.resolve,
     required this.supportsFullContext,
     this.filePath,
-    this.initialMode = DiffViewMode.sideBySide,
+    this.initialMode = DiffViewMode.unified,
+    this.initialFullContext = true,
     this.chrome = WorkspacePageChrome.workspace,
     this.onOpenSource,
+    this.onSwitchToFile,
+    this.title,
     super.key,
   });
 
@@ -35,9 +40,11 @@ class DiffViewer extends StatefulWidget {
     required String oldText,
     required String newText,
     String? filePath,
-    DiffViewMode initialMode = DiffViewMode.sideBySide,
+    DiffViewMode initialMode = DiffViewMode.unified,
     WorkspacePageChrome chrome = WorkspacePageChrome.workspace,
     VoidCallback? onOpenSource,
+    VoidCallback? onSwitchToFile,
+    String? title,
     Key? key,
   }) {
     return DiffViewer._(
@@ -51,8 +58,11 @@ class DiffViewer extends StatefulWidget {
       supportsFullContext: false,
       filePath: filePath,
       initialMode: initialMode,
+      initialFullContext: false,
       chrome: chrome,
       onOpenSource: onOpenSource,
+      onSwitchToFile: onSwitchToFile,
+      title: title,
       key: key,
     );
   }
@@ -62,9 +72,12 @@ class DiffViewer extends StatefulWidget {
     String? filePath,
     Future<String?> Function(bool ignoreWhitespace, bool fullContext)?
     reloadDiff,
-    DiffViewMode initialMode = DiffViewMode.sideBySide,
+    DiffViewMode initialMode = DiffViewMode.unified,
+    bool initialFullContext = true,
     WorkspacePageChrome chrome = WorkspacePageChrome.workspace,
     VoidCallback? onOpenSource,
+    VoidCallback? onSwitchToFile,
+    String? title,
     Key? key,
   }) {
     return DiffViewer._(
@@ -79,8 +92,11 @@ class DiffViewer extends StatefulWidget {
       supportsFullContext: reloadDiff != null,
       filePath: filePath,
       initialMode: initialMode,
+      initialFullContext: initialFullContext,
       chrome: chrome,
       onOpenSource: onOpenSource,
+      onSwitchToFile: onSwitchToFile,
+      title: title,
       key: key,
     );
   }
@@ -97,6 +113,7 @@ class DiffViewer extends StatefulWidget {
 
   final String? filePath;
   final DiffViewMode initialMode;
+  final bool initialFullContext;
 
   /// Workspace surface chrome for shell/editor backgrounds.
   final WorkspacePageChrome chrome;
@@ -104,6 +121,12 @@ class DiffViewer extends StatefulWidget {
   /// Opens the underlying file in the editor; shown as a toolbar button. Hidden
   /// when null.
   final VoidCallback? onOpenSource;
+
+  /// When set, shows File|Diff pill and switches to the file surface.
+  final VoidCallback? onSwitchToFile;
+
+  /// Optional surface title shown on the left of the toolbar.
+  final String? title;
 
   @override
   State<DiffViewer> createState() => _DiffViewerState();
@@ -114,14 +137,20 @@ class _DiffViewerState extends State<DiffViewer> {
   late DiffViewMode _mode = widget.initialMode;
   late DiffResult _result = widget.initialResult;
   bool _ignoreWhitespace = false;
-  bool _fullContext = false;
+  late bool _fullContext =
+      widget.supportsFullContext && widget.initialFullContext;
   var _bodyReady = false;
 
   @override
   void initState() {
     super.initState();
     SchedulerBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _bodyReady = true);
+      if (!mounted) return;
+      setState(() => _bodyReady = true);
+      // Initial payload may be hunk-only; expand to full file when defaulted on.
+      if (_fullContext && widget.resolve != null) {
+        unawaited(_reload());
+      }
     });
   }
 
@@ -142,13 +171,13 @@ class _DiffViewerState extends State<DiffViewer> {
   void _setIgnoreWhitespace(bool value) {
     if (value == _ignoreWhitespace) return;
     setState(() => _ignoreWhitespace = value);
-    _reload();
+    unawaited(_reload());
   }
 
   void _setFullContext(bool value) {
     if (value == _fullContext) return;
     setState(() => _fullContext = value);
-    _reload();
+    unawaited(_reload());
   }
 
   Widget _buildBody(BuildContext context) {
@@ -195,6 +224,8 @@ class _DiffViewerState extends State<DiffViewer> {
           onFullContextChanged: _setFullContext,
           showFullContext: widget.supportsFullContext,
           onOpenSource: widget.onOpenSource,
+          onSwitchToFile: widget.onSwitchToFile,
+          title: widget.title,
         ),
         Expanded(
           child: _bodyReady

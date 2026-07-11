@@ -2096,6 +2096,8 @@
   "diffOpenSourceFile": "Open source file",
   "diffShowAllLines": "Show all lines",
   "diffNoChanges": "No changes",
+  "fileDiffToggleFile": "File",
+  "fileDiffToggleDiff": "Diff",
   "diffChangeCounter": "{current} / {total}",
   "@diffChangeCounter": {
     "placeholders": {

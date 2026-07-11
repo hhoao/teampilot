@@ -81,14 +81,14 @@ void main() {
     cubit.openDiff(
       workspaceId: ws,
       absolutePath: '/repo/a.dart',
-      staged: false,
+      source: WorkbenchDiffSource.unstaged,
       title: 'a.dart',
       diffText: 'diff --git a',
     );
     cubit.openDiff(
       workspaceId: ws,
       absolutePath: '/repo/a.dart',
-      staged: true,
+      source: WorkbenchDiffSource.staged,
       title: 'a.dart',
       diffText: 'diff --git b',
     );
@@ -96,7 +96,10 @@ void main() {
     final bucket = cubit.state.bucket(ws);
     expect(bucket.openDiffs.length, 2);
     expect(
-      bucket.openDiffs[WorkbenchTabId.diffKey('/repo/a.dart', staged: false)]
+      bucket.openDiffs[WorkbenchTabId.diffKey(
+            '/repo/a.dart',
+            source: WorkbenchDiffSource.unstaged,
+          )]
           ?.diffText,
       'diff --git a',
     );
@@ -108,7 +111,10 @@ void main() {
 
     cubit.closeDiff(
       ws,
-      WorkbenchTabId.diffKey('/repo/a.dart', staged: false),
+      WorkbenchTabId.diffKey(
+        '/repo/a.dart',
+        source: WorkbenchDiffSource.unstaged,
+      ),
     );
     expect(cubit.state.bucket(ws).openDiffs.length, 1);
     expect(cubit.state.bucket(ws).openFilePaths, [file.path]);

@@ -15,6 +15,7 @@ import '../../services/editor_platform/document_session.dart';
 import '../../services/editor_platform/editor_viewport_token_binder.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/workbench/file_diff_surface_toggle.dart';
 
 /// Center-pane file editor for one path (no inner tab bar).
 class FileEditorSurface extends StatelessWidget {
@@ -74,6 +75,7 @@ class _FileEditorToolbar extends StatelessWidget {
       (c) => c.isReadOnly(workspaceId, path),
     );
     final name = p.basename(path);
+    final canToggleDiff = gitCubitForAbsolutePath(context, path) != null;
     return SizedBox(
       height: 36,
       child: Padding(
@@ -107,6 +109,24 @@ class _FileEditorToolbar extends StatelessWidget {
                         path,
                       )
                     : null,
+              ),
+            ],
+            if (canToggleDiff) ...[
+              const SizedBox(width: 4),
+              FileDiffSurfaceToggle(
+                mode: FileDiffSurfaceMode.file,
+                onModeChanged: (mode) {
+                  if (mode == FileDiffSurfaceMode.diff) {
+                    unawaited(
+                      switchFileDiffSurface(
+                        context: context,
+                        workspaceId: workspaceId,
+                        absolutePath: path,
+                        target: mode,
+                      ),
+                    );
+                  }
+                },
               ),
             ],
           ],

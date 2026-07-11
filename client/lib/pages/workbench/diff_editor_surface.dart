@@ -1,15 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/editor_cubit.dart';
+import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../services/workbench/workbench_editor_opener.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/diff/diff_viewer.dart';
+import '../../widgets/workbench/file_diff_surface_toggle.dart';
 
-/// Center-pane git diff for one path + staged|unstaged.
+/// Center-pane git diff for one path + staged|unstaged|changes.
 class DiffEditorSurface extends StatefulWidget {
   const DiffEditorSurface({
     required this.workspaceId,
@@ -48,73 +50,55 @@ class _DiffEditorSurfaceState extends State<DiffEditorSurface> {
       );
     }
 
-    final stagedLabel = tab.staged ? ' (staged)' : '';
+    final stagedLabel = tab.source == WorkbenchDiffSource.staged
+        ? ' (staged)'
+        : '';
     final reload = context.read<EditorCubit>().diffReloadFor(widget.diffKey);
 
     return ColoredBox(
       color: cs.workspaceCardChrome(WorkspacePageChrome.workspace),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            height: 36,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '${tab.title}$stagedLabel',
-                  style: AppTextStyles.of(context).bodySmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+      child: !_viewerReady
+          ? const Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
               ),
-            ),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: !_viewerReady
-                ? const Center(
-                    child: SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                : tab.diffText.trim().isEmpty
-                ? Center(child: Text(context.l10n.diffNoChanges))
-                : DiffViewer.fromUnifiedDiff(
-                    key: ValueKey(
-                      Object.hash(widget.diffKey, tab.diffText, tab.title),
-                    ),
-                    diffText: tab.diffText,
-                    filePath: tab.absolutePath,
-                    reloadDiff: reload == null
-                        ? null
-                        : (ignoreWhitespace, fullContext) async {
-                            final next = await reload(
-                              ignoreWhitespace,
-                              fullContext,
-                            );
-                            if (next != null && mounted) {
-                              context.read<EditorCubit>().updateDiffText(
-                                widget.workspaceId,
-                                widget.diffKey,
-                                next,
-                              );
-                            }
-                            return next;
-                          },
-                    onOpenSource: () {
-                      context.read<WorkbenchEditorOpener>().openFile(
-                        widget.workspaceId,
-                        tab.absolutePath,
+            )
+          : DiffViewer.fromUnifiedDiff(
+              key: ValueKey(
+                Object.hash(widget.diffKey, tab.diffText, tab.title),
+              ),
+              title: '${tab.title}$stagedLabel',
+              diffText: tab.diffText,
+              filePath: tab.absolutePath,
+              reloadDiff: reload == null
+                  ? null
+                  : (ignoreWhitespace, fullContext) async {
+                      final editor = context.read<EditorCubit>();
+                      final next = await reload(
+                        ignoreWhitespace,
+                        fullContext,
                       );
+                      if (next == null || !mounted) return next;
+                      editor.updateDiffText(
+                        widget.workspaceId,
+                        widget.diffKey,
+                        next,
+                      );
+                      return next;
                     },
+              onSwitchToFile: () {
+                unawaited(
+                  switchFileDiffSurface(
+                    context: context,
+                    workspaceId: widget.workspaceId,
+                    absolutePath: tab.absolutePath,
+                    target: FileDiffSurfaceMode.file,
                   ),
-          ),
-        ],
-      ),
+                );
+              },
+            ),
     );
   }
 }

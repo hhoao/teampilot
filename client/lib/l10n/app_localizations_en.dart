@@ -4695,6 +4695,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get diffNoChanges => 'No changes';
 
   @override
+  String get fileDiffToggleFile => 'File';
+
+  @override
+  String get fileDiffToggleDiff => 'Diff';
+
+  @override
   String diffChangeCounter(int current, int total) {
     return '$current / $total';
   }

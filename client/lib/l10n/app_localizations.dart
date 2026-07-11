@@ -8490,6 +8490,18 @@ abstract class AppLocalizations {
   /// **'No changes'**
   String get diffNoChanges;
 
+  /// No description provided for @fileDiffToggleFile.
+  ///
+  /// In en, this message translates to:
+  /// **'File'**
+  String get fileDiffToggleFile;
+
+  /// No description provided for @fileDiffToggleDiff.
+  ///
+  /// In en, this message translates to:
+  /// **'Diff'**
+  String get fileDiffToggleDiff;
+
   /// No description provided for @diffChangeCounter.
   ///
   /// In en, this message translates to:

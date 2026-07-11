@@ -4517,6 +4517,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get diffNoChanges => '没有更改';
 
   @override
+  String get fileDiffToggleFile => '文件';
+
+  @override
+  String get fileDiffToggleDiff => 'Diff';
+
+  @override
   String diffChangeCounter(int current, int total) {
     return '$current / $total';
   }

@@ -49,7 +49,7 @@ void main() {
       const ws = 'ws-a';
       final s1 = WorkbenchTabId.session('s1');
       final f1 = WorkbenchTabId.file('/a.dart');
-      final d1 = WorkbenchTabId.diff('/a.dart', staged: false);
+      final d1 = WorkbenchTabId.diffStaged('/a.dart', staged: false);
 
       cubit.ensureTab(ws, s1);
       cubit.ensureTab(ws, f1);
@@ -73,7 +73,7 @@ void main() {
       final s1 = WorkbenchTabId.session('s1');
       final f1 = WorkbenchTabId.file('/a.dart');
       final f2 = WorkbenchTabId.file('/b.dart');
-      final d1 = WorkbenchTabId.diff('/a.dart', staged: true);
+      final d1 = WorkbenchTabId.diffStaged('/a.dart', staged: true);
 
       cubit.ensureTab(ws, s1);
       cubit.ensureTab(ws, f1);
@@ -98,8 +98,8 @@ void main() {
 
     test('staged and unstaged diffs are distinct tabs', () {
       const ws = 'ws-a';
-      final unstaged = WorkbenchTabId.diff('/a.dart', staged: false);
-      final staged = WorkbenchTabId.diff('/a.dart', staged: true);
+      final unstaged = WorkbenchTabId.diffStaged('/a.dart', staged: false);
+      final staged = WorkbenchTabId.diffStaged('/a.dart', staged: true);
 
       cubit.ensureTab(ws, unstaged);
       cubit.ensureTab(ws, staged);
@@ -178,7 +178,7 @@ void main() {
     test('diff preview can replace file preview', () {
       const ws = 'ws-a';
       final file = WorkbenchTabId.file('/a.dart');
-      final diff = WorkbenchTabId.diff('/a.dart', staged: false);
+      final diff = WorkbenchTabId.diffStaged('/a.dart', staged: false);
 
       cubit.ensureTab(ws, file, preview: true);
       final replaced = cubit.ensureTab(ws, diff, preview: true);

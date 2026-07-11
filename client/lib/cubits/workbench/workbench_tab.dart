@@ -2,6 +2,18 @@ import 'package:equatable/equatable.dart';
 
 enum WorkbenchTabKind { session, file, diff }
 
+/// Which git diff a center-pane diff tab is showing.
+enum WorkbenchDiffSource {
+  /// Index vs HEAD (`git diff --cached`).
+  staged,
+
+  /// Worktree vs index (`git diff`).
+  unstaged,
+
+  /// Worktree vs HEAD (uncommitted; Orca "Changes" mode).
+  changes,
+}
+
 /// Stable identity for one center workbench tab in a workspace.
 class WorkbenchTabId extends Equatable {
   const WorkbenchTabId._(this.kind, this.id);
@@ -12,29 +24,41 @@ class WorkbenchTabId extends Equatable {
   factory WorkbenchTabId.file(String absolutePath) =>
       WorkbenchTabId._(WorkbenchTabKind.file, absolutePath);
 
-  factory WorkbenchTabId.diff(String absolutePath, {required bool staged}) =>
-      WorkbenchTabId._(
-        WorkbenchTabKind.diff,
-        diffKey(absolutePath, staged: staged),
-      );
+  factory WorkbenchTabId.diff(
+    String absolutePath, {
+    required WorkbenchDiffSource source,
+  }) => WorkbenchTabId._(
+    WorkbenchTabKind.diff,
+    diffKey(absolutePath, source: source),
+  );
 
-  static String diffKey(String absolutePath, {required bool staged}) =>
-      '$absolutePath::${staged ? 'staged' : 'unstaged'}';
+  /// Source Control staged/unstaged rows.
+  factory WorkbenchTabId.diffStaged(
+    String absolutePath, {
+    required bool staged,
+  }) => WorkbenchTabId.diff(
+    absolutePath,
+    source: staged ? WorkbenchDiffSource.staged : WorkbenchDiffSource.unstaged,
+  );
 
-  static (String path, bool staged)? parseDiffKey(String key) {
-    const stagedSuffix = '::staged';
-    const unstagedSuffix = '::unstaged';
-    if (key.endsWith(stagedSuffix)) {
-      return (
-        key.substring(0, key.length - stagedSuffix.length),
-        true,
-      );
-    }
-    if (key.endsWith(unstagedSuffix)) {
-      return (
-        key.substring(0, key.length - unstagedSuffix.length),
-        false,
-      );
+  /// File↔Diff toggle: HEAD vs working tree.
+  factory WorkbenchTabId.diffChanges(String absolutePath) =>
+      WorkbenchTabId.diff(absolutePath, source: WorkbenchDiffSource.changes);
+
+  static String diffKey(
+    String absolutePath, {
+    required WorkbenchDiffSource source,
+  }) => '$absolutePath::${source.name}';
+
+  static (String path, WorkbenchDiffSource source)? parseDiffKey(String key) {
+    for (final source in WorkbenchDiffSource.values) {
+      final suffix = '::${source.name}';
+      if (key.endsWith(suffix)) {
+        return (
+          key.substring(0, key.length - suffix.length),
+          source,
+        );
+      }
     }
     return null;
   }
@@ -52,9 +76,18 @@ class WorkbenchTabId extends Equatable {
     return parseDiffKey(id)?.$1;
   }
 
-  bool? get diffStaged {
+  WorkbenchDiffSource? get diffSource {
     if (kind != WorkbenchTabKind.diff) return null;
     return parseDiffKey(id)?.$2;
+  }
+
+  bool? get diffStaged {
+    final source = diffSource;
+    return switch (source) {
+      WorkbenchDiffSource.staged => true,
+      WorkbenchDiffSource.unstaged => false,
+      WorkbenchDiffSource.changes || null => null,
+    };
   }
 
   @override

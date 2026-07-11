@@ -11,6 +11,7 @@ import '../../cubits/ai_feature_settings_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/git_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
+import '../../cubits/workbench/workbench_tab.dart';
 import '../../models/ai_feature_setting.dart';
 import '../../services/ai/ai_feature_setting_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -291,7 +292,9 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
     context.read<WorkbenchEditorOpener>().openDiff(
       workspaceId: widget.workspaceId,
       absolutePath: absolutePath,
-      staged: change.staged,
+      source: change.staged
+          ? WorkbenchDiffSource.staged
+          : WorkbenchDiffSource.unstaged,
       title: change.path,
       diffText: diff,
       reloadDiff: (ignoreWhitespace, fullContext) => _cubit.diff(
