@@ -8,6 +8,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../services/run/launch_adapter_protocol.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_icon_button.dart';
+import '../../theme/app_text_styles.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import 'run_config_editor_dialog.dart';
 import 'run_toolbar_config_dropdown.dart';
@@ -137,9 +138,7 @@ class _ChoiceOptionSelector extends StatelessWidget {
                   child: Text(
                     label,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: cs.onSurface,
-                    ),
+                    style: AppTextStyles.of(context).bodyColored(cs.onSurface),
                   ),
                 ),
                 Icon(Icons.arrow_drop_down, color: cs.onSurfaceVariant),

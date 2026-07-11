@@ -96,8 +96,8 @@ class _ColumnSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
     final l10n = context.l10n;
-    final tt = Theme.of(context).textTheme;
 
     final (icon, label) = switch (column) {
       BoardColumn.pending => (Icons.hourglass_top_outlined, l10n.boardPending),
@@ -116,15 +116,12 @@ class _ColumnSection extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 label,
-                style: tt.labelSmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: styles.badgeColored(cs.onSurfaceVariant),
               ),
               const SizedBox(width: 6),
               Text(
                 '(${cards.length})',
-                style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+                style: styles.mutedCaption,
               ),
             ],
           ),
@@ -157,7 +154,7 @@ class _CardTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
+    final styles = AppTextStyles.of(context);
 
     final isError =
         card.status == TaskStatus.failed || card.status == TaskStatus.cancelled;
@@ -171,8 +168,7 @@ class _CardTile extends StatelessWidget {
           children: [
             Text(
               '#${card.seq}',
-              style: tt.labelSmall?.copyWith(
-                color: cs.onSurfaceVariant,
+              style: styles.captionColored(cs.onSurfaceVariant).copyWith(
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
@@ -190,9 +186,7 @@ class _CardTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       '› $memberName',
-                      style: tt.labelSmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
+                      style: styles.mutedCaption,
                     ),
                   ],
                 ],

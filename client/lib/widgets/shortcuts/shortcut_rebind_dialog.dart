@@ -10,6 +10,7 @@ import '../../services/commands/command_l10n.dart';
 import '../../services/commands/key_chord.dart';
 import '../../services/commands/key_chord_formatter.dart';
 import '../../services/commands/shortcut_dispatcher_handle.dart';
+import '../../theme/app_text_styles.dart';
 import '../app_dialog.dart';
 
 /// Opens the press-to-bind capture modal for [commandId].
@@ -183,6 +184,7 @@ class _ShortcutRebindDialogState extends State<ShortcutRebindDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final styles = AppTextStyles.of(context);
     final title = titleForCommand(l10n, widget.commandId);
 
     return Focus(
@@ -203,7 +205,7 @@ class _ShortcutRebindDialogState extends State<ShortcutRebindDialog> {
             const SizedBox(height: 4),
             Text(
               title,
-              style: Theme.of(context).textTheme.titleSmall,
+              style: styles.sectionTitle,
             ),
             const SizedBox(height: 12),
             if (_pendingChord != null)
@@ -225,16 +227,14 @@ class _ShortcutRebindDialogState extends State<ShortcutRebindDialog> {
                 children: [
                   Text(
                     l10n.shortcutsPressShortcutHint,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                    style: styles.mutedBodySmall,
                   ),
                   if (_unsupportedKeyMessage != null) ...[
                     const SizedBox(height: 8),
                     Text(
                       _unsupportedKeyMessage!,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.error,
+                      style: styles.bodySmallColored(
+                        Theme.of(context).colorScheme.error,
                       ),
                     ),
                   ],
@@ -263,6 +263,7 @@ class _ConflictConfirm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final styles = AppTextStyles.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -272,9 +273,7 @@ class _ConflictConfirm extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           chordLabel,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
+          style: styles.dialogTitle.copyWith(fontWeight: FontWeight.w700),
         ),
         AppDialogActions(
           showDividerAbove: false,

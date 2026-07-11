@@ -7,6 +7,7 @@ import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../theme/app_fonts.dart';
+import '../../theme/app_text_styles.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/app_provider_cubit.dart';
@@ -40,6 +41,7 @@ class AppProviderDetailPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final styles = AppTextStyles.of(context);
     final requiresKey = provider.requiresApiKey;
     final modelCount = provider.flashskyaiModelCount;
 
@@ -65,9 +67,7 @@ class AppProviderDetailPanel extends StatelessWidget {
                   children: [
                     Text(
                       provider.name,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: styles.prominent.copyWith(fontWeight: FontWeight.w700),
                     ),
                     if (isOfficialClaudeProvider(provider) ||
                         (provider.cli == CliTool.cursor &&
@@ -102,9 +102,7 @@ class AppProviderDetailPanel extends StatelessWidget {
           ),
           Text(
             provider.id,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+            style: styles.mutedBodySmall,
           ),
           const SizedBox(height: 16),
           if (provider.websiteUrl.isNotEmpty)
@@ -160,7 +158,7 @@ class AppProviderDetailPanel extends StatelessWidget {
               Expanded(
                 child: Text(
                   l10n.jsonPreview,
-                  style: Theme.of(context).textTheme.labelLarge,
+                  style: styles.formLabel,
                 ),
               ),
               _ProviderJsonPreviewCopyButton(provider: provider),
@@ -227,7 +225,7 @@ class _ProviderJsonPreviewState extends State<_ProviderJsonPreview> {
     final json = _json;
     final textStyle = appMonoTextStyle(
       context,
-      base: Theme.of(context).textTheme.bodySmall,
+      base: AppTextStyles.of(context).bodySmall,
     );
     return Container(
       padding: const EdgeInsets.all(12),

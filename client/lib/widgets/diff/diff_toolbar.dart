@@ -2,6 +2,7 @@
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_icon_sizes.dart';
+import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../app_icon_button.dart';
 import '../workbench/file_diff_surface_toggle.dart';
@@ -59,6 +60,7 @@ class DiffToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
     final titleText = title?.trim();
     final iconColor = cs.iconMuted;
     final showOpenSource = onOpenSource != null && onSwitchToFile == null;
@@ -76,7 +78,7 @@ class DiffToolbar extends StatelessWidget {
             Expanded(
               child: Text(
                 titleText,
-                style: Theme.of(context).textTheme.bodySmall,
+                style: styles.bodySmall,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -144,9 +146,7 @@ class DiffToolbar extends StatelessWidget {
                           ? l10n.diffChangeCounter(current, total)
                           : l10n.diffNoChanges,
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
+                      style: styles.mutedBodySmall,
                     ),
                   ),
                   AppIconButton(

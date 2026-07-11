@@ -157,9 +157,7 @@ class _NotificationDropdownPanel extends StatelessWidget {
               Expanded(
                 child: Text(
                   l10n.notificationCenterTitle,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                  style: styles.sectionTitle,
                 ),
               ),
               IconButton(

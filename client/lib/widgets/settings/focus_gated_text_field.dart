@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/app_text_styles.dart';
+
 /// Text field that mounts [TextField] only while focused.
 ///
 /// Unfocused fields render as static text inside [InputDecorator], avoiding
@@ -123,7 +125,7 @@ class _FocusGatedTextFieldState extends State<FocusGatedTextField> {
     final baseStyle =
         widget.decoration.hintStyle ??
         theme.inputDecorationTheme.hintStyle ??
-        theme.textTheme.bodyLarge;
+        AppTextStyles.of(context).prominent;
     final fontSize = baseStyle?.fontSize ?? 16.0;
     final lineHeight = baseStyle?.height ?? 1.0;
     // Match [TextField] minLines vertical extent while unfocused.

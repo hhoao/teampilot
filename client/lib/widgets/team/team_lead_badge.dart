@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
+import '../../theme/app_text_styles.dart';
 import '../../utils/team_member_naming.dart';
 import '../../models/team_config.dart';
 
@@ -17,6 +18,7 @@ class TeamLeadBadge extends StatelessWidget {
     final horizontal = compact ? 6.0 : 8.0;
     final vertical = compact ? 2.0 : 3.0;
 
+    final styles = AppTextStyles.of(context);
     return DecoratedBox(
       decoration: BoxDecoration(
         color: cs.secondaryContainer,
@@ -29,8 +31,8 @@ class TeamLeadBadge extends StatelessWidget {
         ),
         child: Text(
           l10n.teamLeadBadge,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: cs.onSecondaryContainer,
+          style: styles.captionColored(
+            cs.onSecondaryContainer,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -60,8 +62,12 @@ class MemberTitleRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final raw = member.name.trim();
     final label = raw.isEmpty ? (fallbackName ?? member.id) : raw;
-    final textStyle =
-        style?.copyWith(color: textColor) ?? TextStyle(color: textColor);
+    final styles = AppTextStyles.of(context);
+    final textStyle = style != null
+        ? (textColor != null ? style!.copyWith(color: textColor) : style)
+        : (textColor != null
+              ? styles.bodyColored(textColor)
+              : styles.body);
 
     return Row(
       children: [

@@ -11,6 +11,7 @@ import '../../pages/ssh_profiles/ssh_profile_form_dialog.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import '../../services/terminal/workspace_shell_connector.dart';
 import '../../services/terminal/workspace_terminal_launch_catalog.dart';
+import '../../theme/app_text_styles.dart';
 import '../app_icon_button.dart';
 import '../menu/sidebar_action_menu.dart';
 
@@ -189,7 +190,7 @@ Future<void> _showTerminalSettingsSheet(BuildContext context) async {
                 children: [
                   Text(
                     context.l10n.workspaceTerminalSettings,
-                    style: Theme.of(context).textTheme.titleSmall,
+                    style: AppTextStyles.of(context).sectionTitle,
                   ),
                   const SizedBox(height: 12),
                   SegmentedButton<String>(

@@ -64,7 +64,7 @@ class MailboxPanel extends StatelessWidget {
             ),
             title: Text(
               '${e.from} → ${e.to}',
-              style: Theme.of(context).textTheme.labelSmall,
+              style: styles.caption,
             ),
             subtitle: Text(
               e.content,

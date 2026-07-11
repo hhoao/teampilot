@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../services/provider/credential_binding.dart';
+import '../../theme/app_text_styles.dart';
 import '../dropdown/app_dropdown_field.dart';
 
 /// Official Claude OAuth: follow global `~/.claude` or use an isolated copy.
@@ -25,8 +26,7 @@ class ClaudeCredentialBindingField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
+    final styles = AppTextStyles.of(context);
     final readOnly = onChanged == null;
 
     return Column(
@@ -34,7 +34,7 @@ class ClaudeCredentialBindingField extends StatelessWidget {
       children: [
         Text(
           l10n.appProviderClaudeCredentialBinding,
-          style: theme.textTheme.labelLarge,
+          style: styles.formLabel,
         ),
         const SizedBox(height: 6),
         AppDropdownField<CredentialBindingKind>(
@@ -57,9 +57,7 @@ class ClaudeCredentialBindingField extends StatelessWidget {
           value == CredentialBindingKind.linked
               ? l10n.appProviderClaudeCredentialBindingLinkedHint
               : l10n.appProviderClaudeCredentialBindingIsolatedHint,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: cs.onSurfaceVariant,
-          ),
+          style: styles.mutedBodySmall,
         ),
       ],
     );

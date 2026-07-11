@@ -5,6 +5,7 @@ import '../../models/app_provider_config.dart';
 import '../../services/cli/registry/capabilities/provider_model_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../theme/app_text_styles.dart';
 import '../app_dialog.dart';
 import '../app_icon_button.dart';
 import '../dropdown/app_dropdown_decoration.dart';
@@ -180,6 +181,7 @@ class ProviderModelsEditor extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
+    final styles = AppTextStyles.of(context);
     final entries = parse(models);
     final supportsTiers = _supportsTiers(context);
 
@@ -190,7 +192,7 @@ class ProviderModelsEditor extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text(l10n.models, style: theme.textTheme.labelLarge),
+              child: Text(l10n.models, style: styles.formLabel),
             ),
             AppIconButton(
               icon: Icons.add,
@@ -206,9 +208,7 @@ class ProviderModelsEditor extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
               l10n.noModelsConfigured,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+              style: styles.mutedBodySmall,
             ),
           )
         else
@@ -282,6 +282,7 @@ class _ModelRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
+    final styles = AppTextStyles.of(context);
     final muted = theme.colorScheme.onSurfaceVariant;
     final isBackground = entry.tier == ProviderModelTier.background;
     return Padding(
@@ -319,14 +320,14 @@ class _ModelRow extends StatelessWidget {
                   entry.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium,
+                  style: styles.body,
                 ),
                 if (entry.model.isNotEmpty && entry.model != entry.name)
                   Text(
                     entry.model,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(color: muted),
+                    style: styles.bodySmallColored(muted),
                   ),
               ],
             ),
@@ -404,7 +405,7 @@ class _ProviderModelEntryDialogState extends State<_ProviderModelEntryDialog> {
         children: [
           AppDialogHeader(title: widget.title),
           const SizedBox(height: 16),
-          Text(l10n.modelId, style: Theme.of(context).textTheme.labelLarge),
+          Text(l10n.modelId, style: AppTextStyles.of(context).formLabel),
           const SizedBox(height: 8),
           AppDropdownWithCustomInput(
             value: _model,

@@ -63,7 +63,7 @@ class AndroidSshProfileSelector extends StatelessWidget {
                     selected.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall,
+                    style: AppTextStyles.of(context).sectionTitle,
                   ),
                 ),
                 Icon(Icons.arrow_drop_down),

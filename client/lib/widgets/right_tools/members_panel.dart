@@ -156,7 +156,7 @@ class MembersPanel extends StatelessWidget {
                         title: MemberTitleRow(
                           member: member,
                           fallbackName: l10n.memberName,
-                          style: Theme.of(context).textTheme.bodyMedium,
+                          style: styles.body,
                           textColor: titleColor,
                           compactBadge: true,
                         ),

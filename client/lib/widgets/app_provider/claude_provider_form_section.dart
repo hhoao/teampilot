@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
+import '../../theme/app_text_styles.dart';
 import '../dropdown/app_dropdown_field.dart';
 
 const _apiKeyFields = ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_API_KEY'];
@@ -18,8 +19,7 @@ class ClaudeProviderFormSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
+    final styles = AppTextStyles.of(context);
     return Material(
       color: Colors.transparent,
       child: ExpansionTile(
@@ -28,7 +28,7 @@ class ClaudeProviderFormSection extends StatelessWidget {
         childrenPadding: EdgeInsets.zero,
         title: Text(
           l10n.appProviderAdvancedOptions,
-          style: theme.textTheme.titleSmall,
+          style: styles.sectionTitle,
         ),
         children: [
           const SizedBox(height: 8),
@@ -45,9 +45,7 @@ class ClaudeProviderFormSection extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             l10n.appProviderClaudeAuthFieldHint,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: cs.onSurfaceVariant,
-            ),
+            style: styles.mutedBodySmall,
           ),
         ],
       ),
@@ -64,7 +62,7 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.centerLeft,
-      child: Text(text, style: Theme.of(context).textTheme.labelLarge),
+      child: Text(text, style: AppTextStyles.of(context).formLabel),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/run/run_terminal_bridge.dart';
+import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 
 /// Scrollable text log for one [RunSession] (YAGNI: plain text for all types).
@@ -30,8 +31,8 @@ class RunSessionPage extends StatelessWidget {
                 alignment: Alignment.topLeft,
                 child: Text(
                   text.isEmpty ? '' : text,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.workspacePrimaryText,
+                  style: AppTextStyles.of(context).bodySmallColored(
+                    cs.workspacePrimaryText,
                   ),
                 ),
               ),

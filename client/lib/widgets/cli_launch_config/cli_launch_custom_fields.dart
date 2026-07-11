@@ -12,6 +12,7 @@ import '../../pages/team_config/team_config_helpers.dart';
 import '../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../widgets/app_provider/cli_effort_picker_field.dart';
 import '../../widgets/app_provider/provider_model_picker_field.dart';
+import '../../theme/app_text_styles.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/dropdown/app_dropdown_field.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
@@ -116,9 +117,7 @@ class CliLaunchCustomFields extends StatelessWidget {
             title: providerTitle ?? l10n.provider,
             trailing: Text(
               l10n.onboardingDefaultPresetEmpty,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+              style: AppTextStyles.of(context).mutedBodySmall,
             ),
             showDividerBelow: false,
           )

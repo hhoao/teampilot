@@ -11,6 +11,7 @@ import '../../services/run/launch_adapter_protocol.dart';
 import '../../services/run/launch_config_store.dart';
 import '../../services/run/launch_type_unavailable.dart';
 import '../../theme/app_icon_sizes.dart';
+import '../../theme/app_text_styles.dart';
 import '../app_dialog.dart';
 import '../app_icon_button.dart';
 import '../menu/sidebar_action_menu.dart';
@@ -98,9 +99,7 @@ class RunToolbarConfigDropdown extends StatelessWidget {
                     child: Text(
                       label,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: cs.onSurface,
-                      ),
+                      style: AppTextStyles.of(context).bodyColored(cs.onSurface),
                     ),
                   ),
                   Icon(Icons.arrow_drop_down, color: cs.onSurfaceVariant),

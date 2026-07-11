@@ -6,6 +6,7 @@ import '../utils/logger.dart';
 import '../services/storage/remote_directory_browser.dart';
 import '../services/storage/workspace_directory_picker.dart';
 import '../theme/app_icon_sizes.dart';
+import '../theme/app_text_styles.dart';
 import 'app_dialog.dart';
 
 /// SFTP-backed remote directory browser. Resolves the [targetId]'s filesystem
@@ -126,6 +127,7 @@ class _RemoteDirectoryBrowserDialogState
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
+    final styles = AppTextStyles.of(theme);
     final listing = _listing;
 
     return AppDialog(
@@ -155,27 +157,25 @@ class _RemoteDirectoryBrowserDialogState
                 child: SelectableText(
                   listing?.path ?? '…',
                   maxLines: 1,
-                  style: theme.textTheme.bodyMedium,
+                  style: styles.body,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          SizedBox(height: 240, child: _buildBody(theme, l10n)),
+          SizedBox(height: 240, child: _buildBody(styles, theme, l10n)),
           if (_error != null) ...[
             const SizedBox(height: 8),
             Text(
               _error!,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.error,
-              ),
+              style: styles.bodySmallColored(theme.colorScheme.error),
             ),
           ],
           if (!widget.browseOnly) ...[
             const SizedBox(height: 16),
             Text(
               l10n.remoteDirectoryBrowserTypePathLabel,
-              style: theme.textTheme.labelLarge,
+              style: styles.formLabel,
             ),
             const SizedBox(height: 6),
             Row(
@@ -224,7 +224,7 @@ class _RemoteDirectoryBrowserDialogState
     );
   }
 
-  Widget _buildBody(ThemeData theme, AppLocalizations l10n) {
+  Widget _buildBody(AppTextStyles styles, ThemeData theme, AppLocalizations l10n) {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -233,9 +233,7 @@ class _RemoteDirectoryBrowserDialogState
       return Center(
         child: Text(
           l10n.remoteDirectoryBrowserError,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+          style: styles.mutedBodySmall,
         ),
       );
     }
@@ -243,9 +241,7 @@ class _RemoteDirectoryBrowserDialogState
       return Center(
         child: Text(
           l10n.remoteDirectoryBrowserEmpty,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+          style: styles.mutedBodySmall,
         ),
       );
     }

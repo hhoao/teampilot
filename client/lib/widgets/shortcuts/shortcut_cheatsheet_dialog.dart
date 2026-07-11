@@ -122,9 +122,7 @@ class _CheatsheetRow extends StatelessWidget {
           if (chords.isEmpty)
             Text(
               l10n.shortcutsNotSet,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
+              style: AppTextStyles.of(context).mutedBodySmall,
             )
           else
             Wrap(
@@ -157,9 +155,9 @@ class _ChordChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+        style: AppTextStyles.of(context).bodySmallColored(
+          cs.onSurface,
           fontWeight: FontWeight.w600,
-          color: cs.onSurface,
         ),
       ),
     );

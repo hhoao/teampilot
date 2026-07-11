@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_notification.dart';
+import '../../theme/app_text_styles.dart';
 import '../../theme/app_toast_theme.dart';
 import '../app_toast/app_toast.dart';
 
@@ -79,21 +80,16 @@ class _NotificationListTileState extends State<NotificationListTile> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final styles = AppTextStyles.of(context);
     final accent = notificationVariantAccent(cs, widget.notification.variant);
     final l10n = context.l10n;
     final notification = widget.notification;
     final message = notification.message;
     final hasTitle = notification.hasTitle;
     final expandable = notificationMessageIsExpandable(message);
-    final titleStyle = textTheme.titleSmall?.copyWith(
-      fontWeight: FontWeight.w600,
-      color: cs.onSurface,
-      height: 1.25,
-    );
-    final messageStyle = textTheme.bodyMedium?.copyWith(
-      color: hasTitle ? cs.onSurfaceVariant : cs.onSurface,
-      height: 1.35,
+    final titleStyle = styles.sectionTitleColored(cs.onSurface);
+    final messageStyle = styles.bodyColored(
+      hasTitle ? cs.onSurfaceVariant : cs.onSurface,
     );
 
     Widget messageBody;
@@ -171,9 +167,7 @@ class _NotificationListTileState extends State<NotificationListTile> {
                       const SizedBox(height: 6),
                       Text(
                         formatNotificationTime(context, notification.createdAt),
-                        style: textTheme.labelSmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
+                        style: styles.mutedCaption,
                       ),
                     ],
                   ),

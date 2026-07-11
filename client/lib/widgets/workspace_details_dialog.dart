@@ -6,6 +6,7 @@ import '../l10n/l10n_extensions.dart';
 import '../models/workspace.dart';
 import '../models/workspace_folder.dart';
 import '../repositories/session_repository.dart';
+import '../theme/app_text_styles.dart';
 import 'app_dialog.dart';
 import 'workspace_folders_editor.dart';
 
@@ -90,6 +91,7 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final styles = AppTextStyles.of(context);
     final p = widget.workspace;
 
     return AppDialog(
@@ -108,7 +110,7 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
           const SizedBox(height: 16),
           Text(
             l10n.workspaceFoldersSectionTitle,
-            style: Theme.of(context).textTheme.labelLarge,
+            style: styles.formLabel,
           ),
           const SizedBox(height: 8),
           WorkspaceFoldersEditor(
@@ -163,13 +165,13 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final styles = AppTextStyles.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: theme.textTheme.labelLarge),
+        Text(label, style: styles.formLabel),
         const SizedBox(height: 4),
-        SelectableText(value, style: theme.textTheme.bodyMedium),
+        SelectableText(value, style: styles.body),
       ],
     );
   }
