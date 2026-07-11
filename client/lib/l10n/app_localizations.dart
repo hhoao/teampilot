@@ -9870,6 +9870,12 @@ abstract class AppLocalizations {
   /// **'Select configuration'**
   String get runSelectConfiguration;
 
+  /// No description provided for @runCompoundConfiguration.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (compound)'**
+  String runCompoundConfiguration(String name);
+
   /// No description provided for @runSuggestedConfiguration.
   ///
   /// In en, this message translates to:

@@ -136,6 +136,17 @@ class _FakePlatform implements RunPlatformApi {
       sessionManager.start(owned);
 
   @override
+  Future<List<String>> startCompound({
+    required OwnedLaunchCompound owned,
+    required List<OwnedLaunchConfiguration> documentConfigs,
+  }) {
+    return sessionManager.startCompound(
+      compound: owned.compound,
+      documentConfigs: documentConfigs,
+    );
+  }
+
+  @override
   Future<void> stop(String sessionId) => sessionManager.stop(sessionId);
 
   @override
@@ -241,6 +252,12 @@ class _DeferredFakePlatform implements RunPlatformApi, RunPlatformDeferred {
   @override
   Future<RunSession> start(OwnedLaunchConfiguration owned) =>
       throw StateError('not ready');
+
+  @override
+  Future<List<String>> startCompound({
+    required OwnedLaunchCompound owned,
+    required List<OwnedLaunchConfiguration> documentConfigs,
+  }) => throw StateError('not ready');
 
   @override
   Future<void> stop(String sessionId) => throw StateError('not ready');

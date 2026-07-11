@@ -9,6 +9,7 @@ import '../../models/run/launch_configuration.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_folder.dart';
 import '../../services/run/launch_adapter_protocol.dart';
+import '../../services/run/launch_config_store.dart';
 import '../../services/run/launch_type_unavailable.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../theme/app_control_theme.dart';
@@ -114,6 +115,11 @@ final class _ConfigEntry extends _DropdownEntry {
   final OwnedLaunchConfiguration owned;
 }
 
+final class _CompoundEntry extends _DropdownEntry {
+  const _CompoundEntry(this.owned);
+  final OwnedLaunchCompound owned;
+}
+
 final class _ActionEntry extends _DropdownEntry {
   const _ActionEntry(this.action);
   final LaunchAdapterConfigurationEntry action;
@@ -141,6 +147,7 @@ class _ConfigDropdown extends StatelessWidget {
     final cubit = context.read<RunCubit>();
     final entries = <_DropdownEntry>[
       for (final config in state.configurations) _ConfigEntry(config),
+      for (final compound in state.compounds) _CompoundEntry(compound),
       for (final recommendation in state.recommendations)
         _RecommendationEntry(recommendation),
       for (final action in state.actions)
@@ -148,7 +155,14 @@ class _ConfigDropdown extends StatelessWidget {
     ];
 
     final selected = state.selectedConfiguration;
-    final label = selected == null
+    final selectedCompound = state.selectedCompound;
+    final label = selectedCompound != null
+        ? _compoundLabel(
+            context,
+            selectedCompound,
+            showFolderLabels: showFolderLabels,
+          )
+        : selected == null
         ? l10n.runSelectConfiguration
         : _entryLabel(
             context,
@@ -199,6 +213,7 @@ class _ConfigDropdown extends StatelessWidget {
   bool _isEnabled(RunCubit cubit, _DropdownEntry entry) {
     return switch (entry) {
       _ConfigEntry(:final owned) => cubit.isConfigurationAvailable(owned),
+      _CompoundEntry() => true,
       _RecommendationEntry(:final owned) => cubit.isConfigurationAvailable(owned),
       _ActionEntry(:final action) => cubit.isActionAvailable(action),
     };
@@ -219,6 +234,16 @@ class _ConfigDropdown extends StatelessWidget {
         ),
         owned.configuration.type,
         cubit.unavailableReason(owned),
+        false,
+      ),
+      _CompoundEntry(:final owned) => (
+        _compoundLabel(
+          context,
+          owned,
+          showFolderLabels: showFolderLabels,
+        ),
+        '',
+        null as String?,
         false,
       ),
       _RecommendationEntry(:final owned) => (
@@ -262,6 +287,8 @@ class _ConfigDropdown extends StatelessWidget {
     switch (entry) {
       case _ConfigEntry(:final owned):
       case _RecommendationEntry(:final owned):
+        await cubit.select(owned.selectionKey);
+      case _CompoundEntry(:final owned):
         await cubit.select(owned.selectionKey);
       case _ActionEntry(:final action):
         final picker = pickActionResult;
@@ -324,7 +351,8 @@ class _RunButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final enabled = state.selectedConfiguration != null;
+    final enabled =
+        state.selectedConfiguration != null || state.selectedCompound != null;
     return SizedBox(
       height: context.appControl.height,
       child: FilledButton.icon(
@@ -339,6 +367,12 @@ class _RunButton extends StatelessWidget {
 
   Future<void> _onRun(BuildContext context) async {
     final cubit = context.read<RunCubit>();
+    final compound = cubit.state.selectedCompound;
+    if (compound != null) {
+      await cubit.runCompound(compound);
+      return;
+    }
+
     final selected = cubit.state.selectedConfiguration;
     if (selected == null) return;
     final l10n = context.l10n;
@@ -406,6 +440,21 @@ class _StopButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cubit = context.read<RunCubit>();
+    final compound = state.selectedCompound;
+    if (compound != null) {
+      final runningIds = cubit.runningSessionIdsForCompound(compound.compoundId);
+      return SizedBox(
+        height: context.appControl.height,
+        child: OutlinedButton.icon(
+          onPressed: runningIds.isNotEmpty
+              ? () => unawaited(cubit.stopCompound(runningIds))
+              : null,
+          icon: const Icon(Icons.stop, size: 18),
+          label: Text(l10n.runStop),
+        ),
+      );
+    }
+
     final selected = state.selectedConfiguration;
     final running = selected != null && cubit.hasRunning(selected.selectionKey);
     return SizedBox(
@@ -543,6 +592,17 @@ class _OpenLaunchJsonButton extends StatelessWidget {
       ),
     );
   }
+}
+
+String _compoundLabel(
+  BuildContext context,
+  OwnedLaunchCompound owned, {
+  required bool showFolderLabels,
+}) {
+  final base = context.l10n.runCompoundConfiguration(owned.compound.name);
+  if (!showFolderLabels) return base;
+  final folder = Workspace.directoryName(owned.owner.path);
+  return '$base ($folder)';
 }
 
 String _entryLabel(

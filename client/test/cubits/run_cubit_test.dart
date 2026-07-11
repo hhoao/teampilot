@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/run_cubit.dart';
+import 'package:teampilot/models/run/launch_config_document.dart';
 import 'package:teampilot/models/run/launch_configuration.dart';
 import 'package:teampilot/models/run/run_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -186,6 +187,17 @@ class FakeRunPlatform implements RunPlatformApi {
   }
 
   @override
+  Future<List<String>> startCompound({
+    required OwnedLaunchCompound owned,
+    required List<OwnedLaunchConfiguration> documentConfigs,
+  }) {
+    return sessionManager.startCompound(
+      compound: owned.compound,
+      documentConfigs: documentConfigs,
+    );
+  }
+
+  @override
   Future<void> stop(String sessionId) => sessionManager.stop(sessionId);
 
   @override
@@ -367,6 +379,45 @@ void main() {
     expect(running, hasLength(1));
     expect(running.single.id, isNot(originalId));
     expect(executor.startedSessionIds, hasLength(2));
+    await cubit.close();
+    await platform.sessionManager.dispose();
+  });
+
+  test('runCompound starts all compound members', () async {
+    final executor = FakeRunExecutor(hangOnStart: true);
+    final compound = OwnedLaunchCompound(
+      owner: _folder,
+      compound: const LaunchCompound(
+        id: 'all',
+        name: 'All',
+        configurationIds: ['a', 'b'],
+      ),
+    );
+    final platform = FakeRunPlatform(
+      configurations: [
+        _processConfig(id: 'a'),
+        _processConfig(id: 'b'),
+      ],
+      compounds: [compound],
+      sessionManager: RunSessionManager(
+        executor: executor,
+        adapters: _FakeAdapterLauncher(),
+      ),
+    );
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    await cubit.load();
+    await cubit.select(compound.selectionKey);
+    await cubit.runCompound(compound);
+
+    expect(cubit.state.sessions, hasLength(2));
+    expect(
+      cubit.state.sessions.every((s) => s.status == RunSessionStatus.running),
+      isTrue,
+    );
+    expect(
+      cubit.state.sessions.every((s) => s.compoundId == compound.compoundId),
+      isTrue,
+    );
     await cubit.close();
     await platform.sessionManager.dispose();
   });

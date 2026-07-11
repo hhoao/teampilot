@@ -5280,6 +5280,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get runSelectConfiguration => '选择配置';
 
   @override
+  String runCompoundConfiguration(String name) {
+    return '$name（组合）';
+  }
+
+  @override
   String runSuggestedConfiguration(String name) {
     return '$name（建议）';
   }

@@ -5480,6 +5480,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runSelectConfiguration => 'Select configuration';
 
   @override
+  String runCompoundConfiguration(String name) {
+    return '$name (compound)';
+  }
+
+  @override
   String runSuggestedConfiguration(String name) {
     return '$name (Suggested)';
   }

@@ -2030,6 +2030,12 @@
   "runRestart": "重新运行",
   "runNewInstance": "新实例",
   "runSelectConfiguration": "选择配置",
+  "runCompoundConfiguration": "{name}（组合）",
+  "@runCompoundConfiguration": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
   "runSuggestedConfiguration": "{name}（建议）",
   "@runSuggestedConfiguration": {
     "placeholders": {

@@ -158,6 +158,15 @@ class _DeferredRunPlatform implements RunPlatformApi, RunPlatformDeferred {
       (await _awaitInner()).start(owned);
 
   @override
+  Future<List<String>> startCompound({
+    required OwnedLaunchCompound owned,
+    required List<OwnedLaunchConfiguration> documentConfigs,
+  }) async => (await _awaitInner()).startCompound(
+    owned: owned,
+    documentConfigs: documentConfigs,
+  );
+
+  @override
   Future<void> stop(String sessionId) async =>
       (await _awaitInner()).stop(sessionId);
 

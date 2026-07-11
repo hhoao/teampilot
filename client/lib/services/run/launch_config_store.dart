@@ -218,6 +218,12 @@ class OwnedLaunchCompound {
   final WorkspaceFolder owner;
   final LaunchCompound compound;
 
+  String get compoundId => compound.id;
+
+  /// Stable UI selection key: target + folder path + compound id.
+  String get selectionKey =>
+      '${owner.targetId}|${owner.path}|compound:${compound.id}';
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

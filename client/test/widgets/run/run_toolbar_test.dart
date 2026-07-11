@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/run_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/run/launch_config_document.dart';
 import 'package:teampilot/models/run/launch_configuration.dart';
 import 'package:teampilot/models/run/run_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -62,6 +63,7 @@ class _FakeAdapterLauncher implements RunAdapterLauncher {
 class _RecordingPlatform implements RunPlatformApi {
   _RecordingPlatform({
     required this.configurations,
+    this.compounds = const [],
     this.actions = const [],
     this.options = const [],
     this.recommendations = const [],
@@ -71,6 +73,7 @@ class _RecordingPlatform implements RunPlatformApi {
        );
 
   final List<OwnedLaunchConfiguration> configurations;
+  final List<OwnedLaunchCompound> compounds;
   final List<LaunchAdapterConfigurationEntry> actions;
   final List<LaunchOption> options;
   final List<OwnedLaunchConfiguration> recommendations;
@@ -93,7 +96,7 @@ class _RecordingPlatform implements RunPlatformApi {
   @override
   Future<List<OwnedLaunchCompound>> listCompounds(
     List<WorkspaceFolder> folders,
-  ) async => const [];
+  ) async => compounds;
 
   @override
   Stream<List<RunSession>> get sessionsStream => sessionManager.sessionsStream;
@@ -127,6 +130,17 @@ class _RecordingPlatform implements RunPlatformApi {
   Future<RunSession> start(OwnedLaunchConfiguration owned) async {
     runSelectedCalls++;
     return sessionManager.start(owned);
+  }
+
+  @override
+  Future<List<String>> startCompound({
+    required OwnedLaunchCompound owned,
+    required List<OwnedLaunchConfiguration> documentConfigs,
+  }) {
+    return sessionManager.startCompound(
+      compound: owned.compound,
+      documentConfigs: documentConfigs,
+    );
   }
 
   @override
@@ -380,5 +394,49 @@ void main() {
 
     expect(platform.runSelectedCalls, 1);
     expect(cubit.state.sessions, isNotEmpty);
+  });
+
+  testWidgets('dropdown lists compounds and Run starts compound', (
+    tester,
+  ) async {
+    final compound = OwnedLaunchCompound(
+      owner: _folder,
+      compound: const LaunchCompound(
+        id: 'all',
+        name: 'All services',
+        configurationIds: ['api', 'web'],
+      ),
+    );
+    final platform = _RecordingPlatform(
+      configurations: [
+        _processConfig(id: 'api', name: 'API'),
+        _processConfig(id: 'web', name: 'Web'),
+      ],
+      compounds: [compound],
+    );
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    addTearDown(cubit.close);
+    addTearDown(platform._actionsController.close);
+
+    await cubit.load();
+    await cubit.select(compound.selectionKey);
+    await tester.pumpWidget(_host(cubit: cubit));
+    await tester.pump();
+
+    final buttonFinder = find.byKey(const Key('run-config-dropdown'));
+    final button = tester.widget(buttonFinder) as PopupMenuButton;
+    final items = button.itemBuilder(tester.element(buttonFinder));
+    expect(items, hasLength(3));
+    expect(find.text('All services (compound)'), findsOneWidget);
+
+    await tester.tap(find.text('Run'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(cubit.state.sessions, hasLength(2));
+    expect(
+      cubit.state.sessions.every((s) => s.compoundId == compound.compoundId),
+      isTrue,
+    );
   });
 }

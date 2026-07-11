@@ -50,6 +50,11 @@ abstract class RunPlatformApi {
 
   Future<RunSession> start(OwnedLaunchConfiguration owned);
 
+  Future<List<String>> startCompound({
+    required OwnedLaunchCompound owned,
+    required List<OwnedLaunchConfiguration> documentConfigs,
+  });
+
   Future<void> stop(String sessionId);
 
   Future<RunSession> restart(String sessionId);
@@ -188,6 +193,17 @@ class RunPlatform implements RunPlatformApi {
       throw StateError(errors.join('; '));
     }
     return sessionManager.start(owned);
+  }
+
+  @override
+  Future<List<String>> startCompound({
+    required OwnedLaunchCompound owned,
+    required List<OwnedLaunchConfiguration> documentConfigs,
+  }) {
+    return sessionManager.startCompound(
+      compound: owned.compound,
+      documentConfigs: documentConfigs,
+    );
   }
 
   @override

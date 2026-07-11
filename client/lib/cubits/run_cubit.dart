@@ -47,6 +47,15 @@ class RunState extends Equatable {
     return null;
   }
 
+  OwnedLaunchCompound? get selectedCompound {
+    final key = selectedKey;
+    if (key == null) return null;
+    for (final compound in compounds) {
+      if (compound.selectionKey == key) return compound;
+    }
+    return null;
+  }
+
   bool isRecommendation(OwnedLaunchConfiguration owned) {
     for (final recommendation in recommendations) {
       if (recommendation.selectionKey == owned.selectionKey) return true;
@@ -139,6 +148,21 @@ class RunCubit extends Cubit<RunState> {
   }
 
   Future<void> select(String selectionKey) async {
+    final compound = _findCompound(selectionKey);
+    if (compound != null) {
+      await _optionsSub?.cancel();
+      _optionsSub = null;
+      emit(
+        state.copyWith(
+          selectedKey: selectionKey,
+          options: const [],
+          optionValues: const {},
+          clearError: true,
+        ),
+      );
+      return;
+    }
+
     final owned = _findConfiguration(selectionKey);
     await _optionsSub?.cancel();
     _optionsSub = null;
@@ -198,6 +222,12 @@ class RunCubit extends Cubit<RunState> {
   }
 
   Future<void> runSelected() async {
+    final compound = state.selectedCompound;
+    if (compound != null) {
+      await runCompound(compound);
+      return;
+    }
+
     final owned = state.selectedConfiguration;
     if (owned == null) {
       emit(state.copyWith(errorMessage: 'no configuration selected'));
@@ -216,6 +246,36 @@ class RunCubit extends Cubit<RunState> {
       emit(
         state.copyWith(sessions: _platform.sessions, clearError: true),
       );
+    } catch (error) {
+      emit(state.copyWith(errorMessage: error.toString()));
+    }
+  }
+
+  Future<void> runCompound(OwnedLaunchCompound owned) async {
+    final documentConfigs = state.configurations
+        .where((config) => config.owner == owned.owner)
+        .toList();
+
+    try {
+      final sessionIds = await _platform.startCompound(
+        owned: owned,
+        documentConfigs: documentConfigs,
+      );
+      final errors = _platform.sessionManager.lastCompoundErrors;
+      emit(
+        state.copyWith(
+          sessions: _platform.sessions,
+          errorMessage: errors.isEmpty ? null : errors.join('; '),
+          clearError: errors.isEmpty,
+        ),
+      );
+      if (sessionIds.isEmpty && errors.isEmpty) {
+        emit(
+          state.copyWith(
+            errorMessage: 'compound produced no sessions',
+          ),
+        );
+      }
     } catch (error) {
       emit(state.copyWith(errorMessage: error.toString()));
     }
@@ -381,6 +441,19 @@ class RunCubit extends Cubit<RunState> {
     return _platform.unavailableReason(action.type, targetId: targetId);
   }
 
+  bool hasRunningCompound(String compoundId) =>
+      runningSessionIdsForCompound(compoundId).isNotEmpty;
+
+  List<String> runningSessionIdsForCompound(String compoundId) {
+    return [
+      for (final session in state.sessions)
+        if (session.compoundId == compoundId &&
+            (session.status == RunSessionStatus.running ||
+                session.status == RunSessionStatus.starting))
+          session.id,
+    ];
+  }
+
   bool hasRunning(String selectionKey) =>
       _platform.sessionManager.hasRunning(selectionKey);
 
@@ -401,6 +474,13 @@ class RunCubit extends Cubit<RunState> {
     }
     for (final recommendation in state.recommendations) {
       if (recommendation.selectionKey == selectionKey) return recommendation;
+    }
+    return null;
+  }
+
+  OwnedLaunchCompound? _findCompound(String selectionKey) {
+    for (final compound in state.compounds) {
+      if (compound.selectionKey == selectionKey) return compound;
     }
     return null;
   }
