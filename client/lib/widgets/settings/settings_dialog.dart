@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_dialog_theme.dart';
 import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
@@ -10,10 +11,13 @@ import '../../widgets/deferred_mount_shell.dart';
 import 'settings_dialog_pane_host.dart';
 import 'workspace_hub_shell.dart';
 
+typedef SettingsLabelBuilder = String Function(AppLocalizations l10n);
+
 /// One section in the [showSettingsDialog] left nav.
 ///
-/// Callers supply metadata plus a lazy [bodyBuilder] so panes are not built
-/// until their tab is first selected.
+/// Labels are builders so nav/header strings re-resolve when locale changes
+/// while the dialog stays open. Callers supply a lazy [bodyBuilder] so panes
+/// are not built until their tab is first selected.
 class SettingsDialogEntry {
   const SettingsDialogEntry({
     required this.icon,
@@ -24,9 +28,9 @@ class SettingsDialogEntry {
   });
 
   final IconData icon;
-  final String navLabel;
-  final String title;
-  final String subtitle;
+  final SettingsLabelBuilder navLabel;
+  final SettingsLabelBuilder title;
+  final SettingsLabelBuilder subtitle;
   final WidgetBuilder bodyBuilder;
 }
 
@@ -36,7 +40,7 @@ const double _kSettingsDialogInset = kAppDialogInsetExtent;
 
 Future<void> showSettingsDialog(
   BuildContext context, {
-  required String navTitle,
+  required SettingsLabelBuilder navTitle,
   required List<SettingsDialogEntry> entries,
 }) {
   assert(entries.isNotEmpty, 'showSettingsDialog needs at least one entry');
@@ -49,7 +53,7 @@ Future<void> showSettingsDialog(
 class _SettingsDialog extends StatefulWidget {
   const _SettingsDialog({required this.navTitle, required this.entries});
 
-  final String navTitle;
+  final SettingsLabelBuilder navTitle;
   final List<SettingsDialogEntry> entries;
 
   @override
@@ -73,6 +77,7 @@ class _SettingsDialogState extends State<_SettingsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final media = MediaQuery.of(context);
     final dialogWidth = _kSettingsDialogWidth.clamp(
       0.0,
@@ -95,7 +100,7 @@ class _SettingsDialogState extends State<_SettingsDialog> {
         child: Row(
           children: [
             _SettingsNav(
-              title: widget.navTitle,
+              title: widget.navTitle(l10n),
               entries: widget.entries,
               selectedListenable: _selected,
               onSelect: (index) => _selected.value = index,
@@ -117,8 +122,8 @@ class _SettingsDialogState extends State<_SettingsDialog> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           _SettingsHeader(
-                            title: active.title,
-                            subtitle: active.subtitle,
+                            title: active.title(l10n),
+                            subtitle: active.subtitle(l10n),
                             onClose: () => Navigator.of(context).pop(),
                           ),
                           Expanded(
@@ -170,6 +175,7 @@ class _SettingsNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
 
@@ -206,7 +212,7 @@ class _SettingsNav extends StatelessWidget {
                       children: [
                         for (final (index, entry) in entries.indexed)
                           WorkspaceHubNavItem(
-                            title: entry.navLabel,
+                            title: entry.navLabel(l10n),
                             icon: entry.icon,
                             selected: index == selectedIndex,
                             onTap: () => onSelect(index),

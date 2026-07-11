@@ -33,16 +33,26 @@ Mirror `WorkspaceSplitShell` / `WorkspaceHubDesktopShell`: primary pane = home s
 
 | Constraint | Value | Notes |
 |------------|-------|--------|
-| Default width | `420` | Same as today’s `HomeSidebar.width` |
-| Sidebar min | `~280` | Prevents crushing labels / identity drag gutter |
-| Sidebar max | none (soft) | No dedicated max constant; `maxPrimarySize` set high enough that **`minSecondarySize` is the real cap** |
-| Right pane min | `480` | Reuse `LayoutPreferences.minWorkspaceHubContentWidth` |
+| Default width | `420.0` | Same as today’s `HomeSidebar.width` |
+| Sidebar min | `280.0` | Prevents crushing labels / identity drag gutter |
+| Sidebar max | none (soft) | Pass `maxSize: double.infinity` (or equivalent) into `TwoPaneSplitView`; **`minSecondarySize` is the real drag cap** |
+| Right pane min | `480.0` | Reuse `LayoutPreferences.minWorkspaceHubContentWidth` |
 
 Narrow windows: rely on `ResizableSplitView` clamp (sidebar ≥ min, secondary ≥ min). No extra collapse or scroll shell.
 
-Corrupt / missing prefs: missing, non-numeric, or out-of-range `homeSidebarWidth` → default `420`, then clamp to sidebar min. Never crash on bad JSON.
+Prefs load rules (match soft-max prefs like `sidebarWidth`):
+
+| Input | Result |
+|-------|--------|
+| Missing key / non-numeric | `420.0` (default) |
+| Below min (e.g. `10`) | clamp to `280.0` |
+| Large finite value | keep (no hard max); live layout still limited by window − right min |
+
+Never crash on bad JSON.
 
 Persistence: same path as other layout widths (`LayoutCubit._save` on size change). No new debounce unless the shared path already has one.
+
+Divider chrome: keep `HomeSidebar`’s existing right border; accept the same border + thin split divider pairing used elsewhere (do not remove the sidebar border in v1).
 
 ## Architecture
 
@@ -65,9 +75,9 @@ TwoPaneSplitView(
   first: HomeSidebar (no fixed outer width),
   second: right pane + existing padding,
   initialSize: preferences.homeSidebarWidth,
-  minSize: minHomeSidebarWidth,
-  maxSize: large / unconstrained-by-product,
-  minSecondarySize: minWorkspaceHubContentWidth (480),
+  minSize: 280.0,
+  maxSize: double.infinity,
+  minSecondarySize: 480.0 (minWorkspaceHubContentWidth),
   onSizeChanged: LayoutCubit.setHomeSidebarWidth,
 )
 ```
@@ -78,8 +88,8 @@ TwoPaneSplitView(
 
 | Piece | Change |
 |-------|--------|
-| `LayoutPreferences` | Add `homeSidebarWidth` (default 420; clamp ≥ min; no hard max) |
-| JSON | Key `homeSidebarWidth`; absent → default |
+| `LayoutPreferences` | Add `homeSidebarWidth` (default `420.0`; clamp ≥ `280.0`; no hard max) |
+| JSON | Key `homeSidebarWidth`; absent / non-numeric → default; below min → min |
 | `LayoutCubit` | `setHomeSidebarWidth(double)` |
 | `HomePage` | Read via `BlocBuilder` / `select`; write on drag |
 
@@ -91,7 +101,10 @@ Use `TwoPaneSplitView` / `ResizableSplitView` defaults for divider thickness and
 
 ## Testing
 
-- Unit: `LayoutPreferences` round-trip + clamp for `homeSidebarWidth` (missing key, below min, large values).
+- Unit: `LayoutPreferences` round-trip for `homeSidebarWidth`:
+  - missing / non-numeric → `420.0`
+  - below min → `280.0`
+  - large finite → unchanged
 - Light widget/cubit coverage optional: size-changed callback reaches `setHomeSidebarWidth` (follow existing layout-pref test style if present).
 
 ## Out of scope follow-ups
