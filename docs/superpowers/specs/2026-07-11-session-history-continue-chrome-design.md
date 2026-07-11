@@ -52,7 +52,7 @@ Landing create / History chip edit
 
 ```text
 SessionContinueOverrides
-  dangerouslySkipPermissions: bool?   // Simple session-level; null = unset
+  dangerouslySkipPermissions: bool?   // session default; null = unset
   memberOverrides: Map<rosterMemberId, SessionMemberContinueOverride>
 
 SessionMemberContinueOverride
@@ -60,14 +60,27 @@ SessionMemberContinueOverride
   provider?: string
   model?: string
   effort?: string
-  dangerouslySkipPermissions?: bool   // Team: per selected member
+  dangerouslySkipPermissions?: bool   // optional per-member override
 ```
 
-**Simple:** session-level permission on `SessionContinueOverrides`; model via existing `AppSession.presetId` / `provider` / `model` / `effort` (keep as the Simple identity fields; selecting a same-CLI preset updates those fields and may also record `presetId`). Do not introduce a second Simple model store.
+**Permission resolution (both modes):**
 
-**Team:** provider/model/effort/presetId and permission live under `memberOverrides[rosterMemberId]` for the workbench-selected member. Team template (`TeamMemberConfig`) is unchanged.
+```text
+memberOverrides[id].dangerouslySkipPermissions
+  ?? session.continueOverrides.dangerouslySkipPermissions
+  ?? launchDefault
+```
 
-**Unset semantics:** `null` / missing override → use launch defaults (Simple permission default `false`; Team permission from member template; model from session Simple identity or team member / active preset).
+- `launchDefault`: Simple → `false`; Team → that member’s template `dangerouslySkipPermissions`
+- **Landing** (one permission chip, Simple or Team): writes **only** session-level `SessionContinueOverrides.dangerouslySkipPermissions` at create. Does not fan out into every `memberOverrides` entry.
+- **History Team** permission chip: writes **per selected member** `memberOverrides[id].dangerouslySkipPermissions` (specializes that seat; other members keep session default / template).
+- **History Simple** permission chip: writes session-level field (same field Landing uses).
+
+**Simple model:** via existing `AppSession.presetId` / `provider` / `model` / `effort` only (selecting a same-CLI preset updates those fields). No second Simple model store. Permission is **only** on `SessionContinueOverrides.dangerouslySkipPermissions` — not duplicated onto Simple identity.
+
+**Team model:** provider/model/effort/presetId live under `memberOverrides[rosterMemberId]` for the workbench-selected member. Team template (`TeamMemberConfig`) is unchanged.
+
+**Unset semantics:** `null` / missing → fall through the resolution chain above. Pre-override sessions have no fields → behave as unset (Simple reconnect default `false`; Team uses template). Intentional: do not preserve any prior “UI-only Landing permission” or pack default skip=`true` for Simple unless the template/member path supplies it for Team.
 
 No dual-read compatibility shims for pre-override sessions: missing fields simply mean “unset.”
 
@@ -94,7 +107,7 @@ History bottom card is **not** full Landing. Toolbar (left → right):
 |---------|--------|------|----------|
 | Identity (read-only) | Expert label (or none) | Team name | Not tappable |
 | Model / preset chip | Same-CLI presets | Same-CLI presets / model for **selected member** | Persist immediately on select |
-| Permission chip | default / full access | Same, for **selected member** | Persist immediately |
+| Permission chip | default / full access (session-level) | default / full access (**selected member** override) | Persist immediately |
 | Team settings | — | Gear | Opens existing team settings (edits **template**; copy may clarify vs session override) |
 | attach / enhance / voice / send | ✓ | ✓ | Unchanged slim compose |
 
@@ -128,9 +141,9 @@ History bottom card is **not** full Landing. Toolbar (left → right):
 
 ### Landing alignment
 
-- Permission chip writes into the created session’s continue overrides (and/or Simple identity) at create time — no dead UI-only state.
-- Simple preset selection continues to set `presetId` + provider/model/effort on the new session.
-- After create, first History open shows the same permission / model the user chose on Landing.
+- Permission chip writes **session-level** `SessionContinueOverrides.dangerouslySkipPermissions` at create (Simple and Team). No UI-only state; no fan-out into `memberOverrides` at create.
+- Simple preset selection sets `presetId` + provider/model/effort on the new session (identity fields only).
+- After create, first History open: permission chip reads the resolution chain (session-level from Landing); Simple model chip matches create preset; Team model chip shows template / unset member override until the user specializes a member.
 
 ### Errors and edge cases
 
@@ -171,7 +184,7 @@ Update [2026-07-10-session-history-review-design.md](2026-07-10-session-history-
 4. Cross-CLI presets not selectable; mistaken path does not write.
 5. Team settings still edits template; when a session override exists, model chip shows override (not silently replaced by template).
 6. Expert / project / worktree / mode switch absent from History compose.
-7. Landing create with permission → first History open matches.
+7. Landing create with permission → first History open matches session-level permission (Team: all members resolve to that session default until a per-member override is set).
 8. Merge + persist covered by unit tests; submit path covered with mocks.
 
 ## Out of scope follow-ups (explicit)
