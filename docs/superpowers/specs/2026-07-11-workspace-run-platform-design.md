@@ -1,7 +1,7 @@
 # Workspace Run Platform
 
 **Date:** 2026-07-11  
-**Status:** Draft  
+**Status:** Implemented  
 **Owner decision:** Build a VS Code/IDEA-style **Run** platform (not full Debug in v1) with per-folder `.teampilot/launch.json`, a thin core `RunPlatform`, extension-contributed `launch-type` effects + out-of-process **Launch Adapter** protocol, built-in `process` type, execution on each config’s owning folder `targetId` (local / WSL / SSH), top-bar Run controls, bottom Run terminal pages, and parallel sessions. Prefer best architecture / UX / extensibility over backward compatibility or minimal scope. Steal Launch Provider *concepts* from Lumide; do **not** adopt Lumide’s in-host Dart plugin SDK as the execution model.
 
 ## Problem

@@ -771,7 +771,7 @@ EOF
 6. SSH folder + missing adapter → disabled with reason.
 7. Agent session launch unchanged.
 
-- [ ] **Step 1: Run full unit suite for run/**
+- [x] **Step 1: Run full unit suite for run/**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client && flutter test test/services/run test/cubits/run_cubit_test.dart test/widgets/run --exclude-tags integration && flutter analyze --no-fatal-infos --no-fatal-warnings
@@ -779,7 +779,7 @@ cd /home/hhoa/git/hhoa/teampilot/client && flutter test test/services/run test/c
 
 - [ ] **Step 2: Manual smoke on desktop**
 
-- [ ] **Step 3: Update spec status + commit**
+- [x] **Step 3: Update spec status + commit**
 
 ```bash
 git commit -m "$(cat <<'EOF'
