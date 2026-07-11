@@ -14,8 +14,8 @@ Define UI text styles as a **four-axis scale** (size × weight × letter-spacing
 |------|--------|---------|
 | **Size** | `xs`, `sm`, `md`, `lg`, `xl`, `display` | ~11 / 12 / 14 / 16 / 20 / 24 px (standard typography scale) |
 | **Weight** | `Normal`, `Medium`, `Semibold`, `Bold` | w400 / w500 / w600 / w700 (`Thin` optional later if needed) |
-| **Spacing** | `Tight`, `Normal`, `Wide` | letterSpacing: negative / 0 / positive (exact numbers owned by theme) |
-| **Height** | `Snug`, `Normal`, `Relaxed` | line height: ~1.25 / ~1.35 / ~1.45 (exact numbers owned by theme) |
+| **Spacing** | `Tight`, `Normal`, `Track`, `Spread`, `Wide` | letterSpacing (fixed per value; see metric table) |
+| **Height** | `Snug`, `Normal`, `Relaxed` | line height: `1.25` / `1.35` / `1.45` |
 
 ### Naming
 
@@ -51,30 +51,27 @@ Illegal / discouraged names: `mdNormalNormalNormal`, component names (`toolPanel
 | `xl` | `titleLarge` |
 | `display` | `headlineSmall` (scaled via `AppTypographyScale.headlineSmallBase`) |
 
-**Spacing → letterSpacing**
+**Spacing → letterSpacing** (fixed per enum value; `_compose` maps 1:1)
 
 | Spacing | letterSpacing |
 |---------|---------------|
 | `Tight` | `-0.15` |
-| `Normal` | `0` (or leave unset) |
-| `Wide` | size-dependent: `xs` → `0.8` (panel headers) or `0.2` (group labels) — **two Wide presets need distinct tokens** |
+| `Normal` | unset / `0` |
+| `Track` | `0.2` |
+| `Wide` | `0.8` |
+| `Spread` | `0.4` (file-tree root tracking; between Track and Wide) |
 
-**Wide disambiguation:** do not overload one `Wide` value for both 0.8 and 0.2. Prefer:
+Naming elision treats `Normal` only; `Track` / `Wide` / `Spread` / `Tight` always appear in the getter name when used (`xsTrack`, `xsBoldWide`, `mdBoldSpread`).
 
-- `Wide` = `0.8` (strong tracking)
-- Add axis value **`Track`** = `0.2` (light tracking), OR use only `xsTrack` as the light-tracking named token with Spacing=`Track`
-
-**Chosen:** Spacing values = `Tight` | `Normal` | `Track` | `Wide` where Track=`0.2`, Wide=`0.8` (and `mdWide` root labels use Wide with a medium-size letterSpacing of `0.4` — implement as size-aware Wide: `xs`→0.8, `md`→0.4). Document size-aware Wide in theme code comments.
-
-**Height → height**
+**Height → height** (fixed; no per-token exceptions)
 
 | Height | height |
 |--------|--------|
-| `Snug` | `1.25` (`xsSemiboldSnug` badge uses `1.2` — special-case that token only, or bump badges to 1.25) |
+| `Snug` | `1.25` |
 | `Normal` | `1.35` |
 | `Relaxed` | `1.45` |
 
-**Badge:** use `xsSemiboldSnug` with height `1.2` documented as the sole Snug exception for xs, **or** normalize badge to height `1.25` under standard Snug. Prefer **normalize to 1.25** (no special case) unless visual QA rejects it.
+**Badge:** `xsSemiboldSnug` at standard Snug (`1.25`) — normalize away former `1.2`.
 
 ## Public API
 
@@ -109,16 +106,16 @@ Minimum to replace today’s API (add more only when migration discovers need):
 | Getter | Replaces |
 |--------|----------|
 | `xs` | `caption` |
-| `xsSemiboldSnug` | `badge` (or `xsSemibold` if Snug defaulted into badge height policy) |
+| `xsSemiboldSnug` | `badge` |
 | `xsBoldWide` | `toolPanelTitle` |
 | `xsTrack` | `settingsGroupHeader` |
 | `sm` | `bodySmall` |
 | `md` | `body` / most `formLabel` uses |
 | `mdSnug` | `formLabel` if 1.25 leading required without weight change |
-| `mdMedium` | medium body / file-tree inactive |
-| `mdSemibold` | `bodyStrong` |
+| `mdMedium` | medium body / `fileTreeEntryLabel(active: false)` |
+| `mdSemibold` | `bodyStrong` / `fileTreeEntryLabel(active: true)` |
 | `mdSemiboldTightSnug` | `sectionTitle` |
-| `mdBoldWide` | `fileTreeRootLabel` metrics |
+| `mdBoldSpread` | `fileTreeRootLabel` metrics (`Spread` = 0.4) |
 | `lg` | `prominent` |
 | `lgSnug` | `subtitle` |
 | `lgSemiboldSnug` | `dialogTitle` |
