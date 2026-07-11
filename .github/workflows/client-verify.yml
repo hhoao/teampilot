@@ -146,6 +146,9 @@ jobs:
       - name: Sync bundled Google Fonts (Noto Sans SC)
         run: dart run tool/sync_bundled_google_fonts.dart
 
+      - name: Generate native splash sources
+        run: dart run native_splash_screen_cli gen
+
       - name: Build Linux (PTY native lib)
         run: flutter build linux --debug
 

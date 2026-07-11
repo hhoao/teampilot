@@ -56,6 +56,9 @@ jobs:
       - name: Sync bundled Google Fonts (Noto Sans SC)
         run: dart run tool/sync_bundled_google_fonts.dart
 
+      - name: Generate native splash sources
+        run: dart run native_splash_screen_cli gen
+
       - name: Package
         run: fastforge package --platform linux --targets deb,appimage
 
@@ -89,6 +92,9 @@ jobs:
 
       - name: Sync bundled Google Fonts (Noto Sans SC)
         run: dart run tool/sync_bundled_google_fonts.dart
+
+      - name: Generate native splash sources
+        run: dart run native_splash_screen_cli gen
 
       - name: Package
         run: fastforge package --platform macos --targets dmg
@@ -143,6 +149,9 @@ jobs:
 
       - name: Sync bundled Google Fonts (Noto Sans SC)
         run: dart run tool/sync_bundled_google_fonts.dart
+
+      - name: Generate native splash sources
+        run: dart run native_splash_screen_cli gen
 
       - name: Package Windows (ZIP + MSIX)
         run: fastforge package --platform windows --targets zip,msix
