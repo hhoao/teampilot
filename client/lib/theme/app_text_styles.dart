@@ -2,7 +2,15 @@ import 'package:flutter/material.dart';
 
 import 'app_fonts.dart';
 
-/// Semantic text styles backed by [ThemeData.textTheme] (sizes from
+enum _TextSize { xs, sm, md, lg, xl, display }
+
+enum _TextWeight { normal, medium, semibold, bold }
+
+enum _TextSpacing { tight, normal, track, spread, wide }
+
+enum _TextHeight { snug, normal, relaxed }
+
+/// Scale-based text styles backed by [ThemeData.textTheme] (sizes from
 /// [AppTypographyScale] via [materializeM3TextThemeSizes]; also scales with
 /// [MediaQuery.textScaler]). Do not set [TextStyle.fontSize] in widgets.
 final class AppTextStyles {
@@ -16,115 +24,169 @@ final class AppTextStyles {
   TextTheme get _t => theme.textTheme;
   ColorScheme get _cs => theme.colorScheme;
 
-  TextStyle _resolve(TextStyle? style, {double height = 1.35}) =>
-      (style ?? const TextStyle()).copyWith(height: height);
-
-  /// 11px — timestamps, tertiary line.
-  TextStyle get caption => _resolve(_t.labelSmall);
-
-  TextStyle captionColored(Color color, {FontWeight? fontWeight}) =>
-      caption.copyWith(color: color, fontWeight: fontWeight);
-
-  /// 11px semibold — badges, counters (replaces fontSize 9 literals).
-  TextStyle get badge => caption.copyWith(fontWeight: FontWeight.w600, height: 1.2);
-
-  TextStyle badgeColored(Color color) => badge.copyWith(color: color);
-
-  /// 11px bold tracked — right-tool panel headers (file tree, git, members).
-  TextStyle get toolPanelTitle =>
-      caption.copyWith(fontWeight: FontWeight.w700, letterSpacing: 0.8);
-
-  TextStyle toolPanelTitleColored(Color color) =>
-      toolPanelTitle.copyWith(color: color);
-
-  /// 11px — settings sidebar group labels.
-  TextStyle get settingsGroupHeader => caption.copyWith(letterSpacing: 0.2);
-
-  TextStyle settingsGroupHeaderColored(Color color) =>
-      settingsGroupHeader.copyWith(color: color);
-
-  /// File-tree multi-root folder row label.
-  TextStyle fileTreeRootLabel(Color color) => body.copyWith(
-    fontWeight: FontWeight.w700,
-    letterSpacing: 0.4,
-    color: color,
-  );
-
-  /// File-tree file or nested folder row label.
-  TextStyle fileTreeEntryLabel({required Color color, required bool active}) =>
-      body.copyWith(
-        fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-        color: color,
-      );
-
-  /// 12px — compact lists, tree nodes.
-  TextStyle get bodySmall => _resolve(_t.bodySmall);
-
-  TextStyle bodySmallColored(Color color, {FontWeight? fontWeight}) =>
-      bodySmall.copyWith(color: color, fontWeight: fontWeight);
-
-  /// 14px — body, hints, dropdown field text.
-  TextStyle get body => _resolve(_t.bodyMedium);
-
-  TextStyle bodyColored(Color color, {FontWeight? fontWeight}) =>
-      body.copyWith(color: color, fontWeight: fontWeight);
-
-  /// 14px — form field labels.
-  TextStyle get formLabel => _resolve(_t.labelLarge, height: 1.25);
-
-  TextStyle formLabelColored(Color color) => formLabel.copyWith(color: color);
-
-  /// 14px semibold — row titles, primary list names.
-  TextStyle get bodyStrong =>
-      body.copyWith(fontWeight: FontWeight.w600, height: 1.25);
-
-  TextStyle bodyStrongColored(Color color) => bodyStrong.copyWith(color: color);
-
-  /// 16px — rare emphasis (not inputs/dropdowns).
-  TextStyle get prominent => _resolve(_t.bodyLarge, height: 1.35);
-
-  /// 14px semibold — section / card headers (replaces 15/18 literals).
-  TextStyle get sectionTitle {
-    final base = _t.titleSmall ?? _t.bodyMedium ?? const TextStyle();
-    return base.copyWith(
-      fontWeight: FontWeight.w600,
-      letterSpacing: -0.15,
-      height: 1.25,
-    );
+  TextStyle _compose({
+    required _TextSize size,
+    _TextWeight weight = _TextWeight.normal,
+    _TextSpacing spacing = _TextSpacing.normal,
+    _TextHeight height = _TextHeight.normal,
+  }) {
+    final base = switch (size) {
+      _TextSize.xs => _t.labelSmall,
+      _TextSize.sm => _t.bodySmall,
+      _TextSize.md => _t.bodyMedium,
+      _TextSize.lg => _t.bodyLarge,
+      _TextSize.xl => _t.titleLarge,
+      _TextSize.display => _t.headlineSmall,
+    };
+    final resolvedHeight = switch (height) {
+      _TextHeight.snug => 1.25,
+      _TextHeight.normal => 1.35,
+      _TextHeight.relaxed => 1.45,
+    };
+    final letterSpacing = switch (spacing) {
+      _TextSpacing.tight => -0.15,
+      _TextSpacing.normal => null,
+      _TextSpacing.track => 0.2,
+      _TextSpacing.spread => 0.4,
+      _TextSpacing.wide => 0.8,
+    };
+    final fontWeight = switch (weight) {
+      _TextWeight.normal => null,
+      _TextWeight.medium => FontWeight.w500,
+      _TextWeight.semibold => FontWeight.w600,
+      _TextWeight.bold => FontWeight.w700,
+    };
+    var style = (base ?? const TextStyle()).copyWith(height: resolvedHeight);
+    if (fontWeight != null) {
+      style = style.copyWith(fontWeight: fontWeight);
+    }
+    if (letterSpacing != null) {
+      style = style.copyWith(letterSpacing: letterSpacing);
+    }
+    return style;
   }
 
-  TextStyle sectionTitleColored(Color color) =>
-      sectionTitle.copyWith(color: color);
+  TextStyle get xs => _compose(size: _TextSize.xs);
 
-  /// 16px — in-page subtitles.
-  TextStyle get subtitle => _resolve(_t.titleMedium, height: 1.25);
+  TextStyle xsColored(Color color) => xs.copyWith(color: color);
 
-  /// 20px — page titles.
-  TextStyle get pageTitle => _resolve(_t.titleLarge, height: 1.25);
+  TextStyle get xsSemiboldSnug => _compose(
+    size: _TextSize.xs,
+    weight: _TextWeight.semibold,
+    height: _TextHeight.snug,
+  );
 
-  /// 24px — page headlines.
-  TextStyle get pageHeadline => _resolve(_t.headlineSmall, height: 1.25);
+  TextStyle xsSemiboldSnugColored(Color color) =>
+      xsSemiboldSnug.copyWith(color: color);
 
-  /// 16px semibold — dialog titles ([AlertDialog] theme uses the same scale).
-  TextStyle get dialogTitle => _resolve(
-    _t.titleMedium,
-    height: 1.25,
-  ).copyWith(fontWeight: FontWeight.w600);
+  TextStyle get xsBoldWide => _compose(
+    size: _TextSize.xs,
+    weight: _TextWeight.bold,
+    spacing: _TextSpacing.wide,
+  );
 
-  TextStyle get mutedBody => body.copyWith(color: _cs.onSurfaceVariant);
+  TextStyle xsBoldWideColored(Color color) =>
+      xsBoldWide.copyWith(color: color);
 
-  TextStyle get mutedCaption => caption.copyWith(color: _cs.onSurfaceVariant);
+  TextStyle get xsTrack => _compose(
+    size: _TextSize.xs,
+    spacing: _TextSpacing.track,
+  );
 
-  TextStyle get mutedBodySmall =>
-      bodySmall.copyWith(color: _cs.onSurfaceVariant);
+  TextStyle xsTrackColored(Color color) => xsTrack.copyWith(color: color);
+
+  TextStyle get sm => _compose(size: _TextSize.sm);
+
+  TextStyle smColored(Color color) => sm.copyWith(color: color);
+
+  TextStyle get md => _compose(size: _TextSize.md);
+
+  TextStyle mdColored(Color color) => md.copyWith(color: color);
+
+  TextStyle get mdSnug => _compose(
+    size: _TextSize.md,
+    height: _TextHeight.snug,
+  );
+
+  TextStyle mdSnugColored(Color color) => mdSnug.copyWith(color: color);
+
+  TextStyle get mdMedium => _compose(
+    size: _TextSize.md,
+    weight: _TextWeight.medium,
+  );
+
+  TextStyle mdMediumColored(Color color) => mdMedium.copyWith(color: color);
+
+  TextStyle get mdSemibold => _compose(
+    size: _TextSize.md,
+    weight: _TextWeight.semibold,
+  );
+
+  TextStyle mdSemiboldColored(Color color) =>
+      mdSemibold.copyWith(color: color);
+
+  TextStyle get mdSemiboldTightSnug => _compose(
+    size: _TextSize.md,
+    weight: _TextWeight.semibold,
+    spacing: _TextSpacing.tight,
+    height: _TextHeight.snug,
+  );
+
+  TextStyle mdSemiboldTightSnugColored(Color color) =>
+      mdSemiboldTightSnug.copyWith(color: color);
+
+  TextStyle get mdBoldSpread => _compose(
+    size: _TextSize.md,
+    weight: _TextWeight.bold,
+    spacing: _TextSpacing.spread,
+  );
+
+  TextStyle mdBoldSpreadColored(Color color) =>
+      mdBoldSpread.copyWith(color: color);
+
+  TextStyle get lg => _compose(size: _TextSize.lg);
+
+  TextStyle lgColored(Color color) => lg.copyWith(color: color);
+
+  TextStyle get lgSnug => _compose(
+    size: _TextSize.lg,
+    height: _TextHeight.snug,
+  );
+
+  TextStyle lgSnugColored(Color color) => lgSnug.copyWith(color: color);
+
+  TextStyle get lgSemiboldSnug => _compose(
+    size: _TextSize.lg,
+    weight: _TextWeight.semibold,
+    height: _TextHeight.snug,
+  );
+
+  TextStyle lgSemiboldSnugColored(Color color) =>
+      lgSemiboldSnug.copyWith(color: color);
+
+  TextStyle get xl => _compose(size: _TextSize.xl);
+
+  TextStyle xlColored(Color color) => xl.copyWith(color: color);
+
+  TextStyle get display => _compose(size: _TextSize.display);
+
+  TextStyle displayColored(Color color) => display.copyWith(color: color);
+
+  TextStyle get mutedXs =>
+      xs.copyWith(color: _cs.onSurfaceVariant);
+
+  TextStyle get mutedSm =>
+      sm.copyWith(color: _cs.onSurfaceVariant);
+
+  TextStyle get mutedMd =>
+      md.copyWith(color: _cs.onSurfaceVariant);
 
   /// Monospace body (terminal / JSON); family from [AppFontTheme].
   TextStyle get mono {
     final fonts = theme.extension<AppFontTheme>() ?? AppFontTheme.fallback;
-    return (_t.bodyMedium ?? const TextStyle()).copyWith(
+    return _compose(size: _TextSize.md).copyWith(
       fontFamily: fonts.monoFontFamily,
       fontFamilyFallback: fonts.monoFontFamilyFallback,
-      height: 1.35,
     );
   }
 
