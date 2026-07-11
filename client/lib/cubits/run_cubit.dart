@@ -85,9 +85,6 @@ class RunState extends Equatable {
 }
 
 /// Per-workspace cubit owning Run selection, options, and sessions.
-///
-/// TODO(Task 8): mount via BlocProvider at workspace scope (workspace_page /
-/// IDE shell) — leave app_shell alone until the toolbar mount point is clear.
 class RunCubit extends Cubit<RunState> {
   RunCubit({
     required RunPlatformApi platform,
@@ -98,6 +95,9 @@ class RunCubit extends Cubit<RunState> {
 
   final RunPlatformApi _platform;
   final List<WorkspaceFolder> _folders;
+
+  RunPlatformApi get platform => _platform;
+  List<WorkspaceFolder> get folders => _folders;
 
   StreamSubscription<List<RunSession>>? _sessionsSub;
   StreamSubscription<List<LaunchAdapterConfigurationEntry>>? _actionsSub;
@@ -179,6 +179,10 @@ class RunCubit extends Cubit<RunState> {
   void setOption(String id, Object? value) {
     final next = Map<String, Object?>.from(state.optionValues)..[id] = value;
     emit(state.copyWith(optionValues: next, clearError: true));
+  }
+
+  void reportError(String message) {
+    emit(state.copyWith(errorMessage: message));
   }
 
   Future<void> runSelected() async {
@@ -281,6 +285,48 @@ class RunCubit extends Cubit<RunState> {
         folder ?? state.selectedConfiguration?.owner ?? _folders.firstOrNull;
     if (owner == null) return null;
     return _platform.launchJsonPath(owner);
+  }
+
+  bool isConfigurationAvailable(OwnedLaunchConfiguration owned) =>
+      _platform.isTypeAvailable(
+        owned.configuration.type,
+        targetId: owned.owner.targetId,
+      );
+
+  String? unavailableReason(OwnedLaunchConfiguration owned) =>
+      _platform.unavailableReason(
+        owned.configuration.type,
+        targetId: owned.owner.targetId,
+      );
+
+  bool isActionAvailable(LaunchAdapterConfigurationEntry action) {
+    final targetId =
+        state.selectedConfiguration?.owner.targetId ??
+        _folders.firstOrNull?.targetId ??
+        WorkspaceFolder.localTargetId;
+    return _platform.isTypeAvailable(action.type, targetId: targetId);
+  }
+
+  String? actionUnavailableReason(LaunchAdapterConfigurationEntry action) {
+    final targetId =
+        state.selectedConfiguration?.owner.targetId ??
+        _folders.firstOrNull?.targetId ??
+        WorkspaceFolder.localTargetId;
+    return _platform.unavailableReason(action.type, targetId: targetId);
+  }
+
+  bool hasRunning(String selectionKey) =>
+      _platform.sessionManager.hasRunning(selectionKey);
+
+  RunSession? runningSessionFor(String selectionKey) {
+    for (final session in state.sessions) {
+      if (session.selectionKey == selectionKey &&
+          (session.status == RunSessionStatus.running ||
+              session.status == RunSessionStatus.starting)) {
+        return session;
+      }
+    }
+    return null;
   }
 
   OwnedLaunchConfiguration? _findConfiguration(String selectionKey) {

@@ -54,6 +54,7 @@ import 'services/terminal/terminal_transport_factory.dart';
 import 'services/file_tree/workspace_file_tree_store.dart';
 import 'services/git/git_repo_store.dart';
 import 'services/workspace/workspace_tools_scope_registry.dart';
+import 'services/workspace/workspace_run_registry.dart';
 import 'services/workspace/workspace_worktree_registry.dart';
 import 'services/terminal/workspace_shell_connector.dart';
 import 'services/terminal/workspace_terminal_registry.dart';
@@ -170,6 +171,7 @@ class _CleanupWindowListener extends WindowListener {
     this.workspaceFileTreeStore,
     this.workspaceWorktreeRegistry,
     this.workspaceToolsScopeRegistry,
+    this.workspaceRunRegistry,
   );
   final ChatCubit chatCubit;
   final AutomationScheduler automationScheduler;
@@ -178,6 +180,7 @@ class _CleanupWindowListener extends WindowListener {
   final WorkspaceFileTreeStore workspaceFileTreeStore;
   final WorkspaceWorktreeRegistry workspaceWorktreeRegistry;
   final WorkspaceToolsScopeRegistry workspaceToolsScopeRegistry;
+  final WorkspaceRunRegistry workspaceRunRegistry;
 
   @override
   void onWindowClose() {
@@ -193,6 +196,7 @@ class _CleanupWindowListener extends WindowListener {
       workspaceFileTreeStore.dispose();
       workspaceWorktreeRegistry.dispose();
       workspaceToolsScopeRegistry.dispose();
+      workspaceRunRegistry.dispose();
     } finally {
       await windowManager.destroy();
     }
@@ -215,6 +219,7 @@ class _AppShutdownScope extends StatefulWidget {
     required this.workspaceFileTreeStore,
     required this.workspaceWorktreeRegistry,
     required this.workspaceToolsScopeRegistry,
+    required this.workspaceRunRegistry,
     required this.child,
   });
 
@@ -230,6 +235,7 @@ class _AppShutdownScope extends StatefulWidget {
   final WorkspaceFileTreeStore workspaceFileTreeStore;
   final WorkspaceWorktreeRegistry workspaceWorktreeRegistry;
   final WorkspaceToolsScopeRegistry workspaceToolsScopeRegistry;
+  final WorkspaceRunRegistry workspaceRunRegistry;
   final Widget child;
 
   @override
@@ -252,6 +258,7 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
     widget.workspaceFileTreeStore.dispose();
     widget.workspaceWorktreeRegistry.dispose();
     widget.workspaceToolsScopeRegistry.dispose();
+    widget.workspaceRunRegistry.dispose();
     super.dispose();
   }
 
@@ -516,6 +523,7 @@ void main() async {
                 shell.workspaceFileTreeStore,
                 shell.workspaceWorktreeRegistry,
                 shell.workspaceToolsScopeRegistry,
+                shell.workspaceRunRegistry,
               ),
             );
           }
@@ -532,6 +540,7 @@ void main() async {
             workspaceFileTreeStore: shell.workspaceFileTreeStore,
             workspaceWorktreeRegistry: shell.workspaceWorktreeRegistry,
             workspaceToolsScopeRegistry: shell.workspaceToolsScopeRegistry,
+            workspaceRunRegistry: shell.workspaceRunRegistry,
             child: MultiRepositoryProvider(
               providers: [
                 RepositoryProvider<SharedPreferences>.value(value: preferences),
@@ -594,6 +603,9 @@ void main() async {
                 ),
                 RepositoryProvider<WorkspaceToolsScopeRegistry>.value(
                   value: shell.workspaceToolsScopeRegistry,
+                ),
+                RepositoryProvider<WorkspaceRunRegistry>.value(
+                  value: shell.workspaceRunRegistry,
                 ),
                 RepositoryProvider<ExpertCapabilityResolver>.value(
                   value: shell.expertCapabilityResolver,

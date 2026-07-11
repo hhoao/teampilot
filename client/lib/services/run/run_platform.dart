@@ -57,6 +57,12 @@ abstract class RunPlatformApi {
   String launchJsonPath(WorkspaceFolder folder);
 
   Future<void> rebuildLaunchTypes();
+
+  /// Whether [type] can run on [targetId] (built-in `process` always true).
+  bool isTypeAvailable(String type, {required String targetId});
+
+  /// Human-readable reason when [isTypeAvailable] is false; null when available.
+  String? unavailableReason(String type, {required String targetId});
 }
 
 /// Facade wiring store, registry, session manager, adapter client, registrar.
@@ -215,6 +221,23 @@ class RunPlatform implements RunPlatformApi {
 
   @override
   Future<void> rebuildLaunchTypes() => registrar.rebuild(registry);
+
+  @override
+  bool isTypeAvailable(String type, {required String targetId}) =>
+      registry.isAvailable(type, targetId: targetId);
+
+  @override
+  String? unavailableReason(String type, {required String targetId}) {
+    if (isTypeAvailable(type, targetId: targetId)) return null;
+    final contribution = registry.get(type);
+    if (contribution == null) {
+      return 'Unknown launch type: $type';
+    }
+    if (targetId != WorkspaceFolder.localTargetId) {
+      return 'Launch type "$type" is not available on remote targets';
+    }
+    return 'Launch type "$type" is not available on this target';
+  }
 }
 
 /// Minimal JSON Schema `required` / property-type checks for launch configs.

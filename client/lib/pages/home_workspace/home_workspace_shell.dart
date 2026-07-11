@@ -25,6 +25,7 @@ import '../../services/home_workspace/home_recent_workspaces_store.dart';
 import '../../services/home_workspace/home_workspace_ui_cache.dart';
 import '../../services/file_tree/workspace_file_tree_store.dart';
 import '../../services/workspace/workspace_tools_scope_registry.dart';
+import '../../services/workspace/workspace_run_registry.dart';
 import '../../services/workspace/workspace_worktree_registry.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../widgets/app_dialog.dart';
@@ -319,6 +320,7 @@ class _HomeShellState extends State<HomeShell> {
     terminalRegistry.disposeWorkspace(tab.tabKey);
     workspaceTools.removeWorkspace(tab.tabKey);
     context.read<WorkspaceToolsScopeRegistry>().removeScope(tab.tabKey);
+    context.read<WorkspaceRunRegistry>().removeScope(tab.tabKey);
 
     context.read<WorkspaceFileTreeStore>().removeWorkspace(tab.workspaceId);
     context.read<WorkspaceWorktreeRegistry>().removeWorkspace(tab.workspaceId);

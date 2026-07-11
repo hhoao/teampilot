@@ -127,6 +127,8 @@ import '../services/terminal/terminal_transport_factory.dart';
 import '../services/file_tree/workspace_file_tree_store.dart';
 import '../services/git/git_repo_store.dart';
 import '../services/workspace/workspace_tools_scope_registry.dart';
+import '../services/workspace/workspace_run_registry.dart';
+import '../services/run/workspace_run_platform_factory.dart';
 import '../services/workspace/workspace_worktree_registry.dart';
 import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
@@ -159,6 +161,7 @@ class AppShell {
     required this.workspaceFileTreeStore,
     required this.workspaceWorktreeRegistry,
     required this.workspaceToolsScopeRegistry,
+    required this.workspaceRunRegistry,
     required this.sshClientFactory,
     required this.sshProfileConnectionCoordinator,
     required this.connectionModeService,
@@ -219,6 +222,7 @@ class AppShell {
   final WorkspaceFileTreeStore workspaceFileTreeStore;
   final WorkspaceWorktreeRegistry workspaceWorktreeRegistry;
   final WorkspaceToolsScopeRegistry workspaceToolsScopeRegistry;
+  final WorkspaceRunRegistry workspaceRunRegistry;
   final SshClientFactory sshClientFactory;
   final SshProfileConnectionCoordinator sshProfileConnectionCoordinator;
   final ConnectionModeService connectionModeService;
@@ -723,6 +727,12 @@ Future<AppShell> buildAppShell({
   final workspaceFileTreeStore = WorkspaceFileTreeStore();
   final workspaceWorktreeRegistry = WorkspaceWorktreeRegistry();
   final workspaceToolsScopeRegistry = WorkspaceToolsScopeRegistry();
+  final workspaceRunRegistry = WorkspaceRunRegistry(
+    platformFactory: WorkspaceRunPlatformFactory(
+      extensionRepository: extensionRepository,
+      projectConfigRepository: workspaceProjectConfigRepository,
+    ),
+  );
   final configCubit = ConfigCubit();
   final commandBus = CommandBus();
   final shortcutCubit = ShortcutCubit();
@@ -1049,6 +1059,7 @@ Future<AppShell> buildAppShell({
     workspaceFileTreeStore: workspaceFileTreeStore,
     workspaceWorktreeRegistry: workspaceWorktreeRegistry,
     workspaceToolsScopeRegistry: workspaceToolsScopeRegistry,
+    workspaceRunRegistry: workspaceRunRegistry,
     sshClientFactory: sshClientFactory,
     sshProfileConnectionCoordinator: sshProfileConnectionCoordinator,
     connectionModeService: connectionModeService,

@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../models/run/launch_config_document.dart';
 import '../../models/run/launch_configuration.dart';
 import '../../models/workspace_folder.dart';
+import '../io/filesystem.dart';
 
 /// Local read/write surface for per-folder `.teampilot/launch.json`.
 ///
@@ -29,6 +30,25 @@ class MemoryLaunchConfigIo implements LaunchConfigIo {
   @override
   Future<void> writeString(String path, String content) async {
     files[path] = content;
+  }
+}
+
+/// [LaunchConfigIo] backed by a [Filesystem] (local AppStorage / work-plane).
+class FilesystemLaunchConfigIo implements LaunchConfigIo {
+  FilesystemLaunchConfigIo(this._fs);
+
+  final Filesystem _fs;
+
+  @override
+  Future<bool> exists(String path) async => (await _fs.stat(path)).exists;
+
+  @override
+  Future<String?> readString(String path) => _fs.readString(path);
+
+  @override
+  Future<void> writeString(String path, String content) async {
+    await _fs.ensureDir(_fs.pathContext.dirname(path));
+    await _fs.writeString(path, content);
   }
 }
 

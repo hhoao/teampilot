@@ -223,6 +223,12 @@ class FakeRunPlatform implements RunPlatformApi {
 
   @override
   Future<void> rebuildLaunchTypes() async {}
+
+  @override
+  bool isTypeAvailable(String type, {required String targetId}) => true;
+
+  @override
+  String? unavailableReason(String type, {required String targetId}) => null;
 }
 
 void main() {
