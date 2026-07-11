@@ -97,28 +97,53 @@ TextStyle appMonoTextStyle(
   );
 }
 
-/// Builds [TextTheme] with the configured UI sans ([AppFonts.uiGoogleFontName]).
-TextTheme buildAppUiTextTheme(TextTheme base) {
-  final ui = GoogleFonts.notoSansSc();
-  final themed = GoogleFonts.notoSansScTextTheme(base);
-  return themed.apply(
-    fontFamily: ui.fontFamily,
-    fontFamilyFallback: ui.fontFamilyFallback,
+ResolvedFonts _defaultResolvedFonts() => AppFontResolver.resolve(
+  uiFontId: 'system',
+  monoFontId: 'system',
+);
+
+bool _useBundledUiFont(ResolvedFonts fonts) =>
+    fonts.uiNeedsBundledLoad || fonts.resolvedUiId == 'notoSansSc';
+
+/// Builds [TextTheme] from [fonts] (defaults to system UI + mono).
+///
+/// Bundled Noto Sans SC keeps the [GoogleFonts.notoSansScTextTheme] pipeline,
+/// then applies [ResolvedFonts] family/fallback. System UI uses [TextTheme.apply]
+/// only — no forced Noto.
+TextTheme buildAppUiTextTheme(TextTheme base, [ResolvedFonts? fonts]) {
+  final resolved = fonts ?? _defaultResolvedFonts();
+  if (_useBundledUiFont(resolved)) {
+    final themed = GoogleFonts.notoSansScTextTheme(base);
+    return themed.apply(
+      fontFamily: resolved.uiFamily,
+      fontFamilyFallback: resolved.uiFallback,
+    );
+  }
+  return base.apply(
+    fontFamily: resolved.uiFamily,
+    fontFamilyFallback: resolved.uiFallback,
   );
 }
 
-TextTheme buildAppUiPrimaryTextTheme(TextTheme base) {
-  final ui = GoogleFonts.notoSansSc();
-  return GoogleFonts.notoSansScTextTheme(
-    base,
-  ).apply(fontFamily: ui.fontFamily, fontFamilyFallback: ui.fontFamilyFallback);
+TextTheme buildAppUiPrimaryTextTheme(TextTheme base, [ResolvedFonts? fonts]) {
+  final resolved = fonts ?? _defaultResolvedFonts();
+  if (_useBundledUiFont(resolved)) {
+    return GoogleFonts.notoSansScTextTheme(base).apply(
+      fontFamily: resolved.uiFamily,
+      fontFamilyFallback: resolved.uiFallback,
+    );
+  }
+  return base.apply(
+    fontFamily: resolved.uiFamily,
+    fontFamilyFallback: resolved.uiFallback,
+  );
 }
 
-AppFontTheme buildAppFontTheme({required TextStyle uiFont}) {
+AppFontTheme buildAppFontTheme(ResolvedFonts fonts) {
   return AppFontTheme(
-    uiFontFamily: uiFont.fontFamily,
-    uiFontFamilyFallback: uiFont.fontFamilyFallback,
-    monoFontFamily: AppFonts.monoFamily,
-    monoFontFamilyFallback: AppFonts.monoFamilyFallback,
+    uiFontFamily: fonts.uiFamily,
+    uiFontFamilyFallback: fonts.uiFallback,
+    monoFontFamily: fonts.monoFamily,
+    monoFontFamilyFallback: fonts.monoFallback,
   );
 }
