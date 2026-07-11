@@ -1,7 +1,7 @@
 # System Font Selection (UI + Mono)
 
 **Date:** 2026-07-11  
-**Status:** Draft  
+**Status:** Implemented  
 **Owner decision:** Declarative `FontCatalog` + single `AppFontResolver`; preferences store stable IDs only; default both UI and mono to `system` on all platforms; no backward/forward compatibility for prior hard-coded Noto / JetBrains defaults.
 
 ## Problem
