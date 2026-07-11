@@ -132,7 +132,7 @@ class _GitChangeTileState extends State<GitChangeTile> {
       textAlign: TextAlign.center,
       style: AppTextStyles.of(
         context,
-      ).smColored(_badgeColor(cs), fontWeight: FontWeight.w700),
+      ).smBoldColored(_badgeColor(cs)),
     ),
   );
 

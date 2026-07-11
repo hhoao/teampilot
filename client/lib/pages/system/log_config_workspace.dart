@@ -97,7 +97,7 @@ class _LogViewerDialogHeader extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: styles.lgHeavySnugColored(cs.onSurface,),
+                  style: styles.lgBoldSnugColored(cs.onSurface,),
                 ),
                 if (subtitle.isNotEmpty) ...[
                   const SizedBox(height: 4),

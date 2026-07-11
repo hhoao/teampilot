@@ -223,10 +223,8 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
         ? cs.error
         : (styles.md.color ?? cs.onSurface);
     final fg = baseFg.withValues(alpha: widget.enabled ? 1 : 0.35);
-    final labelStyle = styles.mdColored(fg, height: 18 / 14);
-    final suffixStyle = styles.mdColored(fg.withValues(alpha: widget.enabled ? 0.45 : 0.35),
-      height: 18 / 14,
-    );
+    final labelStyle = styles.mdSnugColored(fg);
+    final suffixStyle = styles.mdSnugColored(fg.withValues(alpha: widget.enabled ? 0.45 : 0.35));
 
     Widget row = MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),

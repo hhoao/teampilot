@@ -133,10 +133,9 @@ class _DockSegment extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           child: Text(
             label,
-            style: styles.smColored(
-              selected ? cs.primary : cs.workspaceMutedText,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-            ),
+            style: selected
+                ? styles.smSemiboldColored(cs.primary)
+                : styles.smMediumColored(cs.workspaceMutedText),
           ),
         ),
       ),

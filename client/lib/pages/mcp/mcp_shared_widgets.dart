@@ -120,9 +120,7 @@ class McpInstalledServerRow extends StatelessWidget {
                           ),
                           child: Text(
                             l10n.mcpOAuthStatusNeedsAuth,
-                            style: AppTextStyles.of(context).xsColored(const Color(0xFFB45309),
-                              fontWeight: FontWeight.w700,
-                            ),
+                            style: AppTextStyles.of(context).xsBoldColored(const Color(0xFFB45309)),
                           ),
                         ),
                       ],
@@ -139,8 +137,7 @@ class McpInstalledServerRow extends StatelessWidget {
                           ),
                           child: Text(
                             l10n.mcpOAuthStatusConnected,
-                            style: AppTextStyles.of(context).xsColored(cs.primary,
-                              fontWeight: FontWeight.w700,),
+                            style: AppTextStyles.of(context).xsBoldColored(cs.primary),
                           ),
                         ),
                       ],

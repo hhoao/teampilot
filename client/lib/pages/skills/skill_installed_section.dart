@@ -238,9 +238,7 @@ class SkillInstalledRow extends StatelessWidget {
                           ),
                           child: Text(
                             l10n.skillsUpdateAvailable,
-                            style: AppTextStyles.of(context).xsColored(const Color(0xFFB45309),
-                              fontWeight: FontWeight.w700,
-                            ),
+                            style: AppTextStyles.of(context).xsBoldColored(const Color(0xFFB45309)),
                           ),
                         ),
                       ],

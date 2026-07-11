@@ -159,16 +159,22 @@ abstract final class AppDropdownDecorations {
           ],
       headerStyle:
           headerStyle ??
-          AppTextStyles.of(context).md.copyWith(
-            fontWeight: headerFontWeight,
-          ),
+          switch (headerFontWeight) {
+            FontWeight.w600 => AppTextStyles.of(context).mdSemibold,
+            FontWeight.w500 => AppTextStyles.of(context).mdMedium,
+            FontWeight.w700 => AppTextStyles.of(context).mdBold,
+            _ => AppTextStyles.of(context).md,
+          },
       hintStyle: hintStyle ?? dropdownHintTextStyle(context),
       // Closed header + menu rows use theme bodyMedium (color + weight).
       listItemStyle:
           listItemStyle ??
-          AppTextStyles.of(
-            context,
-          ).md.copyWith(fontWeight: listItemFontWeight),
+          switch (listItemFontWeight) {
+            FontWeight.w600 => AppTextStyles.of(context).mdSemibold,
+            FontWeight.w500 => AppTextStyles.of(context).mdMedium,
+            FontWeight.w700 => AppTextStyles.of(context).mdBold,
+            _ => AppTextStyles.of(context).md,
+          },
       closedSuffixIcon:
           closedSuffixIcon ??
           _suffixIcon(

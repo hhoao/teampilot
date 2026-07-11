@@ -265,8 +265,7 @@ class TeamStatChip extends StatelessWidget {
           ],
           Text(
             label,
-            style: styles.xsColored(fg,
-              fontWeight: FontWeight.w600,),
+            style: styles.xsSemiboldColored(fg),
           ),
         ],
       ),

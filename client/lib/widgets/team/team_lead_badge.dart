@@ -31,10 +31,7 @@ class TeamLeadBadge extends StatelessWidget {
         ),
         child: Text(
           l10n.teamLeadBadge,
-          style: styles.xsColored(
-            cs.onSecondaryContainer,
-            fontWeight: FontWeight.w700,
-          ),
+          style: styles.xsBoldColored(cs.onSecondaryContainer),
         ),
       ),
     );
@@ -66,7 +63,7 @@ class MemberTitleRow extends StatelessWidget {
     final textStyle = style != null
         ? (textColor != null ? style!.copyWith(color: textColor) : style)
         : (textColor != null
-              ? styles.mdColored(textColor)
+              ? styles.mdColored(textColor!)
               : styles.md);
 
     return Row(

@@ -43,7 +43,7 @@ class SkillDiscoverCard extends StatelessWidget {
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.of(context).mdHeavyColored(textBase),
+                  style: AppTextStyles.of(context).mdBoldColored(textBase),
                 ),
               ),
             ],
@@ -89,9 +89,7 @@ class SkillDiscoverCard extends StatelessWidget {
                     ),
                     child: Text(
                       l10n.skillsCardInstalled,
-                      style: AppTextStyles.of(context).smColored(const Color(0xFF15803D),
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: AppTextStyles.of(context).smBoldColored(const Color(0xFF15803D)),
                     ),
                   )
                 else

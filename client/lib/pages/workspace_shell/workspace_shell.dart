@@ -92,7 +92,7 @@ class WorkspaceShell extends StatelessWidget {
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.of(context).mdHeavyColored(textBase,),
+                        style: AppTextStyles.of(context).mdBoldColored(textBase,),
                       ),
                       const SizedBox(height: 2),
                       Text(

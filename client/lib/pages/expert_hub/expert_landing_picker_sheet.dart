@@ -262,9 +262,7 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
       child: Text(
         title,
-        style: AppTextStyles.of(context).smColored(Theme.of(context).colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w600,
-        ),
+        style: AppTextStyles.of(context).smSemiboldColored(Theme.of(context).colorScheme.onSurfaceVariant),
       ),
     );
   }

@@ -255,8 +255,7 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 6),
       child: Text(
         label,
-        style: AppTextStyles.of(context).smColored(cs.onSurfaceVariant,
-          fontWeight: FontWeight.w600,),
+        style: AppTextStyles.of(context).smSemiboldColored(cs.onSurfaceVariant),
       ),
     );
   }
@@ -330,8 +329,7 @@ class _FileResultTileState extends State<_FileResultTile> {
                         widget.match.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: styles.mdColored(cs.onSurface,
-                          fontWeight: FontWeight.w500,),
+                        style: styles.mdMediumColored(cs.onSurface),
                       ),
                       Text(
                         widget.match.relativePath,

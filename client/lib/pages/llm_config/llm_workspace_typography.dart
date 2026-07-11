@@ -16,8 +16,12 @@ class LlmWorkspaceText {
   TextStyle get small => _tx.xs;
 
   TextStyle smallColored(Color color, {FontWeight? fontWeight}) {
-    final style = _tx.xsColored(color);
-    return fontWeight == null ? style : style.copyWith(fontWeight: fontWeight);
+    return switch (fontWeight) {
+      FontWeight.w500 => _tx.xsMediumColored(color),
+      FontWeight.w600 => _tx.xsSemiboldColored(color),
+      null => _tx.xsColored(color),
+      _ => _tx.xsColored(color),
+    };
   }
 
   /// 中：正文、只读值。
@@ -69,13 +73,13 @@ class LlmProviderDetailLook {
   TextStyle get mutedBodyStyle => _tx.mutedSmall;
 
   TextStyle get rowLabelStyle =>
-      _tx.mdSemiboldColored(colorScheme.onSurface).copyWith(height: 1.2);
+      _tx.mdSemiboldColored(colorScheme.onSurface);
 
   TextStyle get sectionTitleStyle =>
       _tx.panelHeaderColored(colorScheme.onSurface);
 
   /// 只读字段内文字：中档 + 弱化色。
-  TextStyle get valueBoxStyle => _tx.mutedMd;
+  TextStyle get valueBoxStyle => _tx.mutedBody;
 }
 
 class LlmSettingRow extends StatelessWidget {

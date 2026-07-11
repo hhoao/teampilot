@@ -599,7 +599,7 @@ class _Badge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: styles.xsColored(fg, fontWeight: FontWeight.w600),
+        style: styles.xsSemiboldColored(fg),
       ),
     );
   }

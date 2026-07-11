@@ -462,8 +462,7 @@ class _HomePill extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               label,
-              style: styles.smColored(fg,
-                fontWeight: FontWeight.w600,),
+              style: styles.smSemiboldColored(fg),
             ),
           ],
         ),
@@ -771,8 +770,7 @@ class _RecentlyClosedOverflowButtonState
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
               child: Text(
                 l10n.homeWorkspaceRecentlyClosed,
-                style: styles.smColored(cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,),
+                style: styles.smSemiboldColored(cs.onSurfaceVariant),
               ),
             ),
             if (entries.isEmpty)

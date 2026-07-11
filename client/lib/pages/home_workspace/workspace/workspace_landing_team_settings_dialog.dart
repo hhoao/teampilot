@@ -484,7 +484,7 @@ class _Nav extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 22, 20, 14),
               child: Text(
                 title,
-                style: styles.lgHeavySnugColored(cs.onSurface,),
+                style: styles.lgBoldSnugColored(cs.onSurface,),
               ),
             ),
             Expanded(
@@ -567,7 +567,7 @@ class _PaneHeader extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: styles.lgHeavySnugColored(cs.onSurface,),
+                  style: styles.lgBoldSnugColored(cs.onSurface,),
                 ),
                 if (subtitle.isNotEmpty) ...[
                   const SizedBox(height: 4),
@@ -866,10 +866,9 @@ class _TeamDefaultPresetSummary extends StatelessWidget {
                       configured ? configLine : l10n.teamDefaultPresetSubtitle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.smColored(cs.onSurfaceVariant,
-                        fontWeight: configured
-                            ? FontWeight.w500
-                            : FontWeight.w400,),
+                      style: configured
+                          ? styles.smMediumColored(cs.onSurfaceVariant)
+                          : styles.smColored(cs.onSurfaceVariant),
                     ),
                   ],
                 ),
@@ -1036,10 +1035,9 @@ class _MemberRow extends StatelessWidget {
                               : l10n.memberLaunchConfigSubtitle,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: styles.smColored(cs.onSurfaceVariant,
-                            fontWeight: configured
-                                ? FontWeight.w500
-                                : FontWeight.w400,),
+                          style: configured
+                              ? styles.smMediumColored(cs.onSurfaceVariant)
+                              : styles.smColored(cs.onSurfaceVariant),
                         ),
                       ],
                     ),

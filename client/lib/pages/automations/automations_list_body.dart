@@ -390,8 +390,7 @@ class _GroupedList extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(0, 12, 0, 6),
                         child: Text(
                           group.label,
-                          style: styles.smColored(cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,),
+                          style: styles.smSemiboldColored(cs.onSurfaceVariant),
                         ),
                       ),
                       ...group.automations.map((automation) {
@@ -543,8 +542,7 @@ class AutomationRow extends StatelessWidget {
                       scopeSubtitle!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.xsColored(cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,),
+                      style: styles.xsMediumColored(cs.onSurfaceVariant),
                     ),
                   ],
                   const SizedBox(height: 2),
@@ -700,8 +698,7 @@ class AutomationRunHistoryRow extends StatelessWidget {
             const SizedBox(width: 12),
             Text(
               label,
-              style: styles.smColored(statusColor,
-                fontWeight: FontWeight.w600,),
+              style: styles.smSemiboldColored(statusColor),
             ),
           ],
         ),

@@ -235,8 +235,7 @@ class _DirtyBadge extends StatelessWidget {
       ),
       child: Text(
         '$count',
-        style: AppTextStyles.of(context).xsColored(selected ? cs.onSecondaryContainer : cs.onPrimaryContainer,
-          fontWeight: FontWeight.w600,),
+        style: AppTextStyles.of(context).xsSemiboldColored(selected ? cs.onSecondaryContainer : cs.onPrimaryContainer),
       ),
     );
   }

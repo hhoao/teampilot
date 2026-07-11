@@ -139,7 +139,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                       l10n.aboutCurrentVersion,
                       style: AppTextStyles.of(
                         context,
-                      ).mdColored(Colors.grey[600]),
+                      ).mdColored(Colors.grey.shade600),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -160,7 +160,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                       l10n.appUpdateLatestVersion,
                       style: AppTextStyles.of(
                         context,
-                      ).mdColored(Colors.grey[600]),
+                      ).mdColored(Colors.grey.shade600),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -189,7 +189,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                   l10n.appUpdateChangelogTitle,
                   style: AppTextStyles.of(
                     context,
-                  ).smColored(Colors.grey[600]),
+                  ).smColored(Colors.grey.shade600),
                 ),
                 collapsedIconColor: Colors.grey[600],
                 collapsedTextColor: Colors.grey[600],
@@ -246,14 +246,14 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                   _downloadStatus,
                   style: AppTextStyles.of(
                     context,
-                  ).smColored(Colors.blue[700]),
+                  ).smColored(Colors.blue.shade700),
                 ),
               ),
               Text(
                 '${(_downloadProgress * 100).toStringAsFixed(1)}%',
                 style: AppTextStyles.of(
                   context,
-                ).mdSemiboldColored(Colors.blue[800]),
+                ).mdSemiboldColored(Colors.blue.shade800),
               ),
             ],
           ),

@@ -65,8 +65,7 @@ class WorkspaceHubTitleBar extends StatelessWidget {
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.of(context).lgSemiboldSnugColored(textBase,
-              height: 1.05,),
+            style: AppTextStyles.of(context).lgSemiboldSnugColored(textBase),
           ),
           const SizedBox(height: 8),
           Text(

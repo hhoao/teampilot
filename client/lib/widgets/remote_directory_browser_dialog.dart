@@ -127,7 +127,7 @@ class _RemoteDirectoryBrowserDialogState
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
-    final styles = AppTextStyles.of(theme);
+    final styles = AppTextStyles(theme);
     final listing = _listing;
 
     return AppDialog(

@@ -187,8 +187,7 @@ class AutomationsFilterPanel extends StatelessWidget {
         children: [
           Text(
             l10n.automationsFilterStatusLabel,
-            style: AppTextStyles.of(context).smColored(cs.onSurfaceVariant,
-              fontWeight: FontWeight.w600,),
+            style: AppTextStyles.of(context).smSemiboldColored(cs.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -206,8 +205,7 @@ class AutomationsFilterPanel extends StatelessWidget {
           const SizedBox(height: 14),
           Text(
             l10n.automationsFilterActionLabel,
-            style: AppTextStyles.of(context).smColored(cs.onSurfaceVariant,
-              fontWeight: FontWeight.w600,),
+            style: AppTextStyles.of(context).smSemiboldColored(cs.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -298,8 +296,9 @@ class _FilterPillState extends State<_FilterPill> {
           ),
           child: Text(
             widget.label,
-            style: styles.smColored(foreground,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,),
+            style: selected
+                ? styles.smSemiboldColored(foreground)
+                : styles.smMediumColored(foreground),
           ),
         ),
       ),

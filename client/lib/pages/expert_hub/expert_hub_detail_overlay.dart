@@ -379,8 +379,7 @@ class _DepSection extends StatelessWidget {
                   ),
                   child: Text(
                     '${rows.length}',
-                    style: styles.xsColored(cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,),
+                    style: styles.xsSemiboldColored(cs.onSurfaceVariant),
                   ),
                 ),
               ],
@@ -457,8 +456,7 @@ class _StatusBadge extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             installed ? l10n.teamHubDepInstalled : l10n.teamHubDepToInstall,
-            style: styles.xsColored(fg,
-              fontWeight: FontWeight.w600,),
+            style: styles.xsSemiboldColored(fg),
           ),
         ],
       ),

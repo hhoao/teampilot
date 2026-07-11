@@ -155,10 +155,7 @@ class _ChordChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AppTextStyles.of(context).smColored(
-          cs.onSurface,
-          fontWeight: FontWeight.w600,
-        ),
+        style: AppTextStyles.of(context).smSemiboldColored(cs.onSurface),
       ),
     );
   }

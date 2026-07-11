@@ -114,7 +114,7 @@ class _CountBadge extends StatelessWidget {
         '$count',
         style: AppTextStyles.of(
           context,
-        ).xsColored(cs.primary, fontWeight: FontWeight.w700),
+        ).xsBoldColored(cs.primary),
       ),
     );
   }
@@ -342,7 +342,7 @@ class _StatusChip extends StatelessWidget {
         label,
         style: AppTextStyles.of(
           context,
-        ).xsColored(color, fontWeight: FontWeight.w600),
+        ).xsSemiboldColored(color),
       ),
     );
   }

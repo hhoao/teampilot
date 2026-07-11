@@ -587,9 +587,7 @@ class _ComposeTriggerSectionHeader extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: styles.smColored(color,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.2,),
+        style: styles.smSemiboldTrackColored(color),
       ),
     );
   }
