@@ -109,5 +109,23 @@ void main() {
 
       expect(layout.state.preferences.rightToolsVisible, !initial);
     });
+
+    test('toggleSecondarySidebar on compose flips override not prefs', () async {
+      final composeBus = CommandBus();
+      var compose = true;
+      registerLayoutCommands(
+        composeBus,
+        layout,
+        uiZoomBaseline: () => baseline,
+        composeLanding: () => compose,
+      );
+      final intent = layout.state.preferences.rightToolsVisible;
+
+      composeBus.invoke(CommandIds.toggleSecondarySidebar);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(layout.state.landingRightToolsOverride, isTrue);
+      expect(layout.state.preferences.rightToolsVisible, intent);
+    });
   });
 }

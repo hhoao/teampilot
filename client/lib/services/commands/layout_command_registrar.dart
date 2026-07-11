@@ -11,7 +11,9 @@ void registerLayoutCommands(
   CommandBus bus,
   LayoutCubit layout, {
   required double Function() uiZoomBaseline,
+  bool Function()? composeLanding,
 }) {
+  final isCompose = composeLanding ?? () => false;
   bus.register(
     CommandIds.zoomIn,
     () => layout.zoomIn(baseline: uiZoomBaseline()),
@@ -25,6 +27,6 @@ void registerLayoutCommands(
   bus.register(CommandIds.togglePanel, () => layout.toggleWorkspaceTerminal());
   bus.register(
     CommandIds.toggleSecondarySidebar,
-    () => layout.toggleRightTools(),
+    () => layout.toggleRightTools(composeLanding: isCompose()),
   );
 }

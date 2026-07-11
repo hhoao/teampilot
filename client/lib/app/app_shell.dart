@@ -745,11 +745,6 @@ Future<AppShell> buildAppShell({
   final workspaceChromeCommands = WorkspaceChromeCommands();
   final runCommandHost = RunCommandHost();
   final uiZoomBaseline = UiZoomBaseline();
-  registerLayoutCommands(
-    commandBus,
-    layoutCubit,
-    uiZoomBaseline: () => uiZoomBaseline.value,
-  );
   registerShortcutsUiCommands(commandBus);
   registerRunCommands(commandBus, runCommandHost);
 
@@ -822,6 +817,12 @@ Future<AppShell> buildAppShell({
     ),
   );
 
+  registerLayoutCommands(
+    commandBus,
+    layoutCubit,
+    uiZoomBaseline: () => uiZoomBaseline.value,
+    composeLanding: () => chatCubit.state.composeActive,
+  );
   registerSessionCommands(commandBus, chatCubit);
 
   memberPresenceCubit = MemberPresenceCubit();
