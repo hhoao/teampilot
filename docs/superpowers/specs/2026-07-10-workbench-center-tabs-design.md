@@ -232,7 +232,7 @@ WorkbenchBody
   └─ ComposeLanding      // when tabOrder empty or compose requested
 ```
 
-Right tools remain hosted by the shell layout (same as today’s `ChatPageShell` / `RightToolsHost`), so file tree and git stay available during compose and while a file/diff tab is active.
+Right tools remain hosted by the shell layout (same as today’s `ChatPageShell` / `RightToolsHost`), so file tree and git stay available while a file/diff tab is active. During compose landing they are **not shown by default** but remain **reachable** via temporary reveal (visibility chip / shortcut); see [Landing Default-Hide Right Tools](2026-07-11-landing-hide-right-tools-design.md).
 
 ### Removals
 

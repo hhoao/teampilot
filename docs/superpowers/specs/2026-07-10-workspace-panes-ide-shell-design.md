@@ -118,14 +118,14 @@ Maximize state is **ephemeral UI** (not persisted).
 
 ### Compose landing vs session (policy defaults)
 
-Aligned with [Workbench Center Tabs](2026-07-10-workbench-center-tabs-design.md): compose is a **center body** state; right tools stay available so file tree / git can open center tabs during compose.
+Aligned with [Workbench Center Tabs](2026-07-10-workbench-center-tabs-design.md): compose is a **center body** state. Right tools on landing follow [Landing Default-Hide Right Tools](2026-07-11-landing-hide-right-tools-design.md): **default hidden** (effective-only); temporary override without persisting intent; file tree / git remain reachable after temporary reveal to open center tabs.
 
 | Context | Effective left / right / bottom (wide) | Notes |
 |---------|----------------------------------------|--------|
 | **Session workbench** | Honor user intent | — |
-| **Compose landing** | Honor user intent (same as session) | Do **not** adopt unused `RightToolsHost.hidePanel` force-hide. No compose-only geometry fork. |
+| **Compose landing** | Left / bottom: honor user intent; **right: hidden by default** | Temporary override via `landingRightToolsOverride`; does not write `rightToolsVisible`. No compose-only geometry fork. |
 
-Narrow: breakpoint policy applies equally in compose and session (collapse sides to overlay; bottom still follows intent when width allows). Policy may still accept a route-context flag for future presets, but **v1 effective visibility does not differ** by compose vs session.
+Narrow: left/bottom breakpoint policy unchanged (collapse sides to overlay; bottom still follows intent when width allows). Right pane on landing follows the same effective-right rule as wide dock (default hide + temporary override). See [Landing Default-Hide Right Tools](2026-07-11-landing-hide-right-tools-design.md) for toggle/dismiss routing and override clearing.
 
 ### Narrow breakpoint
 
