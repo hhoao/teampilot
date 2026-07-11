@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_text_styles.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
@@ -198,7 +199,7 @@ class HubPublishGatesStep extends StatelessWidget {
           Text(
             key: const Key('hub-publish-non-portable'),
             l10n.hubPublishNonPortableHint,
-            style: TextStyle(color: cs.error),
+            style: AppTextStyles.of(context).bodyColored(cs.error),
           ),
           const SizedBox(height: 8),
           for (final id in nonPortableIds)
@@ -245,11 +246,13 @@ class HubPublishConfirmStep extends StatelessWidget {
       children: [
         Text(l10n.hubPublishConfirmHint),
         const SizedBox(height: 12),
-        _row(l10n.hubPublishSlugLabel, slug),
-        _row(l10n.name, name),
-        if (category.isNotEmpty) _row(l10n.expertEditorCategory, category),
-        if (author.isNotEmpty) _row(l10n.hubPublishAuthorLabel, author),
+        _row(context, l10n.hubPublishSlugLabel, slug),
+        _row(context, l10n.name, name),
+        if (category.isNotEmpty)
+          _row(context, l10n.expertEditorCategory, category),
+        if (author.isNotEmpty) _row(context, l10n.hubPublishAuthorLabel, author),
         _row(
+          context,
           l10n.hubPublishKindLabel,
           kind == HubPublishKind.expert
               ? l10n.hubPublishKindExpert
@@ -264,14 +267,14 @@ class HubPublishConfirmStep extends StatelessWidget {
           Text(
             error!,
             key: const Key('hub-publish-error'),
-            style: TextStyle(color: cs.error),
+            style: AppTextStyles.of(context).bodyColored(cs.error),
           ),
         ],
       ],
     );
   }
 
-  Widget _row(String label, String value) {
+  Widget _row(BuildContext context, String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -279,7 +282,10 @@ class HubPublishConfirmStep extends StatelessWidget {
         children: [
           SizedBox(
             width: 100,
-            child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(
+              label,
+              style: AppTextStyles.of(context).bodyStrong,
+            ),
           ),
           Expanded(child: Text(value)),
         ],

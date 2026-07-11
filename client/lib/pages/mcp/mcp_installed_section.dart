@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:teampilot/theme/app_text_styles.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
@@ -135,7 +136,9 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Text(
                 state.errorMessage ?? 'Error',
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                style: AppTextStyles.of(context).bodyColored(
+                  Theme.of(context).colorScheme.error,
+                ),
               ),
             )
           else if (servers.isEmpty)

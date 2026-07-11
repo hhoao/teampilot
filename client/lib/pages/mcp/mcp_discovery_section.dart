@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:teampilot/theme/app_text_styles.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -246,8 +247,8 @@ class _McpDiscoveryCatalogBody extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Text(
                       catalog.errorMessage!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+                      style: AppTextStyles.of(context).bodyColored(
+                        Theme.of(context).colorScheme.error,
                       ),
                     ),
                   ),

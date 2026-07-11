@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:teampilot/theme/app_text_styles.dart';
 
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
@@ -568,7 +569,10 @@ class TeamConfigDangerZone extends StatelessWidget {
               size: context.appIconSizes.md,
               color: errorColor,
             ),
-            label: Text(l10n.deleteTeam, style: TextStyle(color: errorColor)),
+            label: Text(
+              l10n.deleteTeam,
+              style: AppTextStyles.of(context).bodyColored(errorColor),
+            ),
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: errorColor.withValues(alpha: 0.4)),
             ),

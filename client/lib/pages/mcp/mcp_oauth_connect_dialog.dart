@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_text_styles.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -200,7 +201,9 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
               const SizedBox(height: 12),
               Text(
                 _error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                style: AppTextStyles.of(context).bodyColored(
+                  Theme.of(context).colorScheme.error,
+                ),
               ),
             ],
             if (_authorizationUrl != null) ...[

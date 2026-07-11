@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:teampilot/theme/app_text_styles.dart';
 
 import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/member_config_cubit.dart';
@@ -349,7 +350,9 @@ class _ListTab extends StatelessWidget {
               Expanded(
                 child: Text(
                   l10n.memberDetailLoadError,
-                  style: TextStyle(color: cs.onErrorContainer),
+                  style: AppTextStyles.of(context).bodyColored(
+                    cs.onErrorContainer,
+                  ),
                 ),
               ),
             ],

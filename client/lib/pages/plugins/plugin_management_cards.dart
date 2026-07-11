@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_text_styles.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -64,7 +65,7 @@ Future<bool> pluginConfirmDialog(
                 if (detailHeading != null)
                   Text(
                     detailHeading,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: AppTextStyles.of(ctx).bodyStrong,
                   ),
                 for (final line in detailLines)
                   Padding(

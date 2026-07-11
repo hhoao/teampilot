@@ -18,6 +18,7 @@ import '../../../pages/home_workspace/home_workspace_route.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../services/expert_hub/expert_capability_resolver.dart';
 import '../../../services/expert_hub/expert_landing_deep_link.dart';
+import '../../../theme/app_text_styles.dart';
 import '../../../theme/workspace_surface_layers.dart';
 import '../../../theme/app_toast_theme.dart';
 import '../../../utils/logger.dart';
@@ -450,9 +451,8 @@ class _MissingWorkspace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Center(
-      child: Text(label, style: TextStyle(color: cs.onSurfaceVariant)),
+      child: Text(label, style: AppTextStyles.of(context).mutedBody),
     );
   }
 }

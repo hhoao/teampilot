@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:teampilot/theme/app_text_styles.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
@@ -131,7 +132,7 @@ class WorkspaceConfigDangerZone extends StatelessWidget {
             ),
             label: Text(
               l10n.deleteWorkspace,
-              style: TextStyle(color: errorColor),
+              style: AppTextStyles.of(context).bodyColored(errorColor),
             ),
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: errorColor.withValues(alpha: 0.4)),

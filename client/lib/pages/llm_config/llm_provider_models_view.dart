@@ -267,10 +267,10 @@ Future<void> _showValidationDialog(BuildContext context, LlmConfig config) {
               itemCount: messages.length,
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
-                final body = Theme.of(context).textTheme.bodyMedium;
+                final tx = LlmWorkspaceText(Theme.of(context));
                 return Text(
                   '${index + 1}. ${messages[index]}',
-                  style: (body ?? const TextStyle()).copyWith(height: 1.35),
+                  style: tx.body,
                 );
               },
             ),

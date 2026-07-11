@@ -165,9 +165,7 @@ class _ShortcutGroupList extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Text(
           l10n.shortcutsCheatsheetEmpty,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: AppTextStyles.of(context).mutedBody,
         ),
       );
     }
