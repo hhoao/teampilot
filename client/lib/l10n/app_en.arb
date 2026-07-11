@@ -2455,6 +2455,14 @@
   "runRestart": "Restart",
   "runNewInstance": "New instance",
   "runSelectConfiguration": "Select configuration",
+  "runSuggestedConfiguration": "{name} (Suggested)",
+  "@runSuggestedConfiguration": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "runAcceptRecommendation": "Add suggested configuration to launch.json",
+  "runRefreshDiscover": "Refresh discover recommendations",
   "runConfigurationTooltip": "Run configuration",
   "runOpenLaunchJson": "Open launch.json",
   "runAlreadyRunningTitle": "Configuration already running",

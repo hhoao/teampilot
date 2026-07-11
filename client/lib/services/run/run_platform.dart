@@ -4,6 +4,7 @@ import '../../models/workspace_folder.dart';
 import 'launch_adapter_client.dart';
 import 'launch_adapter_protocol.dart';
 import 'launch_config_store.dart';
+import 'launch_discover.dart';
 import 'launch_type_registrar.dart';
 import 'launch_type_registry.dart';
 import 'launch_type_unavailable.dart';
@@ -71,6 +72,11 @@ abstract class RunPlatformApi {
   String launchJsonPath(WorkspaceFolder folder);
 
   Future<void> rebuildLaunchTypes();
+
+  Future<List<OwnedLaunchConfiguration>> discoverRecommendations(
+    List<WorkspaceFolder> folders, {
+    List<OwnedLaunchConfiguration> existing = const [],
+  });
 
   /// Whether [type] can run on [targetId] (built-in `process` always true).
   bool isTypeAvailable(String type, {required String targetId});
@@ -235,6 +241,18 @@ class RunPlatform implements RunPlatformApi {
 
   @override
   Future<void> rebuildLaunchTypes() => registrar.rebuild(registry);
+
+  @override
+  Future<List<OwnedLaunchConfiguration>> discoverRecommendations(
+    List<WorkspaceFolder> folders, {
+    List<OwnedLaunchConfiguration> existing = const [],
+  }) {
+    return LaunchDiscover(io: store.io).discover(
+      folders: folders,
+      registry: registry,
+      existing: existing,
+    );
+  }
 
   @override
   bool isTypeAvailable(String type, {required String targetId}) =>

@@ -205,6 +205,15 @@ class _DeferredRunPlatform implements RunPlatformApi, RunPlatformDeferred {
       (await _awaitInner()).rebuildLaunchTypes();
 
   @override
+  Future<List<OwnedLaunchConfiguration>> discoverRecommendations(
+    List<WorkspaceFolder> folders, {
+    List<OwnedLaunchConfiguration> existing = const [],
+  }) async => (await _awaitInner()).discoverRecommendations(
+    folders,
+    existing: existing,
+  );
+
+  @override
   bool isTypeAvailable(String type, {required String targetId}) =>
       _inner?.isTypeAvailable(type, targetId: targetId) ?? true;
 

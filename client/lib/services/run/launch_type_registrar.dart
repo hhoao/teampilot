@@ -1,8 +1,11 @@
 import '../../models/extension_manifest.dart';
+import '../../models/run/launch_configuration.dart';
 import '../../models/run/launch_type_contribution.dart';
 import '../../models/workspace_folder.dart';
 import '../extension/extension_detector.dart';
 import 'launch_adapter_protocol.dart';
+import 'launch_config_store.dart';
+import 'launch_discover.dart';
 import 'launch_type_registry.dart';
 
 /// Probes whether an extension's detect requirements are satisfied.
@@ -74,5 +77,19 @@ class LaunchTypeRegistrar {
         );
       }
     }
+  }
+
+  /// Glob-based recommendations for enabled launch types (v1: globs only).
+  Future<List<OwnedLaunchConfiguration>> discoverRecommendations({
+    required LaunchTypeRegistry registry,
+    required List<WorkspaceFolder> folders,
+    required LaunchConfigIo io,
+    List<OwnedLaunchConfiguration> existing = const [],
+  }) {
+    return LaunchDiscover(io: io).discover(
+      folders: folders,
+      registry: registry,
+      existing: existing,
+    );
   }
 }

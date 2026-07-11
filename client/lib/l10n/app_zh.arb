@@ -2030,6 +2030,14 @@
   "runRestart": "重新运行",
   "runNewInstance": "新实例",
   "runSelectConfiguration": "选择配置",
+  "runSuggestedConfiguration": "{name}（建议）",
+  "@runSuggestedConfiguration": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "runAcceptRecommendation": "将建议配置添加到 launch.json",
+  "runRefreshDiscover": "刷新发现建议",
   "runConfigurationTooltip": "运行配置",
   "runOpenLaunchJson": "打开 launch.json",
   "runAlreadyRunningTitle": "配置已在运行",

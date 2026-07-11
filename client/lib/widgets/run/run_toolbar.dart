@@ -67,6 +67,10 @@ class RunToolbar extends StatelessWidget {
                   openLaunchJson: openLaunchJson,
                 ),
                 const SizedBox(width: 4),
+                _AcceptRecommendationButton(state: state),
+                const SizedBox(width: 4),
+                _RefreshDiscoverButton(),
+                const SizedBox(width: 4),
                 _StopButton(state: state),
                 const SizedBox(width: 4),
                 _RunButton(state: state),
@@ -115,6 +119,11 @@ final class _ActionEntry extends _DropdownEntry {
   final LaunchAdapterConfigurationEntry action;
 }
 
+final class _RecommendationEntry extends _DropdownEntry {
+  const _RecommendationEntry(this.owned);
+  final OwnedLaunchConfiguration owned;
+}
+
 class _ConfigDropdown extends StatelessWidget {
   const _ConfigDropdown({
     required this.state,
@@ -132,6 +141,8 @@ class _ConfigDropdown extends StatelessWidget {
     final cubit = context.read<RunCubit>();
     final entries = <_DropdownEntry>[
       for (final config in state.configurations) _ConfigEntry(config),
+      for (final recommendation in state.recommendations)
+        _RecommendationEntry(recommendation),
       for (final action in state.actions)
         if (action.isAction) _ActionEntry(action),
     ];
@@ -139,7 +150,12 @@ class _ConfigDropdown extends StatelessWidget {
     final selected = state.selectedConfiguration;
     final label = selected == null
         ? l10n.runSelectConfiguration
-        : _configLabel(selected, showFolderLabels: showFolderLabels);
+        : _entryLabel(
+            context,
+            selected,
+            showFolderLabels: showFolderLabels,
+            isSuggested: state.isRecommendation(selected),
+          );
 
     final cs = Theme.of(context).colorScheme;
     final control = context.appControl;
@@ -183,6 +199,7 @@ class _ConfigDropdown extends StatelessWidget {
   bool _isEnabled(RunCubit cubit, _DropdownEntry entry) {
     return switch (entry) {
       _ConfigEntry(:final owned) => cubit.isConfigurationAvailable(owned),
+      _RecommendationEntry(:final owned) => cubit.isConfigurationAvailable(owned),
       _ActionEntry(:final action) => cubit.isActionAvailable(action),
     };
   }
@@ -192,19 +209,42 @@ class _ConfigDropdown extends StatelessWidget {
     RunCubit cubit,
     _DropdownEntry entry,
   ) {
-    final (text, type, reasonCode) = switch (entry) {
+    final (text, type, reasonCode, isSuggested) = switch (entry) {
       _ConfigEntry(:final owned) => (
-        _configLabel(owned, showFolderLabels: showFolderLabels),
+        _entryLabel(
+          context,
+          owned,
+          showFolderLabels: showFolderLabels,
+          isSuggested: false,
+        ),
         owned.configuration.type,
         cubit.unavailableReason(owned),
+        false,
+      ),
+      _RecommendationEntry(:final owned) => (
+        _entryLabel(
+          context,
+          owned,
+          showFolderLabels: showFolderLabels,
+          isSuggested: true,
+        ),
+        owned.configuration.type,
+        cubit.unavailableReason(owned),
+        true,
       ),
       _ActionEntry(:final action) => (
         action.name,
         action.type,
         cubit.actionUnavailableReason(action),
+        false,
       ),
     };
-    final child = Text(text);
+    final child = Text(
+      text,
+      style: isSuggested
+          ? TextStyle(color: Theme.of(context).colorScheme.primary)
+          : null,
+    );
     final reason = localizeLaunchTypeUnavailable(
       context.l10n,
       reasonCode,
@@ -221,6 +261,7 @@ class _ConfigDropdown extends StatelessWidget {
   ) async {
     switch (entry) {
       case _ConfigEntry(:final owned):
+      case _RecommendationEntry(:final owned):
         await cubit.select(owned.selectionKey);
       case _ActionEntry(:final action):
         final picker = pickActionResult;
@@ -385,6 +426,49 @@ class _StopButton extends StatelessWidget {
   }
 }
 
+class _AcceptRecommendationButton extends StatelessWidget {
+  const _AcceptRecommendationButton({required this.state});
+
+  final RunState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = state.selectedConfiguration;
+    if (selected == null || !state.isRecommendation(selected)) {
+      return const SizedBox.shrink();
+    }
+
+    final l10n = context.l10n;
+    return SizedBox(
+      height: context.appControl.height,
+      width: context.appControl.height,
+      child: IconButton(
+        tooltip: l10n.runAcceptRecommendation,
+        onPressed: () => unawaited(
+          context.read<RunCubit>().acceptRecommendation(selected),
+        ),
+        icon: const Icon(Icons.playlist_add, size: 18),
+      ),
+    );
+  }
+}
+
+class _RefreshDiscoverButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return SizedBox(
+      height: context.appControl.height,
+      width: context.appControl.height,
+      child: IconButton(
+        tooltip: l10n.runRefreshDiscover,
+        onPressed: () => unawaited(context.read<RunCubit>().refreshDiscover()),
+        icon: const Icon(Icons.refresh, size: 18),
+      ),
+    );
+  }
+}
+
 class _OpenLaunchJsonButton extends StatelessWidget {
   const _OpenLaunchJsonButton({
     required this.workspaceId,
@@ -459,6 +543,17 @@ class _OpenLaunchJsonButton extends StatelessWidget {
       ),
     );
   }
+}
+
+String _entryLabel(
+  BuildContext context,
+  OwnedLaunchConfiguration owned, {
+  required bool showFolderLabels,
+  required bool isSuggested,
+}) {
+  final base = _configLabel(owned, showFolderLabels: showFolderLabels);
+  if (!isSuggested) return base;
+  return context.l10n.runSuggestedConfiguration(base);
 }
 
 String _configLabel(

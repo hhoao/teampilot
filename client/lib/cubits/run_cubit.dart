@@ -41,7 +41,17 @@ class RunState extends Equatable {
     for (final config in configurations) {
       if (config.selectionKey == key) return config;
     }
+    for (final recommendation in recommendations) {
+      if (recommendation.selectionKey == key) return recommendation;
+    }
     return null;
+  }
+
+  bool isRecommendation(OwnedLaunchConfiguration owned) {
+    for (final recommendation in recommendations) {
+      if (recommendation.selectionKey == owned.selectionKey) return true;
+    }
+    return false;
   }
 
   RunState copyWith({
@@ -124,6 +134,8 @@ class RunCubit extends Cubit<RunState> {
     _actionsSub = _platform.actionsStream.listen((actions) {
       if (!isClosed) emit(state.copyWith(actions: actions));
     });
+
+    await refreshDiscover();
   }
 
   Future<void> select(String selectionKey) async {
@@ -234,11 +246,59 @@ class RunCubit extends Cubit<RunState> {
     emit(state.copyWith(sessions: _platform.sessions, clearError: true));
   }
 
-  /// Discover refresh — stub until Task 11.
-  Future<void> refreshDiscover() async {}
+  /// Refreshes glob-based discover recommendations for workspace folders.
+  Future<void> refreshDiscover() async {
+    try {
+      final recommendations = await _platform.discoverRecommendations(
+        _folders,
+        existing: state.configurations,
+      );
+      if (!isClosed) {
+        emit(state.copyWith(recommendations: recommendations, clearError: true));
+      }
+    } catch (error) {
+      if (!isClosed) {
+        emit(state.copyWith(errorMessage: error.toString()));
+      }
+    }
+  }
 
-  /// Accept a discover recommendation — stub until Task 11.
-  Future<void> acceptRecommendation(OwnedLaunchConfiguration recommendation) async {}
+  /// Accepts a discover recommendation into the owning folder's `launch.json`.
+  Future<void> acceptRecommendation(OwnedLaunchConfiguration recommendation) async {
+    final errors = _platform.validateConfiguration(recommendation);
+    if (errors.isNotEmpty) {
+      emit(state.copyWith(errorMessage: errors.join('; ')));
+      return;
+    }
+
+    try {
+      await _platform.persistConfiguration(
+        folder: recommendation.owner,
+        configuration: recommendation.configuration,
+      );
+      final acceptedKey = recommendation.selectionKey;
+      await load();
+      if (!isClosed) {
+        final persisted = state.configurations
+            .where((item) => item.selectionKey == acceptedKey)
+            .firstOrNull;
+        if (persisted != null) {
+          emit(
+            state.copyWith(
+              selectedKey: persisted.selectionKey,
+              options: const [],
+              optionValues: const {},
+              clearError: true,
+            ),
+          );
+        }
+      }
+    } catch (error) {
+      if (!isClosed) {
+        emit(state.copyWith(errorMessage: error.toString()));
+      }
+    }
+  }
 
   Future<void> configureAction({
     required String actionId,
@@ -339,6 +399,9 @@ class RunCubit extends Cubit<RunState> {
     for (final config in state.configurations) {
       if (config.selectionKey == selectionKey) return config;
     }
+    for (final recommendation in state.recommendations) {
+      if (recommendation.selectionKey == selectionKey) return recommendation;
+    }
     return null;
   }
 
@@ -360,6 +423,14 @@ class RunCubit extends Cubit<RunState> {
     await _actionsSub?.cancel();
     await _optionsSub?.cancel();
     return super.close();
+  }
+}
+
+extension _IterableFirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull {
+    final iterator = this.iterator;
+    if (!iterator.moveNext()) return null;
+    return iterator.current;
   }
 }
 

@@ -5280,6 +5280,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get runSelectConfiguration => '选择配置';
 
   @override
+  String runSuggestedConfiguration(String name) {
+    return '$name（建议）';
+  }
+
+  @override
+  String get runAcceptRecommendation => '将建议配置添加到 launch.json';
+
+  @override
+  String get runRefreshDiscover => '刷新发现建议';
+
+  @override
   String get runConfigurationTooltip => '运行配置';
 
   @override

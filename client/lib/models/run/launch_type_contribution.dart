@@ -32,6 +32,19 @@ class LaunchTypeContribution {
   final Map<String, Object?> configurationSchema;
   final Map<String, Object?>? discover;
 
+  /// Whether this type participates in glob-based project discover (v1).
+  bool get isDiscoverEnabled => discover?['enabled'] == true;
+
+  /// Glob patterns relative to each workspace folder root.
+  List<String> get discoverGlobs {
+    final raw = discover?['globs'];
+    if (raw is! List) return const [];
+    return [
+      for (final item in raw)
+        if (item != null) item.toString().trim(),
+    ].where((pattern) => pattern.isNotEmpty).toList();
+  }
+
   /// Parses a `launch-type` [ExtensionEffect] into a contribution.
   ///
   /// Returns null when the effect is not a launch type or uses an unsupported

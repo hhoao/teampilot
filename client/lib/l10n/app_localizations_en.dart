@@ -5480,6 +5480,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runSelectConfiguration => 'Select configuration';
 
   @override
+  String runSuggestedConfiguration(String name) {
+    return '$name (Suggested)';
+  }
+
+  @override
+  String get runAcceptRecommendation =>
+      'Add suggested configuration to launch.json';
+
+  @override
+  String get runRefreshDiscover => 'Refresh discover recommendations';
+
+  @override
   String get runConfigurationTooltip => 'Run configuration';
 
   @override

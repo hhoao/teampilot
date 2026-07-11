@@ -34,6 +34,9 @@ class LaunchTypeRegistry {
 
   LaunchTypeContribution? get(String type) => _types[type];
 
+  /// All registered launch types (built-in and extension).
+  Iterable<LaunchTypeContribution> get contributions => _types.values;
+
   /// Removes extension-contributed types (keeps built-in `process`).
   void clearExtensions() {
     _types.removeWhere((_, value) => value.extensionId != null);

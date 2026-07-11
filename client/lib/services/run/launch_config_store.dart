@@ -132,6 +132,8 @@ class LaunchConfigStore {
 
   final LaunchConfigIo _io;
 
+  LaunchConfigIo get io => _io;
+
   static String launchConfigPath(WorkspaceFolder folder) =>
       '${folder.path}/.teampilot/launch.json';
 

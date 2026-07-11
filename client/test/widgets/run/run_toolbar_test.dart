@@ -64,6 +64,7 @@ class _RecordingPlatform implements RunPlatformApi {
     required this.configurations,
     this.actions = const [],
     this.options = const [],
+    this.recommendations = const [],
   }) : sessionManager = RunSessionManager(
          executor: _FakeProcessLauncher(),
          adapters: _FakeAdapterLauncher(),
@@ -72,6 +73,7 @@ class _RecordingPlatform implements RunPlatformApi {
   final List<OwnedLaunchConfiguration> configurations;
   final List<LaunchAdapterConfigurationEntry> actions;
   final List<LaunchOption> options;
+  final List<OwnedLaunchConfiguration> recommendations;
 
   @override
   final RunSessionManager sessionManager;
@@ -165,6 +167,12 @@ class _RecordingPlatform implements RunPlatformApi {
   Future<void> rebuildLaunchTypes() async {}
 
   @override
+  Future<List<OwnedLaunchConfiguration>> discoverRecommendations(
+    List<WorkspaceFolder> folders, {
+    List<OwnedLaunchConfiguration> existing = const [],
+  }) async => recommendations;
+
+  @override
   bool isTypeAvailable(String type, {required String targetId}) => true;
 
   @override
@@ -232,6 +240,39 @@ void main() {
     final button = tester.widget(buttonFinder) as PopupMenuButton;
     final items = button.itemBuilder(tester.element(buttonFinder));
     expect(items, hasLength(2));
+  });
+
+  testWidgets('dropdown lists recommendations as suggested entries', (
+    tester,
+  ) async {
+    final recommendation = OwnedLaunchConfiguration(
+      owner: _folder,
+      configuration: const LaunchConfiguration(
+        id: 'flutter',
+        name: 'Flutter',
+        type: 'flutter',
+        extras: {'device': 'linux'},
+      ),
+    );
+    final platform = _RecordingPlatform(
+      configurations: [_processConfig()],
+      recommendations: [recommendation],
+    );
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    addTearDown(cubit.close);
+    addTearDown(platform._actionsController.close);
+
+    await cubit.load();
+    await tester.pumpWidget(_host(cubit: cubit));
+    await tester.pump();
+
+    final buttonFinder = find.byKey(const Key('run-config-dropdown'));
+    final button = tester.widget(buttonFinder) as PopupMenuButton;
+    final items = button.itemBuilder(tester.element(buttonFinder));
+    expect(items, hasLength(2));
+    final recommendationItem = items.whereType<PopupMenuItem>().last;
+    final label = recommendationItem.child! as Text;
+    expect(label.data, 'Flutter (Suggested)');
   });
 
   testWidgets('choosing isAction calls configureAction via picker', (

@@ -169,6 +169,12 @@ class _FakePlatform implements RunPlatformApi {
   Future<void> rebuildLaunchTypes() async {}
 
   @override
+  Future<List<OwnedLaunchConfiguration>> discoverRecommendations(
+    List<WorkspaceFolder> folders, {
+    List<OwnedLaunchConfiguration> existing = const [],
+  }) async => const [];
+
+  @override
   bool isTypeAvailable(String type, {required String targetId}) => true;
 
   @override
@@ -268,6 +274,12 @@ class _DeferredFakePlatform implements RunPlatformApi, RunPlatformDeferred {
 
   @override
   Future<void> rebuildLaunchTypes() async {}
+
+  @override
+  Future<List<OwnedLaunchConfiguration>> discoverRecommendations(
+    List<WorkspaceFolder> folders, {
+    List<OwnedLaunchConfiguration> existing = const [],
+  }) async => const [];
 
   @override
   bool isTypeAvailable(String type, {required String targetId}) => true;

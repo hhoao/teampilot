@@ -9870,6 +9870,24 @@ abstract class AppLocalizations {
   /// **'Select configuration'**
   String get runSelectConfiguration;
 
+  /// No description provided for @runSuggestedConfiguration.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (Suggested)'**
+  String runSuggestedConfiguration(String name);
+
+  /// No description provided for @runAcceptRecommendation.
+  ///
+  /// In en, this message translates to:
+  /// **'Add suggested configuration to launch.json'**
+  String get runAcceptRecommendation;
+
+  /// No description provided for @runRefreshDiscover.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh discover recommendations'**
+  String get runRefreshDiscover;
+
   /// No description provided for @runConfigurationTooltip.
   ///
   /// In en, this message translates to:
