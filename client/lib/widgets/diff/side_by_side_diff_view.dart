@@ -1,9 +1,16 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:re_editor/re_editor.dart';
 
 import '../../services/diff/diff_decoration_mapper.dart';
 import '../../services/diff/diff_model.dart';
 import '../../services/editor/file_editor_theme.dart';
+import '../../services/editor_platform/document_session.dart';
+import '../../services/editor_platform/document_session_token_provider.dart';
+import '../../services/editor_platform/editor_platform.dart';
+import '../../services/editor_platform/editor_viewport_token_binder.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'diff_overview_ruler.dart';
 import 'diff_ribbon_painter.dart';
@@ -50,6 +57,16 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
   bool _syncing = false;
   double _lineHeightCache = 16;
 
+  DocumentSession? _leftSession;
+  DocumentSession? _rightSession;
+  DocumentSessionTokenProvider? _leftTokenProvider;
+  DocumentSessionTokenProvider? _rightTokenProvider;
+
+  /// Bumped on every reopen so a stale async [_openSessions] call (superseded
+  /// by a newer result before it finished opening) discards its sessions
+  /// instead of publishing them.
+  int _sessionGeneration = 0;
+
   @override
   void initState() {
     super.initState();
@@ -63,6 +80,7 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
     _rightScroll.verticalScroller.addListener(_syncFromRight);
     widget.controller?.addListener(_onNavigate);
     _publishChangeCount();
+    unawaited(_openSessions());
   }
 
   @override
@@ -78,7 +96,59 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
       _leftController.text = _texts.leftText;
       _rightController.text = _texts.rightText;
       _publishChangeCount();
+      unawaited(_openSessions());
     }
+  }
+
+  /// Opens fresh read-only [DocumentSession]s for the current left/right pane
+  /// text and swaps them in once viewport coloring is ready. Never awaited by
+  /// callers — a bumped [_sessionGeneration] lets an in-flight call from a
+  /// superseded result discard its sessions on completion instead of racing
+  /// with a newer one.
+  Future<void> _openSessions() async {
+    final generation = ++_sessionGeneration;
+    final path = widget.filePath ?? 'untitled.txt';
+    final leftText = _texts.leftText;
+    final rightText = _texts.rightText;
+    final registry = EditorPlatform.registry;
+    final pool = EditorPlatform.workerPool;
+
+    final left = DocumentSession(registry: registry, pool: pool);
+    final right = DocumentSession(registry: registry, pool: pool);
+    await left.open(path: path, text: leftText);
+    await right.open(path: path, text: rightText);
+    if (generation != _sessionGeneration) {
+      left.dispose();
+      right.dispose();
+      return;
+    }
+
+    await left.colorizeAfterOpen(
+      viewportEndLine: math.min(80, left.lineCount - 1),
+    );
+    await right.colorizeAfterOpen(
+      viewportEndLine: math.min(80, right.lineCount - 1),
+    );
+    if (!mounted || generation != _sessionGeneration) {
+      left.dispose();
+      right.dispose();
+      return;
+    }
+
+    final oldLeftSession = _leftSession;
+    final oldRightSession = _rightSession;
+    final oldLeftProvider = _leftTokenProvider;
+    final oldRightProvider = _rightTokenProvider;
+    setState(() {
+      _leftSession = left;
+      _rightSession = right;
+      _leftTokenProvider = DocumentSessionTokenProvider(left);
+      _rightTokenProvider = DocumentSessionTokenProvider(right);
+    });
+    oldLeftProvider?.dispose();
+    oldRightProvider?.dispose();
+    oldLeftSession?.dispose();
+    oldRightSession?.dispose();
   }
 
   void _publishChangeCount() {
@@ -134,6 +204,13 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
     _rightController.dispose();
     _leftScroll.dispose();
     _rightScroll.dispose();
+    // Invalidate any in-flight _openSessions() so it discards rather than
+    // setState()s on a disposed widget.
+    _sessionGeneration++;
+    _leftTokenProvider?.dispose();
+    _rightTokenProvider?.dispose();
+    _leftSession?.dispose();
+    _rightSession?.dispose();
     super.dispose();
   }
 
@@ -142,14 +219,21 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
     final cs = Theme.of(context).colorScheme;
     final colors = diffColorsFor(cs);
     final decorations = buildDiffPaneDecorations(_result.rows, colors);
-    final path = widget.filePath ?? '';
+    final path = widget.filePath ?? 'untitled.txt';
     final shellSurface = cs.workspaceCardChrome(widget.chrome);
-    final style = codeEditorStyleFor(
+    final leftStyle = codeEditorStyleFor(
       context,
       path,
       backgroundColor: shellSurface,
+      tokenProvider: _leftTokenProvider,
     );
-    _lineHeightCache = _lineHeight(style);
+    final rightStyle = codeEditorStyleFor(
+      context,
+      path,
+      backgroundColor: shellSurface,
+      tokenProvider: _rightTokenProvider,
+    );
+    _lineHeightCache = _lineHeight(leftStyle);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -160,17 +244,19 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
             scroll: _leftScroll,
             decorations: decorations.left,
             numbers: _texts.leftNumbers,
-            style: style,
+            style: leftStyle,
+            session: _leftSession,
           ),
         ),
-        _ribbonGap(cs, colors, style),
+        _ribbonGap(cs, colors, leftStyle),
         Expanded(
           child: _pane(
             controller: _rightController,
             scroll: _rightScroll,
             decorations: decorations.right,
             numbers: _texts.rightNumbers,
-            style: style,
+            style: rightStyle,
+            session: _rightSession,
           ),
         ),
         DiffOverviewRuler(
@@ -228,6 +314,7 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
     required List<CodeLineDecoration> decorations,
     required List<int?> numbers,
     required CodeEditorStyle style,
+    required DocumentSession? session,
   }) {
     return CodeEditor(
       controller: controller,
@@ -239,16 +326,82 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
       lineDecorations: decorations,
       indicatorBuilder:
           (context, editingController, chunkController, notifier) {
-            return DefaultCodeLineNumber(
+            return _DiffPaneLineNumbers(
               controller: editingController,
               notifier: notifier,
-              customLineIndex2Text: (lineIndex) {
-                if (lineIndex < 0 || lineIndex >= numbers.length) return '';
-                final no = numbers[lineIndex];
-                return no == null ? '' : '$no';
-              },
+              session: session,
+              numbers: numbers,
             );
           },
+    );
+  }
+}
+
+/// Gutter line numbers for one diff pane; keeps an [EditorViewportTokenBinder]
+/// bound to [session] so the visible line band stays colored as the user
+/// scrolls (same pattern as `FileEditorSurface`'s indicator wrapper).
+class _DiffPaneLineNumbers extends StatefulWidget {
+  const _DiffPaneLineNumbers({
+    required this.controller,
+    required this.notifier,
+    required this.session,
+    required this.numbers,
+  });
+
+  final CodeLineEditingController controller;
+  final CodeIndicatorValueNotifier notifier;
+  final DocumentSession? session;
+  final List<int?> numbers;
+
+  @override
+  State<_DiffPaneLineNumbers> createState() => _DiffPaneLineNumbersState();
+}
+
+class _DiffPaneLineNumbersState extends State<_DiffPaneLineNumbers> {
+  EditorViewportTokenBinder? _binder;
+
+  @override
+  void initState() {
+    super.initState();
+    _bind();
+  }
+
+  @override
+  void didUpdateWidget(_DiffPaneLineNumbers oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.session != widget.session ||
+        oldWidget.notifier != widget.notifier) {
+      _bind();
+    }
+  }
+
+  void _bind() {
+    _binder?.dispose();
+    final session = widget.session;
+    _binder = session == null
+        ? null
+        : EditorViewportTokenBinder(
+            session: session,
+            notifier: widget.notifier,
+          );
+  }
+
+  @override
+  void dispose() {
+    _binder?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultCodeLineNumber(
+      controller: widget.controller,
+      notifier: widget.notifier,
+      customLineIndex2Text: (lineIndex) {
+        if (lineIndex < 0 || lineIndex >= widget.numbers.length) return '';
+        final no = widget.numbers[lineIndex];
+        return no == null ? '' : '$no';
+      },
     );
   }
 }

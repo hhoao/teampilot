@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:re_editor/re_editor.dart';
 import 'package:teampilot/services/diff/diff_engine.dart';
-import 'package:teampilot/widgets/diff/side_by_side_diff_view.dart';
+import 'package:teampilot/widgets/diff/unified_diff_view.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
@@ -22,7 +22,7 @@ void main() {
           body: SizedBox(
             width: 800,
             height: 400,
-            child: SideBySideDiffView(
+            child: UnifiedDiffView(
               result: computeLineDiff(oldText, newText),
               filePath: filePath,
             ),
@@ -33,7 +33,9 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('renders two code editors for a modification', (tester) async {
+  testWidgets('renders a single code editor for a modification', (
+    tester,
+  ) async {
     await pump(
       tester,
       oldText: 'final a = 1;\nfinal b = 2;\nfinal c = 3;',
@@ -41,7 +43,7 @@ void main() {
       filePath: 'sample.dart',
     );
 
-    expect(find.byType(CodeEditor), findsNWidgets(2));
+    expect(find.byType(CodeEditor), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
