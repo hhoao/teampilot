@@ -199,6 +199,9 @@ class _FakePlatform implements RunPlatformApi {
 
   @override
   Map<String, Object?>? configurationSchema(String type) => null;
+
+  @override
+  List<String> kindsFor(String type) => const ['run'];
 }
 
 /// Mirrors [_DeferredRunPlatform]: sessionManager throws until [bind].
@@ -321,6 +324,10 @@ class _DeferredFakePlatform implements RunPlatformApi, RunPlatformDeferred {
 
   @override
   Map<String, Object?>? configurationSchema(String type) => null;
+
+  @override
+  List<String> kindsFor(String type) =>
+      _inner?.kindsFor(type) ?? const ['run'];
 }
 
 Widget _host({required RunCubit cubit}) {

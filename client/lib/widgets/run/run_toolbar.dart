@@ -6,10 +6,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/run_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/run/launch_adapter_protocol.dart';
-import '../../services/run/run_platform.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_icon_button.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
+import 'run_config_editor_dialog.dart';
 import 'run_toolbar_config_dropdown.dart';
 
 export 'run_toolbar_config_dropdown.dart' show RunActionPicker;
@@ -59,7 +59,7 @@ class RunToolbar extends StatelessWidget {
               _ChoiceOptionSelector(option: option, state: state),
             ],
             const SizedBox(width: 2),
-            _RunOrStopGlyph(state: state),
+            _RunOrStopGlyph(state: state, workspaceId: workspaceId),
             if (kinds.contains('debug')) const _DebugGlyph(),
             if (kinds.contains('build')) const _BuildGlyph(),
           ],
@@ -73,15 +73,7 @@ class RunToolbar extends StatelessWidget {
 List<String> _kindsForSelection(RunCubit cubit, RunState state) {
   final selected = state.selectedConfiguration;
   if (selected == null) return const [];
-  final type = selected.configuration.type;
-  final platform = cubit.platform;
-  if (platform is RunPlatform) {
-    return List<String>.from(
-      platform.registry.get(type)?.kinds ?? const ['run'],
-    );
-  }
-  // Test fakes / deferred unbound: process-like → run only (no Debug/Build).
-  return const ['run'];
+  return cubit.kindsForType(selected.configuration.type);
 }
 
 class _ChoiceOptionSelector extends StatelessWidget {
@@ -191,9 +183,13 @@ class _ToolbarGlyph extends StatelessWidget {
 }
 
 class _RunOrStopGlyph extends StatelessWidget {
-  const _RunOrStopGlyph({required this.state});
+  const _RunOrStopGlyph({
+    required this.state,
+    required this.workspaceId,
+  });
 
   final RunState state;
+  final String workspaceId;
 
   @override
   Widget build(BuildContext context) {
@@ -301,6 +297,57 @@ class _RunOrStopGlyph extends StatelessWidget {
       }
     }
     await cubit.runSelected();
+    if (!context.mounted) return;
+    await _offerEditOnSchemaFailure(context, cubit);
+  }
+
+  Future<void> _offerEditOnSchemaFailure(
+    BuildContext context,
+    RunCubit cubit,
+  ) async {
+    final error = cubit.state.errorMessage;
+    final selected = cubit.state.selectedConfiguration;
+    if (error == null || selected == null || !cubit.selectedHasSchemaErrors) {
+      return;
+    }
+
+    final l10n = context.l10n;
+    final edit = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AppDialog(
+        maxWidth: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppDialogHeader(
+              title: l10n.runEditConfigurations,
+              onClose: () => Navigator.of(dialogContext).pop(false),
+            ),
+            const SizedBox(height: 12),
+            Text(error),
+            AppDialogActions(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: Text(l10n.cancel),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: Text(l10n.runEditConfigurations),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!context.mounted || edit != true) return;
+    await showRunConfigEditorDialog(
+      context,
+      workspaceId: workspaceId,
+      initial: selected,
+    );
   }
 }
 

@@ -96,6 +96,11 @@ abstract class RunPlatformApi {
 
   /// JSON-schema map for [type], or null when the type is unknown.
   Map<String, Object?>? configurationSchema(String type);
+
+  /// Capability kinds for [type] (e.g. `run`, `debug`, `build`).
+  ///
+  /// Unknown types default to `['run']` so the toolbar stays Run-only.
+  List<String> kindsFor(String type);
 }
 
 /// Facade wiring store, registry, session manager, adapter client, registrar.
@@ -307,6 +312,13 @@ class RunPlatform implements RunPlatformApi {
     final contribution = registry.get(type);
     if (contribution == null) return null;
     return Map<String, Object?>.from(contribution.configurationSchema);
+  }
+
+  @override
+  List<String> kindsFor(String type) {
+    final contribution = registry.get(type);
+    if (contribution == null) return const ['run'];
+    return List<String>.from(contribution.kinds);
   }
 }
 

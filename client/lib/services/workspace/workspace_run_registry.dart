@@ -242,4 +242,8 @@ class _DeferredRunPlatform implements RunPlatformApi, RunPlatformDeferred {
   @override
   Map<String, Object?>? configurationSchema(String type) =>
       _inner?.configurationSchema(type);
+
+  @override
+  List<String> kindsFor(String type) =>
+      _inner?.kindsFor(type) ?? const ['run'];
 }

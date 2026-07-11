@@ -207,6 +207,9 @@ class _StoreBackedPlatform implements RunPlatformApi {
     }
     return null;
   }
+
+  @override
+  List<String> kindsFor(String type) => const ['run'];
 }
 
 Future<void> _pumpEditor(

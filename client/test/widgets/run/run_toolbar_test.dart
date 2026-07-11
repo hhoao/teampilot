@@ -17,6 +17,7 @@ import 'package:teampilot/services/run/run_session_manager.dart';
 import 'package:teampilot/theme/app_control_theme.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 import 'package:teampilot/widgets/menu/sidebar_action_menu.dart';
+import 'package:teampilot/widgets/run/run_config_editor_dialog.dart';
 import 'package:teampilot/widgets/run/run_toolbar.dart';
 
 const _folder = WorkspaceFolder(path: '/proj');
@@ -68,7 +69,11 @@ class _RecordingPlatform implements RunPlatformApi {
     this.actions = const [],
     this.options = const [],
     this.recommendations = const [],
-  }) : sessionManager = RunSessionManager(
+    List<String> Function(OwnedLaunchConfiguration owned)? validate,
+    Map<String, List<String>>? kindsByType,
+  }) : _validate = validate ?? ((_) => const []),
+       _kindsByType = kindsByType ?? const {},
+       sessionManager = RunSessionManager(
          executor: _FakeProcessLauncher(),
          adapters: _FakeAdapterLauncher(),
        );
@@ -78,6 +83,8 @@ class _RecordingPlatform implements RunPlatformApi {
   final List<LaunchAdapterConfigurationEntry> actions;
   final List<LaunchOption> options;
   final List<OwnedLaunchConfiguration> recommendations;
+  final List<String> Function(OwnedLaunchConfiguration owned) _validate;
+  final Map<String, List<String>> _kindsByType;
 
   @override
   final RunSessionManager sessionManager;
@@ -127,7 +134,7 @@ class _RecordingPlatform implements RunPlatformApi {
 
   @override
   List<String> validateConfiguration(OwnedLaunchConfiguration owned) =>
-      const [];
+      _validate(owned);
 
   @override
   Future<RunSession> start(OwnedLaunchConfiguration owned) async {
@@ -206,6 +213,10 @@ class _RecordingPlatform implements RunPlatformApi {
 
   @override
   Map<String, Object?>? configurationSchema(String type) => null;
+
+  @override
+  List<String> kindsFor(String type) =>
+      List<String>.from(_kindsByType[type] ?? const ['run']);
 }
 
 class _RecordingCubit extends RunCubit {
@@ -615,6 +626,75 @@ void main() {
 
     expect(platform.runSelectedCalls, 1);
     expect(cubit.state.sessions, isNotEmpty);
+  });
+
+  testWidgets(
+    'schema validation failure dialog offers Edit configuration',
+    (tester) async {
+      final invalid = OwnedLaunchConfiguration(
+        owner: _folder,
+        configuration: const LaunchConfiguration(
+          id: 'bad',
+          name: 'Bad',
+          type: 'process',
+          command: '',
+        ),
+      );
+      final platform = _RecordingPlatform(
+        configurations: [invalid],
+        validate: (_) => const ['command is required'],
+      );
+      final cubit = RunCubit(platform: platform, folders: const [_folder]);
+      addTearDown(cubit.close);
+      addTearDown(platform._actionsController.close);
+
+      await cubit.load();
+      await cubit.select(invalid.selectionKey);
+      await tester.pumpWidget(_host(cubit: cubit));
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('run-toolbar-run')));
+      await tester.pumpAndSettle();
+
+      expect(platform.runSelectedCalls, 0);
+      expect(find.text('command is required'), findsOneWidget);
+      expect(find.text('Edit Configurations'), findsWidgets);
+      expect(find.textContaining('launch.json'), findsNothing);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Edit Configurations'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RunConfigEditorDialog), findsOneWidget);
+    },
+  );
+
+  testWidgets('debug kind shows debug glyph via kindsFor', (tester) async {
+    final platform = _RecordingPlatform(
+      configurations: [
+        OwnedLaunchConfiguration(
+          owner: _folder,
+          configuration: const LaunchConfiguration(
+            id: 'app',
+            name: 'App',
+            type: 'flutter',
+          ),
+        ),
+      ],
+      kindsByType: const {
+        'flutter': ['run', 'debug'],
+      },
+    );
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    addTearDown(cubit.close);
+    addTearDown(platform._actionsController.close);
+
+    await cubit.load();
+    await cubit.select(platform.configurations.single.selectionKey);
+    await tester.pumpWidget(_host(cubit: cubit));
+    await tester.pump();
+
+    expect(find.byKey(const Key('run-toolbar-debug')), findsOneWidget);
+    expect(find.byKey(const Key('run-toolbar-build')), findsNothing);
   });
 
   testWidgets('dropdown lists compounds and Run starts compound', (

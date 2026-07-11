@@ -240,6 +240,9 @@ class _StoreBackedPlatform implements RunPlatformApi {
 
   @override
   Map<String, Object?>? configurationSchema(String type) => null;
+
+  @override
+  List<String> kindsFor(String type) => const ['run'];
 }
 
 void main() {

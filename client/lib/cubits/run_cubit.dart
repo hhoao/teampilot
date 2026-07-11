@@ -323,7 +323,12 @@ class RunCubit extends Cubit<RunState> {
     }
   }
 
-  /// Accepts a discover recommendation into the owning folder's `launch.json`.
+  /// Persists a discover recommendation into the owning folder's `launch.json`.
+  ///
+  /// The Run toolbar / dropdown opens the Edit Configurations dialog for
+  /// recommendations instead of calling this directly. Keep this method for
+  /// programmatic save of recommendation drafts (same persist path as editor
+  /// Save / [saveConfiguration]).
   Future<void> acceptRecommendation(OwnedLaunchConfiguration recommendation) async {
     final errors = _platform.validateConfiguration(recommendation);
     if (errors.isNotEmpty) {
@@ -446,6 +451,17 @@ class RunCubit extends Cubit<RunState> {
   /// Schema for the Edit Configurations form; null when [type] is unknown.
   Map<String, Object?>? schemaForType(String type) =>
       _platform.configurationSchema(type);
+
+  /// Capability kinds for [type] (defaults to `run` when unknown).
+  List<String> kindsForType(String type) => _platform.kindsFor(type);
+
+  /// Whether the selected configuration currently fails schema validation
+  /// (including applied option values).
+  bool get selectedHasSchemaErrors {
+    final owned = state.selectedConfiguration;
+    if (owned == null) return false;
+    return _platform.validateConfiguration(_applyOptionValues(owned)).isNotEmpty;
+  }
 
   String? _selectionKeyAfterPersist(OwnedLaunchConfiguration owned) {
     final id = owned.configuration.id.trim();
