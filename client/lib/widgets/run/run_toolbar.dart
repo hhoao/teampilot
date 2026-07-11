@@ -12,9 +12,9 @@ import '../../services/run/launch_adapter_protocol.dart';
 import '../../services/run/launch_config_store.dart';
 import '../../services/run/launch_type_unavailable.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
-import '../../theme/app_control_theme.dart';
 import '../../widgets/app_dialog.dart';
-import '../../widgets/hover_text_tooltip.dart';
+import '../../widgets/app_icon_button.dart';
+import '../../widgets/menu/sidebar_action_menu.dart';
 
 /// Host file-pick result for an `isAction` dropdown entry.
 typedef RunActionPicker =
@@ -25,7 +25,7 @@ typedef RunActionPicker =
 /// Opens a `launch.json` path in the editor (or creates it).
 typedef RunOpenLaunchJson = Future<void> Function(String path);
 
-/// Top-bar Run controls: config dropdown, inline options, Run/Stop, open JSON.
+/// IDEA-style title-bar Run chrome: Build · config · Run · Debug · More.
 class RunToolbar extends StatelessWidget {
   const RunToolbar({
     required this.workspaceId,
@@ -44,65 +44,34 @@ class RunToolbar extends StatelessWidget {
   /// Injected for tests; defaults to [WorkbenchEditorOpener.openFile].
   final RunOpenLaunchJson? openLaunchJson;
 
+  /// IntelliJ-like run/debug accent (works on light and dark chrome).
+  static const Color _actionGreen = Color(0xFF59A869);
+
   @override
   Widget build(BuildContext context) {
-    final control = context.appControl;
     return BlocBuilder<RunCubit, RunState>(
       builder: (context, state) {
-        return SizedBox(
-          height: control.height + 8,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Row(
-              children: [
-                _ConfigDropdown(
-                  state: state,
-                  showFolderLabels: showFolderLabels,
-                  pickActionResult: pickActionResult,
-                ),
-                const SizedBox(width: 8),
-                ..._inlineOptions(context, state),
-                const Spacer(),
-                _OpenLaunchJsonButton(
-                  workspaceId: workspaceId,
-                  openLaunchJson: openLaunchJson,
-                ),
-                const SizedBox(width: 4),
-                _AcceptRecommendationButton(state: state),
-                const SizedBox(width: 4),
-                _RefreshDiscoverButton(),
-                const SizedBox(width: 4),
-                _StopButton(state: state),
-                const SizedBox(width: 4),
-                _RunButton(state: state),
-              ],
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const _BuildGlyph(),
+            _ConfigDropdown(
+              state: state,
+              showFolderLabels: showFolderLabels,
+              pickActionResult: pickActionResult,
             ),
-          ),
+            const SizedBox(width: 2),
+            _RunOrStopGlyph(state: state),
+            const _DebugGlyph(),
+            _MoreMenu(
+              workspaceId: workspaceId,
+              state: state,
+              openLaunchJson: openLaunchJson,
+            ),
+          ],
         );
       },
     );
-  }
-
-  List<Widget> _inlineOptions(BuildContext context, RunState state) {
-    final cubit = context.read<RunCubit>();
-    final widgets = <Widget>[];
-    for (final option in state.options) {
-      if (option.type != LaunchOptionType.choice || option.choices.isEmpty) {
-        continue;
-      }
-      final current = state.optionValues[option.id] ?? option.value;
-      widgets.add(
-        Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: _OptionChoiceDropdown(
-            option: option,
-            value: current?.toString(),
-            onChanged: (value) => cubit.setOption(option.id, value),
-          ),
-        ),
-      );
-    }
-    return widgets;
   }
 }
 
@@ -171,112 +140,147 @@ class _ConfigDropdown extends StatelessWidget {
             isSuggested: state.isRecommendation(selected),
           );
 
+    final selectedKey =
+        selectedCompound?.selectionKey ?? selected?.selectionKey;
+
+    final specs = <SidebarActionMenuSpec>[
+      for (final entry in entries)
+        SidebarActionMenuSpec.item(
+          value: entry,
+          icon: _entryIcon(entry),
+          label: _entryText(context, entry),
+          enabled: _isEnabled(cubit, entry),
+          selected: _isSelected(entry, selectedKey),
+          tooltip: _entryTooltip(context, cubit, entry),
+        ),
+    ];
+
     final cs = Theme.of(context).colorScheme;
-    final control = context.appControl;
-    return PopupMenuButton<_DropdownEntry>(
+    return SidebarActionMenuButton(
       key: const Key('run-config-dropdown'),
       tooltip: l10n.runConfigurationTooltip,
-      onSelected: (entry) => unawaited(_onSelected(context, cubit, entry)),
-      itemBuilder: (context) {
-        return [
-          for (final entry in entries)
-            PopupMenuItem<_DropdownEntry>(
-              value: entry,
-              enabled: _isEnabled(cubit, entry),
-              child: _itemChild(context, cubit, entry),
-            ),
-        ];
+      minWidth: 240,
+      specs: specs,
+      onSelected: (value) {
+        if (value is _DropdownEntry) {
+          unawaited(_onSelected(context, cubit, value));
+        }
       },
-      child: Container(
-        height: control.height,
-        constraints: const BoxConstraints(minWidth: 160),
-        padding: EdgeInsets.symmetric(horizontal: control.horizontalPadding),
-        decoration: BoxDecoration(
-          border: Border.all(color: cs.outlineVariant),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 220),
-              child: Text(label, overflow: TextOverflow.ellipsis),
+      triggerBuilder: (context, controller) {
+        return InkWell(
+          borderRadius: BorderRadius.circular(6),
+          onTap: () {
+            if (controller.isOpen) {
+              controller.close();
+            } else {
+              controller.open();
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.web_asset_outlined, color: cs.primary),
+                const SizedBox(width: 6),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 200),
+                  child: Text(
+                    label,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurface,
+                    ),
+                  ),
+                ),
+                Icon(Icons.arrow_drop_down, color: cs.onSurfaceVariant),
+              ],
             ),
-            const SizedBox(width: 4),
-            const Icon(Icons.arrow_drop_down, size: 18),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
+  }
+
+  IconData _entryIcon(_DropdownEntry entry) {
+    return switch (entry) {
+      _ConfigEntry() => Icons.play_arrow_outlined,
+      _CompoundEntry() => Icons.account_tree_outlined,
+      _RecommendationEntry() => Icons.auto_awesome_outlined,
+      _ActionEntry() => Icons.add_circle_outline,
+    };
+  }
+
+  String _entryText(BuildContext context, _DropdownEntry entry) {
+    return switch (entry) {
+      _ConfigEntry(:final owned) => _entryLabel(
+        context,
+        owned,
+        showFolderLabels: showFolderLabels,
+        isSuggested: false,
+      ),
+      _CompoundEntry(:final owned) => _compoundLabel(
+        context,
+        owned,
+        showFolderLabels: showFolderLabels,
+      ),
+      _RecommendationEntry(:final owned) => _entryLabel(
+        context,
+        owned,
+        showFolderLabels: showFolderLabels,
+        isSuggested: true,
+      ),
+      _ActionEntry(:final action) => action.name,
+    };
+  }
+
+  String? _entryTooltip(
+    BuildContext context,
+    RunCubit cubit,
+    _DropdownEntry entry,
+  ) {
+    final (type, reasonCode) = switch (entry) {
+      _ConfigEntry(:final owned) => (
+        owned.configuration.type,
+        cubit.unavailableReason(owned),
+      ),
+      _CompoundEntry() => ('', null),
+      _RecommendationEntry(:final owned) => (
+        owned.configuration.type,
+        cubit.unavailableReason(owned),
+      ),
+      _ActionEntry(:final action) => (
+        action.type,
+        cubit.actionUnavailableReason(action),
+      ),
+    };
+    final reason = localizeLaunchTypeUnavailable(
+      context.l10n,
+      reasonCode,
+      type: type,
+    );
+    if (reason == null || reason.isEmpty) return null;
+    return reason;
   }
 
   bool _isEnabled(RunCubit cubit, _DropdownEntry entry) {
     return switch (entry) {
       _ConfigEntry(:final owned) => cubit.isConfigurationAvailable(owned),
       _CompoundEntry() => true,
-      _RecommendationEntry(:final owned) => cubit.isConfigurationAvailable(owned),
+      _RecommendationEntry(:final owned) =>
+        cubit.isConfigurationAvailable(owned),
       _ActionEntry(:final action) => cubit.isActionAvailable(action),
     };
   }
 
-  Widget _itemChild(
-    BuildContext context,
-    RunCubit cubit,
-    _DropdownEntry entry,
-  ) {
-    final (text, type, reasonCode, isSuggested) = switch (entry) {
-      _ConfigEntry(:final owned) => (
-        _entryLabel(
-          context,
-          owned,
-          showFolderLabels: showFolderLabels,
-          isSuggested: false,
-        ),
-        owned.configuration.type,
-        cubit.unavailableReason(owned),
-        false,
-      ),
-      _CompoundEntry(:final owned) => (
-        _compoundLabel(
-          context,
-          owned,
-          showFolderLabels: showFolderLabels,
-        ),
-        '',
-        null as String?,
-        false,
-      ),
-      _RecommendationEntry(:final owned) => (
-        _entryLabel(
-          context,
-          owned,
-          showFolderLabels: showFolderLabels,
-          isSuggested: true,
-        ),
-        owned.configuration.type,
-        cubit.unavailableReason(owned),
-        true,
-      ),
-      _ActionEntry(:final action) => (
-        action.name,
-        action.type,
-        cubit.actionUnavailableReason(action),
-        false,
-      ),
+  bool _isSelected(_DropdownEntry entry, String? selectedKey) {
+    if (selectedKey == null) return false;
+    return switch (entry) {
+      _ConfigEntry(:final owned) => owned.selectionKey == selectedKey,
+      _CompoundEntry(:final owned) => owned.selectionKey == selectedKey,
+      _RecommendationEntry(:final owned) => owned.selectionKey == selectedKey,
+      _ActionEntry() => false,
     };
-    final child = Text(
-      text,
-      style: isSuggested
-          ? TextStyle(color: Theme.of(context).colorScheme.primary)
-          : null,
-    );
-    final reason = localizeLaunchTypeUnavailable(
-      context.l10n,
-      reasonCode,
-      type: type,
-    );
-    if (reason == null || reason.isEmpty) return child;
-    return HoverTextTooltip(message: reason, child: child);
   }
 
   Future<void> _onSelected(
@@ -304,64 +308,83 @@ class _ConfigDropdown extends StatelessWidget {
   }
 }
 
-class _OptionChoiceDropdown extends StatelessWidget {
-  const _OptionChoiceDropdown({
-    required this.option,
-    required this.value,
-    required this.onChanged,
+class _ToolbarGlyph extends StatelessWidget {
+  const _ToolbarGlyph({
+    required this.icon,
+    required this.tooltip,
+    this.onTap,
+    this.color,
+    this.enabled = true,
+    this.keyId,
   });
 
-  final LaunchOption option;
-  final String? value;
-  final ValueChanged<String> onChanged;
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onTap;
+  final Color? color;
+  final bool enabled;
+  final Key? keyId;
 
   @override
   Widget build(BuildContext context) {
-    final control = context.appControl;
-    return SizedBox(
-      height: control.height,
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value != null &&
-                  option.choices.any((c) => c.value == value)
-              ? value
-              : null,
-          hint: Text(option.label),
-          items: [
-            for (final choice in option.choices)
-              DropdownMenuItem(
-                value: choice.value,
-                child: Text(choice.label),
-              ),
-          ],
-          onChanged: (next) {
-            if (next != null) onChanged(next);
-          },
-        ),
-      ),
+    return AppIconButton(
+      key: keyId,
+      icon: icon,
+      tooltip: tooltip,
+      color: color,
+      enabled: enabled,
+      onTap: onTap,
     );
   }
 }
 
-class _RunButton extends StatelessWidget {
-  const _RunButton({required this.state});
+class _RunOrStopGlyph extends StatelessWidget {
+  const _RunOrStopGlyph({required this.state});
 
   final RunState state;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final enabled =
-        state.selectedConfiguration != null || state.selectedCompound != null;
-    return SizedBox(
-      height: context.appControl.height,
-      child: FilledButton.icon(
-        onPressed: enabled
-            ? () => unawaited(_onRun(context))
-            : null,
-        icon: const Icon(Icons.play_arrow, size: 18),
-        label: Text(l10n.runAction),
-      ),
+    final cubit = context.read<RunCubit>();
+    final compound = state.selectedCompound;
+    final selected = state.selectedConfiguration;
+    final hasSelection = compound != null || selected != null;
+
+    final runningIds = compound != null
+        ? cubit.runningSessionIdsForCompound(compound.compoundId)
+        : const <String>[];
+    final runningSelected =
+        selected != null && cubit.hasRunning(selected.selectionKey);
+
+    if (runningIds.isNotEmpty || runningSelected) {
+      return _ToolbarGlyph(
+        keyId: const Key('run-toolbar-stop'),
+        icon: Icons.stop_rounded,
+        tooltip: l10n.runStop,
+        color: RunToolbar._actionGreen,
+        onTap: () {
+          if (compound != null && runningIds.isNotEmpty) {
+            unawaited(cubit.stopCompound(runningIds));
+            return;
+          }
+          final session = selected == null
+              ? null
+              : cubit.runningSessionFor(selected.selectionKey);
+          if (session != null) {
+            unawaited(cubit.stopSession(session.id));
+          }
+        },
+      );
+    }
+
+    return _ToolbarGlyph(
+      keyId: const Key('run-toolbar-run'),
+      icon: Icons.play_arrow,
+      tooltip: l10n.runAction,
+      color: RunToolbar._actionGreen,
+      enabled: hasSelection,
+      onTap: hasSelection ? () => unawaited(_onRun(context)) : null,
     );
   }
 
@@ -431,117 +454,148 @@ class _RunButton extends StatelessWidget {
 
 enum _RerunChoice { restart, newInstance }
 
-class _StopButton extends StatelessWidget {
-  const _StopButton({required this.state});
-
-  final RunState state;
+class _BuildGlyph extends StatelessWidget {
+  const _BuildGlyph();
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final cubit = context.read<RunCubit>();
-    final compound = state.selectedCompound;
-    if (compound != null) {
-      final runningIds = cubit.runningSessionIdsForCompound(compound.compoundId);
-      return SizedBox(
-        height: context.appControl.height,
-        child: OutlinedButton.icon(
-          onPressed: runningIds.isNotEmpty
-              ? () => unawaited(cubit.stopCompound(runningIds))
-              : null,
-          icon: const Icon(Icons.stop, size: 18),
-          label: Text(l10n.runStop),
-        ),
-      );
-    }
-
-    final selected = state.selectedConfiguration;
-    final running = selected != null && cubit.hasRunning(selected.selectionKey);
-    return SizedBox(
-      height: context.appControl.height,
-      child: OutlinedButton.icon(
-        onPressed: running
-            ? () {
-                final session = cubit.runningSessionFor(selected.selectionKey);
-                if (session != null) {
-                  unawaited(cubit.stopSession(session.id));
-                }
-              }
-            : null,
-        icon: const Icon(Icons.stop, size: 18),
-        label: Text(l10n.runStop),
-      ),
+    return _ToolbarGlyph(
+      keyId: const Key('run-toolbar-build'),
+      icon: Icons.build_outlined,
+      tooltip: l10n.runBuildUnavailable,
+      enabled: false,
     );
   }
 }
 
-class _AcceptRecommendationButton extends StatelessWidget {
-  const _AcceptRecommendationButton({required this.state});
-
-  final RunState state;
+class _DebugGlyph extends StatelessWidget {
+  const _DebugGlyph();
 
   @override
   Widget build(BuildContext context) {
-    final selected = state.selectedConfiguration;
-    if (selected == null || !state.isRecommendation(selected)) {
-      return const SizedBox.shrink();
-    }
-
     final l10n = context.l10n;
-    return SizedBox(
-      height: context.appControl.height,
-      width: context.appControl.height,
-      child: IconButton(
-        tooltip: l10n.runAcceptRecommendation,
-        onPressed: () => unawaited(
-          context.read<RunCubit>().acceptRecommendation(selected),
-        ),
-        icon: const Icon(Icons.playlist_add, size: 18),
-      ),
+    return _ToolbarGlyph(
+      keyId: const Key('run-toolbar-debug'),
+      icon: Icons.bug_report_outlined,
+      tooltip: l10n.runDebugUnavailable,
+      color: RunToolbar._actionGreen,
+      enabled: false,
     );
   }
 }
 
-class _RefreshDiscoverButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return SizedBox(
-      height: context.appControl.height,
-      width: context.appControl.height,
-      child: IconButton(
-        tooltip: l10n.runRefreshDiscover,
-        onPressed: () => unawaited(context.read<RunCubit>().refreshDiscover()),
-        icon: const Icon(Icons.refresh, size: 18),
-      ),
-    );
-  }
+enum _MoreAction {
+  openLaunchJson,
+  refreshDiscover,
+  acceptRecommendation,
 }
 
-class _OpenLaunchJsonButton extends StatelessWidget {
-  const _OpenLaunchJsonButton({
+class _MoreMenu extends StatelessWidget {
+  const _MoreMenu({
     required this.workspaceId,
+    required this.state,
     this.openLaunchJson,
   });
 
   final String workspaceId;
+  final RunState state;
   final RunOpenLaunchJson? openLaunchJson;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return SizedBox(
-      height: context.appControl.height,
-      width: context.appControl.height,
-      child: IconButton(
-        tooltip: l10n.runOpenLaunchJson,
-        onPressed: () => unawaited(_open(context)),
-        icon: const Icon(Icons.settings_outlined, size: 18),
+    final cubit = context.read<RunCubit>();
+    final selected = state.selectedConfiguration;
+    final canAccept = selected != null && state.isRecommendation(selected);
+    final choiceOptions = state.options
+        .where(
+          (o) => o.type == LaunchOptionType.choice && o.choices.isNotEmpty,
+        )
+        .toList();
+
+    final specs = <SidebarActionMenuSpec>[
+      SidebarActionMenuSpec.item(
+        value: _MoreAction.openLaunchJson,
+        icon: Icons.description_outlined,
+        label: l10n.runOpenLaunchJson,
       ),
+      SidebarActionMenuSpec.item(
+        value: _MoreAction.refreshDiscover,
+        icon: Icons.refresh,
+        label: l10n.runRefreshDiscover,
+      ),
+      if (canAccept)
+        SidebarActionMenuSpec.item(
+          value: _MoreAction.acceptRecommendation,
+          icon: Icons.check_circle_outline,
+          label: l10n.runAcceptRecommendation,
+        ),
+      for (final option in choiceOptions) ...[
+        const SidebarActionMenuSpec.divider(),
+        SidebarActionMenuSpec.item(
+          icon: Icons.tune,
+          label: option.label,
+          enabled: false,
+        ),
+        for (final choice in option.choices)
+          SidebarActionMenuSpec.item(
+            value: MapEntry(option.id, choice.value),
+            icon: Icons.circle_outlined,
+            label: choice.label,
+            selected:
+                (state.optionValues[option.id] ?? option.value)?.toString() ==
+                choice.value,
+          ),
+      ],
+    ];
+
+    final cs = Theme.of(context).colorScheme;
+    return SidebarActionMenuButton(
+      key: const Key('run-toolbar-more'),
+      tooltip: l10n.runMoreActions,
+      specs: specs,
+      onSelected: (value) {
+        if (value is _MoreAction) {
+          unawaited(_onAction(context, value));
+          return;
+        }
+        if (value is MapEntry<String, String>) {
+          cubit.setOption(value.key, value.value);
+        }
+      },
+      triggerBuilder: (context, controller) {
+        return AppIconButton(
+          icon: Icons.more_vert,
+          backgroundColor: cs.onSurface.withValues(alpha: 0.06),
+          onTap: () {
+            if (controller.isOpen) {
+              controller.close();
+            } else {
+              controller.open();
+            }
+          },
+        );
+      },
     );
   }
 
-  Future<void> _open(BuildContext context) async {
+  Future<void> _onAction(BuildContext context, _MoreAction action) async {
+    final cubit = context.read<RunCubit>();
+    switch (action) {
+      case _MoreAction.openLaunchJson:
+        await _openLaunchJson(context);
+      case _MoreAction.refreshDiscover:
+        await cubit.refreshDiscover();
+      case _MoreAction.acceptRecommendation:
+        final selected = cubit.state.selectedConfiguration;
+        if (selected != null) {
+          await cubit.acceptRecommendation(selected);
+        }
+    }
+  }
+
+  Future<void> _openLaunchJson(BuildContext context) async {
     final cubit = context.read<RunCubit>();
     var path = await cubit.openLaunchJson();
     if (path == null || path.isEmpty) {

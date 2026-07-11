@@ -1,16 +1,16 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teampilot/cubits/llm_config_cubit.dart';
 import 'package:teampilot/models/llm_config.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/repositories/llm_config_store.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/llm_config_path_resolver.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
 
 void main() {
   late Directory tmp;
@@ -269,5 +269,44 @@ void main() {
     await cubit.setConfigPath('   ');
 
     expect(cubit.state.pathSource, LlmConfigPathSource.defaultPath);
+  });
+
+  test('llm config cubit manages providers and models', () async {
+    final cubit = LlmConfigCubit(
+      appSettings: InMemoryAppSettingsRepository(),
+      initialConfig: const LlmConfig(
+        providers: {
+          'test': LlmProviderConfig(
+            name: 'test',
+            type: 'api',
+            providerType: 'openai',
+          ),
+        },
+      ),
+    );
+
+    expect(cubit.state.config.providers.length, 1);
+
+    cubit.addProvider(
+      const LlmProviderConfig(name: 'new', type: 'account', providerType: ''),
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state.config.providers.length, 2);
+
+    cubit.addModel(
+      const LlmModelConfig(
+        id: 'm1',
+        name: 'Model 1',
+        provider: 'test',
+        model: 'gpt-4',
+        enabled: true,
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state.config.models.length, 1);
+
+    cubit.deleteProvider('new');
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state.config.providers.length, 1);
   });
 }

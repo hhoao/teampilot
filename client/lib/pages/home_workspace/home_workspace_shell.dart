@@ -1,34 +1,39 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path/path.dart' as p;
 
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/layout_cubit.dart';
-import '../../cubits/session_preferences_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
+import '../../cubits/run_cubit.dart';
+import '../../cubits/session_preferences_cubit.dart';
 import '../../cubits/workspace_tools_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/home_closed_workspace_entry.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_tab_ref.dart';
 import '../../models/workspace_topology.dart';
-import '../../models/home_closed_workspace_entry.dart';
 import '../../services/commands/command_bus.dart';
 import '../../services/commands/command_ids.dart';
-import '../../theme/workspace_surface_layers.dart';
-import '../../utils/workspace_display_name.dart';
+import '../../services/file_tree/workspace_file_tree_store.dart';
 import '../../services/home_workspace/home_closed_workspaces_store.dart';
 import '../../services/home_workspace/home_open_workspaces_store.dart';
 import '../../services/home_workspace/home_recent_workspaces_store.dart';
 import '../../services/home_workspace/home_workspace_ui_cache.dart';
-import '../../services/file_tree/workspace_file_tree_store.dart';
-import '../../services/workspace/workspace_tools_scope_registry.dart';
-import '../../services/workspace/workspace_run_registry.dart';
-import '../../services/workspace/workspace_worktree_registry.dart';
+import '../../services/run/launch_adapter_protocol.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
+import '../../services/workspace/workspace_run_registry.dart';
+import '../../services/workspace/workspace_tools_scope_registry.dart';
+import '../../services/workspace/workspace_worktree_registry.dart';
+import '../../theme/workspace_surface_layers.dart';
+import '../../utils/workspace_display_name.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/run/run_toolbar.dart';
 import 'home_workspace_body_stack.dart';
 import 'home_workspace_tab_scope.dart';
 import 'home_workspace_title_bar.dart';
@@ -498,10 +503,41 @@ class _HomeShellTitleBar extends StatelessWidget {
       pageChrome: pageChrome,
       recentlyClosed: recentlyClosed,
       workspaces: workspaces,
+      trailingActions: _runToolbarForActiveTab(
+        context: context,
+        activeTab: activeTab,
+        openWorkspaces: openWorkspaces,
+      ),
       onHomeTap: onHomeTap,
       onSelectTab: onSelectTab,
       onCloseTab: onCloseTab,
       onReopenClosedTab: onReopenClosedTab,
+    );
+  }
+
+  Widget? _runToolbarForActiveTab({
+    required BuildContext context,
+    required WorkspaceTabRef? activeTab,
+    required List<Workspace> openWorkspaces,
+  }) {
+    if (activeTab == null) return null;
+    final workspace = _HomeShellState._resolve(
+      openWorkspaces,
+      activeTab.workspaceId,
+    );
+    if (workspace == null) return null;
+    final runCubit = context.read<WorkspaceRunRegistry>().cubitFor(
+      tabScopeId: activeTab.tabKey,
+      workspaceId: workspace.workspaceId,
+      folders: workspace.folders,
+    );
+    return BlocProvider<RunCubit>.value(
+      value: runCubit,
+      child: RunToolbar(
+        workspaceId: workspace.workspaceId,
+        showFolderLabels: workspace.folders.length > 1,
+        pickActionResult: _pickRunActionResult,
+      ),
     );
   }
 
@@ -525,4 +561,15 @@ class _HomeShellTitleBar extends StatelessWidget {
       closable: true,
     );
   }
+}
+
+Future<Map<String, Object?>?> _pickRunActionResult(
+  LaunchAdapterConfigurationEntry action,
+) async {
+  final result = await FilePicker.platform.pickFiles(type: FileType.any);
+  final files = result?.files;
+  if (files == null || files.isEmpty) return null;
+  final path = files.first.path;
+  if (path == null || path.isEmpty) return null;
+  return {'path': path, 'name': p.basename(path)};
 }

@@ -213,3 +213,16 @@ ChatCubit testChatCubit({
     sessionRepository: sessionRepository,
   );
 }
+
+/// Drains post-frame work and closes [cubit] so session persist timers settle.
+Future<void> tearDownChatCubitWithSessionPersist(
+  ChatCubit cubit,
+  PostFrameTestHarness postFrame,
+) async {
+  await postFrame.flush();
+  await drainPendingAsyncWork(rounds: 15);
+  if (!cubit.isClosed) {
+    await cubit.close();
+  }
+  await drainPendingAsyncWork(rounds: 15);
+}

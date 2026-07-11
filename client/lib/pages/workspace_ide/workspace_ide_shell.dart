@@ -26,7 +26,6 @@ class WorkspaceIdeShell extends StatefulWidget {
     required this.center,
     required this.right,
     required this.bottom,
-    this.topBar,
     this.terminalHold,
     super.key,
   });
@@ -34,9 +33,6 @@ class WorkspaceIdeShell extends StatefulWidget {
   final Widget left;
   final Widget center;
   final Widget right;
-
-  /// Optional chrome above the pane grid (e.g. Run toolbar).
-  final Widget? topBar;
 
   /// The bottom workspace terminal. Callers must give it a stable, workspace
   /// scoped [ValueKey] (`workspace-terminal-<id>`) so it survives pane toggles.
@@ -574,37 +570,26 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
               // root pane's layout, which is after this synchronous assignment.
               _narrow = effective.isNarrow;
               final prefs = layoutState.preferences;
-              final topBar = widget.topBar;
               return PaneTheme(
                 data: workspaceIdePaneTheme(cs),
                 child: Padding(
                   padding: _shellPadding(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (topBar != null) topBar,
-                      Expanded(
-                        child: PaneOverlayHost(
-                          showLeft: effective.overlayLeft,
-                          showRight: effective.overlayRight,
-                          leftWidth: prefs.sidebarWidth,
-                          rightWidth: prefs.rightToolsWidth,
-                          left: WorkspaceIdePaneChrome(child: widget.left),
-                          right: WorkspaceIdePaneChrome(child: widget.right),
-                          onDismissLeft: () => context
-                              .read<LayoutCubit>()
-                              .setSidebarVisible(false),
-                          onDismissRight: () => context
-                              .read<LayoutCubit>()
-                              .setRightToolsVisible(false),
-                          child: MultiPane(
-                            direction: Axis.vertical,
-                            controller: _rootController,
-                            paneBuilder: _rootPaneBuilder,
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: PaneOverlayHost(
+                    showLeft: effective.overlayLeft,
+                    showRight: effective.overlayRight,
+                    leftWidth: prefs.sidebarWidth,
+                    rightWidth: prefs.rightToolsWidth,
+                    left: WorkspaceIdePaneChrome(child: widget.left),
+                    right: WorkspaceIdePaneChrome(child: widget.right),
+                    onDismissLeft: () =>
+                        context.read<LayoutCubit>().setSidebarVisible(false),
+                    onDismissRight: () =>
+                        context.read<LayoutCubit>().setRightToolsVisible(false),
+                    child: MultiPane(
+                      direction: Axis.vertical,
+                      controller: _rootController,
+                      paneBuilder: _rootPaneBuilder,
+                    ),
                   ),
                 ),
               );

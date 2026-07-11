@@ -725,46 +725,11 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
   String? _cachedUiFontId;
   String? _cachedMonoFontId;
 
-  /// Fonts actually applied to [ThemeData]. Trails [widget] until prepare
-  /// finishes so we do not rebuild the full tree mid-load.
-  late String _activeUiFontId = widget.uiFontId;
-  late String _activeMonoFontId = widget.monoFontId;
-  var _fontPrepareGeneration = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _activeUiFontId = widget.uiFontId;
-    _activeMonoFontId = widget.monoFontId;
-  }
-
-  @override
-  void didUpdateWidget(covariant _TeamPilotMaterialApp oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.uiFontId != widget.uiFontId ||
-        oldWidget.monoFontId != widget.monoFontId) {
-      _scheduleFontPrepare(widget.uiFontId, widget.monoFontId);
-    }
-  }
-
-  void _scheduleFontPrepare(String uiFontId, String monoFontId) {
-    final generation = ++_fontPrepareGeneration;
-    unawaited(() async {
-      final fonts = AppFontResolver.resolve(
-        uiFontId: uiFontId,
-        monoFontId: monoFontId,
-      );
-      await prepareFontsForUse(fonts);
-      if (!mounted || generation != _fontPrepareGeneration) return;
-      setState(() {
-        _activeUiFontId = uiFontId;
-        _activeMonoFontId = monoFontId;
-        // Force theme rebuild with prepared faces.
-        _cachedUiFontId = null;
-        _cachedMonoFontId = null;
-      });
-    }());
-  }
+  /// Session-pinned fonts. Pref changes save immediately but apply on next
+  /// cold start — mid-session [ThemeData] font swaps force a multi-second
+  /// full-tree layout.
+  late final String _sessionUiFontId = widget.uiFontId;
+  late final String _sessionMonoFontId = widget.monoFontId;
 
   ({ThemeData light, ThemeData dark}) _resolveThemes() {
     // Text size: scales fonts via the theme. `standard` == the per-system
@@ -791,13 +756,13 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
         _cachedTypographyCustomMultiplier ==
             widget.typographyCustomMultiplier &&
         _cachedEffectiveTextMult == effectiveTextMult &&
-        _cachedUiFontId == _activeUiFontId &&
-        _cachedMonoFontId == _activeMonoFontId) {
+        _cachedUiFontId == _sessionUiFontId &&
+        _cachedMonoFontId == _sessionMonoFontId) {
       return (light: _lightTheme!, dark: _darkTheme!);
     }
     final fonts = AppFontResolver.resolve(
-      uiFontId: _activeUiFontId,
-      monoFontId: _activeMonoFontId,
+      uiFontId: _sessionUiFontId,
+      monoFontId: _sessionMonoFontId,
     );
     final textScale = AppTypographyScale(multiplier: effectiveTextMult);
     final iconScale = AppTypographyScale(
@@ -810,8 +775,8 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
     _cachedTypographyScaleId = widget.typographyScaleId;
     _cachedTypographyCustomMultiplier = widget.typographyCustomMultiplier;
     _cachedEffectiveTextMult = effectiveTextMult;
-    _cachedUiFontId = _activeUiFontId;
-    _cachedMonoFontId = _activeMonoFontId;
+    _cachedUiFontId = _sessionUiFontId;
+    _cachedMonoFontId = _sessionMonoFontId;
     _lightTheme = buildLightTheme(
       widget.colorPreset,
       textScale,

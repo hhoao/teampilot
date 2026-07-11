@@ -6,10 +6,7 @@ import 'font_catalog.dart';
 import 'installed_font_enumerator.dart';
 
 /// Ensures installed-font metadata is ready, loads file-backed faces if needed,
-/// and warms Skia/HarfBuzz for the resolved families before a theme swap.
-///
-/// Call this **before** rebuilding [ThemeData] so the first full-tree layout
-/// does not pay face-init cost on a multi-second jank frame.
+/// and warms Skia/HarfBuzz for the resolved families before first paint.
 Future<void> prepareFontsForUse(ResolvedFonts fonts) async {
   if (isInstalledFontId(fonts.resolvedUiId) ||
       isInstalledFontId(fonts.resolvedMonoId)) {
@@ -48,17 +45,4 @@ Future<void> warmFontFamilies(Iterable<String> families) async {
       // Missing faces fall through to fallbacks at paint time.
     }
   }
-}
-
-/// Prepares fonts for a pending preference id (one role) using the other
-/// role's current id for a full [ResolvedFonts] pair.
-Future<void> prepareFontPreferenceChange({
-  required FontRole role,
-  required String newFontId,
-  required String otherRoleFontId,
-}) async {
-  final ui = role == FontRole.ui ? newFontId : otherRoleFontId;
-  final mono = role == FontRole.mono ? newFontId : otherRoleFontId;
-  final fonts = AppFontResolver.resolve(uiFontId: ui, monoFontId: mono);
-  await prepareFontsForUse(fonts);
 }

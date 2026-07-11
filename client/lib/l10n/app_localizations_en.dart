@@ -264,13 +264,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fontUiTitle => 'Interface font';
 
   @override
-  String get fontUiDescription => 'UI text. System follows the OS default.';
+  String get fontUiDescription =>
+      'UI text. System follows the OS default. Takes effect after restart.';
 
   @override
   String get fontMonoTitle => 'Monospace font';
 
   @override
-  String get fontMonoDescription => 'Terminal, editor, and diffs.';
+  String get fontMonoDescription =>
+      'Terminal, editor, and diffs. Takes effect after restart.';
+
+  @override
+  String get fontChangeAppliesOnRestart =>
+      'Font saved. Restart TeamPilot to apply.';
 
   @override
   String get fontOptionSystem => 'System';
@@ -5514,6 +5520,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runNewInstance => 'New instance';
+
+  @override
+  String get runDebug => 'Debug';
+
+  @override
+  String get runDebugUnavailable => 'Debug is not available yet';
+
+  @override
+  String get runBuild => 'Build';
+
+  @override
+  String get runBuildUnavailable => 'Build is not available yet';
+
+  @override
+  String get runMoreActions => 'More run actions';
 
   @override
   String get runSelectConfiguration => 'Select configuration';

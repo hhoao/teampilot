@@ -252,13 +252,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fontUiTitle => '界面字体';
 
   @override
-  String get fontUiDescription => '界面文字。系统跟随操作系统默认字体。';
+  String get fontUiDescription => '界面文字。系统跟随操作系统默认字体。重启后生效。';
 
   @override
   String get fontMonoTitle => '等宽字体';
 
   @override
-  String get fontMonoDescription => '终端、编辑器与 diff。';
+  String get fontMonoDescription => '终端、编辑器与 diff。重启后生效。';
+
+  @override
+  String get fontChangeAppliesOnRestart => '字体已保存，重启 TeamPilot 后生效。';
 
   @override
   String get fontOptionSystem => '系统';
@@ -5314,6 +5317,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get runNewInstance => '新实例';
+
+  @override
+  String get runDebug => '调试';
+
+  @override
+  String get runDebugUnavailable => '调试功能尚未提供';
+
+  @override
+  String get runBuild => '构建';
+
+  @override
+  String get runBuildUnavailable => '构建功能尚未提供';
+
+  @override
+  String get runMoreActions => '更多运行操作';
 
   @override
   String get runSelectConfiguration => '选择配置';

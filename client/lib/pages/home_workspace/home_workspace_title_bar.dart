@@ -171,6 +171,7 @@ class HomeTitleBar extends StatefulWidget {
     this.recentlyClosed = const [],
     this.workspaces = const [],
     this.launchProfiles = const [],
+    this.trailingActions,
     this.onHomeTap,
     this.onSelectTab,
     this.onCloseTab,
@@ -195,6 +196,10 @@ class HomeTitleBar extends StatefulWidget {
 
   /// Launch identities for personal/team badges in the recently-closed menu.
   final List<LaunchProfile> launchProfiles;
+
+  /// Compact actions on the right (e.g. Run toolbar), before pane toggles.
+  final Widget? trailingActions;
+
   final VoidCallback? onHomeTap;
   final ValueChanged<String>? onSelectTab;
   final ValueChanged<String>? onCloseTab;
@@ -374,6 +379,10 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
                   },
                 ),
               ),
+            if (widget.trailingActions != null) ...[
+              widget.trailingActions!,
+              const SizedBox(width: 8),
+            ],
             if (widget.activeTabKey != null) ...[
               const WorkspaceShellPaneVisibilityToggles(),
               const SizedBox(width: 4),

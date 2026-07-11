@@ -563,7 +563,7 @@ abstract class AppLocalizations {
   /// No description provided for @fontUiDescription.
   ///
   /// In en, this message translates to:
-  /// **'UI text. System follows the OS default.'**
+  /// **'UI text. System follows the OS default. Takes effect after restart.'**
   String get fontUiDescription;
 
   /// No description provided for @fontMonoTitle.
@@ -575,8 +575,14 @@ abstract class AppLocalizations {
   /// No description provided for @fontMonoDescription.
   ///
   /// In en, this message translates to:
-  /// **'Terminal, editor, and diffs.'**
+  /// **'Terminal, editor, and diffs. Takes effect after restart.'**
   String get fontMonoDescription;
+
+  /// No description provided for @fontChangeAppliesOnRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Font saved. Restart TeamPilot to apply.'**
+  String get fontChangeAppliesOnRestart;
 
   /// No description provided for @fontOptionSystem.
   ///
@@ -9941,6 +9947,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'New instance'**
   String get runNewInstance;
+
+  /// No description provided for @runDebug.
+  ///
+  /// In en, this message translates to:
+  /// **'Debug'**
+  String get runDebug;
+
+  /// No description provided for @runDebugUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Debug is not available yet'**
+  String get runDebugUnavailable;
+
+  /// No description provided for @runBuild.
+  ///
+  /// In en, this message translates to:
+  /// **'Build'**
+  String get runBuild;
+
+  /// No description provided for @runBuildUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Build is not available yet'**
+  String get runBuildUnavailable;
+
+  /// No description provided for @runMoreActions.
+  ///
+  /// In en, this message translates to:
+  /// **'More run actions'**
+  String get runMoreActions;
 
   /// No description provided for @runSelectConfiguration.
   ///

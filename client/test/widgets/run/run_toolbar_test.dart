@@ -16,6 +16,7 @@ import 'package:teampilot/services/run/run_platform.dart';
 import 'package:teampilot/services/run/run_session_manager.dart';
 import 'package:teampilot/theme/app_control_theme.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
+import 'package:teampilot/widgets/menu/sidebar_action_menu.dart';
 import 'package:teampilot/widgets/run/run_toolbar.dart';
 
 const _folder = WorkspaceFolder(path: '/proj');
@@ -251,9 +252,11 @@ void main() {
 
     final buttonFinder = find.byKey(const Key('run-config-dropdown'));
     expect(buttonFinder, findsOneWidget);
-    final button = tester.widget(buttonFinder) as PopupMenuButton;
-    final items = button.itemBuilder(tester.element(buttonFinder));
-    expect(items, hasLength(2));
+    final button = tester.widget<SidebarActionMenuButton>(buttonFinder);
+    expect(
+      button.specs.where((s) => !s.isDivider),
+      hasLength(2),
+    );
   });
 
   testWidgets('dropdown lists recommendations as suggested entries', (
@@ -281,12 +284,10 @@ void main() {
     await tester.pump();
 
     final buttonFinder = find.byKey(const Key('run-config-dropdown'));
-    final button = tester.widget(buttonFinder) as PopupMenuButton;
-    final items = button.itemBuilder(tester.element(buttonFinder));
+    final button = tester.widget<SidebarActionMenuButton>(buttonFinder);
+    final items = button.specs.where((s) => !s.isDivider).toList();
     expect(items, hasLength(2));
-    final recommendationItem = items.whereType<PopupMenuItem>().last;
-    final label = recommendationItem.child! as Text;
-    expect(label.data, 'Flutter (Suggested)');
+    expect(items.last.label, 'Flutter (Suggested)');
   });
 
   testWidgets('choosing isAction calls configureAction via picker', (
@@ -318,11 +319,9 @@ void main() {
     await tester.pump();
 
     final buttonFinder = find.byKey(const Key('run-config-dropdown'));
-    final button = tester.widget(buttonFinder) as PopupMenuButton;
-    final items = button.itemBuilder(tester.element(buttonFinder));
-    final actionItem = items.whereType<PopupMenuItem>().last;
-    // Bypass generic variance: PopupMenuButton<_DropdownEntry>.onSelected.
-    (button as dynamic).onSelected(actionItem.value);
+    final button = tester.widget<SidebarActionMenuButton>(buttonFinder);
+    final actionSpec = button.specs.where((s) => !s.isDivider).last;
+    button.onSelected(actionSpec.value);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
@@ -330,7 +329,7 @@ void main() {
     expect(platform.lastConfigureActionId, 'pick-entry');
   });
 
-  testWidgets('inline choice option calls setOption', (tester) async {
+  testWidgets('choice option can be set via cubit', (tester) async {
     final platform = _RecordingPlatform(
       configurations: [
         OwnedLaunchConfiguration(
@@ -372,7 +371,7 @@ void main() {
 
     expect(cubit.setOptionCalls.last.key, 'device');
     expect(cubit.setOptionCalls.last.value, 'chrome');
-    expect(find.text('Linux'), findsOneWidget);
+    expect(find.byKey(const Key('run-toolbar-more')), findsOneWidget);
   });
 
   testWidgets('Run button calls runSelected', (tester) async {
@@ -388,7 +387,7 @@ void main() {
     await tester.pumpWidget(_host(cubit: cubit));
     await tester.pump();
 
-    await tester.tap(find.text('Run'));
+    await tester.tap(find.byKey(const Key('run-toolbar-run')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
@@ -424,12 +423,14 @@ void main() {
     await tester.pump();
 
     final buttonFinder = find.byKey(const Key('run-config-dropdown'));
-    final button = tester.widget(buttonFinder) as PopupMenuButton;
-    final items = button.itemBuilder(tester.element(buttonFinder));
-    expect(items, hasLength(3));
+    final button = tester.widget<SidebarActionMenuButton>(buttonFinder);
+    expect(
+      button.specs.where((s) => !s.isDivider),
+      hasLength(3),
+    );
     expect(find.text('All services (compound)'), findsOneWidget);
 
-    await tester.tap(find.text('Run'));
+    await tester.tap(find.byKey(const Key('run-toolbar-run')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
