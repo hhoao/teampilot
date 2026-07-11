@@ -179,7 +179,7 @@ In `LayoutAppearanceInLayoutSection` (near typography scale):
 ## Testing
 
 - Normalize helpers and catalog unknown-id → `system`.
-- Resolver snapshots per platform for `system` UI/mono primary + critical fallback ordering (especially Linux SC before JP-biased mono).
+- Resolver snapshots per platform for `system` UI/mono primary + critical fallback ordering (especially Linux/Android: SC-capable face before bare `monospace`).
 - Bundled ids resolve to expected family names.
 - Theme build: `AppFontTheme` / text theme families match injected `ResolvedFonts`.
 - Cubit: setters persist `uiFontId` / `monoFontId`.
