@@ -20,6 +20,7 @@ import '../../../utils/workspace_active_context.dart';
 import '../../../widgets/deferred_mount_shell.dart';
 import '../../../widgets/right_tools/right_tools_panel.dart';
 import '../../../widgets/run/run_toolbar.dart';
+import '../../../widgets/workspace_bottom_dock.dart';
 import '../../../widgets/workspace_terminal_panel.dart';
 import '../../chat_page.dart';
 import '../../workspace_ide/workspace_ide_shell.dart';
@@ -121,11 +122,13 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
               // didUpdateWidget instead of recreating (and stranding) sessions.
               bottom: DeferredMountShell(
                 delayFrames: 2,
-                child: WorkspaceTerminalPanel(
-                  key: ValueKey('workspace-terminal-${widget.tabScopeId}'),
+                child: WorkspaceBottomDock(
                   workspaceId: widget.tabScopeId,
                   workingDirectory: cwd,
                   holdHandle: _terminalHold,
+                  terminalKey: ValueKey(
+                    'workspace-terminal-${widget.tabScopeId}',
+                  ),
                 ),
               ),
             ),

@@ -209,11 +209,16 @@ class RunSessionManager {
   final Map<String, _ActiveRun> _activeRuns = {};
   final StreamController<List<RunSession>> _sessionsController =
       StreamController<List<RunSession>>.broadcast();
+  final StreamController<ProcessRunOutput> _outputController =
+      StreamController<ProcessRunOutput>.broadcast();
 
   List<String> _lastCompoundErrors = const [];
 
   /// Emits an immutable snapshot whenever session state changes.
   Stream<List<RunSession>> get sessionsStream => _sessionsController.stream;
+
+  /// Process / adapter stdout+stderr chunks for bottom Run pages.
+  Stream<ProcessRunOutput> get outputStream => _outputController.stream;
 
   List<RunSession> get sessions =>
       List<RunSession>.unmodifiable(_sessions.values);
@@ -248,7 +253,7 @@ class RunSessionManager {
       final handle = await _launchForType(
         sessionId: sessionId,
         owned: owned,
-        onOutput: (_) {},
+        onOutput: _emitOutput,
       );
       final current = _sessions[sessionId];
       if (current == null || current.status != RunSessionStatus.starting) {
@@ -287,6 +292,14 @@ class RunSessionManager {
     if (current.status == RunSessionStatus.running ||
         current.status == RunSessionStatus.starting) {
       _upsert(current.copyWith(status: RunSessionStatus.exited));
+    }
+  }
+
+  /// Stops a running session (if needed) and removes it from the session list.
+  Future<void> dismiss(String sessionId) async {
+    await stop(sessionId);
+    if (_sessions.remove(sessionId) != null && !_sessionsController.isClosed) {
+      _sessionsController.add(sessions);
     }
   }
 
@@ -350,6 +363,13 @@ class RunSessionManager {
       await stop(sessionId);
     }
     await _sessionsController.close();
+    await _outputController.close();
+  }
+
+  void _emitOutput(ProcessRunOutput output) {
+    if (!_outputController.isClosed) {
+      _outputController.add(output);
+    }
   }
 
   Future<RunLaunchHandle> _launchForType({

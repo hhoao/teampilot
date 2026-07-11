@@ -214,6 +214,12 @@ class RunCubit extends Cubit<RunState> {
     emit(state.copyWith(sessions: _platform.sessions, clearError: true));
   }
 
+  /// Stops (if running) and removes a session from the bottom Run panel.
+  Future<void> dismissSession(String sessionId) async {
+    await _platform.sessionManager.dismiss(sessionId);
+    emit(state.copyWith(sessions: _platform.sessions, clearError: true));
+  }
+
   Future<void> restartSession(String sessionId) async {
     try {
       await _platform.restart(sessionId);
