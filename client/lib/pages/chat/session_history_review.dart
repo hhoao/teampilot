@@ -6,26 +6,35 @@ import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/app_provider_cubit.dart';
+import '../../cubits/chat_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
+import '../../cubits/expert_hub_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/plugin_cubit.dart';
 import '../../cubits/session_history_cubit.dart';
 import '../../cubits/skill_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
+import '../../models/cli_preset.dart';
 import '../../models/config_bundle.dart';
 import '../../models/landing_launch_context.dart';
 import '../../models/team_config.dart';
+import '../../models/workspace.dart';
 import '../../repositories/workspace_project_config_repository.dart';
 import '../../services/ai/headless_ai_service.dart';
+import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/compose/compose_file_attach.dart';
 import '../../services/compose/compose_landing_bundle.dart';
 import '../../services/compose/compose_prompt_enhance.dart';
 import '../../services/compose/compose_text_edit.dart';
 import '../../services/compose/compose_voice_input.dart';
+import '../../services/expert_hub/expert_member_resolver.dart';
+import '../../services/session/session_continue_overrides_apply.dart';
 import '../../services/storage/app_storage.dart';
 import '../../theme/app_spacing.dart';
+import '../../utils/team_member_naming.dart';
+import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
 import 'session_history_turn_list.dart';
 import 'session_review_compose_card.dart';
 
@@ -232,6 +241,211 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     return unionConfigBundles(identity, _workspaceProjectBundle);
   }
 
+  AppSession _liveSession(BuildContext context) {
+    final id = widget.session.sessionId;
+    final fromCubit = context.select<ChatCubit, AppSession?>((cubit) {
+      for (final session in cubit.state.sessions) {
+        if (session.sessionId == id) return session;
+      }
+      return null;
+    });
+    return fromCubit ?? widget.session;
+  }
+
+  TeamProfile? _liveTeam(BuildContext context) {
+    final session = _liveSession(context);
+    if (session.isSimple) return null;
+    final teamId = session.sessionTeam.trim();
+    if (teamId.isEmpty) return null;
+    final profile = context.watch<LaunchProfileCubit>().byId(teamId);
+    if (profile is TeamProfile) return profile;
+    return widget.team;
+  }
+
+  String _effectiveMemberId(TeamProfile? team) {
+    if (widget.session.isSimple || team == null) return '';
+    final mid = widget.selectedMemberId.trim();
+    if (mid.isNotEmpty) return mid;
+    return team.members
+            .where(TeamMemberNaming.isTeamLead)
+            .firstOrNull
+            ?.id ??
+        team.members.firstOrNull?.id ??
+        '';
+  }
+
+  TeamMemberConfig? _selectedMember(TeamProfile? team) {
+    if (team == null) return null;
+    final mid = _effectiveMemberId(team);
+    if (mid.isEmpty) return null;
+    return team.members.where((m) => m.id == mid).firstOrNull;
+  }
+
+  CliTool _lockedCli({
+    required AppSession session,
+    required TeamProfile? team,
+    required List<CliPreset> presets,
+  }) {
+    if (session.isSimple) return session.cli ?? CliTool.claude;
+    if (team == null) return CliTool.claude;
+    final member = _selectedMember(team);
+    if (member == null) return team.cli;
+    return memberLaunchCli(
+      team: team,
+      member: member,
+      globalPresets: presets,
+    );
+  }
+
+  bool _effectivePermission({
+    required AppSession session,
+    required TeamProfile? team,
+  }) {
+    final overrides = session.continueOverrides;
+    if (session.isSimple) {
+      return resolveContinueSkipPermissions(
+        sessionLevel: overrides.dangerouslySkipPermissions,
+        memberLevel: null,
+        launchDefault: false,
+      );
+    }
+    final member = _selectedMember(team);
+    final memberId = _effectiveMemberId(team);
+    final memberOverride = overrides.memberOverrides[memberId];
+    return resolveContinueSkipPermissions(
+      sessionLevel: overrides.dangerouslySkipPermissions,
+      memberLevel: memberOverride?.dangerouslySkipPermissions,
+      launchDefault: member?.dangerouslySkipPermissions ?? true,
+    );
+  }
+
+  String? _selectedPresetId({
+    required AppSession session,
+    required TeamProfile? team,
+  }) {
+    if (session.isSimple) {
+      final id = session.presetId.trim();
+      return id.isEmpty ? null : id;
+    }
+    final memberId = _effectiveMemberId(team);
+    final fromOverride =
+        session.continueOverrides.memberOverrides[memberId]?.presetId?.trim();
+    if (fromOverride != null && fromOverride.isNotEmpty) return fromOverride;
+    final member = _selectedMember(team);
+    if (member == null) return null;
+    if (member.inheritsTeamPreset) {
+      final teamPreset = team?.activePresetId?.trim() ?? '';
+      return teamPreset.isEmpty ? null : teamPreset;
+    }
+    if (member.hasExplicitPreset) {
+      final id = member.activePresetId?.trim() ?? '';
+      return id.isEmpty ? null : id;
+    }
+    return null;
+  }
+
+  String? _identityLabel({
+    required AppSession session,
+    required TeamProfile? team,
+    required ExpertHubState? hubState,
+    required String expertFallback,
+  }) {
+    if (!session.isSimple) {
+      final name = team?.name.trim() ?? '';
+      return name.isEmpty ? null : name;
+    }
+    final key = session.expertKey.trim();
+    if (key.isEmpty) return null;
+    return ExpertMemberResolver.labelForKey(
+      key: key,
+      fallbackLabel: expertFallback,
+      hubState: hubState,
+    );
+  }
+
+  ExpertHubState? _expertHubState(BuildContext context) {
+    try {
+      return context.watch<ExpertHubCubit>().state;
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
+
+  Workspace? _workspaceForSettings(BuildContext context) {
+    final id = widget.session.workspaceId;
+    return context.read<ChatCubit>().state.workspaces
+        .where((w) => w.workspaceId == id)
+        .firstOrNull;
+  }
+
+  Future<void> _openTeamSettings(TeamProfile team) async {
+    final workspace = _workspaceForSettings(context);
+    if (workspace == null) return;
+    await showLandingTeamSettingsDialog(
+      context,
+      workspace: workspace,
+      team: team,
+    );
+  }
+
+  Future<void> _onPermissionSelected({
+    required bool value,
+    required AppSession session,
+    required TeamProfile? team,
+  }) async {
+    final memberId = session.isSimple ? null : _effectiveMemberId(team);
+    if (!session.isSimple && (memberId == null || memberId.isEmpty)) return;
+    try {
+      await context.read<ChatCubit>().setSessionContinuePermission(
+        sessionId: session.sessionId,
+        dangerouslySkipPermissions: value,
+        memberId: memberId,
+      );
+    } on Object {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: context.l10n.sessionHistoryContinueSaveFailed,
+        variant: AppToastVariant.warning,
+      );
+    }
+  }
+
+  Future<void> _onPresetSelected({
+    required String presetId,
+    required AppSession session,
+    required TeamProfile? team,
+    required List<CliPreset> sameCliPresets,
+    required CliTool lockedCli,
+  }) async {
+    final preset = sameCliPresets.where((p) => p.id == presetId).firstOrNull;
+    if (preset == null) return;
+    final memberId = session.isSimple ? null : _effectiveMemberId(team);
+    if (!session.isSimple && (memberId == null || memberId.isEmpty)) return;
+    try {
+      final ok = await context.read<ChatCubit>().setSessionContinuePreset(
+        sessionId: session.sessionId,
+        preset: preset,
+        memberId: memberId,
+        lockedCli: lockedCli,
+      );
+      if (!ok && mounted) {
+        AppToast.show(
+          context,
+          message: context.l10n.sessionHistoryContinueSaveFailed,
+          variant: AppToastVariant.warning,
+        );
+      }
+    } on Object {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: context.l10n.sessionHistoryContinueSaveFailed,
+        variant: AppToastVariant.warning,
+      );
+    }
+  }
+
   Future<void> _attachFiles() async {
     if (widget.isSubmitting || _enhancing) return;
     await pickAndInsertComposeFileReferences(
@@ -369,8 +583,40 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     final cs = Theme.of(context).colorScheme;
     final skills = context.watch<SkillCubit>().state.installed;
     final plugins = context.watch<PluginCubit>().state.installed;
+    final presets = context.watch<CliPresetsCubit>().state.presets;
+    final session = _liveSession(context);
+    final team = _liveTeam(context);
+    final hubState = _expertHubState(context);
     final canSubmit =
         _controller.text.trim().isNotEmpty && !widget.isSubmitting;
+
+    final lockedCli = _lockedCli(
+      session: session,
+      team: team,
+      presets: presets,
+    );
+    final sameCliPresets = presetsForCli(presets, lockedCli);
+    final selectedPresetId = _selectedPresetId(session: session, team: team);
+    final selectedPreset = selectedPresetId == null
+        ? null
+        : sameCliPresets.where((p) => p.id == selectedPresetId).firstOrNull;
+    final modelLabel = selectedPreset?.name.trim().isNotEmpty == true
+        ? selectedPreset!.name.trim()
+        : l10n.workspaceChatLandingUsePreset;
+    final identityLabel = _identityLabel(
+      session: session,
+      team: team,
+      hubState: hubState,
+      expertFallback: l10n.expertHubNoneSelected,
+    );
+    final workspace = _workspaceForSettings(context);
+    final showTeamSettings = !session.isSimple && team != null;
+    final teamSettingsAttention = showTeamSettings &&
+        workspace != null &&
+        landingTeamSettingsNeedsAttention(
+          workspace: workspace,
+          team: team,
+        );
 
     return ColoredBox(
       color: cs.surface,
@@ -425,6 +671,44 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
               slashBundle: _slashBundle(),
               launchError: widget.launchError,
               onPasteImage: _pasteComposeImage,
+              identityLabel: identityLabel,
+              identityIcon: session.isSimple
+                  ? Icons.psychology_outlined
+                  : Icons.groups_outlined,
+              sameCliPresets: sameCliPresets,
+              selectedPresetId: selectedPresetId,
+              modelPresetLabel: modelLabel,
+              emptyPresetHintLabel: l10n.workspaceCliPresetsEmptyHint,
+              onPresetSelected: (presetId) => unawaited(
+                _onPresetSelected(
+                  presetId: presetId,
+                  session: session,
+                  team: team,
+                  sameCliPresets: sameCliPresets,
+                  lockedCli: lockedCli,
+                ),
+              ),
+              dangerouslySkipPermissions: _effectivePermission(
+                session: session,
+                team: team,
+              ),
+              defaultPermissionsLabel:
+                  l10n.workspaceChatLandingDefaultPermissions,
+              fullAccessPermissionsLabel:
+                  l10n.workspaceChatLandingFullAccessPermissions,
+              onPermissionSelected: (value) => unawaited(
+                _onPermissionSelected(
+                  value: value,
+                  session: session,
+                  team: team,
+                ),
+              ),
+              teamSettingsTooltip:
+                  showTeamSettings ? l10n.teamSettings : null,
+              onTeamSettings: showTeamSettings
+                  ? () => unawaited(_openTeamSettings(team))
+                  : null,
+              showTeamSettingsAttention: teamSettingsAttention,
             ),
           ),
         ],

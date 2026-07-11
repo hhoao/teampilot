@@ -1191,6 +1191,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Continue this conversation… @ reference files, / invoke skills';
 
   @override
+  String get sessionHistoryContinueSaveFailed =>
+      'Couldn\'t save continue settings.';
+
+  @override
   String get sessionHistoryLoadOlderHint => 'Scroll up for earlier messages';
 
   @override

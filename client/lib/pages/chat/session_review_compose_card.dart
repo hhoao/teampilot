@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
+import '../../models/cli_preset.dart';
 import '../../models/config_bundle.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../theme/app_spacing.dart';
+import '../../theme/app_text_styles.dart';
 import '../../utils/debounce/debounce.dart';
+import '../../widgets/compose/compose_model_preset_chip.dart';
+import '../../widgets/compose/compose_permission_chip.dart';
 import '../../widgets/compose/compose_trigger_field.dart';
 import '../home_workspace/workspace/workspace_chat_landing_palette.dart';
 import '../home_workspace/workspace/workspace_chat_landing_voice_bar.dart';
@@ -41,6 +45,20 @@ class SessionReviewComposeCard extends StatelessWidget {
     this.launchError,
     this.onPasteImage,
     this.floating = false,
+    this.identityLabel,
+    this.identityIcon,
+    this.sameCliPresets = const [],
+    this.selectedPresetId,
+    this.modelPresetLabel,
+    this.emptyPresetHintLabel,
+    this.onPresetSelected,
+    this.dangerouslySkipPermissions = false,
+    this.defaultPermissionsLabel,
+    this.fullAccessPermissionsLabel,
+    this.onPermissionSelected,
+    this.teamSettingsTooltip,
+    this.onTeamSettings,
+    this.showTeamSettingsAttention = false,
     super.key,
   });
 
@@ -73,7 +91,32 @@ class SessionReviewComposeCard extends StatelessWidget {
   final Future<bool> Function()? onPasteImage;
   final bool floating;
 
+  /// Read-only expert / team identity (no menu).
+  final String? identityLabel;
+  final IconData? identityIcon;
+
+  final List<CliPreset> sameCliPresets;
+  final String? selectedPresetId;
+  final String? modelPresetLabel;
+  final String? emptyPresetHintLabel;
+  final ValueChanged<String>? onPresetSelected;
+
+  final bool dangerouslySkipPermissions;
+  final String? defaultPermissionsLabel;
+  final String? fullAccessPermissionsLabel;
+  final ValueChanged<bool>? onPermissionSelected;
+
+  final String? teamSettingsTooltip;
+  final VoidCallback? onTeamSettings;
+  final bool showTeamSettingsAttention;
+
   bool get _composeActionsEnabled => !isSubmitting && !isEnhancing;
+
+  bool get _showContinueToolbar =>
+      identityLabel != null ||
+      onPresetSelected != null ||
+      onPermissionSelected != null ||
+      onTeamSettings != null;
 
   @override
   Widget build(BuildContext context) {
@@ -166,7 +209,62 @@ class SessionReviewComposeCard extends StatelessWidget {
     required AppSpacingTheme spacing,
   }) {
     return [
-      const Spacer(),
+      if (_showContinueToolbar)
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                if (identityLabel != null) ...[
+                  _ContinueIdentityChip(
+                    palette: palette,
+                    icon: identityIcon ?? Icons.psychology_outlined,
+                    label: identityLabel!,
+                  ),
+                  SizedBox(width: spacing.sm),
+                ],
+                if (onPresetSelected != null &&
+                    modelPresetLabel != null &&
+                    emptyPresetHintLabel != null) ...[
+                  ComposeModelPresetChip(
+                    palette: palette,
+                    sameCliPresets: sameCliPresets,
+                    selectedPresetId: selectedPresetId,
+                    label: modelPresetLabel!,
+                    emptyHintLabel: emptyPresetHintLabel!,
+                    onPresetSelected: onPresetSelected!,
+                  ),
+                  SizedBox(width: spacing.sm),
+                ],
+                if (onPermissionSelected != null &&
+                    defaultPermissionsLabel != null &&
+                    fullAccessPermissionsLabel != null) ...[
+                  ComposePermissionChip(
+                    palette: palette,
+                    dangerouslySkipPermissions: dangerouslySkipPermissions,
+                    defaultLabel: defaultPermissionsLabel!,
+                    fullAccessLabel: fullAccessPermissionsLabel!,
+                    onSelected: onPermissionSelected!,
+                  ),
+                  SizedBox(width: spacing.sm),
+                ],
+                if (onTeamSettings != null) ...[
+                  SizedBox(width: spacing.xs),
+                  _TeamSettingsButton(
+                    palette: palette,
+                    tooltip: teamSettingsTooltip ?? '',
+                    showAttention: showTeamSettingsAttention,
+                    enabled: _composeActionsEnabled,
+                    onTap: onTeamSettings!,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        )
+      else
+        const Spacer(),
+      if (_showContinueToolbar) SizedBox(width: spacing.sm),
       _ComposeActionIcon(
         palette: palette,
         tooltip: attachTooltip,
@@ -241,6 +339,117 @@ class SessionReviewComposeCard extends StatelessWidget {
         onSubmit: onSubmit,
       ),
     ];
+  }
+}
+
+/// Read-only stadium chip (no chevron / menu).
+class _ContinueIdentityChip extends StatelessWidget {
+  const _ContinueIdentityChip({
+    required this.palette,
+    required this.icon,
+    required this.label,
+  });
+
+  final WorkspaceChatLandingPalette palette;
+  final IconData icon;
+  final String label;
+
+  static const double minHeight = 36;
+
+  @override
+  Widget build(BuildContext context) {
+    final spacing = context.appSpacing;
+    final icons = context.appIconSizes;
+    final labelStyle = AppTextStyles.of(
+      context,
+    ).bodySmall.copyWith(color: palette.muted, fontWeight: FontWeight.w500);
+
+    return Material(
+      color: palette.chipFill,
+      shape: StadiumBorder(side: BorderSide(color: palette.border)),
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: minHeight),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: spacing.md,
+            vertical: spacing.sm,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: icons.sm, color: palette.muted),
+              SizedBox(width: spacing.xs),
+              Text(label, style: labelStyle),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TeamSettingsButton extends StatelessWidget {
+  const _TeamSettingsButton({
+    required this.palette,
+    required this.tooltip,
+    required this.showAttention,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final WorkspaceChatLandingPalette palette;
+  final String tooltip;
+  final bool showAttention;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  static const double _size = 36;
+
+  @override
+  Widget build(BuildContext context) {
+    final icons = context.appIconSizes;
+    final color = enabled ? palette.muted : palette.disabled;
+
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: palette.chipFill,
+        shape: CircleBorder(side: BorderSide(color: palette.border)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: _size,
+            height: _size,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(Icons.settings_outlined, size: icons.md, color: color),
+                if (showAttention)
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.error,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: palette.chipFill,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
