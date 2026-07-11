@@ -51,11 +51,7 @@ class ComposeVoiceRecordingStatus extends StatelessWidget {
         SizedBox(width: spacing.md),
         Text(
           formatComposeVoiceElapsed(elapsed),
-          style: styles.bodySmall.copyWith(
-            color: palette.muted,
-            fontFeatures: const [FontFeature.tabularFigures()],
-            fontWeight: FontWeight.w500,
-          ),
+          style: styles.bodySmall.copyWith(color: palette.muted),
         ),
         SizedBox(width: spacing.md),
         _ComposeVoiceIconButton(

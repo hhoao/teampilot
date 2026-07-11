@@ -560,17 +560,16 @@ class _ComposeFieldPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final styles = AppTextStyles.of(context);
-    final lineHeight = styles.body.fontSize! * 1.5;
+    final hintStyle = styles.body.copyWith(color: hintColor);
+    final lineHeight =
+        (hintStyle.fontSize ?? 14) * (hintStyle.height ?? 1.35);
     return SizedBox(
       width: double.infinity,
       // InlineTokenTextField defaults to minLines: 3.
       height: lineHeight * 3,
       child: Align(
         alignment: Alignment.topLeft,
-        child: Text(
-          hint,
-          style: styles.body.copyWith(color: hintColor, height: 1.5),
-        ),
+        child: Text(hint, style: hintStyle),
       ),
     );
   }

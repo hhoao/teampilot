@@ -101,6 +101,7 @@ List<TextStyle> _appUiTextStylesFromTheme(ThemeData theme) {
     withUi(styles.subtitle),
     withUi(styles.dialogTitle),
     withUi(styles.mutedBody),
+    withUi(styles.mutedBodySmall),
     withUi(styles.fileTreeRootLabel(scheme.onSurface)),
     withUi(styles.fileTreeEntryLabel(color: scheme.onSurface, active: false)),
     withUi(styles.fileTreeEntryLabel(color: scheme.onSurface, active: true)),

@@ -68,7 +68,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final sessionSnapshot = context.select<ChatCubit, WorkspaceSidebarSessions>(
       (c) => WorkspaceSidebarSessions.forWorkspace(
@@ -105,9 +104,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
         openTabSessionIds: openTabSessionIdsForWorkspace(runningTabIds),
       ).map((s) => s.sessionId).toList();
     });
-    final sortedById = {
-      for (final s in sortedSessions) s.sessionId: s,
-    };
+    final sortedById = {for (final s in sortedSessions) s.sessionId: s};
     final runningSessions = [
       for (final id in runningSessionIds)
         if (sortedById[id] case final session?) session,
@@ -146,10 +143,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                 Expanded(
                   child: Text(
                     l10n.homeWorkspaceConversationsSection,
-                    style: AppTextStyles.of(context).bodySmall.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: AppTextStyles.of(context).mutedBodySmall,
                   ),
                 ),
                 _SessionSortButton(
@@ -309,9 +303,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
             context.read<ChatCubit>(),
             widget.tabScopeId,
           ),
-          collapsed: wtView.collapsed.contains(
-            worktreeGroupCollapseKey(group),
-          ),
+          collapsed: wtView.collapsed.contains(worktreeGroupCollapseKey(group)),
         );
       },
     );
@@ -350,7 +342,8 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
     final l10n = context.l10n;
     final tools = WorkspaceToolsScope.of(context).tools;
     if (tools == null) return;
-    final repoPath = context.read<WorktreeCubit>().state.repoPath.trim().isNotEmpty
+    final repoPath =
+        context.read<WorktreeCubit>().state.repoPath.trim().isNotEmpty
         ? context.read<WorktreeCubit>().state.repoPath
         : widget.workspace.firstFolderPath;
     final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
@@ -480,7 +473,6 @@ class _RunningSessionsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -488,10 +480,7 @@ class _RunningSessionsSection extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(4, 0, 0, 8),
           child: Text(
             l10n.workspaceRunningSessionsSection,
-            style: AppTextStyles.of(context).bodySmall.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-            ),
+            style: AppTextStyles.of(context).mutedBodySmall,
           ),
         ),
         for (final session in sessions)
@@ -579,15 +568,7 @@ class _SidebarActionTileState extends State<_SidebarActionTile> {
                   color: foreground,
                 ),
                 const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    widget.label,
-                    style: styles.prominent.copyWith(
-                      color: foreground,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
+                Expanded(child: Text(widget.label, style: styles.prominent)),
               ],
             ),
           ),

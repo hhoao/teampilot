@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/workspace_surface_layers.dart';
 
@@ -45,7 +44,7 @@ class ThemeColorPresetPicker extends StatelessWidget {
   }
 }
 
-class ThemeColorPresetChip extends StatelessWidget {
+class ThemeColorPresetChip extends StatefulWidget {
   const ThemeColorPresetChip({
     required this.id,
     required this.label,
@@ -60,56 +59,65 @@ class ThemeColorPresetChip extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<ThemeColorPresetChip> createState() => _ThemeColorPresetChipState();
+}
+
+class _ThemeColorPresetChipState extends State<ThemeColorPresetChip> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final textBase = cs.onSurface;
-    final primary = themePresetSwatchPrimary(id);
-    final secondary = themePresetSwatchSecondary(id);
-    return InkWell(
-      borderRadius: BorderRadius.circular(999),
-      onTap: onTap,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: cs.workspaceInset,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected ? cs.primary : cs.outlineVariant,
-            width: selected ? 2 : 1,
+    final primary = themePresetSwatchPrimary(widget.id);
+    final secondary = themePresetSwatchSecondary(widget.id);
+    final borderColor = widget.selected
+        ? cs.primary
+        : _hovered
+            ? cs.primary.withValues(alpha: 0.55)
+            : cs.outlineVariant;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          decoration: BoxDecoration(
+            color: cs.workspaceInset,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: borderColor,
+              width: widget.selected ? 2 : 1,
+            ),
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: primary,
-                  shape: BoxShape.circle,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: primary,
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: secondary,
-                  shape: BoxShape.circle,
+                const SizedBox(width: 4),
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: secondary,
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: (selected
-                        ? AppTextStyles.of(context).bodyStrong
-                        : AppTextStyles.of(context).bodySmall)
-                    .copyWith(
-                      color: textBase.withValues(alpha: selected ? 1 : 0.78),
-                    ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                Text(widget.label),
+              ],
+            ),
           ),
         ),
       ),

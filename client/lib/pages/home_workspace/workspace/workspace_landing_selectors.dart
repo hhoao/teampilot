@@ -5,7 +5,6 @@ import '../../../cubits/worktree_cubit.dart';
 import '../../../models/git_worktree.dart';
 import '../../../models/runtime_target.dart';
 import '../../../models/workspace.dart';
-import '../../../models/workspace_folder.dart';
 import '../../../models/workspace_topology.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
@@ -296,30 +295,21 @@ class WorkspaceLandingSelectorBar extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final palette = WorkspaceChatLandingPalette(cs);
     final icons = context.appIconSizes;
-    final styles = AppTextStyles.of(context);
     final isEmpty = label.trim().isEmpty;
     final display = isEmpty ? hintWhenEmpty : label.trim();
     final foreground = isEmpty
         ? palette.hint.withValues(alpha: 0.85)
         : palette.muted.withValues(alpha: 0.88);
-    final textStyle = styles.body.copyWith(
-      color: foreground,
-      fontWeight: FontWeight.w500,
-    );
     final selectable = menuSpecs.isNotEmpty && onSelected != null;
     final labelWidget = Text(
       display,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: textStyle,
+      style: AppTextStyles.of(context).body.copyWith(color: foreground),
     );
     if (!selectable) {
       if (compact) return labelWidget;
-      return Row(
-        children: [
-          Flexible(child: labelWidget),
-        ],
-      );
+      return Row(children: [Flexible(child: labelWidget)]);
     }
 
     final expandIcon = Icon(
@@ -334,7 +324,10 @@ class WorkspaceLandingSelectorBar extends StatelessWidget {
         ? LayoutBuilder(
             builder: (context, constraints) {
               final maxLabelWidth = constraints.maxWidth.isFinite
-                  ? (constraints.maxWidth - icons.md).clamp(0.0, double.infinity)
+                  ? (constraints.maxWidth - icons.md).clamp(
+                      0.0,
+                      double.infinity,
+                    )
                   : double.infinity;
               return Row(
                 mainAxisSize: MainAxisSize.min,
@@ -383,10 +376,7 @@ class WorkspaceLandingSelectorBar extends StatelessWidget {
 }
 
 class _LandingSelectorMenuTrigger extends StatefulWidget {
-  const _LandingSelectorMenuTrigger({
-    required this.onTap,
-    required this.child,
-  });
+  const _LandingSelectorMenuTrigger({required this.onTap, required this.child});
 
   final VoidCallback onTap;
   final Widget child;

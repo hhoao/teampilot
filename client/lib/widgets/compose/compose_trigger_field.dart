@@ -212,10 +212,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     if (fieldBox == null || !fieldBox.hasSize) return;
 
     final styles = AppTextStyles.of(context);
-    final textStyle = styles.body.copyWith(
-      color: widget.mutedColor,
-      height: 1.5,
-    );
+    final textStyle = styles.body.copyWith(color: widget.mutedColor);
     final anchor = composeTriggerMenuAnchor(
       context: context,
       fieldBox: fieldBox,
@@ -383,10 +380,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   @override
   Widget build(BuildContext context) {
     final styles = AppTextStyles.of(context);
-    final textStyle = styles.body.copyWith(
-      color: widget.mutedColor,
-      height: 1.5,
-    );
+    final textStyle = styles.body.copyWith(color: widget.mutedColor);
 
     if (_overlayVisible) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -407,10 +401,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
             enabled: widget.enabled,
             onChanged: widget.onChanged,
             textStyle: textStyle,
-            hintStyle: styles.body.copyWith(
-              color: widget.hintColor,
-              height: 1.5,
-            ),
+            hintStyle: styles.body.copyWith(color: widget.hintColor),
             cursorColor: widget.mutedColor,
             onKeyEvent: _handleComposeKey,
             overlayVisible: _overlayVisible,

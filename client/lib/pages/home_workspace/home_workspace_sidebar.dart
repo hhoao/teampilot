@@ -433,12 +433,14 @@ class _IdentityRowState extends State<_IdentityRow> {
                           widget.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: styles.prominent.copyWith(
-                            color: selected ? cs.primary : cs.onSurface,
-                            fontWeight: selected
-                                ? FontWeight.w600
-                                : FontWeight.w400,
-                          ),
+                          style: (selected
+                                  ? styles.prominent.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    )
+                                  : styles.prominent)
+                              .copyWith(
+                                color: selected ? cs.primary : cs.onSurface,
+                              ),
                         ),
                       ),
                     ],
@@ -588,10 +590,12 @@ class _ShortcutRowState extends State<_ShortcutRow> {
                 const SizedBox(width: 8),
                 Text(
                   widget.label,
-                  style: styles.prominent.copyWith(
-                    color: fg,
-                    fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                  ),
+                  style: (active
+                          ? styles.prominent.copyWith(
+                              fontWeight: FontWeight.w600,
+                            )
+                          : styles.prominent)
+                      .copyWith(color: fg),
                 ),
               ],
             ),
@@ -665,9 +669,8 @@ class _ProvidersButtonState extends State<_ProvidersButton> {
               const SizedBox(width: 8),
               Text(
                 widget.label,
-                style: styles.body.copyWith(
+                style: (active ? styles.bodyStrong : styles.body).copyWith(
                   color: fg,
-                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
                 ),
               ),
             ],

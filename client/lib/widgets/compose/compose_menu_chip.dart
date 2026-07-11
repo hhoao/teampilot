@@ -73,11 +73,9 @@ class ComposeToolbarChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final spacing = context.appSpacing;
     final icons = context.appIconSizes;
-    final labelStyle = AppTextStyles.of(context).body.copyWith(
-      color: palette.muted,
-      fontWeight: FontWeight.w500,
-      height: 1.25,
-    );
+    final labelStyle = AppTextStyles.of(
+      context,
+    ).body.copyWith(color: palette.muted);
 
     return Material(
       color: palette.chipFill,
