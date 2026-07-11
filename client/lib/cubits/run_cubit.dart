@@ -409,6 +409,8 @@ class RunCubit extends Cubit<RunState> {
       await load();
       if (isClosed) return;
       if (wasSelected) {
+        await _optionsSub?.cancel();
+        _optionsSub = null;
         emit(
           state.copyWith(
             clearSelectedKey: true,

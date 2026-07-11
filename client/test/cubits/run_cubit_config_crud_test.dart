@@ -29,6 +29,21 @@ OwnedLaunchConfiguration _processConfig({
   );
 }
 
+OwnedLaunchConfiguration _flutterConfig({
+  String id = 'app',
+  String name = 'app',
+}) {
+  return OwnedLaunchConfiguration(
+    owner: _folder,
+    configuration: LaunchConfiguration(
+      id: id,
+      name: name,
+      type: 'flutter',
+      extras: const {'device': 'linux'},
+    ),
+  );
+}
+
 class _FakeProcessLauncher implements RunProcessLauncher {
   _FakeProcessLauncher({this.hangOnStart = false});
 
@@ -77,6 +92,7 @@ class _StoreBackedPlatform implements RunPlatformApi {
     LaunchConfigStore? store,
     RunSessionManager? sessionManager,
     List<String> Function(OwnedLaunchConfiguration owned)? validate,
+    Stream<List<LaunchOption>>? optionsChanged,
   }) : store = store ?? LaunchConfigStore(io: MemoryLaunchConfigIo()),
        sessionManager =
            sessionManager ??
@@ -84,12 +100,14 @@ class _StoreBackedPlatform implements RunPlatformApi {
              executor: _FakeProcessLauncher(),
              adapters: _FakeAdapterLauncher(),
            ),
-       _validate = validate;
+       _validate = validate,
+       _optionsChanged = optionsChanged;
 
   final LaunchConfigStore store;
   @override
   final RunSessionManager sessionManager;
   final List<String> Function(OwnedLaunchConfiguration owned)? _validate;
+  final Stream<List<LaunchOption>>? _optionsChanged;
 
   var persistCalls = 0;
   var deleteCalls = 0;
@@ -130,7 +148,7 @@ class _StoreBackedPlatform implements RunPlatformApi {
   @override
   Stream<List<LaunchOption>> optionsChangedFor(
     OwnedLaunchConfiguration owned,
-  ) => const Stream.empty();
+  ) => _optionsChanged ?? const Stream.empty();
 
   @override
   List<String> validateConfiguration(OwnedLaunchConfiguration owned) {
@@ -298,6 +316,42 @@ void main() {
     expect(cubit.state.selectedKey, isNull);
     await cubit.close();
   });
+
+  test(
+    'deleteConfiguration cancels options sub for selected config',
+    () async {
+      final optionsController = StreamController<List<LaunchOption>>.broadcast();
+      final platform = _StoreBackedPlatform(
+        optionsChanged: optionsController.stream,
+      );
+      await platform.seed(_flutterConfig());
+      final cubit = RunCubit(platform: platform, folders: const [_folder]);
+      await cubit.load();
+      final owned = cubit.state.configurations.single;
+      await cubit.select(owned.selectionKey);
+
+      await cubit.deleteConfiguration(owned);
+
+      expect(cubit.state.selectedKey, isNull);
+      expect(cubit.state.options, isEmpty);
+      optionsController.add([
+        const LaunchOption(
+          id: 'device',
+          label: 'Device',
+          type: LaunchOptionType.choice,
+          value: 'chrome',
+          choices: [
+            LaunchOptionChoice(value: 'chrome', label: 'Chrome'),
+            LaunchOptionChoice(value: 'linux', label: 'Linux'),
+          ],
+        ),
+      ]);
+      await Future<void>.delayed(Duration.zero);
+      expect(cubit.state.options, isEmpty);
+      await cubit.close();
+      await optionsController.close();
+    },
+  );
 
   test('deleteConfiguration when not running leaves sessions untouched', () async {
     final platform = _StoreBackedPlatform();
