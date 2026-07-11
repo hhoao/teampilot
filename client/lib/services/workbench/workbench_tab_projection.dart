@@ -14,6 +14,7 @@ List<TabInfo> projectWorkbenchTabs({
   required Map<String, CliTool?> sessionCli,
   required WorkspaceEditorBucket editorBucket,
   required Set<WorkbenchTabId> previewTabIds,
+  Map<String, bool> sessionPinned = const {},
   Color? sessionAccent,
 }) {
   return [
@@ -27,6 +28,8 @@ List<TabInfo> projectWorkbenchTabs({
           accentColor: sessionAccent,
           icon: Icons.terminal_rounded,
           preview: previewTabIds.contains(tab),
+          pinnable: true,
+          pinned: sessionPinned[tab.id] ?? false,
         ),
         WorkbenchTabKind.file => TabInfo(
           id: tab.id,

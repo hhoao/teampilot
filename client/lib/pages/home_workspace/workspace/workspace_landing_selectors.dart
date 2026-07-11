@@ -240,30 +240,30 @@ class WorkspaceLandingHeaderRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final spacing = context.appSpacing;
 
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          WorkspaceLandingSelectorBar(
+    return Row(
+      children: [
+        Flexible(
+          child: WorkspaceLandingSelectorBar(
             compact: true,
             label: projectLabel,
             hintWhenEmpty: projectHintWhenEmpty,
             menuSpecs: projectMenuSpecs,
             onSelected: onProjectSelected,
           ),
-          if (showWorktreeSelector) ...[
-            SizedBox(width: spacing.sm),
-            WorkspaceLandingSelectorBar(
+        ),
+        if (showWorktreeSelector) ...[
+          SizedBox(width: spacing.sm),
+          Flexible(
+            child: WorkspaceLandingSelectorBar(
               compact: true,
               label: worktreeLabel,
               hintWhenEmpty: worktreeHintWhenEmpty,
               menuSpecs: worktreeMenuSpecs,
               onSelected: onWorktreeSelected,
             ),
-          ],
+          ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -284,7 +284,7 @@ class WorkspaceLandingSelectorBar extends StatelessWidget {
   final List<SidebarActionMenuSpec> menuSpecs;
   final ValueChanged<Object?>? onSelected;
 
-  /// When true, sizes to content for use inside [WorkspaceLandingHeaderRow].
+  /// When true, shrinks labels under a [Flexible] parent ([WorkspaceLandingHeaderRow]).
   final bool compact;
 
   @override
@@ -303,13 +303,13 @@ class WorkspaceLandingSelectorBar extends StatelessWidget {
       fontWeight: FontWeight.w500,
     );
     final selectable = menuSpecs.isNotEmpty && onSelected != null;
+    final labelWidget = Text(
+      display,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: textStyle,
+    );
     if (!selectable) {
-      final labelWidget = Text(
-        display,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: textStyle,
-      );
       if (compact) return labelWidget;
       return Row(
         children: [
@@ -318,15 +318,12 @@ class WorkspaceLandingSelectorBar extends StatelessWidget {
       );
     }
 
+    // Compact headers sit in a Flexible parent; use max + Flexible so ellipsis
+    // applies under the shared width instead of overflowing at intrinsic size.
     final menuRow = Row(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
       children: [
-        Text(
-          display,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: textStyle,
-        ),
+        if (compact) Flexible(child: labelWidget) else labelWidget,
         Icon(
           Icons.expand_more,
           size: icons.md,

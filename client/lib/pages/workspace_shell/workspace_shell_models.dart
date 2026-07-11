@@ -13,6 +13,8 @@ class TabInfo {
     this.cli,
     this.accentColor,
     this.preview = false,
+    this.pinnable = false,
+    this.pinned = false,
   });
 
   final String id;
@@ -34,4 +36,10 @@ class TabInfo {
 
   /// Preview (replaceable) editor/diff tab — rendered italic like VS Code/Orca.
   final bool preview;
+
+  /// Session tabs can pin; file/diff tabs cannot.
+  final bool pinnable;
+
+  /// [AppSession.pinned] for session tabs — sidebar sort only.
+  final bool pinned;
 }

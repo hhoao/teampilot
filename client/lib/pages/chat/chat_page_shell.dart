@@ -131,6 +131,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
         previous.selectedMemberId != next.selectedMemberId ||
         previous.sessionConnectingId != next.sessionConnectingId ||
         previous.sessionLaunchError != next.sessionLaunchError ||
+        previous.sessions != next.sessions ||
         previous.stateVersion != next.stateVersion;
   }
 
@@ -193,11 +194,16 @@ class _ChatWorkspaceShell extends StatelessWidget {
                     );
                   }(),
               };
+              final sessionPinned = {
+                for (final s in state.sessions)
+                  if (sessionIds.contains(s.sessionId)) s.sessionId: s.pinned,
+              };
               final tabs = projectWorkbenchTabs(
                 tabOrder: order,
                 sessionTitles: sessionTitles,
                 sessionWorking: sessionWorking,
                 sessionCli: sessionCli,
+                sessionPinned: sessionPinned,
                 editorBucket: editorBucket,
                 previewTabIds: workbenchState.bucket(workspaceId).previewTabIds,
                 sessionAccent: Theme.of(context).colorScheme.primary,
@@ -275,6 +281,14 @@ class _ChatWorkspaceShell extends StatelessWidget {
                             anchor: order[index],
                           ),
                         );
+                      }
+                    : null,
+                onTabPin: routeActive
+                    ? (index) {
+                        if (index < 0 || index >= order.length) return;
+                        final sessionId = order[index].sessionId;
+                        if (sessionId == null) return;
+                        unawaited(cubit.toggleSessionPin(sessionId));
                       }
                     : null,
                 tabBarTrailing: Padding(

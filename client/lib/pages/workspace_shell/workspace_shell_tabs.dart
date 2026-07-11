@@ -98,6 +98,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
     this.onTabClosed,
     this.onTabCloseOthers,
     this.onTabCloseRight,
+    this.onTabPin,
     this.newChatButton,
     this.leading,
     this.trailing,
@@ -109,6 +110,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
   final ValueChanged<int>? onTabClosed;
   final ValueChanged<int>? onTabCloseOthers;
   final ValueChanged<int>? onTabCloseRight;
+  final ValueChanged<int>? onTabPin;
   final Widget? newChatButton;
   final Widget? leading;
   final Widget? trailing;
@@ -142,10 +144,15 @@ class WorkspaceShellTabRow extends StatelessWidget {
                       working: tabs[i].working,
                       active: activeIndex >= 0 && i == activeIndex,
                       preview: tabs[i].preview,
+                      pinnable: tabs[i].pinnable,
+                      pinned: tabs[i].pinned,
                       onTap: () => onTabSelected?.call(i),
                       onClose: () => onTabClosed?.call(i),
                       onCloseOthers: () => onTabCloseOthers?.call(i),
                       onCloseRight: () => onTabCloseRight?.call(i),
+                      onPin: tabs[i].pinnable && onTabPin != null
+                          ? () => onTabPin!(i)
+                          : null,
                       icon: tabs[i].icon,
                       cli: tabs[i].cli,
                       accentColor: tabs[i].accentColor,
@@ -197,8 +204,11 @@ class WorkspaceShellTabChip extends StatefulWidget {
     required this.onClose,
     this.onCloseOthers,
     this.onCloseRight,
+    this.onPin,
     this.working = false,
     this.preview = false,
+    this.pinnable = false,
+    this.pinned = false,
     this.icon = Icons.terminal_rounded,
     this.cli,
     this.accentColor,
@@ -208,10 +218,13 @@ class WorkspaceShellTabChip extends StatefulWidget {
   final bool working;
   final bool active;
   final bool preview;
+  final bool pinnable;
+  final bool pinned;
   final VoidCallback onTap;
   final VoidCallback onClose;
   final VoidCallback? onCloseOthers;
   final VoidCallback? onCloseRight;
+  final VoidCallback? onPin;
   final IconData icon;
   final CliTool? cli;
   final Color? accentColor;
@@ -229,7 +242,9 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
   final _overflowMenuOpen = false;
 
   void _handleTabMenuSelection(String value) {
-    if (value == 'close') {
+    if (value == 'pin') {
+      widget.onPin?.call();
+    } else if (value == 'close') {
       widget.onClose();
     } else if (value == 'closeOthers') {
       widget.onCloseOthers?.call();
@@ -241,6 +256,12 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
   List<SidebarActionMenuSpec> _tabMenuSpecs(BuildContext menuContext) {
     final l10n = menuContext.l10n;
     return [
+      if (widget.pinnable && widget.onPin != null)
+        SidebarActionMenuSpec.item(
+          value: 'pin',
+          icon: widget.pinned ? Icons.push_pin : Icons.push_pin_outlined,
+          label: widget.pinned ? l10n.unpinConversation : l10n.pinConversation,
+        ),
       SidebarActionMenuSpec.item(
         value: 'close',
         icon: Icons.close,

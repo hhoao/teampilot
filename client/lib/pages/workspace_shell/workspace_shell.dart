@@ -23,6 +23,7 @@ class WorkspaceShell extends StatelessWidget {
     this.onTabClosed,
     this.onTabCloseOthers,
     this.onTabCloseRight,
+    this.onTabPin,
     this.showNewChatButton = false,
     this.newChatTooltip = '',
     this.onNewChatPressed,
@@ -42,6 +43,7 @@ class WorkspaceShell extends StatelessWidget {
   final ValueChanged<int>? onTabClosed;
   final ValueChanged<int>? onTabCloseOthers;
   final ValueChanged<int>? onTabCloseRight;
+  final ValueChanged<int>? onTabPin;
 
   /// "+" action at the end of the session tab row — opens landing; not a tab.
   final bool showNewChatButton;
@@ -124,6 +126,7 @@ class WorkspaceShell extends StatelessWidget {
             onTabClosed: onTabClosed,
             onTabCloseOthers: onTabCloseOthers,
             onTabCloseRight: onTabCloseRight,
+            onTabPin: onTabPin,
             newChatButton: showNewChatButton
                 ? WorkspaceShellNewChatButton(
                     tooltip: newChatTooltip,
