@@ -52,6 +52,7 @@ String _formatKey(String key) {
     'arrowRight' => '→',
     'numpadAdd' => 'Num+',
     'numpadSubtract' => 'Num-',
+    'f5' => 'F5',
     _ => key,
   };
 }

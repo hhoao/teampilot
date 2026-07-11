@@ -2461,5 +2461,68 @@
   "shortcutsConflictMessage": "Already used by \"{title}\".",
   "@shortcutsConflictMessage": { "placeholders": { "title": { "type": "String" } } },
   "shortcutsReplaceAction": "Replace",
-  "shortcutsConflictBadgeTooltip": "Conflicts with another shortcut"
+  "shortcutsConflictBadgeTooltip": "Conflicts with another shortcut",
+
+  "runAction": "Run",
+  "runStop": "Stop",
+  "runRestart": "Restart",
+  "runNewInstance": "New instance",
+  "runSelectConfiguration": "Select configuration",
+  "runCompoundConfiguration": "{name} (compound)",
+  "@runCompoundConfiguration": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "runSuggestedConfiguration": "{name} (Suggested)",
+  "@runSuggestedConfiguration": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "runAcceptRecommendation": "Add suggested configuration to launch.json",
+  "runRefreshDiscover": "Refresh discover recommendations",
+  "runConfigurationTooltip": "Run configuration",
+  "runOpenLaunchJson": "Open launch.json",
+  "runAlreadyRunningTitle": "Configuration already running",
+  "runAlreadyRunningMessage": "Restart the running session, or start a new instance?",
+  "runStopSessionTitle": "Stop running session?",
+  "runStopSessionMessage": "\"{name}\" is still running. Stop it and close this tab?",
+  "@runStopSessionMessage": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "runStopAndClose": "Stop and close",
+  "runNoSessions": "No run sessions",
+  "runClearExited": "Clear exited sessions",
+  "runLoadingOutput": "Loading run output…",
+  "runEmptyOutputHint": "Run a configuration to see output here",
+  "runTypeUnknown": "Unknown launch type: {type}",
+  "@runTypeUnknown": {
+    "placeholders": {
+      "type": { "type": "String" }
+    }
+  },
+  "runTypeUnavailable": "Launch type \"{type}\" is not available on this target",
+  "@runTypeUnavailable": {
+    "placeholders": {
+      "type": { "type": "String" }
+    }
+  },
+  "runTypeUnavailableRemote": "Launch type \"{type}\" is not available on remote targets",
+  "@runTypeUnavailableRemote": {
+    "placeholders": {
+      "type": { "type": "String" }
+    }
+  },
+  "runErrorNoConfiguration": "No configuration selected",
+  "runErrorNoFolder": "No workspace folder",
+  "runErrorSshProfileMissing": "SSH profile not found for this run target",
+  "runErrorSshSpawnerMissing": "SSH process execution is not configured",
+
+  "shortcutsRunSelected": "Run Selected Configuration",
+  "shortcutsRunStop": "Stop Run",
+  "shortcutsRunRestart": "Restart Run",
+  "shortcutsCategoryRun": "Run"
 }

@@ -2036,5 +2036,68 @@
   "shortcutsPressShortcutUnsupportedKey": "该键无法绑定。",
   "shortcutsConflictMessage": "已被“{title}”使用。",
   "shortcutsReplaceAction": "替换",
-  "shortcutsConflictBadgeTooltip": "与另一个快捷键冲突"
+  "shortcutsConflictBadgeTooltip": "与另一个快捷键冲突",
+
+  "runAction": "运行",
+  "runStop": "停止",
+  "runRestart": "重新运行",
+  "runNewInstance": "新实例",
+  "runSelectConfiguration": "选择配置",
+  "runCompoundConfiguration": "{name}（组合）",
+  "@runCompoundConfiguration": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "runSuggestedConfiguration": "{name}（建议）",
+  "@runSuggestedConfiguration": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "runAcceptRecommendation": "将建议配置添加到 launch.json",
+  "runRefreshDiscover": "刷新发现建议",
+  "runConfigurationTooltip": "运行配置",
+  "runOpenLaunchJson": "打开 launch.json",
+  "runAlreadyRunningTitle": "配置已在运行",
+  "runAlreadyRunningMessage": "重新运行当前会话，还是再启动一个新实例？",
+  "runStopSessionTitle": "停止正在运行的会话？",
+  "runStopSessionMessage": "“{name}”仍在运行。停止并关闭此标签页？",
+  "@runStopSessionMessage": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "runStopAndClose": "停止并关闭",
+  "runNoSessions": "暂无运行会话",
+  "runClearExited": "清除已退出的会话",
+  "runLoadingOutput": "正在加载运行输出…",
+  "runEmptyOutputHint": "运行配置后，输出将显示在这里",
+  "runTypeUnknown": "未知启动类型：{type}",
+  "@runTypeUnknown": {
+    "placeholders": {
+      "type": { "type": "String" }
+    }
+  },
+  "runTypeUnavailable": "启动类型“{type}”在此目标上不可用",
+  "@runTypeUnavailable": {
+    "placeholders": {
+      "type": { "type": "String" }
+    }
+  },
+  "runTypeUnavailableRemote": "启动类型“{type}”在远程目标上不可用",
+  "@runTypeUnavailableRemote": {
+    "placeholders": {
+      "type": { "type": "String" }
+    }
+  },
+  "runErrorNoConfiguration": "未选择配置",
+  "runErrorNoFolder": "没有工作区文件夹",
+  "runErrorSshProfileMissing": "找不到此运行目标的 SSH 配置",
+  "runErrorSshSpawnerMissing": "未配置 SSH 进程执行",
+
+  "shortcutsRunSelected": "运行所选配置",
+  "shortcutsRunStop": "停止运行",
+  "shortcutsRunRestart": "重新运行",
+  "shortcutsCategoryRun": "运行"
 }

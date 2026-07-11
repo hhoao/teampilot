@@ -5502,4 +5502,113 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shortcutsConflictBadgeTooltip => 'Conflicts with another shortcut';
+
+  @override
+  String get runAction => 'Run';
+
+  @override
+  String get runStop => 'Stop';
+
+  @override
+  String get runRestart => 'Restart';
+
+  @override
+  String get runNewInstance => 'New instance';
+
+  @override
+  String get runSelectConfiguration => 'Select configuration';
+
+  @override
+  String runCompoundConfiguration(String name) {
+    return '$name (compound)';
+  }
+
+  @override
+  String runSuggestedConfiguration(String name) {
+    return '$name (Suggested)';
+  }
+
+  @override
+  String get runAcceptRecommendation =>
+      'Add suggested configuration to launch.json';
+
+  @override
+  String get runRefreshDiscover => 'Refresh discover recommendations';
+
+  @override
+  String get runConfigurationTooltip => 'Run configuration';
+
+  @override
+  String get runOpenLaunchJson => 'Open launch.json';
+
+  @override
+  String get runAlreadyRunningTitle => 'Configuration already running';
+
+  @override
+  String get runAlreadyRunningMessage =>
+      'Restart the running session, or start a new instance?';
+
+  @override
+  String get runStopSessionTitle => 'Stop running session?';
+
+  @override
+  String runStopSessionMessage(String name) {
+    return '\"$name\" is still running. Stop it and close this tab?';
+  }
+
+  @override
+  String get runStopAndClose => 'Stop and close';
+
+  @override
+  String get runNoSessions => 'No run sessions';
+
+  @override
+  String get runClearExited => 'Clear exited sessions';
+
+  @override
+  String get runLoadingOutput => 'Loading run output…';
+
+  @override
+  String get runEmptyOutputHint => 'Run a configuration to see output here';
+
+  @override
+  String runTypeUnknown(String type) {
+    return 'Unknown launch type: $type';
+  }
+
+  @override
+  String runTypeUnavailable(String type) {
+    return 'Launch type \"$type\" is not available on this target';
+  }
+
+  @override
+  String runTypeUnavailableRemote(String type) {
+    return 'Launch type \"$type\" is not available on remote targets';
+  }
+
+  @override
+  String get runErrorNoConfiguration => 'No configuration selected';
+
+  @override
+  String get runErrorNoFolder => 'No workspace folder';
+
+  @override
+  String get runErrorSshProfileMissing =>
+      'SSH profile not found for this run target';
+
+  @override
+  String get runErrorSshSpawnerMissing =>
+      'SSH process execution is not configured';
+
+  @override
+  String get shortcutsRunSelected => 'Run Selected Configuration';
+
+  @override
+  String get shortcutsRunStop => 'Stop Run';
+
+  @override
+  String get shortcutsRunRestart => 'Restart Run';
+
+  @override
+  String get shortcutsCategoryRun => 'Run';
 }
