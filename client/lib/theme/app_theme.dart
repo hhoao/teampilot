@@ -109,9 +109,10 @@ Color themePresetSwatchSecondary(String presetId) =>
 
 const _subThemes = FlexSubThemesData(
   defaultRadius: 10,
-  filledButtonRadius: 999,
-  outlinedButtonRadius: 999,
-  elevatedButtonRadius: 999,
+  /// Match [AppControlTheme.radiusBase] — modest corners, not pill (999).
+  filledButtonRadius: 8,
+  outlinedButtonRadius: 8,
+  elevatedButtonRadius: 8,
   inputDecoratorRadius: 8,
 
   /// 全局使用 [OutlineInputBorder]，避免 FCS 默认的 underline（仅上圆角 + 底边指示线）。

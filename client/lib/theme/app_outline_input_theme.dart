@@ -85,10 +85,10 @@ InputDecorationTheme buildAppOutlineInputDecorationTheme({
   required ColorScheme colorScheme,
   required TextTheme textTheme,
   required AppControlTheme control,
-  double borderRadius = 8,
+  double? borderRadius,
 }) {
   final outline = colorScheme.outlineVariant;
-  final radius = BorderRadius.circular(borderRadius);
+  final radius = BorderRadius.circular(borderRadius ?? control.radius);
 
   OutlineInputBorder outlineBorder(Color color, [double width = 1]) =>
       OutlineInputBorder(
