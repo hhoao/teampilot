@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/notification_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
@@ -11,10 +12,16 @@ import 'package:teampilot/utils/app_keys.dart';
 import '../../support/post_frame_test_harness.dart';
 
 void main() {
+  late ChatCubit chatCubit;
+
   setUp(() {
     setUpTestAppStorage();
+    chatCubit = testChatCubit(executableResolver: () => 'claude');
   });
-  tearDown(() {
+  tearDown(() async {
+    if (!chatCubit.isClosed) {
+      await chatCubit.close();
+    }
     tearDownTestAppStorage();
   });
 
@@ -30,6 +37,7 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: MultiBlocProvider(
           providers: [
+            BlocProvider<ChatCubit>.value(value: chatCubit),
             BlocProvider(create: (_) => NotificationCubit()),
             BlocProvider(create: (_) => LayoutCubit()),
           ],
@@ -59,6 +67,7 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: MultiBlocProvider(
           providers: [
+            BlocProvider<ChatCubit>.value(value: chatCubit),
             BlocProvider(create: (_) => NotificationCubit()),
             BlocProvider(create: (_) => LayoutCubit()),
           ],
