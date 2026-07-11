@@ -25,6 +25,7 @@ import '../../../theme/app_text_styles.dart';
 import '../../../utils/app_keys.dart';
 import '../../../utils/app_session_sort.dart';
 import '../../../utils/debounce/debounce.dart';
+import '../../../utils/session_reorder_merge.dart';
 import '../../../utils/workspace_running_sessions.dart';
 import '../../../utils/workspace_sidebar_sessions.dart';
 import '../../../utils/workspace_tab_session_scope.dart';
@@ -257,6 +258,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
               ),
             ],
             wtView,
+            sortedSessions: sortedSessions,
             emptyWhenNoSessions: true,
           );
         }
@@ -268,7 +270,12 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
           worktrees: wtView.worktrees,
           sessions: sortedSessions,
         );
-        return _buildWorktreeGroupList(context, groups, wtView);
+        return _buildWorktreeGroupList(
+          context,
+          groups,
+          wtView,
+          sortedSessions: sortedSessions,
+        );
     }
   }
 
@@ -277,12 +284,14 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
     List<WorktreeGroup> groups,
     WorktreeSidebarView wtView, {
     bool emptyWhenNoSessions = false,
+    required List<AppSession> sortedSessions,
   }) {
     final l10n = context.l10n;
     final hasAnySession = groups.any((g) => g.sessions.isNotEmpty);
     if (emptyWhenNoSessions && !hasAnySession) {
       return _EmptyConversations(label: l10n.homeWorkspaceNoConversations);
     }
+    final workspaceOrderedSessionIds = sessionIdsInSortOrder(sortedSessions);
     return ListView.builder(
       padding: EdgeInsets.zero,
       itemCount: groups.length,
@@ -294,6 +303,8 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
           workspace: widget.workspace,
           tabScopeId: widget.tabScopeId,
           sessionSort: _sessionSort,
+          workspaceOrderedSessionIds: workspaceOrderedSessionIds,
+          onSessionsReordered: _onSessionsReordered,
           highlightSessionId: scopedActiveSessionId(
             context.read<ChatCubit>(),
             widget.tabScopeId,
@@ -326,7 +337,12 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
     if (!hasAnySession && sortedSessions.isEmpty) {
       return _EmptyConversations(label: l10n.homeWorkspaceNoConversations);
     }
-    return _buildWorktreeGroupList(context, groups, wtView);
+    return _buildWorktreeGroupList(
+      context,
+      groups,
+      wtView,
+      sortedSessions: sortedSessions,
+    );
   }
 
   Future<void> _createWorktree(BuildContext context) async {
@@ -381,33 +397,28 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
     return parts.isEmpty ? path : parts.last;
   }
 
-  Widget _buildSessionList(BuildContext context, List<AppSession> sessions) {
-    // Drag-to-reorder is only meaningful in manual order; the auto-sorted modes
-    // use a plain (crash-safe) ListView so frequent re-sorts never reparent
-    // [ReorderableListView]'s keyed items under the workbench's LayoutBuilders.
+  /// Drag always available; dropping stamps [AppSession.sortOrder] and switches
+  /// the sidebar to manual order so a time-based re-sort cannot undo the drop.
+  void _onSessionsReordered(List<String> orderedSessionIds) {
     if (_sessionSort != AppSessionSort.manual) {
-      return ListView.builder(
-        padding: EdgeInsets.zero,
-        itemCount: sessions.length,
-        itemBuilder: (context, index) => _sessionTile(context, sessions[index]),
-      );
+      setState(() => _sessionSort = AppSessionSort.manual);
     }
+    unawaited(context.read<ChatCubit>().reorderSessions(orderedSessionIds));
+  }
+
+  Widget _buildSessionList(BuildContext context, List<AppSession> sessions) {
     return ReorderableListView.builder(
       padding: EdgeInsets.zero,
       buildDefaultDragHandles: false,
       itemCount: sessions.length,
-      onReorder: (oldIndex, newIndex) {
-        var target = newIndex;
-        if (target > oldIndex) target -= 1;
-        if (target == oldIndex) return;
-        final reordered = List<AppSession>.of(sessions);
-        final moved = reordered.removeAt(oldIndex);
-        reordered.insert(target, moved);
-        unawaited(
-          context.read<ChatCubit>().reorderSessions([
-            for (final s in reordered) s.sessionId,
-          ]),
+      onReorderItem: (oldIndex, newIndex) {
+        final ordered = reorderVisibleSessionIds(
+          allIds: [for (final s in sessions) s.sessionId],
+          visibleIds: [for (final s in sessions) s.sessionId],
+          oldIndex: oldIndex,
+          newIndex: newIndex,
         );
+        _onSessionsReordered(ordered);
       },
       itemBuilder: (context, index) =>
           _sessionTile(context, sessions[index], index: index),
@@ -617,7 +628,7 @@ class _SessionSortButton extends StatelessWidget {
       ),
       buildMenuChildren: (context, controller) {
         return [
-          for (final value in AppSessionSort.values)
+          for (final value in AppSessionSort.menuValues)
             SidebarActionMenuItem(
               icon: _iconForSessionSort(value),
               label: _labelForSessionSort(value, l10n),
@@ -642,13 +653,13 @@ class _SessionSortButton extends StatelessWidget {
     AppSessionSort sort,
     AppLocalizations l10n,
   ) => switch (sort) {
-    AppSessionSort.manual => l10n.sessionSortManual,
+    AppSessionSort.manual => l10n.sessionSortRecentlyUpdated,
     AppSessionSort.recentlyUpdated => l10n.sessionSortRecentlyUpdated,
     AppSessionSort.createdDesc => l10n.sessionSortCreatedDesc,
   };
 
   static IconData _iconForSessionSort(AppSessionSort sort) => switch (sort) {
-    AppSessionSort.manual => Icons.drag_indicator_rounded,
+    AppSessionSort.manual => Icons.update_rounded,
     AppSessionSort.recentlyUpdated => Icons.update_rounded,
     AppSessionSort.createdDesc => Icons.event_rounded,
   };

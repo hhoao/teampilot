@@ -48,10 +48,7 @@ class CliInstallProgressPanel extends StatelessWidget {
                   reverse: true,
                   child: SelectableText(
                     logLines.join('\n'),
-                    style: tt.bodySmall?.copyWith(
-                      fontFamily: 'monospace',
-                      color: cs.onSurfaceVariant,
-                    ),
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ),
               ),

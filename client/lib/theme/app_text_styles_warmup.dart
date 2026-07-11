@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/layout_preferences.dart';
 import 'app_control_theme.dart';
 import 'app_fonts.dart';
+import 'app_markdown_style_sheet.dart';
 import 'app_outline_input_theme.dart';
 import 'app_text_styles.dart';
 import 'app_typography_scale.dart';
@@ -65,10 +66,11 @@ double _systemTextBaseline() {
   );
 }
 
-List<TextStyle> _textStylesFromTheme(ThemeData theme) {
+List<TextStyle> _appUiTextStylesFromTheme(ThemeData theme) {
   final styles = AppTextStyles(theme);
   final textTheme = theme.textTheme;
   final scheme = theme.colorScheme;
+  final fonts = theme.extension<AppFontTheme>() ?? AppFontTheme.fallback;
   final control =
       theme.extension<AppControlTheme>() ??
       AppControlTheme.fromScale(AppTypographyScale.standard);
@@ -80,38 +82,59 @@ List<TextStyle> _textStylesFromTheme(ThemeData theme) {
   final bodyMedium = textTheme.bodyMedium ?? const TextStyle();
   final labelLarge = textTheme.labelLarge ?? bodyMedium;
 
+  TextStyle withUi(TextStyle style) => style.copyWith(
+    fontFamily: fonts.uiFontFamily,
+    fontFamilyFallback: fonts.uiFontFamilyFallback,
+  );
+
   return [
-    styles.caption,
-    styles.toolPanelTitle,
-    styles.settingsGroupHeader,
-    styles.bodySmall,
-    styles.body,
-    styles.bodyStrong,
-    styles.prominent,
-    styles.prominent.copyWith(fontWeight: FontWeight.w500),
-    styles.prominent.copyWith(fontWeight: FontWeight.w600),
-    styles.sectionTitle,
-    styles.subtitle,
-    styles.dialogTitle,
-    styles.fileTreeRootLabel(scheme.onSurface),
-    styles.fileTreeEntryLabel(color: scheme.onSurface, active: false),
-    styles.fileTreeEntryLabel(color: scheme.onSurface, active: true),
-    appTextFieldStyle(textTheme),
-    inputTheme.hintStyle!,
-    bodyMedium.copyWith(fontWeight: FontWeight.w500, height: 1.25),
-    bodyMedium.copyWith(fontWeight: FontWeight.w400, height: 1.25),
-    styles.mono,
-    labelLarge,
+    withUi(styles.caption),
+    withUi(styles.toolPanelTitle),
+    withUi(styles.settingsGroupHeader),
+    withUi(styles.bodySmall),
+    withUi(styles.body),
+    withUi(styles.bodyStrong),
+    withUi(styles.prominent),
+    withUi(styles.prominent.copyWith(fontWeight: FontWeight.w500)),
+    withUi(styles.prominent.copyWith(fontWeight: FontWeight.w600)),
+    withUi(styles.sectionTitle),
+    withUi(styles.subtitle),
+    withUi(styles.dialogTitle),
+    withUi(styles.mutedBody),
+    withUi(styles.fileTreeRootLabel(scheme.onSurface)),
+    withUi(styles.fileTreeEntryLabel(color: scheme.onSurface, active: false)),
+    withUi(styles.fileTreeEntryLabel(color: scheme.onSurface, active: true)),
+    withUi(appTextFieldStyle(textTheme)),
+    withUi(inputTheme.hintStyle!),
+    withUi(bodyMedium.copyWith(fontWeight: FontWeight.w500, height: 1.25)),
+    withUi(bodyMedium.copyWith(fontWeight: FontWeight.w400, height: 1.25)),
+    styles.mono.copyWith(
+      fontFamily: fonts.monoFontFamily,
+      fontFamilyFallback: fonts.monoFontFamilyFallback,
+    ),
+    withUi(labelLarge),
+    // body + italic — markdown `em` (and any italic body copy)
+    withUi(styles.body.copyWith(fontStyle: FontStyle.italic)),
+    withUi(styles.body.copyWith(decoration: TextDecoration.lineThrough)),
+  ];
+}
+
+/// All [TextStyle]s shaped at boot for [theme] (UI + markdown).
+List<TextStyle> textStylesForThemeWarmup(ThemeData theme) {
+  return [
+    ..._appUiTextStylesFromTheme(theme),
+    ...appMarkdownTextStyles(theme),
   ];
 }
 
 /// Semantic [TextStyle]s to shape against [warmupGlyphs] at boot — the same
-/// variants the UI uses ([AppTextStyles], inputs, dropdowns), not widget literals.
+/// variants the UI uses ([AppTextStyles], inputs, dropdowns, markdown), not
+/// widget literals.
 List<TextStyle> textStylesForInteractiveWarmup({
   LayoutPreferences? preferences,
 }) {
   final theme = preferences == null
       ? bootstrapThemeForTextWarmup()
       : themeForInteractiveWarmup(preferences);
-  return _textStylesFromTheme(theme);
+  return textStylesForThemeWarmup(theme);
 }

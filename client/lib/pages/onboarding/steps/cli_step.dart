@@ -218,10 +218,7 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
               child: ListTile(
                 leading: Icon(Icons.check_circle_outline),
                 title: Text(l10n.onboardingCliFound),
-                subtitle: Text(
-                  _detectedPath!,
-                  style: const TextStyle(fontFamily: 'monospace'),
-                ),
+                subtitle: Text(_detectedPath!),
               ),
             )
           else

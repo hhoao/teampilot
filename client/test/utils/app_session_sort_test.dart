@@ -30,6 +30,14 @@ void main() {
     expect(AppSessionSort.sidebarDefault, AppSessionSort.recentlyUpdated);
   });
 
+  test('menuValues excludes manual', () {
+    expect(AppSessionSort.menuValues, [
+      AppSessionSort.recentlyUpdated,
+      AppSessionSort.createdDesc,
+    ]);
+    expect(AppSessionSort.menuValues, isNot(contains(AppSessionSort.manual)));
+  });
+
   group('sortAppSessions recentlyUpdated', () {
     test('orders by updatedAt descending', () {
       final sessions = [

@@ -3,6 +3,7 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../services/cli/registry/capabilities/session_history_capability.dart';
+import '../../theme/app_markdown_style_sheet.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../home_workspace/workspace/workspace_chat_landing_palette.dart';
@@ -26,6 +27,13 @@ class SessionHistoryTurnTile extends StatelessWidget {
       },
     );
   }
+}
+
+MarkdownBody _historyMarkdown(BuildContext context, String data) {
+  return MarkdownBody(
+    data: data,
+    styleSheet: buildAppMarkdownStyleSheet(Theme.of(context)),
+  );
 }
 
 class _UserBubble extends StatelessWidget {
@@ -53,7 +61,7 @@ class _UserBubble extends StatelessWidget {
               horizontal: spacing.md,
               vertical: spacing.sm + 2,
             ),
-            child: MarkdownBody(data: turn.markdown),
+            child: _historyMarkdown(context, turn.markdown),
           ),
         ),
       ),
@@ -84,13 +92,10 @@ class _AssistantBubble extends StatelessWidget {
             children: [
               Text(
                 context.l10n.sessionHistoryRoleAssistant,
-                style: styles.bodySmall.copyWith(
-                  color: palette.muted,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: styles.bodyStrong.copyWith(color: palette.muted),
               ),
               SizedBox(height: spacing.xs),
-              MarkdownBody(data: turn.markdown),
+              _historyMarkdown(context, turn.markdown),
             ],
           ),
         ),
@@ -177,15 +182,12 @@ class _ToolBubble extends StatelessWidget {
               ),
               title: Text(
                 title,
-                style: styles.bodySmall.copyWith(
-                  color: palette.muted,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: styles.bodyStrong.copyWith(color: palette.muted),
               ),
               children: [
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: MarkdownBody(data: turn.markdown),
+                  child: _historyMarkdown(context, turn.markdown),
                 ),
               ],
             ),

@@ -30,10 +30,7 @@ class RunSessionPage extends StatelessWidget {
                 alignment: Alignment.topLeft,
                 child: Text(
                   text.isEmpty ? '' : text,
-                  style: TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 12,
-                    height: 1.4,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: cs.workspacePrimaryText,
                   ),
                 ),

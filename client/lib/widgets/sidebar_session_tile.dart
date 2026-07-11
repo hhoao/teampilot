@@ -658,6 +658,9 @@ class _SidebarTile extends StatelessWidget {
                               title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.of(context).body.copyWith(
+                                color: textBase,
+                              ),
                             ),
                           ),
                           if (subtitle.isNotEmpty) ...[

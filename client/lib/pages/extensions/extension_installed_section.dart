@@ -294,7 +294,6 @@ class _DependencyRemediation extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: styles.bodySmall.copyWith(
-                        fontFamily: 'monospace',
                         color: cs.onSurface.withValues(alpha: 0.85),
                       ),
                     ),

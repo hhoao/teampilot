@@ -17,6 +17,7 @@ import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../theme/app_icon_sizes.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/app_session_sort.dart';
+import '../../../utils/session_reorder_merge.dart';
 import '../../../utils/session_worktree_grouping.dart';
 import '../../../utils/workspace_path_utils.dart';
 import '../../../widgets/app_icon_button.dart';
@@ -54,6 +55,8 @@ class WorktreeGroupSection extends StatelessWidget {
     required this.tabScopeId,
     required this.collapsed,
     required this.sessionSort,
+    required this.workspaceOrderedSessionIds,
+    required this.onSessionsReordered,
     this.highlightSessionId,
     super.key,
   });
@@ -63,6 +66,11 @@ class WorktreeGroupSection extends StatelessWidget {
   final String tabScopeId;
   final bool collapsed;
   final AppSessionSort sessionSort;
+
+  /// Full sidebar session order (already sorted) used to merge a group-local
+  /// drag back into a workspace-wide [sortOrder] stamp.
+  final List<String> workspaceOrderedSessionIds;
+  final ValueChanged<List<String>> onSessionsReordered;
   final String? highlightSessionId;
 
   GitWorktreeService? _worktreeService(BuildContext context) {
@@ -130,6 +138,8 @@ class WorktreeGroupSection extends StatelessWidget {
           _GroupSessionList(
             sessions: group.sessions,
             sessionSort: sessionSort,
+            workspaceOrderedSessionIds: workspaceOrderedSessionIds,
+            onSessionsReordered: onSessionsReordered,
             workspace: workspace,
             tabScopeId: tabScopeId,
             highlightSessionId: highlightSessionId,
@@ -381,6 +391,8 @@ class _GroupSessionList extends StatefulWidget {
   const _GroupSessionList({
     required this.sessions,
     required this.sessionSort,
+    required this.workspaceOrderedSessionIds,
+    required this.onSessionsReordered,
     required this.workspace,
     required this.tabScopeId,
     this.highlightSessionId,
@@ -388,6 +400,8 @@ class _GroupSessionList extends StatefulWidget {
 
   final List<AppSession> sessions;
   final AppSessionSort sessionSort;
+  final List<String> workspaceOrderedSessionIds;
+  final ValueChanged<List<String>> onSessionsReordered;
   final Workspace workspace;
   final String tabScopeId;
   final String? highlightSessionId;
@@ -403,33 +417,57 @@ class _GroupSessionListState extends State<_GroupSessionList> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    // Sort at the leaf so worktree / multi-project bucketing cannot leave a
-    // stale encounter order on screen (matches the trailing activity label).
     final all = sortAppSessions(widget.sessions, sort: widget.sessionSort);
     final overflow = all.length - _cap;
     final visible = (_showAll || overflow <= 0) ? all : all.take(_cap).toList();
+    final visibleIds = [for (final s in visible) s.sessionId];
+    final allIds = [for (final s in all) s.sessionId];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final session in visible)
-          SidebarSessionTile(
-            key: ValueKey('worktree-session-${session.sessionId}'),
-            session: session,
-            highlightSessionId: widget.highlightSessionId,
-            contentLeftInset: 0,
-            tapThrottleKeyPrefix: 'worktree_sidebar_session',
-            onTap: () {
-              unawaited(
-                openWorkspaceSessionTab(
-                  context,
-                  widget.workspace,
-                  session,
-                  tabScopeId: widget.tabScopeId,
-                ),
-              );
-            },
-          ),
+        ReorderableListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          buildDefaultDragHandles: false,
+          padding: EdgeInsets.zero,
+          itemCount: visible.length,
+          onReorderItem: (oldIndex, newIndex) {
+            final groupOrdered = reorderVisibleSessionIds(
+              allIds: allIds,
+              visibleIds: visibleIds,
+              oldIndex: oldIndex,
+              newIndex: newIndex,
+            );
+            widget.onSessionsReordered(
+              mergeGroupSessionReorder(
+                workspaceOrderedIds: widget.workspaceOrderedSessionIds,
+                groupOrderedIds: groupOrdered,
+              ),
+            );
+          },
+          itemBuilder: (context, index) {
+            final session = visible[index];
+            return SidebarSessionTile(
+              key: ValueKey('worktree-session-${session.sessionId}'),
+              session: session,
+              index: index,
+              highlightSessionId: widget.highlightSessionId,
+              contentLeftInset: 0,
+              tapThrottleKeyPrefix: 'worktree_sidebar_session',
+              onTap: () {
+                unawaited(
+                  openWorkspaceSessionTab(
+                    context,
+                    widget.workspace,
+                    session,
+                    tabScopeId: widget.tabScopeId,
+                  ),
+                );
+              },
+            );
+          },
+        ),
         if (overflow > 0)
           _GroupShowMoreRow(
             label: _showAll ? l10n.worktreeShowLess : l10n.worktreeMore,

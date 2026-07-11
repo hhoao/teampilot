@@ -1,13 +1,21 @@
 import '../models/app_session.dart';
 
 enum AppSessionSort {
-  /// User-arranged order (drag-to-reorder). Backed by [AppSession.sortOrder].
+  /// Drag-induced arrangement ([AppSession.sortOrder]). Not shown in the sort
+  /// menu — entered automatically when the user reorders, left when they pick
+  /// a time-based mode again.
   manual,
   recentlyUpdated,
   createdDesc;
 
   /// Default for the workspace conversation sidebar (not persisted).
   static const AppSessionSort sidebarDefault = AppSessionSort.recentlyUpdated;
+
+  /// Choices exposed in the sidebar sort menu (excludes [manual]).
+  static const List<AppSessionSort> menuValues = [
+    AppSessionSort.recentlyUpdated,
+    AppSessionSort.createdDesc,
+  ];
 }
 
 List<AppSession> sortAppSessions(
