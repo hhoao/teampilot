@@ -1,7 +1,7 @@
 # Session History Continue Chrome
 
 **Date:** 2026-07-11  
-**Status:** Draft  
+**Status:** Ready for planning  
 **Related:** [Session History Review](2026-07-10-session-history-review-design.md), `WorkspaceChatLanding`, `ExistingSessionConnect`, `AppSession`, `SessionMemberBinding`
 
 ## Summary
@@ -117,7 +117,12 @@ History bottom card is **not** full Landing. Toolbar (left → right):
 
 - Changing workbench `selectedMemberId` reloads that member’s override into the chips.
 - Preset menus use `presetsForCli(sessionMemberCli)` only.
-- Permission display: override if set; else launch default. After first explicit choice, session value wins.
+- **Permission chip display** uses the **full** resolution chain (effective value that launch would use): `memberOverrides[id].dangerouslySkipPermissions ?? session.continueOverrides.dangerouslySkipPermissions ?? launchDefault`. Do not skip the session-level field.
+- **Permission chip writes** are always concrete bools — never `null` to mean “default”:
+  - Landing (Simple/Team): `default` → session-level `false`; `full access` → session-level `true`.
+  - History Simple: same session-level writes.
+  - History Team: `default` → member override `false`; `full access` → member override `true` (clears inheritance from session-level / template for that seat).
+- Team template `dangerouslySkipPermissions` (often `true`) applies only when **both** session-level and member override are unset (legacy sessions).
 - Chip edits do **not** wait for send.
 - Send uses already-persisted overrides via `ExistingSessionConnect` → merge → launch → inject.
 
