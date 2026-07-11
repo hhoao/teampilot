@@ -102,10 +102,12 @@ class ThemeColorPresetChip extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 label,
-                style: AppTextStyles.of(context).bodySmall.copyWith(
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                  color: textBase.withValues(alpha: selected ? 1 : 0.78),
-                ),
+                style: (selected
+                        ? AppTextStyles.of(context).bodyStrong
+                        : AppTextStyles.of(context).bodySmall)
+                    .copyWith(
+                      color: textBase.withValues(alpha: selected ? 1 : 0.78),
+                    ),
               ),
             ],
           ),

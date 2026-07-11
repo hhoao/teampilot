@@ -197,10 +197,7 @@ class _SettingsNav extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 22, 20, 14),
                 child: Text(
                   title,
-                  style: styles.subtitle.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: cs.onSurface,
-                  ),
+                  style: styles.dialogTitle.copyWith(color: cs.onSurface),
                 ),
               ),
               Expanded(
@@ -265,10 +262,7 @@ class _SettingsHeader extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: styles.subtitle.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: cs.onSurface,
-                  ),
+                  style: styles.dialogTitle.copyWith(color: cs.onSurface),
                 ),
                 if (subtitle.isNotEmpty) ...[
                   const SizedBox(height: 4),
@@ -276,9 +270,7 @@ class _SettingsHeader extends StatelessWidget {
                     subtitle,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
+                    style: styles.mutedBody,
                   ),
                 ],
               ],

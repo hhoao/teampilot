@@ -34,9 +34,7 @@ class PluginMarketplacesSection extends StatelessWidget {
                     Expanded(
                       child: Text(
                         l10n.pluginsNavMarketplaces,
-                        style: AppTextStyles.of(
-                          context,
-                        ).sectionTitle.copyWith(fontWeight: FontWeight.w800),
+                        style: AppTextStyles.of(context).sectionTitle,
                       ),
                     ),
                     FilledButton.tonalIcon(

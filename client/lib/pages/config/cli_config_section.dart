@@ -7,6 +7,7 @@ import '../../models/session_preferences.dart';
 import '../../models/team_config.dart';
 import '../../services/app/connection_mode_service.dart';
 import '../../utils/app_keys.dart';
+import '../../theme/app_text_styles.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'cli_executable_path_settings_row.dart';
 import 'toolchain_path_settings_row.dart';
@@ -43,23 +44,13 @@ class _CliHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
-    final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          title,
-          style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-        ),
+        Text(title, style: styles.dialogTitle),
         const SizedBox(height: 6),
-        Text(
-          subtitle,
-          style: tt.bodyMedium?.copyWith(
-            color: cs.onSurfaceVariant,
-            height: 1.25,
-          ),
-        ),
+        Text(subtitle, style: styles.mutedBody),
       ],
     );
   }

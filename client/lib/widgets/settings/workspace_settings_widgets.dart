@@ -98,13 +98,8 @@ class SettingsLabeledStackedRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
     final hasSubtitle = _hasSettingsSubtitle(subtitle);
-    final subtitleStyle = tt.bodySmall?.copyWith(
-      color: cs.onSurfaceVariant,
-      fontWeight: FontWeight.w500,
-      height: 1.35,
-    );
+    final subtitleStyle = AppTextStyles.of(context).mutedBodySmall;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -172,13 +167,8 @@ class SettingsLabeledRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
     final hasSubtitle = _hasSettingsSubtitle(subtitle);
-    final subtitleStyle = tt.bodySmall?.copyWith(
-      color: cs.onSurfaceVariant,
-      fontWeight: FontWeight.w500,
-      height: 1.35,
-    );
+    final subtitleStyle = AppTextStyles.of(context).mutedBodySmall;
     return RepaintBoundary(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -277,9 +267,7 @@ class ManagementCardHeader extends StatelessWidget {
       title,
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
-      style: AppTextStyles.of(
-        context,
-      ).sectionTitle.copyWith(fontWeight: FontWeight.w800, color: textBase),
+      style: AppTextStyles.of(context).sectionTitleColored(textBase),
     );
 
     if (trailing == null) {
@@ -344,10 +332,7 @@ class SettingsConfiguredBadge extends StatelessWidget {
             configured
                 ? l10n.workspaceCliConfigured
                 : l10n.workspaceCliNotConfigured,
-            style: styles.caption.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
+            style: styles.caption.copyWith(color: color),
           ),
         ],
       ),
@@ -430,8 +415,7 @@ class _SettingsAdvancedExpansionState extends State<SettingsAdvancedExpansion> {
   Widget build(BuildContext context) {
     if (widget.children.isEmpty) return const SizedBox.shrink();
 
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
+    final styles = AppTextStyles.of(context);
     return Material(
       color: Colors.transparent,
       child: ExpansionTile(
@@ -446,15 +430,13 @@ class _SettingsAdvancedExpansionState extends State<SettingsAdvancedExpansion> {
         childrenPadding: EdgeInsets.zero,
         collapsedShape: const RoundedRectangleBorder(side: BorderSide.none),
         shape: const RoundedRectangleBorder(side: BorderSide.none),
-        title: Text(widget.title, style: theme.textTheme.titleSmall),
+        title: Text(widget.title, style: styles.sectionTitle),
         subtitle: _hasSettingsSubtitle(widget.subtitle)
             ? Padding(
                 padding: const EdgeInsets.only(top: _titleSubtitleGap),
                 child: Text(
                   widget.subtitle!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
+                  style: styles.mutedBodySmall,
                 ),
               )
             : null,

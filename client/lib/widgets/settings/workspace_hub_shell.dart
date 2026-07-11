@@ -65,9 +65,8 @@ class WorkspaceHubTitleBar extends StatelessWidget {
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.of(context).subtitle.copyWith(
+            style: AppTextStyles.of(context).dialogTitle.copyWith(
               color: textBase,
-              fontWeight: FontWeight.w800,
               height: 1.05,
             ),
           ),
@@ -76,7 +75,7 @@ class WorkspaceHubTitleBar extends StatelessWidget {
             subtitle,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            style: AppTextStyles.of(context).mutedBody.copyWith(
               color: textBase.withValues(alpha: 0.66),
             ),
           ),
@@ -186,9 +185,6 @@ class WorkspaceHubNavItem extends StatelessWidget {
                                             ).sectionTitle
                                           : AppTextStyles.of(context).body)
                                       .copyWith(
-                                        fontWeight: hubStyle
-                                            ? FontWeight.w600
-                                            : FontWeight.w500,
                                         color: selected ? selectedFg : normalFg,
                                       ),
                             ),
@@ -412,25 +408,19 @@ class WorkspaceSectionHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
+    final styles = AppTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           title,
-          style: tt.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
-            color: cs.onSurface,
-          ),
+          style: styles.dialogTitle.copyWith(color: cs.onSurface),
         ),
         const SizedBox(height: 6),
         Text(
           subtitle,
-          style: tt.bodyMedium?.copyWith(
-            color: cs.onSurfaceVariant,
-            height: 1.25,
-          ),
+          style: styles.mutedBody,
         ),
       ],
     );

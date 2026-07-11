@@ -9,6 +9,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../services/app/connection_mode_service.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
+import '../../theme/app_text_styles.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'runtime_target_picker.dart';
 import 'session_config_constants.dart';
@@ -46,23 +47,13 @@ class _SessionHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
-    final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          title,
-          style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-        ),
+        Text(title, style: styles.dialogTitle),
         const SizedBox(height: 6),
-        Text(
-          subtitle,
-          style: tt.bodyMedium?.copyWith(
-            color: cs.onSurfaceVariant,
-            height: 1.25,
-          ),
-        ),
+        Text(subtitle, style: styles.mutedBody),
       ],
     );
   }
