@@ -1,152 +1,162 @@
-# AppTextStyles Tailwind-scale naming — Design
+# AppTextStyles four-axis scale naming — Design
 
 **Date:** 2026-07-12  
-**Status:** Approved for implementation (naming direction confirmed with product owner)  
+**Status:** Approved direction (product owner); ready for implementation after user confirms this revision  
 **Branch / worktree:** `refactor/app-text-styles-enforcement`
 
 ## Goal
 
-Replace component-/role-semantic text style names (`caption`, `bodyStrong`, `toolPanelTitle`, `pageHeadline`, …) with a **Tailwind-like generic scale**: size tokens + optional weight/tracking modifiers. UI layers (`pages/`, `widgets/`) may only consume these extracted styles (or other `lib/theme/` helpers). **No backward-compatible aliases** — rename call sites in the same change set.
+Define UI text styles as a **four-axis scale** (size × weight × letter-spacing × line-height), exposed only as **named getters** on `AppTextStyles`. No component-semantic names. **No public `compose`**. **No backward-compatible aliases.**
 
-## Non-goals
+## Axes
 
-- Visual redesign beyond intentional token normalization (e.g. 9px badges → `xsSemibold`)
-- Changing Material `TextTheme` role wiring except as needed to back the scale
-- Keeping deprecated getters or `@Deprecated` shims
+| Axis | Values | Meaning |
+|------|--------|---------|
+| **Size** | `xs`, `sm`, `md`, `lg`, `xl`, `display` | ~11 / 12 / 14 / 16 / 20 / 24 px (standard typography scale) |
+| **Weight** | `Normal`, `Medium`, `Semibold`, `Bold` | w400 / w500 / w600 / w700 (`Thin` optional later if needed) |
+| **Spacing** | `Tight`, `Normal`, `Wide` | letterSpacing: negative / 0 / positive (exact numbers owned by theme) |
+| **Height** | `Snug`, `Normal`, `Relaxed` | line height: ~1.25 / ~1.35 / ~1.45 (exact numbers owned by theme) |
 
-## Size scale
+### Naming
 
-| Token | Approx px (standard) | Theme source | Default height |
-|-------|----------------------|--------------|----------------|
-| `xs` | 11 | `labelSmall` | 1.35 |
-| `sm` | 12 | `bodySmall` | 1.35 |
-| `md` | 14 | `bodyMedium` | 1.35 |
-| `lg` | 16 | `bodyLarge` | 1.35 |
-| `lgSnug` | 16 | `titleMedium` | 1.25 |
-| `xl` | 20 | `titleLarge` | 1.25 |
-| `display` | 24 | `headlineSmall` (via `AppTypographyScale.headlineSmallBase`) | 1.25 |
+Order: `{size}{Weight?}{Spacing?}{Height?}`
 
-Use `display` instead of `2xl` (awkward Dart identifier).
+**Elision:** omit a segment when it is `Normal`. All-normal → size only (`md`).
 
-**`lg` vs `lgSnug`:** same pixel band, different rhythm. Prefer `lg` for body emphasis; `lgSnug` for subtitle / dialog title band (tighter leading).
+Examples:
 
-## Weight modifiers
+| Getter | Size | Weight | Spacing | Height |
+|--------|------|--------|---------|--------|
+| `md` | md | normal | normal | normal |
+| `mdSemibold` | md | semibold | normal | normal |
+| `mdSemiboldTight` | md | semibold | tight | normal |
+| `mdSemiboldTightSnug` | md | semibold | tight | snug |
+| `xsWide` | xs | normal | wide | normal |
+| `xsBoldWide` | xs | bold | wide | normal |
+| `lgSnug` | lg | normal | normal | snug |
+| `xsSemiboldSnug` | xs | semibold | normal | snug |
 
-Bare size = theme default weight (do not force `w400` if Material base differs).
+Illegal / discouraged names: `mdNormalNormalNormal`, component names (`toolPanelTitle`, `pageHeadline`, …).
 
-Suffixes:
+### Metric tables (theme-owned; UI must not override)
 
-| Suffix | Weight |
+**Size → TextTheme role**
+
+| Size | Source |
+|------|--------|
+| `xs` | `labelSmall` |
+| `sm` | `bodySmall` |
+| `md` | `bodyMedium` |
+| `lg` | `bodyLarge` |
+| `xl` | `titleLarge` |
+| `display` | `headlineSmall` (scaled via `AppTypographyScale.headlineSmallBase`) |
+
+**Spacing → letterSpacing**
+
+| Spacing | letterSpacing |
+|---------|---------------|
+| `Tight` | `-0.15` |
+| `Normal` | `0` (or leave unset) |
+| `Wide` | size-dependent: `xs` → `0.8` (panel headers) or `0.2` (group labels) — **two Wide presets need distinct tokens** |
+
+**Wide disambiguation:** do not overload one `Wide` value for both 0.8 and 0.2. Prefer:
+
+- `Wide` = `0.8` (strong tracking)
+- Add axis value **`Track`** = `0.2` (light tracking), OR use only `xsTrack` as the light-tracking named token with Spacing=`Track`
+
+**Chosen:** Spacing values = `Tight` | `Normal` | `Track` | `Wide` where Track=`0.2`, Wide=`0.8` (and `mdWide` root labels use Wide with a medium-size letterSpacing of `0.4` — implement as size-aware Wide: `xs`→0.8, `md`→0.4). Document size-aware Wide in theme code comments.
+
+**Height → height**
+
+| Height | height |
 |--------|--------|
-| *(none)* | theme default |
-| `Thin` | `w300` |
-| `Medium` | `w500` |
-| `Semibold` | `w600` |
-| `Bold` | `w700` |
+| `Snug` | `1.25` (`xsSemiboldSnug` badge uses `1.2` — special-case that token only, or bump badges to 1.25) |
+| `Normal` | `1.35` |
+| `Relaxed` | `1.45` |
 
-Examples: `md`, `mdMedium`, `mdSemibold`, `xsSemibold`, `lgSemibold`.
+**Badge:** use `xsSemiboldSnug` with height `1.2` documented as the sole Snug exception for xs, **or** normalize badge to height `1.25` under standard Snug. Prefer **normalize to 1.25** (no special case) unless visual QA rejects it.
 
-**Closed set (ship these; add more only when a call site needs them during migration):**
+## Public API
 
-- Sizes: `xs`, `sm`, `md`, `lg`, `lgSnug`, `xl`, `display`
-- Weights: `xsSemibold`, `smMedium`, `smSemibold`, `mdThin`, `mdMedium`, `mdSemibold`, `lgMedium`, `lgSemibold`, `lgSnugSemibold`
-- Do **not** ship `xsBold` unless a call site needs bold **without** tracking (tool-panel use `xsWide`)
+- Named getters only for **shipped combinations** (closed list below + any added during migration when a call site needs a new combo).
+- Each shipped getter has `{name}Colored(Color color)`.
+- Muted shortcuts: `mutedXs`, `mutedSm`, `mutedMd` (= size + normal axes + `onSurfaceVariant`).
+- `mono` / `monoColored` — monospace family on `md` metrics (not a four-axis name; theme helper role).
 
-### Special height on weight tokens
+### Private compose
 
-| Token | Extra |
-|-------|--------|
-| `xsSemibold` | `height: 1.2` (was `badge`) |
-| `mdSemibold` | `height: 1.25` (was `bodyStrong`) |
-| `lgSnugSemibold` | `height: 1.25` (was `dialogTitle`) |
+```dart
+TextStyle _compose({
+  required _TextSize size,
+  _TextWeight weight = _TextWeight.normal,
+  _TextSpacing spacing = _TextSpacing.normal,
+  _TextHeight height = _TextHeight.normal,
+}) { ... }
+```
 
-## Tracking modifiers (Approach 2)
+- **Not** part of the public API.
+- Named getters are thin wrappers: `TextStyle get mdSemiboldTightSnug => _compose(...)`.
+- UI code must not call `_compose` / must not invent combinations via `copyWith` on metrics.
 
-UI code must **not** set `letterSpacing`. Encode tracked/tight styles as generic modifiers:
+### Warmup
 
-| Token | Composition |
-|-------|-------------|
-| `xsWide` | `xs` + `Bold` + `letterSpacing: 0.8` (was `toolPanelTitle`) |
-| `xsTrack` | `xs` + `letterSpacing: 0.2` (was `settingsGroupHeader`) |
-| `mdTight` | `md` + `Semibold` + `letterSpacing: -0.15` + `height: 1.25` (was `sectionTitle`; base = `bodyMedium`, intentionally normalize off `titleSmall`) |
-| `mdWide` | `md` + `Bold` + `letterSpacing: 0.4` (was `fileTreeRootLabel` metrics) |
-| `mdSnug` | `md` + `height: 1.25` (no weight change) — for former `formLabel` / any 14px @ 1.25 without semibold |
+`_appUiTextStylesFromTheme` must list **every shipped named getter** (and `mono`). Adding a getter without a warmup entry is a review failure. No public compose ⇒ no untracked runtime fingerprints from the scale API.
 
-## Color helpers
+## Initial shipped combination set
 
-- Every shipped scale getter has `{token}Colored(Color color)`.
-- Muted shortcuts: `mutedXs`, `mutedSm`, `mutedMd` (`onSurfaceVariant`).
-- Do **not** put optional `fontWeight` on `*Colored` — pick the weight token first (`mdSemiboldColored(c)`), then color.
+Minimum to replace today’s API (add more only when migration discovers need):
 
-## Mono
+| Getter | Replaces |
+|--------|----------|
+| `xs` | `caption` |
+| `xsSemiboldSnug` | `badge` (or `xsSemibold` if Snug defaulted into badge height policy) |
+| `xsBoldWide` | `toolPanelTitle` |
+| `xsTrack` | `settingsGroupHeader` |
+| `sm` | `bodySmall` |
+| `md` | `body` / most `formLabel` uses |
+| `mdSnug` | `formLabel` if 1.25 leading required without weight change |
+| `mdMedium` | medium body / file-tree inactive |
+| `mdSemibold` | `bodyStrong` |
+| `mdSemiboldTightSnug` | `sectionTitle` |
+| `mdBoldWide` | `fileTreeRootLabel` metrics |
+| `lg` | `prominent` |
+| `lgSnug` | `subtitle` |
+| `lgSemiboldSnug` | `dialogTitle` |
+| `xl` | `pageTitle` |
+| `display` | `pageHeadline` |
+| `mutedXs` / `mutedSm` / `mutedMd` | muted* |
+| `mono` | `mono` |
 
-`mono` / `monoColored` — family override on `md` size. Not a component name.
+Weight/spacing/height-only `copyWith` at call sites → promote to a new named getter + warmup entry in the same change.
 
-## Dropdown / terminal helpers
+## Call-site policy (`pages/` / `widgets/`)
 
-Keep `dropdownFieldTextStyle`, `dropdownHintTextStyle`, `appMonoTextStyle`, `appTerminalTextStyle` in `lib/theme/`. Internally they may build from `AppTextStyles.mdMedium` / `md`. Public names stay (theme helpers, not widget-layer styles).
+**Allowed:** `styles.mdSemiboldColored(cs.error)`, `styles.mutedMd`, color-only `copyWith(color: …)` if needed.  
+**Forbidden:** inline `TextStyle(...)`; raw `textTheme`; `copyWith` on `fontSize` / `letterSpacing` / `fontWeight` / `height`; public or local compose helpers.  
+**Allowed read:** `style.fontSize` for layout math (e.g. toggle width).
 
-## Facades to remove
+## Facades
 
-Delete or hollow out page-local typography facades that re-export semantic names:
-
-- `pages/llm_config/llm_workspace_typography.dart` (`LlmWorkspaceText`, `LlmProviderDetailLook`, …) → call sites use `AppTextStyles` directly (`xs`, `md`, `mdSemibold`, `mdTight`, …).
-- Any similar `*Typography` / `*Text` wrappers under `pages/` / `widgets/` discovered during grep.
-
-## Rename map (old → new)
-
-| Old | New |
-|-----|-----|
-| `caption` / `captionColored` | `xs` / `xsColored` |
-| `badge` / `badgeColored` | `xsSemibold` / `xsSemiboldColored` |
-| `toolPanelTitle` / `*Colored` | `xsWide` / `xsWideColored` |
-| `settingsGroupHeader` / `*Colored` | `xsTrack` / `xsTrackColored` |
-| `fileTreeRootLabel` | `mdWideColored` |
-| `fileTreeEntryLabel(active:)` | `mdSemiboldColored` / `mdMediumColored` |
-| `bodySmall` / `bodySmallColored` | `sm` / `smColored` |
-| `body` / `bodyColored` | `md` / `mdColored` |
-| `formLabel` / `formLabelColored` | `mdSnug` / `mdSnugColored` |
-| `bodyStrong` / `bodyStrongColored` | `mdSemibold` / `mdSemiboldColored` |
-| `prominent` | `lg` |
-| `sectionTitle` / `sectionTitleColored` | `mdTight` / `mdTightColored` |
-| `subtitle` | `lgSnug` |
-| `pageTitle` | `xl` |
-| `pageHeadline` | `display` |
-| `dialogTitle` | `lgSnugSemibold` |
-| `mutedBody` | `mutedMd` |
-| `mutedBodySmall` | `mutedSm` |
-| `mutedCaption` | `mutedXs` |
-| `mono` / `monoColored` | unchanged |
-
-## Call-site `copyWith` policy
-
-In `pages/` / `widgets/`:
-
-- **Allowed:** `styles.mdSemibold.copyWith(color: …)` (color only), or prefer `mdSemiboldColored`.
-- **Forbidden:** `copyWith` that sets `fontSize`, `letterSpacing`, `fontWeight`, or `height` — promote to a named scale token in `AppTextStyles` in the same PR.
-- Layout-only **reads** of `style.fontSize` (e.g. ToggleSwitch width math) are allowed; do not hardcode literal sizes.
+Remove `LlmWorkspaceText` / similar page typography facades; call sites use `AppTextStyles` scale names directly.
 
 ## CODE_QUALITY
 
-Typography rule becomes:
+> In `pages/` and `widgets/`, text styles must come from [`AppTextStyles`](../client/lib/theme/app_text_styles.dart) **named scale tokens** (`md`, `mdSemibold`, `xsBoldWide`, …) or other `lib/theme/` helpers (`dropdownFieldTextStyle`, `appMonoTextStyle`, `appTerminalTextStyle`, …). Do **not** construct `TextStyle(...)` inline, set `fontSize` / `letterSpacing` / `fontWeight` / `height` via `copyWith`, use raw `ThemeData.textTheme`, or invent combinations outside shipped getters. Prefer `*Colored` / `muted*`. Exceptions: syntax highlighting, terminal `TerminalStyle`, size-driven avatar glyphs, diff views that inherit editor font metrics. Every new `AppTextStyles` getter must be added to text warmup.
 
-> In `pages/` and `widgets/`, text styles must come from [`AppTextStyles`](../client/lib/theme/app_text_styles.dart) **scale tokens** (`xs`, `mdSemibold`, `xsWide`, …) or other helpers in `lib/theme/` (`dropdownFieldTextStyle`, `appMonoTextStyle`, `appTerminalTextStyle`, …). Do **not** construct `TextStyle(...)` inline, set `fontSize` / `letterSpacing` / `fontWeight` / `height` via `copyWith`, or use raw `ThemeData.textTheme` roles / component-semantic style names. Prefer `*Colored` / `muted*` for color. Exceptions: syntax highlighting, terminal `TerminalStyle`, size-driven avatar glyphs, diff views that inherit editor font metrics.
+## Migration
 
-## Migration strategy
-
-1. Rewrite `AppTextStyles` to the new API only (delete old getters same commit).
+1. Rewrite `AppTextStyles` with private `_compose` + new named getters only (delete old names same commit).
 2. Mechanical rename across `client/lib/` + tests.
-3. Update `app_text_styles_warmup.dart` to enumerate **all** shipped tokens; update `app_markdown_style_sheet.dart` bindings (`h2`→`lgSnug` / `lgSnugSemibold`, body→`md`, etc.).
-4. Remove `LlmWorkspaceText` and other facades; fix call sites.
-5. Finish remaining raw `textTheme` / inline `TextStyle` / weight-`copyWith` onto the scale.
-6. Grep gate: no old names; no raw textTheme in UI layers (exceptions only).
+3. Update warmup + markdown style sheet bindings.
+4. Remove facades; finish remaining `textTheme` / inline / metric-`copyWith` migrations.
+5. Grep gate: no old semantic names; no raw textTheme in UI layers (documented exceptions only).
 
-No dual-API period. No compatibility typedefs.
+No dual-API period. No compatibility shims. No public `compose`.
 
-## Out of scope exceptions (unchanged)
+## Exceptions (unchanged)
 
-- `client/lib/theme/**` definition site
-- `editor_syntax_theme.dart`
-- Terminal `TerminalStyle` / `appTerminalTextStyle`
-- Diff views rebuilding `TextStyle` from editor metrics
-- Size-driven avatar / brand glyphs (`fontSize: size * factor`)
+- `client/lib/theme/**` definition site  
+- `editor_syntax_theme.dart`  
+- Terminal `TerminalStyle` / `appTerminalTextStyle`  
+- Diff views rebuilding `TextStyle` from editor metrics  
+- Size-driven avatar / brand glyphs  
