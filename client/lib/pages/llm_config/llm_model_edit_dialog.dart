@@ -59,7 +59,6 @@ class LlmModelEditDialogState extends State<LlmModelEditDialog> {
     final deco = AppDropdownDecorations.themed(
       context,
       borderRadius: 8,
-      headerFontWeight: FontWeight.w500,
       suffixIconSize: context.appIconSizes.md,
       expandedShadowBlurRadius: 18,
       expandedShadowAlphaDark: 0.45,

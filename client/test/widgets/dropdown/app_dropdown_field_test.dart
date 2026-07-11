@@ -250,4 +250,36 @@ void main() {
       expect(highlights.last, isNull);
     });
   });
+
+  group('AppDropdownField plain list height', () {
+    testWidgets('short menus shrink to content instead of default overlay height', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          AppDropdownField<String>(
+            items: const ['adaptive', 'classicDark', 'highContrast'],
+            initialItem: 'adaptive',
+            itemLabel: (item) => item,
+            onChanged: (_) {},
+          ),
+        ),
+      );
+
+      await tester.tap(find.byType(AppDropdownField<String>));
+      await tester.pumpAndSettle();
+
+      final list = tester.widget<ListView>(find.byType(ListView));
+      expect(list.shrinkWrap, isTrue);
+
+      final listSize = tester.getSize(find.byType(ListView));
+      expect(
+        listSize.height,
+        lessThan(kAppDropdownDefaultOverlayHeight),
+        reason:
+            '3-option menus must not expand to the 260px overlay max '
+            '(leaves empty space under the last row)',
+      );
+    });
+  });
 }

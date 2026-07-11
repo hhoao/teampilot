@@ -73,8 +73,8 @@ class _ThemeColorPresetChipState extends State<ThemeColorPresetChip> {
     final borderColor = widget.selected
         ? cs.primary
         : _hovered
-            ? cs.primary.withValues(alpha: 0.55)
-            : cs.outlineVariant;
+        ? cs.primary.withValues(alpha: 0.55)
+        : cs.outlineVariant;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -93,7 +93,7 @@ class _ThemeColorPresetChipState extends State<ThemeColorPresetChip> {
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

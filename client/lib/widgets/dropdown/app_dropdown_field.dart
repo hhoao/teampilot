@@ -23,6 +23,10 @@ const EdgeInsets kAppDropdownListItemPadding = EdgeInsets.symmetric(
 );
 const double kAppDropdownDefaultOverlayHeight = 260;
 
+/// Plain (non-search) lists at or below this length shrink-wrap to content
+/// instead of expanding to [kAppDropdownDefaultOverlayHeight].
+const int _kAppDropdownPlainListShrinkWrapMaxItems = 32;
+
 /// Vertical gap between rows in dropdown / picker overlays.
 const double kAppDropdownListItemGap = 4;
 
@@ -310,7 +314,6 @@ class _AppDropdownFieldState<T extends Object>
         widget.decoration ??
         AppDropdownDecorations.themed(
           context,
-          headerFontWeight: FontWeight.w500,
           suffixIconSize: context.appIconSizes.md,
         );
     final headerPadding =
@@ -446,9 +449,13 @@ class _AppDropdownFieldState<T extends Object>
     required AppDropdownDecoration deco,
     required EdgeInsets itemPadding,
   }) {
-    // Bounded by the popover [ConstrainedBox]; avoid shrinkWrap so only
-    // visible rows are built/laid out (font pickers can have hundreds).
+    // Short menus must shrink to content; otherwise ListView expands to the
+    // overlay maxHeight (260) and leaves empty space (e.g. 3-option theme).
+    // Long plain catalogs stay lazy (no shrinkWrap) under the same maxHeight.
+    final shrinkWrap =
+        widget.items.length <= _kAppDropdownPlainListShrinkWrapMaxItems;
     return ListView.separated(
+      shrinkWrap: shrinkWrap,
       padding: EdgeInsets.zero,
       itemCount: widget.items.length,
       separatorBuilder: (_, _) =>

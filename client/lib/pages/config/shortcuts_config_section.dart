@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:teampilot/theme/app_text_styles.dart';
 
 import '../../cubits/shortcut_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -115,9 +116,7 @@ bool _matchesQuery(
   final isMacOS = defaultIsMacOS();
   return chords.any(
     (chord) =>
-        formatKeyChord(chord, isMacOS: isMacOS).toLowerCase().contains(
-          needle,
-        ),
+        formatKeyChord(chord, isMacOS: isMacOS).toLowerCase().contains(needle),
   );
 }
 
@@ -218,9 +217,9 @@ class _ShortcutRow extends StatelessWidget {
           if (chords.isEmpty)
             Text(
               l10n.shortcutsNotSet,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             )
           else
             Wrap(
@@ -285,13 +284,7 @@ class _ChordChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
       ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          fontWeight: FontWeight.w600,
-          color: cs.onSurface,
-        ),
-      ),
+      child: Text(label, style: AppTextStyles.of(context).bodySmall),
     );
   }
 }

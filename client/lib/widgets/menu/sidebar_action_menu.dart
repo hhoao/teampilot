@@ -212,22 +212,22 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hoverFill = isDark
         ? Colors.white.withValues(alpha: 0.08)
         : Colors.black.withValues(alpha: 0.05);
 
-    final baseIconColor = widget.destructive
+    // Match theme bodyMedium color/weight (not dropdownFieldTextStyle's w500).
+    final baseFg = widget.destructive
         ? cs.error
-        : cs.onSurface.withValues(alpha: 0.85);
-    final baseTextColor = widget.destructive ? cs.error : cs.onSurface;
-
-    final iconColor = widget.destructive && _hovered
-        ? cs.error
-        : baseIconColor.withValues(alpha: widget.enabled ? 1 : 0.35);
-    final textColor = widget.destructive && _hovered
-        ? cs.error
-        : baseTextColor.withValues(alpha: widget.enabled ? 1 : 0.35);
+        : (styles.body.color ?? cs.onSurface);
+    final fg = baseFg.withValues(alpha: widget.enabled ? 1 : 0.35);
+    final labelStyle = styles.body.copyWith(color: fg, height: 18 / 14);
+    final suffixStyle = styles.body.copyWith(
+      color: fg.withValues(alpha: widget.enabled ? 0.45 : 0.35),
+      height: 18 / 14,
+    );
 
     Widget row = MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -267,7 +267,7 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
                       Icon(
                         widget.icon,
                         size: SidebarActionMenuMetrics.iconSize(context),
-                        color: iconColor,
+                        color: fg,
                       ),
                 ),
               ),
@@ -283,11 +283,7 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               softWrap: false,
-                              style: dropdownFieldTextStyle(
-                                context,
-                                fontWeight: FontWeight.w500,
-                                color: textColor,
-                              ).copyWith(height: 18 / 14),
+                              style: labelStyle,
                             ),
                           ),
                           SizedBox(width: context.appSpacing.lg),
@@ -296,11 +292,7 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             softWrap: false,
-                            style: dropdownFieldTextStyle(
-                              context,
-                              fontWeight: FontWeight.w400,
-                              color: textColor.withValues(alpha: 0.45),
-                            ).copyWith(height: 18 / 14),
+                            style: suffixStyle,
                           ),
                         ],
                       )
@@ -313,11 +305,7 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             softWrap: false,
-                            style: dropdownFieldTextStyle(
-                              context,
-                              fontWeight: FontWeight.w500,
-                              color: textColor,
-                            ).copyWith(height: 18 / 14),
+                            style: labelStyle,
                           ),
                           if (widget.subtitle != null) widget.subtitle!,
                         ],
@@ -660,7 +648,9 @@ Widget _specToMenuItem({
       ? Icon(
           Icons.check,
           size: context.appIconSizes.md,
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+          color: (AppTextStyles.of(context).body.color ??
+                  Theme.of(context).colorScheme.onSurface)
+              .withValues(alpha: 0.7),
         )
       : spec.trailing;
 
