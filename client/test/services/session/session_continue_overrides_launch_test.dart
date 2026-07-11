@@ -4,6 +4,7 @@ import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/session_continue_overrides.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/cli/preset_resolver.dart';
 import 'package:teampilot/services/launch/session_runtime_plan.dart';
 import 'package:teampilot/services/session/session_continue_overrides_apply.dart';
 
@@ -33,7 +34,7 @@ TeamMemberConfig resolveShellLaunchMember({
   return finalizeSessionLaunchMember(
     session: session,
     baseMember: runtimePlan.member,
-    memberId: isSimple ? session.sessionId : runtimePlan.member.id,
+    memberId: isSimple ? session.sessionId : runtimePlan.memberId,
     isSimple: isSimple,
     preset: preset,
     withPreset: _memberWithPreset,
@@ -110,6 +111,78 @@ void main() {
       final presetOnly = _memberWithPreset(base, preset);
       expect(presetOnly.provider, 'preset-provider');
       expect(presetOnly.provider, isNot(shellMember.provider));
+    },
+  );
+
+  test(
+    'finalize then memberForLaunch keeps continue provider (team staging)',
+    () {
+      const base = TeamMemberConfig(
+        id: 'builder-0',
+        name: 'Builder',
+        cli: CliTool.claude,
+        provider: 'base-provider',
+        model: 'base-model',
+        dangerouslySkipPermissions: false,
+        activePresetId: 'p-template',
+      );
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        sessionTeam: 'team',
+        createdAt: 1,
+        continueOverrides: const SessionContinueOverrides(
+          memberOverrides: {
+            'builder-0': SessionMemberContinueOverride(
+              presetId: 'p-template',
+              provider: 'override-provider',
+              model: 'override-model',
+              dangerouslySkipPermissions: true,
+            ),
+          },
+        ),
+      );
+
+      final finalized = finalizeSessionLaunchMember(
+        session: session,
+        baseMember: base,
+        memberId: 'builder-0',
+        isSimple: false,
+        preset: preset,
+        withPreset: _memberWithPreset,
+      );
+      expect(finalized.provider, 'override-provider');
+      expect(finalized.activePresetId, isNull);
+
+      final team = TeamProfile(
+        id: 'team',
+        name: 'Team',
+        cli: CliTool.claude,
+        members: [base],
+      );
+      // Same path as stageTeamLaunch after orchestrator finalize.
+      final staged = memberForLaunch(
+        team: team,
+        member: finalized,
+        globalPresets: const [preset],
+      );
+
+      expect(staged.provider, 'override-provider');
+      expect(staged.model, 'override-model');
+      expect(staged.dangerouslySkipPermissions, isTrue);
+
+      // Old bug: leaving activePresetId set made memberForLaunch expand the
+      // template preset and wipe continue provider/model.
+      final buggy = memberForLaunch(
+        team: team,
+        member: finalized.copyWith(
+          activePresetId: 'p-template',
+          updateActivePresetId: true,
+        ),
+        globalPresets: const [preset],
+      );
+      expect(buggy.provider, 'preset-provider');
+      expect(buggy.provider, isNot(staged.provider));
     },
   );
 

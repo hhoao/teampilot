@@ -38,6 +38,12 @@ TeamMemberConfig finalizeSessionLaunchMember({
 /// Simple: do NOT re-apply provider/model from memberOverrides; only permission from continueOverrides.
 /// Team: apply memberOverrides[memberId] provider/model/effort/presetId + permission.
 /// Never change [baseMember.cli].
+///
+/// When concrete provider/model/effort are applied, clear [TeamMemberConfig.activePresetId]
+/// on the launch member so a later [memberForLaunch] cannot re-expand a template
+/// preset over those fields. [SessionMemberContinueOverride.presetId] remains for
+/// UI/persist; it is only copied onto the launch member when no concrete fields
+/// were overridden.
 TeamMemberConfig applySessionContinueOverrides({
   required TeamMemberConfig baseMember,
   required AppSession session,
@@ -73,6 +79,10 @@ TeamMemberConfig applySessionContinueOverrides({
     dangerouslySkipPermissions: permission,
   );
 
+  final hasConcreteLaunchFields = memberOverride.provider != null ||
+      memberOverride.model != null ||
+      memberOverride.effort != null;
+
   if (memberOverride.provider != null) {
     merged = merged.copyWith(provider: memberOverride.provider);
   }
@@ -85,7 +95,14 @@ TeamMemberConfig applySessionContinueOverrides({
       updateEffort: true,
     );
   }
-  if (memberOverride.presetId != null) {
+
+  if (hasConcreteLaunchFields) {
+    // Keep continue provider/model through stageTeamLaunch → memberForLaunch.
+    merged = merged.copyWith(
+      activePresetId: null,
+      updateActivePresetId: true,
+    );
+  } else if (memberOverride.presetId != null) {
     merged = merged.copyWith(
       activePresetId: memberOverride.presetId,
       updateActivePresetId: true,

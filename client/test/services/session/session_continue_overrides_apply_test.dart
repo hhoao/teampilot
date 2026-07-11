@@ -69,7 +69,9 @@ void main() {
     expect(out.provider, 'new');
     expect(out.model, 'new-m');
     expect(out.effort, 'high');
-    expect(out.activePresetId, 'p1');
+    // Concrete fields clear activePresetId so memberForLaunch cannot re-expand
+    // a template preset over continue provider/model (presetId stays on override).
+    expect(out.activePresetId, isNull);
     expect(out.dangerouslySkipPermissions, isFalse);
   });
 
@@ -138,5 +140,35 @@ void main() {
     expect(out.provider, 'keep');
     expect(out.model, 'keep-m');
     expect(out.dangerouslySkipPermissions, isTrue);
+  });
+
+  test('team merge with only presetId sets activePresetId for launch expand', () {
+    const base = TeamMemberConfig(
+      id: 'builder-0',
+      name: 'Builder',
+      cli: CliTool.claude,
+      provider: 'keep',
+      model: 'keep-m',
+    );
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      sessionTeam: 'team',
+      createdAt: 1,
+      continueOverrides: const SessionContinueOverrides(
+        memberOverrides: {
+          'builder-0': SessionMemberContinueOverride(presetId: 'p-only'),
+        },
+      ),
+    );
+    final out = applySessionContinueOverrides(
+      baseMember: base,
+      session: session,
+      memberId: 'builder-0',
+      isSimple: false,
+    );
+    expect(out.activePresetId, 'p-only');
+    expect(out.provider, 'keep');
+    expect(out.model, 'keep-m');
   });
 }

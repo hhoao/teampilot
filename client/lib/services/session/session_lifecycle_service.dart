@@ -816,7 +816,7 @@ class SessionLifecycleService {
     final member = finalizeSessionLaunchMember(
       session: session,
       baseMember: runtimePlan.member,
-      memberId: isSimple ? session.sessionId : runtimePlan.member.id,
+      memberId: isSimple ? session.sessionId : runtimePlan.memberId,
       isSimple: isSimple,
       preset: preset,
       withPreset: _memberWithPreset,
