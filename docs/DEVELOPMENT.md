@@ -78,7 +78,7 @@ flutter test --exclude-tags integration
 Single file or by name:
 
 ```bash
-flutter test test/widget_test.dart
+flutter test test/smoke/app_shell_smoke_test.dart
 flutter test --plain-name="test name"
 ```
 

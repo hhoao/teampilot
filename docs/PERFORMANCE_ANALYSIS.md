@@ -165,6 +165,10 @@ client/tool/
 
 To extend analysis, add logic in `analyzer.dart` and new fields on `PerformanceAnalysisResult`; keep `analyze_performance_json.dart` as a thin CLI.
 
+## When the hotspot is `RenderParagraph`
+
+First fix: **make boot warmup shape the same TextStyle fingerprints** (family / size / weight / style), or **replace one-off styles with ones already in `textStylesForThemeWarmup`** (`AppTextStyles.body` / `bodyStrong` / `mono`, …).
+
 ## Related docs
 
 - [DEBUGGING.md](DEBUGGING.md) — general bug investigation (search-first, root cause)
