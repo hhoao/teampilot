@@ -148,11 +148,12 @@ void main() {
       final session = await repo.createSession(workspace.workspaceId);
       await cubit.loadWorkspaceData(repo);
 
-      await cubit.setSessionContinuePermission(
+      final ok = await cubit.setSessionContinuePermission(
         sessionId: session.sessionId,
         dangerouslySkipPermissions: true,
       );
 
+      expect(ok, isTrue);
       expect(
         cubit.state.sessions.single.continueOverrides.dangerouslySkipPermissions,
         isTrue,
@@ -162,6 +163,15 @@ void main() {
             .dangerouslySkipPermissions,
         isTrue,
       );
+    });
+
+    test('setSessionContinuePermission returns false when session missing', () async {
+      final ok = await cubit.setSessionContinuePermission(
+        sessionId: 'missing',
+        dangerouslySkipPermissions: true,
+      );
+
+      expect(ok, isFalse);
     });
   });
 }

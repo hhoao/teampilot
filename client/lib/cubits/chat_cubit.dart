@@ -1220,28 +1220,35 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   /// Persists session-level or per-member continue permission overrides.
-  Future<void> setSessionContinuePermission({
+  ///
+  /// Returns false when the repo/session is missing or persistence fails.
+  Future<bool> setSessionContinuePermission({
     required String sessionId,
     required bool dangerouslySkipPermissions,
     String? memberId,
   }) async {
     final repo = _sessionRepository;
-    if (repo == null) return;
+    if (repo == null) return false;
     final session = _continueOverridesController.sessionIn(
       state.sessions,
       sessionId,
     );
-    if (session == null) return;
+    if (session == null) return false;
     final patched = _continueOverridesController.patchPermission(
       session: session,
       dangerouslySkipPermissions: dangerouslySkipPermissions,
       memberId: memberId,
     );
-    await _continueOverridesController.persistPermission(
-      repo: repo,
-      patched: patched,
-    );
-    replaceSessionSnapshot(patched);
+    try {
+      await _continueOverridesController.persistPermission(
+        repo: repo,
+        patched: patched,
+      );
+      replaceSessionSnapshot(patched);
+      return true;
+    } on Object {
+      return false;
+    }
   }
 
   /// Persists a same-CLI preset for Simple identity or a team member override.

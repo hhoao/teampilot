@@ -241,19 +241,22 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     return unionConfigBundles(identity, _workspaceProjectBundle);
   }
 
-  AppSession _liveSession(BuildContext context) {
+  AppSession? _cubitSession(BuildContext context) {
     final id = widget.session.sessionId;
-    final fromCubit = context.select<ChatCubit, AppSession?>((cubit) {
+    return context.select<ChatCubit, AppSession?>((cubit) {
       for (final session in cubit.state.sessions) {
         if (session.sessionId == id) return session;
       }
       return null;
     });
-    return fromCubit ?? widget.session;
   }
 
+  /// Display-only fallback when the cubit snapshot is not loaded yet.
+  AppSession _displaySession(BuildContext context) =>
+      _cubitSession(context) ?? widget.session;
+
   TeamProfile? _liveTeam(BuildContext context) {
-    final session = _liveSession(context);
+    final session = _displaySession(context);
     if (session.isSimple) return null;
     final teamId = session.sessionTeam.trim();
     if (teamId.isEmpty) return null;
@@ -388,36 +391,48 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     );
   }
 
+  void _toastContinueSaveFailed() {
+    AppToast.show(
+      context,
+      message: context.l10n.sessionHistoryContinueSaveFailed,
+      variant: AppToastVariant.warning,
+    );
+  }
+
   Future<void> _onPermissionSelected({
     required bool value,
-    required AppSession session,
     required TeamProfile? team,
   }) async {
+    final session = _cubitSession(context);
+    if (session == null) {
+      if (mounted) _toastContinueSaveFailed();
+      return;
+    }
     final memberId = session.isSimple ? null : _effectiveMemberId(team);
     if (!session.isSimple && (memberId == null || memberId.isEmpty)) return;
     try {
-      await context.read<ChatCubit>().setSessionContinuePermission(
+      final ok = await context.read<ChatCubit>().setSessionContinuePermission(
         sessionId: session.sessionId,
         dangerouslySkipPermissions: value,
         memberId: memberId,
       );
+      if (!ok && mounted) _toastContinueSaveFailed();
     } on Object {
-      if (!mounted) return;
-      AppToast.show(
-        context,
-        message: context.l10n.sessionHistoryContinueSaveFailed,
-        variant: AppToastVariant.warning,
-      );
+      if (mounted) _toastContinueSaveFailed();
     }
   }
 
   Future<void> _onPresetSelected({
     required String presetId,
-    required AppSession session,
     required TeamProfile? team,
     required List<CliPreset> sameCliPresets,
     required CliTool lockedCli,
   }) async {
+    final session = _cubitSession(context);
+    if (session == null) {
+      if (mounted) _toastContinueSaveFailed();
+      return;
+    }
     final preset = sameCliPresets.where((p) => p.id == presetId).firstOrNull;
     if (preset == null) return;
     final memberId = session.isSimple ? null : _effectiveMemberId(team);
@@ -429,20 +444,9 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
         memberId: memberId,
         lockedCli: lockedCli,
       );
-      if (!ok && mounted) {
-        AppToast.show(
-          context,
-          message: context.l10n.sessionHistoryContinueSaveFailed,
-          variant: AppToastVariant.warning,
-        );
-      }
+      if (!ok && mounted) _toastContinueSaveFailed();
     } on Object {
-      if (!mounted) return;
-      AppToast.show(
-        context,
-        message: context.l10n.sessionHistoryContinueSaveFailed,
-        variant: AppToastVariant.warning,
-      );
+      if (mounted) _toastContinueSaveFailed();
     }
   }
 
@@ -584,7 +588,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     final skills = context.watch<SkillCubit>().state.installed;
     final plugins = context.watch<PluginCubit>().state.installed;
     final presets = context.watch<CliPresetsCubit>().state.presets;
-    final session = _liveSession(context);
+    final session = _displaySession(context);
     final team = _liveTeam(context);
     final hubState = _expertHubState(context);
     final canSubmit =
@@ -682,7 +686,6 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
               onPresetSelected: (presetId) => unawaited(
                 _onPresetSelected(
                   presetId: presetId,
-                  session: session,
                   team: team,
                   sameCliPresets: sameCliPresets,
                   lockedCli: lockedCli,
@@ -697,11 +700,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
               fullAccessPermissionsLabel:
                   l10n.workspaceChatLandingFullAccessPermissions,
               onPermissionSelected: (value) => unawaited(
-                _onPermissionSelected(
-                  value: value,
-                  session: session,
-                  team: team,
-                ),
+                _onPermissionSelected(value: value, team: team),
               ),
               teamSettingsTooltip:
                   showTeamSettings ? l10n.teamSettings : null,
