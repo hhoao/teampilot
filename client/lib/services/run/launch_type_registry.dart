@@ -14,6 +14,9 @@ class LaunchTypeRegistry {
 
   final Map<String, LaunchTypeContribution> _types = {};
 
+  /// Availability keyed by `type|targetId`. Set by [LaunchTypeRegistrar].
+  final Map<String, bool> _availability = {};
+
   factory LaunchTypeRegistry.withBuiltIns() {
     final registry = LaunchTypeRegistry._();
     registry._types[ProcessLaunchSchema.typeName] = LaunchTypeContribution(
@@ -30,6 +33,12 @@ class LaunchTypeRegistry {
   }
 
   LaunchTypeContribution? get(String type) => _types[type];
+
+  /// Removes extension-contributed types (keeps built-in `process`).
+  void clearExtensions() {
+    _types.removeWhere((_, value) => value.extensionId != null);
+    _availability.clear();
+  }
 
   /// Registers an extension contribution. Built-in types cannot be overridden.
   ///
@@ -55,16 +64,30 @@ class LaunchTypeRegistry {
     return const LaunchTypeRegisterResult(isConflict: false);
   }
 
+  /// Records whether [type] is available on [targetId] after detect/probe.
+  void setAvailability(
+    String type, {
+    required String targetId,
+    required bool available,
+  }) {
+    _availability[_availabilityKey(type, targetId)] = available;
+  }
+
   /// Whether [type] can run on [targetId].
   ///
-  /// Stub until Task 7 probes extension adapter binaries on the target:
-  /// built-in `process` is always available; extension types return false.
+  /// Built-in `process` is always available. Extension types require a prior
+  /// [setAvailability] (typically from [LaunchTypeRegistrar] after detect).
+  /// Remote targets without an explicit availability entry are unavailable
+  /// (v1: no host fallback / remote adapter provisioning).
   bool isAvailable(String type, {required String targetId}) {
     if (type == ProcessLaunchSchema.typeName) return true;
     final contribution = _types[type];
     if (contribution == null || contribution.extensionId == null) {
       return false;
     }
-    return false;
+    return _availability[_availabilityKey(type, targetId)] == true;
   }
+
+  static String _availabilityKey(String type, String targetId) =>
+      '$type|$targetId';
 }
