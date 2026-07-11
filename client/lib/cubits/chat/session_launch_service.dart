@@ -206,6 +206,7 @@ class SessionLaunchService
       workingDirectory: params.workingDirectory,
       fixedSessionId: session.sessionId,
       expertKey: params.simpleIdentity?.expertKey ?? params.expertKey,
+      continueOverrides: params.continueOverrides,
     );
     tab.persistedSession = persisted;
     _h.replaceSessionSnapshot(persisted);

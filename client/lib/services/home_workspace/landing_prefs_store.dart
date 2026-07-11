@@ -12,6 +12,7 @@ class LandingPrefs {
     this.projectFolderPath,
     this.expertKey,
     this.workingDirectoryPath,
+    this.dangerouslySkipPermissions = false,
   });
 
   final bool isPersonal;
@@ -20,6 +21,7 @@ class LandingPrefs {
   final String? projectFolderPath;
   final String? expertKey;
   final String? workingDirectoryPath;
+  final bool dangerouslySkipPermissions;
 
   Map<String, Object?> toJson() => {
     'isPersonal': isPersonal,
@@ -30,6 +32,7 @@ class LandingPrefs {
     if (expertKey != null && expertKey!.isNotEmpty) 'expertKey': expertKey,
     if (workingDirectoryPath != null && workingDirectoryPath!.isNotEmpty)
       'workingDirectoryPath': workingDirectoryPath,
+    if (dangerouslySkipPermissions) 'dangerouslySkipPermissions': true,
   };
 }
 
@@ -63,6 +66,8 @@ class LandingPrefsStore {
           projectFolderPath: m['projectFolderPath'] as String?,
           expertKey: m['expertKey'] as String?,
           workingDirectoryPath: m['workingDirectoryPath'] as String?,
+          dangerouslySkipPermissions:
+              m['dangerouslySkipPermissions'] as bool? ?? false,
         );
       }
       return out;

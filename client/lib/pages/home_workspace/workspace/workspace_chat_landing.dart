@@ -536,6 +536,9 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     _selectedWorktreePath = draft.workingDirectoryPath?.trim().isNotEmpty == true
         ? draft.workingDirectoryPath!.trim()
         : null;
+    _permissionMode = draft.dangerouslySkipPermissions
+        ? _LandingPermissionMode.fullAccess
+        : _LandingPermissionMode.defaultPermissions;
 
     if ((_selectedTeamId == null || _selectedTeamId!.isEmpty) &&
         _conversationMode == _LandingConversationMode.team) {
@@ -665,6 +668,8 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       workingDirectoryPath: selectedWorktreePath.trim().isEmpty
           ? null
           : selectedWorktreePath,
+      dangerouslySkipPermissions:
+          _permissionMode == _LandingPermissionMode.fullAccess,
     );
   }
 
@@ -762,6 +767,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   void _setPermissionMode(_LandingPermissionMode mode) {
     if (_permissionMode == mode) return;
     setState(() => _permissionMode = mode);
+    _persistDraft();
   }
 
   void _selectPreset(String presetId) {

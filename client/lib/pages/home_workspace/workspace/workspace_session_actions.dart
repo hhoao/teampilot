@@ -22,6 +22,7 @@ import '../../../models/landing_launch_context.dart';
 import '../../../models/simple_launch_identity.dart';
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
+import '../../../models/session_continue_overrides.dart';
 import '../../../models/team_config.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../services/cli/preset_resolver.dart';
@@ -343,6 +344,9 @@ Future<void> submitWorkspaceLandingMessage(
     workingDirectory: workingDirectory,
     fixedSessionId: plannedSessionId,
     expertKey: trimmedExpert.isNotEmpty ? trimmedExpert : null,
+    continueOverrides: SessionContinueOverrides(
+      dangerouslySkipPermissions: launch.dangerouslySkipPermissions,
+    ),
   );
   if (status == null) return;
   if (status != SessionOpenStatus.opened) {
@@ -490,6 +494,7 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
   String? workingDirectory,
   String? fixedSessionId,
   String? expertKey,
+  SessionContinueOverrides? continueOverrides,
 }) async {
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
@@ -523,6 +528,7 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
         emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
         fixedSessionId: fixedSessionId,
         expertKey: expertKey,
+        continueOverrides: continueOverrides,
       ),
     );
   } on Object catch (error, stackTrace) {

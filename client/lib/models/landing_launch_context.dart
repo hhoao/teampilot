@@ -14,6 +14,7 @@ class LandingLaunchContext {
     this.projectFolderPath,
     this.expertKey,
     this.workingDirectoryPath,
+    this.dangerouslySkipPermissions = false,
   });
 
   /// True when launching Simple (unteamed) mode — empty [sessionTeam].
@@ -34,6 +35,9 @@ class LandingLaunchContext {
   /// Launch cwd: the selected worktree path under [projectFolderPath].
   final String? workingDirectoryPath;
 
+  /// When true, new sessions start with session-level full-access permission.
+  final bool dangerouslySkipPermissions;
+
   /// Profile id for manage panel / automation scope.
   ///
   /// Simple uses the fixed [AutomationTabScope.simpleLaunchProfileId] key;
@@ -50,6 +54,7 @@ class LandingLaunchContext {
     Object? projectFolderPath = _unset,
     Object? expertKey = _unset,
     Object? workingDirectoryPath = _unset,
+    bool? dangerouslySkipPermissions,
   }) {
     return LandingLaunchContext(
       isPersonal: isPersonal ?? this.isPersonal,
@@ -62,6 +67,8 @@ class LandingLaunchContext {
       workingDirectoryPath: workingDirectoryPath == _unset
           ? this.workingDirectoryPath
           : workingDirectoryPath as String?,
+      dangerouslySkipPermissions:
+          dangerouslySkipPermissions ?? this.dangerouslySkipPermissions,
     );
   }
 
@@ -74,7 +81,8 @@ class LandingLaunchContext {
           teamId == other.teamId &&
           projectFolderPath == other.projectFolderPath &&
           expertKey == other.expertKey &&
-          workingDirectoryPath == other.workingDirectoryPath;
+          workingDirectoryPath == other.workingDirectoryPath &&
+          dangerouslySkipPermissions == other.dangerouslySkipPermissions;
 
   @override
   int get hashCode => Object.hash(
@@ -84,5 +92,6 @@ class LandingLaunchContext {
     projectFolderPath,
     expertKey,
     workingDirectoryPath,
+    dangerouslySkipPermissions,
   );
 }

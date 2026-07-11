@@ -1,4 +1,5 @@
 import '../../../models/simple_launch_identity.dart';
+import '../../../models/session_continue_overrides.dart';
 import '../../../models/team_config.dart';
 
 /// Disk-write parameters for a session that is already surfaced in the UI.
@@ -10,6 +11,7 @@ class SessionPersistParams {
     this.simpleIdentity,
     this.workingDirectory,
     this.expertKey,
+    this.continueOverrides,
   });
 
   final String sessionTeamId;
@@ -20,4 +22,5 @@ class SessionPersistParams {
   final SimpleLaunchIdentity? simpleIdentity;
   final String? workingDirectory;
   final String? expertKey;
+  final SessionContinueOverrides? continueOverrides;
 }
