@@ -1,4 +1,3 @@
-import 'package:collection/collection.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -61,7 +60,7 @@ class WorkspaceSidebar extends StatefulWidget {
 }
 
 class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
-  AppSessionSort _sessionSort = AppSessionSort.manual;
+  AppSessionSort _sessionSort = AppSessionSort.recentlyUpdated;
 
   String _landingProfileId(BuildContext context) =>
       context.read<WorkspaceLandingContextCubit>().state.context.profileId;
@@ -87,6 +86,8 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       (c) => WorktreeSidebarView.from(c.state),
     );
     final toolsContext = WorkspaceToolsScope.maybeOf(context)?.tools?.context;
+    // Must read c.state.sessions inside the selector so working-id updates never
+    // resolve against a stale filtered list from a prior build closure.
     final runningSessionIds = context.select<ChatCubit, List<String>>((c) {
       final sessions = WorkspaceSidebarSessions.forWorkspace(
         allSessions: c.state.sessions,
@@ -103,10 +104,13 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
         openTabSessionIds: openTabSessionIdsForWorkspace(runningTabIds),
       ).map((s) => s.sessionId).toList();
     });
-    final runningSessions = runningSessionIds
-        .map((id) => sortedSessions.where((s) => s.sessionId == id).firstOrNull)
-        .whereType<AppSession>()
-        .toList();
+    final sortedById = {
+      for (final s in sortedSessions) s.sessionId: s,
+    };
+    final runningSessions = [
+      for (final id in runningSessionIds)
+        if (sortedById[id] case final session?) session,
+    ];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
@@ -289,6 +293,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
           group: group,
           workspace: widget.workspace,
           tabScopeId: widget.tabScopeId,
+          sessionSort: _sessionSort,
           highlightSessionId: scopedActiveSessionId(
             context.read<ChatCubit>(),
             widget.tabScopeId,

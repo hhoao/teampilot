@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/git_worktree.dart';
+import 'package:teampilot/utils/app_session_sort.dart';
 import 'package:teampilot/utils/session_worktree_grouping.dart';
 
 GitWorktree _wt(String path, {bool main = false}) => GitWorktree(
@@ -12,12 +13,14 @@ GitWorktree _wt(String path, {bool main = false}) => GitWorktree(
   isMainWorktree: main,
 );
 
-AppSession _session(String id, String primary) => AppSession(
-  sessionId: id,
-  workspaceId: 'w',
-  folders: [WorkspaceFolder(path: primary)],
-  createdAt: 0,
-);
+AppSession _session(String id, String primary, {int updatedAt = 0}) =>
+    AppSession(
+      sessionId: id,
+      workspaceId: 'w',
+      folders: [WorkspaceFolder(path: primary)],
+      createdAt: 0,
+      updatedAt: updatedAt,
+    );
 
 void main() {
   final worktrees = [_wt('/repo', main: true), _wt('/wt/feat')];
@@ -107,4 +110,39 @@ void main() {
     expect(worktreePathForSessionPath('/repo', worktrees), '/repo');
     expect(worktreePathForSessionPath('/gone', worktrees), isNull);
   });
+
+  test(
+    'preserves recentlyUpdated order within each worktree group',
+    () {
+      // Sidebar pipeline: global sort first, then bucket. Encounter order in
+      // each bucket must stay newest-updated-first (same key as the time label).
+      final unsorted = [
+        _session('old', '/repo', updatedAt: 10),
+        _session('mid', '/repo', updatedAt: 20),
+        _session('feat-new', '/wt/feat', updatedAt: 50),
+        _session('feat-old', '/wt/feat', updatedAt: 5),
+        _session('new', '/repo', updatedAt: 40),
+      ];
+      final sorted = sortAppSessions(
+        unsorted,
+        sort: AppSessionSort.recentlyUpdated,
+      );
+      final groups = groupSessionsByWorktree(
+        worktrees: worktrees,
+        sessions: sorted,
+      );
+
+      final main = groups.firstWhere((g) => g.worktree?.path == '/repo');
+      expect(
+        [for (final s in main.sessions) s.sessionId],
+        ['new', 'mid', 'old'],
+      );
+
+      final feat = groups.firstWhere((g) => g.worktree?.path == '/wt/feat');
+      expect(
+        [for (final s in feat.sessions) s.sessionId],
+        ['feat-new', 'feat-old'],
+      );
+    },
+  );
 }

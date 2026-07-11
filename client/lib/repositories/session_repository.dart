@@ -294,6 +294,11 @@ class SessionRepository {
         continue;
       }
     }
+    sessions.sort((a, b) {
+      final au = a.updatedAt != 0 ? a.updatedAt : a.createdAt;
+      final bu = b.updatedAt != 0 ? b.updatedAt : b.createdAt;
+      return bu.compareTo(au);
+    });
     return sessions;
   }
 

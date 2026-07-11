@@ -12,6 +12,7 @@ class DropdownMenuItemButton extends StatefulWidget {
     this.isSelected = false,
     this.borderRadius,
     this.enabled = true,
+    this.onHoverChanged,
   });
 
   final Widget child;
@@ -22,6 +23,9 @@ class DropdownMenuItemButton extends StatefulWidget {
   final bool isSelected;
   final BorderRadius? borderRadius;
   final bool enabled;
+
+  /// Fired when the pointer enters (`true`) or leaves (`false`) this row.
+  final ValueChanged<bool>? onHoverChanged;
 
   @override
   State<DropdownMenuItemButton> createState() => _DropdownMenuItemButtonState();
@@ -41,8 +45,14 @@ class _DropdownMenuItemButtonState extends State<DropdownMenuItemButton> {
     }
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovering = true),
-      onExit: (_) => setState(() => _isHovering = false),
+      onEnter: (_) {
+        setState(() => _isHovering = true);
+        widget.onHoverChanged?.call(true);
+      },
+      onExit: (_) {
+        setState(() => _isHovering = false);
+        widget.onHoverChanged?.call(false);
+      },
       cursor: widget.enabled && widget.onTap != null
           ? SystemMouseCursors.click
           : SystemMouseCursors.basic,

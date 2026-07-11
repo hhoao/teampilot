@@ -9,8 +9,9 @@ import 'workspace_settings_widgets.dart';
 
 /// Searchable mixed font picker: catalog presets, then installed families.
 ///
-/// Saves immediately; theme fonts apply on the next app restart to avoid a
-/// multi-second full-tree layout when swapping [ThemeData] mid-session.
+/// Saves immediately; theme fonts apply on the next app restart (full
+/// [ThemeData] font swaps are multi-second). No live face preview — hover
+/// / open-time shaping was janking the settings dialog.
 class FontPreferenceSetting extends StatefulWidget {
   const FontPreferenceSetting({
     required this.role,
@@ -34,7 +35,11 @@ class _FontPreferenceSettingState extends State<FontPreferenceSetting> {
   @override
   void initState() {
     super.initState();
-    _loadInstalled();
+    // Defer fc-list so opening the settings dialog is not competing with
+    // enumerating hundreds of families on the first frames.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadInstalled();
+    });
   }
 
   @override
@@ -67,9 +72,7 @@ class _FontPreferenceSettingState extends State<FontPreferenceSetting> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
+  List<(String, String)> _buildEntries(AppLocalizations l10n) {
     final catalog = widget.role == FontRole.ui
         ? FontCatalog.uiOptions
         : FontCatalog.monoOptions;
@@ -79,7 +82,6 @@ class _FontPreferenceSettingState extends State<FontPreferenceSetting> {
         (entry.id, _labelForFontId(l10n, entry.id)),
     ];
 
-    // Keep a selected installed face visible even before scan finishes.
     final selectedKey = installedFontKey(widget.value);
     if (selectedKey != null &&
         !_installed.contains(selectedKey) &&
@@ -95,14 +97,18 @@ class _FontPreferenceSettingState extends State<FontPreferenceSetting> {
       }
     }
 
-    // Ensure current value is in the list (dropdown requires it).
     if (!entries.any((e) => e.$1 == widget.value)) {
       entries.insert(0, (widget.value, _labelForFontId(l10n, widget.value)));
     }
+    return entries;
+  }
 
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return SettingsCompactDropdown<String>(
       value: widget.value,
-      entries: entries,
+      entries: _buildEntries(l10n),
       searchHintText: l10n.fontSearchHint,
       onChanged: (v) {
         if (v != null) _onSelect(v);

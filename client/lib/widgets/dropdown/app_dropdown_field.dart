@@ -56,6 +56,7 @@ class AppDropdownField<T extends Object> extends StatefulWidget {
     this.searchMinItems = 8,
     this.clearSearchOnClose = true,
     this.onSearchChanged,
+    this.onHighlightChanged,
   }) : assert(
          itemLabel != null || itemBuilder != null || listItemBuilder != null,
          'Provide itemLabel, itemBuilder, or listItemBuilder',
@@ -103,6 +104,11 @@ class AppDropdownField<T extends Object> extends StatefulWidget {
 
   /// Notified when the overlay search query changes.
   final ValueChanged<String>? onSearchChanged;
+
+  /// Fires with the item the pointer is hovering in the open menu, or `null`
+  /// when the menu closes. Exit between rows does not clear (last hover sticks
+  /// until another enter or close) so consumers can preview without flicker.
+  final ValueChanged<T?>? onHighlightChanged;
 
   @override
   State<AppDropdownField<T>> createState() => _AppDropdownFieldState<T>();
@@ -178,6 +184,7 @@ class _AppDropdownFieldState<T extends Object>
     if (widget.clearSearchOnClose) {
       _clearSearch();
     }
+    widget.onHighlightChanged?.call(null);
   }
 
   void _clearSearch() {
@@ -223,13 +230,6 @@ class _AppDropdownFieldState<T extends Object>
 
   bool get _hasActiveSearchQuery =>
       _showsSearch && _searchQuery.trim().isNotEmpty;
-
-  bool _anyItemMatchesSearch() {
-    for (final item in widget.items) {
-      if (_matchesSearch(item)) return true;
-    }
-    return false;
-  }
 
   void _syncOverlayWidth() {
     if (!mounted || !_popoverController.isOpen) return;
@@ -420,7 +420,6 @@ class _AppDropdownFieldState<T extends Object>
     }
 
     return Column(
-      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AppDropdownSearchField(
@@ -437,7 +436,7 @@ class _AppDropdownFieldState<T extends Object>
           ).colorScheme.outlineVariant.withValues(alpha: 0.5),
         ),
         const SizedBox(height: 4),
-        Flexible(child: list),
+        Expanded(child: list),
       ],
     );
   }
@@ -447,9 +446,9 @@ class _AppDropdownFieldState<T extends Object>
     required AppDropdownDecoration deco,
     required EdgeInsets itemPadding,
   }) {
+    // Bounded by the popover [ConstrainedBox]; avoid shrinkWrap so only
+    // visible rows are built/laid out (font pickers can have hundreds).
     return ListView.separated(
-      shrinkWrap: true,
-      physics: const ClampingScrollPhysics(),
       padding: EdgeInsets.zero,
       itemCount: widget.items.length,
       separatorBuilder: (_, _) =>
@@ -465,21 +464,24 @@ class _AppDropdownFieldState<T extends Object>
     );
   }
 
-  /// Keeps every option in the tree via [Offstage] so the search field keeps
-  /// focus when matches reappear (shadcn `ShadSelect.withSearch` pattern).
+  /// Filtered lazy list. Search focus is owned by the field above — do not
+  /// keep every option in the tree via [Offstage] (that forced full-list
+  /// layout and multi-second jank on large catalogs).
   Widget _buildSearchableList(
     BuildContext context, {
     required AppDropdownDecoration deco,
     required EdgeInsets itemPadding,
   }) {
-    final showEmptyState = _hasActiveSearchQuery && !_anyItemMatchesSearch();
+    final visible = <T>[
+      for (final item in widget.items)
+        if (!_hasActiveSearchQuery || _matchesSearch(item)) item,
+    ];
+    final showEmptyState = _hasActiveSearchQuery && visible.isEmpty;
 
-    return ListView(
-      shrinkWrap: true,
-      physics: const ClampingScrollPhysics(),
-      padding: EdgeInsets.zero,
-      children: [
-        if (showEmptyState)
+    if (showEmptyState) {
+      return ListView(
+        padding: EdgeInsets.zero,
+        children: [
           Padding(
             padding: itemPadding,
             child: Text(
@@ -487,20 +489,26 @@ class _AppDropdownFieldState<T extends Object>
               style: deco.hintStyle,
             ),
           ),
-        for (final item in widget.items)
-          Offstage(
-            offstage: _hasActiveSearchQuery && !_matchesSearch(item),
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: kAppDropdownListItemGap),
-              child: _buildListItem(
-                context,
-                item: item,
-                deco: deco,
-                itemPadding: itemPadding,
-              ),
-            ),
+        ],
+      );
+    }
+
+    return ListView.builder(
+      padding: EdgeInsets.zero,
+      itemCount: visible.length,
+      itemBuilder: (context, index) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: index == visible.length - 1 ? 0 : kAppDropdownListItemGap,
           ),
-      ],
+          child: _buildListItem(
+            context,
+            item: visible[index],
+            deco: deco,
+            itemPadding: itemPadding,
+          ),
+        );
+      },
     );
   }
 
@@ -520,6 +528,9 @@ class _AppDropdownFieldState<T extends Object>
         selectedColor: deco.listItemSelectedColor,
         isSelected: isSelected,
         enabled: widget.enabled,
+        onHoverChanged: (hovering) {
+          if (hovering) widget.onHighlightChanged?.call(item);
+        },
         onTap: () {
           setState(() => _selected = item);
           widget.onChanged(item);

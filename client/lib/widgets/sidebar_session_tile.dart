@@ -352,7 +352,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       );
     }
 
-    // Trailing: coarse relative time (idle) or delete + overflow menu (hover).
+    // Trailing: coarse relative time + pin mark (idle), or delete + overflow (hover).
     final int activityMs = session.updatedAt > 0
         ? session.updatedAt
         : session.createdAt;
@@ -411,10 +411,17 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
               ),
             ],
           )
-        : activityMs > 0
-        ? _SessionCoarseRelativeTime(
-            timestampMs: activityMs,
-            selected: selected,
+        : (activityMs > 0 || session.pinned)
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (activityMs > 0)
+                _SessionCoarseRelativeTime(
+                  timestampMs: activityMs,
+                  selected: selected,
+                ),
+              if (session.pinned) const _SessionPinnedMark(),
+            ],
           )
         : null;
 
@@ -499,6 +506,24 @@ class _SessionCoarseRelativeTime extends StatelessWidget {
         style: AppTextStyles.of(
           context,
         ).caption.copyWith(color: textBase.withValues(alpha: 0.52)),
+      ),
+    );
+  }
+}
+
+/// Trailing pin glyph for pinned conversations (idle state only).
+class _SessionPinnedMark extends StatelessWidget {
+  const _SessionPinnedMark();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Icon(
+        Icons.push_pin,
+        size: context.appIconSizes.xs,
+        color: cs.onSurfaceVariant.withValues(alpha: 0.55),
       ),
     );
   }

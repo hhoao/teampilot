@@ -159,6 +159,7 @@ class SettingsLabeledRow extends StatelessWidget {
     this.titleLeading,
     required this.trailing,
     this.showDividerBelow = true,
+    this.crossAxisAlignment = CrossAxisAlignment.center,
   });
 
   final String title;
@@ -166,6 +167,7 @@ class SettingsLabeledRow extends StatelessWidget {
   final Widget? titleLeading;
   final Widget trailing;
   final bool showDividerBelow;
+  final CrossAxisAlignment crossAxisAlignment;
 
   @override
   Widget build(BuildContext context) {
@@ -184,29 +186,38 @@ class SettingsLabeledRow extends StatelessWidget {
           Padding(
             padding: _settingRowPadding,
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+              crossAxisAlignment: crossAxisAlignment,
               children: [
                 if (titleLeading != null) ...[
                   titleLeading!,
                   const SizedBox(width: 12),
                 ],
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title),
-                      if (hasSubtitle) ...[
-                        SizedBox(height: _titleSubtitleGap),
-                        Text(subtitle!.trim(), style: subtitleStyle),
+                  child: Padding(
+                    // Keep label text aligned with the first line of tall
+                    // trailings (e.g. font picker + preview).
+                    padding: crossAxisAlignment == CrossAxisAlignment.start
+                        ? const EdgeInsets.only(top: 10)
+                        : EdgeInsets.zero,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title),
+                        if (hasSubtitle) ...[
+                          SizedBox(height: _titleSubtitleGap),
+                          Text(subtitle!.trim(), style: subtitleStyle),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
                 SizedBox(width: _labelTrailingGap),
                 Flexible(
                   fit: FlexFit.loose,
                   child: Align(
-                    alignment: Alignment.centerRight,
+                    alignment: crossAxisAlignment == CrossAxisAlignment.start
+                        ? Alignment.topRight
+                        : Alignment.centerRight,
                     child: trailing,
                   ),
                 ),
@@ -355,6 +366,7 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
     this.itemBuilder,
     this.listItemBuilder,
     this.searchHintText,
+    this.onHighlightChanged,
   });
 
   final T value;
@@ -364,6 +376,7 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
   final Widget Function(BuildContext context, T item)? itemBuilder;
   final Widget Function(BuildContext context, T item)? listItemBuilder;
   final String? searchHintText;
+  final ValueChanged<T?>? onHighlightChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -386,6 +399,7 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
         itemBuilder: itemBuilder,
         listItemBuilder: listItemBuilder,
         searchHintText: searchHintText,
+        onHighlightChanged: onHighlightChanged,
       ),
     );
   }

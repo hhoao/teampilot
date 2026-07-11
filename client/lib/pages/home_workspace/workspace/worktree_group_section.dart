@@ -16,6 +16,7 @@ import '../../../services/storage/runtime_context.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../theme/app_icon_sizes.dart';
 import '../../../theme/app_text_styles.dart';
+import '../../../utils/app_session_sort.dart';
 import '../../../utils/session_worktree_grouping.dart';
 import '../../../utils/workspace_path_utils.dart';
 import '../../../widgets/app_icon_button.dart';
@@ -52,6 +53,7 @@ class WorktreeGroupSection extends StatelessWidget {
     required this.workspace,
     required this.tabScopeId,
     required this.collapsed,
+    required this.sessionSort,
     this.highlightSessionId,
     super.key,
   });
@@ -60,6 +62,7 @@ class WorktreeGroupSection extends StatelessWidget {
   final Workspace workspace;
   final String tabScopeId;
   final bool collapsed;
+  final AppSessionSort sessionSort;
   final String? highlightSessionId;
 
   GitWorktreeService? _worktreeService(BuildContext context) {
@@ -125,8 +128,8 @@ class WorktreeGroupSection extends StatelessWidget {
         ),
         if (!collapsed && group.sessions.isNotEmpty)
           _GroupSessionList(
-            key: ValueKey('wt-sessions-${worktreeGroupCollapseKey(group)}'),
             sessions: group.sessions,
+            sessionSort: sessionSort,
             workspace: workspace,
             tabScopeId: tabScopeId,
             highlightSessionId: highlightSessionId,
@@ -377,13 +380,14 @@ class _GroupCollapseLeading extends StatelessWidget {
 class _GroupSessionList extends StatefulWidget {
   const _GroupSessionList({
     required this.sessions,
+    required this.sessionSort,
     required this.workspace,
     required this.tabScopeId,
     this.highlightSessionId,
-    super.key,
   });
 
   final List<AppSession> sessions;
+  final AppSessionSort sessionSort;
   final Workspace workspace;
   final String tabScopeId;
   final String? highlightSessionId;
@@ -399,7 +403,9 @@ class _GroupSessionListState extends State<_GroupSessionList> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final all = widget.sessions;
+    // Sort at the leaf so worktree / multi-project bucketing cannot leave a
+    // stale encounter order on screen (matches the trailing activity label).
+    final all = sortAppSessions(widget.sessions, sort: widget.sessionSort);
     final overflow = all.length - _cap;
     final visible = (_showAll || overflow <= 0) ? all : all.take(_cap).toList();
 

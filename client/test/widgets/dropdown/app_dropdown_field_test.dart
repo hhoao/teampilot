@@ -1,5 +1,5 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/widgets/dropdown/app_dropdown_field.dart';
@@ -115,7 +115,7 @@ void main() {
       expect(queries.last, '');
     });
 
-    testWidgets('keeps offstage options in the tree while filtering', (
+    testWidgets('filters unmatched options out of the list tree', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -133,12 +133,67 @@ void main() {
       await tester.tap(find.byType(AppDropdownField<String>));
       await tester.pumpAndSettle();
 
-      await tester.enterText(find.byType(AppDropdownSearchField), 'bet');
+      final search = find.byType(AppDropdownSearchField);
+      await tester.enterText(search, 'bet');
       await tester.pump();
 
-      expect(find.byType(Offstage), findsNWidgets(3));
+      // Lazy filter — non-matches are not retained as list rows.
       expect(find.text('beta'), findsOneWidget);
       expect(find.text('gamma'), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(ListView),
+          matching: find.text('alpha'),
+        ),
+        findsNothing,
+      );
+      // Search field keeps focus across filter rebuilds.
+      expect(
+        tester.widget<AppDropdownSearchField>(search).focusNode.hasFocus,
+        isTrue,
+      );
+    });
+
+    testWidgets('keeps search focus while typing filters', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          AppDropdownField<String>(
+            items: List.generate(40, (i) => 'item-$i'),
+            searchable: true,
+            searchMinItems: 0,
+            itemLabel: (item) => item,
+            onChanged: (_) {},
+          ),
+        ),
+      );
+
+      await tester.tap(find.byType(AppDropdownField<String>));
+      await tester.pumpAndSettle();
+
+      final search = find.byType(AppDropdownSearchField);
+      await tester.enterText(search, 'item-1');
+      await tester.pump();
+      await tester.enterText(search, 'item-12');
+      await tester.pump();
+
+      expect(
+        tester.widget<AppDropdownSearchField>(search).focusNode.hasFocus,
+        isTrue,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(ListView),
+          matching: find.text('item-12'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(ListView),
+          matching: find.text('item-13'),
+        ),
+        findsNothing,
+      );
     });
 
     testWidgets('hides search below searchMinItems threshold', (tester) async {
@@ -160,6 +215,39 @@ void main() {
       expect(find.byType(AppDropdownSearchField), findsNothing);
       expect(find.text('one'), findsOneWidget);
       expect(find.text('two'), findsOneWidget);
+    });
+
+    testWidgets('onHighlightChanged tracks hover and clears on close', (
+      tester,
+    ) async {
+      final highlights = <String?>[];
+      await tester.pumpWidget(
+        _wrap(
+          AppDropdownField<String>(
+            items: const ['alpha', 'beta'],
+            searchable: false,
+            itemLabel: (item) => item,
+            onChanged: (_) {},
+            onHighlightChanged: highlights.add,
+          ),
+        ),
+      );
+
+      await tester.tap(find.byType(AppDropdownField<String>));
+      await tester.pumpAndSettle();
+
+      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await gesture.addPointer(location: Offset.zero);
+      addTearDown(gesture.removePointer);
+      await gesture.moveTo(tester.getCenter(find.text('beta')));
+      await tester.pumpAndSettle();
+
+      expect(highlights, contains('beta'));
+
+      await tester.tap(find.text('alpha'));
+      await tester.pumpAndSettle();
+
+      expect(highlights.last, isNull);
     });
   });
 }

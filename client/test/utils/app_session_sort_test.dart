@@ -26,6 +26,61 @@ List<String> _ids(List<AppSession> sessions) => [
 ];
 
 void main() {
+  test('sidebarDefault is recentlyUpdated', () {
+    expect(AppSessionSort.sidebarDefault, AppSessionSort.recentlyUpdated);
+  });
+
+  group('sortAppSessions recentlyUpdated', () {
+    test('orders by updatedAt descending', () {
+      final sessions = [
+        _session('old', updatedAt: 10),
+        _session('new', updatedAt: 30),
+        _session('mid', updatedAt: 20),
+      ];
+      final sorted = sortAppSessions(
+        sessions,
+        sort: AppSessionSort.recentlyUpdated,
+      );
+      expect(_ids(sorted), ['new', 'mid', 'old']);
+    });
+
+    test('falls back to createdAt when updatedAt is 0', () {
+      final sessions = [
+        _session('byCreated', createdAt: 50, updatedAt: 0),
+        _session('byUpdated', createdAt: 1, updatedAt: 40),
+      ];
+      final sorted = sortAppSessions(
+        sessions,
+        sort: AppSessionSort.recentlyUpdated,
+      );
+      expect(_ids(sorted), ['byCreated', 'byUpdated']);
+    });
+
+    test('pinned always wins', () {
+      final sessions = [
+        _session('hot', updatedAt: 99),
+        _session('pinned', updatedAt: 1, pinned: true),
+      ];
+      final sorted = sortAppSessions(
+        sessions,
+        sort: AppSessionSort.recentlyUpdated,
+      );
+      expect(_ids(sorted), ['pinned', 'hot']);
+    });
+  });
+
+  group('sortAppSessions createdDesc', () {
+    test('orders by createdAt descending', () {
+      final sessions = [
+        _session('a', createdAt: 1),
+        _session('c', createdAt: 3),
+        _session('b', createdAt: 2),
+      ];
+      final sorted = sortAppSessions(sessions, sort: AppSessionSort.createdDesc);
+      expect(_ids(sorted), ['c', 'b', 'a']);
+    });
+  });
+
   group('sortAppSessions manual', () {
     test('orders by ascending sortOrder', () {
       final sessions = [
@@ -38,16 +93,16 @@ void main() {
     });
 
     test(
-      'never-stamped rows (sortOrder 0) sort first, newest created first',
+      'never-stamped rows (sortOrder 0) sort first, most recently updated first',
       () {
         final sessions = [
-          _session('stamped', sortOrder: 1, createdAt: 100),
-          _session('older', createdAt: 10),
-          _session('newer', createdAt: 20),
+          _session('stamped', sortOrder: 1, createdAt: 100, updatedAt: 100),
+          _session('olderActivity', createdAt: 50, updatedAt: 10),
+          _session('newerActivity', createdAt: 1, updatedAt: 20),
         ];
         final sorted = sortAppSessions(sessions, sort: AppSessionSort.manual);
-        // 0-order rows (newer, older) come before the stamped row; newest first.
-        expect(_ids(sorted), ['newer', 'older', 'stamped']);
+        // 0-order rows come before stamped; activity (updatedAt) newest first.
+        expect(_ids(sorted), ['newerActivity', 'olderActivity', 'stamped']);
       },
     );
 

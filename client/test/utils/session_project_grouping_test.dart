@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/git_worktree.dart';
 import 'package:teampilot/models/workspace_folder.dart';
+import 'package:teampilot/utils/app_session_sort.dart';
 import 'package:teampilot/utils/session_project_grouping.dart';
 
 void main() {
@@ -302,6 +303,83 @@ void main() {
       expect(
         groups.expand((g) => g.sessions).map((s) => s.sessionId).toSet(),
         {'s-main', 's-parent'},
+      );
+    });
+
+    test('preserves recentlyUpdated order within each project worktree group', () {
+      const folders = [
+        WorkspaceFolder(path: '/repo-a'),
+        WorkspaceFolder(path: '/repo-b'),
+      ];
+      final worktreesByProject = {
+        '/repo-a': [
+          GitWorktree(
+            path: '/repo-a',
+            branch: 'refs/heads/main',
+            head: 'a',
+            isBare: false,
+            isMainWorktree: true,
+          ),
+        ],
+        '/repo-b': [
+          GitWorktree(
+            path: '/repo-b',
+            branch: 'refs/heads/main',
+            head: 'c',
+            isBare: false,
+            isMainWorktree: true,
+          ),
+        ],
+      };
+      final unsorted = [
+        AppSession(
+          sessionId: 'a-old',
+          workspaceId: 'w',
+          folders: const [WorkspaceFolder(path: '/repo-a')],
+          createdAt: 1,
+          updatedAt: 10,
+        ),
+        AppSession(
+          sessionId: 'b-new',
+          workspaceId: 'w',
+          folders: const [WorkspaceFolder(path: '/repo-b')],
+          createdAt: 1,
+          updatedAt: 50,
+        ),
+        AppSession(
+          sessionId: 'a-new',
+          workspaceId: 'w',
+          folders: const [WorkspaceFolder(path: '/repo-a')],
+          createdAt: 1,
+          updatedAt: 40,
+        ),
+        AppSession(
+          sessionId: 'b-old',
+          workspaceId: 'w',
+          folders: const [WorkspaceFolder(path: '/repo-b')],
+          createdAt: 1,
+          updatedAt: 5,
+        ),
+      ];
+      final sorted = sortAppSessions(
+        unsorted,
+        sort: AppSessionSort.recentlyUpdated,
+      );
+      final groups = groupSessionsByWorktreeAcrossProjects(
+        folders: folders,
+        worktreesByProjectPath: worktreesByProject,
+        sessions: sorted,
+      );
+
+      final aMain = groups.firstWhere((g) => g.worktree?.path == '/repo-a');
+      expect(
+        [for (final s in aMain.sessions) s.sessionId],
+        ['a-new', 'a-old'],
+      );
+      final bMain = groups.firstWhere((g) => g.worktree?.path == '/repo-b');
+      expect(
+        [for (final s in bMain.sessions) s.sessionId],
+        ['b-new', 'b-old'],
       );
     });
   });

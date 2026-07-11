@@ -92,6 +92,57 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
+  testWidgets('pinned session shows trailing push_pin when idle', (tester) async {
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    final automationCubit = testAutomationCubit();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+
+    final pinned = AppSession(
+      sessionId: 'sess-pinned',
+      workspaceId: 'ws1',
+      createdAt: 1,
+      updatedAt: 1,
+      pinned: true,
+    );
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        sessionRepository: SessionRepository(),
+        child: SidebarSessionTile(
+          session: pinned,
+          launchProfileId: AutomationTabScope.simpleLaunchProfileId,
+          onTap: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byIcon(Icons.push_pin), findsOneWidget);
+  });
+
+  testWidgets('unpinned session does not show trailing push_pin when idle', (
+    tester,
+  ) async {
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    final automationCubit = testAutomationCubit();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        sessionRepository: SessionRepository(),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byIcon(Icons.push_pin), findsNothing);
+  });
+
   testWidgets('context menu includes scheduled message action', (tester) async {
     final chatCubit = testChatCubit(executableResolver: () => 'claude');
     final automationCubit = testAutomationCubit();

@@ -4,7 +4,10 @@ enum AppSessionSort {
   /// User-arranged order (drag-to-reorder). Backed by [AppSession.sortOrder].
   manual,
   recentlyUpdated,
-  createdDesc,
+  createdDesc;
+
+  /// Default for the workspace conversation sidebar (not persisted).
+  static const AppSessionSort sidebarDefault = AppSessionSort.recentlyUpdated;
 }
 
 List<AppSession> sortAppSessions(
@@ -32,9 +35,9 @@ int _byUpdatedAt(AppSession a, AppSession b) {
 }
 
 /// Ascending [AppSession.sortOrder] (lower = higher in the list); never-stamped
-/// rows (`sortOrder == 0`) fall back to most-recently-created first so a fresh
-/// install reads top-down by recency until the user drags something.
+/// rows (`sortOrder == 0`) fall back to recently-updated so the list matches the
+/// trailing activity timestamps until the user drags something.
 int _byManualOrder(AppSession a, AppSession b) {
   if (a.sortOrder != b.sortOrder) return a.sortOrder.compareTo(b.sortOrder);
-  return b.createdAt.compareTo(a.createdAt);
+  return _byUpdatedAt(a, b);
 }
