@@ -134,17 +134,17 @@ class RunCubit extends Cubit<RunState> {
       ),
     );
 
-    await _sessionsSub?.cancel();
-    _sessionsSub = _platform.sessionsStream.listen((sessions) {
+    _ensureSubscriptions();
+    await refreshDiscover();
+  }
+
+  void _ensureSubscriptions() {
+    _sessionsSub ??= _platform.sessionsStream.listen((sessions) {
       if (!isClosed) emit(state.copyWith(sessions: sessions));
     });
-
-    await _actionsSub?.cancel();
-    _actionsSub = _platform.actionsStream.listen((actions) {
+    _actionsSub ??= _platform.actionsStream.listen((actions) {
       if (!isClosed) emit(state.copyWith(actions: actions));
     });
-
-    await refreshDiscover();
   }
 
   Future<void> select(String selectionKey) async {
@@ -443,6 +443,10 @@ class RunCubit extends Cubit<RunState> {
     );
   }
 
+  /// Schema for the Edit Configurations form; null when [type] is unknown.
+  Map<String, Object?>? schemaForType(String type) =>
+      _platform.configurationSchema(type);
+
   String? _selectionKeyAfterPersist(OwnedLaunchConfiguration owned) {
     final id = owned.configuration.id.trim();
     if (id.isNotEmpty) {
@@ -605,9 +609,17 @@ class RunCubit extends Cubit<RunState> {
 
   @override
   Future<void> close() async {
-    await _sessionsSub?.cancel();
-    await _actionsSub?.cancel();
-    await _optionsSub?.cancel();
+    final sessions = _sessionsSub;
+    final actions = _actionsSub;
+    final options = _optionsSub;
+    _sessionsSub = null;
+    _actionsSub = null;
+    _optionsSub = null;
+    // Broadcast cancel can stall when a listener emit is notifying watched
+    // widgets; drop refs and cancel without blocking dispose.
+    sessions?.cancel();
+    actions?.cancel();
+    await options?.cancel();
     return super.close();
   }
 }

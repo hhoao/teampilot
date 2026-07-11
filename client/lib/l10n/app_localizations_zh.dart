@@ -39,6 +39,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get save => '保存';
 
   @override
+  String get ok => '确定';
+
+  @override
   String get layoutPageSubtitle => '结构控件为全局设置，适用于所有团队。';
 
   @override
@@ -5416,6 +5419,44 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get runErrorSshSpawnerMissing => '未配置 SSH 进程执行';
+
+  @override
+  String get runEditConfigurations => '编辑配置';
+
+  @override
+  String get runAddConfiguration => '添加配置…';
+
+  @override
+  String get runDeleteConfiguration => '删除';
+
+  @override
+  String runDeleteConfigurationConfirm(String name) {
+    return '删除配置“$name”？';
+  }
+
+  @override
+  String get runStopAndDelete => '停止并删除';
+
+  @override
+  String get runApply => '应用';
+
+  @override
+  String get runDiscard => '放弃';
+
+  @override
+  String get runDiscardChangesTitle => '放弃更改？';
+
+  @override
+  String get runDiscardChangesMessage => '此配置有未保存的更改。应用、放弃，还是取消？';
+
+  @override
+  String get runSelectFolder => '选择文件夹';
+
+  @override
+  String get runConfigurationName => '名称';
+
+  @override
+  String get runConfigurationType => '类型';
 
   @override
   String get shortcutsRunSelected => '运行所选配置';

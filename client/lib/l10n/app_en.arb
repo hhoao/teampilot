@@ -10,6 +10,7 @@
   "layout": "Layout",
   "layoutSubtitle": "global workbench",
   "save": "Save",
+  "ok": "OK",
   "layoutPageSubtitle": "Structure controls are global and apply across teams.",
   "toolPlacement": "Tool Placement",
   "right": "Right",
@@ -2527,6 +2528,23 @@
   "runErrorNoFolder": "No workspace folder",
   "runErrorSshProfileMissing": "SSH profile not found for this run target",
   "runErrorSshSpawnerMissing": "SSH process execution is not configured",
+  "runEditConfigurations": "Edit Configurations",
+  "runAddConfiguration": "Add configuration…",
+  "runDeleteConfiguration": "Delete",
+  "runDeleteConfigurationConfirm": "Delete configuration \"{name}\"?",
+  "@runDeleteConfigurationConfirm": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "runStopAndDelete": "Stop and delete",
+  "runApply": "Apply",
+  "runDiscard": "Discard",
+  "runDiscardChangesTitle": "Discard changes?",
+  "runDiscardChangesMessage": "You have unsaved changes to this configuration. Apply them, discard them, or cancel?",
+  "runSelectFolder": "Select folder",
+  "runConfigurationName": "Name",
+  "runConfigurationType": "Type",
 
   "shortcutsRunSelected": "Run Selected Configuration",
   "shortcutsRunStop": "Stop Run",

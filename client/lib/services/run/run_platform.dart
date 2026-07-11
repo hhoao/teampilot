@@ -93,6 +93,9 @@ abstract class RunPlatformApi {
 
   /// Human-readable reason when [isTypeAvailable] is false; null when available.
   String? unavailableReason(String type, {required String targetId});
+
+  /// JSON-schema map for [type], or null when the type is unknown.
+  Map<String, Object?>? configurationSchema(String type);
 }
 
 /// Facade wiring store, registry, session manager, adapter client, registrar.
@@ -294,6 +297,16 @@ class RunPlatform implements RunPlatformApi {
       type: type,
       targetId: targetId,
     );
+  }
+
+  @override
+  Map<String, Object?>? configurationSchema(String type) {
+    if (type == ProcessLaunchSchema.typeName) {
+      return Map<String, Object?>.from(ProcessLaunchSchema.configurationSchema);
+    }
+    final contribution = registry.get(type);
+    if (contribution == null) return null;
+    return Map<String, Object?>.from(contribution.configurationSchema);
   }
 }
 

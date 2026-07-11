@@ -198,6 +198,9 @@ class _RecordingPlatform implements RunPlatformApi {
 
   @override
   String? unavailableReason(String type, {required String targetId}) => null;
+
+  @override
+  Map<String, Object?>? configurationSchema(String type) => null;
 }
 
 class _RecordingCubit extends RunCubit {

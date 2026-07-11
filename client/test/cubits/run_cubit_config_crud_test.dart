@@ -237,6 +237,9 @@ class _StoreBackedPlatform implements RunPlatformApi {
 
   @override
   String? unavailableReason(String type, {required String targetId}) => null;
+
+  @override
+  Map<String, Object?>? configurationSchema(String type) => null;
 }
 
 void main() {

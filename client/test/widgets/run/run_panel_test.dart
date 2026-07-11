@@ -196,6 +196,9 @@ class _FakePlatform implements RunPlatformApi {
 
   @override
   String? unavailableReason(String type, {required String targetId}) => null;
+
+  @override
+  Map<String, Object?>? configurationSchema(String type) => null;
 }
 
 /// Mirrors [_DeferredRunPlatform]: sessionManager throws until [bind].
@@ -315,6 +318,9 @@ class _DeferredFakePlatform implements RunPlatformApi, RunPlatformDeferred {
 
   @override
   String? unavailableReason(String type, {required String targetId}) => null;
+
+  @override
+  Map<String, Object?>? configurationSchema(String type) => null;
 }
 
 Widget _host({required RunCubit cubit}) {
