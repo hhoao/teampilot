@@ -1,8 +1,8 @@
 import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
 
+import '../editor_platform/language_registry.dart';
 import '../storage/app_storage.dart';
-import 'file_editor_theme.dart';
 
 /// Builds clipboard text: `relPath:start-end` + fenced code block.
 String buildEditorAiContextClipboardText({
@@ -28,7 +28,7 @@ String editorRelativePath(String absolutePath) {
 }
 
 String editorLanguageIdForPath(String filePath) {
-  return highlightLanguageKeyForPath(filePath) ??
+  return LanguageRegistry.builtins().resolve(filePath)?.id ??
       p.extension(filePath).replaceFirst('.', '').toLowerCase();
 }
 
