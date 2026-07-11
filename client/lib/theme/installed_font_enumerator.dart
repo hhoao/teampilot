@@ -1,13 +1,18 @@
 import 'package:flutter/foundation.dart';
 import 'package:system_fonts/system_fonts.dart';
 
-/// Discovers installed desktop font family keys via [SystemFonts].
+/// Discovers installed desktop font family names for [TextStyle.fontFamily].
 ///
-/// Returns an empty list on Android / iOS / web or when scanning fails.
+/// Prefers fontconfig (`fc-list`) family names that Skia can resolve without
+/// [SystemFonts.loadFont]. Falls back to file basenames (those need load).
 abstract final class InstalledFontEnumerator {
   static List<String>? _cache;
+  static bool? _fromFontconfig;
 
-  /// Cached, sorted family keys from the vendored `system_fonts` scan.
+  /// Whether the last [listFamilies] result uses system-resolvable names.
+  static bool get usesSystemFontManager => _fromFontconfig ?? false;
+
+  /// Cached, sorted family names.
   static Future<List<String>> listFamilies() async {
     final cached = _cache;
     if (cached != null) return cached;
@@ -15,21 +20,31 @@ abstract final class InstalledFontEnumerator {
     if (kIsWeb ||
         defaultTargetPlatform == TargetPlatform.android ||
         defaultTargetPlatform == TargetPlatform.iOS) {
+      _fromFontconfig = false;
       return _cache = const [];
     }
 
     try {
-      // Directory scan is sync inside the package; hop off the caller microtask.
-      await Future<void>.delayed(Duration.zero);
-      final list = SystemFonts().getFontList();
+      final fonts = SystemFonts();
+      final list = await fonts.listNativeFontFamilies();
+      _fromFontconfig = fonts.nativeFamiliesFromFontconfig;
       return _cache = List<String>.unmodifiable(list);
     } on Object {
+      _fromFontconfig = false;
       return _cache = const [];
     }
   }
 
   /// Test / settings refresh hook.
-  static void clearCache() => _cache = null;
+  static void clearCache() {
+    _cache = null;
+    _fromFontconfig = null;
+    try {
+      SystemFonts().rescan();
+    } on Object {
+      // Ignore — package may be unused in tests.
+    }
+  }
 }
 
 /// Soft-prioritize monospace-looking names without hiding others.

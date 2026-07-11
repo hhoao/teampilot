@@ -64,8 +64,9 @@ import 'services/notification/notification_recorder.dart';
 import 'services/notification/session_idle_notification_tap.dart';
 import 'widgets/notification/session_idle_notification_listener.dart';
 import 'repositories/layout_repository.dart';
-import 'theme/app_font_loader.dart';
+import 'theme/app_font_prepare.dart';
 import 'theme/app_font_resolver.dart';
+import 'theme/installed_font_enumerator.dart';
 import 'theme/app_icon_sizes.dart';
 import 'theme/app_toast_theme.dart';
 import 'theme/app_theme.dart';
@@ -380,40 +381,6 @@ class _DragToResizeWrapperState extends State<_DragToResizeWrapper>
 
 /// Builds the engine's text-shaping subsystem before the first frame.
 ///
-/// The *first* text layout in a process pays a large one-time cost: Skia/
-/// HarfBuzz init, system-font enumeration, and constructing the active UI
-/// face. Startup traces show this lands inside the first frame's LAYOUT
-/// phase — a single offstage `RenderParagraph` took ~1.3s, dominating cold
-/// start, while every later paragraph (subsystem now warm) was ~150ms.
-///
-/// One synchronous shaping pass here moves that cost off the first frame. It is
-/// run while startup IO (app paths) is in flight so part of it overlaps.
-/// Loading the bytes (`loadFontsFor`) is not enough — the face/shaper
-/// is built lazily on first *layout*, which is exactly what we trigger here.
-void _warmTextLayoutSubsystem(ResolvedFonts fonts) {
-  try {
-    // Latin + common CJK so both the system font-manager init and the active
-    // UI face are built now, not on first paint. Regular weight only —
-    // heavier weights are warmed in UiInteractiveWarmup during the boot gate.
-    // enough: the dominant cost is the one-time subsystem/face setup, not the
-    // per-glyph shaping.
-    final style = fonts.uiNeedsBundledLoad
-        ? GoogleFonts.notoSansSc()
-        : TextStyle(
-            fontFamily: fonts.uiFamily,
-            fontFamilyFallback: fonts.uiFallback,
-          );
-    final painter = TextPainter(
-      text: TextSpan(text: '加载中 Aa1', style: style),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    painter.dispose();
-  } on Object {
-    // Bundled weights may be absent in dev trees: see
-    // tool/sync_bundled_google_fonts.dart.
-  }
-}
-
 /// Desktop default window size (Linux GTK + Windows Win32 + [WindowOptions]).
 const kDefaultDesktopWindowSize = Size(1380, 960);
 
@@ -459,15 +426,14 @@ void main() async {
   // Resolve fonts from layout prefs (defaults to system) before first paint.
   final preferences = await preferencesFuture;
   final layoutPrefs = await LayoutRepository(preferences).load();
+  // Enumerate native families first so installed:* prefs skip FontLoader when
+  // fontconfig names are available.
+  await InstalledFontEnumerator.listFamilies();
   final bootFonts = AppFontResolver.resolve(
     uiFontId: layoutPrefs.uiFontId,
     monoFontId: layoutPrefs.monoFontId,
   );
-  await loadFontsFor(bootFonts);
-
-  // Build the text-shaping subsystem + active UI face now (off the first
-  // frame's LAYOUT phase). Runs while pathsFuture is in flight.
-  _warmTextLayoutSubsystem(bootFonts);
+  await prepareFontsForUse(bootFonts);
 
   late final String nativeAppDataPath;
   try {
@@ -759,19 +725,45 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
   String? _cachedUiFontId;
   String? _cachedMonoFontId;
 
+  /// Fonts actually applied to [ThemeData]. Trails [widget] until prepare
+  /// finishes so we do not rebuild the full tree mid-load.
+  late String _activeUiFontId = widget.uiFontId;
+  late String _activeMonoFontId = widget.monoFontId;
+  var _fontPrepareGeneration = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _activeUiFontId = widget.uiFontId;
+    _activeMonoFontId = widget.monoFontId;
+  }
+
   @override
   void didUpdateWidget(covariant _TeamPilotMaterialApp oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.uiFontId != widget.uiFontId ||
         oldWidget.monoFontId != widget.monoFontId) {
-      final fonts = AppFontResolver.resolve(
-        uiFontId: widget.uiFontId,
-        monoFontId: widget.monoFontId,
-      );
-      // First frame after a preference change may still fall through until
-      // assets finish loading; theme rebuild uses the new family names now.
-      unawaited(loadFontsFor(fonts));
+      _scheduleFontPrepare(widget.uiFontId, widget.monoFontId);
     }
+  }
+
+  void _scheduleFontPrepare(String uiFontId, String monoFontId) {
+    final generation = ++_fontPrepareGeneration;
+    unawaited(() async {
+      final fonts = AppFontResolver.resolve(
+        uiFontId: uiFontId,
+        monoFontId: monoFontId,
+      );
+      await prepareFontsForUse(fonts);
+      if (!mounted || generation != _fontPrepareGeneration) return;
+      setState(() {
+        _activeUiFontId = uiFontId;
+        _activeMonoFontId = monoFontId;
+        // Force theme rebuild with prepared faces.
+        _cachedUiFontId = null;
+        _cachedMonoFontId = null;
+      });
+    }());
   }
 
   ({ThemeData light, ThemeData dark}) _resolveThemes() {
@@ -799,13 +791,13 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
         _cachedTypographyCustomMultiplier ==
             widget.typographyCustomMultiplier &&
         _cachedEffectiveTextMult == effectiveTextMult &&
-        _cachedUiFontId == widget.uiFontId &&
-        _cachedMonoFontId == widget.monoFontId) {
+        _cachedUiFontId == _activeUiFontId &&
+        _cachedMonoFontId == _activeMonoFontId) {
       return (light: _lightTheme!, dark: _darkTheme!);
     }
     final fonts = AppFontResolver.resolve(
-      uiFontId: widget.uiFontId,
-      monoFontId: widget.monoFontId,
+      uiFontId: _activeUiFontId,
+      monoFontId: _activeMonoFontId,
     );
     final textScale = AppTypographyScale(multiplier: effectiveTextMult);
     final iconScale = AppTypographyScale(
@@ -818,8 +810,8 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
     _cachedTypographyScaleId = widget.typographyScaleId;
     _cachedTypographyCustomMultiplier = widget.typographyCustomMultiplier;
     _cachedEffectiveTextMult = effectiveTextMult;
-    _cachedUiFontId = widget.uiFontId;
-    _cachedMonoFontId = widget.monoFontId;
+    _cachedUiFontId = _activeUiFontId;
+    _cachedMonoFontId = _activeMonoFontId;
     _lightTheme = buildLightTheme(
       widget.colorPreset,
       textScale,

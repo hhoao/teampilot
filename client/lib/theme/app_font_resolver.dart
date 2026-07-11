@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'font_catalog.dart';
+import 'installed_font_enumerator.dart';
 
 /// Resolved UI and mono font families for theme / terminal / editor consumers.
 @immutable
@@ -86,11 +87,15 @@ abstract final class AppFontResolver {
       final fallback = role == FontRole.ui
           ? _systemUiFallback(platform)
           : monoCjkFallback(platform);
+      // Fontconfig / system family names resolve via Skia — no FontLoader.
+      // File-basename fallbacks still set needsInstalledLoad so loadFontsFor
+      // can register the face (see InstalledFontEnumerator.usesSystemFontManager).
+      final needsLoad = !InstalledFontEnumerator.usesSystemFontManager;
       return (
         family: installedKey,
         fallback: fallback,
         needsBundledLoad: false,
-        needsInstalledLoad: true,
+        needsInstalledLoad: needsLoad,
         resolvedId: installedFontId(installedKey),
       );
     }

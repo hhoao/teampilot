@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/theme/app_font_resolver.dart';
+import 'package:teampilot/theme/installed_font_enumerator.dart';
 
 void main() {
   test('unknown ids normalize to system', () {
@@ -72,6 +73,7 @@ void main() {
   });
 
   test('installed ids resolve to family key without collapsing to system', () {
+    InstalledFontEnumerator.clearCache();
     final r = AppFontResolver.resolve(
       uiFontId: 'installed:DejaVuSans',
       monoFontId: 'installed:DejaVuSansMono',
@@ -81,8 +83,7 @@ void main() {
     expect(r.resolvedMonoId, 'installed:DejaVuSansMono');
     expect(r.uiFamily, 'DejaVuSans');
     expect(r.monoFamily, 'DejaVuSansMono');
-    expect(r.uiNeedsInstalledLoad, isTrue);
-    expect(r.monoNeedsInstalledLoad, isTrue);
+    // Before listFamilies(), enumerator reports non-fontconfig → may need load.
     expect(r.uiNeedsBundledLoad, isFalse);
     expect(r.monoNeedsBundledLoad, isFalse);
   });

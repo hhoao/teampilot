@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../theme/app_font_prepare.dart';
 import '../../theme/font_catalog.dart';
 import '../../theme/installed_font_enumerator.dart';
 import 'workspace_settings_widgets.dart';
@@ -25,6 +28,7 @@ class FontPreferenceSetting extends StatefulWidget {
 class _FontPreferenceSettingState extends State<FontPreferenceSetting> {
   List<String> _installed = const [];
   var _loadingInstalled = true;
+  var _applying = false;
 
   @override
   void initState() {
@@ -32,7 +36,16 @@ class _FontPreferenceSettingState extends State<FontPreferenceSetting> {
     _loadInstalled();
   }
 
+  @override
+  void didUpdateWidget(covariant FontPreferenceSetting oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.role != widget.role) {
+      _loadInstalled();
+    }
+  }
+
   Future<void> _loadInstalled() async {
+    setState(() => _loadingInstalled = true);
     final families = await InstalledFontEnumerator.listFamilies();
     if (!mounted) return;
     setState(() {
@@ -41,6 +54,26 @@ class _FontPreferenceSettingState extends State<FontPreferenceSetting> {
           : (List<String>.from(families)..sort());
       _loadingInstalled = false;
     });
+  }
+
+  Future<void> _onSelect(String id) async {
+    if (_applying || id == widget.value) return;
+    setState(() => _applying = true);
+    try {
+      final prefs = context.read<LayoutCubit>().state.preferences;
+      final other = widget.role == FontRole.ui
+          ? prefs.monoFontId
+          : prefs.uiFontId;
+      await prepareFontPreferenceChange(
+        role: widget.role,
+        newFontId: id,
+        otherRoleFontId: other,
+      );
+      if (!mounted) return;
+      widget.onChanged(id);
+    } finally {
+      if (mounted) setState(() => _applying = false);
+    }
   }
 
   @override
@@ -76,13 +109,22 @@ class _FontPreferenceSettingState extends State<FontPreferenceSetting> {
       entries.insert(0, (widget.value, _labelForFontId(l10n, widget.value)));
     }
 
-    return SettingsCompactDropdown<String>(
-      value: widget.value,
-      entries: entries,
-      searchHintText: l10n.fontSearchHint,
-      onChanged: (v) {
-        if (v != null) widget.onChanged(v);
-      },
+    return IgnorePointer(
+      ignoring: _applying,
+      child: Opacity(
+        opacity: _applying ? 0.6 : 1,
+        child: SettingsCompactDropdown<String>(
+          value: widget.value,
+          entries: entries,
+          searchHintText: l10n.fontSearchHint,
+          onChanged: (v) {
+            if (v != null) {
+              // ignore: discarded_futures
+              _onSelect(v);
+            }
+          },
+        ),
+      ),
     );
   }
 }
