@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
+import 'package:teampilot/models/layout_preferences.dart';
 import 'package:teampilot/pages/workspace_ide/workspace_ide_shell.dart';
 
 void main() {
@@ -128,6 +129,24 @@ void main() {
       identical(tester.element(find.byKey(bottomKey)), bottomBefore),
       isTrue,
       reason: 'bottom terminal was reparented when overlay toggled on narrow',
+    );
+  });
+
+  testWidgets('side panes stop before crushing the center workbench', (
+    tester,
+  ) async {
+    final layout = await pumpShell(tester, size: const Size(1000, 900));
+    await layout.setWorkspaceTerminalVisible(false);
+    await tester.pumpAndSettle();
+
+    // Grow the left pane far past the old hard max; center must keep ≥ 320.
+    await layout.setSidebarWidth(900);
+    await tester.pumpAndSettle();
+
+    final centerBox = tester.getSize(find.byKey(centerKey));
+    expect(
+      centerBox.width,
+      greaterThanOrEqualTo(LayoutPreferences.minWorkbenchMainWidth - 1),
     );
   });
 }

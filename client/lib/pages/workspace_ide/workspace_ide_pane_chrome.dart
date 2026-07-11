@@ -22,6 +22,9 @@ class WorkspaceIdePaneChrome extends StatelessWidget {
 
   static const double paneRadius = 10;
 
+  /// Keep aligned with [WorkspaceIdePaneBounds.resizerThickness].
+  static const double resizerThickness = 1.0;
+
   final Widget child;
 
   /// Per-edge inset; defaults to [paneInset] on all sides.
@@ -58,7 +61,7 @@ PaneThemeData workspaceIdePaneTheme(ColorScheme cs) {
     resizerColor: cs.outlineVariant.withValues(alpha: 0.5),
     resizerHoverColor: cs.primary.withValues(alpha: 0.6),
     resizerFocusedColor: cs.primary,
-    resizerThickness: 1.0,
+    resizerThickness: WorkspaceIdePaneChrome.resizerThickness,
     resizerHitTestThickness: 8.0,
   );
 }

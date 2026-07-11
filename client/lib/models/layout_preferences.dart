@@ -105,6 +105,9 @@ class LayoutPreferences {
   /// Minimum extent for the main workbench column beside a side panel.
   static const minWorkbenchMainWidth = 320.0;
 
+  /// Minimum extent for the main workbench row above the bottom terminal.
+  static const minWorkbenchMainHeight = 200.0;
+
   /// Minimum LLM provider detail column in the config split.
   static const minLlmProviderDetailWidth = 280.0;
 

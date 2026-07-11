@@ -4,7 +4,7 @@ import '../../services/workspace/workspace_pane_policy.dart';
 /// Desired pane sizes and dock/overlay flags for [WorkspaceIdeShell],
 /// derived from prefs intent + the current [WorkspacePaneEffective].
 ///
-/// Pure data: no `panes` imports. The shell applies this to its
+/// Pure data: no `panes` / Flutter imports. The shell applies this to its
 /// `PaneController`s; drag-end writes go back through [LayoutCubit]
 /// via [WorkspaceIdePendingDrag], not through this snapshot.
 class WorkspaceIdePaneSnapshot {
@@ -57,6 +57,105 @@ class WorkspaceIdePaneSnapshot {
   final double sidebarWidth;
   final double rightToolsWidth;
   final double workspaceTerminalHeight;
+}
+
+/// Dynamic max extents for side/bottom panes so the main workbench keeps
+/// [LayoutPreferences.minWorkbenchMainWidth] / [minWorkbenchMainHeight].
+///
+/// Side panes no longer have a hard global max; these caps are derived from the
+/// current viewport and the opposite pane so the center cannot be crushed to 0.
+class WorkspaceIdePaneBounds {
+  const WorkspaceIdePaneBounds({
+    required this.leftMax,
+    required this.rightMax,
+    required this.bottomMax,
+  });
+
+  /// Keep aligned with [WorkspaceIdePaneChrome.resizerThickness].
+  static const double resizerThickness = 1.0;
+
+  /// Keep aligned with [WorkspaceIdePaneChrome.shellGutter].
+  static const double shellGutter = 8.0;
+
+  final double leftMax;
+  final double rightMax;
+  final double bottomMax;
+
+  /// [availableWidth]/[availableHeight] are the MultiPane host size after shell
+  /// gutters (see [shellAvailableSize]).
+  factory WorkspaceIdePaneBounds.compute({
+    required double availableWidth,
+    required double availableHeight,
+    required bool dockLeft,
+    required bool dockRight,
+    required bool dockBottom,
+    required double sidebarWidth,
+    required double rightToolsWidth,
+  }) {
+    final leftTaken = dockLeft ? sidebarWidth : 0.0;
+    final rightTaken = dockRight ? rightToolsWidth : 0.0;
+    final rowResizers = switch ((dockLeft, dockRight)) {
+      (true, true) => 2,
+      (true, false) || (false, true) => 1,
+      (false, false) => 0,
+    };
+    final rowResizerSpace = rowResizers * resizerThickness;
+    final rootResizerSpace = dockBottom ? resizerThickness : 0.0;
+
+    return WorkspaceIdePaneBounds(
+      leftMax: _atLeast(
+        availableWidth -
+            rightTaken -
+            LayoutPreferences.minWorkbenchMainWidth -
+            rowResizerSpace,
+        LayoutPreferences.minSidebarWidth,
+      ),
+      rightMax: _atLeast(
+        availableWidth -
+            leftTaken -
+            LayoutPreferences.minWorkbenchMainWidth -
+            rowResizerSpace,
+        LayoutPreferences.minRightToolsWidth,
+      ),
+      bottomMax: _atLeast(
+        availableHeight -
+            LayoutPreferences.minWorkbenchMainHeight -
+            rootResizerSpace,
+        LayoutPreferences.minWorkspaceTerminalHeight,
+      ),
+    );
+  }
+
+  /// Host size for the docked `MultiPane` after shell gutters.
+  static ({double width, double height}) shellAvailableSize({
+    required double viewportWidth,
+    required double viewportHeight,
+    required bool dockLeft,
+    required bool dockRight,
+    required bool dockBottom,
+  }) {
+    final horizontal =
+        (dockLeft ? shellGutter : 0.0) + (dockRight ? shellGutter : 0.0);
+    final vertical = shellGutter + (dockBottom ? shellGutter : 0.0);
+    return (
+      width: viewportWidth - horizontal,
+      height: viewportHeight - vertical,
+    );
+  }
+
+  static double _atLeast(double value, double min) =>
+      value < min ? min : value;
+
+  @override
+  bool operator ==(Object other) {
+    return other is WorkspaceIdePaneBounds &&
+        other.leftMax == leftMax &&
+        other.rightMax == rightMax &&
+        other.bottomMax == bottomMax;
+  }
+
+  @override
+  int get hashCode => Object.hash(leftMax, rightMax, bottomMax);
 }
 
 /// Which prefs-backed size a [WorkspaceIdePendingDrag] is tracking.

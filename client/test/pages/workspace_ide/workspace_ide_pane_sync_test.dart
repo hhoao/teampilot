@@ -87,6 +87,51 @@ void main() {
     expect(snapshot.overlayRight, isTrue);
   });
 
+  group('WorkspaceIdePaneBounds', () {
+    test('leaves room for the main workbench beside both side panes', () {
+      final bounds = WorkspaceIdePaneBounds.compute(
+        availableWidth: 1000,
+        availableHeight: 800,
+        dockLeft: true,
+        dockRight: true,
+        dockBottom: true,
+        sidebarWidth: 260,
+        rightToolsWidth: 320,
+      );
+      // 1000 - 320 - 320 - 2 = 358
+      expect(bounds.leftMax, 1000 - 320 - 320 - 2);
+      // 1000 - 260 - 320 - 2 = 418
+      expect(bounds.rightMax, 1000 - 260 - 320 - 2);
+      // 800 - 200 - 1 = 599
+      expect(bounds.bottomMax, 800 - 200 - 1);
+      expect(
+        bounds.leftMax,
+        greaterThanOrEqualTo(LayoutPreferences.minSidebarWidth),
+      );
+    });
+
+    test('ignores undocked opposite pane when computing side max', () {
+      final bounds = WorkspaceIdePaneBounds.compute(
+        availableWidth: 1000,
+        availableHeight: 800,
+        dockLeft: true,
+        dockRight: false,
+        dockBottom: false,
+        sidebarWidth: 260,
+        rightToolsWidth: 900,
+      );
+      // Only one row resizer; right width ignored while undocked.
+      expect(
+        bounds.leftMax,
+        1000 - LayoutPreferences.minWorkbenchMainWidth - 1,
+      );
+      expect(
+        bounds.bottomMax,
+        greaterThanOrEqualTo(LayoutPreferences.minWorkspaceTerminalHeight),
+      );
+    });
+  });
+
   group('WorkspaceIdePendingDrag', () {
     test('end returns null when no drag was started', () {
       final drag = WorkspaceIdePendingDrag();

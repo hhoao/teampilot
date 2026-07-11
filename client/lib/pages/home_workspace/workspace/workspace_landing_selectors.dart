@@ -240,9 +240,12 @@ class WorkspaceLandingHeaderRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final spacing = context.appSpacing;
 
+    // Loose flex keeps chips content-sized and left-packed; max width still
+    // constrains labels so they ellipsize instead of overflowing.
     return Row(
       children: [
         Flexible(
+          fit: FlexFit.loose,
           child: WorkspaceLandingSelectorBar(
             compact: true,
             label: projectLabel,
@@ -254,6 +257,7 @@ class WorkspaceLandingHeaderRow extends StatelessWidget {
         if (showWorktreeSelector) ...[
           SizedBox(width: spacing.sm),
           Flexible(
+            fit: FlexFit.loose,
             child: WorkspaceLandingSelectorBar(
               compact: true,
               label: worktreeLabel,
@@ -284,7 +288,7 @@ class WorkspaceLandingSelectorBar extends StatelessWidget {
   final List<SidebarActionMenuSpec> menuSpecs;
   final ValueChanged<Object?>? onSelected;
 
-  /// When true, shrinks labels under a [Flexible] parent ([WorkspaceLandingHeaderRow]).
+  /// When true, content-sizes under a loose [Flexible] in [WorkspaceLandingHeaderRow].
   final bool compact;
 
   @override
@@ -318,19 +322,36 @@ class WorkspaceLandingSelectorBar extends StatelessWidget {
       );
     }
 
-    // Compact headers sit in a Flexible parent; use max + Flexible so ellipsis
-    // applies under the shared width instead of overflowing at intrinsic size.
-    final menuRow = Row(
-      mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
-      children: [
-        if (compact) Flexible(child: labelWidget) else labelWidget,
-        Icon(
-          Icons.expand_more,
-          size: icons.md,
-          color: foreground.withValues(alpha: isEmpty ? 0.9 : 0.65),
-        ),
-      ],
+    final expandIcon = Icon(
+      Icons.expand_more,
+      size: icons.md,
+      color: foreground.withValues(alpha: isEmpty ? 0.9 : 0.65),
     );
+
+    // Compact: min-sized row with a max-width label so ellipsis works without
+    // stretching the chip across the Flexible slot.
+    final menuRow = compact
+        ? LayoutBuilder(
+            builder: (context, constraints) {
+              final maxLabelWidth = constraints.maxWidth.isFinite
+                  ? (constraints.maxWidth - icons.md).clamp(0.0, double.infinity)
+                  : double.infinity;
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxLabelWidth),
+                    child: labelWidget,
+                  ),
+                  expandIcon,
+                ],
+              );
+            },
+          )
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [labelWidget, expandIcon],
+          );
 
     final menu = MouseRegion(
       cursor: SystemMouseCursors.click,

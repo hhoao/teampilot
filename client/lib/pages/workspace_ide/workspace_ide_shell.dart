@@ -59,9 +59,15 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
   bool _syncScheduled = false;
   WorkspaceIdePaneSnapshot? _pending;
 
-  /// Last viewport width from [LayoutBuilder]; used by [BlocListener] to derive
+  /// Last viewport size from [LayoutBuilder]; used by [BlocListener] to derive
   /// [WorkspacePanePolicy.effective] before the next layout pass.
   double _viewportWidth = WorkspacePanePolicy.narrowBreakpointWidth;
+  double _viewportHeight = 900;
+
+  WorkspaceIdePaneBounds? _appliedBounds;
+  bool _boundsSyncScheduled = false;
+  WorkspaceIdePaneBounds? _pendingBounds;
+  WorkspaceIdePaneSnapshot? _pendingBoundsSnapshot;
 
   bool _rowResizing = false;
   bool _rootResizing = false;
@@ -92,7 +98,11 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
           initialSize: PaneSize.pixel(prefs.sidebarWidth),
           minSize: PaneSize.pixel(LayoutPreferences.minSidebarWidth),
         ),
-        PaneEntry(id: _centerId, initialSize: PaneSize.fraction(1)),
+        PaneEntry(
+          id: _centerId,
+          initialSize: PaneSize.fraction(1),
+          minSize: PaneSize.pixel(LayoutPreferences.minWorkbenchMainWidth),
+        ),
         PaneEntry(
           id: _rightId,
           visible: prefs.rightToolsVisible,
@@ -103,7 +113,11 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
     )..addListener(_onRowChanged);
     _rootController = PaneController(
       entries: [
-        PaneEntry(id: _mainRowId, initialSize: PaneSize.fraction(1)),
+        PaneEntry(
+          id: _mainRowId,
+          initialSize: PaneSize.fraction(1),
+          minSize: PaneSize.pixel(LayoutPreferences.minWorkbenchMainHeight),
+        ),
         PaneEntry(
           id: _bottomId,
           visible: prefs.workspaceTerminalVisible,
@@ -264,6 +278,11 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
       );
     }
     _applied = s;
+    // Re-apply viewport caps after prefs sizes so a large persisted width cannot
+    // crush the main column when the window is narrower than before.
+    if (!_rowController.isResizing && !_rootController.isResizing) {
+      _applyPaneBounds(_boundsFor(s), s);
+    }
   }
 
   void _applyPane(
@@ -279,6 +298,114 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
     } else {
       controller.hide(id);
     }
+  }
+
+  // --- Viewport-derived max sizes (protect main workbench) ------------------
+
+  WorkspaceIdePaneBounds _boundsFor(WorkspaceIdePaneSnapshot snapshot) {
+    final available = WorkspaceIdePaneBounds.shellAvailableSize(
+      viewportWidth: _viewportWidth,
+      viewportHeight: _viewportHeight,
+      dockLeft: snapshot.dockLeft,
+      dockRight: snapshot.dockRight,
+      dockBottom: snapshot.dockBottom,
+    );
+    return WorkspaceIdePaneBounds.compute(
+      availableWidth: available.width,
+      availableHeight: available.height,
+      dockLeft: snapshot.dockLeft,
+      dockRight: snapshot.dockRight,
+      dockBottom: snapshot.dockBottom,
+      sidebarWidth: snapshot.sidebarWidth,
+      rightToolsWidth: snapshot.rightToolsWidth,
+    );
+  }
+
+  void _requestBoundsSync(WorkspaceIdePaneSnapshot snapshot) {
+    final bounds = _boundsFor(snapshot);
+    if (bounds == _appliedBounds && !_needsVisualClamp(bounds, snapshot)) {
+      return;
+    }
+    _pendingBounds = bounds;
+    _pendingBoundsSnapshot = snapshot;
+    _scheduleBoundsSyncPostFrame();
+  }
+
+  bool _needsVisualClamp(
+    WorkspaceIdePaneBounds bounds,
+    WorkspaceIdePaneSnapshot snapshot,
+  ) {
+    if (snapshot.dockLeft) {
+      final visual = _rowController.getVisualPixelSize(_leftId);
+      if (visual != null && visual > bounds.leftMax) return true;
+    }
+    if (snapshot.dockRight) {
+      final visual = _rowController.getVisualPixelSize(_rightId);
+      if (visual != null && visual > bounds.rightMax) return true;
+    }
+    if (snapshot.dockBottom) {
+      final visual = _rootController.getVisualPixelSize(_bottomId);
+      if (visual != null && visual > bounds.bottomMax) return true;
+    }
+    return false;
+  }
+
+  void _scheduleBoundsSyncPostFrame() {
+    if (_boundsSyncScheduled) return;
+    _boundsSyncScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _boundsSyncScheduled = false;
+      final bounds = _pendingBounds;
+      final snapshot = _pendingBoundsSnapshot;
+      if (!mounted || bounds == null || snapshot == null) return;
+      if (_rowController.isResizing || _rootController.isResizing) {
+        _scheduleBoundsSyncPostFrame();
+        return;
+      }
+      _applyPaneBounds(bounds, snapshot);
+      _pendingBounds = null;
+      _pendingBoundsSnapshot = null;
+    });
+  }
+
+  void _applyPaneBounds(
+    WorkspaceIdePaneBounds bounds,
+    WorkspaceIdePaneSnapshot snapshot,
+  ) {
+    _setPixelPaneMax(_rowController, _leftId, bounds.leftMax);
+    _setPixelPaneMax(_rowController, _rightId, bounds.rightMax);
+    _setPixelPaneMax(_rootController, _bottomId, bounds.bottomMax);
+    if (snapshot.dockLeft) {
+      _clampVisualPixelSize(_rowController, _leftId, bounds.leftMax);
+    }
+    if (snapshot.dockRight) {
+      _clampVisualPixelSize(_rowController, _rightId, bounds.rightMax);
+    }
+    if (snapshot.dockBottom) {
+      _clampVisualPixelSize(_rootController, _bottomId, bounds.bottomMax);
+    }
+    _appliedBounds = bounds;
+  }
+
+  void _setPixelPaneMax(PaneController controller, String id, double max) {
+    final entry = controller.entries.firstWhere((e) => e.id == id);
+    final currentMax = switch (entry.maxSize) {
+      PaneSizePixel(:final pixels) => pixels,
+      _ => null,
+    };
+    if (currentMax == max) return;
+    controller.updatePane(entry.copyWith(maxSize: PaneSize.pixel(max)));
+  }
+
+  void _clampVisualPixelSize(
+    PaneController controller,
+    String id,
+    double max,
+  ) {
+    final visual = controller.getVisualPixelSize(id);
+    if (visual == null || visual <= max) return;
+    // ignore: deprecated_member_use
+    controller.updateSize(id, PaneSize.pixel(max));
   }
 
   // --- Build ----------------------------------------------------------------
@@ -427,6 +554,7 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
           return LayoutBuilder(
             builder: (context, constraints) {
               _viewportWidth = constraints.maxWidth;
+              _viewportHeight = constraints.maxHeight;
               final effective = WorkspacePanePolicy.effective(
                 preferences: layoutState.preferences,
                 viewportWidth: constraints.maxWidth,
@@ -437,6 +565,7 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
               );
               _layoutSnapshot = snapshot;
               _requestSync(snapshot);
+              _requestBoundsSync(snapshot);
               // Set before building `MultiPane`: the pane builders run during the
               // root pane's layout, which is after this synchronous assignment.
               _narrow = effective.isNarrow;
