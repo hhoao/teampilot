@@ -148,6 +148,10 @@ class OwnedLaunchConfiguration {
 
   String get configId => configuration.id;
 
+  /// Stable UI selection key: target + folder path + config id.
+  String get selectionKey =>
+      '${owner.targetId}|${owner.path}|${configuration.id}';
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
