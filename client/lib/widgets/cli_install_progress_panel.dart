@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/l10n_extensions.dart';
 import '../services/cli/cli_installer_service.dart';
+import '../theme/app_text_styles.dart';
 import 'settings/workspace_settings_widgets.dart';
 
 class CliInstallProgressPanel extends StatelessWidget {
@@ -18,7 +19,7 @@ class CliInstallProgressPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
+    final styles = AppTextStyles.of(context);
 
     return SettingsSurfaceCard(
       child: Padding(
@@ -33,7 +34,7 @@ class CliInstallProgressPanel extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               _phaseLabel(l10n, phase),
-              style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+              style: styles.body.copyWith(fontWeight: FontWeight.w500),
             ),
             if (logLines.isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -48,7 +49,7 @@ class CliInstallProgressPanel extends StatelessWidget {
                   reverse: true,
                   child: SelectableText(
                     logLines.join('\n'),
-                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                    style: styles.mutedBodySmall,
                   ),
                 ),
               ),
