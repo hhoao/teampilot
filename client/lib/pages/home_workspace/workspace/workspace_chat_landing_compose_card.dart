@@ -8,6 +8,8 @@ import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../services/workspace_dnd/workspace_drop_target.dart';
+import '../../../widgets/compose/compose_menu_chip.dart';
+import '../../../widgets/compose/compose_permission_chip.dart';
 import '../../../widgets/compose/compose_trigger_field.dart';
 import '../../../widgets/deferred_mount_shell.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
@@ -28,10 +30,11 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
     required this.onChanged,
     required this.conversationModeLabel,
     required this.autoChipLabel,
-    required this.permissionChipLabel,
+    required this.dangerouslySkipPermissions,
+    required this.defaultPermissionsLabel,
+    required this.fullAccessPermissionsLabel,
     required this.conversationModeSpecs,
     required this.autoChipSpecs,
-    required this.permissionSpecs,
     required this.onConversationModeSelected,
     required this.onAutoChipSelected,
     required this.onPermissionSelected,
@@ -74,13 +77,14 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
   final ValueChanged<String> onChanged;
   final String conversationModeLabel;
   final String autoChipLabel;
-  final String permissionChipLabel;
+  final bool dangerouslySkipPermissions;
+  final String defaultPermissionsLabel;
+  final String fullAccessPermissionsLabel;
   final List<SidebarActionMenuSpec> conversationModeSpecs;
   final List<SidebarActionMenuSpec> autoChipSpecs;
-  final List<SidebarActionMenuSpec> permissionSpecs;
   final ValueChanged<Object?> onConversationModeSelected;
   final ValueChanged<Object?> onAutoChipSelected;
-  final ValueChanged<Object?> onPermissionSelected;
+  final ValueChanged<bool> onPermissionSelected;
   final String? expertChipLabel;
   final List<SidebarActionMenuSpec> expertChipSpecs;
   final ValueChanged<Object?>? onExpertChipSelected;
@@ -122,7 +126,7 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              _ToolbarMenuChip(
+              ComposeMenuChip(
                 palette: palette,
                 icon: Icons.groups_outlined,
                 label: conversationModeLabel,
@@ -130,7 +134,7 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
                 onSelected: onConversationModeSelected,
               ),
               SizedBox(width: spacing.sm),
-              _ToolbarMenuChip(
+              ComposeMenuChip(
                 palette: palette,
                 icon: Icons.autorenew,
                 label: autoChipLabel,
@@ -150,7 +154,7 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
               if (expertChipLabel != null &&
                   onExpertChipSelected != null) ...[
                 SizedBox(width: spacing.sm),
-                _ToolbarMenuChip(
+                ComposeMenuChip(
                   palette: palette,
                   icon: Icons.psychology_outlined,
                   label: expertChipLabel!,
@@ -159,11 +163,11 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
                 ),
               ],
               SizedBox(width: spacing.sm),
-              _ToolbarMenuChip(
+              ComposePermissionChip(
                 palette: palette,
-                icon: Icons.verified_outlined,
-                label: permissionChipLabel,
-                specs: permissionSpecs,
+                dangerouslySkipPermissions: dangerouslySkipPermissions,
+                defaultLabel: defaultPermissionsLabel,
+                fullAccessLabel: fullAccessPermissionsLabel,
                 onSelected: onPermissionSelected,
               ),
               SizedBox(width: spacing.sm),
@@ -351,104 +355,6 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
       child: WorkspaceFileDropRegion(
         target: target,
         child: child,
-      ),
-    );
-  }
-}
-
-class _ToolbarMenuChip extends StatelessWidget {
-  const _ToolbarMenuChip({
-    required this.palette,
-    required this.icon,
-    required this.label,
-    required this.specs,
-    required this.onSelected,
-  });
-
-  final WorkspaceChatLandingPalette palette;
-  final IconData icon;
-  final String label;
-  final List<SidebarActionMenuSpec> specs;
-  final ValueChanged<Object?> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return SidebarActionMenuIconAnchor(
-      minWidth: 200,
-      triggerBuilder: (context, controller) => _ToolbarChip(
-        palette: palette,
-        icon: icon,
-        label: label,
-        onTap: () {
-          if (controller.isOpen) {
-            controller.close();
-          } else {
-            controller.open();
-          }
-        },
-      ),
-      buildMenuChildren: (context, controller) =>
-          buildSidebarActionMenuChildren(
-            context: context,
-            specs: specs,
-            menuController: controller,
-            onSelect: onSelected,
-          ),
-    );
-  }
-}
-
-class _ToolbarChip extends StatelessWidget {
-  const _ToolbarChip({
-    required this.palette,
-    required this.icon,
-    required this.label,
-    this.onTap,
-  });
-
-  final WorkspaceChatLandingPalette palette;
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-
-  static const double _minHeight = 36;
-
-  @override
-  Widget build(BuildContext context) {
-    final spacing = context.appSpacing;
-    final icons = context.appIconSizes;
-    final labelStyle = AppTextStyles.of(
-      context,
-    ).bodySmall.copyWith(color: palette.muted, fontWeight: FontWeight.w500);
-
-    return Material(
-      color: palette.chipFill,
-      shape: StadiumBorder(side: BorderSide(color: palette.border)),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: _minHeight),
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: spacing.md,
-              vertical: spacing.sm,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: icons.sm, color: palette.muted),
-                SizedBox(width: spacing.xs),
-                Text(label, style: labelStyle),
-                Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  size: icons.md,
-                  color: palette.muted,
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

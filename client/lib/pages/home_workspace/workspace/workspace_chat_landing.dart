@@ -39,6 +39,7 @@ import '../../../theme/app_spacing.dart';
 import '../../../utils/landing_draft_resolver.dart';
 import '../../../utils/workspace_path_utils.dart';
 import '../../../services/storage/home_target_controller.dart';
+import '../../../widgets/compose/compose_model_preset_chip.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
 import '../../../services/launch/workspace_landing_launch_gate.dart';
 import '../../../repositories/workspace_project_config_repository.dart';
@@ -52,11 +53,7 @@ import 'workspace_landing_team_settings_dialog.dart';
 
 enum _LandingConversationMode { team, simple }
 
-enum _LandingPermissionMode { defaultPermissions, fullAccess }
-
 enum _ExpertChipAction { clear, browseAll }
-
-enum _PresetChipAction { manage }
 
 typedef LandingComposeSubmit =
     void Function(String message, LandingLaunchContext draft);
@@ -86,7 +83,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   final _headlessAi = HeadlessAiService();
 
   var _conversationMode = _LandingConversationMode.simple;
-  var _permissionMode = _LandingPermissionMode.defaultPermissions;
+  var _dangerouslySkipPermissions = false;
   String? _selectedPresetId;
   String? _selectedTeamId;
   String? _selectedExpertKey;
@@ -536,9 +533,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     _selectedWorktreePath = draft.workingDirectoryPath?.trim().isNotEmpty == true
         ? draft.workingDirectoryPath!.trim()
         : null;
-    _permissionMode = draft.dangerouslySkipPermissions
-        ? _LandingPermissionMode.fullAccess
-        : _LandingPermissionMode.defaultPermissions;
+    _dangerouslySkipPermissions = draft.dangerouslySkipPermissions;
 
     if ((_selectedTeamId == null || _selectedTeamId!.isEmpty) &&
         _conversationMode == _LandingConversationMode.team) {
@@ -668,8 +663,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       workingDirectoryPath: selectedWorktreePath.trim().isEmpty
           ? null
           : selectedWorktreePath,
-      dangerouslySkipPermissions:
-          _permissionMode == _LandingPermissionMode.fullAccess,
+      dangerouslySkipPermissions: _dangerouslySkipPermissions,
     );
   }
 
@@ -764,9 +758,9 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     _scheduleTeamLaunchReadinessCheck();
   }
 
-  void _setPermissionMode(_LandingPermissionMode mode) {
-    if (_permissionMode == mode) return;
-    setState(() => _permissionMode = mode);
+  void _setDangerouslySkipPermissions(bool value) {
+    if (_dangerouslySkipPermissions == value) return;
+    setState(() => _dangerouslySkipPermissions = value);
     _persistDraft();
   }
 
@@ -950,15 +944,6 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
         : l10n.selectTeam;
   }
 
-  String _permissionChipLabel(AppLocalizations l10n) {
-    return switch (_permissionMode) {
-      _LandingPermissionMode.defaultPermissions =>
-        l10n.workspaceChatLandingDefaultPermissions,
-      _LandingPermissionMode.fullAccess =>
-        l10n.workspaceChatLandingFullAccessPermissions,
-    };
-  }
-
   List<SidebarActionMenuSpec> _conversationModeSpecs(AppLocalizations l10n) {
     return [
       SidebarActionMenuSpec.item(
@@ -982,29 +967,12 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     required List<TeamProfile> teams,
   }) {
     if (_conversationMode == _LandingConversationMode.simple) {
-      return [
-        if (presets.isEmpty)
-          SidebarActionMenuSpec.item(
-            value: null,
-            icon: Icons.tune,
-            label: l10n.workspaceCliPresetsEmptyHint,
-            enabled: false,
-          )
-        else
-          for (final preset in presets)
-            SidebarActionMenuSpec.item(
-              value: preset.id,
-              icon: Icons.tune,
-              label: preset.name,
-              selected: preset.id == _selectedPresetId,
-            ),
-        const SidebarActionMenuSpec.divider(),
-        SidebarActionMenuSpec.item(
-          value: _PresetChipAction.manage,
-          icon: Icons.add,
-          label: l10n.workspaceCliAddPresetTitle,
-        ),
-      ];
+      return buildComposeModelPresetMenuSpecs(
+        sameCliPresets: presets,
+        selectedPresetId: _selectedPresetId,
+        emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
+        managePresetsLabel: l10n.workspaceCliAddPresetTitle,
+      );
     }
 
     if (teams.isEmpty) {
@@ -1025,23 +993,6 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
           label: team.name,
           selected: team.id == _selectedTeamId,
         ),
-    ];
-  }
-
-  List<SidebarActionMenuSpec> _permissionSpecs(AppLocalizations l10n) {
-    return [
-      SidebarActionMenuSpec.item(
-        value: _LandingPermissionMode.defaultPermissions,
-        icon: Icons.verified_outlined,
-        label: l10n.workspaceChatLandingDefaultPermissions,
-        selected: _permissionMode == _LandingPermissionMode.defaultPermissions,
-      ),
-      SidebarActionMenuSpec.item(
-        value: _LandingPermissionMode.fullAccess,
-        icon: Icons.lock_open_outlined,
-        label: l10n.workspaceChatLandingFullAccessPermissions,
-        selected: _permissionMode == _LandingPermissionMode.fullAccess,
-      ),
     ];
   }
 
@@ -1137,21 +1088,24 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
                         presets: presets,
                         teams: teams,
                       ),
-                      permissionChipLabel: _permissionChipLabel(l10n),
+                      dangerouslySkipPermissions: _dangerouslySkipPermissions,
+                      defaultPermissionsLabel:
+                          l10n.workspaceChatLandingDefaultPermissions,
+                      fullAccessPermissionsLabel:
+                          l10n.workspaceChatLandingFullAccessPermissions,
                       conversationModeSpecs: _conversationModeSpecs(l10n),
                       autoChipSpecs: _autoChipSpecs(
                         l10n,
                         presets: presets,
                         teams: teams,
                       ),
-                      permissionSpecs: _permissionSpecs(l10n),
                       onConversationModeSelected: (value) {
                         if (value is _LandingConversationMode) {
                           _setConversationMode(value);
                         }
                       },
                       onAutoChipSelected: (value) {
-                        if (value == _PresetChipAction.manage) {
+                        if (value == ComposeModelPresetChipAction.manage) {
                           _openPresetsManageDialog();
                           return;
                         }
@@ -1163,11 +1117,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
                           _selectTeam(value);
                         }
                       },
-                      onPermissionSelected: (value) {
-                        if (value is _LandingPermissionMode) {
-                          _setPermissionMode(value);
-                        }
-                      },
+                      onPermissionSelected: _setDangerouslySkipPermissions,
                       expertChipLabel: isSimple
                           ? _expertChipLabel(l10n, hubState)
                           : null,
