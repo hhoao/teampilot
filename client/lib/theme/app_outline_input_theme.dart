@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'app_control_theme.dart';
 import 'app_typography_scale.dart';
 import 'workspace_surface_layers.dart';
 
@@ -83,6 +84,7 @@ TextStyle appTextFieldStyle(TextTheme textTheme) {
 InputDecorationTheme buildAppOutlineInputDecorationTheme({
   required ColorScheme colorScheme,
   required TextTheme textTheme,
+  required AppControlTheme control,
   double borderRadius = 8,
 }) {
   final outline = colorScheme.outlineVariant;
@@ -111,8 +113,11 @@ InputDecorationTheme buildAppOutlineInputDecorationTheme({
     filled: true,
     fillColor: colorScheme.workspaceCard,
     isDense: true,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-    constraints: const BoxConstraints(minHeight: 40),
+    contentPadding: EdgeInsets.symmetric(
+      horizontal: control.horizontalPadding,
+      vertical: control.verticalPadding,
+    ),
+    constraints: BoxConstraints(minHeight: control.height),
     hintStyle: hintStyle,
     labelStyle: textTheme.bodyMedium?.copyWith(color: labelColor),
     floatingLabelStyle: textTheme.bodyMedium?.copyWith(

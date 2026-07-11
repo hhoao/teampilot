@@ -4,6 +4,8 @@ import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'app_button_theme.dart';
+import 'app_control_theme.dart';
 import 'app_dialog_theme.dart';
 import 'app_list_tile_theme.dart';
 import 'app_tooltip_theme.dart';
@@ -232,15 +234,9 @@ ThemeData _applyTypography(
         ),
       );
   final typographyTheme = AppTypographyTheme.fromScale(typographyScale);
+  final control = AppControlTheme.fromScale(typographyScale);
+  final buttons = buildAppButtonThemes(control: control, flexTheme: flexTheme);
   final useRuntimeGoogleFonts = _googleFontsNetworkAllowed();
-  final compactOutlinedButton = OutlinedButtonThemeData(
-    style: OutlinedButton.styleFrom(
-      visualDensity: VisualDensity.compact,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      minimumSize: const Size(64, 36),
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    ),
-  );
 
   if (!useRuntimeGoogleFonts) {
     // Tests: Flex [TextTheme] may omit explicit font sizes; Material seed has them.
@@ -264,6 +260,7 @@ ThemeData _applyTypography(
       extensions: [
         AppFontTheme.fallback,
         typographyTheme,
+        control,
         AppSpacingTheme.fromScale(AppTypographyScale.standard),
         AppIconSizeTheme.fromScale(resolvedIconScale),
       ],
@@ -279,8 +276,12 @@ ThemeData _applyTypography(
       inputDecorationTheme: buildAppOutlineInputDecorationTheme(
         colorScheme: flexTheme.colorScheme,
         textTheme: textTheme,
+        control: control,
       ),
-      outlinedButtonTheme: compactOutlinedButton,
+      filledButtonTheme: buttons.filled,
+      outlinedButtonTheme: buttons.outlined,
+      elevatedButtonTheme: buttons.elevated,
+      textButtonTheme: buttons.text,
       listTileTheme: buildAppListTileTheme(
         colorScheme: scheme,
         textTheme: textTheme,
@@ -314,6 +315,7 @@ ThemeData _applyTypography(
     extensions: [
       buildAppFontTheme(uiFont: appUiFont),
       typographyTheme,
+      control,
       AppSpacingTheme.fromScale(AppTypographyScale.standard),
       AppIconSizeTheme.fromScale(resolvedIconScale),
     ],
@@ -329,8 +331,12 @@ ThemeData _applyTypography(
     inputDecorationTheme: buildAppOutlineInputDecorationTheme(
       colorScheme: flexTheme.colorScheme,
       textTheme: mergedTextTheme,
+      control: control,
     ),
-    outlinedButtonTheme: compactOutlinedButton,
+    filledButtonTheme: buttons.filled,
+    outlinedButtonTheme: buttons.outlined,
+    elevatedButtonTheme: buttons.elevated,
+    textButtonTheme: buttons.text,
     listTileTheme: buildAppListTileTheme(
       colorScheme: scheme,
       textTheme: mergedTextTheme,
