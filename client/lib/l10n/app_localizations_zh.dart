@@ -249,6 +249,30 @@ class AppLocalizationsZh extends AppLocalizations {
   String get typographyScaleCustomHint => '50–200';
 
   @override
+  String get fontUiTitle => '界面字体';
+
+  @override
+  String get fontUiDescription => '界面文字。系统跟随操作系统默认字体。';
+
+  @override
+  String get fontMonoTitle => '等宽字体';
+
+  @override
+  String get fontMonoDescription => '终端、编辑器与 diff。';
+
+  @override
+  String get fontOptionSystem => '系统';
+
+  @override
+  String get fontOptionNotoSansSc => 'Noto Sans SC';
+
+  @override
+  String get fontOptionJetbrainsMono => 'JetBrains Mono';
+
+  @override
+  String get fontOptionUbuntuSansMono => 'Ubuntu Sans Mono';
+
+  @override
   String get uiZoomTitle => '界面缩放';
 
   @override

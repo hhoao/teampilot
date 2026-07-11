@@ -6,7 +6,9 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_typography_scale.dart';
+import '../../theme/font_catalog.dart';
 import '../../utils/app_keys.dart';
+import '../../widgets/settings/font_preference_setting.dart';
 import '../../widgets/settings/theme_color_preset_picker.dart';
 import '../../widgets/settings/typography_scale_setting.dart';
 import '../../widgets/settings/workspace_settings_toggle_strip.dart';
@@ -23,7 +25,18 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
     return BlocSelector<
       LayoutCubit,
       LayoutState,
-      (String, String, String, double, String, double, String, String)
+      (
+        String,
+        String,
+        String,
+        double,
+        String,
+        String,
+        String,
+        double,
+        String,
+        String,
+      )
     >(
       selector: (state) {
         var themeMode = state.preferences.themeMode;
@@ -37,6 +50,8 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
           normalizeThemeColorPreset(state.preferences.themeColorPreset),
           normalizeTypographyScale(state.preferences.typographyScale),
           state.preferences.typographyScaleCustomMultiplier,
+          normalizeUiFontId(state.preferences.uiFontId),
+          normalizeMonoFontId(state.preferences.monoFontId),
           normalizeTypographyScale(state.preferences.uiZoomScale),
           state.preferences.uiZoomCustomMultiplier,
           state.preferences.terminalThemeMode,
@@ -49,6 +64,8 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
           colorPreset,
           typographyScale,
           typographyCustomMultiplier,
+          uiFontId,
+          monoFontId,
           uiZoomScale,
           uiZoomCustomMultiplier,
           terminalThemeMode,
@@ -130,6 +147,26 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   showDividerBelow: true,
                 ),
                 SettingsLabeledRow(
+                  title: l10n.fontUiTitle,
+                  subtitle: l10n.fontUiDescription,
+                  trailing: FontPreferenceSetting(
+                    role: FontRole.ui,
+                    value: uiFontId,
+                    onChanged: controller.setUiFontId,
+                  ),
+                  showDividerBelow: true,
+                ),
+                SettingsLabeledRow(
+                  title: l10n.fontMonoTitle,
+                  subtitle: l10n.fontMonoDescription,
+                  trailing: FontPreferenceSetting(
+                    role: FontRole.mono,
+                    value: monoFontId,
+                    onChanged: controller.setMonoFontId,
+                  ),
+                  showDividerBelow: true,
+                ),
+                SettingsLabeledRow(
                   title: l10n.uiZoomTitle,
                   subtitle: l10n.uiZoomDescription,
                   trailing: TypographyScaleSetting(
@@ -156,7 +193,7 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   ),
                   showDividerBelow: true,
                 ),
-                  SettingsLabeledRow(
+                SettingsLabeledRow(
                   title: l10n.language,
                   subtitle: l10n.languageDescription,
                   trailing: SettingsCompactDropdown<String>(

@@ -554,6 +554,54 @@ abstract class AppLocalizations {
   /// **'50–200'**
   String get typographyScaleCustomHint;
 
+  /// No description provided for @fontUiTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Interface font'**
+  String get fontUiTitle;
+
+  /// No description provided for @fontUiDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'UI text. System follows the OS default.'**
+  String get fontUiDescription;
+
+  /// No description provided for @fontMonoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Monospace font'**
+  String get fontMonoTitle;
+
+  /// No description provided for @fontMonoDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminal, editor, and diffs.'**
+  String get fontMonoDescription;
+
+  /// No description provided for @fontOptionSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get fontOptionSystem;
+
+  /// No description provided for @fontOptionNotoSansSc.
+  ///
+  /// In en, this message translates to:
+  /// **'Noto Sans SC'**
+  String get fontOptionNotoSansSc;
+
+  /// No description provided for @fontOptionJetbrainsMono.
+  ///
+  /// In en, this message translates to:
+  /// **'JetBrains Mono'**
+  String get fontOptionJetbrainsMono;
+
+  /// No description provided for @fontOptionUbuntuSansMono.
+  ///
+  /// In en, this message translates to:
+  /// **'Ubuntu Sans Mono'**
+  String get fontOptionUbuntuSansMono;
+
   /// No description provided for @uiZoomTitle.
   ///
   /// In en, this message translates to:

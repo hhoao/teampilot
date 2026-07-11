@@ -261,6 +261,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get typographyScaleCustomHint => '50–200';
 
   @override
+  String get fontUiTitle => 'Interface font';
+
+  @override
+  String get fontUiDescription => 'UI text. System follows the OS default.';
+
+  @override
+  String get fontMonoTitle => 'Monospace font';
+
+  @override
+  String get fontMonoDescription => 'Terminal, editor, and diffs.';
+
+  @override
+  String get fontOptionSystem => 'System';
+
+  @override
+  String get fontOptionNotoSansSc => 'Noto Sans SC';
+
+  @override
+  String get fontOptionJetbrainsMono => 'JetBrains Mono';
+
+  @override
+  String get fontOptionUbuntuSansMono => 'Ubuntu Sans Mono';
+
+  @override
   String get uiZoomTitle => 'Interface zoom';
 
   @override
