@@ -1,7 +1,7 @@
 # Session History Continue Chrome
 
 **Date:** 2026-07-11  
-**Status:** Ready for planning  
+**Status:** Implemented  
 **Related:** [Session History Review](2026-07-10-session-history-review-design.md), `WorkspaceChatLanding`, `ExistingSessionConnect`, `AppSession`, `SessionMemberBinding`
 
 ## Summary

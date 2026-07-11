@@ -2240,6 +2240,12 @@ abstract class AppLocalizations {
   /// **'Continue this conversation… @ reference files, / invoke skills'**
   String get sessionHistoryComposeHint;
 
+  /// No description provided for @sessionHistoryContinueSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save continue settings.'**
+  String get sessionHistoryContinueSaveFailed;
+
   /// No description provided for @sessionHistoryLoadOlderHint.
   ///
   /// In en, this message translates to:

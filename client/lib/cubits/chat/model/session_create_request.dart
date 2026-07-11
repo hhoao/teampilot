@@ -1,4 +1,5 @@
 import '../../../models/simple_launch_identity.dart';
+import '../../../models/session_continue_overrides.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../repositories/session_repository.dart';
@@ -17,6 +18,7 @@ class SessionCreateRequest {
     this.emptyDisplayTitleFallback = 'New Chat',
     this.fixedSessionId,
     this.expertKey,
+    this.continueOverrides,
   });
 
   final Workspace workspace;
@@ -38,4 +40,7 @@ class SessionCreateRequest {
 
   /// Simple summon: catalog expert key (also on [simpleIdentity.expertKey]).
   final String? expertKey;
+
+  /// Session-level continue overrides (e.g. landing permission chip).
+  final SessionContinueOverrides? continueOverrides;
 }

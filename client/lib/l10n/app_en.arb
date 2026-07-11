@@ -506,6 +506,7 @@
   "sessionHistoryRoleAssistant": "Assistant",
   "sessionHistoryRoleSystem": "System",
   "sessionHistoryComposeHint": "Continue this conversation… @ reference files, / invoke skills",
+  "sessionHistoryContinueSaveFailed": "Couldn't save continue settings.",
   "sessionHistoryLoadOlderHint": "Scroll up for earlier messages",
   "sessionWorkbenchShowTerminal": "Show terminal",
   "sessionWorkbenchShowHistory": "Show history",

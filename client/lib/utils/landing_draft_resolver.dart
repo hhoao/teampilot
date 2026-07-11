@@ -19,6 +19,7 @@ Future<LandingLaunchContext> resolveLandingDraft({
     projectFolderPath: prefs.projectFolderPath,
     expertKey: prefs.expertKey,
     workingDirectoryPath: prefs.workingDirectoryPath,
+    dangerouslySkipPermissions: prefs.dangerouslySkipPermissions,
   );
 }
 
@@ -36,6 +37,7 @@ Future<void> persistLandingDraft(
       projectFolderPath: draft.projectFolderPath,
       expertKey: draft.expertKey,
       workingDirectoryPath: draft.workingDirectoryPath,
+      dangerouslySkipPermissions: draft.dangerouslySkipPermissions,
     ),
   );
 }

@@ -1138,6 +1138,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionHistoryComposeHint => '继续对话… @ 引用文件，/ 调用技能与指令';
 
   @override
+  String get sessionHistoryContinueSaveFailed => '无法保存继续会话设置。';
+
+  @override
   String get sessionHistoryLoadOlderHint => '上滑查看更早消息';
 
   @override

@@ -213,6 +213,7 @@ class SessionLaunchPipeline {
       simpleIdentity: request.simpleIdentity,
       workingDirectory: request.workingDirectory,
       expertKey: request.expertKey,
+      continueOverrides: request.continueOverrides,
     );
 
     final status = _tabSurface.surfaceNewTab(

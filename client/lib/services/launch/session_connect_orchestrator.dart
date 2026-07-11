@@ -1,4 +1,5 @@
 import '../../models/app_session.dart';
+import '../../models/cli_preset.dart';
 import '../../models/runtime_target.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
@@ -8,6 +9,7 @@ import '../../utils/team_member_naming.dart';
 import '../cli/registry/mcp_writers/claude_project_mcp_cleanup.dart';
 import '../cli/preset_resolver.dart';
 import '../provider/config_profile_service.dart';
+import '../session/session_continue_overrides_apply.dart';
 import '../session/session_lifecycle_service.dart';
 import '../storage/runtime_context.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
@@ -60,10 +62,16 @@ class SessionConnectOrchestrator {
       memberId: session.sessionId,
       identity: identity,
     );
+    final finalizedMember = finalizeSessionLaunchMember(
+      session: session,
+      baseMember: plan.member,
+      memberId: session.sessionId,
+      isSimple: true,
+    );
     return _prepareConnectFromPlan(
       session: session,
       workspace: workspace,
-      plan: plan,
+      plan: plan.copyWith(member: finalizedMember),
       launchTarget: launchTarget,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
@@ -101,10 +109,23 @@ class SessionConnectOrchestrator {
       presetId: member.activePresetId,
       member: member,
     );
+    final memberId = memberBinding?.rosterMemberId ?? member.id;
+    final presetId = (plan.presetId ?? member.activePresetId)?.trim() ?? '';
+    final preset = presetId.isEmpty
+        ? null
+        : presetById(presetId, lifecycle.globalPresets);
+    final finalizedMember = finalizeSessionLaunchMember(
+      session: session,
+      baseMember: plan.member,
+      memberId: memberId,
+      isSimple: false,
+      preset: preset,
+      withPreset: _memberWithPreset,
+    );
     return _prepareConnectFromPlan(
       session: session,
       workspace: resolvedWorkspace,
-      plan: plan,
+      plan: plan.copyWith(member: finalizedMember),
       team: team,
       memberBinding: memberBinding,
       launchTarget: launchTarget,
@@ -297,4 +318,20 @@ class SessionConnectOrchestrator {
 
   TeamRosterSlot _slotForMember(TeamProfile team, TeamMemberConfig member) =>
       teamRosterSlotForMember(team, member);
+}
+
+/// Same preset merge as [SessionLifecycleService] shell launch (team only).
+TeamMemberConfig _memberWithPreset(TeamMemberConfig member, CliPreset? preset) {
+  if (preset == null) return member;
+  return member.copyWith(
+    provider: preset.provider.trim().isNotEmpty
+        ? preset.provider.trim()
+        : member.provider,
+    model: preset.model.trim().isNotEmpty ? preset.model.trim() : member.model,
+    effort: preset.effort.trim().isNotEmpty
+        ? preset.effort.trim()
+        : member.effort,
+    cli: preset.cli,
+    updateCli: true,
+  );
 }

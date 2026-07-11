@@ -13,6 +13,7 @@ void main() {
         isPersonal: false,
         teamId: 'team-1',
         workingDirectoryPath: '/projects/app',
+        dangerouslySkipPermissions: true,
       ),
     );
 
@@ -20,5 +21,6 @@ void main() {
     expect(loaded?.isPersonal, isFalse);
     expect(loaded?.teamId, 'team-1');
     expect(loaded?.workingDirectoryPath, '/projects/app');
+    expect(loaded?.dangerouslySkipPermissions, isTrue);
   });
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'member_instance.dart';
+import 'session_continue_overrides.dart';
 import 'session_member_binding.dart';
 import 'simple_launch_identity.dart';
 import 'team_config.dart';
@@ -101,6 +102,7 @@ class AppSession {
     this.pinned = false,
     this.sortOrder = 0,
     this.expertKey = '',
+    this.continueOverrides = const SessionContinueOverrides(),
   });
 
   factory AppSession({
@@ -125,6 +127,8 @@ class AppSession {
     bool pinned = false,
     int sortOrder = 0,
     String expertKey = '',
+    SessionContinueOverrides continueOverrides =
+        const SessionContinueOverrides(),
   }) {
     return AppSession._(
       sessionId: sessionId,
@@ -152,6 +156,7 @@ class AppSession {
       pinned: pinned,
       sortOrder: sortOrder,
       expertKey: expertKey.trim(),
+      continueOverrides: continueOverrides,
     );
   }
 
@@ -209,6 +214,11 @@ class AppSession {
       pinned: json['pinned'] as bool? ?? false,
       sortOrder: json['sortOrder'] as int? ?? 0,
       expertKey: json['expertKey'] as String? ?? '',
+      continueOverrides: SessionContinueOverrides.fromJson(
+        json['continueOverrides'] is Map
+            ? Map<String, Object?>.from(json['continueOverrides'] as Map)
+            : null,
+      ),
     );
   }
 
@@ -279,6 +289,9 @@ class AppSession {
   /// Expert Hub discovery key when this personal session summons an expert.
   final String expertKey;
 
+  /// Session-scoped continue chrome: permission + per-member model overrides.
+  final SessionContinueOverrides continueOverrides;
+
   /// True when this session has no team roster (Simple / unteamed).
   bool get isSimple => sessionTeam.trim().isEmpty;
 
@@ -339,6 +352,7 @@ class AppSession {
     bool? pinned,
     int? sortOrder,
     String? expertKey,
+    SessionContinueOverrides? continueOverrides,
   }) {
     return AppSession(
       sessionId: sessionId ?? this.sessionId,
@@ -362,6 +376,7 @@ class AppSession {
       pinned: pinned ?? this.pinned,
       sortOrder: sortOrder ?? this.sortOrder,
       expertKey: expertKey ?? this.expertKey,
+      continueOverrides: continueOverrides ?? this.continueOverrides,
     );
   }
 
@@ -390,6 +405,8 @@ class AppSession {
       'pinned': pinned,
       if (sortOrder != 0) 'sortOrder': sortOrder,
       if (expertKey.isNotEmpty) 'expertKey': expertKey,
+      if (continueOverrides != const SessionContinueOverrides())
+        'continueOverrides': continueOverrides.toJson(),
     };
   }
 
@@ -418,7 +435,8 @@ class AppSession {
             updatedAt == other.updatedAt &&
             pinned == other.pinned &&
             sortOrder == other.sortOrder &&
-            expertKey == other.expertKey;
+            expertKey == other.expertKey &&
+            continueOverrides == other.continueOverrides;
   }
 
   @override
@@ -446,5 +464,6 @@ class AppSession {
     pinned,
     sortOrder,
     expertKey,
+    continueOverrides,
   ]);
 }
