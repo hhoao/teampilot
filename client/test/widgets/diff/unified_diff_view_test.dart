@@ -30,7 +30,9 @@ void main() {
         ),
       ),
     );
-    await tester.pump();
+    // Settle the async DocumentSession open + viewport colorize (fires the
+    // frame-budget timer) so no timer outlives the test body.
+    await tester.pumpAndSettle();
   }
 
   testWidgets('renders a single code editor for a modification', (

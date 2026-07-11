@@ -49,6 +49,13 @@ class DocumentSession extends ChangeNotifier {
   final Map<int, List<TokenSpan>> _tokensByLine = {};
   final Map<int, _PendingQuery> _pending = {};
 
+  /// Frame-budget timers for in-flight `awaitResult` waits. Tracked so
+  /// [dispose] can cancel them synchronously — a bare `Future.timeout` leaves a
+  /// pending timer that survives widget teardown (and trips the test binding's
+  /// `!timersPending` invariant) whenever a session is disposed before its
+  /// worker reply arrives.
+  final Set<Timer> _budgetTimers = {};
+
   Utf8IndexMap _indexMap = Utf8IndexMap('');
   List<int> _lineStarts = <int>[0];
 
@@ -260,10 +267,23 @@ class DocumentSession extends ChangeNotifier {
     );
 
     if (!awaitResult) return;
+    await _awaitWithinBudget(completer.future);
+  }
+
+  /// Awaits [future] but only up to [_frameBudget], using a self-owned timer we
+  /// can cancel in [dispose]. On timeout we return and keep prior tokens;
+  /// `_onResult` applies the reply whenever it eventually arrives.
+  Future<void> _awaitWithinBudget(Future<void> future) async {
+    final budget = Completer<void>();
+    final timer = Timer(_frameBudget, () {
+      if (!budget.isCompleted) budget.complete();
+    });
+    _budgetTimers.add(timer);
     try {
-      await completer.future.timeout(_frameBudget);
-    } on TimeoutException {
-      // Budget exceeded: keep prior tokens; _onResult applies the reply later.
+      await Future.any(<Future<void>>[future, budget.future]);
+    } finally {
+      timer.cancel();
+      _budgetTimers.remove(timer);
     }
   }
 
@@ -293,6 +313,16 @@ class DocumentSession extends ChangeNotifier {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
+    // Cancel budget timers and settle pending waits synchronously so no timer
+    // outlives the widget tree (the async _detachWorker below only handles the
+    // worker teardown, whose futures don't register as pending timers).
+    for (final timer in _budgetTimers) {
+      timer.cancel();
+    }
+    _budgetTimers.clear();
+    for (final pending in _pending.values) {
+      if (!pending.completer.isCompleted) pending.completer.complete();
+    }
     unawaited(_detachWorker());
     super.dispose();
   }

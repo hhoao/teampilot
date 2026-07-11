@@ -30,8 +30,9 @@ void main() {
         ),
       ),
     );
-    await tester.pump();
-    await tester.pump();
+    // Settle the async DocumentSession open + viewport colorize (fires the
+    // frame-budget timer) so no timer outlives the test body.
+    await tester.pumpAndSettle();
   }
 
   testWidgets('renders toolbar over a side-by-side body by default', (
@@ -47,7 +48,7 @@ void main() {
   testWidgets('switches to unified layout', (tester) async {
     await pump(tester);
     await tester.tap(find.byIcon(Icons.view_agenda_outlined));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.byType(UnifiedDiffView), findsOneWidget);
     expect(find.byType(SideBySideDiffView), findsNothing);
     expect(tester.takeException(), isNull);
@@ -57,7 +58,7 @@ void main() {
     await pump(tester);
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     await tester.tap(find.text(l10n.diffIgnoreWhitespace));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 
@@ -66,6 +67,7 @@ void main() {
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     await tester.tap(find.byTooltip(l10n.diffNextChange));
     await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 
@@ -96,8 +98,7 @@ void main() {
           ),
         ),
       );
-      await tester.pump();
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       final l10n = await AppLocalizations.delegate.load(const Locale('en'));
       expect(find.byType(SideBySideDiffView), findsOneWidget);
@@ -142,8 +143,7 @@ void main() {
             ),
           ),
         );
-        await tester.pump();
-        await tester.pump();
+        await tester.pumpAndSettle();
       }
 
       await pumpDiff(first, 'a.dart');
