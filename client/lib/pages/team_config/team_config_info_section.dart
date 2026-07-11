@@ -494,13 +494,6 @@ class TeamDefaultPresetRow extends StatelessWidget {
                 ),
                 icon: Icon(Icons.tune, size: context.appIconSizes.sm),
                 label: Text(l10n.workspaceCliConfigure),
-                style: OutlinedButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                ),
               ),
             ],
           ),

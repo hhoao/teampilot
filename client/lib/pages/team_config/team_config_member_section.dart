@@ -212,10 +212,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
   }
 
   TeamMemberConfig _memberFromControllers(TeamMemberConfig base) {
-    return base.copyWith(
-      agent: _agentCtl.text,
-      extraArgs: _argsCtl.text,
-    );
+    return base.copyWith(agent: _agentCtl.text, extraArgs: _argsCtl.text);
   }
 
   void _flushPersistForMember(String memberId) {
@@ -279,7 +276,9 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final styles = AppTextStyles.of(context);
-    final muted = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55);
+    final muted = Theme.of(
+      context,
+    ).colorScheme.onSurface.withValues(alpha: 0.55);
     final teamShell = context.select<LaunchProfileCubit, TeamMemberFormShell?>(
       (c) => LaunchProfileSelectors.memberFormShell(
         LaunchProfileSelectors.teamById(c.state, widget.teamId),
@@ -317,16 +316,14 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     // Persona prose lives on the catalog expert; prefer live resolve so a
     // stale/empty materialized member cache cannot blank the read-only fields.
     final hasExpert = (expertKey?.trim().isNotEmpty ?? false);
-    final responsibilities = resolvedExpert?.member.prompt.trim().isNotEmpty ==
-            true
+    final responsibilities =
+        resolvedExpert?.member.prompt.trim().isNotEmpty == true
         ? resolvedExpert!.member.prompt
         : member.prompt;
     final playbook = resolvedExpert?.member.playbook.trim().isNotEmpty == true
         ? resolvedExpert!.member.playbook
         : member.playbook;
-    final emptyPersonaHint = hasExpert
-        ? null
-        : l10n.memberPersonaEmptyNoExpert;
+    final emptyPersonaHint = hasExpert ? null : l10n.memberPersonaEmptyNoExpert;
 
     final showMemberAgentPreset = memberShowsAgentPresetUi(
       context,
@@ -393,21 +390,9 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
             subtitle: l10n.expertHubSubtitle,
             body: Row(
               children: [
-                Expanded(
-                  child: Text(
-                    expertLabel,
-                    style: styles.body,
-                  ),
-                ),
+                Expanded(child: Text(expertLabel, style: styles.body)),
                 OutlinedButton(
                   onPressed: _openExpertHubPicker,
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                  ),
                   child: Text(l10n.expertHubBrowseAll),
                 ),
               ],
@@ -429,8 +414,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
             subtitle: l10n.memberPromptSubtitle,
             body: _ReadOnlyMultilineText(
               text: responsibilities,
-              emptyHint:
-                  emptyPersonaHint ?? l10n.memberResponsibilitiesEmpty,
+              emptyHint: emptyPersonaHint ?? l10n.memberResponsibilitiesEmpty,
               style: styles.body,
               mutedStyle: styles.body.copyWith(color: muted),
             ),

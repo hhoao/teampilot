@@ -516,10 +516,6 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
   ) {
     return TextButton(
       onPressed: onPressed,
-      style: TextButton.styleFrom(
-        foregroundColor: Colors.blue[400],
-        padding: const EdgeInsets.symmetric(vertical: 16),
-      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

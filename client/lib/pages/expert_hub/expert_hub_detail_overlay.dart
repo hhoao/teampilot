@@ -150,17 +150,13 @@ class ExpertHubDetailOverlay extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          _AddToTeamButton(adding: adding, onPressed: onAddToTeam),
+                          _AddToTeamButton(
+                            adding: adding,
+                            onPressed: onAddToTeam,
+                          ),
                           const SizedBox(height: 8),
                           OutlinedButton(
                             onPressed: adding ? null : onLaunchInWorkspace,
-                            style: OutlinedButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                            ),
                             child: Text(l10n.expertHubLaunchInWorkspace),
                           ),
                         ],
@@ -270,10 +266,6 @@ class _AddToTeamButton extends StatelessWidget {
     final l10n = context.l10n;
     return FilledButton(
       onPressed: adding ? null : onPressed,
-      style: FilledButton.styleFrom(
-        visualDensity: VisualDensity.compact,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      ),
       child: adding
           ? Row(
               mainAxisSize: MainAxisSize.min,
@@ -322,10 +314,7 @@ class _ExpandableTextSection extends StatelessWidget {
 }
 
 class _CapabilitiesSection extends StatelessWidget {
-  const _CapabilitiesSection({
-    required this.title,
-    required this.capabilities,
-  });
+  const _CapabilitiesSection({required this.title, required this.capabilities});
 
   final String title;
   final Set<String> capabilities;
@@ -337,10 +326,7 @@ class _CapabilitiesSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: styles.sectionTitle.copyWith(color: cs.onSurface),
-        ),
+        Text(title, style: styles.sectionTitle.copyWith(color: cs.onSurface)),
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,

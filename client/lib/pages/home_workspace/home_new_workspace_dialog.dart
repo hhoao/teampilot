@@ -129,12 +129,6 @@ class _HomeNewWorkspaceDialogState extends State<HomeNewWorkspaceDialog> {
               const SizedBox(width: 12),
               FilledButton(
                 onPressed: hasDirectory ? _submit : null,
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 28,
-                    vertical: 14,
-                  ),
-                ),
                 child: Text(l10n.homeWorkspaceCreateWorkspace),
               ),
             ],
