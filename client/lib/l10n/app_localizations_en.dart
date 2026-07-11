@@ -5325,6 +5325,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shortcutsSessionCloseTab => 'Close Session Tab';
 
   @override
+  String shortcutsSessionFocusTab(int n) {
+    return 'Go to Session Tab $n';
+  }
+
+  @override
   String get shortcutsToggleSidebar => 'Toggle Sidebar';
 
   @override

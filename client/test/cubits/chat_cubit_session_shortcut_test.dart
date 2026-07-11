@@ -256,5 +256,47 @@ void main() {
         expect(cubit.state.activeSessionId, isNull);
       },
     );
+
+    test('selectSessionTabAt jumps to 1-based ordinal', () async {
+      await openTabs(3);
+      cubit.selectTab(0);
+
+      cubit.selectSessionTabAt(2);
+
+      expect(cubit.state.activeTabIndex, 1);
+      expect(cubit.state.activeSessionId, sessionIds[1]);
+    });
+
+    test('selectSessionTabAt(10) selects the 10th tab when present', () async {
+      await openTabs(10);
+      cubit.selectTab(0);
+
+      cubit.selectSessionTabAt(10);
+
+      expect(cubit.state.activeTabIndex, 9);
+      expect(cubit.state.activeSessionId, sessionIds[9]);
+    });
+
+    test('selectSessionTabAt no-ops when ordinal is out of range', () async {
+      await openTabs(2);
+      cubit.selectTab(0);
+
+      cubit.selectSessionTabAt(3);
+
+      expect(cubit.state.activeTabIndex, 0);
+      expect(cubit.state.activeSessionId, sessionIds[0]);
+    });
+
+    test('selectSessionTabAt clears compose landing', () async {
+      await openTabs(2);
+      cubit.enterComposeMode(workspaceId);
+      expect(cubit.state.composeActive, isTrue);
+
+      cubit.selectSessionTabAt(1);
+
+      expect(cubit.state.composeActive, isFalse);
+      expect(cubit.state.activeTabIndex, 0);
+      expect(cubit.state.activeSessionId, sessionIds[0]);
+    });
   });
 }

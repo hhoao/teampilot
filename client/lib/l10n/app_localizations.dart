@@ -9582,6 +9582,12 @@ abstract class AppLocalizations {
   /// **'Close Session Tab'**
   String get shortcutsSessionCloseTab;
 
+  /// No description provided for @shortcutsSessionFocusTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Session Tab {n}'**
+  String shortcutsSessionFocusTab(int n);
+
   /// No description provided for @shortcutsToggleSidebar.
   ///
   /// In en, this message translates to:

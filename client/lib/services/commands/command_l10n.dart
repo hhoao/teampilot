@@ -11,10 +11,23 @@ import 'command_definition.dart';
 String titleForCommand(AppLocalizations l10n, String commandId) {
   for (final def in CommandCatalog.v1) {
     if (def.id == commandId) {
+      if (def.titleL10nKey == 'shortcutsSessionFocusTab') {
+        final ordinal = _sessionFocusTabOrdinal(commandId);
+        if (ordinal != null) {
+          return l10n.shortcutsSessionFocusTab(ordinal);
+        }
+      }
       return _titleForKey(l10n, def.titleL10nKey) ?? commandId;
     }
   }
   return commandId;
+}
+
+/// Parses `workbench.session.focusTabN` → N, or null if not a focus-tab id.
+int? _sessionFocusTabOrdinal(String commandId) {
+  const prefix = 'workbench.session.focusTab';
+  if (!commandId.startsWith(prefix)) return null;
+  return int.tryParse(commandId.substring(prefix.length));
 }
 
 /// Display name for a [CommandCategory] settings group.

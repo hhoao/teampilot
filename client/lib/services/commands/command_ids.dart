@@ -12,6 +12,18 @@ abstract final class CommandIds {
   static const String sessionNewTab = 'workbench.session.newTab';
   static const String sessionCloseTab = 'workbench.session.closeTab';
 
+  /// 1-based ordinal → `workbench.session.focusTabN` (N = 1…10).
+  /// Bound to Alt+1…9 / Alt+0 (10th tab).
+  static String sessionFocusTab(int oneBased) {
+    assert(oneBased >= 1 && oneBased <= 10);
+    return 'workbench.session.focusTab$oneBased';
+  }
+
+  /// All [sessionFocusTab] ids in ordinal order (1…10).
+  static final List<String> sessionFocusTabs = [
+    for (var n = 1; n <= 10; n++) sessionFocusTab(n),
+  ];
+
   // View
   static const String toggleSidebar = 'workbench.view.toggleSidebar';
   static const String togglePanel = 'workbench.view.togglePanel';

@@ -21,4 +21,11 @@ void registerSessionCommands(CommandBus bus, ChatCubit chat) {
     CommandIds.sessionCloseTab,
     () => chat.closeTab(chat.state.activeTabIndex),
   );
+  for (var n = 1; n <= 10; n++) {
+    final ordinal = n;
+    bus.register(
+      CommandIds.sessionFocusTab(ordinal),
+      () => chat.selectSessionTabAt(ordinal),
+    );
+  }
 }

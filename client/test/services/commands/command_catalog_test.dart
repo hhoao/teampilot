@@ -36,4 +36,23 @@ void main() {
     expect(def.terminalPassthrough, isFalse);
     expect(def.when, ShortcutWhen.inCompose);
   });
+
+  test('Alt+1…9 / Alt+0 focus session tabs by ordinal', () {
+    for (var n = 1; n <= 10; n++) {
+      final def = CommandCatalog.v1.singleWhere(
+        (c) => c.id == CommandIds.sessionFocusTab(n),
+      );
+      expect(
+        def.defaultChords,
+        [
+          KeyChord(
+            key: n == 10 ? 'digit0' : 'digit$n',
+            mods: [KeyChordMod.alt],
+          ),
+        ],
+      );
+      expect(def.when, ShortcutWhen.hasWorkspace);
+      expect(def.terminalPassthrough, isTrue);
+    }
+  });
 }

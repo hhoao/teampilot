@@ -1041,6 +1041,15 @@ class ChatCubit extends Cubit<ChatState>
     selectTab((state.activeTabIndex - 1 + count) % count);
   }
 
+  /// Selects the session tab at 1-based [ordinal] (Alt+1…9 / Alt+0 → 10).
+  ///
+  /// No-op when [ordinal] is out of range or there is no tab at that index.
+  /// Clears compose landing when a tab is selected (same as [selectTab]).
+  void selectSessionTabAt(int ordinal) {
+    if (ordinal < 1 || ordinal > 10) return;
+    selectTab(ordinal - 1);
+  }
+
   /// Sets History vs Terminal center body for an open session tab.
   void setSessionWorkbenchView(
     String sessionId,

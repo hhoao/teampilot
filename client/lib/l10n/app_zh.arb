@@ -1974,6 +1974,12 @@
   "shortcutsSessionPrevTab": "上一个会话标签",
   "shortcutsSessionNewTab": "新建会话标签",
   "shortcutsSessionCloseTab": "关闭会话标签",
+  "shortcutsSessionFocusTab": "切换到第 {n} 个会话标签",
+  "@shortcutsSessionFocusTab": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
   "shortcutsToggleSidebar": "切换侧边栏",
   "shortcutsTogglePanel": "切换终端面板",
   "shortcutsToggleSecondarySidebar": "切换次侧边栏",

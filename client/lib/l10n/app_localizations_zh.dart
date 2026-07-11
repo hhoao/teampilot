@@ -5129,6 +5129,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get shortcutsSessionCloseTab => '关闭会话标签';
 
   @override
+  String shortcutsSessionFocusTab(int n) {
+    return '切换到第 $n 个会话标签';
+  }
+
+  @override
   String get shortcutsToggleSidebar => '切换侧边栏';
 
   @override

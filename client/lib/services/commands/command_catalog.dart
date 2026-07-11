@@ -103,6 +103,22 @@ abstract final class CommandCatalog {
       terminalPassthrough: true,
       titleL10nKey: 'shortcutsSessionCloseTab',
     ),
+    // Alt+1…9 → tabs 1–9; Alt+0 → tab 10.
+    for (var n = 1; n <= 10; n++)
+      CommandDefinition(
+        id: CommandIds.sessionFocusTab(n),
+        category: CommandCategory.tabs,
+        defaultChords: [
+          KeyChord(
+            key: n == 10 ? 'digit0' : 'digit$n',
+            mods: [KeyChordMod.alt],
+          ),
+        ],
+        when: ShortcutWhen.hasWorkspace,
+        terminalPassthrough: true,
+        // Resolved with ordinal in [titleForCommand].
+        titleL10nKey: 'shortcutsSessionFocusTab',
+      ),
 
     // View
     CommandDefinition(
