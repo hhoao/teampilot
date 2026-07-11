@@ -211,6 +211,41 @@ abstract final class CommandCatalog {
       titleL10nKey: 'shortcutsComposeNewline',
     ),
 
+    // Run (VS Code-shaped: F5 / Shift+F5 / Mod+Shift+F5)
+    CommandDefinition(
+      id: CommandIds.runRunSelected,
+      category: CommandCategory.run,
+      defaultChords: [
+        KeyChord(key: 'f5'),
+      ],
+      when: ShortcutWhen.hasWorkspace,
+      terminalPassthrough: true,
+      titleL10nKey: 'shortcutsRunSelected',
+    ),
+    CommandDefinition(
+      id: CommandIds.runStop,
+      category: CommandCategory.run,
+      defaultChords: [
+        KeyChord(key: 'f5', mods: [KeyChordMod.shift]),
+      ],
+      when: ShortcutWhen.hasWorkspace,
+      terminalPassthrough: true,
+      titleL10nKey: 'shortcutsRunStop',
+    ),
+    CommandDefinition(
+      id: CommandIds.runRestart,
+      category: CommandCategory.run,
+      defaultChords: [
+        KeyChord(
+          key: 'f5',
+          mods: [KeyChordMod.mod, KeyChordMod.shift],
+        ),
+      ],
+      when: ShortcutWhen.hasWorkspace,
+      terminalPassthrough: true,
+      titleL10nKey: 'shortcutsRunRestart',
+    ),
+
     // Meta
     CommandDefinition(
       id: CommandIds.showCheatsheet,

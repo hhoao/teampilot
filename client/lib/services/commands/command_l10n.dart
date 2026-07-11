@@ -38,6 +38,7 @@ String titleForCategory(AppLocalizations l10n, CommandCategory category) {
     CommandCategory.view => l10n.shortcutsCategoryView,
     CommandCategory.zoom => l10n.shortcutsCategoryZoom,
     CommandCategory.compose => l10n.shortcutsCategoryCompose,
+    CommandCategory.run => l10n.shortcutsCategoryRun,
     CommandCategory.meta => l10n.shortcutsCategoryMeta,
   };
 }
@@ -61,6 +62,9 @@ String? _titleForKey(AppLocalizations l10n, String titleL10nKey) {
     'shortcutsComposeSubmit' => l10n.shortcutsComposeSubmit,
     'shortcutsComposeNewline' => l10n.shortcutsComposeNewline,
     'shortcutsShowCheatsheet' => l10n.shortcutsShowCheatsheet,
+    'shortcutsRunSelected' => l10n.shortcutsRunSelected,
+    'shortcutsRunStop' => l10n.shortcutsRunStop,
+    'shortcutsRunRestart' => l10n.shortcutsRunRestart,
     _ => null,
   };
 }

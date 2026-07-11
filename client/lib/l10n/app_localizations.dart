@@ -9917,6 +9917,192 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Conflicts with another shortcut'**
   String get shortcutsConflictBadgeTooltip;
+
+  /// No description provided for @runAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Run'**
+  String get runAction;
+
+  /// No description provided for @runStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get runStop;
+
+  /// No description provided for @runRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart'**
+  String get runRestart;
+
+  /// No description provided for @runNewInstance.
+  ///
+  /// In en, this message translates to:
+  /// **'New instance'**
+  String get runNewInstance;
+
+  /// No description provided for @runSelectConfiguration.
+  ///
+  /// In en, this message translates to:
+  /// **'Select configuration'**
+  String get runSelectConfiguration;
+
+  /// No description provided for @runCompoundConfiguration.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (compound)'**
+  String runCompoundConfiguration(String name);
+
+  /// No description provided for @runSuggestedConfiguration.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (Suggested)'**
+  String runSuggestedConfiguration(String name);
+
+  /// No description provided for @runAcceptRecommendation.
+  ///
+  /// In en, this message translates to:
+  /// **'Add suggested configuration to launch.json'**
+  String get runAcceptRecommendation;
+
+  /// No description provided for @runRefreshDiscover.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh discover recommendations'**
+  String get runRefreshDiscover;
+
+  /// No description provided for @runConfigurationTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Run configuration'**
+  String get runConfigurationTooltip;
+
+  /// No description provided for @runOpenLaunchJson.
+  ///
+  /// In en, this message translates to:
+  /// **'Open launch.json'**
+  String get runOpenLaunchJson;
+
+  /// No description provided for @runAlreadyRunningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration already running'**
+  String get runAlreadyRunningTitle;
+
+  /// No description provided for @runAlreadyRunningMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart the running session, or start a new instance?'**
+  String get runAlreadyRunningMessage;
+
+  /// No description provided for @runStopSessionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop running session?'**
+  String get runStopSessionTitle;
+
+  /// No description provided for @runStopSessionMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{name}\" is still running. Stop it and close this tab?'**
+  String runStopSessionMessage(String name);
+
+  /// No description provided for @runStopAndClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop and close'**
+  String get runStopAndClose;
+
+  /// No description provided for @runNoSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'No run sessions'**
+  String get runNoSessions;
+
+  /// No description provided for @runClearExited.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear exited sessions'**
+  String get runClearExited;
+
+  /// No description provided for @runLoadingOutput.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading run output…'**
+  String get runLoadingOutput;
+
+  /// No description provided for @runEmptyOutputHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Run a configuration to see output here'**
+  String get runEmptyOutputHint;
+
+  /// No description provided for @runTypeUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown launch type: {type}'**
+  String runTypeUnknown(String type);
+
+  /// No description provided for @runTypeUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch type \"{type}\" is not available on this target'**
+  String runTypeUnavailable(String type);
+
+  /// No description provided for @runTypeUnavailableRemote.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch type \"{type}\" is not available on remote targets'**
+  String runTypeUnavailableRemote(String type);
+
+  /// No description provided for @runErrorNoConfiguration.
+  ///
+  /// In en, this message translates to:
+  /// **'No configuration selected'**
+  String get runErrorNoConfiguration;
+
+  /// No description provided for @runErrorNoFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'No workspace folder'**
+  String get runErrorNoFolder;
+
+  /// No description provided for @runErrorSshProfileMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH profile not found for this run target'**
+  String get runErrorSshProfileMissing;
+
+  /// No description provided for @runErrorSshSpawnerMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH process execution is not configured'**
+  String get runErrorSshSpawnerMissing;
+
+  /// No description provided for @shortcutsRunSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Run Selected Configuration'**
+  String get shortcutsRunSelected;
+
+  /// No description provided for @shortcutsRunStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop Run'**
+  String get shortcutsRunStop;
+
+  /// No description provided for @shortcutsRunRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart Run'**
+  String get shortcutsRunRestart;
+
+  /// No description provided for @shortcutsCategoryRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Run'**
+  String get shortcutsCategoryRun;
 }
 
 class _AppLocalizationsDelegate

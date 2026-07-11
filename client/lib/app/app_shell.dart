@@ -91,6 +91,7 @@ import '../services/expert_hub/member_roster_service.dart';
 import '../services/cli/cli_executable_discovery.dart';
 import '../services/commands/command_bus.dart';
 import '../services/commands/layout_command_registrar.dart';
+import '../services/commands/run_command_registrar.dart';
 import '../services/commands/session_command_registrar.dart';
 import '../services/commands/shortcuts_ui_commands.dart';
 import '../pages/home_workspace/workspace_chrome_commands.dart';
@@ -127,6 +128,8 @@ import '../services/terminal/terminal_transport_factory.dart';
 import '../services/file_tree/workspace_file_tree_store.dart';
 import '../services/git/git_repo_store.dart';
 import '../services/workspace/workspace_tools_scope_registry.dart';
+import '../services/workspace/workspace_run_registry.dart';
+import '../services/run/workspace_run_platform_factory.dart';
 import '../services/workspace/workspace_worktree_registry.dart';
 import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
@@ -159,6 +162,7 @@ class AppShell {
     required this.workspaceFileTreeStore,
     required this.workspaceWorktreeRegistry,
     required this.workspaceToolsScopeRegistry,
+    required this.workspaceRunRegistry,
     required this.sshClientFactory,
     required this.sshProfileConnectionCoordinator,
     required this.connectionModeService,
@@ -191,6 +195,7 @@ class AppShell {
     required this.commandBus,
     required this.shortcutCubit,
     required this.workspaceChromeCommands,
+    required this.runCommandHost,
     required this.uiZoomBaseline,
   });
 
@@ -219,6 +224,7 @@ class AppShell {
   final WorkspaceFileTreeStore workspaceFileTreeStore;
   final WorkspaceWorktreeRegistry workspaceWorktreeRegistry;
   final WorkspaceToolsScopeRegistry workspaceToolsScopeRegistry;
+  final WorkspaceRunRegistry workspaceRunRegistry;
   final SshClientFactory sshClientFactory;
   final SshProfileConnectionCoordinator sshProfileConnectionCoordinator;
   final ConnectionModeService connectionModeService;
@@ -249,6 +255,7 @@ class AppShell {
   final CommandBus commandBus;
   final ShortcutCubit shortcutCubit;
   final WorkspaceChromeCommands workspaceChromeCommands;
+  final RunCommandHost runCommandHost;
   final UiZoomBaseline uiZoomBaseline;
 }
 
@@ -723,10 +730,20 @@ Future<AppShell> buildAppShell({
   final workspaceFileTreeStore = WorkspaceFileTreeStore();
   final workspaceWorktreeRegistry = WorkspaceWorktreeRegistry();
   final workspaceToolsScopeRegistry = WorkspaceToolsScopeRegistry();
+  final workspaceRunRegistry = WorkspaceRunRegistry(
+    platformFactory: WorkspaceRunPlatformFactory(
+      extensionRepository: extensionRepository,
+      projectConfigRepository: workspaceProjectConfigRepository,
+      resolveWorkContext: sessionLifecycleService.resolveWorkContextForTargetId,
+      sshProfileRepository: sshProfileRepo,
+      sshClientFactory: sshClientFactory,
+    ),
+  );
   final configCubit = ConfigCubit();
   final commandBus = CommandBus();
   final shortcutCubit = ShortcutCubit();
   final workspaceChromeCommands = WorkspaceChromeCommands();
+  final runCommandHost = RunCommandHost();
   final uiZoomBaseline = UiZoomBaseline();
   registerLayoutCommands(
     commandBus,
@@ -734,6 +751,7 @@ Future<AppShell> buildAppShell({
     uiZoomBaseline: () => uiZoomBaseline.value,
   );
   registerShortcutsUiCommands(commandBus);
+  registerRunCommands(commandBus, runCommandHost);
 
   final transportFactory = TerminalTransportFactory(
     sshProfileRepository: sshProfileRepo,
@@ -1049,6 +1067,7 @@ Future<AppShell> buildAppShell({
     workspaceFileTreeStore: workspaceFileTreeStore,
     workspaceWorktreeRegistry: workspaceWorktreeRegistry,
     workspaceToolsScopeRegistry: workspaceToolsScopeRegistry,
+    workspaceRunRegistry: workspaceRunRegistry,
     sshClientFactory: sshClientFactory,
     sshProfileConnectionCoordinator: sshProfileConnectionCoordinator,
     connectionModeService: connectionModeService,
@@ -1080,6 +1099,7 @@ Future<AppShell> buildAppShell({
     commandBus: commandBus,
     shortcutCubit: shortcutCubit,
     workspaceChromeCommands: workspaceChromeCommands,
+    runCommandHost: runCommandHost,
     uiZoomBaseline: uiZoomBaseline,
   );
 }
