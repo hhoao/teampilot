@@ -26,15 +26,17 @@ abstract final class WorkspacePanePolicy {
     required LayoutPreferences preferences,
     required double viewportWidth,
     bool composeLanding = false,
+    bool? landingRightToolsOverride,
   }) {
-    // v1: composeLanding unused for visibility (spec: compose≡session).
-    // v1: LayoutPreset mapping not implemented (extension point only).
+    final rightIntent = composeLanding
+        ? (landingRightToolsOverride ?? false)
+        : preferences.rightToolsVisible;
     final narrow = viewportWidth < narrowBreakpointWidth;
     if (!narrow) {
       return WorkspacePaneEffective(
         isNarrow: false,
         dockLeft: preferences.sidebarVisible,
-        dockRight: preferences.rightToolsVisible,
+        dockRight: rightIntent,
         dockBottom: preferences.workspaceTerminalVisible,
         overlayLeft: false,
         overlayRight: false,
@@ -46,7 +48,7 @@ abstract final class WorkspacePanePolicy {
       dockRight: false,
       dockBottom: preferences.workspaceTerminalVisible,
       overlayLeft: preferences.sidebarVisible,
-      overlayRight: preferences.rightToolsVisible,
+      overlayRight: rightIntent,
     );
   }
 }
