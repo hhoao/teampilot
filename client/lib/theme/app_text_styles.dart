@@ -19,7 +19,7 @@ final class AppTextStyles {
   TextStyle _resolve(TextStyle? style, {double height = 1.35}) =>
       (style ?? const TextStyle()).copyWith(height: height);
 
-  /// 11px — badges, timestamps, tertiary line.
+  /// 11px — timestamps, tertiary line.
   TextStyle get caption => _resolve(_t.labelSmall);
 
   TextStyle captionColored(Color color, {FontWeight? fontWeight}) =>

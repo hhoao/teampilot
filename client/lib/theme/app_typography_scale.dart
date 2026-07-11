@@ -133,6 +133,7 @@ final class AppTypographyScale {
 
   // --- Base sizes at multiplier 1.0 (Material 3 type scale) ---
 
+  static const double headlineSmallBase = 24;
   static const double titleLargeBase = 20;
   static const double titleMediumBase = 16;
   static const double titleSmallBase = 14;
@@ -153,6 +154,7 @@ final class AppTypographyScale {
   /// Code editor & log viewer monospace (defaults to body medium).
   static const double monoBase = bodyMediumBase;
 
+  double get headlineSmall => headlineSmallBase * multiplier;
   double get titleLarge => titleLargeBase * multiplier;
   double get titleMedium => titleMediumBase * multiplier;
   double get titleSmall => titleSmallBase * multiplier;
@@ -170,6 +172,7 @@ final class AppTypographyScale {
 @immutable
 final class AppTypographyTheme extends ThemeExtension<AppTypographyTheme> {
   const AppTypographyTheme({
+    required this.headlineSmall,
     required this.titleLarge,
     required this.titleMedium,
     required this.titleSmall,
@@ -182,6 +185,7 @@ final class AppTypographyTheme extends ThemeExtension<AppTypographyTheme> {
     required this.terminal,
   });
 
+  final double headlineSmall;
   final double titleLarge;
   final double titleMedium;
   final double titleSmall;
@@ -195,6 +199,7 @@ final class AppTypographyTheme extends ThemeExtension<AppTypographyTheme> {
 
   factory AppTypographyTheme.fromScale(AppTypographyScale scale) {
     return AppTypographyTheme(
+      headlineSmall: scale.headlineSmall,
       titleLarge: scale.titleLarge,
       titleMedium: scale.titleMedium,
       titleSmall: scale.titleSmall,
@@ -214,6 +219,7 @@ final class AppTypographyTheme extends ThemeExtension<AppTypographyTheme> {
 
   @override
   AppTypographyTheme copyWith({
+    double? headlineSmall,
     double? titleLarge,
     double? titleMedium,
     double? titleSmall,
@@ -226,6 +232,7 @@ final class AppTypographyTheme extends ThemeExtension<AppTypographyTheme> {
     double? terminal,
   }) {
     return AppTypographyTheme(
+      headlineSmall: headlineSmall ?? this.headlineSmall,
       titleLarge: titleLarge ?? this.titleLarge,
       titleMedium: titleMedium ?? this.titleMedium,
       titleSmall: titleSmall ?? this.titleSmall,

@@ -29,6 +29,7 @@ TextTheme materializeM3TextThemeSizes(
   }
 
   return textTheme.copyWith(
+    headlineSmall: resolve(textTheme.headlineSmall, sizes.headlineSmall),
     titleLarge: resolve(textTheme.titleLarge, sizes.titleLarge),
     titleMedium: resolve(textTheme.titleMedium, sizes.titleMedium),
     titleSmall: resolve(textTheme.titleSmall, sizes.titleSmall),
