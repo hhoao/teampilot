@@ -5103,4 +5103,159 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get automationsLaunchProfile => '启动身份';
+
+  @override
+  String get shortcutsWorkspaceNextTab => '下一个工作区标签';
+
+  @override
+  String get shortcutsWorkspacePrevTab => '上一个工作区标签';
+
+  @override
+  String get shortcutsWorkspaceCloseTab => '关闭工作区标签';
+
+  @override
+  String get shortcutsWorkspaceReopenClosed => '重新打开已关闭的工作区标签';
+
+  @override
+  String get shortcutsSessionNextTab => '下一个会话标签';
+
+  @override
+  String get shortcutsSessionPrevTab => '上一个会话标签';
+
+  @override
+  String get shortcutsSessionNewTab => '新建会话标签';
+
+  @override
+  String get shortcutsSessionCloseTab => '关闭会话标签';
+
+  @override
+  String get shortcutsToggleSidebar => '切换侧边栏';
+
+  @override
+  String get shortcutsTogglePanel => '切换终端面板';
+
+  @override
+  String get shortcutsToggleSecondarySidebar => '切换次侧边栏';
+
+  @override
+  String get shortcutsZoomIn => '放大';
+
+  @override
+  String get shortcutsZoomOut => '缩小';
+
+  @override
+  String get shortcutsZoomReset => '重置缩放';
+
+  @override
+  String get shortcutsComposeSubmit => '发送消息';
+
+  @override
+  String get shortcutsComposeNewline => '插入换行';
+
+  @override
+  String get shortcutsShowCheatsheet => '显示键盘快捷键';
+
+  @override
+  String get shortcutsCategoryNavigation => '导航';
+
+  @override
+  String get shortcutsCategoryTabs => '标签';
+
+  @override
+  String get shortcutsCategoryView => '视图';
+
+  @override
+  String get shortcutsCategoryZoom => '缩放';
+
+  @override
+  String get shortcutsCategoryCompose => '输入框';
+
+  @override
+  String get shortcutsCategoryMeta => '通用';
+
+  @override
+  String get shortcutsSettingsTitle => '键盘快捷键';
+
+  @override
+  String get shortcutsPageSubtitle => '查看并自定义导航、标签、缩放和输入框的键盘快捷键。';
+
+  @override
+  String get shortcutsSearchHint => '搜索快捷键';
+
+  @override
+  String get shortcutsChangeAction => '更改…';
+
+  @override
+  String get shortcutsResetAction => '恢复默认';
+
+  @override
+  String get shortcutsUnbindAction => '取消绑定';
+
+  @override
+  String get shortcutsNotSet => '未设置';
+
+  @override
+  String get shortcutsResetAll => '全部重置';
+
+  @override
+  String get shortcutsResetAllConfirmTitle => '重置所有快捷键？';
+
+  @override
+  String get shortcutsResetAllConfirmMessage => '这会将所有键盘快捷键恢复为默认绑定。';
+
+  @override
+  String get shortcutsExport => '导出…';
+
+  @override
+  String get shortcutsImport => '导入…';
+
+  @override
+  String get shortcutsExportSuccess => '快捷键已导出。';
+
+  @override
+  String get shortcutsExportFailed => '无法导出快捷键。';
+
+  @override
+  String get shortcutsImportSuccess => '快捷键已导入。';
+
+  @override
+  String get shortcutsImportInvalidFile => '该文件不是有效的快捷键导出文件。';
+
+  @override
+  String get shortcutsImportConflictTitle => '替换冲突的快捷键？';
+
+  @override
+  String shortcutsImportConflictMessage(int count) {
+    return '导入的快捷键与 $count 个现有绑定冲突。是否替换？';
+  }
+
+  @override
+  String get shortcutsCheatsheetButton => '查看速查表';
+
+  @override
+  String get shortcutsCheatsheetTitle => '键盘快捷键';
+
+  @override
+  String get shortcutsCheatsheetEmpty => '没有匹配的快捷键。';
+
+  @override
+  String get shortcutsPressShortcutTitle => '按下快捷键';
+
+  @override
+  String get shortcutsPressShortcutHint =>
+      '按下组合键进行绑定。按 Escape 取消，按 Backspace 取消绑定。';
+
+  @override
+  String get shortcutsPressShortcutUnsupportedKey => '该键无法绑定。';
+
+  @override
+  String shortcutsConflictMessage(String title) {
+    return '已被“$title”使用。';
+  }
+
+  @override
+  String get shortcutsReplaceAction => '替换';
+
+  @override
+  String get shortcutsConflictBadgeTooltip => '与另一个快捷键冲突';
 }

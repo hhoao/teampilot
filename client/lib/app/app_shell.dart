@@ -21,6 +21,7 @@ import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
 import '../cubits/notification_cubit.dart';
 import '../cubits/session_history_cubit.dart';
+import '../cubits/shortcut_cubit.dart';
 import '../cubits/editor_cubit.dart';
 import '../cubits/workbench/workbench_cubit.dart';
 import '../services/workbench/workbench_editor_opener.dart';
@@ -87,6 +88,11 @@ import '../services/expert_hub/expert_hub_favorites_store.dart';
 import '../services/expert_hub/git_registry_expert_hub_source.dart';
 import '../services/expert_hub/member_roster_service.dart';
 import '../services/cli/cli_executable_discovery.dart';
+import '../services/commands/command_bus.dart';
+import '../services/commands/layout_command_registrar.dart';
+import '../services/commands/session_command_registrar.dart';
+import '../services/commands/shortcuts_ui_commands.dart';
+import '../pages/home_workspace/workspace_chrome_commands.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/provider/claude/claude_provider_credentials_service.dart';
@@ -124,6 +130,7 @@ import '../services/workspace/workspace_worktree_registry.dart';
 import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
 import '../utils/logger.dart';
+import 'ui_zoom_baseline.dart';
 
 /// Fully wired app dependencies produced after async bootstrap.
 class AppShell {
@@ -180,6 +187,10 @@ class AppShell {
     required this.homeWorkspaceUiCache,
     required this.automationCubit,
     required this.automationScheduler,
+    required this.commandBus,
+    required this.shortcutCubit,
+    required this.workspaceChromeCommands,
+    required this.uiZoomBaseline,
   });
 
   final CliToolRegistry cliToolRegistry;
@@ -234,6 +245,10 @@ class AppShell {
   final Future<void> Function() bootstrapAppData;
   final AutomationCubit automationCubit;
   final AutomationScheduler automationScheduler;
+  final CommandBus commandBus;
+  final ShortcutCubit shortcutCubit;
+  final WorkspaceChromeCommands workspaceChromeCommands;
+  final UiZoomBaseline uiZoomBaseline;
 }
 
 Future<AppShell> buildAppShell({
@@ -708,6 +723,16 @@ Future<AppShell> buildAppShell({
   final workspaceWorktreeRegistry = WorkspaceWorktreeRegistry();
   final workspaceToolsScopeRegistry = WorkspaceToolsScopeRegistry();
   final configCubit = ConfigCubit();
+  final commandBus = CommandBus();
+  final shortcutCubit = ShortcutCubit();
+  final workspaceChromeCommands = WorkspaceChromeCommands();
+  final uiZoomBaseline = UiZoomBaseline();
+  registerLayoutCommands(
+    commandBus,
+    layoutCubit,
+    uiZoomBaseline: () => uiZoomBaseline.value,
+  );
+  registerShortcutsUiCommands(commandBus);
 
   final transportFactory = TerminalTransportFactory(
     sshProfileRepository: sshProfileRepo,
@@ -777,6 +802,8 @@ Future<AppShell> buildAppShell({
       runtimePlanBuilder: sessionRuntimePlanBuilder,
     ),
   );
+
+  registerSessionCommands(commandBus, chatCubit);
 
   memberPresenceCubit = MemberPresenceCubit();
   chatCubit.bindPresenceCubit(memberPresenceCubit);
@@ -863,6 +890,7 @@ Future<AppShell> buildAppShell({
 
   boot('loading layout');
   await layoutCubit.load();
+  await shortcutCubit.load();
   unawaited(notificationBootstrap);
   boot('layout ready (home index prefetched in background)');
   applyWorkspaceEntryMode(
@@ -1045,6 +1073,10 @@ Future<AppShell> buildAppShell({
     homeWorkspaceUiCache: homeWorkspaceUiCache,
     automationCubit: automationCubit,
     automationScheduler: automationScheduler,
+    commandBus: commandBus,
+    shortcutCubit: shortcutCubit,
+    workspaceChromeCommands: workspaceChromeCommands,
+    uiZoomBaseline: uiZoomBaseline,
   );
 }
 

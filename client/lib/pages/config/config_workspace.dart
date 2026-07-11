@@ -16,6 +16,7 @@ import 'ai_features_config_section.dart';
 import 'cli_config_section.dart';
 import 'layout_config_section.dart';
 import 'session_config_section.dart';
+import 'shortcuts_config_section.dart';
 import 'ssh_profiles_config_section.dart';
 
 /// Opens the workspace quick-settings modal from anywhere (e.g. the title bar).
@@ -61,6 +62,13 @@ Future<void> showWorkspaceSettingsDialog(BuildContext context) {
         subtitle: l10n.sshProfilesPageSubtitle,
         bodyBuilder: (_) =>
             const SshProfilesConfigWorkspace(showHeading: false),
+      ),
+      SettingsDialogEntry(
+        icon: Icons.keyboard_outlined,
+        navLabel: l10n.shortcutsSettingsTitle,
+        title: l10n.shortcutsSettingsTitle,
+        subtitle: l10n.shortcutsPageSubtitle,
+        bodyBuilder: (_) => const ShortcutsConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.info_outline,
@@ -140,6 +148,17 @@ class ConfigSettingsHubPage extends StatelessWidget {
           }),
         ),
         WorkspaceHubEntry(
+          key: AppKeys.configShortcutsSectionButton,
+          title: l10n.shortcutsSettingsTitle,
+          icon: Icons.keyboard_outlined,
+          onTap: throttledTap('config_hub_shortcuts', () {
+            context.read<ConfigCubit>().selectSection(
+              ConfigSection.shortcuts,
+            );
+            context.push('/config/${ConfigSection.shortcuts.routeSegment}');
+          }),
+        ),
+        WorkspaceHubEntry(
           key: AppKeys.configAboutSectionButton,
           title: l10n.aboutTitle,
           icon: Icons.info_outline,
@@ -199,6 +218,9 @@ class ConfigWorkspace extends StatelessWidget {
           showHeading: showHeading,
         ),
         ConfigSection.sshProfiles => SshProfilesConfigWorkspace(
+          showHeading: showHeading,
+        ),
+        ConfigSection.shortcuts => ShortcutsConfigWorkspace(
           showHeading: showHeading,
         ),
         ConfigSection.about => AboutConfigWorkspace(showHeading: showHeading),
@@ -273,6 +295,16 @@ class ConfigNavPanel extends StatelessWidget {
           onTap: throttledTap(
             'config_nav_ssh_profiles',
             () => onSelectSection(ConfigSection.sshProfiles),
+          ),
+        ),
+        WorkspaceHubEntry(
+          key: AppKeys.configShortcutsSectionButton,
+          title: l10n.shortcutsSettingsTitle,
+          icon: Icons.keyboard_outlined,
+          selected: section == ConfigSection.shortcuts,
+          onTap: throttledTap(
+            'config_nav_shortcuts',
+            () => onSelectSection(ConfigSection.shortcuts),
           ),
         ),
         WorkspaceHubEntry(

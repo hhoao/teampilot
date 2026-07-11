@@ -10,6 +10,7 @@ import 'package:toastification/toastification.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app/app_shell.dart';
+import 'app/ui_zoom_baseline.dart';
 import 'app/home_index_prefetch.dart';
 import 'cubits/app_bootstrap_cubit.dart';
 import 'cubits/app_update_cubit.dart';
@@ -20,6 +21,7 @@ import 'cubits/layout_cubit.dart';
 import 'cubits/mailbox_cubit.dart';
 import 'cubits/notification_cubit.dart';
 import 'cubits/session_history_cubit.dart';
+import 'cubits/shortcut_cubit.dart';
 import 'l10n/l10n_extensions.dart';
 import 'repositories/app_settings_repository.dart';
 import 'repositories/launch_profile_repository.dart';
@@ -30,8 +32,15 @@ import 'repositories/ssh_known_host_repository.dart';
 import 'repositories/ssh_profile_repository.dart';
 import 'router/app_router.dart';
 import 'services/cli/registry/cli_tool_registry_scope.dart';
+import 'services/commands/command_bus.dart';
+import 'services/commands/key_chord.dart';
+import 'services/commands/shortcut_context.dart';
+import 'services/commands/shortcut_dispatcher.dart';
+import 'services/commands/shortcut_dispatcher_handle.dart';
+import 'services/commands/shortcut_focus.dart';
 import 'services/expert_hub/expert_capability_resolver.dart';
 import 'services/home_workspace/home_workspace_ui_cache.dart';
+import 'pages/home_workspace/workspace_chrome_commands.dart';
 import 'services/storage/app_storage.dart';
 import 'services/app/boot_splash.dart';
 import 'services/app/windows_keyboard_workaround.dart';
@@ -63,6 +72,94 @@ import 'utils/logger.dart';
 import 'widgets/app_text_scale_boundary.dart';
 import 'widgets/app_update_available_dialog.dart';
 import 'widgets/ui_zoom.dart';
+
+/// Live [ShortcutContext] used by [ShortcutDispatcherHost].
+///
+/// `inCompose` / `inTerminal` / `inTextInput` are derived by walking up
+/// from [FocusManager.instance.primaryFocus]'s element to the nearest
+/// [ShortcutFocus] ancestor (see `ShortcutFocus.maybeOf`) — compose fields
+/// wrap themselves in `ShortcutFocus(kind: ShortcutFocusKind.compose, ...)`
+/// and agent / workspace-shell terminal views wrap themselves in
+/// `ShortcutFocus(kind: ShortcutFocusKind.terminal, ...)` on build, so this
+/// needs no static registry. `hasWorkspace` and `hasSessionTab` are cheap
+/// to derive correctly today, so they are. `hasOpenWorkspaceTabs` reads
+/// [WorkspaceChromeCommands.openTabCount], which `HomeShell` keeps in sync
+/// with its title-bar tabs (`0` whenever no `HomeShell` is mounted).
+ShortcutContext _liveShortcutContext(
+  ChatCubit chatCubit,
+  WorkspaceChromeCommands workspaceChromeCommands,
+) {
+  final location = appRouter.routerDelegate.currentConfiguration.uri
+      .toString();
+  final focusKind = _primaryShortcutFocusKind();
+  return ShortcutContext(
+    inTerminal: focusKind == ShortcutFocusKind.terminal,
+    inCompose: focusKind == ShortcutFocusKind.compose,
+    inTextInput:
+        focusKind == ShortcutFocusKind.compose ||
+        focusKind == ShortcutFocusKind.text,
+    hasWorkspace: location.contains('/home-v2/workspace/'),
+    hasOpenWorkspaceTabs: workspaceChromeCommands.openTabCount >= 1,
+    hasSessionTab: chatCubit.state.activeSessionId != null,
+  );
+}
+
+/// Returns the [ShortcutFocusKind] of the nearest [ShortcutFocus] ancestor
+/// of the primary focus's element, or `null` if there is none (e.g. no
+/// focused widget, or the focused widget sits outside any `ShortcutFocus`).
+ShortcutFocusKind? _primaryShortcutFocusKind() {
+  final focusContext = FocusManager.instance.primaryFocus?.context;
+  if (focusContext == null) return null;
+  return ShortcutFocus.maybeOf(focusContext)?.kind;
+}
+
+/// Installs the root [ShortcutDispatcher]: attaches a [HardwareKeyboard]
+/// handler on mount and detaches it on dispose. Must sit under the
+/// [CommandBus] / [ShortcutCubit] / [ChatCubit] providers so it can read them
+/// once in [initState] — matching + dispatch itself needs no `BuildContext`.
+class ShortcutDispatcherHost extends StatefulWidget {
+  const ShortcutDispatcherHost({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<ShortcutDispatcherHost> createState() =>
+      _ShortcutDispatcherHostState();
+}
+
+class _ShortcutDispatcherHostState extends State<ShortcutDispatcherHost> {
+  ShortcutDispatcher? _dispatcher;
+
+  @override
+  void initState() {
+    super.initState();
+    final shortcutCubit = context.read<ShortcutCubit>();
+    final chatCubit = context.read<ChatCubit>();
+    final workspaceChromeCommands = context.read<WorkspaceChromeCommands>();
+    final dispatcher = ShortcutDispatcher(
+      bus: context.read<CommandBus>(),
+      effectiveChords: (commandId) =>
+          shortcutCubit.effective[commandId] ?? const [],
+      context: () => _liveShortcutContext(chatCubit, workspaceChromeCommands),
+      isMacOS: defaultIsMacOS,
+    );
+    dispatcher.attach();
+    _dispatcher = dispatcher;
+    ShortcutDispatcherHandle.instance = dispatcher;
+  }
+
+  @override
+  void dispose() {
+    if (ShortcutDispatcherHandle.instance == _dispatcher) {
+      ShortcutDispatcherHandle.instance = null;
+    }
+    _dispatcher?.detach();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
 
 class _CleanupWindowListener extends WindowListener {
   _CleanupWindowListener(
@@ -501,6 +598,13 @@ void main() async {
                 RepositoryProvider<ExpertCapabilityResolver>.value(
                   value: shell.expertCapabilityResolver,
                 ),
+                RepositoryProvider<CommandBus>.value(value: shell.commandBus),
+                RepositoryProvider<WorkspaceChromeCommands>.value(
+                  value: shell.workspaceChromeCommands,
+                ),
+                RepositoryProvider<UiZoomBaseline>.value(
+                  value: shell.uiZoomBaseline,
+                ),
               ],
               child: MultiBlocProvider(
                 providers: [
@@ -531,11 +635,12 @@ void main() async {
                   BlocProvider.value(value: shell.sshProfileCubit),
                   BlocProvider.value(value: shell.cliPresetsCubit),
                   BlocProvider.value(value: shell.aiFeatureSettingsCubit),
+                  BlocProvider.value(value: shell.shortcutCubit),
                 ],
                 child: CliToolRegistryScope(
                   registry: shell.cliToolRegistry,
                   child: const SessionIdleNotificationListener(
-                    child: TeamPilotApp(),
+                    child: ShortcutDispatcherHost(child: TeamPilotApp()),
                   ),
                 ),
               ),
@@ -706,11 +811,13 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
               // compensating for OS display scaling); compact/comfortable/custom
               // are relative to it.
               final dpr = MediaQuery.of(context).devicePixelRatio;
+              final baseline = autoUiZoomForDevicePixelRatio(dpr);
+              context.read<UiZoomBaseline>().value = baseline;
               final effectiveZoom = clampUiZoom(
                 resolveRelativeScale(
                   scaleId: zoomBundle.uiZoomScale,
                   customMultiplier: zoomBundle.uiZoomCustomMultiplier,
-                  baseline: autoUiZoomForDevicePixelRatio(dpr),
+                  baseline: baseline,
                 ),
               );
               Widget content = AppTextScaleBoundary(

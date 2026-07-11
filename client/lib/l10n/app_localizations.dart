@@ -9533,6 +9533,306 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Launch identity'**
   String get automationsLaunchProfile;
+
+  /// No description provided for @shortcutsWorkspaceNextTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Workspace Tab'**
+  String get shortcutsWorkspaceNextTab;
+
+  /// No description provided for @shortcutsWorkspacePrevTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous Workspace Tab'**
+  String get shortcutsWorkspacePrevTab;
+
+  /// No description provided for @shortcutsWorkspaceCloseTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Close Workspace Tab'**
+  String get shortcutsWorkspaceCloseTab;
+
+  /// No description provided for @shortcutsWorkspaceReopenClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen Closed Workspace Tab'**
+  String get shortcutsWorkspaceReopenClosed;
+
+  /// No description provided for @shortcutsSessionNextTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Session Tab'**
+  String get shortcutsSessionNextTab;
+
+  /// No description provided for @shortcutsSessionPrevTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous Session Tab'**
+  String get shortcutsSessionPrevTab;
+
+  /// No description provided for @shortcutsSessionNewTab.
+  ///
+  /// In en, this message translates to:
+  /// **'New Session Tab'**
+  String get shortcutsSessionNewTab;
+
+  /// No description provided for @shortcutsSessionCloseTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Close Session Tab'**
+  String get shortcutsSessionCloseTab;
+
+  /// No description provided for @shortcutsToggleSidebar.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle Sidebar'**
+  String get shortcutsToggleSidebar;
+
+  /// No description provided for @shortcutsTogglePanel.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle Terminal Panel'**
+  String get shortcutsTogglePanel;
+
+  /// No description provided for @shortcutsToggleSecondarySidebar.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle Secondary Sidebar'**
+  String get shortcutsToggleSecondarySidebar;
+
+  /// No description provided for @shortcutsZoomIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom In'**
+  String get shortcutsZoomIn;
+
+  /// No description provided for @shortcutsZoomOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom Out'**
+  String get shortcutsZoomOut;
+
+  /// No description provided for @shortcutsZoomReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset Zoom'**
+  String get shortcutsZoomReset;
+
+  /// No description provided for @shortcutsComposeSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Send Message'**
+  String get shortcutsComposeSubmit;
+
+  /// No description provided for @shortcutsComposeNewline.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert Newline'**
+  String get shortcutsComposeNewline;
+
+  /// No description provided for @shortcutsShowCheatsheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Keyboard Shortcuts'**
+  String get shortcutsShowCheatsheet;
+
+  /// No description provided for @shortcutsCategoryNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Navigation'**
+  String get shortcutsCategoryNavigation;
+
+  /// No description provided for @shortcutsCategoryTabs.
+  ///
+  /// In en, this message translates to:
+  /// **'Tabs'**
+  String get shortcutsCategoryTabs;
+
+  /// No description provided for @shortcutsCategoryView.
+  ///
+  /// In en, this message translates to:
+  /// **'View'**
+  String get shortcutsCategoryView;
+
+  /// No description provided for @shortcutsCategoryZoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom'**
+  String get shortcutsCategoryZoom;
+
+  /// No description provided for @shortcutsCategoryCompose.
+  ///
+  /// In en, this message translates to:
+  /// **'Compose'**
+  String get shortcutsCategoryCompose;
+
+  /// No description provided for @shortcutsCategoryMeta.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get shortcutsCategoryMeta;
+
+  /// No description provided for @shortcutsSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keyboard Shortcuts'**
+  String get shortcutsSettingsTitle;
+
+  /// No description provided for @shortcutsPageSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'View and customize keyboard shortcuts for navigation, tabs, zoom, and compose.'**
+  String get shortcutsPageSubtitle;
+
+  /// No description provided for @shortcutsSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search shortcuts'**
+  String get shortcutsSearchHint;
+
+  /// No description provided for @shortcutsChangeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Change…'**
+  String get shortcutsChangeAction;
+
+  /// No description provided for @shortcutsResetAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to Default'**
+  String get shortcutsResetAction;
+
+  /// No description provided for @shortcutsUnbindAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Unbind'**
+  String get shortcutsUnbindAction;
+
+  /// No description provided for @shortcutsNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get shortcutsNotSet;
+
+  /// No description provided for @shortcutsResetAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset All'**
+  String get shortcutsResetAll;
+
+  /// No description provided for @shortcutsResetAllConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset All Shortcuts?'**
+  String get shortcutsResetAllConfirmTitle;
+
+  /// No description provided for @shortcutsResetAllConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This restores every keyboard shortcut to its default binding.'**
+  String get shortcutsResetAllConfirmMessage;
+
+  /// No description provided for @shortcutsExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export…'**
+  String get shortcutsExport;
+
+  /// No description provided for @shortcutsImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import…'**
+  String get shortcutsImport;
+
+  /// No description provided for @shortcutsExportSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Shortcuts exported.'**
+  String get shortcutsExportSuccess;
+
+  /// No description provided for @shortcutsExportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t export shortcuts.'**
+  String get shortcutsExportFailed;
+
+  /// No description provided for @shortcutsImportSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Shortcuts imported.'**
+  String get shortcutsImportSuccess;
+
+  /// No description provided for @shortcutsImportInvalidFile.
+  ///
+  /// In en, this message translates to:
+  /// **'That file isn\'t a valid shortcuts export.'**
+  String get shortcutsImportInvalidFile;
+
+  /// No description provided for @shortcutsImportConflictTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace Conflicting Shortcuts?'**
+  String get shortcutsImportConflictTitle;
+
+  /// No description provided for @shortcutsImportConflictMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The imported shortcuts conflict with {count} existing binding(s). Replace them?'**
+  String shortcutsImportConflictMessage(int count);
+
+  /// No description provided for @shortcutsCheatsheetButton.
+  ///
+  /// In en, this message translates to:
+  /// **'View Cheatsheet'**
+  String get shortcutsCheatsheetButton;
+
+  /// No description provided for @shortcutsCheatsheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keyboard Shortcuts'**
+  String get shortcutsCheatsheetTitle;
+
+  /// No description provided for @shortcutsCheatsheetEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No shortcuts match your search.'**
+  String get shortcutsCheatsheetEmpty;
+
+  /// No description provided for @shortcutsPressShortcutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Press a Shortcut'**
+  String get shortcutsPressShortcutTitle;
+
+  /// No description provided for @shortcutsPressShortcutHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Press a key combination to bind it. Press Escape to cancel, Backspace to unbind.'**
+  String get shortcutsPressShortcutHint;
+
+  /// No description provided for @shortcutsPressShortcutUnsupportedKey.
+  ///
+  /// In en, this message translates to:
+  /// **'That key can\'t be bound.'**
+  String get shortcutsPressShortcutUnsupportedKey;
+
+  /// No description provided for @shortcutsConflictMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Already used by \"{title}\".'**
+  String shortcutsConflictMessage(String title);
+
+  /// No description provided for @shortcutsReplaceAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get shortcutsReplaceAction;
+
+  /// No description provided for @shortcutsConflictBadgeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Conflicts with another shortcut'**
+  String get shortcutsConflictBadgeTooltip;
 }
 
 class _AppLocalizationsDelegate

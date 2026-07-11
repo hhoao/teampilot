@@ -1019,6 +1019,28 @@ class ChatCubit extends Cubit<ChatState>
     _pushPresenceTarget();
   }
 
+  /// Moves to the next open session tab, wrapping from the last tab back to
+  /// the first. No-op when there are no open tabs (compose-only landing).
+  ///
+  /// If the compose landing is showing while tabs still exist, this still
+  /// selects a tab (clearing compose) rather than treating compose as "no
+  /// tabs" — [state.activeTabIndex] is preserved while compose is active, so
+  /// navigation resumes from the last selected tab.
+  void selectNextSessionTab() {
+    final count = _tabStore.activeTabCount;
+    if (count == 0) return;
+    selectTab((state.activeTabIndex + 1) % count);
+  }
+
+  /// Moves to the previous open session tab, wrapping from the first tab
+  /// back to the last. See [selectNextSessionTab] for compose-landing
+  /// semantics.
+  void selectPreviousSessionTab() {
+    final count = _tabStore.activeTabCount;
+    if (count == 0) return;
+    selectTab((state.activeTabIndex - 1 + count) % count);
+  }
+
   /// Sets History vs Terminal center body for an open session tab.
   void setSessionWorkbenchView(
     String sessionId,
