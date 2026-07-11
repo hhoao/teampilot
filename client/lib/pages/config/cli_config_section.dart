@@ -156,6 +156,7 @@ class _CliControls extends StatelessWidget {
                   browseKey: AppKeys.cursorCliExecutablePathBrowseButton,
                   resetKey: AppKeys.cursorCliExecutablePathResetButton,
                   debouncerTag: 'cursor_cli_executable_path',
+                  installKey: AppKeys.cursorCliInstallButton,
                   showDividerBelow: true,
                 ),
                 CliExecutablePathSettingsRow(
