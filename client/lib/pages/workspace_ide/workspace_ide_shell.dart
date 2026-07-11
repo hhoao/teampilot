@@ -91,7 +91,6 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
           visible: prefs.sidebarVisible,
           initialSize: PaneSize.pixel(prefs.sidebarWidth),
           minSize: PaneSize.pixel(LayoutPreferences.minSidebarWidth),
-          maxSize: PaneSize.pixel(LayoutPreferences.maxSidebarWidth),
         ),
         PaneEntry(id: _centerId, initialSize: PaneSize.fraction(1)),
         PaneEntry(
@@ -99,7 +98,6 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
           visible: prefs.rightToolsVisible,
           initialSize: PaneSize.pixel(prefs.rightToolsWidth),
           minSize: PaneSize.pixel(LayoutPreferences.minRightToolsWidth),
-          maxSize: PaneSize.pixel(LayoutPreferences.maxRightToolsWidth),
         ),
       ],
     )..addListener(_onRowChanged);
@@ -111,7 +109,6 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
           visible: prefs.workspaceTerminalVisible,
           initialSize: PaneSize.pixel(prefs.workspaceTerminalHeight),
           minSize: PaneSize.pixel(LayoutPreferences.minWorkspaceTerminalHeight),
-          maxSize: PaneSize.pixel(LayoutPreferences.maxWorkspaceTerminalHeight),
         ),
       ],
     )..addListener(_onRootChanged);

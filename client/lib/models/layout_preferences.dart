@@ -50,11 +50,11 @@ class LayoutPreferences {
       sidebarVisible: json['sidebarVisible'] as bool? ?? true,
       rightToolsWidth: _doubleValue(
         json['rightToolsWidth'],
-      ).clamp(minRightToolsWidth, maxRightToolsWidth),
+      ).clamp(minRightToolsWidth, double.infinity),
       sidebarWidth: _doubleValue(
         json['sidebarWidth'],
         fallback: defaultSidebarWidth,
-      ).clamp(minSidebarWidth, maxSidebarWidth),
+      ).clamp(minSidebarWidth, double.infinity),
       workspaceNavWidth: _doubleValue(
         json['workspaceNavWidth'],
         fallback: defaultWorkspaceNavWidth,
@@ -88,22 +88,19 @@ class LayoutPreferences {
       workspaceTerminalHeight: _doubleValue(
         json['workspaceTerminalHeight'],
         fallback: defaultWorkspaceTerminalHeight,
-      ).clamp(minWorkspaceTerminalHeight, maxWorkspaceTerminalHeight),
+      ).clamp(minWorkspaceTerminalHeight, double.infinity),
     ).withAtLeastOneToolVisible();
   }
 
   static const defaultRightToolsWidth = 320.0;
   static const minRightToolsWidth = 240.0;
-  static const maxRightToolsWidth = 520.0;
   static const defaultSidebarWidth = 260.0;
   static const minSidebarWidth = 180.0;
-  static const maxSidebarWidth = 420.0;
   static const defaultWorkspaceNavWidth = 220.0;
   static const minWorkspaceNavWidth = 200.0;
   static const maxWorkspaceNavWidth = 360.0;
   static const defaultWorkspaceTerminalHeight = 220.0;
   static const minWorkspaceTerminalHeight = 120.0;
-  static const maxWorkspaceTerminalHeight = 480.0;
 
   /// Minimum extent for the main workbench column beside a side panel.
   static const minWorkbenchMainWidth = 320.0;
@@ -181,11 +178,11 @@ class LayoutPreferences {
       sidebarVisible: sidebarVisible ?? this.sidebarVisible,
       rightToolsWidth: (rightToolsWidth ?? this.rightToolsWidth).clamp(
         minRightToolsWidth,
-        maxRightToolsWidth,
+        double.infinity,
       ),
       sidebarWidth: (sidebarWidth ?? this.sidebarWidth).clamp(
         minSidebarWidth,
-        maxSidebarWidth,
+        double.infinity,
       ),
       workspaceNavWidth: (workspaceNavWidth ?? this.workspaceNavWidth).clamp(
         minWorkspaceNavWidth,
@@ -214,7 +211,7 @@ class LayoutPreferences {
       workspaceTerminalHeight:
           (workspaceTerminalHeight ?? this.workspaceTerminalHeight).clamp(
             minWorkspaceTerminalHeight,
-            maxWorkspaceTerminalHeight,
+            double.infinity,
           ),
     ).withAtLeastOneToolVisible();
   }
