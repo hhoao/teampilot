@@ -7,11 +7,10 @@ import '../../cubits/run_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/run/launch_configuration.dart';
 import '../../models/workspace.dart';
-import '../../models/workspace_folder.dart';
 import '../../services/run/launch_adapter_protocol.dart';
 import '../../services/run/launch_config_store.dart';
 import '../../services/run/launch_type_unavailable.dart';
-import '../../services/workbench/workbench_editor_opener.dart';
+import '../../services/run/run_platform.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_icon_button.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
@@ -22,16 +21,12 @@ typedef RunActionPicker =
       LaunchAdapterConfigurationEntry action,
     );
 
-/// Opens a `launch.json` path in the editor (or creates it).
-typedef RunOpenLaunchJson = Future<void> Function(String path);
-
-/// IDEA-style title-bar Run chrome: Build · config · Run · Debug · More.
+/// IDEA-style title-bar Run chrome: config · options · Run · kinds-gated Debug/Build.
 class RunToolbar extends StatelessWidget {
   const RunToolbar({
     required this.workspaceId,
     this.showFolderLabels = false,
     this.pickActionResult,
-    this.openLaunchJson,
     super.key,
   });
 
@@ -41,9 +36,6 @@ class RunToolbar extends StatelessWidget {
   /// Host UI for `isAction` items. When null, action selection is a no-op.
   final RunActionPicker? pickActionResult;
 
-  /// Injected for tests; defaults to [WorkbenchEditorOpener.openFile].
-  final RunOpenLaunchJson? openLaunchJson;
-
   /// IntelliJ-like run/debug accent (works on light and dark chrome).
   static const Color _actionGreen = Color(0xFF59A869);
 
@@ -51,28 +43,51 @@ class RunToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<RunCubit, RunState>(
       builder: (context, state) {
+        final cubit = context.read<RunCubit>();
+        final kinds = _kindsForSelection(cubit, state);
+        final choiceOptions = state.options
+            .where(
+              (o) =>
+                  o.type == LaunchOptionType.choice && o.choices.isNotEmpty,
+            )
+            .toList();
+
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const _BuildGlyph(),
             _ConfigDropdown(
               state: state,
               showFolderLabels: showFolderLabels,
               pickActionResult: pickActionResult,
             ),
+            for (final option in choiceOptions) ...[
+              const SizedBox(width: 2),
+              _ChoiceOptionSelector(option: option, state: state),
+            ],
             const SizedBox(width: 2),
             _RunOrStopGlyph(state: state),
-            const _DebugGlyph(),
-            _MoreMenu(
-              workspaceId: workspaceId,
-              state: state,
-              openLaunchJson: openLaunchJson,
-            ),
+            if (kinds.contains('debug')) const _DebugGlyph(),
+            if (kinds.contains('build')) const _BuildGlyph(),
           ],
         );
       },
     );
   }
+}
+
+/// Launch-type kinds for the selected configuration (empty when none selected).
+List<String> _kindsForSelection(RunCubit cubit, RunState state) {
+  final selected = state.selectedConfiguration;
+  if (selected == null) return const [];
+  final type = selected.configuration.type;
+  final platform = cubit.platform;
+  if (platform is RunPlatform) {
+    return List<String>.from(
+      platform.registry.get(type)?.kinds ?? const ['run'],
+    );
+  }
+  // Test fakes / deferred unbound: process-like → run only (no Debug/Build).
+  return const ['run'];
 }
 
 sealed class _DropdownEntry {
@@ -308,6 +323,82 @@ class _ConfigDropdown extends StatelessWidget {
   }
 }
 
+class _ChoiceOptionSelector extends StatelessWidget {
+  const _ChoiceOptionSelector({
+    required this.option,
+    required this.state,
+  });
+
+  final LaunchOption option;
+  final RunState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<RunCubit>();
+    final current =
+        (state.optionValues[option.id] ?? option.value)?.toString();
+    final selectedLabel = option.choices
+        .where((choice) => choice.value == current)
+        .map((choice) => choice.label)
+        .firstOrNull;
+    final label = selectedLabel ?? option.label;
+
+    final specs = <SidebarActionMenuSpec>[
+      for (final choice in option.choices)
+        SidebarActionMenuSpec.item(
+          value: choice.value,
+          icon: Icons.circle_outlined,
+          label: choice.label,
+          selected: choice.value == current,
+        ),
+    ];
+
+    final cs = Theme.of(context).colorScheme;
+    return SidebarActionMenuButton(
+      key: Key('run-toolbar-option-${option.id}'),
+      tooltip: option.label,
+      minWidth: 120,
+      specs: specs,
+      onSelected: (value) {
+        if (value is String) {
+          cubit.setOption(option.id, value);
+        }
+      },
+      triggerBuilder: (context, controller) {
+        return InkWell(
+          borderRadius: BorderRadius.circular(6),
+          onTap: () {
+            if (controller.isOpen) {
+              controller.close();
+            } else {
+              controller.open();
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 120),
+                  child: Text(
+                    label,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurface,
+                    ),
+                  ),
+                ),
+                Icon(Icons.arrow_drop_down, color: cs.onSurfaceVariant),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _ToolbarGlyph extends StatelessWidget {
   const _ToolbarGlyph({
     required this.icon,
@@ -454,6 +545,7 @@ class _RunOrStopGlyph extends StatelessWidget {
 
 enum _RerunChoice { restart, newInstance }
 
+/// Shown only when selected type kinds include `build` (execution deferred).
 class _BuildGlyph extends StatelessWidget {
   const _BuildGlyph();
 
@@ -463,12 +555,13 @@ class _BuildGlyph extends StatelessWidget {
     return _ToolbarGlyph(
       keyId: const Key('run-toolbar-build'),
       icon: Icons.build_outlined,
-      tooltip: l10n.runBuildUnavailable,
-      enabled: false,
+      tooltip: l10n.runBuild,
+      onTap: () {},
     );
   }
 }
 
+/// Shown only when selected type kinds include `debug` (execution deferred).
 class _DebugGlyph extends StatelessWidget {
   const _DebugGlyph();
 
@@ -478,172 +571,9 @@ class _DebugGlyph extends StatelessWidget {
     return _ToolbarGlyph(
       keyId: const Key('run-toolbar-debug'),
       icon: Icons.bug_report_outlined,
-      tooltip: l10n.runDebugUnavailable,
+      tooltip: l10n.runDebug,
       color: RunToolbar._actionGreen,
-      enabled: false,
-    );
-  }
-}
-
-enum _MoreAction {
-  openLaunchJson,
-  refreshDiscover,
-  acceptRecommendation,
-}
-
-class _MoreMenu extends StatelessWidget {
-  const _MoreMenu({
-    required this.workspaceId,
-    required this.state,
-    this.openLaunchJson,
-  });
-
-  final String workspaceId;
-  final RunState state;
-  final RunOpenLaunchJson? openLaunchJson;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final cubit = context.read<RunCubit>();
-    final selected = state.selectedConfiguration;
-    final canAccept = selected != null && state.isRecommendation(selected);
-    final choiceOptions = state.options
-        .where(
-          (o) => o.type == LaunchOptionType.choice && o.choices.isNotEmpty,
-        )
-        .toList();
-
-    final specs = <SidebarActionMenuSpec>[
-      SidebarActionMenuSpec.item(
-        value: _MoreAction.openLaunchJson,
-        icon: Icons.description_outlined,
-        label: l10n.runOpenLaunchJson,
-      ),
-      SidebarActionMenuSpec.item(
-        value: _MoreAction.refreshDiscover,
-        icon: Icons.refresh,
-        label: l10n.runRefreshDiscover,
-      ),
-      if (canAccept)
-        SidebarActionMenuSpec.item(
-          value: _MoreAction.acceptRecommendation,
-          icon: Icons.check_circle_outline,
-          label: l10n.runAcceptRecommendation,
-        ),
-      for (final option in choiceOptions) ...[
-        const SidebarActionMenuSpec.divider(),
-        SidebarActionMenuSpec.item(
-          icon: Icons.tune,
-          label: option.label,
-          enabled: false,
-        ),
-        for (final choice in option.choices)
-          SidebarActionMenuSpec.item(
-            value: MapEntry(option.id, choice.value),
-            icon: Icons.circle_outlined,
-            label: choice.label,
-            selected:
-                (state.optionValues[option.id] ?? option.value)?.toString() ==
-                choice.value,
-          ),
-      ],
-    ];
-
-    final cs = Theme.of(context).colorScheme;
-    return SidebarActionMenuButton(
-      key: const Key('run-toolbar-more'),
-      tooltip: l10n.runMoreActions,
-      specs: specs,
-      onSelected: (value) {
-        if (value is _MoreAction) {
-          unawaited(_onAction(context, value));
-          return;
-        }
-        if (value is MapEntry<String, String>) {
-          cubit.setOption(value.key, value.value);
-        }
-      },
-      triggerBuilder: (context, controller) {
-        return AppIconButton(
-          icon: Icons.more_vert,
-          backgroundColor: cs.onSurface.withValues(alpha: 0.06),
-          onTap: () {
-            if (controller.isOpen) {
-              controller.close();
-            } else {
-              controller.open();
-            }
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _onAction(BuildContext context, _MoreAction action) async {
-    final cubit = context.read<RunCubit>();
-    switch (action) {
-      case _MoreAction.openLaunchJson:
-        await _openLaunchJson(context);
-      case _MoreAction.refreshDiscover:
-        await cubit.refreshDiscover();
-      case _MoreAction.acceptRecommendation:
-        final selected = cubit.state.selectedConfiguration;
-        if (selected != null) {
-          await cubit.acceptRecommendation(selected);
-        }
-    }
-  }
-
-  Future<void> _openLaunchJson(BuildContext context) async {
-    final cubit = context.read<RunCubit>();
-    var path = await cubit.openLaunchJson();
-    if (path == null || path.isEmpty) {
-      if (cubit.folders.length > 1) {
-        if (!context.mounted) return;
-        final folder = await _pickFolder(context, cubit.folders);
-        if (folder == null) return;
-        path = await cubit.openLaunchJson(folder: folder);
-      }
-    }
-    if (path == null || path.isEmpty) return;
-
-    final opener = openLaunchJson;
-    if (opener != null) {
-      await opener(path);
-      return;
-    }
-    if (!context.mounted) return;
-    await context.read<WorkbenchEditorOpener>().openFile(workspaceId, path);
-  }
-
-  Future<WorkspaceFolder?> _pickFolder(
-    BuildContext context,
-    List<WorkspaceFolder> folders,
-  ) {
-    final l10n = context.l10n;
-    return showDialog<WorkspaceFolder>(
-      context: context,
-      builder: (dialogContext) => AppDialog(
-        maxWidth: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppDialogHeader(
-              title: l10n.runOpenLaunchJson,
-              onClose: () => Navigator.of(dialogContext).pop(),
-            ),
-            const SizedBox(height: 8),
-            for (final folder in folders)
-              ListTile(
-                title: Text(Workspace.directoryName(folder.path)),
-                subtitle: Text(folder.path, maxLines: 1),
-                onTap: () => Navigator.of(dialogContext).pop(folder),
-              ),
-          ],
-        ),
-      ),
+      onTap: () {},
     );
   }
 }

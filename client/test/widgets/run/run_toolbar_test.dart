@@ -230,7 +230,6 @@ Widget _host({required RunCubit cubit, RunActionPicker? pickActionResult}) {
         child: RunToolbar(
           workspaceId: 'ws-1',
           pickActionResult: pickActionResult,
-          openLaunchJson: (_) async {},
         ),
       ),
     ),
@@ -338,7 +337,26 @@ void main() {
     expect(platform.lastConfigureActionId, 'pick-entry');
   });
 
-  testWidgets('choice option can be set via cubit', (tester) async {
+  testWidgets('does not show build debug or more by default', (tester) async {
+    final platform = _RecordingPlatform(
+      configurations: [_processConfig()],
+    );
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    addTearDown(cubit.close);
+    addTearDown(platform._actionsController.close);
+
+    await cubit.load();
+    await cubit.select(platform.configurations.single.selectionKey);
+    await tester.pumpWidget(_host(cubit: cubit));
+    await tester.pump();
+
+    expect(find.byKey(const Key('run-toolbar-build')), findsNothing);
+    expect(find.byKey(const Key('run-toolbar-debug')), findsNothing);
+    expect(find.byKey(const Key('run-toolbar-more')), findsNothing);
+    expect(find.byKey(const Key('run-toolbar-run')), findsOneWidget);
+  });
+
+  testWidgets('choice option appears as compact selector', (tester) async {
     final platform = _RecordingPlatform(
       configurations: [
         OwnedLaunchConfiguration(
@@ -375,12 +393,18 @@ void main() {
     await tester.pumpWidget(_host(cubit: cubit));
     await tester.pump();
 
-    cubit.setOption('device', 'chrome');
+    final optionFinder = find.byKey(const Key('run-toolbar-option-device'));
+    expect(optionFinder, findsOneWidget);
+    expect(find.byKey(const Key('run-toolbar-more')), findsNothing);
+
+    final button = tester.widget<SidebarActionMenuButton>(optionFinder);
+    final chrome = button.specs.where((s) => !s.isDivider).last;
+    expect(chrome.label, 'Chrome');
+    button.onSelected(chrome.value);
     await tester.pump();
 
     expect(cubit.setOptionCalls.last.key, 'device');
     expect(cubit.setOptionCalls.last.value, 'chrome');
-    expect(find.byKey(const Key('run-toolbar-more')), findsOneWidget);
   });
 
   testWidgets('Run button calls runSelected', (tester) async {
