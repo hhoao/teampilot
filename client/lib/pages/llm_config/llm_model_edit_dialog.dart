@@ -5,9 +5,9 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/llm_config.dart';
 import '../../utils/app_keys.dart';
 import '../../widgets/app_dialog.dart';
+import '../../theme/app_text_styles.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/dropdown/app_dropdown_field.dart';
-import 'llm_workspace_typography.dart';
 
 class LlmModelEditDialog extends StatefulWidget {
   const LlmModelEditDialog({
@@ -88,7 +88,7 @@ class LlmModelEditDialogState extends State<LlmModelEditDialog> {
             children: [
               Text(
                 l10n.provider,
-                style: LlmWorkspaceText(Theme.of(context)).bodyStrong,
+                style: AppTextStyles.of(context).mdSemibold,
               ),
               const SizedBox(height: 8),
               AppDropdownField<String>(

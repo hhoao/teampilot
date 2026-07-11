@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import '../../cubits/llm_config_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/llm_config.dart';
+import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_icon_button.dart';
 import 'llm_config_routes.dart';
 import 'llm_model_edit_dialog.dart';
-import 'llm_workspace_typography.dart';
 
 class LlmProviderModelsView extends StatelessWidget {
   const LlmProviderModelsView({
@@ -57,7 +57,7 @@ class LlmProviderModelsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final tx = LlmWorkspaceText(theme);
+    final tx = AppTextStyles(theme);
     final l10n = context.l10n;
     final textBase = cs.onSurface;
     final providerModels = config.models.values
@@ -92,7 +92,7 @@ class LlmProviderModelsView extends StatelessWidget {
                     children: [
                       Text(
                         '${l10n.models} — ${provider.name}',
-                        style: tx.panelHeaderColored(textBase),
+                        style: tx.mdSemiboldTightSnugColored(textBase),
                       ),
                     ],
                   ),
@@ -109,7 +109,7 @@ class LlmProviderModelsView extends StatelessWidget {
                       ),
                       child: Text(
                         '+ ${l10n.add}',
-                        style: tx.smallColored(cs.primary, fontWeight: FontWeight.w500),
+                        style: tx.xsMediumColored(cs.primary),
                       ),
                     ),
                   ),
@@ -122,7 +122,7 @@ class LlmProviderModelsView extends StatelessWidget {
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(kLlmInsetH),
-                      child: Text(l10n.noModelsConfigured, style: tx.mutedBody),
+                      child: Text(l10n.noModelsConfigured, style: tx.mutedMd),
                     ),
                   )
                 : ListView.separated(
@@ -155,7 +155,7 @@ class LlmProviderModelsView extends StatelessWidget {
                                   const SizedBox(height: 2),
                                   Text(
                                     model.model,
-                                    style: tx.smallColored(
+                                    style: tx.xsColored(
                                       textBase.withValues(alpha: 0.54),
                                     ),
                                   ),
@@ -264,10 +264,10 @@ Future<void> _showValidationDialog(BuildContext context, LlmConfig config) {
               itemCount: messages.length,
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
-                final tx = LlmWorkspaceText(Theme.of(context));
+                final tx = AppTextStyles.of(context);
                 return Text(
                   '${index + 1}. ${messages[index]}',
-                  style: tx.body,
+                  style: tx.md,
                 );
               },
             ),

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/llm_config.dart';
+import '../../theme/app_text_styles.dart';
 import '../../utils/app_keys.dart';
 import '../../widgets/app_icon_button.dart';
 import 'llm_model_edit_dialog.dart';
-import 'llm_workspace_typography.dart';
 
 class LlmProviderModelsTable extends StatelessWidget {
   const LlmProviderModelsTable({
@@ -24,7 +24,7 @@ class LlmProviderModelsTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tx = LlmWorkspaceText(theme);
+    final tx = AppTextStyles(theme);
     final l10n = context.l10n;
     final cs = theme.colorScheme;
     final textBase = cs.onSurface;
@@ -55,7 +55,7 @@ class LlmProviderModelsTable extends StatelessWidget {
                           model.model,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: tx.smallColored(muted),
+                          style: tx.xsColored(muted),
                         ),
                       ],
                     ],
