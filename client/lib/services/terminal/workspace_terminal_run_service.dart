@@ -103,6 +103,17 @@ class WorkspaceTerminalRunService {
         if (existing != null) {
           group.activeId = existing.id;
           _bindSessionIfPresent(runSessionId, existing.id);
+          // Reconnect if the tab dropped; coordinator no-ops when
+          // connected+running.
+          await ops.connectEntry(
+            group: group,
+            entry: existing,
+            connectCoordinator: connectCoordinator,
+            theme: theme,
+            sshConnectFailedMessage: sshConnectFailedMessage,
+            onStateChanged: onStateChanged,
+            mounted: mounted,
+          );
           return existing;
         }
         _clearBind(bindKey, existingId);
@@ -208,5 +219,6 @@ class WorkspaceTerminalRunService {
       _entryByBind.remove(bindKey);
     }
     _bindByEntry.remove(entryId);
+    _entryBySession.removeWhere((_, id) => id == entryId);
   }
 }

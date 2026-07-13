@@ -208,10 +208,70 @@ void main() {
     expect(second.id, first.id);
     expect(group.entries, hasLength(1));
     expect(group.activeId, first.id);
-    expect(connect.connectCalls, 1);
+    // create + reconnect-on-reuse (coordinator no-ops if still running)
+    expect(connect.connectCalls, 2);
     expect(connector.createdSpecs, [
       const WorkspaceTerminalWorkspaceTargetSpec('local'),
     ]);
+  });
+
+  test('reused disconnected entry triggers connect', () async {
+    final first = await _open(
+      service: service,
+      group: group,
+      connector: connector,
+      connectCoordinator: connect,
+      ops: ops,
+      selectionKey: 'local|/ws|cfg-1',
+      allowMultipleInstances: false,
+      runSessionId: 'sess-a',
+    );
+    expect(connect.connectCalls, 1);
+
+    first.connected = false;
+    final reused = await _open(
+      service: service,
+      group: group,
+      connector: connector,
+      connectCoordinator: connect,
+      ops: ops,
+      selectionKey: 'local|/ws|cfg-1',
+      allowMultipleInstances: false,
+      runSessionId: 'sess-b',
+    );
+
+    expect(reused.id, first.id);
+    expect(group.entries, hasLength(1));
+    expect(connect.connectCalls, 2);
+  });
+
+  test('clears stale session bind when entry missing from group', () async {
+    final entry = await _open(
+      service: service,
+      group: group,
+      connector: connector,
+      connectCoordinator: connect,
+      ops: ops,
+      selectionKey: 'stale-key',
+      allowMultipleInstances: false,
+      runSessionId: 'sess-stale',
+    );
+    expect(service.entryIdForSession('sess-stale'), entry.id);
+
+    group.removeEntry(entry.id);
+    await _open(
+      service: service,
+      group: group,
+      connector: connector,
+      connectCoordinator: connect,
+      ops: ops,
+      selectionKey: 'stale-key',
+      allowMultipleInstances: false,
+      runSessionId: 'sess-new',
+    );
+
+    expect(service.entryIdForSession('sess-stale'), isNull);
+    expect(service.entryIdForSession('sess-new'), isNotNull);
   });
 
   test(
