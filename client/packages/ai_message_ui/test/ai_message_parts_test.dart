@@ -51,6 +51,67 @@ void main() {
     expect(assistantAlign.alignment, Alignment.centerLeft);
   });
 
+  testWidgets('short user bubble shrinks; long bubble caps without matching width', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 400,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AiMessageView(
+                  message: AiMessage(
+                    id: 'short',
+                    role: AiRole.user,
+                    parts: const [AiTextPart(text: 'hi')],
+                  ),
+                ),
+                AiMessageView(
+                  message: AiMessage(
+                    id: 'long',
+                    role: AiRole.user,
+                    parts: const [
+                      AiTextPart(
+                        text:
+                            'this is a much longer user message that should wrap '
+                            'inside the max bubble width instead of shrinking',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final shortBubble = tester.getSize(
+      find
+          .ancestor(
+            of: find.text('hi'),
+            matching: find.byType(DecoratedBox),
+          )
+          .first,
+    );
+    final longBubble = tester.getSize(
+      find
+          .ancestor(
+            of: find.textContaining('much longer user message'),
+            matching: find.byType(DecoratedBox),
+          )
+          .first,
+    );
+
+    expect(shortBubble.width, lessThan(120));
+    expect(longBubble.width, greaterThan(shortBubble.width + 80));
+    // Cap at ~85% of 400 — must not force every bubble to that width.
+    expect(shortBubble.width, lessThan(400 * 0.5));
+  });
+
   testWidgets('tool fallback shows Used tool label; tap expands args/result', (
     tester,
   ) async {

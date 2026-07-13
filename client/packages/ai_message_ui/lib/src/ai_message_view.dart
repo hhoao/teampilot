@@ -149,22 +149,30 @@ class _UserBubble extends StatelessWidget {
       alignment: Alignment.centerRight,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final bubbleMax = constraints.maxWidth.isFinite
-              ? constraints.maxWidth * 0.85
+          // Reserve action-bar chrome so Row never overflows the thread width.
+          const actionBarReserve = 80.0;
+          final threadMax = constraints.maxWidth.isFinite
+              ? constraints.maxWidth
               : 480.0;
-          return ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: bubbleMax),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                if (showActionBar)
-                  AiMessageActionBar(
-                    message: message,
-                    reveal: actionBarReveal,
-                    forceVisible: hovered,
-                  ),
-                Flexible(
+          final bubbleMax = (threadMax * 0.85).clamp(
+            0.0,
+            showActionBar ? threadMax - actionBarReserve : threadMax,
+          );
+          // MarkdownBody expands to max width; IntrinsicWidth shrink-wraps
+          // short copy so "hi" is not as wide as a long message.
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (showActionBar)
+                AiMessageActionBar(
+                  message: message,
+                  reveal: actionBarReveal,
+                  forceVisible: hovered,
+                ),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: bubbleMax),
+                child: IntrinsicWidth(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: aiTheme.resolveUserBubble(scheme),
@@ -186,8 +194,8 @@ class _UserBubble extends StatelessWidget {
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           );
         },
       ),

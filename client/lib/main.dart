@@ -10,6 +10,7 @@ import 'package:toastification/toastification.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app/app_shell.dart';
+import 'app/teampilot_widgets_flutter_binding.dart';
 import 'app/ui_zoom_baseline.dart';
 import 'app/home_index_prefetch.dart';
 import 'cubits/app_bootstrap_cubit.dart';
@@ -386,7 +387,7 @@ class _DragToResizeWrapperState extends State<_DragToResizeWrapper>
 const kDefaultDesktopWindowSize = Size(1380, 960);
 
 void main() async {
-  final binding = WidgetsFlutterBinding.ensureInitialized();
+  final binding = TeampilotWidgetsFlutterBinding.ensureInitialized();
   preserveBootSplash(binding);
   installWindowsKeyboardWorkaround();
   await RustLib.init();
