@@ -30,9 +30,24 @@ void main() {
     store.setError('boom');
     expect(store.status, AiThreadStatus.error);
     expect(store.errorMessage, 'boom');
+    expect(store.messages, isEmpty);
 
     await sub.cancel();
     expect(events, isNotEmpty);
+  });
+
+  test('setLoading clears prior messages', () {
+    final store = ExternalStoreAiThreadRuntime();
+    store.setMessages([
+      AiMessage(
+        id: '1',
+        role: AiRole.user,
+        parts: const [AiTextPart(text: 'hi')],
+      ),
+    ]);
+    store.setLoading();
+    expect(store.status, AiThreadStatus.loading);
+    expect(store.messages, isEmpty);
   });
 
   test('setMessages([]) sets status to empty', () {

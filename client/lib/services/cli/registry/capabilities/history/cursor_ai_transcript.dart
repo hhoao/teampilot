@@ -4,6 +4,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../../provider/cursor/cursor_home_layout.dart';
+import '../../../../session/ai_history_cache_token.dart';
 import '../../../../session/session_history_context.dart';
 
 /// Locate Cursor agent transcript under CURSOR_CONFIG_DIR / projects.
@@ -16,6 +17,11 @@ Future<AiTranscriptBundle?> locateCursorTranscript(
   final bytes = await ctx.fs.readBytes(transcriptPath);
   if (bytes == null) return null;
 
+  final cacheToken = await aiHistoryPathCacheToken(
+    fs: ctx.fs,
+    path: transcriptPath,
+    byteLength: bytes.length,
+  );
   return AiTranscriptBundle(
     adapterId: 'cursor',
     fragments: [
@@ -24,6 +30,7 @@ Future<AiTranscriptBundle?> locateCursorTranscript(
         bytes: bytes,
       ),
     ],
+    hints: {'cacheToken': cacheToken},
   );
 }
 
@@ -126,7 +133,7 @@ final class CursorAiTranscriptAdapter implements AiTranscriptAdapter {
       }
     }
 
-    return messages;
+    return finalizeAiMessagesForHistory(messages);
   }
 }
 
@@ -157,8 +164,8 @@ void _appendFromEvent(
   final id = _messageId(event, fallbackId);
 
   if (content is String) {
-    final text = content.trim();
-    if (text.isEmpty) return;
+    final text = _cursorVisibleText(content);
+    if (text == null) return;
     messages.add(
       AiMessage(
         id: id,
@@ -258,12 +265,29 @@ void _appendFromEvent(
 /// Cursor parent-facing transcripts put a literal `[REDACTED]` text block
 /// next to `tool_use` (standing in for redacted thinking). That is not
 /// user-visible prose — drop the sentinel / trailing marker only.
+///
+/// Also unwraps Cursor IDE wrappers (`<user_query>`, `<timestamp>`).
 String? _cursorVisibleText(String raw) {
   var text = raw.trim();
   if (text.isEmpty || text == '[REDACTED]') return null;
   if (text.endsWith('[REDACTED]')) {
     text = text.substring(0, text.length - '[REDACTED]'.length).trimRight();
   }
+
+  text = text.replaceAll(
+    RegExp(r'<timestamp>[\s\S]*?</timestamp>\s*', multiLine: true),
+    '',
+  );
+
+  final query = RegExp(
+    r'<user_query>\s*([\s\S]*?)\s*</user_query>',
+    multiLine: true,
+  ).firstMatch(text);
+  if (query != null) {
+    text = (query.group(1) ?? '').trim();
+  }
+
+  text = text.trim();
   if (text.isEmpty) return null;
   return text;
 }
@@ -308,31 +332,12 @@ void _applyToolResult(
   required Object? result,
   required bool isError,
 }) {
-  for (var i = 0; i < messages.length; i++) {
-    final msg = messages[i];
-    final parts = msg.parts;
-    for (var j = 0; j < parts.length; j++) {
-      final part = parts[j];
-      if (part is! AiToolCallPart || part.toolCallId != toolUseId) continue;
-      final updated = List<AiMessagePart>.of(parts);
-      updated[j] = AiToolCallPart(
-        toolCallId: part.toolCallId,
-        toolName: part.toolName,
-        args: part.args,
-        argsText: part.argsText,
-        result: result,
-        isError: isError || part.isError,
-      );
-      messages[i] = AiMessage(
-        id: msg.id,
-        role: msg.role,
-        parts: updated,
-        createdAt: msg.createdAt,
-        status: msg.status,
-      );
-      return;
-    }
-  }
+  applyAiToolResult(
+    messages,
+    toolUseId: toolUseId,
+    result: result,
+    isError: isError,
+  );
 }
 
 DateTime? _parseTimestamp(Object? raw) {

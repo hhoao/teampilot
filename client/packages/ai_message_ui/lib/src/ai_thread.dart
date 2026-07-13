@@ -4,6 +4,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
 import 'ai_message_view.dart';
+import 'part_registry.dart';
 import 'theme.dart';
 
 /// Binds an [AiThreadRuntime] and renders status / message list chrome.
@@ -18,6 +19,7 @@ class AiThread extends StatefulWidget {
     required this.emptyBuilder,
     required this.errorBuilder,
     this.messageBuilder,
+    this.registry = AiPartRegistry.defaults,
     this.hasOlder = false,
     this.isLoadingOlder = false,
     this.onLoadOlder,
@@ -38,6 +40,7 @@ class AiThread extends StatefulWidget {
   )
   errorBuilder;
   final Widget Function(BuildContext context, AiMessage message)? messageBuilder;
+  final AiPartRegistry registry;
   final bool hasOlder;
   final bool isLoadingOlder;
   final VoidCallback? onLoadOlder;
@@ -204,7 +207,7 @@ class _AiThreadState extends State<AiThread> {
   Widget _buildMessage(BuildContext context, AiMessage message) {
     final builder = widget.messageBuilder;
     if (builder != null) return builder(context, message);
-    return AiMessageView(message: message);
+    return AiMessageView(message: message, registry: widget.registry);
   }
 
   Widget _buildLoadOlderHeader(BuildContext context) {

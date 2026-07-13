@@ -77,6 +77,11 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
   List<AiMessage> _allMessages = const [];
   int _visibleCount = 0;
 
+  AppSession? _lastSession;
+  String? _lastMemberId;
+  TeamProfile? _lastTeam;
+  String? _lastWorkingDirectory;
+
   Future<void> load({
     required AppSession session,
     required String memberId,
@@ -84,6 +89,11 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     String? workingDirectory,
     bool force = false,
   }) async {
+    _lastSession = session;
+    _lastMemberId = memberId;
+    _lastTeam = team;
+    _lastWorkingDirectory = workingDirectory;
+
     final gen = ++_loadGeneration;
     _allMessages = const [];
     _visibleCount = 0;
@@ -128,6 +138,26 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     }
   }
 
+  /// Drop cache for [sessionId] and force-reload if this cubit last loaded it.
+  Future<void> invalidateAndReload(String sessionId) async {
+    _loader.invalidate(sessionId: sessionId);
+    final session = _lastSession;
+    final memberId = _lastMemberId;
+    if (session == null || memberId == null) return;
+    if (session.sessionId != sessionId) return;
+    await load(
+      session: session,
+      memberId: memberId,
+      team: _lastTeam,
+      workingDirectory: _lastWorkingDirectory,
+      force: true,
+    );
+  }
+
+  void invalidateSession(String sessionId) {
+    _loader.invalidate(sessionId: sessionId);
+  }
+
   void loadOlder() {
     if (state.status != AiHistoryViewStatus.ready) return;
     if (!state.hasOlder || state.isLoadingOlder) return;
@@ -144,6 +174,10 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     _loadGeneration++;
     _allMessages = const [];
     _visibleCount = 0;
+    _lastSession = null;
+    _lastMemberId = null;
+    _lastTeam = null;
+    _lastWorkingDirectory = null;
     runtime.setEmpty();
     emit(const AiHistoryState());
   }

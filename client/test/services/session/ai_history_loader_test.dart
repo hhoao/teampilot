@@ -32,7 +32,7 @@ void main() {
   );
 
   AiHistoryLoader buildLoader({
-    AiHistoryLocator locator = const AiHistoryLocator(),
+    AiHistoryLocator? locator,
     Map<CliTool, AiTranscriptAdapter>? adapters,
   }) {
     return AiHistoryLoader(
@@ -40,7 +40,7 @@ void main() {
       fs: () => fs,
       layout: () => layout,
       appDataRoot: () => base.path,
-      locator: locator,
+      locator: locator ?? AiHistoryLocator(),
       adapters: adapters,
       resolveCacheToken: (_) async => mtimeToken,
     );

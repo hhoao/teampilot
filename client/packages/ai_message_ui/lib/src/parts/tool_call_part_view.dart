@@ -15,8 +15,6 @@ class AiToolCallPartView extends StatefulWidget {
   });
 
   final AiToolCallPart part;
-
-  /// Nested under [AiToolGroupView] — tighter vertical padding.
   final bool dense;
 
   @override
@@ -34,7 +32,7 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
     final strings = AiMessageStrings.of(context);
     final triggerColor = aiTheme.resolveToolTrigger(scheme);
     final part = widget.part;
-    final cancelled = part.isError && part.result == null;
+    final cancelled = part.isCancelled;
     final bottom = widget.dense ? 2.0 : aiTheme.partSpacing;
 
     return Padding(
@@ -50,13 +48,7 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    part.isError
-                        ? Icons.cancel_outlined
-                        : Icons.check_circle_outline,
-                    size: 16,
-                    color: part.isError ? scheme.error : triggerColor,
-                  ),
+                  _StatusIcon(part: part, color: triggerColor),
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text.rich(
@@ -133,6 +125,46 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
         ],
       ),
     );
+  }
+}
+
+class _StatusIcon extends StatelessWidget {
+  const _StatusIcon({required this.part, required this.color});
+
+  final AiToolCallPart part;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    if (part.isError) {
+      return Icon(Icons.error_outline, size: 16, color: scheme.error);
+    }
+    return switch (part.status) {
+      AiToolCallStatus.running => SizedBox(
+        width: 16,
+        height: 16,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: color,
+        ),
+      ),
+      AiToolCallStatus.complete => Icon(
+        Icons.check_circle_outline,
+        size: 16,
+        color: color,
+      ),
+      AiToolCallStatus.incomplete => Icon(
+        Icons.radio_button_unchecked,
+        size: 16,
+        color: color,
+      ),
+      AiToolCallStatus.cancelled => Icon(
+        Icons.cancel_outlined,
+        size: 16,
+        color: color,
+      ),
+    };
   }
 }
 

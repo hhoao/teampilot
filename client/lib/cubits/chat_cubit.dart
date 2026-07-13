@@ -116,6 +116,9 @@ class ChatCubit extends Cubit<ChatState>
        _sessionRepository = sessionRepository,
        super(const ChatState());
 
+  /// Fired when History should drop cache / reload (disconnect or switch back).
+  void Function(String sessionId)? onSessionHistoryStale;
+
   final RemoteBusBindingResolver? _remoteBusResolver;
   final SessionConnectOrchestrator? _sessionConnect;
   final Future<TeamProfile?> Function(String teamId)? _teamById;
@@ -1063,6 +1066,9 @@ class ChatCubit extends Cubit<ChatState>
     if (tab == null || tab.workbenchView == view) return;
     tab.workbenchView = view;
     emit(state.copyWith(stateVersion: state.stateVersion + 1));
+    if (view == SessionWorkbenchView.history) {
+      onSessionHistoryStale?.call(sessionId);
+    }
   }
 
   /// Shows the compose landing for [workspaceId] without closing open tabs.
@@ -1172,7 +1178,14 @@ class ChatCubit extends Cubit<ChatState>
     SessionRepository? repo,
   }) => _launchService.connectWorkspaceSession(request, repo: repo);
 
-  void disconnectSession() => _launchService.disconnectSession();
+  void disconnectSession() {
+    final tab = activeTab;
+    final sessionId = tab?.info.id;
+    _launchService.disconnectSession();
+    if (sessionId != null && sessionId.isNotEmpty) {
+      onSessionHistoryStale?.call(sessionId);
+    }
+  }
 
   Future<void> restartWorkspaceSession(
     SessionConnectRequest request, {

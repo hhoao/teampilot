@@ -919,6 +919,9 @@ Future<AppShell> buildAppShell({
     globalPresets: () => cliPresetsCubit.state.presets,
   );
   final aiHistoryCubit = AiHistoryCubit(loader: aiHistoryLoader);
+  chatCubit.onSessionHistoryStale = (sessionId) {
+    unawaited(aiHistoryCubit.invalidateAndReload(sessionId));
+  };
 
   final notificationCubit = NotificationCubit();
   final notificationBootstrap = notificationCubit.load();

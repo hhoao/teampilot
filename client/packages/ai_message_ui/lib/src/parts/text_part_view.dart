@@ -33,7 +33,9 @@ class AiTextPartView extends StatelessWidget {
 
 /// Exposed for tests / hosts that want the same fence repair rules.
 String prepareStreamingMarkdown(String raw) {
-  final fenceCount = RegExp(r'^```', multiLine: true).allMatches(raw).length;
+  // Match line-start fences including indented ones (CommonMark-ish).
+  final fenceCount =
+      RegExp(r'^[ \t]{0,3}```', multiLine: true).allMatches(raw).length;
   if (fenceCount.isOdd) {
     return '$raw\n```';
   }

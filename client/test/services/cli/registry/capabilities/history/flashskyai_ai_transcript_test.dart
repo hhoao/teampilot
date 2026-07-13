@@ -145,6 +145,7 @@ void main() {
     expect(tools.map((t) => t.toolName), ['Read', 'Read', 'Bash']);
     expect(tools[0].args, {'file_path': '/tmp/demo/SKILL.md'});
     expect(tools[1].isError, isTrue);
+    expect(tools[1].status, AiToolCallStatus.complete);
     expect(tools[2].result, 'tool output truncated');
   });
 }

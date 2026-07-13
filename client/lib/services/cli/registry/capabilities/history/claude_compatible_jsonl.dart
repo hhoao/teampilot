@@ -19,7 +19,7 @@ List<AiMessage> parseClaudeCompatibleJsonl(
     if (event == null) continue;
     _appendFromEvent(messages, event, fallbackId: fallbackId);
   }
-  return messages;
+  return finalizeAiMessagesForHistory(messages);
 }
 
 Map<String, dynamic>? _tryDecodeObject(String line) {
@@ -194,31 +194,12 @@ void _applyToolResult(
   required Object? result,
   required bool isError,
 }) {
-  for (var i = 0; i < messages.length; i++) {
-    final msg = messages[i];
-    final parts = msg.parts;
-    for (var j = 0; j < parts.length; j++) {
-      final part = parts[j];
-      if (part is! AiToolCallPart || part.toolCallId != toolUseId) continue;
-      final updated = List<AiMessagePart>.of(parts);
-      updated[j] = AiToolCallPart(
-        toolCallId: part.toolCallId,
-        toolName: part.toolName,
-        args: part.args,
-        argsText: part.argsText,
-        result: result,
-        isError: isError || part.isError,
-      );
-      messages[i] = AiMessage(
-        id: msg.id,
-        role: msg.role,
-        parts: updated,
-        createdAt: msg.createdAt,
-        status: msg.status,
-      );
-      return;
-    }
-  }
+  applyAiToolResult(
+    messages,
+    toolUseId: toolUseId,
+    result: result,
+    isError: isError,
+  );
 }
 
 DateTime? _parseTimestamp(Object? raw) {

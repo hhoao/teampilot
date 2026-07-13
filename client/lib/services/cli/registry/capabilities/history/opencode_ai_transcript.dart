@@ -87,10 +87,16 @@ Future<AiTranscriptBundle?> _locateJsonStorage(
     return null;
   }
 
+  final totalBytes =
+      fragments.fold<int>(0, (sum, f) => sum + f.bytes.length);
   return AiTranscriptBundle(
     adapterId: 'opencode',
     fragments: fragments,
-    hints: {'sessionId': sessionId, 'source': 'json'},
+    hints: {
+      'sessionId': sessionId,
+      'source': 'json',
+      'cacheToken': 'opencode-json|$sessionId|$totalBytes',
+    },
   );
 }
 
@@ -173,10 +179,16 @@ ORDER BY time_created ASC, id ASC
       return null;
     }
 
+    final totalBytes =
+        fragments.fold<int>(0, (sum, f) => sum + f.bytes.length);
     return AiTranscriptBundle(
       adapterId: 'opencode',
       fragments: fragments,
-      hints: {'sessionId': sessionId, 'source': 'sqlite'},
+      hints: {
+        'sessionId': sessionId,
+        'source': 'sqlite',
+        'cacheToken': 'opencode-sqlite|$sessionId|$totalBytes',
+      },
     );
   } on Object {
     return null;
@@ -397,7 +409,7 @@ final class OpencodeAiTranscriptAdapter implements AiTranscriptAdapter {
       );
     }
 
-    return messages;
+    return finalizeAiMessagesForHistory(messages);
   }
 }
 
@@ -462,14 +474,23 @@ Iterable<AiMessagePart> _partsFromOcPart(
         ];
       }
       final state = Map<String, dynamic>.from(stateRaw);
-      final status = '${state['status'] ?? ''}';
-      final isError = status == 'error';
+      final statusRaw = '${state['status'] ?? ''}';
+      final isError = statusRaw == 'error';
       Object? result;
-      if (status == 'completed') {
+      AiToolCallStatus status;
+      if (statusRaw == 'completed') {
         result = '${state['output'] ?? ''}';
+        status = AiToolCallStatus.complete;
       } else if (isError) {
         final error = '${state['error'] ?? ''}'.trim();
         result = error.isEmpty ? null : error;
+        status = AiToolCallStatus.complete;
+      } else if (statusRaw == 'pending' ||
+          statusRaw == 'running' ||
+          statusRaw.isEmpty) {
+        status = AiToolCallStatus.incomplete;
+      } else {
+        status = AiToolCallStatus.incomplete;
       }
       return [
         AiToolCallPart(
@@ -477,6 +498,7 @@ Iterable<AiMessagePart> _partsFromOcPart(
           toolName: name,
           args: _asArgs(state['input']),
           result: result,
+          status: status,
           isError: isError,
         ),
       ];

@@ -4,24 +4,23 @@ import 'package:flutter/material.dart';
 import 'ai_message_parts.dart';
 import 'message_action_bar.dart';
 import 'part_registry.dart';
+import 'strings.dart';
 import 'theme.dart';
 
 /// Role layout aligned with assistant-ui UserMessage / AssistantMessage.
-///
-/// User: muted rounded bubble, end-aligned, action bar on hover.
-/// Assistant: no bubble, prose + grouped parts, action bar under content.
-/// System: centered muted pill.
 class AiMessageView extends StatefulWidget {
   const AiMessageView({
     required this.message,
     this.registry = AiPartRegistry.defaults,
     this.showActionBar = true,
+    this.actionBarReveal = AiActionBarReveal.always,
     super.key,
   });
 
   final AiMessage message;
   final AiPartRegistry registry;
   final bool showActionBar;
+  final AiActionBarReveal actionBarReveal;
 
   @override
   State<AiMessageView> createState() => _AiMessageViewState();
@@ -51,13 +50,16 @@ class _AiMessageViewState extends State<AiMessageView> {
             parts: parts,
             message: widget.message,
             showActionBar: widget.showActionBar,
+            actionBarReveal: widget.actionBarReveal,
             hovered: _hovered,
           ),
           AiRole.assistant => _AssistantBlock(
             scheme: scheme,
+            aiTheme: aiTheme,
             parts: parts,
             message: widget.message,
             showActionBar: widget.showActionBar,
+            actionBarReveal: widget.actionBarReveal,
             hovered: _hovered,
           ),
           AiRole.system => Align(
@@ -85,6 +87,43 @@ class _AiMessageViewState extends State<AiMessageView> {
   }
 }
 
+class _StatusBanner extends StatelessWidget {
+  const _StatusBanner({required this.message});
+
+  final AiMessage message;
+
+  @override
+  Widget build(BuildContext context) {
+    if (message.status == AiMessageStatus.complete) {
+      return const SizedBox.shrink();
+    }
+    final strings = AiMessageStrings.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final label = message.status == AiMessageStatus.cancelled
+        ? strings.messageCancelled
+        : strings.messageIncomplete;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: scheme.errorContainer.withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: scheme.error.withValues(alpha: 0.35)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: scheme.onErrorContainer,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _UserBubble extends StatelessWidget {
   const _UserBubble({
     required this.scheme,
@@ -92,6 +131,7 @@ class _UserBubble extends StatelessWidget {
     required this.parts,
     required this.message,
     required this.showActionBar,
+    required this.actionBarReveal,
     required this.hovered,
   });
 
@@ -100,50 +140,56 @@ class _UserBubble extends StatelessWidget {
   final Widget parts;
   final AiMessage message;
   final bool showActionBar;
+  final AiActionBarReveal actionBarReveal;
   final bool hovered;
 
   @override
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.centerRight,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.sizeOf(context).width * 0.85,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            if (showActionBar)
-              Opacity(
-                opacity: hovered ? 1 : 0,
-                child: AiMessageActionBar(
-                  message: message,
-                  alwaysVisible: hovered,
-                ),
-              ),
-            Flexible(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: aiTheme.resolveUserBubble(scheme),
-                  borderRadius:
-                      BorderRadius.circular(aiTheme.userBubbleRadius),
-                ),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: DefaultTextStyle.merge(
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: aiTheme.resolveUserForeground(scheme),
-                      height: 1.5,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final bubbleMax = constraints.maxWidth.isFinite
+              ? constraints.maxWidth * 0.85
+              : 480.0;
+          return ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: bubbleMax),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (showActionBar)
+                  AiMessageActionBar(
+                    message: message,
+                    reveal: actionBarReveal,
+                    forceVisible: hovered,
+                  ),
+                Flexible(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: aiTheme.resolveUserBubble(scheme),
+                      borderRadius:
+                          BorderRadius.circular(aiTheme.userBubbleRadius),
                     ),
-                    child: parts,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: DefaultTextStyle.merge(
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: aiTheme.resolveUserForeground(scheme),
+                          height: 1.5,
+                        ),
+                        child: parts,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -152,16 +198,20 @@ class _UserBubble extends StatelessWidget {
 class _AssistantBlock extends StatelessWidget {
   const _AssistantBlock({
     required this.scheme,
+    required this.aiTheme,
     required this.parts,
     required this.message,
     required this.showActionBar,
+    required this.actionBarReveal,
     required this.hovered,
   });
 
   final ColorScheme scheme;
+  final AiMessageTheme aiTheme;
   final Widget parts;
   final AiMessage message;
   final bool showActionBar;
+  final AiActionBarReveal actionBarReveal;
   final bool hovered;
 
   @override
@@ -173,6 +223,7 @@ class _AssistantBlock extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _StatusBanner(message: message),
             DefaultTextStyle.merge(
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: scheme.onSurface,
@@ -183,12 +234,10 @@ class _AssistantBlock extends StatelessWidget {
             if (showActionBar)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Opacity(
-                  opacity: hovered ? 1 : 0,
-                  child: AiMessageActionBar(
-                    message: message,
-                    alwaysVisible: hovered,
-                  ),
+                child: AiMessageActionBar(
+                  message: message,
+                  reveal: actionBarReveal,
+                  forceVisible: hovered,
                 ),
               ),
           ],

@@ -5,23 +5,19 @@ import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../utils/logger.dart';
 import '../cli/preset_resolver.dart';
-import '../cli/registry/capabilities/history/claude_ai_transcript.dart';
-import '../cli/registry/capabilities/history/codex_ai_transcript.dart';
-import '../cli/registry/capabilities/history/cursor_ai_transcript.dart';
-import '../cli/registry/capabilities/history/flashskyai_ai_transcript.dart';
-import '../cli/registry/capabilities/history/opencode_ai_transcript.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
 import '../io/filesystem.dart';
 import '../storage/runtime_layout.dart';
 import '../terminal/session_member_cli_resolver.dart';
 import 'ai_history_locator.dart';
+import 'ai_history_providers.dart';
 import 'session_history_context.dart';
 import 'session_history_context_builder.dart';
 
 class _AiHistoryCacheEntry {
   const _AiHistoryCacheEntry({required this.token, required this.messages});
 
-  final String? token;
+  final String token;
   final List<AiMessage> messages;
 }
 
@@ -34,7 +30,7 @@ final class AiHistoryLoader {
     required Filesystem Function() fs,
     required RuntimeLayout Function() layout,
     required String Function() appDataRoot,
-    AiHistoryLocator locator = const AiHistoryLocator(),
+    AiHistoryLocator? locator,
     Map<CliTool, AiTranscriptAdapter>? adapters,
     SessionHistoryCacheTokenResolver? resolveCacheToken,
     List<CliPreset> Function()? globalPresets,
@@ -42,19 +38,14 @@ final class AiHistoryLoader {
        _fs = fs,
        _layout = layout,
        _appDataRoot = appDataRoot,
-       _locator = locator,
-       _adapters = adapters ?? defaultAdapters,
+       _locator = locator ?? AiHistoryLocator(),
+       _adapters = adapters ?? aiHistoryDefaultAdapters(),
        _resolveCacheToken = resolveCacheToken,
        _globalPresets = globalPresets;
 
-  static final Map<CliTool, AiTranscriptAdapter> defaultAdapters =
-      Map.unmodifiable({
-        CliTool.claude: const ClaudeAiTranscriptAdapter(),
-        CliTool.flashskyai: const FlashskyaiAiTranscriptAdapter(),
-        CliTool.codex: const CodexAiTranscriptAdapter(),
-        CliTool.opencode: const OpencodeAiTranscriptAdapter(),
-        CliTool.cursor: const CursorAiTranscriptAdapter(),
-      });
+  /// Prefer [aiHistoryDefaultAdapters] / [kAiHistoryProviders] — kept for tests.
+  static Map<CliTool, AiTranscriptAdapter> get defaultAdapters =>
+      aiHistoryDefaultAdapters();
 
   final SessionHistoryContextBuilder _contextBuilder;
   final Filesystem Function() _fs;
@@ -130,23 +121,46 @@ final class AiHistoryLoader {
     );
 
     final cacheKey = _cacheKey(session.sessionId, effectiveMemberId);
-    final token = await (_resolveCacheToken ?? _defaultCacheToken)(ctx);
-    if (!force) {
+    final preliminaryToken = await (_resolveCacheToken ?? _defaultCacheToken)(
+      ctx,
+    );
+    if (!force && preliminaryToken != null) {
       final hit = _cache[cacheKey];
-      if (hit != null && hit.token == token) {
+      if (hit != null && hit.token == preliminaryToken) {
         return hit.messages;
       }
     }
 
     try {
       final bundle = await _locator.locate(ctx: ctx, cli: cli);
+      final hintToken = bundle?.hints['cacheToken']?.trim();
+      // Custom resolvers own the cache key; otherwise prefer locate hints.
+      final token = _resolveCacheToken != null
+          ? preliminaryToken
+          : ((hintToken != null && hintToken.isNotEmpty)
+                ? hintToken
+                : preliminaryToken);
+
+      if (!force && token != null) {
+        final hit = _cache[cacheKey];
+        if (hit != null && hit.token == token) {
+          return hit.messages;
+        }
+      }
+
       final messages = bundle == null
           ? const <AiMessage>[]
           : await adapter.parse(bundle);
-      _cache[cacheKey] = _AiHistoryCacheEntry(
-        token: token,
-        messages: messages,
-      );
+
+      // Null token is uncacheable — never treat null==null as a forever hit.
+      if (token != null) {
+        _cache[cacheKey] = _AiHistoryCacheEntry(
+          token: token,
+          messages: messages,
+        );
+      } else {
+        _cache.remove(cacheKey);
+      }
       return messages;
     } on Object catch (e, st) {
       appLogger.e(

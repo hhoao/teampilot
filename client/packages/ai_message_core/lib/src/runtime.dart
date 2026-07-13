@@ -34,6 +34,7 @@ class ExternalStoreAiThreadRuntime implements AiThreadRuntime {
   Stream<void> get changes => _changes.stream;
 
   void setLoading() {
+    _messages = const [];
     _status = AiThreadStatus.loading;
     _errorMessage = null;
     _notify();
@@ -54,6 +55,7 @@ class ExternalStoreAiThreadRuntime implements AiThreadRuntime {
   }
 
   void setError(String message) {
+    _messages = const [];
     _status = AiThreadStatus.error;
     _errorMessage = message;
     _notify();

@@ -1,31 +1,29 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/session/ai_history_loader.dart';
-import 'package:teampilot/services/session/ai_history_locator.dart';
+import 'package:teampilot/services/session/ai_history_providers.dart';
 
 void main() {
-  test('every launch-supported tool has an AiTranscriptAdapter', () {
+  test('every launch-supported tool has an AiHistoryProvider', () {
     final registry = CliToolRegistry.builtIn();
     for (final tool in CliTool.values) {
       final def = registry.tryGet(tool);
       expect(def, isNotNull, reason: '$tool missing from built-in registry');
       if (!def!.isLaunchSupported) continue;
       expect(
-        AiHistoryLoader.defaultAdapters.containsKey(tool),
+        kAiHistoryProviders.containsKey(tool),
         isTrue,
-        reason: '$tool missing AiTranscriptAdapter in defaultAdapters',
+        reason: '$tool missing from kAiHistoryProviders',
       );
+      expect(kAiHistoryProviders[tool]!.adapter.id, isNotEmpty);
     }
   });
 
-  test('AiHistoryLocator covers every CliTool', () async {
-    // Exhaustiveness is enforced by the switch in AiHistoryLocator.locate;
-    // this smoke call just ensures the locator constructs for all enum values.
-    const locator = AiHistoryLocator();
-    expect(locator, isA<AiHistoryLocator>());
-    for (final tool in CliTool.values) {
-      expect(AiHistoryLoader.defaultAdapters.containsKey(tool), isTrue);
+  test('defaultAdapters mirror kAiHistoryProviders', () {
+    final adapters = aiHistoryDefaultAdapters();
+    expect(adapters.keys.toSet(), kAiHistoryProviders.keys.toSet());
+    for (final tool in kAiHistoryProviders.keys) {
+      expect(adapters[tool], same(kAiHistoryProviders[tool]!.adapter));
     }
   });
 }

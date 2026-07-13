@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:ai_message_core/ai_message_core.dart';
 
 import '../resume/pinned_transcript_probe.dart';
+import '../../../../session/ai_history_cache_token.dart';
 import '../../../../session/session_history_context.dart';
 import 'claude_compatible_jsonl.dart';
 
@@ -26,6 +27,11 @@ Future<AiTranscriptBundle?> locateClaudeTranscript(
   final bytes = await ctx.fs.readBytes(path);
   if (bytes == null) return null;
 
+  final cacheToken = await aiHistoryPathCacheToken(
+    fs: ctx.fs,
+    path: path,
+    byteLength: bytes.length,
+  );
   return AiTranscriptBundle(
     adapterId: 'claude',
     fragments: [
@@ -34,6 +40,7 @@ Future<AiTranscriptBundle?> locateClaudeTranscript(
         bytes: bytes,
       ),
     ],
+    hints: {'cacheToken': cacheToken},
   );
 }
 

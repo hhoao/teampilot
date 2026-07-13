@@ -11,7 +11,10 @@ class AiMessageStrings {
     this.result = 'Result',
     this.copy = 'Copy',
     this.copied = 'Copied',
+    this.exportMarkdown = 'Export Markdown',
     this.code = 'code',
+    this.messageIncomplete = 'Message incomplete',
+    this.messageCancelled = 'Message cancelled',
   });
 
   final String usedTool;
@@ -21,7 +24,10 @@ class AiMessageStrings {
   final String result;
   final String copy;
   final String copied;
+  final String exportMarkdown;
   final String code;
+  final String messageIncomplete;
+  final String messageCancelled;
 
   String toolsUsedLabel(int count) => formatToolsUsed(count);
 

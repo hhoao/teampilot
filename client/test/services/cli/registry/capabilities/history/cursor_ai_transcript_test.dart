@@ -121,6 +121,25 @@ void main() {
   );
 
   test(
+    'unwraps Cursor <user_query> and strips <timestamp>',
+    () async {
+      const raw = '''
+{"role":"user","message":{"content":[{"type":"text","text":"<timestamp>Sat</timestamp>\\n<user_query>\\nhello world\\n</user_query>"}]}}
+''';
+      final messages = await const CursorAiTranscriptAdapter().parse(
+        AiTranscriptBundle(
+          adapterId: 'cursor',
+          fragments: [
+            AiTranscriptFragment(name: 'u.jsonl', bytes: utf8.encode(raw)),
+          ],
+        ),
+      );
+      expect(messages, hasLength(1));
+      expect((messages.single.parts.single as AiTextPart).text, 'hello world');
+    },
+  );
+
+  test(
     'parses TeamPilot runtime agent-transcript (no tool id, split lines)',
     () async {
       final bytes = await File(
@@ -142,7 +161,7 @@ void main() {
       expect(messages[0].role, AiRole.user);
       expect(
         (messages[0].parts.single as AiTextPart).text,
-        contains('<user_query>'),
+        'hello',
       );
 
       final asst = messages[1];

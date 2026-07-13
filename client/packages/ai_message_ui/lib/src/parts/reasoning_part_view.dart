@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 
 import '../strings.dart';
 import '../theme.dart';
+import 'text_part_view.dart';
 
-/// Collapsible reasoning — assistant-ui ReasoningRoot (outline variant).
+/// Collapsible reasoning — assistant-ui ReasoningRoot (outline + markdown).
 class AiReasoningPartView extends StatefulWidget {
   const AiReasoningPartView({required this.part, super.key});
 
@@ -77,12 +78,12 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxHeight: 256),
                   child: SingleChildScrollView(
-                    child: SelectableText(
-                      widget.part.text,
+                    child: DefaultTextStyle.merge(
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                         height: 1.5,
                       ),
+                      child: AiTextPartView(text: widget.part.text),
                     ),
                   ),
                 ),

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
 
+import '../../../../session/ai_history_cache_token.dart';
 import '../../../../session/session_history_context.dart';
 
 /// Locate Codex rollout JSONL under `$CODEX_HOME/sessions/**/rollout-*.jsonl`.
@@ -14,6 +15,11 @@ Future<AiTranscriptBundle?> locateCodexTranscript(
   final bytes = await ctx.fs.readBytes(path);
   if (bytes == null) return null;
 
+  final cacheToken = await aiHistoryPathCacheToken(
+    fs: ctx.fs,
+    path: path,
+    byteLength: bytes.length,
+  );
   return AiTranscriptBundle(
     adapterId: 'codex',
     fragments: [
@@ -22,6 +28,7 @@ Future<AiTranscriptBundle?> locateCodexTranscript(
         bytes: bytes,
       ),
     ],
+    hints: {'cacheToken': cacheToken},
   );
 }
 
@@ -83,7 +90,7 @@ final class CodexAiTranscriptAdapter implements AiTranscriptAdapter {
       }
     }
 
-    return messages;
+    return finalizeAiMessagesForHistory(messages);
   }
 }
 
@@ -312,31 +319,12 @@ void _applyToolResult(
   required Object? result,
   required bool isError,
 }) {
-  for (var i = 0; i < messages.length; i++) {
-    final msg = messages[i];
-    final parts = msg.parts;
-    for (var j = 0; j < parts.length; j++) {
-      final part = parts[j];
-      if (part is! AiToolCallPart || part.toolCallId != toolUseId) continue;
-      final updated = List<AiMessagePart>.of(parts);
-      updated[j] = AiToolCallPart(
-        toolCallId: part.toolCallId,
-        toolName: part.toolName,
-        args: part.args,
-        argsText: part.argsText,
-        result: result,
-        isError: isError || part.isError,
-      );
-      messages[i] = AiMessage(
-        id: msg.id,
-        role: msg.role,
-        parts: updated,
-        createdAt: msg.createdAt,
-        status: msg.status,
-      );
-      return;
-    }
-  }
+  applyAiToolResult(
+    messages,
+    toolUseId: toolUseId,
+    result: result,
+    isError: isError,
+  );
 }
 
 DateTime? _parseTimestamp(Object? raw) {
