@@ -198,9 +198,10 @@ class AppTextareaShell extends StatefulWidget {
 Behavior (match Shad):
 - State holds `_height`, init to `initialHeight ?? minHeight`, clamp to `[minHeight, maxHeight]`.
 - On `didUpdateWidget`, re-clamp and notify `onHeightChanged` if changed.
-- `_calculateLineCount(TextStyle)`: `fontSize * (height ?? 20/14)` → `(_height / lineHeight).floor().clamp(1, 100)`. Prefer explicit `textStyle`, else `Theme.of(context).textTheme.bodyMedium`.
+- `_calculateLineCount(TextStyle)`: `fontSize * (height ?? 20/14)` → `(_height / lineHeight).floor().clamp(1, 100)`. Prefer explicit `textStyle`, else `Theme.of(context).textTheme.bodyMedium`. (Do **not** copy Shad’s `20/4` fallback — that looks like an upstream typo.)
 - Build: `Stack` with `SizedBox(height: _height, width: double.infinity, child: builder(...))` and optional bottom-trailing grip (`Positioned` + `GestureDetector.onPanUpdate`).
 - **No** outline decoration here (compose stays borderless).
+- File header: adapted from flutter-shadcn-ui Textarea; `App*` naming.
 
 - [ ] **Step 5: Re-run shell tests — PASS**
 
@@ -292,8 +293,6 @@ void main() {
   });
 }
 ```
-
-Adjust `AppControlTheme.standard()` / theme helpers to match actual API in `app_control_theme.dart` (read file before coding).
 
 - [ ] **Step 2: Run — expect FAIL**
 
