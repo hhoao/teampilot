@@ -204,35 +204,41 @@ class _RunOrStopGlyph extends StatelessWidget {
         : const <String>[];
     final runningSelected =
         selected != null && cubit.hasRunning(selected.selectionKey);
+    final showStop = runningIds.isNotEmpty || runningSelected;
 
-    if (runningIds.isNotEmpty || runningSelected) {
-      return _ToolbarGlyph(
-        keyId: const Key('run-toolbar-stop'),
-        icon: Icons.stop_rounded,
-        tooltip: l10n.runStop,
-        color: RunToolbar._actionGreen,
-        onTap: () {
-          if (compound != null && runningIds.isNotEmpty) {
-            unawaited(cubit.stopCompound(runningIds));
-            return;
-          }
-          final session = selected == null
-              ? null
-              : cubit.runningSessionFor(selected.selectionKey);
-          if (session != null) {
-            unawaited(cubit.stopSession(session.id));
-          }
-        },
-      );
-    }
-
-    return _ToolbarGlyph(
-      keyId: const Key('run-toolbar-run'),
-      icon: Icons.play_arrow,
-      tooltip: l10n.runAction,
-      color: RunToolbar._actionGreen,
-      enabled: hasSelection,
-      onTap: hasSelection ? () => unawaited(_onRun(context)) : null,
+    // Keep Run available while Stop is shown so rerun can open the dialog
+    // (Restart / optional New instance) instead of only offering Stop.
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (showStop)
+          _ToolbarGlyph(
+            keyId: const Key('run-toolbar-stop'),
+            icon: Icons.stop_rounded,
+            tooltip: l10n.runStop,
+            color: RunToolbar._actionGreen,
+            onTap: () {
+              if (compound != null && runningIds.isNotEmpty) {
+                unawaited(cubit.stopCompound(runningIds));
+                return;
+              }
+              final session = selected == null
+                  ? null
+                  : cubit.runningSessionFor(selected.selectionKey);
+              if (session != null) {
+                unawaited(cubit.stopSession(session.id));
+              }
+            },
+          ),
+        _ToolbarGlyph(
+          keyId: const Key('run-toolbar-run'),
+          icon: Icons.play_arrow,
+          tooltip: l10n.runAction,
+          color: RunToolbar._actionGreen,
+          enabled: hasSelection,
+          onTap: hasSelection ? () => unawaited(_onRun(context)) : null,
+        ),
+      ],
     );
   }
 
@@ -247,6 +253,7 @@ class _RunOrStopGlyph extends StatelessWidget {
     final selected = cubit.state.selectedConfiguration;
     if (selected == null) return;
     final l10n = context.l10n;
+    final allowMultiple = cubit.selectionAllowsMultipleInstances;
 
     if (cubit.hasRunning(selected.selectionKey)) {
       final choice = await showDialog<_RerunChoice>(
@@ -269,12 +276,13 @@ class _RunOrStopGlyph extends StatelessWidget {
                     onPressed: () => Navigator.of(dialogContext).pop(),
                     child: Text(l10n.cancel),
                   ),
-                  TextButton(
-                    onPressed: () => Navigator.of(
-                      dialogContext,
-                    ).pop(_RerunChoice.newInstance),
-                    child: Text(l10n.runNewInstance),
-                  ),
+                  if (allowMultiple)
+                    TextButton(
+                      onPressed: () => Navigator.of(
+                        dialogContext,
+                      ).pop(_RerunChoice.newInstance),
+                      child: Text(l10n.runNewInstance),
+                    ),
                   FilledButton(
                     onPressed: () => Navigator.of(
                       dialogContext,

@@ -12,6 +12,7 @@ import '../services/run/launch_adapter_protocol.dart';
 import '../services/run/launch_config_store.dart';
 import '../services/run/launch_type_normalize.dart';
 import '../services/run/run_platform.dart';
+import '../services/run/shell_script_configuration.dart';
 import '../services/run/shell_script_launch_schema.dart';
 import '../services/run/shell_script_migrator.dart';
 
@@ -634,6 +635,19 @@ class RunCubit extends Cubit<RunState> {
 
   bool hasRunning(String selectionKey) =>
       _platform.sessionManager.hasRunning(selectionKey);
+
+  /// Whether the selected config may start another instance while one runs.
+  ///
+  /// Shell Script reads [ShellScriptConfiguration.allowMultipleInstances];
+  /// other launch types keep the historical Restart + New instance dialog.
+  bool get selectionAllowsMultipleInstances {
+    final selected = state.selectedConfiguration;
+    if (selected == null) return true;
+    if (!isBuiltInShellType(selected.configuration.type)) return true;
+    return ShellScriptConfiguration.fromLaunchConfiguration(
+      selected.configuration,
+    ).allowMultipleInstances;
+  }
 
   RunSession? runningSessionFor(String selectionKey) {
     for (final session in state.sessions) {

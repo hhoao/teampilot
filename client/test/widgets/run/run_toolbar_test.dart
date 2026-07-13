@@ -38,6 +38,27 @@ OwnedLaunchConfiguration _processConfig({
   );
 }
 
+OwnedLaunchConfiguration _shellScriptConfig({
+  String id = 'api',
+  String name = 'API',
+  bool allowMultipleInstances = false,
+}) {
+  return OwnedLaunchConfiguration(
+    owner: _folder,
+    configuration: LaunchConfiguration(
+      id: id,
+      name: name,
+      type: 'shellScript',
+      extras: {
+        'execute': 'scriptText',
+        'scriptText': 'echo hi',
+        'executeInTerminal': false,
+        'allowMultipleInstances': allowMultipleInstances,
+      },
+    ),
+  );
+}
+
 class _FakeProcessLauncher implements RunProcessLauncher {
   @override
   Future<RunLaunchHandle> launch({
@@ -52,6 +73,38 @@ class _FakeProcessLauncher implements RunProcessLauncher {
   }
 }
 
+/// Keeps sessions in [RunSessionStatus.running] until [stop] or [complete].
+class _HangingProcessLauncher implements RunProcessLauncher {
+  final stopCalls = <String>[];
+  final _exits = <String, Completer<int>>{};
+
+  @override
+  Future<RunLaunchHandle> launch({
+    required String sessionId,
+    required OwnedLaunchConfiguration owned,
+    required void Function(ProcessRunOutput output) onOutput,
+  }) async {
+    final exit = Completer<int>();
+    _exits[sessionId] = exit;
+    return RunLaunchHandle(
+      exitCode: exit.future,
+      stop: () async {
+        stopCalls.add(sessionId);
+        if (!exit.isCompleted) {
+          exit.complete(143);
+        }
+      },
+    );
+  }
+
+  void complete(String sessionId, [int code = 0]) {
+    final exit = _exits[sessionId];
+    if (exit != null && !exit.isCompleted) {
+      exit.complete(code);
+    }
+  }
+}
+
 class _FakeAdapterLauncher implements RunAdapterLauncher {
   @override
   Future<RunLaunchHandle> launch({
@@ -60,6 +113,30 @@ class _FakeAdapterLauncher implements RunAdapterLauncher {
     required void Function(ProcessRunOutput output) onOutput,
   }) {
     throw UnimplementedError();
+  }
+}
+
+class _HangingAdapterLauncher implements RunAdapterLauncher {
+  final stopCalls = <String>[];
+  final _exits = <String, Completer<int>>{};
+
+  @override
+  Future<RunLaunchHandle> launch({
+    required String sessionId,
+    required OwnedLaunchConfiguration owned,
+    required void Function(ProcessRunOutput output) onOutput,
+  }) async {
+    final exit = Completer<int>();
+    _exits[sessionId] = exit;
+    return RunLaunchHandle(
+      exitCode: exit.future,
+      stop: () async {
+        stopCalls.add(sessionId);
+        if (!exit.isCompleted) {
+          exit.complete(143);
+        }
+      },
+    );
   }
 }
 
@@ -72,11 +149,13 @@ class _RecordingPlatform implements RunPlatformApi {
     this.recommendations = const [],
     List<String> Function(OwnedLaunchConfiguration owned)? validate,
     Map<String, List<String>>? kindsByType,
+    RunProcessLauncher? executor,
+    RunAdapterLauncher? adapters,
   }) : _validate = validate ?? ((_) => const []),
        _kindsByType = kindsByType ?? const {},
        sessionManager = RunSessionManager(
-         executor: _FakeProcessLauncher(),
-         adapters: _FakeAdapterLauncher(),
+         executor: executor ?? _FakeProcessLauncher(),
+         adapters: adapters ?? _FakeAdapterLauncher(),
        );
 
   final List<OwnedLaunchConfiguration> configurations;
@@ -764,5 +843,127 @@ void main() {
       cubit.state.sessions.every((s) => s.compoundId == compound.compoundId),
       isTrue,
     );
+  });
+
+  testWidgets(
+    'rerun dialog hides New instance when allowMultipleInstances is false',
+    (tester) async {
+      final launcher = _HangingProcessLauncher();
+      final config = _shellScriptConfig(allowMultipleInstances: false);
+      final platform = _RecordingPlatform(
+        configurations: [config],
+        executor: launcher,
+      );
+      final cubit = RunCubit(platform: platform, folders: const [_folder]);
+      addTearDown(cubit.close);
+      addTearDown(platform._actionsController.close);
+
+      await cubit.load();
+      await cubit.select(config.selectionKey);
+      await cubit.runSelected();
+      await tester.pumpWidget(_host(cubit: cubit));
+      await tester.pump();
+
+      expect(find.byKey(const Key('run-toolbar-stop')), findsOneWidget);
+      expect(find.byKey(const Key('run-toolbar-run')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('run-toolbar-run')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Configuration already running'), findsOneWidget);
+      expect(find.text('Restart'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(find.text('New instance'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'rerun dialog keeps New instance when allowMultipleInstances is true',
+    (tester) async {
+      final launcher = _HangingProcessLauncher();
+      final config = _shellScriptConfig(allowMultipleInstances: true);
+      final platform = _RecordingPlatform(
+        configurations: [config],
+        executor: launcher,
+      );
+      final cubit = RunCubit(platform: platform, folders: const [_folder]);
+      addTearDown(cubit.close);
+      addTearDown(platform._actionsController.close);
+
+      await cubit.load();
+      await cubit.select(config.selectionKey);
+      await cubit.runSelected();
+      await tester.pumpWidget(_host(cubit: cubit));
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('run-toolbar-run')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('New instance'), findsOneWidget);
+      expect(find.text('Restart'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'rerun dialog keeps New instance for non-shellScript when already running',
+    (tester) async {
+      final adapters = _HangingAdapterLauncher();
+      final config = OwnedLaunchConfiguration(
+        owner: _folder,
+        configuration: const LaunchConfiguration(
+          id: 'app',
+          name: 'App',
+          type: 'flutter',
+        ),
+      );
+      final platform = _RecordingPlatform(
+        configurations: [config],
+        adapters: adapters,
+      );
+      final cubit = RunCubit(platform: platform, folders: const [_folder]);
+      addTearDown(cubit.close);
+      addTearDown(platform._actionsController.close);
+
+      await cubit.load();
+      await cubit.select(config.selectionKey);
+      expect(cubit.selectionAllowsMultipleInstances, isTrue);
+      await cubit.runSelected();
+      await tester.pumpWidget(_host(cubit: cubit));
+      await tester.pump();
+
+      expect(cubit.hasRunning(config.selectionKey), isTrue);
+      await tester.tap(find.byKey(const Key('run-toolbar-run')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('New instance'), findsOneWidget);
+      expect(find.text('Restart'), findsOneWidget);
+    },
+  );
+
+  testWidgets('Stop routes through session manager stop', (tester) async {
+    final launcher = _HangingProcessLauncher();
+    final config = _shellScriptConfig();
+    final platform = _RecordingPlatform(
+      configurations: [config],
+      executor: launcher,
+    );
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    addTearDown(cubit.close);
+    addTearDown(platform._actionsController.close);
+
+    await cubit.load();
+    await cubit.select(config.selectionKey);
+    await cubit.runSelected();
+    await tester.pumpWidget(_host(cubit: cubit));
+    await tester.pump();
+
+    final sessionId = cubit.state.sessions.single.id;
+    await tester.tap(find.byKey(const Key('run-toolbar-stop')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(launcher.stopCalls, [sessionId]);
+    expect(cubit.hasRunning(config.selectionKey), isFalse);
   });
 }
