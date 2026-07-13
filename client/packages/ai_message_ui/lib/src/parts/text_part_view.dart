@@ -23,7 +23,8 @@ class AiTextPartView extends StatelessWidget {
     return MarkdownBody(
       data: data,
       styleSheet: sheet,
-      selectable: true,
+      // Prefer parent [SelectionArea] so drag/double-click spans paragraphs.
+      selectable: false,
       builders: {
         'pre': _AuiCodeBlockBuilder(aiTheme: aiTheme),
       },
@@ -171,42 +172,46 @@ class _CodeBlockState extends State<_CodeBlock> {
                 ),
               ),
             ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      lang,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
+            child: SelectionContainer.disabled(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        lang,
+                        style:
+                            Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    tooltip: _copied ? strings.copied : strings.copy,
-                    iconSize: 16,
-                    onPressed: () async {
-                      await Clipboard.setData(
-                        ClipboardData(text: widget.code),
-                      );
-                      if (!mounted) return;
-                      setState(() => _copied = true);
-                      await Future<void>.delayed(
-                        const Duration(milliseconds: 1600),
-                      );
-                      if (!mounted) return;
-                      setState(() => _copied = false);
-                    },
-                    icon: Icon(
-                      _copied ? Icons.check_rounded : Icons.copy_rounded,
-                      size: 16,
-                      color: scheme.onSurfaceVariant,
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      tooltip: _copied ? strings.copied : strings.copy,
+                      iconSize: 16,
+                      onPressed: () async {
+                        await Clipboard.setData(
+                          ClipboardData(text: widget.code),
+                        );
+                        if (!mounted) return;
+                        setState(() => _copied = true);
+                        await Future<void>.delayed(
+                          const Duration(milliseconds: 1600),
+                        );
+                        if (!mounted) return;
+                        setState(() => _copied = false);
+                      },
+                      icon: Icon(
+                        _copied ? Icons.check_rounded : Icons.copy_rounded,
+                        size: 16,
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -221,7 +226,7 @@ class _CodeBlockState extends State<_CodeBlock> {
             ),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-              child: SelectableText(
+              child: Text(
                 widget.code,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   fontFamily: 'monospace',

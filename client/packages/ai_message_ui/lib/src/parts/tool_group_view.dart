@@ -37,41 +37,43 @@ class _AiToolGroupViewState extends State<AiToolGroupView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          InkWell(
-            onTap: () => setState(() => _open = !_open),
-            borderRadius: BorderRadius.circular(6),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    hasError
-                        ? Icons.cancel_outlined
-                        : Icons.check_circle_outline,
-                    size: 16,
-                    color: hasError ? scheme.error : triggerColor,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    strings.toolsUsedLabel(tools.length),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: triggerColor,
-                      fontWeight: FontWeight.w600,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  AnimatedRotation(
-                    turns: _open ? 0 : -0.25,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      Icons.expand_more,
+          SelectionContainer.disabled(
+            child: InkWell(
+              onTap: () => setState(() => _open = !_open),
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      hasError
+                          ? Icons.cancel_outlined
+                          : Icons.check_circle_outline,
                       size: 16,
-                      color: triggerColor,
+                      color: hasError ? scheme.error : triggerColor,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    Text(
+                      strings.toolsUsedLabel(tools.length),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: triggerColor,
+                        fontWeight: FontWeight.w600,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    AnimatedRotation(
+                      turns: _open ? 0 : -0.25,
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(
+                        Icons.expand_more,
+                        size: 16,
+                        color: triggerColor,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

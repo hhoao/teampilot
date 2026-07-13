@@ -242,32 +242,38 @@ class _AiThreadState extends State<AiThread> {
       case AiThreadStatus.idle:
         final aiTheme = AiMessageTheme.of(context);
         final sentinelCount = widget.hasOlder ? 1 : 0;
-        return NotificationListener<ScrollNotification>(
-          onNotification: _onScroll,
-          child: ListView.builder(
-            controller: _scrollController,
-            padding: EdgeInsets.fromLTRB(
-              aiTheme.threadHorizontalPadding,
-              16,
-              aiTheme.threadHorizontalPadding,
-              24,
-            ),
-            itemCount: _messages.length + sentinelCount,
-            itemBuilder: (context, index) {
-              if (widget.hasOlder && index == 0) {
-                return _buildLoadOlderHeader(context);
-              }
-              final messageIndex = widget.hasOlder ? index - 1 : index;
-              return Align(
-                alignment: Alignment.topCenter,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: aiTheme.threadMaxWidth,
+        // One selection region for the thread — markdown/tool Text join into a
+        // continuous drag/double-click selection (not per-paragraph islands).
+        return SelectionArea(
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _onScroll,
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: EdgeInsets.fromLTRB(
+                aiTheme.threadHorizontalPadding,
+                16,
+                aiTheme.threadHorizontalPadding,
+                24,
+              ),
+              itemCount: _messages.length + sentinelCount,
+              itemBuilder: (context, index) {
+                if (widget.hasOlder && index == 0) {
+                  return SelectionContainer.disabled(
+                    child: _buildLoadOlderHeader(context),
+                  );
+                }
+                final messageIndex = widget.hasOlder ? index - 1 : index;
+                return Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: aiTheme.threadMaxWidth,
+                    ),
+                    child: _buildMessage(context, _messages[messageIndex]),
                   ),
-                  child: _buildMessage(context, _messages[messageIndex]),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         );
     }

@@ -36,39 +36,41 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            InkWell(
-              onTap: () => setState(() => _open = !_open),
-              borderRadius: BorderRadius.circular(aiTheme.panelRadius + 2),
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.psychology_outlined,
-                      size: 16,
-                      color: triggerColor,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        strings.reasoning,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: triggerColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    AnimatedRotation(
-                      turns: _open ? 0 : -0.25,
-                      duration: const Duration(milliseconds: 200),
-                      child: Icon(
-                        Icons.expand_more,
+            SelectionContainer.disabled(
+              child: InkWell(
+                onTap: () => setState(() => _open = !_open),
+                borderRadius: BorderRadius.circular(aiTheme.panelRadius + 2),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.psychology_outlined,
                         size: 16,
                         color: triggerColor,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          strings.reasoning,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: triggerColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      AnimatedRotation(
+                        turns: _open ? 0 : -0.25,
+                        duration: const Duration(milliseconds: 200),
+                        child: Icon(
+                          Icons.expand_more,
+                          size: 16,
+                          color: triggerColor,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

@@ -56,6 +56,7 @@ class SessionHistoryReview extends StatefulWidget {
   final AppSession session;
   final String selectedMemberId;
   final TeamProfile? team;
+
   /// Returns `true` after successful connect+inject so compose can clear.
   final Future<bool> Function(String message) onSubmit;
   final String? launchError;
@@ -279,10 +280,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     if (widget.session.isSimple || team == null) return '';
     final mid = widget.selectedMemberId.trim();
     if (mid.isNotEmpty) return mid;
-    return team.members
-            .where(TeamMemberNaming.isTeamLead)
-            .firstOrNull
-            ?.id ??
+    return team.members.where(TeamMemberNaming.isTeamLead).firstOrNull?.id ??
         team.members.firstOrNull?.id ??
         '';
   }
@@ -303,11 +301,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     if (team == null) return CliTool.claude;
     final member = _selectedMember(team);
     if (member == null) return team.cli;
-    return memberLaunchCli(
-      team: team,
-      member: member,
-      globalPresets: presets,
-    );
+    return memberLaunchCli(team: team, member: member, globalPresets: presets);
   }
 
   bool _effectivePermission({
@@ -341,8 +335,11 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
       return id.isEmpty ? null : id;
     }
     final memberId = _effectiveMemberId(team);
-    final fromOverride =
-        session.continueOverrides.memberOverrides[memberId]?.presetId?.trim();
+    final fromOverride = session
+        .continueOverrides
+        .memberOverrides[memberId]
+        ?.presetId
+        ?.trim();
     if (fromOverride != null && fromOverride.isNotEmpty) return fromOverride;
     final member = _selectedMember(team);
     if (member == null) return null;
@@ -386,7 +383,10 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
 
   Workspace? _workspaceForSettings(BuildContext context) {
     final id = widget.session.workspaceId;
-    return context.read<ChatCubit>().state.workspaces
+    return context
+        .read<ChatCubit>()
+        .state
+        .workspaces
         .where((w) => w.workspaceId == id)
         .firstOrNull;
   }
@@ -625,12 +625,10 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     );
     final workspace = _workspaceForSettings(context);
     final showTeamSettings = !session.isSimple && team != null;
-    final teamSettingsAttention = showTeamSettings &&
+    final teamSettingsAttention =
+        showTeamSettings &&
         workspace != null &&
-        landingTeamSettingsNeedsAttention(
-          workspace: workspace,
-          team: team,
-        );
+        landingTeamSettingsNeedsAttention(workspace: workspace, team: team);
 
     return ColoredBox(
       color: cs.surface,
@@ -651,11 +649,13 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                       AiMessageTheme(
                         userBubbleColor: cs.surfaceContainerHighest,
                         userBubbleForeground: cs.onSurface,
-                        mutedSurface: cs.surfaceContainerHighest
-                            .withValues(alpha: 0.55),
+                        mutedSurface: cs.surfaceContainerHighest.withValues(
+                          alpha: 0.55,
+                        ),
                         toolTriggerColor: cs.onSurfaceVariant,
-                        markdownStyleSheet:
-                            buildAppMarkdownStyleSheet(Theme.of(context)),
+                        markdownStyleSheet: buildAppMarkdownStyleSheet(
+                          Theme.of(context),
+                        ),
                         messageSpacing: 24,
                         // Fill the shared column so edges match compose.
                         threadMaxWidth: kSessionHistoryColumnMaxWidth,
@@ -703,9 +703,9 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                                 Text(
                                   context.l10n.sessionHistoryLoading,
                                   style: AppTextStyles.of(context).mdColored(
-                                    Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
+                                    Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
@@ -740,12 +740,12 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                                     SizedBox(height: context.appSpacing.sm),
                                     Text(
                                       detail,
-                                      style:
-                                          AppTextStyles.of(context).smColored(
-                                        Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant,
-                                      ),
+                                      style: AppTextStyles.of(context)
+                                          .smColored(
+                                            Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
+                                          ),
                                       textAlign: TextAlign.center,
                                     ),
                                   ],
@@ -762,34 +762,34 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                           },
                           loadOlderHeaderBuilder:
                               (context, {required bool isLoadingOlder}) {
-                            final headerCs = Theme.of(context).colorScheme;
-                            return Padding(
-                              padding: EdgeInsets.only(
-                                bottom: context.appSpacing.md,
-                              ),
-                              child: Center(
-                                child: isLoadingOlder
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : Text(
-                                        context
-                                            .l10n.sessionHistoryLoadOlderHint,
-                                        style: AppTextStyles.of(context)
-                                            .smColored(
-                                          headerCs.onSurfaceVariant.withValues(
-                                            alpha: 0.75,
+                                final headerCs = Theme.of(context).colorScheme;
+                                return Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom: context.appSpacing.md,
+                                  ),
+                                  child: Center(
+                                    child: isLoadingOlder
+                                        ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : Text(
+                                            context
+                                                .l10n
+                                                .sessionHistoryLoadOlderHint,
+                                            style: AppTextStyles.of(context)
+                                                .smColored(
+                                                  headerCs.onSurfaceVariant
+                                                      .withValues(alpha: 0.75),
+                                                ),
+                                            textAlign: TextAlign.center,
                                           ),
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                              ),
-                            );
-                          },
+                                  ),
+                                );
+                              },
                         );
                       },
                     ),
@@ -814,59 +814,60 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                   onChanged: (_) => setState(() {}),
                   attachTooltip: l10n.workspaceChatLandingAttach,
                   enhanceTooltip: l10n.workspaceChatLandingEnhance,
-              voiceTooltip: l10n.workspaceChatLandingVoice,
-              voiceCancelTooltip: l10n.workspaceChatLandingVoiceCancel,
-              voiceStopTooltip: l10n.workspaceChatLandingVoiceStop,
-              isEnhancing: _enhancing,
-              isVoiceListening: _voiceListening,
-              voiceElapsed: _voiceElapsed,
-              voiceSoundLevel: _voiceSoundLevel,
-              onAttach: () => unawaited(_attachFiles()),
-              onEnhance: () => unawaited(_enhancePrompt()),
-              onVoice: () => unawaited(_toggleVoice()),
-              onVoiceCancel: () => unawaited(_cancelVoice()),
-              onVoiceStop: () => unawaited(_stopVoice()),
-              workspaceRoot: _workspaceRoot,
-              skills: skills,
-              plugins: plugins,
-              slashBundle: _slashBundle(),
-              launchError: widget.launchError,
-              onPasteImage: _pasteComposeImage,
-              identityLabel: identityLabel,
-              identityIcon: session.isSimple
-                  ? Icons.psychology_outlined
-                  : Icons.groups_outlined,
-              sameCliPresets: sameCliPresets,
-              selectedPresetId: selectedPresetId,
-              modelPresetLabel: modelLabel,
-              emptyPresetHintLabel: l10n.workspaceCliPresetsEmptyHint,
-              onPresetSelected: (presetId) => unawaited(
-                _onPresetSelected(
-                  presetId: presetId,
-                  team: team,
+                  voiceTooltip: l10n.workspaceChatLandingVoice,
+                  voiceCancelTooltip: l10n.workspaceChatLandingVoiceCancel,
+                  voiceStopTooltip: l10n.workspaceChatLandingVoiceStop,
+                  isEnhancing: _enhancing,
+                  isVoiceListening: _voiceListening,
+                  voiceElapsed: _voiceElapsed,
+                  voiceSoundLevel: _voiceSoundLevel,
+                  onAttach: () => unawaited(_attachFiles()),
+                  onEnhance: () => unawaited(_enhancePrompt()),
+                  onVoice: () => unawaited(_toggleVoice()),
+                  onVoiceCancel: () => unawaited(_cancelVoice()),
+                  onVoiceStop: () => unawaited(_stopVoice()),
+                  workspaceRoot: _workspaceRoot,
+                  skills: skills,
+                  plugins: plugins,
+                  slashBundle: _slashBundle(),
+                  launchError: widget.launchError,
+                  onPasteImage: _pasteComposeImage,
+                  identityLabel: identityLabel,
+                  identityIcon: session.isSimple
+                      ? Icons.psychology_outlined
+                      : Icons.groups_outlined,
                   sameCliPresets: sameCliPresets,
-                  lockedCli: lockedCli,
+                  selectedPresetId: selectedPresetId,
+                  modelPresetLabel: modelLabel,
+                  emptyPresetHintLabel: l10n.workspaceCliPresetsEmptyHint,
+                  onPresetSelected: (presetId) => unawaited(
+                    _onPresetSelected(
+                      presetId: presetId,
+                      team: team,
+                      sameCliPresets: sameCliPresets,
+                      lockedCli: lockedCli,
+                    ),
+                  ),
+                  dangerouslySkipPermissions: _effectivePermission(
+                    session: session,
+                    team: team,
+                  ),
+                  defaultPermissionsLabel:
+                      l10n.workspaceChatLandingDefaultPermissions,
+                  fullAccessPermissionsLabel:
+                      l10n.workspaceChatLandingFullAccessPermissions,
+                  onPermissionSelected: (value) => unawaited(
+                    _onPermissionSelected(value: value, team: team),
+                  ),
+                  teamSettingsTooltip: showTeamSettings
+                      ? l10n.teamSettings
+                      : null,
+                  onTeamSettings: showTeamSettings
+                      ? () => unawaited(_openTeamSettings(team))
+                      : null,
+                  showTeamSettingsAttention: teamSettingsAttention,
                 ),
               ),
-              dangerouslySkipPermissions: _effectivePermission(
-                session: session,
-                team: team,
-              ),
-              defaultPermissionsLabel:
-                  l10n.workspaceChatLandingDefaultPermissions,
-              fullAccessPermissionsLabel:
-                  l10n.workspaceChatLandingFullAccessPermissions,
-              onPermissionSelected: (value) => unawaited(
-                _onPermissionSelected(value: value, team: team),
-              ),
-              teamSettingsTooltip:
-                  showTeamSettings ? l10n.teamSettings : null,
-              onTeamSettings: showTeamSettings
-                  ? () => unawaited(_openTeamSettings(team))
-                  : null,
-              showTeamSettingsAttention: teamSettingsAttention,
-            ),
-          ),
             ],
           ),
         ),

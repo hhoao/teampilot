@@ -40,50 +40,54 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          InkWell(
-            onTap: () => setState(() => _open = !_open),
-            borderRadius: BorderRadius.circular(6),
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: widget.dense ? 4 : 6),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _StatusIcon(part: part, color: triggerColor),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text.rich(
-                      TextSpan(
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: triggerColor,
-                          decoration: cancelled
-                              ? TextDecoration.lineThrough
-                              : null,
-                          height: 1.2,
+          SelectionContainer.disabled(
+            child: InkWell(
+              onTap: () => setState(() => _open = !_open),
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: widget.dense ? 4 : 6),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _StatusIcon(part: part, color: triggerColor),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text.rich(
+                        TextSpan(
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: triggerColor,
+                            decoration: cancelled
+                                ? TextDecoration.lineThrough
+                                : null,
+                            height: 1.2,
+                          ),
+                          children: [
+                            TextSpan(
+                              text:
+                                  '${cancelled ? strings.cancelledTool : strings.usedTool}: ',
+                            ),
+                            TextSpan(
+                              text: part.toolName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
-                        children: [
-                          TextSpan(
-                            text:
-                                '${cancelled ? strings.cancelledTool : strings.usedTool}: ',
-                          ),
-                          TextSpan(
-                            text: part.toolName,
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        ],
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  AnimatedRotation(
-                    turns: _open ? 0 : -0.25,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      Icons.expand_more,
-                      size: 16,
-                      color: triggerColor,
+                    const SizedBox(width: 4),
+                    AnimatedRotation(
+                      turns: _open ? 0 : -0.25,
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(
+                        Icons.expand_more,
+                        size: 16,
+                        color: triggerColor,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -212,7 +216,7 @@ class _MutedPre extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.all(10),
-        child: SelectableText(
+        child: Text(
           text,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
             fontFamily: 'monospace',
