@@ -25,6 +25,10 @@
 | Terminal session exit | No exit-code watch; `RunLaunchHandle.exitCode` never completes until v2 |
 | Stop (terminal) | `writeToPty('\x03')` + session → `exited` |
 | Rerun when `allowMultipleInstances: false` | Restart only (hide New instance) |
+| Non-terminal invocation | `shell: true`, `command` = `HostInteractiveShell.defaultExecutable()`, `args` = `['-c', fullLine]` |
+| `process` alias in registry | Not registered; `normalizeLaunchType()` maps `process` → `shellScript` on read in store/platform |
+| Multi-instance binding | `selectionKey → entryId` for reuse; `sessionId → entryId` always (Stop/focus/close) |
+| Bootstrap order | `WorkspaceRunRegistry` precedes `WorkspaceShellConnector` — lazy resolver at launch time |
 | Before launch / Show page | Out of scope |
 
 ---
@@ -42,13 +46,15 @@
 | `client/lib/services/terminal/workspace_terminal_session_ops.dart` | Create | Shared create+connect extracted from panel |
 | `client/lib/models/run/run_ui_intent.dart` | Create | `activateToolWindow` / `focusToolWindow` / surface hint |
 | `client/lib/services/run/process_launch_schema.dart` | Keep | Used only by migrator tests / legacy references during transition |
-| `client/lib/services/run/launch_type_registry.dart` | Modify | Register `shellScript`; `process` resolves to same schema |
-| `client/lib/services/run/run_platform.dart` | Modify | Validate/start paths for `shellScript` |
+| `client/lib/services/run/launch_type_registry.dart` | Modify | Register `shellScript` only (not `process`) |
+| `client/lib/services/run/run_platform.dart` | Modify | `normalizeLaunchType`; validate/start; all `ProcessLaunchSchema` branches → `shellScript` |
 | `client/lib/services/run/run_session_manager.dart` | Modify | Dispatch `shellScript` launcher; skip `_watchExit` for terminal-backed |
+| `client/lib/services/run/workspace_run_platform_factory.dart` | Modify | Inject `RunShellScriptLauncher` via lazy terminal-deps resolver |
+| `client/lib/services/terminal/terminal_session.dart` | Modify | Expose `transportReadyForIo` getter (delegate to launch controller) |
 | `client/lib/services/run/launch_config_l10n.dart` | Modify | New field labels + validation codes |
-| `client/lib/services/run/launch_config_schema_fields.dart` | Modify | Monospace keys for script/interpreter paths |
-| `client/lib/services/run/launch_variable_expander.dart` | Modify | Expand shell-script string fields in `extras` |
-| `client/lib/cubits/run_cubit.dart` | Modify | Defaults for new configs; expose `allowMultipleInstances`; emit `RunUiIntent` |
+| `client/lib/services/run/launch_config_schema_fields.dart` | Modify | Add `enum` field type; monospace for script/interpreter paths |
+| `client/lib/services/run/launch_variable_expander.dart` | Modify | **Task 3:** expand all shell-script string fields before validate/build |
+| `client/lib/cubits/run_cubit.dart` | Modify | `normalizeLaunchType` in select/create; `shellScript` defaults; `RunUiIntent`; remove `process` branches |
 | `client/lib/widgets/run/run_config_type_picker_dialog.dart` | Create | IDEA-style type picker before editor |
 | `client/lib/widgets/run/run_configurations_dialog.dart` | Modify | Add → type picker |
 | `client/lib/widgets/run/run_toolbar_config_dropdown.dart` | Modify | Add config → type picker |
@@ -60,7 +66,8 @@
 | `client/lib/app/app_shell.dart` | Modify | Wire `WorkspaceTerminalRunService` singleton |
 | `client/lib/l10n/app_en.arb` / `app_zh.arb` | Modify | Shell Script strings |
 | `client/test/services/run/shell_script_*_test.dart` | Create | Schema, migrator, command builder, launcher |
-| `client/test/services/terminal/workspace_terminal_run_service_test.dart` | Create | Bind/reuse/inject (mocked) |
+| `client/test/services/terminal/workspace_terminal_session_ops_test.dart` | Create | Ops create+connect (mocked) |
+| `client/test/services/run/launch_config_store_test.dart` | Modify | `process` on disk → `shellScript` in memory |
 | Existing `client/test/services/run/*`, `run_toolbar_test.dart`, etc. | Modify | Update `process` → `shellScript` expectations |
 
 Keep files under soft limits (`docs/CODE_QUALITY.md`). Do not put terminal inject logic in widgets beyond focus/visibility hooks.
@@ -87,7 +94,7 @@ void main() {
     expect(withDefaults['execute'], 'scriptFile');
     expect(withDefaults['executeInTerminal'], true);
     expect(withDefaults['allowMultipleInstances'], false);
-    expect(withDefaults['interpreterPath'], isNotEmpty);
+    expect(withDefaults['interpreterPath'], ShellScriptLaunchSchema.defaultInterpreterPath());
   });
 
   test('validate requires scriptPath when execute is scriptFile', () {
@@ -174,28 +181,23 @@ git commit -m "feat(run): add shellScript launch schema and configuration model"
 - [ ] **Step 1: Write failing migration tests**
 
 ```dart
-test('shell true maps to scriptText with joined command line', () {
-  final migrated = ShellScriptMigrator.migrate({
-    'type': 'process',
-    'command': 'npm',
-    'args': ['run', 'dev'],
-    'shell': true,
-  });
-  expect(migrated['type'], 'shellScript');
-  expect(migrated['execute'], 'scriptText');
-  expect(migrated['scriptText'], 'npm run dev');
-  expect(migrated['executeInTerminal'], false);
-  expect(migrated.containsKey('command'), false);
-});
+test('shell true maps to scriptText with joined command line', () { /* ... */ });
 
-test('flutter run style maps to quoted scriptText', () {
+test('flutter run style maps to quoted scriptText (branch 2)', () {
   final migrated = ShellScriptMigrator.migrate({
     'type': 'process',
     'command': 'flutter',
     'args': ['run'],
   });
+  expect(migrated['type'], 'shellScript');
   expect(migrated['execute'], 'scriptText');
-  expect(migrated['scriptText'], contains('flutter'));
+  expect(migrated['executeInTerminal'], false);
+  expect(migrated['activateToolWindow'], true);
+  expect(migrated['interpreterPath'], isNotEmpty);
+});
+
+test('launch_config_store loads process json as shellScript', () async {
+  // MemoryLaunchConfigIo + listConfigurations round-trip
 });
 ```
 
@@ -215,13 +217,19 @@ git commit -m "feat(run): migrate process launch configs to shellScript"
 
 ---
 
-### Task 3: Command builder (inject + non-terminal)
+### Task 3: Command builder + variable expansion (before validate/launch)
 
 **Files:**
 - Create: `client/lib/services/run/shell_script_command_builder.dart`
+- Modify: `client/lib/services/run/launch_variable_expander.dart`
 - Create: `client/test/services/run/shell_script_command_builder_test.dart`
+- Modify: `client/test/services/run/launch_variable_expander_test.dart`
 
-- [ ] **Step 1: Write failing builder tests**
+- [ ] **Step 1: Write failing expander tests for shell fields**
+
+Expand `scriptPath`, `scriptText`, `interpreterPath`, `interpreterOptions`, `scriptOptions`, `cwd`, env values in configuration `extras` **before** validate/build (spec requirement).
+
+- [ ] **Step 2: Write failing builder tests**
 
 Cover:
 - `scriptFile`: `cd '/proj' && /bin/bash ./scripts/a.sh --flag`
@@ -260,11 +268,27 @@ class ShellScriptProcessInvocation {
 }
 ```
 
-Locked: non-terminal uses `shell: true` with `command` = default shell and `args` = `['-c', fullLine]` OR single `sh -c` string per existing executor conventions — pick one and test against `ProcessRunExecutor` expectations.
+- [ ] **Step 3: Implement expander + builder**
 
-- [ ] **Step 4: Run — PASS**
+Non-terminal locked shape:
+
+```dart
+ShellScriptProcessInvocation(
+  command: HostInteractiveShell.defaultExecutable(),
+  args: ['-c', fullLine],
+  shell: true,
+  cwd: expandedCwd,
+  env: mergedEnv,
+)
+```
+
+- [ ] **Step 4: Run tests — PASS**
 
 - [ ] **Step 5: Commit**
+
+```bash
+git commit -m "feat(run): add shellScript command builder and field expansion"
+```
 
 ---
 
@@ -273,6 +297,7 @@ Locked: non-terminal uses `shell: true` with `command` = default shell and `args
 **Files:**
 - Modify: `client/lib/services/run/launch_type_registry.dart`
 - Modify: `client/lib/services/run/run_platform.dart`
+- Modify: `client/lib/cubits/run_cubit.dart` (`select` / `createConfiguration` / `schemaForType` fallbacks)
 - Modify: `client/test/services/run/launch_type_registry_test.dart`
 - Modify: `client/test/services/run/run_platform_test.dart`
 
@@ -282,7 +307,7 @@ Locked: non-terminal uses `shell: true` with `command` = default shell and `args
 
 - [ ] **Step 3: Register `shellScript` in `LaunchTypeRegistry.withBuiltIns()`**
 
-`registry.get('process')` may return null; `run_platform.validateConfiguration` normalizes alias:
+Add shared helper (e.g. `launch_type_normalize.dart`):
 
 ```dart
 String normalizeLaunchType(String type) =>
@@ -291,7 +316,11 @@ String normalizeLaunchType(String type) =>
       : type;
 ```
 
-`isTypeAvailable('shellScript', ...)` always true (like old process).
+Use in `run_platform.validateConfiguration`, `launch_config_store` load, and `run_cubit.select` (skip `provideOptions` for `shellScript` like old `process`).
+
+Replace **all** `ProcessLaunchSchema.typeName` branches in `run_platform.dart` with `shellScript` checks (or `isBuiltInShellType(type)`).
+
+`registry.get('process')` returns null — alias handled only at normalize layer.
 
 - [ ] **Step 4: Run targeted tests — PASS**
 
@@ -299,17 +328,26 @@ String normalizeLaunchType(String type) =>
 
 ---
 
-### Task 5: Workspace terminal session ops (extract from panel)
+### Task 5: Terminal transport API + session ops (extract from panel)
 
 **Files:**
+- Modify: `client/lib/services/terminal/terminal_session.dart`
 - Create: `client/lib/services/terminal/workspace_terminal_session_ops.dart`
 - Modify: `client/lib/widgets/workspace_terminal_panel.dart`
+- Create: `client/test/services/terminal/workspace_terminal_session_ops_test.dart`
 
-- [ ] **Step 1: Write failing unit test for ops (mock registry + connector)**
+- [ ] **Step 1: Expose `transportReadyForIo` on `TerminalSession`**
+
+```dart
+// terminal_session.dart
+bool get transportReadyForIo => _launch.transportReadyForIo;
+```
+
+Add unit test delegating to launch controller mock/stub.
+
+- [ ] **Step 2: Write failing ops test (mock registry + connector)**
 
 Test `createAndConnect` calls `group.addEntry` + connect coordinator with given `cwd` + `WorkspaceTerminalWorkspaceTargetSpec(targetId)`.
-
-- [ ] **Step 2: Run — FAIL**
 
 - [ ] **Step 3: Extract shared ops from panel `_addEntry` / `_runConnect`**
 
@@ -331,25 +369,44 @@ class WorkspaceTerminalSessionOps {
 
 Panel delegates to ops; behavior unchanged for manual "+" tabs.
 
-- [ ] **Step 4: Run widget-free tests + existing terminal tests if any — PASS**
+- [ ] **Step 4: Run `workspace_terminal_session_ops_test.dart` — PASS**
 
 - [ ] **Step 5: Commit**
 
 ---
 
-### Task 6: WorkspaceTerminalRunService
+### Task 6: WorkspaceTerminalRunService + bootstrap wiring
 
 **Files:**
 - Create: `client/lib/services/terminal/workspace_terminal_run_service.dart`
 - Create: `client/test/services/terminal/workspace_terminal_run_service_test.dart`
-- Modify: `client/lib/app/app_shell.dart` (provide service)
+- Modify: `client/lib/app/app_shell.dart`
+- Modify: `client/lib/services/run/workspace_run_platform_factory.dart` (lazy deps holder)
+
+**Bootstrap constraint:** `workspaceRunRegistry` is constructed at `app_shell.dart` ~733 before `workspaceShellConnector` ~758. Do **not** reorder blindly. Instead:
+
+```dart
+// app_shell.dart — after workspaceShellConnector exists:
+final workspaceTerminalSessionOps = WorkspaceTerminalSessionOps();
+final workspaceTerminalRunService = WorkspaceTerminalRunService();
+final terminalRunDeps = TerminalRunDepsResolver(
+  registry: workspaceTerminalRegistry,
+  connector: workspaceShellConnector,
+  ops: workspaceTerminalSessionOps,
+  runService: workspaceTerminalRunService,
+);
+workspaceRunRegistry.setTerminalRunDeps(terminalRunDeps); // or pass into factory on create()
+```
+
+`WorkspaceRunPlatformFactory.create()` resolves deps at **launch time** when building `RunShellScriptLauncher`.
 
 - [ ] **Step 1: Write failing service tests**
 
 Cases:
 - reuse bind when `allowMultipleInstances == false`
-- new entry when `allowMultipleInstances == true`
-- `waitForReady` times out at 30s → throws
+- new entry when `allowMultipleInstances == true` (does not overwrite prior `sessionId → entry`)
+- dual maps: `bindKey → entryId` and `sessionId → entryId`
+- `waitForReady` polls `entry.session.transportReadyForIo`, times out at 30s
 - `inject` calls `writeToPty` with `line + '\r'`
 - `interrupt` sends `\x03`
 - `onEntryDisposed` clears bind + notifies listener
@@ -359,36 +416,19 @@ Cases:
 - [ ] **Step 3: Implement service**
 
 ```dart
-typedef TerminalRunBindKey = ({String workspaceId, String selectionKey});
-
 class WorkspaceTerminalRunService {
   final Map<TerminalRunBindKey, String> _entryByBind = {};
+  final Map<String, String> _entryBySession = {}; // sessionId → entryId
   final Map<String, TerminalRunBindKey> _bindByEntry = {};
 
-  Future<WorkspaceTerminalEntry> openForRun({
-    required String workspaceId,
-    required String selectionKey,
-    required bool allowMultipleInstances,
-    required String cwd,
-    required String targetId,
-    required String title,
-    required WorkspaceTerminalSessionOps ops,
-    // ... registry, connector, coordinator, theme, l10n error string
-  });
-
-  Future<void> waitForReady(WorkspaceTerminalEntry entry, {Duration timeout = const Duration(seconds: 30)});
-
-  void inject(WorkspaceTerminalEntry entry, String line);
-  void interrupt(WorkspaceTerminalEntry entry);
-  void handleEntryClosed(String entryId); // called from panel on tab close
+  void registerSessionEntry({required String sessionId, required String entryId});
+  // ...
 }
 ```
 
-Use `WorkspaceTerminalWorkspaceTargetSpec(targetId)` for spec.
-
 - [ ] **Step 4: Run tests — PASS**
 
-- [ ] **Step 5: Wire in `app_shell.dart` as lazy singleton (like registry)**
+- [ ] **Step 5: Wire `TerminalRunDepsResolver` in `app_shell.dart` after connector**
 
 - [ ] **Step 6: Commit**
 
@@ -417,35 +457,27 @@ Non-terminal branch:
 
 - [ ] **Step 3: Implement `RunShellScriptLauncher`**
 
-```dart
-class RunShellScriptLauncher implements RunProcessLauncher {
-  RunShellScriptLauncher({
-    required ProcessRunExecutor executor,
-    required RunTargetResolver resolver,
-    required WorkspaceTerminalRunService terminalRuns,
-    required WorkspaceTerminalSessionOps terminalOps,
-    required ShellScriptCommandBuilder commandBuilder,
-    required void Function(RunUiIntent intent) emitUiIntent,
-    // inject workspaceId + theme/connect deps via closure or context holder
-  });
+Terminal `RunLaunchHandle`:
 
-  @override
-  Future<RunLaunchHandle> launch({...});
-}
+```dart
+final exitCompleter = Completer<int>(); // intentionally never completed in v1
+return RunLaunchHandle(
+  exitCode: exitCompleter.future,
+  stop: () async { terminalRuns.interrupt(entry); },
+);
 ```
 
-- [ ] **Step 4: Update `RunSessionManager`**
+Register `sessionId → entryId` via `terminalRuns.registerSessionEntry`.
+
+- [ ] **Step 4: Update `RunSessionManager` + `WorkspaceRunPlatformFactory`**
+
+Factory replaces bare `DefaultRunProcessLauncher` with composite dispatch:
 
 ```dart
-Future<RunLaunchHandle> _launchForType(...) {
-  final type = owned.configuration.type;
-  if (type == ShellScriptLaunchSchema.typeName ||
-      type == ShellScriptLaunchSchema.processAlias) {
-    return _shellScriptLauncher.launch(...);
-  }
-  if (type == ProcessLaunchSchema.typeName) { /* remove after migrator always normalizes */ }
-  ...
-}
+RunSessionManager(
+  executor: RunShellScriptLauncher(..., processExecutor: ProcessRunExecutor(...)),
+  // shellScript handled inside RunShellScriptLauncher; legacy process type removed after migrator
+)
 ```
 
 After successful terminal launch, **do not** call `_watchExit` when `executeInTerminal == true`:
@@ -549,13 +581,20 @@ Examples:
 
 Run: `cd client && flutter gen-l10n`
 
-- [ ] **Step 2: Extend `launch_config_schema_form.dart`**
+- [ ] **Step 2: Extend `launch_config_schema_fields.dart`**
+
+Add `LaunchConfigSchemaFieldType.enumValue` when schema property has `'enum': [...]`.
+
+- [ ] **Step 3: Extend `launch_config_schema_form.dart`**
 
 - `execute` enum → `AppDropdownField` with scriptFile/scriptText labels
 - Show `scriptPath` when `execute == scriptFile`; `scriptText` when `scriptText`
 - Booleans → `AppFormField` checkbox style (match automations)
 
-- [ ] **Step 3: Type picker dialog**
+- Show `scriptPath` only when `execute == scriptFile`; `scriptText` only when `scriptText` (form currently renders all properties unconditionally — add conditional filter)
+- Wire `ShellScriptValidationCodes` through `launch_config_l10n.dart` (same pattern as `LaunchConfigValidationCodes`)
+
+- [ ] **Step 4: Type picker dialog**
 
 ```dart
 Future<String?> showRunConfigTypePickerDialog(BuildContext context, {
@@ -565,7 +604,7 @@ Future<String?> showRunConfigTypePickerDialog(BuildContext context, {
 
 Lists built-in Shell Script first, then extension types (disabled + reason when unavailable).
 
-- [ ] **Step 4: Wire Add flows**
+- [ ] **Step 5: Wire Add flows**
 
 `RunConfigurationsDialog._create` and dropdown "Add" → picker → `showRunConfigEditorDialog(..., initialType: picked)`.
 
@@ -584,9 +623,9 @@ configuration: LaunchConfiguration(
 
 Remove `command: ''` default for shellScript.
 
-- [ ] **Step 5: Update widget tests**
+- [ ] **Step 6: Update widget tests (enum dropdown + conditional fields)**
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ---
 
@@ -613,21 +652,7 @@ When false and already running: dialog shows only Restart (+ Cancel).
 
 ---
 
-### Task 12: Variable expansion for shell fields
-
-**Files:**
-- Modify: `client/lib/services/run/launch_variable_expander.dart`
-- Create/extend: `client/test/services/run/launch_variable_expander_test.dart`
-
-- [ ] **Step 1: Test expanding `scriptPath`, `scriptText`, `interpreterPath` in extras**
-
-- [ ] **Step 2: Implement `expandShellScriptFields(Map<String, Object?> json, ...)`** called from launcher before build
-
-- [ ] **Step 3: Commit**
-
----
-
-### Task 13: Regression sweep + docs cross-link
+### Task 12: Regression sweep + docs cross-link
 
 **Files:**
 - Modify: tests referencing `process` type throughout `client/test/services/run/`
