@@ -28,6 +28,16 @@ class RunTerminalBridge extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Replaces buffered text for [sessionId] (e.g. seed from session manager).
+  void seed(String sessionId, String text) {
+    if (text.isEmpty) {
+      _buffers.remove(sessionId);
+    } else {
+      _buffers[sessionId] = StringBuffer(text);
+    }
+    notifyListeners();
+  }
+
   /// Drops buffered text for a closed/dismissed session.
   void clear(String sessionId) {
     if (_buffers.remove(sessionId) != null) {

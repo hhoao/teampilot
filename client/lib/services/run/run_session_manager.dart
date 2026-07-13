@@ -207,6 +207,7 @@ class RunSessionManager {
 
   final Map<String, RunSession> _sessions = {};
   final Map<String, _ActiveRun> _activeRuns = {};
+  final Map<String, StringBuffer> _outputBuffers = {};
   final StreamController<List<RunSession>> _sessionsController =
       StreamController<List<RunSession>>.broadcast();
   final StreamController<ProcessRunOutput> _outputController =
@@ -219,6 +220,13 @@ class RunSessionManager {
 
   /// Process / adapter stdout+stderr chunks for bottom Run pages.
   Stream<ProcessRunOutput> get outputStream => _outputController.stream;
+
+  /// Buffered log text for [sessionId] (empty when none yet).
+  ///
+  /// Used to seed [RunTerminalBridge] so output emitted before the panel
+  /// subscribes is not lost.
+  String bufferedOutputFor(String sessionId) =>
+      _outputBuffers[sessionId]?.toString() ?? '';
 
   List<RunSession> get sessions =>
       List<RunSession>.unmodifiable(_sessions.values);
@@ -298,6 +306,7 @@ class RunSessionManager {
   /// Stops a running session (if needed) and removes it from the session list.
   Future<void> dismiss(String sessionId) async {
     await stop(sessionId);
+    _outputBuffers.remove(sessionId);
     if (_sessions.remove(sessionId) != null && !_sessionsController.isClosed) {
       _sessionsController.add(sessions);
     }
@@ -367,6 +376,9 @@ class RunSessionManager {
   }
 
   void _emitOutput(ProcessRunOutput output) {
+    _outputBuffers
+        .putIfAbsent(output.sessionId, StringBuffer.new)
+        .write(output.data);
     if (!_outputController.isClosed) {
       _outputController.add(output);
     }

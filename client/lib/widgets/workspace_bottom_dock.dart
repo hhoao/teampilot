@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../cubits/layout_cubit.dart';
 import '../cubits/run_cubit.dart';
+import '../l10n/l10n_extensions.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 import 'run/run_panel.dart';
@@ -42,14 +46,22 @@ class _WorkspaceBottomDockState extends State<WorkspaceBottomDock> {
     final ids = state.sessions.map((s) => s.id).toSet();
     final added = ids.difference(_seenSessionIds);
     _seenSessionIds = ids;
-    if (added.isNotEmpty && _tab != WorkspaceBottomDockTab.run) {
+    if (added.isEmpty) return;
+
+    if (_tab != WorkspaceBottomDockTab.run) {
       setState(() => _tab = WorkspaceBottomDockTab.run);
+    }
+    // Bottom dock defaults hidden; reveal it so Run output is visible.
+    final layout = context.read<LayoutCubit>();
+    if (!layout.state.preferences.workspaceTerminalVisible) {
+      unawaited(layout.setWorkspaceTerminalVisible(true));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
     return BlocListener<RunCubit, RunState>(
       listenWhen: (prev, next) => prev.sessions != next.sessions,
       listener: (context, state) => _onSessionsChanged(state),
@@ -70,7 +82,7 @@ class _WorkspaceBottomDockState extends State<WorkspaceBottomDock> {
             child: Row(
               children: [
                 _DockSegment(
-                  label: 'Terminal',
+                  label: l10n.workspaceTerminal,
                   selected: _tab == WorkspaceBottomDockTab.terminal,
                   onTap: () => setState(
                     () => _tab = WorkspaceBottomDockTab.terminal,
@@ -78,7 +90,7 @@ class _WorkspaceBottomDockState extends State<WorkspaceBottomDock> {
                 ),
                 const SizedBox(width: 4),
                 _DockSegment(
-                  label: 'Run',
+                  label: l10n.shortcutsCategoryRun,
                   selected: _tab == WorkspaceBottomDockTab.run,
                   onTap: () =>
                       setState(() => _tab = WorkspaceBottomDockTab.run),

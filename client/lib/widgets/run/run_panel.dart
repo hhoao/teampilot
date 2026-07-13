@@ -51,6 +51,12 @@ class _RunPanelState extends State<RunPanel> {
 
     final manager = cubit.platform.sessionManager;
     final bridge = RunTerminalBridge(outputStream: manager.outputStream);
+    for (final session in cubit.state.sessions) {
+      final buffered = manager.bufferedOutputFor(session.id);
+      if (buffered.isNotEmpty) {
+        bridge.seed(session.id, buffered);
+      }
+    }
     setState(() {
       _ownedBridge = bridge;
       _bridge = bridge;
