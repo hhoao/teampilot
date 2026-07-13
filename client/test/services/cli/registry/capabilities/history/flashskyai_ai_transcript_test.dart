@@ -98,10 +98,53 @@ void main() {
     expect(bundle.fragments.single.bytes, fixture);
   });
 
+  test('locateFlashskyaiTranscript prefers projects over workspaces', () async {
+    // Real ~/.flashskyai layout uses projects/, not workspaces/.
+    final projects = p.join(base.path, 'projects', 'home-me-proj');
+    await Directory(projects).create(recursive: true);
+    final fixture = await File(
+      'test/fixtures/session_history/flashskyai/basic.jsonl',
+    ).readAsBytes();
+    await File(p.join(projects, 'task-1.jsonl')).writeAsBytes(fixture);
+
+    final bundle = await locateFlashskyaiTranscript(
+      ctx(transcriptRoots: [base.path]),
+    );
+
+    expect(bundle, isNotNull);
+    expect(bundle!.fragments.single.bytes, fixture);
+  });
+
   test('locateFlashskyaiTranscript returns null when missing', () async {
     final bundle = await locateFlashskyaiTranscript(
       ctx(transcriptRoots: [base.path]),
     );
     expect(bundle, isNull);
+  });
+
+  test('merges streamed tool_use lines sharing message.id', () async {
+    final bytes = await File(
+      'test/fixtures/session_history/flashskyai/streamed_tools.jsonl',
+    ).readAsBytes();
+    final messages = await const FlashskyaiAiTranscriptAdapter().parse(
+      AiTranscriptBundle(
+        adapterId: 'flashskyai',
+        fragments: [
+          AiTranscriptFragment(name: 'streamed_tools.jsonl', bytes: bytes),
+        ],
+      ),
+    );
+
+    expect(messages, hasLength(2));
+    expect(messages[0].role, AiRole.user);
+    expect((messages[0].parts.single as AiTextPart).text, 'superpowers');
+
+    final asst = messages[1];
+    expect(asst.id, 'msg_d32cf90b-b4a0-4d9a-bb95-ad60ef2de28d');
+    final tools = asst.parts.whereType<AiToolCallPart>().toList();
+    expect(tools.map((t) => t.toolName), ['Read', 'Read', 'Bash']);
+    expect(tools[0].args, {'file_path': '/tmp/demo/SKILL.md'});
+    expect(tools[1].isError, isTrue);
+    expect(tools[2].result, 'tool output truncated');
   });
 }

@@ -158,6 +158,17 @@ void _appendFromEventMsg(
           createdAt: timestamp,
         ),
       );
+    case 'agent_reasoning':
+      final text = '${payload['text'] ?? ''}'.trim();
+      if (text.isEmpty) return;
+      messages.add(
+        AiMessage(
+          id: fallbackId(),
+          role: AiRole.assistant,
+          parts: [AiReasoningPart(text: text)],
+          createdAt: timestamp,
+        ),
+      );
   }
 }
 
@@ -198,6 +209,47 @@ void _appendFromResponseItem(
         result: '${payload['output'] ?? ''}',
         isError: false,
       );
+    case 'custom_tool_call':
+      final name = '${payload['name'] ?? ''}'.trim();
+      final callId = payload['call_id'];
+      if (callId is! String || callId.isEmpty) return;
+      final toolName = name.isEmpty ? 'tool' : name;
+      final input = payload['input'];
+      messages.add(
+        AiMessage(
+          id: fallbackId(),
+          role: AiRole.assistant,
+          parts: [
+            AiToolCallPart(
+              toolCallId: callId,
+              toolName: toolName,
+              argsText: input is String ? input : null,
+              args: input is Map ? _parseArgs(input) : null,
+            ),
+          ],
+          createdAt: timestamp,
+        ),
+      );
+    case 'custom_tool_call_output':
+      final callId = payload['call_id'];
+      if (callId is! String || callId.isEmpty) return;
+      _applyToolResult(
+        messages,
+        toolUseId: callId,
+        result: '${payload['output'] ?? ''}',
+        isError: false,
+      );
+    case 'reasoning':
+      final text = _reasoningSummaryText(payload);
+      if (text == null) return;
+      messages.add(
+        AiMessage(
+          id: fallbackId(),
+          role: AiRole.assistant,
+          parts: [AiReasoningPart(text: text)],
+          createdAt: timestamp,
+        ),
+      );
     case 'message':
       // Prefer event_msg for user/agent text; skip developer / duplicate noise.
       return;
@@ -206,6 +258,20 @@ void _appendFromResponseItem(
 
 bool _isEnvironmentContext(String message) {
   return message.contains('<environment_context>');
+}
+
+String? _reasoningSummaryText(Map<String, dynamic> payload) {
+  final summary = payload['summary'];
+  if (summary is! List) return null;
+  final chunks = <String>[];
+  for (final item in summary) {
+    if (item is! Map) continue;
+    if (item['type'] != 'summary_text') continue;
+    final text = '${item['text'] ?? ''}'.trim();
+    if (text.isNotEmpty) chunks.add(text);
+  }
+  if (chunks.isEmpty) return null;
+  return chunks.join('\n\n');
 }
 
 Map<String, Object?>? _parseArgs(Object? argsRaw) {

@@ -1,0 +1,1 @@
+{"id": "prt_tool", "messageID": "msg_dbasst1", "type": "tool", "tool": "bash", "callID": "call_db1", "state": {"status": "completed", "input": {"command": "pwd"}, "output": "/tmp/demo"}}

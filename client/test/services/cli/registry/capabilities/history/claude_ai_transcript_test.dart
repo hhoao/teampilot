@@ -141,6 +141,41 @@ not-json
     );
     expect(bundle, isNull);
   });
+
+  test(
+    'merges streamed assistant lines by message.id and keeps thinking',
+    () async {
+      // From TeamPilot runtime Claude JSONL (sanitized): thinking + text share
+      // message.id across different event uuids.
+      final bytes = await File(
+        'test/fixtures/session_history/claude/streamed_turn.jsonl',
+      ).readAsBytes();
+      final messages = await const ClaudeAiTranscriptAdapter().parse(
+        AiTranscriptBundle(
+          adapterId: 'claude',
+          fragments: [
+            AiTranscriptFragment(name: 'streamed_turn.jsonl', bytes: bytes),
+          ],
+        ),
+      );
+
+      expect(messages, hasLength(2));
+      expect(messages[0].role, AiRole.user);
+      expect((messages[0].parts.single as AiTextPart).text, 'hello');
+
+      final asst = messages[1];
+      expect(asst.id, 'e6ddd410-d9f2-4647-9608-eea1054e5abc');
+      expect(asst.role, AiRole.assistant);
+      expect(
+        asst.parts.whereType<AiReasoningPart>().single.text,
+        'short thinking about greeting',
+      );
+      expect(
+        asst.parts.whereType<AiTextPart>().single.text,
+        'Hey! Welcome — short reply.',
+      );
+    },
+  );
 }
 
 List<int> utf8Bytes(String s) => utf8.encode(s);

@@ -1,0 +1,5 @@
+{"timestamp": "2026-07-07T03:57:08.301Z", "type": "event_msg", "payload": {"type": "user_message", "message": "create issue tracker"}}
+{"timestamp": "2026-07-07T03:57:37.050Z", "type": "response_item", "payload": {"type": "reasoning", "summary": [{"type": "summary_text", "text": "Let me start by understanding the task. I need to create an Issue management template and documentation under `docs/issu"}]}}
+{"timestamp": "2026-07-07T03:57:38.080Z", "type": "response_item", "payload": {"type": "function_call", "name": "shell_command", "call_id": "call_demo1", "arguments": "{\"command\": \"pwd\"}"}}
+{"timestamp": "2026-07-07T03:57:38.123Z", "type": "response_item", "payload": {"type": "function_call_output", "call_id": "call_demo1", "output": "Exit code: 0\n/tmp/demo"}}
+{"timestamp": "2026-07-07T03:57:42.939Z", "type": "event_msg", "payload": {"type": "agent_message", "message": "I will inspect the plan first."}}

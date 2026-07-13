@@ -175,19 +175,24 @@ void _appendFromEvent(
   final textParts = <AiTextPart>[];
   final toolParts = <AiToolCallPart>[];
   final toolResults = <({String toolUseId, Object? result, bool isError})>[];
+  var toolSeq = 0;
 
   for (final block in content) {
     if (block is! Map) continue;
     final blockMap = Map<String, dynamic>.from(block);
     switch (blockMap['type']) {
       case 'text':
-        final text = '${blockMap['text'] ?? ''}'.trim();
-        if (text.isNotEmpty) {
+        final text = _cursorVisibleText('${blockMap['text'] ?? ''}');
+        if (text != null) {
           textParts.add(AiTextPart(text: text));
         }
       case 'tool_use':
-        final toolCallId = '${blockMap['id'] ?? ''}';
-        if (toolCallId.isEmpty) continue;
+        // Cursor agent-transcripts often omit `id` on tool_use. Without a
+        // fallback we previously dropped every tool and left only the
+        // adjacent `[REDACTED]` text sentinel visible.
+        final rawId = '${blockMap['id'] ?? ''}'.trim();
+        final toolCallId =
+            rawId.isNotEmpty ? rawId : '$id-tool-${toolSeq++}';
         final name = '${blockMap['name'] ?? 'tool'}';
         toolParts.add(
           AiToolCallPart(
@@ -224,14 +229,43 @@ void _appendFromEvent(
   ];
   if (parts.isEmpty) return;
 
-  messages.add(
-    AiMessage(
-      id: id,
-      role: role == 'user' ? AiRole.user : AiRole.assistant,
-      parts: parts,
-      createdAt: timestamp,
-    ),
+  final next = AiMessage(
+    id: id,
+    role: role == 'user' ? AiRole.user : AiRole.assistant,
+    parts: parts,
+    createdAt: timestamp,
   );
+
+  // Real agent-transcripts often split one turn across multiple assistant
+  // lines (tools, then final prose). Merge consecutive assistant messages.
+  if (role == 'assistant' &&
+      messages.isNotEmpty &&
+      messages.last.role == AiRole.assistant) {
+    final last = messages.last;
+    messages[messages.length - 1] = AiMessage(
+      id: last.id,
+      role: last.role,
+      parts: [...last.parts, ...next.parts],
+      createdAt: last.createdAt ?? next.createdAt,
+      status: next.status,
+    );
+    return;
+  }
+
+  messages.add(next);
+}
+
+/// Cursor parent-facing transcripts put a literal `[REDACTED]` text block
+/// next to `tool_use` (standing in for redacted thinking). That is not
+/// user-visible prose — drop the sentinel / trailing marker only.
+String? _cursorVisibleText(String raw) {
+  var text = raw.trim();
+  if (text.isEmpty || text == '[REDACTED]') return null;
+  if (text.endsWith('[REDACTED]')) {
+    text = text.substring(0, text.length - '[REDACTED]'.length).trimRight();
+  }
+  if (text.isEmpty) return null;
+  return text;
 }
 
 String _messageId(Map<String, dynamic> event, String Function() fallbackId) {

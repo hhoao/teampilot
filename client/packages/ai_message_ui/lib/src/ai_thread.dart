@@ -4,6 +4,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
 import 'ai_message_view.dart';
+import 'theme.dart';
 
 /// Binds an [AiThreadRuntime] and renders status / message list chrome.
 ///
@@ -236,18 +237,33 @@ class _AiThreadState extends State<AiThread> {
       case AiThreadStatus.error:
         return widget.errorBuilder(context, _errorMessage, widget.onRetry);
       case AiThreadStatus.idle:
+        final aiTheme = AiMessageTheme.of(context);
         final sentinelCount = widget.hasOlder ? 1 : 0;
         return NotificationListener<ScrollNotification>(
           onNotification: _onScroll,
           child: ListView.builder(
             controller: _scrollController,
+            padding: EdgeInsets.fromLTRB(
+              aiTheme.threadHorizontalPadding,
+              16,
+              aiTheme.threadHorizontalPadding,
+              24,
+            ),
             itemCount: _messages.length + sentinelCount,
             itemBuilder: (context, index) {
               if (widget.hasOlder && index == 0) {
                 return _buildLoadOlderHeader(context);
               }
               final messageIndex = widget.hasOlder ? index - 1 : index;
-              return _buildMessage(context, _messages[messageIndex]);
+              return Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: aiTheme.threadMaxWidth,
+                  ),
+                  child: _buildMessage(context, _messages[messageIndex]),
+                ),
+              );
             },
           ),
         );

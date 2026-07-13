@@ -241,6 +241,17 @@ void main() {
       expect(got, 'task-1');
     });
 
+    test('detects transcript under projects (real flashskyai layout)', () async {
+      final projects = p.join(base.path, 'projects', 'home-me-proj');
+      await Directory(projects).create(recursive: true);
+      await File(p.join(projects, 'task-1.jsonl')).writeAsString('{}');
+
+      final got = await const TranscriptResumeStrategy().detectNativeId(
+        ctx(transcriptRoots: [base.path], bucket: 'home-me-proj'),
+      );
+      expect(got, 'task-1');
+    });
+
     test('returns null when no transcript exists', () async {
       final got = await const TranscriptResumeStrategy().detectNativeId(
         ctx(transcriptRoots: [base.path], bucket: 'home-me-proj'),

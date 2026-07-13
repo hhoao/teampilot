@@ -2258,6 +2258,42 @@ abstract class AppLocalizations {
   /// **'Scroll up for earlier messages'**
   String get sessionHistoryLoadOlderHint;
 
+  /// No description provided for @aiMessageUsedTool.
+  ///
+  /// In en, this message translates to:
+  /// **'Used tool'**
+  String get aiMessageUsedTool;
+
+  /// No description provided for @aiMessageCancelledTool.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled tool'**
+  String get aiMessageCancelledTool;
+
+  /// No description provided for @aiMessageToolsUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Used {count} tools'**
+  String aiMessageToolsUsed(Object count);
+
+  /// No description provided for @aiMessageReasoning.
+  ///
+  /// In en, this message translates to:
+  /// **'Reasoning'**
+  String get aiMessageReasoning;
+
+  /// No description provided for @aiMessageToolResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Result'**
+  String get aiMessageToolResult;
+
+  /// No description provided for @aiMessageCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get aiMessageCopied;
+
   /// No description provided for @sessionWorkbenchShowTerminal.
   ///
   /// In en, this message translates to:

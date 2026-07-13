@@ -13,6 +13,7 @@ dependencies:
   ai_message_core:
     path: ../ai_message_core
   flutter_markdown_plus: ^1.0.11
+  markdown: ^7.3.0
 
 dev_dependencies:
   flutter_test:

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:ai_message_core/ai_message_core.dart';
@@ -87,6 +88,70 @@ void main() {
       for (final m in messages.where((m) => m.role == AiRole.user)) {
         expect(m.parts.whereType<AiToolCallPart>(), isEmpty);
       }
+    },
+  );
+
+  test(
+    'parses tool_use without id and drops [REDACTED] text sentinel',
+    () async {
+      // Mirrors real Cursor agent-transcripts: tool_use often has no id,
+      // and a literal [REDACTED] text block sits next to the tools.
+      const raw = '''
+{"role":"assistant","message":{"content":[{"type":"text","text":"先查 working→idle\\n\\n[REDACTED]"},{"type":"tool_use","name":"Grep","input":{"pattern":"workingSessionIds"}},{"type":"tool_use","name":"Read","input":{"path":"/tmp/a.dart"}}]}}
+{"role":"assistant","message":{"content":[{"type":"text","text":"[REDACTED]"},{"type":"tool_use","name":"Shell","input":{"command":"pwd"}}]}}
+''';
+      final messages = await const CursorAiTranscriptAdapter().parse(
+        AiTranscriptBundle(
+          adapterId: 'cursor',
+          fragments: [
+            AiTranscriptFragment(name: 't.jsonl', bytes: utf8.encode(raw)),
+          ],
+        ),
+      );
+
+      // Consecutive assistant lines merge into one turn.
+      expect(messages, hasLength(1));
+      expect(messages.single.parts.whereType<AiTextPart>().single.text,
+          '先查 working→idle');
+      expect(
+        messages.single.parts.whereType<AiToolCallPart>().map((t) => t.toolName),
+        ['Grep', 'Read', 'Shell'],
+      );
+    },
+  );
+
+  test(
+    'parses TeamPilot runtime agent-transcript (no tool id, split lines)',
+    () async {
+      final bytes = await File(
+        'test/fixtures/session_history/cursor/agent_transcript_no_tool_id.jsonl',
+      ).readAsBytes();
+      final messages = await const CursorAiTranscriptAdapter().parse(
+        AiTranscriptBundle(
+          adapterId: 'cursor',
+          fragments: [
+            AiTranscriptFragment(
+              name: 'agent_transcript_no_tool_id.jsonl',
+              bytes: bytes,
+            ),
+          ],
+        ),
+      );
+
+      expect(messages, hasLength(2));
+      expect(messages[0].role, AiRole.user);
+      expect(
+        (messages[0].parts.single as AiTextPart).text,
+        contains('<user_query>'),
+      );
+
+      final asst = messages[1];
+      expect(asst.role, AiRole.assistant);
+      expect(asst.parts.whereType<AiToolCallPart>().single.toolName, 'Read');
+      expect(
+        asst.parts.whereType<AiTextPart>().single.text,
+        '你好。需要我帮你做什么？',
+      );
     },
   );
 

@@ -2,6 +2,7 @@
 library ai_message_core;
 
 export 'src/message.dart';
+export 'src/message_export.dart';
 export 'src/runtime.dart';
 export 'src/thread_message_like.dart';
 export 'src/transcript_adapter.dart';

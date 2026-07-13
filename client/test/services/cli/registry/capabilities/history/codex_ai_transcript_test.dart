@@ -132,4 +132,44 @@ void main() {
     final bundle = await locateCodexTranscript(ctx(codexHome: base.path));
     expect(bundle, isNull);
   });
+
+  test('parses reasoning summary and shell_command from real rollout shape',
+      () async {
+    final bytes = await File(
+      'test/fixtures/session_history/codex/reasoning_and_tools.jsonl',
+    ).readAsBytes();
+    final messages = await const CodexAiTranscriptAdapter().parse(
+      AiTranscriptBundle(
+        adapterId: 'codex',
+        fragments: [
+          AiTranscriptFragment(
+            name: 'reasoning_and_tools.jsonl',
+            bytes: bytes,
+          ),
+        ],
+      ),
+    );
+
+    expect(messages[0].role, AiRole.user);
+    expect((messages[0].parts.single as AiTextPart).text, 'create issue tracker');
+
+    final reasoning = messages
+        .expand((m) => m.parts)
+        .whereType<AiReasoningPart>()
+        .single;
+    expect(reasoning.text, contains('Issue management'));
+
+    final tool = messages
+        .expand((m) => m.parts)
+        .whereType<AiToolCallPart>()
+        .single;
+    expect(tool.toolName, 'shell_command');
+    expect(tool.toolCallId, 'call_demo1');
+    expect(tool.result, contains('/tmp/demo'));
+
+    expect(
+      messages.last.parts.whereType<AiTextPart>().single.text,
+      'I will inspect the plan first.',
+    );
+  });
 }

@@ -51,7 +51,7 @@ void main() {
     expect(assistantAlign.alignment, Alignment.centerLeft);
   });
 
-  testWidgets('tool card shows toolName; tap expands args and result', (
+  testWidgets('tool fallback shows Used tool label; tap expands args/result', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -75,18 +75,49 @@ void main() {
       ),
     );
 
-    expect(find.text('ReadFile'), findsOneWidget);
+    expect(find.textContaining('Used tool:'), findsOneWidget);
+    expect(find.textContaining('ReadFile'), findsOneWidget);
     expect(find.textContaining('/tmp/x'), findsNothing);
     expect(find.textContaining('file contents'), findsNothing);
 
-    await tester.tap(find.text('ReadFile'));
+    await tester.tap(find.textContaining('Used tool:'));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('/tmp/x'), findsOneWidget);
+    expect(find.text('Result:'), findsOneWidget);
     expect(find.textContaining('file contents'), findsOneWidget);
   });
 
-  testWidgets('text part renders markdown bold', (tester) async {
+  testWidgets('consecutive tools render as a collapsible group', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiMessageView(
+            message: AiMessage(
+              id: 'a1',
+              role: AiRole.assistant,
+              parts: const [
+                AiToolCallPart(toolCallId: '1', toolName: 'Read'),
+                AiToolCallPart(toolCallId: '2', toolName: 'Grep'),
+                AiToolCallPart(toolCallId: '3', toolName: 'Shell'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('Used 3 tools'), findsOneWidget);
+    expect(find.textContaining('Used tool:'), findsNothing);
+
+    await tester.tap(find.textContaining('Used 3 tools'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Used tool:'), findsNWidgets(3));
+    expect(find.textContaining('Read'), findsWidgets);
+  });
+
+  testWidgets('text part renders markdown without raw markers', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -101,21 +132,41 @@ void main() {
       ),
     );
 
-    // MarkdownBody flattens **bold** into a TextSpan with FontWeight.bold.
-    final richTexts = tester.widgetList<RichText>(find.byType(RichText));
-    final hasBold = richTexts.any((rt) {
-      var found = false;
-      rt.text.visitChildren((span) {
-        if (span is TextSpan &&
-            span.text == 'bold' &&
-            span.style?.fontWeight == FontWeight.bold) {
-          found = true;
-          return false;
-        }
-        return true;
-      });
-      return found;
-    });
-    expect(hasBold, isTrue);
+    expect(find.textContaining('bold'), findsWidgets);
+    expect(find.textContaining('**bold**'), findsNothing);
+  });
+
+  testWidgets('injected strings localize tool labels', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AiMessageStringsScope(
+          strings: const AiMessageStrings(
+            usedTool: '调用工具',
+            result: '输出',
+          ),
+          child: Scaffold(
+            body: AiMessageView(
+              message: AiMessage(
+                id: 'a1',
+                role: AiRole.assistant,
+                parts: const [
+                  AiToolCallPart(
+                    toolCallId: '1',
+                    toolName: 'Bash',
+                    args: {'command': 'ls'},
+                    result: 'ok',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('调用工具:'), findsOneWidget);
+    await tester.tap(find.textContaining('调用工具:'));
+    await tester.pumpAndSettle();
+    expect(find.text('输出:'), findsOneWidget);
   });
 }

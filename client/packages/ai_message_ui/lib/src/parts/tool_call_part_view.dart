@@ -3,82 +3,149 @@ import 'dart:convert';
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
+import '../strings.dart';
 import '../theme.dart';
 
-/// Collapsible tool-call card (collapsed by default).
-class AiToolCallPartView extends StatelessWidget {
-  const AiToolCallPartView({required this.part, super.key});
+/// Collapsible tool row aligned with assistant-ui ToolFallback.
+class AiToolCallPartView extends StatefulWidget {
+  const AiToolCallPartView({
+    required this.part,
+    this.dense = false,
+    super.key,
+  });
 
   final AiToolCallPart part;
+
+  /// Nested under [AiToolGroupView] — tighter vertical padding.
+  final bool dense;
+
+  @override
+  State<AiToolCallPartView> createState() => _AiToolCallPartViewState();
+}
+
+class _AiToolCallPartViewState extends State<AiToolCallPartView> {
+  bool _open = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final aiTheme = theme.extension<AiMessageTheme>();
-    final cardColor = aiTheme?.toolCardColor ??
-        scheme.surfaceContainerHighest.withValues(alpha: 0.7);
-    final borderColor = aiTheme?.toolCardBorderColor ??
-        scheme.outlineVariant.withValues(alpha: 0.6);
+    final aiTheme = AiMessageTheme.of(context);
+    final strings = AiMessageStrings.of(context);
+    final triggerColor = aiTheme.resolveToolTrigger(scheme);
+    final part = widget.part;
+    final cancelled = part.isError && part.result == null;
+    final bottom = widget.dense ? 2.0 : aiTheme.partSpacing;
 
-    return Material(
-      color: cardColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: borderColor),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Theme(
-        data: theme.copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          initiallyExpanded: false,
-          tilePadding: const EdgeInsets.symmetric(horizontal: 8),
-          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-          leading: Icon(
-            Icons.terminal_rounded,
-            size: 18,
-            color: scheme.onSurfaceVariant,
-          ),
-          title: Text(
-            part.toolName,
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: SelectableText(
-                _expandedBody(part),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontFamily: 'monospace',
-                  color: part.isError ? scheme.error : scheme.onSurface,
-                ),
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottom),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _open = !_open),
+            borderRadius: BorderRadius.circular(6),
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: widget.dense ? 4 : 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    part.isError
+                        ? Icons.cancel_outlined
+                        : Icons.check_circle_outline,
+                    size: 16,
+                    color: part.isError ? scheme.error : triggerColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text.rich(
+                      TextSpan(
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: triggerColor,
+                          decoration: cancelled
+                              ? TextDecoration.lineThrough
+                              : null,
+                          height: 1.2,
+                        ),
+                        children: [
+                          TextSpan(
+                            text:
+                                '${cancelled ? strings.cancelledTool : strings.usedTool}: ',
+                          ),
+                          TextSpan(
+                            text: part.toolName,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  AnimatedRotation(
+                    turns: _open ? 0 : -0.25,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      Icons.expand_more,
+                      size: 16,
+                      color: triggerColor,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+          if (_open)
+            Padding(
+              padding: const EdgeInsets.only(left: 24, top: 4, bottom: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_hasArgs(part))
+                    _MutedPre(
+                      text: _argsText(part),
+                      color: aiTheme.resolveToolPanel(scheme),
+                      radius: aiTheme.panelRadius,
+                      foreground: scheme.onSurface.withValues(alpha: 0.9),
+                    ),
+                  if (part.result != null) ...[
+                    if (_hasArgs(part)) const SizedBox(height: 8),
+                    Text(
+                      '${strings.result}:',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: triggerColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    _MutedPre(
+                      text: _stringify(part.result),
+                      color: aiTheme.resolveToolPanel(scheme),
+                      radius: aiTheme.panelRadius,
+                      foreground: part.isError
+                          ? scheme.error
+                          : scheme.onSurface.withValues(alpha: 0.9),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
 }
 
-String _expandedBody(AiToolCallPart part) {
-  final buffer = StringBuffer();
+bool _hasArgs(AiToolCallPart part) {
   final argsText = part.argsText?.trim();
-  if (argsText != null && argsText.isNotEmpty) {
-    buffer.writeln(argsText);
-  } else if (part.args != null && part.args!.isNotEmpty) {
-    buffer.writeln(
-      const JsonEncoder.withIndent('  ').convert(part.args),
-    );
-  }
-  if (part.result != null) {
-    if (buffer.isNotEmpty) buffer.writeln();
-    buffer.write(_stringify(part.result));
-  }
-  return buffer.toString().trimRight();
+  if (argsText != null && argsText.isNotEmpty) return true;
+  return part.args != null && part.args!.isNotEmpty;
+}
+
+String _argsText(AiToolCallPart part) {
+  final argsText = part.argsText?.trim();
+  if (argsText != null && argsText.isNotEmpty) return argsText;
+  return const JsonEncoder.withIndent('  ').convert(part.args);
 }
 
 String _stringify(Object? value) {
@@ -88,5 +155,40 @@ String _stringify(Object? value) {
     return const JsonEncoder.withIndent('  ').convert(value);
   } on Object {
     return value.toString();
+  }
+}
+
+class _MutedPre extends StatelessWidget {
+  const _MutedPre({
+    required this.text,
+    required this.color,
+    required this.radius,
+    required this.foreground,
+  });
+
+  final String text;
+  final Color color;
+  final double radius;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: SelectableText(
+          text,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            fontFamily: 'monospace',
+            color: foreground,
+            height: 1.45,
+          ),
+        ),
+      ),
+    );
   }
 }

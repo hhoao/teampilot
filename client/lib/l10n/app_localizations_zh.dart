@@ -1147,6 +1147,26 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionHistoryLoadOlderHint => '上滑查看更早消息';
 
   @override
+  String get aiMessageUsedTool => '已使用工具';
+
+  @override
+  String get aiMessageCancelledTool => '已取消工具';
+
+  @override
+  String aiMessageToolsUsed(Object count) {
+    return '已使用 $count 个工具';
+  }
+
+  @override
+  String get aiMessageReasoning => '推理';
+
+  @override
+  String get aiMessageToolResult => '结果';
+
+  @override
+  String get aiMessageCopied => '已复制';
+
+  @override
   String get sessionWorkbenchShowTerminal => '显示终端';
 
   @override

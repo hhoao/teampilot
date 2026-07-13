@@ -1,0 +1,4 @@
+{"role": "user", "message": {"content": [{"type": "text", "text": "<user_query>\nhello\n</user_query>"}]}}
+{"role": "assistant", "message": {"content": [{"type": "tool_use", "name": "Read", "input": {"path": "/tmp/demo/SKILL.md"}}]}}
+{"role": "assistant", "message": {"content": [{"type": "text", "text": "你好。需要我帮你做什么？"}]}}
+{"type": "turn_ended", "status": "success"}

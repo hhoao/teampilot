@@ -1,24 +1,42 @@
 import 'dart:convert';
+import 'dart:io' show Directory, File;
 
 import 'package:ai_message_core/ai_message_core.dart';
+import 'package:sqlite3/sqlite3.dart';
 
 import '../../../../session/session_history_context.dart';
 
 /// Locate OpenCode session/message/part files under `$OPENCODE_DATA_DIR`.
 ///
+/// Prefers the legacy JSON tree (`storage/message|part`). When that is absent
+/// (current OpenCode installs store rows in `opencode.db`), reads SQLite and
+/// emits the same fragment layout so [OpencodeAiTranscriptAdapter] stays one
+/// parser.
+///
 /// Fragment names:
 /// - `session/{sessionId}.json`
 /// - `message/{messageId}.json`
-/// - `part/{messageId}/{partId}.json`
+/// - `part/{messageID}/{partId}.json`
 Future<AiTranscriptBundle?> locateOpencodeTranscript(
   SessionHistoryContext ctx,
 ) async {
-  final sessionId = await _resolveSessionId(ctx);
-  if (sessionId == null) return null;
-
   final dataDir = ctx.env['OPENCODE_DATA_DIR']?.trim() ?? '';
   if (dataDir.isEmpty) return null;
 
+  final sessionId = await _resolveSessionId(ctx, dataDir);
+  if (sessionId == null) return null;
+
+  final jsonBundle = await _locateJsonStorage(ctx, dataDir, sessionId);
+  if (jsonBundle != null) return jsonBundle;
+
+  return _locateSqliteStorage(ctx, dataDir, sessionId);
+}
+
+Future<AiTranscriptBundle?> _locateJsonStorage(
+  SessionHistoryContext ctx,
+  String dataDir,
+  String sessionId,
+) async {
   final path = ctx.fs.pathContext;
   final messageDir = path.join(dataDir, 'storage', 'message', sessionId);
   final messageStat = await ctx.fs.stat(messageDir);
@@ -72,16 +90,140 @@ Future<AiTranscriptBundle?> locateOpencodeTranscript(
   return AiTranscriptBundle(
     adapterId: 'opencode',
     fragments: fragments,
-    hints: {'sessionId': sessionId},
+    hints: {'sessionId': sessionId, 'source': 'json'},
   );
 }
 
-Future<String?> _resolveSessionId(SessionHistoryContext ctx) async {
+Future<AiTranscriptBundle?> _locateSqliteStorage(
+  SessionHistoryContext ctx,
+  String dataDir,
+  String sessionId,
+) async {
+  final path = ctx.fs.pathContext;
+  final dbPath = path.join(dataDir, 'opencode.db');
+  final bytes = await ctx.fs.readBytes(dbPath);
+  if (bytes == null || bytes.isEmpty) return null;
+
+  Directory? tempDir;
+  Database? db;
+  try {
+    tempDir = await Directory.systemTemp.createTemp('opencode-history-');
+    final tempFile = File(path.join(tempDir.path, 'opencode.db'));
+    await tempFile.writeAsBytes(bytes);
+    db = sqlite3.open(tempFile.path, mode: OpenMode.readOnly);
+
+    final messageRows = db.select(
+      '''
+SELECT id, data, time_created
+FROM message
+WHERE session_id = ?
+ORDER BY time_created ASC, id ASC
+''',
+      [sessionId],
+    );
+    if (messageRows.isEmpty) return null;
+
+    final fragments = <AiTranscriptFragment>[];
+    for (final row in messageRows) {
+      final messageId = '${row['id']}';
+      final raw = row['data'];
+      final obj = _decodeDbJson(raw);
+      if (obj == null) continue;
+      obj.putIfAbsent('id', () => messageId);
+      obj.putIfAbsent('sessionID', () => sessionId);
+      final time = obj['time'];
+      if (time is! Map) {
+        final created = row['time_created'];
+        if (created is int) {
+          obj['time'] = {'created': created};
+        }
+      }
+      fragments.add(
+        AiTranscriptFragment(
+          name: 'message/$messageId.json',
+          bytes: utf8.encode(jsonEncode(obj)),
+        ),
+      );
+
+      final partRows = db.select(
+        '''
+SELECT id, data, time_created
+FROM part
+WHERE message_id = ?
+ORDER BY time_created ASC, id ASC
+''',
+        [messageId],
+      );
+      for (final part in partRows) {
+        final partId = '${part['id']}';
+        final partObj = _decodeDbJson(part['data']);
+        if (partObj == null) continue;
+        partObj.putIfAbsent('id', () => partId);
+        partObj.putIfAbsent('messageID', () => messageId);
+        fragments.add(
+          AiTranscriptFragment(
+            name: 'part/$messageId/$partId.json',
+            bytes: utf8.encode(jsonEncode(partObj)),
+          ),
+        );
+      }
+    }
+
+    if (fragments.where((f) => f.name.startsWith('message/')).isEmpty) {
+      return null;
+    }
+
+    return AiTranscriptBundle(
+      adapterId: 'opencode',
+      fragments: fragments,
+      hints: {'sessionId': sessionId, 'source': 'sqlite'},
+    );
+  } on Object {
+    return null;
+  } finally {
+    db?.close();
+    if (tempDir != null) {
+      try {
+        await tempDir.delete(recursive: true);
+      } on Object {
+        // best-effort cleanup
+      }
+    }
+  }
+}
+
+Map<String, dynamic>? _decodeDbJson(Object? raw) {
+  try {
+    final decoded = switch (raw) {
+      final String s => jsonDecode(s),
+      final List<int> bytes => jsonDecode(utf8.decode(bytes)),
+      _ => null,
+    };
+    if (decoded is Map<String, dynamic>) return decoded;
+    if (decoded is Map) return Map<String, dynamic>.from(decoded);
+  } on Object {
+    return null;
+  }
+  return null;
+}
+
+Future<String?> _resolveSessionId(
+  SessionHistoryContext ctx,
+  String dataDir,
+) async {
   final persisted = ctx.persistedNativeId?.trim() ?? '';
   if (persisted.isNotEmpty) return persisted;
 
-  final dataDir = ctx.env['OPENCODE_DATA_DIR']?.trim() ?? '';
-  if (dataDir.isEmpty) return null;
+  final fromJson = await _resolveSessionIdFromJson(ctx, dataDir);
+  if (fromJson != null) return fromJson;
+
+  return _resolveSessionIdFromSqlite(ctx, dataDir);
+}
+
+Future<String?> _resolveSessionIdFromJson(
+  SessionHistoryContext ctx,
+  String dataDir,
+) async {
   final path = ctx.fs.pathContext;
   final sessionDir = path.join(dataDir, 'storage', 'session');
 
@@ -100,6 +242,47 @@ Future<String?> _resolveSessionId(SessionHistoryContext ctx) async {
   if (bestName.isEmpty) return null;
   final name = path.basename(bestName);
   return name.substring(0, name.length - '.json'.length);
+}
+
+Future<String?> _resolveSessionIdFromSqlite(
+  SessionHistoryContext ctx,
+  String dataDir,
+) async {
+  final path = ctx.fs.pathContext;
+  final dbPath = path.join(dataDir, 'opencode.db');
+  final bytes = await ctx.fs.readBytes(dbPath);
+  if (bytes == null || bytes.isEmpty) return null;
+
+  Directory? tempDir;
+  Database? db;
+  try {
+    tempDir = await Directory.systemTemp.createTemp('opencode-session-');
+    final tempFile = File(path.join(tempDir.path, 'opencode.db'));
+    await tempFile.writeAsBytes(bytes);
+    db = sqlite3.open(tempFile.path, mode: OpenMode.readOnly);
+    final rows = db.select(
+      '''
+SELECT id
+FROM session
+ORDER BY time_updated DESC, id DESC
+LIMIT 1
+''',
+    );
+    if (rows.isEmpty) return null;
+    final id = '${rows.first['id']}'.trim();
+    return id.isEmpty ? null : id;
+  } on Object {
+    return null;
+  } finally {
+    db?.close();
+    if (tempDir != null) {
+      try {
+        await tempDir.delete(recursive: true);
+      } on Object {
+        // best-effort cleanup
+      }
+    }
+  }
 }
 
 Future<String?> _findSessionFile(
@@ -262,6 +445,10 @@ Iterable<AiMessagePart> _partsFromOcPart(
       final text = '${part['text'] ?? ''}'.trim();
       if (text.isEmpty) return const [];
       return [AiTextPart(text: text)];
+    case 'reasoning':
+      final text = '${part['text'] ?? ''}'.trim();
+      if (text.isEmpty) return const [];
+      return [AiReasoningPart(text: text)];
     case 'tool':
       if (message.role != 'assistant') return const [];
       final toolName = '${part['tool'] ?? ''}'.trim();

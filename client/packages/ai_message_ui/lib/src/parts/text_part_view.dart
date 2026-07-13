@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:markdown/markdown.dart' as md;
 
-/// Streaming-safe markdown text part.
-///
-/// Approach for unclosed fences: count ``` fence openers; when the count is
-/// odd (streaming mid-fence), append a closing ``` so the markdown parser
-/// always sees a well-formed document and does not thrash layout.
+import '../strings.dart';
+import '../theme.dart';
+
+/// Streaming-safe markdown aligned with assistant-ui MarkdownText / aui-md.
 class AiTextPartView extends StatelessWidget {
   const AiTextPartView({required this.text, super.key});
 
@@ -13,19 +14,223 @@ class AiTextPartView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = _prepareStreamingMarkdown(text);
+    final theme = Theme.of(context);
+    final aiTheme = AiMessageTheme.of(context);
+    final data = prepareStreamingMarkdown(text);
+    final sheet =
+        aiTheme.markdownStyleSheet ?? defaultAiMarkdownSheet(theme, aiTheme);
+
     return MarkdownBody(
       data: data,
-      styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)),
+      styleSheet: sheet,
+      selectable: true,
+      builders: {
+        'pre': _AuiCodeBlockBuilder(aiTheme: aiTheme),
+      },
     );
   }
 }
 
-String _prepareStreamingMarkdown(String raw) {
-  final fenceCount =
-      RegExp(r'^```', multiLine: true).allMatches(raw).length;
+/// Exposed for tests / hosts that want the same fence repair rules.
+String prepareStreamingMarkdown(String raw) {
+  final fenceCount = RegExp(r'^```', multiLine: true).allMatches(raw).length;
   if (fenceCount.isOdd) {
     return '$raw\n```';
   }
   return raw;
+}
+
+MarkdownStyleSheet defaultAiMarkdownSheet(
+  ThemeData theme,
+  AiMessageTheme aiTheme,
+) {
+  final base = MarkdownStyleSheet.fromTheme(theme);
+  final body = theme.textTheme.bodyMedium?.copyWith(height: 1.625);
+  return base.copyWith(
+    p: body?.copyWith(height: 1.625),
+    h1: theme.textTheme.titleLarge?.copyWith(
+      fontWeight: FontWeight.w600,
+      height: 1.25,
+    ),
+    h2: theme.textTheme.titleMedium?.copyWith(
+      fontWeight: FontWeight.w600,
+      height: 1.3,
+    ),
+    h3: theme.textTheme.titleSmall?.copyWith(
+      fontWeight: FontWeight.w600,
+      height: 1.35,
+    ),
+    blockSpacing: 12,
+    listIndent: 24,
+    listBullet: body,
+    code: theme.textTheme.bodySmall?.copyWith(
+      fontFamily: 'monospace',
+      backgroundColor: aiTheme.resolveMutedSurface(theme.colorScheme),
+    ),
+    codeblockDecoration: BoxDecoration(
+      color: aiTheme.resolveMutedSurface(theme.colorScheme),
+      borderRadius: BorderRadius.circular(aiTheme.codeBlockRadius),
+    ),
+    codeblockPadding: EdgeInsets.zero,
+    blockquoteDecoration: BoxDecoration(
+      border: Border(
+        left: BorderSide(
+          color: theme.colorScheme.outlineVariant,
+          width: 3,
+        ),
+      ),
+    ),
+    blockquotePadding: const EdgeInsets.only(left: 12),
+  );
+}
+
+class _AuiCodeBlockBuilder extends MarkdownElementBuilder {
+  _AuiCodeBlockBuilder({required this.aiTheme});
+
+  final AiMessageTheme aiTheme;
+
+  @override
+  bool isBlockElement() => true;
+
+  @override
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    var language = '';
+    var code = element.textContent;
+    if (element.children != null) {
+      for (final child in element.children!) {
+        if (child is md.Element && child.tag == 'code') {
+          final classes = child.attributes['class'] ?? '';
+          final match = RegExp(r'language-(\S+)').firstMatch(classes);
+          language = match?.group(1) ?? '';
+          code = child.textContent;
+        }
+      }
+    }
+
+    return _CodeBlock(
+      language: language,
+      code: code,
+      aiTheme: aiTheme,
+    );
+  }
+}
+
+class _CodeBlock extends StatefulWidget {
+  const _CodeBlock({
+    required this.language,
+    required this.code,
+    required this.aiTheme,
+  });
+
+  final String language;
+  final String code;
+  final AiMessageTheme aiTheme;
+
+  @override
+  State<_CodeBlock> createState() => _CodeBlockState();
+}
+
+class _CodeBlockState extends State<_CodeBlock> {
+  bool _copied = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final strings = AiMessageStrings.of(context);
+    final muted = widget.aiTheme.resolveMutedSurface(scheme);
+    final radius = widget.aiTheme.codeBlockRadius;
+    final lang = widget.language.isEmpty
+        ? strings.code
+        : widget.language.toLowerCase();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: muted,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(radius)),
+              border: Border(
+                top: BorderSide(
+                  color: scheme.outlineVariant.withValues(alpha: 0.5),
+                ),
+                left: BorderSide(
+                  color: scheme.outlineVariant.withValues(alpha: 0.5),
+                ),
+                right: BorderSide(
+                  color: scheme.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      lang,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    tooltip: _copied ? strings.copied : strings.copy,
+                    iconSize: 16,
+                    onPressed: () async {
+                      await Clipboard.setData(
+                        ClipboardData(text: widget.code),
+                      );
+                      if (!mounted) return;
+                      setState(() => _copied = true);
+                      await Future<void>.delayed(
+                        const Duration(milliseconds: 1600),
+                      );
+                      if (!mounted) return;
+                      setState(() => _copied = false);
+                    },
+                    icon: Icon(
+                      _copied ? Icons.check_rounded : Icons.copy_rounded,
+                      size: 16,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: muted,
+              borderRadius:
+                  BorderRadius.vertical(bottom: Radius.circular(radius)),
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+              child: SelectableText(
+                widget.code,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontFamily: 'monospace',
+                  height: 1.45,
+                  color: scheme.onSurface,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

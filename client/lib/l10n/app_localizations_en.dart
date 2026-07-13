@@ -1207,6 +1207,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionHistoryLoadOlderHint => 'Scroll up for earlier messages';
 
   @override
+  String get aiMessageUsedTool => 'Used tool';
+
+  @override
+  String get aiMessageCancelledTool => 'Cancelled tool';
+
+  @override
+  String aiMessageToolsUsed(Object count) {
+    return 'Used $count tools';
+  }
+
+  @override
+  String get aiMessageReasoning => 'Reasoning';
+
+  @override
+  String get aiMessageToolResult => 'Result';
+
+  @override
+  String get aiMessageCopied => 'Copied';
+
+  @override
   String get sessionWorkbenchShowTerminal => 'Show terminal';
 
   @override

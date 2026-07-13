@@ -34,6 +34,7 @@ import '../../services/expert_hub/expert_member_resolver.dart';
 import '../../services/session/session_continue_overrides_apply.dart';
 import '../../services/session/session_history_pagination.dart';
 import '../../services/storage/app_storage.dart';
+import '../../theme/app_markdown_style_sheet.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/team_member_naming.dart';
@@ -637,14 +638,35 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                spacing.xl,
-                spacing.md,
-                spacing.xl,
-                0,
+            child: Theme(
+              data: Theme.of(context).copyWith(
+                extensions: [
+                  ...Theme.of(context).extensions.values,
+                  AiMessageTheme(
+                    userBubbleColor: cs.surfaceContainerHighest,
+                    userBubbleForeground: cs.onSurface,
+                    mutedSurface:
+                        cs.surfaceContainerHighest.withValues(alpha: 0.55),
+                    toolTriggerColor: cs.onSurfaceVariant,
+                    markdownStyleSheet:
+                        buildAppMarkdownStyleSheet(Theme.of(context)),
+                    messageSpacing: 24,
+                    threadMaxWidth: 704,
+                    threadHorizontalPadding: spacing.md,
+                  ),
+                ],
               ),
-              child: BlocBuilder<AiHistoryCubit, AiHistoryState>(
+              child: AiMessageStringsScope(
+                strings: AiMessageStrings(
+                  usedTool: l10n.aiMessageUsedTool,
+                  cancelledTool: l10n.aiMessageCancelledTool,
+                  formatToolsUsed: l10n.aiMessageToolsUsed,
+                  reasoning: l10n.aiMessageReasoning,
+                  result: l10n.aiMessageToolResult,
+                  copy: l10n.copy,
+                  copied: l10n.aiMessageCopied,
+                ),
+                child: BlocBuilder<AiHistoryCubit, AiHistoryState>(
                 builder: (context, state) {
                   final cubit = context.read<AiHistoryCubit>();
                   return AiThread(
@@ -723,9 +745,10 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                     },
                     loadOlderHeaderBuilder:
                         (context, {required bool isLoadingOlder}) {
-                      final cs = Theme.of(context).colorScheme;
+                      final headerCs = Theme.of(context).colorScheme;
                       return Padding(
-                        padding: EdgeInsets.only(bottom: context.appSpacing.md),
+                        padding:
+                            EdgeInsets.only(bottom: context.appSpacing.md),
                         child: Center(
                           child: isLoadingOlder
                               ? const SizedBox(
@@ -738,7 +761,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                               : Text(
                                   context.l10n.sessionHistoryLoadOlderHint,
                                   style: AppTextStyles.of(context).smColored(
-                                    cs.onSurfaceVariant.withValues(
+                                    headerCs.onSurfaceVariant.withValues(
                                       alpha: 0.75,
                                     ),
                                   ),
@@ -749,6 +772,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                     },
                   );
                 },
+                ),
               ),
             ),
           ),

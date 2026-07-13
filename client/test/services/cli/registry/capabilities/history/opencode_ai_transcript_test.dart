@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:sqlite3/sqlite3.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/opencode_ai_transcript.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -34,11 +36,11 @@ void main() {
   }
 
   Future<void> copyFixtureTree() async {
-    final fixtureRoot = Directory('test/fixtures/session_history/opencode');
+    final fixtureRoot = Directory('test/fixtures/session_history/opencode/storage');
     await for (final entity in fixtureRoot.list(recursive: true)) {
       if (entity is! File) continue;
       final rel = p.relative(entity.path, from: fixtureRoot.path);
-      final dest = File(p.join(base.path, rel));
+      final dest = File(p.join(base.path, 'storage', rel));
       await dest.parent.create(recursive: true);
       await dest.writeAsBytes(await entity.readAsBytes());
     }
@@ -115,5 +117,146 @@ void main() {
   test('locateOpencodeTranscript returns null when missing', () async {
     final bundle = await locateOpencodeTranscript(ctx(dataDir: base.path));
     expect(bundle, isNull);
+  });
+
+  test('parses reasoning parts from OpenCode storage', () async {
+    final messages = await const OpencodeAiTranscriptAdapter().parse(
+      AiTranscriptBundle(
+        adapterId: 'opencode',
+        fragments: [
+          AiTranscriptFragment(
+            name: 'message/msg_r1.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'id': 'msg_r1',
+                'role': 'assistant',
+                'time': {'created': 1720612802000},
+              }),
+            ),
+          ),
+          AiTranscriptFragment(
+            name: 'part/msg_r1/prt_reason.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'id': 'prt_reason',
+                'messageID': 'msg_r1',
+                'type': 'reasoning',
+                'text': 'thinking about the unread mailbox',
+              }),
+            ),
+          ),
+          AiTranscriptFragment(
+            name: 'part/msg_r1/prt_text.json',
+            bytes: utf8.encode(
+              jsonEncode({
+                'id': 'prt_text',
+                'messageID': 'msg_r1',
+                'type': 'text',
+                'text': 'done',
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    expect(messages, hasLength(1));
+    expect(
+      messages.single.parts.whereType<AiReasoningPart>().single.text,
+      'thinking about the unread mailbox',
+    );
+    expect(
+      messages.single.parts.whereType<AiTextPart>().single.text,
+      'done',
+    );
+  });
+
+  test('locateOpencodeTranscript reads opencode.db when JSON tree missing',
+      () async {
+    // Mirrors current ~/.local/share/opencode layout (SQLite, no storage/message).
+    final dbPath = p.join(base.path, 'opencode.db');
+    final db = sqlite3.open(dbPath);
+    db.execute('''
+CREATE TABLE session (
+  id TEXT PRIMARY KEY,
+  time_updated INTEGER
+);
+CREATE TABLE message (
+  id TEXT PRIMARY KEY,
+  session_id TEXT,
+  time_created INTEGER,
+  data TEXT
+);
+CREATE TABLE part (
+  id TEXT PRIMARY KEY,
+  message_id TEXT,
+  session_id TEXT,
+  time_created INTEGER,
+  data TEXT
+);
+''');
+    db.execute(
+      "INSERT INTO session(id, time_updated) VALUES ('ses_db1', 2)",
+    );
+    db.execute(
+      '''
+INSERT INTO message(id, session_id, time_created, data)
+VALUES (
+  'msg_u',
+  'ses_db1',
+  1,
+  '{"role":"user","time":{"created":1}}'
+)
+''',
+    );
+    db.execute(
+      '''
+INSERT INTO message(id, session_id, time_created, data)
+VALUES (
+  'msg_a',
+  'ses_db1',
+  2,
+  '{"role":"assistant","time":{"created":2}}'
+)
+''',
+    );
+    db.execute(
+      '''
+INSERT INTO part(id, message_id, session_id, time_created, data)
+VALUES (
+  'prt_u',
+  'msg_u',
+  'ses_db1',
+  1,
+  '{"type":"text","text":"hello db"}'
+)
+''',
+    );
+    db.execute(
+      '''
+INSERT INTO part(id, message_id, session_id, time_created, data)
+VALUES (
+  'prt_a',
+  'msg_a',
+  'ses_db1',
+  2,
+  '{"type":"tool","tool":"bash","callID":"call_db","state":{"status":"completed","input":{"command":"pwd"},"output":"/tmp"}}'
+)
+''',
+    );
+    db.dispose();
+
+    final bundle = await locateOpencodeTranscript(
+      ctx(dataDir: base.path, persistedNativeId: 'ses_db1'),
+    );
+    expect(bundle, isNotNull);
+    expect(bundle!.hints['source'], 'sqlite');
+
+    final messages = await const OpencodeAiTranscriptAdapter().parse(bundle);
+    expect(messages, hasLength(2));
+    expect((messages[0].parts.single as AiTextPart).text, 'hello db');
+    final tool = messages[1].parts.whereType<AiToolCallPart>().single;
+    expect(tool.toolName, 'bash');
+    expect(tool.result, '/tmp');
   });
 }
