@@ -86,6 +86,19 @@ class TerminalActivityTracker {
     return false;
   }
 
+  /// Compact boot-gate dump for inject readiness diagnostics.
+  String get bootFrameDebugSummary {
+    final since = _fingerprintStableSince;
+    final stableMs = since == null
+        ? null
+        : DateTime.now().difference(since).inMilliseconds;
+    return 'latched=$_bootFrameLatched '
+        'ptyObserved=$_bootPtyObserved '
+        'visible=$_bootVisibleContentSeen '
+        'stableMs=$stableMs '
+        'needMs=${bootQuietAfter.inMilliseconds}';
+  }
+
   void markActive([DateTime? at]) {
     noteOutput(at);
   }

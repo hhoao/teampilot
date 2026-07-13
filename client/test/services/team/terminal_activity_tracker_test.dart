@@ -5,166 +5,180 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/team/terminal_activity_tracker.dart';
 
 void main() {
-  test('isWorking false during boot burst, true after arm', () async {
-    final tracker = TerminalActivityTracker(
-      idleAfter: const Duration(milliseconds: 40),
-    );
-    tracker.noteOutput();
+  const idle = Duration(milliseconds: 40);
+  const bootQuiet = Duration(milliseconds: 40);
+
+  test('isWorking false during boot burst, true after arm', () {
+    final tracker = TerminalActivityTracker(idleAfter: idle);
+    final now = DateTime.now();
+
+    tracker.noteOutput(now);
     expect(tracker.isWorking, isFalse);
     tracker.reset();
     expect(tracker.isWorking, isFalse);
-    // Post-reset activity is still boot output until the quiet window elapses.
-    tracker.markActive();
+
+    // Boot output stamped in the past so arming does not wait on wall clock.
+    tracker.markActive(now.subtract(idle));
     expect(tracker.isWorking, isFalse);
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(tracker.isWorking, isFalse);
-    tracker.markActive();
+    tracker.markActive(now);
     expect(tracker.isWorking, isTrue);
   });
 
-  test(
-    'reading isWorking after reset does not arm before first PTY output',
-    () async {
-      final tracker = TerminalActivityTracker(
-        idleAfter: const Duration(milliseconds: 40),
-      );
-      tracker.reset();
-
-      // Idle-watch polls isWorking while the shell is still silent after
-      // onConfirmedRunning → reset(). That must not arm the tracker, or the
-      // first startup banner is treated as a finished agent turn.
-      expect(tracker.isWorking, isFalse);
-
-      tracker.notePtyBytes(Uint8List.fromList('welcome\n'.codeUnits));
-      expect(tracker.isWorking, isFalse);
-
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(
-        tracker.isWorking,
-        isFalse,
-        reason: 'boot quiet arm must not invent activity without post-arm PTY',
-      );
-    },
-  );
-
-  test('boot output burst does not show working until quiet', () async {
-    final tracker = TerminalActivityTracker(
-      idleAfter: const Duration(milliseconds: 40),
-    );
-    tracker.noteOutput();
-    expect(tracker.isWorking, isFalse);
-    tracker.noteOutput();
-    expect(tracker.isWorking, isFalse);
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(tracker.isWorking, isFalse);
-    tracker.markActive();
-    expect(tracker.isWorking, isTrue);
-  });
-
-  test('isBootFrameReady after visible output and boot quiet', () async {
-    final tracker = TerminalActivityTracker(
-      bootQuietAfter: const Duration(milliseconds: 40),
-    );
+  test('reading isWorking after reset does not arm before first PTY output', () {
+    final tracker = TerminalActivityTracker(idleAfter: idle);
     tracker.reset();
-    expect(tracker.isBootFrameReady, isFalse);
 
+    // Idle-watch polls isWorking while the shell is still silent after
+    // onConfirmedRunning → reset(). That must not arm the tracker, or the
+    // first startup banner is treated as a finished agent turn.
+    expect(tracker.isWorking, isFalse);
+
+    final now = DateTime.now();
+    tracker.notePtyBytes(
+      Uint8List.fromList('welcome\n'.codeUnits),
+      now.subtract(idle),
+    );
+    expect(
+      tracker.isWorking,
+      isFalse,
+      reason: 'boot quiet arm must not invent activity without post-arm PTY',
+    );
+  });
+
+  test('boot output burst does not show working until quiet', () {
+    final tracker = TerminalActivityTracker(idleAfter: idle);
+    final now = DateTime.now();
+    tracker.noteOutput(now.subtract(idle));
+    expect(tracker.isWorking, isFalse);
+    tracker.noteOutput(now.subtract(idle));
+    expect(tracker.isWorking, isFalse);
+    tracker.markActive(now);
+    expect(tracker.isWorking, isTrue);
+  });
+
+  test('isBootFrameReady after visible output and boot quiet', () {
+    final tracker = TerminalActivityTracker(bootQuietAfter: bootQuiet);
     final frame = Uint8List.fromList('→ prompt\n'.codeUnits);
-    tracker.notePtyBytes(frame);
+    final now = DateTime.now();
+
+    tracker.reset();
+    tracker.notePtyBytes(frame, now);
     expect(tracker.isBootFrameReady, isFalse);
 
-    await Future<void>.delayed(const Duration(milliseconds: 50));
+    tracker.reset();
+    tracker.notePtyBytes(frame, now.subtract(bootQuiet));
+    expect(tracker.isBootFrameReady, isTrue);
+  });
+
+  test('isBootFrameReady latches and does not revert on later PTY churn', () {
+    final tracker = TerminalActivityTracker(bootQuietAfter: bootQuiet);
+    final now = DateTime.now();
+    tracker.reset();
+    tracker.notePtyBytes(
+      Uint8List.fromList('→ prompt\n'.codeUnits),
+      now.subtract(bootQuiet),
+    );
+    expect(tracker.isBootFrameReady, isTrue);
+
+    tracker.notePtyBytes(
+      Uint8List.fromList('→ prompt\nspinner\n'.codeUnits),
+      now,
+    );
     expect(tracker.isBootFrameReady, isTrue);
   });
 
   test(
-    'isBootFrameReady latches and does not revert on later PTY churn',
-    () async {
+    'isBootFrameReady stays false while visible fingerprint keeps changing',
+    () {
       final tracker = TerminalActivityTracker(
-        bootQuietAfter: const Duration(milliseconds: 40),
+        bootQuietAfter: const Duration(milliseconds: 80),
       );
       tracker.reset();
-      tracker.notePtyBytes(Uint8List.fromList('→ prompt\n'.codeUnits));
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(tracker.isBootFrameReady, isTrue);
-
-      tracker.notePtyBytes(Uint8List.fromList('→ prompt\nspinner\n'.codeUnits));
-      expect(tracker.isBootFrameReady, isTrue);
+      final now = DateTime.now();
+      for (var i = 0; i < 6; i++) {
+        tracker.notePtyBytes(
+          Uint8List.fromList('→ prompt spinner-$i\n'.codeUnits),
+          now.add(Duration(milliseconds: i * 20)),
+        );
+        expect(
+          tracker.isBootFrameReady,
+          isFalse,
+          reason: 'churn before quiet window must not latch (i=$i)',
+        );
+      }
+      expect(tracker.bootFrameDebugSummary.contains('latched=false'), isTrue);
     },
   );
 
-  test(
-    'isBootFrameReady waits for visible content not escape-only quiet',
-    () async {
-      final tracker = TerminalActivityTracker(
-        bootQuietAfter: const Duration(milliseconds: 40),
-      );
-      tracker.reset();
-      // Alternate screen + clear — common cursor startup before TUI paints.
-      tracker.notePtyBytes(
-        Uint8List.fromList([0x1b, 0x5b, 0x3f, 0x31, 0x30, 0x34, 0x39, 0x68]),
-      );
-      tracker.notePtyBytes(Uint8List.fromList([0x1b, 0x5b, 0x32, 0x4a]));
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(tracker.isBootFrameReady, isFalse);
-
-      tracker.notePtyBytes(
-        Uint8List.fromList('Cursor Agent ready\n'.codeUnits),
-      );
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(tracker.isBootFrameReady, isTrue);
-    },
-  );
-
-  test('whitespace-only tail is not visible content', () async {
-    final tracker = TerminalActivityTracker(
-      bootQuietAfter: const Duration(milliseconds: 40),
-    );
+  test('isBootFrameReady waits for visible content not escape-only quiet', () {
+    final tracker = TerminalActivityTracker(bootQuietAfter: bootQuiet);
+    final now = DateTime.now();
     tracker.reset();
-    tracker.notePtyBytes(Uint8List.fromList('     \n\t \n'.codeUnits));
-    await Future<void>.delayed(const Duration(milliseconds: 50));
+    // Alternate screen + clear — common cursor startup before TUI paints.
+    tracker.notePtyBytes(
+      Uint8List.fromList([0x1b, 0x5b, 0x3f, 0x31, 0x30, 0x34, 0x39, 0x68]),
+      now.subtract(bootQuiet),
+    );
+    tracker.notePtyBytes(
+      Uint8List.fromList([0x1b, 0x5b, 0x32, 0x4a]),
+      now.subtract(bootQuiet),
+    );
+    expect(tracker.isBootFrameReady, isFalse);
+
+    tracker.notePtyBytes(
+      Uint8List.fromList('Cursor Agent ready\n'.codeUnits),
+      now.subtract(bootQuiet),
+    );
+    expect(tracker.isBootFrameReady, isTrue);
+  });
+
+  test('whitespace-only tail is not visible content', () {
+    final tracker = TerminalActivityTracker(bootQuietAfter: bootQuiet);
+    tracker.reset();
+    tracker.notePtyBytes(
+      Uint8List.fromList('     \n\t \n'.codeUnits),
+      DateTime.now().subtract(bootQuiet),
+    );
     expect(tracker.isBootFrameReady, isFalse);
   });
 
-  test('isWorking false after idleAfter elapses', () async {
-    final tracker = TerminalActivityTracker(
-      idleAfter: const Duration(milliseconds: 40),
-    );
+  test('isWorking false after idleAfter elapses', () {
+    final tracker = TerminalActivityTracker(idleAfter: idle);
+    final now = DateTime.now();
     tracker.reset();
     expect(tracker.isWorking, isFalse);
-    tracker.markActive(); // boot output
+    tracker.markActive(now.subtract(idle)); // boot output → arms
     expect(tracker.isWorking, isFalse);
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(tracker.isWorking, isFalse);
-    tracker.markActive(); // post-boot activity
+    tracker.markActive(now); // post-boot activity
     expect(tracker.isWorking, isTrue);
-    await Future<void>.delayed(const Duration(milliseconds: 60));
+    tracker.markActive(now.subtract(idle + const Duration(milliseconds: 20)));
     expect(tracker.isWorking, isFalse);
   });
 
-  test('identical consecutive PTY chunks do not refresh activity', () async {
-    final tracker = TerminalActivityTracker(
-      idleAfter: const Duration(milliseconds: 40),
-    );
+  test('identical consecutive PTY chunks do not refresh activity', () {
+    final tracker = TerminalActivityTracker(idleAfter: idle);
+    final now = DateTime.now();
     tracker.reset();
-    expect(tracker.isWorking, isFalse);
-    tracker.markActive(); // boot output
-    await Future<void>.delayed(const Duration(milliseconds: 50));
+    tracker.markActive(now.subtract(idle));
     expect(tracker.isWorking, isFalse);
 
     final frame = Uint8List.fromList([0x1b, ...'[Kspinner'.codeUnits]);
-    tracker.notePtyBytes(frame);
-    expect(tracker.isWorking, isTrue);
-
-    await Future<void>.delayed(const Duration(milliseconds: 25));
-    tracker.notePtyBytes(frame);
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+    // First chunk already older than idleAfter → idle.
+    tracker.notePtyBytes(
+      frame,
+      now.subtract(idle + const Duration(milliseconds: 10)),
+    );
     expect(tracker.isWorking, isFalse);
 
-    tracker.notePtyBytes(Uint8List.fromList([...frame, 0x21]));
+    // Identical fresher chunk must not refresh activity.
+    tracker.notePtyBytes(frame, now);
+    expect(tracker.isWorking, isFalse);
+
+    tracker.notePtyBytes(Uint8List.fromList([...frame, 0x21]), now);
     expect(tracker.isWorking, isTrue);
   });
 
-  test('different escape bytes with same last line dedupe', () async {
+  test('different escape bytes with same last line dedupe', () {
     const tail = 'Composer 2.5   Run Everything\n/path/feat/automations';
     final a = utf8.encode('\x1b[1;1H→ prompt\n$tail');
     final b = utf8.encode('\x1b[2;1H\x1b[K→ prompt\n$tail');
@@ -174,25 +188,24 @@ void main() {
       TerminalActivityTracker.visiblePtyFingerprintHash(b),
     );
 
-    final tracker = TerminalActivityTracker(
-      idleAfter: const Duration(milliseconds: 40),
-    );
+    final tracker = TerminalActivityTracker(idleAfter: idle);
+    final now = DateTime.now();
     tracker.reset();
-    expect(tracker.isWorking, isFalse);
-    tracker.markActive(); // boot output
-    await Future<void>.delayed(const Duration(milliseconds: 50));
+    tracker.markActive(now.subtract(idle));
     expect(tracker.isWorking, isFalse);
 
-    tracker.notePtyBytes(a);
-    expect(tracker.isWorking, isTrue);
+    tracker.notePtyBytes(
+      a,
+      now.subtract(idle + const Duration(milliseconds: 10)),
+    );
+    expect(tracker.isWorking, isFalse);
 
-    await Future<void>.delayed(const Duration(milliseconds: 25));
-    tracker.notePtyBytes(b);
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+    // Same visible fingerprint must not refresh activity.
+    tracker.notePtyBytes(b, now);
     expect(tracker.isWorking, isFalse);
   });
 
-  test('alternating spinner lines with stable tail dedupe', () async {
+  test('alternating spinner lines with stable tail dedupe', () {
     const tail = 'Composer 2.5\n/home/user/proj · main';
     final spinnerA = '${'▀' * 20}\n';
     final spinnerB = "${"'" * 20}\n";
@@ -229,9 +242,7 @@ void main() {
   });
 
   test('no PTY bytes after latch is not quiet', () {
-    final tracker = TerminalActivityTracker(
-      idleAfter: const Duration(milliseconds: 40),
-    );
+    final tracker = TerminalActivityTracker(idleAfter: idle);
     tracker.reset();
     tracker.latchTurnQuietBaseline(
       DateTime.now().subtract(const Duration(milliseconds: 50)),
@@ -239,40 +250,38 @@ void main() {
     expect(tracker.isQuietAfterTurnPtyActivity, isFalse);
   });
 
-  test('fingerprint unchanged for idleAfter ends turn quiet', () async {
-    final tracker = TerminalActivityTracker(
-      idleAfter: const Duration(milliseconds: 40),
-    );
+  test('fingerprint unchanged for idleAfter ends turn quiet', () {
+    final tracker = TerminalActivityTracker(idleAfter: idle);
+    final now = DateTime.now();
     tracker.reset();
-    tracker.latchTurnQuietBaseline();
+    tracker.latchTurnQuietBaseline(now);
 
     final frame = Uint8List.fromList('prompt idle\n'.codeUnits);
-    tracker.notePtyBytes(frame);
+    tracker.notePtyBytes(frame, now);
     expect(tracker.isQuietAfterTurnPtyActivity, isFalse);
 
-    await Future<void>.delayed(const Duration(milliseconds: 25));
-    tracker.notePtyBytes(frame);
+    // Unchanged fingerprint does not move stability baseline.
+    tracker.notePtyBytes(frame, now.add(const Duration(milliseconds: 25)));
     expect(tracker.isQuietAfterTurnPtyActivity, isFalse);
 
-    await Future<void>.delayed(const Duration(milliseconds: 25));
+    tracker.reset();
+    tracker.latchTurnQuietBaseline(now.subtract(idle));
+    tracker.notePtyBytes(frame, now.subtract(idle));
     expect(tracker.isQuietAfterTurnPtyActivity, isTrue);
 
-    tracker.latchTurnQuietBaseline();
+    tracker.latchTurnQuietBaseline(now);
     expect(tracker.isQuietAfterTurnPtyActivity, isFalse);
   });
 
-  test('deduped repaint ends quiet without new noteOutput', () async {
-    final tracker = TerminalActivityTracker(
-      idleAfter: const Duration(milliseconds: 40),
-    );
+  test('deduped repaint ends quiet without new noteOutput', () {
+    final tracker = TerminalActivityTracker(idleAfter: idle);
+    final now = DateTime.now();
     tracker.reset();
-    tracker.latchTurnQuietBaseline();
+    tracker.latchTurnQuietBaseline(now.subtract(idle));
 
     final frame = Uint8List.fromList([0x1b, ...'[Kspinner\nstill'.codeUnits]);
-    tracker.notePtyBytes(frame);
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    tracker.notePtyBytes(frame);
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+    tracker.notePtyBytes(frame, now.subtract(idle));
+    tracker.notePtyBytes(frame, now);
     expect(tracker.isQuietAfterTurnPtyActivity, isTrue);
   });
 

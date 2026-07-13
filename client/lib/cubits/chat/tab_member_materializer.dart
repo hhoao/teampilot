@@ -62,7 +62,18 @@ class TabMemberMaterializer implements MemberMaterializer {
     String memberId, {
     bool directToPty = false,
   }) async {
+    appLogger.d(
+      '[member-materializer] input-ready wait start member=$memberId '
+      'session=$sessionId directToPty=$directToPty '
+      '${_inputReadyGateSummary(sessionId, memberId)}',
+    );
     await materializeMember(sessionId, memberId, '');
+    appLogger.d(
+      '[member-materializer] materialize done member=$memberId '
+      'session=$sessionId '
+      '${_inputReadyGateSummary(sessionId, memberId)}',
+    );
+    var waitTicks = 0;
     while (!_isClosed()) {
       final shellReady = _runtime.isMemberReadyForAutomationInput(
         sessionId,
@@ -74,6 +85,14 @@ class TabMemberMaterializer implements MemberMaterializer {
           final lifecycleReady = _isDirectPtyLifecycleReady;
           if (lifecycleReady != null &&
               !await lifecycleReady(sessionId, memberId)) {
+            waitTicks++;
+            if (waitTicks == 1 || waitTicks % 50 == 0) {
+              appLogger.d(
+                '[member-materializer] input-ready blocked lifecycle '
+                'member=$memberId session=$sessionId ticks=$waitTicks '
+                '${_inputReadyGateSummary(sessionId, memberId)}',
+              );
+            }
             await Future<void>.delayed(const Duration(milliseconds: 100));
             continue;
           }
@@ -84,8 +103,38 @@ class TabMemberMaterializer implements MemberMaterializer {
         );
         return;
       }
+      waitTicks++;
+      // Every ~5s while blocked — pin whether shell/boot/coordination is stuck.
+      if (waitTicks == 1 || waitTicks % 50 == 0) {
+        appLogger.d(
+          '[member-materializer] input-ready still-waiting '
+          'member=$memberId session=$sessionId ticks=$waitTicks '
+          '${_inputReadyGateSummary(sessionId, memberId)}',
+        );
+      }
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }
+  }
+
+  String _inputReadyGateSummary(String sessionId, String memberId) {
+    final tab = _tabStore.openTabBySessionId(sessionId);
+    if (tab == null) return 'gate=no-tab';
+    final shell = tab.memberShells[memberId];
+    if (shell == null) {
+      return 'gate=no-shell keys=${tab.memberShells.keys.toList()} '
+          'selected=${tab.selectedMemberId}';
+    }
+    final coord = _runtime.isMemberReadyForAutomationInput(
+      sessionId,
+      memberId,
+      directToPty: true,
+    );
+    return 'gate shellRunning=${shell.isRunning} '
+        'shellConnected=${shell.isConnected} '
+        'shellConnecting=${shell.isConnecting} '
+        'boot=${shell.activityTracker.bootFrameDebugSummary} '
+        'automationReady=$coord '
+        'selected=${tab.selectedMemberId}';
   }
 
   @override
@@ -103,6 +152,16 @@ class TabMemberMaterializer implements MemberMaterializer {
       final shell = tab.memberShells[memberId];
       if (shell != null && shell.isRunning) {
         markMemberReady(sessionId, memberId);
+      } else {
+        appLogger.d(
+          '[member-materializer] personal await-connect '
+          'member=$memberId session=$sessionId '
+          'shellNull=${shell == null} '
+          'running=${shell?.isRunning} '
+          'connecting=${shell?.isConnecting} '
+          'keys=${tab.memberShells.keys.toList()} '
+          'selected=${tab.selectedMemberId}',
+        );
       }
       await ready.future;
       return;

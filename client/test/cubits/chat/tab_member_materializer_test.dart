@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/chat_session_shell_factory.dart';
 import 'package:teampilot/cubits/chat/chat_tab_store.dart';
@@ -145,6 +147,52 @@ void main() {
 
       materializer.markMemberReady('sess-1', 'builder-1');
       await pending;
+    },
+  );
+
+  test(
+    'personal materialize hangs until markMemberReady when shell not running',
+    () async {
+      final store = ChatTabStore();
+      store.setActiveWorkspace('ws-1');
+      final tab = ChatTab(
+        info: const ChatTabInfo(id: 'sess-1', title: 't', subtitle: ''),
+        workspaceId: 'ws-1',
+        cliTeamName: '',
+      )..persistedSession = AppSession(
+          sessionId: 'sess-1',
+          workspaceId: 'ws-1',
+          sessionTeam: '',
+          createdAt: 0,
+        );
+      store.append(tab);
+
+      final materializer = TabMemberMaterializer(
+        runtime: TabSessionRuntimeCoordinator(
+          tabStore: store,
+          shellFactory: ChatSessionShellFactory(executableResolver: () => 'true'),
+          globalPresets: () => const [],
+          activeTeam: () => null,
+          isClosed: () => false,
+        ),
+        tabStore: store,
+        connector: _RecordingConnector(),
+        activeTeam: () => null,
+        isClosed: () => false,
+        isMixedBusRegistered: (_) => false,
+        isMemberConnectOwnedElsewhere: (_, _) => false,
+      );
+
+      final pending = materializer.materializeMember('sess-1', 'sess-1', '');
+      var completed = false;
+      unawaited(pending.then((_) => completed = true));
+      // Yield so materialize can park on the ready completer without wall delay.
+      await Future<void>.delayed(Duration.zero);
+      expect(completed, isFalse);
+
+      materializer.markMemberReady('sess-1', 'sess-1');
+      await pending;
+      expect(completed, isTrue);
     },
   );
 }
