@@ -85,10 +85,10 @@ final class AppControlTheme extends ThemeExtension<AppControlTheme> {
   static const double verticalPaddingBase = 8;
 
   static const AppControlMetrics smallBase = AppControlMetrics(
-    height: 24,
+    height: 20,
     minWidth: 48,
     horizontalPadding: 8,
-    verticalPadding: 6,
+    verticalPadding: 4,
   );
   static const AppControlMetrics mediumBase = AppControlMetrics(
     height: heightBase,

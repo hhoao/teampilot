@@ -114,11 +114,14 @@ InputDecorationTheme buildAppOutlineInputDecorationTheme({
     filled: true,
     fillColor: colorScheme.workspaceCard,
     isDense: true,
+    // Horizontal from control; keep vertical padding modest so the tight
+    // height constraint can actually paint at [control.height] (minHeight
+    // alone lets content grow past the shared button track).
     contentPadding: EdgeInsets.symmetric(
       horizontal: control.horizontalPadding,
-      vertical: control.verticalPadding,
+      vertical: (control.verticalPadding / 2).clamp(2.0, 6.0),
     ),
-    constraints: BoxConstraints(minHeight: control.height),
+    constraints: BoxConstraints.tightFor(height: control.height),
     hintStyle: hintStyle,
     labelStyle: textTheme.bodyMedium?.copyWith(color: labelColor),
     floatingLabelStyle: textTheme.bodyMedium?.copyWith(
