@@ -39,6 +39,7 @@ import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/team_member_naming.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
+import 'ai_thread_selection_context_menu.dart';
 import 'session_review_compose_card.dart';
 
 /// History list + slim compose for a non-running session body.
@@ -632,77 +633,110 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
 
     return ColoredBox(
       color: cs.surface,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: kSessionHistoryColumnMaxWidth,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: Theme(
-                  data: Theme.of(context).copyWith(
-                    extensions: [
-                      ...Theme.of(context).extensions.values,
-                      AiMessageTheme(
-                        userBubbleColor: cs.surfaceContainerHighest,
-                        userBubbleForeground: cs.onSurface,
-                        mutedSurface: cs.surfaceContainerHighest.withValues(
-                          alpha: 0.55,
-                        ),
-                        toolTriggerColor: cs.onSurfaceVariant,
-                        markdownStyleSheet: buildAppMarkdownStyleSheet(
-                          Theme.of(context),
-                        ),
-                        messageSpacing: 24,
-                        // Fill the shared column so edges match compose.
-                        threadMaxWidth: kSessionHistoryColumnMaxWidth,
-                        threadHorizontalPadding: spacing.md,
-                      ),
-                    ],
-                  ),
-                  child: AiMessageStringsScope(
-                    strings: AiMessageStrings(
-                      usedTool: l10n.aiMessageUsedTool,
-                      cancelledTool: l10n.aiMessageCancelledTool,
-                      formatToolsUsed: l10n.aiMessageToolsUsed,
-                      reasoning: l10n.aiMessageReasoning,
-                      result: l10n.aiMessageToolResult,
-                      copy: l10n.copy,
-                      copied: l10n.aiMessageCopied,
-                      exportMarkdown: l10n.aiMessageExportMarkdown,
-                      messageIncomplete: l10n.aiMessageIncomplete,
-                      messageCancelled: l10n.aiMessageCancelled,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            // Full-bleed scroll surface: margins beside the text column still
+            // receive wheel / drag. Message width is capped inside AiThread.
+            child: Theme(
+              data: Theme.of(context).copyWith(
+                extensions: [
+                  ...Theme.of(context).extensions.values,
+                  AiMessageTheme(
+                    userBubbleColor: cs.surfaceContainerHighest,
+                    userBubbleForeground: cs.onSurface,
+                    mutedSurface: cs.surfaceContainerHighest.withValues(
+                      alpha: 0.55,
                     ),
-                    child: BlocBuilder<AiHistoryCubit, AiHistoryState>(
-                      builder: (context, state) {
-                        final cubit = context.read<AiHistoryCubit>();
-                        return AiThread(
-                          runtime: cubit.runtime,
-                          hasOlder: state.hasOlder,
-                          isLoadingOlder: state.isLoadingOlder,
-                          onLoadOlder: cubit.loadOlder,
-                          loadOlderScrollThreshold:
-                              kSessionHistoryLoadOlderScrollThreshold,
-                          onRetry: () => _loadHistory(force: true),
-                          loadingBuilder: (context) => _HistoryStatusPane(
-                            icon: Icons.history_rounded,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const SizedBox(
-                                  width: 28,
-                                  height: 28,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                  ),
+                    toolTriggerColor: cs.onSurfaceVariant,
+                    markdownStyleSheet: buildAppMarkdownStyleSheet(
+                      Theme.of(context),
+                    ),
+                    messageSpacing: 24,
+                    threadMaxWidth: kSessionHistoryColumnMaxWidth,
+                    threadHorizontalPadding: spacing.md,
+                  ),
+                ],
+              ),
+              child: AiMessageStringsScope(
+                strings: AiMessageStrings(
+                  usedTool: l10n.aiMessageUsedTool,
+                  cancelledTool: l10n.aiMessageCancelledTool,
+                  formatToolsUsed: l10n.aiMessageToolsUsed,
+                  reasoning: l10n.aiMessageReasoning,
+                  result: l10n.aiMessageToolResult,
+                  copy: l10n.copy,
+                  copied: l10n.aiMessageCopied,
+                  exportMarkdown: l10n.aiMessageExportMarkdown,
+                  messageIncomplete: l10n.aiMessageIncomplete,
+                  messageCancelled: l10n.aiMessageCancelled,
+                ),
+                child: BlocBuilder<AiHistoryCubit, AiHistoryState>(
+                  builder: (context, state) {
+                    final cubit = context.read<AiHistoryCubit>();
+                    return AiThread(
+                      runtime: cubit.runtime,
+                      hasOlder: state.hasOlder,
+                      isLoadingOlder: state.isLoadingOlder,
+                      onLoadOlder: cubit.loadOlder,
+                      loadOlderScrollThreshold:
+                          kSessionHistoryLoadOlderScrollThreshold,
+                      onRetry: () => _loadHistory(force: true),
+                      selectionContextMenuBuilder:
+                          buildAiThreadSelectionContextMenu,
+                      loadingBuilder: (context) => _HistoryStatusPane(
+                        icon: Icons.history_rounded,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                              ),
+                            ),
+                            SizedBox(height: context.appSpacing.md),
+                            Text(
+                              context.l10n.sessionHistoryLoading,
+                              style: AppTextStyles.of(context).mdColored(
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                      emptyBuilder: (context) => _HistoryStatusPane(
+                        icon: Icons.chat_bubble_outline_rounded,
+                        child: Text(
+                          context.l10n.sessionHistoryEmpty,
+                          style: AppTextStyles.of(context).mdColored(
+                            Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      errorBuilder: (context, message, onRetry) {
+                        final detail = message?.trim();
+                        return _HistoryStatusPane(
+                          icon: Icons.error_outline_rounded,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                context.l10n.sessionHistoryError,
+                                style: AppTextStyles.of(context).mdColored(
+                                  Theme.of(context).colorScheme.error,
                                 ),
-                                SizedBox(height: context.appSpacing.md),
+                                textAlign: TextAlign.center,
+                              ),
+                              if (detail != null && detail.isNotEmpty) ...[
+                                SizedBox(height: context.appSpacing.sm),
                                 Text(
-                                  context.l10n.sessionHistoryLoading,
-                                  style: AppTextStyles.of(context).mdColored(
+                                  detail,
+                                  style: AppTextStyles.of(context).smColored(
                                     Theme.of(
                                       context,
                                     ).colorScheme.onSurfaceVariant,
@@ -710,93 +744,58 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                                   textAlign: TextAlign.center,
                                 ),
                               ],
-                            ),
-                          ),
-                          emptyBuilder: (context) => _HistoryStatusPane(
-                            icon: Icons.chat_bubble_outline_rounded,
-                            child: Text(
-                              context.l10n.sessionHistoryEmpty,
-                              style: AppTextStyles.of(context).mdColored(
-                                Theme.of(context).colorScheme.onSurfaceVariant,
+                              SizedBox(height: context.appSpacing.md),
+                              TextButton(
+                                onPressed: onRetry,
+                                child: Text(context.l10n.sessionHistoryRetry),
                               ),
-                              textAlign: TextAlign.center,
-                            ),
+                            ],
                           ),
-                          errorBuilder: (context, message, onRetry) {
-                            final detail = message?.trim();
-                            return _HistoryStatusPane(
-                              icon: Icons.error_outline_rounded,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    context.l10n.sessionHistoryError,
-                                    style: AppTextStyles.of(context).mdColored(
-                                      Theme.of(context).colorScheme.error,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  if (detail != null && detail.isNotEmpty) ...[
-                                    SizedBox(height: context.appSpacing.sm),
-                                    Text(
-                                      detail,
-                                      style: AppTextStyles.of(context)
-                                          .smColored(
-                                            Theme.of(
-                                              context,
-                                            ).colorScheme.onSurfaceVariant,
-                                          ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
-                                  SizedBox(height: context.appSpacing.md),
-                                  TextButton(
-                                    onPressed: onRetry,
-                                    child: Text(
-                                      context.l10n.sessionHistoryRetry,
-                                    ),
-                                  ),
-                                ],
+                        );
+                      },
+                      loadOlderHeaderBuilder:
+                          (context, {required bool isLoadingOlder}) {
+                            final headerCs = Theme.of(context).colorScheme;
+                            return Padding(
+                              padding: EdgeInsets.only(
+                                bottom: context.appSpacing.md,
+                              ),
+                              child: Center(
+                                child: isLoadingOlder
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Text(
+                                        context
+                                            .l10n
+                                            .sessionHistoryLoadOlderHint,
+                                        style: AppTextStyles.of(context)
+                                            .smColored(
+                                              headerCs.onSurfaceVariant
+                                                  .withValues(alpha: 0.75),
+                                            ),
+                                        textAlign: TextAlign.center,
+                                      ),
                               ),
                             );
                           },
-                          loadOlderHeaderBuilder:
-                              (context, {required bool isLoadingOlder}) {
-                                final headerCs = Theme.of(context).colorScheme;
-                                return Padding(
-                                  padding: EdgeInsets.only(
-                                    bottom: context.appSpacing.md,
-                                  ),
-                                  child: Center(
-                                    child: isLoadingOlder
-                                        ? const SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                            ),
-                                          )
-                                        : Text(
-                                            context
-                                                .l10n
-                                                .sessionHistoryLoadOlderHint,
-                                            style: AppTextStyles.of(context)
-                                                .smColored(
-                                                  headerCs.onSurfaceVariant
-                                                      .withValues(alpha: 0.75),
-                                                ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                  ),
-                                );
-                              },
-                        );
-                      },
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ),
-              Padding(
+            ),
+          ),
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: kSessionHistoryColumnMaxWidth,
+              ),
+              child: Padding(
                 padding: EdgeInsets.fromLTRB(
                   spacing.md,
                   0,
@@ -868,9 +867,9 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                   showTeamSettingsAttention: teamSettingsAttention,
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

@@ -104,9 +104,9 @@ class AppFormFieldLayout extends StatelessWidget {
               padding: const EdgeInsets.only(right: 12, top: 10),
               child: DefaultTextStyle(
                 style: labelStyle,
-                textAlign: TextAlign.right,
+                textAlign: TextAlign.left,
                 child: Align(
-                  alignment: Alignment.centerRight,
+                  alignment: Alignment.centerLeft,
                   child: label!,
                 ),
               ),

@@ -52,8 +52,6 @@ abstract final class ShellScriptLaunchSchema {
       },
       'executeInTerminal': {'type': 'boolean'},
       'allowMultipleInstances': {'type': 'boolean'},
-      'activateToolWindow': {'type': 'boolean'},
-      'focusToolWindow': {'type': 'boolean'},
     },
   };
 

@@ -27,6 +27,7 @@ class AiThread extends StatefulWidget {
     this.scrollController,
     this.loadOlderHeaderBuilder,
     this.onRetry,
+    this.selectionContextMenuBuilder,
     super.key,
   });
 
@@ -39,7 +40,8 @@ class AiThread extends StatefulWidget {
     VoidCallback? onRetry,
   )
   errorBuilder;
-  final Widget Function(BuildContext context, AiMessage message)? messageBuilder;
+  final Widget Function(BuildContext context, AiMessage message)?
+  messageBuilder;
   final AiPartRegistry registry;
   final bool hasOlder;
   final bool isLoadingOlder;
@@ -49,6 +51,9 @@ class AiThread extends StatefulWidget {
   final Widget Function(BuildContext context, {required bool isLoadingOlder})?
   loadOlderHeaderBuilder;
   final VoidCallback? onRetry;
+
+  /// Replaces the platform [SelectionArea] text toolbar (e.g. app action menu).
+  final SelectableRegionContextMenuBuilder? selectionContextMenuBuilder;
 
   @override
   State<AiThread> createState() => _AiThreadState();
@@ -245,31 +250,39 @@ class _AiThreadState extends State<AiThread> {
         // One selection region for the thread — markdown/tool Text join into a
         // continuous drag/double-click selection (not per-paragraph islands).
         return SelectionArea(
+          contextMenuBuilder: widget.selectionContextMenuBuilder,
           child: NotificationListener<ScrollNotification>(
             onNotification: _onScroll,
             child: ListView.builder(
               controller: _scrollController,
-              padding: EdgeInsets.fromLTRB(
-                aiTheme.threadHorizontalPadding,
-                16,
-                aiTheme.threadHorizontalPadding,
-                24,
-              ),
+              // Horizontal inset is applied per-message so empty margins beside
+              // the column still hit-test the scrollable (wheel / drag scroll).
+              padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
               itemCount: _messages.length + sentinelCount,
               itemBuilder: (context, index) {
                 if (widget.hasOlder && index == 0) {
                   return SelectionContainer.disabled(
-                    child: _buildLoadOlderHeader(context),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: aiTheme.threadHorizontalPadding,
+                      ),
+                      child: _buildLoadOlderHeader(context),
+                    ),
                   );
                 }
                 final messageIndex = widget.hasOlder ? index - 1 : index;
                 return Align(
                   alignment: Alignment.topCenter,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: aiTheme.threadMaxWidth,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: aiTheme.threadHorizontalPadding,
                     ),
-                    child: _buildMessage(context, _messages[messageIndex]),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: aiTheme.threadMaxWidth,
+                      ),
+                      child: _buildMessage(context, _messages[messageIndex]),
+                    ),
                   ),
                 );
               },

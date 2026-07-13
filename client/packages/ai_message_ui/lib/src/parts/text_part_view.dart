@@ -23,8 +23,8 @@ class AiTextPartView extends StatelessWidget {
     return MarkdownBody(
       data: data,
       styleSheet: sheet,
-      // Parent [SelectionArea]: package uses marker-in-text + padded gaps
-      // (no per-block SelectableText / empty SizedBox siblings).
+      // Parent [SelectionArea]: text-only blocks merge into one Text.rich;
+      // code blocks / tables stay as widgets and split the tree.
       selectable: false,
       builders: {
         'pre': _AuiCodeBlockBuilder(aiTheme: aiTheme),
