@@ -491,4 +491,60 @@ void main() {
 
     expect(closed, [entry.id]);
   });
+
+  test('removeOnEntryClosedListener stops notifications', () async {
+    final closed = <String>[];
+    void listener(String entryId) => closed.add(entryId);
+    service.addOnEntryClosedListener(listener);
+    service.removeOnEntryClosedListener(listener);
+    final entry = await _open(
+      service: service,
+      group: group,
+      connector: connector,
+      connectCoordinator: connect,
+      ops: ops,
+      selectionKey: 'sel',
+      allowMultipleInstances: false,
+    );
+
+    service.handleEntryClosed(entry.id);
+
+    expect(closed, isEmpty);
+  });
+
+  test('TerminalRunDepsResolver removeEntryClosedListener clears pending', () {
+    final resolver = TerminalRunDepsResolver();
+    final closed = <String>[];
+    void listener(String entryId) => closed.add(entryId);
+    resolver.addEntryClosedListener(listener);
+    resolver.removeEntryClosedListener(listener);
+    resolver.setDeps(
+      TerminalRunDeps(
+        registry: WorkspaceTerminalRegistry(),
+        connector: connector,
+        ops: ops,
+        runService: service,
+      ),
+    );
+    service.handleEntryClosed('gone');
+    expect(closed, isEmpty);
+  });
+
+  test('TerminalRunDepsResolver removeEntryClosedListener clears live', () {
+    final resolver = TerminalRunDepsResolver()
+      ..setDeps(
+        TerminalRunDeps(
+          registry: WorkspaceTerminalRegistry(),
+          connector: connector,
+          ops: ops,
+          runService: service,
+        ),
+      );
+    final closed = <String>[];
+    void listener(String entryId) => closed.add(entryId);
+    resolver.addEntryClosedListener(listener);
+    resolver.removeEntryClosedListener(listener);
+    service.handleEntryClosed('gone');
+    expect(closed, isEmpty);
+  });
 }

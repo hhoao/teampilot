@@ -20,6 +20,19 @@ import 'run_platform.dart';
 import 'run_session_manager.dart';
 import 'shell_script_launcher.dart';
 
+/// [RunPlatform] plus the retained entry-closed listener tear-off for cleanup.
+class CreatedWorkspaceRunPlatform {
+  const CreatedWorkspaceRunPlatform({
+    required this.platform,
+    required this.onEntryClosed,
+  });
+
+  final RunPlatform platform;
+
+  /// Same tear-off passed to [TerminalRunDepsResolver.addEntryClosedListener].
+  final void Function(String entryId) onEntryClosed;
+}
+
 /// Builds a per-workspace [RunPlatform] with extension enablement injected.
 ///
 /// Enablement reuses [ExtensionRepository] +
@@ -60,7 +73,7 @@ class WorkspaceRunPlatformFactory {
 
   Filesystem get _filesystem => _fs ?? AppStorage.fs;
 
-  Future<RunPlatform> create({
+  Future<CreatedWorkspaceRunPlatform> create({
     required String workspaceId,
     void Function(RunUiIntent intent)? emitUiIntent,
   }) async {
@@ -100,9 +113,9 @@ class WorkspaceRunPlatformFactory {
       resolveLaunchType: registry.get,
     );
     sessionManagerRef = sessionManager;
-    terminalRunDeps.addEntryClosedListener(
-      sessionManager.markExitedForTerminalEntry,
-    );
+    // Retain the tear-off so removeScope/dispose can remove by identity.
+    final onEntryClosed = sessionManager.markExitedForTerminalEntry;
+    terminalRunDeps.addEntryClosedListener(onEntryClosed);
     final platform = RunPlatform(
       store: store,
       registry: registry,
@@ -111,7 +124,10 @@ class WorkspaceRunPlatformFactory {
       registrar: registrar,
     );
     await platform.rebuildLaunchTypes();
-    return platform;
+    return CreatedWorkspaceRunPlatform(
+      platform: platform,
+      onEntryClosed: onEntryClosed,
+    );
   }
 
   Future<Filesystem> _filesystemForTarget(String targetId) async {

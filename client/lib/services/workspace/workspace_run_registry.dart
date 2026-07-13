@@ -23,6 +23,8 @@ class WorkspaceRunRegistry {
   final WorkspaceRunPlatformFactory _platformFactory;
   final Map<String, RunCubit> _cubits = <String, RunCubit>{};
   final Map<String, Future<void>> _loadFutures = <String, Future<void>>{};
+  final Map<String, void Function(String entryId)> _entryClosedListeners =
+      <String, void Function(String entryId)>{};
 
   /// Lazy terminal inject deps (registry is constructed before the connector).
   TerminalRunDepsResolver get terminalRunDeps =>
@@ -54,11 +56,17 @@ class WorkspaceRunRegistry {
 
     _loadFutures[key] = () async {
       try {
-        final platform = await _platformFactory.create(
+        final created = await _platformFactory.create(
           workspaceId: workspaceId,
           emitUiIntent: cubit.publishUiIntent,
         );
-        proxy.bind(platform);
+        // Scope may have been removed while create was in flight.
+        if (!_cubits.containsKey(key) || cubit.isClosed) {
+          terminalRunDeps.removeEntryClosedListener(created.onEntryClosed);
+          return;
+        }
+        _entryClosedListeners[key] = created.onEntryClosed;
+        proxy.bind(created.platform);
         if (!cubit.isClosed) await cubit.load();
       } catch (error) {
         proxy.fail(error);
@@ -80,15 +88,26 @@ class WorkspaceRunRegistry {
     final key = tabScopeId.trim();
     if (key.isEmpty) return;
     _loadFutures.remove(key);
+    _removeEntryClosedListener(key);
     _cubits.remove(key)?.close();
   }
 
   void dispose() {
     _loadFutures.clear();
+    for (final key in _entryClosedListeners.keys.toList()) {
+      _removeEntryClosedListener(key);
+    }
     for (final cubit in _cubits.values) {
       cubit.close();
     }
     _cubits.clear();
+  }
+
+  void _removeEntryClosedListener(String key) {
+    final listener = _entryClosedListeners.remove(key);
+    if (listener != null) {
+      terminalRunDeps.removeEntryClosedListener(listener);
+    }
   }
 }
 
