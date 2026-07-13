@@ -89,4 +89,49 @@ void main() {
     expect(counts.last, greaterThanOrEqualTo(1));
     expect(counts.last, lessThanOrEqualTo(100));
   });
+
+  testWidgets('verticalChrome reduces derived lineCount', (tester) async {
+    // Outer 78px with 18px chrome → 60px content / 20px line → 3 lines.
+    // Without chrome the same outer height would report 3 as well for 20px
+    // lines (78/20=3); use chrome large enough to drop a line.
+    late int withChrome;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AppTextareaShell(
+            minHeight: 60,
+            maxHeight: 200,
+            initialHeight: 60,
+            verticalChrome: 20,
+            textStyle: const TextStyle(fontSize: 14, height: 20 / 14),
+            builder: (context, lineCount) {
+              withChrome = lineCount;
+              return Text('c:$lineCount');
+            },
+          ),
+        ),
+      ),
+    );
+    // content = 60 - 20 = 40 → 2 lines (floor(40/20)).
+    expect(withChrome, 2);
+
+    late int withoutChrome;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AppTextareaShell(
+            minHeight: 60,
+            maxHeight: 200,
+            initialHeight: 60,
+            textStyle: const TextStyle(fontSize: 14, height: 20 / 14),
+            builder: (context, lineCount) {
+              withoutChrome = lineCount;
+              return Text('c:$lineCount');
+            },
+          ),
+        ),
+      ),
+    );
+    expect(withoutChrome, 3);
+  });
 }

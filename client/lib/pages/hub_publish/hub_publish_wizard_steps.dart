@@ -96,17 +96,16 @@ class HubPublishMetadataStep extends StatelessWidget {
         const SizedBox(height: 12),
         Builder(
           builder: (context) {
-            final bodyStyle = Theme.of(context).textTheme.bodyMedium;
-            final lineHeight =
-                (bodyStyle?.fontSize ?? 14) * (bodyStyle?.height ?? 1.35);
+            final bodyStyle =
+                Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
             return AppTextarea(
               key: const Key('hub-publish-description'),
               controller: descriptionController,
               decoration: InputDecoration(
                 labelText: l10n.expertEditorDescription,
               ),
-              minHeight: lineHeight * 2,
-              maxHeight: lineHeight * 4,
+              minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
+              maxHeight: appTextareaHeightForLines(bodyStyle, lines: 4),
             );
           },
         ),

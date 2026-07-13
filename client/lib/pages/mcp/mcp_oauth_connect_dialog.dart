@@ -227,10 +227,9 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
               const SizedBox(height: 12),
               Builder(
                 builder: (context) {
-                  final bodyStyle = Theme.of(context).textTheme.bodyMedium;
-                  final lineHeight =
-                      (bodyStyle?.fontSize ?? 14) *
-                      (bodyStyle?.height ?? 1.35);
+                  final bodyStyle =
+                      Theme.of(context).textTheme.bodyMedium ??
+                      const TextStyle();
                   return AppTextarea(
                     controller: _callbackController,
                     enabled: !finishing,
@@ -238,8 +237,8 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
                       labelText: l10n.mcpOAuthCallbackUrlLabel,
                       hintText: l10n.mcpOAuthCallbackUrlHint,
                     ),
-                    minHeight: lineHeight * 2,
-                    maxHeight: lineHeight * 4,
+                    minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
+                    maxHeight: appTextareaHeightForLines(bodyStyle, lines: 4),
                   );
                 },
               ),

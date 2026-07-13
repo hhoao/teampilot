@@ -709,14 +709,13 @@ class _CommitBox extends StatelessWidget {
             Expanded(
               child: Builder(
                 builder: (context) {
-                  final bodyStyle = Theme.of(context).textTheme.bodyMedium;
-                  final lineHeight =
-                      (bodyStyle?.fontSize ?? 14) *
-                      (bodyStyle?.height ?? 1.35);
+                  final bodyStyle =
+                      Theme.of(context).textTheme.bodyMedium ??
+                      const TextStyle();
                   return AppTextarea(
                     controller: controller,
-                    minHeight: lineHeight,
-                    maxHeight: lineHeight * 4,
+                    minHeight: appTextareaHeightForLines(bodyStyle, lines: 1),
+                    maxHeight: appTextareaHeightForLines(bodyStyle, lines: 4),
                     enabled: !generating,
                     decoration:
                         InputDecoration(hintText: hint, isDense: true),

@@ -325,15 +325,13 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
           labelWidth: kLaunchConfigFormLabelWidth,
           builder: (state) {
             final textStyle = field.monospace ? styles.mono : styles.md;
-            final lineHeight =
-                (textStyle.fontSize ?? 14) * (textStyle.height ?? 1.35);
             return AppTextarea(
               key: fieldKey,
               controller: _controllers[field.key],
               focusNode: state.focusNode,
               style: field.monospace ? styles.mono : null,
-              minHeight: lineHeight * 3,
-              maxHeight: lineHeight * 8,
+              minHeight: appTextareaHeightForLines(textStyle, lines: 3),
+              maxHeight: appTextareaHeightForLines(textStyle, lines: 8),
               onChanged: (t) {
                 state.didChange(t);
                 _onFieldTextChanged(field, t);
@@ -355,15 +353,13 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
           builder: (state) {
             if (field.key == 'scriptText') {
               final textStyle = field.monospace ? styles.mono : styles.md;
-              final lineHeight =
-                  (textStyle.fontSize ?? 14) * (textStyle.height ?? 1.35);
               return AppTextarea(
                 key: fieldKey,
                 controller: _controllers[field.key],
                 focusNode: state.focusNode,
                 style: field.monospace ? styles.mono : null,
-                minHeight: lineHeight * 3,
-                maxHeight: lineHeight * 8,
+                minHeight: appTextareaHeightForLines(textStyle, lines: 3),
+                maxHeight: appTextareaHeightForLines(textStyle, lines: 8),
                 onChanged: (t) {
                   state.didChange(t);
                   _onFieldTextChanged(field, t);

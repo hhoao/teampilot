@@ -48,14 +48,13 @@ class _HomeTeamGenerateSectionState extends State<HomeTeamGenerateSection> {
         const SizedBox(height: 8),
         Builder(
           builder: (context) {
-            final bodyStyle = Theme.of(context).textTheme.bodyMedium;
-            final lineHeight =
-                (bodyStyle?.fontSize ?? 14) * (bodyStyle?.height ?? 1.35);
+            final bodyStyle =
+                Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
             return AppTextarea(
               key: const ValueKey('team-gen-description'),
               controller: _controller,
-              minHeight: lineHeight * 2,
-              maxHeight: lineHeight * 4,
+              minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
+              maxHeight: appTextareaHeightForLines(bodyStyle, lines: 4),
               enabled: widget.enabled && !generating,
               onChanged: widget.onDescriptionChanged,
               decoration: InputDecoration(

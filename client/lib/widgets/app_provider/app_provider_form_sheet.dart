@@ -405,14 +405,12 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   Builder(
                     builder: (context) {
                       final bodyStyle =
-                          Theme.of(context).textTheme.bodyMedium;
-                      final lineHeight =
-                          (bodyStyle?.fontSize ?? 14) *
-                          (bodyStyle?.height ?? 1.35);
+                          Theme.of(context).textTheme.bodyMedium ??
+                          const TextStyle();
                       return AppTextarea(
                         controller: _jsonCtl,
-                        minHeight: lineHeight * 16,
-                        maxHeight: lineHeight * 28,
+                        minHeight: appTextareaHeightForLines(bodyStyle, lines: 16),
+                        maxHeight: appTextareaHeightForLines(bodyStyle, lines: 28),
                         decoration: const InputDecoration(),
                       );
                     },
@@ -433,14 +431,12 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   Builder(
                     builder: (context) {
                       final bodyStyle =
-                          Theme.of(context).textTheme.bodyMedium;
-                      final lineHeight =
-                          (bodyStyle?.fontSize ?? 14) *
-                          (bodyStyle?.height ?? 1.35);
+                          Theme.of(context).textTheme.bodyMedium ??
+                          const TextStyle();
                       return AppTextarea(
                         controller: _notesCtl,
-                        minHeight: lineHeight * 2,
-                        maxHeight: lineHeight * 4,
+                        minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
+                        maxHeight: appTextareaHeightForLines(bodyStyle, lines: 4),
                         decoration: InputDecoration(labelText: l10n.notes),
                       );
                     },

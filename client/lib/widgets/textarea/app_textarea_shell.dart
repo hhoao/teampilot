@@ -6,6 +6,11 @@ import 'app_textarea_resize_grip.dart';
 
 /// Owns min/max height, drag-resize, and derived line count for multiline
 /// controls. Does not apply outline decoration — compose stays borderless.
+///
+/// [minHeight] / [maxHeight] are outer shell heights. When the child is an
+/// outlined [AppTextarea], pass [verticalChrome] (padding + border) so
+/// [lineCount] is derived from content height = `_height - verticalChrome`.
+/// Borderless compose leaves [verticalChrome] at 0.
 class AppTextareaShell extends StatefulWidget {
   const AppTextareaShell({
     super.key,
@@ -17,6 +22,7 @@ class AppTextareaShell extends StatefulWidget {
     this.onHeightChanged,
     this.resizeHandleBuilder,
     this.textStyle,
+    this.verticalChrome = 0,
   });
 
   final Widget Function(BuildContext context, int lineCount) builder;
@@ -27,6 +33,9 @@ class AppTextareaShell extends StatefulWidget {
   final ValueChanged<double>? onHeightChanged;
   final WidgetBuilder? resizeHandleBuilder;
   final TextStyle? textStyle;
+
+  /// Vertical inset subtracted before deriving [lineCount] (padding + borders).
+  final double verticalChrome;
 
   @override
   State<AppTextareaShell> createState() => _AppTextareaShellState();
@@ -66,11 +75,17 @@ class _AppTextareaShellState extends State<AppTextareaShell> {
     final fontSize = style.fontSize ?? 14;
     final heightFactor = style.height ?? 20 / 14;
     final lineHeight = fontSize * heightFactor;
-    return (_height / lineHeight).floor().clamp(1, 100);
+    final contentHeight = (_height - widget.verticalChrome).clamp(
+      lineHeight,
+      double.infinity,
+    );
+    return (contentHeight / lineHeight).floor().clamp(1, 100);
   }
 
   TextStyle _effectiveTextStyle(BuildContext context) {
-    return widget.textStyle ?? Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
+    return widget.textStyle ??
+        Theme.of(context).textTheme.bodyMedium ??
+        const TextStyle();
   }
 
   @override

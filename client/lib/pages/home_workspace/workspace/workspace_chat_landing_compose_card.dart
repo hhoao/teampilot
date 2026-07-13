@@ -567,7 +567,7 @@ class _ComposeFieldPlaceholder extends StatelessWidget {
         (hintStyle.fontSize ?? 14) * (hintStyle.height ?? 1.35);
     return SizedBox(
       width: double.infinity,
-      // InlineTokenTextField defaults to minLines: 3.
+      // Matches ComposeTriggerField / AppTextareaShell min (~3 lines).
       height: lineHeight * 3,
       child: Align(
         alignment: Alignment.topLeft,

@@ -341,30 +341,28 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
           const SizedBox(height: 12),
           Builder(
             builder: (context) {
-              final bodyStyle = Theme.of(context).textTheme.bodyMedium;
-              final lineHeight =
-                  (bodyStyle?.fontSize ?? 14) * (bodyStyle?.height ?? 1.35);
+              final bodyStyle =
+                  Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
               return AppTextarea(
                 key: const Key('expert-editor-prompt'),
                 controller: _prompt,
                 decoration: InputDecoration(labelText: l10n.expertHubPrompt),
-                minHeight: lineHeight * 3,
-                maxHeight: lineHeight * 6,
+                minHeight: appTextareaHeightForLines(bodyStyle, lines: 3),
+                maxHeight: appTextareaHeightForLines(bodyStyle, lines: 6),
               );
             },
           ),
           const SizedBox(height: 12),
           Builder(
             builder: (context) {
-              final bodyStyle = Theme.of(context).textTheme.bodyMedium;
-              final lineHeight =
-                  (bodyStyle?.fontSize ?? 14) * (bodyStyle?.height ?? 1.35);
+              final bodyStyle =
+                  Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
               return AppTextarea(
                 key: const Key('expert-editor-playbook'),
                 controller: _playbook,
                 decoration: InputDecoration(labelText: l10n.expertHubPlaybook),
-                minHeight: lineHeight * 2,
-                maxHeight: lineHeight * 5,
+                minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
+                maxHeight: appTextareaHeightForLines(bodyStyle, lines: 5),
               );
             },
           ),

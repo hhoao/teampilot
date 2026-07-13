@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../theme/app_control_theme.dart';
+import 'app_textarea_extent.dart';
 import 'app_textarea_shell.dart';
+
+export 'app_textarea_extent.dart';
 
 /// Multiline [InputDecoration] that clears the global single-line
 /// [BoxConstraints.tightFor] track height and uses multiline padding.
@@ -20,13 +23,16 @@ InputDecoration appMultilineInputDecoration(
         base.contentPadding ??
         EdgeInsets.symmetric(
           horizontal: control.horizontalPadding,
-          vertical: 8,
+          vertical: kAppTextareaVerticalPadding,
         ),
   );
 }
 
 /// Material [TextField] wrapped in [AppTextareaShell] with multiline-safe
 /// decoration (clears global single-line outline height constraints).
+///
+/// [minHeight] / [maxHeight] are **outer** shell heights including padding
+/// and outline borders. Prefer [appTextareaHeightForLines] at call sites.
 class AppTextarea extends StatefulWidget {
   const AppTextarea({
     super.key,
@@ -174,51 +180,55 @@ class _AppTextareaState extends State<AppTextarea> {
       onHeightChanged: widget.onHeightChanged,
       resizeHandleBuilder: widget.resizeHandleBuilder,
       textStyle: textStyle,
+      verticalChrome: appTextareaVerticalChrome(),
       builder: (context, lineCount) {
-        return TextField(
-          controller: _controller,
-          focusNode: widget.focusNode,
-          decoration: appMultilineInputDecoration(
-            context,
-            decoration: widget.decoration,
+        return SizedBox.expand(
+          child: TextField(
+            controller: _controller,
+            focusNode: widget.focusNode,
+            decoration: appMultilineInputDecoration(
+              context,
+              decoration: widget.decoration,
+            ),
+            onChanged: widget.onChanged,
+            onEditingComplete: widget.onEditingComplete,
+            onSubmitted: widget.onSubmitted,
+            style: textStyle,
+            strutStyle: widget.strutStyle,
+            textAlign: widget.textAlign,
+            textDirection: widget.textDirection,
+            showCursor: widget.showCursor,
+            autofocus: widget.autofocus,
+            enabled: widget.enabled,
+            readOnly: widget.readOnly,
+            maxLength: widget.maxLength,
+            maxLengthEnforcement: widget.maxLengthEnforcement,
+            cursorWidth: widget.cursorWidth,
+            cursorHeight: widget.cursorHeight,
+            cursorRadius: widget.cursorRadius,
+            cursorColor: widget.cursorColor,
+            keyboardAppearance: widget.keyboardAppearance,
+            scrollPadding: widget.scrollPadding,
+            enableInteractiveSelection: widget.enableInteractiveSelection,
+            selectionControls: widget.selectionControls,
+            onTap: widget.onTap,
+            onTapOutside: widget.onTapOutside,
+            mouseCursor: widget.mouseCursor,
+            scrollController: widget.scrollController,
+            scrollPhysics: widget.scrollPhysics,
+            clipBehavior: widget.clipBehavior,
+            restorationId: widget.restorationId,
+            scribbleEnabled: widget.scribbleEnabled,
+            enableIMEPersonalizedLearning:
+                widget.enableIMEPersonalizedLearning,
+            contextMenuBuilder: widget.contextMenuBuilder,
+            spellCheckConfiguration: widget.spellCheckConfiguration,
+            magnifierConfiguration: widget.magnifierConfiguration,
+            inputFormatters: widget.inputFormatters,
+            keyboardType: TextInputType.multiline,
+            minLines: lineCount,
+            maxLines: lineCount,
           ),
-          onChanged: widget.onChanged,
-          onEditingComplete: widget.onEditingComplete,
-          onSubmitted: widget.onSubmitted,
-          style: textStyle,
-          strutStyle: widget.strutStyle,
-          textAlign: widget.textAlign,
-          textDirection: widget.textDirection,
-          showCursor: widget.showCursor,
-          autofocus: widget.autofocus,
-          enabled: widget.enabled,
-          readOnly: widget.readOnly,
-          maxLength: widget.maxLength,
-          maxLengthEnforcement: widget.maxLengthEnforcement,
-          cursorWidth: widget.cursorWidth,
-          cursorHeight: widget.cursorHeight,
-          cursorRadius: widget.cursorRadius,
-          cursorColor: widget.cursorColor,
-          keyboardAppearance: widget.keyboardAppearance,
-          scrollPadding: widget.scrollPadding,
-          enableInteractiveSelection: widget.enableInteractiveSelection,
-          selectionControls: widget.selectionControls,
-          onTap: widget.onTap,
-          onTapOutside: widget.onTapOutside,
-          mouseCursor: widget.mouseCursor,
-          scrollController: widget.scrollController,
-          scrollPhysics: widget.scrollPhysics,
-          clipBehavior: widget.clipBehavior,
-          restorationId: widget.restorationId,
-          scribbleEnabled: widget.scribbleEnabled,
-          enableIMEPersonalizedLearning: widget.enableIMEPersonalizedLearning,
-          contextMenuBuilder: widget.contextMenuBuilder,
-          spellCheckConfiguration: widget.spellCheckConfiguration,
-          magnifierConfiguration: widget.magnifierConfiguration,
-          inputFormatters: widget.inputFormatters,
-          keyboardType: TextInputType.multiline,
-          minLines: lineCount,
-          maxLines: lineCount,
         );
       },
     );

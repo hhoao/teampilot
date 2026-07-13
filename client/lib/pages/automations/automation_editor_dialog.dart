@@ -419,14 +419,13 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
           const SizedBox(height: 12),
           Builder(
             builder: (context) {
-              final bodyStyle = Theme.of(context).textTheme.bodyMedium;
-              final lineHeight =
-                  (bodyStyle?.fontSize ?? 14) * (bodyStyle?.height ?? 1.35);
+              final bodyStyle =
+                  Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
               return AppTextarea(
                 controller: _messageCtl,
                 decoration: InputDecoration(labelText: l10n.automationsMessage),
-                minHeight: lineHeight * 2,
-                maxHeight: lineHeight * 5,
+                minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
+                maxHeight: appTextareaHeightForLines(bodyStyle, lines: 5),
               );
             },
           ),

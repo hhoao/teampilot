@@ -55,4 +55,48 @@ void main() {
     expect(c, isNotNull);
     expect(c!.maxHeight, isNot(equals(c.minHeight))); // not tightFor single track
   });
+
+  testWidgets('3-line chrome-inclusive minHeight does not overflow', (
+    tester,
+  ) async {
+    const style = TextStyle(fontSize: 14, height: 20 / 14);
+    FlutterError? overflow;
+    final oldOnError = FlutterError.onError;
+    FlutterError.onError = (details) {
+      final message = details.exceptionAsString();
+      if (message.contains('overflowed')) {
+        overflow = details.exception is FlutterError
+            ? details.exception as FlutterError
+            : FlutterError(message);
+      }
+      oldOnError?.call(details);
+    };
+    addTearDown(() => FlutterError.onError = oldOnError);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: themeWithTightInput(),
+        home: Scaffold(
+          body: AppTextarea(
+            style: style,
+            minHeight: appTextareaHeightForLines(style, lines: 3),
+            maxHeight: appTextareaHeightForLines(style, lines: 6),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsOneWidget);
+    expect(overflow, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  test('appTextareaHeightForLines includes padding and border chrome', () {
+    const style = TextStyle(fontSize: 14, height: 20 / 14);
+    expect(
+      appTextareaHeightForLines(style, lines: 3),
+      3 * 20 + kAppTextareaVerticalPadding * 2 + kAppTextareaBorderWidth * 2,
+    );
+  });
 }

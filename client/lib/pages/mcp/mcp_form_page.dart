@@ -241,14 +241,13 @@ class _McpFormPageState extends State<McpFormPage> {
                 const SizedBox(height: 8),
                 Builder(
                   builder: (context) {
-                    final bodyStyle = Theme.of(context).textTheme.bodyMedium;
-                    final lineHeight =
-                        (bodyStyle?.fontSize ?? 14) *
-                        (bodyStyle?.height ?? 1.35);
+                    final bodyStyle =
+                        Theme.of(context).textTheme.bodyMedium ??
+                        const TextStyle();
                     return AppTextarea(
                       controller: _descriptionCtrl,
-                      minHeight: lineHeight,
-                      maxHeight: lineHeight * 2,
+                      minHeight: appTextareaHeightForLines(bodyStyle, lines: 1),
+                      maxHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
                       decoration: InputDecoration(
                         labelText: l10n.mcpFormDescriptionLabel,
                         hintText: l10n.mcpFormDescriptionHint,
@@ -309,12 +308,10 @@ class _McpFormPageState extends State<McpFormPage> {
               Builder(
                 builder: (context) {
                   final mono = appMonoTextStyle(context, height: 1.45);
-                  final lineHeight =
-                      (mono.fontSize ?? 14) * (mono.height ?? 1.35);
                   return AppTextarea(
                     controller: _jsonCtrl,
-                    minHeight: lineHeight * 8,
-                    maxHeight: lineHeight * 12,
+                    minHeight: appTextareaHeightForLines(mono, lines: 8),
+                    maxHeight: appTextareaHeightForLines(mono, lines: 12),
                     style: mono,
                     decoration: InputDecoration(
                       errorText: _jsonError,

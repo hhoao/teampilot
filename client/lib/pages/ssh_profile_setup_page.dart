@@ -256,18 +256,17 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
                     ? '必填'
                     : null,
                 builder: (field) {
-                  final bodyStyle = Theme.of(context).textTheme.bodyMedium;
-                  final lineHeight =
-                      (bodyStyle?.fontSize ?? 14) *
-                      (bodyStyle?.height ?? 20 / 14);
+                  final bodyStyle =
+                      Theme.of(context).textTheme.bodyMedium ??
+                      const TextStyle();
                   final scheme = Theme.of(context).colorScheme;
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       AppTextarea(
                         controller: _privateKeyController,
-                        minHeight: lineHeight * 4,
-                        maxHeight: lineHeight * 8,
+                        minHeight: appTextareaHeightForLines(bodyStyle, lines: 4),
+                        maxHeight: appTextareaHeightForLines(bodyStyle, lines: 8),
                         decoration: InputDecoration(
                           labelText: 'Private Key',
                           hintText: _isEditing

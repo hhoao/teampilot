@@ -169,15 +169,13 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                   body: Builder(
                     builder: (context) {
                       final bodyStyle =
-                          Theme.of(context).textTheme.bodyMedium;
-                      final lineHeight =
-                          (bodyStyle?.fontSize ?? 14) *
-                          (bodyStyle?.height ?? 1.35);
+                          Theme.of(context).textTheme.bodyMedium ??
+                          const TextStyle();
                       return AppTextarea(
                         controller: _descCtl,
                         focusNode: _descFocus,
-                        minHeight: lineHeight,
-                        maxHeight: lineHeight * 3,
+                        minHeight: appTextareaHeightForLines(bodyStyle, lines: 1),
+                        maxHeight: appTextareaHeightForLines(bodyStyle, lines: 3),
                         decoration: const InputDecoration(),
                         onChanged: (_) => _schedulePersist(),
                       );
