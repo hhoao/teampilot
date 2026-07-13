@@ -37,12 +37,34 @@ class TerminalRunDeps {
     required this.connector,
     required this.ops,
     required this.runService,
+    this.resolveTheme,
+    this.resolveSshConnectFailedMessage,
+    this.connectCoordinatorFactory,
   });
 
   final WorkspaceTerminalRegistry registry;
   final WorkspaceShellConnector connector;
   final WorkspaceTerminalSessionOps ops;
   final WorkspaceTerminalRunService runService;
+
+  /// Optional theme resolver (panel/layout); defaults to [TerminalTheme.defaults].
+  final TerminalTheme Function()? resolveTheme;
+
+  /// Optional SSH connect failure string (l10n); English fallback when unset.
+  final String Function()? resolveSshConnectFailedMessage;
+
+  /// Optional connect-coordinator factory; defaults to connector-backed instance.
+  final WorkspaceTerminalConnectCoordinator Function(WorkspaceShellConnector)?
+  connectCoordinatorFactory;
+
+  TerminalTheme theme() => resolveTheme?.call() ?? TerminalTheme.defaults;
+
+  String sshConnectFailedMessage() =>
+      resolveSshConnectFailedMessage?.call() ?? 'SSH connect failed';
+
+  WorkspaceTerminalConnectCoordinator connectCoordinator() =>
+      connectCoordinatorFactory?.call(connector) ??
+      WorkspaceTerminalConnectCoordinator(connector: connector);
 }
 
 /// Lazy holder: [WorkspaceRunRegistry] is created before the shell connector.

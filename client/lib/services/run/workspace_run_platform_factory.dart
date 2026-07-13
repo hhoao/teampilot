@@ -17,6 +17,7 @@ import 'launch_type_registry.dart';
 import 'process_run_executor.dart';
 import 'run_platform.dart';
 import 'run_session_manager.dart';
+import 'shell_script_launcher.dart';
 
 /// Builds a per-workspace [RunPlatform] with extension enablement injected.
 ///
@@ -75,7 +76,11 @@ class WorkspaceRunPlatformFactory {
     );
     final executor = ProcessRunExecutor(sshSpawner: _sshSpawner);
     final sessionManager = RunSessionManager(
-      executor: DefaultRunProcessLauncher(executor: executor),
+      executor: RunShellScriptLauncher(
+        workspaceId: workspaceId,
+        terminalRunDeps: terminalRunDeps,
+        processExecutor: executor,
+      ),
       launchAdapterClient: adapterClient,
       resolveLaunchType: registry.get,
     );

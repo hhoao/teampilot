@@ -70,8 +70,8 @@ class DefaultRunProcessLauncher implements RunProcessLauncher {
       env: owned.configuration.env,
     );
 
-    // Temporary Task 4 bridge: shellScript uses command builder + process
-    // executor until Task 7 adds RunShellScriptLauncher (terminal branch).
+    // Temporary bridge for callers still injecting DefaultRunProcessLauncher
+    // directly; production uses RunShellScriptLauncher (terminal + process).
     if (isBuiltInShellType(expanded.type)) {
       final errors = ShellScriptLaunchSchema.validate(expanded);
       if (errors.isNotEmpty) {
@@ -310,7 +310,10 @@ class RunSessionManager {
       }
       _activeRuns[sessionId] = _ActiveRun(stop: handle.stop);
       _upsert(current.copyWith(status: RunSessionStatus.running));
-      unawaited(_watchExit(sessionId: sessionId, handle: handle));
+      // Terminal-backed shellScript has no PTY exit code in v1 — do not watch.
+      if (_shouldWatchExit(owned)) {
+        unawaited(_watchExit(sessionId: sessionId, handle: handle));
+      }
       return _sessions[sessionId]!;
     } catch (error) {
       _activeRuns.remove(sessionId);
@@ -423,8 +426,6 @@ class RunSessionManager {
     required OwnedLaunchConfiguration owned,
     required void Function(ProcessRunOutput output) onOutput,
   }) {
-    // Temporary: shellScript (and legacy process alias) use process launcher
-    // until Task 7 wires RunShellScriptLauncher for terminal execution.
     if (isBuiltInShellType(owned.configuration.type)) {
       return _processLauncher.launch(
         sessionId: sessionId,
@@ -437,6 +438,24 @@ class RunSessionManager {
       owned: owned,
       onOutput: onOutput,
     );
+  }
+
+  /// Whether [start] should observe [RunLaunchHandle.exitCode].
+  ///
+  /// Terminal-backed Shell Script runs leave the PTY open after inject; their
+  /// exit future never completes in v1, so watching would leave a dangling
+  /// waiter. Non-terminal / adapter launches still need exit observation.
+  bool _shouldWatchExit(OwnedLaunchConfiguration owned) {
+    if (!isBuiltInShellType(owned.configuration.type)) return true;
+    final expanded = LaunchVariableExpander.expandConfiguration(
+      owned.configuration.copyWith(
+        type: normalizeLaunchType(owned.configuration.type),
+      ),
+      workspaceFolder: owned.owner.path,
+      env: owned.configuration.env,
+    );
+    final shell = ShellScriptConfiguration.fromLaunchConfiguration(expanded);
+    return !shell.executeInTerminal;
   }
 
   Future<void> _watchExit({

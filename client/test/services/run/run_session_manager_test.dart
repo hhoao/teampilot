@@ -13,14 +13,19 @@ const _folder = WorkspaceFolder(path: '/proj');
 OwnedLaunchConfiguration ownedConfig({
   required String id,
   String command = 'true',
+  bool executeInTerminal = false,
 }) {
   return OwnedLaunchConfiguration(
     owner: _folder,
     configuration: LaunchConfiguration(
       id: id,
       name: id,
-      type: 'process',
-      command: command,
+      type: 'shellScript',
+      extras: {
+        'execute': 'scriptText',
+        'scriptText': command,
+        'executeInTerminal': executeInTerminal,
+      },
     ),
   );
 }
@@ -315,6 +320,54 @@ void main() {
         ),
       ),
     );
+    await mgr.dispose();
+  });
+
+  test('terminal-backed shellScript does not watch exit code', () async {
+    final executor = FakeRunExecutor(exitCode: 0);
+    final mgr = RunSessionManager(executor: executor, adapters: noopAdapter);
+    final owned = OwnedLaunchConfiguration(
+      owner: _folder,
+      configuration: const LaunchConfiguration(
+        id: 'a',
+        name: 'a',
+        type: 'shellScript',
+        extras: {
+          'execute': 'scriptText',
+          'scriptText': 'echo hi',
+          'executeInTerminal': true,
+        },
+      ),
+    );
+    final s = await mgr.start(owned);
+    await Future<void>.delayed(Duration.zero);
+    expect(mgr.session(s.id)?.status, RunSessionStatus.running);
+    expect(mgr.session(s.id)?.exitCode, isNull);
+    await mgr.stop(s.id);
+    expect(mgr.session(s.id)?.status, RunSessionStatus.exited);
+    await mgr.dispose();
+  });
+
+  test('non-terminal shellScript still watches exit code', () async {
+    final executor = FakeRunExecutor(exitCode: 7);
+    final mgr = RunSessionManager(executor: executor, adapters: noopAdapter);
+    final owned = OwnedLaunchConfiguration(
+      owner: _folder,
+      configuration: const LaunchConfiguration(
+        id: 'a',
+        name: 'a',
+        type: 'shellScript',
+        extras: {
+          'execute': 'scriptText',
+          'scriptText': 'echo hi',
+          'executeInTerminal': false,
+        },
+      ),
+    );
+    final s = await mgr.start(owned);
+    await Future<void>.delayed(Duration.zero);
+    expect(mgr.session(s.id)?.status, RunSessionStatus.exited);
+    expect(mgr.session(s.id)?.exitCode, 7);
     await mgr.dispose();
   });
 }
