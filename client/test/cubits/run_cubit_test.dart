@@ -49,6 +49,7 @@ class _FakeProcessLauncher implements RunProcessLauncher {
     required String sessionId,
     required OwnedLaunchConfiguration owned,
     required void Function(ProcessRunOutput output) onOutput,
+    String? preferTerminalEntryId,
   }) async {
     final exit = Completer<int>();
     return RunLaunchHandle(
@@ -72,6 +73,7 @@ class FakeRunExecutor implements RunProcessLauncher {
     required String sessionId,
     required OwnedLaunchConfiguration owned,
     required void Function(ProcessRunOutput output) onOutput,
+    String? preferTerminalEntryId,
   }) async {
     startedSessionIds.add(sessionId);
     if (hangOnStart) {

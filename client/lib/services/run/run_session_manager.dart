@@ -33,6 +33,7 @@ abstract class RunProcessLauncher {
     required String sessionId,
     required OwnedLaunchConfiguration owned,
     required void Function(ProcessRunOutput output) onOutput,
+    String? preferTerminalEntryId,
   });
 }
 
@@ -61,6 +62,7 @@ class DefaultRunProcessLauncher implements RunProcessLauncher {
     required String sessionId,
     required OwnedLaunchConfiguration owned,
     required void Function(ProcessRunOutput output) onOutput,
+    String? preferTerminalEntryId,
   }) async {
     final expanded = LaunchVariableExpander.expandConfiguration(
       owned.configuration.copyWith(
@@ -72,6 +74,7 @@ class DefaultRunProcessLauncher implements RunProcessLauncher {
 
     // Temporary bridge for callers still injecting DefaultRunProcessLauncher
     // directly; production uses RunShellScriptLauncher (terminal + process).
+    // preferTerminalEntryId is ignored here (non-terminal / legacy path).
     if (isBuiltInShellType(expanded.type)) {
       final errors = ShellScriptLaunchSchema.validate(expanded);
       if (errors.isNotEmpty) {
@@ -282,6 +285,7 @@ class RunSessionManager {
   Future<RunSession> start(
     OwnedLaunchConfiguration owned, {
     String? compoundId,
+    String? preferTerminalEntryId,
   }) async {
     final sessionId = _uuidFactory();
     _upsert(
@@ -298,6 +302,7 @@ class RunSessionManager {
         sessionId: sessionId,
         owned: owned,
         onOutput: _emitOutput,
+        preferTerminalEntryId: preferTerminalEntryId,
       );
       final current = _sessions[sessionId];
       if (current == null || current.status != RunSessionStatus.starting) {
@@ -384,8 +389,20 @@ class RunSessionManager {
     if (current == null) {
       throw StateError('unknown session: $sessionId');
     }
+    // Capture before stop clears the entry→session map.
+    String? preferEntryId;
+    for (final entry in _sessionByTerminalEntry.entries) {
+      if (entry.value == sessionId) {
+        preferEntryId = entry.key;
+        break;
+      }
+    }
     await stop(sessionId);
-    return start(current.owned, compoundId: current.compoundId);
+    return start(
+      current.owned,
+      compoundId: current.compoundId,
+      preferTerminalEntryId: preferEntryId,
+    );
   }
 
   Future<List<String>> startCompound({
@@ -455,12 +472,14 @@ class RunSessionManager {
     required String sessionId,
     required OwnedLaunchConfiguration owned,
     required void Function(ProcessRunOutput output) onOutput,
+    String? preferTerminalEntryId,
   }) {
     if (isBuiltInShellType(owned.configuration.type)) {
       return _processLauncher.launch(
         sessionId: sessionId,
         owned: owned,
         onOutput: onOutput,
+        preferTerminalEntryId: preferTerminalEntryId,
       );
     }
     return _adapterLauncher.launch(

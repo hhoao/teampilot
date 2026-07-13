@@ -140,6 +140,7 @@ Future<WorkspaceTerminalEntry> _open({
   required String selectionKey,
   required bool allowMultipleInstances,
   String? runSessionId,
+  String? preferEntryId,
   String workspaceId = 'ws-1',
   String cwd = '/ws',
   String targetId = 'local',
@@ -150,6 +151,7 @@ Future<WorkspaceTerminalEntry> _open({
     selectionKey: selectionKey,
     runSessionId: runSessionId,
     allowMultipleInstances: allowMultipleInstances,
+    preferEntryId: preferEntryId,
     cwd: cwd,
     targetId: targetId,
     title: title,
@@ -303,6 +305,51 @@ void main() {
       expect(group.entries, hasLength(2));
       expect(service.entryIdForSession('sess-a'), first.id);
       expect(service.entryIdForSession('sess-b'), second.id);
+    },
+  );
+
+  test(
+    'preferEntryId reuses that entry even when allowMultipleInstances is true',
+    () async {
+      final first = await _open(
+        service: service,
+        group: group,
+        connector: connector,
+        connectCoordinator: connect,
+        ops: ops,
+        selectionKey: 'local|/ws|cfg-1',
+        allowMultipleInstances: true,
+        runSessionId: 'sess-a',
+      );
+      final second = await _open(
+        service: service,
+        group: group,
+        connector: connector,
+        connectCoordinator: connect,
+        ops: ops,
+        selectionKey: 'local|/ws|cfg-1',
+        allowMultipleInstances: true,
+        runSessionId: 'sess-b',
+      );
+      expect(second.id, isNot(first.id));
+
+      final reused = await _open(
+        service: service,
+        group: group,
+        connector: connector,
+        connectCoordinator: connect,
+        ops: ops,
+        selectionKey: 'local|/ws|cfg-1',
+        allowMultipleInstances: true,
+        preferEntryId: first.id,
+        runSessionId: 'sess-restart',
+      );
+
+      expect(reused.id, first.id);
+      expect(group.entries, hasLength(2));
+      expect(group.activeId, first.id);
+      expect(service.entryIdForSession('sess-restart'), first.id);
+      expect(connect.connectCalls, 3);
     },
   );
 

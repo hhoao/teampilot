@@ -17,6 +17,15 @@ import 'workspace_terminal_panel.dart';
 /// Which bottom tool is visible in the workspace IDE shell.
 enum WorkspaceBottomDockTab { terminal, run }
 
+/// Dock tab to select for [intent], or null when [RunUiIntent.activateToolWindow]
+/// is false (do not switch tab / reveal dock).
+WorkspaceBottomDockTab? dockTabForActivateIntent(RunUiIntent intent) {
+  if (!intent.activateToolWindow) return null;
+  return intent.surface == RunToolSurface.terminal
+      ? WorkspaceBottomDockTab.terminal
+      : WorkspaceBottomDockTab.run;
+}
+
 /// Bottom chrome hosting Terminal and Run with a segmented switcher.
 ///
 /// Preserves [WorkspaceTerminalPanel] identity via [terminalKey] / [holdHandle]
@@ -68,22 +77,28 @@ class _WorkspaceBottomDockState extends State<WorkspaceBottomDock> {
   void _onUiIntent(RunUiIntent intent) {
     if (!mounted) return;
 
-    if (intent.activateToolWindow) {
+    final nextTab = dockTabForActivateIntent(intent);
+    if (nextTab != null) {
       final layout = context.read<LayoutCubit>();
       if (!layout.state.preferences.workspaceTerminalVisible) {
         unawaited(layout.setWorkspaceTerminalVisible(true));
       }
+      if (_tab != nextTab) {
+        setState(() => _tab = nextTab);
+      }
     }
 
-    final nextTab = intent.surface == RunToolSurface.terminal
-        ? WorkspaceBottomDockTab.terminal
-        : WorkspaceBottomDockTab.run;
-    if (_tab != nextTab) {
-      setState(() => _tab = nextTab);
+    final entryId = intent.terminalEntryId?.trim();
+    if (entryId != null &&
+        entryId.isNotEmpty &&
+        intent.surface == RunToolSurface.terminal) {
+      widget.holdHandle?.selectEntry(entryId);
     }
 
-    // v1: openForRun already selects the entry via group.activeId.
-    // A TerminalView focus hook can land with focusToolWindow later.
+    if (intent.focusToolWindow &&
+        intent.surface == RunToolSurface.terminal) {
+      widget.holdHandle?.requestFocus();
+    }
   }
 
   void _onSessionsChanged(RunState state) {

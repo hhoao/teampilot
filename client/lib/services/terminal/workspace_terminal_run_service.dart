@@ -130,7 +130,14 @@ class WorkspaceTerminalRunService {
     _entryClosedListeners.remove(listener);
   }
 
+  /// Entry id currently bound to [sessionId], if any.
+  String? entryIdForSession(String sessionId) => _entryBySession[sessionId];
+
   /// Opens or reuses a terminal entry for a Shell Script run.
+  ///
+  /// When [preferEntryId] is set and still present in [group], that entry is
+  /// activated and rebound — [allowMultipleInstances] is ignored for this path
+  /// (used by Restart to reinject into the session's tab).
   Future<WorkspaceTerminalEntry> openForRun({
     required String workspaceId,
     required String selectionKey,
@@ -147,11 +154,32 @@ class WorkspaceTerminalRunService {
     required String sshConnectFailedMessage,
     VoidCallback? onStateChanged,
     bool Function()? mounted,
+    String? preferEntryId,
   }) async {
     final bindKey = TerminalRunBindKey(
       workspaceId: workspaceId,
       selectionKey: selectionKey,
     );
+
+    final preferredId = preferEntryId?.trim();
+    if (preferredId != null && preferredId.isNotEmpty) {
+      final preferred = group.entryById(preferredId);
+      if (preferred != null) {
+        group.activeId = preferred.id;
+        _bindEntry(bindKey, preferred.id);
+        _bindSessionIfPresent(runSessionId, preferred.id);
+        await ops.connectEntry(
+          group: group,
+          entry: preferred,
+          connectCoordinator: connectCoordinator,
+          theme: theme,
+          sshConnectFailedMessage: sshConnectFailedMessage,
+          onStateChanged: onStateChanged,
+          mounted: mounted,
+        );
+        return preferred;
+      }
+    }
 
     if (!allowMultipleInstances) {
       final existingId = _entryByBind[bindKey];
@@ -257,9 +285,6 @@ class WorkspaceTerminalRunService {
     workspaceId: workspaceId,
     selectionKey: selectionKey,
   )];
-
-  @visibleForTesting
-  String? entryIdForSession(String sessionId) => _entryBySession[sessionId];
 
   void _bindEntry(TerminalRunBindKey bindKey, String entryId) {
     final previous = _entryByBind[bindKey];

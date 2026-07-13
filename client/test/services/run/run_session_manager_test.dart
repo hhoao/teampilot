@@ -44,6 +44,7 @@ class FakeRunExecutor implements RunProcessLauncher {
   final int exitCode;
   final Set<String> failStartForConfigIds;
   final startedSessionIds = <String>[];
+  final preferredTerminalEntryIds = <String?>[];
   final Completer<void>? _startBlocker;
   var stopCount = 0;
   var concurrentLaunches = 0;
@@ -58,7 +59,9 @@ class FakeRunExecutor implements RunProcessLauncher {
     required String sessionId,
     required OwnedLaunchConfiguration owned,
     required void Function(ProcessRunOutput output) onOutput,
+    String? preferTerminalEntryId,
   }) async {
+    preferredTerminalEntryIds.add(preferTerminalEntryId);
     if (failStartForConfigIds.contains(owned.configId)) {
       throw StateError('failed to start ${owned.configId}');
     }
@@ -243,6 +246,33 @@ void main() {
     expect(restarted.id, isNot(s.id));
     expect(restarted.status, RunSessionStatus.running);
     expect(executor.startedSessionIds, hasLength(2));
+    await mgr.dispose();
+  });
+
+  test('restart passes preferTerminalEntryId for bound terminal session',
+      () async {
+    final executor = FakeRunExecutor(hangOnStart: true);
+    final mgr = RunSessionManager(executor: executor, adapters: noopAdapter);
+    final owned = OwnedLaunchConfiguration(
+      owner: _folder,
+      configuration: const LaunchConfiguration(
+        id: 'a',
+        name: 'a',
+        type: 'shellScript',
+        extras: {
+          'execute': 'scriptText',
+          'scriptText': 'echo hi',
+          'executeInTerminal': true,
+          'allowMultipleInstances': true,
+        },
+      ),
+    );
+    final s = await mgr.start(owned);
+    mgr.registerTerminalSession(entryId: 'term-bound', sessionId: s.id);
+
+    final restarted = await mgr.restart(s.id);
+    expect(restarted.id, isNot(s.id));
+    expect(executor.preferredTerminalEntryIds, [null, 'term-bound']);
     await mgr.dispose();
   });
 

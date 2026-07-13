@@ -67,12 +67,14 @@ class _FakeTerminalRunService extends WorkspaceTerminalRunService {
     required String sshConnectFailedMessage,
     VoidCallback? onStateChanged,
     bool Function()? mounted,
+    String? preferEntryId,
   }) async {
     openCalls.add({
       'workspaceId': workspaceId,
       'selectionKey': selectionKey,
       'runSessionId': runSessionId,
       'allowMultipleInstances': allowMultipleInstances,
+      'preferEntryId': preferEntryId,
       'cwd': cwd,
       'targetId': targetId,
       'title': title,
@@ -262,6 +264,46 @@ void main() {
 
     await handle.stop();
     expect(runService.interruptCalls, 1);
+  });
+
+  test('terminal branch forwards preferTerminalEntryId to openForRun', () async {
+    final launcher = RunShellScriptLauncher(
+      workspaceId: 'ws-1',
+      terminalRunDeps: depsResolver,
+      processExecutor: ProcessRunExecutor(
+        spawner:
+            ({
+              required executable,
+              required arguments,
+              required workingDirectory,
+              environment,
+              runInShell = false,
+              includeParentEnvironment = true,
+            }) async {
+              fail('ProcessRunExecutor must not be called in terminal mode');
+            },
+      ),
+    );
+
+    await launcher.launch(
+      sessionId: 'sess-prefer',
+      owned: _owned(
+        extras: {
+          'execute': 'scriptText',
+          'scriptText': 'echo hi',
+          'interpreterPath': '/bin/bash',
+          'cwd': '/proj',
+          'executeInTerminal': true,
+          'allowMultipleInstances': true,
+        },
+      ),
+      onOutput: (_) {},
+      preferTerminalEntryId: 'entry-prefer',
+    );
+
+    expect(runService.openCalls, hasLength(1));
+    expect(runService.openCalls.single['preferEntryId'], 'entry-prefer');
+    expect(runService.openCalls.single['allowMultipleInstances'], true);
   });
 
   test('non-terminal branch delegates to ProcessRunExecutor', () async {

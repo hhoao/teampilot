@@ -53,6 +53,17 @@ class WorkspaceTerminalHoldHandle {
 
   /// End the hold, flushing the final grid to the PTY when [flush] (drag end).
   void endPtyHold({bool flush = true}) => _state?._endExternalHold(flush: flush);
+
+  /// Selects [entryId] as the active terminal tab (no-op if unbound / unknown).
+  void selectEntry(String entryId) {
+    final state = _state;
+    if (state == null) return;
+    if (state._group.entryById(entryId) == null) return;
+    state._selectEntry(entryId);
+  }
+
+  /// Requests keyboard focus on the bound Terminal view (post-frame).
+  void requestFocus() => _state?._refocusTerminal();
 }
 
 /// IntelliJ-style bottom panel: tab row + shell PTY (not chat agent terminals).

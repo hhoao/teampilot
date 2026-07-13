@@ -44,6 +44,7 @@ class RunShellScriptLauncher implements RunProcessLauncher {
     required String sessionId,
     required OwnedLaunchConfiguration owned,
     required void Function(ProcessRunOutput output) onOutput,
+    String? preferTerminalEntryId,
   }) async {
     final expanded = LaunchVariableExpander.expandConfiguration(
       owned.configuration.copyWith(
@@ -70,6 +71,7 @@ class RunShellScriptLauncher implements RunProcessLauncher {
         sessionId: sessionId,
         owned: owned,
         shell: shell,
+        preferTerminalEntryId: preferTerminalEntryId,
       );
     }
     return _launchAsProcess(
@@ -84,6 +86,7 @@ class RunShellScriptLauncher implements RunProcessLauncher {
     required String sessionId,
     required OwnedLaunchConfiguration owned,
     required ShellScriptConfiguration shell,
+    String? preferTerminalEntryId,
   }) async {
     final deps = _terminalRunDeps.require();
     final group = deps.registry.groupFor(workspaceId);
@@ -97,6 +100,7 @@ class RunShellScriptLauncher implements RunProcessLauncher {
       selectionKey: owned.selectionKey,
       runSessionId: sessionId,
       allowMultipleInstances: shell.allowMultipleInstances,
+      preferEntryId: preferTerminalEntryId,
       cwd: cwd,
       targetId: owned.owner.targetId,
       title: owned.configuration.name,

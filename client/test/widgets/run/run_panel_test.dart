@@ -60,6 +60,7 @@ class _OutputLauncher implements RunProcessLauncher {
     required String sessionId,
     required OwnedLaunchConfiguration owned,
     required void Function(ProcessRunOutput output) onOutput,
+    String? preferTerminalEntryId,
   }) async {
     _outputBySession[sessionId] = onOutput;
     final exit = Completer<int>();

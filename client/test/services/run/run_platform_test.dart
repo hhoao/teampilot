@@ -38,6 +38,7 @@ class _FakeProcessLauncher implements RunProcessLauncher {
     required String sessionId,
     required OwnedLaunchConfiguration owned,
     required void Function(ProcessRunOutput output) onOutput,
+    String? preferTerminalEntryId,
   }) async {
     launchCount++;
     return RunLaunchHandle(
