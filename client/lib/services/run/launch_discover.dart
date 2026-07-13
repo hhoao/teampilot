@@ -1,8 +1,7 @@
-import 'package:path/path.dart' as p;
-
 import '../../models/run/launch_configuration.dart';
 import '../../models/run/launch_type_contribution.dart';
 import '../../models/workspace_folder.dart';
+import '../storage/app_storage.dart';
 import 'launch_config_store.dart';
 import 'launch_type_registry.dart';
 
@@ -62,8 +61,11 @@ class LaunchDiscover {
     required String glob,
   }) async {
     final normalized = glob.replaceAll(r'\', '/');
+    // Match [AppPaths.pathContextForDataRoot]: POSIX roots must not become
+    // `\proj\…` on Windows hosts (memory IO + WSL/SSH folder paths).
+    final ctx = AppPaths.pathContextForDataRoot(folder.path);
     if (!normalized.contains('*') && !normalized.contains('?')) {
-      final path = p.join(folder.path, normalized);
+      final path = ctx.join(folder.path, normalized);
       return _io.exists(path, targetId: folder.targetId);
     }
 
@@ -76,7 +78,7 @@ class LaunchDiscover {
       );
     }
 
-    final path = p.join(folder.path, normalized);
+    final path = ctx.join(folder.path, normalized);
     return _io.exists(path, targetId: folder.targetId);
   }
 
@@ -85,7 +87,8 @@ class LaunchDiscover {
     required String root,
     required String suffix,
   }) async {
-    final direct = p.join(root, suffix);
+    final ctx = AppPaths.pathContextForDataRoot(root);
+    final direct = ctx.join(root, suffix);
     if (await _io.exists(direct, targetId: folder.targetId)) {
       return true;
     }

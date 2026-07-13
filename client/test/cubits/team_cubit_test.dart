@@ -66,7 +66,7 @@ Future<void> _deleteTempDirBestEffort(Directory dir) async {
   for (var attempt = 0; attempt < 8; attempt++) {
     try {
       if (await dir.exists()) {
-        await dir.delete(recursive: true);
+        await _deleteTeamTempDir(dir);
       }
       return;
     } on FileSystemException {
@@ -79,12 +79,14 @@ Future<void> _deleteTempDirBestEffort(Directory dir) async {
 /// [LaunchProfileCubit.addTeam] / [LaunchProfileCubit.deleteSelected] schedule skill/plugin sync
 /// with [unawaited]; drain microtasks before [LaunchProfileCubit.close].
 Future<void> _drainAndCloseTeamCubit(LaunchProfileCubit cubit) async {
-  await Future<void>.delayed(Duration.zero);
-  await Future<void>.delayed(Duration.zero);
+  await drainPendingAsyncWork(rounds: 8);
   if (!cubit.isClosed) {
     await cubit.close();
   }
+  await drainPendingAsyncWork(rounds: 8);
 }
+
+Future<void> _deleteTeamTempDir(Directory dir) => deleteTempDirBestEffort(dir);
 
 void main() {
   late Directory appDataRoot;
@@ -136,7 +138,7 @@ void main() {
     final persisted = await repo.loadTeamProfiles();
     expect(_teamById(persisted, 't').skillIds, isEmpty);
 
-    await dir.delete(recursive: true);
+    await _deleteTeamTempDir(dir);
   });
 
   test('removePluginFromAllTeams prunes all teams and syncs each', () async {
@@ -176,7 +178,7 @@ void main() {
     );
     expect(linker.syncs.map((s) => s.profileId).toSet(), {'a', 'b'});
 
-    await dir.delete(recursive: true);
+    await _deleteTeamTempDir(dir);
   });
 
   test('updateSelected syncs when pluginIds change', () async {
@@ -217,7 +219,7 @@ void main() {
     expect(linker.syncs, isNotEmpty);
     expect(linker.syncs.last.pluginIds, ['acme/market/p1']);
 
-    await dir.delete(recursive: true);
+    await _deleteTeamTempDir(dir);
   });
 
   test('syncTeamsUsingPlugin syncs all teams referencing plugin id', () async {
@@ -251,7 +253,7 @@ void main() {
     await cubit.syncTeamsUsingPlugin('acme/market/p1');
 
     expect(linker.syncs.map((s) => s.profileId).toSet(), {'a', 'b'});
-    await dir.delete(recursive: true);
+    await _deleteTeamTempDir(dir);
   });
 
   test('addTeam requires non-empty unique name', () async {
@@ -283,7 +285,7 @@ void main() {
     expect(await cubit.addTeam('Alpha'), isFalse);
 
     await _drainAndCloseTeamCubit(cubit);
-    await dir.delete(recursive: true);
+    await _deleteTeamTempDir(dir);
   });
 
   test('deleteMember cannot remove team-lead', () async {
@@ -305,7 +307,7 @@ void main() {
     expect(cubit.state.statusMessage, contains('team-lead'));
 
     await _drainAndCloseTeamCubit(cubit);
-    await dir.delete(recursive: true);
+    await _deleteTeamTempDir(dir);
   });
 
   test(
@@ -351,7 +353,7 @@ void main() {
       );
 
       await _drainAndCloseTeamCubit(cubit);
-      await dir.delete(recursive: true);
+      await _deleteTeamTempDir(dir);
     },
   );
 
@@ -375,7 +377,7 @@ void main() {
     expect(cubit.state.teams.single.cli, CliTool.claude);
 
     await _drainAndCloseTeamCubit(cubit);
-    await base.delete(recursive: true);
+    await _deleteTeamTempDir(base);
   });
 
   test('addTeam rejects codex in native team mode', () async {
@@ -397,7 +399,7 @@ void main() {
     );
 
     await _drainAndCloseTeamCubit(cubit);
-    await base.delete(recursive: true);
+    await _deleteTeamTempDir(base);
   });
 
   test('addTeam accepts codex in mixed team mode', () async {
@@ -419,7 +421,7 @@ void main() {
     expect(cubit.state.teams.single.teamMode, TeamMode.mixed);
 
     await _drainAndCloseTeamCubit(cubit);
-    await base.delete(recursive: true);
+    await _deleteTeamTempDir(base);
   });
 
   test(
@@ -565,7 +567,7 @@ void main() {
     );
 
     await _drainAndCloseTeamCubit(cubit);
-    await base.delete(recursive: true);
+    await _deleteTeamTempDir(base);
   });
 
   test('launchSelectedTeam writes Claude roster under CLI team name', () async {
@@ -610,7 +612,7 @@ void main() {
     expect(await Directory(teamRoot).exists(), isTrue);
 
     await _drainAndCloseTeamCubit(cubit);
-    await base.delete(recursive: true);
+    await _deleteTeamTempDir(base);
   });
 
   test('load creates runtime profile directories for built-in teams', () async {
@@ -633,7 +635,7 @@ void main() {
     }
 
     await _drainAndCloseTeamCubit(cubit);
-    await base.delete(recursive: true);
+    await _deleteTeamTempDir(base);
   });
 
   test(
@@ -677,7 +679,7 @@ void main() {
       );
 
       await _drainAndCloseTeamCubit(cubit);
-      await dir.delete(recursive: true);
+      await _deleteTeamTempDir(dir);
     },
   );
 
@@ -713,7 +715,7 @@ void main() {
       expect(cubit.state.selectedTeam!.providerIdsByTool['claude'], 'official');
 
       await _drainAndCloseTeamCubit(cubit);
-      await dir.delete(recursive: true);
+      await _deleteTeamTempDir(dir);
     },
   );
 
@@ -776,7 +778,7 @@ void main() {
     ]);
 
     await _drainAndCloseTeamCubit(cubit);
-    await dir.delete(recursive: true);
+    await _deleteTeamTempDir(dir);
   });
 
 }
