@@ -43,6 +43,7 @@ class ShellScriptConfiguration {
     final map = configuration.toJson();
     final execute = _string(map['execute']) ?? 'scriptFile';
     final interpreterPath = _string(map['interpreterPath'])?.trim();
+    final cwd = _string(map['cwd'])?.trim();
     return ShellScriptConfiguration(
       execute: execute,
       scriptPath: _string(map['scriptPath']),
@@ -52,7 +53,7 @@ class ShellScriptConfiguration {
           ? interpreterPath
           : ShellScriptLaunchSchema.defaultInterpreterPath(),
       interpreterOptions: _string(map['interpreterOptions']) ?? '',
-      cwd: _string(map['cwd']),
+      cwd: (cwd != null && cwd.isNotEmpty) ? cwd : r'${workspaceFolder}',
       env: _stringMap(map['env']),
       executeInTerminal: _bool(map['executeInTerminal']) ?? true,
       allowMultipleInstances: _bool(map['allowMultipleInstances']) ?? false,
