@@ -108,7 +108,7 @@ Color themePresetSwatchSecondary(String presetId) =>
 
 const _subThemes = FlexSubThemesData(
   defaultRadius: 10,
-  /// Match [AppControlTheme.radiusBase] — modest corners, not pill (999).
+  /// Match [AppControlTheme.radiusBase] — rounded rect, not stadium/pill.
   filledButtonRadius: 8,
   outlinedButtonRadius: 8,
   elevatedButtonRadius: 8,

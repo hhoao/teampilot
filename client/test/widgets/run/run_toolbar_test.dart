@@ -343,7 +343,27 @@ void main() {
 
     await _openConfigDropdown(tester);
     expect(find.byKey(const Key('run-config-add')), findsOneWidget);
-    expect(find.text('Add configuration…'), findsOneWidget);
+    expect(find.text('Configure launch configurations'), findsOneWidget);
+  });
+
+  testWidgets('configure launch items opens list dialog', (tester) async {
+    final config = _processConfig();
+    final platform = _RecordingPlatform(configurations: [config]);
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    addTearDown(cubit.close);
+    addTearDown(platform._actionsController.close);
+
+    await cubit.load();
+    await tester.pumpWidget(_host(cubit: cubit));
+    await tester.pump();
+
+    await _openConfigDropdown(tester);
+    await tester.tap(find.byKey(const Key('run-config-add')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Configure launch configurations'), findsWidgets);
+    expect(find.text('API'), findsWidgets);
+    expect(find.byKey(const Key('run-configurations-add')), findsOneWidget);
   });
 
   testWidgets('edit opens editor dialog', (tester) async {
@@ -363,7 +383,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Edit Configurations'), findsOneWidget);
+    expect(find.text('Edit configuration'), findsOneWidget);
   });
 
   testWidgets('delete confirms and calls cubit.deleteConfiguration', (
@@ -415,6 +435,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(cubit.state.selectedKey, api.selectionKey);
 
+    await tester.ensureVisible(find.byKey(const Key('run-config-editor-cancel')));
     await tester.tap(find.byKey(const Key('run-config-editor-cancel')));
     await tester.pumpAndSettle();
 
@@ -464,7 +485,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Edit Configurations'), findsOneWidget);
+    expect(find.text('Edit configuration'), findsOneWidget);
     expect(cubit.acceptRecommendationCalls, 0);
   });
 
@@ -658,10 +679,10 @@ void main() {
 
       expect(platform.runSelectedCalls, 0);
       expect(find.text('command is required'), findsOneWidget);
-      expect(find.text('Edit Configurations'), findsWidgets);
+      expect(find.text('Edit configuration'), findsWidgets);
       expect(find.textContaining('launch.json'), findsNothing);
 
-      await tester.tap(find.widgetWithText(FilledButton, 'Edit Configurations'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Edit configuration'));
       await tester.pumpAndSettle();
 
       expect(find.byType(RunConfigEditorDialog), findsOneWidget);

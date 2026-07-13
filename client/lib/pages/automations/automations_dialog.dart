@@ -66,6 +66,7 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
     return AppDialog(
       maxWidth: 720,
       maxHeight: maxHeight,
+      scrollable: true,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -106,11 +107,10 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
               ],
             ),
           ),
-          Flexible(
-            child: AutomationsListBody(
-              listScope: widget.listScope,
-              enabledFilter: _enabledFilter,
-            ),
+          AutomationsListBody(
+            listScope: widget.listScope,
+            enabledFilter: _enabledFilter,
+            shrinkWrap: true,
           ),
         ],
       ),

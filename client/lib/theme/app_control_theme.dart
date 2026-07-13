@@ -76,11 +76,12 @@ final class AppControlTheme extends ThemeExtension<AppControlTheme> {
   double get horizontalPadding => medium.horizontalPadding;
   double get verticalPadding => medium.verticalPadding;
 
-  // Baselines at scale 1.0
-  static const double radiusBase = 14;
+  // Baselines at scale 1.0 — keep radius well below height/2 so inputs
+  // are rounded rects, not stadium/pill.
+  static const double radiusBase = 8;
   static const double heightBase = 24;
   static const double minWidthBase = 64;
-  static const double horizontalPaddingBase = 12;
+  static const double horizontalPaddingBase = 8;
   static const double verticalPaddingBase = 8;
 
   static const AppControlMetrics smallBase = AppControlMetrics(

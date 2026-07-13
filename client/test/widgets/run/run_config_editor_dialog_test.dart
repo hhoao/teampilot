@@ -283,7 +283,7 @@ void main() {
       initial: cubit.state.configurations.single,
     );
 
-    expect(find.text('Edit Configurations'), findsOneWidget);
+    expect(find.text('Edit configuration'), findsOneWidget);
 
     await tester.enterText(
       find.byKey(const Key('launch-config-field-name')),
@@ -295,10 +295,10 @@ void main() {
 
     await tester.ensureVisible(find.byKey(const Key('run-config-editor-ok')));
     await tester.tap(find.byKey(const Key('run-config-editor-ok')));
-    await _waitUntilGone(tester, find.text('Edit Configurations'));
+    await _waitUntilGone(tester, find.text('Edit configuration'));
 
     expect(platform.persistCalls, 1);
-    expect(find.text('Edit Configurations'), findsNothing);
+    expect(find.text('Edit configuration'), findsNothing);
     expect(cubit.state.configurations.single.configuration.name, 'API Server');
     await cubit.close();
   });
@@ -327,36 +327,22 @@ void main() {
     await _waitUntilFound(tester, find.text('Discard changes?'));
 
     await tester.tap(find.text('Discard'));
-    await _waitUntilGone(tester, find.text('Edit Configurations'));
+    await _waitUntilGone(tester, find.text('Edit configuration'));
 
-    expect(find.text('Edit Configurations'), findsNothing);
+    expect(find.text('Edit configuration'), findsNothing);
     expect(platform.persistCalls, 0);
     expect(cubit.state.configurations.single.configuration.name, 'API');
     await cubit.close();
   });
 
-  testWidgets('switching left item with dirty draft prompts', (tester) async {
+  testWidgets('create new opens add configuration title', (tester) async {
     final platform = _StoreBackedPlatform();
-    await platform.seed(_processConfig(id: 'a', name: 'Alpha'));
-    await platform.seed(_processConfig(id: 'b', name: 'Beta'));
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     await cubit.load();
-    final alpha = cubit.state.configurations.firstWhere((c) => c.configId == 'a');
 
-    await _pumpEditor(tester, cubit: cubit, initial: alpha);
+    await _pumpEditor(tester, cubit: cubit, createNew: true);
 
-    await tester.enterText(
-      find.byKey(const Key('launch-config-field-name')),
-      'Alpha Edited',
-    );
-    await tester.pump();
-    FocusManager.instance.primaryFocus?.unfocus();
-    await tester.pump();
-
-    await tester.tap(find.byKey(const Key('run-config-list-item-b')));
-    await _waitUntilFound(tester, find.text('Discard changes?'));
-
-    expect(find.text('Discard changes?'), findsOneWidget);
+    expect(find.text('Add configuration'), findsOneWidget);
     await cubit.close();
   });
 }

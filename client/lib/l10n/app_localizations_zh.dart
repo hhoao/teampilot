@@ -5421,10 +5421,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get runErrorSshSpawnerMissing => '未配置 SSH 进程执行';
 
   @override
+  String get runConfigureLaunchItems => '配置启动项';
+
+  @override
+  String get runConfigurationsEmpty => '暂无启动配置';
+
+  @override
   String get runEditConfigurations => '编辑配置';
 
   @override
-  String get runAddConfiguration => '添加配置…';
+  String get runAddConfiguration => '添加配置';
 
   @override
   String get runDeleteConfiguration => '删除';

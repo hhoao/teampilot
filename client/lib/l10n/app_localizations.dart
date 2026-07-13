@@ -10128,16 +10128,28 @@ abstract class AppLocalizations {
   /// **'SSH process execution is not configured'**
   String get runErrorSshSpawnerMissing;
 
+  /// No description provided for @runConfigureLaunchItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure launch configurations'**
+  String get runConfigureLaunchItems;
+
+  /// No description provided for @runConfigurationsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No launch configurations yet'**
+  String get runConfigurationsEmpty;
+
   /// No description provided for @runEditConfigurations.
   ///
   /// In en, this message translates to:
-  /// **'Edit Configurations'**
+  /// **'Edit configuration'**
   String get runEditConfigurations;
 
   /// No description provided for @runAddConfiguration.
   ///
   /// In en, this message translates to:
-  /// **'Add configuration…'**
+  /// **'Add configuration'**
   String get runAddConfiguration;
 
   /// No description provided for @runDeleteConfiguration.

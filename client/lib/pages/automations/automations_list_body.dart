@@ -50,6 +50,7 @@ class AutomationsListBody extends StatefulWidget {
     this.sort = AutomationSort.nameAsc,
     this.enabledFilter = AutomationEnabledFilter.all,
     this.actionFilter = AutomationActionFilter.all,
+    this.shrinkWrap = false,
     super.key,
   });
 
@@ -57,6 +58,9 @@ class AutomationsListBody extends StatefulWidget {
   final AutomationSort sort;
   final AutomationEnabledFilter enabledFilter;
   final AutomationActionFilter actionFilter;
+
+  /// When true, list sizes to its children (for content-adaptive dialogs).
+  final bool shrinkWrap;
 
   @override
   State<AutomationsListBody> createState() => _AutomationsListBodyState();
@@ -215,20 +219,25 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
       builder: (context, state) {
         if (state.status == AutomationLoadStatus.loading &&
             state.automations.isEmpty) {
+          if (widget.shrinkWrap) {
+            return const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
           return const Center(child: CircularProgressIndicator());
         }
         final automations = _visible(state);
         if (automations.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(
-                l10n.automationsEmpty,
-                style: styles.mdColored(cs.onSurfaceVariant),
-                textAlign: TextAlign.center,
-              ),
+          final empty = Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              l10n.automationsEmpty,
+              style: styles.mdColored(cs.onSurfaceVariant),
+              textAlign: TextAlign.center,
             ),
           );
+          return widget.shrinkWrap ? empty : Center(child: empty);
         }
         if (_groupByLaunchProfile) {
           return _GroupedList(
@@ -241,6 +250,7 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
             onDelete: _delete,
             onRunNow: _runNow,
             formatNextRun: (ms) => _formatNextRun(l10n, ms),
+            shrinkWrap: widget.shrinkWrap,
           );
         }
         return _FlatList(
@@ -252,6 +262,7 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
           onDelete: _delete,
           onRunNow: _runNow,
           formatNextRun: (ms) => _formatNextRun(l10n, ms),
+          shrinkWrap: widget.shrinkWrap,
         );
       },
     );
@@ -283,6 +294,7 @@ class _FlatList extends StatelessWidget {
     required this.onDelete,
     required this.onRunNow,
     required this.formatNextRun,
+    this.shrinkWrap = false,
   });
 
   final List<Automation> automations;
@@ -293,6 +305,7 @@ class _FlatList extends StatelessWidget {
   final Future<void> Function(Automation) onDelete;
   final Future<void> Function(Automation) onRunNow;
   final String Function(int?) formatNextRun;
+  final bool shrinkWrap;
 
   @override
   Widget build(BuildContext context) {
@@ -302,6 +315,10 @@ class _FlatList extends StatelessWidget {
           builder: (context, presetState) {
             final l10n = context.l10n;
             return ListView.builder(
+              shrinkWrap: shrinkWrap,
+              physics: shrinkWrap
+                  ? const NeverScrollableScrollPhysics()
+                  : null,
               padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
               itemCount: automations.length,
               itemBuilder: (context, index) {
@@ -352,6 +369,7 @@ class _GroupedList extends StatelessWidget {
     required this.onDelete,
     required this.onRunNow,
     required this.formatNextRun,
+    this.shrinkWrap = false,
   });
 
   final List<Automation> automations;
@@ -363,6 +381,7 @@ class _GroupedList extends StatelessWidget {
   final Future<void> Function(Automation) onDelete;
   final Future<void> Function(Automation) onRunNow;
   final String Function(int?) formatNextRun;
+  final bool shrinkWrap;
 
   @override
   Widget build(BuildContext context) {
@@ -383,6 +402,10 @@ class _GroupedList extends StatelessWidget {
                   l10n: l10n,
                 );
                 return ListView(
+                  shrinkWrap: shrinkWrap,
+                  physics: shrinkWrap
+                      ? const NeverScrollableScrollPhysics()
+                      : null,
                   padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
                   children: [
                     for (final group in groups) ...[

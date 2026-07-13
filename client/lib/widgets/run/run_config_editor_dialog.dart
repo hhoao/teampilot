@@ -8,17 +8,13 @@ import '../../models/workspace_folder.dart';
 import '../../services/run/process_launch_schema.dart';
 import '../../theme/app_dialog_theme.dart';
 import '../../theme/app_text_styles.dart';
-import '../../theme/workspace_surface_layers.dart';
 import '../app_dialog.dart';
 import 'launch_config_schema_form.dart';
 
-const double _kEditorWidth = 840;
-const double _kEditorHeight = 560;
-const double _kLeftPaneWidth = 240;
-const String _kNewListKey = '__new__';
+const double _kEditorWidth = 560;
 const _kCommonSchemaKeys = {'name', 'type', 'id', 'request'};
 
-/// Opens the dual-pane Edit Configurations dialog.
+/// Opens the single-configuration editor dialog (create or edit).
 Future<void> showRunConfigEditorDialog(
   BuildContext context, {
   required String workspaceId,
@@ -44,7 +40,7 @@ Future<void> showRunConfigEditorDialog(
   );
 }
 
-/// Dual-pane editor for workspace launch configurations (not compounds).
+/// Single-configuration editor (automation-editor style).
 class RunConfigEditorDialog extends StatefulWidget {
   const RunConfigEditorDialog({
     required this.workspaceId,
@@ -68,7 +64,6 @@ class RunConfigEditorDialog extends StatefulWidget {
 enum _DirtyChoice { apply, discard, cancel }
 
 class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
-  String? _selectedKey;
   OwnedLaunchConfiguration? _draft;
   OwnedLaunchConfiguration? _baseline;
   bool _awaitingFolder = false;
@@ -76,6 +71,9 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
 
   bool get _isDirty =>
       _draft != null && _baseline != null && _draft != _baseline;
+
+  bool get _isCreating =>
+      widget.createNew || (_draft?.configuration.id.isEmpty ?? false);
 
   @override
   void initState() {
@@ -93,8 +91,6 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
       }
     } else if (widget.initial != null) {
       _selectOwned(widget.initial!);
-    } else if (cubit.state.configurations.isNotEmpty) {
-      _selectOwned(cubit.state.configurations.first);
     }
   }
 
@@ -104,7 +100,6 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
       folder: folder,
       type: widget.initialType ?? ProcessLaunchSchema.typeName,
     );
-    _selectedKey = _kNewListKey;
     _draft = draft;
     _baseline = draft;
     _awaitingFolder = false;
@@ -112,7 +107,6 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
   }
 
   void _selectOwned(OwnedLaunchConfiguration owned) {
-    _selectedKey = owned.selectionKey;
     _draft = owned;
     _baseline = owned;
     _formErrors = const [];
@@ -170,25 +164,6 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
     );
   }
 
-  Future<bool> _ensureCleanForNavigation() async {
-    if (!_isDirty) return true;
-    final choice = await _promptDirty();
-    if (!mounted) return false;
-    switch (choice) {
-      case _DirtyChoice.apply:
-        return _applyCurrent();
-      case _DirtyChoice.discard:
-        setState(() {
-          _draft = _baseline;
-          _formErrors = const [];
-        });
-        return true;
-      case _DirtyChoice.cancel:
-      case null:
-        return false;
-    }
-  }
-
   Future<bool> _applyCurrent() async {
     final draft = _draft;
     if (draft == null) return false;
@@ -220,7 +195,6 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
       if (saved != null) {
         _draft = saved;
         _baseline = saved;
-        _selectedKey = saved.selectionKey;
       } else {
         _baseline = _draft;
       }
@@ -271,427 +245,110 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
     Navigator.of(context).pop();
   }
 
-  Future<void> _onSelectKey(String listKey, OwnedLaunchConfiguration? owned) async {
-    if (listKey == _selectedKey) return;
-    final clean = await _ensureCleanForNavigation();
-    if (!clean || !mounted) return;
-    setState(() {
-      if (owned != null) {
-        _selectOwned(owned);
-      }
-    });
-  }
-
-  Future<void> _onAdd() async {
-    final clean = await _ensureCleanForNavigation();
-    if (!clean || !mounted) return;
-    final cubit = context.read<RunCubit>();
-    final folders = cubit.folders;
-    if (folders.isEmpty) return;
-    if (folders.length == 1) {
-      setState(() => _beginCreate(folders.single));
-      return;
-    }
-    setState(() {
-      _awaitingFolder = true;
-      _selectedKey = null;
-      _draft = null;
-      _baseline = null;
-      _formErrors = const [];
-    });
-  }
-
-  Future<void> _onDelete() async {
-    final draft = _draft;
-    if (draft == null || draft.configuration.id.isEmpty) {
-      // Discard unsaved new draft.
-      setState(() {
-        final configs = context.read<RunCubit>().state.configurations;
-        if (configs.isNotEmpty) {
-          _selectOwned(configs.first);
-        } else {
-          _selectedKey = null;
-          _draft = null;
-          _baseline = null;
-        }
-        _formErrors = const [];
-      });
-      return;
-    }
-
-    final cubit = context.read<RunCubit>();
-    final l10n = context.l10n;
-    final running = cubit.hasRunning(draft.selectionKey);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) {
-        return AppDialog(
-          maxWidth: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              AppDialogHeader(
-                title: l10n.runDeleteConfiguration,
-                onClose: () => Navigator.of(ctx).pop(false),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                l10n.runDeleteConfigurationConfirm(
-                  draft.configuration.name.isEmpty
-                      ? draft.configId
-                      : draft.configuration.name,
-                ),
-              ),
-              AppDialogActions(
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(false),
-                    child: Text(l10n.cancel),
-                  ),
-                  FilledButton(
-                    onPressed: () => Navigator.of(ctx).pop(true),
-                    child: Text(
-                      running ? l10n.runStopAndDelete : l10n.runDeleteConfiguration,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-    if (confirmed != true || !mounted) return;
-
-    await cubit.deleteConfiguration(draft);
-    if (!mounted) return;
-    final remaining = cubit.state.configurations;
-    setState(() {
-      if (remaining.isNotEmpty) {
-        _selectOwned(remaining.first);
-      } else {
-        _selectedKey = null;
-        _draft = null;
-        _baseline = null;
-      }
-      _formErrors = const [];
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
     final media = MediaQuery.of(context);
     final dialogWidth = _kEditorWidth.clamp(
       0.0,
       media.size.width - kAppDialogInsetExtent,
     );
-    // Leave room for [Dialog] insetPadding so the footer stays hittable.
-    final dialogHeight = _kEditorHeight.clamp(
-      0.0,
-      media.size.height - kAppDialogInsetExtent * 2,
-    );
+    final maxHeight = media.size.height * 0.85;
+    final title = _isCreating
+        ? l10n.runAddConfiguration
+        : l10n.runEditConfigurations;
 
     return AppDialog(
       maxWidth: dialogWidth,
-      maxHeight: dialogHeight,
-      contentPadding: EdgeInsets.zero,
-      backgroundColor: cs.workspacePage,
-      child: SizedBox(
-        width: dialogWidth,
-        height: dialogHeight,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                kAppDialogContentHorizontalInset,
-                16,
-                8,
-                0,
-              ),
-              child: AppDialogHeader(
-                title: l10n.runEditConfigurations,
-                onClose: _onCancel,
-                horizontalInset: kAppDialogContentHorizontalInset,
-              ),
-            ),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(
-                    width: _kLeftPaneWidth,
-                    child: _LeftPane(
-                      selectedKey: _selectedKey,
-                      draft: _draft,
-                      onSelect: _onSelectKey,
-                      onAdd: _onAdd,
-                      onDelete: _draft == null ? null : _onDelete,
-                    ),
-                  ),
-                  VerticalDivider(
-                    width: 1,
-                    thickness: 1,
-                    color: cs.outlineVariant.withValues(alpha: 0.5),
-                  ),
-                  Expanded(child: _buildRightPane(context)),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                kAppDialogContentHorizontalInset,
-                0,
-                kAppDialogContentHorizontalInset,
-                16,
-              ),
-              child: AppDialogActions(
-                horizontalInset: kAppDialogContentHorizontalInset,
-                children: [
-                  TextButton(
-                    key: const Key('run-config-editor-cancel'),
-                    onPressed: _onCancel,
-                    child: Text(l10n.cancel),
-                  ),
-                  TextButton(
-                    key: const Key('run-config-editor-apply'),
-                    onPressed: _draft == null || _awaitingFolder
-                        ? null
-                        : _onApply,
-                    child: Text(l10n.runApply),
-                  ),
-                  FilledButton(
-                    key: const Key('run-config-editor-ok'),
-                    onPressed: _draft == null || _awaitingFolder
-                        ? null
-                        : _onOk,
-                    child: Text(l10n.ok),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRightPane(BuildContext context) {
-    final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
-    final cubit = context.read<RunCubit>();
-
-    if (_awaitingFolder) {
-      return Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(l10n.runSelectFolder, style: styles.mdSemiboldTightSnug),
-            const SizedBox(height: 12),
-            for (final folder in cubit.folders)
-              ListTile(
-                title: Text(_folderLabel(folder)),
-                onTap: () => setState(() => _beginCreate(folder)),
-              ),
-          ],
-        ),
-      );
-    }
-
-    final draft = _draft;
-    if (draft == null) {
-      return Center(
-        child: Text(
-          l10n.runSelectConfiguration,
-          style: styles.sm,
-        ),
-      );
-    }
-
-    final type = draft.configuration.type;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+      maxHeight: maxHeight,
+      scrollable: true,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          InputDecorator(
-            decoration: InputDecoration(
-              labelText: l10n.runConfigurationType,
-              border: const OutlineInputBorder(),
-              isDense: true,
-            ),
-            child: Text(type, style: styles.md),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: SingleChildScrollView(
-              child: LaunchConfigSchemaForm(
-                key: ValueKey<String>(
-                  '${_selectedKey ?? ''}|$type|${draft.configuration.id}',
-                ),
-                value: draft.configuration,
-                schema: _schemaFor(type),
-                errors: _formErrors,
-                onChanged: (next) {
-                  setState(() {
-                    _draft = OwnedLaunchConfiguration(
-                      owner: draft.owner,
-                      configuration: next,
-                    );
-                  });
-                },
+          AppDialogHeader(title: title, onClose: _onCancel),
+          const SizedBox(height: 16),
+          _buildBody(context),
+          AppDialogActions(
+            children: [
+              TextButton(
+                key: const Key('run-config-editor-cancel'),
+                onPressed: _onCancel,
+                child: Text(l10n.cancel),
               ),
-            ),
+              TextButton(
+                key: const Key('run-config-editor-apply'),
+                onPressed: _draft == null || _awaitingFolder ? null : _onApply,
+                child: Text(l10n.runApply),
+              ),
+              FilledButton(
+                key: const Key('run-config-editor-ok'),
+                onPressed: _draft == null || _awaitingFolder ? null : _onOk,
+                child: Text(l10n.ok),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
-}
 
-class _LeftPane extends StatelessWidget {
-  const _LeftPane({
-    required this.selectedKey,
-    required this.draft,
-    required this.onSelect,
-    required this.onAdd,
-    required this.onDelete,
-  });
-
-  final String? selectedKey;
-  final OwnedLaunchConfiguration? draft;
-  final void Function(String listKey, OwnedLaunchConfiguration? owned) onSelect;
-  final VoidCallback onAdd;
-  final VoidCallback? onDelete;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildBody(BuildContext context) {
     final l10n = context.l10n;
     final styles = AppTextStyles.of(context);
-    final cs = Theme.of(context).colorScheme;
-    final cubit = context.watch<RunCubit>();
-    final multiFolder = cubit.folders.length > 1;
-    final configs = cubit.state.configurations;
-    final showingNew =
-        selectedKey == _kNewListKey &&
-        draft != null &&
-        draft!.configuration.id.isEmpty;
+    final cubit = context.read<RunCubit>();
 
+    if (_awaitingFolder) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.runSelectFolder, style: styles.mdSemiboldTightSnug),
+          const SizedBox(height: 12),
+          for (final folder in cubit.folders)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(_folderLabel(folder)),
+              onTap: () => setState(() => _beginCreate(folder)),
+            ),
+        ],
+      );
+    }
+
+    final draft = _draft;
+    if (draft == null) {
+      return Text(l10n.runSelectConfiguration, style: styles.sm);
+    }
+
+    final type = draft.configuration.type;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            children: [
-              for (final owned in configs)
-                _ConfigListTile(
-                  itemKey: Key('run-config-list-item-${owned.configId}'),
-                  title: owned.configuration.name.isEmpty
-                      ? owned.configId
-                      : owned.configuration.name,
-                  subtitle: multiFolder ? _folderLabel(owned.owner) : null,
-                  selected: selectedKey == owned.selectionKey,
-                  onTap: () => onSelect(owned.selectionKey, owned),
-                ),
-              if (showingNew)
-                _ConfigListTile(
-                  itemKey: const Key('run-config-list-item-new'),
-                  title: draft!.configuration.name.isEmpty
-                      ? l10n.runAddConfiguration
-                      : draft!.configuration.name,
-                  subtitle: multiFolder ? _folderLabel(draft!.owner) : null,
-                  selected: true,
-                  onTap: () {},
-                ),
-            ],
+        InputDecorator(
+          decoration: InputDecoration(
+            labelText: l10n.runConfigurationType,
+            border: const OutlineInputBorder(),
+            isDense: true,
           ),
+          child: Text(type, style: styles.md),
         ),
-        Divider(
-          height: 1,
-          thickness: 1,
-          color: cs.outlineVariant.withValues(alpha: 0.5),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextButton.icon(
-                  key: const Key('run-config-editor-add'),
-                  onPressed: onAdd,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: Text(l10n.runAddConfiguration, style: styles.sm),
-                ),
-              ),
-              IconButton(
-                key: const Key('run-config-editor-delete'),
-                tooltip: l10n.runDeleteConfiguration,
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline),
-              ),
-            ],
+        const SizedBox(height: 12),
+        LaunchConfigSchemaForm(
+          key: ValueKey<String>(
+            '${draft.selectionKey}|$type|${draft.configuration.id}',
           ),
+          value: draft.configuration,
+          schema: _schemaFor(type),
+          errors: _formErrors,
+          onChanged: (next) {
+            setState(() {
+              _draft = OwnedLaunchConfiguration(
+                owner: draft.owner,
+                configuration: next,
+              );
+            });
+          },
         ),
       ],
-    );
-  }
-}
-
-class _ConfigListTile extends StatelessWidget {
-  const _ConfigListTile({
-    required this.itemKey,
-    required this.title,
-    required this.selected,
-    required this.onTap,
-    this.subtitle,
-  });
-
-  final Key itemKey;
-  final String title;
-  final String? subtitle;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
-    return Material(
-      color: selected
-          ? cs.primary.withValues(alpha: 0.12)
-          : Colors.transparent,
-      child: InkWell(
-        key: itemKey,
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: selected ? styles.mdSemibold : styles.mdMedium,
-              ),
-              if (subtitle != null) ...[
-                const SizedBox(height: 2),
-                Text(
-                  subtitle!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: styles.smColored(cs.onSurfaceVariant,),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

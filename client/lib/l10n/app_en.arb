@@ -2528,8 +2528,10 @@
   "runErrorNoFolder": "No workspace folder",
   "runErrorSshProfileMissing": "SSH profile not found for this run target",
   "runErrorSshSpawnerMissing": "SSH process execution is not configured",
-  "runEditConfigurations": "Edit Configurations",
-  "runAddConfiguration": "Add configuration…",
+  "runConfigureLaunchItems": "Configure launch configurations",
+  "runConfigurationsEmpty": "No launch configurations yet",
+  "runEditConfigurations": "Edit configuration",
+  "runAddConfiguration": "Add configuration",
   "runDeleteConfiguration": "Delete",
   "runDeleteConfigurationConfirm": "Delete configuration \"{name}\"?",
   "@runDeleteConfigurationConfirm": {

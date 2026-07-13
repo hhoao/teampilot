@@ -15,6 +15,8 @@ import '../../repositories/ssh_profile_repository.dart';
 import '../../services/ssh/ssh_profile_connection_tester.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/form/app_form.dart';
+import '../../widgets/form/app_form_field.dart';
 
 /// Desktop settings: Orca-style modal for adding/editing an SSH target.
 Future<void> showSshProfileFormDialog(
@@ -37,7 +39,7 @@ class _SshProfileFormDialog extends StatefulWidget {
 }
 
 class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
-  final _formKey = GlobalKey<FormState>();
+  final _formKey = GlobalKey<AppFormState>();
   late final TextEditingController _labelController;
   late final TextEditingController _hostController;
   late final TextEditingController _usernameController;
@@ -111,6 +113,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     final path = result?.files.single.path;
     if (path != null && path.isNotEmpty && mounted) {
       setState(() => _identityFileController.text = path);
+      _formKey.currentState?.setFieldValue('identityFile', path);
     }
   }
 
@@ -234,7 +237,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       scrollable: true,
       maxWidth: 560,
       maxHeight: MediaQuery.sizeOf(context).height * 0.9,
-      child: Form(
+      child: AppForm(
         key: _formKey,
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -249,11 +252,13 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
             const SizedBox(height: 16),
             _TwoColRow(
               left: _field(
+                id: 'label',
                 controller: _labelController,
                 label: l10n.sshProfileFormLabel,
                 hint: l10n.sshProfileFormLabelHint,
               ),
               right: _field(
+                id: 'host',
                 controller: _hostController,
                 label: l10n.sshProfileFormHost,
                 hint: l10n.sshProfileFormHostHint,
@@ -266,11 +271,13 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
             const SizedBox(height: 12),
             _TwoColRow(
               left: _field(
+                id: 'username',
                 controller: _usernameController,
                 label: l10n.sshProfileFormUsername,
                 hint: l10n.sshProfileFormUsernameHint,
               ),
               right: _field(
+                id: 'port',
                 controller: _portController,
                 label: l10n.sshProfileFormPort,
                 keyboardType: TextInputType.number,
@@ -285,6 +292,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
             ),
             const SizedBox(height: 16),
             _field(
+              id: 'identityFile',
               controller: _identityFileController,
               label: l10n.sshProfileFormIdentityFile,
               hint: l10n.sshProfileFormIdentityFileHint,
@@ -298,6 +306,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
             ),
             const SizedBox(height: 12),
             _field(
+              id: 'passphrase',
               controller: _passphraseController,
               label: l10n.sshProfileFormPassphrase,
               hint: l10n.sshProfileFormPassphraseHint,
@@ -305,6 +314,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
             ),
             const SizedBox(height: 12),
             _field(
+              id: 'password',
               controller: _passwordController,
               label: l10n.sshProfileFormPassword,
               hint: _isEditing
@@ -350,6 +360,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
   }
 
   Widget _field({
+    required String id,
     required TextEditingController controller,
     required String label,
     String? hint,
@@ -361,18 +372,29 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) {
-    return TextFormField(
-      controller: controller,
-      obscureText: obscure,
-      keyboardType: keyboardType,
+    return AppFormField<String>(
+      id: id,
+      initialValue: controller.text,
+      label: Text(required ? '$label *' : label),
+      description: helper == null ? null : Text(helper),
       validator: validator,
-      decoration: InputDecoration(
-        labelText: required ? '$label *' : label,
-        hintText: hint,
-        helperText: helper,
-        prefixIcon: prefixIcon == null ? null : Icon(prefixIcon),
-        suffixIcon: suffix,
-      ),
+      builder: (state) {
+        return TextField(
+          controller: controller,
+          focusNode: state.focusNode,
+          obscureText: obscure,
+          keyboardType: keyboardType,
+          onChanged: state.didChange,
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixIcon: prefixIcon == null ? null : Icon(prefixIcon),
+            suffixIcon: suffix,
+            // Border reflects error; message is shown by AppFormFieldLayout.
+            errorText: state.hasError ? '' : null,
+            errorStyle: const TextStyle(height: 0, fontSize: 0),
+          ),
+        );
+      },
     );
   }
 }

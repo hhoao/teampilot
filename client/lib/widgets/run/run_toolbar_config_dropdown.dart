@@ -16,6 +16,7 @@ import '../app_dialog.dart';
 import '../app_icon_button.dart';
 import '../menu/sidebar_action_menu.dart';
 import 'run_config_editor_dialog.dart';
+import 'run_configurations_dialog.dart';
 
 /// Host file-pick result for an `isAction` dropdown entry.
 typedef RunActionPicker =
@@ -131,15 +132,14 @@ class RunToolbarConfigDropdown extends StatelessWidget {
             const SidebarActionMenuDivider(),
             SidebarActionMenuItem(
               key: const Key('run-config-add'),
-              icon: Icons.add,
-              label: l10n.runAddConfiguration,
+              icon: Icons.settings_outlined,
+              label: l10n.runConfigureLaunchItems,
               menuController: controller,
               onTap: () {
                 unawaited(
-                  showRunConfigEditorDialog(
+                  showRunConfigurationsPanelDialog(
                     context,
                     workspaceId: workspaceId,
-                    createNew: true,
                   ),
                 );
               },

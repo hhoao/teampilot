@@ -5629,10 +5629,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'SSH process execution is not configured';
 
   @override
-  String get runEditConfigurations => 'Edit Configurations';
+  String get runConfigureLaunchItems => 'Configure launch configurations';
 
   @override
-  String get runAddConfiguration => 'Add configuration…';
+  String get runConfigurationsEmpty => 'No launch configurations yet';
+
+  @override
+  String get runEditConfigurations => 'Edit configuration';
+
+  @override
+  String get runAddConfiguration => 'Add configuration';
 
   @override
   String get runDeleteConfiguration => 'Delete';
