@@ -7,14 +7,13 @@ import '../../cubits/run_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/run/launch_configuration.dart';
 import '../../models/workspace_folder.dart';
-import '../../services/run/launch_type_unavailable.dart';
+import '../../services/run/shell_script_launch_schema.dart';
 import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
 import '../app_dialog.dart';
 import '../app_icon_button.dart';
 import '../menu/sidebar_action_menu.dart';
 import 'run_config_editor_dialog.dart';
-import 'run_config_type_picker_dialog.dart';
 
 /// Workspace-scoped launch configurations list in a modal dialog
 /// (automation-panel style: list everything; Add opens a second dialog).
@@ -48,47 +47,25 @@ class RunConfigurationsDialog extends StatelessWidget {
   }
 
   Future<void> _create(BuildContext context) async {
-    await pickTypeAndCreateRunConfiguration(
+    await createRunConfiguration(
       context,
       workspaceId: workspaceId,
     );
   }
 }
 
-/// Type picker → editor create flow shared by list dialog and toolbar.
-Future<void> pickTypeAndCreateRunConfiguration(
+/// Opens the add-configuration editor (defaults to Shell Script; type is a
+/// dropdown inside the editor). Shared by list dialog and toolbar.
+Future<void> createRunConfiguration(
   BuildContext context, {
   required String workspaceId,
   WorkspaceFolder? folder,
-}) async {
-  final cubit = context.read<RunCubit>();
-  final folders = cubit.folders;
-  final targetId = folder?.targetId ??
-      (folders.isNotEmpty ? folders.first.targetId : null) ??
-      WorkspaceFolder.localTargetId;
-  final picked = await showRunConfigTypePickerDialog(
-    context,
-    types: cubit.launchTypes,
-    isAvailable: (type) =>
-        cubit.isTypeAvailableForTarget(type.type, targetId: targetId),
-    unavailableReason: (type) {
-      final code = cubit.unavailableReasonForType(
-        type.type,
-        targetId: targetId,
-      );
-      return localizeLaunchTypeUnavailable(
-        context.l10n,
-        code,
-        type: type.type,
-      );
-    },
-  );
-  if (picked == null || !context.mounted) return;
-  await showRunConfigEditorDialog(
+}) {
+  return showRunConfigEditorDialog(
     context,
     workspaceId: workspaceId,
     createNew: true,
-    initialType: picked,
+    initialType: ShellScriptLaunchSchema.typeName,
     folder: folder,
   );
 }

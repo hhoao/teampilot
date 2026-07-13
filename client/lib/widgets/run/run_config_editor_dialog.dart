@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/run_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/run/launch_configuration.dart';
+import '../../models/run/launch_type_contribution.dart';
 import '../../models/workspace_folder.dart';
 import '../../services/run/launch_config_l10n.dart';
 import '../../services/run/shell_script_launch_schema.dart';
@@ -132,12 +133,35 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
     });
   }
 
+  void _onTypeChanged(String newType) {
+    final draft = _draft;
+    if (draft == null) return;
+    final normalized = newType.trim();
+    if (normalized.isEmpty || draft.configuration.type == normalized) return;
+
+    final cubit = context.read<RunCubit>();
+    final rebuilt = cubit.createConfiguration(
+      folder: draft.owner,
+      type: normalized,
+    );
+    final previous = draft.configuration;
+    setState(() {
+      _draft = OwnedLaunchConfiguration(
+        owner: draft.owner,
+        configuration: rebuilt.configuration.copyWith(
+          id: previous.id,
+          name: previous.name,
+        ),
+      );
+      _formErrors = const [];
+    });
+  }
+
   Map<String, Object?> _schemaFor(String type) {
     final cubit = context.read<RunCubit>();
     final raw =
         cubit.schemaForType(type) ??
-        (type == ShellScriptLaunchSchema.typeName ||
-                type == ShellScriptLaunchSchema.processAlias
+        (type == ShellScriptLaunchSchema.typeName
             ? ShellScriptLaunchSchema.configurationSchema
             : const <String, Object?>{});
     return _filterCommonSchemaProps(raw);
@@ -368,20 +392,35 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
           const SizedBox(height: 12),
         ],
         AppFormField<String>(
+          key: ValueKey<String>('run-config-type-$type'),
           id: 'type',
           initialValue: type,
           label: Text(l10n.runConfigurationType),
-          enabled: false,
           builder: (state) {
-            return InputDecorator(
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-              child: Text(
-                localizeLaunchTypeLabel(l10n, type),
-                style: styles.md,
-              ),
+            final targetId = draft.owner.targetId;
+            final types = _orderedLaunchTypes(cubit.launchTypes)
+                .where(
+                  (item) =>
+                      item.type == type ||
+                      cubit.isTypeAvailableForTarget(
+                        item.type,
+                        targetId: targetId,
+                      ),
+                )
+                .toList();
+            final selected = types.where((t) => t.type == type).firstOrNull;
+            return AppDropdownField<LaunchTypeContribution>(
+              key: const Key('run-config-type-dropdown'),
+              items: types,
+              initialItem: selected,
+              searchable: types.length >= 8,
+              decoration: AppDropdownDecorations.themed(context),
+              itemLabel: (item) => localizeLaunchTypeLabel(l10n, item.type),
+              onChanged: (item) {
+                if (item == null) return;
+                state.didChange(item.type);
+                _onTypeChanged(item.type);
+              },
             );
           },
         ),
@@ -412,6 +451,22 @@ String _folderLabel(WorkspaceFolder folder) {
   final parts = path.split('/').where((p) => p.isNotEmpty).toList();
   if (parts.isEmpty) return path.isEmpty ? folder.path : path;
   return parts.last;
+}
+
+List<LaunchTypeContribution> _orderedLaunchTypes(
+  List<LaunchTypeContribution> types,
+) {
+  final builtIn = <LaunchTypeContribution>[];
+  final extensions = <LaunchTypeContribution>[];
+  for (final type in types) {
+    if (type.type == ShellScriptLaunchSchema.typeName) {
+      builtIn.add(type);
+    } else {
+      extensions.add(type);
+    }
+  }
+  extensions.sort((a, b) => a.type.compareTo(b.type));
+  return [...builtIn, ...extensions];
 }
 
 Map<String, Object?> _filterCommonSchemaProps(Map<String, Object?> schema) {

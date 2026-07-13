@@ -150,7 +150,7 @@ class RunPlatform implements RunPlatformApi {
   Future<List<LaunchOption>> provideOptions(
     OwnedLaunchConfiguration owned,
   ) async {
-    final type = normalizeLaunchType(owned.configuration.type);
+    final type = owned.configuration.type;
     if (isBuiltInShellType(type)) return const [];
 
     final contribution = registry.get(type);
@@ -187,11 +187,11 @@ class RunPlatform implements RunPlatformApi {
 
   @override
   List<String> validateConfiguration(OwnedLaunchConfiguration owned) {
-    final type = normalizeLaunchType(owned.configuration.type);
+    final type = owned.configuration.type;
     final targetId = owned.owner.targetId;
     if (isBuiltInShellType(type)) {
       final expanded = LaunchVariableExpander.expandConfiguration(
-        owned.configuration.copyWith(type: type),
+        owned.configuration,
         workspaceFolder: owned.owner.path,
         env: owned.configuration.env,
       );
@@ -304,33 +304,32 @@ class RunPlatform implements RunPlatformApi {
 
   @override
   bool isTypeAvailable(String type, {required String targetId}) =>
-      registry.isAvailable(normalizeLaunchType(type), targetId: targetId);
+      registry.isAvailable(type, targetId: targetId);
 
   @override
   String? unavailableReason(String type, {required String targetId}) {
     return launchTypeUnavailableCode(
       registry,
-      type: normalizeLaunchType(type),
+      type: type,
       targetId: targetId,
     );
   }
 
   @override
   Map<String, Object?>? configurationSchema(String type) {
-    final normalized = normalizeLaunchType(type);
-    if (isBuiltInShellType(normalized)) {
+    if (isBuiltInShellType(type)) {
       return Map<String, Object?>.from(
         ShellScriptLaunchSchema.configurationSchema,
       );
     }
-    final contribution = registry.get(normalized);
+    final contribution = registry.get(type);
     if (contribution == null) return null;
     return Map<String, Object?>.from(contribution.configurationSchema);
   }
 
   @override
   List<String> kindsFor(String type) {
-    final contribution = registry.get(normalizeLaunchType(type));
+    final contribution = registry.get(type);
     if (contribution == null) return const ['run'];
     return List<String>.from(contribution.kinds);
   }

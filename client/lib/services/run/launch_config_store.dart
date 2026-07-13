@@ -5,7 +5,6 @@ import '../../models/run/launch_configuration.dart';
 import '../../models/workspace_folder.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
-import 'shell_script_migrator.dart';
 
 /// Read/write surface for per-folder `.teampilot/launch.json`.
 ///
@@ -221,17 +220,6 @@ class LaunchConfigStore {
       final decoded = jsonDecode(raw);
       if (decoded is! Map) return null;
       final json = Map<String, Object?>.from(decoded);
-      final configs = json['configurations'];
-      if (configs is List) {
-        // Migrate legacy process → shellScript before model parse.
-        json['configurations'] = [
-          for (final item in configs)
-            if (item is Map)
-              ShellScriptMigrator.maybeMigrate(Map<String, Object?>.from(item))
-            else
-              item,
-        ];
-      }
       return LaunchConfigDocument.fromJson(json);
     } on FormatException {
       return null;

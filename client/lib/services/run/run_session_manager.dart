@@ -9,7 +9,6 @@ import '../../models/run/run_session.dart';
 import 'launch_adapter_client.dart';
 import 'launch_type_normalize.dart';
 import 'launch_variable_expander.dart';
-import 'process_launch_schema.dart';
 import 'process_run_executor.dart';
 import 'run_target_resolver.dart';
 import 'shell_script_command_builder.dart';
@@ -65,16 +64,14 @@ class DefaultRunProcessLauncher implements RunProcessLauncher {
     String? preferTerminalEntryId,
   }) async {
     final expanded = LaunchVariableExpander.expandConfiguration(
-      owned.configuration.copyWith(
-        type: normalizeLaunchType(owned.configuration.type),
-      ),
+      owned.configuration,
       workspaceFolder: owned.owner.path,
       env: owned.configuration.env,
     );
 
     // Temporary bridge for callers still injecting DefaultRunProcessLauncher
     // directly; production uses RunShellScriptLauncher (terminal + process).
-    // preferTerminalEntryId is ignored here (non-terminal / legacy path).
+    // preferTerminalEntryId is ignored here (non-terminal path).
     if (isBuiltInShellType(expanded.type)) {
       final errors = ShellScriptLaunchSchema.validate(expanded);
       if (errors.isNotEmpty) {
@@ -100,26 +97,10 @@ class DefaultRunProcessLauncher implements RunProcessLauncher {
       return RunLaunchHandle(exitCode: result.exitCode, stop: result.stop);
     }
 
-    final errors = ProcessLaunchSchema.validate(expanded);
-    if (errors.isNotEmpty) {
-      throw StateError(errors.join('; '));
-    }
-
-    final plan = _resolver.resolve(
-      owner: owned.owner,
-      cwd: expanded.cwd,
-      env: expanded.env,
+    throw StateError(
+      'DefaultRunProcessLauncher only supports shellScript '
+      '(got ${expanded.type})',
     );
-    final result = await _executor.start(
-      sessionId: sessionId,
-      command: expanded.command!,
-      args: expanded.args,
-      plan: plan,
-      env: expanded.env,
-      shell: expanded.shell ?? false,
-      onOutput: onOutput,
-    );
-    return RunLaunchHandle(exitCode: result.exitCode, stop: result.stop);
   }
 }
 
@@ -497,9 +478,7 @@ class RunSessionManager {
   bool _shouldWatchExit(OwnedLaunchConfiguration owned) {
     if (!isBuiltInShellType(owned.configuration.type)) return true;
     final expanded = LaunchVariableExpander.expandConfiguration(
-      owned.configuration.copyWith(
-        type: normalizeLaunchType(owned.configuration.type),
-      ),
+      owned.configuration,
       workspaceFolder: owned.owner.path,
       env: owned.configuration.env,
     );

@@ -17,7 +17,7 @@ Workspace Terminal already provides interactive PTY tabs, but has no first-class
 - Default: **Execute in the terminal** — open/reuse a workspace Terminal tab and inject the assembled command.
 - Configurable: `allowMultipleInstances`, `executeInTerminal`, `activateToolWindow`, `focusToolWindow`.
 - Add-config UX: type picker (built-in Shell Script + enabled extension types).
-- Migrate existing `type: "process"` entries on read (compat alias) with **deterministic** mapping so common configs still run.
+- ~~Migrate existing `type: "process"` entries on read (compat alias)~~ **Removed** — no `process` alias; only `shellScript`.
 - Extract a small **`WorkspaceTerminalRunService`** so Run does not reach into panel-private methods.
 - Unify top-bar Stop via a **lightweight `RunSession`** for terminal-backed runs.
 

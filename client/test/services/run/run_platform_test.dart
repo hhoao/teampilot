@@ -117,9 +117,7 @@ void main() {
     expect(shellSchema, isNotNull);
     expect(shellSchema!['required'], contains('execute'));
 
-    final aliasSchema = platform.configurationSchema('process');
-    expect(aliasSchema, isNotNull);
-    expect(aliasSchema!['required'], contains('execute'));
+    expect(platform.configurationSchema('process'), isNull);
 
     final debugSchema = platform.configurationSchema('debuggable');
     expect(debugSchema, isNotNull);
@@ -127,7 +125,7 @@ void main() {
     expect(platform.configurationSchema('unknown'), isNull);
   });
 
-  test('isTypeAvailable is always true for shellScript and process alias', () {
+  test('isTypeAvailable is always true for shellScript', () {
     final platform = _platform();
     expect(
       platform.isTypeAvailable('shellScript', targetId: 'local'),
@@ -135,7 +133,7 @@ void main() {
     );
     expect(
       platform.isTypeAvailable('process', targetId: 'ssh:box'),
-      isTrue,
+      isFalse,
     );
   });
 

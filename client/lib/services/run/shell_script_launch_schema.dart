@@ -24,7 +24,6 @@ abstract final class ShellScriptValidationCodes {
 /// Built-in JSON schema fields for `type: shellScript` launch configurations.
 abstract final class ShellScriptLaunchSchema {
   static const typeName = 'shellScript';
-  static const processAlias = 'process';
 
   static const _defaultCwd = r'${workspaceFolder}';
 

@@ -47,9 +47,7 @@ class RunShellScriptLauncher implements RunProcessLauncher {
     String? preferTerminalEntryId,
   }) async {
     final expanded = LaunchVariableExpander.expandConfiguration(
-      owned.configuration.copyWith(
-        type: normalizeLaunchType(owned.configuration.type),
-      ),
+      owned.configuration,
       workspaceFolder: owned.owner.path,
       env: owned.configuration.env,
     );

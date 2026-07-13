@@ -359,7 +359,6 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
 
 String? _readString(LaunchConfiguration config, String key) {
   return switch (key) {
-    'command' => config.command,
     'cwd' => config.cwd,
     'name' => config.name,
     'type' => config.type,
@@ -370,7 +369,6 @@ String? _readString(LaunchConfiguration config, String key) {
 }
 
 List<String> _readStringList(LaunchConfiguration config, String key) {
-  if (key == 'args') return config.args;
   final raw = config.extras[key];
   if (raw is List) {
     return [for (final e in raw) e.toString()];
@@ -390,7 +388,6 @@ Map<String, String> _readStringMap(LaunchConfiguration config, String key) {
 }
 
 bool? _readBool(LaunchConfiguration config, String key) {
-  if (key == 'shell') return config.shell;
   final raw = config.extras[key];
   return raw is bool ? raw : null;
 }
@@ -401,7 +398,6 @@ LaunchConfiguration _writeString(
   String text,
 ) {
   return switch (key) {
-    'command' => config.copyWith(command: text),
     'cwd' => config.copyWith(cwd: text),
     'name' => config.copyWith(name: text),
     'type' => config.copyWith(type: text),
@@ -416,7 +412,6 @@ LaunchConfiguration _writeStringList(
   String key,
   List<String> values,
 ) {
-  if (key == 'args') return config.copyWith(args: values);
   return config.copyWith(extras: {...config.extras, key: values});
 }
 
@@ -434,6 +429,5 @@ LaunchConfiguration _writeBool(
   String key,
   bool value,
 ) {
-  if (key == 'shell') return config.copyWith(shell: value);
   return config.copyWith(extras: {...config.extras, key: value});
 }

@@ -15,6 +15,7 @@ import 'package:teampilot/services/run/launch_config_store.dart';
 import 'package:teampilot/services/run/process_run_executor.dart';
 import 'package:teampilot/services/run/run_platform.dart';
 import 'package:teampilot/services/run/run_session_manager.dart';
+import 'package:teampilot/services/run/shell_script_launch_schema.dart';
 import 'package:teampilot/theme/app_control_theme.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 import 'package:teampilot/widgets/menu/sidebar_action_menu.dart';
@@ -23,25 +24,11 @@ import 'package:teampilot/widgets/run/run_toolbar.dart';
 
 const _folder = WorkspaceFolder(path: '/proj');
 
-OwnedLaunchConfiguration _processConfig({
-  String id = 'api',
-  String name = 'API',
-}) {
-  return OwnedLaunchConfiguration(
-    owner: _folder,
-    configuration: LaunchConfiguration(
-      id: id,
-      name: name,
-      type: 'process',
-      command: 'true',
-    ),
-  );
-}
-
 OwnedLaunchConfiguration _shellScriptConfig({
   String id = 'api',
   String name = 'API',
   bool allowMultipleInstances = false,
+  String scriptText = 'echo hi',
 }) {
   return OwnedLaunchConfiguration(
     owner: _folder,
@@ -51,7 +38,7 @@ OwnedLaunchConfiguration _shellScriptConfig({
       type: 'shellScript',
       extras: {
         'execute': 'scriptText',
-        'scriptText': 'echo hi',
+        'scriptText': scriptText,
         'executeInTerminal': false,
         'allowMultipleInstances': allowMultipleInstances,
       },
@@ -361,7 +348,7 @@ Widget _host({required RunCubit cubit, RunActionPicker? pickActionResult}) {
 void main() {
   testWidgets('dropdown lists configs and isAction items', (tester) async {
     final platform = _RecordingPlatform(
-      configurations: [_processConfig()],
+      configurations: [_shellScriptConfig()],
       actions: const [
         LaunchAdapterConfigurationEntry(
           id: 'pick-entry',
@@ -399,7 +386,7 @@ void main() {
       ),
     );
     final platform = _RecordingPlatform(
-      configurations: [_processConfig()],
+      configurations: [_shellScriptConfig()],
       recommendations: [recommendation],
     );
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
@@ -416,7 +403,7 @@ void main() {
 
   testWidgets('config menu includes add footer', (tester) async {
     final platform = _RecordingPlatform(
-      configurations: [_processConfig()],
+      configurations: [_shellScriptConfig()],
     );
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     addTearDown(cubit.close);
@@ -432,7 +419,7 @@ void main() {
   });
 
   testWidgets('configure launch items opens list dialog', (tester) async {
-    final config = _processConfig();
+    final config = _shellScriptConfig();
     final platform = _RecordingPlatform(configurations: [config]);
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     addTearDown(cubit.close);
@@ -452,7 +439,7 @@ void main() {
   });
 
   testWidgets('edit opens editor dialog', (tester) async {
-    final config = _processConfig();
+    final config = _shellScriptConfig();
     final platform = _RecordingPlatform(configurations: [config]);
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     addTearDown(cubit.close);
@@ -474,7 +461,7 @@ void main() {
   testWidgets('delete confirms and calls cubit.deleteConfiguration', (
     tester,
   ) async {
-    final config = _processConfig();
+    final config = _shellScriptConfig();
     final platform = _RecordingPlatform(configurations: [config]);
     final cubit = _RecordingCubit(
       platform: platform,
@@ -503,8 +490,8 @@ void main() {
   });
 
   testWidgets('edit and delete taps do not change selection', (tester) async {
-    final api = _processConfig(id: 'api', name: 'API');
-    final web = _processConfig(id: 'web', name: 'Web');
+    final api = _shellScriptConfig(id: 'api', name: 'API');
+    final web = _shellScriptConfig(id: 'web', name: 'Web');
     final platform = _RecordingPlatform(configurations: [api, web]);
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     addTearDown(cubit.close);
@@ -546,7 +533,7 @@ void main() {
       ),
     );
     final platform = _RecordingPlatform(
-      configurations: [_processConfig()],
+      configurations: [_shellScriptConfig()],
       recommendations: [recommendation],
     );
     final cubit = _RecordingCubit(
@@ -584,7 +571,7 @@ void main() {
       ),
     );
     final platform = _RecordingPlatform(
-      configurations: [_processConfig()],
+      configurations: [_shellScriptConfig()],
       compounds: [compound],
     );
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
@@ -610,7 +597,7 @@ void main() {
     tester,
   ) async {
     final platform = _RecordingPlatform(
-      configurations: [_processConfig()],
+      configurations: [_shellScriptConfig()],
       actions: const [
         LaunchAdapterConfigurationEntry(
           id: 'pick-entry',
@@ -645,7 +632,7 @@ void main() {
 
   testWidgets('does not show build debug or more by default', (tester) async {
     final platform = _RecordingPlatform(
-      configurations: [_processConfig()],
+      configurations: [_shellScriptConfig()],
     );
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     addTearDown(cubit.close);
@@ -715,7 +702,7 @@ void main() {
 
   testWidgets('Run button calls runSelected', (tester) async {
     final platform = _RecordingPlatform(
-      configurations: [_processConfig()],
+      configurations: [_shellScriptConfig()],
     );
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     addTearDown(cubit.close);
@@ -739,16 +726,20 @@ void main() {
     (tester) async {
       final invalid = OwnedLaunchConfiguration(
         owner: _folder,
-        configuration: const LaunchConfiguration(
-          id: 'bad',
-          name: 'Bad',
-          type: 'process',
-          command: '',
+        configuration: LaunchConfiguration.fromJson(
+          ShellScriptLaunchSchema.withDefaults({
+            'id': 'bad',
+            'name': 'Bad',
+            'type': ShellScriptLaunchSchema.typeName,
+            'execute': 'scriptText',
+            'scriptText': '',
+            'executeInTerminal': false,
+          }),
         ),
       );
       final platform = _RecordingPlatform(
         configurations: [invalid],
-        validate: (_) => const ['command is required'],
+        validate: (_) => const ['scriptText is required'],
       );
       final cubit = RunCubit(platform: platform, folders: const [_folder]);
       addTearDown(cubit.close);
@@ -763,7 +754,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(platform.runSelectedCalls, 0);
-      expect(find.text('Command is required'), findsOneWidget);
+      expect(find.text('Script text is required'), findsOneWidget);
       expect(find.text('Edit configuration'), findsWidgets);
       expect(find.textContaining('launch.json'), findsNothing);
 
@@ -816,8 +807,8 @@ void main() {
     );
     final platform = _RecordingPlatform(
       configurations: [
-        _processConfig(id: 'api', name: 'API'),
-        _processConfig(id: 'web', name: 'Web'),
+        _shellScriptConfig(id: 'api', name: 'API'),
+        _shellScriptConfig(id: 'web', name: 'Web'),
       ],
       compounds: [compound],
     );

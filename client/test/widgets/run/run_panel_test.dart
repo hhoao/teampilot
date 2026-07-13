@@ -14,22 +14,27 @@ import 'package:teampilot/services/run/launch_config_store.dart';
 import 'package:teampilot/services/run/process_run_executor.dart';
 import 'package:teampilot/services/run/run_platform.dart';
 import 'package:teampilot/services/run/run_session_manager.dart';
+import 'package:teampilot/services/run/shell_script_launch_schema.dart';
 
 import 'package:teampilot/widgets/run/run_panel.dart';
 
 const _folder = WorkspaceFolder(path: '/proj');
 
-OwnedLaunchConfiguration _processConfig({
+OwnedLaunchConfiguration _shellScriptConfig({
   String id = 'api',
   String name = 'API',
 }) {
   return OwnedLaunchConfiguration(
     owner: _folder,
-    configuration: LaunchConfiguration(
-      id: id,
-      name: name,
-      type: 'process',
-      command: 'echo',
+    configuration: LaunchConfiguration.fromJson(
+      ShellScriptLaunchSchema.withDefaults({
+        'id': id,
+        'name': name,
+        'type': ShellScriptLaunchSchema.typeName,
+        'execute': 'scriptText',
+        'scriptText': 'echo',
+        'executeInTerminal': false,
+      }),
     ),
   );
 }
@@ -381,7 +386,7 @@ void main() {
   });
 
   testWidgets('new session focuses a Run page', (tester) async {
-    final platform = _FakePlatform(configurations: [_processConfig()]);
+    final platform = _FakePlatform(configurations: [_shellScriptConfig()]);
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     addTearDown(cubit.close);
     addTearDown(platform.sessionManager.dispose);
@@ -408,7 +413,7 @@ void main() {
   });
 
   testWidgets('output appends to the focused session log', (tester) async {
-    final platform = _FakePlatform(configurations: [_processConfig()]);
+    final platform = _FakePlatform(configurations: [_shellScriptConfig()]);
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     addTearDown(cubit.close);
     addTearDown(platform.sessionManager.dispose);

@@ -35,13 +35,13 @@ void main() {
     await writeLaunchJson(folderA, {
       'version': 1,
       'configurations': [
-        {'id': 'main', 'name': 'Main A', 'type': 'process', 'command': 'a'},
+        {'id': 'main', 'name': 'Main A', 'type': 'shellScript', 'execute': 'scriptText', 'scriptText': 'a'},
       ],
     });
     await writeLaunchJson(folderB, {
       'version': 1,
       'configurations': [
-        {'id': 'main', 'name': 'Main B', 'type': 'process', 'command': 'b'},
+        {'id': 'main', 'name': 'Main B', 'type': 'shellScript', 'execute': 'scriptText', 'scriptText': 'b'},
       ],
     });
 
@@ -55,8 +55,8 @@ void main() {
     await writeLaunchJson(folderA, {
       'version': 1,
       'configurations': [
-        {'id': 'a', 'name': 'A', 'type': 'process', 'command': 'a'},
-        {'id': 'b', 'name': 'B', 'type': 'process', 'command': 'b'},
+        {'id': 'a', 'name': 'A', 'type': 'shellScript', 'execute': 'scriptText', 'scriptText': 'a'},
+        {'id': 'b', 'name': 'B', 'type': 'shellScript', 'execute': 'scriptText', 'scriptText': 'b'},
       ],
       'compounds': [
         {
@@ -168,7 +168,7 @@ void main() {
       configuration: LaunchConfiguration(
         id: 'run',
         name: 'Run',
-        type: 'process',
+        type: 'shellScript',
       ),
     );
     expect(

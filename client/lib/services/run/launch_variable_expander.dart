@@ -68,18 +68,6 @@ class LaunchVariableExpander {
     final mergedEnv = {...env, ...expandedEnv};
 
     return configuration.copyWith(
-      command: configuration.command == null
-          ? null
-          : expand(
-              configuration.command!,
-              workspaceFolder: workspaceFolder,
-              env: mergedEnv,
-            ),
-      args: expandStringList(
-        configuration.args,
-        workspaceFolder: workspaceFolder,
-        env: mergedEnv,
-      ),
       cwd: configuration.cwd == null
           ? null
           : expand(

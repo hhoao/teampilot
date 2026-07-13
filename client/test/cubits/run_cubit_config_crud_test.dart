@@ -11,21 +11,26 @@ import 'package:teampilot/services/run/launch_config_store.dart';
 import 'package:teampilot/services/run/process_run_executor.dart';
 import 'package:teampilot/services/run/run_platform.dart';
 import 'package:teampilot/services/run/run_session_manager.dart';
+import 'package:teampilot/services/run/shell_script_launch_schema.dart';
 
 const _folder = WorkspaceFolder(path: '/proj');
 
-OwnedLaunchConfiguration _processConfig({
+OwnedLaunchConfiguration _shellScriptConfig({
   String id = 'api',
   String name = 'api',
-  String command = 'true',
+  String scriptText = 'true',
 }) {
   return OwnedLaunchConfiguration(
     owner: _folder,
-    configuration: LaunchConfiguration(
-      id: id,
-      name: name,
-      type: 'process',
-      command: command,
+    configuration: LaunchConfiguration.fromJson(
+      ShellScriptLaunchSchema.withDefaults({
+        'id': id,
+        'name': name,
+        'type': ShellScriptLaunchSchema.typeName,
+        'execute': 'scriptText',
+        'scriptText': scriptText,
+        'executeInTerminal': false,
+      }),
     ),
   );
 }
@@ -80,7 +85,7 @@ class _FakeProcessLauncher implements RunProcessLauncher {
 class _FakeAdapterLauncher implements RunAdapterLauncher {
   _FakeAdapterLauncher({this.fallback});
 
-  /// Used when loaded configs migrate `process` → `shellScript` (adapter path).
+  /// Used when shellScript non-terminal runs go through the process launcher.
   final RunProcessLauncher? fallback;
 
   @override
@@ -269,7 +274,11 @@ void main() {
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     await cubit.load();
 
-    final owned = _processConfig(id: 'web', name: 'web', command: 'npm start');
+    final owned = _shellScriptConfig(
+      id: 'web',
+      name: 'web',
+      scriptText: 'npm start',
+    );
     await cubit.saveConfiguration(owned);
 
     expect(platform.persistCalls, 1);
@@ -285,7 +294,10 @@ void main() {
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     await cubit.load();
 
-    final draft = cubit.createConfiguration(folder: _folder, type: 'process');
+    final draft = cubit.createConfiguration(
+      folder: _folder,
+      type: ShellScriptLaunchSchema.typeName,
+    );
     expect(draft.configuration.id, isEmpty);
     expect(draft.configuration.name, isEmpty);
     expect(draft.configuration.type, 'shellScript');
@@ -317,22 +329,22 @@ void main() {
 
   test('saveConfiguration validates via platform', () async {
     final platform = _StoreBackedPlatform(
-      validate: (_) => const ['command is required'],
+      validate: (_) => const ['scriptText is required'],
     );
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     await cubit.load();
 
-    await cubit.saveConfiguration(_processConfig(command: ''));
+    await cubit.saveConfiguration(_shellScriptConfig(scriptText: ''));
 
     expect(platform.persistCalls, 0);
     expect(cubit.state.configurations, isEmpty);
-    expect(cubit.state.errorMessage, contains('command'));
+    expect(cubit.state.errorMessage, contains('scriptText'));
     await cubit.close();
   });
 
   test('deleteConfiguration removes and clears selection', () async {
     final platform = _StoreBackedPlatform();
-    await platform.seed(_processConfig());
+    await platform.seed(_shellScriptConfig());
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     await cubit.load();
     final key = cubit.state.configurations.single.selectionKey;
@@ -386,8 +398,8 @@ void main() {
 
   test('deleteConfiguration when not running leaves sessions untouched', () async {
     final platform = _StoreBackedPlatform();
-    await platform.seed(_processConfig(id: 'a'));
-    await platform.seed(_processConfig(id: 'b'));
+    await platform.seed(_shellScriptConfig(id: 'a'));
+    await platform.seed(_shellScriptConfig(id: 'b'));
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     await cubit.load();
     final first = cubit.state.configurations.firstWhere((c) => c.configId == 'a');
@@ -408,12 +420,11 @@ void main() {
     final platform = _StoreBackedPlatform(
       sessionManager: RunSessionManager(
         executor: launcher,
-        // Legacy process configs migrate to shellScript on load; Task 4 routes
-        // shellScript through the process launcher until Task 7.
+        // Shell Script non-terminal runs route through the process launcher.
         adapters: _FakeAdapterLauncher(fallback: launcher),
       ),
     );
-    await platform.seed(_processConfig());
+    await platform.seed(_shellScriptConfig());
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     await cubit.load();
     final owned = cubit.state.configurations.single;

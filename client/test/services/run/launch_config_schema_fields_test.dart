@@ -1,24 +1,24 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/run/launch_config_schema_fields.dart';
-import 'package:teampilot/services/run/process_launch_schema.dart';
 import 'package:teampilot/services/run/shell_script_launch_schema.dart';
 
 void main() {
-  test('process schema yields command args cwd env shell fields', () {
-    final fields = launchConfigSchemaFields(
-      ProcessLaunchSchema.configurationSchema,
-    );
-    expect(
-      fields.map((f) => f.key),
-      containsAll(['command', 'args', 'env', 'cwd', 'shell']),
-    );
-  });
-
   test('shellScript schema yields enum execute and monospace paths', () {
     final fields = launchConfigSchemaFields(
       ShellScriptLaunchSchema.configurationSchema,
     );
     final byKey = {for (final f in fields) f.key: f};
+    expect(
+      fields.map((f) => f.key),
+      containsAll([
+        'execute',
+        'scriptPath',
+        'scriptText',
+        'env',
+        'cwd',
+        'executeInTerminal',
+      ]),
+    );
     expect(byKey['execute']!.type, LaunchConfigSchemaFieldType.enumValue);
     expect(byKey['execute']!.enumValues, ['scriptFile', 'scriptText']);
     expect(byKey['scriptPath']!.monospace, isTrue);

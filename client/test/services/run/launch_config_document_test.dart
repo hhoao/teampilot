@@ -9,10 +9,10 @@ void main() {
         {
           'id': 'api',
           'name': 'API',
-          'type': 'process',
+          'type': 'shellScript',
           'request': 'launch',
-          'command': 'echo',
-          'args': ['hi'],
+          'execute': 'scriptText',
+          'scriptText': 'echo hi',
         },
       ],
       'compounds': [
@@ -25,6 +25,8 @@ void main() {
     });
     expect(doc.version, 1);
     expect(doc.configurations.single.id, 'api');
+    expect(doc.configurations.single.type, 'shellScript');
+    expect(doc.configurations.single.extras['scriptText'], 'echo hi');
     expect(doc.compounds.single.configurationIds, ['api']);
   });
 
@@ -32,7 +34,12 @@ void main() {
     final doc = LaunchConfigDocument.fromJson({
       'version': 1,
       'configurations': [
-        {'name': 'API Dev', 'type': 'process', 'command': 'true'},
+        {
+          'name': 'API Dev',
+          'type': 'shellScript',
+          'execute': 'scriptText',
+          'scriptText': 'true',
+        },
       ],
     }).normalized();
     expect(doc.configurations.single.id, isNotEmpty);

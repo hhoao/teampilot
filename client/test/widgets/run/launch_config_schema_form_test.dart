@@ -2,20 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/run/launch_configuration.dart';
-import 'package:teampilot/services/run/process_launch_schema.dart';
 import 'package:teampilot/services/run/shell_script_launch_schema.dart';
 import 'package:teampilot/widgets/dropdown/app_dropdown_field.dart';
 import 'package:teampilot/widgets/form/app_form.dart';
 import 'package:teampilot/widgets/run/launch_config_schema_form.dart';
 
 void main() {
-  const processBase = LaunchConfiguration(
-    id: 'api',
-    name: 'API',
-    type: 'process',
-    command: 'echo',
-  );
-
   LaunchConfiguration shellBase({
     String execute = 'scriptFile',
     String? scriptPath = './run.sh',
@@ -61,38 +53,41 @@ void main() {
     );
   }
 
-  testWidgets('process form shows Command field', (tester) async {
+  testWidgets('shellScript form shows Execute field', (tester) async {
     await pumpForm(
       tester,
-      value: processBase,
+      value: shellBase(),
       onChanged: (_) {},
-      schema: ProcessLaunchSchema.configurationSchema,
+      schema: ShellScriptLaunchSchema.configurationSchema,
     );
 
-    expect(find.text('Command'), findsOneWidget);
-    expect(find.byKey(const Key('launch-config-field-command')), findsOneWidget);
+    expect(find.text('Execute'), findsOneWidget);
+    expect(find.byKey(const Key('launch-config-field-execute')), findsOneWidget);
     expect(find.text('Name'), findsOneWidget);
   });
 
-  testWidgets('toggling shell checkbox updates value via onChanged', (
+  testWidgets('toggling executeInTerminal checkbox updates value via onChanged', (
     tester,
   ) async {
     LaunchConfiguration? latest;
     await pumpForm(
       tester,
-      value: processBase,
+      value: shellBase(),
       onChanged: (v) => latest = v,
-      schema: ProcessLaunchSchema.configurationSchema,
+      schema: ShellScriptLaunchSchema.configurationSchema,
     );
 
-    final shellCheckbox = find.byKey(const Key('launch-config-field-shell'));
-    expect(shellCheckbox, findsOneWidget);
+    final checkbox = find.byKey(
+      const Key('launch-config-field-executeInTerminal'),
+    );
+    expect(checkbox, findsOneWidget);
 
-    await tester.tap(shellCheckbox);
+    await tester.ensureVisible(checkbox);
+    await tester.tap(checkbox);
     await tester.pump();
 
     expect(latest, isNotNull);
-    expect(latest!.shell, isTrue);
+    expect(latest!.extras['executeInTerminal'], isFalse);
   });
 
   testWidgets('shellScript form shows execute dropdown and scriptPath', (

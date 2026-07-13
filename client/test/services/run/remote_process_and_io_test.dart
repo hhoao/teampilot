@@ -183,8 +183,11 @@ void main() {
         configuration: const LaunchConfiguration(
           id: 'local-run',
           name: 'Local',
-          type: 'process',
-          command: 'echo',
+          type: 'shellScript',
+          extras: {
+            'execute': 'scriptText',
+            'scriptText': 'echo',
+          },
         ),
       );
       await store.upsertConfiguration(
@@ -192,8 +195,11 @@ void main() {
         configuration: const LaunchConfiguration(
           id: 'ssh-run',
           name: 'SSH',
-          type: 'process',
-          command: 'echo',
+          type: 'shellScript',
+          extras: {
+            'execute': 'scriptText',
+            'scriptText': 'echo',
+          },
         ),
       );
 

@@ -137,7 +137,7 @@ class RunToolbarConfigDropdown extends StatelessWidget {
               menuController: controller,
               onTap: () {
                 unawaited(
-                  pickTypeAndCreateRunConfiguration(
+                  createRunConfiguration(
                     context,
                     workspaceId: workspaceId,
                   ),

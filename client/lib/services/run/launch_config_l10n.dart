@@ -4,7 +4,7 @@ import 'shell_script_launch_schema.dart';
 
 /// Localizes a launch-config schema field label for UI.
 ///
-/// Known process/shell-script keys use arb strings; otherwise falls back to
+/// Known shell-script keys use arb strings; otherwise falls back to
 /// [field.label] (schema `title` or title-cased key).
 String localizeLaunchConfigFieldLabel(
   AppLocalizations l10n,
@@ -34,8 +34,7 @@ String localizeLaunchConfigFieldLabel(
 
 /// Localizes a launch type id for type picker / type field display.
 String localizeLaunchTypeLabel(AppLocalizations l10n, String type) {
-  if (type == ShellScriptLaunchSchema.typeName ||
-      type == ShellScriptLaunchSchema.processAlias) {
+  if (type == ShellScriptLaunchSchema.typeName) {
     return l10n.runTypeShellScript;
   }
   return type;
@@ -57,17 +56,14 @@ String localizeLaunchConfigEnumValue(
   return value;
 }
 
-/// Stable English validation codes emitted by process launch schema validate.
+/// Stable English validation codes emitted by launch schema validate.
 abstract final class LaunchConfigValidationCodes {
   static const configurationMustBeMap = 'configuration must be a map';
-  static const commandRequired = 'command is required';
-  static const argsMustBeStringList = 'args must be a list of strings';
   static const envMustBeStringMap = 'env must be a map of strings';
   static const cwdMustBeString = 'cwd must be a string';
-  static const shellMustBeBoolean = 'shell must be a boolean';
 }
 
-/// Maps a process/shell-script validation code to a localized UI message.
+/// Maps a shell-script validation code to a localized UI message.
 String localizeLaunchConfigValidation(
   AppLocalizations l10n,
   String code,
@@ -75,16 +71,10 @@ String localizeLaunchConfigValidation(
   return switch (code) {
     LaunchConfigValidationCodes.configurationMustBeMap =>
       l10n.runValidationConfigurationMustBeMap,
-    LaunchConfigValidationCodes.commandRequired =>
-      l10n.runValidationCommandRequired,
-    LaunchConfigValidationCodes.argsMustBeStringList =>
-      l10n.runValidationArgsMustBeStringList,
     LaunchConfigValidationCodes.envMustBeStringMap =>
       l10n.runValidationEnvMustBeStringMap,
     LaunchConfigValidationCodes.cwdMustBeString =>
       l10n.runValidationCwdMustBeString,
-    LaunchConfigValidationCodes.shellMustBeBoolean =>
-      l10n.runValidationShellMustBeBoolean,
     ShellScriptValidationCodes.executeRequired =>
       l10n.runValidationExecuteRequired,
     ShellScriptValidationCodes.executeInvalid =>

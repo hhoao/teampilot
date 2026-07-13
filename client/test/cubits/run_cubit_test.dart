@@ -12,21 +12,26 @@ import 'package:teampilot/services/run/launch_adapter_protocol.dart';
 import 'package:teampilot/services/run/launch_config_store.dart';
 import 'package:teampilot/services/run/run_platform.dart';
 import 'package:teampilot/services/run/run_session_manager.dart';
+import 'package:teampilot/services/run/shell_script_launch_schema.dart';
 import 'package:teampilot/services/run/process_run_executor.dart';
 
 const _folder = WorkspaceFolder(path: '/proj');
 
-OwnedLaunchConfiguration _processConfig({
+OwnedLaunchConfiguration _shellScriptConfig({
   String id = 'api',
-  String command = 'true',
+  String scriptText = 'true',
 }) {
   return OwnedLaunchConfiguration(
     owner: _folder,
-    configuration: LaunchConfiguration(
-      id: id,
-      name: id,
-      type: 'process',
-      command: command,
+    configuration: LaunchConfiguration.fromJson(
+      ShellScriptLaunchSchema.withDefaults({
+        'id': id,
+        'name': id,
+        'type': ShellScriptLaunchSchema.typeName,
+        'execute': 'scriptText',
+        'scriptText': scriptText,
+        'executeInTerminal': false,
+      }),
     ),
   );
 }
@@ -116,7 +121,7 @@ class FakeRunPlatform implements RunPlatformApi {
     Stream<List<LaunchAdapterConfigurationEntry>>? configurationsChanged,
     RunSessionManager? sessionManager,
     List<String> Function(Object configuration)? validate,
-  }) : configurations = configurations ?? [_processConfig()],
+  }) : configurations = configurations ?? [_shellScriptConfig()],
        compounds = compounds ?? const [],
        _options = options ?? const [],
        _optionsChanged = optionsChanged,
@@ -414,8 +419,8 @@ void main() {
     );
     final platform = FakeRunPlatform(
       configurations: [
-        _processConfig(id: 'a'),
-        _processConfig(id: 'b'),
+        _shellScriptConfig(id: 'a'),
+        _shellScriptConfig(id: 'b'),
       ],
       compounds: [compound],
       sessionManager: RunSessionManager(
@@ -445,8 +450,8 @@ void main() {
     final executor = FakeRunExecutor(hangOnStart: true);
     final platform = FakeRunPlatform(
       configurations: [
-        _processConfig(id: 'a'),
-        _processConfig(id: 'b'),
+        _shellScriptConfig(id: 'a'),
+        _shellScriptConfig(id: 'b'),
       ],
       sessionManager: RunSessionManager(
         executor: executor,

@@ -11,7 +11,6 @@ import 'package:teampilot/models/run/run_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/run/launch_adapter_protocol.dart';
 import 'package:teampilot/services/run/launch_config_store.dart';
-import 'package:teampilot/services/run/process_launch_schema.dart';
 import 'package:teampilot/services/run/process_run_executor.dart';
 import 'package:teampilot/services/run/run_platform.dart';
 import 'package:teampilot/services/run/run_session_manager.dart';
@@ -20,18 +19,22 @@ import 'package:teampilot/widgets/run/run_config_editor_dialog.dart';
 
 const _folder = WorkspaceFolder(path: '/proj');
 
-OwnedLaunchConfiguration _processConfig({
+OwnedLaunchConfiguration _shellScriptConfig({
   String id = 'api',
   String name = 'API',
-  String command = 'true',
+  String scriptText = 'true',
 }) {
   return OwnedLaunchConfiguration(
     owner: _folder,
-    configuration: LaunchConfiguration(
-      id: id,
-      name: name,
-      type: 'process',
-      command: command,
+    configuration: LaunchConfiguration.fromJson(
+      ShellScriptLaunchSchema.withDefaults({
+        'id': id,
+        'name': name,
+        'type': ShellScriptLaunchSchema.typeName,
+        'execute': 'scriptText',
+        'scriptText': scriptText,
+        'executeInTerminal': false,
+      }),
     ),
   );
 }
@@ -117,8 +120,7 @@ class _StoreBackedPlatform implements RunPlatformApi {
   @override
   List<String> validateConfiguration(OwnedLaunchConfiguration owned) {
     final type = owned.configuration.type;
-    if (type == ShellScriptLaunchSchema.typeName ||
-        type == ShellScriptLaunchSchema.processAlias) {
+    if (type == ShellScriptLaunchSchema.typeName) {
       return ShellScriptLaunchSchema.validate(owned.configuration);
     }
     return const [];
@@ -207,12 +209,18 @@ class _StoreBackedPlatform implements RunPlatformApi {
 
   @override
   Map<String, Object?>? configurationSchema(String type) {
-    if (type == ShellScriptLaunchSchema.typeName ||
-        type == ShellScriptLaunchSchema.processAlias ||
-        type == ProcessLaunchSchema.typeName) {
+    if (type == ShellScriptLaunchSchema.typeName) {
       return Map<String, Object?>.from(
         ShellScriptLaunchSchema.configurationSchema,
       );
+    }
+    if (type == 'demo') {
+      return const {
+        'type': 'object',
+        'properties': {
+          'device': {'type': 'string'},
+        },
+      };
     }
     return null;
   }
@@ -231,6 +239,20 @@ class _StoreBackedPlatform implements RunPlatformApi {
           configurationSchema: Map<String, Object?>.from(
             ShellScriptLaunchSchema.configurationSchema,
           ),
+        ),
+        const LaunchTypeContribution(
+          type: 'demo',
+          kinds: ['run'],
+          adapterCommand: 'demo',
+          adapterRuntime: 'workspace',
+          lifecycle: LaunchAdapterLifecycle.sticky,
+          configurationSchema: {
+            'type': 'object',
+            'properties': {
+              'device': {'type': 'string'},
+            },
+          },
+          extensionId: 'ext.demo',
         ),
       ];
 }
@@ -296,7 +318,7 @@ Future<void> _waitUntilFound(WidgetTester tester, Finder finder) async {
 void main() {
   testWidgets('OK saves via cubit and closes', (tester) async {
     final platform = _StoreBackedPlatform();
-    await platform.seed(_processConfig());
+    await platform.seed(_shellScriptConfig());
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     await cubit.load();
 
@@ -328,7 +350,7 @@ void main() {
 
   testWidgets('Cancel discards without save', (tester) async {
     final platform = _StoreBackedPlatform();
-    await platform.seed(_processConfig());
+    await platform.seed(_shellScriptConfig());
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     await cubit.load();
 
@@ -358,7 +380,9 @@ void main() {
     await cubit.close();
   });
 
-  testWidgets('create new opens add configuration title', (tester) async {
+  testWidgets('create new defaults to Shell Script with type dropdown', (
+    tester,
+  ) async {
     final platform = _StoreBackedPlatform();
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     await cubit.load();
@@ -366,6 +390,28 @@ void main() {
     await _pumpEditor(tester, cubit: cubit, createNew: true);
 
     expect(find.text('Add configuration'), findsOneWidget);
+    expect(find.byKey(const Key('run-config-type-dropdown')), findsOneWidget);
+    expect(find.text('Shell Script'), findsWidgets);
+    expect(find.byKey(const Key('launch-config-field-scriptPath')), findsOneWidget);
+    await cubit.close();
+  });
+
+  testWidgets('changing type switches schema fields', (tester) async {
+    final platform = _StoreBackedPlatform();
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    await cubit.load();
+
+    await _pumpEditor(tester, cubit: cubit, createNew: true);
+
+    expect(find.byKey(const Key('launch-config-field-scriptPath')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('run-config-type-dropdown')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('demo').last);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('launch-config-field-scriptPath')), findsNothing);
+    expect(find.byKey(const Key('launch-config-field-device')), findsOneWidget);
     await cubit.close();
   });
 

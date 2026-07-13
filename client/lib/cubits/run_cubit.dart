@@ -14,7 +14,6 @@ import '../services/run/launch_type_normalize.dart';
 import '../services/run/run_platform.dart';
 import '../services/run/shell_script_configuration.dart';
 import '../services/run/shell_script_launch_schema.dart';
-import '../services/run/shell_script_migrator.dart';
 
 /// UI state for the per-workspace Run platform.
 class RunState extends Equatable {
@@ -454,8 +453,7 @@ class RunCubit extends Cubit<RunState> {
     required WorkspaceFolder folder,
     required String type,
   }) {
-    final normalized = normalizeLaunchType(type);
-    if (isBuiltInShellType(normalized)) {
+    if (type == ShellScriptLaunchSchema.typeName) {
       return OwnedLaunchConfiguration(
         owner: folder,
         configuration: LaunchConfiguration.fromJson(
@@ -472,7 +470,7 @@ class RunCubit extends Cubit<RunState> {
       configuration: LaunchConfiguration(
         id: '',
         name: '',
-        type: normalized,
+        type: type,
       ),
     );
   }
@@ -511,24 +509,11 @@ class RunCubit extends Cubit<RunState> {
         .where(
           (item) =>
               item.owner == owned.owner &&
-              _launchTypesMatch(
-                item.configuration.type,
-                owned.configuration.type,
-              ) &&
+              item.configuration.type == owned.configuration.type &&
               item.configuration.name == owned.configuration.name,
         )
         .firstOrNull;
     return byIdentity?.selectionKey;
-  }
-
-  /// `process` migrates to `shellScript` on read; treat them as the same identity.
-  static bool _launchTypesMatch(String loaded, String saved) {
-    if (loaded == saved) return true;
-    const aliases = {
-      ShellScriptLaunchSchema.processAlias,
-      ShellScriptLaunchSchema.typeName,
-    };
-    return aliases.contains(loaded) && aliases.contains(saved);
   }
 
   Future<void> configureAction({
@@ -554,9 +539,7 @@ class RunCubit extends Cubit<RunState> {
       if (response.cancelled || response.configuration == null) return;
 
       final configuration = LaunchConfiguration.fromJson(
-        ShellScriptMigrator.maybeMigrate(
-          Map<String, Object?>.from(response.configuration!),
-        ),
+        Map<String, Object?>.from(response.configuration!),
       );
       if (response.persist) {
         final errors = _platform.validateConfiguration(

@@ -31,15 +31,12 @@ void main() {
     expect(shell!.extensionId, isNull);
     expect(shell.configurationSchema, isNotNull);
     expect(shell.kinds, ['run']);
-    expect(reg.get(ShellScriptLaunchSchema.processAlias), isNull);
+    expect(reg.get('process'), isNull);
   });
 
-  test('normalizeLaunchType maps process to shellScript', () {
-    expect(normalizeLaunchType('process'), 'shellScript');
-    expect(normalizeLaunchType('shellScript'), 'shellScript');
-    expect(normalizeLaunchType('flutter'), 'flutter');
-    expect(isBuiltInShellType('process'), isTrue);
+  test('isBuiltInShellType only matches shellScript', () {
     expect(isBuiltInShellType('shellScript'), isTrue);
+    expect(isBuiltInShellType('process'), isFalse);
     expect(isBuiltInShellType('flutter'), isFalse);
   });
 

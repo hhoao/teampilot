@@ -1,6 +1,5 @@
 import '../host/host_interactive_shell.dart';
 import 'shell_script_configuration.dart';
-import 'shell_script_migrator.dart';
 
 /// Assembles terminal inject lines and non-terminal process invocations.
 class ShellScriptCommandBuilder {
@@ -58,7 +57,11 @@ class ShellScriptCommandBuilder {
     return tokens.join(' ');
   }
 
-  static String _quote(String value) => ShellScriptMigrator.posixShellQuote(value);
+  /// POSIX single-quote wrap with `'\''` escape for embedded quotes.
+  static String posixShellQuote(String value) =>
+      "'${value.replaceAll("'", r"'\''")}'";
+
+  static String _quote(String value) => posixShellQuote(value);
 }
 
 /// Non-terminal process invocation for [ProcessRunExecutor].
