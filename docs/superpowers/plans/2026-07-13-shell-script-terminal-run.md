@@ -18,7 +18,7 @@
 | Terminal execution | Approach A: login shell tab → wait `transportReadyForIo` → inject one line + `\r` |
 | `scriptText` shape | `interpreterPath` + `interpreterOptions` + `-c` + single-quoted escaped text |
 | `scriptFile` shape | `interpreterPath` + opts + quoted `scriptPath` + `scriptOptions` |
-| Inject prefix | `cd <quoted-cwd> &&` + optional `export K=V;` per env entry |
+| Inject prefix | `cd` + optional `export` entries + interpreter, all `&&`-joined (quoted keys/values) |
 | Transport timeout | 30s polling `session.transportReadyForIo` (same gate as PTY I/O) |
 | Tab bind key | `(workspaceId, selectionKey)` where `selectionKey = targetId\|folderPath\|configId` |
 | Migrated `process` | `executeInTerminal: false`; map to `scriptText` per spec branches |
@@ -234,7 +234,7 @@ Expand `scriptPath`, `scriptText`, `interpreterPath`, `interpreterOptions`, `scr
 Cover:
 - `scriptFile`: `cd '/proj' && /bin/bash ./scripts/a.sh --flag`
 - `scriptText`: `cd '/proj' && /bin/bash -c 'echo hi'`
-- env prefix: `export FOO=bar; cd ...`
+- env prefix: `cd ... && export 'FOO'='bar' && ...`
 - shell-safe quoting for paths with spaces
 
 - [ ] **Step 2: Run — FAIL**

@@ -44,7 +44,24 @@ void main() {
       );
       expect(
         line,
-        "cd '/proj' && export FOO='bar'; '/bin/bash' './a.sh'",
+        "cd '/proj' && export 'FOO'='bar' && '/bin/bash' './a.sh'",
+      );
+    });
+
+    test('multiple env exports are &&-joined and keys quoted', () {
+      final line = builder.buildInjectLine(
+        const ShellScriptConfiguration(
+          execute: 'scriptFile',
+          scriptPath: './a.sh',
+          interpreterPath: '/bin/bash',
+          cwd: '/proj',
+          env: {'FOO': 'bar', 'BAZ': 'qux'},
+        ),
+      );
+      expect(
+        line,
+        "cd '/proj' && export 'FOO'='bar' && export 'BAZ'='qux' && "
+        "'/bin/bash' './a.sh'",
       );
     });
 
@@ -93,7 +110,7 @@ void main() {
       expect(invocation.command, HostInteractiveShell.defaultExecutable());
       expect(invocation.args, [
         '-c',
-        "cd '/proj' && export FOO='bar'; '/bin/bash' -c 'echo hi'",
+        "cd '/proj' && export 'FOO'='bar' && '/bin/bash' -c 'echo hi'",
       ]);
       expect(invocation.cwd, '/proj');
       expect(invocation.env, {'FOO': 'bar'});

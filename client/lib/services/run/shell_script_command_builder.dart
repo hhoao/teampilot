@@ -15,16 +15,12 @@ class ShellScriptCommandBuilder {
       parts.add('cd ${_quote(cwd)}');
     }
 
-    final body = <String>[];
     for (final entry in config.env.entries) {
-      body.add('export ${entry.key}=${_quote(entry.value)};');
+      parts.add('export ${_quote(entry.key)}=${_quote(entry.value)}');
     }
-    body.add(_buildInterpreterInvocation(config));
+    parts.add(_buildInterpreterInvocation(config));
 
-    if (parts.isEmpty) {
-      return body.join(' ');
-    }
-    return '${parts.join(' ')} && ${body.join(' ')}';
+    return parts.join(' && ');
   }
 
   /// For non-terminal [ProcessRunExecutor]: host shell `-c` with the inject line.
