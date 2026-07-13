@@ -59,6 +59,7 @@ import 'services/workspace/workspace_run_registry.dart';
 import 'services/workspace/workspace_worktree_registry.dart';
 import 'services/terminal/workspace_shell_connector.dart';
 import 'services/terminal/workspace_terminal_registry.dart';
+import 'services/terminal/workspace_terminal_run_service.dart';
 import 'services/notification/desktop_system_notifier.dart';
 import 'services/notification/notification_recorder.dart';
 import 'services/notification/session_idle_notification_tap.dart';
@@ -561,6 +562,9 @@ void main() async {
                 ),
                 RepositoryProvider<WorkspaceShellConnector>.value(
                   value: shell.workspaceShellConnector,
+                ),
+                RepositoryProvider<WorkspaceTerminalRunService>.value(
+                  value: shell.workspaceTerminalRunService,
                 ),
                 RepositoryProvider<GitRepoStore>.value(
                   value: shell.gitRepoStore,

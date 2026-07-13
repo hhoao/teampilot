@@ -9,6 +9,7 @@ import '../run/launch_config_store.dart';
 import '../run/run_platform.dart';
 import '../run/run_session_manager.dart';
 import '../run/workspace_run_platform_factory.dart';
+import '../terminal/workspace_terminal_run_service.dart';
 
 /// Retains per-tab [RunCubit]s so returning to a workspace tab keeps Run state.
 ///
@@ -22,6 +23,14 @@ class WorkspaceRunRegistry {
   final WorkspaceRunPlatformFactory _platformFactory;
   final Map<String, RunCubit> _cubits = <String, RunCubit>{};
   final Map<String, Future<void>> _loadFutures = <String, Future<void>>{};
+
+  /// Lazy terminal inject deps (registry is constructed before the connector).
+  TerminalRunDepsResolver get terminalRunDeps =>
+      _platformFactory.terminalRunDeps;
+
+  void setTerminalRunDeps(TerminalRunDeps deps) {
+    _platformFactory.terminalRunDeps.setDeps(deps);
+  }
 
   /// Returns the cubit for [tabScopeId], creating one when absent.
   ///

@@ -9,6 +9,7 @@ import '../io/filesystem.dart';
 import '../ssh/ssh_client_factory.dart';
 import '../storage/app_storage.dart';
 import '../storage/runtime_context.dart';
+import '../terminal/workspace_terminal_run_service.dart';
 import 'launch_adapter_client.dart';
 import 'launch_config_store.dart';
 import 'launch_type_registrar.dart';
@@ -32,6 +33,7 @@ class WorkspaceRunPlatformFactory {
     Future<RuntimeContext> Function(String targetId)? resolveWorkContext,
     SshProfileRepository? sshProfileRepository,
     SshClientFactory? sshClientFactory,
+    TerminalRunDepsResolver? terminalRunDeps,
   }) : _extensionRepository = extensionRepository,
        _projectConfigRepository = projectConfigRepository,
        _fs = fs,
@@ -39,7 +41,8 @@ class WorkspaceRunPlatformFactory {
        _extensionPathFor = extensionPathFor,
        _resolveWorkContext = resolveWorkContext,
        _sshProfileRepository = sshProfileRepository,
-       _sshClientFactory = sshClientFactory;
+       _sshClientFactory = sshClientFactory,
+       terminalRunDeps = terminalRunDeps ?? TerminalRunDepsResolver();
 
   final ExtensionRepository _extensionRepository;
   final WorkspaceProjectConfigRepository _projectConfigRepository;
@@ -49,6 +52,9 @@ class WorkspaceRunPlatformFactory {
   final Future<RuntimeContext> Function(String targetId)? _resolveWorkContext;
   final SshProfileRepository? _sshProfileRepository;
   final SshClientFactory? _sshClientFactory;
+
+  /// Filled after [WorkspaceShellConnector] exists (see app_shell bootstrap).
+  final TerminalRunDepsResolver terminalRunDeps;
 
   Filesystem get _filesystem => _fs ?? AppStorage.fs;
 

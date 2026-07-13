@@ -133,6 +133,8 @@ import '../services/run/workspace_run_platform_factory.dart';
 import '../services/workspace/workspace_worktree_registry.dart';
 import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
+import '../services/terminal/workspace_terminal_run_service.dart';
+import '../services/terminal/workspace_terminal_session_ops.dart';
 import '../utils/logger.dart';
 import 'ui_zoom_baseline.dart';
 
@@ -158,6 +160,8 @@ class AppShell {
     required this.transportFactory,
     required this.workspaceTerminalRegistry,
     required this.workspaceShellConnector,
+    required this.workspaceTerminalSessionOps,
+    required this.workspaceTerminalRunService,
     required this.gitRepoStore,
     required this.workspaceFileTreeStore,
     required this.workspaceWorktreeRegistry,
@@ -220,6 +224,8 @@ class AppShell {
   final TerminalTransportFactory transportFactory;
   final WorkspaceTerminalRegistry workspaceTerminalRegistry;
   final WorkspaceShellConnector workspaceShellConnector;
+  final WorkspaceTerminalSessionOps workspaceTerminalSessionOps;
+  final WorkspaceTerminalRunService workspaceTerminalRunService;
   final GitRepoStore gitRepoStore;
   final WorkspaceFileTreeStore workspaceFileTreeStore;
   final WorkspaceWorktreeRegistry workspaceWorktreeRegistry;
@@ -761,6 +767,17 @@ Future<AppShell> buildAppShell({
     sshUseLoginShell: () =>
         sessionPreferencesCubit.state.preferences.sshUseLoginShell,
   );
+  // Terminal inject deps after connector: registry was created earlier.
+  final workspaceTerminalSessionOps = WorkspaceTerminalSessionOps();
+  final workspaceTerminalRunService = WorkspaceTerminalRunService();
+  workspaceRunRegistry.setTerminalRunDeps(
+    TerminalRunDeps(
+      registry: workspaceTerminalRegistry,
+      connector: workspaceShellConnector,
+      ops: workspaceTerminalSessionOps,
+      runService: workspaceTerminalRunService,
+    ),
+  );
 
   final automationRepo = AutomationRepository(
     fs: AppStorage.fs,
@@ -1063,6 +1080,8 @@ Future<AppShell> buildAppShell({
     transportFactory: transportFactory,
     workspaceTerminalRegistry: workspaceTerminalRegistry,
     workspaceShellConnector: workspaceShellConnector,
+    workspaceTerminalSessionOps: workspaceTerminalSessionOps,
+    workspaceTerminalRunService: workspaceTerminalRunService,
     gitRepoStore: gitRepoStore,
     workspaceFileTreeStore: workspaceFileTreeStore,
     workspaceWorktreeRegistry: workspaceWorktreeRegistry,
