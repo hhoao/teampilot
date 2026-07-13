@@ -9,29 +9,32 @@ import 'app_textarea.dart';
 
 /// [AppFormField] wrapping [AppTextarea]; label / error / description come from
 /// [AppFormFieldLayout], not from [InputDecoration.labelText].
-class AppTextareaFormField extends StatelessWidget {
-  const AppTextareaFormField({
+///
+/// Owns (or uses) a [TextEditingController] and keeps it in sync with the form
+/// field value on [didChange] / [reset] / [AppFormState.setFieldValue].
+class AppTextareaFormField extends AppFormField<String> {
+  AppTextareaFormField({
     super.key,
-    this.id,
-    this.initialValue,
+    super.id,
+    String? initialValue,
     this.controller,
-    this.focusNode,
-    this.label,
-    this.error,
-    this.description,
-    this.validator,
-    this.onChanged,
-    this.onSaved,
-    this.enabled = true,
-    this.readOnly = false,
-    this.autovalidateMode,
-    this.restorationId,
-    this.forceErrorText,
-    this.onReset,
-    this.toValueTransformer,
-    this.fromValueTransformer,
-    this.layoutStyle = AppFormFieldLayoutStyle.stacked,
-    this.labelWidth = 140,
+    super.focusNode,
+    super.label,
+    super.error,
+    super.description,
+    super.validator,
+    super.onChanged,
+    super.onSaved,
+    super.enabled,
+    super.readOnly,
+    super.autovalidateMode,
+    super.restorationId,
+    super.forceErrorText,
+    super.onReset,
+    super.toValueTransformer,
+    super.fromValueTransformer,
+    super.layoutStyle,
+    super.labelWidth,
     this.decoration,
     this.style,
     this.strutStyle,
@@ -72,28 +75,64 @@ class AppTextareaFormField extends StatelessWidget {
   }) : assert(
          initialValue == null || controller == null,
          'Cannot provide both initialValue and controller',
+       ),
+       super(
+         initialValue: controller != null ? controller.text : initialValue,
+         builder: (state) {
+           state as AppTextareaFormFieldState;
+           final baseDecoration = decoration ?? const InputDecoration();
+           return AppTextarea(
+             focusNode: state.focusNode,
+             enabled: state.enabled,
+             readOnly: readOnly,
+             controller: state.controller,
+             onEditingComplete: onEditingComplete,
+             onSubmitted: onSubmitted,
+             decoration: baseDecoration.copyWith(
+               // Border reflects error; message is shown by AppFormFieldLayout.
+               errorText: state.hasError ? '' : null,
+               errorStyle: const TextStyle(height: 0, fontSize: 0),
+             ),
+             style: style,
+             strutStyle: strutStyle,
+             textAlign: textAlign,
+             textDirection: textDirection,
+             showCursor: showCursor,
+             autofocus: autofocus,
+             maxLength: maxLength,
+             maxLengthEnforcement: maxLengthEnforcement,
+             cursorWidth: cursorWidth,
+             cursorHeight: cursorHeight,
+             cursorRadius: cursorRadius,
+             cursorColor: cursorColor,
+             keyboardAppearance: keyboardAppearance,
+             scrollPadding: scrollPadding,
+             enableInteractiveSelection: enableInteractiveSelection,
+             selectionControls: selectionControls,
+             onTap: onTap,
+             onTapOutside: onTapOutside,
+             mouseCursor: mouseCursor,
+             scrollController: scrollController,
+             scrollPhysics: scrollPhysics,
+             clipBehavior: clipBehavior,
+             restorationId: restorationId,
+             scribbleEnabled: scribbleEnabled,
+             enableIMEPersonalizedLearning: enableIMEPersonalizedLearning,
+             contextMenuBuilder: contextMenuBuilder,
+             spellCheckConfiguration: spellCheckConfiguration,
+             magnifierConfiguration: magnifierConfiguration,
+             inputFormatters: inputFormatters,
+             minHeight: minHeight,
+             maxHeight: maxHeight,
+             initialHeight: initialHeight,
+             resizable: resizable,
+             onHeightChanged: onHeightChanged,
+             resizeHandleBuilder: resizeHandleBuilder,
+           );
+         },
        );
 
-  final String? id;
-  final String? initialValue;
   final TextEditingController? controller;
-  final FocusNode? focusNode;
-  final Widget? label;
-  final Widget Function(String error)? error;
-  final Widget? description;
-  final FormFieldValidator<String>? validator;
-  final ValueChanged<String?>? onChanged;
-  final FormFieldSetter<String>? onSaved;
-  final bool enabled;
-  final bool readOnly;
-  final AutovalidateMode? autovalidateMode;
-  final String? restorationId;
-  final String? forceErrorText;
-  final VoidCallback? onReset;
-  final AppFormToValueTransformer<String?>? toValueTransformer;
-  final AppFormFromValueTransformer<String?>? fromValueTransformer;
-  final AppFormFieldLayoutStyle layoutStyle;
-  final double labelWidth;
   final InputDecoration? decoration;
   final TextStyle? style;
   final StrutStyle? strutStyle;
@@ -133,82 +172,66 @@ class AppTextareaFormField extends StatelessWidget {
   final WidgetBuilder? resizeHandleBuilder;
 
   @override
-  Widget build(BuildContext context) {
-    return AppFormField<String>(
-      id: id,
-      initialValue: controller?.text ?? initialValue,
-      focusNode: focusNode,
-      label: label,
-      error: error,
-      description: description,
-      validator: validator,
-      onChanged: onChanged,
-      onSaved: onSaved,
-      enabled: enabled,
-      readOnly: readOnly,
-      autovalidateMode: autovalidateMode,
-      restorationId: restorationId,
-      forceErrorText: forceErrorText,
-      onReset: onReset,
-      toValueTransformer: toValueTransformer,
-      fromValueTransformer: fromValueTransformer,
-      layoutStyle: layoutStyle,
-      labelWidth: labelWidth,
-      builder: (state) {
-        final baseDecoration = decoration ?? const InputDecoration();
-        return AppTextarea(
-          focusNode: state.focusNode,
-          enabled: state.enabled,
-          readOnly: readOnly,
-          controller: controller,
-          initialValue: controller == null
-              ? (state.value ?? initialValue)
-              : null,
-          onChanged: state.didChange,
-          onEditingComplete: onEditingComplete,
-          onSubmitted: onSubmitted,
-          decoration: baseDecoration.copyWith(
-            // Border reflects error; message is shown by AppFormFieldLayout.
-            errorText: state.hasError ? '' : null,
-            errorStyle: const TextStyle(height: 0, fontSize: 0),
-          ),
-          style: style,
-          strutStyle: strutStyle,
-          textAlign: textAlign,
-          textDirection: textDirection,
-          showCursor: showCursor,
-          autofocus: autofocus,
-          maxLength: maxLength,
-          maxLengthEnforcement: maxLengthEnforcement,
-          cursorWidth: cursorWidth,
-          cursorHeight: cursorHeight,
-          cursorRadius: cursorRadius,
-          cursorColor: cursorColor,
-          keyboardAppearance: keyboardAppearance,
-          scrollPadding: scrollPadding,
-          enableInteractiveSelection: enableInteractiveSelection,
-          selectionControls: selectionControls,
-          onTap: onTap,
-          onTapOutside: onTapOutside,
-          mouseCursor: mouseCursor,
-          scrollController: scrollController,
-          scrollPhysics: scrollPhysics,
-          clipBehavior: clipBehavior,
-          restorationId: restorationId,
-          scribbleEnabled: scribbleEnabled,
-          enableIMEPersonalizedLearning: enableIMEPersonalizedLearning,
-          contextMenuBuilder: contextMenuBuilder,
-          spellCheckConfiguration: spellCheckConfiguration,
-          magnifierConfiguration: magnifierConfiguration,
-          inputFormatters: inputFormatters,
-          minHeight: minHeight,
-          maxHeight: maxHeight,
-          initialHeight: initialHeight,
-          resizable: resizable,
-          onHeightChanged: onHeightChanged,
-          resizeHandleBuilder: resizeHandleBuilder,
-        );
-      },
-    );
+  AppFormFieldState<AppTextareaFormField, String> createState() =>
+      AppTextareaFormFieldState();
+}
+
+class AppTextareaFormFieldState
+    extends AppFormFieldState<AppTextareaFormField, String> {
+  TextEditingController? _controller;
+
+  TextEditingController get controller => widget.controller ?? _controller!;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.controller == null) {
+      _controller = TextEditingController(text: value);
+    }
+    controller.addListener(_onControllerChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant AppTextareaFormField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      (oldWidget.controller ?? _controller)?.removeListener(
+        _onControllerChanged,
+      );
+      if (oldWidget.controller == null && widget.controller != null) {
+        _controller?.dispose();
+        _controller = null;
+      } else if (oldWidget.controller != null && widget.controller == null) {
+        _controller = TextEditingController(text: value);
+      }
+      controller.addListener(_onControllerChanged);
+    }
+  }
+
+  @override
+  void didChange(String? value) {
+    super.didChange(value);
+    if (controller.text != value) {
+      controller.text = value ?? '';
+    }
+  }
+
+  @override
+  void reset() {
+    super.reset();
+    controller.text = initialValue ?? '';
+  }
+
+  @override
+  void dispose() {
+    controller.removeListener(_onControllerChanged);
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  void _onControllerChanged() {
+    if (controller.text != value) {
+      didChange(controller.text);
+    }
   }
 }

@@ -56,4 +56,48 @@ void main() {
     expect(find.text('too short'), findsNothing);
     expect(formKey.currentState!.value['bio'], 'hello world');
   });
+
+  testWidgets('setFieldValue and reset sync visible TextField text', (
+    tester,
+  ) async {
+    final formKey = GlobalKey<AppFormState>();
+
+    await tester.pumpWidget(
+      wrap(
+        AppForm(
+          key: formKey,
+          child: AppTextareaFormField(
+            id: 'bio',
+            initialValue: 'seed',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      'seed',
+    );
+
+    await tester.enterText(find.byType(TextField), 'typed');
+    await tester.pumpAndSettle();
+    expect(formKey.currentState!.value['bio'], 'typed');
+
+    formKey.currentState!.setFieldValue('bio', 'from form');
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      'from form',
+    );
+    expect(find.text('from form'), findsOneWidget);
+
+    formKey.currentState!.reset();
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      'seed',
+    );
+    expect(find.text('seed'), findsOneWidget);
+  });
 }
