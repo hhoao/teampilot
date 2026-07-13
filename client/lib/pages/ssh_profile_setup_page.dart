@@ -259,19 +259,38 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
                   final bodyStyle = Theme.of(context).textTheme.bodyMedium;
                   final lineHeight =
                       (bodyStyle?.fontSize ?? 14) *
-                      (bodyStyle?.height ?? 1.35);
-                  return AppTextarea(
-                    controller: _privateKeyController,
-                    minHeight: lineHeight * 4,
-                    maxHeight: lineHeight * 8,
-                    decoration: InputDecoration(
-                      labelText: 'Private Key',
-                      hintText: _isEditing
-                          ? '留空则保留已保存私钥'
-                          : 'Paste private key content',
-                      errorText: field.errorText,
-                    ),
-                    onChanged: field.didChange,
+                      (bodyStyle?.height ?? 20 / 14);
+                  final scheme = Theme.of(context).colorScheme;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AppTextarea(
+                        controller: _privateKeyController,
+                        minHeight: lineHeight * 4,
+                        maxHeight: lineHeight * 8,
+                        decoration: InputDecoration(
+                          labelText: 'Private Key',
+                          hintText: _isEditing
+                              ? '留空则保留已保存私钥'
+                              : 'Paste private key content',
+                          // Border reflects error; message is shown below.
+                          errorText: field.hasError ? '' : null,
+                          errorStyle: const TextStyle(height: 0, fontSize: 0),
+                        ),
+                        onChanged: field.didChange,
+                      ),
+                      if (field.hasError)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            field.errorText!,
+                            style: TextStyle(
+                              color: scheme.error,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                    ],
                   );
                 },
               ),
