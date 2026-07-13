@@ -90,15 +90,17 @@ void main() {
   });
 
   group('LaunchConfiguration.fromJson', () {
-    test('migrates process on parse', () {
-      final config = LaunchConfiguration.fromJson({
-        'id': 'npm-dev',
-        'name': 'npm run dev',
-        'type': 'process',
-        'command': 'npm',
-        'args': ['run', 'dev'],
-        'shell': true,
-      });
+    test('migrates process when maybeMigrate runs before fromJson', () {
+      final config = LaunchConfiguration.fromJson(
+        ShellScriptMigrator.maybeMigrate({
+          'id': 'npm-dev',
+          'name': 'npm run dev',
+          'type': 'process',
+          'command': 'npm',
+          'args': ['run', 'dev'],
+          'shell': true,
+        }),
+      );
       expect(config.type, 'shellScript');
       expect(config.command, isNull);
       expect(config.args, isEmpty);
@@ -108,22 +110,6 @@ void main() {
       expect(config.toJson().containsKey('command'), isFalse);
       expect(config.toJson().containsKey('args'), isFalse);
       expect(config.toJson().containsKey('shell'), isFalse);
-    });
-  });
-
-  group('migrateConfiguration', () {
-    test('converts in-memory process configuration', () {
-      const original = LaunchConfiguration(
-        id: 'flutter',
-        name: 'Flutter',
-        type: 'process',
-        command: 'flutter',
-        args: ['run'],
-      );
-      final migrated = ShellScriptMigrator.migrateConfiguration(original);
-      expect(migrated.type, 'shellScript');
-      expect(migrated.extras['scriptText'], "'flutter' 'run'");
-      expect(migrated.command, isNull);
     });
   });
 

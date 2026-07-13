@@ -11,6 +11,7 @@ import '../services/run/launch_config_store.dart';
 import '../services/run/process_launch_schema.dart';
 import '../services/run/run_platform.dart';
 import '../services/run/shell_script_launch_schema.dart';
+import '../services/run/shell_script_migrator.dart';
 
 /// UI state for the per-workspace Run platform.
 class RunState extends Equatable {
@@ -523,7 +524,9 @@ class RunCubit extends Cubit<RunState> {
       if (response.cancelled || response.configuration == null) return;
 
       final configuration = LaunchConfiguration.fromJson(
-        response.configuration!,
+        ShellScriptMigrator.maybeMigrate(
+          Map<String, Object?>.from(response.configuration!),
+        ),
       );
       if (response.persist) {
         final errors = _platform.validateConfiguration(

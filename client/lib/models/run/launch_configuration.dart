@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-import '../../services/run/shell_script_migrator.dart';
 import '../workspace_folder.dart';
 
 /// A single entry from a folder's `.teampilot/launch.json` `configurations` array.
@@ -43,28 +42,23 @@ class LaunchConfiguration {
   };
 
   factory LaunchConfiguration.fromJson(Map<String, Object?> json) {
-    // Migrate legacy `process` → `shellScript` before parsing so command/args/
-    // shell never land on the model (they become scriptText in extras).
-    final normalized = ShellScriptMigrator.maybeMigrate(
-      Map<String, Object?>.from(json),
-    );
     final extras = <String, Object?>{};
-    for (final entry in normalized.entries) {
+    for (final entry in json.entries) {
       if (!_knownKeys.contains(entry.key)) {
         extras[entry.key] = entry.value;
       }
     }
 
     return LaunchConfiguration(
-      id: normalized['id'] as String? ?? '',
-      name: normalized['name'] as String? ?? '',
-      type: normalized['type'] as String? ?? '',
-      request: normalized['request'] as String? ?? 'launch',
-      command: normalized['command'] as String?,
-      args: _stringList(normalized['args']),
-      cwd: normalized['cwd'] as String?,
-      env: _stringMap(normalized['env']),
-      shell: normalized['shell'] as bool?,
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      type: json['type'] as String? ?? '',
+      request: json['request'] as String? ?? 'launch',
+      command: json['command'] as String?,
+      args: _stringList(json['args']),
+      cwd: json['cwd'] as String?,
+      env: _stringMap(json['env']),
+      shell: json['shell'] as bool?,
       extras: extras,
     );
   }

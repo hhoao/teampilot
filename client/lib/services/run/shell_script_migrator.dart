@@ -1,10 +1,9 @@
-import '../../models/run/launch_configuration.dart';
 import 'shell_script_launch_schema.dart';
 
 /// Deterministic `type: process` → `shellScript` migration (on read / parse).
 ///
-/// Wired through [LaunchConfiguration.fromJson] via [maybeMigrate] so every
-/// parse path (store, document, ad-hoc) normalizes legacy process configs.
+/// Call [maybeMigrate] on each configuration map at services parse sites
+/// (e.g. [LaunchConfigStore]) before [LaunchConfiguration.fromJson].
 /// Writers emit whatever [LaunchConfiguration.toJson] produces; after migration
 /// that no longer includes `command` / `args` / `shell` or `type: process`.
 abstract final class ShellScriptMigrator {
@@ -50,16 +49,6 @@ abstract final class ShellScriptMigrator {
     out.remove('args');
     out.remove('shell');
     return out;
-  }
-
-  /// Migrates an in-memory [LaunchConfiguration] when `type == process`.
-  static LaunchConfiguration migrateConfiguration(
-    LaunchConfiguration configuration,
-  ) {
-    if (configuration.type != ShellScriptLaunchSchema.processAlias) {
-      return configuration;
-    }
-    return LaunchConfiguration.fromJson(migrate(configuration.toJson()));
   }
 
   /// POSIX single-quote wrap with `'\''` escape for embedded quotes.
