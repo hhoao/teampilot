@@ -6,6 +6,9 @@ import 'package:flutter/services.dart';
 /// [axis] selects layout: horizontal (left | right) or vertical (top | bottom).
 /// By default the primary pane is [first] at the start of the axis. Set
 /// [primaryAtEnd] to resize [second] at the end (right or bottom) instead.
+///
+/// Primary extent is stored as absolute pixels. Parent resize keeps the same
+/// preferred size (clamped to the new min/max), rather than scaling by fraction.
 class ResizableSplitView extends StatefulWidget {
   const ResizableSplitView({
     super.key,
@@ -33,9 +36,8 @@ class ResizableSplitView extends StatefulWidget {
   final Widget second;
   final double initialPrimarySize;
 
-  /// When set (0–1), the first layout uses this fraction of the main-axis extent
-  /// for the primary pane instead of [initialPrimarySize]. Still clamped by
-  /// [minPrimarySize] / [maxPrimarySize].
+  /// When set (0–1), the first layout seeds the primary pane as this fraction
+  /// of the main-axis extent (still clamped). After that, the size is absolute.
   final double? initialPrimaryFraction;
   final double minPrimarySize;
 
@@ -65,50 +67,36 @@ class ResizableSplitView extends StatefulWidget {
 class _ResizableSplitViewState extends State<ResizableSplitView> {
   static const _dividerKey = Key('resizable-split-divider');
 
-  // Source of truth for position; read directly during build (no notification risk).
-  double? _fraction;
+  /// Preferred primary extent in pixels. Display clamps to current min/max.
+  double? _preferredPrimarySize;
   bool _initialized = false;
 
   // Fires only on drag updates so ValueListenableBuilder rebuilds without setState.
-  // The value mirrors _fraction; the content is intentionally unused in the builder.
-  late final _fractionNotifier = ValueNotifier<double?>(null);
+  late final _primarySizeNotifier = ValueNotifier<double?>(null);
 
   double? _draggingPrimarySize;
   bool _isDragging = false;
-
-  /// Cached from the last LayoutBuilder frame. Used in [didUpdateWidget] to
-  /// detect when `initialPrimarySize` changed because the user dragged the
-  /// divider (onPrimarySizeChanged → cubit → parent rebuild). When the
-  /// current fraction already produces the same primary size as the new
-  /// `initialPrimarySize`, resetting is a no-op mathematically but can
-  /// diverge if the available space changed between frames.
-  double? _lastLayoutAvailable;
 
   @override
   void didUpdateWidget(ResizableSplitView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.initialPrimarySize != oldWidget.initialPrimarySize ||
         widget.initialPrimaryFraction != oldWidget.initialPrimaryFraction) {
-      // When the user just dragged the divider, the new initialPrimarySize
-      // matches _fraction * _lastLayoutAvailable. Don't reset — the
-      // recomputed fraction can diverge if the available space changed.
-      if (_initialized && _fraction != null && _lastLayoutAvailable != null) {
-        final currentPrimary = (_lastLayoutAvailable! * _fraction!).clamp(
-          _minPrimarySize(_lastLayoutAvailable!),
-          _maxPrimarySize(_lastLayoutAvailable!),
-        );
-        if ((currentPrimary - widget.initialPrimarySize).abs() < 1.0) {
-          return; // Drag position matches new initial size — preserve.
-        }
+      // Drag end → parent persists size → rebuild with matching initialPrimarySize.
+      // Keep the preferred pixel size; do not re-seed from a fraction.
+      if (_initialized &&
+          _preferredPrimarySize != null &&
+          (widget.initialPrimarySize - _preferredPrimarySize!).abs() < 1.0) {
+        return;
       }
       _initialized = false;
-      _fraction = null;
+      _preferredPrimarySize = null;
     }
   }
 
   @override
   void dispose() {
-    _fractionNotifier.dispose();
+    _primarySizeNotifier.dispose();
     super.dispose();
   }
 
@@ -125,21 +113,28 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
     return widget.minPrimarySize.clamp(0.0, maxPrimary);
   }
 
-  double _primarySize(double available) {
-    if (!_initialized) {
-      _fraction = widget.initialPrimaryFraction != null
-          ? widget.initialPrimaryFraction!.clamp(0.0, 1.0)
-          : (widget.initialPrimarySize / available).clamp(0.0, 1.0);
+  double _seedPreferredSize(double available) {
+    if (widget.initialPrimaryFraction != null) {
+      // Fraction is only a one-shot seed; store the resulting pixels.
+      return (available * widget.initialPrimaryFraction!.clamp(0.0, 1.0)).clamp(
+        _minPrimarySize(available),
+        _maxPrimarySize(available),
+      );
+    }
+    // Keep the preferred pixel size even if the first frame must clamp display.
+    return widget.initialPrimarySize;
+  }
+
+  double _displayedPrimarySize(double available) {
+    if (!_initialized || _preferredPrimarySize == null) {
+      _preferredPrimarySize = _seedPreferredSize(available);
       _initialized = true;
     }
-    return (available * _fraction!).clamp(
+    return _preferredPrimarySize!.clamp(
       _minPrimarySize(available),
       _maxPrimarySize(available),
     );
   }
-
-  double _fractionFromSize(double available, double size) =>
-      (size / available).clamp(0.0, 1.0);
 
   SystemMouseCursor get _resizeCursor => widget._isHorizontal
       ? SystemMouseCursors.resizeColumn
@@ -240,11 +235,16 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
     }
 
     void onDragEnd() {
+      final size = (_draggingPrimarySize ?? primarySize).clamp(
+        _minPrimarySize(available),
+        _maxPrimarySize(available),
+      );
       setState(() {
+        _preferredPrimarySize = size;
         _draggingPrimarySize = null;
         _isDragging = false;
       });
-      widget.onPrimarySizeChanged?.call(_primarySize(available));
+      widget.onPrimarySizeChanged?.call(size);
       widget.onDragEnd?.call();
     }
 
@@ -260,10 +260,13 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
     // rebuilds the layout subtree without touching the rest of the tree.
     void onDragUpdate(double delta) {
       final dragDelta = widget.primaryAtEnd ? -delta : delta;
-      _draggingPrimarySize = ((_draggingPrimarySize ?? primarySize) + dragDelta)
-          .clamp(_minPrimarySize(available), _maxPrimarySize(available));
-      _fraction = _fractionFromSize(available, _draggingPrimarySize!);
-      _fractionNotifier.value = _fraction;
+      final next = ((_draggingPrimarySize ?? primarySize) + dragDelta).clamp(
+        _minPrimarySize(available),
+        _maxPrimarySize(available),
+      );
+      _draggingPrimarySize = next;
+      _preferredPrimarySize = next;
+      _primarySizeNotifier.value = next;
     }
 
     return GestureDetector(
@@ -298,16 +301,15 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final available = _availableSize(constraints);
-        _lastLayoutAvailable = available;
         final maxPrimary = _maxPrimarySize(available);
 
         // ValueListenableBuilder confines drag-update rebuilds to this subtree.
         // setState (drag start/end, _isDragging) still rebuilds the full tree,
         // but those fire at most twice per drag.
         return ValueListenableBuilder<double?>(
-          valueListenable: _fractionNotifier,
+          valueListenable: _primarySizeNotifier,
           builder: (context, _, __) {
-            final currentPrimary = _primarySize(available);
+            final currentPrimary = _displayedPrimarySize(available);
             final hitOffset = widget.primaryAtEnd
                 ? (available -
                           currentPrimary -

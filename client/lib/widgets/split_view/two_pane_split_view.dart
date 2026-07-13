@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../resizable_split_view.dart';
 
 /// Two-pane split backed by [ResizableSplitView] ([first] pane is resizable).
+///
+/// [initialSize] is absolute pixels and stays fixed when the parent grows.
+/// [initialFraction] only seeds the first layout, then behaves the same way.
 class TwoPaneSplitView extends StatelessWidget {
   const TwoPaneSplitView({
     super.key,
