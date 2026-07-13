@@ -8,13 +8,14 @@
 
 ## Summary
 
-Introduce a **TeamPilot-owned AI message layer** as three Dart packages under `client/packages/`, modeled after assistant-ui’s core/runtime/UI split:
+Introduce a **TeamPilot-owned AI message layer** as two Dart packages under `client/packages/`, modeled after assistant-ui’s core/runtime/UI split:
 
-1. **`ai_message_core`** — `AiMessage` / parts / `AiThreadRuntime` / `ExternalStore`
+1. **`ai_message_core`** — `AiMessage` / parts / `AiThreadRuntime` / `ExternalStore` / adapter **interfaces**
 2. **`ai_message_ui`** — Flutter Thread → Message → Part history UI (mainstream chat quality)
-3. **`ai_message_adapters`** — five CLI transcript parsers → normalized `AiMessage` lists
 
-TeamPilot remains the **composition root**: locate on-disk transcripts, feed adapters, bind runtime, keep slim compose + PTY connect/inject. CLI transcripts stay the **authoritative** history store. There is **no** TeamPilot message DB and **no** live-tail while the PTY runs.
+**CLI transcript adapters live in TeamPilot** (CLI registry / `services/cli/…`), implementing `AiTranscriptAdapter` from core. They are **not** a third package.
+
+TeamPilot is the **composition root**: locate on-disk transcripts, run adapters, bind runtime, keep slim compose + PTY connect/inject. CLI transcripts stay the **authoritative** history store. There is **no** TeamPilot message DB and **no** live-tail while the PTY runs.
 
 This **replaces** the existing `SessionHistoryTurn` / `SessionHistoryCapability` / session-history review widgets. No backward compatibility.
 
@@ -24,9 +25,9 @@ This **replaces** the existing `SessionHistoryTurn` / `SessionHistoryCapability`
 |------|-------------|
 | Unified message model | All agent history surfaces as `AiMessage` + parts |
 | Best-in-class review UI | Thread timeline aligned with assistant-ui / ChatGPT-class patterns |
-| Package isolation | Core/UI/adapters reusable and testable without the app shell |
+| Package isolation | Core + UI reusable and testable without the app shell |
 | Extensible runtime | ExternalStore so future stores (live-tail, merge) swap without UI rewrite |
-| CLI-agnostic core/UI | Adapters own format knowledge; core/UI never import CLI schemas |
+| CLI-agnostic packages | Core/UI never import CLI schemas; adapters stay in app/registry |
 | Clean break | Delete old history types and UI; no shims |
 
 ## Non-goals
@@ -35,9 +36,9 @@ This **replaces** the existing `SessionHistoryTurn` / `SessionHistoryCapability`
 - TeamPilot-owned persistent message database
 - Multi-member aggregated timeline
 - Folding TeamBus mail into the history thread (Mailbox stays separate)
-- Moving slim compose, PTY, or connect/inject into packages
+- Moving slim compose, PTY, connect/inject, or **CLI parsers** into packages
+- A separate `ai_message_adapters` package (or per-CLI packages)
 - Porting assistant-ui edit / branch / cloud / full composer primitives
-- Per-CLI Dart packages (all adapters live in one `ai_message_adapters` package)
 - Compatibility with `SessionHistoryTurn` or old capability return types
 
 ## Problem
@@ -56,7 +57,8 @@ History today is three disconnected representations:
 CLI transcript (disk)
         │
         ▼
-ai_message_adapters   ──parse──►  List<AiMessage>
+TeamPilot adapters (CLI registry)
+  AiTranscriptAdapter.parse ──► List<AiMessage>
         │
         ▼
 ai_message_core
@@ -72,22 +74,20 @@ TeamPilot app
   locate + wire + slim compose + connect/inject
 ```
 
-| Package | Owns | Must not |
-|---------|------|----------|
+| Unit | Owns | Must not |
+|------|------|----------|
 | `ai_message_core` | Models, normalize, runtime, adapter **interfaces**, status enums | Flutter, CLI formats, filesystem, TeamPilot models |
-| `ai_message_ui` | Thread/Message/Part widgets, markdown, tool cards, theme hooks | Locate transcripts, start PTY, know CLI ids beyond display |
-| `ai_message_adapters` | Claude / flashskyai / Codex / OpenCode / Cursor parsers + fixtures | Flutter UI, `AppStorage`, TeamPilot cubits |
-| TeamPilot app | Path locate, member selection, cubit, slim compose, l10n strings | Re-implement message parsing or bubble chrome |
+| `ai_message_ui` | Thread/Message/Part widgets, markdown, tool cards, theme hooks | Locate transcripts, start PTY, know CLI schemas |
+| TeamPilot adapters | Claude / flashskyai / Codex / OpenCode / Cursor parsers + fixtures | Depend on `ai_message_ui`; invent parallel message types |
+| TeamPilot app shell | Path locate, member selection, cubit, slim compose, l10n | Re-implement bubble chrome; bypass `AiMessage` |
 
 ### Dependency graph
 
 ```
 ai_message_ui ──────────► ai_message_core
-ai_message_adapters ─────► ai_message_core
-teampilot (app) ─────────► all three
+teampilot (app) ─────────► ai_message_core, ai_message_ui
+  └── CLI adapters ──────► ai_message_core only
 ```
-
-Adapters must **not** depend on `ai_message_ui`.
 
 ## Core model (`ai_message_core`)
 
@@ -160,7 +160,7 @@ class ExternalStoreAiThreadRuntime implements AiThreadRuntime {
 
 App code never mutates message lists in place; it replaces via store methods. UI binds only to `AiThreadRuntime`.
 
-### Adapter interface (declared in core, implemented in adapters)
+### Adapter interface (declared in core, implemented in TeamPilot)
 
 ```dart
 class AiTranscriptFragment {
@@ -180,24 +180,11 @@ abstract class AiTranscriptAdapter {
 }
 ```
 
-Multi-file CLIs (Codex, OpenCode) use multiple fragments; single-file CLIs use one. Adapters never open paths themselves.
+Multi-file CLIs (Codex, OpenCode) use multiple fragments; single-file CLIs use one. Adapters parse **bytes only**—path open/locate stays in `AiHistoryLocator`.
 
-## Adapters package (`ai_message_adapters`)
+## TeamPilot adapters (in-app)
 
-Directory layout:
-
-```
-lib/
-  ai_message_adapters.dart
-  src/
-    registry.dart          # AiTranscriptAdapterRegistry.builtIn()
-    claude/
-    flashskyai/
-    codex/
-    opencode/
-    cursor/
-test/fixtures/…            # migrated from client/test/fixtures/session_history/
-```
+Replace `SessionHistoryCapability` / `SessionHistoryTurn` with implementations of `AiTranscriptAdapter` under the CLI registry (e.g. `client/lib/services/cli/registry/…/history/` or successor path). Keep **one module per CLI** inside the app tree—not separate packages.
 
 | Adapter id | Source format (existing knowledge) |
 |------------|--------------------------------------|
@@ -209,7 +196,7 @@ test/fixtures/…            # migrated from client/test/fixtures/session_histor
 
 **Parsing policy:** skip individually corrupt events when safe; if the file is unusable, throw → loader maps to `setError`. Prefer mainstream schemas + fixtures over guessed fields (same bar as the 2026-07-10 history plan).
 
-**Migration:** move fixtures into this package; delete TeamPilot `SessionHistoryCapability` implementations and their tests after adapters cover them.
+**Fixtures / tests:** remain under `client/test/` (migrate golden expectations from `SessionHistoryTurn` → `AiMessage`). Registry maps `CliTool` → adapter instance.
 
 ## UI package (`ai_message_ui`)
 
@@ -238,9 +225,9 @@ Composition (assistant-ui primitives, review-only subset):
 
 | Remove | Replacement |
 |--------|-------------|
-| `SessionHistoryTurn`, `SessionHistorySnapshot`, `SessionHistoryCapability` | `AiMessage` + adapters + runtime |
+| `SessionHistoryTurn`, `SessionHistorySnapshot`, `SessionHistoryCapability` | `AiMessage` + in-app `AiTranscriptAdapter`s + runtime |
 | `session_history_turn_list.dart` / `session_history_turn_tile.dart` (and related) | `AiThread` from `ai_message_ui` |
-| CLI history capability wiring on tool definitions | Map `CliTool` → adapter id |
+| Capability return types wired to markdown turns | `parse` → `List<AiMessage>` |
 
 Keep / adapt:
 
@@ -253,7 +240,7 @@ Keep / adapt:
 
 ```
 AiHistoryLocator  → SessionHistoryContext-like inputs → AiTranscriptBundle | missing
-AiHistoryLoader   → locator + registry adapter + ExternalStoreAiThreadRuntime
+AiHistoryLoader   → locator + CliTool→adapter map + ExternalStoreAiThreadRuntime
 AiHistoryCubit    → owns runtime; reload on open review / member switch; generation token cancels stale loads;
                     exposes load-older by widening the in-memory window and setMessages (same UX as today’s turn list)
 ```
@@ -269,8 +256,6 @@ dependencies:
     path: packages/ai_message_core
   ai_message_ui:
     path: packages/ai_message_ui
-  ai_message_adapters:
-    path: packages/ai_message_adapters
 ```
 
 ## Interaction (unchanged product rules)
@@ -299,26 +284,26 @@ No aggregated multi-member transcript.
 | Layer | Coverage |
 |-------|----------|
 | `ai_message_core` | Normalize Like→Message; store state machine; id stability |
-| `ai_message_adapters` | Per-CLI fixtures → golden `AiMessage` trees |
 | `ai_message_ui` | Widget tests: statuses, tool collapse, markdown smoke |
-| App | Locator + loader with mock filesystem; cubit stale-load cancellation |
+| TeamPilot adapters | Per-CLI fixtures → golden `AiMessage` trees |
+| App loader/cubit | Locator + loader with mock filesystem; stale-load cancellation |
 
 ## Success criteria
 
 1. Opening an existing session shows a parts-based Thread UI for the selected member’s CLI transcript without starting a PTY.
 2. Tool calls render as structured cards, not opaque markdown blobs (when transcript provides structure).
-3. Adding a sixth CLI means a new module under `ai_message_adapters` + locate wiring—**no** changes to core message types or Thread widgets for the common case.
+3. Adding a sixth CLI means a new in-app adapter module + locate wiring—**no** changes to core message types or Thread widgets for the common case.
 4. Zero remaining references to `SessionHistoryTurn` / `SessionHistoryCapability` in app code.
-5. Packages build and test in isolation (`dart test` / `flutter test` as appropriate per package).
+5. `ai_message_core` and `ai_message_ui` build and test in isolation.
 
 ## Implementation order (guidance for plan)
 
-1. Scaffold three packages + path deps
-2. Core models + ExternalStore + normalize
-3. Port Claude adapter + fixtures; then remaining CLIs
+1. Scaffold `ai_message_core` + `ai_message_ui` + path deps
+2. Core models + ExternalStore + normalize + adapter interfaces
+3. Rewrite Claude (then other CLI) history modules as `AiTranscriptAdapter` → `AiMessage`
 4. UI Thread/Message/Parts + markdown + tool card
 5. App locator/loader/cubit; swap review body to `AiThread`
-6. Delete old history stack; update tests and docs that cite `SessionHistoryCapability`
+6. Delete old history types/UI; update tests and docs
 
 ## Open decisions resolved in this spec
 
@@ -327,7 +312,7 @@ No aggregated multi-member transcript.
 | Scope | Model + History UI together |
 | Authority | CLI transcripts; no live-tail; no message DB |
 | Member scope | Selected member only |
-| Package split | core + ui + adapters (not per-CLI packages) |
+| Package split | **core + ui only**; CLI adapters stay in TeamPilot |
 | Runtime | ExternalStore (assistant-ui-aligned), full fidelity |
 | Parts v1 | `text`, `tool-call` (+ result correlation onto same part), `reasoning` type/UI reserved (adapters optional) |
 | Compatibility | None — delete old history types/UI |
