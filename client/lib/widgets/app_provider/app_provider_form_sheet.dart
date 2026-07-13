@@ -28,6 +28,7 @@ import 'provider_credential_action_bar.dart';
 import 'provider_model_picker_field.dart';
 import 'provider_models_editor.dart';
 import '../dropdown/app_dropdown_field.dart';
+import '../textarea/app_textarea.dart';
 
 class AppProviderFormPage extends StatefulWidget {
   const AppProviderFormPage({
@@ -401,11 +402,20 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   ),
                 ),
                 if (_showAdvancedJson)
-                  TextField(
-                    controller: _jsonCtl,
-                    minLines: 16,
-                    maxLines: 28,
-                    decoration: const InputDecoration(),
+                  Builder(
+                    builder: (context) {
+                      final bodyStyle =
+                          Theme.of(context).textTheme.bodyMedium;
+                      final lineHeight =
+                          (bodyStyle?.fontSize ?? 14) *
+                          (bodyStyle?.height ?? 1.35);
+                      return AppTextarea(
+                        controller: _jsonCtl,
+                        minHeight: lineHeight * 16,
+                        maxHeight: lineHeight * 28,
+                        decoration: const InputDecoration(),
+                      );
+                    },
                   )
                 else ...[
                   TextField(
@@ -420,11 +430,20 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: _notesCtl,
-                    minLines: 2,
-                    maxLines: 4,
-                    decoration: InputDecoration(labelText: l10n.notes),
+                  Builder(
+                    builder: (context) {
+                      final bodyStyle =
+                          Theme.of(context).textTheme.bodyMedium;
+                      final lineHeight =
+                          (bodyStyle?.fontSize ?? 14) *
+                          (bodyStyle?.height ?? 1.35);
+                      return AppTextarea(
+                        controller: _notesCtl,
+                        minHeight: lineHeight * 2,
+                        maxHeight: lineHeight * 4,
+                        decoration: InputDecoration(labelText: l10n.notes),
+                      );
+                    },
                   ),
                   if (!_hidesApiKeyFields(context)) ...[
                     const SizedBox(height: 12),

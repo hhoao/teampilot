@@ -16,6 +16,7 @@ import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../services/expert_hub/local_expert_writer.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/textarea/app_textarea.dart';
 import '../team_config/team_config_mcp_section.dart';
 import '../team_config/team_config_plugins_section.dart';
 import '../team_config/team_config_skills_section.dart';
@@ -338,20 +339,34 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 12),
-          TextField(
-            key: const Key('expert-editor-prompt'),
-            controller: _prompt,
-            decoration: InputDecoration(labelText: l10n.expertHubPrompt),
-            minLines: 3,
-            maxLines: 6,
+          Builder(
+            builder: (context) {
+              final bodyStyle = Theme.of(context).textTheme.bodyMedium;
+              final lineHeight =
+                  (bodyStyle?.fontSize ?? 14) * (bodyStyle?.height ?? 1.35);
+              return AppTextarea(
+                key: const Key('expert-editor-prompt'),
+                controller: _prompt,
+                decoration: InputDecoration(labelText: l10n.expertHubPrompt),
+                minHeight: lineHeight * 3,
+                maxHeight: lineHeight * 6,
+              );
+            },
           ),
           const SizedBox(height: 12),
-          TextField(
-            key: const Key('expert-editor-playbook'),
-            controller: _playbook,
-            decoration: InputDecoration(labelText: l10n.expertHubPlaybook),
-            minLines: 2,
-            maxLines: 5,
+          Builder(
+            builder: (context) {
+              final bodyStyle = Theme.of(context).textTheme.bodyMedium;
+              final lineHeight =
+                  (bodyStyle?.fontSize ?? 14) * (bodyStyle?.height ?? 1.35);
+              return AppTextarea(
+                key: const Key('expert-editor-playbook'),
+                controller: _playbook,
+                decoration: InputDecoration(labelText: l10n.expertHubPlaybook),
+                minHeight: lineHeight * 2,
+                maxHeight: lineHeight * 5,
+              );
+            },
           ),
           const SizedBox(height: 12),
           TextField(

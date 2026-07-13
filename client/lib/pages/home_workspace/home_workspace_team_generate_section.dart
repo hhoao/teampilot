@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/textarea/app_textarea.dart';
 
 typedef TeamDescriptionChanged = void Function(String description);
 
@@ -45,17 +46,24 @@ class _HomeTeamGenerateSectionState extends State<HomeTeamGenerateSection> {
       children: [
         Text(l10n.teamGenTitle, style: AppTextStyles.of(context).mdSemiboldTightSnug),
         const SizedBox(height: 8),
-        TextField(
-          key: const ValueKey('team-gen-description'),
-          controller: _controller,
-          minLines: 2,
-          maxLines: 4,
-          enabled: widget.enabled && !generating,
-          onChanged: widget.onDescriptionChanged,
-          decoration: InputDecoration(
-            hintText: l10n.teamGenDescriptionHint,
-            isDense: true,
-          ),
+        Builder(
+          builder: (context) {
+            final bodyStyle = Theme.of(context).textTheme.bodyMedium;
+            final lineHeight =
+                (bodyStyle?.fontSize ?? 14) * (bodyStyle?.height ?? 1.35);
+            return AppTextarea(
+              key: const ValueKey('team-gen-description'),
+              controller: _controller,
+              minHeight: lineHeight * 2,
+              maxHeight: lineHeight * 4,
+              enabled: widget.enabled && !generating,
+              onChanged: widget.onDescriptionChanged,
+              decoration: InputDecoration(
+                hintText: l10n.teamGenDescriptionHint,
+                isDense: true,
+              ),
+            );
+          },
         ),
         if (generating) ...[
           const SizedBox(height: 12),

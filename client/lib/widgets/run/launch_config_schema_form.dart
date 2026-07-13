@@ -9,6 +9,7 @@ import '../dropdown/app_dropdown_decoration.dart';
 import '../dropdown/app_dropdown_field.dart';
 import '../form/app_form_field.dart';
 import '../form/app_form_field_layout.dart';
+import '../textarea/app_textarea.dart';
 
 /// Shared label column width for inline run-config form rows.
 const double kLaunchConfigFormLabelWidth = 160;
@@ -323,13 +324,16 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
           layoutStyle: AppFormFieldLayoutStyle.inline,
           labelWidth: kLaunchConfigFormLabelWidth,
           builder: (state) {
-            return TextField(
+            final textStyle = field.monospace ? styles.mono : styles.md;
+            final lineHeight =
+                (textStyle.fontSize ?? 14) * (textStyle.height ?? 1.35);
+            return AppTextarea(
               key: fieldKey,
               controller: _controllers[field.key],
               focusNode: state.focusNode,
               style: field.monospace ? styles.mono : null,
-              minLines: 3,
-              maxLines: 8,
+              minHeight: lineHeight * 3,
+              maxHeight: lineHeight * 8,
               onChanged: (t) {
                 state.didChange(t);
                 _onFieldTextChanged(field, t);
@@ -349,14 +353,31 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
           layoutStyle: AppFormFieldLayoutStyle.inline,
           labelWidth: kLaunchConfigFormLabelWidth,
           builder: (state) {
+            if (field.key == 'scriptText') {
+              final textStyle = field.monospace ? styles.mono : styles.md;
+              final lineHeight =
+                  (textStyle.fontSize ?? 14) * (textStyle.height ?? 1.35);
+              return AppTextarea(
+                key: fieldKey,
+                controller: _controllers[field.key],
+                focusNode: state.focusNode,
+                style: field.monospace ? styles.mono : null,
+                minHeight: lineHeight * 3,
+                maxHeight: lineHeight * 8,
+                onChanged: (t) {
+                  state.didChange(t);
+                  _onFieldTextChanged(field, t);
+                },
+                decoration: _controlDecoration(hasError: state.hasError),
+              );
+            }
             return TextField(
               key: fieldKey,
               controller: _controllers[field.key],
               focusNode: state.focusNode,
               style: field.monospace ? styles.mono : null,
               textInputAction: TextInputAction.next,
-              minLines: field.key == 'scriptText' ? 3 : null,
-              maxLines: field.key == 'scriptText' ? 8 : 1,
+              maxLines: 1,
               onChanged: (t) {
                 state.didChange(t);
                 _onFieldTextChanged(field, t);

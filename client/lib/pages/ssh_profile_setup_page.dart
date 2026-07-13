@@ -7,6 +7,7 @@ import '../models/ssh_profile.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../services/ssh/ssh_profile_connection_tester.dart';
+import '../widgets/textarea/app_textarea.dart';
 
 class SshProfileSetupPage extends StatefulWidget {
   const SshProfileSetupPage({
@@ -249,18 +250,30 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
                     : null,
               )
             else ...[
-              TextFormField(
-                controller: _privateKeyController,
-                decoration: InputDecoration(
-                  labelText: 'Private Key',
-                  hintText: _isEditing
-                      ? '留空则保留已保存私钥'
-                      : 'Paste private key content',
-                ),
-                maxLines: 4,
+              FormField<String>(
+                initialValue: _privateKeyController.text,
                 validator: (v) => !_isEditing && (v == null || v.trim().isEmpty)
                     ? '必填'
                     : null,
+                builder: (field) {
+                  final bodyStyle = Theme.of(context).textTheme.bodyMedium;
+                  final lineHeight =
+                      (bodyStyle?.fontSize ?? 14) *
+                      (bodyStyle?.height ?? 1.35);
+                  return AppTextarea(
+                    controller: _privateKeyController,
+                    minHeight: lineHeight * 4,
+                    maxHeight: lineHeight * 8,
+                    decoration: InputDecoration(
+                      labelText: 'Private Key',
+                      hintText: _isEditing
+                          ? '留空则保留已保存私钥'
+                          : 'Paste private key content',
+                      errorText: field.errorText,
+                    ),
+                    onChanged: field.didChange,
+                  );
+                },
               ),
               const SizedBox(height: 12),
               TextFormField(

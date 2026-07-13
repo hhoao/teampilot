@@ -24,6 +24,7 @@ import '../../theme/app_text_styles.dart';
 import '../app_dialog.dart';
 import '../app_icon_button.dart';
 import 'git_branch_menu.dart';
+import '../textarea/app_textarea.dart';
 import 'git_changes_tree_list.dart';
 
 /// VSCode-style "Source Control" panel for the editor workbench left rail.
@@ -706,13 +707,22 @@ class _CommitBox extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: TextField(
-                controller: controller,
-                minLines: 1,
-                maxLines: 4,
-                enabled: !generating,
-                decoration: InputDecoration(hintText: hint, isDense: true),
-                onChanged: onChanged,
+              child: Builder(
+                builder: (context) {
+                  final bodyStyle = Theme.of(context).textTheme.bodyMedium;
+                  final lineHeight =
+                      (bodyStyle?.fontSize ?? 14) *
+                      (bodyStyle?.height ?? 1.35);
+                  return AppTextarea(
+                    controller: controller,
+                    minHeight: lineHeight,
+                    maxHeight: lineHeight * 4,
+                    enabled: !generating,
+                    decoration:
+                        InputDecoration(hintText: hint, isDense: true),
+                    onChanged: onChanged,
+                  );
+                },
               ),
             ),
             const SizedBox(width: 8),
