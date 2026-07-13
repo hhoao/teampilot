@@ -25,34 +25,34 @@ void main(List<String> args) async {
       sources: [
         // tree-sitter core amalgamation (`lib.c` #includes every core .c).
         'third_party/tree-sitter/lib/src/lib.c',
-        // Bundled grammars: generated parser.c plus their C external scanner
-        // (json has no external scanner). Each scanner includes its grammar's
-        // own vendored `tree_sitter/*.h` via the include paths below.
-        'third_party/tree-sitter-json/src/parser.c',
-        'third_party/tree-sitter-dart/src/parser.c',
-        'third_party/tree-sitter-dart/src/scanner.c',
-        'third_party/tree-sitter-yaml/src/parser.c',
-        'third_party/tree-sitter-yaml/src/scanner.c',
-        'third_party/tree-sitter-python/src/parser.c',
-        'third_party/tree-sitter-python/src/scanner.c',
-        'third_party/tree-sitter-rust/src/parser.c',
-        'third_party/tree-sitter-rust/src/scanner.c',
-        'third_party/tree-sitter-bash/src/parser.c',
-        'third_party/tree-sitter-bash/src/scanner.c',
-        'third_party/tree-sitter-toml/src/parser.c',
-        'third_party/tree-sitter-toml/src/scanner.c',
-        'third_party/tree-sitter-css/src/parser.c',
-        'third_party/tree-sitter-css/src/scanner.c',
-        // typescript: the `tsx` grammar (parses .ts/.tsx/.js/.jsx). Its scanner
-        // #includes ../../common/scanner.h.
-        'third_party/tree-sitter-typescript/tsx/src/parser.c',
-        'third_party/tree-sitter-typescript/tsx/src/scanner.c',
-        // xml: the `xml` grammar; scanner #includes ../../common/scanner.h.
-        'third_party/tree-sitter-xml/xml/src/parser.c',
-        'third_party/tree-sitter-xml/xml/src/scanner.c',
+        // Bundled grammars via uniquely named wrappers under src/bundled/.
+        // MSVC names .obj files from the source basename, so compiling many
+        // third_party/*/parser.c files directly collapses to one parser.obj
+        // (LNK4042) and drops earlier grammars at link time on Windows.
+        'src/bundled/json_parser.c',
+        'src/bundled/dart_parser.c',
+        'src/bundled/dart_scanner.c',
+        'src/bundled/yaml_parser.c',
+        'src/bundled/yaml_scanner.c',
+        'src/bundled/python_parser.c',
+        'src/bundled/python_scanner.c',
+        'src/bundled/rust_parser.c',
+        'src/bundled/rust_scanner.c',
+        'src/bundled/bash_parser.c',
+        'src/bundled/bash_scanner.c',
+        'src/bundled/toml_parser.c',
+        'src/bundled/toml_scanner.c',
+        'src/bundled/css_parser.c',
+        'src/bundled/css_scanner.c',
+        // typescript: the `tsx` grammar (parses .ts/.tsx/.js/.jsx).
+        'src/bundled/tsx_parser.c',
+        'src/bundled/tsx_scanner.c',
+        // xml: the `xml` grammar.
+        'src/bundled/xml_parser.c',
+        'src/bundled/xml_scanner.c',
         // markdown: block grammar only (headings/code/lists).
-        'third_party/tree-sitter-markdown/src/parser.c',
-        'third_party/tree-sitter-markdown/src/scanner.c',
+        'src/bundled/markdown_parser.c',
+        'src/bundled/markdown_scanner.c',
         // Stable C ABI shim binding grammars behind `tp_`-prefixed symbols.
         'src/teampilot_ts_api.c',
       ],
