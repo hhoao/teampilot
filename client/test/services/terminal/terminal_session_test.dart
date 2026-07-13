@@ -98,6 +98,17 @@ void main() {
 
     expect(started, isTrue);
     expect(session.isRunning, isTrue);
+    expect(session.transportReadyForIo, isTrue);
+  });
+
+  test('transportReadyForIo is false before connect', () {
+    final session = TerminalSession(
+      executable: _ptyTestExecutable,
+      validateLaunch: false,
+      parseExecutable: false,
+    );
+    addTearDown(session.dispose);
+    expect(session.transportReadyForIo, isFalse);
   });
 
   test('silent startup confirms on fallback timer', () async {

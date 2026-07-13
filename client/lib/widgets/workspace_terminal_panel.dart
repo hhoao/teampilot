@@ -20,6 +20,7 @@ import '../services/host/host_interactive_shell.dart';
 import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_connect_coordinator.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
+import '../services/terminal/workspace_terminal_session_ops.dart';
 import '../services/workspace/workspace_tools_scope.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
@@ -81,6 +82,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   WorkspaceTerminalGroup get _group => _registry.groupFor(widget.workspaceId);
 
   WorkspaceTerminalConnectCoordinator? _connectCoordinator;
+  final _sessionOps = WorkspaceTerminalSessionOps();
 
   var _bootstrapped = false;
   var _sshReconnectHooked = false;
@@ -245,24 +247,29 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     required bool select,
     bool followWorkspace = false,
   }) async {
-    final session = _connector.createSession(spec);
-    final label = await _connector.labelForSpec(spec);
-    final entry = _group.addEntry(
+    await _sessionOps.openEntry(
+      group: _group,
+      connector: _connector,
+      connectCoordinator: _connect,
       cwd: cwd,
       spec: spec,
-      session: session,
+      theme: _terminalTheme(context),
+      sshConnectFailedMessage: context.l10n.workspaceTerminalSshConnectFailed,
       select: select,
-      titleLabel: label,
       followWorkspace: followWorkspace,
+      onStateChanged: () {
+        if (mounted) setState(() {});
+      },
+      mounted: () => mounted,
     );
-    await _runConnect(entry);
     if (mounted) setState(() {});
   }
 
   Future<void> _runConnect(WorkspaceTerminalEntry entry) async {
-    await _connect.connect(
+    await _sessionOps.connectEntry(
       group: _group,
       entry: entry,
+      connectCoordinator: _connect,
       theme: _terminalTheme(context),
       sshConnectFailedMessage: context.l10n.workspaceTerminalSshConnectFailed,
       onStateChanged: () {

@@ -175,6 +175,7 @@ class TerminalSession {
   bool get isRunning => _launch.isRunning;
   bool get isConnecting => _launch.isConnecting;
   bool get isConnected => _launch.isConnected;
+  bool get transportReadyForIo => _launch.transportReadyForIo;
 
   void _wireLaunchCallbacks() {
     _launch.writeToDisplay = _writeDisplayNotice;
