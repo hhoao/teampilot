@@ -389,12 +389,12 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
           schema: _schemaFor(type),
           errors: _formErrors,
           onChanged: (next) {
-            setState(() {
-              _draft = OwnedLaunchConfiguration(
-                owner: draft.owner,
-                configuration: next,
-              );
-            });
+            // Update draft without setState — rebuilding the form on every
+            // keystroke resets caret position in the text fields.
+            _draft = OwnedLaunchConfiguration(
+              owner: draft.owner,
+              configuration: next,
+            );
           },
         ),
       ],

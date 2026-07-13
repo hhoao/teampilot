@@ -34,16 +34,18 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
   late final TextEditingController _nameController;
   final Map<String, TextEditingController> _controllers = {};
   late List<LaunchConfigSchemaField> _fields;
+  late LaunchConfiguration _working;
 
   @override
   void initState() {
     super.initState();
+    _working = widget.value;
     _fields = launchConfigSchemaFields(widget.schema);
-    _nameController = TextEditingController(text: widget.value.name);
+    _nameController = TextEditingController(text: _working.name);
     for (final field in _fields) {
       if (_isTextField(field.type)) {
         _controllers[field.key] = TextEditingController(
-          text: _displayTextFor(widget.value, field),
+          text: _displayTextFor(_working, field),
         );
       }
     }
@@ -54,9 +56,12 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.schema != widget.schema) {
       _fields = launchConfigSchemaFields(widget.schema);
+      _working = widget.value;
       _rebuildControllers();
-    } else if (oldWidget.value != widget.value) {
-      _syncControllersFromValue(widget.value);
+    } else if (widget.value != _working && widget.value != oldWidget.value) {
+      // External replace (e.g. load another config) — not an echo of our emit.
+      _working = widget.value;
+      _syncControllersFromValue(_working);
     }
   }
 
@@ -82,12 +87,15 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
     for (final field in _fields) {
       if (_isTextField(field.type)) {
         _controllers[field.key] = TextEditingController(
-          text: _displayTextFor(widget.value, field),
+          text: _displayTextFor(_working, field),
         );
       }
     }
-    if (_nameController.text != widget.value.name) {
-      _nameController.text = widget.value.name;
+    if (_nameController.text != _working.name) {
+      _nameController.value = TextEditingValue(
+        text: _working.name,
+        selection: TextSelection.collapsed(offset: _working.name.length),
+      );
     }
   }
 
@@ -129,23 +137,26 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
     }
   }
 
-  void _emit(LaunchConfiguration next) => widget.onChanged(next);
+  void _emit(LaunchConfiguration next) {
+    _working = next;
+    widget.onChanged(next);
+  }
 
   void _onNameChanged(String text) {
-    _emit(widget.value.copyWith(name: text));
+    _emit(_working.copyWith(name: text));
   }
 
   void _onFieldTextChanged(LaunchConfigSchemaField field, String text) {
     switch (field.type) {
       case LaunchConfigSchemaFieldType.string:
-        _emit(_writeString(widget.value, field.key, text));
+        _emit(_writeString(_working, field.key, text));
       case LaunchConfigSchemaFieldType.stringArray:
         _emit(
-          _writeStringList(widget.value, field.key, parseLaunchArgsText(text)),
+          _writeStringList(_working, field.key, parseLaunchArgsText(text)),
         );
       case LaunchConfigSchemaFieldType.stringMap:
         _emit(
-          _writeStringMap(widget.value, field.key, parseLaunchEnvText(text)),
+          _writeStringMap(_working, field.key, parseLaunchEnvText(text)),
         );
       case LaunchConfigSchemaFieldType.boolean:
       case LaunchConfigSchemaFieldType.unsupported:
@@ -154,7 +165,7 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
   }
 
   void _onBoolChanged(String key, bool value) {
-    _emit(_writeBool(widget.value, key, value));
+    _emit(_writeBool(_working, key, value));
   }
 
   InputDecoration _controlDecoration({required bool hasError}) {
@@ -186,7 +197,7 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
         ],
         AppFormField<String>(
           id: 'name',
-          initialValue: widget.value.name,
+          initialValue: _working.name,
           label: Text(l10n.runConfigurationName),
           builder: (state) {
             return TextField(
@@ -223,7 +234,7 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
       case LaunchConfigSchemaFieldType.boolean:
         return AppFormField<bool>(
           id: field.key,
-          initialValue: _readBool(widget.value, field.key) ?? false,
+          initialValue: _readBool(_working, field.key) ?? false,
           label: label,
           builder: (state) {
             return Align(
@@ -242,7 +253,7 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
       case LaunchConfigSchemaFieldType.stringMap:
         return AppFormField<String>(
           id: field.key,
-          initialValue: _displayTextFor(widget.value, field),
+          initialValue: _displayTextFor(_working, field),
           label: label,
           builder: (state) {
             return TextField(
@@ -266,7 +277,7 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
       case LaunchConfigSchemaFieldType.stringArray:
         return AppFormField<String>(
           id: field.key,
-          initialValue: _displayTextFor(widget.value, field),
+          initialValue: _displayTextFor(_working, field),
           label: label,
           builder: (state) {
             return TextField(
