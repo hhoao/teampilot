@@ -1,14 +1,15 @@
 # Session History Review (select ≠ connect) design
 
 **Date:** 2026-07-10  
-**Status:** Approved (spec review)  
-**Related:** `SessionResumeCapability`, `connectImmediately` / `ChatWorkbenchTerminalPlaceholder`, workbench center tabs (`SessionWorkbench` body), compose landing (`WorkspaceChatLanding`)
+**Status:** Approved (spec review) — **product rules still in force**  
+**Superseded (data model / parsers / review UI):** [AI Message Layer](2026-07-13-ai-message-layer-design.md) replaces `SessionHistoryTurn` / `SessionHistoryCapability` / turn-list widgets with `AiMessage` + `AiTranscriptAdapter` + `AiThread`. Sections below through **Rendering** describe the original design; use the 2026-07-13 spec for current types and paths.  
+**Related:** `SessionResumeCapability`, `connectImmediately` / `ChatWorkbenchTerminalPlaceholder`, workbench center tabs (`SessionWorkbench` body), compose landing (`WorkspaceChatLanding`), [Session History Continue Chrome](2026-07-11-session-history-continue-chrome-design.md)
 
 ## Summary
 
 Clicking an existing conversation in the workspace sidebar must **not** start a PTY. The session tab opens in a **review** body: read-only history parsed from each CLI’s on-disk transcript, plus a **slim compose** card (landing-style input with session-fixed chrome removed). Explicit submit starts the terminal and continues the chat.
 
-Architecture: **select ≠ connect** as the interaction rule; **`SessionHistoryCapability`** per CLI as the extensible read model; UI renders only normalized turns (Markdown via `flutter_markdown_plus`).
+Architecture: **select ≠ connect** as the interaction rule (unchanged). **Current read model:** per-CLI `AiTranscriptAdapter` implementations under `client/lib/services/cli/registry/capabilities/history/*_ai_transcript.dart` → `List<AiMessage>` via `AiHistoryLocator` / `AiHistoryLoader` / `AiHistoryCubit`; review UI is `AiThread` from `ai_message_ui` inside `session_history_review.dart`.
 
 ## Goals
 
@@ -97,7 +98,9 @@ Reuse landing compose primitives (`ComposeTriggerField`, attach/enhance/voice) b
 
 ## Data model and `SessionHistoryCapability`
 
-Normalized model (UI consumes only this):
+> **Superseded.** Live API: `AiMessage` / `AiTranscriptAdapter` in `client/packages/ai_message_core`, adapters in `client/lib/services/cli/registry/capabilities/history/`, loader/cubit in `client/lib/services/session/ai_history_*.dart` and `client/lib/cubits/ai_history_cubit.dart`. See [2026-07-13-ai-message-layer-design.md](2026-07-13-ai-message-layer-design.md). Transcript **locate** still uses `SessionHistoryContext` (`session_history_context.dart`).
+
+Original normalized model (historical — UI consumed only this):
 
 ```dart
 enum SessionHistoryRole { user, assistant, tool, system }
@@ -158,6 +161,8 @@ Missing file → `empty`. Parse/IO failure → `error` with retry; never block s
 Host shows a local **loading** state (skeleton or inline progress) while `loadHistory` is in flight, then `ready` / `empty` / `error`. Loading must not look like session connect (“starting…”).
 
 ### Rendering
+
+> **Superseded.** Review history renders via `AiThread` / `AiMessageParts` in `ai_message_ui` (tool cards, markdown parts). The notes below describe the original turn-list approach.
 
 - Introduce `flutter_markdown_plus` **only in the presentation layer** for assistant (and optionally user) markdown.
 - Parsers emit plain markdown strings; no UI package dependency in capabilities.
@@ -223,7 +228,7 @@ Do not hard-code CLI transcript formats in pages or `ChatCubit`. Chat/launch own
 1. Every open-existing path (sidebar, search, route deep-link, audited helpers) does not auto-start a terminal.
 2. Review shows loading then history when available, empty/error otherwise, plus slim compose (no separate Start button in v1).
 3. Submit starts the **selected member** session and continues with the typed message (including `@` attachments as text).
-4. All five launch CLIs expose `SessionHistoryCapability`; a new CLI adds an adapter only.
+4. All five launch CLIs expose an `AiTranscriptAdapter` (registry map); a new CLI adds an adapter module only.
 5. Parsers align with mainstream schemas and are fixture-tested; opencode reads session disk, not export subprocess.
 
 ## Implementation notes
