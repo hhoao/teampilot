@@ -9,7 +9,6 @@ import '../l10n/l10n_extensions.dart';
 import '../models/run/run_session.dart';
 import '../models/run/run_ui_intent.dart';
 import '../services/run/launch_type_normalize.dart';
-import '../services/run/shell_script_configuration.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 import 'run/run_panel.dart';
@@ -93,8 +92,8 @@ class _WorkspaceBottomDockState extends State<WorkspaceBottomDock> {
     _seenSessionIds = ids;
     if (added.isEmpty) return;
 
-    // Terminal-backed Shell Script sessions activate via [RunUiIntent]; do not
-    // force the Run tab. Adapter / non-terminal sessions still open Run.
+    // Built-in Shell Script (terminal or not) activates via [RunUiIntent].
+    // Adapter sessions still auto-open the Run tab.
     final shouldSwitchToRun = state.sessions.any(
       (session) =>
           added.contains(session.id) && _sessionUsesRunPanel(session),
@@ -171,13 +170,11 @@ class _WorkspaceBottomDockState extends State<WorkspaceBottomDock> {
   }
 }
 
-/// Whether a new session should auto-switch the dock to the Run tab.
+/// Whether a new session should auto-switch/reveal the dock to the Run tab.
+///
+/// Built-in [shellScript] is excluded — [RunUiIntent] owns visibility and tab.
 bool _sessionUsesRunPanel(RunSession session) {
-  if (!isBuiltInShellType(session.owned.configuration.type)) return true;
-  final shell = ShellScriptConfiguration.fromLaunchConfiguration(
-    session.owned.configuration,
-  );
-  return !shell.executeInTerminal;
+  return !isBuiltInShellType(session.owned.configuration.type);
 }
 
 class _DockSegment extends StatelessWidget {
