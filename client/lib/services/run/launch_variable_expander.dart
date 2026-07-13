@@ -6,6 +6,15 @@ class LaunchVariableExpander {
 
   static final RegExp _envPattern = RegExp(r'\$\{env:([^}]+)\}');
 
+  /// Shell-script string fields that commonly live in [LaunchConfiguration.extras].
+  static const _shellScriptExtraKeys = {
+    'scriptPath',
+    'scriptText',
+    'interpreterPath',
+    'interpreterOptions',
+    'scriptOptions',
+  };
+
   static String expand(
     String input, {
     required String workspaceFolder,
@@ -79,6 +88,31 @@ class LaunchVariableExpander {
               env: mergedEnv,
             ),
       env: expandedEnv,
+      extras: _expandShellScriptExtras(
+        configuration.extras,
+        workspaceFolder: workspaceFolder,
+        env: mergedEnv,
+      ),
     );
+  }
+
+  static Map<String, Object?> _expandShellScriptExtras(
+    Map<String, Object?> extras, {
+    required String workspaceFolder,
+    required Map<String, String> env,
+  }) {
+    if (extras.isEmpty) return extras;
+
+    final out = Map<String, Object?>.from(extras);
+    for (final key in _shellScriptExtraKeys) {
+      final value = out[key];
+      if (value is! String) continue;
+      out[key] = expand(
+        value,
+        workspaceFolder: workspaceFolder,
+        env: env,
+      );
+    }
+    return out;
   }
 }
