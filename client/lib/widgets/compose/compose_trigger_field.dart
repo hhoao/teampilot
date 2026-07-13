@@ -14,7 +14,6 @@ import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../services/compose/compose_file_search.dart';
 import '../../services/compose/compose_slash_catalog.dart';
-import '../../services/compose/compose_text_edit.dart';
 import '../../services/compose/compose_trigger_caret.dart';
 import '../../services/compose/compose_trigger_insert.dart';
 import '../../services/compose/compose_trigger_query.dart';
@@ -174,7 +173,11 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
       return false;
     }
     unawaited(_handlePasteShortcut());
-    return true;
+    // Never claim handled and never insert clipboard text here.
+    // [HardwareKeyboard] handlers do not stop [EditableText] paste
+    // (Shortcuts/Actions still run — see terminal_passthrough_shortcuts.dart).
+    // Claiming handled + insertTextAtSelection duplicated every Ctrl/Cmd+V.
+    return false;
   }
 
   void _handleFocusChanged() {
@@ -361,18 +364,9 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     final onPasteImage = widget.onPasteImage;
     if (onPasteImage == null) return;
     final pastedImage = await onPasteImage();
-    if (pastedImage) {
-      widget.onChanged(widget.controller.text);
-      if (mounted) setState(() {});
-      return;
-    }
-    final data = await Clipboard.getData(Clipboard.kTextPlain);
-    final text = data?.text;
-    if (text == null || text.isEmpty) return;
-    widget.controller.value = insertTextAtSelection(
-      widget.controller,
-      text,
-    );
+    if (!pastedImage) return;
+    // Text paste is left to [EditableText]. Only react when an image was
+    // imported so attachments / token chips refresh.
     widget.onChanged(widget.controller.text);
     if (mounted) setState(() {});
   }
