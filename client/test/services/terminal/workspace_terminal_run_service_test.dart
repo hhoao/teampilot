@@ -472,4 +472,23 @@ void main() {
     expect(next.id, isNot(entry.id));
     expect(connect.connectCalls, 2);
   });
+
+  test('handleEntryClosed notifies addOnEntryClosedListener', () async {
+    final closed = <String>[];
+    service.addOnEntryClosedListener(closed.add);
+    final entry = await _open(
+      service: service,
+      group: group,
+      connector: connector,
+      connectCoordinator: connect,
+      ops: ops,
+      selectionKey: 'sel',
+      allowMultipleInstances: false,
+      runSessionId: 'sess-1',
+    );
+
+    service.handleEntryClosed(entry.id);
+
+    expect(closed, [entry.id]);
+  });
 }

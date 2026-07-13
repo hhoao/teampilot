@@ -21,11 +21,14 @@ class RunShellScriptLauncher implements RunProcessLauncher {
     RunTargetResolver? resolver,
     ShellScriptCommandBuilder? commandBuilder,
     void Function(RunUiIntent intent)? emitUiIntent,
+    void Function({required String entryId, required String sessionId})?
+    registerTerminalSession,
   }) : _terminalRunDeps = terminalRunDeps,
        _processExecutor = processExecutor,
        _resolver = resolver ?? const RunTargetResolver(),
        _commandBuilder = commandBuilder ?? const ShellScriptCommandBuilder(),
-       _emitUiIntent = emitUiIntent ?? ((_) {});
+       _emitUiIntent = emitUiIntent ?? ((_) {}),
+       _registerTerminalSession = registerTerminalSession;
 
   final String workspaceId;
   final TerminalRunDepsResolver _terminalRunDeps;
@@ -33,6 +36,8 @@ class RunShellScriptLauncher implements RunProcessLauncher {
   final RunTargetResolver _resolver;
   final ShellScriptCommandBuilder _commandBuilder;
   final void Function(RunUiIntent intent) _emitUiIntent;
+  final void Function({required String entryId, required String sessionId})?
+  _registerTerminalSession;
 
   @override
   Future<RunLaunchHandle> launch({
@@ -108,6 +113,7 @@ class RunShellScriptLauncher implements RunProcessLauncher {
       sessionId: sessionId,
       entryId: entry.id,
     );
+    _registerTerminalSession?.call(entryId: entry.id, sessionId: sessionId);
     deps.runService.inject(entry, line);
 
     _emitUiIntent(

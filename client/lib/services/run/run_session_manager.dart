@@ -242,6 +242,8 @@ class RunSessionManager {
   final Map<String, RunSession> _sessions = {};
   final Map<String, _ActiveRun> _activeRuns = {};
   final Map<String, StringBuffer> _outputBuffers = {};
+  /// Terminal entry id → lightweight [RunSession] id (Shell Script inject).
+  final Map<String, String> _sessionByTerminalEntry = {};
   final StreamController<List<RunSession>> _sessionsController =
       StreamController<List<RunSession>>.broadcast();
   final StreamController<ProcessRunOutput> _outputController =
@@ -326,7 +328,35 @@ class RunSessionManager {
     }
   }
 
+  /// Binds a workspace Terminal tab to a lightweight run session.
+  void registerTerminalSession({
+    required String entryId,
+    required String sessionId,
+  }) {
+    final entry = entryId.trim();
+    final session = sessionId.trim();
+    if (entry.isEmpty || session.isEmpty) return;
+    _sessionByTerminalEntry.removeWhere((_, id) => id == session);
+    _sessionByTerminalEntry[entry] = session;
+  }
+
+  /// Marks the bound session [exited] when its Terminal tab closes.
+  ///
+  /// Does not call stop/interrupt — the PTY is already being disposed.
+  void markExitedForTerminalEntry(String entryId) {
+    final sessionId = _sessionByTerminalEntry.remove(entryId.trim());
+    if (sessionId == null) return;
+    _activeRuns.remove(sessionId);
+    final current = _sessions[sessionId];
+    if (current == null) return;
+    if (current.status == RunSessionStatus.running ||
+        current.status == RunSessionStatus.starting) {
+      _upsert(current.copyWith(status: RunSessionStatus.exited));
+    }
+  }
+
   Future<void> stop(String sessionId) async {
+    _sessionByTerminalEntry.removeWhere((_, id) => id == sessionId);
     final active = _activeRuns.remove(sessionId);
     if (active != null) {
       await active.stop();

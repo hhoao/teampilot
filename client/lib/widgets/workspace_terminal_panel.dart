@@ -20,6 +20,7 @@ import '../services/host/host_interactive_shell.dart';
 import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_connect_coordinator.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
+import '../services/terminal/workspace_terminal_run_service.dart';
 import '../services/terminal/workspace_terminal_session_ops.dart';
 import '../services/workspace/workspace_tools_scope.dart';
 import '../theme/app_text_styles.dart';
@@ -307,6 +308,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   }
 
   void _closeEntry(String id) {
+    context.read<WorkspaceTerminalRunService>().handleEntryClosed(id);
     final nowEmpty = _group.removeEntry(id);
     if (nowEmpty) {
       if (mounted) {

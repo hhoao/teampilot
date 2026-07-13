@@ -70,10 +70,17 @@ class TerminalRunDeps {
 /// Lazy holder: [WorkspaceRunRegistry] is created before the shell connector.
 class TerminalRunDepsResolver {
   TerminalRunDeps? _deps;
+  final List<void Function(String entryId)> _pendingEntryClosed = [];
 
   TerminalRunDeps? get deps => _deps;
 
-  void setDeps(TerminalRunDeps deps) => _deps = deps;
+  void setDeps(TerminalRunDeps deps) {
+    _deps = deps;
+    for (final listener in _pendingEntryClosed) {
+      deps.runService.addOnEntryClosedListener(listener);
+    }
+    _pendingEntryClosed.clear();
+  }
 
   TerminalRunDeps require() {
     final current = _deps;
@@ -81,6 +88,22 @@ class TerminalRunDepsResolver {
       throw StateError('TerminalRunDeps not wired yet');
     }
     return current;
+  }
+
+  /// Registers tab-close listener now, or when [setDeps] runs.
+  void addEntryClosedListener(void Function(String entryId) listener) {
+    final current = _deps;
+    if (current != null) {
+      current.runService.addOnEntryClosedListener(listener);
+    } else {
+      _pendingEntryClosed.add(listener);
+    }
+  }
+
+  /// Removes a listener from the live service and any pending queue.
+  void removeEntryClosedListener(void Function(String entryId) listener) {
+    _pendingEntryClosed.remove(listener);
+    _deps?.runService.removeOnEntryClosedListener(listener);
   }
 }
 
@@ -91,9 +114,21 @@ class WorkspaceTerminalRunService {
   /// Optional hook for RunSessionManager (tab close → lightweight session exit).
   void Function(String entryId)? onEntryClosed;
 
+  final List<void Function(String entryId)> _entryClosedListeners = [];
+
   final Map<TerminalRunBindKey, String> _entryByBind = {};
   final Map<String, String> _entryBySession = {};
   final Map<String, TerminalRunBindKey> _bindByEntry = {};
+
+  /// Registers a listener for [handleEntryClosed] (e.g. per-workspace managers).
+  void addOnEntryClosedListener(void Function(String entryId) listener) {
+    _entryClosedListeners.add(listener);
+  }
+
+  /// Removes a previously registered [addOnEntryClosedListener] callback.
+  void removeOnEntryClosedListener(void Function(String entryId) listener) {
+    _entryClosedListeners.remove(listener);
+  }
 
   /// Opens or reuses a terminal entry for a Shell Script run.
   Future<WorkspaceTerminalEntry> openForRun({
@@ -207,6 +242,11 @@ class WorkspaceTerminalRunService {
     }
     _entryBySession.removeWhere((_, id) => id == entryId);
     onEntryClosed?.call(entryId);
+    for (final listener in List<void Function(String)>.of(
+      _entryClosedListeners,
+    )) {
+      listener(entryId);
+    }
   }
 
   @visibleForTesting

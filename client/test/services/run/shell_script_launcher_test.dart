@@ -195,10 +195,17 @@ void main() {
 
   test('terminal branch opens, waits, injects; stop interrupts', () async {
     final intents = <RunUiIntent>[];
+    final bound = <({String entryId, String sessionId})>[];
     final launcher = RunShellScriptLauncher(
       workspaceId: 'ws-1',
       terminalRunDeps: depsResolver,
       emitUiIntent: intents.add,
+      registerTerminalSession: ({
+        required String entryId,
+        required String sessionId,
+      }) {
+        bound.add((entryId: entryId, sessionId: sessionId));
+      },
       processExecutor: ProcessRunExecutor(
         spawner:
             ({
@@ -238,6 +245,7 @@ void main() {
     expect(runService.injectCalls, 1);
     expect(runService.lastInjectLine, "cd '/proj' && '/bin/bash' -c 'echo hi'");
     expect(runService.registeredSessions['sess-1'], 'entry-1');
+    expect(bound, [(entryId: 'entry-1', sessionId: 'sess-1')]);
     expect(intents, [
       const RunUiIntent(
         surface: RunToolSurface.terminal,

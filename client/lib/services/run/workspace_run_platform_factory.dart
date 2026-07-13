@@ -79,15 +79,29 @@ class WorkspaceRunPlatformFactory {
       io: TargetAwareLaunchConfigIo(resolveFilesystem: _filesystemForTarget),
     );
     final executor = ProcessRunExecutor(sshSpawner: _sshSpawner);
+    RunSessionManager? sessionManagerRef;
     final sessionManager = RunSessionManager(
       executor: RunShellScriptLauncher(
         workspaceId: workspaceId,
         terminalRunDeps: terminalRunDeps,
         processExecutor: executor,
         emitUiIntent: emitUiIntent,
+        registerTerminalSession: ({
+          required String entryId,
+          required String sessionId,
+        }) {
+          sessionManagerRef?.registerTerminalSession(
+            entryId: entryId,
+            sessionId: sessionId,
+          );
+        },
       ),
       launchAdapterClient: adapterClient,
       resolveLaunchType: registry.get,
+    );
+    sessionManagerRef = sessionManager;
+    terminalRunDeps.addEntryClosedListener(
+      sessionManager.markExitedForTerminalEntry,
     );
     final platform = RunPlatform(
       store: store,

@@ -370,4 +370,35 @@ void main() {
     expect(mgr.session(s.id)?.exitCode, 7);
     await mgr.dispose();
   });
+
+  test('markExitedForTerminalEntry exits bound session without interrupt', () async {
+    final executor = FakeRunExecutor(hangOnStart: true);
+    final mgr = RunSessionManager(executor: executor, adapters: noopAdapter);
+    final owned = OwnedLaunchConfiguration(
+      owner: _folder,
+      configuration: const LaunchConfiguration(
+        id: 'a',
+        name: 'a',
+        type: 'shellScript',
+        extras: {
+          'execute': 'scriptText',
+          'scriptText': 'echo hi',
+          'executeInTerminal': true,
+        },
+      ),
+    );
+    final s = await mgr.start(owned);
+    expect(mgr.session(s.id)?.status, RunSessionStatus.running);
+
+    mgr.registerTerminalSession(entryId: 'term-1', sessionId: s.id);
+    mgr.markExitedForTerminalEntry('term-1');
+
+    expect(mgr.session(s.id)?.status, RunSessionStatus.exited);
+    expect(executor.stopCount, 0);
+
+    // Unknown / already-cleared entry is a no-op.
+    mgr.markExitedForTerminalEntry('term-1');
+    expect(executor.stopCount, 0);
+    await mgr.dispose();
+  });
 }
