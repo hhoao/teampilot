@@ -47,10 +47,14 @@ MarkdownStyleSheet buildAppMarkdownStyleSheet(ThemeData theme) {
   );
 
   final body = withUi(styles.md);
-  final code = styles.mono.copyWith(
-    backgroundColor: theme.cardTheme.color ?? theme.cardColor,
+  // Keep inline code on the same metrics as body. A smaller/taller mono run
+  // makes SelectionArea paint per-span highlight islands (looks unselected
+  // even though copy/paste includes the text). Font family may still differ.
+  final code = body.copyWith(
     fontFamily: fonts.monoFontFamily,
     fontFamilyFallback: fonts.monoFontFamilyFallback,
+    backgroundColor: (theme.cardTheme.color ?? theme.cardColor)
+        ?.withValues(alpha: 0.55),
   );
 
   return base.copyWith(

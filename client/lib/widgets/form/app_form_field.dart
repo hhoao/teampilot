@@ -36,6 +36,8 @@ class AppFormField<T> extends FormField<T> {
     this.onChanged,
     this.toValueTransformer,
     this.fromValueTransformer,
+    this.layoutStyle = AppFormFieldLayoutStyle.stacked,
+    this.labelWidth = 140,
   }) : super(
          builder: (fieldState) {
            final state = fieldState as AppFormFieldState<AppFormField<T>, T>;
@@ -48,6 +50,8 @@ class AppFormField<T> extends FormField<T> {
              label: label,
              error: effectiveError,
              description: description,
+             style: layoutStyle,
+             labelWidth: labelWidth,
              child: builder(state),
            );
          },
@@ -64,6 +68,12 @@ class AppFormField<T> extends FormField<T> {
   final AppFormToValueTransformer<T?>? toValueTransformer;
   final AppFormFromValueTransformer<T?>? fromValueTransformer;
   final bool readOnly;
+
+  /// Label placement relative to the control.
+  final AppFormFieldLayoutStyle layoutStyle;
+
+  /// Label column width when [layoutStyle] is [AppFormFieldLayoutStyle.inline].
+  final double labelWidth;
 
   @override
   AppFormFieldState<AppFormField<T>, T> createState() =>

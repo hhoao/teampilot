@@ -17,6 +17,7 @@ import '../dropdown/app_dropdown_decoration.dart';
 import '../dropdown/app_dropdown_field.dart';
 import '../form/app_form.dart';
 import '../form/app_form_field.dart';
+import '../form/app_form_field_layout.dart';
 import 'launch_config_schema_form.dart';
 
 const double _kEditorWidth = 560;
@@ -370,6 +371,8 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
             id: 'folder',
             initialValue: draft.owner.path,
             label: Text(l10n.runSelectFolder),
+            layoutStyle: AppFormFieldLayoutStyle.inline,
+            labelWidth: kLaunchConfigFormLabelWidth,
             builder: (state) {
               final selected = folders
                   .where((f) => f.path == state.value)
@@ -396,6 +399,8 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
           id: 'type',
           initialValue: type,
           label: Text(l10n.runConfigurationType),
+          layoutStyle: AppFormFieldLayoutStyle.inline,
+          labelWidth: kLaunchConfigFormLabelWidth,
           builder: (state) {
             final targetId = draft.owner.targetId;
             final types = _orderedLaunchTypes(cubit.launchTypes)

@@ -8,6 +8,10 @@ import '../../theme/app_text_styles.dart';
 import '../dropdown/app_dropdown_decoration.dart';
 import '../dropdown/app_dropdown_field.dart';
 import '../form/app_form_field.dart';
+import '../form/app_form_field_layout.dart';
+
+/// Shared label column width for inline run-config form rows.
+const double kLaunchConfigFormLabelWidth = 160;
 
 /// Schema-driven editor for a single [LaunchConfiguration].
 ///
@@ -225,6 +229,8 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
           id: 'name',
           initialValue: _working.name,
           label: Text(l10n.runConfigurationName),
+          layoutStyle: AppFormFieldLayoutStyle.inline,
+          labelWidth: kLaunchConfigFormLabelWidth,
           builder: (state) {
             return TextField(
               key: const Key('launch-config-field-name'),
@@ -263,6 +269,8 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
           id: field.key,
           initialValue: _readBool(_working, field.key) ?? false,
           label: label,
+          layoutStyle: AppFormFieldLayoutStyle.inline,
+          labelWidth: kLaunchConfigFormLabelWidth,
           builder: (state) {
             return Align(
               alignment: Alignment.centerLeft,
@@ -288,6 +296,8 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
           id: field.key,
           initialValue: initial ?? '',
           label: label,
+          layoutStyle: AppFormFieldLayoutStyle.inline,
+          labelWidth: kLaunchConfigFormLabelWidth,
           builder: (state) {
             return AppDropdownField<String>(
               key: fieldKey,
@@ -310,6 +320,8 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
           id: field.key,
           initialValue: _displayTextFor(_working, field),
           label: label,
+          layoutStyle: AppFormFieldLayoutStyle.inline,
+          labelWidth: kLaunchConfigFormLabelWidth,
           builder: (state) {
             return TextField(
               key: fieldKey,
@@ -334,6 +346,8 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
           id: field.key,
           initialValue: _displayTextFor(_working, field),
           label: label,
+          layoutStyle: AppFormFieldLayoutStyle.inline,
+          labelWidth: kLaunchConfigFormLabelWidth,
           builder: (state) {
             return TextField(
               key: fieldKey,

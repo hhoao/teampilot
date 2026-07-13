@@ -26,5 +26,7 @@ void main() {
     expect(sheet.code?.fontFamilyFallback, mono.monoFontFamilyFallback);
     expect(sheet.code?.fontFamily, isNot('monospace'));
     expect(sheet.p?.fontFamily, fonts.uiFamily);
+    expect(sheet.code?.fontSize, sheet.p?.fontSize);
+    expect(sheet.code?.height, sheet.p?.height);
   });
 }

@@ -72,11 +72,10 @@ packages:
   flutter_markdown_plus:
     dependency: "direct main"
     description:
-      name: flutter_markdown_plus
-      sha256: fce641d6c2106cc495de1cd603f97a4f9d615a97a64011928ded380dbdade935
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "1.0.12"
+      path: "../flutter_markdown_plus"
+      relative: true
+    source: path
+    version: "1.0.13"
   flutter_test:
     dependency: "direct dev"
     description: flutter

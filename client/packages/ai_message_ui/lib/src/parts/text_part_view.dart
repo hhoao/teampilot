@@ -23,7 +23,8 @@ class AiTextPartView extends StatelessWidget {
     return MarkdownBody(
       data: data,
       styleSheet: sheet,
-      // Prefer parent [SelectionArea] so drag/double-click spans paragraphs.
+      // Parent [SelectionArea]: package uses marker-in-text + padded gaps
+      // (no per-block SelectableText / empty SizedBox siblings).
       selectable: false,
       builders: {
         'pre': _AuiCodeBlockBuilder(aiTheme: aiTheme),
@@ -63,12 +64,21 @@ MarkdownStyleSheet defaultAiMarkdownSheet(
       fontWeight: FontWeight.w600,
       height: 1.35,
     ),
+    // assistant-ui aui-md: inter-block spacing via element margins (`my-3`),
+    // not empty spacer widgets. Here blockSpacing → top Padding on siblings.
     blockSpacing: 12,
+    h1Padding: const EdgeInsets.only(top: 8),
+    h2Padding: const EdgeInsets.only(top: 8),
+    h3Padding: const EdgeInsets.only(top: 4),
     listIndent: 24,
     listBullet: body,
-    code: theme.textTheme.bodySmall?.copyWith(
+    // Same size/height as body — mismatched inline code metrics fragment
+    // SelectionArea highlights (copy still works; it only looks gapped).
+    code: body?.copyWith(
       fontFamily: 'monospace',
-      backgroundColor: aiTheme.resolveMutedSurface(theme.colorScheme),
+      backgroundColor: aiTheme
+          .resolveMutedSurface(theme.colorScheme)
+          .withValues(alpha: 0.55),
     ),
     codeblockDecoration: BoxDecoration(
       color: aiTheme.resolveMutedSurface(theme.colorScheme),

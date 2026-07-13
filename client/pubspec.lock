@@ -447,11 +447,10 @@ packages:
   flutter_markdown_plus:
     dependency: "direct main"
     description:
-      name: flutter_markdown_plus
-      sha256: "2e4b667a75c08e5710866ae010da392acf5af475f9ad0be9bf406525e9751b0c"
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "1.0.11"
+      path: "packages/flutter_markdown_plus"
+      relative: true
+    source: path
+    version: "1.0.13"
   flutter_native_splash:
     dependency: "direct main"
     description:
