@@ -118,11 +118,10 @@ void main() {
 
     tearDown(() async {
       await postFrame.flush();
-      await drainPendingAsyncWork();
+      await drainPendingAsyncWork(rounds: 8);
       await cubit.close();
-      if (await tmp.exists()) {
-        await tmp.delete(recursive: true);
-      }
+      await drainPendingAsyncWork(rounds: 8);
+      await deleteTempDirBestEffort(tmp);
     });
 
     test('selectNextSessionTab is a no-op with no open tabs', () {
