@@ -345,4 +345,21 @@ void main() {
     expect(find.text('Add configuration'), findsOneWidget);
     await cubit.close();
   });
+
+  testWidgets('multi-folder create shows folder dropdown', (tester) async {
+    const other = WorkspaceFolder(path: '/other');
+    final platform = _StoreBackedPlatform();
+    final cubit = RunCubit(
+      platform: platform,
+      folders: const [_folder, other],
+    );
+    await cubit.load();
+
+    await _pumpEditor(tester, cubit: cubit, createNew: true);
+
+    expect(find.text('Add configuration'), findsOneWidget);
+    expect(find.byKey(const Key('run-config-folder-dropdown')), findsOneWidget);
+    expect(find.text('Select folder'), findsOneWidget);
+    await cubit.close();
+  });
 }

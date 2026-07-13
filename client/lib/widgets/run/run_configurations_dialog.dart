@@ -29,22 +29,18 @@ class RunConfigurationsDialog extends StatelessWidget {
     return AppDialog(
       maxWidth: 720,
       maxHeight: maxHeight,
-      scrollable: true,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AppDialogHeader(
-            title: l10n.runConfigureLaunchItems,
-            trailing: AppIconButton(
-              key: const Key('run-configurations-add'),
-              icon: Icons.add_rounded,
-              tooltip: l10n.runAddConfiguration,
-              onTap: () => unawaited(_create(context)),
-            ),
+      child: AppDialogPinnedLayout(
+        header: AppDialogHeader(
+          title: l10n.runConfigureLaunchItems,
+          trailing: AppIconButton(
+            key: const Key('run-configurations-add'),
+            icon: Icons.add_rounded,
+            tooltip: l10n.runAddConfiguration,
+            onTap: () => unawaited(_create(context)),
           ),
-          _RunConfigurationsListBody(workspaceId: workspaceId),
-        ],
+        ),
+        bodyTopSpacing: 8,
+        body: _RunConfigurationsListBody(workspaceId: workspaceId),
       ),
     );
   }

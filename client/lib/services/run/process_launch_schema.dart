@@ -1,4 +1,5 @@
 import '../../models/run/launch_configuration.dart';
+import 'launch_config_l10n.dart';
 
 /// Built-in JSON schema fields for `type: process` launch configurations.
 abstract final class ProcessLaunchSchema {
@@ -25,43 +26,44 @@ abstract final class ProcessLaunchSchema {
 
   /// Validates a launch configuration map or [LaunchConfiguration].
   ///
-  /// Returns human-readable error messages; empty when valid.
+  /// Returns stable English codes ([LaunchConfigValidationCodes]); empty when
+  /// valid. Localize with [localizeLaunchConfigValidation] before showing UI.
   static List<String> validate(Object? configuration) {
     final map = _asMap(configuration);
     if (map == null) {
-      return const ['configuration must be a map'];
+      return const [LaunchConfigValidationCodes.configurationMustBeMap];
     }
 
     final errors = <String>[];
     final command = map['command'];
     if (command is! String || command.trim().isEmpty) {
-      errors.add('command is required');
+      errors.add(LaunchConfigValidationCodes.commandRequired);
     }
 
     final args = map['args'];
     if (args != null && args is! List) {
-      errors.add('args must be a list of strings');
+      errors.add(LaunchConfigValidationCodes.argsMustBeStringList);
     } else if (args is List && args.any((e) => e is! String)) {
-      errors.add('args must be a list of strings');
+      errors.add(LaunchConfigValidationCodes.argsMustBeStringList);
     }
 
     final env = map['env'];
     if (env != null) {
       if (env is! Map) {
-        errors.add('env must be a map of strings');
+        errors.add(LaunchConfigValidationCodes.envMustBeStringMap);
       } else if (env.entries.any((e) => e.value is! String)) {
-        errors.add('env must be a map of strings');
+        errors.add(LaunchConfigValidationCodes.envMustBeStringMap);
       }
     }
 
     final cwd = map['cwd'];
     if (cwd != null && cwd is! String) {
-      errors.add('cwd must be a string');
+      errors.add(LaunchConfigValidationCodes.cwdMustBeString);
     }
 
     final shell = map['shell'];
     if (shell != null && shell is! bool) {
-      errors.add('shell must be a boolean');
+      errors.add(LaunchConfigValidationCodes.shellMustBeBoolean);
     }
 
     return errors;

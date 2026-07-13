@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/run/launch_configuration.dart';
 import 'package:teampilot/services/run/process_launch_schema.dart';
+import 'package:teampilot/widgets/form/app_form.dart';
 import 'package:teampilot/widgets/run/launch_config_schema_form.dart';
 
 void main() {
@@ -25,11 +26,13 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: SingleChildScrollView(
-            child: LaunchConfigSchemaForm(
-              value: value,
-              onChanged: onChanged,
-              schema: ProcessLaunchSchema.configurationSchema,
-              errors: errors,
+            child: AppForm(
+              child: LaunchConfigSchemaForm(
+                value: value,
+                onChanged: onChanged,
+                schema: ProcessLaunchSchema.configurationSchema,
+                errors: errors,
+              ),
             ),
           ),
         ),

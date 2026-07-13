@@ -38,8 +38,7 @@ class AppFormField<T> extends FormField<T> {
     this.fromValueTransformer,
   }) : super(
          builder: (fieldState) {
-           final state =
-               fieldState as AppFormFieldState<AppFormField<T>, T>;
+           final state = fieldState as AppFormFieldState<AppFormField<T>, T>;
            final hasError = state.hasError;
            final effectiveError = hasError
                ? error?.call(state.errorText!) ?? Text(state.errorText!)
@@ -72,7 +71,8 @@ class AppFormField<T> extends FormField<T> {
 }
 
 /// State for [AppFormField], including focus and parent [AppForm] registration.
-class AppFormFieldState<F extends AppFormField<T>, T> extends FormFieldState<T> {
+class AppFormFieldState<F extends AppFormField<T>, T>
+    extends FormFieldState<T> {
   final String _internalId = UniqueKey().toString();
   FocusNode? _focusNode;
   AppFormState? _parentForm;
@@ -123,10 +123,7 @@ class AppFormFieldState<F extends AppFormField<T>, T> extends FormFieldState<T> 
   void didUpdateWidget(covariant AppFormField<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.id != oldWidget.id) {
-      _parentForm?.unregisterField(
-        oldWidget.id ?? _internalId,
-        this,
-      );
+      _parentForm?.unregisterField(oldWidget.id ?? _internalId, this);
       _parentForm?.registerField(effectiveId, this);
     }
     if (oldWidget.focusNode != null && widget.focusNode == null) {
@@ -169,11 +166,7 @@ class AppFormFieldState<F extends AppFormField<T>, T> extends FormFieldState<T> 
   void setValue(T? value, {bool populateForm = true}) {
     super.setValue(value);
     if (populateForm) {
-      _parentForm?.setFieldValue<T>(
-        effectiveId,
-        value,
-        notifyField: false,
-      );
+      _parentForm?.setFieldValue<T>(effectiveId, value, notifyField: false);
     }
   }
 

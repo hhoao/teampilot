@@ -5674,6 +5674,43 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runConfigurationType => 'Type';
 
   @override
+  String get runFieldCommand => 'Command';
+
+  @override
+  String get runFieldArgs => 'Arguments';
+
+  @override
+  String get runFieldEnv => 'Environment variables';
+
+  @override
+  String get runFieldCwd => 'Working directory';
+
+  @override
+  String get runFieldShell => 'Run in shell';
+
+  @override
+  String get runValidationCommandRequired => 'Command is required';
+
+  @override
+  String get runValidationArgsMustBeStringList =>
+      'Arguments must be a list of strings';
+
+  @override
+  String get runValidationEnvMustBeStringMap =>
+      'Environment must be a map of strings';
+
+  @override
+  String get runValidationCwdMustBeString =>
+      'Working directory must be a string';
+
+  @override
+  String get runValidationShellMustBeBoolean => 'Shell must be a boolean';
+
+  @override
+  String get runValidationConfigurationMustBeMap =>
+      'Configuration must be a map';
+
+  @override
   String get shortcutsRunSelected => 'Run Selected Configuration';
 
   @override

@@ -234,126 +234,126 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     final busy = _saving || _testing;
 
     return AppDialog(
-      scrollable: true,
       maxWidth: 560,
       maxHeight: MediaQuery.sizeOf(context).height * 0.9,
       child: AppForm(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppDialogHeader(
-              title: _isEditing
-                  ? l10n.sshProfileFormTitleEdit
-                  : l10n.sshProfileFormTitleNew,
-              onClose: busy ? null : () => Navigator.of(context).pop(),
-            ),
-            const SizedBox(height: 16),
-            _TwoColRow(
-              left: _field(
-                id: 'label',
-                controller: _labelController,
-                label: l10n.sshProfileFormLabel,
-                hint: l10n.sshProfileFormLabelHint,
-              ),
-              right: _field(
-                id: 'host',
-                controller: _hostController,
-                label: l10n.sshProfileFormHost,
-                hint: l10n.sshProfileFormHostHint,
-                required: true,
-                validator: (v) => v == null || v.trim().isEmpty
-                    ? l10n.sshProfileFormFieldRequired
-                    : null,
-              ),
-            ),
-            const SizedBox(height: 12),
-            _TwoColRow(
-              left: _field(
-                id: 'username',
-                controller: _usernameController,
-                label: l10n.sshProfileFormUsername,
-                hint: l10n.sshProfileFormUsernameHint,
-              ),
-              right: _field(
-                id: 'port',
-                controller: _portController,
-                label: l10n.sshProfileFormPort,
-                keyboardType: TextInputType.number,
-                validator: (v) {
-                  final port = int.tryParse(v ?? '');
-                  if (port == null || port < 1 || port > 65535) {
-                    return l10n.sshProfileFormPortInvalid;
-                  }
-                  return null;
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
-            _field(
-              id: 'identityFile',
-              controller: _identityFileController,
-              label: l10n.sshProfileFormIdentityFile,
-              hint: l10n.sshProfileFormIdentityFileHint,
-              helper: l10n.sshProfileFormIdentityFileHelper,
-              prefixIcon: Icons.key_outlined,
-              suffix: IconButton(
-                tooltip: l10n.sshProfileFormIdentityFileBrowse,
-                onPressed: busy ? null : _browseIdentityFile,
-                icon: const Icon(Icons.folder_open_outlined),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _field(
-              id: 'passphrase',
-              controller: _passphraseController,
-              label: l10n.sshProfileFormPassphrase,
-              hint: l10n.sshProfileFormPassphraseHint,
-              obscure: true,
-            ),
-            const SizedBox(height: 12),
-            _field(
-              id: 'password',
-              controller: _passwordController,
-              label: l10n.sshProfileFormPassword,
-              hint: _isEditing
-                  ? l10n.sshProfileFormPasswordHintEdit
-                  : l10n.sshProfileFormPasswordHint,
-              helper: l10n.sshProfileFormPasswordHelper,
-              obscure: true,
-            ),
-            AppDialogActions(
-              children: [
-                TextButton(
-                  onPressed: busy ? null : () => Navigator.of(context).pop(),
-                  child: Text(l10n.cancel),
+        child: AppDialogPinnedLayout(
+          header: AppDialogHeader(
+            title: _isEditing
+                ? l10n.sshProfileFormTitleEdit
+                : l10n.sshProfileFormTitleNew,
+            onClose: busy ? null : () => Navigator.of(context).pop(),
+          ),
+          body: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _TwoColRow(
+                left: _field(
+                  id: 'label',
+                  controller: _labelController,
+                  label: l10n.sshProfileFormLabel,
+                  hint: l10n.sshProfileFormLabelHint,
                 ),
-                OutlinedButton(
-                  onPressed: busy ? null : _testConnection,
-                  child: _testing
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(l10n.sshProfileTest),
+                right: _field(
+                  id: 'host',
+                  controller: _hostController,
+                  label: l10n.sshProfileFormHost,
+                  hint: l10n.sshProfileFormHostHint,
+                  required: true,
+                  validator: (v) => v == null || v.trim().isEmpty
+                      ? l10n.sshProfileFormFieldRequired
+                      : null,
                 ),
-                FilledButton(
-                  onPressed: busy ? null : _submit,
-                  child: _saving
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(
-                          _isEditing ? l10n.save : l10n.sshProfilesAddTarget,
-                        ),
+              ),
+              const SizedBox(height: 12),
+              _TwoColRow(
+                left: _field(
+                  id: 'username',
+                  controller: _usernameController,
+                  label: l10n.sshProfileFormUsername,
+                  hint: l10n.sshProfileFormUsernameHint,
                 ),
-              ],
-            ),
-          ],
+                right: _field(
+                  id: 'port',
+                  controller: _portController,
+                  label: l10n.sshProfileFormPort,
+                  keyboardType: TextInputType.number,
+                  validator: (v) {
+                    final port = int.tryParse(v ?? '');
+                    if (port == null || port < 1 || port > 65535) {
+                      return l10n.sshProfileFormPortInvalid;
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              _field(
+                id: 'identityFile',
+                controller: _identityFileController,
+                label: l10n.sshProfileFormIdentityFile,
+                hint: l10n.sshProfileFormIdentityFileHint,
+                helper: l10n.sshProfileFormIdentityFileHelper,
+                prefixIcon: Icons.key_outlined,
+                suffix: IconButton(
+                  tooltip: l10n.sshProfileFormIdentityFileBrowse,
+                  onPressed: busy ? null : _browseIdentityFile,
+                  icon: const Icon(Icons.folder_open_outlined),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _field(
+                id: 'passphrase',
+                controller: _passphraseController,
+                label: l10n.sshProfileFormPassphrase,
+                hint: l10n.sshProfileFormPassphraseHint,
+                obscure: true,
+              ),
+              const SizedBox(height: 12),
+              _field(
+                id: 'password',
+                controller: _passwordController,
+                label: l10n.sshProfileFormPassword,
+                hint: _isEditing
+                    ? l10n.sshProfileFormPasswordHintEdit
+                    : l10n.sshProfileFormPasswordHint,
+                helper: l10n.sshProfileFormPasswordHelper,
+                obscure: true,
+              ),
+            ],
+          ),
+          footer: AppDialogActions(
+            children: [
+              TextButton(
+                onPressed: busy ? null : () => Navigator.of(context).pop(),
+                child: Text(l10n.cancel),
+              ),
+              OutlinedButton(
+                onPressed: busy ? null : _testConnection,
+                child: _testing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(l10n.sshProfileTest),
+              ),
+              FilledButton(
+                onPressed: busy ? null : _submit,
+                child: _saving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(
+                        _isEditing ? l10n.save : l10n.sshProfilesAddTarget,
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );

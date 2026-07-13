@@ -678,7 +678,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(platform.runSelectedCalls, 0);
-      expect(find.text('command is required'), findsOneWidget);
+      expect(find.text('Command is required'), findsOneWidget);
       expect(find.text('Edit configuration'), findsWidgets);
       expect(find.textContaining('launch.json'), findsNothing);
 

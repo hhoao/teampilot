@@ -66,53 +66,49 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
     return AppDialog(
       maxWidth: 720,
       maxHeight: maxHeight,
-      scrollable: true,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AppDialogHeader(
-            title: l10n.automationsTitle,
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 132,
-                  child: AppDropdownField<AutomationEnabledFilter>(
-                    items: const [
-                      AutomationEnabledFilter.all,
-                      AutomationEnabledFilter.enabledOnly,
-                    ],
-                    initialItem: _enabledFilter,
-                    decoration: AppDropdownDecorations.themed(context),
-                    itemLabel: (f) => switch (f) {
-                      AutomationEnabledFilter.all => l10n.automationsFilterAll,
-                      AutomationEnabledFilter.enabledOnly =>
-                        l10n.automationsFilterEnabled,
-                      AutomationEnabledFilter.disabledOnly =>
-                        l10n.automationsFilterDisabled,
-                    },
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() => _enabledFilter = value);
-                    },
-                  ),
+      child: AppDialogPinnedLayout(
+        header: AppDialogHeader(
+          title: l10n.automationsTitle,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 132,
+                child: AppDropdownField<AutomationEnabledFilter>(
+                  items: const [
+                    AutomationEnabledFilter.all,
+                    AutomationEnabledFilter.enabledOnly,
+                  ],
+                  initialItem: _enabledFilter,
+                  decoration: AppDropdownDecorations.themed(context),
+                  itemLabel: (f) => switch (f) {
+                    AutomationEnabledFilter.all => l10n.automationsFilterAll,
+                    AutomationEnabledFilter.enabledOnly =>
+                      l10n.automationsFilterEnabled,
+                    AutomationEnabledFilter.disabledOnly =>
+                      l10n.automationsFilterDisabled,
+                  },
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _enabledFilter = value);
+                  },
                 ),
-                const SizedBox(width: 8),
-                AppIconButton(
-                  icon: Icons.add_rounded,
-                  tooltip: l10n.automationsNew,
-                  onTap: () => unawaited(_create()),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              AppIconButton(
+                icon: Icons.add_rounded,
+                tooltip: l10n.automationsNew,
+                onTap: () => unawaited(_create()),
+              ),
+            ],
           ),
-          AutomationsListBody(
-            listScope: widget.listScope,
-            enabledFilter: _enabledFilter,
-            shrinkWrap: true,
-          ),
-        ],
+        ),
+        bodyTopSpacing: 8,
+        body: AutomationsListBody(
+          listScope: widget.listScope,
+          enabledFilter: _enabledFilter,
+          shrinkWrap: true,
+        ),
       ),
     );
   }

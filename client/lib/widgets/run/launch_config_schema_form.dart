@@ -2,14 +2,16 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/run/launch_configuration.dart';
+import '../../services/run/launch_config_l10n.dart';
 import '../../services/run/launch_config_schema_fields.dart';
 import '../../theme/app_text_styles.dart';
+import '../form/app_form_field.dart';
 
 /// Schema-driven editor for a single [LaunchConfiguration].
 ///
-/// Always shows Name above properties from [schema]. Maps JSON-schema types to
-/// controls: string → text, string array → whitespace-separated text, string map
-/// → `KEY=VALUE` lines, boolean → [Switch].
+/// Must be a descendant of [AppForm]. Always shows Name above properties from
+/// [schema]. Maps JSON-schema types to controls: string → text, string array →
+/// whitespace-separated text, string map → `KEY=VALUE` lines, boolean → [Switch].
 class LaunchConfigSchemaForm extends StatefulWidget {
   const LaunchConfigSchemaForm({
     required this.value,
@@ -155,6 +157,14 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
     _emit(_writeBool(widget.value, key, value));
   }
 
+  InputDecoration _controlDecoration({required bool hasError}) {
+    return InputDecoration(
+      // Border reflects error; message is shown by AppFormFieldLayout / errors.
+      errorText: hasError ? '' : null,
+      errorStyle: const TextStyle(height: 0, fontSize: 0),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -169,17 +179,28 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
-                error,
+                localizeLaunchConfigValidation(l10n, error),
                 style: styles.smColored(cs.error),
               ),
             ),
         ],
-        TextField(
-          key: const Key('launch-config-field-name'),
-          controller: _nameController,
-          decoration: InputDecoration(labelText: l10n.name),
-          textInputAction: TextInputAction.next,
-          onChanged: _onNameChanged,
+        AppFormField<String>(
+          id: 'name',
+          initialValue: widget.value.name,
+          label: Text(l10n.runConfigurationName),
+          builder: (state) {
+            return TextField(
+              key: const Key('launch-config-field-name'),
+              controller: _nameController,
+              focusNode: state.focusNode,
+              textInputAction: TextInputAction.next,
+              onChanged: (text) {
+                state.didChange(text);
+                _onNameChanged(text);
+              },
+              decoration: _controlDecoration(hasError: state.hasError),
+            );
+          },
         ),
         const SizedBox(height: 12),
         for (final field in _fields)
@@ -197,70 +218,74 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
     AppTextStyles styles,
   ) {
     final fieldKey = Key('launch-config-field-${field.key}');
+    final label = Text(localizeLaunchConfigFieldLabel(context.l10n, field));
     switch (field.type) {
       case LaunchConfigSchemaFieldType.boolean:
-        return _SwitchRow(
-          title: field.label,
-          value: _readBool(widget.value, field.key) ?? false,
-          switchKey: fieldKey,
-          onChanged: (v) => _onBoolChanged(field.key, v),
+        return AppFormField<bool>(
+          id: field.key,
+          initialValue: _readBool(widget.value, field.key) ?? false,
+          label: label,
+          builder: (state) {
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: Switch(
+                key: fieldKey,
+                value: state.value ?? false,
+                onChanged: (v) {
+                  state.didChange(v);
+                  _onBoolChanged(field.key, v);
+                },
+              ),
+            );
+          },
         );
       case LaunchConfigSchemaFieldType.stringMap:
-        return TextField(
-          key: fieldKey,
-          controller: _controllers[field.key],
-          decoration: InputDecoration(
-            labelText: field.label,
-            alignLabelWithHint: true,
-          ),
-          style: field.monospace ? styles.mono : null,
-          minLines: 3,
-          maxLines: 8,
-          onChanged: (t) => _onFieldTextChanged(field, t),
+        return AppFormField<String>(
+          id: field.key,
+          initialValue: _displayTextFor(widget.value, field),
+          label: label,
+          builder: (state) {
+            return TextField(
+              key: fieldKey,
+              controller: _controllers[field.key],
+              focusNode: state.focusNode,
+              style: field.monospace ? styles.mono : null,
+              minLines: 3,
+              maxLines: 8,
+              onChanged: (t) {
+                state.didChange(t);
+                _onFieldTextChanged(field, t);
+              },
+              decoration: _controlDecoration(hasError: state.hasError).copyWith(
+                alignLabelWithHint: true,
+              ),
+            );
+          },
         );
       case LaunchConfigSchemaFieldType.string:
       case LaunchConfigSchemaFieldType.stringArray:
-        return TextField(
-          key: fieldKey,
-          controller: _controllers[field.key],
-          decoration: InputDecoration(labelText: field.label),
-          style: field.monospace ? styles.mono : null,
-          textInputAction: TextInputAction.next,
-          onChanged: (t) => _onFieldTextChanged(field, t),
+        return AppFormField<String>(
+          id: field.key,
+          initialValue: _displayTextFor(widget.value, field),
+          label: label,
+          builder: (state) {
+            return TextField(
+              key: fieldKey,
+              controller: _controllers[field.key],
+              focusNode: state.focusNode,
+              style: field.monospace ? styles.mono : null,
+              textInputAction: TextInputAction.next,
+              onChanged: (t) {
+                state.didChange(t);
+                _onFieldTextChanged(field, t);
+              },
+              decoration: _controlDecoration(hasError: state.hasError),
+            );
+          },
         );
       case LaunchConfigSchemaFieldType.unsupported:
         return const SizedBox.shrink();
     }
-  }
-}
-
-class _SwitchRow extends StatelessWidget {
-  const _SwitchRow({
-    required this.title,
-    required this.value,
-    required this.switchKey,
-    required this.onChanged,
-  });
-
-  final String title;
-  final bool value;
-  final Key switchKey;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final styles = AppTextStyles.of(context);
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            title,
-            style: styles.mdMedium,
-          ),
-        ),
-        Switch(key: switchKey, value: value, onChanged: onChanged),
-      ],
-    );
   }
 }
 

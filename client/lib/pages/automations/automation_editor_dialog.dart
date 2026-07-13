@@ -397,14 +397,13 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
 
     return AppDialog(
       maxWidth: _isScheduledMessage ? 480 : 560,
-      scrollable: true,
       maxHeight: MediaQuery.sizeOf(context).height * 0.85,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AppDialogHeader(title: title),
-          const SizedBox(height: 16),
+      child: AppDialogPinnedLayout(
+        header: AppDialogHeader(title: title),
+        body: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
           if (_errorMessage != null) ...[
             Text(
               _errorMessage!,
@@ -534,16 +533,17 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
                 ? null
                 : (v) => setState(() => _enabled = v),
           ),
-          AppDialogActions(
-            children: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(l10n.cancel),
-              ),
-              FilledButton(onPressed: _save, child: Text(l10n.save)),
-            ],
-          ),
-        ],
+          ],
+        ),
+        footer: AppDialogActions(
+          children: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(onPressed: _save, child: Text(l10n.save)),
+          ],
+        ),
       ),
     );
   }

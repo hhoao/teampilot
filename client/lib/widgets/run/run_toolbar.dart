@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/run_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/run/launch_adapter_protocol.dart';
+import '../../services/run/launch_config_l10n.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_icon_button.dart';
 import '../../theme/app_text_styles.dart';
@@ -324,7 +325,7 @@ class _RunOrStopGlyph extends StatelessWidget {
               onClose: () => Navigator.of(dialogContext).pop(false),
             ),
             const SizedBox(height: 12),
-            Text(error),
+            Text(localizeLaunchConfigValidationJoined(l10n, error)),
             AppDialogActions(
               children: [
                 TextButton(

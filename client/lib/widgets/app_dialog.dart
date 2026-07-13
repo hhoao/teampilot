@@ -33,15 +33,16 @@ class AppDialog extends StatelessWidget {
   /// Maximum content width before the dialog stops growing horizontally.
   final double maxWidth;
 
-  /// Optional maximum height; when set, pair with [scrollable] so overflowing
-  /// content can scroll instead of clipping.
+  /// Optional maximum height; when set, overflowing content clips unless the
+  /// child scrolls (via [scrollable] or [AppDialogPinnedLayout]).
   final double? maxHeight;
 
   /// Inner padding around [child]. Defaults to [kAppDialogContentPadding].
   final EdgeInsets contentPadding;
 
-  /// When true, [child] is wrapped in a [SingleChildScrollView] so tall content
-  /// scrolls within [maxHeight] instead of overflowing.
+  /// When true, wraps the entire [child] in a [SingleChildScrollView].
+  /// Prefer [AppDialogPinnedLayout] when only the middle should scroll while
+  /// title/actions stay pinned.
   final bool scrollable;
 
   /// Overrides the dialog surface. Defaults to the workspace card color.
@@ -72,6 +73,46 @@ class AppDialog extends StatelessWidget {
         ),
         child: body,
       ),
+    );
+  }
+}
+
+/// Column layout for [AppDialog]: pinned [header]/[footer], scrollable [body].
+///
+/// Shrinks to content when short; when the dialog hits [AppDialog.maxHeight],
+/// only [body] scrolls — title and actions stay visible.
+class AppDialogPinnedLayout extends StatelessWidget {
+  const AppDialogPinnedLayout({
+    super.key,
+    required this.header,
+    required this.body,
+    this.footer,
+    this.bodyTopSpacing = 16,
+  });
+
+  final Widget header;
+  final Widget body;
+  final Widget? footer;
+
+  /// Gap between [header] and the scrollable [body].
+  final double bodyTopSpacing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        header,
+        Flexible(
+          fit: FlexFit.loose,
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(top: bodyTopSpacing),
+            child: body,
+          ),
+        ),
+        if (footer != null) footer!,
+      ],
     );
   }
 }

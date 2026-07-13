@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -9,6 +11,10 @@ import '../../services/run/process_launch_schema.dart';
 import '../../theme/app_dialog_theme.dart';
 import '../../theme/app_text_styles.dart';
 import '../app_dialog.dart';
+import '../dropdown/app_dropdown_decoration.dart';
+import '../dropdown/app_dropdown_field.dart';
+import '../form/app_form.dart';
+import '../form/app_form_field.dart';
 import 'launch_config_schema_form.dart';
 
 const double _kEditorWidth = 560;
@@ -26,7 +32,8 @@ Future<void> showRunConfigEditorDialog(
   final cubit = context.read<RunCubit>();
   return showDialog<void>(
     context: context,
-    barrierDismissible: false,
+    // ESC / barrier tap go through [PopScope] → [_onCancel] (dirty prompt).
+    barrierDismissible: true,
     builder: (dialogContext) => BlocProvider<RunCubit>.value(
       value: cubit,
       child: RunConfigEditorDialog(
@@ -64,10 +71,11 @@ class RunConfigEditorDialog extends StatefulWidget {
 enum _DirtyChoice { apply, discard, cancel }
 
 class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
+  final _formKey = GlobalKey<AppFormState>();
   OwnedLaunchConfiguration? _draft;
   OwnedLaunchConfiguration? _baseline;
-  bool _awaitingFolder = false;
   List<String> _formErrors = const [];
+  var _closing = false;
 
   bool get _isDirty =>
       _draft != null && _baseline != null && _draft != _baseline;
@@ -81,13 +89,14 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
     final cubit = context.read<RunCubit>();
     if (widget.createNew) {
       final folders = cubit.folders;
-      final target = widget.folder;
+      final target = widget.folder ??
+          (folders.length == 1
+              ? folders.single
+              : folders.isNotEmpty
+              ? folders.first
+              : null);
       if (target != null) {
         _beginCreate(target);
-      } else if (folders.length == 1) {
-        _beginCreate(folders.single);
-      } else if (folders.length > 1) {
-        _awaitingFolder = true;
       }
     } else if (widget.initial != null) {
       _selectOwned(widget.initial!);
@@ -102,7 +111,6 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
     );
     _draft = draft;
     _baseline = draft;
-    _awaitingFolder = false;
     _formErrors = const [];
   }
 
@@ -110,6 +118,17 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
     _draft = owned;
     _baseline = owned;
     _formErrors = const [];
+  }
+
+  void _onFolderChanged(WorkspaceFolder folder) {
+    final draft = _draft;
+    if (draft == null || draft.owner == folder) return;
+    setState(() {
+      _draft = OwnedLaunchConfiguration(
+        owner: folder,
+        configuration: draft.configuration,
+      );
+    });
   }
 
   Map<String, Object?> _schemaFor(String type) {
@@ -226,23 +245,29 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
   }
 
   Future<void> _onCancel() async {
-    if (_isDirty) {
-      final choice = await _promptDirty();
-      if (!mounted) return;
-      switch (choice) {
-        case _DirtyChoice.apply:
-          final ok = await _applyCurrent();
-          if (!ok || !mounted) return;
-          Navigator.of(context).pop();
-        case _DirtyChoice.discard:
-          Navigator.of(context).pop();
-        case _DirtyChoice.cancel:
-        case null:
-          return;
+    if (_closing) return;
+    _closing = true;
+    try {
+      if (_isDirty) {
+        final choice = await _promptDirty();
+        if (!mounted) return;
+        switch (choice) {
+          case _DirtyChoice.apply:
+            final ok = await _applyCurrent();
+            if (!ok || !mounted) return;
+            Navigator.of(context).pop();
+          case _DirtyChoice.discard:
+            Navigator.of(context).pop();
+          case _DirtyChoice.cancel:
+          case null:
+            return;
+        }
+        return;
       }
-      return;
+      Navigator.of(context).pop();
+    } finally {
+      _closing = false;
     }
-    Navigator.of(context).pop();
   }
 
   @override
@@ -258,37 +283,41 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
         ? l10n.runAddConfiguration
         : l10n.runEditConfigurations;
 
-    return AppDialog(
-      maxWidth: dialogWidth,
-      maxHeight: maxHeight,
-      scrollable: true,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AppDialogHeader(title: title, onClose: _onCancel),
-          const SizedBox(height: 16),
-          _buildBody(context),
-          AppDialogActions(
-            children: [
-              TextButton(
-                key: const Key('run-config-editor-cancel'),
-                onPressed: _onCancel,
-                child: Text(l10n.cancel),
-              ),
-              TextButton(
-                key: const Key('run-config-editor-apply'),
-                onPressed: _draft == null || _awaitingFolder ? null : _onApply,
-                child: Text(l10n.runApply),
-              ),
-              FilledButton(
-                key: const Key('run-config-editor-ok'),
-                onPressed: _draft == null || _awaitingFolder ? null : _onOk,
-                child: Text(l10n.ok),
-              ),
-            ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        unawaited(_onCancel());
+      },
+      child: AppDialog(
+        maxWidth: dialogWidth,
+        maxHeight: maxHeight,
+        child: AppForm(
+          key: _formKey,
+          child: AppDialogPinnedLayout(
+            header: AppDialogHeader(title: title, onClose: _onCancel),
+            body: _buildBody(context),
+            footer: AppDialogActions(
+              children: [
+                TextButton(
+                  key: const Key('run-config-editor-cancel'),
+                  onPressed: _onCancel,
+                  child: Text(l10n.cancel),
+                ),
+                TextButton(
+                  key: const Key('run-config-editor-apply'),
+                  onPressed: _draft == null ? null : _onApply,
+                  child: Text(l10n.runApply),
+                ),
+                FilledButton(
+                  key: const Key('run-config-editor-ok'),
+                  onPressed: _draft == null ? null : _onOk,
+                  child: Text(l10n.ok),
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -297,39 +326,59 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
     final l10n = context.l10n;
     final styles = AppTextStyles.of(context);
     final cubit = context.read<RunCubit>();
-
-    if (_awaitingFolder) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(l10n.runSelectFolder, style: styles.mdSemiboldTightSnug),
-          const SizedBox(height: 12),
-          for (final folder in cubit.folders)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(_folderLabel(folder)),
-              onTap: () => setState(() => _beginCreate(folder)),
-            ),
-        ],
-      );
-    }
-
     final draft = _draft;
+
     if (draft == null) {
       return Text(l10n.runSelectConfiguration, style: styles.sm);
     }
 
     final type = draft.configuration.type;
+    final folders = cubit.folders;
+    final showFolderPicker = _isCreating && folders.length > 1;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        InputDecorator(
-          decoration: InputDecoration(
-            labelText: l10n.runConfigurationType,
-            border: const OutlineInputBorder(),
-            isDense: true,
+        if (showFolderPicker) ...[
+          AppFormField<String>(
+            id: 'folder',
+            initialValue: draft.owner.path,
+            label: Text(l10n.runSelectFolder),
+            builder: (state) {
+              final selected = folders
+                  .where((f) => f.path == state.value)
+                  .firstOrNull;
+              return AppDropdownField<WorkspaceFolder>(
+                key: const Key('run-config-folder-dropdown'),
+                items: folders,
+                initialItem: selected ?? draft.owner,
+                searchable: folders.length >= 8,
+                decoration: AppDropdownDecorations.themed(context),
+                itemLabel: _folderLabel,
+                onChanged: (folder) {
+                  if (folder == null) return;
+                  state.didChange(folder.path);
+                  _onFolderChanged(folder);
+                },
+              );
+            },
           ),
-          child: Text(type, style: styles.md),
+          const SizedBox(height: 12),
+        ],
+        AppFormField<String>(
+          id: 'type',
+          initialValue: type,
+          label: Text(l10n.runConfigurationType),
+          enabled: false,
+          builder: (state) {
+            return InputDecorator(
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              child: Text(type, style: styles.md),
+            );
+          },
         ),
         const SizedBox(height: 12),
         LaunchConfigSchemaForm(

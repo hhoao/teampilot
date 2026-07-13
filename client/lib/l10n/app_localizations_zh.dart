@@ -5465,6 +5465,39 @@ class AppLocalizationsZh extends AppLocalizations {
   String get runConfigurationType => '类型';
 
   @override
+  String get runFieldCommand => '命令';
+
+  @override
+  String get runFieldArgs => '参数';
+
+  @override
+  String get runFieldEnv => '环境变量';
+
+  @override
+  String get runFieldCwd => '工作目录';
+
+  @override
+  String get runFieldShell => '在 Shell 中运行';
+
+  @override
+  String get runValidationCommandRequired => '命令不能为空';
+
+  @override
+  String get runValidationArgsMustBeStringList => '参数必须是字符串列表';
+
+  @override
+  String get runValidationEnvMustBeStringMap => '环境变量必须是字符串映射';
+
+  @override
+  String get runValidationCwdMustBeString => '工作目录必须是字符串';
+
+  @override
+  String get runValidationShellMustBeBoolean => 'Shell 必须是布尔值';
+
+  @override
+  String get runValidationConfigurationMustBeMap => '配置必须是对象';
+
+  @override
   String get shortcutsRunSelected => '运行所选配置';
 
   @override

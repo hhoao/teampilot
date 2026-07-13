@@ -10212,6 +10212,72 @@ abstract class AppLocalizations {
   /// **'Type'**
   String get runConfigurationType;
 
+  /// No description provided for @runFieldCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Command'**
+  String get runFieldCommand;
+
+  /// No description provided for @runFieldArgs.
+  ///
+  /// In en, this message translates to:
+  /// **'Arguments'**
+  String get runFieldArgs;
+
+  /// No description provided for @runFieldEnv.
+  ///
+  /// In en, this message translates to:
+  /// **'Environment variables'**
+  String get runFieldEnv;
+
+  /// No description provided for @runFieldCwd.
+  ///
+  /// In en, this message translates to:
+  /// **'Working directory'**
+  String get runFieldCwd;
+
+  /// No description provided for @runFieldShell.
+  ///
+  /// In en, this message translates to:
+  /// **'Run in shell'**
+  String get runFieldShell;
+
+  /// No description provided for @runValidationCommandRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Command is required'**
+  String get runValidationCommandRequired;
+
+  /// No description provided for @runValidationArgsMustBeStringList.
+  ///
+  /// In en, this message translates to:
+  /// **'Arguments must be a list of strings'**
+  String get runValidationArgsMustBeStringList;
+
+  /// No description provided for @runValidationEnvMustBeStringMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Environment must be a map of strings'**
+  String get runValidationEnvMustBeStringMap;
+
+  /// No description provided for @runValidationCwdMustBeString.
+  ///
+  /// In en, this message translates to:
+  /// **'Working directory must be a string'**
+  String get runValidationCwdMustBeString;
+
+  /// No description provided for @runValidationShellMustBeBoolean.
+  ///
+  /// In en, this message translates to:
+  /// **'Shell must be a boolean'**
+  String get runValidationShellMustBeBoolean;
+
+  /// No description provided for @runValidationConfigurationMustBeMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration must be a map'**
+  String get runValidationConfigurationMustBeMap;
+
   /// No description provided for @shortcutsRunSelected.
   ///
   /// In en, this message translates to:
