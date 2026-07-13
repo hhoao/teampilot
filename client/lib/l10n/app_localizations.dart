@@ -2312,6 +2312,12 @@ abstract class AppLocalizations {
   /// **'Message cancelled'**
   String get aiMessageCancelled;
 
+  /// No description provided for @aiMessageScrollToBottom.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll to bottom'**
+  String get aiMessageScrollToBottom;
+
   /// No description provided for @sessionWorkbenchShowTerminal.
   ///
   /// In en, this message translates to:

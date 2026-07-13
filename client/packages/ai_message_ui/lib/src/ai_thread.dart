@@ -4,7 +4,9 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
 import 'ai_message_view.dart';
+import 'message_action_bar.dart';
 import 'part_registry.dart';
+import 'strings.dart';
 import 'theme.dart';
 
 /// Binds an [AiThreadRuntime] and renders status / message list chrome.
@@ -63,6 +65,9 @@ class _AiThreadState extends State<AiThread> {
   StreamSubscription<void>? _subscription;
   late ScrollController _scrollController;
   bool _ownsScrollController = false;
+  bool _showScrollToBottom = false;
+
+  static const _scrollToBottomThreshold = 80.0;
 
   List<AiMessage> _messages = const [];
   AiThreadStatus _status = AiThreadStatus.empty;
@@ -91,6 +96,7 @@ class _AiThreadState extends State<AiThread> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || !_scrollController.hasClients) return;
         _scrollToBottomIfOverflow();
+        _updateScrollToBottomVisibility();
       });
     }
   }
@@ -133,9 +139,11 @@ class _AiThreadState extends State<AiThread> {
       _scrollController = ScrollController();
       _ownsScrollController = true;
     }
+    _scrollController.addListener(_updateScrollToBottomVisibility);
   }
 
   void _detachScrollController() {
+    _scrollController.removeListener(_updateScrollToBottomVisibility);
     if (_ownsScrollController) {
       _scrollController.dispose();
     }
@@ -145,6 +153,33 @@ class _AiThreadState extends State<AiThread> {
     _messages = widget.runtime.messages;
     _status = widget.runtime.status;
     _errorMessage = widget.runtime.errorMessage;
+  }
+
+  void _updateScrollToBottomVisibility() {
+    if (!mounted) return;
+    if (!_scrollController.hasClients || _status != AiThreadStatus.idle) {
+      if (_showScrollToBottom) {
+        setState(() => _showScrollToBottom = false);
+      }
+      return;
+    }
+    final position = _scrollController.position;
+    final distance = position.maxScrollExtent - position.pixels;
+    final show =
+        position.maxScrollExtent > 0 && distance > _scrollToBottomThreshold;
+    if (show != _showScrollToBottom) {
+      setState(() => _showScrollToBottom = show);
+    }
+  }
+
+  Future<void> _animateScrollToBottom() async {
+    if (!_scrollController.hasClients) return;
+    await _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
+    _updateScrollToBottomVisibility();
   }
 
   void _handleMessagesChanged({
@@ -167,9 +202,11 @@ class _AiThreadState extends State<AiThread> {
       if (!mounted || !_scrollController.hasClients) return;
       if (becameIdle) {
         _scrollToBottomIfOverflow();
+        _updateScrollToBottomVisibility();
         return;
       }
       _restoreScrollAfterOlderLoad();
+      _updateScrollToBottomVisibility();
     });
   }
 
@@ -194,6 +231,7 @@ class _AiThreadState extends State<AiThread> {
   }
 
   bool _onScroll(ScrollNotification notification) {
+    _updateScrollToBottomVisibility();
     if (_status != AiThreadStatus.idle) return false;
     if (!widget.hasOlder || widget.isLoadingOlder) return false;
     if (widget.onLoadOlder == null) return false;
@@ -209,10 +247,15 @@ class _AiThreadState extends State<AiThread> {
     return false;
   }
 
-  Widget _buildMessage(BuildContext context, AiMessage message) {
+  Widget _buildMessage(BuildContext context, AiMessage message, {required bool isLast}) {
     final builder = widget.messageBuilder;
     if (builder != null) return builder(context, message);
-    return AiMessageView(message: message, registry: widget.registry);
+    return AiMessageView(
+      message: message,
+      registry: widget.registry,
+      actionBarReveal:
+          isLast ? AiActionBarReveal.always : AiActionBarReveal.hover,
+    );
   }
 
   Widget _buildLoadOlderHeader(BuildContext context) {
@@ -235,6 +278,36 @@ class _AiThreadState extends State<AiThread> {
     return const SizedBox.shrink();
   }
 
+  Widget _buildScrollToBottomButton(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final strings = AiMessageStrings.of(context);
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 8,
+      child: Center(
+        child: SelectionContainer.disabled(
+          child: Material(
+            color: scheme.surface,
+            shape: CircleBorder(
+              side: BorderSide(color: scheme.outlineVariant),
+            ),
+            elevation: 2,
+            shadowColor: Colors.black.withValues(alpha: 0.12),
+            child: IconButton(
+              tooltip: strings.scrollToBottom,
+              onPressed: _animateScrollToBottom,
+              icon: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     switch (_status) {
@@ -251,42 +324,52 @@ class _AiThreadState extends State<AiThread> {
         // continuous drag/double-click selection (not per-paragraph islands).
         return SelectionArea(
           contextMenuBuilder: widget.selectionContextMenuBuilder,
-          child: NotificationListener<ScrollNotification>(
-            onNotification: _onScroll,
-            child: ListView.builder(
-              controller: _scrollController,
-              // Horizontal inset is applied per-message so empty margins beside
-              // the column still hit-test the scrollable (wheel / drag scroll).
-              padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
-              itemCount: _messages.length + sentinelCount,
-              itemBuilder: (context, index) {
-                if (widget.hasOlder && index == 0) {
-                  return SelectionContainer.disabled(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: aiTheme.threadHorizontalPadding,
+          child: Stack(
+            children: [
+              NotificationListener<ScrollNotification>(
+                onNotification: _onScroll,
+                child: ListView.builder(
+                  controller: _scrollController,
+                  // Horizontal inset is applied per-message so empty margins beside
+                  // the column still hit-test the scrollable (wheel / drag scroll).
+                  padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
+                  itemCount: _messages.length + sentinelCount,
+                  itemBuilder: (context, index) {
+                    if (widget.hasOlder && index == 0) {
+                      return SelectionContainer.disabled(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: aiTheme.threadHorizontalPadding,
+                          ),
+                          child: _buildLoadOlderHeader(context),
+                        ),
+                      );
+                    }
+                    final messageIndex = widget.hasOlder ? index - 1 : index;
+                    final isLast = messageIndex == _messages.length - 1;
+                    return Align(
+                      alignment: Alignment.topCenter,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: aiTheme.threadHorizontalPadding,
+                        ),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: aiTheme.threadMaxWidth,
+                          ),
+                          child: _buildMessage(
+                            context,
+                            _messages[messageIndex],
+                            isLast: isLast,
+                          ),
+                        ),
                       ),
-                      child: _buildLoadOlderHeader(context),
-                    ),
-                  );
-                }
-                final messageIndex = widget.hasOlder ? index - 1 : index;
-                return Align(
-                  alignment: Alignment.topCenter,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: aiTheme.threadHorizontalPadding,
-                    ),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: aiTheme.threadMaxWidth,
-                      ),
-                      child: _buildMessage(context, _messages[messageIndex]),
-                    ),
-                  ),
-                );
-              },
-            ),
+                    );
+                  },
+                ),
+              ),
+              if (_showScrollToBottom) _buildScrollToBottomButton(context),
+            ],
           ),
         );
     }

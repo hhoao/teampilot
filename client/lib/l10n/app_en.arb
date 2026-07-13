@@ -518,6 +518,7 @@
   "aiMessageExportMarkdown": "Export Markdown",
   "aiMessageIncomplete": "Message incomplete",
   "aiMessageCancelled": "Message cancelled",
+  "aiMessageScrollToBottom": "Scroll to bottom",
   "sessionWorkbenchShowTerminal": "Show terminal",
   "sessionWorkbenchShowHistory": "Show history",
   "sessionReadyTitle": "Ready to chat",

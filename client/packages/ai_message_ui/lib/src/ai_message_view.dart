@@ -174,7 +174,7 @@ class _UserBubble extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
-                        vertical: 8,
+                        vertical: 10,
                       ),
                       child: DefaultTextStyle.merge(
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(

@@ -5,12 +5,12 @@ import 'package:flutter/services.dart';
 import 'strings.dart';
 import 'theme.dart';
 
-/// Reveal policy for History action chrome (touch-friendly by default).
+/// Reveal policy for History action chrome.
 enum AiActionBarReveal {
-  /// Dim until hover / pointer enter (desktop).
+  /// Hidden until hover / pointer enter (non-last messages).
   hover,
 
-  /// Always visible (History default — works on touch).
+  /// Always visible (last message — assistant-ui `autohide="not-last"`).
   always,
 }
 
@@ -57,56 +57,63 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
         child: AnimatedOpacity(
-          opacity: visible ? 1 : 0.35,
+          opacity: visible ? 1 : 0,
           duration: const Duration(milliseconds: 150),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                tooltip: _copied ? strings.copied : strings.copy,
-                visualDensity: VisualDensity.compact,
-                iconSize: 16,
-                color: color,
-                onPressed: plain.isEmpty
-                    ? null
-                    : () async {
-                        await Clipboard.setData(ClipboardData(text: plain));
-                        if (!mounted) return;
-                        setState(() => _copied = true);
-                        await Future<void>.delayed(
-                          const Duration(milliseconds: 1600),
-                        );
-                        if (!mounted) return;
-                        setState(() => _copied = false);
-                      },
-                icon: Icon(
-                  _copied ? Icons.check_rounded : Icons.copy_rounded,
-                  size: 16,
+          child: IgnorePointer(
+            ignoring: !visible,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: _copied ? strings.copied : strings.copy,
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 16,
+                  color: color,
+                  onPressed: plain.isEmpty
+                      ? null
+                      : () async {
+                          await Clipboard.setData(ClipboardData(text: plain));
+                          if (!mounted) return;
+                          setState(() => _copied = true);
+                          await Future<void>.delayed(
+                            const Duration(milliseconds: 1600),
+                          );
+                          if (!mounted) return;
+                          setState(() => _copied = false);
+                        },
+                  icon: Icon(
+                    _copied ? Icons.check_rounded : Icons.copy_rounded,
+                    size: 16,
+                  ),
                 ),
-              ),
-              IconButton(
-                tooltip: _exported ? strings.copied : strings.exportMarkdown,
-                visualDensity: VisualDensity.compact,
-                iconSize: 16,
-                color: color,
-                onPressed: markdown.isEmpty
-                    ? null
-                    : () async {
-                        await Clipboard.setData(ClipboardData(text: markdown));
-                        if (!mounted) return;
-                        setState(() => _exported = true);
-                        await Future<void>.delayed(
-                          const Duration(milliseconds: 1600),
-                        );
-                        if (!mounted) return;
-                        setState(() => _exported = false);
-                      },
-                icon: Icon(
-                  _exported ? Icons.check_rounded : Icons.description_outlined,
-                  size: 16,
+                IconButton(
+                  tooltip: _exported ? strings.copied : strings.exportMarkdown,
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 16,
+                  color: color,
+                  onPressed: markdown.isEmpty
+                      ? null
+                      : () async {
+                          await Clipboard.setData(
+                            ClipboardData(text: markdown),
+                          );
+                          if (!mounted) return;
+                          setState(() => _exported = true);
+                          await Future<void>.delayed(
+                            const Duration(milliseconds: 1600),
+                          );
+                          if (!mounted) return;
+                          setState(() => _exported = false);
+                        },
+                  icon: Icon(
+                    _exported
+                        ? Icons.check_rounded
+                        : Icons.description_outlined,
+                    size: 16,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

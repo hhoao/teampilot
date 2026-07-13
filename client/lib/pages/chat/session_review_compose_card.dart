@@ -8,6 +8,7 @@ import '../../models/skill.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/debounce/debounce.dart';
+import '../../widgets/compose/compose_focus_shell.dart';
 import '../../widgets/compose/compose_model_preset_chip.dart';
 import '../../widgets/compose/compose_permission_chip.dart';
 import '../../widgets/compose/compose_trigger_field.dart';
@@ -123,19 +124,12 @@ class SessionReviewComposeCard extends StatelessWidget {
     final palette = WorkspaceChatLandingPalette(Theme.of(context).colorScheme);
     final spacing = context.appSpacing;
     final error = launchError?.trim();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Material(
+    return ComposeFocusShell(
+      focusNode: focusNode,
+      floating: floating,
       color: palette.elevated,
-      elevation: floating ? 8 : 0,
-      shadowColor: floating
-          ? Colors.black.withValues(alpha: isDark ? 0.45 : 0.14)
-          : Colors.transparent,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: floating ? BorderSide.none : BorderSide(color: palette.border),
-      ),
+      borderColor: palette.border,
       child: Padding(
         padding: EdgeInsets.fromLTRB(
           spacing.lg,

@@ -17,6 +17,7 @@ class AiReasoningPartView extends StatefulWidget {
 
 class _AiReasoningPartViewState extends State<AiReasoningPartView> {
   bool _open = false;
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +25,8 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
     final scheme = theme.colorScheme;
     final aiTheme = AiMessageTheme.of(context);
     final strings = AiMessageStrings.of(context);
-    final triggerColor = aiTheme.resolveToolTrigger(scheme);
+    final baseTrigger = aiTheme.resolveToolTrigger(scheme);
+    final triggerColor = _hovered ? scheme.onSurface : baseTrigger;
 
     return Padding(
       padding: EdgeInsets.only(bottom: aiTheme.partSpacing + 4),
@@ -37,59 +39,76 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SelectionContainer.disabled(
-              child: InkWell(
-                onTap: () => setState(() => _open = !_open),
-                borderRadius: BorderRadius.circular(aiTheme.panelRadius + 2),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.psychology_outlined,
-                        size: 16,
-                        color: triggerColor,
+              child: MouseRegion(
+                onEnter: (_) => setState(() => _hovered = true),
+                onExit: (_) => setState(() => _hovered = false),
+                child: InkWell(
+                  onTap: () => setState(() => _open = !_open),
+                  borderRadius:
+                      BorderRadius.circular(aiTheme.panelRadius + 2),
+                  child: AnimatedScale(
+                    scale: _hovered ? 0.99 : 1,
+                    duration: const Duration(milliseconds: 100),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          strings.reasoning,
-                          style: theme.textTheme.bodySmall?.copyWith(
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.psychology_outlined,
+                            size: 16,
                             color: triggerColor,
-                            fontWeight: FontWeight.w600,
                           ),
-                        ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              strings.reasoning,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: triggerColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          AnimatedRotation(
+                            turns: _open ? 0 : -0.25,
+                            duration: const Duration(milliseconds: 200),
+                            child: Icon(
+                              Icons.expand_more,
+                              size: 16,
+                              color: triggerColor,
+                            ),
+                          ),
+                        ],
                       ),
-                      AnimatedRotation(
-                        turns: _open ? 0 : -0.25,
-                        duration: const Duration(milliseconds: 200),
-                        child: Icon(
-                          Icons.expand_more,
-                          size: 16,
-                          color: triggerColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            if (_open)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 256),
-                  child: SingleChildScrollView(
-                    child: DefaultTextStyle.merge(
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        height: 1.5,
-                      ),
-                      child: AiTextPartView(text: widget.part.text),
                     ),
                   ),
                 ),
               ),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              alignment: Alignment.topCenter,
+              child: _open
+                  ? Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 256),
+                        child: SingleChildScrollView(
+                          child: DefaultTextStyle.merge(
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              height: 1.5,
+                            ),
+                            child: AiTextPartView(text: widget.part.text),
+                          ),
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
           ],
         ),
       ),

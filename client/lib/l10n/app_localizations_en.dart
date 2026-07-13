@@ -1236,6 +1236,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiMessageCancelled => 'Message cancelled';
 
   @override
+  String get aiMessageScrollToBottom => 'Scroll to bottom';
+
+  @override
   String get sessionWorkbenchShowTerminal => 'Show terminal';
 
   @override

@@ -493,6 +493,7 @@
   "aiMessageExportMarkdown": "导出 Markdown",
   "aiMessageIncomplete": "消息未完成",
   "aiMessageCancelled": "消息已取消",
+  "aiMessageScrollToBottom": "滚动到底部",
   "sessionWorkbenchShowTerminal": "显示终端",
   "sessionWorkbenchShowHistory": "显示历史",
   "sessionReadyTitle": "准备开始对话",

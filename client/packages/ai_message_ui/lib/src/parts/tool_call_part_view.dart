@@ -23,6 +23,7 @@ class AiToolCallPartView extends StatefulWidget {
 
 class _AiToolCallPartViewState extends State<AiToolCallPartView> {
   bool _open = false;
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +31,9 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
     final scheme = theme.colorScheme;
     final aiTheme = AiMessageTheme.of(context);
     final strings = AiMessageStrings.of(context);
-    final triggerColor = aiTheme.resolveToolTrigger(scheme);
+    final baseTrigger = aiTheme.resolveToolTrigger(scheme);
+    final triggerColor =
+        _hovered ? scheme.onSurface : baseTrigger;
     final part = widget.part;
     final cancelled = part.isCancelled;
     final bottom = widget.dense ? 2.0 : aiTheme.partSpacing;
@@ -41,91 +44,108 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SelectionContainer.disabled(
-            child: InkWell(
-              onTap: () => setState(() => _open = !_open),
-              borderRadius: BorderRadius.circular(6),
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: widget.dense ? 4 : 6),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _StatusIcon(part: part, color: triggerColor),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text.rich(
-                        TextSpan(
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: triggerColor,
-                            decoration: cancelled
-                                ? TextDecoration.lineThrough
-                                : null,
-                            height: 1.2,
-                          ),
-                          children: [
+            child: MouseRegion(
+              onEnter: (_) => setState(() => _hovered = true),
+              onExit: (_) => setState(() => _hovered = false),
+              child: InkWell(
+                onTap: () => setState(() => _open = !_open),
+                borderRadius: BorderRadius.circular(6),
+                child: AnimatedScale(
+                  scale: _hovered ? 0.99 : 1,
+                  duration: const Duration(milliseconds: 100),
+                  child: Padding(
+                    padding:
+                        EdgeInsets.symmetric(vertical: widget.dense ? 4 : 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _StatusIcon(part: part, color: triggerColor),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text.rich(
                             TextSpan(
-                              text:
-                                  '${cancelled ? strings.cancelledTool : strings.usedTool}: ',
-                            ),
-                            TextSpan(
-                              text: part.toolName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: triggerColor,
+                                decoration: cancelled
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                                height: 1.2,
                               ),
+                              children: [
+                                TextSpan(
+                                  text:
+                                      '${cancelled ? strings.cancelledTool : strings.usedTool}: ',
+                                ),
+                                TextSpan(
+                                  text: part.toolName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 4),
+                        AnimatedRotation(
+                          turns: _open ? 0 : -0.25,
+                          duration: const Duration(milliseconds: 200),
+                          child: Icon(
+                            Icons.expand_more,
+                            size: 16,
+                            color: triggerColor,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 4),
-                    AnimatedRotation(
-                      turns: _open ? 0 : -0.25,
-                      duration: const Duration(milliseconds: 200),
-                      child: Icon(
-                        Icons.expand_more,
-                        size: 16,
-                        color: triggerColor,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-          if (_open)
-            Padding(
-              padding: const EdgeInsets.only(left: 24, top: 4, bottom: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (_hasArgs(part))
-                    _MutedPre(
-                      text: _argsText(part),
-                      color: aiTheme.resolveToolPanel(scheme),
-                      radius: aiTheme.panelRadius,
-                      foreground: scheme.onSurface.withValues(alpha: 0.9),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            alignment: Alignment.topLeft,
+            child: _open
+                ? Padding(
+                    padding:
+                        const EdgeInsets.only(left: 24, top: 4, bottom: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (_hasArgs(part))
+                          _MutedPre(
+                            text: _argsText(part),
+                            color: aiTheme.resolveToolPanel(scheme),
+                            radius: aiTheme.panelRadius,
+                            foreground:
+                                scheme.onSurface.withValues(alpha: 0.9),
+                          ),
+                        if (part.result != null) ...[
+                          if (_hasArgs(part)) const SizedBox(height: 8),
+                          Text(
+                            '${strings.result}:',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: triggerColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          _MutedPre(
+                            text: _stringify(part.result),
+                            color: aiTheme.resolveToolPanel(scheme),
+                            radius: aiTheme.panelRadius,
+                            foreground: part.isError
+                                ? scheme.error
+                                : scheme.onSurface.withValues(alpha: 0.9),
+                          ),
+                        ],
+                      ],
                     ),
-                  if (part.result != null) ...[
-                    if (_hasArgs(part)) const SizedBox(height: 8),
-                    Text(
-                      '${strings.result}:',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: triggerColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    _MutedPre(
-                      text: _stringify(part.result),
-                      color: aiTheme.resolveToolPanel(scheme),
-                      radius: aiTheme.panelRadius,
-                      foreground: part.isError
-                          ? scheme.error
-                          : scheme.onSurface.withValues(alpha: 0.9),
-                    ),
-                  ],
-                ],
-              ),
-            ),
+                  )
+                : const SizedBox.shrink(),
+          ),
         ],
       ),
     );
@@ -159,7 +179,7 @@ class _StatusIcon extends StatelessWidget {
         color: color,
       ),
       AiToolCallStatus.incomplete => Icon(
-        Icons.radio_button_unchecked,
+        Icons.highlight_off,
         size: 16,
         color: color,
       ),
@@ -218,6 +238,7 @@ class _MutedPre extends StatelessWidget {
         padding: const EdgeInsets.all(10),
         child: Text(
           text,
+          softWrap: true,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
             fontFamily: 'monospace',
             color: foreground,

@@ -72,4 +72,49 @@ void main() {
 
     expect(loadOlderCalls, greaterThan(0));
   });
+
+  testWidgets('AiThread shows scroll-to-bottom when scrolled up; tap jumps end', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime();
+    final messages = List.generate(
+      40,
+      (i) => _msg('m$i', 'message line $i\n' * 3),
+    );
+    store.setMessages(messages);
+    final scrollController = ScrollController();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SizedBox(
+          height: 400,
+          child: AiThread(
+            runtime: store,
+            scrollController: scrollController,
+            loadingBuilder: (_) => const Text('LOADING'),
+            emptyBuilder: (_) => const Text('EMPTY'),
+            errorBuilder: (_, msg, retry) => Text('ERR:$msg'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(scrollController.position.maxScrollExtent, greaterThan(0));
+    expect(find.byTooltip('Scroll to bottom'), findsNothing);
+
+    scrollController.jumpTo(0);
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Scroll to bottom'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Scroll to bottom'));
+    await tester.pumpAndSettle();
+
+    expect(
+      scrollController.offset,
+      closeTo(scrollController.position.maxScrollExtent, 1),
+    );
+    expect(find.byTooltip('Scroll to bottom'), findsNothing);
+  });
 }

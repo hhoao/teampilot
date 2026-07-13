@@ -1176,6 +1176,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiMessageCancelled => '消息已取消';
 
   @override
+  String get aiMessageScrollToBottom => '滚动到底部';
+
+  @override
   String get sessionWorkbenchShowTerminal => '显示终端';
 
   @override

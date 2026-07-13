@@ -169,4 +169,95 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('输出:'), findsOneWidget);
   });
+
+  testWidgets('tool expand uses AnimatedSize; long args soft-wrap', (
+    tester,
+  ) async {
+    final long = 'x' * 400;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 280,
+            child: AiToolCallPartView(
+              part: AiToolCallPart(
+                toolCallId: '1',
+                toolName: 'Echo',
+                argsText: long,
+                result: 'ok',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(AnimatedSize), findsOneWidget);
+    await tester.tap(find.textContaining('Used tool:'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('xxx'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('action bar hover reveal starts fully hidden', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiMessageView(
+            actionBarReveal: AiActionBarReveal.hover,
+            message: AiMessage(
+              id: 'a1',
+              role: AiRole.assistant,
+              parts: const [AiTextPart(text: 'hello')],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final opacity = tester.widget<AnimatedOpacity>(
+      find.descendant(
+        of: find.byType(AiMessageActionBar),
+        matching: find.byType(AnimatedOpacity),
+      ),
+    );
+    expect(opacity.opacity, equals(0));
+  });
+
+  testWidgets('AiThread last message uses always reveal; earlier uses hover', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages([
+        AiMessage(
+          id: '1',
+          role: AiRole.assistant,
+          parts: const [AiTextPart(text: 'first')],
+        ),
+        AiMessage(
+          id: '2',
+          role: AiRole.assistant,
+          parts: const [AiTextPart(text: 'last')],
+        ),
+      ]);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiThread(
+            runtime: store,
+            loadingBuilder: (_) => const SizedBox.shrink(),
+            emptyBuilder: (_) => const SizedBox.shrink(),
+            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final views = tester.widgetList<AiMessageView>(find.byType(AiMessageView)).toList();
+    expect(views, hasLength(2));
+    expect(views[0].actionBarReveal, AiActionBarReveal.hover);
+    expect(views[1].actionBarReveal, AiActionBarReveal.always);
+  });
 }

@@ -450,7 +450,7 @@ packages:
       path: "packages/flutter_markdown_plus"
       relative: true
     source: path
-    version: "1.0.13"
+    version: "1.0.15"
   flutter_native_splash:
     dependency: "direct main"
     description:
