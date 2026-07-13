@@ -1,7 +1,7 @@
 # Shell Script Terminal Run (IDEA-aligned)
 
 **Date:** 2026-07-13  
-**Status:** Draft  
+**Status:** Approved (spec review)  
 **Depends on:** [2026-07-11-workspace-run-platform-design.md](./2026-07-11-workspace-run-platform-design.md)  
 **Owner decision:** Replace the built-in Run type `process` with IDEA-style **Shell Script**. Default execution injects into the **workspace Terminal** (interactive). Keep a non-terminal path when `executeInTerminal` is off. Extension-contributed `launch-type`s remain the path for all other runtimes. Prefer IDEA field names and UX over preserving `process` as a user-facing type.
 
