@@ -10,6 +10,7 @@ import '../services/run/launch_adapter_protocol.dart';
 import '../services/run/launch_config_store.dart';
 import '../services/run/process_launch_schema.dart';
 import '../services/run/run_platform.dart';
+import '../services/run/shell_script_launch_schema.dart';
 
 /// UI state for the per-workspace Run platform.
 class RunState extends Equatable {
@@ -479,11 +480,24 @@ class RunCubit extends Cubit<RunState> {
         .where(
           (item) =>
               item.owner == owned.owner &&
-              item.configuration.type == owned.configuration.type &&
+              _launchTypesMatch(
+                item.configuration.type,
+                owned.configuration.type,
+              ) &&
               item.configuration.name == owned.configuration.name,
         )
         .firstOrNull;
     return byIdentity?.selectionKey;
+  }
+
+  /// `process` migrates to `shellScript` on read; treat them as the same identity.
+  static bool _launchTypesMatch(String loaded, String saved) {
+    if (loaded == saved) return true;
+    const aliases = {
+      ShellScriptLaunchSchema.processAlias,
+      ShellScriptLaunchSchema.typeName,
+    };
+    return aliases.contains(loaded) && aliases.contains(saved);
   }
 
   Future<void> configureAction({

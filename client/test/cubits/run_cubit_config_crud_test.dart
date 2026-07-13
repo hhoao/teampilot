@@ -76,12 +76,25 @@ class _FakeProcessLauncher implements RunProcessLauncher {
 }
 
 class _FakeAdapterLauncher implements RunAdapterLauncher {
+  _FakeAdapterLauncher({this.fallback});
+
+  /// Used when loaded configs migrate `process` → `shellScript` (adapter path).
+  final RunProcessLauncher? fallback;
+
   @override
   Future<RunLaunchHandle> launch({
     required String sessionId,
     required OwnedLaunchConfiguration owned,
     required void Function(ProcessRunOutput output) onOutput,
   }) {
+    final delegate = fallback;
+    if (delegate != null) {
+      return delegate.launch(
+        sessionId: sessionId,
+        owned: owned,
+        onOutput: onOutput,
+      );
+    }
     throw UnimplementedError();
   }
 }
@@ -383,7 +396,8 @@ void main() {
     final platform = _StoreBackedPlatform(
       sessionManager: RunSessionManager(
         executor: launcher,
-        adapters: _FakeAdapterLauncher(),
+        // process JSON migrates to shellScript on load → adapter path
+        adapters: _FakeAdapterLauncher(fallback: launcher),
       ),
     );
     await platform.seed(_processConfig());

@@ -85,20 +85,27 @@ void main() {
     const config = LaunchConfiguration(
       id: 'api',
       name: 'API',
-      type: 'process',
-      command: 'npm',
-      args: ['run', 'dev'],
+      type: 'shellScript',
+      extras: {
+        'execute': 'scriptText',
+        'scriptText': 'npm run dev',
+      },
     );
 
     await store.upsertConfiguration(folder: folderA, configuration: config);
     final listed = await store.listConfigurations(folders: [folderA]);
     expect(listed.single.configuration, config);
 
-    final updated = config.copyWith(command: 'pnpm');
+    final updated = config.copyWith(
+      extras: {
+        'execute': 'scriptText',
+        'scriptText': 'pnpm run dev',
+      },
+    );
     await store.upsertConfiguration(folder: folderA, configuration: updated);
     final relisted = await store.listConfigurations(folders: [folderA]);
     expect(relisted, hasLength(1));
-    expect(relisted.single.configuration.command, 'pnpm');
+    expect(relisted.single.configuration.extras['scriptText'], 'pnpm run dev');
   });
 
   test('writeDocument round-trips full document', () async {
@@ -108,8 +115,11 @@ void main() {
         LaunchConfiguration(
           id: 'one',
           name: 'One',
-          type: 'process',
-          command: 'true',
+          type: 'shellScript',
+          extras: {
+            'execute': 'scriptText',
+            'scriptText': 'true',
+          },
         ),
       ],
       compounds: [
@@ -127,6 +137,7 @@ void main() {
     );
     expect(parsed.version, 1);
     expect(parsed.configurations.single.id, 'one');
+    expect(parsed.configurations.single.type, 'shellScript');
     expect(parsed.compounds.single.configurationIds, ['one']);
   });
 
@@ -139,8 +150,11 @@ void main() {
       configuration: const LaunchConfiguration(
         id: 'api',
         name: 'API',
-        type: 'process',
-        command: 'echo',
+        type: 'shellScript',
+        extras: {
+          'execute': 'scriptText',
+          'scriptText': 'echo',
+        },
       ),
     );
     await store.deleteConfiguration(folder: folder, id: 'api');
