@@ -76,7 +76,7 @@ class AppTextarea extends StatefulWidget {
     this.resizeHandleBuilder,
   }) : assert(
          initialValue == null || controller == null,
-         'Either initialValue or controller must be specified',
+         'Cannot provide both initialValue and controller',
        );
 
   final String? initialValue;
