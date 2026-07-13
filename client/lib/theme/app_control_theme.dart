@@ -49,13 +49,14 @@ final class AppControlMetrics {
   }
 }
 
-/// Shared control tokens: input + default (medium) button track, plus S/M/L
-/// button presets and a non-pill corner radius.
+/// Shared control tokens: button S/M/L presets, a separate outline-input
+/// track, and a non-pill corner radius.
 @immutable
 final class AppControlTheme extends ThemeExtension<AppControlTheme> {
   const AppControlTheme({
     required this.scale,
     required this.radius,
+    required this.input,
     required this.small,
     required this.medium,
     required this.large,
@@ -66,11 +67,14 @@ final class AppControlTheme extends ThemeExtension<AppControlTheme> {
   /// Corner radius for outline inputs and standard buttons (not stadium/pill).
   final double radius;
 
+  /// Outline [TextField] content insets and height — separate from buttons.
+  final AppControlMetrics input;
+
   final AppControlMetrics small;
   final AppControlMetrics medium;
   final AppControlMetrics large;
 
-  /// Default painted height (medium) — inputs and theme buttons.
+  /// Default painted height (medium button).
   double get height => medium.height;
   double get minWidth => medium.minWidth;
   double get horizontalPadding => medium.horizontalPadding;
@@ -78,12 +82,24 @@ final class AppControlTheme extends ThemeExtension<AppControlTheme> {
 
   // Baselines at scale 1.0 — keep radius well below height/2 so inputs
   // are rounded rects, not stadium/pill.
+  // Button medium sits between the old compact 24 and the input track (32).
   static const double radiusBase = 8;
-  static const double heightBase = 24;
+  static const double heightBase = 26;
   static const double minWidthBase = 64;
   static const double horizontalPaddingBase = 8;
   static const double verticalPaddingBase = 8;
 
+  /// Input track — taller than [heightBase] so contentPadding can paint.
+  static const double inputHeightBase = 32;
+  static const double inputHorizontalPaddingBase = 10;
+  static const double inputVerticalPaddingBase = 8;
+
+  static const AppControlMetrics inputBase = AppControlMetrics(
+    height: inputHeightBase,
+    minWidth: minWidthBase,
+    horizontalPadding: inputHorizontalPaddingBase,
+    verticalPadding: inputVerticalPaddingBase,
+  );
   static const AppControlMetrics smallBase = AppControlMetrics(
     height: 20,
     minWidth: 48,
@@ -108,6 +124,7 @@ final class AppControlTheme extends ThemeExtension<AppControlTheme> {
     return AppControlTheme(
       scale: m,
       radius: radiusBase * m,
+      input: inputBase.scaleBy(m),
       small: smallBase.scaleBy(m),
       medium: mediumBase.scaleBy(m),
       large: largeBase.scaleBy(m),
@@ -128,12 +145,14 @@ final class AppControlTheme extends ThemeExtension<AppControlTheme> {
   AppControlTheme copyWith({
     double? scale,
     double? radius,
+    AppControlMetrics? input,
     AppControlMetrics? small,
     AppControlMetrics? medium,
     AppControlMetrics? large,
   }) => AppControlTheme(
     scale: scale ?? this.scale,
     radius: radius ?? this.radius,
+    input: input ?? this.input,
     small: small ?? this.small,
     medium: medium ?? this.medium,
     large: large ?? this.large,
@@ -145,6 +164,7 @@ final class AppControlTheme extends ThemeExtension<AppControlTheme> {
     return AppControlTheme(
       scale: lerpDouble(scale, other.scale, t)!,
       radius: lerpDouble(radius, other.radius, t)!,
+      input: AppControlMetrics.lerp(input, other.input, t)!,
       small: AppControlMetrics.lerp(small, other.small, t)!,
       medium: AppControlMetrics.lerp(medium, other.medium, t)!,
       large: AppControlMetrics.lerp(large, other.large, t)!,

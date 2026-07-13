@@ -57,12 +57,13 @@ AppButtonThemes buildAppButtonThemes({
   );
 }
 
-/// ThemeData uses [VisualDensity.compact] globally (-8px vertical). Pin buttons
-/// to [VisualDensity.standard] so painted height equals metrics.height and
-/// stays aligned with outline inputs (which ignore button density).
+/// Compact button track (independent of [AppControlTheme.input]).
 ///
-/// Labels/icons use [ColorScheme.onSurface]. Local destructive styles may
-/// still override. Shape is a modest rounded rect — not stadium/pill.
+/// Horizontal padding only; [minimumSize]/[maximumSize] height from button
+/// metrics. Outline inputs use a taller [AppControlTheme.input] track so their
+/// contentPadding is not collapsed.
+///
+/// Labels/icons use [ColorScheme.onSurface]. Shape is a modest rounded rect.
 ButtonStyle _buttonGeometry({
   required AppControlMetrics metrics,
   required double radius,
@@ -71,6 +72,9 @@ ButtonStyle _buttonGeometry({
   return ButtonStyle(
     minimumSize: WidgetStatePropertyAll(
       Size(metrics.minWidth, metrics.height),
+    ),
+    maximumSize: WidgetStatePropertyAll(
+      Size(double.infinity, metrics.height),
     ),
     padding: WidgetStatePropertyAll(
       EdgeInsets.symmetric(horizontal: metrics.horizontalPadding),

@@ -81,8 +81,8 @@ TextStyle appTextFieldStyle(TextTheme textTheme) {
   return textTheme.bodyLarge ?? textTheme.bodyMedium ?? const TextStyle();
 }
 
-/// Global [InputDecorationTheme] for workspace text fields and dropdowns.
-InputDecorationTheme buildAppOutlineInputDecorationTheme({
+/// Global [InputDecorationThemeData] for workspace text fields and dropdowns.
+InputDecorationThemeData buildAppOutlineInputDecorationTheme({
   required ColorScheme colorScheme,
   required TextTheme textTheme,
   required AppControlTheme control,
@@ -110,18 +110,20 @@ InputDecorationTheme buildAppOutlineInputDecorationTheme({
     fallback: AppTypographyScale.standard.bodySmall,
   );
 
-  return InputDecorationTheme(
+  return InputDecorationThemeData(
     filled: true,
     fillColor: colorScheme.workspaceCard,
     isDense: true,
-    // Horizontal from control; keep vertical padding modest so the tight
-    // height constraint can actually paint at [control.height] (minHeight
-    // alone lets content grow past the shared button track).
+    // Match button geometry density so outline height agrees with the
+    // shared track (ThemeData.compact alone shrinks decorator contentHeight).
+    visualDensity: VisualDensity.compact,
+    // Input paddings/height stay on [control.input] (32), independent of
+    // button medium ([AppControlTheme.heightBase]).
     contentPadding: EdgeInsets.symmetric(
-      horizontal: control.horizontalPadding,
-      vertical: (control.verticalPadding / 2).clamp(2.0, 6.0),
+      horizontal: control.input.horizontalPadding,
+      vertical: control.input.verticalPadding,
     ),
-    constraints: BoxConstraints.tightFor(height: control.height),
+    constraints: BoxConstraints.tightFor(height: control.input.height),
     hintStyle: hintStyle,
     labelStyle: textTheme.bodyMedium?.copyWith(color: labelColor),
     floatingLabelStyle: textTheme.bodyMedium?.copyWith(

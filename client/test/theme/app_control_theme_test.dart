@@ -10,6 +10,12 @@ void main() {
     expect(c.horizontalPadding, AppControlTheme.horizontalPaddingBase);
     expect(c.verticalPadding, AppControlTheme.verticalPaddingBase);
     expect(c.radius, AppControlTheme.radiusBase);
+    expect(c.input.height, AppControlTheme.inputHeightBase);
+    expect(
+      c.input.horizontalPadding,
+      AppControlTheme.inputHorizontalPaddingBase,
+    );
+    expect(c.input.verticalPadding, AppControlTheme.inputVerticalPaddingBase);
     expect(c.small.height, AppControlTheme.smallBase.height);
     expect(c.large.height, AppControlTheme.largeBase.height);
   });
@@ -18,6 +24,7 @@ void main() {
     final c = AppControlTheme.fromScale(AppTypographyScale.comfortable);
     final m = AppTypographyScale.comfortable.multiplier;
     expect(c.height, AppControlTheme.heightBase * m);
+    expect(c.input.height, AppControlTheme.inputHeightBase * m);
     expect(c.radius, AppControlTheme.radiusBase * m);
     expect(c.small.height, AppControlTheme.smallBase.height * m);
     expect(c.large.height, AppControlTheme.largeBase.height * m);
