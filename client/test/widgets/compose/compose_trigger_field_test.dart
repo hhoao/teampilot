@@ -129,4 +129,37 @@ void main() {
       expect(submitCount, 1);
     },
   );
+
+  testWidgets('typing works after dragging the resize grip', (tester) async {
+    final bus = CommandBus();
+    final controller = TextEditingController();
+    final focusNode = FocusNode();
+    addTearDown(() {
+      controller.dispose();
+      focusNode.dispose();
+    });
+
+    await pumpField(
+      tester,
+      bus: bus,
+      controller: controller,
+      focusNode: focusNode,
+      onSubmit: () {},
+    );
+
+    final grip = find.byKey(const Key('app-textarea-resize-grip'));
+    expect(grip, findsOneWidget);
+
+    await tester.drag(grip, const Offset(0, 24));
+    await tester.pump();
+
+    focusNode.requestFocus();
+    await tester.pump();
+
+    await tester.enterText(find.byType(TextField), 'hello after resize');
+    await tester.pump();
+
+    expect(controller.text, 'hello after resize');
+    expect(find.text('hello after resize'), findsWidgets);
+  });
 }
