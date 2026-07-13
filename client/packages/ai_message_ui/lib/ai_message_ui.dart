@@ -1,5 +1,10 @@
 /// Flutter Thread/Message/Part UI for ai_message_core.
 library ai_message_ui;
 
+export 'src/ai_message_parts.dart';
+export 'src/ai_message_view.dart';
 export 'src/ai_thread.dart';
+export 'src/parts/reasoning_part_view.dart';
+export 'src/parts/text_part_view.dart';
+export 'src/parts/tool_call_part_view.dart';
 export 'src/theme.dart';

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
+import 'ai_message_view.dart';
+
 /// Binds an [AiThreadRuntime] and renders status / message list chrome.
 ///
 /// Load-older scroll behavior is owned here (ported from session history
@@ -201,14 +203,7 @@ class _AiThreadState extends State<AiThread> {
   Widget _buildMessage(BuildContext context, AiMessage message) {
     final builder = widget.messageBuilder;
     if (builder != null) return builder(context, message);
-    final text = message.parts
-        .whereType<AiTextPart>()
-        .map((p) => p.text)
-        .join();
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Text(text),
-    );
+    return AiMessageView(message: message);
   }
 
   Widget _buildLoadOlderHeader(BuildContext context) {
