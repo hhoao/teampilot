@@ -60,6 +60,7 @@ Tests under `client/test/widgets/textarea/`.
 - `minHeight` (default ~80), `maxHeight` (default ~500), `resizable` (default `true`), `onHeightChanged`.
 - `resizeHandleBuilder` optional; default grip in bottom-trailing corner.
 - Exposes derived `lineCount` (clamped) to the child via a small callback/builder or inherited value so content can set `minLines`/`maxLines` equal to that count (same approach as `ShadTextarea` → `ShadInput`).
+- Owns height/resize chrome only. Outline / `InputDecoration` overrides belong on the **`AppTextarea`** path; compose keeps borderless `InlineTokenTextField` decoration under `ComposeFocusShell`.
 - Does **not** depend on `ShadTheme`.
 
 ### `AppTextarea`
@@ -105,6 +106,7 @@ Replace multiline editable `TextField` / `TextFormField` usages with `AppTextare
 | `home_workspace_team_generate_section.dart` | team gen description |
 | `launch_config_schema_form.dart` | multiline string fields / `scriptText` |
 | `git_source_control_panel.dart` | commit message |
+| `ssh_profile_setup_page.dart` | private key (`maxLines: 4`) |
 | `compose_trigger_field.dart` + `inline_token_text_field.dart` | shell integration as above |
 
 Leave single-line fields unchanged. Prefer sensible `minHeight`/`maxHeight` per surface (JSON editor taller than notes).
