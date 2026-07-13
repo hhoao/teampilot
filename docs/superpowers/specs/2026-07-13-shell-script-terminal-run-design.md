@@ -148,7 +148,7 @@ On load, if `type == "process"`, normalize in memory (and on next user save writ
    - `interpreterPath` = platform default shell  
    - `interpreterOptions` = `""`  
    - `scriptOptions` = `""`  
-   - Non-terminal execution path may still spawn argv directly (`command` + `args`) without going through `sh -c`, as long as observable behavior matches the old `process` runner.
+   - Non-terminal and terminal execution both run this as **shell/`scriptText`** (e.g. default shell `-c` with the joined line). Do **not** keep a parallel argv-direct path after migration.
 
 3. Drop obsolete keys (`command`, `args`, `shell`) from the normalized model; do not leave dual representations.
 
@@ -177,9 +177,10 @@ Terminal-backed Shell Script runs **always** register a lightweight session in `
 
 | State | When |
 |-------|------|
-| `starting` | Session registered until inject succeeds (or fails) |
+| `starting` | Session registered until inject succeeds or fails |
 | `running` | After successful inject |
-| `exited` | Stop (Ctrl+C inject), tab disposed while bound, connect/inject failure after start, or explicit cancel |
+| `exited` | User Stop (Ctrl+C inject), tab disposed while bound, or explicit cancel while running |
+| `failed` | Connect failure, transport-ready timeout, or inject failure — use existing `RunSessionStatus.failed` + `errorMessage` (same Run panel / toolbar error surfacing as process launches) |
 
 v1 does **not** observe script exit codes from the PTY; the shell tab may keep running after the script finishes while the lightweight `RunSession` remains `running` until Stop or tab close. Document this IDEA-vs-process difference in UI copy if needed (optional). Optional later: detect idle prompt — out of scope.
 
@@ -271,10 +272,11 @@ Updates the Run platform built-in story (parent doc’s “built-in `process`”
 |----------|----------|
 | Missing script path / empty script text | Schema validation blocks Run |
 | Interpreter missing on target | Fail with clear l10n; no silent fallback beyond documented default |
-| Terminal connect failed | Fail lightweight session; show same class of error as manual Terminal open |
-| Transport not ready within 30s | Fail lightweight session; no inject |
+| Terminal connect failed | Lightweight session → `failed` + `errorMessage`; same class of error as manual Terminal open |
+| Transport not ready within 30s | Lightweight session → `failed`; no inject |
+| Inject write failed | Lightweight session → `failed` |
 | Tab closed while bound + running | Clear binding; mark session `exited` |
-| Non-terminal spawn failure | Existing Run session failed path |
+| Non-terminal spawn failure | Existing Run session `failed` path |
 
 ## Testing
 
