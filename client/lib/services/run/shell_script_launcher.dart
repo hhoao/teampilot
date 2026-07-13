@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../models/run/launch_configuration.dart';
+import '../../models/run/run_ui_intent.dart';
 import '../terminal/workspace_terminal_run_service.dart';
 import 'launch_type_normalize.dart';
 import 'launch_variable_expander.dart';
@@ -19,19 +20,19 @@ class RunShellScriptLauncher implements RunProcessLauncher {
     required ProcessRunExecutor processExecutor,
     RunTargetResolver? resolver,
     ShellScriptCommandBuilder? commandBuilder,
-    void Function()? emitUiIntent,
+    void Function(RunUiIntent intent)? emitUiIntent,
   }) : _terminalRunDeps = terminalRunDeps,
        _processExecutor = processExecutor,
        _resolver = resolver ?? const RunTargetResolver(),
        _commandBuilder = commandBuilder ?? const ShellScriptCommandBuilder(),
-       _emitUiIntent = emitUiIntent ?? (() {});
+       _emitUiIntent = emitUiIntent ?? ((_) {});
 
   final String workspaceId;
   final TerminalRunDepsResolver _terminalRunDeps;
   final ProcessRunExecutor _processExecutor;
   final RunTargetResolver _resolver;
   final ShellScriptCommandBuilder _commandBuilder;
-  final void Function() _emitUiIntent;
+  final void Function(RunUiIntent intent) _emitUiIntent;
 
   @override
   Future<RunLaunchHandle> launch({
@@ -109,8 +110,14 @@ class RunShellScriptLauncher implements RunProcessLauncher {
     );
     deps.runService.inject(entry, line);
 
-    // Task 8: activate/focus Terminal via RunUiIntent. No-op until dock wires it.
-    _emitUiIntent();
+    _emitUiIntent(
+      RunUiIntent(
+        surface: RunToolSurface.terminal,
+        activateToolWindow: shell.activateToolWindow,
+        focusToolWindow: shell.focusToolWindow,
+        terminalEntryId: entry.id,
+      ),
+    );
 
     final exitCompleter = Completer<int>();
     return RunLaunchHandle(
@@ -141,6 +148,13 @@ class RunShellScriptLauncher implements RunProcessLauncher {
       env: invocation.env,
       shell: invocation.shell,
       onOutput: onOutput,
+    );
+    _emitUiIntent(
+      RunUiIntent(
+        surface: RunToolSurface.run,
+        activateToolWindow: shell.activateToolWindow,
+        focusToolWindow: shell.focusToolWindow,
+      ),
     );
     return RunLaunchHandle(exitCode: result.exitCode, stop: result.stop);
   }

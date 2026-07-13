@@ -5,6 +5,7 @@ import 'package:teampilot/cubits/run_cubit.dart';
 import 'package:teampilot/models/run/launch_config_document.dart';
 import 'package:teampilot/models/run/launch_configuration.dart';
 import 'package:teampilot/models/run/run_session.dart';
+import 'package:teampilot/models/run/run_ui_intent.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/run/launch_adapter_protocol.dart';
 import 'package:teampilot/services/run/launch_config_store.dart';
@@ -519,6 +520,28 @@ void main() {
 
     expect(platform.persistConfigurationCalls, 0);
     expect(cubit.state.errorMessage, contains('device'));
+    await cubit.close();
+  });
+
+  test('publishUiIntent broadcasts to uiIntents listeners', () async {
+    final cubit = RunCubit(
+      platform: FakeRunPlatform(),
+      folders: const [_folder],
+    );
+    final received = <RunUiIntent>[];
+    final sub = cubit.uiIntents.listen(received.add);
+
+    const intent = RunUiIntent(
+      surface: RunToolSurface.terminal,
+      activateToolWindow: true,
+      focusToolWindow: false,
+      terminalEntryId: 'entry-1',
+    );
+    cubit.publishUiIntent(intent);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(received, [intent]);
+    await sub.cancel();
     await cubit.close();
   });
 }

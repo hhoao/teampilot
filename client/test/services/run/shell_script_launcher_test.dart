@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/run/launch_configuration.dart';
+import 'package:teampilot/models/run/run_ui_intent.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_terminal_session_spec.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
@@ -193,9 +194,11 @@ void main() {
   });
 
   test('terminal branch opens, waits, injects; stop interrupts', () async {
+    final intents = <RunUiIntent>[];
     final launcher = RunShellScriptLauncher(
       workspaceId: 'ws-1',
       terminalRunDeps: depsResolver,
+      emitUiIntent: intents.add,
       processExecutor: ProcessRunExecutor(
         spawner:
             ({
@@ -235,6 +238,14 @@ void main() {
     expect(runService.injectCalls, 1);
     expect(runService.lastInjectLine, "cd '/proj' && '/bin/bash' -c 'echo hi'");
     expect(runService.registeredSessions['sess-1'], 'entry-1');
+    expect(intents, [
+      const RunUiIntent(
+        surface: RunToolSurface.terminal,
+        activateToolWindow: true,
+        focusToolWindow: false,
+        terminalEntryId: 'entry-1',
+      ),
+    ]);
 
     var exitCompleted = false;
     unawaited(handle.exitCode.then((_) => exitCompleted = true));
@@ -247,10 +258,12 @@ void main() {
 
   test('non-terminal branch delegates to ProcessRunExecutor', () async {
     final spawned = <Map<String, Object?>>[];
+    final intents = <RunUiIntent>[];
     final processHandle = _RecordingProcessHandle();
     final launcher = RunShellScriptLauncher(
       workspaceId: 'ws-1',
       terminalRunDeps: depsResolver,
+      emitUiIntent: intents.add,
       processExecutor: ProcessRunExecutor(
         spawner:
             ({
@@ -281,6 +294,8 @@ void main() {
           'interpreterPath': '/bin/bash',
           'cwd': '/proj',
           'executeInTerminal': false,
+          'activateToolWindow': false,
+          'focusToolWindow': true,
         },
       ),
       onOutput: (_) {},
@@ -293,6 +308,13 @@ void main() {
     final args = spawned.single['arguments']! as List<String>;
     expect(args.first, '-c');
     expect(args[1], contains("./a.sh"));
+    expect(intents, [
+      const RunUiIntent(
+        surface: RunToolSurface.run,
+        activateToolWindow: false,
+        focusToolWindow: true,
+      ),
+    ]);
 
     processHandle.exit.complete(0);
     expect(await handle.exitCode, 0);

@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/run/launch_configuration.dart';
 import '../models/run/run_session.dart';
+import '../models/run/run_ui_intent.dart';
 import '../models/workspace_folder.dart';
 import '../services/run/launch_adapter_protocol.dart';
 import '../services/run/launch_config_store.dart';
@@ -116,9 +117,21 @@ class RunCubit extends Cubit<RunState> {
 
   final RunPlatformApi _platform;
   final List<WorkspaceFolder> _folders;
+  final StreamController<RunUiIntent> _uiIntentController =
+      StreamController<RunUiIntent>.broadcast();
 
   RunPlatformApi get platform => _platform;
   List<WorkspaceFolder> get folders => _folders;
+
+  /// Dock activation / focus requests from Shell Script launches.
+  Stream<RunUiIntent> get uiIntents => _uiIntentController.stream;
+
+  /// Sink used by [RunShellScriptLauncher] via the platform factory.
+  void publishUiIntent(RunUiIntent intent) {
+    if (!_uiIntentController.isClosed) {
+      _uiIntentController.add(intent);
+    }
+  }
 
   StreamSubscription<List<RunSession>>? _sessionsSub;
   StreamSubscription<List<LaunchAdapterConfigurationEntry>>? _actionsSub;
@@ -665,6 +678,7 @@ class RunCubit extends Cubit<RunState> {
     sessions?.cancel();
     actions?.cancel();
     await options?.cancel();
+    await _uiIntentController.close();
     return super.close();
   }
 }

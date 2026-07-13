@@ -56,6 +56,7 @@ class WorkspaceRunRegistry {
       try {
         final platform = await _platformFactory.create(
           workspaceId: workspaceId,
+          emitUiIntent: cubit.publishUiIntent,
         );
         proxy.bind(platform);
         if (!cubit.isClosed) await cubit.load();

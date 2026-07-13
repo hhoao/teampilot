@@ -6,6 +6,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/run_cubit.dart';
 import '../l10n/l10n_extensions.dart';
+import '../models/run/run_session.dart';
+import '../models/run/run_ui_intent.dart';
+import '../services/run/launch_type_normalize.dart';
+import '../services/run/shell_script_configuration.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 import 'run/run_panel.dart';
@@ -41,12 +45,61 @@ class WorkspaceBottomDock extends StatefulWidget {
 class _WorkspaceBottomDockState extends State<WorkspaceBottomDock> {
   late WorkspaceBottomDockTab _tab = widget.initialTab;
   Set<String> _seenSessionIds = {};
+  StreamSubscription<RunUiIntent>? _uiIntentSub;
+  RunCubit? _subscribedCubit;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final cubit = context.read<RunCubit>();
+    if (identical(_subscribedCubit, cubit)) return;
+    _uiIntentSub?.cancel();
+    _subscribedCubit = cubit;
+    _uiIntentSub = cubit.uiIntents.listen(_onUiIntent);
+  }
+
+  @override
+  void dispose() {
+    _uiIntentSub?.cancel();
+    _uiIntentSub = null;
+    _subscribedCubit = null;
+    super.dispose();
+  }
+
+  void _onUiIntent(RunUiIntent intent) {
+    if (!mounted) return;
+
+    if (intent.activateToolWindow) {
+      final layout = context.read<LayoutCubit>();
+      if (!layout.state.preferences.workspaceTerminalVisible) {
+        unawaited(layout.setWorkspaceTerminalVisible(true));
+      }
+    }
+
+    final nextTab = intent.surface == RunToolSurface.terminal
+        ? WorkspaceBottomDockTab.terminal
+        : WorkspaceBottomDockTab.run;
+    if (_tab != nextTab) {
+      setState(() => _tab = nextTab);
+    }
+
+    // v1: openForRun already selects the entry via group.activeId.
+    // A TerminalView focus hook can land with focusToolWindow later.
+  }
 
   void _onSessionsChanged(RunState state) {
     final ids = state.sessions.map((s) => s.id).toSet();
     final added = ids.difference(_seenSessionIds);
     _seenSessionIds = ids;
     if (added.isEmpty) return;
+
+    // Terminal-backed Shell Script sessions activate via [RunUiIntent]; do not
+    // force the Run tab. Adapter / non-terminal sessions still open Run.
+    final shouldSwitchToRun = state.sessions.any(
+      (session) =>
+          added.contains(session.id) && _sessionUsesRunPanel(session),
+    );
+    if (!shouldSwitchToRun) return;
 
     if (_tab != WorkspaceBottomDockTab.run) {
       setState(() => _tab = WorkspaceBottomDockTab.run);
@@ -116,6 +169,15 @@ class _WorkspaceBottomDockState extends State<WorkspaceBottomDock> {
       ),
     );
   }
+}
+
+/// Whether a new session should auto-switch the dock to the Run tab.
+bool _sessionUsesRunPanel(RunSession session) {
+  if (!isBuiltInShellType(session.owned.configuration.type)) return true;
+  final shell = ShellScriptConfiguration.fromLaunchConfiguration(
+    session.owned.configuration,
+  );
+  return !shell.executeInTerminal;
 }
 
 class _DockSegment extends StatelessWidget {

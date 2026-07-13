@@ -1,4 +1,5 @@
 import '../../models/extension_manifest.dart';
+import '../../models/run/run_ui_intent.dart';
 import '../../models/ssh_profile.dart';
 import '../../models/workspace_folder.dart';
 import '../../repositories/extension_repository.dart';
@@ -59,7 +60,10 @@ class WorkspaceRunPlatformFactory {
 
   Filesystem get _filesystem => _fs ?? AppStorage.fs;
 
-  Future<RunPlatform> create({required String workspaceId}) async {
+  Future<RunPlatform> create({
+    required String workspaceId,
+    void Function(RunUiIntent intent)? emitUiIntent,
+  }) async {
     final enabled = await _loadEnabledManifests(workspaceId);
     final pathFor = _extensionPathFor ?? _resolveExtensionPath;
     final registry = LaunchTypeRegistry.withBuiltIns();
@@ -80,6 +84,7 @@ class WorkspaceRunPlatformFactory {
         workspaceId: workspaceId,
         terminalRunDeps: terminalRunDeps,
         processExecutor: executor,
+        emitUiIntent: emitUiIntent,
       ),
       launchAdapterClient: adapterClient,
       resolveLaunchType: registry.get,
