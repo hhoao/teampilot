@@ -18,8 +18,6 @@ import '../capabilities/headless_run_capability.dart';
 import '../capabilities/provider_credential_capability.dart';
 import '../capabilities/provider_model_capability.dart';
 import '../capabilities/session_resume_capability.dart';
-import '../capabilities/session_history_capability.dart';
-import '../capabilities/history/codex_session_history.dart';
 import '../capabilities/resume/codex_resume_strategy.dart';
 import '../capabilities/headless_provision_capability.dart';
 import '../config_profile/codex_config_profile_capability.dart';
@@ -44,7 +42,6 @@ final class CodexCliTool implements CliToolDefinition {
     this.launchArgs = const CodexCliToolAdapter(),
     this.configProfile = const CodexConfigProfileCapability(),
     this.sessionResume = const CodexResumeStrategy(),
-    this.sessionHistory = const CodexSessionHistory(),
     this.executableResolver = const CodexExecutableResolver(),
     this.installer = const CodexInstallerCapability(),
     this.presence = const CodexPresence(),
@@ -70,7 +67,6 @@ final class CodexCliTool implements CliToolDefinition {
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
   final SessionResumeCapability sessionResume;
-  final SessionHistoryCapability sessionHistory;
   final ExecutableResolverCapability executableResolver;
   final InstallerCapability installer;
   final PresenceCapability presence;
@@ -102,7 +98,6 @@ final class CodexCliTool implements CliToolDefinition {
     launchArgs,
     configProfile,
     sessionResume,
-    sessionHistory,
     executableResolver,
     installer,
     presence,

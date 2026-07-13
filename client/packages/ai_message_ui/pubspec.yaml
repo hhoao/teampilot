@@ -1,0 +1,19 @@
+name: ai_message_ui
+description: Flutter Thread/Message/Part UI for ai_message_core.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.8.1
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  ai_message_core:
+    path: ../ai_message_core
+  flutter_markdown_plus: ^1.0.11
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter

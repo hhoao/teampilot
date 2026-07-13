@@ -1,58 +1,73 @@
+import 'package:ai_message_core/ai_message_core.dart';
+
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../utils/logger.dart';
 import '../cli/preset_resolver.dart';
+import '../cli/registry/capabilities/history/claude_ai_transcript.dart';
+import '../cli/registry/capabilities/history/codex_ai_transcript.dart';
+import '../cli/registry/capabilities/history/cursor_ai_transcript.dart';
+import '../cli/registry/capabilities/history/flashskyai_ai_transcript.dart';
+import '../cli/registry/capabilities/history/opencode_ai_transcript.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
-import '../cli/registry/capabilities/session_history_capability.dart';
-import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
 import '../storage/runtime_layout.dart';
 import '../terminal/session_member_cli_resolver.dart';
+import 'ai_history_locator.dart';
+import 'session_history_context.dart';
 import 'session_history_context_builder.dart';
 
-/// Cache fingerprint for a history snapshot (typically transcript mtime).
-typedef SessionHistoryCacheTokenResolver =
-    Future<String?> Function(SessionHistoryContext ctx);
-
-class _HistoryCacheEntry {
-  const _HistoryCacheEntry({required this.token, required this.snapshot});
+class _AiHistoryCacheEntry {
+  const _AiHistoryCacheEntry({required this.token, required this.messages});
 
   final String? token;
-  final SessionHistorySnapshot snapshot;
+  final List<AiMessage> messages;
 }
 
-/// Resolves seat CLI → [SessionHistoryCapability] → snapshot, with
+/// Resolves seat CLI → locate bundle → [AiTranscriptAdapter] → messages, with
 /// sessionId+memberId(+mtime) caching.
-final class SessionHistoryLoader {
-  SessionHistoryLoader({
-    required CliToolRegistry registry,
+final class AiHistoryLoader {
+  AiHistoryLoader({
     SessionHistoryContextBuilder contextBuilder =
         const SessionHistoryContextBuilder(),
     required Filesystem Function() fs,
     required RuntimeLayout Function() layout,
     required String Function() appDataRoot,
+    AiHistoryLocator locator = const AiHistoryLocator(),
+    Map<CliTool, AiTranscriptAdapter>? adapters,
     SessionHistoryCacheTokenResolver? resolveCacheToken,
     List<CliPreset> Function()? globalPresets,
-  }) : _registry = registry,
-       _contextBuilder = contextBuilder,
+  }) : _contextBuilder = contextBuilder,
        _fs = fs,
        _layout = layout,
        _appDataRoot = appDataRoot,
+       _locator = locator,
+       _adapters = adapters ?? defaultAdapters,
        _resolveCacheToken = resolveCacheToken,
        _globalPresets = globalPresets;
 
-  final CliToolRegistry _registry;
+  static final Map<CliTool, AiTranscriptAdapter> defaultAdapters =
+      Map.unmodifiable({
+        CliTool.claude: const ClaudeAiTranscriptAdapter(),
+        CliTool.flashskyai: const FlashskyaiAiTranscriptAdapter(),
+        CliTool.codex: const CodexAiTranscriptAdapter(),
+        CliTool.opencode: const OpencodeAiTranscriptAdapter(),
+        CliTool.cursor: const CursorAiTranscriptAdapter(),
+      });
+
   final SessionHistoryContextBuilder _contextBuilder;
   final Filesystem Function() _fs;
   final RuntimeLayout Function() _layout;
   final String Function() _appDataRoot;
+  final AiHistoryLocator _locator;
+  final Map<CliTool, AiTranscriptAdapter> _adapters;
   final SessionHistoryCacheTokenResolver? _resolveCacheToken;
   final List<CliPreset> Function()? _globalPresets;
 
-  final _cache = <String, _HistoryCacheEntry>{};
+  final _cache = <String, _AiHistoryCacheEntry>{};
 
-  Future<SessionHistorySnapshot> load({
+  Future<List<AiMessage>> load({
     required AppSession session,
     required String memberId,
     TeamProfile? team,
@@ -69,7 +84,7 @@ final class SessionHistoryLoader {
     // Selected-member UUID without a team id cannot locate team runtime roots.
     if (effectiveMemberId.isNotEmpty && teamId.isEmpty) {
       appLogger.w(
-        '[session-history] drop memberId=$effectiveMemberId without teamId '
+        '[ai-history] drop memberId=$effectiveMemberId without teamId '
         'session=${session.sessionId} (treating as simple seat)',
       );
       effectiveMemberId = '';
@@ -94,13 +109,13 @@ final class SessionHistoryLoader {
       },
     );
 
-    final cap = _registry.capability<SessionHistoryCapability>(cli);
-    if (cap == null) {
+    final adapter = _adapters[cli];
+    if (adapter == null) {
       appLogger.e(
-        '[session-history] SessionHistoryCapability missing for CLI $cli '
+        '[ai-history] AiTranscriptAdapter missing for CLI $cli '
         'session=${session.sessionId}',
       );
-      throw StateError('SessionHistoryCapability missing for launch CLI $cli');
+      throw StateError('AiTranscriptAdapter missing for launch CLI $cli');
     }
 
     final ctx = _contextBuilder.build(
@@ -119,17 +134,23 @@ final class SessionHistoryLoader {
     if (!force) {
       final hit = _cache[cacheKey];
       if (hit != null && hit.token == token) {
-        return hit.snapshot;
+        return hit.messages;
       }
     }
 
     try {
-      final snapshot = await cap.loadHistory(ctx);
-      _cache[cacheKey] = _HistoryCacheEntry(token: token, snapshot: snapshot);
-      return snapshot;
+      final bundle = await _locator.locate(ctx: ctx, cli: cli);
+      final messages = bundle == null
+          ? const <AiMessage>[]
+          : await adapter.parse(bundle);
+      _cache[cacheKey] = _AiHistoryCacheEntry(
+        token: token,
+        messages: messages,
+      );
+      return messages;
     } on Object catch (e, st) {
       appLogger.e(
-        '[session-history] loadHistory failed session=${session.sessionId} '
+        '[ai-history] load failed session=${session.sessionId} '
         'member=$effectiveMemberId cli=$cli: $e',
         error: e,
         stackTrace: st,

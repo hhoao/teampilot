@@ -17,6 +17,20 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.0.0"
+  ai_message_core:
+    dependency: "direct main"
+    description:
+      path: "packages/ai_message_core"
+      relative: true
+    source: path
+    version: "0.1.0"
+  ai_message_ui:
+    dependency: "direct main"
+    description:
+      path: "packages/ai_message_ui"
+      relative: true
+    source: path
+    version: "0.1.0"
   analyzer:
     dependency: transitive
     description:

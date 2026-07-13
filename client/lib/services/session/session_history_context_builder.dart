@@ -3,13 +3,13 @@ import 'package:path/path.dart' as p;
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
 import '../../utils/logger.dart';
-import '../cli/registry/capabilities/session_history_capability.dart';
 import '../io/filesystem.dart';
 import '../provider/codex/codex_session_config_dir.dart';
 import '../provider/cursor/cursor_session_config_dir.dart';
 import '../storage/runtime_layout.dart';
+import 'session_history_context.dart';
 
-/// Read-only locate context for [SessionHistoryCapability] adapters.
+/// Read-only locate context for AI transcript adapters.
 ///
 /// Resolves the same on-disk isolation dirs a launch would use, without
 /// calling `prepareLaunch` / `ConfigProfileService.prepare*` / PTY connect.

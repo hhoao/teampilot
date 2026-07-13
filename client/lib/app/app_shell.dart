@@ -21,13 +21,13 @@ import '../utils/workspace_tab_session_scope.dart';
 import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
 import '../cubits/notification_cubit.dart';
-import '../cubits/session_history_cubit.dart';
+import '../cubits/ai_history_cubit.dart';
 import '../cubits/shortcut_cubit.dart';
 import '../cubits/editor_cubit.dart';
 import '../cubits/workbench/workbench_cubit.dart';
 import '../services/workbench/workbench_editor_opener.dart';
+import '../services/session/ai_history_loader.dart';
 import '../services/session/session_history_context_builder.dart';
-import '../services/session/session_history_loader.dart';
 import '../cubits/ai_feature_settings_cubit.dart';
 import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
@@ -145,7 +145,7 @@ class AppShell {
     required this.memberPresenceCubit,
     required this.mailboxCubit,
     required this.boardCubit,
-    required this.sessionHistoryCubit,
+    required this.aiHistoryCubit,
     required this.notificationCubit,
     required this.editorCubit,
     required this.workbenchCubit,
@@ -207,7 +207,7 @@ class AppShell {
   final MemberPresenceCubit memberPresenceCubit;
   final MailboxCubit mailboxCubit;
   final BoardCubit boardCubit;
-  final SessionHistoryCubit sessionHistoryCubit;
+  final AiHistoryCubit aiHistoryCubit;
   final NotificationCubit notificationCubit;
   final EditorCubit editorCubit;
   final WorkbenchCubit workbenchCubit;
@@ -894,15 +894,14 @@ Future<AppShell> buildAppShell({
     busForScope: (scope) => scopedTeamBus(chatCubit, scope),
   );
 
-  final sessionHistoryLoader = SessionHistoryLoader(
-    registry: cliToolRegistry,
+  final aiHistoryLoader = AiHistoryLoader(
     contextBuilder: const SessionHistoryContextBuilder(),
     fs: () => AppStorage.fs,
     layout: () => AppStorage.context.layout,
     appDataRoot: () => AppStorage.appDataRoot,
     globalPresets: () => cliPresetsCubit.state.presets,
   );
-  final sessionHistoryCubit = SessionHistoryCubit(loader: sessionHistoryLoader);
+  final aiHistoryCubit = AiHistoryCubit(loader: aiHistoryLoader);
 
   final notificationCubit = NotificationCubit();
   final notificationBootstrap = notificationCubit.load();
@@ -1051,7 +1050,7 @@ Future<AppShell> buildAppShell({
     memberPresenceCubit: memberPresenceCubit,
     mailboxCubit: mailboxCubit,
     boardCubit: boardCubit,
-    sessionHistoryCubit: sessionHistoryCubit,
+    aiHistoryCubit: aiHistoryCubit,
     notificationCubit: notificationCubit,
     editorCubit: editorCubit,
     workbenchCubit: workbenchCubit,

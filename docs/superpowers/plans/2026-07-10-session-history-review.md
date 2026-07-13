@@ -2,9 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Superseded (data model / parsers / turn UI):** Implemented product rules (**select ≠ connect**, slim compose, open-existing gating) remain valid. Transcript parsing and review rendering were replaced by [2026-07-13-ai-message-layer.md](2026-07-13-ai-message-layer.md) / [2026-07-13-ai-message-layer-design.md](../specs/2026-07-13-ai-message-layer-design.md) (`AiMessage`, `AiTranscriptAdapter`, `AiThread`). Treat steps below as historical unless they describe wiring that still applies.
+
 **Goal:** Opening an existing session never starts a PTY; the session body shows transcript history plus slim compose, and submit connects then injects for the selected member.
 
-**Architecture:** `connectImmediately: false` on every open-existing path; `SessionHistoryCapability` on each launch CLI normalizes on-disk transcripts to `SessionHistoryTurn`; a read-only context builder supplies resume-compatible locate fields without `prepareLaunch`; `SessionHistoryReview` replaces the Start placeholder inside `ChatWorkbench` (session body under workbench when center tabs are active).
+**Architecture (historical):** `connectImmediately: false` on every open-existing path; `SessionHistoryCapability` on each launch CLI normalizes on-disk transcripts to `SessionHistoryTurn`; a read-only context builder supplies resume-compatible locate fields without `prepareLaunch`; `SessionHistoryReview` replaces the Start placeholder inside `ChatWorkbench` (session body under workbench when center tabs are active). **Current:** same gating + `session_history_review.dart` hosts `AiThread`; see ai-message-layer plan for loader/cubit/adapter paths.
 
 **Tech Stack:** Flutter / Dart, `flutter_bloc`, CLI registry capabilities, `flutter_markdown_plus`, existing `deliverUserCommandToMember(directToPty: true)` inject path.
 

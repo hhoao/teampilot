@@ -1,0 +1,202 @@
+import 'dart:math' as math;
+
+import 'package:ai_message_core/ai_message_core.dart';
+import 'package:equatable/equatable.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../models/app_session.dart';
+import '../models/team_config.dart';
+import '../services/session/ai_history_loader.dart';
+import '../services/session/session_history_pagination.dart';
+import '../utils/logger.dart';
+
+/// Host-local AI history status — not session connect / "starting…".
+enum AiHistoryViewStatus { loading, ready, empty, error }
+
+class AiHistoryState extends Equatable {
+  const AiHistoryState({
+    this.status = AiHistoryViewStatus.empty,
+    this.totalMessageCount = 0,
+    this.hasOlder = false,
+    this.isLoadingOlder = false,
+    this.errorMessage,
+    this.sessionId,
+    this.memberId,
+  });
+
+  final AiHistoryViewStatus status;
+  final int totalMessageCount;
+  final bool hasOlder;
+  final bool isLoadingOlder;
+  final String? errorMessage;
+  final String? sessionId;
+  final String? memberId;
+
+  AiHistoryState copyWith({
+    AiHistoryViewStatus? status,
+    int? totalMessageCount,
+    bool? hasOlder,
+    bool? isLoadingOlder,
+    String? errorMessage,
+    bool clearError = false,
+    String? sessionId,
+    String? memberId,
+  }) {
+    return AiHistoryState(
+      status: status ?? this.status,
+      totalMessageCount: totalMessageCount ?? this.totalMessageCount,
+      hasOlder: hasOlder ?? this.hasOlder,
+      isLoadingOlder: isLoadingOlder ?? this.isLoadingOlder,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      sessionId: sessionId ?? this.sessionId,
+      memberId: memberId ?? this.memberId,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+    status,
+    totalMessageCount,
+    hasOlder,
+    isLoadingOlder,
+    errorMessage,
+    sessionId,
+    memberId,
+  ];
+}
+
+class AiHistoryCubit extends Cubit<AiHistoryState> {
+  AiHistoryCubit({required AiHistoryLoader loader})
+    : _loader = loader,
+      super(const AiHistoryState());
+
+  final AiHistoryLoader _loader;
+  final ExternalStoreAiThreadRuntime runtime = ExternalStoreAiThreadRuntime();
+
+  int _loadGeneration = 0;
+  List<AiMessage> _allMessages = const [];
+  int _visibleCount = 0;
+
+  Future<void> load({
+    required AppSession session,
+    required String memberId,
+    TeamProfile? team,
+    String? workingDirectory,
+    bool force = false,
+  }) async {
+    final gen = ++_loadGeneration;
+    _allMessages = const [];
+    _visibleCount = 0;
+    runtime.setLoading();
+    emit(
+      AiHistoryState(
+        status: AiHistoryViewStatus.loading,
+        sessionId: session.sessionId,
+        memberId: memberId,
+      ),
+    );
+
+    try {
+      final messages = await _loader.load(
+        session: session,
+        memberId: memberId,
+        team: team,
+        workingDirectory: workingDirectory,
+        force: force,
+      );
+      if (gen != _loadGeneration || isClosed) return;
+      _applyMessages(messages, session.sessionId, memberId);
+    } catch (e, st) {
+      appLogger.e(
+        '[ai-history] cubit load failed session=${session.sessionId} '
+        'member=$memberId team=${team?.id ?? session.sessionTeam}: $e',
+        error: e,
+        stackTrace: st,
+      );
+      if (gen != _loadGeneration || isClosed) return;
+      _allMessages = const [];
+      _visibleCount = 0;
+      runtime.setError(e.toString());
+      emit(
+        AiHistoryState(
+          status: AiHistoryViewStatus.error,
+          errorMessage: e.toString(),
+          sessionId: session.sessionId,
+          memberId: memberId,
+        ),
+      );
+    }
+  }
+
+  void loadOlder() {
+    if (state.status != AiHistoryViewStatus.ready) return;
+    if (!state.hasOlder || state.isLoadingOlder) return;
+
+    emit(state.copyWith(isLoadingOlder: true));
+    _visibleCount = math.min(
+      _visibleCount + kSessionHistoryOlderPageSize,
+      _allMessages.length,
+    );
+    _emitReadyWindow(state.sessionId, state.memberId);
+  }
+
+  void clear() {
+    _loadGeneration++;
+    _allMessages = const [];
+    _visibleCount = 0;
+    runtime.setEmpty();
+    emit(const AiHistoryState());
+  }
+
+  void _applyMessages(
+    List<AiMessage> messages,
+    String sessionId,
+    String memberId,
+  ) {
+    _allMessages = messages;
+    _visibleCount = math.min(kSessionHistoryInitialTurns, _allMessages.length);
+
+    if (_allMessages.isEmpty) {
+      runtime.setEmpty();
+      emit(
+        AiHistoryState(
+          status: AiHistoryViewStatus.empty,
+          sessionId: sessionId,
+          memberId: memberId,
+        ),
+      );
+      return;
+    }
+
+    _emitReadyWindow(sessionId, memberId);
+  }
+
+  void _emitReadyWindow(String? sessionId, String? memberId) {
+    final slice = _visibleSlice();
+    runtime.setMessages(slice);
+    emit(
+      AiHistoryState(
+        status: AiHistoryViewStatus.ready,
+        totalMessageCount: _allMessages.length,
+        hasOlder: _hasOlder(),
+        isLoadingOlder: false,
+        sessionId: sessionId,
+        memberId: memberId,
+      ),
+    );
+  }
+
+  List<AiMessage> _visibleSlice() {
+    if (_allMessages.isEmpty) return const [];
+    final start = math.max(0, _allMessages.length - _visibleCount);
+    return _allMessages.sublist(start);
+  }
+
+  bool _hasOlder() => _visibleCount < _allMessages.length;
+
+  @override
+  Future<void> close() {
+    runtime.close();
+    return super.close();
+  }
+}
