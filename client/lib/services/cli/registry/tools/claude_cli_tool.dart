@@ -20,8 +20,6 @@ import '../capabilities/headless_provision_capability.dart';
 import '../capabilities/provider_credential_capability.dart';
 import '../capabilities/provider_model_capability.dart';
 import '../capabilities/session_resume_capability.dart';
-import '../capabilities/session_history_capability.dart';
-import '../capabilities/history/claude_session_history.dart';
 import '../capabilities/resume/claude_resume_strategy.dart';
 import '../config_profile/claude_config_profile_capability.dart';
 import '../headless/claude_headless_run_capability.dart';
@@ -47,7 +45,6 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.launchArgs = const ClaudeCodeCliToolAdapter(),
     this.configProfile = const ClaudeConfigProfileCapability(),
     this.sessionResume = const ClaudeResumeStrategy(),
-    this.sessionHistory = const ClaudeSessionHistory(),
     this.executableResolver = const ClaudeExecutableResolver(),
     this.installer = const ClaudeInstallerCapability(),
     this.presence = const ClaudePresence(),
@@ -73,7 +70,6 @@ final class ClaudeCliTool implements CliToolDefinition {
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
   final SessionResumeCapability sessionResume;
-  final SessionHistoryCapability sessionHistory;
   final ExecutableResolverCapability executableResolver;
   final InstallerCapability installer;
   final PresenceCapability presence;
@@ -110,7 +106,6 @@ final class ClaudeCliTool implements CliToolDefinition {
     launchArgs,
     configProfile,
     sessionResume,
-    sessionHistory,
     executableResolver,
     installer,
     presence,

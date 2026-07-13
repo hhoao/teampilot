@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
 
-import '../session_history_capability.dart';
+import '../../../../session/session_history_context.dart';
 
 /// Locate OpenCode session/message/part files under `$OPENCODE_DATA_DIR`.
 ///

@@ -5,7 +5,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/registry/capabilities/history/claude_ai_transcript.dart';
-import 'package:teampilot/services/cli/registry/capabilities/session_history_capability.dart';
+import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
 void main() {

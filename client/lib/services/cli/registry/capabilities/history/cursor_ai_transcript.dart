@@ -4,7 +4,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../../provider/cursor/cursor_home_layout.dart';
-import '../session_history_capability.dart';
+import '../../../../session/session_history_context.dart';
 
 /// Locate Cursor agent transcript under CURSOR_CONFIG_DIR / projects.
 Future<AiTranscriptBundle?> locateCursorTranscript(

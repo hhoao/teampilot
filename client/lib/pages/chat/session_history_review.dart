@@ -1,17 +1,18 @@
 import 'dart:async';
 
+import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
+import '../../cubits/ai_history_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/expert_hub_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/plugin_cubit.dart';
-import '../../cubits/session_history_cubit.dart';
 import '../../cubits/skill_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
@@ -31,11 +32,12 @@ import '../../services/compose/compose_text_edit.dart';
 import '../../services/compose/compose_voice_input.dart';
 import '../../services/expert_hub/expert_member_resolver.dart';
 import '../../services/session/session_continue_overrides_apply.dart';
+import '../../services/session/session_history_pagination.dart';
 import '../../services/storage/app_storage.dart';
 import '../../theme/app_spacing.dart';
+import '../../theme/app_text_styles.dart';
 import '../../utils/team_member_naming.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
-import 'session_history_turn_list.dart';
 import 'session_review_compose_card.dart';
 
 /// History list + slim compose for a non-running session body.
@@ -200,7 +202,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
   }
 
   void _loadHistory({bool force = false}) {
-    context.read<SessionHistoryCubit>().load(
+    context.read<AiHistoryCubit>().load(
       session: widget.session,
       memberId: widget.selectedMemberId,
       team: widget.team,
@@ -635,15 +637,119 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
-            child: BlocBuilder<SessionHistoryCubit, SessionHistoryState>(
-              builder: (context, state) {
-                return SessionHistoryTurnList(
-                  state: state,
-                  onRetry: () => _loadHistory(force: true),
-                  onLoadOlder: () =>
-                      context.read<SessionHistoryCubit>().loadOlder(),
-                );
-              },
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                spacing.xl,
+                spacing.md,
+                spacing.xl,
+                0,
+              ),
+              child: BlocBuilder<AiHistoryCubit, AiHistoryState>(
+                builder: (context, state) {
+                  final cubit = context.read<AiHistoryCubit>();
+                  return AiThread(
+                    runtime: cubit.runtime,
+                    hasOlder: state.hasOlder,
+                    isLoadingOlder: state.isLoadingOlder,
+                    onLoadOlder: cubit.loadOlder,
+                    loadOlderScrollThreshold:
+                        kSessionHistoryLoadOlderScrollThreshold,
+                    onRetry: () => _loadHistory(force: true),
+                    loadingBuilder: (context) => _HistoryStatusPane(
+                      icon: Icons.history_rounded,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(strokeWidth: 2.5),
+                          ),
+                          SizedBox(height: context.appSpacing.md),
+                          Text(
+                            context.l10n.sessionHistoryLoading,
+                            style: AppTextStyles.of(context).mdColored(
+                              Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                    emptyBuilder: (context) => _HistoryStatusPane(
+                      icon: Icons.chat_bubble_outline_rounded,
+                      child: Text(
+                        context.l10n.sessionHistoryEmpty,
+                        style: AppTextStyles.of(context).mdColored(
+                          Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    errorBuilder: (context, message, onRetry) {
+                      final detail = message?.trim();
+                      return _HistoryStatusPane(
+                        icon: Icons.error_outline_rounded,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              context.l10n.sessionHistoryError,
+                              style: AppTextStyles.of(context).mdColored(
+                                Theme.of(context).colorScheme.error,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            if (detail != null && detail.isNotEmpty) ...[
+                              SizedBox(height: context.appSpacing.sm),
+                              Text(
+                                detail,
+                                style: AppTextStyles.of(context).smColored(
+                                  Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                            SizedBox(height: context.appSpacing.md),
+                            TextButton(
+                              onPressed: onRetry,
+                              child: Text(context.l10n.sessionHistoryRetry),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    loadOlderHeaderBuilder:
+                        (context, {required bool isLoadingOlder}) {
+                      final cs = Theme.of(context).colorScheme;
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: context.appSpacing.md),
+                        child: Center(
+                          child: isLoadingOlder
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Text(
+                                  context.l10n.sessionHistoryLoadOlderHint,
+                                  style: AppTextStyles.of(context).smColored(
+                                    cs.onSurfaceVariant.withValues(
+                                      alpha: 0.75,
+                                    ),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
           ),
           Padding(
@@ -718,6 +824,35 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _HistoryStatusPane extends StatelessWidget {
+  const _HistoryStatusPane({required this.icon, required this.child});
+
+  final IconData icon;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: context.appSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 32,
+              color: cs.onSurfaceVariant.withValues(alpha: 0.55),
+            ),
+            SizedBox(height: context.appSpacing.md),
+            child,
+          ],
+        ),
       ),
     );
   }

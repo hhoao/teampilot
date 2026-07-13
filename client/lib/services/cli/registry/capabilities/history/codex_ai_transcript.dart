@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
 
-import '../session_history_capability.dart';
+import '../../../../session/session_history_context.dart';
 
 /// Locate Codex rollout JSONL under `$CODEX_HOME/sessions/**/rollout-*.jsonl`.
 Future<AiTranscriptBundle?> locateCodexTranscript(

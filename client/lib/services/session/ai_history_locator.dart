@@ -6,7 +6,7 @@ import '../cli/registry/capabilities/history/codex_ai_transcript.dart';
 import '../cli/registry/capabilities/history/cursor_ai_transcript.dart';
 import '../cli/registry/capabilities/history/flashskyai_ai_transcript.dart';
 import '../cli/registry/capabilities/history/opencode_ai_transcript.dart';
-import '../cli/registry/capabilities/session_history_capability.dart';
+import 'session_history_context.dart';
 
 /// Resolves on-disk transcript bytes for a seat CLI into an [AiTranscriptBundle].
 class AiHistoryLocator {

@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:ai_message_core/ai_message_core.dart';
 
 import '../resume/pinned_transcript_probe.dart';
-import '../session_history_capability.dart';
+import '../../../../session/session_history_context.dart';
 
 /// Locate Claude Code JSONL under `{root}/projects/{bucket}/{taskId}.jsonl`.
 Future<AiTranscriptBundle?> locateClaudeTranscript(

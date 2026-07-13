@@ -11,13 +11,12 @@ import '../cli/registry/capabilities/history/cursor_ai_transcript.dart';
 import '../cli/registry/capabilities/history/flashskyai_ai_transcript.dart';
 import '../cli/registry/capabilities/history/opencode_ai_transcript.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
-import '../cli/registry/capabilities/session_history_capability.dart';
 import '../io/filesystem.dart';
 import '../storage/runtime_layout.dart';
 import '../terminal/session_member_cli_resolver.dart';
 import 'ai_history_locator.dart';
+import 'session_history_context.dart';
 import 'session_history_context_builder.dart';
-import 'session_history_loader.dart';
 
 class _AiHistoryCacheEntry {
   const _AiHistoryCacheEntry({required this.token, required this.messages});

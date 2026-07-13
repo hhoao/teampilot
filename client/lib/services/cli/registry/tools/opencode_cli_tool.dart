@@ -18,8 +18,6 @@ import '../capabilities/provider_catalog_capability.dart';
 import '../capabilities/provider_credential_capability.dart';
 import '../capabilities/provider_model_capability.dart';
 import '../capabilities/session_resume_capability.dart';
-import '../capabilities/session_history_capability.dart';
-import '../capabilities/history/opencode_session_history.dart';
 import '../capabilities/resume/opencode_resume_strategy.dart';
 import '../capabilities/headless_provision_capability.dart';
 import '../config_profile/opencode_config_profile_capability.dart';
@@ -44,7 +42,6 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.launchArgs = const OpencodeCliToolAdapter(),
     this.configProfile = const OpencodeConfigProfileCapability(),
     this.sessionResume = const OpencodeResumeStrategy(),
-    this.sessionHistory = const OpencodeSessionHistory(),
     this.executableResolver = const OpencodeExecutableResolver(),
     this.installer = const OpencodeInstallerCapability(),
     this.presence = const OpencodePresence(),
@@ -70,7 +67,6 @@ final class OpencodeCliTool implements CliToolDefinition {
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
   final SessionResumeCapability sessionResume;
-  final SessionHistoryCapability sessionHistory;
   final ExecutableResolverCapability executableResolver;
   final InstallerCapability installer;
   final PresenceCapability presence;
@@ -102,7 +98,6 @@ final class OpencodeCliTool implements CliToolDefinition {
     launchArgs,
     configProfile,
     sessionResume,
-    sessionHistory,
     executableResolver,
     installer,
     presence,
