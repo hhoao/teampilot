@@ -7,10 +7,14 @@ import '../../models/run/launch_configuration.dart';
 import '../../models/run/launch_type_contribution.dart';
 import '../../models/run/run_session.dart';
 import 'launch_adapter_client.dart';
+import 'launch_type_normalize.dart';
 import 'launch_variable_expander.dart';
 import 'process_launch_schema.dart';
 import 'process_run_executor.dart';
 import 'run_target_resolver.dart';
+import 'shell_script_command_builder.dart';
+import 'shell_script_configuration.dart';
+import 'shell_script_launch_schema.dart';
 
 /// Handle returned by process and adapter launchers.
 class RunLaunchHandle {
@@ -59,10 +63,40 @@ class DefaultRunProcessLauncher implements RunProcessLauncher {
     required void Function(ProcessRunOutput output) onOutput,
   }) async {
     final expanded = LaunchVariableExpander.expandConfiguration(
-      owned.configuration,
+      owned.configuration.copyWith(
+        type: normalizeLaunchType(owned.configuration.type),
+      ),
       workspaceFolder: owned.owner.path,
       env: owned.configuration.env,
     );
+
+    // Temporary Task 4 bridge: shellScript uses command builder + process
+    // executor until Task 7 adds RunShellScriptLauncher (terminal branch).
+    if (isBuiltInShellType(expanded.type)) {
+      final errors = ShellScriptLaunchSchema.validate(expanded);
+      if (errors.isNotEmpty) {
+        throw StateError(errors.join('; '));
+      }
+      final shell = ShellScriptConfiguration.fromLaunchConfiguration(expanded);
+      final invocation =
+          const ShellScriptCommandBuilder().buildProcessInvocation(shell);
+      final plan = _resolver.resolve(
+        owner: owned.owner,
+        cwd: invocation.cwd,
+        env: invocation.env,
+      );
+      final result = await _executor.start(
+        sessionId: sessionId,
+        command: invocation.command,
+        args: invocation.args,
+        plan: plan,
+        env: invocation.env,
+        shell: invocation.shell,
+        onOutput: onOutput,
+      );
+      return RunLaunchHandle(exitCode: result.exitCode, stop: result.stop);
+    }
+
     final errors = ProcessLaunchSchema.validate(expanded);
     if (errors.isNotEmpty) {
       throw StateError(errors.join('; '));
@@ -389,7 +423,9 @@ class RunSessionManager {
     required OwnedLaunchConfiguration owned,
     required void Function(ProcessRunOutput output) onOutput,
   }) {
-    if (owned.configuration.type == ProcessLaunchSchema.typeName) {
+    // Temporary: shellScript (and legacy process alias) use process launcher
+    // until Task 7 wires RunShellScriptLauncher for terminal execution.
+    if (isBuiltInShellType(owned.configuration.type)) {
       return _processLauncher.launch(
         sessionId: sessionId,
         owned: owned,

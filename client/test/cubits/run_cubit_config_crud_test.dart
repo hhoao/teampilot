@@ -283,13 +283,20 @@ void main() {
     final draft = cubit.createConfiguration(folder: _folder, type: 'process');
     expect(draft.configuration.id, isEmpty);
     expect(draft.configuration.name, isEmpty);
-    expect(draft.configuration.type, 'process');
+    expect(draft.configuration.type, 'shellScript');
+    expect(draft.configuration.extras['execute'], 'scriptFile');
+    expect(draft.configuration.extras['executeInTerminal'], isTrue);
 
     final named = OwnedLaunchConfiguration(
       owner: draft.owner,
       configuration: draft.configuration.copyWith(
         name: 'API Server',
-        command: 'true',
+        extras: {
+          ...draft.configuration.extras,
+          'execute': 'scriptText',
+          'scriptText': 'true',
+          'executeInTerminal': false,
+        },
       ),
     );
     await cubit.saveConfiguration(named);
@@ -396,7 +403,8 @@ void main() {
     final platform = _StoreBackedPlatform(
       sessionManager: RunSessionManager(
         executor: launcher,
-        // process JSON migrates to shellScript on load → adapter path
+        // Legacy process configs migrate to shellScript on load; Task 4 routes
+        // shellScript through the process launcher until Task 7.
         adapters: _FakeAdapterLauncher(fallback: launcher),
       ),
     );

@@ -68,7 +68,8 @@ void main() {
     ).rebuild(reg);
 
     expect(reg.get('flutter')?.extensionId, 'ext.flutter.b');
-    expect(reg.get('process'), isNotNull);
+    expect(reg.get('shellScript'), isNotNull);
+    expect(reg.get('process'), isNull);
   });
 
   test('failed detect leaves type unavailable on local', () async {
@@ -92,7 +93,7 @@ void main() {
     ).rebuild(reg);
 
     expect(reg.isAvailable('flutter', targetId: 'ssh:box'), isFalse);
-    expect(reg.isAvailable('process', targetId: 'ssh:box'), isTrue);
+    expect(reg.isAvailable('shellScript', targetId: 'ssh:box'), isTrue);
   });
 
   test('extensionPathFor is exposed for LaunchAdapterClient', () async {

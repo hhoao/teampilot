@@ -8,7 +8,7 @@ import '../models/run/run_session.dart';
 import '../models/workspace_folder.dart';
 import '../services/run/launch_adapter_protocol.dart';
 import '../services/run/launch_config_store.dart';
-import '../services/run/process_launch_schema.dart';
+import '../services/run/launch_type_normalize.dart';
 import '../services/run/run_platform.dart';
 import '../services/run/shell_script_launch_schema.dart';
 import '../services/run/shell_script_migrator.dart';
@@ -189,7 +189,7 @@ class RunCubit extends Cubit<RunState> {
       ),
     );
 
-    if (owned.configuration.type == ProcessLaunchSchema.typeName) {
+    if (isBuiltInShellType(owned.configuration.type)) {
       return;
     }
 
@@ -439,13 +439,25 @@ class RunCubit extends Cubit<RunState> {
     required WorkspaceFolder folder,
     required String type,
   }) {
+    final normalized = normalizeLaunchType(type);
+    if (isBuiltInShellType(normalized)) {
+      return OwnedLaunchConfiguration(
+        owner: folder,
+        configuration: LaunchConfiguration.fromJson(
+          ShellScriptLaunchSchema.withDefaults({
+            'type': ShellScriptLaunchSchema.typeName,
+            'id': '',
+            'name': '',
+          }),
+        ),
+      );
+    }
     return OwnedLaunchConfiguration(
       owner: folder,
       configuration: LaunchConfiguration(
         id: '',
         name: '',
-        type: type,
-        command: type == ProcessLaunchSchema.typeName ? '' : null,
+        type: normalized,
       ),
     );
   }

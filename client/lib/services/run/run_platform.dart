@@ -5,11 +5,13 @@ import 'launch_adapter_client.dart';
 import 'launch_adapter_protocol.dart';
 import 'launch_config_store.dart';
 import 'launch_discover.dart';
+import 'launch_type_normalize.dart';
 import 'launch_type_registrar.dart';
 import 'launch_type_registry.dart';
 import 'launch_type_unavailable.dart';
-import 'process_launch_schema.dart';
+import 'launch_variable_expander.dart';
 import 'run_session_manager.dart';
+import 'shell_script_launch_schema.dart';
 
 /// Platforms that bind asynchronously (e.g. workspace tab scope) expose [whenReady].
 abstract mixin class RunPlatformDeferred {
@@ -88,7 +90,7 @@ abstract class RunPlatformApi {
     List<OwnedLaunchConfiguration> existing = const [],
   });
 
-  /// Whether [type] can run on [targetId] (built-in `process` always true).
+  /// Whether [type] can run on [targetId] (built-in `shellScript` always true).
   bool isTypeAvailable(String type, {required String targetId});
 
   /// Human-readable reason when [isTypeAvailable] is false; null when available.
@@ -144,8 +146,8 @@ class RunPlatform implements RunPlatformApi {
   Future<List<LaunchOption>> provideOptions(
     OwnedLaunchConfiguration owned,
   ) async {
-    final type = owned.configuration.type;
-    if (type == ProcessLaunchSchema.typeName) return const [];
+    final type = normalizeLaunchType(owned.configuration.type);
+    if (isBuiltInShellType(type)) return const [];
 
     final contribution = registry.get(type);
     if (contribution == null || contribution.extensionId == null) {
@@ -181,10 +183,15 @@ class RunPlatform implements RunPlatformApi {
 
   @override
   List<String> validateConfiguration(OwnedLaunchConfiguration owned) {
-    final type = owned.configuration.type;
+    final type = normalizeLaunchType(owned.configuration.type);
     final targetId = owned.owner.targetId;
-    if (type == ProcessLaunchSchema.typeName) {
-      return ProcessLaunchSchema.validate(owned.configuration);
+    if (isBuiltInShellType(type)) {
+      final expanded = LaunchVariableExpander.expandConfiguration(
+        owned.configuration.copyWith(type: type),
+        workspaceFolder: owned.owner.path,
+        env: owned.configuration.env,
+      );
+      return ShellScriptLaunchSchema.validate(expanded);
     }
     final contribution = registry.get(type);
     if (contribution == null) {
@@ -293,30 +300,33 @@ class RunPlatform implements RunPlatformApi {
 
   @override
   bool isTypeAvailable(String type, {required String targetId}) =>
-      registry.isAvailable(type, targetId: targetId);
+      registry.isAvailable(normalizeLaunchType(type), targetId: targetId);
 
   @override
   String? unavailableReason(String type, {required String targetId}) {
     return launchTypeUnavailableCode(
       registry,
-      type: type,
+      type: normalizeLaunchType(type),
       targetId: targetId,
     );
   }
 
   @override
   Map<String, Object?>? configurationSchema(String type) {
-    if (type == ProcessLaunchSchema.typeName) {
-      return Map<String, Object?>.from(ProcessLaunchSchema.configurationSchema);
+    final normalized = normalizeLaunchType(type);
+    if (isBuiltInShellType(normalized)) {
+      return Map<String, Object?>.from(
+        ShellScriptLaunchSchema.configurationSchema,
+      );
     }
-    final contribution = registry.get(type);
+    final contribution = registry.get(normalized);
     if (contribution == null) return null;
     return Map<String, Object?>.from(contribution.configurationSchema);
   }
 
   @override
   List<String> kindsFor(String type) {
-    final contribution = registry.get(type);
+    final contribution = registry.get(normalizeLaunchType(type));
     if (contribution == null) return const ['run'];
     return List<String>.from(contribution.kinds);
   }

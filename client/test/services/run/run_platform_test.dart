@@ -107,18 +107,67 @@ void main() {
     );
     final platform = _platform(registry: reg);
 
+    expect(platform.kindsFor('shellScript'), ['run']);
     expect(platform.kindsFor('process'), ['run']);
     expect(platform.kindsFor('debuggable'), ['run', 'debug']);
     expect(platform.kindsFor('unknown'), ['run']);
 
-    final processSchema = platform.configurationSchema('process');
-    expect(processSchema, isNotNull);
-    expect(processSchema!['required'], contains('command'));
+    final shellSchema = platform.configurationSchema('shellScript');
+    expect(shellSchema, isNotNull);
+    expect(shellSchema!['required'], contains('execute'));
+
+    final aliasSchema = platform.configurationSchema('process');
+    expect(aliasSchema, isNotNull);
+    expect(aliasSchema!['required'], contains('execute'));
 
     final debugSchema = platform.configurationSchema('debuggable');
     expect(debugSchema, isNotNull);
     expect(debugSchema!['required'], ['target']);
     expect(platform.configurationSchema('unknown'), isNull);
+  });
+
+  test('isTypeAvailable is always true for shellScript and process alias', () {
+    final platform = _platform();
+    expect(
+      platform.isTypeAvailable('shellScript', targetId: 'local'),
+      isTrue,
+    );
+    expect(
+      platform.isTypeAvailable('process', targetId: 'ssh:box'),
+      isTrue,
+    );
+  });
+
+  test('validateConfiguration validates shellScript after variable expand', () {
+    final platform = _platform();
+    final owned = OwnedLaunchConfiguration(
+      owner: _folder,
+      configuration: const LaunchConfiguration(
+        id: 'smoke',
+        name: 'smoke',
+        type: 'shellScript',
+        extras: {
+          'execute': 'scriptFile',
+          'scriptPath': r'${workspaceFolder}/scripts/smoke.sh',
+        },
+      ),
+    );
+
+    expect(platform.validateConfiguration(owned), isEmpty);
+
+    final missing = OwnedLaunchConfiguration(
+      owner: _folder,
+      configuration: const LaunchConfiguration(
+        id: 'bad',
+        name: 'bad',
+        type: 'shellScript',
+        extras: {'execute': 'scriptFile', 'scriptPath': ''},
+      ),
+    );
+    expect(
+      platform.validateConfiguration(missing),
+      contains(contains('scriptPath')),
+    );
   });
 
   test('validateConfiguration reports extension schema errors', () {

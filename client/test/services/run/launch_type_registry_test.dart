@@ -1,7 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/run/launch_type_contribution.dart';
+import 'package:teampilot/services/run/launch_type_normalize.dart';
 import 'package:teampilot/services/run/launch_type_registry.dart';
-import 'package:teampilot/services/run/process_launch_schema.dart';
+import 'package:teampilot/services/run/shell_script_launch_schema.dart';
 
 LaunchTypeContribution _flutterContrib(String extensionId) {
   return LaunchTypeContribution(
@@ -23,12 +24,23 @@ LaunchTypeContribution _flutterContrib(String extensionId) {
 }
 
 void main() {
-  test('process type is always registered', () {
+  test('shellScript type is always registered; process is not', () {
     final reg = LaunchTypeRegistry.withBuiltIns();
-    final process = reg.get('process');
-    expect(process, isNotNull);
-    expect(process!.extensionId, isNull);
-    expect(process.configurationSchema, isNotNull);
+    final shell = reg.get(ShellScriptLaunchSchema.typeName);
+    expect(shell, isNotNull);
+    expect(shell!.extensionId, isNull);
+    expect(shell.configurationSchema, isNotNull);
+    expect(shell.kinds, ['run']);
+    expect(reg.get(ShellScriptLaunchSchema.processAlias), isNull);
+  });
+
+  test('normalizeLaunchType maps process to shellScript', () {
+    expect(normalizeLaunchType('process'), 'shellScript');
+    expect(normalizeLaunchType('shellScript'), 'shellScript');
+    expect(normalizeLaunchType('flutter'), 'flutter');
+    expect(isBuiltInShellType('process'), isTrue);
+    expect(isBuiltInShellType('shellScript'), isTrue);
+    expect(isBuiltInShellType('flutter'), isFalse);
   });
 
   test('duplicate type from two extensions marks conflict', () {
@@ -40,33 +52,35 @@ void main() {
     expect(reg.get('flutter')?.extensionId, contribFlutterA.extensionId);
   });
 
-  test('isAvailable returns true for process, false for extension types', () {
+  test('isAvailable returns true for shellScript, false for extension types', () {
     final reg = LaunchTypeRegistry.withBuiltIns();
     reg.registerExtension(_flutterContrib('ext.flutter'));
-    expect(reg.isAvailable('process', targetId: 'local'), isTrue);
+    expect(reg.isAvailable('shellScript', targetId: 'local'), isTrue);
+    expect(reg.isAvailable('process', targetId: 'local'), isFalse);
     expect(reg.isAvailable('flutter', targetId: 'local'), isFalse);
   });
 
-  test('process schema requires command', () {
-    final errors = ProcessLaunchSchema.validate({
+  test('shellScript schema requires execute / scriptPath', () {
+    final errors = ShellScriptLaunchSchema.validate({
       'id': 'x',
       'name': 'X',
-      'type': 'process',
+      'type': 'shellScript',
+      'execute': 'scriptFile',
     });
     expect(errors, isNotEmpty);
-    expect(errors.single, contains('command'));
+    expect(errors, contains(ShellScriptValidationCodes.scriptPathRequired));
   });
 
-  test('process schema accepts command with optional fields', () {
-    final errors = ProcessLaunchSchema.validate({
+  test('shellScript schema accepts scriptFile with optional fields', () {
+    final errors = ShellScriptLaunchSchema.validate({
       'id': 'x',
       'name': 'X',
-      'type': 'process',
-      'command': 'npm',
-      'args': ['run', 'dev'],
+      'type': 'shellScript',
+      'execute': 'scriptFile',
+      'scriptPath': './run.sh',
       'env': {'NODE_ENV': 'development'},
       'cwd': r'${workspaceFolder}',
-      'shell': true,
+      'executeInTerminal': false,
     });
     expect(errors, isEmpty);
   });

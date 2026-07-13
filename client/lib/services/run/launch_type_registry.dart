@@ -1,5 +1,5 @@
 import '../../models/run/launch_type_contribution.dart';
-import 'process_launch_schema.dart';
+import 'shell_script_launch_schema.dart';
 
 /// Result of registering an extension launch type.
 class LaunchTypeRegisterResult {
@@ -19,14 +19,14 @@ class LaunchTypeRegistry {
 
   factory LaunchTypeRegistry.withBuiltIns() {
     final registry = LaunchTypeRegistry._();
-    registry._types[ProcessLaunchSchema.typeName] = LaunchTypeContribution(
-      type: ProcessLaunchSchema.typeName,
+    registry._types[ShellScriptLaunchSchema.typeName] = LaunchTypeContribution(
+      type: ShellScriptLaunchSchema.typeName,
       kinds: const ['run'],
       adapterCommand: '',
       adapterRuntime: 'workspace',
       lifecycle: LaunchAdapterLifecycle.sticky,
       configurationSchema: Map<String, Object?>.from(
-        ProcessLaunchSchema.configurationSchema,
+        ShellScriptLaunchSchema.configurationSchema,
       ),
     );
     return registry;
@@ -37,7 +37,7 @@ class LaunchTypeRegistry {
   /// All registered launch types (built-in and extension).
   Iterable<LaunchTypeContribution> get contributions => _types.values;
 
-  /// Removes extension-contributed types (keeps built-in `process`).
+  /// Removes extension-contributed types (keeps built-in `shellScript`).
   void clearExtensions() {
     _types.removeWhere((_, value) => value.extensionId != null);
     _availability.clear();
@@ -78,12 +78,12 @@ class LaunchTypeRegistry {
 
   /// Whether [type] can run on [targetId].
   ///
-  /// Built-in `process` is always available. Extension types require a prior
+  /// Built-in `shellScript` is always available. Extension types require a prior
   /// [setAvailability] (typically from [LaunchTypeRegistrar] after detect).
   /// Remote targets without an explicit availability entry are unavailable
   /// (v1: no host fallback / remote adapter provisioning).
   bool isAvailable(String type, {required String targetId}) {
-    if (type == ProcessLaunchSchema.typeName) return true;
+    if (type == ShellScriptLaunchSchema.typeName) return true;
     final contribution = _types[type];
     if (contribution == null || contribution.extensionId == null) {
       return false;
