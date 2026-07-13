@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/run_cubit.dart';
 import 'package:teampilot/models/run/launch_configuration.dart';
+import 'package:teampilot/models/run/launch_type_contribution.dart';
 import 'package:teampilot/models/run/run_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/run/launch_adapter_protocol.dart';
@@ -256,6 +257,9 @@ class _StoreBackedPlatform implements RunPlatformApi {
 
   @override
   List<String> kindsFor(String type) => const ['run'];
+
+  @override
+  List<LaunchTypeContribution> get launchTypes => const [];
 }
 
 void main() {

@@ -2294,6 +2294,24 @@ abstract class AppLocalizations {
   /// **'Copied'**
   String get aiMessageCopied;
 
+  /// No description provided for @aiMessageExportMarkdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Markdown'**
+  String get aiMessageExportMarkdown;
+
+  /// No description provided for @aiMessageIncomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Message incomplete'**
+  String get aiMessageIncomplete;
+
+  /// No description provided for @aiMessageCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Message cancelled'**
+  String get aiMessageCancelled;
+
   /// No description provided for @sessionWorkbenchShowTerminal.
   ///
   /// In en, this message translates to:
@@ -10248,6 +10266,18 @@ abstract class AppLocalizations {
   /// **'Type'**
   String get runConfigurationType;
 
+  /// No description provided for @runTypeShellScript.
+  ///
+  /// In en, this message translates to:
+  /// **'Shell Script'**
+  String get runTypeShellScript;
+
+  /// No description provided for @runPickLaunchType.
+  ///
+  /// In en, this message translates to:
+  /// **'Select launch type'**
+  String get runPickLaunchType;
+
   /// No description provided for @runFieldCommand.
   ///
   /// In en, this message translates to:
@@ -10277,6 +10307,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Run in shell'**
   String get runFieldShell;
+
+  /// No description provided for @runFieldScriptPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Script path'**
+  String get runFieldScriptPath;
+
+  /// No description provided for @runFieldScriptText.
+  ///
+  /// In en, this message translates to:
+  /// **'Script text'**
+  String get runFieldScriptText;
+
+  /// No description provided for @runFieldExecute.
+  ///
+  /// In en, this message translates to:
+  /// **'Execute'**
+  String get runFieldExecute;
+
+  /// No description provided for @runFieldScriptOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Script options'**
+  String get runFieldScriptOptions;
+
+  /// No description provided for @runFieldInterpreterPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Interpreter path'**
+  String get runFieldInterpreterPath;
+
+  /// No description provided for @runFieldInterpreterOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Interpreter options'**
+  String get runFieldInterpreterOptions;
+
+  /// No description provided for @runFieldExecuteInTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Execute in the terminal'**
+  String get runFieldExecuteInTerminal;
+
+  /// No description provided for @runFieldAllowMultipleInstances.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow multiple instances'**
+  String get runFieldAllowMultipleInstances;
+
+  /// No description provided for @runFieldActivateToolWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Activate tool window'**
+  String get runFieldActivateToolWindow;
+
+  /// No description provided for @runFieldFocusToolWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus tool window'**
+  String get runFieldFocusToolWindow;
+
+  /// No description provided for @runExecuteScriptFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Script file'**
+  String get runExecuteScriptFile;
+
+  /// No description provided for @runExecuteScriptText.
+  ///
+  /// In en, this message translates to:
+  /// **'Script text'**
+  String get runExecuteScriptText;
 
   /// No description provided for @runValidationCommandRequired.
   ///
@@ -10313,6 +10415,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Configuration must be a map'**
   String get runValidationConfigurationMustBeMap;
+
+  /// No description provided for @runValidationExecuteRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Execute mode is required'**
+  String get runValidationExecuteRequired;
+
+  /// No description provided for @runValidationExecuteInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Execute must be Script file or Script text'**
+  String get runValidationExecuteInvalid;
+
+  /// No description provided for @runValidationScriptPathRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Script path is required'**
+  String get runValidationScriptPathRequired;
+
+  /// No description provided for @runValidationScriptTextRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Script text is required'**
+  String get runValidationScriptTextRequired;
+
+  /// No description provided for @runValidationInterpreterPathMustBeString.
+  ///
+  /// In en, this message translates to:
+  /// **'Interpreter path must be a string'**
+  String get runValidationInterpreterPathMustBeString;
+
+  /// No description provided for @runValidationExecuteInTerminalMustBeBoolean.
+  ///
+  /// In en, this message translates to:
+  /// **'Execute in the terminal must be a boolean'**
+  String get runValidationExecuteInTerminalMustBeBoolean;
+
+  /// No description provided for @runValidationAllowMultipleInstancesMustBeBoolean.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow multiple instances must be a boolean'**
+  String get runValidationAllowMultipleInstancesMustBeBoolean;
+
+  /// No description provided for @runValidationActivateToolWindowMustBeBoolean.
+  ///
+  /// In en, this message translates to:
+  /// **'Activate tool window must be a boolean'**
+  String get runValidationActivateToolWindowMustBeBoolean;
+
+  /// No description provided for @runValidationFocusToolWindowMustBeBoolean.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus tool window must be a boolean'**
+  String get runValidationFocusToolWindowMustBeBoolean;
 
   /// No description provided for @shortcutsRunSelected.
   ///

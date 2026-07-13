@@ -1,4 +1,5 @@
 import '../../models/run/launch_configuration.dart';
+import '../../models/run/launch_type_contribution.dart';
 import '../../models/run/run_session.dart';
 import '../../models/workspace_folder.dart';
 import 'launch_adapter_client.dart';
@@ -103,6 +104,9 @@ abstract class RunPlatformApi {
   ///
   /// Unknown types default to `['run']` so the toolbar stays Run-only.
   List<String> kindsFor(String type);
+
+  /// Registered launch types for the Add-configuration type picker.
+  List<LaunchTypeContribution> get launchTypes;
 }
 
 /// Facade wiring store, registry, session manager, adapter client, registrar.
@@ -330,6 +334,9 @@ class RunPlatform implements RunPlatformApi {
     if (contribution == null) return const ['run'];
     return List<String>.from(contribution.kinds);
   }
+
+  @override
+  List<LaunchTypeContribution> get launchTypes => registry.contributions.toList();
 }
 
 /// Minimal JSON Schema `required` / property-type checks for launch configs.

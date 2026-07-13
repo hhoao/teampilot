@@ -7,6 +7,7 @@ import 'package:teampilot/cubits/run_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/run/launch_config_document.dart';
 import 'package:teampilot/models/run/launch_configuration.dart';
+import 'package:teampilot/models/run/launch_type_contribution.dart';
 import 'package:teampilot/models/run/run_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/run/launch_adapter_protocol.dart';
@@ -217,6 +218,9 @@ class _RecordingPlatform implements RunPlatformApi {
   @override
   List<String> kindsFor(String type) =>
       List<String>.from(_kindsByType[type] ?? const ['run']);
+
+  @override
+  List<LaunchTypeContribution> get launchTypes => const [];
 }
 
 class _RecordingCubit extends RunCubit {

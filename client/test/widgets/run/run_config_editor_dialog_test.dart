@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/run_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/run/launch_configuration.dart';
+import 'package:teampilot/models/run/launch_type_contribution.dart';
 import 'package:teampilot/models/run/run_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/run/launch_adapter_protocol.dart';
@@ -14,6 +15,7 @@ import 'package:teampilot/services/run/process_launch_schema.dart';
 import 'package:teampilot/services/run/process_run_executor.dart';
 import 'package:teampilot/services/run/run_platform.dart';
 import 'package:teampilot/services/run/run_session_manager.dart';
+import 'package:teampilot/services/run/shell_script_launch_schema.dart';
 import 'package:teampilot/widgets/run/run_config_editor_dialog.dart';
 
 const _folder = WorkspaceFolder(path: '/proj');
@@ -113,8 +115,10 @@ class _StoreBackedPlatform implements RunPlatformApi {
 
   @override
   List<String> validateConfiguration(OwnedLaunchConfiguration owned) {
-    if (owned.configuration.type == ProcessLaunchSchema.typeName) {
-      return ProcessLaunchSchema.validate(owned.configuration);
+    final type = owned.configuration.type;
+    if (type == ShellScriptLaunchSchema.typeName ||
+        type == ShellScriptLaunchSchema.processAlias) {
+      return ShellScriptLaunchSchema.validate(owned.configuration);
     }
     return const [];
   }
@@ -202,14 +206,32 @@ class _StoreBackedPlatform implements RunPlatformApi {
 
   @override
   Map<String, Object?>? configurationSchema(String type) {
-    if (type == ProcessLaunchSchema.typeName) {
-      return Map<String, Object?>.from(ProcessLaunchSchema.configurationSchema);
+    if (type == ShellScriptLaunchSchema.typeName ||
+        type == ShellScriptLaunchSchema.processAlias ||
+        type == ProcessLaunchSchema.typeName) {
+      return Map<String, Object?>.from(
+        ShellScriptLaunchSchema.configurationSchema,
+      );
     }
     return null;
   }
 
   @override
   List<String> kindsFor(String type) => const ['run'];
+
+  @override
+  List<LaunchTypeContribution> get launchTypes => [
+        LaunchTypeContribution(
+          type: ShellScriptLaunchSchema.typeName,
+          kinds: const ['run'],
+          adapterCommand: '',
+          adapterRuntime: 'workspace',
+          lifecycle: LaunchAdapterLifecycle.sticky,
+          configurationSchema: Map<String, Object?>.from(
+            ShellScriptLaunchSchema.configurationSchema,
+          ),
+        ),
+      ];
 }
 
 Future<void> _pumpEditor(

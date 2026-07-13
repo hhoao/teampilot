@@ -6,6 +6,7 @@ enum LaunchConfigSchemaFieldType {
   stringArray,
   stringMap,
   boolean,
+  enumValue,
   unsupported,
 }
 
@@ -17,6 +18,7 @@ class LaunchConfigSchemaField {
     required this.type,
     this.title,
     this.monospace = false,
+    this.enumValues,
   });
 
   final String key;
@@ -27,6 +29,9 @@ class LaunchConfigSchemaField {
 
   /// Prefer monospace for command/path-like string fields.
   final bool monospace;
+
+  /// Allowed values when [type] is [LaunchConfigSchemaFieldType.enumValue].
+  final List<String>? enumValues;
 
   String get label {
     final t = title?.trim();
@@ -63,6 +68,7 @@ List<LaunchConfigSchemaField> launchConfigSchemaFields(
         type: type,
         title: title,
         monospace: _preferMonospace(key, propMap),
+        enumValues: _enumValues(propMap),
       ),
     );
   }
@@ -94,6 +100,10 @@ String stringifyLaunchEnv(Map<String, String> env) =>
 
 LaunchConfigSchemaFieldType _inferFieldType(Map<String, Object?> prop) {
   final type = prop['type'];
+  final enumRaw = prop['enum'];
+  if (enumRaw is List && enumRaw.isNotEmpty) {
+    return LaunchConfigSchemaFieldType.enumValue;
+  }
   if (type == 'string') return LaunchConfigSchemaFieldType.string;
   if (type == 'boolean') return LaunchConfigSchemaFieldType.boolean;
   if (type == 'array') {
@@ -114,8 +124,19 @@ LaunchConfigSchemaFieldType _inferFieldType(Map<String, Object?> prop) {
   return LaunchConfigSchemaFieldType.unsupported;
 }
 
+List<String>? _enumValues(Map<String, Object?> prop) {
+  final raw = prop['enum'];
+  if (raw is! List || raw.isEmpty) return null;
+  return [for (final e in raw) e.toString()];
+}
+
 bool _preferMonospace(String key, Map<String, Object?> prop) {
-  if (key == 'command' || key == 'cwd') return true;
+  if (key == 'command' ||
+      key == 'cwd' ||
+      key == 'scriptPath' ||
+      key == 'interpreterPath') {
+    return true;
+  }
   final ui = prop['ui'];
   if (ui is Map && ui['monospace'] == true) return true;
   if (prop['format'] == 'path' || prop['format'] == 'uri') return true;

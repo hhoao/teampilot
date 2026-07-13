@@ -5,13 +5,19 @@ import '../../models/run/launch_configuration.dart';
 import '../../services/run/launch_config_l10n.dart';
 import '../../services/run/launch_config_schema_fields.dart';
 import '../../theme/app_text_styles.dart';
+import '../dropdown/app_dropdown_decoration.dart';
+import '../dropdown/app_dropdown_field.dart';
 import '../form/app_form_field.dart';
 
 /// Schema-driven editor for a single [LaunchConfiguration].
 ///
 /// Must be a descendant of [AppForm]. Always shows Name above properties from
 /// [schema]. Maps JSON-schema types to controls: string → text, string array →
-/// whitespace-separated text, string map → `KEY=VALUE` lines, boolean → [Switch].
+/// whitespace-separated text, string map → `KEY=VALUE` lines, boolean →
+/// [Checkbox], enum → [AppDropdownField].
+///
+/// Shell Script: shows `scriptPath` only when `execute == scriptFile`, and
+/// `scriptText` only when `execute == scriptText`.
 class LaunchConfigSchemaForm extends StatefulWidget {
   const LaunchConfigSchemaForm({
     required this.value,
@@ -126,6 +132,7 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
   ) {
     switch (field.type) {
       case LaunchConfigSchemaFieldType.string:
+      case LaunchConfigSchemaFieldType.enumValue:
         return _readString(config, field.key) ?? '';
       case LaunchConfigSchemaFieldType.stringArray:
         return stringifyLaunchArgs(_readStringList(config, field.key));
@@ -135,6 +142,18 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
       case LaunchConfigSchemaFieldType.unsupported:
         return '';
     }
+  }
+
+  String _executeMode() {
+    final raw = _readString(_working, 'execute')?.trim();
+    if (raw == null || raw.isEmpty) return 'scriptFile';
+    return raw;
+  }
+
+  bool _shouldShowField(LaunchConfigSchemaField field) {
+    if (field.key == 'scriptPath') return _executeMode() == 'scriptFile';
+    if (field.key == 'scriptText') return _executeMode() == 'scriptText';
+    return true;
   }
 
   void _emit(LaunchConfiguration next) {
@@ -149,6 +168,7 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
   void _onFieldTextChanged(LaunchConfigSchemaField field, String text) {
     switch (field.type) {
       case LaunchConfigSchemaFieldType.string:
+      case LaunchConfigSchemaFieldType.enumValue:
         _emit(_writeString(_working, field.key, text));
       case LaunchConfigSchemaFieldType.stringArray:
         _emit(
@@ -166,6 +186,12 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
 
   void _onBoolChanged(String key, bool value) {
     _emit(_writeBool(_working, key, value));
+  }
+
+  void _onEnumChanged(String key, String value) {
+    setState(() {
+      _emit(_writeString(_working, key, value));
+    });
   }
 
   InputDecoration _controlDecoration({required bool hasError}) {
@@ -215,7 +241,8 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
         ),
         const SizedBox(height: 12),
         for (final field in _fields)
-          if (field.type != LaunchConfigSchemaFieldType.unsupported) ...[
+          if (field.type != LaunchConfigSchemaFieldType.unsupported &&
+              _shouldShowField(field)) ...[
             _buildField(context, field, styles),
             const SizedBox(height: 12),
           ],
@@ -239,14 +266,42 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
           builder: (state) {
             return Align(
               alignment: Alignment.centerLeft,
-              child: Switch(
+              child: Checkbox(
                 key: fieldKey,
                 value: state.value ?? false,
                 onChanged: (v) {
+                  if (v == null) return;
                   state.didChange(v);
                   _onBoolChanged(field.key, v);
                 },
               ),
+            );
+          },
+        );
+      case LaunchConfigSchemaFieldType.enumValue:
+        final values = field.enumValues ?? const <String>[];
+        final current = _readString(_working, field.key);
+        final initial = values.contains(current)
+            ? current
+            : (values.isNotEmpty ? values.first : null);
+        return AppFormField<String>(
+          id: field.key,
+          initialValue: initial ?? '',
+          label: label,
+          builder: (state) {
+            return AppDropdownField<String>(
+              key: fieldKey,
+              items: values,
+              initialItem: initial,
+              searchable: false,
+              decoration: AppDropdownDecorations.themed(context),
+              itemLabel: (value) =>
+                  localizeLaunchConfigEnumValue(context.l10n, field.key, value),
+              onChanged: (value) {
+                if (value == null) return;
+                state.didChange(value);
+                _onEnumChanged(field.key, value);
+              },
             );
           },
         );
@@ -286,6 +341,8 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
               focusNode: state.focusNode,
               style: field.monospace ? styles.mono : null,
               textInputAction: TextInputAction.next,
+              minLines: field.key == 'scriptText' ? 3 : null,
+              maxLines: field.key == 'scriptText' ? 8 : 1,
               onChanged: (t) {
                 state.didChange(t);
                 _onFieldTextChanged(field, t);

@@ -1167,6 +1167,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiMessageCopied => '已复制';
 
   @override
+  String get aiMessageExportMarkdown => '导出 Markdown';
+
+  @override
+  String get aiMessageIncomplete => '消息未完成';
+
+  @override
+  String get aiMessageCancelled => '消息已取消';
+
+  @override
   String get sessionWorkbenchShowTerminal => '显示终端';
 
   @override
@@ -5485,6 +5494,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get runConfigurationType => '类型';
 
   @override
+  String get runTypeShellScript => 'Shell 脚本';
+
+  @override
+  String get runPickLaunchType => '选择启动类型';
+
+  @override
   String get runFieldCommand => '命令';
 
   @override
@@ -5498,6 +5513,42 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get runFieldShell => '在 Shell 中运行';
+
+  @override
+  String get runFieldScriptPath => '脚本路径';
+
+  @override
+  String get runFieldScriptText => '脚本内容';
+
+  @override
+  String get runFieldExecute => '执行方式';
+
+  @override
+  String get runFieldScriptOptions => '脚本选项';
+
+  @override
+  String get runFieldInterpreterPath => '解释器路径';
+
+  @override
+  String get runFieldInterpreterOptions => '解释器选项';
+
+  @override
+  String get runFieldExecuteInTerminal => '在终端中执行';
+
+  @override
+  String get runFieldAllowMultipleInstances => '允许运行多个实例';
+
+  @override
+  String get runFieldActivateToolWindow => '激活工具窗口';
+
+  @override
+  String get runFieldFocusToolWindow => '聚焦工具窗口';
+
+  @override
+  String get runExecuteScriptFile => '脚本文件';
+
+  @override
+  String get runExecuteScriptText => '脚本内容';
 
   @override
   String get runValidationCommandRequired => '命令不能为空';
@@ -5516,6 +5567,34 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get runValidationConfigurationMustBeMap => '配置必须是对象';
+
+  @override
+  String get runValidationExecuteRequired => '必须选择执行方式';
+
+  @override
+  String get runValidationExecuteInvalid => '执行方式必须是脚本文件或脚本内容';
+
+  @override
+  String get runValidationScriptPathRequired => '脚本路径不能为空';
+
+  @override
+  String get runValidationScriptTextRequired => '脚本内容不能为空';
+
+  @override
+  String get runValidationInterpreterPathMustBeString => '解释器路径必须是字符串';
+
+  @override
+  String get runValidationExecuteInTerminalMustBeBoolean => '在终端中执行必须是布尔值';
+
+  @override
+  String get runValidationAllowMultipleInstancesMustBeBoolean =>
+      '允许运行多个实例必须是布尔值';
+
+  @override
+  String get runValidationActivateToolWindowMustBeBoolean => '激活工具窗口必须是布尔值';
+
+  @override
+  String get runValidationFocusToolWindowMustBeBoolean => '聚焦工具窗口必须是布尔值';
 
   @override
   String get shortcutsRunSelected => '运行所选配置';

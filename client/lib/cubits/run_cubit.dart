@@ -4,6 +4,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/run/launch_configuration.dart';
+import '../models/run/launch_type_contribution.dart';
 import '../models/run/run_session.dart';
 import '../models/run/run_ui_intent.dart';
 import '../models/workspace_folder.dart';
@@ -479,6 +480,9 @@ class RunCubit extends Cubit<RunState> {
   Map<String, Object?>? schemaForType(String type) =>
       _platform.configurationSchema(type);
 
+  /// Registered launch types for the Add-configuration type picker.
+  List<LaunchTypeContribution> get launchTypes => _platform.launchTypes;
+
   /// Capability kinds for [type] (defaults to `run` when unknown).
   List<String> kindsForType(String type) => _platform.kindsFor(type);
 
@@ -592,6 +596,12 @@ class RunCubit extends Cubit<RunState> {
         owned.configuration.type,
         targetId: owned.owner.targetId,
       );
+
+  bool isTypeAvailableForTarget(String type, {required String targetId}) =>
+      _platform.isTypeAvailable(type, targetId: targetId);
+
+  String? unavailableReasonForType(String type, {required String targetId}) =>
+      _platform.unavailableReason(type, targetId: targetId);
 
   bool isActionAvailable(LaunchAdapterConfigurationEntry action) {
     final targetId =

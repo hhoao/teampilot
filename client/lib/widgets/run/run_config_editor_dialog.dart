@@ -7,7 +7,8 @@ import '../../cubits/run_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/run/launch_configuration.dart';
 import '../../models/workspace_folder.dart';
-import '../../services/run/process_launch_schema.dart';
+import '../../services/run/launch_config_l10n.dart';
+import '../../services/run/shell_script_launch_schema.dart';
 import '../../theme/app_dialog_theme.dart';
 import '../../theme/app_text_styles.dart';
 import '../app_dialog.dart';
@@ -107,7 +108,7 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
     final cubit = context.read<RunCubit>();
     final draft = cubit.createConfiguration(
       folder: folder,
-      type: widget.initialType ?? ProcessLaunchSchema.typeName,
+      type: widget.initialType ?? ShellScriptLaunchSchema.typeName,
     );
     _draft = draft;
     _baseline = draft;
@@ -135,8 +136,9 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
     final cubit = context.read<RunCubit>();
     final raw =
         cubit.schemaForType(type) ??
-        (type == ProcessLaunchSchema.typeName
-            ? ProcessLaunchSchema.configurationSchema
+        (type == ShellScriptLaunchSchema.typeName ||
+                type == ShellScriptLaunchSchema.processAlias
+            ? ShellScriptLaunchSchema.configurationSchema
             : const <String, Object?>{});
     return _filterCommonSchemaProps(raw);
   }
@@ -376,7 +378,10 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
                 border: OutlineInputBorder(),
                 isDense: true,
               ),
-              child: Text(type, style: styles.md),
+              child: Text(
+                localizeLaunchTypeLabel(l10n, type),
+                style: styles.md,
+              ),
             );
           },
         ),

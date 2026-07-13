@@ -131,6 +131,20 @@ class RunToolbarConfigDropdown extends StatelessWidget {
               ),
             const SidebarActionMenuDivider(),
             SidebarActionMenuItem(
+              key: const Key('run-config-add-configuration'),
+              icon: Icons.add_rounded,
+              label: l10n.runAddConfiguration,
+              menuController: controller,
+              onTap: () {
+                unawaited(
+                  pickTypeAndCreateRunConfiguration(
+                    context,
+                    workspaceId: workspaceId,
+                  ),
+                );
+              },
+            ),
+            SidebarActionMenuItem(
               key: const Key('run-config-add'),
               icon: Icons.settings_outlined,
               label: l10n.runConfigureLaunchItems,

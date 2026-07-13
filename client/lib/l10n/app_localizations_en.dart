@@ -1227,6 +1227,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiMessageCopied => 'Copied';
 
   @override
+  String get aiMessageExportMarkdown => 'Export Markdown';
+
+  @override
+  String get aiMessageIncomplete => 'Message incomplete';
+
+  @override
+  String get aiMessageCancelled => 'Message cancelled';
+
+  @override
   String get sessionWorkbenchShowTerminal => 'Show terminal';
 
   @override
@@ -5694,6 +5703,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runConfigurationType => 'Type';
 
   @override
+  String get runTypeShellScript => 'Shell Script';
+
+  @override
+  String get runPickLaunchType => 'Select launch type';
+
+  @override
   String get runFieldCommand => 'Command';
 
   @override
@@ -5707,6 +5722,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runFieldShell => 'Run in shell';
+
+  @override
+  String get runFieldScriptPath => 'Script path';
+
+  @override
+  String get runFieldScriptText => 'Script text';
+
+  @override
+  String get runFieldExecute => 'Execute';
+
+  @override
+  String get runFieldScriptOptions => 'Script options';
+
+  @override
+  String get runFieldInterpreterPath => 'Interpreter path';
+
+  @override
+  String get runFieldInterpreterOptions => 'Interpreter options';
+
+  @override
+  String get runFieldExecuteInTerminal => 'Execute in the terminal';
+
+  @override
+  String get runFieldAllowMultipleInstances => 'Allow multiple instances';
+
+  @override
+  String get runFieldActivateToolWindow => 'Activate tool window';
+
+  @override
+  String get runFieldFocusToolWindow => 'Focus tool window';
+
+  @override
+  String get runExecuteScriptFile => 'Script file';
+
+  @override
+  String get runExecuteScriptText => 'Script text';
 
   @override
   String get runValidationCommandRequired => 'Command is required';
@@ -5729,6 +5780,39 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get runValidationConfigurationMustBeMap =>
       'Configuration must be a map';
+
+  @override
+  String get runValidationExecuteRequired => 'Execute mode is required';
+
+  @override
+  String get runValidationExecuteInvalid =>
+      'Execute must be Script file or Script text';
+
+  @override
+  String get runValidationScriptPathRequired => 'Script path is required';
+
+  @override
+  String get runValidationScriptTextRequired => 'Script text is required';
+
+  @override
+  String get runValidationInterpreterPathMustBeString =>
+      'Interpreter path must be a string';
+
+  @override
+  String get runValidationExecuteInTerminalMustBeBoolean =>
+      'Execute in the terminal must be a boolean';
+
+  @override
+  String get runValidationAllowMultipleInstancesMustBeBoolean =>
+      'Allow multiple instances must be a boolean';
+
+  @override
+  String get runValidationActivateToolWindowMustBeBoolean =>
+      'Activate tool window must be a boolean';
+
+  @override
+  String get runValidationFocusToolWindowMustBeBoolean =>
+      'Focus tool window must be a boolean';
 
   @override
   String get shortcutsRunSelected => 'Run Selected Configuration';

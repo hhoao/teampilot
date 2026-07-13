@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../../cubits/run_cubit.dart';
 import '../../models/run/launch_configuration.dart';
+import '../../models/run/launch_type_contribution.dart';
 import '../../models/run/run_session.dart';
 import '../../models/workspace_folder.dart';
 import '../run/launch_adapter_protocol.dart';
@@ -275,4 +276,8 @@ class _DeferredRunPlatform implements RunPlatformApi, RunPlatformDeferred {
   @override
   List<String> kindsFor(String type) =>
       _inner?.kindsFor(type) ?? const ['run'];
+
+  @override
+  List<LaunchTypeContribution> get launchTypes =>
+      _inner?.launchTypes ?? const [];
 }
