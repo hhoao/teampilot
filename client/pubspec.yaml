@@ -26,6 +26,8 @@ dependencies:
     path: packages/flutter_pty_new
   dartssh2:
     path: packages/dartssh2
+  ai_message_core:
+    path: packages/ai_message_core
   system_fonts:
     path: packages/system_fonts
   teampilot_tree_sitter:
