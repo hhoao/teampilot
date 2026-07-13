@@ -178,6 +178,33 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   showDividerBelow: true,
                 ),
                 SettingsLabeledRow(
+                  title: l10n.markdownOpenModeTitle,
+                  subtitle: l10n.markdownOpenModeDescription,
+                  trailing: SettingsCompactDropdown<MarkdownOpenMode>(
+                    value: context.select<LayoutCubit, MarkdownOpenMode>(
+                      (c) => c.state.preferences.markdownOpenMode,
+                    ),
+                    entries: [
+                      (
+                        MarkdownOpenMode.preview,
+                        l10n.markdownOpenModePreview,
+                      ),
+                      (
+                        MarkdownOpenMode.source,
+                        l10n.markdownOpenModeSource,
+                      ),
+                      (
+                        MarkdownOpenMode.remember,
+                        l10n.markdownOpenModeRemember,
+                      ),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) controller.setMarkdownOpenMode(v);
+                    },
+                  ),
+                  showDividerBelow: true,
+                ),
+                SettingsLabeledRow(
                   title: '终端主题',
                   subtitle: '跟随主题色或使用固定风格',
                   trailing: SettingsCompactDropdown<String>(

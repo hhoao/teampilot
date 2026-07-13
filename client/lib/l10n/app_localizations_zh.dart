@@ -291,6 +291,28 @@ class AppLocalizationsZh extends AppLocalizations {
   String get uiZoomDescription => '整体缩放界面——文字、图标与间距一起。「标准」按系统缩放自动匹配。';
 
   @override
+  String get markdownOpenModeTitle => '打开 Markdown 为';
+
+  @override
+  String get markdownOpenModeDescription =>
+      '在编辑器中打开 .md 文件时的默认视图。「记住上次」仅在本次应用会话内有效。';
+
+  @override
+  String get markdownOpenModePreview => '预览';
+
+  @override
+  String get markdownOpenModeSource => '源码';
+
+  @override
+  String get markdownOpenModeRemember => '记住上次';
+
+  @override
+  String get markdownViewToggleSource => '源码';
+
+  @override
+  String get markdownViewTogglePreview => '预览';
+
+  @override
   String get themePresetGraphite => '石墨';
 
   @override

@@ -307,6 +307,28 @@ class AppLocalizationsEn extends AppLocalizations {
       'Zoom the whole UI together — text, icons, and spacing. Standard follows your display scaling.';
 
   @override
+  String get markdownOpenModeTitle => 'Open Markdown as';
+
+  @override
+  String get markdownOpenModeDescription =>
+      'Default view when opening .md files in the editor. Remember lasts for this app session only.';
+
+  @override
+  String get markdownOpenModePreview => 'Preview';
+
+  @override
+  String get markdownOpenModeSource => 'Source';
+
+  @override
+  String get markdownOpenModeRemember => 'Remember last';
+
+  @override
+  String get markdownViewToggleSource => 'Source';
+
+  @override
+  String get markdownViewTogglePreview => 'Preview';
+
+  @override
   String get themePresetGraphite => 'Graphite';
 
   @override

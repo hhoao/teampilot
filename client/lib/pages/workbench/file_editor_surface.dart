@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
 
@@ -11,11 +12,17 @@ import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/editor/file_editor_theme.dart';
 import '../../services/editor/file_editor_toolbar.dart';
+import '../../services/editor/markdown_preview_link_handler.dart';
+import '../../services/editor/markdown_view_mode_store.dart';
 import '../../services/editor_platform/document_session.dart';
 import '../../services/editor_platform/editor_viewport_token_binder.dart';
+import '../../services/workbench/workbench_editor_opener.dart';
+import '../../services/workspace/workspace_tools_scope.dart';
+import '../../theme/app_markdown_style_sheet.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/workbench/file_diff_surface_toggle.dart';
+import '../../widgets/workbench/markdown_view_mode_toggle.dart';
 
 /// Center-pane file editor for one path (no inner tab bar).
 class FileEditorSurface extends StatelessWidget {
@@ -76,6 +83,8 @@ class _FileEditorToolbar extends StatelessWidget {
     );
     final name = p.basename(path);
     final canToggleDiff = gitCubitForAbsolutePath(context, path) != null;
+    final isMarkdown = isMarkdownEditorPath(path);
+    final opener = context.read<WorkbenchEditorOpener>();
     return SizedBox(
       height: 36,
       child: Padding(
@@ -109,6 +118,19 @@ class _FileEditorToolbar extends StatelessWidget {
                         path,
                       )
                     : null,
+              ),
+            ],
+            if (isMarkdown) ...[
+              const SizedBox(width: 4),
+              ListenableBuilder(
+                listenable: opener.markdownViewModes,
+                builder: (context, _) {
+                  return MarkdownViewModeToggle(
+                    mode: opener.markdownViewModes.modeFor(path),
+                    onModeChanged: (mode) =>
+                        opener.markdownViewModes.setMode(path, mode),
+                  );
+                },
               ),
             ],
             if (canToggleDiff) ...[
@@ -177,10 +199,58 @@ class _FileEditorBody extends StatelessWidget {
       return Center(child: Text(l10n.editorNotReady));
     }
 
+    if (!isMarkdownEditorPath(path)) {
+      return _CodeEditorPane(
+        workspaceId: workspaceId,
+        path: path,
+        controller: controller,
+        readOnly: model.readOnly,
+      );
+    }
+
+    final opener = context.read<WorkbenchEditorOpener>();
+    return ListenableBuilder(
+      listenable: opener.markdownViewModes,
+      builder: (context, _) {
+        final mode = opener.markdownViewModes.modeFor(path);
+        if (mode == MarkdownViewMode.preview) {
+          return _MarkdownPreviewPane(
+            workspaceId: workspaceId,
+            path: path,
+            controller: controller,
+          );
+        }
+        return _CodeEditorPane(
+          workspaceId: workspaceId,
+          path: path,
+          controller: controller,
+          readOnly: model.readOnly,
+        );
+      },
+    );
+  }
+}
+
+class _CodeEditorPane extends StatelessWidget {
+  const _CodeEditorPane({
+    required this.workspaceId,
+    required this.path,
+    required this.controller,
+    required this.readOnly,
+  });
+
+  final String workspaceId;
+  final String path;
+  final CodeLineEditingController controller;
+  final bool readOnly;
+
+  @override
+  Widget build(BuildContext context) {
+    final editor = context.read<EditorCubit>();
     return CodeEditor(
       key: editor.editorKeyFor(workspaceId, path) ?? ValueKey(path),
       controller: controller,
-      readOnly: model.readOnly,
+      readOnly: readOnly,
       toolbarController: const FileEditorContextMenuController(),
       style: codeEditorStyleFor(
         context,
@@ -196,6 +266,50 @@ class _FileEditorBody extends StatelessWidget {
               session: editor.documentSessionFor(workspaceId, path),
             );
           },
+    );
+  }
+}
+
+class _MarkdownPreviewPane extends StatelessWidget {
+  const _MarkdownPreviewPane({
+    required this.workspaceId,
+    required this.path,
+    required this.controller,
+  });
+
+  final String workspaceId;
+  final String path;
+  final CodeLineEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final opener = context.read<WorkbenchEditorOpener>();
+    final roots = WorkspaceToolsScope.maybeOf(context)?.roots ?? const [];
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        return SelectionArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+            child: MarkdownBody(
+              data: controller.text,
+              styleSheet: buildAppMarkdownStyleSheet(Theme.of(context)),
+              selectable: false,
+              onTapLink: (text, href, title) {
+                unawaited(
+                  handleMarkdownPreviewLink(
+                    href: href,
+                    markdownFilePath: path,
+                    workspaceId: workspaceId,
+                    workspaceRoots: roots,
+                    opener: opener,
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -50,12 +50,15 @@ MarkdownStyleSheet buildAppMarkdownStyleSheet(ThemeData theme) {
   // Keep inline code on the same metrics as body. A smaller/taller mono run
   // makes SelectionArea paint per-span highlight islands (looks unselected
   // even though copy/paste includes the text). Font family may still differ.
+  final card = theme.cardTheme.color ?? theme.cardColor;
   final code = body.copyWith(
     fontFamily: fonts.monoFontFamily,
     fontFamilyFallback: fonts.monoFontFamilyFallback,
-    backgroundColor: (theme.cardTheme.color ?? theme.cardColor)
-        ?.withValues(alpha: 0.55),
+    backgroundColor: card.withValues(alpha: 0.55),
   );
+
+  final borderColor = scheme.outlineVariant.withValues(alpha: 0.55);
+  final muted = card.withValues(alpha: 0.85);
 
   return base.copyWith(
     p: body,
@@ -73,8 +76,19 @@ MarkdownStyleSheet buildAppMarkdownStyleSheet(ThemeData theme) {
     img: body,
     checkbox: body.copyWith(color: scheme.primary),
     listBullet: body,
+    a: body.copyWith(
+      color: scheme.primary,
+      decoration: TextDecoration.underline,
+      decorationColor: scheme.primary,
+    ),
     tableHead: withUi(styles.mdSemibold),
     tableBody: body,
-    a: body.copyWith(color: scheme.primary),
+    tableHeadAlign: TextAlign.start,
+    tableBorder: TableBorder.all(color: borderColor, width: 1),
+    tableColumnWidth: const IntrinsicColumnWidth(),
+    tableCellsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    tableHeadCellsDecoration: BoxDecoration(color: muted),
+    tableCellsDecoration: const BoxDecoration(),
+    tablePadding: const EdgeInsets.symmetric(vertical: 8),
   );
 }

@@ -26,6 +26,7 @@ import '../cubits/shortcut_cubit.dart';
 import '../cubits/editor_cubit.dart';
 import '../cubits/workbench/workbench_cubit.dart';
 import '../services/workbench/workbench_editor_opener.dart';
+import '../services/editor/markdown_view_mode_store.dart';
 import '../services/session/ai_history_loader.dart';
 import '../services/session/session_history_context_builder.dart';
 import '../cubits/ai_feature_settings_cubit.dart';
@@ -1035,10 +1036,14 @@ Future<AppShell> buildAppShell({
   // open paints colored instead of cold. Never blocks app start.
   unawaited(EditorPlatform.bootstrap());
   final workbenchCubit = WorkbenchCubit();
+  final markdownViewModes = MarkdownViewModeStore();
   final workbenchEditorOpener = WorkbenchEditorOpener(
     editor: editorCubit,
     workbench: workbenchCubit,
     chat: chatCubit,
+    markdownViewModes: markdownViewModes,
+    readMarkdownOpenMode: () =>
+        layoutCubit.state.preferences.markdownOpenMode,
   );
 
   // P1: switching the home target persists the id, rebinds the home context,

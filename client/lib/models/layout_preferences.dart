@@ -6,6 +6,9 @@ enum LayoutPreset { workbench, chatFocus, inspector }
 
 enum WorkspaceEntryMode { home, lastWorkspace }
 
+/// Default surface when opening a markdown file in the workbench editor.
+enum MarkdownOpenMode { preview, source, remember }
+
 /// Dropdown value for language preference: `system` | `en` | `zh`.
 String languagePreferenceUiValue(String locale) {
   if (locale.isEmpty) return 'system';
@@ -57,6 +60,7 @@ class LayoutPreferences {
     this.monoFontId = FontCatalog.systemId,
     this.workspaceTerminalVisible = false,
     this.workspaceTerminalHeight = defaultWorkspaceTerminalHeight,
+    this.markdownOpenMode = MarkdownOpenMode.preview,
   });
 
   factory LayoutPreferences.fromJson(Map<String, Object?> json) {
@@ -122,6 +126,9 @@ class LayoutPreferences {
         json['workspaceTerminalHeight'],
         fallback: defaultWorkspaceTerminalHeight,
       ).clamp(minWorkspaceTerminalHeight, double.infinity),
+      markdownOpenMode:
+          _enumValue(MarkdownOpenMode.values, json['markdownOpenMode']) ??
+          MarkdownOpenMode.preview,
     ).withAtLeastOneToolVisible();
   }
 
@@ -179,6 +186,7 @@ class LayoutPreferences {
   final String monoFontId;
   final bool workspaceTerminalVisible;
   final double workspaceTerminalHeight;
+  final MarkdownOpenMode markdownOpenMode;
 
   LayoutPreferences copyWith({
     LayoutPreset? preset,
@@ -207,6 +215,7 @@ class LayoutPreferences {
     String? monoFontId,
     bool? workspaceTerminalVisible,
     double? workspaceTerminalHeight,
+    MarkdownOpenMode? markdownOpenMode,
   }) {
     return LayoutPreferences(
       preset: preset ?? this.preset,
@@ -265,6 +274,7 @@ class LayoutPreferences {
             minWorkspaceTerminalHeight,
             double.infinity,
           ),
+      markdownOpenMode: markdownOpenMode ?? this.markdownOpenMode,
     ).withAtLeastOneToolVisible();
   }
 
@@ -299,6 +309,7 @@ class LayoutPreferences {
       monoFontId: monoFontId,
       workspaceTerminalVisible: workspaceTerminalVisible,
       workspaceTerminalHeight: workspaceTerminalHeight,
+      markdownOpenMode: markdownOpenMode,
     );
   }
 
@@ -330,6 +341,7 @@ class LayoutPreferences {
       'monoFontId': monoFontId,
       'workspaceTerminalVisible': workspaceTerminalVisible,
       'workspaceTerminalHeight': workspaceTerminalHeight,
+      'markdownOpenMode': markdownOpenMode.name,
     };
   }
 }

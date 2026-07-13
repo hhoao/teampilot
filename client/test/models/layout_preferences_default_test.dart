@@ -125,4 +125,34 @@ void main() {
     );
     expect(roundTrip.homeSidebarWidth, 500);
   });
+
+  test('markdownOpenMode defaults to preview and round-trips', () {
+    expect(
+      const LayoutPreferences().markdownOpenMode,
+      MarkdownOpenMode.preview,
+    );
+    expect(
+      LayoutPreferences.fromJson(const {}).markdownOpenMode,
+      MarkdownOpenMode.preview,
+    );
+    expect(
+      LayoutPreferences.fromJson(const {
+        'markdownOpenMode': 'source',
+      }).markdownOpenMode,
+      MarkdownOpenMode.source,
+    );
+    final remember = const LayoutPreferences().copyWith(
+      markdownOpenMode: MarkdownOpenMode.remember,
+    );
+    expect(
+      LayoutPreferences.fromJson(remember.toJson()).markdownOpenMode,
+      MarkdownOpenMode.remember,
+    );
+    expect(
+      LayoutPreferences.fromJson(const {
+        'markdownOpenMode': 'nope',
+      }).markdownOpenMode,
+      MarkdownOpenMode.preview,
+    );
+  });
 }

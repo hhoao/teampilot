@@ -8,9 +8,16 @@ import '../theme.dart';
 
 /// Streaming-safe markdown aligned with assistant-ui MarkdownText / aui-md.
 class AiTextPartView extends StatelessWidget {
-  const AiTextPartView({required this.text, super.key});
+  const AiTextPartView({
+    required this.text,
+    this.onTapLink,
+    super.key,
+  });
 
   final String text;
+
+  /// Optional; package does not launch URLs itself.
+  final MarkdownTapLinkCallback? onTapLink;
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +30,7 @@ class AiTextPartView extends StatelessWidget {
     return MarkdownBody(
       data: data,
       styleSheet: sheet,
+      onTapLink: onTapLink,
       // Parent [SelectionArea]: text-only blocks merge into one Text.rich;
       // code blocks / tables stay as widgets and split the tree.
       selectable: false,
@@ -48,8 +56,11 @@ MarkdownStyleSheet defaultAiMarkdownSheet(
   ThemeData theme,
   AiMessageTheme aiTheme,
 ) {
+  final scheme = theme.colorScheme;
   final base = MarkdownStyleSheet.fromTheme(theme);
   final body = theme.textTheme.bodyMedium?.copyWith(height: 1.625);
+  final muted = aiTheme.resolveMutedSurface(scheme);
+  final borderColor = scheme.outlineVariant.withValues(alpha: 0.55);
   return base.copyWith(
     p: body?.copyWith(height: 1.625),
     h1: theme.textTheme.titleLarge?.copyWith(
@@ -72,28 +83,40 @@ MarkdownStyleSheet defaultAiMarkdownSheet(
     h3Padding: const EdgeInsets.only(top: 4),
     listIndent: 24,
     listBullet: body,
+    a: body?.copyWith(
+      color: scheme.primary,
+      decoration: TextDecoration.underline,
+      decorationColor: scheme.primary,
+    ),
     // Same size/height as body — mismatched inline code metrics fragment
     // SelectionArea highlights (copy still works; it only looks gapped).
     code: body?.copyWith(
       fontFamily: 'monospace',
-      backgroundColor: aiTheme
-          .resolveMutedSurface(theme.colorScheme)
-          .withValues(alpha: 0.55),
+      backgroundColor: muted.withValues(alpha: 0.55),
     ),
     codeblockDecoration: BoxDecoration(
-      color: aiTheme.resolveMutedSurface(theme.colorScheme),
+      color: muted,
       borderRadius: BorderRadius.circular(aiTheme.codeBlockRadius),
     ),
     codeblockPadding: EdgeInsets.zero,
     blockquoteDecoration: BoxDecoration(
       border: Border(
         left: BorderSide(
-          color: theme.colorScheme.outlineVariant,
+          color: scheme.outlineVariant,
           width: 3,
         ),
       ),
     ),
     blockquotePadding: const EdgeInsets.only(left: 12),
+    tableHead: body?.copyWith(fontWeight: FontWeight.w600),
+    tableBody: body,
+    tableHeadAlign: TextAlign.start,
+    tableBorder: TableBorder.all(color: borderColor, width: 1),
+    tableColumnWidth: const IntrinsicColumnWidth(),
+    tableCellsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    tableHeadCellsDecoration: BoxDecoration(color: muted.withValues(alpha: 0.85)),
+    tableCellsDecoration: const BoxDecoration(),
+    tablePadding: const EdgeInsets.symmetric(vertical: 8),
   );
 }
 

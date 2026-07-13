@@ -4,7 +4,9 @@ import '../../cubits/chat_cubit.dart';
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
+import '../../models/layout_preferences.dart';
 import '../editor/file_editor_theme.dart';
+import '../editor/markdown_view_mode_store.dart';
 import '../io/filesystem.dart';
 
 /// Single entry for opening file/diff center tabs (editor bucket + workbench).
@@ -12,14 +14,19 @@ class WorkbenchEditorOpener {
   WorkbenchEditorOpener({
     required EditorCubit editor,
     required WorkbenchCubit workbench,
+    required this.markdownViewModes,
+    required MarkdownOpenMode Function() readMarkdownOpenMode,
     ChatCubit? chat,
   }) : _editor = editor,
        _workbench = workbench,
+       _readMarkdownOpenMode = readMarkdownOpenMode,
        _chat = chat;
 
   final EditorCubit _editor;
   final WorkbenchCubit _workbench;
   final ChatCubit? _chat;
+  final MarkdownViewModeStore markdownViewModes;
+  final MarkdownOpenMode Function() _readMarkdownOpenMode;
 
   Future<void> openFile(
     String workspaceId,
@@ -33,6 +40,9 @@ class WorkbenchEditorOpener {
     if (!isEditorOpenableFilePath(normalized)) {
       await _editor.openFile(workspaceId, normalized, fs: fs);
       return;
+    }
+    if (isMarkdownEditorPath(normalized)) {
+      markdownViewModes.seedOnOpen(normalized, _readMarkdownOpenMode());
     }
     final tab = WorkbenchTabId.file(normalized);
     final replaced = _workbench.ensureTab(

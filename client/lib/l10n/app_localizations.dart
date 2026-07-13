@@ -638,6 +638,48 @@ abstract class AppLocalizations {
   /// **'Zoom the whole UI together — text, icons, and spacing. Standard follows your display scaling.'**
   String get uiZoomDescription;
 
+  /// No description provided for @markdownOpenModeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Markdown as'**
+  String get markdownOpenModeTitle;
+
+  /// No description provided for @markdownOpenModeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Default view when opening .md files in the editor. Remember lasts for this app session only.'**
+  String get markdownOpenModeDescription;
+
+  /// No description provided for @markdownOpenModePreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get markdownOpenModePreview;
+
+  /// No description provided for @markdownOpenModeSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get markdownOpenModeSource;
+
+  /// No description provided for @markdownOpenModeRemember.
+  ///
+  /// In en, this message translates to:
+  /// **'Remember last'**
+  String get markdownOpenModeRemember;
+
+  /// No description provided for @markdownViewToggleSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get markdownViewToggleSource;
+
+  /// No description provided for @markdownViewTogglePreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get markdownViewTogglePreview;
+
   /// No description provided for @themePresetGraphite.
   ///
   /// In en, this message translates to:

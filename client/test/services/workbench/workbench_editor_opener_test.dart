@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
+import 'package:teampilot/models/layout_preferences.dart';
+import 'package:teampilot/services/editor/markdown_view_mode_store.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/workbench/workbench_editor_opener.dart';
 
@@ -18,7 +20,12 @@ void main() {
     addTearDown(editor.close);
     addTearDown(workbench.close);
 
-    final opener = WorkbenchEditorOpener(editor: editor, workbench: workbench);
+    final opener = WorkbenchEditorOpener(
+      editor: editor,
+      workbench: workbench,
+      markdownViewModes: MarkdownViewModeStore(),
+      readMarkdownOpenMode: () => MarkdownOpenMode.preview,
+    );
     final pending = opener.openFile('ws', '/repo/a.txt');
     await Future<void>.delayed(Duration.zero);
 
