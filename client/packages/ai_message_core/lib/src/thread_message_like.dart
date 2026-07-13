@@ -23,7 +23,7 @@ List<AiMessage> normalizeThreadMessages(List<ThreadMessageLike> input) {
   for (var i = 0; i < input.length; i++) {
     final item = input[i];
     final parts = _partsFromContent(item.content);
-    if (_shouldSkipEmptyTextOnly(parts)) {
+    if (parts.isEmpty) {
       continue;
     }
     messages.add(
@@ -41,22 +41,17 @@ List<AiMessage> normalizeThreadMessages(List<ThreadMessageLike> input) {
 
 List<AiMessagePart> _partsFromContent(Object content) {
   if (content is String) {
+    if (content.isEmpty) {
+      return const [];
+    }
     return [AiTextPart(text: content)];
   }
   if (content is List<AiMessagePart>) {
-    return List<AiMessagePart>.from(content);
+    return content
+        .where((part) => part is! AiTextPart || part.text.isNotEmpty)
+        .toList();
   }
   throw ArgumentError(
     'ThreadMessageLike.content must be String or List<AiMessagePart>',
   );
-}
-
-bool _shouldSkipEmptyTextOnly(List<AiMessagePart> parts) {
-  if (parts.isEmpty) {
-    return true;
-  }
-  if (parts.length == 1 && parts.single is AiTextPart) {
-    return (parts.single as AiTextPart).text.isEmpty;
-  }
-  return false;
 }
