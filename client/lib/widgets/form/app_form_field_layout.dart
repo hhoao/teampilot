@@ -38,9 +38,9 @@ class AppFormFieldLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final styles = AppTextStyles.of(context);
     final scheme = Theme.of(context).colorScheme;
-    final labelStyle = styles.smMediumColored(scheme.onSurface);
-    final descriptionStyle = styles.smColored(scheme.onSurfaceVariant);
-    final errorStyle = styles.smMediumColored(scheme.error);
+    final labelStyle = styles.mdMediumColored(scheme.onSurface);
+    final descriptionStyle = styles.mdColored(scheme.onSurfaceVariant);
+    final errorStyle = styles.mdMediumColored(scheme.error);
 
     final labeledControl = style == AppFormFieldLayoutStyle.inline
         ? _inlineRow(labelStyle)
@@ -100,21 +100,24 @@ class AppFormFieldLayout extends StatelessWidget {
           SizedBox(
             width: labelWidth,
             child: Padding(
-              // Align with dense input text baseline (~12–14px top inset).
-              padding: const EdgeInsets.only(right: 12, top: 10),
+              padding: const EdgeInsets.only(right: 12),
               child: DefaultTextStyle(
                 style: labelStyle,
                 textAlign: TextAlign.left,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: label!,
-                ),
+                child: label!,
               ),
             ),
           )
         else
           SizedBox(width: labelWidth + 12),
-        if (child != null) Expanded(child: child!),
+        if (child != null)
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [child!],
+            ),
+          ),
       ],
     );
   }

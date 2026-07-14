@@ -1,20 +1,31 @@
 import 'package:flutter/material.dart';
 
-/// Vertical contentPadding used by [appMultilineInputDecoration] (each side).
-/// Matches shadcn `py-2`.
-const double kAppTextareaVerticalPadding = 8;
+/// Top contentPadding — slightly taller than sides so ascenders clear the border.
+const double kAppTextareaTopPadding = 16;
+
+/// Bottom contentPadding before the resize-grip inset.
+const double kAppTextareaBottomPadding = 12;
 
 /// Horizontal contentPadding (each side). Matches shadcn `px-3`.
 const double kAppTextareaHorizontalPadding = 12;
 
-/// Outline border width budget for outer height (idle 1px; focused uses ring).
+/// Extra bottom inset so the last line clears the resize grip
+/// (shadcn `scrollbarPadding: EdgeInsets.only(bottom: 10)`).
+const double kAppTextareaBottomInset = 10;
+
+/// Default multiline [InputDecoration.contentPadding] for [AppTextarea].
+const EdgeInsets kAppTextareaContentPadding = EdgeInsets.only(
+  left: kAppTextareaHorizontalPadding,
+  right: kAppTextareaHorizontalPadding,
+  top: kAppTextareaTopPadding,
+  bottom: kAppTextareaBottomPadding + kAppTextareaBottomInset,
+);
+
+/// Outline border width budget for outer height (1px idle; 1.5px when focused).
 ///
 /// Top + bottom are applied via `borderWidth * 2` in
 /// [appTextareaHeightForLines] / [appTextareaVerticalChrome].
 const double kAppTextareaBorderWidth = 1;
-
-/// Focus ring spread outside the border (shadcn `ring-[3px]`).
-const double kAppTextareaFocusRingSpread = 3;
 
 /// Total vertical chrome (padding + border) for the AppTextarea path.
 ///
@@ -22,16 +33,20 @@ const double kAppTextareaFocusRingSpread = 3;
 /// heights including this chrome. Compose / borderless [AppTextareaShell]
 /// children should keep using `lineHeight * n` (chrome = 0).
 double appTextareaVerticalChrome({
-  double verticalPadding = kAppTextareaVerticalPadding,
+  double topPadding = kAppTextareaTopPadding,
+  double bottomPadding = kAppTextareaBottomPadding,
+  double bottomInset = kAppTextareaBottomInset,
   double borderWidth = kAppTextareaBorderWidth,
 }) =>
-    verticalPadding * 2 + borderWidth * 2;
+    topPadding + bottomPadding + bottomInset + borderWidth * 2;
 
 /// Outer shell height for [lines] of [style], including AppTextarea chrome.
 double appTextareaHeightForLines(
   TextStyle style, {
   required int lines,
-  double verticalPadding = kAppTextareaVerticalPadding,
+  double topPadding = kAppTextareaTopPadding,
+  double bottomPadding = kAppTextareaBottomPadding,
+  double bottomInset = kAppTextareaBottomInset,
   double borderWidth = kAppTextareaBorderWidth,
 }) {
   assert(lines >= 1);
@@ -40,7 +55,9 @@ double appTextareaHeightForLines(
   final lineHeight = fontSize * heightFactor;
   return lines * lineHeight +
       appTextareaVerticalChrome(
-        verticalPadding: verticalPadding,
+        topPadding: topPadding,
+        bottomPadding: bottomPadding,
+        bottomInset: bottomInset,
         borderWidth: borderWidth,
       );
 }

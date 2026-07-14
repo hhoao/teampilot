@@ -4,42 +4,63 @@ import 'package:flutter/services.dart';
 
 import '../../theme/app_control_theme.dart';
 import '../../theme/app_outline_input_theme.dart';
+import '../../theme/workspace_surface_layers.dart';
 import 'app_textarea_extent.dart';
 import 'app_textarea_shell.dart';
 
 export 'app_textarea_extent.dart';
 
-/// Multiline decoration styled like shadcn Textarea (soft border, muted hint,
-/// px-3/py-2). Clears the global single-line [BoxConstraints.tightFor] track.
-///
-/// Focus ring is painted by [AppTextarea] (not by [OutlineInputBorder]).
+/// Scroll behavior for [AppTextarea] — hides the platform scrollbar while
+/// keeping mouse wheel / trackpad scrolling (ShadTextarea parity).
+class AppTextareaScrollBehavior extends MaterialScrollBehavior {
+  const AppTextareaScrollBehavior();
+
+  @override
+  Widget buildScrollbar(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
+  }
+}
+
+/// Multiline decoration aligned with global outline [InputDecorationTheme]
+/// (same fill + border colors as single-line inputs). Clears the single-line
+/// [BoxConstraints.tightFor] track height and uses textarea padding.
 InputDecoration appMultilineInputDecoration(
   BuildContext context, {
   InputDecoration? decoration,
-  bool focused = false,
   bool hasError = false,
 }) {
   final theme = Theme.of(context);
   final scheme = theme.colorScheme;
+  final inputTheme = theme.inputDecorationTheme;
   final control = AppControlTheme.fromContext(context);
   final radius = BorderRadius.circular(control.radius);
   final base = decoration ?? const InputDecoration();
 
-  final borderColor = hasError
-      ? scheme.error
-      : focused
-      ? scheme.outline
-      : scheme.outlineVariant;
-  final borderWidth = focused || hasError ? 1.0 : 1.0;
+  final outline = scheme.outlineVariant;
 
-  OutlineInputBorder outline([Color? color]) => OutlineInputBorder(
-    borderRadius: radius,
-    borderSide: BorderSide(color: color ?? borderColor, width: borderWidth),
-  );
+  OutlineInputBorder outlineBorder(Color color, [double width = 1]) =>
+      OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: color, width: width),
+      );
+
+  // Match [buildAppOutlineInputDecorationTheme] — one border layer only (no
+  // outer box-shadow ring, which misaligns at rounded corners).
+  OutlineInputBorder? themed(OutlineInputBorder? fromTheme, OutlineInputBorder fallback) {
+    final border = fromTheme;
+    if (border is OutlineInputBorder) {
+      return border.copyWith(borderRadius: radius);
+    }
+    return fallback;
+  }
 
   final hintBase = theme.textTheme.bodyMedium ?? theme.textTheme.bodyLarge!;
   final hintStyle = withResolvedFontSize(
-    (base.hintStyle ?? hintBase).copyWith(
+    (base.hintStyle ?? inputTheme.hintStyle ?? hintBase).copyWith(
       color: scheme.onSurfaceVariant.withValues(alpha: 0.55),
       height: 1.25,
       fontWeight: FontWeight.w400,
@@ -48,32 +69,42 @@ InputDecoration appMultilineInputDecoration(
   );
 
   return base.copyWith(
-    filled: base.filled ?? true,
-    fillColor: base.fillColor ?? scheme.surface,
-    isDense: true,
-    // Empty constraints override theme `tightFor(height: control.height)`.
+    filled: base.filled ?? inputTheme.filled,
+    fillColor: base.fillColor ?? inputTheme.fillColor ?? scheme.workspaceCard,
+    isDense: false,
     constraints: const BoxConstraints(),
-    contentPadding:
-        base.contentPadding ??
-        const EdgeInsets.symmetric(
-          horizontal: kAppTextareaHorizontalPadding,
-          vertical: kAppTextareaVerticalPadding,
-        ),
+    contentPadding: base.contentPadding ?? kAppTextareaContentPadding,
     hintStyle: hintStyle,
     alignLabelWithHint: base.alignLabelWithHint ?? true,
-    border: outline(scheme.outlineVariant),
-    enabledBorder: outline(
-      hasError ? scheme.error : scheme.outlineVariant,
+    border: themed(
+      inputTheme.border as OutlineInputBorder?,
+      outlineBorder(outline),
     ),
-    focusedBorder: outline(hasError ? scheme.error : scheme.outline),
-    errorBorder: outline(scheme.error),
-    focusedErrorBorder: outline(scheme.error),
-    disabledBorder: outline(scheme.outlineVariant.withValues(alpha: 0.38)),
+    enabledBorder: themed(
+      inputTheme.enabledBorder as OutlineInputBorder?,
+      outlineBorder(hasError ? scheme.error : outline),
+    ),
+    focusedBorder: themed(
+      inputTheme.focusedBorder as OutlineInputBorder?,
+      outlineBorder(hasError ? scheme.error : scheme.primary, 1.5),
+    ),
+    errorBorder: themed(
+      inputTheme.errorBorder as OutlineInputBorder?,
+      outlineBorder(scheme.error),
+    ),
+    focusedErrorBorder: themed(
+      inputTheme.focusedErrorBorder as OutlineInputBorder?,
+      outlineBorder(scheme.error, 1.5),
+    ),
+    disabledBorder: themed(
+      inputTheme.disabledBorder as OutlineInputBorder?,
+      outlineBorder(outline.withValues(alpha: 0.38)),
+    ),
   );
 }
 
 /// Material [TextField] wrapped in [AppTextareaShell] with shadcn-like chrome:
-/// soft border, focus ring, muted placeholder, fixed viewport + drag resize.
+/// outline border (same as single-line inputs), muted placeholder, resize.
 ///
 /// The field uses [TextField.expands] inside the shell so text **wraps** and
 /// scrolls vertically (unlike equal `minLines`/`maxLines`, which becomes a
@@ -201,7 +232,6 @@ class _AppTextareaState extends State<AppTextarea> {
     if (widget.focusNode == null) {
       _ownedFocusNode = FocusNode();
     }
-    _focusNode.addListener(_handleFocusChange);
   }
 
   @override
@@ -216,34 +246,19 @@ class _AppTextareaState extends State<AppTextarea> {
       _ownedController = null;
     }
 
-    if (oldWidget.focusNode != widget.focusNode) {
-      oldWidget.focusNode?.removeListener(_handleFocusChange);
-      if (oldWidget.focusNode == null) {
-        _ownedFocusNode?.removeListener(_handleFocusChange);
-      }
-      if (widget.focusNode == null) {
-        _ownedFocusNode ??= FocusNode();
-        _ownedFocusNode!.addListener(_handleFocusChange);
-      } else {
-        if (oldWidget.focusNode == null) {
-          _ownedFocusNode?.dispose();
-          _ownedFocusNode = null;
-        }
-        widget.focusNode!.addListener(_handleFocusChange);
-      }
+    if (widget.focusNode == null && oldWidget.focusNode != null) {
+      _ownedFocusNode = FocusNode();
+    } else if (widget.focusNode != null && oldWidget.focusNode == null) {
+      _ownedFocusNode?.dispose();
+      _ownedFocusNode = null;
     }
   }
 
   @override
   void dispose() {
-    _focusNode.removeListener(_handleFocusChange);
     _ownedFocusNode?.dispose();
     _ownedController?.dispose();
     super.dispose();
-  }
-
-  void _handleFocusChange() {
-    if (mounted) setState(() {});
   }
 
   /// Non-null [InputDecoration.errorText] (including `''` for border-only).
@@ -255,13 +270,8 @@ class _AppTextareaState extends State<AppTextarea> {
     final scheme = theme.colorScheme;
     final control = AppControlTheme.fromContext(context);
     final textStyle = widget.style ?? theme.textTheme.bodyMedium;
-    final focused = _focusNode.hasFocus && widget.enabled;
     final hasError = _hasError;
     final radius = BorderRadius.circular(control.radius);
-
-    final ringColor = hasError
-        ? scheme.error.withValues(alpha: 0.2)
-        : scheme.primary.withValues(alpha: 0.2);
 
     return AppTextareaShell(
       minHeight: widget.minHeight,
@@ -277,39 +287,17 @@ class _AppTextareaState extends State<AppTextarea> {
       // scrolls vertically. Do NOT use equal minLines/maxLines — when that
       // collapses to 1, Flutter becomes a single-line field (no wrap).
       builder: (context, _) {
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeOut,
-          decoration: BoxDecoration(
-            borderRadius: radius,
-            boxShadow: focused || hasError
-                ? [
-                    BoxShadow(
-                      color: ringColor,
-                      blurRadius: 0,
-                      spreadRadius: kAppTextareaFocusRingSpread,
-                    ),
-                  ]
-                : const [
-                    BoxShadow(
-                      color: Color(0x0A000000),
-                      blurRadius: 1,
-                      offset: Offset(0, 1),
-                    ),
-                  ],
-          ),
+        return ClipRRect(
+          borderRadius: radius,
           child: SizedBox.expand(
             child: ScrollConfiguration(
-              behavior: ScrollConfiguration.of(
-                context,
-              ).copyWith(scrollbars: false),
+              behavior: const AppTextareaScrollBehavior(),
               child: TextField(
                 controller: _controller,
                 focusNode: _focusNode,
                 decoration: appMultilineInputDecoration(
                   context,
                   decoration: widget.decoration,
-                  focused: focused,
                   hasError: hasError,
                 ),
                 onChanged: widget.onChanged,
