@@ -107,22 +107,30 @@ class _BellGlyphState extends State<_BellGlyph> {
               ),
               if (hasUnread)
                 Positioned(
-                  top: 2,
-                  right: 2,
+                  top: 1,
+                  right: 1,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 3),
                     constraints: const BoxConstraints(
-                      minWidth: 14,
-                      minHeight: 14,
+                      minWidth: 12,
+                      minHeight: 12,
                     ),
                     decoration: BoxDecoration(
                       color: cs.error,
-                      borderRadius: BorderRadius.circular(7),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     alignment: Alignment.center,
+                    // Pastel error seeds often resolve onError to black in both
+                    // modes; ink opposite the theme brightness reads clearly.
                     child: Text(
                       badgeLabel,
-                      style: styles.xsSemiboldSnugColored(cs.onError),
+                      textAlign: TextAlign.center,
+                      textScaler: const TextScaler.linear(0.78),
+                      style: styles.xsSemiboldSnugColored(
+                        cs.brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
+                      ).copyWith(height: 1.0),
                     ),
                   ),
                 ),

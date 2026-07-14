@@ -40,17 +40,18 @@ class AppIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sizes = context.appIconSizes;
+    final cs = Theme.of(context).colorScheme;
     final resolvedIconSize = iconSize ?? (compact ? sizes.sm : sizes.md);
-    final effectiveColor = color ?? context.appIconColor;
+    // Explicit [Icon.color] ignores IconTheme, so disabled must swap the paint
+    // color — use muted gray, not a faded accent (e.g. run green).
+    final effectiveColor =
+        enabled ? (color ?? context.appIconColor) : cs.iconDisabled;
     final radius = BorderRadius.circular(borderRadius);
 
     Widget iconChild =
         iconWidget ?? Icon(icon, size: resolvedIconSize, color: effectiveColor);
-    if (!enabled) {
-      iconChild = IconTheme(
-        data: IconThemeData(color: effectiveColor.withValues(alpha: 0.38)),
-        child: iconChild,
-      );
+    if (!enabled && iconWidget != null) {
+      iconChild = Opacity(opacity: 0.38, child: iconChild);
     }
 
     Widget ink = Ink(

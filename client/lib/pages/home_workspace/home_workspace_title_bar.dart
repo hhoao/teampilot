@@ -410,19 +410,9 @@ class _BrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
-    final l10n = context.l10n;
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: [
-        const TeamPilotBrandLogo(),
-        const SizedBox(width: 8),
-        Text(
-          l10n.appTitle,
-          style: styles.mdSemiboldColored(cs.onSurface),
-        ),
-      ],
+      children: [const TeamPilotBrandLogo()],
     );
   }
 }
@@ -460,10 +450,7 @@ class _HomePill extends StatelessWidget {
           children: [
             Icon(Icons.home_filled, size: context.appIconSizes.md, color: fg),
             const SizedBox(width: 6),
-            Text(
-              label,
-              style: styles.smSemiboldColored(fg),
-            ),
+            Text(label, style: styles.smColored(fg)),
           ],
         ),
       ),

@@ -61,12 +61,10 @@ class WorkspaceShellRightToolsVisibilityToggle extends StatelessWidget {
               ? l10n.rightToolsPanelHidden
               : l10n.rightToolsPanelVisible,
           color: visible ? cs.primary : cs.onSurfaceVariant,
-          backgroundColor: visible
-              ? cs.primaryContainer.withValues(alpha: 0.45)
-              : Colors.transparent,
+          backgroundColor: Colors.transparent,
           onTap: () => context.read<LayoutCubit>().toggleRightTools(
-                composeLanding: composeLanding,
-              ),
+            composeLanding: composeLanding,
+          ),
         );
       },
     );
@@ -88,9 +86,7 @@ class WorkspaceShellSidebarVisibilityToggle extends StatelessWidget {
           icon: Icons.view_sidebar_outlined,
           tooltip: visible ? l10n.sidebarPanelHidden : l10n.sidebarPanelVisible,
           color: visible ? cs.primary : cs.onSurfaceVariant,
-          backgroundColor: visible
-              ? cs.primaryContainer.withValues(alpha: 0.45)
-              : Colors.transparent,
+          backgroundColor: Colors.transparent,
           onTap: () => context.read<LayoutCubit>().setSidebarVisible(!visible),
         );
       },
@@ -137,10 +133,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          if (leading != null) ...[
-            leading!,
-            const SizedBox(width: 2),
-          ],
+          if (leading != null) ...[leading!, const SizedBox(width: 2)],
           Expanded(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -418,9 +411,8 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
                       widget.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.smColored(widget.preview
-                            ? fg.withValues(alpha: 0.72)
-                            : fg,
+                      style: styles.smColored(
+                        widget.preview ? fg.withValues(alpha: 0.72) : fg,
                       ),
                     ),
                   ),

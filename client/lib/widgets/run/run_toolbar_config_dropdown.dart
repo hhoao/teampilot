@@ -93,14 +93,12 @@ class RunToolbarConfigDropdown extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.web_asset_outlined, color: cs.primary),
-                  const SizedBox(width: 6),
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 200),
                     child: Text(
                       label,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.of(context).mdColored(cs.onSurface),
+                      style: AppTextStyles.of(context).sm,
                     ),
                   ),
                   Icon(Icons.arrow_drop_down, color: cs.onSurfaceVariant),
@@ -137,10 +135,7 @@ class RunToolbarConfigDropdown extends StatelessWidget {
               menuController: controller,
               onTap: () {
                 unawaited(
-                  createRunConfiguration(
-                    context,
-                    workspaceId: workspaceId,
-                  ),
+                  createRunConfiguration(context, workspaceId: workspaceId),
                 );
               },
             ),
@@ -229,8 +224,9 @@ class RunToolbarConfigDropdown extends StatelessWidget {
     return switch (entry) {
       _ConfigEntry(:final owned) => cubit.isConfigurationAvailable(owned),
       _CompoundEntry() => true,
-      _RecommendationEntry(:final owned) =>
-        cubit.isConfigurationAvailable(owned),
+      _RecommendationEntry(:final owned) => cubit.isConfigurationAvailable(
+        owned,
+      ),
       _ActionEntry(:final action) => cubit.isActionAvailable(action),
     };
   }
