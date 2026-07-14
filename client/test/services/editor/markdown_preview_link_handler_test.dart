@@ -34,6 +34,7 @@ void main() {
       opener: opener,
     );
 
+    // Must stay POSIX even on Windows hosts (SSH / in-memory roots).
     expect(workbench.activeTabId('ws')?.filePath, '/repo/docs/b.md');
   });
 
