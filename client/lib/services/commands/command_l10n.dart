@@ -49,6 +49,7 @@ String? _titleForKey(AppLocalizations l10n, String titleL10nKey) {
     'shortcutsWorkspacePrevTab' => l10n.shortcutsWorkspacePrevTab,
     'shortcutsWorkspaceCloseTab' => l10n.shortcutsWorkspaceCloseTab,
     'shortcutsWorkspaceReopenClosed' => l10n.shortcutsWorkspaceReopenClosed,
+    'shortcutsWorkspaceSearch' => l10n.shortcutsWorkspaceSearch,
     'shortcutsSessionNextTab' => l10n.shortcutsSessionNextTab,
     'shortcutsSessionPrevTab' => l10n.shortcutsSessionPrevTab,
     'shortcutsSessionNewTab' => l10n.shortcutsSessionNewTab,

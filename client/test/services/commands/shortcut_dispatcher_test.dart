@@ -134,4 +134,88 @@ void main() {
       expect(handled, isFalse);
     });
   });
+
+  group('ShortcutDispatcher double Shift', () {
+    final searchId = 'workbench.workspace.search';
+    final searchCatalog = [
+      CommandDefinition(
+        id: searchId,
+        category: CommandCategory.navigation,
+        defaultChords: [
+          KeyChord(key: 'f', mods: [KeyChordMod.mod]),
+          KeyChord.doubleTapShift(),
+        ],
+        when: ShortcutWhen.hasWorkspace,
+        terminalPassthrough: true,
+        titleL10nKey: 'x',
+      ),
+    ];
+
+    test('double Shift invokes the bound command when hasWorkspace', () {
+      final bus = CommandBus();
+      var called = false;
+      bus.register(searchId, () => called = true);
+      final dispatcher = ShortcutDispatcher(
+        bus: bus,
+        effectiveChords: (id) => searchCatalog
+            .firstWhere((def) => def.id == id)
+            .defaultChords,
+        context: () => const ShortcutContext(hasWorkspace: true),
+        isMacOS: () => false,
+        catalog: searchCatalog,
+      );
+
+      final first = KeyDownEvent(
+        physicalKey: PhysicalKeyboardKey.shiftLeft,
+        logicalKey: LogicalKeyboardKey.shiftLeft,
+        timeStamp: Duration.zero,
+      );
+      final second = KeyDownEvent(
+        physicalKey: PhysicalKeyboardKey.shiftLeft,
+        logicalKey: LogicalKeyboardKey.shiftLeft,
+        timeStamp: const Duration(milliseconds: 150),
+      );
+
+      expect(dispatcher.handle(first), isFalse);
+      expect(dispatcher.handle(second), isTrue);
+      expect(called, isTrue);
+    });
+
+    test('double Shift is ignored without hasWorkspace', () {
+      final bus = CommandBus();
+      var called = false;
+      bus.register(searchId, () => called = true);
+      final dispatcher = ShortcutDispatcher(
+        bus: bus,
+        effectiveChords: (id) => searchCatalog
+            .firstWhere((def) => def.id == id)
+            .defaultChords,
+        context: () => const ShortcutContext(),
+        isMacOS: () => false,
+        catalog: searchCatalog,
+      );
+
+      expect(
+        dispatcher.handle(
+          KeyDownEvent(
+            physicalKey: PhysicalKeyboardKey.shiftLeft,
+            logicalKey: LogicalKeyboardKey.shiftLeft,
+            timeStamp: Duration.zero,
+          ),
+        ),
+        isFalse,
+      );
+      expect(
+        dispatcher.handle(
+          KeyDownEvent(
+            physicalKey: PhysicalKeyboardKey.shiftLeft,
+            logicalKey: LogicalKeyboardKey.shiftLeft,
+            timeStamp: const Duration(milliseconds: 150),
+          ),
+        ),
+        isFalse,
+      );
+      expect(called, isFalse);
+    });
+  });
 }

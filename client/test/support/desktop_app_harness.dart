@@ -47,6 +47,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/commands/run_command_registrar.dart';
+import 'package:teampilot/services/commands/workspace_search_command_registrar.dart';
 import 'package:teampilot/services/extension/builtin_manifests.dart';
 import 'package:teampilot/services/extension/extension_acquisition_engine.dart';
 import 'package:teampilot/services/extension/extension_detector.dart';
@@ -232,6 +233,9 @@ Widget buildTestApp({
       ),
       RepositoryProvider<RunCommandHost>(
         create: (_) => RunCommandHost(),
+      ),
+      RepositoryProvider<WorkspaceSearchHost>(
+        create: (_) => WorkspaceSearchHost(),
       ),
     ],
     child: MultiBlocProvider(

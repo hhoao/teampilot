@@ -9,6 +9,7 @@ void main() {
     final ids = CommandCatalog.v1.map((c) => c.id).toSet();
     expect(ids, containsAll([
       CommandIds.workspaceNextTab,
+      CommandIds.workspaceSearch,
       CommandIds.sessionNextTab,
       CommandIds.sessionCloseTab,
       CommandIds.zoomIn,
@@ -16,6 +17,18 @@ void main() {
       CommandIds.showCheatsheet,
       CommandIds.toggleSidebar,
     ]));
+  });
+
+  test('workspace search defaults to Mod+F and double Shift', () {
+    final def = CommandCatalog.v1.singleWhere(
+      (c) => c.id == CommandIds.workspaceSearch,
+    );
+    expect(def.defaultChords, [
+      KeyChord(key: 'f', mods: [KeyChordMod.mod]),
+      KeyChord.doubleTapShift(),
+    ]);
+    expect(def.when, ShortcutWhen.hasWorkspace);
+    expect(def.terminalPassthrough, isTrue);
   });
 
   test('session next tab defaults to explicit ctrl+tab', () {

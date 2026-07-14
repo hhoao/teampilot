@@ -11,23 +11,41 @@ enum KeyChordMod { mod, shift, alt, ctrl, meta }
 
 /// Platform-neutral keyboard chord persisted in keybinding overrides.
 class KeyChord {
-  const KeyChord._({required this.key, required this.mods});
+  const KeyChord._({
+    required this.key,
+    required this.mods,
+    this.doubleTap = false,
+  });
 
-  factory KeyChord({required String key, List<KeyChordMod> mods = const []}) {
+  factory KeyChord({
+    required String key,
+    List<KeyChordMod> mods = const [],
+    bool doubleTap = false,
+  }) {
     return KeyChord._(
       key: canonicalChordKey(key),
       mods: canonicalChordMods(mods),
+      doubleTap: doubleTap,
     );
   }
 
+  /// JetBrains-style double Shift (matched via [DoubleShiftDetector], not
+  /// [toActivator]).
+  factory KeyChord.doubleTapShift() =>
+      const KeyChord._(key: 'shift', mods: [], doubleTap: true);
+
   final String key;
   final List<KeyChordMod> mods;
+
+  /// When true, this chord is a double-tap of [key] (currently only Shift).
+  final bool doubleTap;
 
   bool get hasModifiers => mods.isNotEmpty;
 
   Map<String, dynamic> toJson() => {
     'key': key,
     'mods': mods.map((mod) => mod.name).toList(),
+    if (doubleTap) 'doubleTap': true,
   };
 
   factory KeyChord.fromJson(Map<String, dynamic> json) {
@@ -40,10 +58,15 @@ class KeyChord {
                 .map(KeyChordMod.values.byName)
                 .toList(growable: false)
           : const [],
+      doubleTap: json['doubleTap'] == true,
     );
   }
 
   ShortcutActivator toActivator({required bool isMacOS}) {
+    if (doubleTap) {
+      throw StateError('Double-tap chords are not SingleActivator-compatible');
+    }
+
     var control = false;
     var shift = false;
     var alt = false;
@@ -80,10 +103,13 @@ class KeyChord {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is KeyChord && key == other.key && listEquals(mods, other.mods);
+      other is KeyChord &&
+          key == other.key &&
+          listEquals(mods, other.mods) &&
+          doubleTap == other.doubleTap;
 
   @override
-  int get hashCode => Object.hash(key, Object.hashAll(mods));
+  int get hashCode => Object.hash(key, Object.hashAll(mods), doubleTap);
 }
 
 const _modOrder = <KeyChordMod>[
@@ -152,6 +178,7 @@ LogicalKeyboardKey logicalKeyForChordKey(String key) {
     'numpadAdd' => LogicalKeyboardKey.numpadAdd,
     'numpadSubtract' => LogicalKeyboardKey.numpadSubtract,
     'f5' => LogicalKeyboardKey.f5,
+    'shift' => LogicalKeyboardKey.shift,
     _ => throw ArgumentError('Unsupported key chord key: $key'),
   };
 }
@@ -184,6 +211,10 @@ String chordKeyForLogicalKey(LogicalKeyboardKey logicalKey) {
     LogicalKeyboardKey.numpadAdd => 'numpadAdd',
     LogicalKeyboardKey.numpadSubtract => 'numpadSubtract',
     LogicalKeyboardKey.f5 => 'f5',
+    LogicalKeyboardKey.shift ||
+    LogicalKeyboardKey.shiftLeft ||
+    LogicalKeyboardKey.shiftRight =>
+      'shift',
     _ => throw ArgumentError('Unsupported logical key: $logicalKey'),
   };
 }

@@ -5230,6 +5230,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get shortcutsWorkspaceReopenClosed => '重新打开已关闭的工作区标签';
 
   @override
+  String get shortcutsWorkspaceSearch => '搜索工作区';
+
   @override
   String get shortcutsSessionNextTab => '下一个会话标签';
 

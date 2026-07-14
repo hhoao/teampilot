@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'command_bus.dart';
 import 'command_catalog.dart';
 import 'command_definition.dart';
+import 'double_shift_detector.dart';
 import 'key_chord.dart';
 import 'keybinding_resolver.dart';
 import 'shortcut_context.dart';
@@ -21,17 +22,20 @@ class ShortcutDispatcher {
     required ShortcutContext Function() context,
     required bool Function() isMacOS,
     List<CommandDefinition>? catalog,
+    DoubleShiftDetector? doubleShiftDetector,
   }) : _bus = bus,
        _effectiveChords = effectiveChords,
        _context = context,
        _isMacOS = isMacOS,
-       _catalog = catalog ?? CommandCatalog.v1;
+       _catalog = catalog ?? CommandCatalog.v1,
+       _doubleShiftDetector = doubleShiftDetector ?? DoubleShiftDetector();
 
   final CommandBus _bus;
   final List<KeyChord> Function(String commandId) _effectiveChords;
   final ShortcutContext Function() _context;
   final bool Function() _isMacOS;
   final List<CommandDefinition> _catalog;
+  final DoubleShiftDetector _doubleShiftDetector;
 
   /// Set to `false` to temporarily suspend all shortcut matching (e.g. while
   /// a modal keyboard grab, such as a rebind-capture dialog, is active).
@@ -41,6 +45,15 @@ class ShortcutDispatcher {
   /// bus, `false` if it should keep propagating normally.
   bool handle(KeyEvent event) {
     if (!enabled) return false;
+
+    if (_doubleShiftDetector.feed(event)) {
+      final commandId = _matchDoubleTapShift();
+      if (commandId != null) {
+        _bus.invoke(commandId);
+        return true;
+      }
+    }
+
     if (event is! KeyDownEvent) return false;
 
     final effectiveByCommand = <String, List<KeyChord>>{
@@ -61,6 +74,18 @@ class ShortcutDispatcher {
     // will eventually own this command is still mounting.
     _bus.invoke(commandId);
     return true;
+  }
+
+  String? _matchDoubleTapShift() {
+    final context = _context();
+    for (final def in _catalog) {
+      final chords = _effectiveChords(def.id);
+      if (!chords.any((c) => c.doubleTap && c.key == 'shift')) continue;
+      if (!def.when.isSatisfiedBy(context)) continue;
+      if (context.inTerminal && !def.terminalPassthrough) continue;
+      return def.id;
+    }
+    return null;
   }
 
   void attach() {

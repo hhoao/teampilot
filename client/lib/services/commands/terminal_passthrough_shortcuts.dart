@@ -34,6 +34,9 @@ Map<ShortcutActivator, Intent> terminalPassthroughShortcutOverlay({
   for (final def in catalog ?? CommandCatalog.v1) {
     if (!def.terminalPassthrough) continue;
     for (final chord in effectiveByCommand[def.id] ?? const <KeyChord>[]) {
+      // Double-tap Shift is matched by ShortcutDispatcher state, not
+      // SingleActivator; bare Shift is a no-op for PTY encode anyway.
+      if (chord.doubleTap) continue;
       overlay[chord.toActivator(isMacOS: isMacOS)] =
           const DoNothingAndStopPropagationIntent();
     }

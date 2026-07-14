@@ -70,4 +70,12 @@ void main() {
     );
     expect(KeyChord(key: 'W'), KeyChord(key: 'w'));
   });
+
+  test('double-tap Shift round-trips JSON and formats for display', () {
+    final chord = KeyChord.doubleTapShift();
+    expect(KeyChord.fromJson(chord.toJson()), chord);
+    expect(chord.doubleTap, isTrue);
+    expect(formatKeyChord(chord, isMacOS: true), '⇧⇧');
+    expect(formatKeyChord(chord, isMacOS: false), 'Shift×2');
+  });
 }

@@ -9780,6 +9780,12 @@ abstract class AppLocalizations {
   /// **'Reopen Closed Workspace Tab'**
   String get shortcutsWorkspaceReopenClosed;
 
+  /// No description provided for @shortcutsWorkspaceSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search Workspace'**
+  String get shortcutsWorkspaceSearch;
+
   /// No description provided for @shortcutsSessionNextTab.
   ///
   /// In en, this message translates to:

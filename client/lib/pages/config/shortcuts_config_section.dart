@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:teampilot/theme/app_text_styles.dart';
 
 import '../../cubits/shortcut_cubit.dart';
@@ -9,6 +12,8 @@ import '../../services/commands/command_definition.dart';
 import '../../services/commands/command_l10n.dart';
 import '../../services/commands/key_chord.dart';
 import '../../services/commands/key_chord_formatter.dart';
+import '../../widgets/app_icon_button.dart';
+import '../../widgets/menu/sidebar_action_menu.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../../widgets/shortcuts/shortcut_cheatsheet_dialog.dart';
@@ -227,23 +232,34 @@ class _ShortcutRow extends StatelessWidget {
               ],
             ),
           const SizedBox(width: 8),
-          PopupMenuButton<_ShortcutRowAction>(
-            icon: Icon(Icons.more_vert, size: 20, color: cs.onSurfaceVariant),
-            onSelected: (action) => _onAction(context, action),
-            itemBuilder: (context) => [
-              PopupMenuItem(
+          SidebarActionMenuButton(
+            size: AppIconButton.kCompactSize,
+            icon: Icon(
+              Icons.more_vert,
+              size: context.appIconSizes.sm,
+              color: cs.onSurfaceVariant,
+            ),
+            specs: [
+              SidebarActionMenuSpec.item(
                 value: _ShortcutRowAction.change,
-                child: Text(l10n.shortcutsChangeAction),
+                icon: Icons.edit_outlined,
+                label: l10n.shortcutsChangeAction,
               ),
-              PopupMenuItem(
+              SidebarActionMenuSpec.item(
                 value: _ShortcutRowAction.reset,
-                child: Text(l10n.shortcutsResetAction),
+                icon: Icons.restart_alt_outlined,
+                label: l10n.shortcutsResetAction,
               ),
-              PopupMenuItem(
+              SidebarActionMenuSpec.item(
                 value: _ShortcutRowAction.unbind,
-                child: Text(l10n.shortcutsUnbindAction),
+                icon: Icons.link_off_outlined,
+                label: l10n.shortcutsUnbindAction,
               ),
             ],
+            onSelected: (action) {
+              if (action is! _ShortcutRowAction) return;
+              unawaited(_onAction(context, action));
+            },
           ),
         ],
       ),

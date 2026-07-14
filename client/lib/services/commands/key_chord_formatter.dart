@@ -2,6 +2,10 @@ import 'key_chord.dart';
 
 /// Formats a portable [KeyChord] for display in settings, cheatsheets, and menus.
 String formatKeyChord(KeyChord chord, {required bool isMacOS}) {
+  if (chord.doubleTap && chord.key == 'shift') {
+    return isMacOS ? '⇧⇧' : 'Shift×2';
+  }
+
   final parts = <String>[
     for (final mod in chord.mods) _formatModifier(mod, isMacOS: isMacOS),
     _formatKey(chord.key),

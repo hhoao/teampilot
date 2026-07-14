@@ -2434,6 +2434,7 @@
   "shortcutsWorkspacePrevTab": "Previous Workspace Tab",
   "shortcutsWorkspaceCloseTab": "Close Workspace Tab",
   "shortcutsWorkspaceReopenClosed": "Reopen Closed Workspace Tab",
+  "shortcutsWorkspaceSearch": "Search Workspace",
   "shortcutsSessionNextTab": "Next Session Tab",
   "shortcutsSessionPrevTab": "Previous Session Tab",
   "shortcutsSessionNewTab": "New Session Tab",

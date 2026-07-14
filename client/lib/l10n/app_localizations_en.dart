@@ -5431,6 +5431,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shortcutsWorkspaceReopenClosed => 'Reopen Closed Workspace Tab';
 
   @override
+  String get shortcutsWorkspaceSearch => 'Search Workspace';
+
   @override
   String get shortcutsSessionNextTab => 'Next Session Tab';
 

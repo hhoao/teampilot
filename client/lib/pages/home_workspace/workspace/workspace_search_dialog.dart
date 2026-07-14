@@ -23,33 +23,43 @@ import 'workspace_session_actions.dart';
 /// and workspace files by name. Reads the current session list and CLI fallback
 /// title from [context] up front; selecting a result pops the dialog and
 /// performs the action against the still-mounted [context].
+///
+/// No-ops if a search dialog is already open (e.g. repeated shortcut presses).
 Future<void> showWorkspaceSearchDialog(
   BuildContext context, {
   required Workspace workspace,
-}) {
-  final chatCubit = context.read<ChatCubit>();
-  final opener = context.read<WorkbenchEditorOpener>();
-  final fallback = context.l10n.defaultNewChatSessionTitle;
-  final sessions = sessionsForWorkspace(workspace, chatCubit.state.sessions);
+}) async {
+  if (_workspaceSearchDialogOpen) return;
+  _workspaceSearchDialogOpen = true;
+  try {
+    final chatCubit = context.read<ChatCubit>();
+    final opener = context.read<WorkbenchEditorOpener>();
+    final fallback = context.l10n.defaultNewChatSessionTitle;
+    final sessions = sessionsForWorkspace(workspace, chatCubit.state.sessions);
 
-  return showDialog<void>(
-    context: context,
-    builder: (dialogContext) => WorkspaceSearchDialog(
-      workspace: workspace,
-      sessions: sessions,
-      emptyTitleFallback: fallback,
-      onOpenSession: (session) {
-        Navigator.of(dialogContext).pop();
-        if (!context.mounted) return;
-        unawaited(openWorkspaceSessionTab(context, workspace, session));
-      },
-      onOpenFile: (path) {
-        Navigator.of(dialogContext).pop();
-        unawaited(opener.openFile(workspace.workspaceId, path));
-      },
-    ),
-  );
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => WorkspaceSearchDialog(
+        workspace: workspace,
+        sessions: sessions,
+        emptyTitleFallback: fallback,
+        onOpenSession: (session) {
+          Navigator.of(dialogContext).pop();
+          if (!context.mounted) return;
+          unawaited(openWorkspaceSessionTab(context, workspace, session));
+        },
+        onOpenFile: (path) {
+          Navigator.of(dialogContext).pop();
+          unawaited(opener.openFile(workspace.workspaceId, path));
+        },
+      ),
+    );
+  } finally {
+    _workspaceSearchDialogOpen = false;
+  }
 }
+
+var _workspaceSearchDialogOpen = false;
 
 /// Centered modal that filters sessions and walks the workspace tree for file
 /// name matches. Pure UI: result actions are delegated to callbacks so the

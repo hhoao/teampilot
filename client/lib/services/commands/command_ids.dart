@@ -5,6 +5,7 @@ abstract final class CommandIds {
   static const String workspacePrevTab = 'workbench.workspace.prevTab';
   static const String workspaceCloseTab = 'workbench.workspace.closeTab';
   static const String workspaceReopenClosed = 'workbench.workspace.reopenClosed';
+  static const String workspaceSearch = 'workbench.workspace.search';
 
   // Session tabs
   static const String sessionNextTab = 'workbench.session.nextTab';

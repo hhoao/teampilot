@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -8,6 +10,7 @@ import '../../../cubits/run_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../models/workspace.dart';
 import '../../../services/commands/run_command_registrar.dart';
+import '../../../services/commands/workspace_search_command_registrar.dart';
 import '../../../services/workspace/workspace_run_registry.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../services/workspace/workspace_tools_scope_registry.dart';
@@ -22,6 +25,7 @@ import '../../../widgets/workspace_terminal_panel.dart';
 import '../../chat_page.dart';
 import '../../workspace_ide/workspace_ide_shell.dart';
 import 'workspace_route_active_scope.dart';
+import 'workspace_search_dialog.dart';
 import 'workspace_sidebar.dart';
 import 'workspace_tools_scope_sync.dart';
 
@@ -45,12 +49,16 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
   final _terminalHold = WorkspaceTerminalHoldHandle();
   RunCubit? _boundRunCubit;
   RunCommandHost? _runCommandHost;
+  WorkspaceSearchHost? _workspaceSearchHost;
+  late final void Function() _openWorkspaceSearch = _openSearch;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _runCommandHost = context.read<RunCommandHost>();
+    _workspaceSearchHost = context.read<WorkspaceSearchHost>();
     _syncRunCommandHost();
+    _syncWorkspaceSearchHost();
   }
 
   @override
@@ -61,7 +69,26 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
       host.unbind(cubit);
     }
     _boundRunCubit = null;
+    _workspaceSearchHost?.unbind(_openWorkspaceSearch);
     super.dispose();
+  }
+
+  void _openSearch() {
+    if (!mounted) return;
+    unawaited(
+      showWorkspaceSearchDialog(context, workspace: widget.workspace),
+    );
+  }
+
+  void _syncWorkspaceSearchHost() {
+    final host = _workspaceSearchHost;
+    if (host == null) return;
+    final routeActive = WorkspaceRouteActiveScope.routeActiveOf(context);
+    if (routeActive) {
+      host.bind(_openWorkspaceSearch);
+    } else {
+      host.unbind(_openWorkspaceSearch);
+    }
   }
 
   void _syncRunCommandHost() {

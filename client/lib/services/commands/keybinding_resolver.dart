@@ -63,6 +63,9 @@ abstract final class KeybindingResolver {
       }
 
       for (final chord in chords) {
+        // Double-tap chords need multi-event state; see ShortcutDispatcher.
+        if (chord.doubleTap) continue;
+
         if (!chord.hasModifiers && context.inTextInput) {
           final allowedBareComposeKey =
               def.when == ShortcutWhen.inCompose && context.inCompose;

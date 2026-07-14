@@ -58,6 +58,17 @@ abstract final class CommandCatalog {
       terminalPassthrough: true,
       titleL10nKey: 'shortcutsWorkspaceReopenClosed',
     ),
+    CommandDefinition(
+      id: CommandIds.workspaceSearch,
+      category: CommandCategory.navigation,
+      defaultChords: [
+        KeyChord(key: 'f', mods: [KeyChordMod.mod]),
+        KeyChord.doubleTapShift(),
+      ],
+      when: ShortcutWhen.hasWorkspace,
+      terminalPassthrough: true,
+      titleL10nKey: 'shortcutsWorkspaceSearch',
+    ),
 
     // Session tabs
     CommandDefinition(
