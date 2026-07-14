@@ -15,7 +15,7 @@ class WorkspaceIdePaneChrome extends StatelessWidget {
   });
 
   /// Half-gutter on each pane edge → ~[gutter] between adjacent panes.
-  static const double paneInset = 4;
+  static const double paneInset = 0;
 
   /// Outer padding around the whole IDE shell content.
   static const double shellGutter = 8;
@@ -37,17 +37,13 @@ class WorkspaceIdePaneChrome extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final effectivePadding = padding ?? const EdgeInsets.all(paneInset);
-    final effectiveRadius =
-        borderRadius ?? BorderRadius.circular(paneRadius);
+    final effectiveRadius = borderRadius ?? BorderRadius.circular(paneRadius);
     return RepaintBoundary(
       child: Padding(
         padding: effectivePadding,
         child: ClipRRect(
           borderRadius: effectiveRadius,
-          child: ColoredBox(
-            color: cs.surface,
-            child: child,
-          ),
+          child: ColoredBox(color: cs.surface, child: child),
         ),
       ),
     );

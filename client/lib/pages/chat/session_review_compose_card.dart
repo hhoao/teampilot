@@ -353,7 +353,7 @@ class _ContinueIdentityChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final spacing = context.appSpacing;
     final icons = context.appIconSizes;
-    final labelStyle = AppTextStyles.of(context).mdMediumSnugColored(palette.muted);
+    final labelStyle = AppTextStyles.of(context).smColored(palette.muted);
 
     return Material(
       color: palette.chipFill,
@@ -428,10 +428,7 @@ class _TeamSettingsButton extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.error,
                         shape: BoxShape.circle,
-                        border: Border.all(
-                          color: palette.chipFill,
-                          width: 1.5,
-                        ),
+                        border: Border.all(color: palette.chipFill, width: 1.5),
                       ),
                     ),
                   ),

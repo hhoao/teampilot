@@ -101,7 +101,7 @@ class _BellGlyphState extends State<_BellGlyph> {
             alignment: Alignment.center,
             children: [
               Icon(
-                hasUnread ? Icons.notifications : Icons.notifications_outlined,
+                Icons.notifications_outlined,
                 size: context.appIconSizes.md,
                 color: hasUnread ? cs.primary : cs.onSurfaceVariant,
               ),
