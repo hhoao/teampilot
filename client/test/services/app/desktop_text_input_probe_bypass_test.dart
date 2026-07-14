@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/app/desktop_text_input_probe_bypass.dart';
@@ -8,6 +9,8 @@ void main() {
     late DesktopTextInputProbeBypassMessenger messenger;
 
     setUp(() {
+      DesktopTextInputProbeBypassMessenger.bypassHitCount = 0;
+      DesktopTextInputProbeBypassMessenger.bypassMissCount = 0;
       delegate = _RecordingMessenger();
       messenger = DesktopTextInputProbeBypassMessenger(delegate);
     });
@@ -18,10 +21,13 @@ void main() {
         const MethodCall('Clipboard.hasStrings', 'text/plain'),
       );
 
-      final reply = await messenger.send('flutter/platform', call);
+      final future = messenger.send('flutter/platform', call);
+      expect(future, isA<SynchronousFuture<ByteData?>>());
+      final reply = await future;
 
       expect(delegate.sent, isEmpty);
       expect(codec.decodeEnvelope(reply!), <String, Object?>{'value': true});
+      expect(DesktopTextInputProbeBypassMessenger.bypassHitCount, greaterThan(0));
     });
 
     test('short-circuits LiveText.isLiveTextInputAvailable', () async {

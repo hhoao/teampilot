@@ -316,9 +316,19 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final views = tester.widgetList<AiMessageView>(find.byType(AiMessageView)).toList();
-    expect(views, hasLength(2));
-    expect(views[0].actionBarReveal, AiActionBarReveal.hover);
-    expect(views[1].actionBarReveal, AiActionBarReveal.always);
+    final firstView = tester.widget<AiMessageView>(
+      find.ancestor(
+        of: find.text('first'),
+        matching: find.byType(AiMessageView),
+      ),
+    );
+    final lastView = tester.widget<AiMessageView>(
+      find.ancestor(
+        of: find.text('last'),
+        matching: find.byType(AiMessageView),
+      ),
+    );
+    expect(firstView.actionBarReveal, AiActionBarReveal.hover);
+    expect(lastView.actionBarReveal, AiActionBarReveal.always);
   });
 }

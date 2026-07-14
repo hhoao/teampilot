@@ -238,6 +238,7 @@ class CliExecutablePathSettingsRowState
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
               Expanded(
                 child: TextField(

@@ -687,7 +687,6 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                       selectionContextMenuBuilder:
                           buildAiThreadSelectionContextMenu,
                       loadingBuilder: (context) => _HistoryStatusPane(
-                        icon: Icons.history_rounded,
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -877,9 +876,9 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
 }
 
 class _HistoryStatusPane extends StatelessWidget {
-  const _HistoryStatusPane({required this.icon, required this.child});
+  const _HistoryStatusPane({this.icon, required this.child});
 
-  final IconData icon;
+  final IconData? icon;
   final Widget child;
 
   @override
@@ -891,7 +890,7 @@ class _HistoryStatusPane extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
+            if (icon != null) Icon(
               icon,
               size: 32,
               color: cs.onSurfaceVariant.withValues(alpha: 0.55),

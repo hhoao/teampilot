@@ -602,9 +602,7 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
               final prefs = layoutState.preferences;
               return PaneTheme(
                 data: workspaceIdePaneTheme(cs),
-                child: Padding(
-                  padding: _shellPadding(),
-                  child: PaneOverlayHost(
+                child: PaneOverlayHost(
                     showLeft: effective.overlayLeft,
                     showRight: effective.overlayRight,
                     leftWidth: prefs.sidebarWidth,
@@ -627,7 +625,6 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
                       paneBuilder: _rootPaneBuilder,
                     ),
                   ),
-                ),
               );
             },
           );

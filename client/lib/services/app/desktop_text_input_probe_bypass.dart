@@ -1,4 +1,4 @@
-import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -33,6 +33,12 @@ class DesktopTextInputProbeBypassMessenger extends BinaryMessenger {
   static const _jsonCodec = JSONMethodCodec();
   static const _standardCodec = StandardMethodCodec();
 
+  /// Test/diagnostics: how many probe calls were short-circuited.
+  static int bypassHitCount = 0;
+
+  /// Test/diagnostics: probe-shaped calls that fell through to the platform.
+  static int bypassMissCount = 0;
+
   @override
   // ignore: deprecated_member_use
   Future<void> handlePlatformMessage(
@@ -47,7 +53,30 @@ class DesktopTextInputProbeBypassMessenger extends BinaryMessenger {
   @override
   Future<ByteData?>? send(String channel, ByteData? message) {
     final bypass = _maybeBypass(channel, message);
-    if (bypass != null) return bypass;
+    if (bypass != null) {
+      bypassHitCount += 1;
+      assert(() {
+        if (bypassHitCount <= 6) {
+          debugPrint(
+            'Teampilot probe bypass HIT #$bypassHitCount channel=$channel',
+          );
+        }
+        return true;
+      }());
+      return bypass;
+    }
+    if (_looksLikeProbe(channel, message)) {
+      bypassMissCount += 1;
+      assert(() {
+        if (bypassMissCount <= 6) {
+          debugPrint(
+            'Teampilot probe bypass MISS #$bypassMissCount '
+            'channel=$channel preview=${_utf8Preview(message)}',
+          );
+        }
+        return true;
+      }());
+    }
     return _delegate.send(channel, message);
   }
 
@@ -59,42 +88,54 @@ class DesktopTextInputProbeBypassMessenger extends BinaryMessenger {
   Future<ByteData?>? _maybeBypass(String channel, ByteData? message) {
     if (message == null) return null;
 
-    if (channel == _platformChannel) {
-      final MethodCall call;
-      try {
-        call = _jsonCodec.decodeMethodCall(message);
-      } on FormatException {
-        return null;
-      }
-      switch (call.method) {
-        case 'Clipboard.hasStrings':
-          // Match web: always treat as pasteable; avoid GTK full-text read.
-          return Future<ByteData?>.value(
-            _jsonCodec.encodeSuccessEnvelope(<String, Object?>{'value': true}),
-          );
-        case 'LiveText.isLiveTextInputAvailable':
-          return Future<ByteData?>.value(
-            _jsonCodec.encodeSuccessEnvelope(false),
-          );
-        default:
-          return null;
-      }
-    }
+    // Prefer raw payload scan — survives codec/offset quirks that break decode.
+    final preview = _utf8Preview(message);
 
-    if (channel == _processTextChannel) {
-      final MethodCall call;
-      try {
-        call = _standardCodec.decodeMethodCall(message);
-      } on FormatException {
-        return null;
+    // SynchronousFuture: ProfiledBinaryMessenger uses `await proxy.send(...)`.
+    // Future.value only resumes on a microtask, so Timeline "Platform Channel
+    // send" slices inflate to the rest of the surrounding sync build/layout
+    // (seen as ~650 ms Clipboard/LiveText/ProcessText in DevTools even when
+    // the platform was never contacted). Sync completion keeps those honest.
+    if (channel == _platformChannel) {
+      if (preview.contains('Clipboard.hasStrings')) {
+        return SynchronousFuture<ByteData?>(
+          _jsonCodec.encodeSuccessEnvelope(<String, Object?>{'value': true}),
+        );
       }
-      if (call.method == 'ProcessText.queryTextActions') {
-        return Future<ByteData?>.value(
-          _standardCodec.encodeSuccessEnvelope(<Object?, Object?>{}),
+      if (preview.contains('LiveText.isLiveTextInputAvailable')) {
+        return SynchronousFuture<ByteData?>(
+          _jsonCodec.encodeSuccessEnvelope(false),
         );
       }
     }
 
+    if (channel == _processTextChannel &&
+        preview.contains('ProcessText.queryTextActions')) {
+      return SynchronousFuture<ByteData?>(
+        _standardCodec.encodeSuccessEnvelope(<Object?, Object?>{}),
+      );
+    }
+
     return null;
+  }
+
+  static bool _looksLikeProbe(String channel, ByteData? message) {
+    if (message == null) return false;
+    if (channel != _platformChannel && channel != _processTextChannel) {
+      return false;
+    }
+    final preview = _utf8Preview(message);
+    return preview.contains('Clipboard.hasStrings') ||
+        preview.contains('LiveText.isLiveTextInputAvailable') ||
+        preview.contains('ProcessText.queryTextActions');
+  }
+
+  static String _utf8Preview(ByteData? message) {
+    if (message == null) return '';
+    final bytes = message.buffer.asUint8List(
+      message.offsetInBytes,
+      message.lengthInBytes,
+    );
+    return utf8.decode(bytes, allowMalformed: true);
   }
 }

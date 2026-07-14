@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -45,6 +46,7 @@ import 'services/home_workspace/home_workspace_ui_cache.dart';
 import 'pages/home_workspace/workspace_chrome_commands.dart';
 import 'services/storage/app_storage.dart';
 import 'services/app/boot_splash.dart';
+import 'services/app/desktop_text_input_probe_bypass.dart';
 import 'services/app/windows_keyboard_workaround.dart';
 import 'services/app/connection_mode_service.dart';
 import 'services/storage/home_target_controller.dart';
@@ -387,7 +389,52 @@ class _DragToResizeWrapperState extends State<_DragToResizeWrapper>
 const kDefaultDesktopWindowSize = Size(1380, 960);
 
 void main() async {
+  // Custom binding installs DesktopTextInputProbeBypassMessenger — must run
+  // before any other Flutter binding (full restart required, not hot reload).
   final binding = TeampilotWidgetsFlutterBinding.ensureInitialized();
+  final messenger = ServicesBinding.instance.defaultBinaryMessenger;
+  // ignore: avoid_print
+  print(
+    'Teampilot binding=${binding.runtimeType} '
+    'binaryMessenger=${messenger.runtimeType}',
+  );
+  final expectBypass = shouldInstallDesktopTextInputProbeBypass(
+    isWeb: false,
+    isAndroid: Platform.isAndroid,
+    isIOS: Platform.isIOS,
+    isLinux: Platform.isLinux,
+    isWindows: Platform.isWindows,
+    isMacOS: Platform.isMacOS,
+  );
+  if (expectBypass && messenger is! DesktopTextInputProbeBypassMessenger) {
+    throw StateError(
+      'DesktopTextInputProbeBypassMessenger not installed '
+      '(got ${messenger.runtimeType}). Stop the app and cold-start; '
+      'hot reload/hot restart cannot replace the binding.',
+    );
+  }
+  if (expectBypass) {
+    // Prove the wrapper is on the same path EditableText uses (SystemChannels).
+    final hitsBefore = DesktopTextInputProbeBypassMessenger.bypassHitCount;
+    await SystemChannels.platform.invokeMethod<dynamic>(
+      'Clipboard.hasStrings',
+      'text/plain',
+    );
+    final hitsAfter = DesktopTextInputProbeBypassMessenger.bypassHitCount;
+    // ignore: avoid_print
+    print(
+      'Teampilot probe self-check hits=$hitsAfter '
+      'misses=${DesktopTextInputProbeBypassMessenger.bypassMissCount} '
+      'delta=${hitsAfter - hitsBefore}',
+    );
+    if (hitsAfter <= hitsBefore) {
+      throw StateError(
+        'DesktopTextInputProbeBypassMessenger is installed but did not '
+        'intercept SystemChannels.platform Clipboard.hasStrings (misses='
+        '${DesktopTextInputProbeBypassMessenger.bypassMissCount}).',
+      );
+    }
+  }
   preserveBootSplash(binding);
   installWindowsKeyboardWorkaround();
   await RustLib.init();
