@@ -166,14 +166,14 @@ class WorkspaceShellTabRow extends StatelessWidget {
                       cli: tabs[i].cli,
                       accentColor: tabs[i].accentColor,
                     ),
+                  if (newChatButton != null) ...[
+                    const SizedBox(width: 2),
+                    newChatButton!,
+                  ],
                 ],
               ),
             ),
           ),
-          if (newChatButton != null) ...[
-            const SizedBox(width: 2),
-            newChatButton!,
-          ],
           if (trailing != null) trailing!,
         ],
       ),

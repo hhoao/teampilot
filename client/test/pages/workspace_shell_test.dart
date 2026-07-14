@@ -99,4 +99,29 @@ void main() {
     expect(find.byType(WorkspaceShellNewChatButton), findsOneWidget);
     expect(find.text('Session'), findsOneWidget);
   });
+
+  testWidgets('new-chat button sits after the last tab chip', (tester) async {
+    await tester.pumpWidget(
+      _wrapShell(
+        const WorkspaceShell(
+          showHeader: false,
+          breadcrumb: 'Team / Chat',
+          title: 'Chat',
+          subtitle: 'Terminal',
+          actions: [],
+          showNewChatButton: true,
+          newChatTooltip: 'New',
+          tabs: [
+            TabInfo(id: 's1', title: 'First'),
+            TabInfo(id: 's2', title: 'Last'),
+          ],
+          child: Text('Session body'),
+        ),
+      ),
+    );
+
+    final lastTab = tester.getTopLeft(find.text('Last'));
+    final newChat = tester.getTopLeft(find.byType(WorkspaceShellNewChatButton));
+    expect(newChat.dx, greaterThan(lastTab.dx));
+  });
 }
