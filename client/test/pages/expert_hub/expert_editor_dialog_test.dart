@@ -291,7 +291,97 @@ void main() {
       find.byKey(const Key('expert-editor-configure-skills')),
       findsOneWidget,
     );
+    expect(
+      find.byKey(const Key('expert-editor-configure-plugins')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('expert-editor-configure-mcp')),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key('expert-editor-skills-count')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('expert-editor-skills-count')),
+        matching: find.text('0'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('orphan skill counts on main; remove in picker updates count', (
+    tester,
+  ) async {
+    _largeSurface(tester);
+
+    final fs = InMemoryFilesystem();
+    final writer = _SpyWriter(
+      store: LocalMemberTemplateStore(fs: fs, dirOverride: '/t'),
+    );
+    const orphan = SkillDependencyRef(
+      repoOwner: 'missing',
+      repoName: 'pack',
+      repoBranch: 'main',
+      directory: 'skills/gone',
+      name: 'Gone Skill',
+    );
+    // expectedLocalId == 'missing/pack:gone'
+    final initial = DiscoverableMember(
+      key: 'local/orphan-expert',
+      name: 'Orphaned',
+      description: '',
+      category: '',
+      source: ExpertMemberSource.local,
+      member: const DiscoverableTeamMember(
+        name: 'Orphaned',
+        prompt: 'prompt',
+      ),
+      skillDeps: [orphan],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () async {
+                await showExpertEditorDialog(
+                  context,
+                  writer: writer,
+                  initial: initial,
+                  skills: const [],
+                  plugins: const [],
+                  mcps: const [],
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('expert-editor-skills-count')),
+        matching: find.text('1'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('expert-editor-configure-skills')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(TextButton, 'Remove'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('expert-editor-dep-picker-done')));
+    await tester.pumpAndSettle();
+
     expect(
       find.descendant(
         of: find.byKey(const Key('expert-editor-skills-count')),
