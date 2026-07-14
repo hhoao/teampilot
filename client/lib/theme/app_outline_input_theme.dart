@@ -126,9 +126,11 @@ InputDecorationThemeData buildAppOutlineInputDecorationTheme({
     constraints: BoxConstraints.tightFor(height: control.input.height),
     hintStyle: hintStyle,
     labelStyle: textTheme.bodyMedium?.copyWith(color: labelColor),
+    // Color-only vs [labelStyle]: InputDecorator animates with
+    // AnimatedDefaultTextStyle; a weight/size change forces CJK reshape on
+    // focus and stalls the float animation (~1s on Noto Sans SC).
     floatingLabelStyle: textTheme.bodyMedium?.copyWith(
       color: colorScheme.primary,
-      fontWeight: FontWeight.w500,
     ),
     border: outlineBorder(outline),
     enabledBorder: outlineBorder(outline),
