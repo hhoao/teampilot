@@ -72,6 +72,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sidebarPanelHidden => '隐藏侧边栏';
 
   @override
+  String get bottomDockPanelVisible => '显示底部栏';
+
+  @override
+  String get bottomDockPanelHidden => '隐藏底部栏';
+
+  @override
   String get bottomTray => '底部托盘';
 
   @override
@@ -1884,12 +1890,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get workspaceTerminal => '终端';
-
-  @override
-  String get workspaceTerminalShow => '显示终端';
-
-  @override
-  String get workspaceTerminalHide => '隐藏终端';
 
   @override
   String get workspaceTerminalClose => '关闭终端面板';

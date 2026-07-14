@@ -23,18 +23,13 @@ import '../../../theme/workspace_surface_layers.dart';
 import '../../../theme/app_toast_theme.dart';
 import '../../../utils/logger.dart';
 import '../../../widgets/app_toast/app_toast.dart';
-import '../../../utils/workspace_chrome_profile.dart';
 import '../../expert_hub/expert_landing_preflight_feedback.dart';
 import 'workspace_config_workspace.dart';
-import 'workspace_rail.dart';
 import 'workspace_section.dart';
 import 'workspace_split_pane.dart';
 import 'workspace_config_section.dart';
 import 'workspace_route_active_scope.dart';
 import 'workspace_session_actions.dart';
-
-// Temporary preview toggle — set to false to restore the workspace rail.
-const _kHideWorkspaceRailPreview = true;
 
 /// Workspace work page with conversations + manage panes.
 class WorkspacePage extends StatefulWidget {
@@ -308,36 +303,6 @@ class _WorkspacePageState extends State<WorkspacePage> {
     );
   }
 
-  void _onSectionChanged(
-    WorkspaceSection section,
-    Workspace workspace,
-    String chromeProfileId,
-  ) {
-    setState(() {
-      _section = section;
-      if (section == WorkspaceSection.manage) {
-        _visitedManage = true;
-      }
-    });
-
-    final params = <String, String>{
-      'profile': chromeProfileId,
-      if (section == WorkspaceSection.manage) 'view': 'manage',
-    };
-    final path = Uri(
-      path: '/home-v2/workspace/${workspace.workspaceId}',
-      queryParameters: params,
-    ).toString();
-    final current = GoRouterState.of(context).uri.toString();
-    if (current == path) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (GoRouterState.of(context).uri.toString() != path) {
-        context.go(path);
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final scope = context
@@ -380,33 +345,11 @@ class _WorkspacePageState extends State<WorkspacePage> {
       );
     }
 
-    final location = GoRouterState.of(context).uri.toString();
-    final routeProfile = HomeWorkspaceRoute.profile(location);
-    final chromeProfileId = workspaceChromeProfileId(
-      workspace,
-      routeProfileId: routeProfile,
-    );
-
     final cardBody = _buildCardBody(workspace: workspace);
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (!_kHideWorkspaceRailPreview)
-          WorkspaceRail(
-            section: _section,
-            onSectionChanged: (section) =>
-                _onSectionChanged(section, workspace, chromeProfileId),
-            onLogoTap: () => context.go('/home-v2'),
-          ),
-        Expanded(
-          child: WorkspacePageCardShell(
-            chrome: WorkspacePageChrome.workspace,
-            omitLeftPadding: !_kHideWorkspaceRailPreview,
-            child: cardBody,
-          ),
-        ),
-      ],
+    return WorkspacePageCardShell(
+      chrome: WorkspacePageChrome.workspace,
+      child: cardBody,
     );
   }
 

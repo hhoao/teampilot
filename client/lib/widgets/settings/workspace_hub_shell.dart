@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
+import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
@@ -37,17 +38,20 @@ class WorkspaceHubTitleBar extends StatelessWidget {
     required this.title,
     required this.subtitle,
     this.compact = false,
+    this.onBack,
     super.key,
   });
 
   final String title;
   final String subtitle;
   final bool compact;
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final textBase = cs.onSurface;
+    final back = onBack;
     return Container(
       padding: compact
           ? const EdgeInsets.fromLTRB(20, 20, 20, 16)
@@ -61,23 +65,53 @@ class WorkspaceHubTitleBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.of(context).lgSemiboldSnugColored(textBase),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.of(context).mdColored(
-              textBase.withValues(alpha: 0.66),
-            ),
-          ),
+          if (back != null)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                IconButton(
+                  tooltip: context.l10n.back,
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: back,
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 36,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: _titleBlock(context, textBase)),
+              ],
+            )
+          else
+            _titleBlock(context, textBase),
         ],
       ),
+    );
+  }
+
+  Widget _titleBlock(BuildContext context, Color textBase) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.of(context).lgSemiboldSnugColored(textBase),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          subtitle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.of(context).mdColored(
+            textBase.withValues(alpha: 0.66),
+          ),
+        ),
+      ],
     );
   }
 }

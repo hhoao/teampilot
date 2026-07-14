@@ -7,6 +7,7 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
 import '../../../repositories/workspace_project_config_repository.dart';
 import '../../../utils/app_keys.dart';
+import '../../../utils/workspace_chrome_profile.dart';
 import '../../../utils/workspace_display_name.dart';
 import '../../../widgets/settings/workspace_section_host.dart';
 import 'config/workspace_extensions_section.dart';
@@ -16,6 +17,7 @@ import 'config/workspace_skills_section.dart';
 import 'workspace_config_nav_panel.dart';
 import 'workspace_config_section.dart';
 import 'workspace_info_section.dart';
+import '../home_workspace_route.dart';
 
 /// Project-scoped workspace configuration (settings + resource bindings).
 class WorkspaceConfigPanel extends StatefulWidget {
@@ -43,6 +45,21 @@ class _WorkspaceConfigPanelState extends State<WorkspaceConfigPanel> {
     ).toString();
   }
 
+  void _leaveManage() {
+    final location = GoRouterState.of(context).uri.toString();
+    final routeProfile = HomeWorkspaceRoute.profile(location);
+    final profileId = workspaceChromeProfileId(
+      widget.workspace,
+      routeProfileId: routeProfile,
+    );
+    context.go(
+      Uri(
+        path: '/home-v2/workspace/${widget.workspace.workspaceId}',
+        queryParameters: {'profile': profileId},
+      ).toString(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -60,6 +77,7 @@ class _WorkspaceConfigPanelState extends State<WorkspaceConfigPanel> {
         pageKey: AppKeys.workspaceConfigWorkspace,
         title: l10n.homeWorkspaceWorkspaceManagement,
         subtitle: widget.workspace.localizedName(l10n),
+        onBack: _leaveManage,
         nav: WorkspaceConfigNavPanel(
           sections: sections,
           section: section,

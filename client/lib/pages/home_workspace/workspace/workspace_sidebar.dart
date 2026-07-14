@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../../cubits/chat_cubit.dart';
@@ -10,12 +11,14 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
 import '../../../models/git_worktree.dart';
 import '../../../models/workspace.dart';
+import '../../../pages/home_workspace/home_workspace_route.dart';
 import '../../../services/git/git_worktree_service.dart';
 import '../../../services/storage/app_storage.dart';
 import '../../../services/storage/workspace_layout.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../utils/session_project_grouping.dart';
 import '../../../utils/session_worktree_grouping.dart';
+import '../../../utils/workspace_chrome_profile.dart';
 import '../../../widgets/app_toast/app_toast.dart';
 import '../../../theme/app_toast_theme.dart';
 import 'worktree_create_dialog.dart';
@@ -204,8 +207,42 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
               sessionsHydrated: sessionsHydrated,
             ),
           ),
+          const SizedBox(height: 8),
+          Divider(
+            height: 1,
+            color: Theme.of(context).colorScheme.outlineVariant
+                .withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 4),
+          _SidebarActionTile(
+            key: AppKeys.homeWorkspaceWorkspaceManagementTile,
+            icon: Icons.tune_outlined,
+            label: l10n.homeWorkspaceWorkspaceManagement,
+            onTap: throttledTap(
+              'workspace_sidebar_manage',
+              () => _openWorkspaceManagement(context),
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  void _openWorkspaceManagement(BuildContext context) {
+    final location = GoRouterState.of(context).uri.toString();
+    final routeProfile = HomeWorkspaceRoute.profile(location);
+    final profileId = workspaceChromeProfileId(
+      widget.workspace,
+      routeProfileId: routeProfile,
+    );
+    context.go(
+      Uri(
+        path: '/home-v2/workspace/${widget.workspace.workspaceId}',
+        queryParameters: {
+          'profile': profileId,
+          'view': 'manage',
+        },
+      ).toString(),
     );
   }
 

@@ -224,6 +224,18 @@ abstract class AppLocalizations {
   /// **'Hide sidebar'**
   String get sidebarPanelHidden;
 
+  /// No description provided for @bottomDockPanelVisible.
+  ///
+  /// In en, this message translates to:
+  /// **'Show bottom panel'**
+  String get bottomDockPanelVisible;
+
+  /// No description provided for @bottomDockPanelHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide bottom panel'**
+  String get bottomDockPanelHidden;
+
   /// No description provided for @bottomTray.
   ///
   /// In en, this message translates to:
@@ -3667,18 +3679,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Terminal'**
   String get workspaceTerminal;
-
-  /// No description provided for @workspaceTerminalShow.
-  ///
-  /// In en, this message translates to:
-  /// **'Show terminal'**
-  String get workspaceTerminalShow;
-
-  /// No description provided for @workspaceTerminalHide.
-  ///
-  /// In en, this message translates to:
-  /// **'Hide terminal'**
-  String get workspaceTerminalHide;
 
   /// No description provided for @workspaceTerminalClose.
   ///

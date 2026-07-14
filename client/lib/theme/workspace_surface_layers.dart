@@ -85,8 +85,7 @@ class WorkspacePageCardShell extends StatelessWidget {
   final Widget child;
   final WorkspacePageChrome chrome;
 
-  /// When true, drops the left inset so a sibling [WorkspaceRail]
-  /// can sit flush against the card edge.
+  /// When true, drops the left inset (legacy rail flush layout).
   final bool omitLeftPadding;
 
   static const EdgeInsets padding = EdgeInsets.fromLTRB(16, 0, 16, 16);

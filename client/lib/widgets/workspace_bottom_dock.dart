@@ -312,7 +312,7 @@ class _WorkspaceBottomDockState extends State<WorkspaceBottomDock> {
                       ),
                     ),
                     newSessionTooltip: l10n.workspaceTerminalNewSession,
-                    hideTooltip: l10n.workspaceTerminalHide,
+                    hideTooltip: l10n.bottomDockPanelHidden,
                   ),
                   Expanded(
                     child: IndexedStack(

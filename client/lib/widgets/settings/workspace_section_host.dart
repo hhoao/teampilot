@@ -14,6 +14,7 @@ class WorkspaceHubDesktopShell extends StatelessWidget {
     required this.nav,
     required this.body,
     this.pageKey,
+    this.onBack,
     super.key,
   });
 
@@ -22,6 +23,7 @@ class WorkspaceHubDesktopShell extends StatelessWidget {
   final String subtitle;
   final Widget nav;
   final Widget body;
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +32,11 @@ class WorkspaceHubDesktopShell extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          WorkspaceHubTitleBar(title: title, subtitle: subtitle),
+          WorkspaceHubTitleBar(
+            title: title,
+            subtitle: subtitle,
+            onBack: onBack,
+          ),
           Expanded(
             child: BlocBuilder<LayoutCubit, LayoutState>(
               builder: (context, layoutState) {
@@ -58,6 +64,7 @@ class WorkspaceAdaptiveSectionPage extends StatelessWidget {
     required this.subtitle,
     required this.nav,
     required this.body,
+    this.onBack,
     super.key,
   });
 
@@ -66,6 +73,7 @@ class WorkspaceAdaptiveSectionPage extends StatelessWidget {
   final String subtitle;
   final Widget nav;
   final Widget body;
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -78,6 +86,7 @@ class WorkspaceAdaptiveSectionPage extends StatelessWidget {
       subtitle: subtitle,
       nav: nav,
       body: body,
+      onBack: onBack,
     );
   }
 }

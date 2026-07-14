@@ -74,6 +74,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sidebarPanelHidden => 'Hide sidebar';
 
   @override
+  String get bottomDockPanelVisible => 'Show bottom panel';
+
+  @override
+  String get bottomDockPanelHidden => 'Hide bottom panel';
+
+  @override
   String get bottomTray => 'Bottom Tray';
 
   @override
@@ -1969,12 +1975,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workspaceTerminal => 'Terminal';
-
-  @override
-  String get workspaceTerminalShow => 'Show terminal';
-
-  @override
-  String get workspaceTerminalHide => 'Hide terminal';
 
   @override
   String get workspaceTerminalClose => 'Close terminal panel';
