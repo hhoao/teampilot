@@ -6,7 +6,9 @@ import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/git_status.dart';
+import 'package:teampilot/models/layout_preferences.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
+import 'package:teampilot/services/editor/markdown_view_mode_store.dart';
 import 'package:teampilot/services/git/git_repo_store.dart';
 import 'package:teampilot/services/git/git_service.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
@@ -100,6 +102,8 @@ void main() {
             value: WorkbenchEditorOpener(
               editor: editor,
               workbench: workbench,
+              markdownViewModes: MarkdownViewModeStore(),
+              readMarkdownOpenMode: () => MarkdownOpenMode.preview,
             ),
           ),
         ],
