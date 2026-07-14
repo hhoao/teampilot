@@ -38,6 +38,10 @@ String installedFontId(String key) => '$kInstalledFontIdPrefix$key';
 abstract final class FontCatalog {
   static const systemId = 'system';
 
+  /// Default preference when unset / unknown — bundled faces, not OS system.
+  static const defaultUiId = 'notoSansSc';
+  static const defaultMonoId = 'jetbrainsMono';
+
   static const List<FontCatalogEntry> all = [
     FontCatalogEntry(id: systemId, role: FontRole.ui, source: FontSourceKind.system),
     FontCatalogEntry(

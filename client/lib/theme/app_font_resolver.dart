@@ -113,13 +113,14 @@ abstract final class AppFontResolver {
     );
   }
 
-  /// Platform CJK mono fallback chain (primary excluded). Used by bundled mono
-  /// and by [AppFonts.monoFamilyFallback] for backward-compatible callers.
+  /// Platform mono fallback chain (primary excluded). Used by bundled mono,
+  /// system mono, and [AppFonts.monoFamilyFallback].
   ///
-  /// A Simplified-Chinese CJK mono face is listed before the generic
-  /// `monospace` alias on purpose: fontconfig often maps `monospace` (even
-  /// under `lang=zh`) to *Noto Sans Mono CJK JP*, whose Japanese `locl` forms
-  /// misplace Chinese punctuation.
+  /// Latin programmer faces come first (Orca / VS Code style). A Simplified-
+  /// Chinese CJK mono face is listed before the generic `monospace` alias:
+  /// fontconfig often maps `monospace` (even under `lang=zh`) to
+  /// *Noto Sans Mono CJK JP*, whose Japanese `locl` forms misplace Chinese
+  /// punctuation — and once JP covers CJK, later SC fallbacks never run.
   static List<String> monoCjkFallback(TargetPlatform platform) {
     return switch (platform) {
       TargetPlatform.macOS => const [
@@ -149,7 +150,17 @@ abstract final class AppFontResolver {
         'Noto Sans Mono CJK SC',
         'monospace',
       ],
-      _ => const ['monospace'],
+      TargetPlatform.android => const [
+        'Noto Sans Mono CJK SC',
+        'Noto Sans CJK SC',
+        'monospace',
+      ],
+      _ => const [
+        'Noto Sans Mono CJK SC',
+        'Noto Sans CJK SC',
+        'WenQuanYi Zen Hei Mono',
+        'monospace',
+      ],
     };
   }
 
@@ -213,6 +224,10 @@ abstract final class AppFontResolver {
   static ({String family, List<String> fallback}) _systemMono(
     TargetPlatform platform,
   ) {
+    // Linux/Android: Latin-first primaries (Orca / PlatformFontDefaults). CJK
+    // coverage comes from [monoCjkFallback] so ASCII is not sparsified by a
+    // CJK-cell mono face used as the primary. macOS/Windows keep platform
+    // natives with local CJK faces that are always installed.
     return switch (platform) {
       TargetPlatform.macOS => (
         family: 'Menlo',
@@ -220,29 +235,35 @@ abstract final class AppFontResolver {
           ubuntuSansMonoFamily,
           'PingFang SC',
           'Heiti SC',
+          'Noto Sans Mono CJK SC',
           'monospace',
         ],
       ),
       TargetPlatform.windows => (
         family: 'Consolas',
-        fallback: const [ubuntuSansMonoFamily, 'Microsoft YaHei', 'monospace'],
-      ),
-      TargetPlatform.android => (
-        family: 'Noto Sans Mono CJK SC',
         fallback: const [
           ubuntuSansMonoFamily,
-          'Noto Sans CJK SC',
-          'Droid Sans Mono',
+          'Cascadia Mono',
+          'Microsoft YaHei',
+          'Noto Sans Mono CJK SC',
           'monospace',
         ],
       ),
-      _ => (
-        family: 'Noto Sans Mono CJK SC',
-        fallback: const [
+      TargetPlatform.android => (
+        family: 'Droid Sans Mono',
+        fallback: [
           ubuntuSansMonoFamily,
-          'Noto Sans CJK SC',
-          'WenQuanYi Zen Hei Mono',
-          'monospace',
+          for (final face in monoCjkFallback(platform))
+            if (face != 'Droid Sans Mono' && face != ubuntuSansMonoFamily) face,
+        ],
+      ),
+      _ => (
+        family: 'DejaVu Sans Mono',
+        fallback: [
+          ubuntuSansMonoFamily,
+          for (final face in monoCjkFallback(platform))
+            if (face != 'DejaVu Sans Mono' && face != ubuntuSansMonoFamily)
+              face,
         ],
       ),
     };

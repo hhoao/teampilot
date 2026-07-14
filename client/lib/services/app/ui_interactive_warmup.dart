@@ -26,8 +26,8 @@ abstract final class UiInteractiveWarmup {
     if (_inTest) return;
 
     final fonts = AppFontResolver.resolve(
-      uiFontId: layoutPreferences?.uiFontId ?? FontCatalog.systemId,
-      monoFontId: layoutPreferences?.monoFontId ?? FontCatalog.systemId,
+      uiFontId: layoutPreferences?.uiFontId ?? FontCatalog.defaultUiId,
+      monoFontId: layoutPreferences?.monoFontId ?? FontCatalog.defaultMonoId,
     );
     if (fonts.uiNeedsBundledLoad) {
       try {

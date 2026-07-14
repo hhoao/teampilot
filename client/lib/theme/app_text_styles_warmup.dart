@@ -11,8 +11,8 @@ import 'font_catalog.dart';
 
 ResolvedFonts _fontsFromPreferences(LayoutPreferences? preferences) {
   return AppFontResolver.resolve(
-    uiFontId: preferences?.uiFontId ?? FontCatalog.systemId,
-    monoFontId: preferences?.monoFontId ?? FontCatalog.systemId,
+    uiFontId: preferences?.uiFontId ?? FontCatalog.defaultUiId,
+    monoFontId: preferences?.monoFontId ?? FontCatalog.defaultMonoId,
   );
 }
 

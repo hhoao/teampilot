@@ -2,6 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/theme/font_catalog.dart';
 
 void main() {
+  test('default preference ids are bundled faces', () {
+    expect(FontCatalog.defaultUiId, 'notoSansSc');
+    expect(FontCatalog.defaultMonoId, 'jetbrainsMono');
+  });
+
   test('uiOptions includes system and notoSansSc', () {
     final ids = FontCatalog.uiOptions.map((e) => e.id).toList();
     expect(ids, containsAll(['system', 'notoSansSc']));

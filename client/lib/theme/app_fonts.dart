@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'app_font_resolver.dart';
 import 'app_typography_scale.dart';
+import 'font_catalog.dart';
 
 export 'app_font_resolver.dart' show AppFontResolver, ResolvedFonts;
 
@@ -24,7 +25,7 @@ abstract final class AppFonts {
   static const String monoFamily = AppFontResolver.bundledMonoFamily;
 
   /// Mono fallback chain for the bundled [monoFamily]. Delegates to
-  /// [AppFontResolver.monoCjkFallback] (SC faces before bare `monospace`).
+  /// [AppFontResolver.monoCjkFallback] (Latin faces, then SC before `monospace`).
   static List<String> get monoFamilyFallback =>
       AppFontResolver.monoCjkFallback(defaultTargetPlatform);
 }
@@ -98,8 +99,8 @@ TextStyle appMonoTextStyle(
 }
 
 ResolvedFonts _defaultResolvedFonts() => AppFontResolver.resolve(
-  uiFontId: 'system',
-  monoFontId: 'system',
+  uiFontId: FontCatalog.defaultUiId,
+  monoFontId: FontCatalog.defaultMonoId,
 );
 
 bool _useBundledUiFont(ResolvedFonts fonts) =>

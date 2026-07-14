@@ -23,13 +23,17 @@ String languagePreferenceStoredLocale(String uiValue) {
 String normalizeUiFontId(String? id) {
   final raw = id ?? '';
   if (isInstalledFontId(raw)) return raw;
-  return FontCatalog.isKnown(FontRole.ui, raw) ? raw : FontCatalog.systemId;
+  return FontCatalog.isKnown(FontRole.ui, raw)
+      ? raw
+      : FontCatalog.defaultUiId;
 }
 
 String normalizeMonoFontId(String? id) {
   final raw = id ?? '';
   if (isInstalledFontId(raw)) return raw;
-  return FontCatalog.isKnown(FontRole.mono, raw) ? raw : FontCatalog.systemId;
+  return FontCatalog.isKnown(FontRole.mono, raw)
+      ? raw
+      : FontCatalog.defaultMonoId;
 }
 
 class LayoutPreferences {
@@ -56,8 +60,8 @@ class LayoutPreferences {
     this.uiZoomCustomMultiplier = kDefaultTypographyCustomMultiplier,
     this.terminalThemeMode = 'adaptive',
     this.locale = '',
-    this.uiFontId = FontCatalog.systemId,
-    this.monoFontId = FontCatalog.systemId,
+    this.uiFontId = FontCatalog.defaultUiId,
+    this.monoFontId = FontCatalog.defaultMonoId,
     this.workspaceTerminalVisible = false,
     this.workspaceTerminalHeight = defaultWorkspaceTerminalHeight,
     this.markdownOpenMode = MarkdownOpenMode.preview,

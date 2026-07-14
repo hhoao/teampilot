@@ -13,6 +13,7 @@ import 'app_icon_sizes.dart';
 import 'app_outline_input_theme.dart';
 import 'app_spacing.dart';
 import 'app_typography_scale.dart';
+import 'font_catalog.dart';
 
 /// Persisted preset ids (order = settings UI order).
 const List<String> kThemeColorPresetIds = [
@@ -232,7 +233,10 @@ ThemeData _applyTypography(
   flexTheme = _withSoftenedForeground(flexTheme);
   final resolvedFonts =
       fonts ??
-      AppFontResolver.resolve(uiFontId: 'system', monoFontId: 'system');
+      AppFontResolver.resolve(
+        uiFontId: FontCatalog.defaultUiId,
+        monoFontId: FontCatalog.defaultMonoId,
+      );
   final resolvedIconScale =
       iconScale ??
       AppTypographyScale(

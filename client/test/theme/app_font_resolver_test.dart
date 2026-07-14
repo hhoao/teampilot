@@ -14,15 +14,29 @@ void main() {
     expect(r.resolvedMonoId, 'system');
   });
 
-  test('linux system mono puts SC before monospace', () {
+  test('linux system mono is Latin-first with SC before monospace', () {
     final r = AppFontResolver.resolve(
       uiFontId: 'system',
       monoFontId: 'system',
       platform: TargetPlatform.linux,
     );
-    expect(r.monoFamily, isNot('monospace'));
+    // Latin primary (Orca / VS Code style) — not CJK mono, which sparsifies ASCII.
+    expect(r.monoFamily, 'DejaVu Sans Mono');
     expect(r.monoFallback.contains('monospace'), isTrue);
-    // primary itself should be SC-capable, or SC appears before monospace in chain
+    final chain = [r.monoFamily, ...r.monoFallback];
+    final monoIdx = chain.indexOf('monospace');
+    final scIdx = chain.indexOf('Noto Sans Mono CJK SC');
+    expect(scIdx, greaterThanOrEqualTo(0));
+    expect(scIdx, lessThan(monoIdx));
+  });
+
+  test('android system mono is Latin-first with SC before monospace', () {
+    final r = AppFontResolver.resolve(
+      uiFontId: 'system',
+      monoFontId: 'system',
+      platform: TargetPlatform.android,
+    );
+    expect(r.monoFamily, 'Droid Sans Mono');
     final chain = [r.monoFamily, ...r.monoFallback];
     final monoIdx = chain.indexOf('monospace');
     final scIdx = chain.indexOf('Noto Sans Mono CJK SC');

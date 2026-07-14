@@ -55,16 +55,21 @@ void main() {
     );
   });
 
-  test('uiFontId and monoFontId default to system', () {
-    expect(const LayoutPreferences().uiFontId, 'system');
-    expect(const LayoutPreferences().monoFontId, 'system');
+  test('uiFontId and monoFontId default to bundled faces', () {
+    expect(const LayoutPreferences().uiFontId, 'notoSansSc');
+    expect(const LayoutPreferences().monoFontId, 'jetbrainsMono');
   });
 
-  test('fromJson missing font keys → system; unknown → system', () {
-    expect(LayoutPreferences.fromJson(const {}).uiFontId, 'system');
+  test('fromJson missing font keys → bundled; unknown → bundled', () {
+    expect(LayoutPreferences.fromJson(const {}).uiFontId, 'notoSansSc');
+    expect(LayoutPreferences.fromJson(const {}).monoFontId, 'jetbrainsMono');
     expect(
       LayoutPreferences.fromJson(const {'uiFontId': 'nope'}).uiFontId,
-      'system',
+      'notoSansSc',
+    );
+    expect(
+      LayoutPreferences.fromJson(const {'monoFontId': 'nope'}).monoFontId,
+      'jetbrainsMono',
     );
   });
 
@@ -81,7 +86,7 @@ void main() {
 
   test('installed font ids normalize and round-trip', () {
     expect(normalizeUiFontId('installed:Foo'), 'installed:Foo');
-    expect(normalizeUiFontId('installed:'), 'system');
+    expect(normalizeUiFontId('installed:'), 'notoSansSc');
     final prefs = const LayoutPreferences().copyWith(
       uiFontId: 'installed:NotoSansCJK-Regular',
       monoFontId: 'installed:JetBrainsMonoNL-Regular',
