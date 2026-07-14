@@ -273,7 +273,7 @@ void reportImageDecodeFailed(String workspaceId, String path) {
 
 On `_disposeHandle` / close: also remove `_imageBytes[key]`. Do not create `_OpenFileHandle` for images.
 
-Add `import 'dart:typed_data';` if needed.
+When storing `Filesystem.readBytes` (`List<int>?`), use `Uint8List.fromList(bytes)` (or keep if already `Uint8List`) so `bytesFor` / `MemoryImage` typing is clear. Add `import 'dart:typed_data';` if needed.
 
 - [ ] **Step 5: Run tests to verify they pass**
 
