@@ -656,7 +656,6 @@ class _WorktreeBreadcrumb extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
         border: Border(
           bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
         ),
@@ -674,7 +673,9 @@ class _WorktreeBreadcrumb extends StatelessWidget {
               branch,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.of(context).smSemiboldColored(cs.onSurfaceVariant),
+              style: AppTextStyles.of(
+                context,
+              ).smSemiboldColored(cs.onSurfaceVariant),
             ),
           ),
         ],

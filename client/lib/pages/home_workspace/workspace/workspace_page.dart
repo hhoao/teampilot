@@ -33,6 +33,9 @@ import 'workspace_config_section.dart';
 import 'workspace_route_active_scope.dart';
 import 'workspace_session_actions.dart';
 
+// Temporary preview toggle — set to false to restore the workspace rail.
+const _kHideWorkspaceRailPreview = true;
+
 /// Workspace work page with conversations + manage panes.
 class WorkspacePage extends StatefulWidget {
   const WorkspacePage({required this.workspaceId, super.key});
@@ -389,16 +392,17 @@ class _WorkspacePageState extends State<WorkspacePage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        WorkspaceRail(
-          section: _section,
-          onSectionChanged: (section) =>
-              _onSectionChanged(section, workspace, chromeProfileId),
-          onLogoTap: () => context.go('/home-v2'),
-        ),
+        if (!_kHideWorkspaceRailPreview)
+          WorkspaceRail(
+            section: _section,
+            onSectionChanged: (section) =>
+                _onSectionChanged(section, workspace, chromeProfileId),
+            onLogoTap: () => context.go('/home-v2'),
+          ),
         Expanded(
           child: WorkspacePageCardShell(
             chrome: WorkspacePageChrome.workspace,
-            omitLeftPadding: true,
+            omitLeftPadding: !_kHideWorkspaceRailPreview,
             child: cardBody,
           ),
         ),

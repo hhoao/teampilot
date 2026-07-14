@@ -53,10 +53,7 @@ class SettingsGroupHeader extends StatelessWidget {
     final styles = AppTextStyles.of(context);
     return Padding(
       padding: _settingGroupHeaderPadding,
-      child: Text(
-        title,
-        style: styles.xsTrackColored(cs.onSurfaceVariant),
-      ),
+      child: Text(title, style: styles.xsTrackColored(cs.onSurfaceVariant)),
     );
   }
 }
@@ -251,7 +248,7 @@ class ManagementCardHeader extends StatelessWidget {
   const ManagementCardHeader({
     required this.title,
     this.trailing,
-    this.crossAxisAlignment = CrossAxisAlignment.start,
+    this.crossAxisAlignment = CrossAxisAlignment.center,
     super.key,
   });
 
@@ -434,10 +431,7 @@ class _SettingsAdvancedExpansionState extends State<SettingsAdvancedExpansion> {
         subtitle: _hasSettingsSubtitle(widget.subtitle)
             ? Padding(
                 padding: const EdgeInsets.only(top: _titleSubtitleGap),
-                child: Text(
-                  widget.subtitle!,
-                  style: styles.mutedSm,
-                ),
+                child: Text(widget.subtitle!, style: styles.mutedSm),
               )
             : null,
         children: _childrenBuilt ? widget.children : const [],

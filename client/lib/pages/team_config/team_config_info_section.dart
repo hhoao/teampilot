@@ -174,8 +174,14 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                       return AppTextarea(
                         controller: _descCtl,
                         focusNode: _descFocus,
-                        minHeight: appTextareaHeightForLines(bodyStyle, lines: 3),
-                        maxHeight: appTextareaHeightForLines(bodyStyle, lines: 8),
+                        minHeight: appTextareaHeightForLines(
+                          bodyStyle,
+                          lines: 3,
+                        ),
+                        maxHeight: appTextareaHeightForLines(
+                          bodyStyle,
+                          lines: 8,
+                        ),
                         decoration: const InputDecoration(),
                         onChanged: (_) => _schedulePersist(),
                       );
@@ -225,13 +231,7 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                         Expanded(
                           child: Text(
                             teamCliDisplayLabel(context, l10n, widget.team.cli),
-                            style: AppTextStyles.of(context).md
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w500,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface,
-                                ),
+                            style: AppTextStyles.of(context).md,
                           ),
                         ),
                       ],
@@ -455,7 +455,7 @@ class TeamDefaultPresetRow extends StatelessWidget {
                             l10n.teamDefaultPresetLabel,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: styles.lgColored(cs.onSurface,),
+                            style: styles.lgColored(cs.onSurface),
                           ),
                         ),
                         const SizedBox(width: 8),
