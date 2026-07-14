@@ -1,5 +1,4 @@
 import 'dart:io' show Platform;
-import 'dart:math' show min;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -10,6 +9,7 @@ import '../../models/layout_preferences.dart';
 import '../../theme/app_font_resolver.dart';
 import '../../theme/app_text_styles_warmup.dart';
 import '../../theme/font_catalog.dart';
+import '../../utils/logger.dart';
 import '../../utils/yield_ui_frame.dart';
 import '../../widgets/warmup_glyphs.g.dart';
 
@@ -17,10 +17,6 @@ import '../../widgets/warmup_glyphs.g.dart';
 /// terminal engine.
 abstract final class UiInteractiveWarmup {
   UiInteractiveWarmup._();
-
-  /// Max shaping work per frame so the boot spinner can tick between slices.
-  static const _glyphBudgetMs = bootFrameBudgetMs;
-  static const _glyphChunkSize = 64;
 
   static Future<void> run({LayoutPreferences? layoutPreferences}) async {
     if (_inTest) return;
@@ -59,37 +55,35 @@ abstract final class UiInteractiveWarmup {
   static Future<void> _warmGlyphs({
     LayoutPreferences? layoutPreferences,
   }) async {
-    for (final style in textStylesForInteractiveWarmup(
-      preferences: layoutPreferences,
-    )) {
-      await _shapeWarmupGlyphs(style);
+    final theme = layoutPreferences == null
+        ? bootstrapThemeForTextWarmup()
+        : themeForInteractiveWarmup(layoutPreferences);
+    final raw = textStylesForThemeWarmup(theme);
+    final styles = dedupeTextStylesByShapeKey(raw);
+    appLogger.i(
+      '[boot] glyph warmup styles ${raw.length}→${styles.length} '
+      '(shape fingerprints)',
+    );
+    final sw = Stopwatch()..start();
+    for (final style in styles) {
+      _shapeWarmupGlyphs(style);
     }
+    appLogger.i('[boot] glyph warmup shape done +${sw.elapsedMilliseconds}ms');
   }
 
-  /// Lays out [warmupGlyphs] in [style] in chunks, yielding a frame between
-  /// chunks so the boot spinner keeps ticking. Pre-populates the shaping +
-  /// glyph caches for that font so the first real render does not pay them.
-  static Future<void> _shapeWarmupGlyphs(TextStyle style) async {
-    var offset = 0;
-    while (offset < warmupGlyphs.length) {
-      final budget = Stopwatch()..start();
-      while (offset < warmupGlyphs.length &&
-          budget.elapsedMilliseconds < _glyphBudgetMs) {
-        final end = min(offset + _glyphChunkSize, warmupGlyphs.length);
-        final chunk = warmupGlyphs.substring(offset, end);
-        final painter = TextPainter(
-          text: TextSpan(text: chunk, style: style),
-          textDirection: TextDirection.ltr,
-        )..layout(maxWidth: 1200);
-        painter.dispose();
-        offset = end;
-      }
-      await yieldUiFrame();
-    }
+  /// Lays out the full [warmupGlyphs] string in one pass.
+  ///
+  /// Boot splash is static, so we do not slice work across frames — cooperative
+  /// yields previously dominated wall time without helping perceived smoothness.
+  static void _shapeWarmupGlyphs(TextStyle style) {
+    final painter = TextPainter(
+      text: TextSpan(text: warmupGlyphs, style: style),
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: 1200);
+    painter.dispose();
   }
 
   static Future<void> _warmTerminalEngine() async {
-    await yieldUiFrame();
     final engine = TerminalEngine(
       config: TerminalConfig.defaults().copyWith(
         scrolling: TerminalConfig.defaults().scrolling.copyWith(history: 100),

@@ -146,14 +146,45 @@ List<TextStyle> textStylesForThemeWarmup(ThemeData theme) {
   ];
 }
 
+/// Glyph-cache fingerprint: family / size / weight / style.
+///
+/// Height, letterSpacing, color, and decoration do not need separate shaping
+/// for the same glyphs ([docs/PERFORMANCE_ANALYSIS.md]).
+typedef TextStyleShapeKey = ({
+  String? family,
+  double? size,
+  FontWeight? weight,
+  FontStyle? style,
+});
+
+TextStyleShapeKey textStyleShapeKey(TextStyle style) => (
+  family: style.fontFamily,
+  size: style.fontSize,
+  weight: style.fontWeight,
+  style: style.fontStyle,
+);
+
+/// Keeps the first style for each [textStyleShapeKey] — same coverage, less work.
+List<TextStyle> dedupeTextStylesByShapeKey(Iterable<TextStyle> styles) {
+  final seen = <TextStyleShapeKey>{};
+  final out = <TextStyle>[];
+  for (final style in styles) {
+    if (seen.add(textStyleShapeKey(style))) {
+      out.add(style);
+    }
+  }
+  return out;
+}
+
 /// Semantic [TextStyle]s to shape against [warmupGlyphs] at boot — the same
 /// variants the UI uses ([AppTextStyles], inputs, dropdowns, markdown), not
-/// widget literals.
+/// widget literals. Deduped by [textStyleShapeKey] so boot does not reshape
+/// styles that only differ in layout metrics.
 List<TextStyle> textStylesForInteractiveWarmup({
   LayoutPreferences? preferences,
 }) {
   final theme = preferences == null
       ? bootstrapThemeForTextWarmup()
       : themeForInteractiveWarmup(preferences);
-  return textStylesForThemeWarmup(theme);
+  return dedupeTextStylesByShapeKey(textStylesForThemeWarmup(theme));
 }
