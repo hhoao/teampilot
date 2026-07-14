@@ -25,6 +25,7 @@ class InlineTokenTextField extends StatefulWidget {
     this.resolveTokenPalette,
     this.minLines = 3,
     this.maxLines = 6,
+    this.expands = false,
     this.overlayVisible = false,
     this.overlayAnchor = Offset.zero,
     this.overlayBuilder,
@@ -47,6 +48,10 @@ class InlineTokenTextField extends StatefulWidget {
   final InlineTokenPaletteResolver? resolveTokenPalette;
   final int minLines;
   final int maxLines;
+
+  /// When true, fill the parent (e.g. [AppTextareaShell]) instead of sizing
+  /// from [minLines]/[maxLines]. Avoids untappable blank gaps below the field.
+  final bool expands;
   final bool overlayVisible;
   final Offset overlayAnchor;
   final WidgetBuilder? overlayBuilder;
@@ -166,61 +171,9 @@ class _InlineTokenTextFieldState extends State<InlineTokenTextField> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final child = Stack(
-          key: _effectiveFieldKey,
-          alignment: Alignment.topLeft,
-          children: [
-            ListenableBuilder(
-              listenable: _scrollController,
-              builder: (context, _) {
-                final scrollOffset = _scrollController.hasClients
-                    ? _scrollController.offset
-                    : 0.0;
-                return InlineTokenChipMirror(
-                  text: widget.controller.text,
-                  baseStyle: widget.textStyle,
-                  minLines: widget.minLines,
-                  maxLines: widget.maxLines,
-                  scrollOffset: scrollOffset,
-                  tokenPattern: _tokenPattern,
-                  resolvePalette: _resolvePalette,
-                );
-              },
-            ),
-            TextSelectionTheme(
-              data: TextSelectionThemeData(
-                selectionColor: selectionColor,
-                cursorColor: widget.cursorColor,
-              ),
-              child: TextField(
-                controller: widget.controller,
-                focusNode: widget.focusNode,
-                scrollController: _scrollController,
-                minLines: widget.minLines,
-                maxLines: widget.maxLines,
-                enabled: widget.enabled,
-                onChanged: (value) {
-                  setState(() {});
-                  widget.onChanged(value);
-                },
-                style: widget.textStyle.copyWith(color: Colors.transparent),
-                cursorColor: widget.cursorColor,
-                decoration: InputDecoration(
-                  filled: false,
-                  hoverColor: Colors.transparent,
-                  hintText: widget.hint,
-                  hintStyle: widget.hintStyle,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  disabledBorder: InputBorder.none,
-                  contentPadding: EdgeInsets.zero,
-                  isDense: true,
-                ),
-              ),
-            ),
-          ],
-        );
+        final child = widget.expands
+            ? SizedBox.expand(child: _buildEditorStack(selectionColor))
+            : _buildEditorStack(selectionColor);
 
         if (widget.overlayBuilder == null) {
           return child;
@@ -236,6 +189,71 @@ class _InlineTokenTextFieldState extends State<InlineTokenTextField> {
           child: child,
         );
       },
+    );
+  }
+
+  Widget _buildEditorStack(Color selectionColor) {
+    final mirror = ListenableBuilder(
+      listenable: _scrollController,
+      builder: (context, _) {
+        final scrollOffset = _scrollController.hasClients
+            ? _scrollController.offset
+            : 0.0;
+        return InlineTokenChipMirror(
+          text: widget.controller.text,
+          baseStyle: widget.textStyle,
+          minLines: widget.expands ? 1 : widget.minLines,
+          maxLines: widget.expands ? 100 : widget.maxLines,
+          expands: widget.expands,
+          scrollOffset: scrollOffset,
+          tokenPattern: _tokenPattern,
+          resolvePalette: _resolvePalette,
+        );
+      },
+    );
+
+    final field = TextSelectionTheme(
+      data: TextSelectionThemeData(
+        selectionColor: selectionColor,
+        cursorColor: widget.cursorColor,
+      ),
+      child: TextField(
+        controller: widget.controller,
+        focusNode: widget.focusNode,
+        scrollController: _scrollController,
+        expands: widget.expands,
+        minLines: widget.expands ? null : widget.minLines,
+        maxLines: widget.expands ? null : widget.maxLines,
+        enabled: widget.enabled,
+        onChanged: (value) {
+          setState(() {});
+          widget.onChanged(value);
+        },
+        style: widget.textStyle.copyWith(color: Colors.transparent),
+        cursorColor: widget.cursorColor,
+        textAlignVertical: widget.expands ? TextAlignVertical.top : null,
+        decoration: InputDecoration(
+          filled: false,
+          hoverColor: Colors.transparent,
+          hintText: widget.hint,
+          hintStyle: widget.hintStyle,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
+          contentPadding: EdgeInsets.zero,
+          isDense: true,
+        ),
+      ),
+    );
+
+    return Stack(
+      key: _effectiveFieldKey,
+      alignment: Alignment.topLeft,
+      children: [
+        if (widget.expands) Positioned.fill(child: mirror) else mirror,
+        if (widget.expands) Positioned.fill(child: field) else field,
+      ],
     );
   }
 }

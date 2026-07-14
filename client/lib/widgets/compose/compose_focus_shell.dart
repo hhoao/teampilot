@@ -38,24 +38,28 @@ class ComposeFocusShell extends StatelessWidget {
       builder: (context, _) {
         final focused = focusNode.hasFocus;
         final radius = BorderRadius.circular(borderRadius);
-        return AnimatedContainer(
-          duration: _duration,
-          curve: Curves.easeOut,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: radius,
-            border: Border.fromBorderSide(
-              _borderSide(
-                focused: focused,
-                isDark: isDark,
-                onSurface: scheme.onSurface,
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: focusNode.requestFocus,
+          child: AnimatedContainer(
+            duration: _duration,
+            curve: Curves.easeOut,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: radius,
+              border: Border.fromBorderSide(
+                _borderSide(
+                  focused: focused,
+                  isDark: isDark,
+                  onSurface: scheme.onSurface,
+                ),
               ),
+              boxShadow: _shadows(focused: focused, isDark: isDark),
             ),
-            boxShadow: _shadows(focused: focused, isDark: isDark),
-          ),
-          child: ClipRRect(
-            borderRadius: radius,
-            child: child,
+            child: ClipRRect(
+              borderRadius: radius,
+              child: child,
+            ),
           ),
         );
       },

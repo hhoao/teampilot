@@ -118,6 +118,37 @@ void main() {
       lessThan(idle.border!.top.color.computeLuminance()),
     );
   });
+
+  testWidgets('tapping shell padding focuses the compose field', (tester) async {
+    final focusNode = FocusNode();
+    addTearDown(focusNode.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(brightness: Brightness.light),
+        home: Scaffold(
+          body: ComposeFocusShell(
+            focusNode: focusNode,
+            color: Colors.white,
+            borderColor: const Color(0xFF888888),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Focus(
+                focusNode: focusNode,
+                child: const SizedBox(height: 48, width: 200),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(focusNode.hasFocus, isFalse);
+    final shell = tester.getRect(find.byType(ComposeFocusShell));
+    await tester.tapAt(Offset(shell.center.dx, shell.top + 8));
+    await tester.pump();
+    expect(focusNode.hasFocus, isTrue);
+  });
 }
 
 BoxDecoration _decoration(WidgetTester tester) {

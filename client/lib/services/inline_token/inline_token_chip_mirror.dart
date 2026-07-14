@@ -149,6 +149,7 @@ class InlineTokenChipMirror extends StatelessWidget {
     required this.tokenPattern,
     required this.resolvePalette,
     this.scrollOffset = 0,
+    this.expands = false,
     super.key,
   });
 
@@ -157,6 +158,7 @@ class InlineTokenChipMirror extends StatelessWidget {
   final int minLines;
   final int maxLines;
   final double scrollOffset;
+  final bool expands;
   final RegExp tokenPattern;
   final InlineTokenPaletteResolver resolvePalette;
 
@@ -168,53 +170,61 @@ class InlineTokenChipMirror extends StatelessWidget {
     final maxHeight = lineHeight * maxLines;
     final strutStyle = inlineTokenMirrorStrutStyle(baseStyle);
 
-    return ConstrainedBox(
-      constraints: BoxConstraints(minHeight: minHeight, maxHeight: maxHeight),
-      child: ClipRect(
-        clipBehavior: Clip.none,
-        child: Transform.translate(
-          offset: Offset(0, -scrollOffset),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final layoutSpans = buildInlineTokenMirrorLayoutSpans(
-                text: text,
-                baseStyle: baseStyle,
-                tokenPattern: tokenPattern,
-              );
-              final painter = TextPainter(
-                text: TextSpan(children: layoutSpans),
-                textDirection: Directionality.of(context),
-                textScaler: MediaQuery.textScalerOf(context),
-                strutStyle: strutStyle,
-                maxLines: maxLines,
-              )..layout(maxWidth: constraints.maxWidth);
+    final content = ClipRect(
+      clipBehavior: Clip.none,
+      child: Transform.translate(
+        offset: Offset(0, -scrollOffset),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final layoutSpans = buildInlineTokenMirrorLayoutSpans(
+              text: text,
+              baseStyle: baseStyle,
+              tokenPattern: tokenPattern,
+            );
+            final painter = TextPainter(
+              text: TextSpan(children: layoutSpans),
+              textDirection: Directionality.of(context),
+              textScaler: MediaQuery.textScalerOf(context),
+              strutStyle: strutStyle,
+              maxLines: expands ? null : maxLines,
+            )..layout(maxWidth: constraints.maxWidth);
 
-              return SizedBox(
-                width: constraints.maxWidth,
-                height: painter.height,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Text.rich(
-                      TextSpan(children: layoutSpans),
-                      maxLines: maxLines,
-                      strutStyle: strutStyle,
-                    ),
-                    ...buildInlineTokenPillOverlays(
-                      text: text,
-                      baseStyle: baseStyle,
-                      colorScheme: cs,
-                      painter: painter,
-                      tokenPattern: tokenPattern,
-                      resolvePalette: resolvePalette,
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
+            return SizedBox(
+              width: constraints.maxWidth,
+              height: expands
+                  ? constraints.maxHeight
+                  : painter.height,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Text.rich(
+                    TextSpan(children: layoutSpans),
+                    maxLines: expands ? null : maxLines,
+                    strutStyle: strutStyle,
+                  ),
+                  ...buildInlineTokenPillOverlays(
+                    text: text,
+                    baseStyle: baseStyle,
+                    colorScheme: cs,
+                    painter: painter,
+                    tokenPattern: tokenPattern,
+                    resolvePalette: resolvePalette,
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       ),
+    );
+
+    if (expands) {
+      return content;
+    }
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: minHeight, maxHeight: maxHeight),
+      child: content,
     );
   }
 }

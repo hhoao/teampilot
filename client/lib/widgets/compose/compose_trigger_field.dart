@@ -399,6 +399,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
             initialHeight: minH,
             resizable: true,
             textStyle: textStyle,
+            focusNode: widget.focusNode,
             builder: (context, lineCount) {
               return InlineTokenTextField(
                 fieldKey: _fieldKey,
@@ -410,6 +411,8 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
                 textStyle: textStyle,
                 hintStyle: styles.mdColored(widget.hintColor),
                 cursorColor: widget.mutedColor,
+                // Fill the shell so blank viewport areas remain tappable.
+                expands: true,
                 minLines: lineCount,
                 maxLines: lineCount,
                 onKeyEvent: _handleComposeKey,

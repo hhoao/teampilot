@@ -130,6 +130,44 @@ void main() {
     },
   );
 
+  testWidgets('tapping blank area inside the shell focuses the field', (
+    tester,
+  ) async {
+    final bus = CommandBus();
+    final controller = TextEditingController();
+    final focusNode = FocusNode();
+    addTearDown(() {
+      controller.dispose();
+      focusNode.dispose();
+    });
+
+    await pumpField(
+      tester,
+      bus: bus,
+      controller: controller,
+      focusNode: focusNode,
+      onSubmit: () {},
+    );
+
+    expect(focusNode.hasFocus, isFalse);
+
+    // Create a leftover gap between shell and intrinsic line metrics, then
+    // tap that blank region — it must still hit the expanding TextField.
+    final grip = find.byKey(const Key('app-textarea-resize-grip'));
+    await tester.drag(grip, const Offset(0, 37));
+    await tester.pump();
+
+    final shellRect = tester.getRect(find.byType(ComposeTriggerField));
+    await tester.tapAt(Offset(shellRect.center.dx, shellRect.bottom - 12));
+    await tester.pump();
+
+    expect(focusNode.hasFocus, isTrue);
+
+    await tester.enterText(find.byType(TextField), 'from blank tap');
+    await tester.pump();
+    expect(controller.text, 'from blank tap');
+  });
+
   testWidgets('typing works after dragging the resize grip', (tester) async {
     final bus = CommandBus();
     final controller = TextEditingController();
