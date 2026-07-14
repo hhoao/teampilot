@@ -59,6 +59,10 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     }
   }
 
+  /// Absolute path found at startup for [cli], if any (ignores bare command names).
+  String discoveredExecutablePath(CliTool cli) =>
+      _locatedExecutables[cli]?.trim() ?? '';
+
   Future<void> load() async {
     emit(state.copyWith(isLoading: true));
     final prefs = await _repository.load();
@@ -83,6 +87,29 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     } else {
       next[pathKey] = trimmed;
     }
+    return _save(state.preferences.copyWith(cliExecutablePaths: next));
+  }
+
+  /// Persists several CLI executable paths in a single preferences write.
+  ///
+  /// Empty values are skipped (existing entries are left unchanged).
+  Future<void> setCliExecutablePaths(Map<CliTool, String> paths) {
+    if (paths.isEmpty) return Future.value();
+    final next = Map<String, String>.of(state.preferences.cliExecutablePaths);
+    var changed = false;
+    for (final entry in paths.entries) {
+      final trimmed = entry.value.trim();
+      if (trimmed.isEmpty) continue;
+      final pathKey =
+          _cliToolRegistry
+              .capability<ExecutableResolverCapability>(entry.key)
+              ?.preferencesPathKey ??
+          entry.key.value;
+      if (next[pathKey] == trimmed) continue;
+      next[pathKey] = trimmed;
+      changed = true;
+    }
+    if (!changed) return Future.value();
     return _save(state.preferences.copyWith(cliExecutablePaths: next));
   }
 
@@ -182,6 +209,9 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
         cli.value;
     return state.preferences.cliExecutablePathFor(pathKey);
   }
+
+  /// User-configured absolute path for [cli], or empty.
+  String configuredExecutablePath(CliTool cli) => _userExecutableFor(cli);
 
   static Map<CliTool, String> _normalizeLocatedExecutables(
     Map<CliTool, String> locatedExecutables,

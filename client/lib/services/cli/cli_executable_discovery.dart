@@ -25,6 +25,7 @@ class CliExecutableDiscovery {
 
   Future<Map<CliTool, String>> locateLocal({
     ProcessRunner runner = cliToolDefaultProcessRun,
+    bool includeShellFallback = true,
   }) async {
     final located = <CliTool, String>{};
     final discoveries = await Future.wait([
@@ -35,7 +36,10 @@ class CliExecutableDiscovery {
           )!;
           final path = await CliToolLocator(
             resolver.defaultExecutableName,
-          ).locate(runner: runner);
+          ).locate(
+            runner: runner,
+            includeShellFallback: includeShellFallback,
+          );
           if (path == null || path.isEmpty) return null;
           return MapEntry(cli, path);
         }(),

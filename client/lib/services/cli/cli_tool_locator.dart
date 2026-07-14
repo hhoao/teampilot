@@ -52,6 +52,7 @@ class CliToolLocator {
   Future<String?> locate({
     ProcessRunner runner = cliToolDefaultProcessRun,
     bool? isWindowsOverride,
+    bool includeShellFallback = true,
   }) async {
     final isWindows = isWindowsOverride ?? Platform.isWindows;
     if (!isWindows && Platform.isMacOS && executableName == 'git') {
@@ -69,12 +70,14 @@ class CliToolLocator {
         );
         if (located != null) return located;
       }
+      if (!includeShellFallback) return null;
       return _locateWithShellFallback(runner, isWindows: isWindows);
     } on ProcessException catch (error, stackTrace) {
       Logger().w(
         'Failed to locate $executableName: $error',
         stackTrace: stackTrace,
       );
+      if (!includeShellFallback) return null;
       return _locateWithShellFallback(runner, isWindows: isWindows);
     } on Object catch (error, stackTrace) {
       Logger().w(

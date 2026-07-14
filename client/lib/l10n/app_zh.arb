@@ -1728,6 +1728,7 @@
   "onboardingCliSubtitle": "定位用于启动会话的可执行文件。可安装缺失项，或稍后在设置中指定路径。",
   "onboardingCliFound": "已找到 CLI",
   "onboardingCliNotFound": "未在 PATH 中",
+  "onboardingCliScanning": "正在扫描 PATH 中的 CLI…",
   "onboardingCliRedetect": "重新检测",
   "onboardingProviderImportTitle": "导入 CLI Provider",
   "onboardingProviderImportSubtitle": "扫描本机各 CLI 配置中的现有 Provider。",

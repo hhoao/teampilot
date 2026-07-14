@@ -21,6 +21,7 @@ import '../../../widgets/settings/workspace_settings_widgets.dart';
 import '../../home_workspace/workspace/config/workspace_cli_config_helpers.dart';
 import '../../home_workspace/workspace/config/workspace_cli_effort_helpers.dart';
 import '../../../theme/app_text_styles.dart';
+import 'onboarding_step_scaffold.dart';
 
 class OnboardingDefaultPresetStep extends StatefulWidget {
   const OnboardingDefaultPresetStep({super.key, this.isActive = true});
@@ -72,18 +73,44 @@ class OnboardingDefaultPresetStepState
       context.read<AppProviderCubit>().state.providersFor(cli);
 
   AppProviderConfig? _selectedProvider() {
-    for (final provider in _providersForCli(_cli)) {
+    final providers = _providersForCli(_cli);
+    if (providers.isEmpty) return null;
+    for (final provider in providers) {
       if (provider.id == _providerId) return provider;
     }
-    return null;
+    return providers.first;
+  }
+
+  /// Keeps [_providerId]/[_modelId] aligned with an available provider for [cli].
+  void _selectProviderForCli(
+    CliTool cli, {
+    String preferredProviderId = '',
+    String preferredModelId = '',
+  }) {
+    final providers = _providersForCli(cli);
+    final preferred = preferredProviderId.trim();
+    final provider = preferred.isEmpty
+        ? providers.firstOrNull
+        : providers.where((p) => p.id == preferred).firstOrNull ??
+              providers.firstOrNull;
+    _providerId = provider?.id ?? '';
+    final preferredModel = preferredModelId.trim();
+    if (preferredModel.isNotEmpty && provider != null) {
+      _modelId = preferredModel;
+    } else {
+      _modelId = provider?.defaultModel.trim() ?? '';
+    }
   }
 
   void _loadFieldsFromPreset(CliPreset preset) {
     _presetId = preset.id;
     _cli = preset.cli;
-    _providerId = preset.provider;
-    _modelId = preset.model;
     _effortId = preset.effort;
+    _selectProviderForCli(
+      preset.cli,
+      preferredProviderId: preset.provider,
+      preferredModelId: preset.model,
+    );
   }
 
   void _syncFromState() {
@@ -97,17 +124,12 @@ class OnboardingDefaultPresetStepState
     } else {
       _presetId = null;
       _cli = CliTool.claude;
+      _effortId = '';
       final appProvider = context.read<AppProviderCubit>();
-      final providerId =
+      final preferred =
           appProvider.state.selectedProviderIdByCli[CliTool.claude]?.trim() ??
           '';
-      final providers = _providersForCli(CliTool.claude);
-      final provider =
-          providers.where((p) => p.id == providerId).firstOrNull ??
-          providers.firstOrNull;
-      _providerId = provider?.id ?? '';
-      _modelId = provider?.defaultModel.trim() ?? '';
-      _effortId = '';
+      _selectProviderForCli(CliTool.claude, preferredProviderId: preferred);
     }
     setState(() {});
   }
@@ -215,9 +237,8 @@ class OnboardingDefaultPresetStepState
           if (value == null) return;
           setState(() {
             _cli = CliTool.decode(value);
-            _providerId = '';
-            _modelId = '';
             _effortId = '';
+            _selectProviderForCli(_cli);
           });
         },
       ),
@@ -225,110 +246,93 @@ class OnboardingDefaultPresetStepState
       showDividerBelow: providers.isNotEmpty,
     );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          l10n.onboardingDefaultPresetTitle,
-          style: AppTextStyles.of(context).display,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          providers.isEmpty
-              ? l10n.onboardingDefaultPresetEmpty
-              : l10n.onboardingDefaultPresetSubtitle,
-          style: AppTextStyles.of(context).mutedMd,
-        ),
-        const SizedBox(height: 20),
-        SettingsSurfaceCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              cliPicker,
-              if (providers.isNotEmpty) ...[
+    return OnboardingStepScaffold(
+      title: l10n.onboardingDefaultPresetTitle,
+      subtitle: providers.isEmpty
+          ? l10n.onboardingDefaultPresetEmpty
+          : l10n.onboardingDefaultPresetSubtitle,
+      body: SettingsSurfaceCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            cliPicker,
+            if (providers.isNotEmpty) ...[
+              SettingsLabeledRow(
+                title: l10n.provider,
+                trailing: SettingsCompactDropdown<String>(
+                  value: selectedProvider?.id ?? providers.first.id,
+                  entries: [
+                    for (final provider in providers)
+                      (provider.id, provider.name),
+                  ],
+                  itemBuilder: providerDropdownItemBuilder(
+                    providers: providers,
+                    labelFor: (id) =>
+                        providers
+                            .where((p) => p.id == id)
+                            .map((p) => p.name)
+                            .firstOrNull ??
+                        id,
+                  ),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() {
+                      _effortId = '';
+                      _selectProviderForCli(
+                        _cli,
+                        preferredProviderId: value,
+                      );
+                    });
+                  },
+                ),
+                showDividerBelow: !hideModelPicker || showEffortPicker,
+              ),
+              if (!hideModelPicker)
                 SettingsLabeledRow(
-                  title: l10n.provider,
-                  trailing: SettingsCompactDropdown<String>(
-                    value: _providerId.isNotEmpty
-                        ? _providerId
-                        : providers.first.id,
-                    entries: [
-                      for (final provider in providers)
-                        (provider.id, provider.name),
-                    ],
-                    itemBuilder: providerDropdownItemBuilder(
-                      providers: providers,
-                      labelFor: (id) =>
-                          providers
-                              .where((p) => p.id == id)
-                              .map((p) => p.name)
-                              .firstOrNull ??
-                          id,
-                    ),
+                  title: l10n.defaultModel,
+                  trailing: selectedProvider == null
+                      ? Text(
+                          l10n.selectModel,
+                          style: AppTextStyles.of(context).md.copyWith(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                          ),
+                        )
+                      : ProviderModelPickerField(
+                          cli: _cli,
+                          providerId: selectedProvider.id,
+                          provider: selectedProvider,
+                          value: _modelId,
+                          hintText: l10n.selectModel,
+                          decoration: dropdownDeco,
+                          onChanged: (value) {
+                            setState(() => _modelId = value);
+                          },
+                        ),
+                  showDividerBelow: showEffortPicker,
+                ),
+              if (showEffortPicker)
+                SettingsLabeledRow(
+                  title: l10n.workspaceCliEffortLevel,
+                  trailing: CliEffortPickerField(
+                    cli: _cli,
+                    value: _effortId,
+                    provider: selectedProvider,
+                    model: _modelId,
+                    allowInherit: true,
+                    inheritLabel: l10n.workspaceCliEffortInheritHint,
+                    decoration: dropdownDeco,
                     onChanged: (value) {
-                      if (value == null) return;
-                      final provider = providers
-                          .where((p) => p.id == value)
-                          .firstOrNull;
-                      setState(() {
-                        _providerId = value;
-                        _modelId = provider?.defaultModel.trim() ?? '';
-                        _effortId = '';
-                      });
+                      setState(() => _effortId = value.trim());
                     },
                   ),
-                  showDividerBelow: !hideModelPicker || showEffortPicker,
+                  showDividerBelow: false,
                 ),
-                if (!hideModelPicker)
-                  SettingsLabeledStackedRow(
-                    title: l10n.defaultModel,
-                    subtitle: l10n.onboardingDefaultPresetModelHint,
-                    body: selectedProvider == null
-                        ? Text(
-                            l10n.selectModel,
-                            style: AppTextStyles.of(context).md
-                                ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                ),
-                          )
-                        : ProviderModelPickerField(
-                            cli: _cli,
-                            providerId: selectedProvider.id,
-                            provider: selectedProvider,
-                            value: _modelId,
-                            hintText: l10n.selectModel,
-                            decoration: dropdownDeco,
-                            onChanged: (value) {
-                              setState(() => _modelId = value);
-                            },
-                          ),
-                    showDividerBelow: showEffortPicker,
-                  ),
-                if (showEffortPicker)
-                  SettingsLabeledRow(
-                    title: l10n.workspaceCliEffortLevel,
-                    subtitle: l10n.workspaceCliEffortLevelSubtitle,
-                    trailing: CliEffortPickerField(
-                      cli: _cli,
-                      value: _effortId,
-                      provider: selectedProvider,
-                      model: _modelId,
-                      allowInherit: true,
-                      inheritLabel: l10n.workspaceCliEffortInheritHint,
-                      decoration: dropdownDeco,
-                      onChanged: (value) {
-                        setState(() => _effortId = value.trim());
-                      },
-                    ),
-                    showDividerBelow: false,
-                  ),
-              ],
             ],
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

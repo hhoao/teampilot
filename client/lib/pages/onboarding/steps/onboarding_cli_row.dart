@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
@@ -15,10 +16,9 @@ class OnboardingCliRow extends StatelessWidget {
     required this.label,
     required this.controller,
     required this.detectedPath,
-    required this.detecting,
     required this.supportsInstall,
     required this.installing,
-    required this.installEnabled,
+    required this.busyListenable,
     required this.onPathChanged,
     required this.onInstall,
   });
@@ -27,10 +27,9 @@ class OnboardingCliRow extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final String? detectedPath;
-  final bool detecting;
   final bool supportsInstall;
   final bool installing;
-  final bool installEnabled;
+  final ValueListenable<bool> busyListenable;
   final ValueChanged<String> onPathChanged;
   final VoidCallback onInstall;
 
@@ -40,24 +39,15 @@ class OnboardingCliRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final cli = definition.id;
     final found = detectedPath != null && detectedPath!.isNotEmpty;
-    final statusIcon = detecting
-        ? SizedBox(
-            width: context.appIconSizes.md,
-            height: context.appIconSizes.md,
-            child: const CircularProgressIndicator(strokeWidth: 2),
-          )
-        : Icon(
-            found ? Icons.check_circle_outline : Icons.info_outline,
-            size: context.appIconSizes.md,
-            color: found ? cs.primary : cs.onSurfaceVariant,
-          );
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // Stable key keeps SVG brand marks from reloading on parent rebuilds.
           CliBrandIcon(
+            key: ValueKey('onboarding-cli-icon-${cli.value}'),
             cli: cli,
             definition: definition,
             label: label,
@@ -75,7 +65,11 @@ class OnboardingCliRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          statusIcon,
+          Icon(
+            found ? Icons.check_circle_outline : Icons.info_outline,
+            size: context.appIconSizes.md,
+            color: found ? cs.primary : cs.onSurfaceVariant,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
@@ -92,20 +86,25 @@ class OnboardingCliRow extends StatelessWidget {
           ),
           if (supportsInstall) ...[
             const SizedBox(width: 4),
-            IconButton(
-              key: AppKeys.cliInstallButtonFor(cli),
-              tooltip: l10n.cliInstallButton,
-              onPressed: installEnabled && !installing ? onInstall : null,
-              icon: installing
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Icon(
-                      Icons.download_outlined,
-                      size: context.appIconSizes.md,
-                    ),
+            ValueListenableBuilder<bool>(
+              valueListenable: busyListenable,
+              builder: (context, busy, _) {
+                return IconButton(
+                  key: AppKeys.cliInstallButtonFor(cli),
+                  tooltip: l10n.cliInstallButton,
+                  onPressed: busy || installing ? null : onInstall,
+                  icon: installing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(
+                          Icons.download_outlined,
+                          size: context.appIconSizes.md,
+                        ),
+                );
+              },
             ),
           ],
         ],

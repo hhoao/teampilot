@@ -4611,6 +4611,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingCliNotFound => 'Not on PATH';
 
   @override
+  String get onboardingCliScanning => 'Scanning PATH for CLI tools…';
+
+  @override
   String get onboardingCliRedetect => 'Scan again';
 
   @override

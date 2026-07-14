@@ -25,6 +25,7 @@ import '../../../theme/app_text_styles.dart';
 import '../../../widgets/cli_install_progress_panel.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
 import 'onboarding_cli_row.dart';
+import 'onboarding_step_scaffold.dart';
 
 class OnboardingCliStep extends StatefulWidget {
   const OnboardingCliStep({super.key, this.isActive = true});
@@ -39,7 +40,8 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
   final _controllers = <CliTool, TextEditingController>{};
   final _persistDebouncers = <CliTool, Timer>{};
   final _detectedPaths = <CliTool, String?>{};
-  var _detecting = false;
+  final _detecting = ValueNotifier(false);
+  final _busy = ValueNotifier(false);
   var _hasStartedDetect = false;
   CliTool? _installingCli;
   CliInstallPhase? _installPhase;
@@ -65,7 +67,10 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
   void _startDetectIfNeeded() {
     if (_hasStartedDetect) return;
     _hasStartedDetect = true;
-    unawaited(_detect());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(_detect());
+    });
   }
 
   @override
@@ -76,6 +81,8 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
     for (final controller in _controllers.values) {
       controller.dispose();
     }
+    _detecting.dispose();
+    _busy.dispose();
     super.dispose();
   }
 
@@ -90,12 +97,33 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
   bool _supportsInstall(CliTool cli) =>
       _registry.capability<InstallerCapability>(cli)?.supportsInstaller ?? false;
 
+  void _syncBusy() {
+    _busy.value = _detecting.value || _installingCli != null;
+  }
+
   Future<void> _detect() async {
-    setState(() {
-      _detecting = true;
-      _detectError = null;
-    });
+    _detectError = null;
+    _detecting.value = true;
+    _syncBusy();
     try {
+      final prefs = context.read<SessionPreferencesCubit>();
+      var seeded = false;
+      for (final def in _launchable) {
+        final cli = def.id;
+        final configured = prefs.configuredExecutablePath(cli).trim();
+        final known = configured.isNotEmpty
+            ? configured
+            : prefs.discoveredExecutablePath(cli);
+        if (known.isEmpty) continue;
+        _controllerFor(cli).text = known;
+        if (_detectedPaths[cli] != known) {
+          _detectedPaths[cli] = known;
+          seeded = true;
+        }
+      }
+      // Controllers update fields without setState; only refresh status icons.
+      if (seeded && mounted) setState(() {});
+
       final mode = context.read<ConnectionModeService>();
       final discovery = CliExecutableDiscovery(registry: _registry);
       final Map<CliTool, String> located;
@@ -111,26 +139,36 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
           );
         }
       } else {
-        located = await discovery.locateLocal();
+        located = await discovery.locateLocal(includeShellFallback: false);
       }
       if (!mounted) return;
 
-      final prefs = context.read<SessionPreferencesCubit>();
+      final toPersist = <CliTool, String>{};
+      var pathsChanged = false;
       for (final def in _launchable) {
         final cli = def.id;
         final path = located[cli]?.trim() ?? '';
-        _controllerFor(cli).text = path;
-        _detectedPaths[cli] = path.isEmpty ? null : path;
-        await prefs.setCliExecutablePathFor(cli, path);
+        if (path.isEmpty) continue;
+        if (_controllerFor(cli).text != path) {
+          _controllerFor(cli).text = path;
+        }
+        if (_detectedPaths[cli] != path) {
+          _detectedPaths[cli] = path;
+          pathsChanged = true;
+        }
+        toPersist[cli] = path;
       }
+      prefs.mergeLocatedExecutables(located);
+      await prefs.setCliExecutablePaths(toPersist);
       if (!mounted) return;
-      setState(() => _detecting = false);
+      _detecting.value = false;
+      _syncBusy();
+      if (pathsChanged) setState(() {});
     } on Object catch (error) {
       if (!mounted) return;
-      setState(() {
-        _detectError = error.toString();
-        _detecting = false;
-      });
+      _detecting.value = false;
+      _syncBusy();
+      setState(() => _detectError = error.toString());
     }
   }
 
@@ -142,12 +180,13 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
   }
 
   Future<void> _install(CliTool cli) async {
-    if (_installingCli != null || !_supportsInstall(cli)) return;
+    if (_busy.value || !_supportsInstall(cli)) return;
     setState(() {
       _installingCli = cli;
       _installPhase = CliInstallPhase.checkingNpm;
       _installLog.clear();
     });
+    _syncBusy();
     try {
       final connectionMode = context.read<ConnectionModeService>();
       final sshProfile = context.read<SshProfileCubit>().state.selectedProfile;
@@ -166,8 +205,8 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
       if (!mounted) return;
       final path = result.executablePath?.trim() ?? '';
       if (result.success && path.isNotEmpty) {
+        _controllerFor(cli).text = path;
         setState(() {
-          _controllerFor(cli).text = path;
           _detectedPaths[cli] = path;
           _detectError = null;
         });
@@ -189,6 +228,7 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
           _installingCli = null;
           _installPhase = null;
         });
+        _syncBusy();
       }
     }
   }
@@ -211,78 +251,125 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final launchable = _launchable;
-    final busy = _detecting || _installingCli != null;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          l10n.onboardingCliTitle,
-          style: AppTextStyles.of(context).display,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          l10n.onboardingCliSubtitle,
-          style: AppTextStyles.of(context).mutedMd,
-        ),
-        if (_detectError != null) ...[
-          const SizedBox(height: 12),
-          Text(
-            _detectError!,
-            style: AppTextStyles.of(context).mutedMd.copyWith(
-              color: Theme.of(context).colorScheme.error,
+    return OnboardingStepScaffold(
+      title: l10n.onboardingCliTitle,
+      subtitle: l10n.onboardingCliSubtitle,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ValueListenableBuilder<bool>(
+            valueListenable: _detecting,
+            builder: (context, detecting, _) {
+              if (!detecting && _detectError == null) {
+                return const SizedBox.shrink();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_detectError != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          _detectError!,
+                          style: AppTextStyles.of(context).mutedMd.copyWith(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    if (detecting)
+                      Row(
+                        children: [
+                          SizedBox(
+                            width: context.appIconSizes.md,
+                            height: context.appIconSizes.md,
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              l10n.onboardingCliScanning,
+                              style: AppTextStyles.of(context).mutedMd,
+                            ),
+                          ),
+                        ],
+                      ),
+                    if (detecting) ...[
+                      const SizedBox(height: 8),
+                      const LinearProgressIndicator(minHeight: 2),
+                    ],
+                  ],
+                ),
+              );
+            },
+          ),
+          SettingsSurfaceCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < launchable.length; i++) ...[
+                  OnboardingCliRow(
+                    definition: launchable[i],
+                    label: cliDisplayName(launchable[i], l10n),
+                    controller: _controllerFor(launchable[i].id),
+                    detectedPath: _detectedPaths[launchable[i].id],
+                    supportsInstall: _supportsInstall(launchable[i].id),
+                    installing: _installingCli == launchable[i].id,
+                    busyListenable: _busy,
+                    onPathChanged: (value) {
+                      final trimmed = value.trim();
+                      final next = trimmed.isEmpty ? null : trimmed;
+                      if (_detectedPaths[launchable[i].id] != next) {
+                        setState(() {
+                          _detectError = null;
+                          _detectedPaths[launchable[i].id] = next;
+                        });
+                      } else if (_detectError != null) {
+                        setState(() => _detectError = null);
+                      }
+                      _persistDebouncers[launchable[i].id]?.cancel();
+                      _persistDebouncers[launchable[i].id] = Timer(
+                        const Duration(milliseconds: 300),
+                        () => unawaited(_persistPath(launchable[i].id, value)),
+                      );
+                    },
+                    onInstall: () => unawaited(_install(launchable[i].id)),
+                  ),
+                  if (i < launchable.length - 1) const Divider(height: 1),
+                ],
+              ],
             ),
           ),
-        ],
-        const SizedBox(height: 20),
-        SettingsSurfaceCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var i = 0; i < launchable.length; i++) ...[
-                OnboardingCliRow(
-                  definition: launchable[i],
-                  label: cliDisplayName(launchable[i], l10n),
-                  controller: _controllerFor(launchable[i].id),
-                  detectedPath: _detectedPaths[launchable[i].id],
-                  detecting: _detecting,
-                  supportsInstall: _supportsInstall(launchable[i].id),
-                  installing: _installingCli == launchable[i].id,
-                  installEnabled: !busy,
-                  onPathChanged: (value) {
-                    setState(() {
-                      _detectError = null;
-                      final trimmed = value.trim();
-                      _detectedPaths[launchable[i].id] =
-                          trimmed.isEmpty ? null : trimmed;
-                    });
-                    _persistDebouncers[launchable[i].id]?.cancel();
-                    _persistDebouncers[launchable[i].id] = Timer(
-                      const Duration(milliseconds: 300),
-                      () => unawaited(_persistPath(launchable[i].id, value)),
-                    );
-                  },
-                  onInstall: () => unawaited(_install(launchable[i].id)),
-                ),
-                if (i < launchable.length - 1) const Divider(height: 1),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: OutlinedButton.icon(
-            onPressed: busy ? null : _detect,
-            icon: Icon(Icons.refresh, size: context.appIconSizes.md),
-            label: Text(l10n.onboardingCliRedetect),
-          ),
-        ),
-        if (_installingCli != null && _installPhase != null) ...[
           const SizedBox(height: 12),
-          CliInstallProgressPanel(phase: _installPhase!, logLines: _installLog),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _busy,
+              builder: (context, busy, _) {
+                return OutlinedButton.icon(
+                  onPressed: busy ? null : _detect,
+                  icon: Icon(Icons.refresh, size: context.appIconSizes.md),
+                  label: Text(l10n.onboardingCliRedetect),
+                );
+              },
+            ),
+          ),
+          if (_installingCli != null && _installPhase != null) ...[
+            const SizedBox(height: 12),
+            CliInstallProgressPanel(
+              phase: _installPhase!,
+              logLines: _installLog,
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

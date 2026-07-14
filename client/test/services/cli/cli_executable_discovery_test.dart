@@ -29,6 +29,21 @@ void main() {
     expect(located[CliTool.cursor], '/usr/local/bin/cursor-agent');
   });
 
+  test('locateLocal can skip login-shell fallback', () async {
+    final discovery = CliExecutableDiscovery();
+    final commands = <(String, List<String>)>[];
+    final located = await discovery.locateLocal(
+      includeShellFallback: false,
+      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+        commands.add((executable, List<String>.from(arguments)));
+        return ProcessResult(1, 1, '', '');
+      },
+    );
+
+    expect(located, isEmpty);
+    expect(commands.any((c) => c.$1 == 'bash' || c.$1 == 'zsh'), isFalse);
+  });
+
   test('locateRemote probes each CLI over the injected runner', () async {
     final discovery = CliExecutableDiscovery();
     final commands = <String>[];

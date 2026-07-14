@@ -43,28 +43,21 @@ class OnboardingWizard extends StatefulWidget {
 
 class _OnboardingWizardState extends State<OnboardingWizard> {
   static const _pageAnimationDuration = Duration(milliseconds: 300);
-  static const _minPageViewportHeight = 280;
-  static const _maxPageViewportHeight = 520;
-  static const _footerReserve = 96;
+  static const _maxPageViewportHeight = 520.0;
+  static const _minPageViewportHeight = 280.0;
+  static const _footerReserve = 96.0;
 
   late final List<OnboardingStepKind> _steps;
-  late final List<GlobalKey> _stepMeasureKeys;
   late final PageController _pageController;
   final _defaultPresetKey = GlobalKey<OnboardingDefaultPresetStepState>();
-  final _cachedStepHeights = <int, double>{};
   var _pageIndex = 0;
   var _isAnimating = false;
-  var _pageViewportHeight = _minPageViewportHeight.toDouble();
 
   @override
   void initState() {
     super.initState();
     _steps = onboardingStepsForPlatform();
-    _stepMeasureKeys = List.generate(_steps.length, (_) => GlobalKey());
     _pageController = PageController();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _syncViewportHeightForPage(_pageIndex);
-    });
   }
 
   @override
@@ -107,46 +100,6 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
       _pageIndex = page;
       _isAnimating = false;
     });
-    _syncViewportHeightForPage(page);
-  }
-
-  void _invalidateStepHeightCache(int index) {
-    _cachedStepHeights.remove(index);
-    if (index == _pageIndex) {
-      _syncViewportHeightForPage(index);
-    }
-  }
-
-  void _syncViewportHeightForPage(int index) {
-    if (!mounted || _isAnimating) return;
-
-    final cached = _cachedStepHeights[index];
-    if (cached != null) {
-      final nextHeight = cached.clamp(
-        _minPageViewportHeight.toDouble(),
-        _maxPageViewportHeight.toDouble(),
-      );
-      if ((_pageViewportHeight - nextHeight).abs() > 1) {
-        setState(() => _pageViewportHeight = nextHeight);
-      }
-      return;
-    }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _isAnimating) return;
-      final box =
-          _stepMeasureKeys[index].currentContext?.findRenderObject()
-              as RenderBox?;
-      if (box == null || !box.hasSize) return;
-
-      final measured = box.size.height.clamp(
-        _minPageViewportHeight.toDouble(),
-        _maxPageViewportHeight.toDouble(),
-      );
-      _cachedStepHeights[index] = measured;
-      if ((_pageViewportHeight - measured).abs() <= 1) return;
-      setState(() => _pageViewportHeight = measured);
-    });
   }
 
   @override
@@ -160,19 +113,12 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final maxViewportHeight = math
+            final viewportHeight = math
                 .min(
-                  _maxPageViewportHeight.toDouble(),
+                  _maxPageViewportHeight,
                   constraints.maxHeight - _footerReserve,
                 )
-                .clamp(
-                  _minPageViewportHeight.toDouble(),
-                  _maxPageViewportHeight.toDouble(),
-                );
-            final viewportHeight = math.min(
-              _pageViewportHeight,
-              maxViewportHeight,
-            );
+                .clamp(_minPageViewportHeight, _maxPageViewportHeight);
 
             return ConstrainedBox(
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
@@ -188,46 +134,20 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        AnimatedSize(
-                          duration: _pageAnimationDuration,
-                          curve: Curves.easeOutCubic,
-                          alignment: Alignment.topCenter,
-                          child: SizedBox(
-                            height: viewportHeight,
-                            child: PageView.builder(
-                              controller: _pageController,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: _steps.length,
-                              itemBuilder: (context, index) {
-                                return _OnboardingStepPage(
-                                  child:
-                                      NotificationListener<
-                                        SizeChangedLayoutNotification
-                                      >(
-                                        onNotification: (_) {
-                                          if (index == _pageIndex) {
-                                            _invalidateStepHeightCache(index);
-                                          }
-                                          return false;
-                                        },
-                                        child: SizeChangedLayoutNotifier(
-                                          child: Align(
-                                            alignment: Alignment.topCenter,
-                                            child: SingleChildScrollView(
-                                              child: KeyedSubtree(
-                                                key: _stepMeasureKeys[index],
-                                                child: _buildStep(
-                                                  _steps[index],
-                                                  isActive: index == _pageIndex,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                );
-                              },
-                            ),
+                        SizedBox(
+                          height: viewportHeight,
+                          child: PageView.builder(
+                            controller: _pageController,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _steps.length,
+                            itemBuilder: (context, index) {
+                              return _OnboardingStepPage(
+                                child: _buildStep(
+                                  _steps[index],
+                                  isActive: index == _pageIndex,
+                                ),
+                              );
+                            },
                           ),
                         ),
                         const SizedBox(height: 20),

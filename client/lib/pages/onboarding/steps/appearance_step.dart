@@ -9,7 +9,7 @@ import '../../../utils/app_keys.dart';
 import '../../../widgets/settings/theme_color_preset_picker.dart';
 import '../../../widgets/settings/workspace_settings_toggle_strip.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
-import '../../../theme/app_text_styles.dart';
+import 'onboarding_step_scaffold.dart';
 
 class OnboardingAppearanceStep extends StatelessWidget {
   const OnboardingAppearanceStep({super.key, this.isActive = true});
@@ -37,87 +37,76 @@ class OnboardingAppearanceStep extends StatelessWidget {
       },
       builder: (context, appearance) {
         final (themeMode, colorPreset, langValue) = appearance;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              l10n.onboardingAppearanceTitle,
-              style: AppTextStyles.of(context).display,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.onboardingAppearanceSubtitle,
-              style: AppTextStyles.of(context).mutedMd,
-            ),
-            const SizedBox(height: 20),
-            SettingsSurfaceCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SettingsLabeledRow(
-                    title: l10n.themeModeTitle,
-                    subtitle: l10n.themeModeDescription,
-                    trailing: WorkspaceSettingsToggleStrip<String>(
-                      segments: [
-                        WorkspaceToggleSegment<String>(
-                          value: 'light',
-                          label: l10n.themeLight,
-                          icon: Icons.light_mode_outlined,
-                        ),
-                        WorkspaceToggleSegment<String>(
-                          value: 'dark',
-                          label: l10n.themeDark,
-                          icon: Icons.dark_mode_outlined,
-                        ),
-                        WorkspaceToggleSegment<String>(
-                          value: 'system',
-                          label: l10n.themeSystem,
-                          icon: Icons.desktop_windows_outlined,
-                        ),
-                      ],
-                      selected: themeMode,
-                      onChanged: controller.setThemeMode,
-                    ),
-                    showDividerBelow: true,
+        return OnboardingStepScaffold(
+          title: l10n.onboardingAppearanceTitle,
+          subtitle: l10n.onboardingAppearanceSubtitle,
+          body: SettingsSurfaceCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SettingsLabeledRow(
+                  title: l10n.themeModeTitle,
+                  subtitle: l10n.themeModeDescription,
+                  trailing: WorkspaceSettingsToggleStrip<String>(
+                    segments: [
+                      WorkspaceToggleSegment<String>(
+                        value: 'light',
+                        label: l10n.themeLight,
+                        icon: Icons.light_mode_outlined,
+                      ),
+                      WorkspaceToggleSegment<String>(
+                        value: 'dark',
+                        label: l10n.themeDark,
+                        icon: Icons.dark_mode_outlined,
+                      ),
+                      WorkspaceToggleSegment<String>(
+                        value: 'system',
+                        label: l10n.themeSystem,
+                        icon: Icons.desktop_windows_outlined,
+                      ),
+                    ],
+                    selected: themeMode,
+                    onChanged: controller.setThemeMode,
                   ),
-                  SettingsLabeledRow(
-                    title: l10n.themeColorPresetTitle,
-                    subtitle: l10n.themeColorPresetDescription,
-                    trailing: ThemeColorPresetPicker(
-                      selected: colorPreset,
-                      onSelect: controller.setThemeColorPreset,
-                    ),
-                    showDividerBelow: true,
+                  showDividerBelow: true,
+                ),
+                SettingsLabeledRow(
+                  title: l10n.themeColorPresetTitle,
+                  subtitle: l10n.themeColorPresetDescription,
+                  trailing: ThemeColorPresetPicker(
+                    selected: colorPreset,
+                    onSelect: controller.setThemeColorPreset,
                   ),
-                  SettingsLabeledRow(
-                    title: l10n.language,
-                    subtitle: l10n.languageDescription,
-                    trailing: SettingsCompactDropdown<String>(
-                      value: langValue,
-                      entries: [
-                        ('system', l10n.languageSystem),
-                        ('en', l10n.languageEnglish),
-                        ('zh', l10n.languageChinese),
-                      ],
-                      itemKeys: const {
-                        'system': AppKeys.languageSystemButton,
-                        'en': AppKeys.languageEnButton,
-                        'zh': AppKeys.languageZhButton,
-                      },
-                      onChanged: (v) {
-                        if (v != null) {
-                          controller.setLocale(
-                            languagePreferenceStoredLocale(v),
-                          );
-                        }
-                      },
-                    ),
-                    showDividerBelow: false,
+                  showDividerBelow: true,
+                ),
+                SettingsLabeledRow(
+                  title: l10n.language,
+                  subtitle: l10n.languageDescription,
+                  trailing: SettingsCompactDropdown<String>(
+                    value: langValue,
+                    entries: [
+                      ('system', l10n.languageSystem),
+                      ('en', l10n.languageEnglish),
+                      ('zh', l10n.languageChinese),
+                    ],
+                    itemKeys: const {
+                      'system': AppKeys.languageSystemButton,
+                      'en': AppKeys.languageEnButton,
+                      'zh': AppKeys.languageZhButton,
+                    },
+                    onChanged: (v) {
+                      if (v != null) {
+                        controller.setLocale(
+                          languagePreferenceStoredLocale(v),
+                        );
+                      }
+                    },
                   ),
-                ],
-              ),
+                  showDividerBelow: false,
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );

@@ -8346,6 +8346,12 @@ abstract class AppLocalizations {
   /// **'Not on PATH'**
   String get onboardingCliNotFound;
 
+  /// No description provided for @onboardingCliScanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning PATH for CLI tools…'**
+  String get onboardingCliScanning;
+
   /// No description provided for @onboardingCliRedetect.
   ///
   /// In en, this message translates to:

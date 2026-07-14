@@ -1,15 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../../cubits/app_provider_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_provider_config.dart';
 import '../../../widgets/app_provider/provider_brand_icon.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
-import '../../../theme/app_text_styles.dart';
+import 'onboarding_step_scaffold.dart';
 
 class OnboardingProviderImportStep extends StatefulWidget {
   const OnboardingProviderImportStep({super.key, this.isActive = true});
@@ -94,21 +94,18 @@ class _OnboardingProviderImportStepState
   Widget build(BuildContext context) {
     final l10n = context.l10n;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          l10n.onboardingProviderImportTitle,
-          style: AppTextStyles.of(context).display,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          l10n.onboardingProviderImportSubtitle,
-          style: AppTextStyles.of(context).mutedMd,
-        ),
-        const SizedBox(height: 20),
-        if (!_importing)
-          if (_error != null)
+    return OnboardingStepScaffold(
+      title: l10n.onboardingProviderImportTitle,
+      subtitle: l10n.onboardingProviderImportSubtitle,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_importing)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_error != null)
             SettingsSurfaceCard(
               child: ListTile(
                 leading: Icon(
@@ -162,18 +159,19 @@ class _OnboardingProviderImportStepState
                 ],
               ),
             ),
-        if (_imported && !_importing) ...[
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              onPressed: _import,
-              icon: Icon(Icons.refresh, size: context.appIconSizes.md),
-              label: Text(l10n.onboardingProviderImportRescan),
+          if (_imported && !_importing) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: _import,
+                icon: Icon(Icons.refresh, size: context.appIconSizes.md),
+                label: Text(l10n.onboardingProviderImportRescan),
+              ),
             ),
-          ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

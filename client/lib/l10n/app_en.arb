@@ -2051,6 +2051,7 @@
   "onboardingCliSubtitle": "Locate executables used to launch sessions. Install missing ones, or set a path later in Settings.",
   "onboardingCliFound": "CLI found",
   "onboardingCliNotFound": "Not on PATH",
+  "onboardingCliScanning": "Scanning PATH for CLI tools…",
   "onboardingCliRedetect": "Scan again",
   "onboardingProviderImportTitle": "Import CLI providers",
   "onboardingProviderImportSubtitle": "Scan local CLI configs for existing provider settings.",

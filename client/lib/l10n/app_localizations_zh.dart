@@ -4435,6 +4435,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get onboardingCliNotFound => '未在 PATH 中';
 
   @override
+  String get onboardingCliScanning => '正在扫描 PATH 中的 CLI…';
+
+  @override
   String get onboardingCliRedetect => '重新检测';
 
   @override
