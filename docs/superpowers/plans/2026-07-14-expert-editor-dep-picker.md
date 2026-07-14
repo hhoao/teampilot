@@ -333,8 +333,50 @@ testWidgets('configure skills Done updates count and saves skillDeps', (
 });
 
 testWidgets('configure skills Cancel leaves selection unchanged', (tester) async {
-  // open → configure → toggle skill → Cancel (l10n.cancel)
-  // count still 0; submit → skillDeps empty
+  _largeSurface(tester);
+  final skill = Skill(
+    id: 'obra/superpowers:brainstorming',
+    name: 'Brainstorming',
+    description: '',
+    directory: 'skills/brainstorming',
+    repoOwner: 'obra',
+    repoName: 'superpowers',
+    repoBranch: 'main',
+    installedAt: 1,
+    updatedAt: 1,
+  );
+  DiscoverableMember? result;
+  // pump showExpertEditorDialog(..., writer, skills: [skill], ...)
+  await tester.tap(find.text('open'));
+  await tester.pumpAndSettle();
+
+  await tester.tap(find.byKey(const Key('expert-editor-configure-skills')));
+  await tester.pumpAndSettle();
+
+  final switchFinder = find.descendant(
+    of: find.byKey(Key('expert-editor-skill-${skill.id}')),
+    matching: find.byType(Switch),
+  );
+  await tester.ensureVisible(switchFinder);
+  await tester.tap(switchFinder);
+  await tester.pumpAndSettle();
+
+  await tester.tap(find.byKey(const Key('expert-editor-dep-picker-cancel')));
+  await tester.pumpAndSettle();
+
+  expect(
+    find.descendant(
+      of: find.byKey(const Key('expert-editor-skills-count')),
+      matching: find.text('0'),
+    ),
+    findsOneWidget,
+  );
+
+  await tester.enterText(find.byKey(const Key('expert-editor-name')), 'X');
+  await tester.enterText(find.byKey(const Key('expert-editor-prompt')), 'Y');
+  await tester.tap(find.byKey(const Key('expert-editor-submit')));
+  await tester.pumpAndSettle();
+  expect(result!.skillDeps, isEmpty);
 });
 ```
 
