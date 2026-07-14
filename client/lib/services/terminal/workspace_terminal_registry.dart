@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:uuid/uuid.dart';
 
@@ -44,10 +45,18 @@ class WorkspaceTerminalEntry {
 }
 
 /// One workspace's IDEA-style terminal tabs.
-class WorkspaceTerminalGroup {
+class WorkspaceTerminalGroup extends ChangeNotifier {
   final List<WorkspaceTerminalEntry> _entries = [];
 
-  String? activeId;
+  String? _activeId;
+
+  String? get activeId => _activeId;
+
+  set activeId(String? id) {
+    if (_activeId == id) return;
+    _activeId = id;
+    notifyListeners();
+  }
 
   List<WorkspaceTerminalEntry> get entries => List.unmodifiable(_entries);
 
@@ -61,7 +70,7 @@ class WorkspaceTerminalGroup {
   }
 
   WorkspaceTerminalEntry? get activeEntry {
-    final id = activeId;
+    final id = _activeId;
     if (id == null) return null;
     return entryById(id);
   }
@@ -82,33 +91,38 @@ class WorkspaceTerminalGroup {
       followWorkspace: followWorkspace,
     )..titleLabel = titleLabel;
     _entries.add(entry);
-    if (select) activeId = entry.id;
+    if (select) _activeId = entry.id;
+    notifyListeners();
     return entry;
   }
 
   bool removeEntry(String id) {
     final index = _entries.indexWhere((e) => e.id == id);
     if (index < 0) return _entries.isEmpty;
-    final wasActive = _entries[index].id == activeId;
+    final wasActive = _entries[index].id == _activeId;
     _entries[index].dispose();
     _entries.removeAt(index);
     if (_entries.isEmpty) {
-      activeId = null;
+      _activeId = null;
+      notifyListeners();
       return true;
     }
     if (wasActive) {
       final next = index >= _entries.length ? _entries.length - 1 : index;
-      activeId = _entries[next].id;
+      _activeId = _entries[next].id;
     }
+    notifyListeners();
     return false;
   }
 
+  @override
   void dispose() {
     for (final e in _entries) {
       e.dispose();
     }
     _entries.clear();
-    activeId = null;
+    _activeId = null;
+    super.dispose();
   }
 }
 

@@ -168,6 +168,11 @@ class WorktreeCubit extends Cubit<WorktreeState> {
   bool _hydrated = false;
   int _loadGeneration = 0;
 
+  /// Repo paths that have completed at least one [load] in this cubit (including
+  /// empty / non-git results). Used so landing [selectProject] can skip a
+  /// duplicate probe for the already-active project.
+  final Set<String> _listedRepos = <String>{};
+
   static WorktreeState _initialState({
     required String workspaceId,
     required WorkspaceWorktreeStore? worktreeStore,
@@ -179,11 +184,15 @@ class WorktreeCubit extends Cubit<WorktreeState> {
     final cached = workspaceId.trim().isNotEmpty
         ? worktreeStore?.peek(workspaceId, repo)
         : null;
-    if (cached != null && cached.worktrees.isNotEmpty) {
+    // Remembered snapshots include empty lists for non-git folders so reopen
+    // does not flash the indeterminate skeleton then re-probe git.
+    if (cached != null) {
       return WorktreeState(
         repoPath: repo,
         worktrees: cached.worktrees,
-        currentWorktreePath: cached.worktrees.first.path,
+        currentWorktreePath: cached.worktrees.isNotEmpty
+            ? cached.worktrees.first.path
+            : repo,
         loading: true,
       );
     }
@@ -216,6 +225,9 @@ class WorktreeCubit extends Cubit<WorktreeState> {
   /// selection (across reload) → the persisted last current worktree → the one
   /// containing [preferCurrentPath] (e.g. the active session's directory, §7) →
   /// the main worktree. Collapse state is hydrated from disk on first load.
+  ///
+  /// When [WorkspaceWorktreeStore] already has a snapshot for this repo
+  /// (including an empty non-git result), skips spawning `git worktree list`.
   Future<void> load(String repoPath, {String? preferCurrentPath}) async {
     final lister = _lister;
     if (lister == null) {
@@ -230,10 +242,16 @@ class WorktreeCubit extends Cubit<WorktreeState> {
     emit(state.copyWith(repoPath: requestedRepo, loading: true));
 
     final hydrating = !_hydrated && workspaceId.isNotEmpty;
-    final listFuture = lister.list(requestedRepo);
+    final cached = workspaceId.isNotEmpty
+        ? _worktreeStore?.peek(workspaceId, requestedRepo)
+        : null;
     final prefFuture = hydrating
         ? _prefsStore.prefsFor(workspaceId)
         : Future<WorktreeUiPref?>.value(null);
+
+    final listFuture = cached != null
+        ? Future<List<GitWorktree>>.value(cached.worktrees)
+        : lister.list(requestedRepo);
 
     final list = await listFuture;
     final pref = await prefFuture;
@@ -266,7 +284,9 @@ class WorktreeCubit extends Cubit<WorktreeState> {
         loading: false,
       ),
     );
+    _listedRepos.add(requestedRepo);
     if (workspaceId.isNotEmpty) {
+      // Always remember, including empty lists for non-git folders.
       _worktreeStore?.remember(workspaceId, requestedRepo, list);
     }
   }
@@ -322,10 +342,39 @@ class WorktreeCubit extends Cubit<WorktreeState> {
   }
 
   /// Switches the active git project and reloads its worktrees.
+  ///
+  /// When [projectPath] is already the loaded repo (e.g. landing draft sync
+  /// after [WorkspaceToolsScopeSync] bound the same folder), skips a second
+  /// `git worktree list` and only applies [preferWorktreePath] if needed.
   Future<void> selectProject(
     String projectPath, {
     String? preferWorktreePath,
-  }) => load(projectPath, preferCurrentPath: preferWorktreePath);
+  }) async {
+    final path = normalizeWorkspacePath(projectPath.trim());
+    if (_canReuseLoadedProject(path)) {
+      _applyPreferWorktreePath(path, preferWorktreePath);
+      return;
+    }
+    await load(projectPath, preferCurrentPath: preferWorktreePath);
+  }
+
+  bool _canReuseLoadedProject(String path) =>
+      !state.loading &&
+      path.isNotEmpty &&
+      workspacePathsEqual(state.repoPath, path) &&
+      _listedRepos.contains(path);
+
+  void _applyPreferWorktreePath(String repoPath, String? preferWorktreePath) {
+    if (preferWorktreePath == null || preferWorktreePath.isEmpty) return;
+    final next = _initialCurrent(
+      state.worktrees,
+      preferWorktreePath,
+      repoPath,
+    );
+    if (!workspacePathsEqual(next, state.currentWorktreePath)) {
+      setCurrentWorktree(next);
+    }
+  }
 
   /// Warms the worktree cache for every workspace folder (sidebar grouping).
   Future<void> prefetchProjects(Iterable<String> projectPaths) async {
@@ -350,7 +399,8 @@ class WorktreeCubit extends Cubit<WorktreeState> {
   List<GitWorktree> worktreesForProject(String projectPath) {
     final path = normalizeWorkspacePath(projectPath.trim());
     if (path.isEmpty) return const [];
-    if (workspacePathsEqual(state.repoPath, path) && state.worktrees.isNotEmpty) {
+    if (workspacePathsEqual(state.repoPath, path) &&
+        (_listedRepos.contains(path) || state.worktrees.isNotEmpty)) {
       return state.worktrees;
     }
     return _worktreeStore?.peek(workspaceId, path)?.worktrees ?? const [];

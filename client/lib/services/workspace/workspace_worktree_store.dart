@@ -16,6 +16,9 @@ class WorkspaceWorktreeSnapshot {
 /// Mirrors [WorkspaceFileTreeStore]: switching workspace tabs disposes the
 /// widget subtree but the last-known worktree list is retained so the sidebar
 /// can render grouped sessions immediately on return.
+///
+/// Empty lists are cached too (non-git folders) so reopen / landing
+/// [WorktreeCubit.selectProject] does not re-probe `git worktree list`.
 class WorkspaceWorktreeStore {
   final Map<String, WorkspaceWorktreeSnapshot> _snapshots =
       <String, WorkspaceWorktreeSnapshot>{};

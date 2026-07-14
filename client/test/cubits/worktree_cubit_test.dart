@@ -3,6 +3,7 @@ import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/models/git_worktree.dart';
 import 'package:teampilot/services/git/git_worktree_service.dart';
 import 'package:teampilot/services/home_workspace/worktree_ui_prefs_store.dart';
+import 'package:teampilot/services/workspace/workspace_worktree_store.dart';
 
 import '../support/in_memory_filesystem.dart';
 
@@ -11,6 +12,20 @@ class _FakeWorktreeService implements WorktreeLister {
   List<GitWorktree> _list;
   @override
   Future<List<GitWorktree>> list(String repoPath) async => _list;
+}
+
+class _CountingLister implements WorktreeLister {
+  _CountingLister(this._listFor);
+  final List<GitWorktree> Function(String repoPath) _listFor;
+  var calls = 0;
+  final listedPaths = <String>[];
+
+  @override
+  Future<List<GitWorktree>> list(String repoPath) async {
+    calls++;
+    listedPaths.add(repoPath);
+    return _listFor(repoPath);
+  }
 }
 
 class _StubGitWorktreeService extends GitWorktreeService {
@@ -266,6 +281,92 @@ void main() {
     expect(cubit.state.currentWorktreePath, '/repo-b/wt');
     expect(cubit.state.worktrees, hasLength(2));
   });
+
+  test(
+    'selectProject skips git list when the same repo is already loaded',
+    () async {
+      final lister = _CountingLister((_) => const []);
+      final cubit = WorktreeCubit(lister: lister);
+      await cubit.load('/Documents/TeamPilot');
+      expect(lister.calls, 1);
+      expect(cubit.state.worktrees, isEmpty);
+
+      await cubit.selectProject(
+        '/Documents/TeamPilot',
+        preferWorktreePath: '/Documents/TeamPilot/src',
+      );
+      expect(lister.calls, 1);
+      expect(cubit.state.loading, isFalse);
+      expect(cubit.state.repoPath, '/Documents/TeamPilot');
+      expect(cubit.state.currentWorktreePath, '/Documents/TeamPilot');
+    },
+  );
+
+  test(
+    'load reuses remembered empty (non-git) snapshot without calling git',
+    () async {
+      final store = WorkspaceWorktreeStore();
+      final lister = _CountingLister((_) => const []);
+      final first = WorktreeCubit(
+        lister: lister,
+        workspaceId: 'ws-1',
+        worktreeStore: store,
+      );
+      await first.load('/Documents/TeamPilot');
+      expect(lister.calls, 1);
+      expect(store.peek('ws-1', '/Documents/TeamPilot'), isNotNull);
+      expect(store.peek('ws-1', '/Documents/TeamPilot')!.worktrees, isEmpty);
+      await first.close();
+
+      final second = WorktreeCubit(
+        lister: lister,
+        workspaceId: 'ws-1',
+        worktreeStore: store,
+        initialRepoPath: '/Documents/TeamPilot',
+      );
+      expect(second.state.repoPath, '/Documents/TeamPilot');
+      await second.load('/Documents/TeamPilot');
+      expect(lister.calls, 1);
+      expect(second.state.loading, isFalse);
+      expect(second.state.worktrees, isEmpty);
+      await second.close();
+    },
+  );
+
+  test(
+    'selectProject still lists when switching to a different project',
+    () async {
+      final lister = _CountingLister((path) {
+        if (path == '/repo-a') return [_wt('/repo-a', main: true)];
+        return const [];
+      });
+      final cubit = WorktreeCubit(lister: lister);
+      await cubit.load('/repo-a');
+      expect(lister.calls, 1);
+
+      await cubit.selectProject('/Documents/TeamPilot');
+      expect(lister.calls, 2);
+      expect(cubit.state.repoPath, '/Documents/TeamPilot');
+      expect(cubit.state.worktrees, isEmpty);
+    },
+  );
+
+  test(
+    'selectProject applies preferWorktreePath without re-listing',
+    () async {
+      final lister = _CountingLister(
+        (_) => [_wt('/repo', main: true), _wt('/wt/a')],
+      );
+      final cubit = WorktreeCubit(lister: lister);
+      await cubit.load('/repo');
+      expect(cubit.state.currentWorktreePath, '/repo');
+      expect(lister.calls, 1);
+
+      await cubit.selectProject('/repo', preferWorktreePath: '/wt/a/lib/x.dart');
+      expect(lister.calls, 1);
+      expect(cubit.state.currentWorktreePath, '/wt/a');
+    },
+  );
 }
 
 class _RepoDelayedLister implements WorktreeLister {

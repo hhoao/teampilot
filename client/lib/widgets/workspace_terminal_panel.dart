@@ -27,7 +27,8 @@ import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/app_keys.dart';
 import 'menu/sidebar_action_menu.dart';
-import 'workspace_terminal/workspace_terminal_tab_bar.dart';
+import 'workspace_terminal/workspace_terminal_body_kind.dart';
+import 'workspace_terminal/workspace_terminal_empty_pane.dart';
 import 'workspace_terminal/workspace_terminal_view.dart';
 
 /// Debug label for the workspace panel's stable [GlobalKey<TerminalViewState>].
@@ -72,6 +73,8 @@ class WorkspaceTerminalPanel extends StatefulWidget {
     required this.workspaceId,
     required this.workingDirectory,
     this.holdHandle,
+    this.showChrome = true,
+    this.onRequestNewTerminal,
     super.key,
   });
 
@@ -81,6 +84,12 @@ class WorkspaceTerminalPanel extends StatefulWidget {
   /// Optional hold bridge so a split-drag in an outer shell can suppress PTY
   /// SIGWINCH thrash across the drag (forwarded to [TerminalLayoutCoordinator]).
   final WorkspaceTerminalHoldHandle? holdHandle;
+
+  /// When false (unified bottom dock), the panel is body-only — no tab strip.
+  final bool showChrome;
+
+  /// Empty-launcher CTA; defaults to starting a local shell when null.
+  final VoidCallback? onRequestNewTerminal;
 
   @override
   State<WorkspaceTerminalPanel> createState() => _WorkspaceTerminalPanelState();
@@ -133,7 +142,9 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     }
     if (_bootstrapped) return;
     _bootstrapped = true;
-    _ensureDefaultEntry();
+    // Lazy start (Orca-style): never spawn a default shell on mount. Only
+    // re-attach engines for sessions that already exist in the registry.
+    _reattachExistingEngines();
   }
 
   @override
@@ -177,43 +188,22 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
         fallbackLocalShell: HostInteractiveShell.defaultExecutable(),
       );
 
-  void _ensureDefaultEntry() {
-    final cwd = widget.workingDirectory.trim();
-    if (_group.entries.isNotEmpty) {
-      for (final entry in _group.entries) {
-        if (entry.connected && entry.controller.engine == null) {
-          entry.controller.attach(entry.session.engine);
-        }
+  void _reattachExistingEngines() {
+    if (_group.entries.isEmpty) return;
+    for (final entry in _group.entries) {
+      if (entry.connected && entry.controller.engine == null) {
+        entry.controller.attach(entry.session.engine);
       }
-      if (mounted) setState(() {});
-      return;
     }
-    if (cwd.isEmpty) return;
-    unawaited(
-      _addEntry(
-        cwd: cwd,
-        spec: _defaultSpec(cwd),
-        followWorkspace: true,
-        select: true,
-      ),
-    );
+    if (mounted) setState(() {});
   }
 
   void _syncActiveEntryCwd() {
     final cwd = widget.workingDirectory.trim();
     if (cwd.isEmpty) return;
     final active = _activeEntry;
-    if (active == null) {
-      unawaited(
-        _addEntry(
-          cwd: cwd,
-          spec: _defaultSpec(cwd),
-          followWorkspace: true,
-          select: true,
-        ),
-      );
-      return;
-    }
+    // No auto-create when the tab is empty — wait for New terminal / Run inject.
+    if (active == null) return;
     unawaited(_syncEntryWithWorkspace(active, cwd));
   }
 
@@ -478,6 +468,28 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     unawaited(_addEntry(cwd: dir, spec: spec, select: true));
   }
 
+  void _startDefaultTerminal() {
+    final dir = widget.workingDirectory.trim();
+    if (dir.isEmpty) return;
+    unawaited(
+      _addEntry(
+        cwd: dir,
+        spec: _defaultSpec(dir),
+        followWorkspace: true,
+        select: true,
+      ),
+    );
+  }
+
+  void _onEmptyNewTerminal() {
+    final custom = widget.onRequestNewTerminal;
+    if (custom != null) {
+      custom();
+      return;
+    }
+    _startDefaultTerminal();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -486,61 +498,48 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     final theme = _terminalTheme(context);
     final terminalBackground = Color(0xFF000000 | theme.background);
     final terminalForeground = Color(0xFF000000 | theme.foreground);
+    final bodyKind = resolveWorkspaceTerminalBodyKind(
+      workingDirectory: cwd,
+      hasActiveEntry: active != null,
+    );
 
-    final terminalBody = active == null || cwd.isEmpty
-        ? Center(
-            child: Text(
-              l10n.workspaceTerminalNoWorkingDirectory,
-              style: AppTextStyles.of(context).smColored(
-                terminalForeground.withValues(alpha: 0.65),
-              ),
+    final Widget terminalBody;
+    switch (bodyKind) {
+      case WorkspaceTerminalBodyKind.noWorkingDirectory:
+        terminalBody = Center(
+          child: Text(
+            l10n.workspaceTerminalNoWorkingDirectory,
+            style: AppTextStyles.of(context).smColored(
+              terminalForeground.withValues(alpha: 0.65),
             ),
-          )
-        : WorkspaceTerminalView(
-            entry: active,
-            theme: theme,
-            terminalViewKey: _terminalViewKey,
-            siblings: _group.entries,
-            workspaceId: widget.workspaceId,
-            onContextMenu: (position, cell) =>
-                _showContextMenu(context, active, position, cell),
-          );
+          ),
+        );
+      case WorkspaceTerminalBodyKind.emptyLauncher:
+        terminalBody = WorkspaceTerminalEmptyPane(
+          foreground: terminalForeground,
+          onNewTerminal: _onEmptyNewTerminal,
+        );
+      case WorkspaceTerminalBodyKind.activeSession:
+        terminalBody = WorkspaceTerminalView(
+          entry: active!,
+          theme: theme,
+          terminalViewKey: _terminalViewKey,
+          siblings: _group.entries,
+          workspaceId: widget.workspaceId,
+          onContextMenu: (position, cell) =>
+              _showContextMenu(context, active, position, cell),
+        );
+    }
 
-    if (active != null && cwd.isNotEmpty) {
+    if (bodyKind == WorkspaceTerminalBodyKind.activeSession &&
+        cwd.isNotEmpty) {
       _scheduleTerminalViewRegistration();
     }
 
     return ColoredBox(
       key: AppKeys.workspaceTerminalPanel,
       color: terminalBackground,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          WorkspaceTerminalTabBar(
-            entries: _group.entries,
-            activeEntryId: _group.activeId,
-            onSelect: _selectEntry,
-            onCloseEntry: _closeEntry,
-            onQuickNew: () {
-              final dir = widget.workingDirectory.trim();
-              if (dir.isEmpty) return;
-              unawaited(
-                _addEntry(
-                  cwd: dir,
-                  spec: _defaultSpec(dir),
-                  followWorkspace: true,
-                  select: true,
-                ),
-              );
-            },
-            folders: _folders,
-            connector: _connector,
-            onSessionSelected: _onMenuSessionSelected,
-            onClosePanel: _closePanel,
-          ),
-          Expanded(child: terminalBody),
-        ],
-      ),
+      child: terminalBody,
     );
   }
 }

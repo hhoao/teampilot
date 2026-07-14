@@ -86,5 +86,22 @@ void main() {
       );
       registry.dispose();
     });
+
+    test('hydrates empty (non-git) snapshot on first create', () {
+      final registry = WorkspaceWorktreeRegistry();
+      registry.store.remember('ws-1', '/Documents/TeamPilot', const []);
+      final cubit = registry.cubitFor(
+        workspaceId: 'ws-1',
+        repoPath: '/Documents/TeamPilot',
+      );
+      expect(cubit.state.worktrees, isEmpty);
+      expect(cubit.state.repoPath, '/Documents/TeamPilot');
+      expect(cubit.state.currentWorktreePath, '/Documents/TeamPilot');
+      expect(
+        WorktreeSidebarView.from(cubit.state).sessionListLayout,
+        WorktreeSessionListLayout.indeterminate,
+      );
+      registry.dispose();
+    });
   });
 }
