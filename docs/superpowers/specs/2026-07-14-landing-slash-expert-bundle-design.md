@@ -4,13 +4,15 @@ Simple-mode Landing `/` suggestions currently omit expert-pack skills/plugins. L
 
 ## Goal
 
-Landing (and session-review compose that reuses the same helper) slash enable-lists must match the skill/plugin ids that Simple launch would put in `SessionRuntimePlan.runtimeBundle` for the current draft — including the builtin default expert when no expert is selected.
+Landing (and session-review compose that reuses the same helper) slash enable-lists must use the **same merge layers and expert key** as Simple launch (`expert > workspace`, empty key → builtin default), so every skill/plugin the session would enable after a successful install is selectable in `/` once it is already installed locally.
+
+Parity is intentional at the **layer / key / expectedLocalId** level — not byte-identical to a post-install `runtimeBundle` (launch keeps only successfully installed dep ids; slash lists `expectedLocalId`s and then filters to installed+enabled candidates).
 
 ## Non-goals
 
 - Team-mode Landing slash including every roster member’s expert pack (Team still uses team identity + workspace only).
 - Triggering skill/plugin install when the user types `/`.
-- Changing `SessionRuntimePlanBuilder`, preflight, or session provisioning.
+- Changing launch/preflight/provisioning **behavior**. A no-behavior-change extract of expert-key normalization out of `SessionRuntimePlanBuilder` is allowed (and preferred).
 - UI redesign of the slash overlay (Skills / Commands sections stay as today).
 
 ## Behavior
@@ -27,7 +29,7 @@ Same normalization as `SessionRuntimePlanBuilder`: empty / missing draft `expert
 ### Expert dep bundle (no install)
 
 1. Sync-resolve the expert via `ExpertMemberResolver.resolve` (hub catalog + builtins).
-2. Build `ConfigBundle` from `skillDeps` / `pluginDeps` `expectedLocalId` values (and MCP ids if present on the member, for bundle completeness — slash menu only consumes skills/plugins today).
+2. Build `ConfigBundle` from `skillDeps` / `pluginDeps` `expectedLocalId` values. Optionally include `mcpDeps` local ids the same way launch would for bundle shape completeness; slash UI only reads skill/plugin ids today.
 3. Unknown expert key → empty expert layer (workspace-only), do not throw.
 
 Candidates still pass through `buildComposeSlashCandidates`, which only surfaces **installed + enabled** skills and enabled plugin commands whose ids are in the bundle. Uninstalled deps therefore stay invisible until preflight/launch installs them — consistent with today’s installed-only slash filter.
