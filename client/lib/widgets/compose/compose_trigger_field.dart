@@ -19,6 +19,7 @@ import '../../services/compose/compose_trigger_insert.dart';
 import '../../services/compose/compose_trigger_query.dart';
 import '../../services/keyboard/compose_keyboard_shortcut_handler.dart';
 import '../inline_token/inline_token_text_field.dart';
+import '../textarea/app_textarea_shell.dart';
 
 sealed class ComposeTriggerSuggestion {}
 
@@ -382,32 +383,49 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
       });
     }
 
+    final lineHeight =
+        (textStyle.fontSize ?? 14) * (textStyle.height ?? 1.35);
+    final minH = lineHeight * 3;
+    final maxH = lineHeight * 6;
+
     return ShortcutFocus(
       kind: ShortcutFocusKind.compose,
       child: LayoutBuilder(
         builder: (context, constraints) {
           _fieldConstraints = constraints;
-          return InlineTokenTextField(
-            fieldKey: _fieldKey,
-            controller: widget.controller,
-            focusNode: widget.focusNode,
-            hint: widget.hint,
-            enabled: widget.enabled,
-            onChanged: widget.onChanged,
+          return AppTextareaShell(
+            minHeight: minH,
+            maxHeight: maxH,
+            initialHeight: minH,
+            resizable: true,
             textStyle: textStyle,
-            hintStyle: styles.mdColored(widget.hintColor),
-            cursorColor: widget.mutedColor,
-            onKeyEvent: _handleComposeKey,
-            overlayVisible: _overlayVisible,
-            overlayAnchor: _menuAnchor,
-            overlayBuilder: _overlayVisible
-                ? (context) => _ComposeTriggerSuggestionPanel(
-                    suggestions: _suggestions,
-                    selectedIndex: _selectedIndex,
-                    onSelected: _selectSuggestion,
-                    onHover: (index) => setState(() => _selectedIndex = index),
-                  )
-                : null,
+            builder: (context, lineCount) {
+              return InlineTokenTextField(
+                fieldKey: _fieldKey,
+                controller: widget.controller,
+                focusNode: widget.focusNode,
+                hint: widget.hint,
+                enabled: widget.enabled,
+                onChanged: widget.onChanged,
+                textStyle: textStyle,
+                hintStyle: styles.mdColored(widget.hintColor),
+                cursorColor: widget.mutedColor,
+                minLines: lineCount,
+                maxLines: lineCount,
+                onKeyEvent: _handleComposeKey,
+                overlayVisible: _overlayVisible,
+                overlayAnchor: _menuAnchor,
+                overlayBuilder: _overlayVisible
+                    ? (context) => _ComposeTriggerSuggestionPanel(
+                        suggestions: _suggestions,
+                        selectedIndex: _selectedIndex,
+                        onSelected: _selectSuggestion,
+                        onHover: (index) =>
+                            setState(() => _selectedIndex = index),
+                      )
+                    : null,
+              );
+            },
           );
         },
       ),

@@ -19,6 +19,7 @@ import '../../services/automation/automation_schedule_calculator.dart';
 import '../../services/automation/workspace_automation_profiles.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/textarea/app_textarea.dart';
 import '../../widgets/cli/cli_preset_dropdown_field.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/dropdown/app_dropdown_field.dart';
@@ -416,11 +417,17 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
             decoration: InputDecoration(labelText: l10n.automationsName),
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: _messageCtl,
-            decoration: InputDecoration(labelText: l10n.automationsMessage),
-            minLines: 2,
-            maxLines: 5,
+          Builder(
+            builder: (context) {
+              final bodyStyle =
+                  Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
+              return AppTextarea(
+                controller: _messageCtl,
+                decoration: InputDecoration(labelText: l10n.automationsMessage),
+                minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
+                maxHeight: appTextareaHeightForLines(bodyStyle, lines: 5),
+              );
+            },
           ),
           if (_showsLaunchProfilePicker) ...[
             Text(

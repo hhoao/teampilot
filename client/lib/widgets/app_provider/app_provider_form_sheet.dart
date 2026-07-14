@@ -28,6 +28,7 @@ import 'provider_credential_action_bar.dart';
 import 'provider_model_picker_field.dart';
 import 'provider_models_editor.dart';
 import '../dropdown/app_dropdown_field.dart';
+import '../textarea/app_textarea.dart';
 
 class AppProviderFormPage extends StatefulWidget {
   const AppProviderFormPage({
@@ -401,11 +402,18 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   ),
                 ),
                 if (_showAdvancedJson)
-                  TextField(
-                    controller: _jsonCtl,
-                    minLines: 16,
-                    maxLines: 28,
-                    decoration: const InputDecoration(),
+                  Builder(
+                    builder: (context) {
+                      final bodyStyle =
+                          Theme.of(context).textTheme.bodyMedium ??
+                          const TextStyle();
+                      return AppTextarea(
+                        controller: _jsonCtl,
+                        minHeight: appTextareaHeightForLines(bodyStyle, lines: 16),
+                        maxHeight: appTextareaHeightForLines(bodyStyle, lines: 28),
+                        decoration: const InputDecoration(),
+                      );
+                    },
                   )
                 else ...[
                   TextField(
@@ -420,11 +428,18 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: _notesCtl,
-                    minLines: 2,
-                    maxLines: 4,
-                    decoration: InputDecoration(labelText: l10n.notes),
+                  Builder(
+                    builder: (context) {
+                      final bodyStyle =
+                          Theme.of(context).textTheme.bodyMedium ??
+                          const TextStyle();
+                      return AppTextarea(
+                        controller: _notesCtl,
+                        minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
+                        maxHeight: appTextareaHeightForLines(bodyStyle, lines: 4),
+                        decoration: InputDecoration(labelText: l10n.notes),
+                      );
+                    },
                   ),
                   if (!_hidesApiKeyFields(context)) ...[
                     const SizedBox(height: 12),

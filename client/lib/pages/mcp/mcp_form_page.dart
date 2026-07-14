@@ -12,6 +12,7 @@ import '../../models/mcp_server.dart';
 import '../../theme/app_fonts.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/textarea/app_textarea.dart';
 
 /// Add/edit MCP server for the workspace detail pane (not full-screen).
 class McpFormPage extends StatefulWidget {
@@ -238,13 +239,21 @@ class _McpFormPageState extends State<McpFormPage> {
               ),
               if (_metadataExpanded) ...[
                 const SizedBox(height: 8),
-                TextField(
-                  controller: _descriptionCtrl,
-                  maxLines: 2,
-                  decoration: InputDecoration(
-                    labelText: l10n.mcpFormDescriptionLabel,
-                    hintText: l10n.mcpFormDescriptionHint,
-                  ),
+                Builder(
+                  builder: (context) {
+                    final bodyStyle =
+                        Theme.of(context).textTheme.bodyMedium ??
+                        const TextStyle();
+                    return AppTextarea(
+                      controller: _descriptionCtrl,
+                      minHeight: appTextareaHeightForLines(bodyStyle, lines: 1),
+                      maxHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
+                      decoration: InputDecoration(
+                        labelText: l10n.mcpFormDescriptionLabel,
+                        hintText: l10n.mcpFormDescriptionHint,
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -296,16 +305,23 @@ class _McpFormPageState extends State<McpFormPage> {
                 ],
               ),
               const SizedBox(height: 8),
-              TextField(
-                controller: _jsonCtrl,
-                maxLines: 12,
-                style: appMonoTextStyle(context, height: 1.45),
-                decoration: InputDecoration(
-                  errorText: _jsonError,
-                  filled: true,
-                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.35),
-                  border: const OutlineInputBorder(),
-                ),
+              Builder(
+                builder: (context) {
+                  final mono = appMonoTextStyle(context, height: 1.45);
+                  return AppTextarea(
+                    controller: _jsonCtrl,
+                    minHeight: appTextareaHeightForLines(mono, lines: 8),
+                    maxHeight: appTextareaHeightForLines(mono, lines: 12),
+                    style: mono,
+                    decoration: InputDecoration(
+                      errorText: _jsonError,
+                      filled: true,
+                      fillColor:
+                          cs.surfaceContainerHighest.withValues(alpha: 0.35),
+                      border: const OutlineInputBorder(),
+                    ),
+                  );
+                },
               ),
             ],
           ),

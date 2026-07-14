@@ -17,12 +17,12 @@ import '../../utils/debounce/debounce.dart';
 import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../theme/app_text_styles.dart';
 import '../../widgets/app_provider/cli_effort_picker_field.dart';
 import '../../widgets/app_provider/provider_brand_icon.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
+import '../../widgets/textarea/app_textarea.dart';
 import 'team_delete_confirm_dialog.dart';
 import '../home_workspace/workspace/config/workspace_cli_config_helpers.dart';
 import 'team_config_helpers.dart';
@@ -166,12 +166,20 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                 SettingsLabeledStackedRow(
                   title: l10n.teamDescription,
                   subtitle: l10n.teamDescriptionHint,
-                  body: TextField(
-                    controller: _descCtl,
-                    focusNode: _descFocus,
-                    maxLines: 3,
-                    decoration: const InputDecoration(),
-                    onChanged: (_) => _schedulePersist(),
+                  body: Builder(
+                    builder: (context) {
+                      final bodyStyle =
+                          Theme.of(context).textTheme.bodyMedium ??
+                          const TextStyle();
+                      return AppTextarea(
+                        controller: _descCtl,
+                        focusNode: _descFocus,
+                        minHeight: appTextareaHeightForLines(bodyStyle, lines: 1),
+                        maxHeight: appTextareaHeightForLines(bodyStyle, lines: 3),
+                        decoration: const InputDecoration(),
+                        onChanged: (_) => _schedulePersist(),
+                      );
+                    },
                   ),
                   showDividerBelow: true,
                 ),

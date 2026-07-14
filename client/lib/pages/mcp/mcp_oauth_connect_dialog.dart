@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_server.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/textarea/app_textarea.dart';
 import '../../services/mcp/mcp_oauth_callback_server.dart';
 import '../../services/mcp/mcp_oauth_discovery.dart';
 import '../../services/mcp/mcp_oauth_flow.dart';
@@ -224,15 +225,22 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
             ],
             if (_showCallbackField) ...[
               const SizedBox(height: 12),
-              TextField(
-                controller: _callbackController,
-                enabled: !finishing,
-                decoration: InputDecoration(
-                  labelText: l10n.mcpOAuthCallbackUrlLabel,
-                  hintText: l10n.mcpOAuthCallbackUrlHint,
-                ),
-                minLines: 2,
-                maxLines: 4,
+              Builder(
+                builder: (context) {
+                  final bodyStyle =
+                      Theme.of(context).textTheme.bodyMedium ??
+                      const TextStyle();
+                  return AppTextarea(
+                    controller: _callbackController,
+                    enabled: !finishing,
+                    decoration: InputDecoration(
+                      labelText: l10n.mcpOAuthCallbackUrlLabel,
+                      hintText: l10n.mcpOAuthCallbackUrlHint,
+                    ),
+                    minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
+                    maxHeight: appTextareaHeightForLines(bodyStyle, lines: 4),
+                  );
+                },
               ),
             ],
             AppDialogActions(

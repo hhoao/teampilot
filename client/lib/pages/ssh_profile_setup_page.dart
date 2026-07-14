@@ -7,6 +7,7 @@ import '../models/ssh_profile.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../services/ssh/ssh_profile_connection_tester.dart';
+import '../widgets/textarea/app_textarea.dart';
 
 class SshProfileSetupPage extends StatefulWidget {
   const SshProfileSetupPage({
@@ -249,18 +250,48 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
                     : null,
               )
             else ...[
-              TextFormField(
-                controller: _privateKeyController,
-                decoration: InputDecoration(
-                  labelText: 'Private Key',
-                  hintText: _isEditing
-                      ? '留空则保留已保存私钥'
-                      : 'Paste private key content',
-                ),
-                maxLines: 4,
+              FormField<String>(
+                initialValue: _privateKeyController.text,
                 validator: (v) => !_isEditing && (v == null || v.trim().isEmpty)
                     ? '必填'
                     : null,
+                builder: (field) {
+                  final bodyStyle =
+                      Theme.of(context).textTheme.bodyMedium ??
+                      const TextStyle();
+                  final scheme = Theme.of(context).colorScheme;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AppTextarea(
+                        controller: _privateKeyController,
+                        minHeight: appTextareaHeightForLines(bodyStyle, lines: 4),
+                        maxHeight: appTextareaHeightForLines(bodyStyle, lines: 8),
+                        decoration: InputDecoration(
+                          labelText: 'Private Key',
+                          hintText: _isEditing
+                              ? '留空则保留已保存私钥'
+                              : 'Paste private key content',
+                          // Border reflects error; message is shown below.
+                          errorText: field.hasError ? '' : null,
+                          errorStyle: const TextStyle(height: 0, fontSize: 0),
+                        ),
+                        onChanged: field.didChange,
+                      ),
+                      if (field.hasError)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            field.errorText!,
+                            style: TextStyle(
+                              color: scheme.error,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 12),
               TextFormField(

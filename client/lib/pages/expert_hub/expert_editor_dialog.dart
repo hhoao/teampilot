@@ -16,6 +16,7 @@ import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../services/expert_hub/local_expert_writer.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/textarea/app_textarea.dart';
 import '../team_config/team_config_mcp_section.dart';
 import '../team_config/team_config_plugins_section.dart';
 import '../team_config/team_config_skills_section.dart';
@@ -338,20 +339,32 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 12),
-          TextField(
-            key: const Key('expert-editor-prompt'),
-            controller: _prompt,
-            decoration: InputDecoration(labelText: l10n.expertHubPrompt),
-            minLines: 3,
-            maxLines: 6,
+          Builder(
+            builder: (context) {
+              final bodyStyle =
+                  Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
+              return AppTextarea(
+                key: const Key('expert-editor-prompt'),
+                controller: _prompt,
+                decoration: InputDecoration(labelText: l10n.expertHubPrompt),
+                minHeight: appTextareaHeightForLines(bodyStyle, lines: 3),
+                maxHeight: appTextareaHeightForLines(bodyStyle, lines: 6),
+              );
+            },
           ),
           const SizedBox(height: 12),
-          TextField(
-            key: const Key('expert-editor-playbook'),
-            controller: _playbook,
-            decoration: InputDecoration(labelText: l10n.expertHubPlaybook),
-            minLines: 2,
-            maxLines: 5,
+          Builder(
+            builder: (context) {
+              final bodyStyle =
+                  Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
+              return AppTextarea(
+                key: const Key('expert-editor-playbook'),
+                controller: _playbook,
+                decoration: InputDecoration(labelText: l10n.expertHubPlaybook),
+                minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
+                maxHeight: appTextareaHeightForLines(bodyStyle, lines: 5),
+              );
+            },
           ),
           const SizedBox(height: 12),
           TextField(
