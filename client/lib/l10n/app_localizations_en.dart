@@ -3458,7 +3458,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get expertEditorDepsHint =>
-      'Select from your installed library. Items without a portable source are skipped on save.';
+      'Configure dependencies from your installed library. Items without a portable source are skipped on save.';
+
+  @override
+  String get expertEditorConfigureSkillsTitle => 'Configure skills';
+
+  @override
+  String get expertEditorConfigurePluginsTitle => 'Configure plugins';
+
+  @override
+  String get expertEditorConfigureMcpTitle => 'Configure MCP';
+
+  @override
+  String get expertEditorDepPickerDone => 'Done';
 
   @override
   String expertEditorNonPortableSkipped(int count) {
