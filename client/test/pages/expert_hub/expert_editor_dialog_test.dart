@@ -215,12 +215,18 @@ void main() {
       'Plan carefully.',
     );
 
+    await tester.tap(find.byKey(const Key('expert-editor-configure-skills')));
+    await tester.pumpAndSettle();
+
     final switchFinder = find.descendant(
       of: find.byKey(Key('expert-editor-skill-${skill.id}')),
       matching: find.byType(Switch),
     );
     await tester.ensureVisible(switchFinder);
     await tester.tap(switchFinder);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('expert-editor-dep-picker-done')));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('expert-editor-submit')));
@@ -230,6 +236,325 @@ void main() {
     expect(result!.skillDeps, hasLength(1));
     expect(result!.skillDeps.single.name, 'Brainstorming');
     expect(result!.skillDeps.single.expectedLocalId, skill.id);
+  });
+
+  testWidgets('main dialog does not inline skill catalog rows', (tester) async {
+    _largeSurface(tester);
+
+    final skill = Skill(
+      id: 'obra/superpowers:brainstorming',
+      name: 'Brainstorming',
+      description: '',
+      directory: 'skills/brainstorming',
+      repoOwner: 'obra',
+      repoName: 'superpowers',
+      repoBranch: 'main',
+      installedAt: 1,
+      updatedAt: 1,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () async {
+                await showExpertEditorDialog(
+                  context,
+                  writer: _SpyWriter(
+                    store: LocalMemberTemplateStore(
+                      fs: InMemoryFilesystem(),
+                      dirOverride: '/t',
+                    ),
+                  ),
+                  skills: [skill],
+                  plugins: const [],
+                  mcps: const [],
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(Key('expert-editor-skill-${skill.id}')), findsNothing);
+    expect(find.byKey(const Key('expert-editor-plugin-p1')), findsNothing);
+    expect(find.byKey(const Key('expert-editor-mcp-m1')), findsNothing);
+    expect(
+      find.byKey(const Key('expert-editor-configure-skills')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('expert-editor-configure-plugins')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('expert-editor-configure-mcp')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('expert-editor-skills-count')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('expert-editor-skills-count')),
+        matching: find.text('0'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('orphan skill counts on main; remove in picker updates count', (
+    tester,
+  ) async {
+    _largeSurface(tester);
+
+    final fs = InMemoryFilesystem();
+    final writer = _SpyWriter(
+      store: LocalMemberTemplateStore(fs: fs, dirOverride: '/t'),
+    );
+    const orphan = SkillDependencyRef(
+      repoOwner: 'missing',
+      repoName: 'pack',
+      repoBranch: 'main',
+      directory: 'skills/gone',
+      name: 'Gone Skill',
+    );
+    // expectedLocalId == 'missing/pack:gone'
+    final initial = DiscoverableMember(
+      key: 'local/orphan-expert',
+      name: 'Orphaned',
+      description: '',
+      category: '',
+      source: ExpertMemberSource.local,
+      member: const DiscoverableTeamMember(
+        name: 'Orphaned',
+        prompt: 'prompt',
+      ),
+      skillDeps: [orphan],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () async {
+                await showExpertEditorDialog(
+                  context,
+                  writer: writer,
+                  initial: initial,
+                  skills: const [],
+                  plugins: const [],
+                  mcps: const [],
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('expert-editor-skills-count')),
+        matching: find.text('1'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('expert-editor-configure-skills')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(TextButton, 'Remove'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('expert-editor-dep-picker-done')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('expert-editor-skills-count')),
+        matching: find.text('0'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('configure skills Done updates count and saves skillDeps', (
+    tester,
+  ) async {
+    _largeSurface(tester);
+
+    final fs = InMemoryFilesystem();
+    final writer = _SpyWriter(
+      store: LocalMemberTemplateStore(fs: fs, dirOverride: '/t'),
+    );
+
+    DiscoverableMember? result;
+    final skill = Skill(
+      id: 'obra/superpowers:brainstorming',
+      name: 'Brainstorming',
+      description: '',
+      directory: 'skills/brainstorming',
+      repoOwner: 'obra',
+      repoName: 'superpowers',
+      repoBranch: 'main',
+      installedAt: 1,
+      updatedAt: 1,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () async {
+                result = await showExpertEditorDialog(
+                  context,
+                  writer: writer,
+                  skills: [skill],
+                  plugins: const [],
+                  mcps: const [],
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('expert-editor-configure-skills')));
+    await tester.pumpAndSettle();
+
+    final switchFinder = find.descendant(
+      of: find.byKey(Key('expert-editor-skill-${skill.id}')),
+      matching: find.byType(Switch),
+    );
+    await tester.ensureVisible(switchFinder);
+    await tester.tap(switchFinder);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('expert-editor-dep-picker-done')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('expert-editor-skills-count')),
+        matching: find.text('1'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('expert-editor-name')),
+      'Planner',
+    );
+    await tester.enterText(
+      find.byKey(const Key('expert-editor-prompt')),
+      'Plan carefully.',
+    );
+    await tester.tap(find.byKey(const Key('expert-editor-submit')));
+    await tester.pumpAndSettle();
+
+    expect(result, isNotNull);
+    expect(result!.skillDeps, hasLength(1));
+    expect(result!.skillDeps.single.name, 'Brainstorming');
+    expect(result!.skillDeps.single.expectedLocalId, skill.id);
+  });
+
+  testWidgets('configure skills Cancel leaves selection unchanged', (
+    tester,
+  ) async {
+    _largeSurface(tester);
+
+    final fs = InMemoryFilesystem();
+    final writer = _SpyWriter(
+      store: LocalMemberTemplateStore(fs: fs, dirOverride: '/t'),
+    );
+
+    DiscoverableMember? result;
+    final skill = Skill(
+      id: 'obra/superpowers:brainstorming',
+      name: 'Brainstorming',
+      description: '',
+      directory: 'skills/brainstorming',
+      repoOwner: 'obra',
+      repoName: 'superpowers',
+      repoBranch: 'main',
+      installedAt: 1,
+      updatedAt: 1,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () async {
+                result = await showExpertEditorDialog(
+                  context,
+                  writer: writer,
+                  skills: [skill],
+                  plugins: const [],
+                  mcps: const [],
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('expert-editor-configure-skills')));
+    await tester.pumpAndSettle();
+
+    final switchFinder = find.descendant(
+      of: find.byKey(Key('expert-editor-skill-${skill.id}')),
+      matching: find.byType(Switch),
+    );
+    await tester.ensureVisible(switchFinder);
+    await tester.tap(switchFinder);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('expert-editor-dep-picker-cancel')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('expert-editor-skills-count')),
+        matching: find.text('0'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.enterText(find.byKey(const Key('expert-editor-name')), 'X');
+    await tester.enterText(find.byKey(const Key('expert-editor-prompt')), 'Y');
+    await tester.tap(find.byKey(const Key('expert-editor-submit')));
+    await tester.pumpAndSettle();
+    expect(result!.skillDeps, isEmpty);
   });
 
   testWidgets('edit mode updates existing local expert', (tester) async {

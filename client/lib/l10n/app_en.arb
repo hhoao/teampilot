@@ -1565,7 +1565,11 @@
   "expertEditorSkillsSection": "Skills",
   "expertEditorPluginsSection": "Plugins",
   "expertEditorMcpSection": "MCP",
-  "expertEditorDepsHint": "Select from your installed library. Items without a portable source are skipped on save.",
+  "expertEditorDepsHint": "Configure dependencies from your installed library. Items without a portable source are skipped on save.",
+  "expertEditorConfigureSkillsTitle": "Configure skills",
+  "expertEditorConfigurePluginsTitle": "Configure plugins",
+  "expertEditorConfigureMcpTitle": "Configure MCP",
+  "expertEditorDepPickerDone": "Done",
   "expertEditorNonPortableSkipped": "Skipped {count} local-only item(s) without portable provenance.",
   "@expertEditorNonPortableSkipped": {
     "placeholders": {

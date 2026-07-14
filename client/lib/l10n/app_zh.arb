@@ -1274,7 +1274,11 @@
   "expertEditorSkillsSection": "技能",
   "expertEditorPluginsSection": "插件",
   "expertEditorMcpSection": "MCP",
-  "expertEditorDepsHint": "从本机已安装库中勾选。没有可移植来源的项会在保存时跳过。",
+  "expertEditorDepsHint": "从本机已安装库中配置依赖。没有可移植来源的项会在保存时跳过。",
+  "expertEditorConfigureSkillsTitle": "配置技能",
+  "expertEditorConfigurePluginsTitle": "配置插件",
+  "expertEditorConfigureMcpTitle": "配置 MCP",
+  "expertEditorDepPickerDone": "完成",
   "expertEditorNonPortableSkipped": "已跳过 {count} 个没有可移植来源的本地项。",
   "@expertEditorNonPortableSkipped": {
     "placeholders": {

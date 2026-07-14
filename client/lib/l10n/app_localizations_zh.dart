@@ -3338,7 +3338,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get expertEditorMcpSection => 'MCP';
 
   @override
-  String get expertEditorDepsHint => '从本机已安装库中勾选。没有可移植来源的项会在保存时跳过。';
+  String get expertEditorDepsHint => '从本机已安装库中配置依赖。没有可移植来源的项会在保存时跳过。';
+
+  @override
+  String get expertEditorConfigureSkillsTitle => '配置技能';
+
+  @override
+  String get expertEditorConfigurePluginsTitle => '配置插件';
+
+  @override
+  String get expertEditorConfigureMcpTitle => '配置 MCP';
+
+  @override
+  String get expertEditorDepPickerDone => '完成';
 
   @override
   String expertEditorNonPortableSkipped(int count) {

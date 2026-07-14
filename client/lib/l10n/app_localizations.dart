@@ -6300,8 +6300,32 @@ abstract class AppLocalizations {
   /// No description provided for @expertEditorDepsHint.
   ///
   /// In en, this message translates to:
-  /// **'Select from your installed library. Items without a portable source are skipped on save.'**
+  /// **'Configure dependencies from your installed library. Items without a portable source are skipped on save.'**
   String get expertEditorDepsHint;
+
+  /// No description provided for @expertEditorConfigureSkillsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure skills'**
+  String get expertEditorConfigureSkillsTitle;
+
+  /// No description provided for @expertEditorConfigurePluginsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure plugins'**
+  String get expertEditorConfigurePluginsTitle;
+
+  /// No description provided for @expertEditorConfigureMcpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure MCP'**
+  String get expertEditorConfigureMcpTitle;
+
+  /// No description provided for @expertEditorDepPickerDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get expertEditorDepPickerDone;
 
   /// No description provided for @expertEditorNonPortableSkipped.
   ///
