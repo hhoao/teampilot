@@ -1,36 +1,8 @@
 import 'package:equatable/equatable.dart';
 
-import '../../models/launch_profile_kind.dart';
 import '../../models/team_config.dart';
 import '../../utils/team_member_naming.dart';
 import 'model/launch_profile_state.dart';
-
-/// Sidebar identity list — stable across per-member field edits.
-class HomeSidebarIdentitySnapshot extends Equatable {
-  const HomeSidebarIdentitySnapshot({
-    required this.teams,
-  });
-
-  final List<IdentitySidebarEntry> teams;
-
-  @override
-  List<Object?> get props => [teams];
-}
-
-class IdentitySidebarEntry extends Equatable {
-  const IdentitySidebarEntry({
-    required this.id,
-    required this.display,
-    required this.kind,
-  });
-
-  final String id;
-  final String display;
-  final LaunchProfileKind kind;
-
-  @override
-  List<Object?> get props => [id, display, kind];
-}
 
 /// Member picker chips — rebuild when roster ids/names/lead flags change.
 class MemberRosterEntry extends Equatable {
@@ -167,21 +139,6 @@ class MemberDiscreteFields extends Equatable {
 
 abstract final class LaunchProfileSelectors {
   LaunchProfileSelectors._();
-
-  static HomeSidebarIdentitySnapshot sidebarIdentities(
-    LaunchProfileState state,
-  ) {
-    return HomeSidebarIdentitySnapshot(
-      teams: [
-        for (final team in state.teams)
-          IdentitySidebarEntry(
-            id: team.id,
-            display: team.display,
-            kind: team.kind,
-          ),
-      ],
-    );
-  }
 
   static TeamProfile? teamById(LaunchProfileState state, String teamId) {
     final identity = state.byId(teamId);

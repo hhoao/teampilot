@@ -1,38 +1,25 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../cubits/launch_profile_cubit.dart';
-import '../../cubits/team/launch_profile_selectors.dart';
+
 import '../../l10n/l10n_extensions.dart';
-import '../../models/launch_profile_kind.dart';
 import '../../models/layout_preferences.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
-import '../../utils/launch_profile_display_name.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_library_view.dart';
-import 'home_workspace_new_team_dialog.dart';
 
-const double _kIdentityDragGutterWidth = 28;
-const double _kIdentityGutterGap = 4;
-const double _kIdentityContentPaddingLeft = 12;
-
-/// Left rail of the workspace home: workspace identities plus global management
-/// shortcuts, mirroring the Apifox sidebar. LaunchProfile selection drives the
-/// right pane; global shortcuts swap it via [onSelectGlobalView].
-class HomeSidebar extends StatefulWidget {
+/// Left rail of the workspace home: library shortcuts plus global management
+/// entries, mirroring the Apifox sidebar. Global shortcuts swap the right pane
+/// via [onSelectGlobalView] / [onSelectLibraryView].
+class HomeSidebar extends StatelessWidget {
   const HomeSidebar({
     this.activeGlobalView,
     this.activeLibraryView,
     this.allWorkspacesActive = false,
-    this.selectedIdentityId,
     this.onSelectAllWorkspaces,
     this.onSelectGlobalView,
     this.onSelectLibraryView,
-    this.onSelectIdentity,
     super.key,
   });
 
@@ -40,33 +27,19 @@ class HomeSidebar extends StatefulWidget {
   final HomeGlobalView? activeGlobalView;
   final HomeLibraryView? activeLibraryView;
   final bool allWorkspacesActive;
-  final String? selectedIdentityId;
   final VoidCallback? onSelectAllWorkspaces;
   final ValueChanged<HomeGlobalView>? onSelectGlobalView;
   final ValueChanged<HomeLibraryView>? onSelectLibraryView;
-  final ValueChanged<String>? onSelectIdentity;
 
   static const double width = LayoutPreferences.defaultHomeSidebarWidth;
-
-  @override
-  State<HomeSidebar> createState() => _HomeSidebarState();
-}
-
-class _HomeSidebarState extends State<HomeSidebar> {
-  bool _teamsExpanded = true;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final selectedIdentityId = widget.selectedIdentityId;
-    final onIdentity = widget.onSelectIdentity;
-    final onAllWorkspaces = widget.onSelectAllWorkspaces;
-    final onGlobal = widget.onSelectGlobalView;
-    final onLibrary = widget.onSelectLibraryView;
-    final activeGlobalView = widget.activeGlobalView;
-    final activeLibraryView = widget.activeLibraryView;
-    final allWorkspacesActive = widget.allWorkspacesActive;
+    final onAllWorkspaces = onSelectAllWorkspaces;
+    final onGlobal = onSelectGlobalView;
+    final onLibrary = onSelectLibraryView;
 
     return Container(
       decoration: BoxDecoration(
@@ -111,20 +84,9 @@ class _HomeSidebarState extends State<HomeSidebar> {
           const SizedBox(height: 12),
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
           const SizedBox(height: 8),
-          _SectionHeader(
-            icon: Icons.workspaces_outlined,
-            label: l10n.homeWorkspaceMyTeams,
-            expanded: _teamsExpanded,
-            onToggle: () => setState(() => _teamsExpanded = !_teamsExpanded),
-          ),
           Expanded(
-            child: _HomeSidebarIdentityScroll(
-              teamsExpanded: _teamsExpanded,
-              selectedIdentityId: selectedIdentityId,
-              allWorkspacesActive: allWorkspacesActive,
+            child: _HomeSidebarNavScroll(
               activeGlobalView: activeGlobalView,
-              activeLibraryView: activeLibraryView,
-              onIdentity: onIdentity,
               onGlobal: onGlobal,
             ),
           ),
@@ -141,387 +103,90 @@ class _HomeSidebarState extends State<HomeSidebar> {
   }
 }
 
-class _HomeSidebarIdentityScroll extends StatelessWidget {
-  const _HomeSidebarIdentityScroll({
-    required this.teamsExpanded,
-    required this.selectedIdentityId,
-    required this.allWorkspacesActive,
+class _HomeSidebarNavScroll extends StatelessWidget {
+  const _HomeSidebarNavScroll({
     required this.activeGlobalView,
-    required this.activeLibraryView,
-    required this.onIdentity,
     required this.onGlobal,
   });
 
-  final bool teamsExpanded;
-  final String? selectedIdentityId;
-  final bool allWorkspacesActive;
   final HomeGlobalView? activeGlobalView;
-  final HomeLibraryView? activeLibraryView;
-  final ValueChanged<String>? onIdentity;
   final ValueChanged<HomeGlobalView>? onGlobal;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final identityCubit = context.read<LaunchProfileCubit>();
-    final identities = context
-        .select<LaunchProfileCubit, HomeSidebarIdentitySnapshot>(
-          (c) => LaunchProfileSelectors.sidebarIdentities(c.state),
-        );
-    final teams = identities.teams;
-    final onIdentity = this.onIdentity;
     final onGlobal = this.onGlobal;
     final activeGlobalView = this.activeGlobalView;
-    final activeLibraryView = this.activeLibraryView;
-    final allWorkspacesActive = this.allWorkspacesActive;
-    final selectedIdentityId = this.selectedIdentityId;
 
-    return CustomScrollView(
-      slivers: [
-        if (teamsExpanded && teams.isNotEmpty)
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(0, 8, 0, 0),
-            sliver: SliverReorderableList(
-              itemCount: teams.length,
-              onReorder: (oldIndex, newIndex) {
-                unawaited(identityCubit.reorderTeams(oldIndex, newIndex));
-              },
-              itemBuilder: (context, index) {
-                final team = teams[index];
-                return _IdentityRow(
-                  key: ValueKey(team.id),
-                  index: index,
-                  name: _sidebarDisplayName(l10n, team),
-                  isTeam: true,
-                  selected:
-                      !allWorkspacesActive &&
-                      activeGlobalView == null &&
-                      activeLibraryView == null &&
-                      team.id == selectedIdentityId,
-                  onTap: () => onIdentity?.call(team.id),
-                );
-              },
-            ),
-          ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
-          sliver: SliverToBoxAdapter(
-            child: AnimatedSize(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              alignment: Alignment.topCenter,
-              child: teamsExpanded
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (teams.isEmpty)
-                          const SizedBox(height: 8),
-                        _NewTeamRow(
-                          label: l10n.homeWorkspaceNewTeam,
-                          onTap: () =>
-                              showHomeNewTeamDialog(context, identityCubit),
-                        ),
-                        const SizedBox(height: 10),
-                      ],
-                    )
-                  : const SizedBox(width: double.infinity),
-            ),
-          ),
+    return ListView(
+      children: [
+        _ShortcutRow(
+          icon: Icons.groups_2_outlined,
+          label: l10n.myTeamsNav,
+          active: activeGlobalView == HomeGlobalView.myTeams,
+          onTap: () => onGlobal?.call(HomeGlobalView.myTeams),
         ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
-          sliver: SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 8),
-                Divider(
-                  height: 1,
-                  color: cs.outlineVariant.withValues(alpha: 0.5),
-                ),
-                const SizedBox(height: 8),
-                _ShortcutRow(
-                  icon: Icons.groups_2_outlined,
-                  label: l10n.myTeamsNav,
-                  active: activeGlobalView == HomeGlobalView.myTeams,
-                  onTap: () => onGlobal?.call(HomeGlobalView.myTeams),
-                ),
-                const SizedBox(height: 4),
-                _ShortcutRow(
-                  icon: Icons.badge_outlined,
-                  label: l10n.myExpertsNav,
-                  active: activeGlobalView == HomeGlobalView.myExperts,
-                  onTap: () => onGlobal?.call(HomeGlobalView.myExperts),
-                ),
-                const SizedBox(height: 8),
-                Divider(
-                  height: 1,
-                  color: cs.outlineVariant.withValues(alpha: 0.5),
-                ),
-                const SizedBox(height: 8),
-                _ShortcutRow(
-                  icon: Icons.travel_explore_outlined,
-                  label: l10n.teamHubNav,
-                  active: activeGlobalView == HomeGlobalView.teamHub,
-                  onTap: () => onGlobal?.call(HomeGlobalView.teamHub),
-                ),
-                const SizedBox(height: 4),
-                _ShortcutRow(
-                  icon: Icons.psychology_outlined,
-                  label: l10n.expertHubNav,
-                  active: activeGlobalView == HomeGlobalView.expertHub,
-                  onTap: () => onGlobal?.call(HomeGlobalView.expertHub),
-                ),
-                const SizedBox(height: 8),
-                Divider(
-                  height: 1,
-                  color: cs.outlineVariant.withValues(alpha: 0.5),
-                ),
-                const SizedBox(height: 8),
-                _ShortcutRow(
-                  icon: Icons.extension_outlined,
-                  label: l10n.teamSkillsNav,
-                  active: activeGlobalView == HomeGlobalView.skills,
-                  onTap: () => onGlobal?.call(HomeGlobalView.skills),
-                ),
-                const SizedBox(height: 4),
-                _ShortcutRow(
-                  icon: Icons.widgets_outlined,
-                  label: l10n.teamPluginsNav,
-                  active: activeGlobalView == HomeGlobalView.plugins,
-                  onTap: () => onGlobal?.call(HomeGlobalView.plugins),
-                ),
-                const SizedBox(height: 4),
-                _ShortcutRow(
-                  icon: Icons.hub_outlined,
-                  label: l10n.teamMcpNav,
-                  active: activeGlobalView == HomeGlobalView.mcp,
-                  onTap: () => onGlobal?.call(HomeGlobalView.mcp),
-                ),
-                const SizedBox(height: 4),
-                _ShortcutRow(
-                  icon: Icons.power_outlined,
-                  label: l10n.teamExtensionsNav,
-                  active: activeGlobalView == HomeGlobalView.extensions,
-                  onTap: () => onGlobal?.call(HomeGlobalView.extensions),
-                ),
-              ],
-            ),
-          ),
+        const SizedBox(height: 4),
+        _ShortcutRow(
+          icon: Icons.badge_outlined,
+          label: l10n.myExpertsNav,
+          active: activeGlobalView == HomeGlobalView.myExperts,
+          onTap: () => onGlobal?.call(HomeGlobalView.myExperts),
+        ),
+        const SizedBox(height: 8),
+        Divider(
+          height: 1,
+          color: cs.outlineVariant.withValues(alpha: 0.5),
+        ),
+        const SizedBox(height: 8),
+        _ShortcutRow(
+          icon: Icons.travel_explore_outlined,
+          label: l10n.teamHubNav,
+          active: activeGlobalView == HomeGlobalView.teamHub,
+          onTap: () => onGlobal?.call(HomeGlobalView.teamHub),
+        ),
+        const SizedBox(height: 4),
+        _ShortcutRow(
+          icon: Icons.psychology_outlined,
+          label: l10n.expertHubNav,
+          active: activeGlobalView == HomeGlobalView.expertHub,
+          onTap: () => onGlobal?.call(HomeGlobalView.expertHub),
+        ),
+        const SizedBox(height: 8),
+        Divider(
+          height: 1,
+          color: cs.outlineVariant.withValues(alpha: 0.5),
+        ),
+        const SizedBox(height: 8),
+        _ShortcutRow(
+          icon: Icons.extension_outlined,
+          label: l10n.teamSkillsNav,
+          active: activeGlobalView == HomeGlobalView.skills,
+          onTap: () => onGlobal?.call(HomeGlobalView.skills),
+        ),
+        const SizedBox(height: 4),
+        _ShortcutRow(
+          icon: Icons.widgets_outlined,
+          label: l10n.teamPluginsNav,
+          active: activeGlobalView == HomeGlobalView.plugins,
+          onTap: () => onGlobal?.call(HomeGlobalView.plugins),
+        ),
+        const SizedBox(height: 4),
+        _ShortcutRow(
+          icon: Icons.hub_outlined,
+          label: l10n.teamMcpNav,
+          active: activeGlobalView == HomeGlobalView.mcp,
+          onTap: () => onGlobal?.call(HomeGlobalView.mcp),
+        ),
+        const SizedBox(height: 4),
+        _ShortcutRow(
+          icon: Icons.power_outlined,
+          label: l10n.teamExtensionsNav,
+          active: activeGlobalView == HomeGlobalView.extensions,
+          onTap: () => onGlobal?.call(HomeGlobalView.extensions),
         ),
       ],
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.icon,
-    required this.label,
-    required this.expanded,
-    required this.onToggle,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool expanded;
-  final VoidCallback onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
-    return InkWell(
-      onTap: onToggle,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 6, 6, 10),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: context.appIconSizes.md,
-              color: cs.onSurfaceVariant,
-            ),
-            const SizedBox(width: 8),
-            Expanded(child: Text(label, style: styles.lg)),
-            AnimatedRotation(
-              turns: expanded ? 0 : -0.25,
-              duration: const Duration(milliseconds: 180),
-              child: Icon(
-                Icons.expand_more_rounded,
-                size: context.appIconSizes.md,
-                color: cs.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _IdentityRow extends StatefulWidget {
-  const _IdentityRow({
-    super.key,
-    required this.index,
-    required this.name,
-    required this.isTeam,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final int index;
-  final String name;
-  final bool isTeam;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  State<_IdentityRow> createState() => _IdentityRowState();
-}
-
-class _IdentityRowState extends State<_IdentityRow> {
-  bool _contentHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
-    final selected = widget.selected;
-
-    final Color background = selected
-        ? cs.primary.withValues(alpha: 0.14)
-        : _contentHovered
-        ? cs.onSurface.withValues(alpha: 0.05)
-        : Colors.transparent;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _IdentityDragHandle(index: widget.index),
-          const SizedBox(width: _kIdentityGutterGap),
-          Expanded(
-            child: MouseRegion(
-              onEnter: (_) => setState(() => _contentHovered = true),
-              onExit: (_) => setState(() => _contentHovered = false),
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: widget.onTap,
-                behavior: HitTestBehavior.opaque,
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 11, 10),
-                  decoration: BoxDecoration(
-                    color: background,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        widget.isTeam
-                            ? Icons.groups_2_outlined
-                            : Icons.person_outline_rounded,
-                        size: context.appIconSizes.md,
-                        color: selected ? cs.primary : cs.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          widget.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: selected ? styles.lgSemiboldColored(cs.primary) : styles.lgColored(cs.onSurface),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _IdentityDragHandle extends StatefulWidget {
-  const _IdentityDragHandle({required this.index});
-
-  final int index;
-
-  @override
-  State<_IdentityDragHandle> createState() => _IdentityDragHandleState();
-}
-
-class _IdentityDragHandleState extends State<_IdentityDragHandle> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return ReorderableDragStartListener(
-      index: widget.index,
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        cursor: _hovered ? SystemMouseCursors.grab : SystemMouseCursors.basic,
-        child: SizedBox(
-          width: _kIdentityDragGutterWidth,
-          height: 40,
-          child: AnimatedOpacity(
-            opacity: _hovered ? 0.65 : 0,
-            duration: const Duration(milliseconds: 120),
-            curve: Curves.easeOut,
-            child: Icon(
-              Icons.drag_indicator_rounded,
-              size: 18,
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NewTeamRow extends StatelessWidget {
-  const _NewTeamRow({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          _kIdentityDragGutterWidth +
-              _kIdentityGutterGap +
-              _kIdentityContentPaddingLeft,
-          10,
-          11,
-          10,
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.add_rounded,
-              size: context.appIconSizes.md,
-              color: cs.primary,
-            ),
-            const SizedBox(width: 8),
-            Text(label, style: styles.lgColored(cs.primary)),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -669,12 +334,4 @@ class _ProvidersButtonState extends State<_ProvidersButton> {
       ),
     );
   }
-}
-
-String _sidebarDisplayName(AppLocalizations l10n, IdentitySidebarEntry entry) {
-  if (entry.kind == LaunchProfileKind.team) {
-    final builtIn = builtInTeamDisplayName(l10n, entry.id);
-    if (builtIn != null) return builtIn;
-  }
-  return entry.display;
 }

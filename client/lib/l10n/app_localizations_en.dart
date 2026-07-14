@@ -644,9 +644,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'No recently closed workspaces';
 
   @override
-  String get homeWorkspaceMyTeams => 'My Teams';
-
-  @override
   String get homeWorkspaceNewTeam => 'New Team';
 
   @override
@@ -5433,6 +5430,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get shortcutsWorkspaceReopenClosed => 'Reopen Closed Workspace Tab';
 
+  @override
   @override
   String get shortcutsSessionNextTab => 'Next Session Tab';
 

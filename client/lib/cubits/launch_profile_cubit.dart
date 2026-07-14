@@ -282,27 +282,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     }
   }
 
-  Future<void> reorderTeams(int oldIndex, int newIndex) async {
-    final teams = state.teams;
-    if (oldIndex < 0 || oldIndex >= teams.length) return;
-    var targetIndex = newIndex;
-    if (targetIndex < 0 || targetIndex > teams.length) return;
-    if (targetIndex > oldIndex) targetIndex -= 1;
-    if (oldIndex == targetIndex) return;
-
-    final reordered = List<TeamProfile>.of(teams);
-    final moved = reordered.removeAt(oldIndex);
-    reordered.insert(targetIndex, moved);
-    final stamped = [
-      for (var i = 0; i < reordered.length; i++)
-        reordered[i].copyWith(sortOrder: i + 1),
-    ];
-    emit(state.copyWith(teams: stamped));
-    await saveTeamProfiles(stamped);
-  }
-
-
-
   /// Selects the active team. [syncResources] runs plugin/MCP linker sync
   /// (expensive; skip when browsing teams in the home workspace). [silent]
   /// avoids a status-line emit that would rebuild listeners.

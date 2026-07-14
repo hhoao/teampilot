@@ -1274,12 +1274,6 @@ abstract class AppLocalizations {
   /// **'No recently closed workspaces'**
   String get homeWorkspaceRecentlyClosedEmpty;
 
-  /// No description provided for @homeWorkspaceMyTeams.
-  ///
-  /// In en, this message translates to:
-  /// **'My Teams'**
-  String get homeWorkspaceMyTeams;
-
   /// No description provided for @homeWorkspaceNewTeam.
   ///
   /// In en, this message translates to:

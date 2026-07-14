@@ -620,9 +620,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceRecentlyClosedEmpty => '暂无最近关闭的工作区';
 
   @override
-  String get homeWorkspaceMyTeams => '我的团队';
-
-  @override
   String get homeWorkspaceNewTeam => '新建团队';
 
   @override
@@ -5232,6 +5229,7 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get shortcutsWorkspaceReopenClosed => '重新打开已关闭的工作区标签';
 
+  @override
   @override
   String get shortcutsSessionNextTab => '下一个会话标签';
 

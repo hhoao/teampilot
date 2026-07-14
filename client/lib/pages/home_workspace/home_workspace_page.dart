@@ -119,12 +119,6 @@ class _HomePageState extends State<HomePage> {
                   _allWorkspacesActive &&
                   globalView == null &&
                   libraryView == null,
-              selectedIdentityId: _allWorkspacesActive
-                  ? null
-                  : (_selectedIdentityId ??
-                        context.select<LaunchProfileCubit, String?>(
-                          (c) => c.state.selectedTeamId,
-                        )),
               onSelectAllWorkspaces: () => setState(() {
                 _allWorkspacesActive = true;
                 _globalView = null;
@@ -141,7 +135,6 @@ class _HomePageState extends State<HomePage> {
                 _libraryView = view;
                 _globalView = null;
               }),
-              onSelectIdentity: _selectIdentity,
             ),
             second: Padding(
               padding: const EdgeInsets.fromLTRB(44, 48, 42, 18),
