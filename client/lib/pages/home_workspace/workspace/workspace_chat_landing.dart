@@ -31,6 +31,7 @@ import '../../../services/compose/compose_prompt_enhance.dart';
 import '../../../services/compose/compose_text_edit.dart';
 import '../../../services/compose/compose_voice_input.dart';
 import '../../../services/expert_hub/expert_capability_resolver.dart';
+import '../../../services/expert_hub/expert_hub_recent_store.dart';
 import '../../../services/expert_hub/expert_landing_preflight.dart';
 import '../../../services/expert_hub/expert_member_resolver.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -43,6 +44,7 @@ import '../../../widgets/compose/compose_model_preset_chip.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
 import '../../../services/launch/workspace_landing_launch_gate.dart';
 import '../../../repositories/workspace_project_config_repository.dart';
+import '../../expert_hub/expert_landing_chip_menu.dart';
 import '../../expert_hub/expert_landing_picker_sheet.dart';
 import '../../expert_hub/expert_landing_preflight_feedback.dart';
 import 'config/cli_presets_manage_dialog.dart';
@@ -52,8 +54,6 @@ import 'workspace_landing_selectors.dart';
 import 'workspace_landing_team_settings_dialog.dart';
 
 enum _LandingConversationMode { team, simple }
-
-enum _ExpertChipAction { clear, browseAll }
 
 typedef LandingComposeSubmit =
     void Function(String message, LandingLaunchContext draft);
@@ -105,6 +105,8 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   ConfigBundle _workspaceProjectBundle = const ConfigBundle();
   int _workspaceBundleGeneration = 0;
   String? _lastRouteExpert;
+  final _expertRecentStore = ExpertHubRecentStore();
+  List<String> _recentExpertKeys = const [];
 
   @override
   void initState() {
@@ -151,6 +153,13 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     // open does not block on speech_to_text platform channels.
     unawaited(_loadDraft());
     unawaited(_loadWorkspaceProjectBundle());
+    unawaited(_loadRecentExperts());
+  }
+
+  Future<void> _loadRecentExperts() async {
+    final keys = await _expertRecentStore.loadOrderedKeys();
+    if (!mounted) return;
+    setState(() => _recentExpertKeys = keys);
   }
 
   void _applyVoiceListening(bool listening) {
@@ -818,6 +827,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
 
     // Keep selection even when some deps fail (soft fail policy).
     _selectExpert(trimmed);
+    unawaited(_touchRecentExpert(trimmed));
 
     ExpertCapabilityResolver? resolver;
     try {
@@ -860,6 +870,11 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     );
   }
 
+  Future<void> _touchRecentExpert(String expertKey) async {
+    await _expertRecentStore.touch(expertKey);
+    await _loadRecentExperts();
+  }
+
   Future<void> _openExpertPicker() async {
     final key = await showExpertLandingPickerSheet(
       context,
@@ -870,11 +885,11 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   }
 
   void _onExpertChipSelected(Object? value) {
-    if (value == _ExpertChipAction.clear) {
+    if (value == ExpertLandingChipAction.clear) {
       _selectExpert(null);
       return;
     }
-    if (value == _ExpertChipAction.browseAll) {
+    if (value == ExpertLandingChipAction.browseAll) {
       unawaited(_openExpertPicker());
       return;
     }
@@ -899,22 +914,27 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     );
   }
 
-  List<SidebarActionMenuSpec> _expertChipSpecs(AppLocalizations l10n) {
-    return [
-      SidebarActionMenuSpec.item(
-        value: _ExpertChipAction.clear,
-        icon: Icons.person_off_outlined,
-        label: l10n.expertHubNoneSelected,
-        selected:
-            _selectedExpertKey == null || _selectedExpertKey!.trim().isEmpty,
-      ),
-      const SidebarActionMenuSpec.divider(),
-      SidebarActionMenuSpec.item(
-        value: _ExpertChipAction.browseAll,
-        icon: Icons.travel_explore_outlined,
-        label: l10n.expertHubBrowseAll,
-      ),
-    ];
+  List<SidebarActionMenuSpec> _expertChipSpecs(
+    AppLocalizations l10n,
+    ExpertHubState? hubState,
+  ) {
+    final recent = <({String key, String name})>[];
+    for (final key in _recentExpertKeys) {
+      final member = ExpertMemberResolver.resolve(
+        key: key,
+        hubState: hubState,
+      );
+      final name = member?.name.trim() ?? '';
+      if (name.isEmpty) continue;
+      recent.add((key: key, name: name));
+      if (recent.length >= kExpertLandingChipRecentLimit) break;
+    }
+    return buildExpertLandingChipMenuSpecs(
+      noneSelectedLabel: l10n.expertHubNoneSelected,
+      browseAllLabel: l10n.expertHubBrowseAll,
+      selectedExpertKey: _selectedExpertKey,
+      recentExperts: recent,
+    );
   }
 
   String _conversationModeLabel(AppLocalizations l10n) {
@@ -1120,8 +1140,9 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
                       expertChipLabel: isSimple
                           ? _expertChipLabel(l10n, hubState)
                           : null,
-                      expertChipSpecs:
-                          isSimple ? _expertChipSpecs(l10n) : const [],
+                      expertChipSpecs: isSimple
+                          ? _expertChipSpecs(l10n, hubState)
+                          : const [],
                       onExpertChipSelected:
                           isSimple ? _onExpertChipSelected : null,
                       attachTooltip: l10n.workspaceChatLandingAttach,
