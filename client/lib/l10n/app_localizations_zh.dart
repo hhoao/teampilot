@@ -5204,6 +5204,18 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get automationsLaunchMode => '对话模式';
+
+  @override
+  String get automationsLaunchProject => '项目';
+
+  @override
+  String get automationsLaunchWorktree => 'Worktree';
+
+  @override
+  String get automationsPermissions => '权限';
+
+  @override
   String get automationsLaunchProfile => '启动身份';
 
   @override

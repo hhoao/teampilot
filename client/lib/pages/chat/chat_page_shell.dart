@@ -12,7 +12,7 @@ import '../../cubits/editor_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/automation_tab_scope.dart';
+import '../../utils/workspace_chrome_profile.dart';
 import '../../models/team_config.dart';
 import '../../services/workbench/workbench_shell_actions.dart';
 import '../../services/workbench/workbench_tab_projection.dart';
@@ -98,11 +98,9 @@ class _ChatWorkspaceShell extends StatelessWidget {
 
   String? _profileId(BuildContext context) {
     try {
-      return context
-          .read<WorkspaceLandingContextCubit>()
-          .state
-          .context
-          .profileId;
+      final ctx = context.read<WorkspaceLandingContextCubit>().state.context;
+      if (ctx.isPersonal) return kSimpleLaunchProfileId;
+      return ctx.teamId;
     } on Object {
       if (!isPersonalContext && team != null) return team!.id;
       final workspace = context
@@ -114,7 +112,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
       if (workspace == null) return null;
       final defaultId = workspace.defaultProfileId.trim();
       if (defaultId.isNotEmpty) return defaultId;
-      return AutomationTabScope.simpleLaunchProfileId;
+      return kSimpleLaunchProfileId;
     }
   }
 

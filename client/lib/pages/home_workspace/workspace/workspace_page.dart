@@ -93,7 +93,8 @@ class _WorkspacePageState extends State<WorkspacePage> {
     final routeProfile = HomeWorkspaceRoute.profile(location)?.trim() ?? '';
     if (routeProfile.isEmpty) return;
     final cubit = context.read<WorkspaceLandingContextCubit>();
-    final current = cubit.state.context.profileId;
+    final ctx = cubit.state.context;
+    final current = ctx.isPersonal ? '' : (ctx.teamId ?? '');
     if (current == routeProfile) return;
     final launchProfiles = context.read<LaunchProfileCubit>();
     final profile = launchProfiles.byId(routeProfile);

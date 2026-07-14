@@ -20,7 +20,6 @@ void main() {
   test('resolveLandingDraft defaults dangerouslySkipPermissions to false', () async {
     final draft = await resolveLandingDraft(
       workspaceId: workspace.workspaceId,
-      workspace: workspace,
       store: LandingPrefsStore(fs: InMemoryFilesystem(), pathOverride: '/prefs.json'),
     );
     expect(draft.dangerouslySkipPermissions, isFalse);
@@ -40,7 +39,6 @@ void main() {
 
     final resolved = await resolveLandingDraft(
       workspaceId: workspace.workspaceId,
-      workspace: workspace,
       store: store,
     );
     expect(resolved.dangerouslySkipPermissions, isTrue);

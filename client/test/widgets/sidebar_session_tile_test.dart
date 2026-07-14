@@ -1,4 +1,3 @@
-import 'package:teampilot/models/automation_tab_scope.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -27,7 +26,6 @@ Automation _sessionAutomation() {
     name: 'Ping',
     action: AutomationAction.scheduledMessage,
     workspaceId: 'ws1',
-    launchProfileId: AutomationTabScope.simpleLaunchProfileId,
     sessionId: 'sess-1',
     message: 'hello',
     preset: AutomationSchedulePreset.daily,
@@ -63,7 +61,6 @@ Widget _host({
               child ??
               SidebarSessionTile(
                 session: _session,
-                launchProfileId: AutomationTabScope.simpleLaunchProfileId,
                 onTap: () {},
               ),
         ),
@@ -113,7 +110,6 @@ void main() {
         sessionRepository: SessionRepository(),
         child: SidebarSessionTile(
           session: pinned,
-          launchProfileId: AutomationTabScope.simpleLaunchProfileId,
           onTap: () {},
         ),
       ),

@@ -257,7 +257,6 @@ Future<void> showWorkspaceComposeLandingWithWorktree(
 }) async {
   final draft = await resolveLandingDraft(
     workspaceId: workspace.workspaceId,
-    workspace: workspace,
   );
   if (!context.mounted) return;
 

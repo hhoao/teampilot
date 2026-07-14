@@ -5404,6 +5404,18 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get automationsLaunchMode => 'Conversation mode';
+
+  @override
+  String get automationsLaunchProject => 'Project';
+
+  @override
+  String get automationsLaunchWorktree => 'Worktree';
+
+  @override
+  String get automationsPermissions => 'Permissions';
+
+  @override
   String get automationsLaunchProfile => 'Launch identity';
 
   @override

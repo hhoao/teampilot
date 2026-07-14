@@ -1,47 +1,40 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 
-import 'automation_tab_scope.dart';
-
 /// Describes which automations a list view or cubit load should cover.
 @immutable
 class AutomationListScope extends Equatable {
   const AutomationListScope._({
     this.workspaceId,
-    this.tabScope,
     this.sessionId,
   });
 
-  /// Global management — every workspace and launch profile.
+  /// Global management — every workspace.
   const AutomationListScope.all() : this._();
 
-  /// One workspace — personal plus every team store under [workspaceId].
+  /// All automations under one workspace.
   factory AutomationListScope.workspace(String workspaceId) {
     return AutomationListScope._(workspaceId: workspaceId.trim());
   }
 
-  /// One launch-profile store, optionally narrowed to [sessionId].
-  factory AutomationListScope.tab(
-    AutomationTabScope tabScope, {
-    String? sessionId,
+  /// Automations for one session within a workspace.
+  factory AutomationListScope.session(
+    String workspaceId, {
+    required String sessionId,
   }) {
-    final trimmedSession = sessionId?.trim();
     return AutomationListScope._(
-      tabScope: tabScope,
-      sessionId: trimmedSession == null || trimmedSession.isEmpty
-          ? null
-          : trimmedSession,
+      workspaceId: workspaceId.trim(),
+      sessionId: sessionId.trim(),
     );
   }
 
   final String? workspaceId;
-  final AutomationTabScope? tabScope;
   final String? sessionId;
 
-  bool get isAll => workspaceId == null && tabScope == null;
-  bool get isWorkspace => workspaceId != null && tabScope == null;
-  bool get isTab => tabScope != null;
+  bool get isAll => workspaceId == null;
+  bool get isWorkspace => workspaceId != null && sessionId == null;
+  bool get isSession => workspaceId != null && sessionId != null;
 
   @override
-  List<Object?> get props => [workspaceId, tabScope, sessionId];
+  List<Object?> get props => [workspaceId, sessionId];
 }

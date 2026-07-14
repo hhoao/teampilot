@@ -7,13 +7,11 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/repositories/automation_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/automation/automation_bus_gateway.dart';
-import 'package:teampilot/models/automation_tab_scope.dart';
 import 'package:teampilot/services/automation/automation_dispatcher.dart';
 import 'package:teampilot/services/automation/automation_schedule_calculator.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
-import '../../support/automation_test_fixtures.dart';
 import '../../support/post_frame_test_harness.dart';
 
 class _FakeSessionRepository implements SessionRepository {
@@ -54,14 +52,15 @@ class _RecordingBusGateway implements AutomationBusGateway {
 Automation _scheduledMessageAutomation({
   required String sessionId,
   String workspaceId = 'ws1',
-  String launchProfileId = 'team-1',
+  String teamId = 'team-1',
 }) {
   return Automation(
     id: 'auto-1',
     name: 'Reset',
     action: AutomationAction.scheduledMessage,
     workspaceId: workspaceId,
-    launchProfileId: launchProfileId,
+    isPersonal: false,
+    teamId: teamId,
     sessionId: sessionId,
     message: '/clear',
     preset: AutomationSchedulePreset.hourly,
@@ -75,11 +74,6 @@ Automation _scheduledMessageAutomation({
     updatedAtMs: 1,
   );
 }
-
-const _teamTabScope = AutomationTabScope(
-  workspaceId: 'ws1',
-  launchProfileId: 'team-1',
-);
 
 void main() {
   setUp(setUpTestAppStorage);
@@ -116,7 +110,6 @@ void main() {
       requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
       workspaceById: (_) => workspace,
       teamById: (id) => id == 'team-1' ? team : null,
-      launchProfileKindById: testLaunchProfileKindResolver(),
       nowMs: () => 100,
     );
 
@@ -129,7 +122,7 @@ void main() {
     expect(bus.deliverCalls, [('sess-1', 'team-lead', '/clear')]);
     expect(result.run.status, AutomationRunStatus.completed);
     expect(result.automation.lastRunAtMs, 100);
-    final runs = await repo.runsFor(_teamTabScope, automationId: 'auto-1');
+    final runs = await repo.runsFor('ws1', automationId: 'auto-1');
     expect(runs, hasLength(1));
   });
 
@@ -147,7 +140,6 @@ void main() {
       requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
       workspaceById: (_) => null,
       teamById: (_) => null,
-      launchProfileKindById: testLaunchProfileKindResolver(),
       nowMs: () => 50,
     );
 
@@ -180,7 +172,6 @@ void main() {
       requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
       workspaceById: (_) => workspace,
       teamById: (_) => null,
-      launchProfileKindById: testLaunchProfileKindResolver(),
       nowMs: () => 10,
       memberReadyTimeout: const Duration(milliseconds: 50),
     );
@@ -219,7 +210,6 @@ void main() {
       requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
       workspaceById: (_) => workspace,
       teamById: (id) => id == 'team-1' ? team : null,
-      launchProfileKindById: testLaunchProfileKindResolver(),
       nowMs: () => 100,
     );
 
@@ -257,7 +247,6 @@ void main() {
       },
       workspaceById: (_) => workspace,
       teamById: (_) => null,
-      launchProfileKindById: testLaunchProfileKindResolver(),
       sessionById: (sessionId, workspaceId) {
         if (createdSessionId == null || sessionId != createdSessionId) {
           return null;
@@ -265,7 +254,6 @@ void main() {
         return AppSession(
           sessionId: sessionId,
           workspaceId: workspaceId,
-          profileId: AutomationTabScope.simpleLaunchProfileId,
           createdAt: 1,
         );
       },
@@ -277,8 +265,8 @@ void main() {
       name: 'Daily prompt',
       action: AutomationAction.launchPrompt,
       workspaceId: 'ws1',
-      launchProfileId: AutomationTabScope.simpleLaunchProfileId,
-      cliPresetId: 'preset-1',
+      isPersonal: true,
+      presetId: 'preset-1',
       message: 'summarize inbox',
       reuseSession: true,
       preset: AutomationSchedulePreset.daily,
@@ -297,8 +285,63 @@ void main() {
     expect(result.run.status, AutomationRunStatus.completed);
     expect(createdSessionId, isNotNull);
     expect(result.automation.sessionId, createdSessionId);
-    final persisted = await repo.listForTabScope(simpleAutomationTabScope);
+    final persisted = await repo.listForWorkspace('ws1');
     expect(persisted.single.sessionId, createdSessionId);
+  });
+
+  test('launchPrompt passes automation working directory to session create', () async {
+    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final workspace = Workspace(
+      workspaceId: 'ws1',
+      createdAt: 1,
+    );
+    final bus = _RecordingBusGateway();
+    String? capturedWorkingDirectory;
+
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository(const []),
+      busGateway: bus,
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (request) async {
+        capturedWorkingDirectory = request.workingDirectory;
+        return SessionOpenStatus.opened;
+      },
+      workspaceById: (_) => workspace,
+      teamById: (_) => null,
+      sessionById: (sessionId, workspaceId) => AppSession(
+        sessionId: sessionId,
+        workspaceId: workspaceId,
+        createdAt: 1,
+      ),
+      nowMs: () => 100,
+    );
+
+    final automation = Automation(
+      id: 'launch-3',
+      name: 'Worktree prompt',
+      action: AutomationAction.launchPrompt,
+      workspaceId: 'ws1',
+      isPersonal: true,
+      presetId: 'preset-1',
+      projectFolderPath: '/repo',
+      workingDirectoryPath: '/repo/feature',
+      message: 'run',
+      preset: AutomationSchedulePreset.daily,
+      hourMinute: '09:00',
+      timezone: 'UTC',
+      dtstartMs: 1,
+      enabled: true,
+      nextRunAtMs: 1,
+      createdAtMs: 1,
+      updatedAtMs: 1,
+    );
+
+    await dispatcher.dispatch(automation);
+
+    expect(capturedWorkingDirectory, '/repo/feature');
   });
 
   test('launchPrompt with reuse reopens bound session on later runs', () async {
@@ -307,7 +350,6 @@ void main() {
     final session = AppSession(
       sessionId: 'bound-sess',
       workspaceId: 'ws1',
-      profileId: AutomationTabScope.simpleLaunchProfileId,
       createdAt: 1,
     );
     final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
@@ -332,7 +374,6 @@ void main() {
       },
       workspaceById: (_) => workspace,
       teamById: (_) => null,
-      launchProfileKindById: testLaunchProfileKindResolver(),
       nowMs: () => 200,
     );
 
@@ -341,8 +382,8 @@ void main() {
       name: 'Reuse',
       action: AutomationAction.launchPrompt,
       workspaceId: 'ws1',
-      launchProfileId: AutomationTabScope.simpleLaunchProfileId,
-      cliPresetId: 'preset-1',
+      isPersonal: true,
+      presetId: 'preset-1',
       sessionId: 'bound-sess',
       message: 'continue',
       reuseSession: true,

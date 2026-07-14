@@ -6,14 +6,12 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../../cubits/automation_cubit.dart';
 import '../../../cubits/automation_state.dart';
-import '../../../cubits/launch_profile_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/automation_list_scope.dart';
 import '../../../models/workspace.dart';
 import '../../../pages/automations/automation_editor_dialog.dart';
 import '../../../pages/automations/automations_dialog.dart';
 import '../../../services/automation/automation_workspace_summary.dart';
-import '../../../services/automation/workspace_automation_profiles.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../widgets/app_icon_button.dart';
 
@@ -59,15 +57,9 @@ class _WorkspaceAutomationsSectionState
   Future<void> _openPanel({bool create = false}) async {
     final workspaceId = widget.workspace.workspaceId;
     if (create) {
-      final profiles = context.read<LaunchProfileCubit>().state;
       final saved = await AutomationEditorDialog.show(
         context,
         workspaceId: workspaceId,
-        launchProfileId: defaultLaunchProfileIdForWorkspace(
-          workspace: widget.workspace,
-          profiles: profiles,
-        ),
-        pickLaunchProfile: true,
       );
       if (saved == null || !mounted) return;
       await context.read<AutomationCubit>().loadForWorkspace(workspaceId);

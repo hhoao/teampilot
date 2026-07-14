@@ -1,25 +1,71 @@
-import 'package:teampilot/models/automation_tab_scope.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
+import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/chat/model/chat_state.dart';
 import 'package:teampilot/cubits/cli_presets_cubit.dart';
+import 'package:teampilot/cubits/expert_hub_cubit.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
+import 'package:teampilot/cubits/team/model/launch_profile_state.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/cli_preset.dart';
+import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/automations/automation_editor_dialog.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
+import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
+import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
+import 'package:teampilot/widgets/form/app_form.dart';
 
+import '../../support/automation_test_fixtures.dart';
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
+import '../../support/stub_member_roster_service.dart';
 
 const _testPresetId = 'preset-test';
+
+class _FakeExpertHubSource extends CompositeExpertHubSource {
+  _FakeExpertHubSource() : super(builtIns: const [], registry: _EmptyRegistry());
+
+  @override
+  Future<List<DiscoverableMember>> fetchMembers({
+    bool forceRefresh = false,
+  }) async => const [];
+}
+
+class _EmptyRegistry implements ExpertHubSource {
+  @override
+  Future<List<DiscoverableMember>> fetchMembers({bool forceRefresh = false}) =>
+      Future.value(const []);
+
+  @override
+  Future<List<String>> categories({bool forceRefresh = false}) =>
+      Future.value(const []);
+}
+
+ChatCubit _chatCubitWithWorkspace() {
+  final cubit = testChatCubit(executableResolver: () => 'claude');
+  cubit.applyState(
+    ChatState(
+      workspaces: [
+        Workspace(
+          workspaceId: 'ws1',
+          folders: [WorkspaceFolder(path: '/repo')],
+          createdAt: 1,
+        ),
+      ],
+    ),
+  );
+  return cubit;
+}
 
 CliPresetsCubit _cliPresetsCubitWithPreset() {
   final cubit = CliPresetsCubit(
@@ -47,23 +93,15 @@ CliPresetsCubit _cliPresetsCubitWithPreset() {
   return cubit;
 }
 
-LaunchProfileCubit _personalLaunchProfileCubit() {
+LaunchProfileCubit _emptyLaunchProfileCubit() {
   final cubit = LaunchProfileCubit(
     repository: testLaunchProfileRepository(
-      // In-memory path; no load() — state is seeded via applyState.
-      Directory.systemTemp.createTempSync('automation_editor_personal_'),
+      Directory.systemTemp.createTempSync('automation_editor_empty_'),
     ),
     sessionRepository: SessionRepository(),
     executableResolver: () => 'claude',
   );
-  cubit.applyState(
-    LaunchProfileState(
-      isLoading: false,
-      identities: [
-        
-      ],
-    ),
-  );
+  cubit.applyState(const LaunchProfileState(isLoading: false));
   return cubit;
 }
 
@@ -94,20 +132,31 @@ LaunchProfileCubit _teamLaunchProfileCubit() {
   return cubit;
 }
 
+ExpertHubCubit _expertHubCubit() => ExpertHubCubit(
+  source: _FakeExpertHubSource(),
+  loadFavorites: () async => const {},
+  saveFavoriteToggle: (_) async => true,
+  memberRosterService: stubMemberRosterService(),
+  launchProfiles: () => throw UnimplementedError('not used'),
+);
+
 Widget _host({
   required AutomationCubit cubit,
   required Widget child,
   LaunchProfileCubit? launchProfileCubit,
   CliPresetsCubit? cliPresetsCubit,
+  ExpertHubCubit? expertHubCubit,
+  ChatCubit? chatCubit,
 }) {
+  final resolvedChat = chatCubit ?? _chatCubitWithWorkspace();
   final providers = <BlocProvider>[
     BlocProvider<AutomationCubit>.value(value: cubit),
+    BlocProvider<ChatCubit>.value(value: resolvedChat),
+    BlocProvider<ExpertHubCubit>.value(value: expertHubCubit ?? _expertHubCubit()),
+    BlocProvider<LaunchProfileCubit>.value(
+      value: launchProfileCubit ?? _emptyLaunchProfileCubit(),
+    ),
   ];
-  if (launchProfileCubit != null) {
-    providers.add(
-      BlocProvider<LaunchProfileCubit>.value(value: launchProfileCubit),
-    );
-  }
   if (cliPresetsCubit != null) {
     providers.add(BlocProvider<CliPresetsCubit>.value(value: cliPresetsCubit));
   }
@@ -143,7 +192,6 @@ void main() {
         child: AutomationEditorDialog(
           kind: AutomationEditorKind.scheduledMessage,
           workspaceId: 'ws1',
-          launchProfileId: AutomationTabScope.simpleLaunchProfileId,
           sessionId: 'sess-1',
           defaultName: 'Daily ping',
         ),
@@ -162,27 +210,25 @@ void main() {
     expect(find.text(l10n.automationsEnabled), findsOneWidget);
     expect(find.text(l10n.presetPickerTitle), findsNothing);
     expect(find.text(l10n.automationsTargetMember), findsNothing);
+    expect(find.text(l10n.automationsLaunchMode), findsNothing);
   });
 
-  testWidgets('personal launch prompt shows preset picker only', (
+  testWidgets('simple launch prompt shows landing-aligned fields', (
     tester,
   ) async {
     final setup = testAutomationSetup();
-    final launchProfileCubit = _personalLaunchProfileCubit();
+    final chatCubit = _chatCubitWithWorkspace();
     final cliPresetsCubit = _cliPresetsCubitWithPreset();
     addTearDown(setup.cubit.close);
-    addTearDown(launchProfileCubit.close);
+    addTearDown(chatCubit.close);
     addTearDown(cliPresetsCubit.close);
 
     await tester.pumpWidget(
       _host(
         cubit: setup.cubit,
-        launchProfileCubit: launchProfileCubit,
+        chatCubit: chatCubit,
         cliPresetsCubit: cliPresetsCubit,
-        child: AutomationEditorDialog(
-          workspaceId: 'ws1',
-          launchProfileId: AutomationTabScope.simpleLaunchProfileId,
-        ),
+        child: const AutomationEditorDialog(workspaceId: 'ws1'),
       ),
     );
     await tester.pump();
@@ -193,25 +239,35 @@ void main() {
     );
 
     expect(find.text(l10n.automationsCreateTitle), findsOneWidget);
+    expect(find.text(l10n.automationsLaunchMode), findsOneWidget);
     expect(find.text(l10n.presetPickerTitle), findsOneWidget);
-    expect(find.text(l10n.automationsCli), findsNothing);
-    expect(find.text(l10n.automationsTargetMember), findsNothing);
+    expect(find.text(l10n.hubPublishKindExpert), findsOneWidget);
+    expect(find.text(l10n.automationsPermissions), findsOneWidget);
     expect(find.text('Default'), findsOneWidget);
+    expect(find.text(l10n.automationsTargetMember), findsNothing);
   });
 
-  testWidgets('team launch prompt shows member picker not cli', (tester) async {
+  testWidgets('team launch prompt shows team member picker', (tester) async {
     final setup = testAutomationSetup();
+    final chatCubit = _chatCubitWithWorkspace();
     final launchProfileCubit = _teamLaunchProfileCubit();
     addTearDown(setup.cubit.close);
+    addTearDown(chatCubit.close);
     addTearDown(launchProfileCubit.close);
 
     await tester.pumpWidget(
       _host(
         cubit: setup.cubit,
+        chatCubit: chatCubit,
         launchProfileCubit: launchProfileCubit,
-        child: const AutomationEditorDialog(
+        child: AutomationEditorDialog(
           workspaceId: 'ws1',
-          launchProfileId: 'team-1',
+          initial: sampleAutomation(
+            id: 'edit-team',
+            workspaceId: 'ws1',
+            isPersonal: false,
+            teamId: 'team-1',
+          ),
         ),
       ),
     );
@@ -222,11 +278,11 @@ void main() {
       tester.element(find.byType(AutomationEditorDialog)),
     );
 
-    expect(find.text(l10n.automationsCreateTitle), findsOneWidget);
+    expect(find.text(l10n.automationsEditTitle), findsOneWidget);
     expect(find.text(l10n.automationsTargetMember), findsOneWidget);
     expect(find.text('Lead'), findsOneWidget);
-    expect(find.text(l10n.automationsCli), findsNothing);
     expect(find.text(l10n.presetPickerTitle), findsNothing);
+    expect(find.text(l10n.hubPublishKindExpert), findsNothing);
   });
 
   testWidgets('scheduled message editor pre-fills session defaults', (
@@ -241,7 +297,6 @@ void main() {
         child: AutomationEditorDialog(
           kind: AutomationEditorKind.scheduledMessage,
           workspaceId: 'ws1',
-          launchProfileId: AutomationTabScope.simpleLaunchProfileId,
           sessionId: 'sess-1',
           defaultName: 'Daily ping',
         ),
@@ -252,5 +307,39 @@ void main() {
 
     final nameField = tester.widget<TextField>(find.byType(TextField).first);
     expect(nameField.controller?.text, 'Daily ping');
+  });
+
+  testWidgets('empty message save shows AppForm field validation', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    addTearDown(setup.cubit.close);
+
+    await tester.pumpWidget(
+      _host(
+        cubit: setup.cubit,
+        child: AutomationEditorDialog(
+          kind: AutomationEditorKind.scheduledMessage,
+          workspaceId: 'ws1',
+          sessionId: 'sess-1',
+          defaultName: 'Daily ping',
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(AutomationEditorDialog)),
+    );
+
+    expect(find.byType(AppForm), findsOneWidget);
+
+    await tester.tap(find.text(l10n.save));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text(l10n.automationsValidationRequired), findsWidgets);
+    expect(setup.cubit.state.automations, isEmpty);
   });
 }

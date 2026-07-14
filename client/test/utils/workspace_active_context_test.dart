@@ -9,16 +9,18 @@ void main() {
     expect(WorkspaceActiveContext.idle.activeSessionId, isNull);
   });
 
-  test('landing profile id resolves personal default', () {
+  test('landing context is personal for simple mode', () {
     const landing = LandingLaunchContext(isPersonal: true);
-    expect(landing.profileId, isNotEmpty);
+    expect(landing.isPersonal, isTrue);
+    expect(landing.teamId, isNull);
   });
 
-  test('landing profile id resolves team id', () {
+  test('landing context resolves team id', () {
     const landing = LandingLaunchContext(
       isPersonal: false,
       teamId: 'team-alpha',
     );
-    expect(landing.profileId, 'team-alpha');
+    expect(landing.isPersonal, isFalse);
+    expect(landing.teamId, 'team-alpha');
   });
 }

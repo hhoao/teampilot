@@ -1,7 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-import 'automation_tab_scope.dart';
-
 /// Snapshot of compose-landing choices used to create a new session.
 @immutable
 class LandingLaunchContext {
@@ -37,15 +35,6 @@ class LandingLaunchContext {
 
   /// When true, new sessions start with session-level full-access permission.
   final bool dangerouslySkipPermissions;
-
-  /// Profile id for manage panel / automation scope.
-  ///
-  /// Simple uses the fixed [AutomationTabScope.simpleLaunchProfileId] key;
-  /// team uses [teamId].
-  String get profileId {
-    if (isPersonal) return AutomationTabScope.simpleLaunchProfileId;
-    return teamId?.trim() ?? '';
-  }
 
   LandingLaunchContext copyWith({
     bool? isPersonal,

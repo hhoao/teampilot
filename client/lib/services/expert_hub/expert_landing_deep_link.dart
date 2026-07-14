@@ -39,7 +39,6 @@ Future<ExpertDeepLinkResult> applyExpertDeepLink({
 
   final draft = await resolveLandingDraft(
     workspaceId: workspaceId,
-    workspace: workspace,
     store: store,
   );
 

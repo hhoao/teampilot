@@ -94,15 +94,14 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
   String _scopeKey(AutomationListScope? scope) {
     if (scope == null) return 'all';
     if (scope.isWorkspace) return 'workspace:${scope.workspaceId}';
-    if (scope.isTab) {
-      final sessionId = scope.sessionId ?? '';
-      return 'tab:${scope.tabScope!.tabKey}:$sessionId';
+    if (scope.isSession) {
+      return 'session:${scope.workspaceId}:${scope.sessionId}';
     }
     return 'all';
   }
 
   List<Automation> _visible(AutomationState state) {
-    final sessionId = widget.listScope?.isTab == true
+    final sessionId = widget.listScope?.isSession == true
         ? widget.listScope!.sessionId
         : null;
     final filtered = filterAutomations(
@@ -124,20 +123,33 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
       await cubit.loadForWorkspace(scope.workspaceId!);
       return;
     }
-    await cubit.loadForTabScope(
-      scope.tabScope!,
-      sessionId: scope.sessionId,
-    );
+    if (scope.isSession) {
+      final workspaceId = scope.workspaceId!;
+      final sessionId = scope.sessionId!;
+      final session = context
+          .read<ChatCubit>()
+          .state
+          .sessions
+          .where(
+            (s) => s.sessionId == sessionId && s.workspaceId == workspaceId,
+          )
+          .firstOrNull;
+      if (session != null) {
+        await cubit.loadForSession(workspaceId, session);
+      } else {
+        await cubit.loadForWorkspace(workspaceId);
+      }
+    }
   }
 
-  bool get _groupByLaunchProfile {
+  bool get _groupByLaunchContext {
     final scope = widget.listScope;
     return scope == null || scope.isAll || scope.isWorkspace;
   }
 
   Future<void> _toggleEnabled(Automation automation) async {
     await context.read<AutomationCubit>().toggleEnabled(
-      automation.tabScope,
+      automation.workspaceId,
       automation.id,
     );
   }
@@ -173,7 +185,7 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
     );
     if (ok != true || !mounted) return;
     await context.read<AutomationCubit>().delete(
-      automation.tabScope,
+      automation.workspaceId,
       automation.id,
     );
   }
@@ -185,7 +197,6 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
       kind: automation.isScheduledMessage
           ? AutomationEditorKind.scheduledMessage
           : AutomationEditorKind.launchPrompt,
-      launchProfileId: automation.launchProfileId,
       workspaceId: automation.workspaceId,
       sessionId: automation.sessionId,
     );
@@ -194,7 +205,7 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
 
   Future<void> _runNow(Automation automation) async {
     await context.read<AutomationCubit>().runNow(
-      automation.tabScope,
+      automation.workspaceId,
       automation.id,
     );
   }
@@ -239,7 +250,7 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
           );
           return widget.shrinkWrap ? empty : Center(child: empty);
         }
-        if (_groupByLaunchProfile) {
+        if (_groupByLaunchContext) {
           return _GroupedList(
             automations: automations,
             listScope: widget.listScope,
@@ -478,17 +489,20 @@ List<_AutomationGroup> _groupAutomations(
   final includeWorkspaceName = listScope == null || listScope.isAll;
   final grouped = <String, List<Automation>>{};
   for (final automation in automations) {
+    final contextKey = automation.isPersonal
+        ? 'personal'
+        : (automation.teamId?.trim() ?? '');
     final key = includeWorkspaceName
-        ? '${automation.workspaceId}\x1f${automation.launchProfileId}'
-        : automation.launchProfileId;
+        ? '${automation.workspaceId}\x1f$contextKey'
+        : contextKey;
     grouped.putIfAbsent(key, () => []).add(automation);
   }
 
   final groups = grouped.entries.map((entry) {
     final automation = entry.value.first;
-    final profileLabel = automationLaunchProfileGroupLabel(
+    final profileLabel = automationLaunchContextGroupLabel(
       l10n,
-      launchProfileId: automation.launchProfileId,
+      automation: automation,
       profiles: profiles,
     );
     final workspace = workspaces

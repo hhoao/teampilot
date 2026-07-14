@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../../cubits/chat_cubit.dart';
-import '../../../cubits/workspace_landing_context_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
@@ -62,9 +61,6 @@ class WorkspaceSidebar extends StatefulWidget {
 
 class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
   AppSessionSort _sessionSort = AppSessionSort.recentlyUpdated;
-
-  String _landingProfileId(BuildContext context) =>
-      context.read<WorkspaceLandingContextCubit>().state.context.profileId;
 
   @override
   Widget build(BuildContext context) {
@@ -426,11 +422,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
     return SidebarSessionTile(
       key: ValueKey('workspace-sidebar-session-${session.sessionId}'),
       session: session,
-      launchProfileId: session.sessionTeam.trim().isEmpty
-          ? (session.profileId.trim().isNotEmpty
-                ? session.profileId
-                : _landingProfileId(context))
-          : session.sessionTeam,
       index: index,
       highlightSessionId: scopedActiveSessionId(
         context.read<ChatCubit>(),
@@ -487,9 +478,6 @@ class _RunningSessionsSection extends StatelessWidget {
           SidebarSessionTile(
             key: ValueKey('workspace-running-session-${session.sessionId}'),
             session: session,
-            launchProfileId: session.sessionTeam.trim().isEmpty
-                ? session.profileId.trim()
-                : session.sessionTeam,
             highlightSessionId: scopedActiveSessionId(
               context.read<ChatCubit>(),
               tabScopeId,

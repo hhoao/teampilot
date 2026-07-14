@@ -10,7 +10,6 @@ import '../cubits/chat_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
 import '../models/automation_list_scope.dart';
-import '../models/automation_tab_scope.dart';
 import '../pages/automations/automation_editor_dialog.dart';
 import '../pages/automations/automations_dialog.dart';
 import '../pages/home_workspace/workspace/workspace_sidebar_row_metrics.dart';
@@ -30,7 +29,6 @@ class SidebarSessionTile extends StatefulWidget {
   const SidebarSessionTile({
     required this.session,
     required this.onTap,
-    this.launchProfileId,
     this.highlightSessionId,
     this.tapThrottleKeyPrefix = 'sidebar_session',
     this.contentLeftInset = 0,
@@ -40,7 +38,6 @@ class SidebarSessionTile extends StatefulWidget {
 
   final AppSession session;
   final VoidCallback onTap;
-  final String? launchProfileId;
 
   /// When set, selection highlight follows this id instead of the global
   /// [ChatState.activeSessionId] (kept-alive background workspace tabs).
@@ -88,12 +85,10 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
 
   void _refreshSessionAutomationCount(AutomationState state) {
     final session = widget.session;
-    final tabScope = _tabScopeForSession(session);
     final count = state.automations
         .where(
           (a) =>
-              a.workspaceId == tabScope.workspaceId &&
-              a.launchProfileId == tabScope.launchProfileId &&
+              a.workspaceId == session.workspaceId &&
               a.sessionId == session.sessionId,
         )
         .length;
@@ -183,17 +178,6 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     return items;
   }
 
-  AutomationTabScope _tabScopeForSession(AppSession session) {
-    final fromSidebar = widget.launchProfileId?.trim();
-    if (fromSidebar != null && fromSidebar.isNotEmpty) {
-      return AutomationTabScope(
-        workspaceId: session.workspaceId,
-        launchProfileId: fromSidebar,
-      );
-    }
-    return AutomationTabScope.fromSession(session);
-  }
-
   Future<void> _handleContextAction(String selected, AppSession session) async {
     final l10n = context.l10n;
     switch (selected) {
@@ -205,11 +189,9 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         final title = session.resolveDisplayTitle(
           l10n.defaultNewChatSessionTitle,
         );
-        final tabScope = _tabScopeForSession(session);
         final saved = await AutomationEditorDialog.show(
           context,
           kind: AutomationEditorKind.scheduledMessage,
-          launchProfileId: tabScope.launchProfileId,
           workspaceId: session.workspaceId,
           sessionId: session.sessionId,
           defaultName: l10n.automationsSessionDefaultName(title),
@@ -220,8 +202,8 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       case 'manage_schedule':
         await showAutomationsPanelDialog(
           context,
-          listScope: AutomationListScope.tab(
-            _tabScopeForSession(session),
+          listScope: AutomationListScope.session(
+            session.workspaceId,
             sessionId: session.sessionId,
           ),
         );

@@ -1,9 +1,5 @@
-import 'package:teampilot/models/automation_tab_scope.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/automation.dart';
-import 'package:teampilot/models/team_config.dart';
-
-const _defaultLaunchProfileId = AutomationTabScope.simpleLaunchProfileId;
 
 void main() {
   test('Automation round-trips JSON', () {
@@ -12,7 +8,6 @@ void main() {
       name: 'Reset',
       action: AutomationAction.scheduledMessage,
       workspaceId: 'ws1',
-      launchProfileId: _defaultLaunchProfileId,
       sessionId: 's1',
       message: '/clear',
       preset: AutomationSchedulePreset.hourly,
@@ -28,7 +23,6 @@ void main() {
     final back = Automation.fromJson(json);
     expect(back.id, 'a1');
     expect(back.action, AutomationAction.scheduledMessage);
-    expect(back.cli, isNull);
     expect(back, a);
   });
 
@@ -38,7 +32,6 @@ void main() {
       name: 'Once',
       action: AutomationAction.scheduledMessage,
       workspaceId: 'ws1',
-      launchProfileId: _defaultLaunchProfileId,
       sessionId: 's1',
       message: '/clear',
       preset: AutomationSchedulePreset.daily,
@@ -59,16 +52,16 @@ void main() {
     expect(back, a);
   });
 
-  test('launchPrompt round-trips cliPresetId', () {
+  test('launchPrompt round-trips presetId', () {
     final a = Automation(
       id: 'x',
       name: 'n',
       action: AutomationAction.launchPrompt,
       workspaceId: 'ws',
-      launchProfileId: _defaultLaunchProfileId,
+      isPersonal: true,
+      presetId: 'preset-1',
       targetMemberId: 'team-lead',
       message: 'ping',
-      cliPresetId: 'preset-1',
       preset: AutomationSchedulePreset.daily,
       minute: 0,
       hourMinute: '09:00',
@@ -80,8 +73,36 @@ void main() {
     );
     a.validate();
     final back = Automation.fromJson(a.toJson());
-    expect(back.cliPresetId, 'preset-1');
-    expect(back.cli, isNull);
+    expect(back.presetId, 'preset-1');
+    expect(back.isPersonal, isTrue);
+  });
+
+  test('launchPrompt round-trips project and worktree paths', () {
+    final a = Automation(
+      id: 'x',
+      name: 'n',
+      action: AutomationAction.launchPrompt,
+      workspaceId: 'ws',
+      isPersonal: true,
+      presetId: 'preset-1',
+      projectFolderPath: '/repo',
+      workingDirectoryPath: '/repo/feature',
+      message: 'ping',
+      preset: AutomationSchedulePreset.daily,
+      minute: 0,
+      hourMinute: '09:00',
+      timezone: 'UTC',
+      dtstartMs: 0,
+      enabled: true,
+      createdAtMs: 0,
+      updatedAtMs: 0,
+    );
+    a.validate();
+    final back = Automation.fromJson(a.toJson());
+    expect(back.projectFolderPath, '/repo');
+    expect(back.workingDirectoryPath, '/repo/feature');
+    expect(back.launchContext.projectFolderPath, '/repo');
+    expect(back.launchContext.workingDirectoryPath, '/repo/feature');
   });
 
   test('scheduledMessage requires sessionId', () {
@@ -91,7 +112,6 @@ void main() {
         name: 'n',
         action: AutomationAction.scheduledMessage,
         workspaceId: 'ws',
-        launchProfileId: _defaultLaunchProfileId,
         message: 'ping',
         preset: AutomationSchedulePreset.daily,
         minute: 0,
@@ -113,10 +133,10 @@ void main() {
         name: 'n',
         action: AutomationAction.launchPrompt,
         workspaceId: 'ws',
-        launchProfileId: _defaultLaunchProfileId,
+        isPersonal: true,
+        presetId: 'preset-1',
         targetMemberId: 'team-lead',
         message: 'ping',
-        cli: CliTool.claude,
         preset: AutomationSchedulePreset.daily,
         minute: 0,
         hourMinute: '09:00',

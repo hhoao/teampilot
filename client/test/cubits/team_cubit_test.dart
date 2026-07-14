@@ -1,4 +1,3 @@
-import 'package:teampilot/models/automation_tab_scope.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';

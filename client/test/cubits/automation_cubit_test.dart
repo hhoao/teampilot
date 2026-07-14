@@ -1,4 +1,3 @@
-import 'package:teampilot/models/automation_tab_scope.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/automation_state.dart';
@@ -15,7 +14,6 @@ import 'package:teampilot/services/automation/automation_scheduler.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
-import '../support/automation_test_fixtures.dart';
 import '../support/post_frame_test_harness.dart';
 
 class _FakeSessionRepository implements SessionRepository {
@@ -49,7 +47,6 @@ Automation _sampleAutomation({
     name: 'Test $id',
     action: AutomationAction.scheduledMessage,
     workspaceId: 'ws1',
-    launchProfileId: AutomationTabScope.simpleLaunchProfileId,
     sessionId: 'sess-1',
     message: 'ping',
     preset: AutomationSchedulePreset.daily,
@@ -80,7 +77,6 @@ void main() {
       requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
       workspaceById: (_) => Workspace(workspaceId: 'ws1', createdAt: 1),
       teamById: (_) => null,
-      launchProfileKindById: testLaunchProfileKindResolver(),
       nowMs: () => 1_700_000_000_000,
     );
     final scheduler = AutomationScheduler(
@@ -118,7 +114,6 @@ void main() {
       requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
       workspaceById: (_) => Workspace(workspaceId: 'ws1', createdAt: 1),
       teamById: (_) => null,
-      launchProfileKindById: testLaunchProfileKindResolver(),
       nowMs: () => 1_700_000_000_000,
     );
     final scheduler = AutomationScheduler(
@@ -138,20 +133,20 @@ void main() {
     await repo.upsert(
       _sampleAutomation(id: 'a1', enabled: true, nextRunAtMs: 123),
     );
-    await cubit.loadForTabScope(simpleAutomationTabScope);
-    await cubit.toggleEnabled(simpleAutomationTabScope, 'a1');
+    await cubit.loadForWorkspace('ws1');
+    await cubit.toggleEnabled('ws1', 'a1');
 
     final item = cubit.state.automations.single;
     expect(item.enabled, isFalse);
     expect(item.nextRunAtMs, isNull);
 
-    await cubit.toggleEnabled(simpleAutomationTabScope, 'a1');
+    await cubit.toggleEnabled('ws1', 'a1');
     final reenabled = cubit.state.automations.single;
     expect(reenabled.enabled, isTrue);
     expect(reenabled.nextRunAtMs, isNotNull);
   });
 
-  test('loadForWorkspace keeps automations from every launch profile', () async {
+  test('loadForWorkspace keeps automations from every launch context', () async {
     final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final calculator = AutomationScheduleCalculator();
@@ -164,7 +159,6 @@ void main() {
       requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
       workspaceById: (_) => Workspace(workspaceId: 'ws1', createdAt: 1),
       teamById: (_) => null,
-      launchProfileKindById: testLaunchProfileKindResolver(),
       nowMs: () => 1_700_000_000_000,
     );
     final scheduler = AutomationScheduler(
@@ -184,10 +178,11 @@ void main() {
     await repo.upsert(_sampleAutomation(id: 'personal'));
     await repo.upsert(
       _sampleAutomation(id: 'team').copyWith(
-        launchProfileId: 'team-1',
+        isPersonal: false,
+        clearPresetId: true,
+        teamId: 'team-1',
         action: AutomationAction.launchPrompt,
         clearSessionId: true,
-        clearCli: true,
       ),
     );
     await cubit.loadForWorkspace('ws1');

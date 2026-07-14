@@ -1,11 +1,9 @@
 import '../models/landing_launch_context.dart';
-import '../models/workspace.dart';
 import '../services/home_workspace/landing_prefs_store.dart';
 
 /// Loads persisted compose-landing draft for a workspace (local to landing UI).
 Future<LandingLaunchContext> resolveLandingDraft({
   required String workspaceId,
-  required Workspace workspace,
   LandingPrefsStore? store,
 }) async {
   final prefs = await (store ?? LandingPrefsStore()).prefsFor(workspaceId);

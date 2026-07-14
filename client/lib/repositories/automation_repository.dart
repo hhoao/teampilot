@@ -1,49 +1,13 @@
 import 'dart:convert';
 
 import '../models/automation.dart';
-import '../models/automation_tab_scope.dart';
 import '../services/automation/automation_launch_session_binding.dart';
 import '../services/io/filesystem.dart';
 import '../services/storage/workspace_layout.dart';
 import '../utils/logger.dart';
 
-class AutomationCatalogEntry {
-  const AutomationCatalogEntry({
-    required this.workspaceId,
-    required this.launchProfileId,
-    required this.path,
-    required this.updatedAtMs,
-  });
-
-  factory AutomationCatalogEntry.fromJson(Map<String, Object?> json) {
-    return AutomationCatalogEntry(
-      workspaceId: json['workspaceId'] as String? ?? '',
-      launchProfileId: json['profile'] as String? ?? '',
-      path: json['path'] as String? ?? '',
-      updatedAtMs: (json['updatedAtMs'] as num?)?.toInt() ?? 0,
-    );
-  }
-
-  final String workspaceId;
-  final String launchProfileId;
-  final String path;
-  final int updatedAtMs;
-
-  AutomationTabScope get tabScope => AutomationTabScope(
-    workspaceId: workspaceId,
-    launchProfileId: launchProfileId,
-  );
-
-  Map<String, Object?> toJson() => {
-    'workspaceId': workspaceId,
-    'profile': launchProfileId,
-    'path': path,
-    'updatedAtMs': updatedAtMs,
-  };
-}
-
-class _TabAutomationStore {
-  const _TabAutomationStore({required this.automations, required this.runs});
+class _WorkspaceAutomationStore {
+  const _WorkspaceAutomationStore({required this.automations, required this.runs});
 
   final List<Automation> automations;
   final List<AutomationRun> runs;
@@ -53,10 +17,10 @@ class _TabAutomationStore {
     'runs': runs.map((r) => r.toJson()).toList(),
   };
 
-  factory _TabAutomationStore.fromJson(Map<String, Object?> json) {
+  factory _WorkspaceAutomationStore.fromJson(Map<String, Object?> json) {
     final automationsRaw = json['automations'];
     final runsRaw = json['runs'];
-    return _TabAutomationStore(
+    return _WorkspaceAutomationStore(
       automations: automationsRaw is List
           ? automationsRaw
                 .whereType<Map<String, Object?>>()
@@ -72,11 +36,11 @@ class _TabAutomationStore {
     );
   }
 
-  _TabAutomationStore copyWith({
+  _WorkspaceAutomationStore copyWith({
     List<Automation>? automations,
     List<AutomationRun>? runs,
   }) {
-    return _TabAutomationStore(
+    return _WorkspaceAutomationStore(
       automations: automations ?? this.automations,
       runs: runs ?? this.runs,
     );
@@ -87,60 +51,64 @@ class AutomationRepository {
   AutomationRepository({
     required Filesystem fs,
     required WorkspaceLayout layout,
-    this.maxRunsPerTabScope = 100,
+    this.maxRunsPerWorkspace = 100,
   }) : _fs = fs,
        _layout = layout;
 
   final Filesystem _fs;
   final WorkspaceLayout _layout;
-  final int maxRunsPerTabScope;
+  final int maxRunsPerWorkspace;
 
-  Future<List<Automation>> listForTabScope(AutomationTabScope scope) async {
-    final store = await _readStore(scope);
+  Future<List<Automation>> listForWorkspace(String workspaceId) async {
+    final store = await _readStore(workspaceId);
     return store.automations;
   }
 
-  Future<List<Automation>> listForWorkspace(String workspaceId) async {
-    final trimmed = workspaceId.trim();
-    if (trimmed.isEmpty) return const [];
-    final catalog = await _readCatalog();
-    final automations = <Automation>[];
-    for (final entry in catalog.where((e) => e.workspaceId == trimmed)) {
-      automations.addAll(await listForTabScope(entry.tabScope));
-    }
-    return automations;
-  }
-
   Future<List<Automation>> listForSession(
-    AutomationTabScope scope,
+    String workspaceId,
     String sessionId,
   ) async {
     final trimmedSession = sessionId.trim();
-    final automations = await listForTabScope(scope);
+    final automations = await listForWorkspace(workspaceId);
     return automations
-        .where((a) => a.sessionId == trimmedSession)
+        .where(
+          (a) =>
+              a.sessionId == trimmedSession ||
+              (a.isLaunchPrompt && a.reuseSession && a.sessionId == trimmedSession),
+        )
         .toList(growable: false);
   }
 
   Future<List<Automation>> listAll() async {
-    final catalog = await _readCatalog();
+    final workspacesDir = _layout.workspacesDir;
+    try {
+      final stat = await _fs.stat(workspacesDir);
+      if (!stat.isDirectory) return const [];
+    } on Object {
+      return const [];
+    }
+
+    final entries = await _fs.listDir(workspacesDir);
     final all = <Automation>[];
-    for (final entry in catalog) {
-      all.addAll(await listForTabScope(entry.tabScope));
+    for (final entry in entries) {
+      if (!entry.isDirectory) continue;
+      final workspaceId = entry.name;
+      if (workspaceId.trim().isEmpty) continue;
+      all.addAll(await listForWorkspace(workspaceId));
     }
     return all;
   }
 
-  Future<List<AutomationRun>> runsForTabScope(AutomationTabScope scope) async {
-    final store = await _readStore(scope);
+  Future<List<AutomationRun>> runsForWorkspace(String workspaceId) async {
+    final store = await _readStore(workspaceId);
     return store.runs;
   }
 
   Future<List<AutomationRun>> runsFor(
-    AutomationTabScope scope, {
+    String workspaceId, {
     String? automationId,
   }) async {
-    final store = await _readStore(scope);
+    final store = await _readStore(workspaceId);
     final trimmedId = automationId?.trim();
     if (trimmedId == null || trimmedId.isEmpty) {
       return store.runs;
@@ -150,8 +118,8 @@ class AutomationRepository {
         .toList(growable: false);
   }
 
-  Future<void> upsertRun(AutomationTabScope scope, AutomationRun run) async {
-    final store = await _readStore(scope);
+  Future<void> upsertRun(String workspaceId, AutomationRun run) async {
+    final store = await _readStore(workspaceId);
     final runs = List<AutomationRun>.from(store.runs);
     final index = runs.indexWhere((r) => r.id == run.id);
     if (index >= 0) {
@@ -159,16 +127,16 @@ class AutomationRepository {
     } else {
       runs.add(run);
     }
-    final trimmed = runs.length > maxRunsPerTabScope
-        ? runs.sublist(runs.length - maxRunsPerTabScope)
+    final trimmed = runs.length > maxRunsPerWorkspace
+        ? runs.sublist(runs.length - maxRunsPerWorkspace)
         : runs;
-    await _writeStore(scope, store.copyWith(runs: trimmed));
+    await _writeStore(workspaceId, store.copyWith(runs: trimmed));
   }
 
   Future<Automation> upsert(Automation automation) async {
     automation.validate();
-    final scope = automation.tabScope;
-    final store = await _readStore(scope);
+    final workspaceId = automation.workspaceId;
+    final store = await _readStore(workspaceId);
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     final next = automation.copyWith(
       updatedAtMs: nowMs,
@@ -181,13 +149,12 @@ class AutomationRepository {
     } else {
       automations.add(next);
     }
-    await _writeStore(scope, store.copyWith(automations: automations));
-    await _upsertCatalogEntry(scope, nowMs);
+    await _writeStore(workspaceId, store.copyWith(automations: automations));
     return next;
   }
 
-  Future<void> delete(AutomationTabScope scope, String automationId) async {
-    final store = await _readStore(scope);
+  Future<void> delete(String workspaceId, String automationId) async {
+    final store = await _readStore(workspaceId);
     final automations = store.automations
         .where((a) => a.id != automationId)
         .toList(growable: false);
@@ -195,22 +162,21 @@ class AutomationRepository {
         .where((r) => r.automationId != automationId)
         .toList(growable: false);
     await _writeStore(
-      scope,
+      workspaceId,
       store.copyWith(automations: automations, runs: runs),
     );
-    await _upsertCatalogEntry(scope, DateTime.now().millisecondsSinceEpoch);
   }
 
-  Future<void> appendRun(AutomationTabScope scope, AutomationRun run) async {
-    await upsertRun(scope, run);
+  Future<void> appendRun(String workspaceId, AutomationRun run) async {
+    await upsertRun(workspaceId, run);
   }
 
   Future<void> disableForSession(
-    AutomationTabScope scope,
+    String workspaceId,
     String sessionId,
   ) async {
     final trimmedSession = sessionId.trim();
-    final store = await _readStore(scope);
+    final store = await _readStore(workspaceId);
     var changed = false;
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     final automations = store.automations
@@ -223,20 +189,12 @@ class AutomationRepository {
         })
         .toList(growable: false);
     if (!changed) return;
-    await _writeStore(scope, store.copyWith(automations: automations));
-    await _upsertCatalogEntry(scope, nowMs);
+    await _writeStore(workspaceId, store.copyWith(automations: automations));
   }
 
   Future<void> removeWorkspace(String workspaceId) async {
     final trimmed = workspaceId.trim();
     if (trimmed.isEmpty) return;
-    final catalog = List<AutomationCatalogEntry>.from(await _readCatalog());
-    final nextCatalog = catalog
-        .where((e) => e.workspaceId != trimmed)
-        .toList(growable: false);
-    if (nextCatalog.length != catalog.length) {
-      await _writeCatalog(nextCatalog);
-    }
     final dir = _layout.workspaceAutomationsDir(trimmed);
     try {
       final stat = await _fs.stat(dir);
@@ -248,92 +206,31 @@ class AutomationRepository {
     }
   }
 
-  Future<_TabAutomationStore> _readStore(AutomationTabScope scope) async {
-    final path = _layout.workspaceTabAutomationsFile(
-      scope.workspaceId,
-      scope.launchProfileId,
-    );
+  Future<_WorkspaceAutomationStore> _readStore(String workspaceId) async {
+    final path = _layout.workspaceAutomationsFile(workspaceId);
     try {
       final raw = await _fs.readString(path);
       if (raw == null || raw.trim().isEmpty) {
-        return const _TabAutomationStore(automations: [], runs: []);
+        return const _WorkspaceAutomationStore(automations: [], runs: []);
       }
       final decoded = json.decode(raw);
       if (decoded is! Map<String, Object?>) {
-        return const _TabAutomationStore(automations: [], runs: []);
+        return const _WorkspaceAutomationStore(automations: [], runs: []);
       }
-      return _TabAutomationStore.fromJson(decoded);
+      return _WorkspaceAutomationStore.fromJson(decoded);
     } on Object catch (e) {
-      appLogger.w('[automations] read store failed (${scope.tabKey}): $e');
-      return const _TabAutomationStore(automations: [], runs: []);
+      appLogger.w('[automations] read store failed ($workspaceId): $e');
+      return const _WorkspaceAutomationStore(automations: [], runs: []);
     }
   }
 
   Future<void> _writeStore(
-    AutomationTabScope scope,
-    _TabAutomationStore store,
+    String workspaceId,
+    _WorkspaceAutomationStore store,
   ) async {
-    final path = _layout.workspaceTabAutomationsFile(
-      scope.workspaceId,
-      scope.launchProfileId,
-    );
-    await _fs.ensureDir(_layout.workspaceAutomationsDir(scope.workspaceId));
+    final path = _layout.workspaceAutomationsFile(workspaceId);
+    await _fs.ensureDir(_layout.workspaceAutomationsDir(workspaceId));
     final encoded = jsonEncode(store.toJson());
     await _fs.atomicWrite(path, encoded);
-  }
-
-  Future<List<AutomationCatalogEntry>> _readCatalog() async {
-    final path = _layout.automationsCatalogFile();
-    try {
-      final raw = await _fs.readString(path);
-      if (raw == null || raw.trim().isEmpty) return const [];
-      final decoded = json.decode(raw);
-      if (decoded is! List) return const [];
-      return decoded
-          .whereType<Map<String, Object?>>()
-          .map(AutomationCatalogEntry.fromJson)
-          .where(
-            (e) => e.workspaceId.isNotEmpty && e.launchProfileId.isNotEmpty,
-          )
-          .toList(growable: false);
-    } on Object catch (e) {
-      appLogger.w('[automations] read catalog failed: $e');
-      return const [];
-    }
-  }
-
-  Future<void> _writeCatalog(List<AutomationCatalogEntry> entries) async {
-    final path = _layout.automationsCatalogFile();
-    await _fs.ensureDir(_layout.automationsRootDir());
-    final encoded = jsonEncode(entries.map((e) => e.toJson()).toList());
-    await _fs.atomicWrite(path, encoded);
-  }
-
-  Future<void> _upsertCatalogEntry(
-    AutomationTabScope scope,
-    int updatedAtMs,
-  ) async {
-    final path = _layout.workspaceTabAutomationsFile(
-      scope.workspaceId,
-      scope.launchProfileId,
-    );
-    final catalog = List<AutomationCatalogEntry>.from(await _readCatalog());
-    final index = catalog.indexWhere(
-      (e) =>
-          e.workspaceId == scope.workspaceId &&
-          e.launchProfileId == scope.launchProfileId,
-    );
-    final entry = AutomationCatalogEntry(
-      workspaceId: scope.workspaceId,
-      launchProfileId: scope.launchProfileId,
-      path: path,
-      updatedAtMs: updatedAtMs,
-    );
-    if (index >= 0) {
-      catalog[index] = entry;
-    } else {
-      catalog.add(entry);
-    }
-    await _writeCatalog(catalog);
   }
 }

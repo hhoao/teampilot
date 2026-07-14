@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/automation_cubit.dart';
+import '../../cubits/chat_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/automation_list_scope.dart';
 import '../../widgets/app_dialog.dart';
@@ -31,10 +32,8 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
     final scope = widget.listScope;
     final saved = await AutomationEditorDialog.show(
       context,
-      workspaceId: scope.isWorkspace ? scope.workspaceId : null,
-      launchProfileId: scope.isTab ? scope.tabScope!.launchProfileId : null,
+      workspaceId: scope.isWorkspace || scope.isSession ? scope.workspaceId : null,
       sessionId: scope.sessionId,
-      pickLaunchProfile: scope.isWorkspace,
     );
     if (saved != null && mounted) {
       await _reload();
@@ -48,11 +47,22 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
       await cubit.loadForWorkspace(scope.workspaceId!);
       return;
     }
-    if (scope.isTab) {
-      await cubit.loadForTabScope(
-        scope.tabScope!,
-        sessionId: scope.sessionId,
-      );
+    if (scope.isSession) {
+      final workspaceId = scope.workspaceId!;
+      final sessionId = scope.sessionId!;
+      final session = context
+          .read<ChatCubit>()
+          .state
+          .sessions
+          .where(
+            (s) => s.sessionId == sessionId && s.workspaceId == workspaceId,
+          )
+          .firstOrNull;
+      if (session != null) {
+        await cubit.loadForSession(workspaceId, session);
+      } else {
+        await cubit.loadForWorkspace(workspaceId);
+      }
       return;
     }
     await cubit.load();

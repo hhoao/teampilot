@@ -4,9 +4,10 @@ import 'package:flutter/services.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/automation.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
-import '../../theme/app_text_styles.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/dropdown/app_dropdown_field.dart';
+import '../../widgets/form/app_form_field.dart';
+import '../../widgets/form/app_form_field_layout.dart';
 
 /// Schedule fields edited by [AutomationEditorDialog].
 class AutomationScheduleDraft {
@@ -97,11 +98,12 @@ String _dayOfWeekLabel(AppLocalizations l10n, int dayOfWeek) {
   };
 }
 
-/// Preset + time/cron controls for automation schedules.
+/// Inline [AppFormField] rows for automation schedule editing.
 class AutomationSchedulePicker extends StatefulWidget {
   AutomationSchedulePicker({
     required this.draft,
     required this.onChanged,
+    required this.labelWidth,
     AutomationScheduleCalculator? calculator,
     super.key,
   }) : calculator = calculator ?? _defaultCalculator;
@@ -110,6 +112,7 @@ class AutomationSchedulePicker extends StatefulWidget {
 
   final AutomationScheduleDraft draft;
   final ValueChanged<AutomationScheduleDraft> onChanged;
+  final double labelWidth;
   final AutomationScheduleCalculator calculator;
 
   @override
@@ -120,7 +123,8 @@ class AutomationSchedulePicker extends StatefulWidget {
 class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
   late final TextEditingController _hourMinuteCtl;
   late final TextEditingController _customCronCtl;
-  String? _cronError;
+
+  AutomationScheduleDraft get _draft => widget.draft;
 
   @override
   void initState() {
@@ -156,102 +160,161 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
-    final draft = widget.draft;
+    final draft = _draft;
     final presets = AutomationSchedulePreset.values;
+    final inline = AppFormFieldLayoutStyle.inline;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          l10n.automationsSchedule,
-          style: styles.smSemibold,
-        ),
-        const SizedBox(height: 8),
-        AppDropdownField<AutomationSchedulePreset>(
-          items: presets,
-          initialItem: draft.preset,
-          decoration: AppDropdownDecorations.themed(context),
-          itemLabel: (p) => _presetLabel(l10n, p),
-          onChanged: (value) {
-            if (value == null) return;
-            _emit(
-              draft.copyWith(
-                preset: value,
-                clearDayOfWeek: value != AutomationSchedulePreset.weekly,
-                clearCustomCron: value != AutomationSchedulePreset.custom,
-              ),
+        AppFormField<AutomationSchedulePreset>(
+          key: ValueKey('schedule-preset-${draft.preset.name}'),
+          id: 'schedulePreset',
+          initialValue: draft.preset,
+          label: Text(l10n.automationsSchedule),
+          layoutStyle: inline,
+          labelWidth: widget.labelWidth,
+          builder: (state) {
+            return AppDropdownField<AutomationSchedulePreset>(
+              items: presets,
+              initialItem: state.value ?? draft.preset,
+              decoration: AppDropdownDecorations.themed(context),
+              itemLabel: (p) => _presetLabel(l10n, p),
+              onChanged: (value) {
+                if (value == null) return;
+                state.didChange(value);
+                _emit(
+                  draft.copyWith(
+                    preset: value,
+                    clearDayOfWeek: value != AutomationSchedulePreset.weekly,
+                    clearCustomCron: value != AutomationSchedulePreset.custom,
+                  ),
+                );
+              },
             );
           },
         ),
         const SizedBox(height: 12),
         switch (draft.preset) {
-          AutomationSchedulePreset.hourly => _MinutePicker(
-            minute: draft.minute,
-            onChanged: (m) => _emit(draft.copyWith(minute: m)),
-          ),
-          AutomationSchedulePreset.custom => Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
-                controller: _customCronCtl,
-                decoration: InputDecoration(
-                  labelText: l10n.automationsCustomCron,
-                  hintText: '0 */2 * * *',
-                  errorText: _cronError,
-                ),
+          AutomationSchedulePreset.hourly => AppFormField<int>(
+            id: 'scheduleMinute',
+            initialValue: draft.minute,
+            label: Text(l10n.automationsTime),
+            layoutStyle: inline,
+            labelWidth: widget.labelWidth,
+            builder: (state) {
+              return AppDropdownField<int>(
+                items: List<int>.generate(60, (i) => i),
+                initialItem: (state.value ?? draft.minute).clamp(0, 59),
+                decoration: AppDropdownDecorations.themed(context),
+                itemLabel: (m) => l10n.automationsScheduleSummaryHourly(m),
                 onChanged: (value) {
-                  final trimmed = value.trim();
-                  final valid =
-                      trimmed.isEmpty || widget.calculator.isValidCron(trimmed);
-                  setState(() {
-                    _cronError = valid ? null : l10n.automationsInvalidCron;
-                  });
-                  _emit(draft.copyWith(customCron: trimmed));
+                  if (value == null) return;
+                  state.didChange(value);
+                  _emit(draft.copyWith(minute: value));
                 },
-              ),
-            ],
+              );
+            },
+          ),
+          AutomationSchedulePreset.custom => AppFormField<String>(
+            id: 'scheduleCustomCron',
+            initialValue: draft.customCron ?? '',
+            label: Text(l10n.automationsCustomCron),
+            layoutStyle: inline,
+            labelWidth: widget.labelWidth,
+            validator: (value) {
+              final cron = value?.trim() ?? '';
+              if (!widget.calculator.isValidCron(cron)) {
+                return l10n.automationsInvalidCron;
+              }
+              return null;
+            },
+            builder: (state) {
+              return TextField(
+                controller: _customCronCtl,
+                focusNode: state.focusNode,
+                onChanged: (value) {
+                  state.didChange(value);
+                  _emit(draft.copyWith(customCron: value.trim()));
+                },
+                decoration: InputDecoration(
+                  hintText: '0 */2 * * *',
+                  errorText: state.hasError ? '' : null,
+                  errorStyle: const TextStyle(height: 0, fontSize: 0),
+                ),
+              );
+            },
           ),
           _ => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextField(
-                controller: _hourMinuteCtl,
-                decoration: InputDecoration(
-                  labelText: l10n.automationsTime,
-                  hintText: '09:00',
-                ),
-                keyboardType: TextInputType.datetime,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9:]')),
-                ],
-                onChanged: (value) {
+              AppFormField<String>(
+                id: 'scheduleHourMinute',
+                initialValue: draft.hourMinute,
+                label: Text(l10n.automationsTime),
+                layoutStyle: inline,
+                labelWidth: widget.labelWidth,
+                validator: (value) {
                   try {
-                    parseHourMinute(value);
-                    _emit(draft.copyWith(hourMinute: value));
+                    parseHourMinute(value ?? '');
+                    return null;
                   } on Object {
-                    // Keep typing; validation happens on save.
+                    return l10n.automationsInvalidTime;
                   }
+                },
+                builder: (state) {
+                  return TextField(
+                    controller: _hourMinuteCtl,
+                    focusNode: state.focusNode,
+                    keyboardType: TextInputType.datetime,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9:]')),
+                    ],
+                    onChanged: (value) {
+                      state.didChange(value);
+                      try {
+                        parseHourMinute(value);
+                        _emit(draft.copyWith(hourMinute: value));
+                      } on Object {
+                        // Keep typing; field validator runs on save.
+                      }
+                    },
+                    decoration: InputDecoration(
+                      hintText: '09:00',
+                      errorText: state.hasError ? '' : null,
+                      errorStyle: const TextStyle(height: 0, fontSize: 0),
+                    ),
+                  );
                 },
               ),
               if (draft.preset == AutomationSchedulePreset.weekly) ...[
                 const SizedBox(height: 12),
-                AppDropdownField<int>(
-                  items: const [
-                    DateTime.monday,
-                    DateTime.tuesday,
-                    DateTime.wednesday,
-                    DateTime.thursday,
-                    DateTime.friday,
-                    DateTime.saturday,
-                    DateTime.sunday,
-                  ],
-                  initialItem: draft.dayOfWeek ?? DateTime.monday,
-                  decoration: AppDropdownDecorations.themed(context),
-                  itemLabel: (d) => _dayOfWeekLabel(l10n, d),
-                  onChanged: (value) {
-                    if (value == null) return;
-                    _emit(draft.copyWith(dayOfWeek: value));
+                AppFormField<int>(
+                  id: 'scheduleDayOfWeek',
+                  initialValue: draft.dayOfWeek ?? DateTime.monday,
+                  label: Text(l10n.automationsScheduleWeekly),
+                  layoutStyle: inline,
+                  labelWidth: widget.labelWidth,
+                  builder: (state) {
+                    return AppDropdownField<int>(
+                      items: const [
+                        DateTime.monday,
+                        DateTime.tuesday,
+                        DateTime.wednesday,
+                        DateTime.thursday,
+                        DateTime.friday,
+                        DateTime.saturday,
+                        DateTime.sunday,
+                      ],
+                      initialItem: state.value ?? draft.dayOfWeek ?? DateTime.monday,
+                      decoration: AppDropdownDecorations.themed(context),
+                      itemLabel: (d) => _dayOfWeekLabel(l10n, d),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        state.didChange(value);
+                        _emit(draft.copyWith(dayOfWeek: value));
+                      },
+                    );
                   },
                 ),
               ],
@@ -259,28 +322,6 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
           ),
         },
       ],
-    );
-  }
-}
-
-class _MinutePicker extends StatelessWidget {
-  const _MinutePicker({required this.minute, required this.onChanged});
-
-  final int minute;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return AppDropdownField<int>(
-      items: List<int>.generate(60, (i) => i),
-      initialItem: minute.clamp(0, 59),
-      decoration: AppDropdownDecorations.themed(context),
-      itemLabel: (m) => l10n.automationsScheduleSummaryHourly(m),
-      onChanged: (value) {
-        if (value == null) return;
-        onChanged(value);
-      },
     );
   }
 }

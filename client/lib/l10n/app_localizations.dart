@@ -9726,7 +9726,31 @@ abstract class AppLocalizations {
   /// **'Scheduled message · {sessionId}'**
   String automationsScopeScheduledMessage(String sessionId);
 
-  /// Label for workspace automation launch-profile picker
+  /// Simple vs team launch mode for automation editor
+  ///
+  /// In en, this message translates to:
+  /// **'Conversation mode'**
+  String get automationsLaunchMode;
+
+  /// Workspace project folder for launch-prompt automations
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get automationsLaunchProject;
+
+  /// Git worktree cwd for launch-prompt automations
+  ///
+  /// In en, this message translates to:
+  /// **'Worktree'**
+  String get automationsLaunchWorktree;
+
+  /// Session permission level for launch-prompt automations
+  ///
+  /// In en, this message translates to:
+  /// **'Permissions'**
+  String get automationsPermissions;
+
+  /// Deprecated — use automationsLaunchMode
   ///
   /// In en, this message translates to:
   /// **'Launch identity'**

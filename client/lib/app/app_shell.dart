@@ -878,9 +878,6 @@ Future<AppShell> buildAppShell({
       final profile = teamCubit.state.byId(teamId);
       return profile is TeamProfile ? profile : null;
     },
-    launchProfileKindById: (profileId) {
-      return teamCubit.state.byId(profileId)?.kind;
-    },
     resolveCliPreset: (presetId) => cliPresetsCubit.state.presets
         .where((preset) => preset.id == presetId.trim())
         .firstOrNull,

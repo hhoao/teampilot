@@ -18,8 +18,7 @@ import 'app_storage.dart';
 ///   config/             # workspace-level CLI overrides
 ///     mcp/servers.json
 ///     {tool}/plugins/
-///   automations/               # per launch-identity tab scope
-///     {launchProfileId}.json   # rules + run history for one workspace tab
+///   automations/automations.json  # rules + run history for workspace
 ///   sessions/{sessionId}/
 ///     session.json
 ///     bus/mail/{memberId}.jsonl
@@ -31,8 +30,6 @@ import 'app_storage.dart';
 ///     cursor/init.json
 ///     cursor/projects/{slug}/
 ///     {memberId}/cursor/home/
-///
-/// {teampilotRoot}/automations/catalog.json  # global index for home sidebar
 /// ```
 class WorkspaceLayout {
   WorkspaceLayout({required this.teampilotRoot, Filesystem? fs})
@@ -73,21 +70,11 @@ class WorkspaceLayout {
   String workspaceConfigToolDir(String workspaceId, String tool) =>
       _ctx.join(workspaceConfigDir(workspaceId), tool.trim());
 
-  String automationsRootDir() => _ctx.join(teampilotRoot, 'automations');
-
-  String automationsCatalogFile() =>
-      _ctx.join(automationsRootDir(), 'catalog.json');
-
   String workspaceAutomationsDir(String workspaceId) =>
       _ctx.join(workspaceDir(workspaceId), 'automations');
 
-  String workspaceTabAutomationsFile(
-    String workspaceId,
-    String launchProfileId,
-  ) => _ctx.join(
-    workspaceAutomationsDir(workspaceId),
-    '${launchProfileId.trim()}.json',
-  );
+  String workspaceAutomationsFile(String workspaceId) =>
+      _ctx.join(workspaceAutomationsDir(workspaceId), 'automations.json');
 
   String sessionsDir(String workspaceId) =>
       _ctx.join(workspaceDir(workspaceId), 'sessions');

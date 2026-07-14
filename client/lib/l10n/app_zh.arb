@@ -1997,6 +1997,10 @@
   "automationsScopeTeam": "团队 · {team} · {member}",
   "automationsScopeTeamMember": "团队 · {member}",
   "automationsScopeScheduledMessage": "定时消息 · {sessionId}",
+  "automationsLaunchMode": "对话模式",
+  "automationsLaunchProject": "项目",
+  "automationsLaunchWorktree": "Worktree",
+  "automationsPermissions": "权限",
   "automationsLaunchProfile": "启动身份",
 
   "shortcutsWorkspaceNextTab": "下一个工作区标签",

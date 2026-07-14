@@ -1,4 +1,3 @@
-import 'package:teampilot/models/automation_tab_scope.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/automation.dart';
 import 'package:teampilot/services/automation/automation_launch_session_binding.dart';
@@ -9,8 +8,8 @@ Automation _launchPrompt({bool reuseSession = false, String? sessionId}) {
     name: 'Daily',
     action: AutomationAction.launchPrompt,
     workspaceId: 'ws1',
-    launchProfileId: AutomationTabScope.simpleLaunchProfileId,
-    cliPresetId: 'preset-1',
+    isPersonal: true,
+    presetId: 'preset-1',
     message: 'ping',
     reuseSession: reuseSession,
     sessionId: sessionId,
@@ -53,7 +52,8 @@ void main() {
       name: 'Reset',
       action: AutomationAction.scheduledMessage,
       workspaceId: 'ws1',
-      launchProfileId: 'team-1',
+      isPersonal: false,
+      teamId: 'team-1',
       sessionId: 'sess-1',
       message: '/clear',
       preset: AutomationSchedulePreset.hourly,

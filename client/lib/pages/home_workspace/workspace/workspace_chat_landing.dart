@@ -424,7 +424,6 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   Future<void> _loadDraft() async {
     final draft = await resolveLandingDraft(
       workspaceId: widget.workspace.workspaceId,
-      workspace: widget.workspace,
     );
     if (!mounted) return;
     setState(() => _applyDraft(draft));

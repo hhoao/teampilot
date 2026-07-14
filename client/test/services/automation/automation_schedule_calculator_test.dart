@@ -1,7 +1,5 @@
-import 'package:teampilot/models/automation_tab_scope.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/automation.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/automation/automation_schedule_calculator.dart';
 
 Automation _automation({
@@ -16,8 +14,8 @@ Automation _automation({
     name: 'Test',
     action: AutomationAction.launchPrompt,
     workspaceId: 'ws1',
-    launchProfileId: AutomationTabScope.simpleLaunchProfileId,
-    cli: CliTool.claude,
+    isPersonal: true,
+    presetId: 'preset-1',
     message: 'hi',
     preset: preset,
     minute: minute,

@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
 
-import 'automation_tab_scope.dart';
-import 'team_config.dart';
+import 'app_session.dart';
+import 'automation_session_match.dart';
+import 'landing_launch_context.dart';
 
 enum AutomationAction { scheduledMessage, launchPrompt }
 
@@ -54,12 +55,16 @@ class Automation {
     required this.name,
     required this.action,
     required this.workspaceId,
-    required this.launchProfileId,
+    this.isPersonal = true,
+    this.presetId,
+    this.teamId,
+    this.expertKey,
+    this.projectFolderPath,
+    this.workingDirectoryPath,
+    this.dangerouslySkipPermissions = false,
     this.sessionId,
     this.targetMemberId = 'team-lead',
     required this.message,
-    this.cli,
-    this.cliPresetId,
     this.reuseSession = false,
     required this.preset,
     this.customCron,
@@ -88,12 +93,17 @@ class Automation {
         field: 'action',
       ),
       workspaceId: json['workspaceId'] as String? ?? '',
-      launchProfileId: json['profile'] as String? ?? '',
+      isPersonal: json['isPersonal'] as bool? ?? true,
+      presetId: json['presetId'] as String?,
+      teamId: json['teamId'] as String?,
+      expertKey: json['expertKey'] as String?,
+      projectFolderPath: json['projectFolderPath'] as String?,
+      workingDirectoryPath: json['workingDirectoryPath'] as String?,
+      dangerouslySkipPermissions:
+          json['dangerouslySkipPermissions'] as bool? ?? false,
       sessionId: json['sessionId'] as String?,
       targetMemberId: json['targetMemberId'] as String? ?? 'team-lead',
       message: json['message'] as String? ?? '',
-      cli: json['cli'] == null ? null : CliTool.parse(json['cli']),
-      cliPresetId: json['cliPresetId'] as String?,
       reuseSession: json['reuseSession'] as bool? ?? false,
       preset: _requireEnum(
         AutomationSchedulePreset.values,
@@ -122,14 +132,31 @@ class Automation {
   final String name;
   final AutomationAction action;
   final String workspaceId;
-  final String launchProfileId;
+
+  /// Simple (unteamed) vs team launch — mirrors [LandingLaunchContext.isPersonal].
+  final bool isPersonal;
+
+  /// Global CLI preset when [isPersonal].
+  final String? presetId;
+
+  /// Team identity when not [isPersonal].
+  final String? teamId;
+
+  /// Expert Hub key when [isPersonal].
+  final String? expertKey;
+
+  /// Workspace folder (git project root) for launch-prompt sessions.
+  final String? projectFolderPath;
+
+  /// Launch cwd under [projectFolderPath] (worktree path when applicable).
+  final String? workingDirectoryPath;
+
+  /// Session-level full-access permission for new launch-prompt sessions.
+  final bool dangerouslySkipPermissions;
+
   final String? sessionId;
   final String targetMemberId;
   final String message;
-  final CliTool? cli;
-
-  /// Personal [launchPrompt]: global CLI preset id (provider/model/effort).
-  final String? cliPresetId;
   final bool reuseSession;
   final AutomationSchedulePreset preset;
   final String? customCron;
@@ -151,15 +178,22 @@ class Automation {
 
   bool get isLaunchPrompt => action == AutomationAction.launchPrompt;
 
-  /// When set, automation stops after [runCount] reaches [maxRunCount].
   bool get hasRunLimit => maxRunCount != null && maxRunCount! > 0;
 
   bool get isRunLimitReached => hasRunLimit && runCount >= maxRunCount!;
 
-  AutomationTabScope get tabScope => AutomationTabScope(
-    workspaceId: workspaceId,
-    launchProfileId: launchProfileId,
+  LandingLaunchContext get launchContext => LandingLaunchContext(
+    isPersonal: isPersonal,
+    presetId: presetId,
+    teamId: teamId,
+    projectFolderPath: projectFolderPath,
+    expertKey: expertKey,
+    workingDirectoryPath: workingDirectoryPath,
+    dangerouslySkipPermissions: dangerouslySkipPermissions,
   );
+
+  bool matchesSession(AppSession session) =>
+      automationMatchesSession(this, session);
 
   void validate() {
     if (id.trim().isEmpty) {
@@ -171,9 +205,6 @@ class Automation {
     if (workspaceId.trim().isEmpty) {
       throw ArgumentError('Automation workspaceId is required');
     }
-    if (launchProfileId.trim().isEmpty) {
-      throw ArgumentError('Automation launchProfileId is required');
-    }
     if (message.trim().isEmpty) {
       throw ArgumentError('Automation message is required');
     }
@@ -182,14 +213,22 @@ class Automation {
         if (sessionId == null || sessionId!.trim().isEmpty) {
           throw ArgumentError('scheduledMessage requires sessionId');
         }
-        if (cli != null) {
-          throw ArgumentError('scheduledMessage must not set cli');
-        }
         if (reuseSession) {
           throw ArgumentError('scheduledMessage must not reuse session');
         }
       case AutomationAction.launchPrompt:
-        break;
+        if (isPersonal) {
+          if (presetId == null || presetId!.trim().isEmpty) {
+            throw ArgumentError('launchPrompt simple mode requires presetId');
+          }
+        } else {
+          if (teamId == null || teamId!.trim().isEmpty) {
+            throw ArgumentError('launchPrompt team mode requires teamId');
+          }
+          if (targetMemberId.trim().isEmpty) {
+            throw ArgumentError('launchPrompt team mode requires targetMemberId');
+          }
+        }
     }
     if (preset == AutomationSchedulePreset.custom &&
         (customCron == null || customCron!.trim().isEmpty)) {
@@ -218,15 +257,22 @@ class Automation {
     String? name,
     AutomationAction? action,
     String? workspaceId,
-    String? launchProfileId,
+    bool? isPersonal,
+    String? presetId,
+    bool clearPresetId = false,
+    String? teamId,
+    bool clearTeamId = false,
+    String? expertKey,
+    bool clearExpertKey = false,
+    String? projectFolderPath,
+    bool clearProjectFolderPath = false,
+    String? workingDirectoryPath,
+    bool clearWorkingDirectoryPath = false,
+    bool? dangerouslySkipPermissions,
     String? sessionId,
     bool clearSessionId = false,
     String? targetMemberId,
     String? message,
-    CliTool? cli,
-    bool clearCli = false,
-    String? cliPresetId,
-    bool clearCliPresetId = false,
     bool? reuseSession,
     AutomationSchedulePreset? preset,
     String? customCron,
@@ -254,12 +300,21 @@ class Automation {
       name: name ?? this.name,
       action: action ?? this.action,
       workspaceId: workspaceId ?? this.workspaceId,
-      launchProfileId: launchProfileId ?? this.launchProfileId,
+      isPersonal: isPersonal ?? this.isPersonal,
+      presetId: clearPresetId ? null : (presetId ?? this.presetId),
+      teamId: clearTeamId ? null : (teamId ?? this.teamId),
+      expertKey: clearExpertKey ? null : (expertKey ?? this.expertKey),
+      projectFolderPath: clearProjectFolderPath
+          ? null
+          : (projectFolderPath ?? this.projectFolderPath),
+      workingDirectoryPath: clearWorkingDirectoryPath
+          ? null
+          : (workingDirectoryPath ?? this.workingDirectoryPath),
+      dangerouslySkipPermissions:
+          dangerouslySkipPermissions ?? this.dangerouslySkipPermissions,
       sessionId: clearSessionId ? null : (sessionId ?? this.sessionId),
       targetMemberId: targetMemberId ?? this.targetMemberId,
       message: message ?? this.message,
-      cli: clearCli ? null : (cli ?? this.cli),
-      cliPresetId: clearCliPresetId ? null : (cliPresetId ?? this.cliPresetId),
       reuseSession: reuseSession ?? this.reuseSession,
       preset: preset ?? this.preset,
       customCron: clearCustomCron ? null : (customCron ?? this.customCron),
@@ -286,14 +341,25 @@ class Automation {
       'name': name,
       'action': action.name,
       'workspaceId': workspaceId,
-      'profile': launchProfileId,
+      if (isLaunchPrompt) ...{
+        'isPersonal': isPersonal,
+        if (isPersonal) ...{
+          if (presetId != null && presetId!.isNotEmpty) 'presetId': presetId,
+          if (expertKey != null && expertKey!.isNotEmpty)
+            'expertKey': expertKey,
+        } else ...{
+          if (teamId != null && teamId!.isNotEmpty) 'teamId': teamId,
+          'targetMemberId': targetMemberId,
+        },
+        if (dangerouslySkipPermissions) 'dangerouslySkipPermissions': true,
+        if (reuseSession) 'reuseSession': reuseSession,
+        if (projectFolderPath != null && projectFolderPath!.isNotEmpty)
+          'projectFolderPath': projectFolderPath,
+        if (workingDirectoryPath != null && workingDirectoryPath!.isNotEmpty)
+          'workingDirectoryPath': workingDirectoryPath,
+      },
       if (sessionId != null && sessionId!.isNotEmpty) 'sessionId': sessionId,
-      if (isLaunchPrompt) 'targetMemberId': targetMemberId,
       'message': message,
-      if (cli != null) 'cli': cli!.value,
-      if (cliPresetId != null && cliPresetId!.isNotEmpty)
-        'cliPresetId': cliPresetId,
-      if (reuseSession) 'reuseSession': reuseSession,
       'preset': preset.name,
       if (customCron != null && customCron!.isNotEmpty)
         'customCron': customCron,
@@ -322,12 +388,16 @@ class Automation {
             name == other.name &&
             action == other.action &&
             workspaceId == other.workspaceId &&
-            launchProfileId == other.launchProfileId &&
+            isPersonal == other.isPersonal &&
+            presetId == other.presetId &&
+            teamId == other.teamId &&
+            expertKey == other.expertKey &&
+            projectFolderPath == other.projectFolderPath &&
+            workingDirectoryPath == other.workingDirectoryPath &&
+            dangerouslySkipPermissions == other.dangerouslySkipPermissions &&
             sessionId == other.sessionId &&
             targetMemberId == other.targetMemberId &&
             message == other.message &&
-            cli == other.cli &&
-            cliPresetId == other.cliPresetId &&
             reuseSession == other.reuseSession &&
             preset == other.preset &&
             customCron == other.customCron &&
@@ -352,12 +422,16 @@ class Automation {
     name,
     action,
     workspaceId,
-    launchProfileId,
+    isPersonal,
+    presetId,
+    teamId,
+    expertKey,
+    projectFolderPath,
+    workingDirectoryPath,
+    dangerouslySkipPermissions,
     sessionId,
     targetMemberId,
     message,
-    cli,
-    cliPresetId,
     reuseSession,
     preset,
     customCron,
