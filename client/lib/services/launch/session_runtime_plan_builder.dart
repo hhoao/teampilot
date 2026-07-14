@@ -3,9 +3,9 @@ import '../../models/simple_launch_identity.dart';
 import '../../models/team_config.dart';
 import '../../models/team_roster_slot.dart';
 import '../../repositories/workspace_project_config_repository.dart';
-import '../expert_hub/builtin_member_templates.dart';
 import '../expert_hub/expert_capability_pack.dart';
 import '../expert_hub/expert_capability_resolver.dart';
+import '../expert_hub/expert_landing_preflight.dart';
 import 'layered_config_bundle.dart';
 import 'session_runtime_plan.dart';
 
@@ -78,7 +78,7 @@ class SessionRuntimePlanBuilder {
     SimpleLaunchIdentity? identity,
     String? expertKey,
   }) async {
-    final resolvedKey = _normalizeExpertKey(
+    final resolvedKey = resolveLandingSessionExpertKey(
       identity?.expertKey.trim().isNotEmpty == true
           ? identity!.expertKey
           : expertKey,
@@ -119,7 +119,7 @@ class SessionRuntimePlanBuilder {
     String? presetId,
     TeamMemberConfig? member,
   }) async {
-    final resolvedKey = _normalizeExpertKey(slot.expertKey);
+    final resolvedKey = resolveLandingSessionExpertKey(slot.expertKey);
     final workspaceBundle = await _loadWorkspaceBundle(workspaceId);
     final pack = await _resolvePackOrThrow(
       resolvedKey,
@@ -146,11 +146,6 @@ class SessionRuntimePlanBuilder {
       runtimeBundle: runtimeBundle,
       member: member ?? pack.member,
     );
-  }
-
-  String _normalizeExpertKey(String? expertKey) {
-    final trimmed = expertKey?.trim() ?? '';
-    return trimmed.isEmpty ? kBuiltinDefaultExpertKey : trimmed;
   }
 
   Future<ExpertCapabilityPack> _resolvePackOrThrow(
