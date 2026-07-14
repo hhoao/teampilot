@@ -236,11 +236,12 @@ Future<void> showExpertApplyPickerSheet(
 Dialog body (`ExpertLandingPickerDialog`):
 - `AppDialog` maxWidth ~960, maxHeight `MediaQuery.sizeOf(context).height * 0.85`.
 - Header: `AppDialogHeader(title: l10n.expertHubTitle)`.
-- Expanded child: if `_detail == null` → `ExpertHubBody(showCreate: false, selectedKey: …, inset: 16, onOpen: set detail)`; else → `ExpertHubDetailOverlay(pickerMode: true, inset: 16, onBack: clear detail, onConfirm: …, onAddToTeam: …, onLaunchInWorkspace: …)`.
+- **Must** wrap the list/detail body in `BlocConsumer<ExpertHubCubit, ExpertHubState>` (mirror `ExpertHubPage`): `ExpertHubBody` does **not** subscribe to the cubit itself — without a parent `watch`/`BlocBuilder`, load/search/filter/favorites/`adding` will not rebuild. Also toast on `state.errorMessage` like the page.
+- Expanded child: if `_detail == null` → `ExpertHubBody(showCreate: false, selectedKey: …, inset: 16, onOpen: set detail)`; else → `ExpertHubDetailOverlay(pickerMode: true, inset: 16, favorited/adding/installedDepIds from state, onBack, onToggleFavorite, onConfirm, onAddToTeam, onLaunchInWorkspace)` — wire the same detail fields `ExpertHubPage` passes, not only picker-mode extras.
 - On init: load cubit if needed (same as old sheet).
 - **Confirm:** if `onApply != null` → `onApply(member); Navigator.pop()`; else `Navigator.pop(member.key)`.
 - **Add to team:** `await expertHubAddToTeam(context, cubit, member)`; on success `setState(() => _detail = null)` (dialog stays open). Use try/catch for `MemberAddException` + toast like `ExpertHubPage` if the exported helper does not already toast (today’s helper toasts on success; page also catches failures — mirror page error toast).
-- **Launch:** capture `navigator` / caller: `Navigator.of(context).pop()` first (null / no apply), then `expertHubLaunchInWorkspace(parentContext, member)` using the **outer** context passed into `show*` (store `BuildContext` from the show function’s caller via a callback, or `Navigator.of(context, rootNavigator: true).pop` then call launch with the context that opened the dialog — pattern: in `showExpertLandingPickerSheet`, pass `launchContext: context` into the dialog widget).
+- **Launch:** capture outer context in `show*`: pass `hostContext` into the dialog. On Launch: `Navigator.of(dialogContext).pop()` first (null / no apply), then `expertHubLaunchInWorkspace(hostContext, member)` — never use the dismissed dialog’s context after pop.
 - Wrap with `PopScope(canPop: _detail == null, onPopInvokedWithResult: …)` so Android back clears detail first.
 
 Remove old list-tile sheet UI / recent-only sections (hub body already covers favorites/filters). Keep “browse all” footer **out** — user is already in the picker; deep-link to full Expert Hub page is optional YAGNI (omit unless trivial TextButton).
