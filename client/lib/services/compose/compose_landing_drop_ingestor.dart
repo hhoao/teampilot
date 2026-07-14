@@ -1,8 +1,8 @@
 import '../workspace_dnd/workspace_drop_target.dart';
 import '../workspace_dnd/workspace_file_ref.dart';
-import 'compose_image_attachment.dart';
+import 'compose_file_attach.dart';
 
-/// Landing compose drop target: references image files as `@` paths.
+/// Landing compose drop target: inserts `@` path references (any file type).
 class ComposeLandingDropIngestor implements WorkspaceDropTarget {
   ComposeLandingDropIngestor({
     required this.workspaceRoot,
@@ -26,7 +26,7 @@ class ComposeLandingDropIngestor implements WorkspaceDropTarget {
         skipped += 1;
         continue;
       }
-      final reference = await resolveComposeImageReference(
+      final reference = await resolveComposeFileReference(
         absolutePath: ref.nativePath,
         workspaceRoot: workspaceRoot,
       );
