@@ -45,7 +45,9 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
   static const _pageAnimationDuration = Duration(milliseconds: 300);
   static const _maxPageViewportHeight = 520.0;
   static const _minPageViewportHeight = 280.0;
+  /// Gap + footer buttons. Vertical page padding is subtracted separately.
   static const _footerReserve = 96.0;
+  static const _pageVerticalPadding = 16.0;
 
   late final List<OnboardingStepKind> _steps;
   late final PageController _pageController;
@@ -113,10 +115,14 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
+            // Padding sits inside the LayoutBuilder, so reserve it when
+            // sizing the pinned PageView or the footer row overflows.
             final viewportHeight = math
                 .min(
                   _maxPageViewportHeight,
-                  constraints.maxHeight - _footerReserve,
+                  constraints.maxHeight -
+                      _footerReserve -
+                      (_pageVerticalPadding * 2),
                 )
                 .clamp(_minPageViewportHeight, _maxPageViewportHeight);
 
@@ -128,7 +134,7 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 24,
-                      vertical: 16,
+                      vertical: _pageVerticalPadding,
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,

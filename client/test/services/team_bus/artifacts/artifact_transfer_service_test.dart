@@ -86,17 +86,12 @@ void main() {
     test('over-cap transfer throws', () async {
       final f = _Fixture(maxBytes: 8);
       await f.seedSource(List<int>.filled(32, 1));
-      await f.service.publish(
-        publisherMemberId: 'A',
-        path: '/work/out.bin',
-        name: 'big',
-      );
-
+      // publish rejects when the backend reports a known size over the cap
       expect(
-        () => f.service.fetch(
-          fetcherMemberId: 'B',
+        () => f.service.publish(
+          publisherMemberId: 'A',
+          path: '/work/out.bin',
           name: 'big',
-          destPath: 'big.bin',
         ),
         throwsA(isA<ArtifactTooLargeException>()),
       );

@@ -68,5 +68,6 @@ class _FixedGitLocator extends CliToolLocator {
   Future<String?> locate({
     ProcessRunner runner = cliToolDefaultProcessRun,
     bool? isWindowsOverride,
+    bool includeShellFallback = true,
   }) async => path;
 }
