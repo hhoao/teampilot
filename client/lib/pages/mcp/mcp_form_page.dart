@@ -246,8 +246,8 @@ class _McpFormPageState extends State<McpFormPage> {
                         const TextStyle();
                     return AppTextarea(
                       controller: _descriptionCtrl,
-                      minHeight: appTextareaHeightForLines(bodyStyle, lines: 1),
-                      maxHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
+                      minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
+                      maxHeight: appTextareaHeightForLines(bodyStyle, lines: 4),
                       decoration: InputDecoration(
                         labelText: l10n.mcpFormDescriptionLabel,
                         hintText: l10n.mcpFormDescriptionHint,

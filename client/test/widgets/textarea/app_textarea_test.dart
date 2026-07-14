@@ -42,6 +42,20 @@ void main() {
     expect(field.enabled, isFalse);
   });
 
+  testWidgets('expands and wraps — never maxLines: 1', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: themeWithTightInput(),
+        home: const Scaffold(body: AppTextarea(minHeight: 80)),
+      ),
+    );
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.expands, isTrue);
+    expect(field.maxLines, isNull);
+    expect(field.minLines, isNull);
+    expect(field.keyboardType, TextInputType.multiline);
+  });
+
   testWidgets('decoration clears single-line tight height', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

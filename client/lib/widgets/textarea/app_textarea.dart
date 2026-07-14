@@ -75,6 +75,10 @@ InputDecoration appMultilineInputDecoration(
 /// Material [TextField] wrapped in [AppTextareaShell] with shadcn-like chrome:
 /// soft border, focus ring, muted placeholder, fixed viewport + drag resize.
 ///
+/// The field uses [TextField.expands] inside the shell so text **wraps** and
+/// scrolls vertically (unlike equal `minLines`/`maxLines`, which becomes a
+/// single-line input when the count is 1).
+///
 /// [minHeight] / [maxHeight] are **outer** shell heights including padding
 /// and outline borders. Prefer [appTextareaHeightForLines] at call sites.
 /// Default [minHeight] is 80 (shadcn / ShadTextarea).
@@ -269,7 +273,10 @@ class _AppTextareaState extends State<AppTextarea> {
       textStyle: textStyle,
       verticalChrome: appTextareaVerticalChrome(),
       focusNode: _focusNode,
-      builder: (context, lineCount) {
+      // Fill the shell with an expanding multiline field so text wraps and
+      // scrolls vertically. Do NOT use equal minLines/maxLines — when that
+      // collapses to 1, Flutter becomes a single-line field (no wrap).
+      builder: (context, _) {
         return AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           curve: Curves.easeOut,
@@ -346,8 +353,9 @@ class _AppTextareaState extends State<AppTextarea> {
                 magnifierConfiguration: widget.magnifierConfiguration,
                 inputFormatters: widget.inputFormatters,
                 keyboardType: TextInputType.multiline,
-                minLines: lineCount,
-                maxLines: lineCount,
+                expands: true,
+                minLines: null,
+                maxLines: null,
               ),
             ),
           ),

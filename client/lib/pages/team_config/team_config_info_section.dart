@@ -174,8 +174,8 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                       return AppTextarea(
                         controller: _descCtl,
                         focusNode: _descFocus,
-                        minHeight: appTextareaHeightForLines(bodyStyle, lines: 1),
-                        maxHeight: appTextareaHeightForLines(bodyStyle, lines: 3),
+                        minHeight: appTextareaHeightForLines(bodyStyle, lines: 3),
+                        maxHeight: appTextareaHeightForLines(bodyStyle, lines: 8),
                         decoration: const InputDecoration(),
                         onChanged: (_) => _schedulePersist(),
                       );

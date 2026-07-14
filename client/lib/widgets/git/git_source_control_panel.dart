@@ -714,8 +714,8 @@ class _CommitBox extends StatelessWidget {
                       const TextStyle();
                   return AppTextarea(
                     controller: controller,
-                    minHeight: appTextareaHeightForLines(bodyStyle, lines: 1),
-                    maxHeight: appTextareaHeightForLines(bodyStyle, lines: 4),
+                    minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
+                    maxHeight: appTextareaHeightForLines(bodyStyle, lines: 6),
                     enabled: !generating,
                     decoration:
                         InputDecoration(hintText: hint, isDense: true),
