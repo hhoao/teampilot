@@ -71,7 +71,7 @@ class _WorkspaceBottomDockState extends State<WorkspaceBottomDock> {
 
   WorkspaceDockTab? _active;
   Set<String> _seenSessionIds = {};
-  StreamSubscription<String>? _uiIntentSub;
+  StreamSubscription<RunUiIntent>? _uiIntentSub;
   RunCubit? _subscribedCubit;
 
   WorkspaceTerminalRegistry get _registry =>
@@ -324,6 +324,10 @@ class _WorkspaceBottomDockState extends State<WorkspaceBottomDock> {
                           workingDirectory: widget.workingDirectory,
                           holdHandle: widget.holdHandle,
                           showChrome: false,
+                          activeEntryId: switch (_active) {
+                            WorkspaceDockShellTab(:final entryId) => entryId,
+                            _ => null,
+                          },
                           onRequestNewTerminal: () =>
                               unawaited(_showPlusMenu()),
                         ),
@@ -450,22 +454,22 @@ class _DockHeader extends StatelessWidget {
                       accentColor: cs.primary,
                       icon: Icons.play_arrow_rounded,
                     ),
+                  KeyedSubtree(
+                    key: plusKey,
+                    child: AppIconButton(
+                      icon: Icons.add,
+                      color: muted,
+                      size: AppIconButton.kCompactSize,
+                      tooltip: newSessionTooltip,
+                      onTap: onPlus,
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
-          KeyedSubtree(
-            key: plusKey,
-            child: AppIconButton(
-              icon: Icons.add,
-              color: muted,
-              size: AppIconButton.kCompactSize,
-              tooltip: newSessionTooltip,
-              onTap: onPlus,
-            ),
-          ),
           AppIconButton(
-            icon: Icons.keyboard_arrow_down,
+            icon: Icons.remove,
             color: muted,
             size: AppIconButton.kCompactSize,
             tooltip: hideTooltip,

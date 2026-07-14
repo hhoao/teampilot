@@ -20,7 +20,6 @@ import '../services/host/host_interactive_shell.dart';
 import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_connect_coordinator.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
-import '../services/terminal/workspace_terminal_run_service.dart';
 import '../services/terminal/workspace_terminal_session_ops.dart';
 import '../services/workspace/workspace_tools_scope.dart';
 import '../theme/app_text_styles.dart';
@@ -75,6 +74,7 @@ class WorkspaceTerminalPanel extends StatefulWidget {
     this.holdHandle,
     this.showChrome = true,
     this.onRequestNewTerminal,
+    this.activeEntryId,
     super.key,
   });
 
@@ -90,6 +90,9 @@ class WorkspaceTerminalPanel extends StatefulWidget {
 
   /// Empty-launcher CTA; defaults to starting a local shell when null.
   final VoidCallback? onRequestNewTerminal;
+
+  /// When set (unified dock), body follows this entry instead of [group.activeId].
+  final String? activeEntryId;
 
   @override
   State<WorkspaceTerminalPanel> createState() => _WorkspaceTerminalPanelState();
@@ -179,7 +182,13 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     super.dispose();
   }
 
-  WorkspaceTerminalEntry? get _activeEntry => _group.activeEntry;
+  WorkspaceTerminalEntry? get _activeEntry {
+    final forced = widget.activeEntryId?.trim();
+    if (forced != null && forced.isNotEmpty) {
+      return _group.entryById(forced);
+    }
+    return _group.activeEntry;
+  }
 
   WorkspaceTerminalSessionSpec _defaultSpec(String cwd) =>
       defaultSessionSpecFor(
@@ -304,18 +313,6 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
         entry.cwd.trim().isNotEmpty &&
         !entry.session.isDisposed) {
       unawaited(_runConnect(entry));
-    }
-    setState(() {});
-  }
-
-  void _closeEntry(String id) {
-    context.read<WorkspaceTerminalRunService>().handleEntryClosed(id);
-    final nowEmpty = _group.removeEntry(id);
-    if (nowEmpty) {
-      if (mounted) {
-        context.read<LayoutCubit>().setWorkspaceTerminalVisible(false);
-      }
-      return;
     }
     setState(() {});
   }
@@ -452,20 +449,6 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       default:
         break;
     }
-  }
-
-  void _closePanel() {
-    _coordinator?.beginAllTransactions();
-    context.read<LayoutCubit>().setWorkspaceTerminalVisible(false);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _coordinator?.endAllTransactions(flush: true);
-    });
-  }
-
-  void _onMenuSessionSelected(WorkspaceTerminalSessionSpec spec) {
-    final dir = widget.workingDirectory.trim();
-    if (dir.isEmpty) return;
-    unawaited(_addEntry(cwd: dir, spec: spec, select: true));
   }
 
   void _startDefaultTerminal() {

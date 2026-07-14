@@ -3,28 +3,21 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/chat_cubit.dart';
-import '../../cubits/session_preferences_cubit.dart';
-import '../../cubits/shortcut_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
 import '../../repositories/session_repository.dart';
-import '../../utils/team_member_naming.dart';
-import '../../services/commands/key_chord.dart';
-import '../../services/commands/shortcut_focus.dart';
-import '../../services/commands/terminal_passthrough_shortcuts.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../services/terminal/terminal_uri_opener.dart';
-import '../../services/terminal/terminal_fonts.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workspace_dnd/terminal_drop_ingestor.dart';
 import '../../services/workspace_dnd/workspace_drop_target.dart';
+import '../../utils/team_member_naming.dart';
 import '../../widgets/terminal/parked_send_overlay.dart';
-import '../../widgets/terminal/terminal_with_history_scrollbar.dart';
+import '../../widgets/terminal/teampilot_alacritty_terminal.dart';
 import '../../widgets/terminal_find_bar.dart';
 import '../../widgets/workspace_dnd/external_file_drop_region.dart';
 import '../../widgets/workspace_dnd/workspace_file_drop_region.dart';
@@ -75,118 +68,96 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shortcutCubit = context.watch<ShortcutCubit>();
-    final terminalShortcuts = <ShortcutActivator, Intent>{
-      ...defaultTerminalShortcuts,
-      ...terminalPassthroughShortcutOverlay(
-        effectiveByCommand: shortcutCubit.effective,
-        isMacOS: defaultIsMacOS(),
-      ),
-    };
-    return ShortcutFocus(
-      kind: ShortcutFocusKind.terminal,
-      child: TerminalFindShortcuts(
-        findVisible: findVisible,
-        onToggleFind: () => onFindVisibleChanged(true),
-        onFindNext: () {
-          terminalController.searchNext();
-          onControllerSearchChanged();
-        },
-        onFindPrevious: () {
-          terminalController.searchPrev();
-          onControllerSearchChanged();
-        },
-        onCloseFind: () {
-          terminalController.searchClear();
-          onFindVisibleChanged(false);
-        },
-        child: Stack(
-          children: [
-            ExternalFileDropRegion(
+    return TerminalFindShortcuts(
+      findVisible: findVisible,
+      onToggleFind: () => onFindVisibleChanged(true),
+      onFindNext: () {
+        terminalController.searchNext();
+        onControllerSearchChanged();
+      },
+      onFindPrevious: () {
+        terminalController.searchPrev();
+        onControllerSearchChanged();
+      },
+      onCloseFind: () {
+        terminalController.searchClear();
+        onFindVisibleChanged(false);
+      },
+      child: Stack(
+        children: [
+          ExternalFileDropRegion(
+            target: _dropIngestor(),
+            onOutcome: (outcome) => _showDropOutcome(context, outcome),
+            child: WorkspaceFileDropRegion(
               target: _dropIngestor(),
               onOutcome: (outcome) => _showDropOutcome(context, outcome),
-              child: WorkspaceFileDropRegion(
-                target: _dropIngestor(),
-                onOutcome: (outcome) => _showDropOutcome(context, outcome),
-                child: TerminalWithHistoryScrollbar(
-                  engine: session.engine,
-                  controller: terminalController,
-                  child: TerminalView(
-                    session.engine,
-                    controller: terminalController,
-                    theme: terminalTheme,
-                    backgroundOpacity: 0.98,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 36,
-                      vertical: 16,
+              child: TeampilotAlacrittyTerminal(
+                engine: session.engine,
+                controller: terminalController,
+                theme: terminalTheme,
+                // Chat workbench keeps the wider inset (dock shell uses 8).
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 36,
+                  vertical: 16,
+                ),
+                autofocus: autofocus && !findVisible,
+                linkProviders: session.linkProviders,
+                onPtyResize: session.onTerminalPtyResize,
+                onTapDown: (_, offset) {
+                  if (!HardwareKeyboard.instance.isControlPressed &&
+                      !HardwareKeyboard.instance.isMetaPressed) {
+                    terminalController.clearSelection();
+                  }
+                },
+                onLinkActivate: (uri) {
+                  unawaited(onOpenLink(uri));
+                },
+                onSecondaryTapDown: (details, offset) {
+                  unawaited(
+                    showChatWorkbenchTerminalContextMenu(
+                      context: context,
+                      menuContext: context,
+                      terminalController: terminalController,
+                      globalPosition: details.globalPosition,
+                      engine: session.engine,
+                      cellOffset: offset,
+                      sessionRunning: session.isRunning,
+                      onFindRequested: () => onFindVisibleChanged(true),
+                      onOpenLink: onOpenLink,
+                      onExportScrollback: () =>
+                          exportChatWorkbenchTerminalScrollback(
+                            context,
+                            session.engine,
+                          ),
+                      onDisconnect: onDisconnect,
+                      onRestart: onRestart,
                     ),
-                    textStyle: appTerminalTextStyle(context),
-                    autofocus: autofocus && !findVisible,
-                    shortcuts: terminalShortcuts,
-                    linkProviders: session.linkProviders,
-                    primaryTapActivatesLink: context
-                        .watch<SessionPreferencesCubit>()
-                        .state
-                        .preferences
-                        .terminalLinkClickOpensInApp,
-                    onPtyResize: session.onTerminalPtyResize,
-                    onTapDown: (_, offset) {
-                      if (!HardwareKeyboard.instance.isControlPressed &&
-                          !HardwareKeyboard.instance.isMetaPressed) {
-                        terminalController.clearSelection();
-                      }
-                    },
-                    onLinkActivate: (uri) {
-                      unawaited(onOpenLink(uri));
-                    },
-                    onSecondaryTapDown: (details, offset) {
-                      unawaited(
-                        showChatWorkbenchTerminalContextMenu(
-                          context: context,
-                          menuContext: context,
-                          terminalController: terminalController,
-                          globalPosition: details.globalPosition,
-                          engine: session.engine,
-                          cellOffset: offset,
-                          sessionRunning: session.isRunning,
-                          onFindRequested: () => onFindVisibleChanged(true),
-                          onOpenLink: onOpenLink,
-                          onExportScrollback: () =>
-                              exportChatWorkbenchTerminalScrollback(
-                                context,
-                                session.engine,
-                              ),
-                          onDisconnect: onDisconnect,
-                          onRestart: onRestart,
-                        ),
-                      );
-                    },
-                  ),
-                ),
+                  );
+                },
               ),
             ),
-            if (findVisible)
-              Positioned(
-                left: 8,
-                right: 8,
-                top: 8,
-                child: TerminalFindBar(
-                  engine: session.engine,
-                  controller: terminalController,
-                  searchLabel: context.l10n.terminalFind,
-                  noResultsLabel: context.l10n.terminalFindNoResults,
-                  onClose: () {
-                    terminalController.searchClear();
-                    onFindVisibleChanged(false);
-                  },
-                ),
+          ),
+          if (findVisible)
+            Positioned(
+              left: 8,
+              right: 8,
+              top: 8,
+              child: TerminalFindBar(
+                engine: session.engine,
+                controller: terminalController,
+                searchLabel: context.l10n.terminalFind,
+                noResultsLabel: context.l10n.terminalFindNoResults,
+                onClose: () {
+                  terminalController.searchClear();
+                  onFindVisibleChanged(false);
+                },
               ),
-            ParkedSendOverlay(
-              submissions: session.parkedUserSubmissions,
-              isUnread: session.isUnreadParkedMessage,
             ),
-          ],
-        ),
+          ParkedSendOverlay(
+            submissions: session.parkedUserSubmissions,
+            isUnread: session.isUnreadParkedMessage,
+          ),
+        ],
       ),
     );
   }

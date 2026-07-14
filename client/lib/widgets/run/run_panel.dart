@@ -93,9 +93,17 @@ class _RunPanelState extends State<RunPanel> {
   }
 
   void _onSessions(List<RunSession> sessions) {
-    if (!widget.showChrome) return;
-
     final ids = sessions.map((s) => s.id).toList();
+    if (!widget.showChrome) {
+      final previous = _seenSessionIds.toSet();
+      final removed = previous.difference(ids.toSet());
+      for (final id in removed) {
+        _bridge?.clear(id);
+      }
+      _seenSessionIds = ids;
+      return;
+    }
+
     final previous = _seenSessionIds.toSet();
     final added = ids.where((id) => !previous.contains(id)).toList();
     _seenSessionIds = ids;
