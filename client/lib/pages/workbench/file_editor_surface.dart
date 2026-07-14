@@ -23,6 +23,7 @@ import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/workbench/file_diff_surface_toggle.dart';
 import '../../widgets/workbench/markdown_view_mode_toggle.dart';
+import 'file_editor_image_preview.dart';
 
 /// Center-pane file editor for one path (no inner tab bar).
 class FileEditorSurface extends StatelessWidget {
@@ -38,6 +39,12 @@ class FileEditorSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    if (isImagePreviewPath(path)) {
+      return ColoredBox(
+        color: cs.workspaceCard,
+        child: FileEditorImagePreview(workspaceId: workspaceId, path: path),
+      );
+    }
     return BlocListener<EditorCubit, EditorState>(
       listenWhen: (prev, next) {
         final wasDirty = prev.bucket(workspaceId).isDirty(path);
