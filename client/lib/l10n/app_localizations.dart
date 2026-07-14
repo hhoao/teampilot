@@ -8283,7 +8283,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingStepCli.
   ///
   /// In en, this message translates to:
-  /// **'Claude Code CLI'**
+  /// **'CLI tools'**
   String get onboardingStepCli;
 
   /// No description provided for @onboardingStepProviderImport.
@@ -8319,19 +8319,19 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingSshSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Android runs Claude Code on a remote host over SSH.'**
+  /// **'Android runs AI CLIs on a remote host over SSH.'**
   String get onboardingSshSubtitle;
 
   /// No description provided for @onboardingCliTitle.
   ///
   /// In en, this message translates to:
-  /// **'Detect Claude Code CLI'**
+  /// **'Detect CLI tools'**
   String get onboardingCliTitle;
 
   /// No description provided for @onboardingCliSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'TeamPilot needs the Claude Code executable to start sessions.'**
+  /// **'Locate executables used to launch sessions. Install missing ones, or set a path later in Settings.'**
   String get onboardingCliSubtitle;
 
   /// No description provided for @onboardingCliFound.
@@ -8343,7 +8343,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingCliNotFound.
   ///
   /// In en, this message translates to:
-  /// **'CLI not detected on PATH'**
+  /// **'Not on PATH'**
   String get onboardingCliNotFound;
 
   /// No description provided for @onboardingCliRedetect.
@@ -8361,7 +8361,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingProviderImportSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Scan local CLI configs (Claude, Codex, OpenCode, Cursor, FlashskyAI, and cc-switch) for existing provider settings.'**
+  /// **'Scan local CLI configs for existing provider settings.'**
   String get onboardingProviderImportSubtitle;
 
   /// No description provided for @onboardingProviderImportResults.

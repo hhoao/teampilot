@@ -4575,7 +4575,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingStepSsh => 'SSH';
 
   @override
-  String get onboardingStepCli => 'Claude Code CLI';
+  String get onboardingStepCli => 'CLI tools';
 
   @override
   String get onboardingStepProviderImport => 'Import providers';
@@ -4595,20 +4595,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingSshSubtitle =>
-      'Android runs Claude Code on a remote host over SSH.';
+      'Android runs AI CLIs on a remote host over SSH.';
 
   @override
-  String get onboardingCliTitle => 'Detect Claude Code CLI';
+  String get onboardingCliTitle => 'Detect CLI tools';
 
   @override
   String get onboardingCliSubtitle =>
-      'TeamPilot needs the Claude Code executable to start sessions.';
+      'Locate executables used to launch sessions. Install missing ones, or set a path later in Settings.';
 
   @override
   String get onboardingCliFound => 'CLI found';
 
   @override
-  String get onboardingCliNotFound => 'CLI not detected on PATH';
+  String get onboardingCliNotFound => 'Not on PATH';
 
   @override
   String get onboardingCliRedetect => 'Scan again';
@@ -4618,7 +4618,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingProviderImportSubtitle =>
-      'Scan local CLI configs (Claude, Codex, OpenCode, Cursor, FlashskyAI, and cc-switch) for existing provider settings.';
+      'Scan local CLI configs for existing provider settings.';
 
   @override
   String get onboardingProviderImportResults => 'Import results';

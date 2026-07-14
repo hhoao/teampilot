@@ -2,13 +2,18 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../cubits/app_bootstrap_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
+import '../../cubits/chat_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
+import '../../models/workspace.dart';
 import '../../repositories/app_settings_repository.dart';
 import '../../services/app/onboarding_service.dart';
+import '../../services/team/default_workspace_service.dart';
+import '../../utils/workspace_path_utils.dart';
 import 'onboarding_wizard.dart';
 
 /// App-wide handle for [OnboardingGateState]; wired in [appRouter].
@@ -43,6 +48,27 @@ class OnboardingGateState extends State<OnboardingGate> {
     );
     await settingsRepo.saveHasCompletedOnboarding(true);
     if (!mounted) return;
+
+    // Navigate to the default workspace landing page before dismissing the
+    // wizard so the first frame after onboarding is the compose landing, not
+    // the library home page.
+    final primaryPath = await DefaultWorkspaceService.resolvePrimaryPath();
+    if (mounted) {
+      final chatCubit = context.read<ChatCubit>();
+      Workspace? defaultWorkspace;
+      for (final w in chatCubit.state.workspaces) {
+        if (workspacePathsEqual(w.firstFolderPath, primaryPath)) {
+          defaultWorkspace = w;
+          break;
+        }
+      }
+      if (defaultWorkspace != null) {
+        GoRouter.of(context).go(
+          '/home-v2/workspace/${defaultWorkspace.workspaceId}',
+        );
+      }
+    }
+
     context.read<AppBootstrapCubit>().dismissOnboardingWizard();
     setState(() => _reopenWizard = false);
   }

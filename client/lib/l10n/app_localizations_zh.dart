@@ -4402,7 +4402,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get onboardingStepSsh => 'SSH';
 
   @override
-  String get onboardingStepCli => 'Claude Code CLI';
+  String get onboardingStepCli => 'CLI 工具';
 
   @override
   String get onboardingStepProviderImport => '导入 Provider';
@@ -4420,19 +4420,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get onboardingSshTitle => '配置 SSH 连接';
 
   @override
-  String get onboardingSshSubtitle => 'Android 通过 SSH 在远程主机运行 Claude Code。';
+  String get onboardingSshSubtitle => 'Android 通过 SSH 在远程主机运行 AI CLI。';
 
   @override
-  String get onboardingCliTitle => '检测 Claude Code CLI';
+  String get onboardingCliTitle => '检测 CLI 工具';
 
   @override
-  String get onboardingCliSubtitle => '应用需要 Claude Code 可执行文件才能启动会话。';
+  String get onboardingCliSubtitle => '定位用于启动会话的可执行文件。可安装缺失项，或稍后在设置中指定路径。';
 
   @override
   String get onboardingCliFound => '已找到 CLI';
 
   @override
-  String get onboardingCliNotFound => '未在 PATH 中检测到 CLI';
+  String get onboardingCliNotFound => '未在 PATH 中';
 
   @override
   String get onboardingCliRedetect => '重新检测';
@@ -4441,8 +4441,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get onboardingProviderImportTitle => '导入 CLI Provider';
 
   @override
-  String get onboardingProviderImportSubtitle =>
-      '扫描本机各 CLI 配置（Claude、Codex、OpenCode、Cursor、FlashskyAI 及 cc-switch）中的现有 Provider。';
+  String get onboardingProviderImportSubtitle => '扫描本机各 CLI 配置中的现有 Provider。';
 
   @override
   String get onboardingProviderImportResults => '导入结果';

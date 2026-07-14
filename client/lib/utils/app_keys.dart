@@ -1,7 +1,17 @@
 import 'package:flutter/widgets.dart';
 
+import '../models/team_config.dart';
+
 class AppKeys {
   const AppKeys._();
+
+  /// Path field finder key for [cli] (`{value}-cli-executable-path-field`).
+  static Key cliExecutablePathFieldFor(CliTool cli) =>
+      Key('${cli.value}-cli-executable-path-field');
+
+  /// Install button finder key for [cli] (`{value}-cli-install-button`).
+  static Key cliInstallButtonFor(CliTool cli) =>
+      Key('${cli.value}-cli-install-button');
 
   static const sectionBarChatChip = Key('section-bar-chat-chip');
   static const sectionBarRunsChip = Key('section-bar-runs-chip');

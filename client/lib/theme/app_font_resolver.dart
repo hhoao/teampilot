@@ -123,23 +123,33 @@ abstract final class AppFontResolver {
   static List<String> monoCjkFallback(TargetPlatform platform) {
     return switch (platform) {
       TargetPlatform.macOS => const [
-        ubuntuSansMonoFamily,
-        'PingFang SC',
-        'Heiti SC',
+        'Monaco',
+        'Courier New',
+        'Noto Sans Mono CJK SC',
         'monospace',
       ],
       TargetPlatform.windows => const [
-        ubuntuSansMonoFamily,
-        'Microsoft YaHei',
-        'monospace',
-      ],
-      _ => const [
-        ubuntuSansMonoFamily,
+        'Cascadia Mono',
+        'Courier New',
+        'Courier',
         'Noto Sans Mono CJK SC',
-        'Noto Sans CJK SC',
-        'WenQuanYi Zen Hei Mono',
         'monospace',
       ],
+      TargetPlatform.linux => const [
+        'JetBrains Mono',
+        'Cascadia Mono',
+        'Fira Code',
+        'Hack',
+        'Inconsolata',
+        'Iosevka',
+        'Meslo NF',
+        'Ubuntu Mono',
+        'DejaVu Sans Mono',
+        'Liberation Mono',
+        'Noto Sans Mono CJK SC',
+        'monospace',
+      ],
+      _ => const ['monospace'],
     };
   }
 
@@ -184,26 +194,15 @@ abstract final class AppFontResolver {
       ),
       TargetPlatform.windows => (
         family: 'Segoe UI',
-        fallback: const [
-          'Microsoft YaHei',
-          'Segoe UI Emoji',
-          'sans-serif',
-        ],
+        fallback: const ['Microsoft YaHei', 'Segoe UI Emoji', 'sans-serif'],
       ),
       TargetPlatform.android => (
         family: 'sans-serif',
-        fallback: const [
-          'Noto Sans CJK SC',
-          'Droid Sans Fallback',
-        ],
+        fallback: const ['Noto Sans CJK SC', 'Droid Sans Fallback'],
       ),
       _ => (
         family: 'Noto Sans',
-        fallback: const [
-          'Noto Sans CJK SC',
-          'WenQuanYi Zen Hei',
-          'sans-serif',
-        ],
+        fallback: const ['Noto Sans CJK SC', 'WenQuanYi Zen Hei', 'sans-serif'],
       ),
     };
   }
@@ -226,11 +225,7 @@ abstract final class AppFontResolver {
       ),
       TargetPlatform.windows => (
         family: 'Consolas',
-        fallback: const [
-          ubuntuSansMonoFamily,
-          'Microsoft YaHei',
-          'monospace',
-        ],
+        fallback: const [ubuntuSansMonoFamily, 'Microsoft YaHei', 'monospace'],
       ),
       TargetPlatform.android => (
         family: 'Noto Sans Mono CJK SC',
