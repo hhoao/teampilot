@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter/widgets.dart';
@@ -246,6 +247,7 @@ class EditorCubit extends Cubit<EditorState> {
 
   final Map<String, Filesystem> _fsByHandle = {};
   final Map<String, _OpenFileHandle> _handles = {};
+  final Map<String, Uint8List> _imageBytes = {};
   final Map<String, DiffReload> _diffReloadByKey = {};
 
   TsWorkerPool get _pool => _injectedPool ?? EditorPlatform.workerPool;
@@ -258,6 +260,11 @@ class EditorCubit extends Cubit<EditorState> {
 
   GlobalKey? editorKeyFor(String workspaceId, String path) =>
       _handles[_handleKey(workspaceId, path)]?.editorKey;
+
+  /// Loaded image bytes for an open preview tab, or null when not an image /
+  /// not open.
+  Uint8List? bytesFor(String workspaceId, String path) =>
+      _imageBytes[_handleKey(workspaceId, path)];
 
   /// Syntax token provider for an open file, or null when the file is plain
   /// text, still loading, or not open.
@@ -279,6 +286,19 @@ class EditorCubit extends Cubit<EditorState> {
     emit(state.copyWith(clearSnackbar: true));
   }
 
+  /// Records a decode failure for an open image preview tab.
+  void reportImageDecodeFailed(String workspaceId, String path) {
+    final bucket = state.bucket(workspaceId);
+    if (!bucket.openFilePaths.contains(path)) return;
+    final errors = Map<String, String>.from(bucket.errorByPath)
+      ..[path] = EditorMessage.imageDecodeFailed;
+    emit(
+      state
+          .withBucket(workspaceId, bucket.copyWith(errorByPath: errors))
+          .copyWith(snackbarMessage: EditorMessage.imageDecodeFailed),
+    );
+  }
+
   Future<void> openFile(
     String workspaceId,
     String path, {
@@ -292,7 +312,8 @@ class EditorCubit extends Cubit<EditorState> {
       return;
     }
 
-    if (!isEditorOpenableFilePath(normalized)) {
+    final isImage = isImagePreviewPath(normalized);
+    if (!isImage && !isEditorOpenableFilePath(normalized)) {
       emit(state.copyWith(snackbarMessage: EditorMessage.binaryFile));
       return;
     }
@@ -313,6 +334,62 @@ class EditorCubit extends Cubit<EditorState> {
         return;
       }
       final size = stat.size ?? 0;
+
+      if (isImage) {
+        if (size > kEditorMaxImageBytes) {
+          emit(
+            _clearLoading(
+              workspaceId,
+              normalized,
+              error: EditorMessage.imageTooLarge,
+            ),
+          );
+          return;
+        }
+
+        final bytes = await filesystem.readBytes(normalized);
+        if (!_stillLoading(workspaceId, normalized)) return;
+        if (bytes == null) {
+          emit(
+            _clearLoading(
+              workspaceId,
+              normalized,
+              error: EditorMessage.couldNotRead,
+            ),
+          );
+          return;
+        }
+
+        final key = _handleKey(workspaceId, normalized);
+        _imageBytes[key] =
+            bytes is Uint8List ? bytes : Uint8List.fromList(bytes);
+
+        final current = state.bucket(workspaceId);
+        if (!current.loadingPaths.contains(normalized)) {
+          _imageBytes.remove(key);
+          return;
+        }
+        final paths = [...current.openFilePaths, normalized];
+        final errors = Map<String, String>.from(current.errorByPath)
+          ..remove(normalized);
+        final loadingDone = Set<String>.from(current.loadingPaths)
+          ..remove(normalized);
+
+        emit(
+          state
+              .withBucket(
+                workspaceId,
+                current.copyWith(
+                  openFilePaths: paths,
+                  loadingPaths: loadingDone,
+                  errorByPath: errors,
+                ),
+              )
+              .copyWith(clearSnackbar: true),
+        );
+        return;
+      }
+
       if (size > kEditorMaxFileBytes) {
         emit(_clearLoading(workspaceId, normalized, error: EditorMessage.fileTooLarge));
         return;
@@ -533,6 +610,7 @@ class EditorCubit extends Cubit<EditorState> {
   void _disposeHandle(String workspaceId, String path) {
     final key = _handleKey(workspaceId, path);
     _fsByHandle.remove(key);
+    _imageBytes.remove(key);
     _handles.remove(key)?.dispose();
   }
 
@@ -542,6 +620,7 @@ class EditorCubit extends Cubit<EditorState> {
       _handles.remove(key)?.dispose();
     }
     _fsByHandle.clear();
+    _imageBytes.clear();
     _diffReloadByKey.clear();
     return super.close();
   }

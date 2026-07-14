@@ -16,9 +16,11 @@ class InMemoryFilesystem implements Filesystem {
   @override
   Future<FsStat> stat(String path) async {
     if (byteFiles.containsKey(path)) {
-      return const FsStat(kind: FsEntityKind.file);
+      return FsStat(kind: FsEntityKind.file, size: byteFiles[path]!.length);
     }
-    if (files.containsKey(path)) return const FsStat(kind: FsEntityKind.file);
+    if (files.containsKey(path)) {
+      return FsStat(kind: FsEntityKind.file, size: files[path]!.length);
+    }
     if (directories.contains(path)) {
       return const FsStat(kind: FsEntityKind.directory);
     }
