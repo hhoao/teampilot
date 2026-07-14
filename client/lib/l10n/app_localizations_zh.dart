@@ -3552,6 +3552,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get expertHubBrowseAll => '浏览全部专家';
 
   @override
+  String get expertHubConfirmSelection => '确认';
+
+  @override
   String get expertHubRecent => '最近使用';
 
   @override

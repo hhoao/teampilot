@@ -3681,6 +3681,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get expertHubBrowseAll => 'Browse all experts';
 
   @override
+  String get expertHubConfirmSelection => 'Confirm';
+
+  @override
   String get expertHubRecent => 'Recent';
 
   @override

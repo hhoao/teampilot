@@ -1665,6 +1665,7 @@
   },
   "expertHubNoneSelected": "No expert",
   "expertHubBrowseAll": "Browse all experts",
+  "expertHubConfirmSelection": "Confirm",
   "expertHubRecent": "Recent",
   "expertHubIgnoredInTeamMode": "Experts are only available in Simple mode. Switch to Simple to summon an expert.",
   "expertHubNotFound": "Expert not found.",

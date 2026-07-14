@@ -22,6 +22,8 @@ class ExpertHubDetailOverlay extends StatelessWidget {
     required this.onToggleFavorite,
     required this.onAddToTeam,
     required this.onLaunchInWorkspace,
+    this.pickerMode = false,
+    this.onConfirm,
     this.inset = 28,
   });
 
@@ -35,6 +37,10 @@ class ExpertHubDetailOverlay extends StatelessWidget {
   final VoidCallback onToggleFavorite;
   final VoidCallback onAddToTeam;
   final VoidCallback onLaunchInWorkspace;
+
+  /// When true, primary CTA is Confirm; Add/Launch become secondary.
+  final bool pickerMode;
+  final VoidCallback? onConfirm;
 
   /// Horizontal page inset (tighter on Android).
   final double inset;
@@ -150,15 +156,32 @@ class ExpertHubDetailOverlay extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          _AddToTeamButton(
-                            adding: adding,
-                            onPressed: onAddToTeam,
-                          ),
-                          const SizedBox(height: 8),
-                          OutlinedButton(
-                            onPressed: adding ? null : onLaunchInWorkspace,
-                            child: Text(l10n.expertHubLaunchInWorkspace),
-                          ),
+                          if (pickerMode) ...[
+                            FilledButton(
+                              onPressed: adding ? null : onConfirm,
+                              child: Text(l10n.expertHubConfirmSelection),
+                            ),
+                            const SizedBox(height: 8),
+                            OutlinedButton(
+                              onPressed: adding ? null : onAddToTeam,
+                              child: Text(l10n.expertHubAddToTeam),
+                            ),
+                            const SizedBox(height: 8),
+                            OutlinedButton(
+                              onPressed: adding ? null : onLaunchInWorkspace,
+                              child: Text(l10n.expertHubLaunchInWorkspace),
+                            ),
+                          ] else ...[
+                            _AddToTeamButton(
+                              adding: adding,
+                              onPressed: onAddToTeam,
+                            ),
+                            const SizedBox(height: 8),
+                            OutlinedButton(
+                              onPressed: adding ? null : onLaunchInWorkspace,
+                              child: Text(l10n.expertHubLaunchInWorkspace),
+                            ),
+                          ],
                         ],
                       ),
                     ],

@@ -2,70 +2,74 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/expert_hub_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
-import '../../services/expert_hub/expert_hub_recent_store.dart';
-import '../../theme/app_text_styles.dart';
+import '../../services/expert_hub/member_roster_service.dart';
+import '../../widgets/app_dialog.dart';
 import '../home_workspace/home_workspace_global_section.dart';
-import 'expert_hub_visuals.dart';
+import 'expert_hub_body.dart';
+import 'expert_hub_detail_overlay.dart';
 
-/// Bottom sheet for choosing an expert on the workspace landing compose bar.
+/// Landing / automation picker — returns the selected expert key, or `null`.
 Future<String?> showExpertLandingPickerSheet(
   BuildContext context, {
   String? selectedKey,
 }) {
-  return showModalBottomSheet<String>(
+  return showDialog<String>(
     context: context,
-    showDragHandle: true,
-    isScrollControlled: true,
-    builder: (_) => ExpertLandingPickerSheet(selectedKey: selectedKey),
+    builder: (_) => ExpertLandingPickerDialog(
+      hostContext: context,
+      selectedKey: selectedKey,
+    ),
   );
 }
 
-/// Apply-mode picker for team member config — invokes [onApply] instead of
-/// returning a landing expert key.
+/// Apply-mode picker for team member config — invokes [onApply] on confirm.
 Future<void> showExpertApplyPickerSheet(
   BuildContext context, {
   required ValueChanged<DiscoverableMember> onApply,
 }) {
-  return showModalBottomSheet<void>(
+  return showDialog<void>(
     context: context,
-    showDragHandle: true,
-    isScrollControlled: true,
-    builder: (_) => ExpertLandingPickerSheet(onApply: onApply),
+    builder: (_) => ExpertLandingPickerDialog(
+      hostContext: context,
+      onApply: onApply,
+    ),
   );
 }
 
-class ExpertLandingPickerSheet extends StatefulWidget {
-  const ExpertLandingPickerSheet({
+/// Expert Hub–style dialog: card grid → detail → Confirm.
+class ExpertLandingPickerDialog extends StatefulWidget {
+  const ExpertLandingPickerDialog({
+    required this.hostContext,
     this.selectedKey,
     this.onApply,
     super.key,
   });
 
+  /// Context that opened the dialog — used after Launch dismisses this route.
+  final BuildContext hostContext;
+
   final String? selectedKey;
 
-  /// When set, selection applies the member and closes without returning a key.
+  /// When set, Confirm applies the member and closes without returning a key.
   final ValueChanged<DiscoverableMember>? onApply;
 
   @override
-  State<ExpertLandingPickerSheet> createState() =>
-      _ExpertLandingPickerSheetState();
+  State<ExpertLandingPickerDialog> createState() =>
+      _ExpertLandingPickerDialogState();
 }
 
-class _ExpertLandingPickerSheetState extends State<ExpertLandingPickerSheet> {
-  final _searchController = TextEditingController();
-  final _recentStore = ExpertHubRecentStore();
-  var _search = '';
-  List<String> _recentKeys = const [];
+class _ExpertLandingPickerDialogState extends State<ExpertLandingPickerDialog> {
+  DiscoverableMember? _detail;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_loadRecent());
     final cubit = context.read<ExpertHubCubit>();
     if (cubit.state.allMembers.isEmpty &&
         cubit.state.status != ExpertHubLoadStatus.loading) {
@@ -73,56 +77,7 @@ class _ExpertLandingPickerSheetState extends State<ExpertLandingPickerSheet> {
     }
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadRecent() async {
-    final keys = await _recentStore.loadOrderedKeys();
-    if (!mounted) return;
-    setState(() => _recentKeys = keys);
-  }
-
-  void _onSearchChanged(String value) => setState(() => _search = value);
-
-  DiscoverableMember? _memberForKey(
-    String key,
-    List<DiscoverableMember> members,
-  ) {
-    for (final member in members) {
-      if (member.key == key) return member;
-    }
-    return null;
-  }
-
-  List<DiscoverableMember> _filteredMembers(List<DiscoverableMember> members) {
-    final q = _search.trim().toLowerCase();
-    if (q.isEmpty) return members;
-    return members
-        .where(
-          (m) =>
-              m.name.toLowerCase().contains(q) ||
-              m.description.toLowerCase().contains(q) ||
-              m.tags.any((t) => t.toLowerCase().contains(q)),
-        )
-        .toList();
-  }
-
-  List<DiscoverableMember> _orderedSection({
-    required Iterable<String> keys,
-    required List<DiscoverableMember> members,
-  }) {
-    final out = <DiscoverableMember>[];
-    for (final key in keys) {
-      final member = _memberForKey(key, members);
-      if (member != null) out.add(member);
-    }
-    return out;
-  }
-
-  void _select(DiscoverableMember member) {
+  void _confirm(DiscoverableMember member) {
     final onApply = widget.onApply;
     if (onApply != null) {
       onApply(member);
@@ -132,178 +87,104 @@ class _ExpertLandingPickerSheetState extends State<ExpertLandingPickerSheet> {
     Navigator.of(context).pop(member.key);
   }
 
-  void _openExpertHub() {
+  Future<void> _addToTeam(
+    ExpertHubCubit cubit,
+    DiscoverableMember member,
+  ) async {
+    final l10n = context.l10n;
+    try {
+      await expertHubAddToTeam(context, cubit, member);
+      if (!mounted) return;
+      setState(() => _detail = null);
+    } on MemberAddException {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: l10n.expertHubAddFailed,
+        variant: AppToastVariant.error,
+      );
+    }
+  }
+
+  void _launchInWorkspace(DiscoverableMember member) {
+    final host = widget.hostContext;
     Navigator.of(context).pop();
-    context.go(HomeGlobalView.expertHub.homeLocation);
+    expertHubLaunchInWorkspace(host, member);
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
-    final state = context.watch<ExpertHubCubit>().state;
-    final allMembers = state.allMembers;
-    final favorites = _orderedSection(
-      keys: state.favorites,
-      members: allMembers,
-    );
-    final recent = _orderedSection(keys: _recentKeys, members: allMembers);
-    final filtered = _filteredMembers(allMembers);
-    final selectedKey = widget.selectedKey?.trim() ?? '';
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.85;
 
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.75,
-          ),
+    return PopScope(
+      canPop: _detail == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (_detail != null) {
+          setState(() => _detail = null);
+        }
+      },
+      child: AppDialog(
+        maxWidth: 960,
+        maxHeight: maxHeight,
+        contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+        child: SizedBox(
+          height: maxHeight - 32,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-                child: Text(
-                  l10n.expertHubTitle,
-                  style: styles.mdSemibold,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: l10n.expertHubSearchHint,
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    floatingLabelBehavior: FloatingLabelBehavior.never,
-                  ),
-                  onChanged: _onSearchChanged,
-                ),
-              ),
-              if (state.status == ExpertHubLoadStatus.loading &&
-                  allMembers.isEmpty)
-                const Expanded(
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              else
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                    children: [
-                      if (_search.isEmpty && favorites.isNotEmpty) ...[
-                        _SectionHeader(title: l10n.expertHubFavorites),
-                        for (final member in favorites)
-                          _MemberTile(
-                            member: member,
-                            selected: member.key == selectedKey,
-                            onTap: () => _select(member),
-                          ),
-                      ],
-                      if (_search.isEmpty && recent.isNotEmpty) ...[
-                        _SectionHeader(title: l10n.expertHubRecent),
-                        for (final member in recent)
-                          _MemberTile(
-                            member: member,
-                            selected: member.key == selectedKey,
-                            onTap: () => _select(member),
-                          ),
-                      ],
-                      if (_search.isNotEmpty || filtered.isNotEmpty) ...[
-                        if (_search.isEmpty &&
-                            (favorites.isNotEmpty || recent.isNotEmpty))
-                          _SectionHeader(title: l10n.expertHubCategoryAll),
-                        if (filtered.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Text(
-                              l10n.expertHubEmptyTitle,
-                              style: styles.smColored(cs.onSurfaceVariant,),
-                              textAlign: TextAlign.center,
-                            ),
-                          )
-                        else
-                          for (final member in filtered)
-                            _MemberTile(
-                              member: member,
-                              selected: member.key == selectedKey,
-                              onTap: () => _select(member),
-                            ),
-                      ],
-                    ],
-                  ),
-                ),
-              const Divider(height: 1),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-                child: TextButton(
-                  onPressed: _openExpertHub,
-                  child: Text(l10n.expertHubBrowseAll),
+              AppDialogHeader(title: l10n.expertHubTitle),
+              const SizedBox(height: 8),
+              Expanded(
+                child: BlocConsumer<ExpertHubCubit, ExpertHubState>(
+                  listenWhen: (a, b) =>
+                      a.errorMessage != b.errorMessage &&
+                      b.errorMessage != null,
+                  listener: (context, state) {
+                    if (state.errorMessage == null) return;
+                    AppToast.show(
+                      context,
+                      message: context.l10n.expertHubLoadError,
+                      variant: AppToastVariant.error,
+                    );
+                    context.read<ExpertHubCubit>().clearError();
+                  },
+                  builder: (context, state) {
+                    final cubit = context.read<ExpertHubCubit>();
+                    final detail = _detail;
+                    if (detail != null) {
+                      return ExpertHubDetailOverlay(
+                        key: ValueKey(detail.key),
+                        member: detail,
+                        favorited: state.favorites.contains(detail.key),
+                        adding: state.addingKeys.contains(detail.key),
+                        installedDepIds: state.installedDepIds,
+                        pickerMode: true,
+                        inset: 12,
+                        onBack: () => setState(() => _detail = null),
+                        onToggleFavorite: () =>
+                            cubit.toggleFavorite(detail.key),
+                        onConfirm: () => _confirm(detail),
+                        onAddToTeam: () => unawaited(_addToTeam(cubit, detail)),
+                        onLaunchInWorkspace: () =>
+                            _launchInWorkspace(detail),
+                      );
+                    }
+                    return ExpertHubBody(
+                      cubit: cubit,
+                      showCreate: false,
+                      selectedKey: widget.selectedKey,
+                      inset: 12,
+                      onOpen: (m) => setState(() => _detail = m),
+                    );
+                  },
                 ),
               ),
             ],
           ),
         ),
       ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-      child: Text(
-        title,
-        style: AppTextStyles.of(context).smSemiboldColored(Theme.of(context).colorScheme.onSurfaceVariant),
-      ),
-    );
-  }
-}
-
-class _MemberTile extends StatelessWidget {
-  const _MemberTile({
-    required this.member,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final DiscoverableMember member;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return ListTile(
-      leading: TeamMonogram(
-        seed: member.key,
-        label: member.name,
-        size: 36,
-      ),
-      title: Text(
-        member.name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: member.description.trim().isEmpty
-          ? null
-          : Text(
-              member.description,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-      trailing: selected
-          ? Icon(Icons.check, size: 18, color: cs.primary)
-          : null,
-      onTap: onTap,
     );
   }
 }

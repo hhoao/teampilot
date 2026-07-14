@@ -6680,6 +6680,12 @@ abstract class AppLocalizations {
   /// **'Browse all experts'**
   String get expertHubBrowseAll;
 
+  /// No description provided for @expertHubConfirmSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get expertHubConfirmSelection;
+
   /// No description provided for @expertHubRecent.
   ///
   /// In en, this message translates to:

@@ -46,6 +46,7 @@ class ExpertHubCard extends StatefulWidget {
     required this.busy,
     required this.onTap,
     required this.onToggleFavorite,
+    this.selected = false,
   });
 
   final DiscoverableMember member;
@@ -53,6 +54,7 @@ class ExpertHubCard extends StatefulWidget {
   final bool busy;
   final VoidCallback onTap;
   final VoidCallback onToggleFavorite;
+  final bool selected;
 
   @override
   State<ExpertHubCard> createState() => _ExpertHubCardState();
@@ -68,7 +70,9 @@ class _ExpertHubCardState extends State<ExpertHubCard> {
     final styles = AppTextStyles.of(context);
     final member = widget.member;
     final accent = teamAccentColor(member.key, Theme.of(context).brightness);
-    final borderColor = _hovered
+    final borderColor = widget.selected
+        ? cs.primary.withValues(alpha: 0.65)
+        : _hovered
         ? accent.withValues(alpha: 0.55)
         : cs.outlineVariant;
 

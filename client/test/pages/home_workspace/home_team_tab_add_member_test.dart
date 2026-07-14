@@ -165,14 +165,22 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      expect(find.byType(ExpertLandingPickerSheet), findsOneWidget);
+      expect(find.byType(ExpertLandingPickerDialog), findsOneWidget);
       expect(launchCubit.state.selectedTeam!.members, hasLength(1));
 
       await tester.tap(find.text(expert.name));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      expect(find.byType(ExpertLandingPickerSheet), findsNothing);
+      expect(find.byType(ExpertLandingPickerDialog), findsOneWidget);
+      expect(find.text('Confirm'), findsOneWidget);
+      expect(launchCubit.state.selectedTeam!.members, hasLength(1));
+
+      await tester.tap(find.text('Confirm'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byType(ExpertLandingPickerDialog), findsNothing);
       expect(launchCubit.state.selectedTeam!.members, hasLength(2));
       expect(
         launchCubit.state.selectedTeam!.roster.last.expertKey,

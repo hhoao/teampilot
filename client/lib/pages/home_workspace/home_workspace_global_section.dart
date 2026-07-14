@@ -106,8 +106,8 @@ class _HomeGlobalSectionState extends State<HomeGlobalSection> {
       HomeGlobalView.myExperts => const MyExpertsPage(),
       HomeGlobalView.teamHub => const TeamHubPage(),
       HomeGlobalView.expertHub => ExpertHubPage(
-        onAddToTeam: _expertAddToTeam,
-        onLaunchInWorkspace: _expertLaunchInWorkspace,
+        onAddToTeam: expertHubAddToTeam,
+        onLaunchInWorkspace: expertHubLaunchInWorkspace,
       ),
       HomeGlobalView.providers => const LlmConfigWorkspace(),
       HomeGlobalView.automations => const AutomationManagementPage(),
@@ -125,7 +125,7 @@ class _HomeGlobalSectionState extends State<HomeGlobalSection> {
   }
 }
 
-Future<void> _expertAddToTeam(
+Future<void> expertHubAddToTeam(
   BuildContext context,
   ExpertHubCubit cubit,
   DiscoverableMember member,
@@ -149,7 +149,7 @@ Future<void> _expertAddToTeam(
   );
 }
 
-void _expertLaunchInWorkspace(BuildContext context, DiscoverableMember member) {
+void expertHubLaunchInWorkspace(BuildContext context, DiscoverableMember member) {
   showExpertWorkspacePickerDialog(context).then((workspaceId) {
     if (workspaceId == null || !context.mounted) return;
     context.go(
