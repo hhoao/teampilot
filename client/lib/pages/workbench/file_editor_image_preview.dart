@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:typed_data';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
@@ -28,6 +28,8 @@ class FileEditorImagePreview extends StatefulWidget {
 
 class _FileEditorImagePreviewState extends State<FileEditorImagePreview> {
   static const _zoomStep = 1.25;
+  static const _minScaleFactor = 0.5;
+  static const _maxScaleFactor = 4.0;
 
   late final PhotoViewController _controller;
   late final PhotoViewScaleStateController _scaleStateController;
@@ -70,10 +72,16 @@ class _FileEditorImagePreviewState extends State<FileEditorImagePreview> {
   void _zoomBy(double factor) {
     final current = _controller.scale;
     if (current == null) return;
-    _scaleStateController.scaleState = factor > 1
-        ? PhotoViewScaleState.zoomedIn
-        : PhotoViewScaleState.zoomedOut;
-    _controller.scale = current * factor;
+    final base = _baselineScale ?? current;
+    _controller.scale = (current * factor).clamp(
+      base * _minScaleFactor,
+      base * _maxScaleFactor,
+    );
+  }
+
+  void _onPointerSignal(PointerSignalEvent event) {
+    if (event is! PointerScrollEvent || event.scrollDelta.dy == 0) return;
+    _zoomBy(event.scrollDelta.dy < 0 ? _zoomStep : 1 / _zoomStep);
   }
 
   void _reportDecodeFailed() {
@@ -92,17 +100,17 @@ class _FileEditorImagePreviewState extends State<FileEditorImagePreview> {
   Widget build(BuildContext context) {
     final model = context.select<
       EditorCubit,
-      ({bool loading, String? error, Uint8List? bytes})
+      ({bool loading, String? error, bool hasBytes})
     >((c) {
       final bucket = c.state.bucket(widget.workspaceId);
       return (
         loading: bucket.loadingPaths.contains(widget.path),
         error: bucket.errorByPath[widget.path],
-        bytes: c.bytesFor(widget.workspaceId, widget.path),
+        hasBytes: c.bytesFor(widget.workspaceId, widget.path) != null,
       );
     });
     final cs = Theme.of(context).colorScheme;
-    final canZoom = model.bytes != null && model.error == null;
+    final canZoom = model.hasBytes && model.error == null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -152,7 +160,7 @@ class _FileEditorImagePreviewState extends State<FileEditorImagePreview> {
 
   Widget _buildBody(
     BuildContext context,
-    ({bool loading, String? error, Uint8List? bytes}) model,
+    ({bool loading, String? error, bool hasBytes}) model,
     ColorScheme cs,
   ) {
     final l10n = context.l10n;
@@ -176,23 +184,34 @@ class _FileEditorImagePreviewState extends State<FileEditorImagePreview> {
         ),
       );
     }
-    final bytes = model.bytes;
+    if (!model.hasBytes) {
+      return Center(child: Text(l10n.editorNotReady));
+    }
+    final bytes = context.read<EditorCubit>().bytesFor(
+      widget.workspaceId,
+      widget.path,
+    );
     if (bytes == null) {
       return Center(child: Text(l10n.editorNotReady));
     }
-    return PhotoView(
-      imageProvider: MemoryImage(bytes),
-      controller: _controller,
-      scaleStateController: _scaleStateController,
-      minScale: PhotoViewComputedScale.contained * 0.5,
-      maxScale: PhotoViewComputedScale.contained * 4,
-      initialScale: PhotoViewComputedScale.contained,
-      backgroundDecoration: BoxDecoration(color: cs.workspaceCard),
-      scaleStateCycle: (_) => PhotoViewScaleState.initial,
-      errorBuilder: (context, error, stackTrace) {
-        _reportDecodeFailed();
-        return const SizedBox.shrink();
-      },
+    return ClipRect(
+      child: Listener(
+        onPointerSignal: _onPointerSignal,
+        child: PhotoView(
+          imageProvider: MemoryImage(bytes),
+          controller: _controller,
+          scaleStateController: _scaleStateController,
+          minScale: PhotoViewComputedScale.contained * _minScaleFactor,
+          maxScale: PhotoViewComputedScale.contained * _maxScaleFactor,
+          initialScale: PhotoViewComputedScale.contained,
+          backgroundDecoration: BoxDecoration(color: cs.workspaceCard),
+          scaleStateCycle: (_) => PhotoViewScaleState.initial,
+          errorBuilder: (context, error, stackTrace) {
+            _reportDecodeFailed();
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
     );
   }
 }
