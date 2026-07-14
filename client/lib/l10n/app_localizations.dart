@@ -3440,6 +3440,18 @@ abstract class AppLocalizations {
   /// **'File is too large to edit in TeamPilot (max 2 MB).'**
   String get editorFileTooLarge;
 
+  /// No description provided for @editorImageTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Image is too large to preview in TeamPilot (max 25 MB).'**
+  String get editorImageTooLarge;
+
+  /// No description provided for @editorImageDecodeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not decode this image.'**
+  String get editorImageDecodeFailed;
+
   /// No description provided for @editorCouldNotReadFile.
   ///
   /// In en, this message translates to:

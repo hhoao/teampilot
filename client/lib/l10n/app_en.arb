@@ -755,6 +755,8 @@
   "editorBinaryFileHint": "Binary files open with the system default app.",
   "editorFileNotFound": "File not found",
   "editorFileTooLarge": "File is too large to edit in TeamPilot (max 2 MB).",
+  "editorImageTooLarge": "Image is too large to preview in TeamPilot (max 25 MB).",
+  "editorImageDecodeFailed": "Could not decode this image.",
   "editorCouldNotReadFile": "Could not read file",
   "editorFileReadOnly": "File is read-only",
   "editorSaveFailed": "Save failed: {error}",

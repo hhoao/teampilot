@@ -699,6 +699,8 @@
   "editorBinaryFileHint": "二进制文件将使用系统默认应用打开。",
   "editorFileNotFound": "找不到文件",
   "editorFileTooLarge": "文件过大，无法在 TeamPilot 中编辑（上限 2 MB）。",
+  "editorImageTooLarge": "图片过大，无法在 TeamPilot 中预览（上限 25 MB）。",
+  "editorImageDecodeFailed": "无法解码此图片。",
   "editorCouldNotReadFile": "无法读取文件",
   "editorFileReadOnly": "文件为只读",
   "editorSaveFailed": "保存失败：{error}",
