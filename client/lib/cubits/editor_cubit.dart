@@ -359,6 +359,17 @@ class EditorCubit extends Cubit<EditorState> {
           );
           return;
         }
+        // WSL/SFTP may omit FsStat.size; reject after read if over the cap.
+        if (bytes.length > kEditorMaxImageBytes) {
+          emit(
+            _clearLoading(
+              workspaceId,
+              normalized,
+              error: EditorMessage.imageTooLarge,
+            ),
+          );
+          return;
+        }
 
         final key = _handleKey(workspaceId, normalized);
         _imageBytes[key] =

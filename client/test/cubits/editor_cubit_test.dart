@@ -237,6 +237,30 @@ void main() {
     expect(cubit.controllerFor(ws, '/repo/a.txt'), isNull);
   });
 
+  test('closeFile cancels in-flight image open so late read does not keep bytes',
+      () async {
+    final gate = Completer<void>();
+    final fs = _GatedFilesystem(gate);
+    fs.byteFiles['/repo/dot.png'] = <int>[
+      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+    ];
+
+    final cubit = EditorCubit(fs: fs);
+    addTearDown(cubit.close);
+
+    final pending = cubit.openFile(ws, '/repo/dot.png');
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state.bucket(ws).loadingPaths, contains('/repo/dot.png'));
+
+    expect(cubit.closeFile(ws, '/repo/dot.png', force: true), isTrue);
+    expect(cubit.state.bucket(ws).loadingPaths, isEmpty);
+
+    gate.complete();
+    await pending;
+    expect(cubit.state.bucket(ws).openFilePaths, isEmpty);
+    expect(cubit.bytesFor(ws, '/repo/dot.png'), isNull);
+  });
+
   test('openFile loads image bytes without text controller', () async {
     final fs = InMemoryFilesystem();
     fs.byteFiles['/repo/dot.png'] = <int>[
