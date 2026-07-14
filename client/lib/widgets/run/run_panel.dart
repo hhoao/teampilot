@@ -10,16 +10,30 @@ import '../../pages/workspace_shell/workspace_shell_tabs.dart';
 import '../../services/run/run_platform.dart';
 import '../../services/run/run_terminal_bridge.dart';
 import '../../theme/app_text_styles.dart';
-import '../../widgets/app_dialog.dart';
 import '../../widgets/app_icon_button.dart';
+import 'run_session_dismiss.dart';
 import 'run_session_page.dart';
 
 /// Bottom Run pages: one tab per [RunSession], text log via [RunTerminalBridge].
+///
+/// When [showChrome] is false (unified workspace dock), only the output body is
+/// shown and [activeSessionId] is owned by the parent.
 class RunPanel extends StatefulWidget {
-  const RunPanel({this.bridge, super.key});
+  const RunPanel({
+    this.bridge,
+    this.showChrome = true,
+    this.activeSessionId,
+    super.key,
+  });
 
   /// Injected for tests; defaults to listening on [RunCubit] session output.
   final RunTerminalBridge? bridge;
+
+  /// When false, hides the internal tab strip (dock owns unified chips).
+  final bool showChrome;
+
+  /// Active session when [showChrome] is false.
+  final String? activeSessionId;
 
   @override
   State<RunPanel> createState() => _RunPanelState();
@@ -42,6 +56,15 @@ class _RunPanelState extends State<RunPanel> {
     if (_ownedBridge != null || _bridgeInitStarted) return;
     _bridgeInitStarted = true;
     unawaited(_bindOutputBridge());
+  }
+
+  @override
+  void didUpdateWidget(covariant RunPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.showChrome &&
+        widget.activeSessionId != oldWidget.activeSessionId) {
+      _activeSessionId = widget.activeSessionId;
+    }
   }
 
   Future<void> _bindOutputBridge() async {
@@ -70,6 +93,8 @@ class _RunPanelState extends State<RunPanel> {
   }
 
   void _onSessions(List<RunSession> sessions) {
+    if (!widget.showChrome) return;
+
     final ids = sessions.map((s) => s.id).toList();
     final previous = _seenSessionIds.toSet();
     final added = ids.where((id) => !previous.contains(id)).toList();
@@ -90,49 +115,13 @@ class _RunPanelState extends State<RunPanel> {
   }
 
   Future<void> _closeSession(RunSession session) async {
-    final running =
-        session.status == RunSessionStatus.running ||
-        session.status == RunSessionStatus.starting;
-    if (running) {
-      final l10n = context.l10n;
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AppDialog(
-          maxWidth: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              AppDialogHeader(
-                title: l10n.runStopSessionTitle,
-                onClose: () => Navigator.of(dialogContext).pop(false),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                l10n.runStopSessionMessage(session.owned.configuration.name),
-              ),
-              AppDialogActions(
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(false),
-                    child: Text(l10n.cancel),
-                  ),
-                  FilledButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(true),
-                    child: Text(l10n.runStopAndClose),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      );
-      if (confirmed != true || !mounted) return;
-    }
-
-    final cubit = context.read<RunCubit>();
-    await cubit.dismissSession(session.id);
-    _bridge?.clear(session.id);
+    final dismissed = await dismissRunSessionWithConfirm(
+      context: context,
+      cubit: context.read<RunCubit>(),
+      session: session,
+      onCleared: (id) => _bridge?.clear(id),
+    );
+    if (!dismissed || !mounted) return;
   }
 
   Future<void> _clearExited() async {
@@ -154,6 +143,9 @@ class _RunPanelState extends State<RunPanel> {
     }
   }
 
+  String? get _effectiveActiveId =>
+      widget.showChrome ? _activeSessionId : widget.activeSessionId;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -166,13 +158,43 @@ class _RunPanelState extends State<RunPanel> {
       builder: (context, state) {
         final sessions = state.sessions;
         RunSession? activeSession;
+        final activeId = _effectiveActiveId;
         for (final session in sessions) {
-          if (session.id == _activeSessionId) {
+          if (session.id == activeId) {
             activeSession = session;
             break;
           }
         }
-        activeSession ??= sessions.isEmpty ? null : sessions.last;
+        if (widget.showChrome) {
+          activeSession ??= sessions.isEmpty ? null : sessions.last;
+        }
+
+        final body = _bridge == null
+            ? ColoredBox(
+                color: cs.surfaceContainerLowest,
+                child: Center(
+                  child: Text(l10n.runLoadingOutput, style: styles.mutedMd),
+                ),
+              )
+            : activeSession == null
+            ? ColoredBox(
+                color: cs.surfaceContainerLowest,
+                child: Center(
+                  child: Text(
+                    l10n.runEmptyOutputHint,
+                    style: styles.mutedMd,
+                  ),
+                ),
+              )
+            : RunSessionPage(
+                key: Key('run-session-page-${activeSession.id}'),
+                sessionId: activeSession.id,
+                bridge: _bridge!,
+              );
+
+        if (!widget.showChrome) {
+          return KeyedSubtree(key: const Key('run-panel'), child: body);
+        }
 
         return KeyedSubtree(
           key: const Key('run-panel'),
@@ -245,33 +267,7 @@ class _RunPanelState extends State<RunPanel> {
                   ],
                 ),
               ),
-              Expanded(
-                child: _bridge == null
-                    ? ColoredBox(
-                        color: cs.surfaceContainerLowest,
-                        child: Center(
-                          child: Text(
-                            l10n.runLoadingOutput,
-                            style: styles.mutedMd,
-                          ),
-                        ),
-                      )
-                    : activeSession == null
-                    ? ColoredBox(
-                        color: cs.surfaceContainerLowest,
-                        child: Center(
-                          child: Text(
-                            l10n.runEmptyOutputHint,
-                            style: styles.mutedMd,
-                          ),
-                        ),
-                      )
-                    : RunSessionPage(
-                        key: Key('run-session-page-${activeSession.id}'),
-                        sessionId: activeSession.id,
-                        bridge: _bridge!,
-                      ),
-              ),
+              Expanded(child: body),
             ],
           ),
         );
