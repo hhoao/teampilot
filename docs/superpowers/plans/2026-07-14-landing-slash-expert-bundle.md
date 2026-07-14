@@ -362,7 +362,7 @@ git commit -m "feat(compose): wire expert slash bundle on landing and review"
 
 **Files:** any remaining references
 
-- [ ] **Step 1: Confirm old symbols are gone**
+- [x] **Step 1: Confirm old symbols are gone**
 
 ```bash
 cd client && rg 'identityBundleForLanding|unionConfigBundles' lib test
@@ -370,7 +370,7 @@ cd client && rg 'identityBundleForLanding|unionConfigBundles' lib test
 
 Expected: no matches.
 
-- [ ] **Step 2: Broader compose-related tests (optional but preferred)**
+- [x] **Step 2: Broader compose-related tests (optional but preferred)**
 
 ```bash
 cd client && flutter test test/services/compose/
@@ -378,7 +378,7 @@ cd client && flutter test test/services/compose/
 
 Expected: PASS.
 
-- [ ] **Step 3: Commit only if Step 1/2 forced extra fixes**; otherwise done.
+- [x] **Step 3: Commit only if Step 1/2 forced extra fixes**; otherwise done.
 
 ---
 

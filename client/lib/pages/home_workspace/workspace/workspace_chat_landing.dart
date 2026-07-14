@@ -404,8 +404,8 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
 
   ConfigBundle _slashBundleForDraft(
     LandingLaunchContext draft,
-    LaunchProfileCubit launchProfiles,
     List<TeamProfile> teams,
+    ExpertHubState? hubState,
   ) {
     TeamProfile? team;
     if (!draft.isPersonal) {
@@ -414,11 +414,12 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
         team = teams.where((t) => t.id == teamId).firstOrNull;
       }
     }
-    final identityBundle = identityBundleForLanding(
+    return slashBundleForLanding(
       draft: draft,
       team: team,
+      workspace: _workspaceProjectBundle,
+      hubState: hubState,
     );
-    return unionConfigBundles(identityBundle, _workspaceProjectBundle);
   }
 
   Future<void> _loadDraft() async {
@@ -1008,11 +1009,10 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     );
     final presets = context.watch<CliPresetsCubit>().state.presets;
     final teams = context.watch<LaunchProfileCubit>().state.teams;
-    final launchProfiles = context.watch<LaunchProfileCubit>();
     final skills = context.watch<SkillCubit>().state.installed;
     final plugins = context.watch<PluginCubit>().state.installed;
-    final slashBundle = _slashBundleForDraft(_currentDraft(), launchProfiles, teams);
     final hubState = _expertHubState(context);
+    final slashBundle = _slashBundleForDraft(_currentDraft(), teams, hubState);
     final isSimple = _conversationMode == _LandingConversationMode.simple;
     final worktreeState = _worktreeState(context);
     final projectResolver = _projectResolver();

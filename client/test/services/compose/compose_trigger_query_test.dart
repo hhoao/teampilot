@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/config_bundle.dart';
-import 'package:teampilot/services/compose/compose_landing_bundle.dart';
 import 'package:teampilot/services/compose/compose_slash_catalog.dart';
 import 'package:teampilot/services/compose/compose_trigger_insert.dart';
 import 'package:teampilot/services/compose/compose_trigger_query.dart';
@@ -97,28 +96,6 @@ void main() {
       );
 
       expect(candidates.map((c) => c.insertText), ['/brainstorming']);
-    });
-  });
-
-  group('unionConfigBundles', () {
-    test('merges ids from identity and workspace without duplicates', () {
-      final effective = unionConfigBundles(
-        const ConfigBundle(skillIds: ['a', 'b'], pluginIds: ['p1']),
-        const ConfigBundle(skillIds: ['b', 'c'], pluginIds: ['p1', 'p2']),
-      );
-
-      expect(effective.skillIds, ['a', 'b', 'c']);
-      expect(effective.pluginIds, ['p1', 'p2']);
-    });
-
-    test('returns identity ids when workspace is empty', () {
-      expect(
-        unionConfigBundles(
-          const ConfigBundle(skillIds: ['a']),
-          const ConfigBundle(),
-        ).skillIds,
-        ['a'],
-      );
     });
   });
 }
