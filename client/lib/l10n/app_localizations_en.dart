@@ -4614,18 +4614,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingCliRedetect => 'Scan again';
 
   @override
-  String get onboardingProviderImportTitle => 'Import Claude providers';
+  String get onboardingProviderImportTitle => 'Import CLI providers';
 
   @override
   String get onboardingProviderImportSubtitle =>
-      'Scan ~/.claude settings and cc-switch for existing provider configs.';
+      'Scan local CLI configs (Claude, Codex, OpenCode, Cursor, FlashskyAI, and cc-switch) for existing provider settings.';
 
   @override
   String get onboardingProviderImportResults => 'Import results';
 
   @override
   String get onboardingProviderImportEmpty =>
-      'No Claude providers detected. You can configure them later in Settings.';
+      'No providers detected. You can configure them later in Settings.';
 
   @override
   String get onboardingProviderImportFailed => 'Import failed';

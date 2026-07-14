@@ -52,6 +52,12 @@ class _OnboardingProviderImportStepState
     unawaited(_import());
   }
 
+  List<AppProviderConfig> _allProviders(AppProviderCubit cubit) {
+    return [
+      for (final cli in CliTool.values) ...cubit.state.providersFor(cli),
+    ];
+  }
+
   Future<void> _import() async {
     setState(() {
       _importing = true;
@@ -59,16 +65,17 @@ class _OnboardingProviderImportStepState
     });
     try {
       final cubit = context.read<AppProviderCubit>();
-      await cubit.setSelectedCli(CliTool.claude);
-      final result = await cubit.importFromExternal();
+      final results = await cubit.importAllFromExternal();
       if (!mounted) return;
+      final providers = _allProviders(cubit);
+      final changed = results.any((r) => r.changed);
       setState(() {
         _importing = false;
         _imported = true;
-        _providers = cubit.state.providersFor(CliTool.claude);
+        _providers = providers;
         _statusMessage = cubit.state.statusMessage;
       });
-      if (!result.changed && _providers.isEmpty) {
+      if (!changed && providers.isEmpty) {
         setState(
           () => _statusMessage = context.l10n.onboardingProviderImportEmpty,
         );
@@ -137,9 +144,13 @@ class _OnboardingProviderImportStepState
                       ),
                       title: Text(_providers[i].name),
                       subtitle: Text(
-                        _providers[i].defaultModel.isEmpty
-                            ? _providers[i].id
-                            : _providers[i].defaultModel,
+                        [
+                          _providers[i].cli.value,
+                          if (_providers[i].defaultModel.isNotEmpty)
+                            _providers[i].defaultModel
+                          else
+                            _providers[i].id,
+                        ].join(' · '),
                       ),
                       trailing: Icon(
                         Icons.check,

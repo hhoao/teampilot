@@ -551,7 +551,27 @@ class AppProviderCubit extends Cubit<AppProviderState> {
       cli,
       onlyIfEmpty: false,
     );
+    await _reloadProvidersAfterImport(
+      statusMessage: _importStatusMessage(result),
+    );
+    return result;
+  }
 
+  /// Imports providers for every CLI that exposes a provider catalog.
+  Future<List<ProviderImportResult>> importAllFromExternal() async {
+    emit(state.copyWith(isLoading: true, statusMessage: ''));
+    final results = await _importServiceForRequest().importAllCatalogClis(
+      onlyIfEmpty: false,
+    );
+    await _reloadProvidersAfterImport(
+      statusMessage: _importAllStatusMessage(results),
+    );
+    return results;
+  }
+
+  Future<void> _reloadProvidersAfterImport({
+    required String statusMessage,
+  }) async {
     final byCli = <CliTool, List<AppProviderConfig>>{};
     final selectedByCli = Map<CliTool, String?>.from(
       state.selectedProviderIdByCli,
@@ -574,10 +594,9 @@ class AppProviderCubit extends Cubit<AppProviderState> {
         providersByCli: byCli,
         selectedProviderIdByCli: selectedByCli,
         isLoading: false,
-        statusMessage: _importStatusMessage(result),
+        statusMessage: statusMessage,
       ),
     );
-    return result;
   }
 
   LlmConfig flashskyaiLlmConfigFor(AppProviderConfig provider) {
@@ -628,6 +647,22 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     }
     return 'Imported $changed providers'
         '${result.mirroredToFlashskyai > 0 ? ', mirrored ${result.mirroredToFlashskyai} to FlashskyAI' : ''}.';
+  }
+
+  static String _importAllStatusMessage(List<ProviderImportResult> results) {
+    final changed = results.fold<int>(
+      0,
+      (sum, r) => sum + r.added + r.updated,
+    );
+    final mirrored = results.fold<int>(
+      0,
+      (sum, r) => sum + r.mirroredToFlashskyai,
+    );
+    if (changed == 0 && mirrored == 0) {
+      return 'No providers imported.';
+    }
+    return 'Imported $changed providers'
+        '${mirrored > 0 ? ', mirrored $mirrored to FlashskyAI' : ''}.';
   }
 
   Map<String, Object?> _normalizedConfigForCli({

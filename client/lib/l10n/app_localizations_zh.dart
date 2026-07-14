@@ -4438,17 +4438,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get onboardingCliRedetect => '重新检测';
 
   @override
-  String get onboardingProviderImportTitle => '导入 Claude Provider';
+  String get onboardingProviderImportTitle => '导入 CLI Provider';
 
   @override
   String get onboardingProviderImportSubtitle =>
-      '扫描 ~/.claude 配置与 cc-switch 中的现有 Provider。';
+      '扫描本机各 CLI 配置（Claude、Codex、OpenCode、Cursor、FlashskyAI 及 cc-switch）中的现有 Provider。';
 
   @override
   String get onboardingProviderImportResults => '导入结果';
 
   @override
-  String get onboardingProviderImportEmpty => '未检测到 Claude Provider，可稍后在设置中配置。';
+  String get onboardingProviderImportEmpty => '未检测到 Provider，可稍后在设置中配置。';
 
   @override
   String get onboardingProviderImportFailed => '导入失败';

@@ -8355,13 +8355,13 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingProviderImportTitle.
   ///
   /// In en, this message translates to:
-  /// **'Import Claude providers'**
+  /// **'Import CLI providers'**
   String get onboardingProviderImportTitle;
 
   /// No description provided for @onboardingProviderImportSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Scan ~/.claude settings and cc-switch for existing provider configs.'**
+  /// **'Scan local CLI configs (Claude, Codex, OpenCode, Cursor, FlashskyAI, and cc-switch) for existing provider settings.'**
   String get onboardingProviderImportSubtitle;
 
   /// No description provided for @onboardingProviderImportResults.
@@ -8373,7 +8373,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingProviderImportEmpty.
   ///
   /// In en, this message translates to:
-  /// **'No Claude providers detected. You can configure them later in Settings.'**
+  /// **'No providers detected. You can configure them later in Settings.'**
   String get onboardingProviderImportEmpty;
 
   /// No description provided for @onboardingProviderImportFailed.

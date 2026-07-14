@@ -24,7 +24,7 @@ All app code lives under `client/lib/` (cubits, pages, repositories, services, m
 | **Expert** | `DiscoverableMember`, `ExpertCapabilityPack` | Capability pack: persona + `skillDeps` / `pluginDeps` / `mcpDeps`. Resolved via `ExpertCapabilityResolver` into session config. |
 | **Session** | `AppSession`, `ChatCubit` | One chat workbench tab; owns member terminals, TeamBus (mixed teams), and session runtime dirs. |
 
-**Simple mode** = unteamed launch (empty `sessionTeam`) — not a launch-identity document. Optional `AppSession.expertKey` / CLI preset selects an expert pack; automations use fixed scope key `AutomationTabScope.simpleLaunchProfileId` (`simple`). **Team mode** = launch with a `TeamProfile` and one PTY per roster member.
+**Simple mode** = unteamed launch (empty `sessionTeam`) — not a launch-identity document. Optional `AppSession.expertKey` / CLI preset selects an expert pack. **Team mode** = launch with a `TeamProfile` and one PTY per roster member. **Automations** store landing-aligned launch params (`isPersonal`, `presetId`, `teamId`, `expertKey`, `projectFolderPath`, `workingDirectoryPath`, `dangerouslySkipPermissions`) per workspace in `automations/automations.json`.
 
 Session config merge (skills / plugins / MCP ids):
 
@@ -145,7 +145,7 @@ Session runtime dirs: `workspace/workspaces/{workspaceId}/sessions/{sessionId}/r
 | **File tree / editor / Git** | `WorkspaceFileTreeStore`, `GitRepoStore`, `EditorCubit`, `pages/home_workspace/workspace/` right-tools panels |
 | **Git worktrees** | `WorkspaceWorktreeRegistry`, `WorkspaceWorktreeStore`; disk under `<teampilotRoot>/worktrees/{repo}/{branch}`; sidebar groups sessions by worktree |
 | **Workspace shell terminal** | `WorkspaceTerminalRegistry`, `WorkspaceShellConnector` — bottom-shell PTY scoped to active workspace folder |
-| **Automations** | `AutomationCubit`, `AutomationScheduler`, `AutomationDispatcher`; rules per workspace tab scope under `workspace/workspaces/{id}/automations/{launchProfileId}.json` (Simple uses fixed key `simple`) |
+| **Automations** | `AutomationCubit`, `AutomationScheduler`, `AutomationDispatcher`; rules per workspace under `workspace/workspaces/{id}/automations/automations.json` (launch params mirror landing compose) |
 | **CLI presets** | `CliPresetsCubit`, `cli-presets.json`; Simple launch may pin a global preset; per-member `activePresetId` on `TeamMemberConfig` |
 
 ## Where to change code
