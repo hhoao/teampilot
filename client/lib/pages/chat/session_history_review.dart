@@ -240,10 +240,13 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     );
   }
 
-  ConfigBundle _slashBundle() {
-    final draft = _enhanceDraft();
-    final identity = identityBundleForLanding(draft: draft, team: widget.team);
-    return unionConfigBundles(identity, _workspaceProjectBundle);
+  ConfigBundle _slashBundle(BuildContext context) {
+    return slashBundleForLanding(
+      draft: _enhanceDraft(),
+      team: widget.team,
+      workspace: _workspaceProjectBundle,
+      hubState: _expertHubState(context),
+    );
   }
 
   AppSession? _sessionFromCubit(ChatCubit cubit) {
@@ -828,7 +831,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                   workspaceRoot: _workspaceRoot,
                   skills: skills,
                   plugins: plugins,
-                  slashBundle: _slashBundle(),
+                  slashBundle: _slashBundle(context),
                   launchError: widget.launchError,
                   onPasteImage: _pasteComposeImage,
                   identityLabel: identityLabel,
