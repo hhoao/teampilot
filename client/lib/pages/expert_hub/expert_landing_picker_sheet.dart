@@ -8,9 +8,7 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import '../../cubits/expert_hub_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
-import '../../services/expert_hub/member_roster_service.dart';
 import '../../widgets/app_dialog.dart';
-import '../home_workspace/home_workspace_global_section.dart';
 import 'expert_hub_body.dart';
 import 'expert_hub_detail_overlay.dart';
 
@@ -22,7 +20,6 @@ Future<String?> showExpertLandingPickerSheet(
   return showDialog<String>(
     context: context,
     builder: (_) => ExpertLandingPickerDialog(
-      hostContext: context,
       selectedKey: selectedKey,
     ),
   );
@@ -36,7 +33,6 @@ Future<void> showExpertApplyPickerSheet(
   return showDialog<void>(
     context: context,
     builder: (_) => ExpertLandingPickerDialog(
-      hostContext: context,
       onApply: onApply,
     ),
   );
@@ -45,14 +41,10 @@ Future<void> showExpertApplyPickerSheet(
 /// Expert Hub–style dialog: card grid → detail → Confirm.
 class ExpertLandingPickerDialog extends StatefulWidget {
   const ExpertLandingPickerDialog({
-    required this.hostContext,
     this.selectedKey,
     this.onApply,
     super.key,
   });
-
-  /// Context that opened the dialog — used after Launch dismisses this route.
-  final BuildContext hostContext;
 
   final String? selectedKey;
 
@@ -85,31 +77,6 @@ class _ExpertLandingPickerDialogState extends State<ExpertLandingPickerDialog> {
       return;
     }
     Navigator.of(context).pop(member.key);
-  }
-
-  Future<void> _addToTeam(
-    ExpertHubCubit cubit,
-    DiscoverableMember member,
-  ) async {
-    final l10n = context.l10n;
-    try {
-      await expertHubAddToTeam(context, cubit, member);
-      if (!mounted) return;
-      setState(() => _detail = null);
-    } on MemberAddException {
-      if (!mounted) return;
-      AppToast.show(
-        context,
-        message: l10n.expertHubAddFailed,
-        variant: AppToastVariant.error,
-      );
-    }
-  }
-
-  void _launchInWorkspace(DiscoverableMember member) {
-    final host = widget.hostContext;
-    Navigator.of(context).pop();
-    expertHubLaunchInWorkspace(host, member);
   }
 
   @override
@@ -166,9 +133,8 @@ class _ExpertLandingPickerDialogState extends State<ExpertLandingPickerDialog> {
                         onToggleFavorite: () =>
                             cubit.toggleFavorite(detail.key),
                         onConfirm: () => _confirm(detail),
-                        onAddToTeam: () => unawaited(_addToTeam(cubit, detail)),
-                        onLaunchInWorkspace: () =>
-                            _launchInWorkspace(detail),
+                        onAddToTeam: () {},
+                        onLaunchInWorkspace: () {},
                       );
                     }
                     return ExpertHubBody(

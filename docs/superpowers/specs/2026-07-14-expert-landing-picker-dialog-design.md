@@ -52,21 +52,11 @@ Public function names may stay for compatibility; implementations switch from `s
 ### Detail step
 
 - Reuse `ExpertHubDetailOverlay` content in a **picker mode**:
-  - **Confirm** is the primary filled CTA (new l10n: e.g. `expertHubConfirmSelection` / 确认), placed where the hub’s filled **Add to team** button sits today.
-  - **Add to team** and **Launch in workspace** remain as secondary outlined actions below/beside it.
+  - **Confirm** is the only primary CTA (new l10n: e.g. `expertHubConfirmSelection` / 确认).
   - Keep favorite toggle.
-  - Only **Confirm** completes picker selection (`pop(key)` / `onApply`). Secondary actions never count as Confirm.
+  - Do **not** show **Add to team** or **Launch in workspace** in the picker (those stay on the full Expert Hub page only).
+  - Only **Confirm** completes picker selection (`pop(key)` / `onApply`).
 - Back clears the in-dialog detail and shows the grid again.
-
-### Secondary-action lifecycle (picker)
-
-Handlers are the same functions the Expert Hub page uses today (`onAddToTeam` / `onLaunchInWorkspace` from `home_workspace_global_section.dart`). The picker dialog wires them once in its `show*` entrypoints (not per Landing/automation/team caller).
-
-| Action | After success |
-|--------|----------------|
-| Add to team | Close nested team picker; clear in-dialog detail and return to the **grid**; picker dialog **stays open**; no landing/apply selection |
-| Launch in workspace | **Dismiss** the picker with `null` / without `onApply` first, then run the launch handler (which may `context.go`). Never leave the modal stacked on a new route |
-| Confirm | Dismiss with selection as in the entry-points table |
 
 ### Selected-key highlight
 
@@ -76,7 +66,6 @@ Handlers are the same functions the Expert Hub page uses today (`onAddToTeam` / 
 
 - Shared `ExpertHubCubit` from the ambient provider tree (dialog builder must have access — callers already sit under the hub cubit).
 - Load failures: reuse Expert Hub load-error toast pattern.
-- Add-to-team failures inside detail: same toast as Expert Hub page.
 - Cancel / barrier dismiss: return `null` (landing) or no `onApply` (apply mode); do not clear an already-selected landing expert.
 
 ## File / module sketch

@@ -38,7 +38,7 @@ class ExpertHubDetailOverlay extends StatelessWidget {
   final VoidCallback onAddToTeam;
   final VoidCallback onLaunchInWorkspace;
 
-  /// When true, primary CTA is Confirm; Add/Launch become secondary.
+  /// When true, primary CTA is Confirm only (no Add/Launch).
   final bool pickerMode;
   final VoidCallback? onConfirm;
 
@@ -156,22 +156,12 @@ class ExpertHubDetailOverlay extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          if (pickerMode) ...[
+                          if (pickerMode)
                             FilledButton(
                               onPressed: adding ? null : onConfirm,
                               child: Text(l10n.expertHubConfirmSelection),
-                            ),
-                            const SizedBox(height: 8),
-                            OutlinedButton(
-                              onPressed: adding ? null : onAddToTeam,
-                              child: Text(l10n.expertHubAddToTeam),
-                            ),
-                            const SizedBox(height: 8),
-                            OutlinedButton(
-                              onPressed: adding ? null : onLaunchInWorkspace,
-                              child: Text(l10n.expertHubLaunchInWorkspace),
-                            ),
-                          ] else ...[
+                            )
+                          else ...[
                             _AddToTeamButton(
                               adding: adding,
                               onPressed: onAddToTeam,
