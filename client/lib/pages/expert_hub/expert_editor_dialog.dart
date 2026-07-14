@@ -17,9 +17,7 @@ import '../../models/skill.dart';
 import '../../services/expert_hub/local_expert_writer.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/textarea/app_textarea.dart';
-import '../team_config/team_config_mcp_section.dart';
-import '../team_config/team_config_plugins_section.dart';
-import '../team_config/team_config_skills_section.dart';
+import 'expert_editor_dep_picker_dialog.dart';
 import 'expert_editor_deps.dart';
 
 /// Shared create/edit dialog for local experts (My Experts + Expert Hub).
@@ -138,11 +136,11 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
     };
   }
 
-  List<Skill> _skills(BuildContext context) {
+  List<Skill> _skillsRead(BuildContext context) {
     if (widget.skills != null) return widget.skills!;
     try {
       return context
-          .watch<SkillCubit>()
+          .read<SkillCubit>()
           .state
           .installed
           .where((s) => s.enabled)
@@ -152,20 +150,20 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
     }
   }
 
-  List<Plugin> _plugins(BuildContext context) {
+  List<Plugin> _pluginsRead(BuildContext context) {
     if (widget.plugins != null) return widget.plugins!;
     try {
-      return context.watch<PluginCubit>().state.installed;
+      return context.read<PluginCubit>().state.installed;
     } catch (_) {
       return const [];
     }
   }
 
-  List<McpServer> _mcps(BuildContext context) {
+  List<McpServer> _mcpsRead(BuildContext context) {
     if (widget.mcps != null) return widget.mcps!;
     try {
       return context
-          .watch<McpCubit>()
+          .read<McpCubit>()
           .state
           .servers
           .where((s) => s.enabled)
@@ -173,6 +171,35 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
     } catch (_) {
       return const [];
     }
+  }
+
+  Future<void> _openDepPicker(ExpertEditorDepCategory category) async {
+    final result = await showExpertEditorDepPickerDialog(
+      context,
+      category: category,
+      selectedIds: switch (category) {
+        ExpertEditorDepCategory.skills => _selectedSkillIds,
+        ExpertEditorDepCategory.plugins => _selectedPluginIds,
+        ExpertEditorDepCategory.mcp => _selectedMcpIds,
+      },
+      skills: _skillsRead(context),
+      plugins: _pluginsRead(context),
+      mcps: _mcpsRead(context),
+      existingSkillDeps: _existingSkillDeps,
+      existingPluginDeps: _existingPluginDeps,
+      existingMcpDeps: _existingMcpDeps,
+    );
+    if (!mounted || result == null) return;
+    setState(() {
+      switch (category) {
+        case ExpertEditorDepCategory.skills:
+          _selectedSkillIds = result;
+        case ExpertEditorDepCategory.plugins:
+          _selectedPluginIds = result;
+        case ExpertEditorDepCategory.mcp:
+          _selectedMcpIds = result;
+      }
+    });
   }
 
   Future<void> _submit() async {
@@ -200,9 +227,9 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
     setState(() => _saving = true);
     try {
       final initial = widget.initial;
-      final skills = _skills(context);
-      final plugins = _plugins(context);
-      final mcps = _mcps(context);
+      final skills = _skillsRead(context);
+      final plugins = _pluginsRead(context);
+      final mcps = _mcpsRead(context);
       final deps = resolveExpertEditorDeps(
         selectedSkillIds: _selectedSkillIds,
         selectedPluginIds: _selectedPluginIds,
@@ -280,28 +307,6 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final styles = AppTextStyles.of(context);
-    final skills = _skills(context);
-    final plugins = _plugins(context);
-    final mcps = _mcps(context);
-    final skillIds = {for (final s in skills) s.id};
-    final pluginIds = {for (final p in plugins) p.id};
-    final mcpIds = {for (final m in mcps) m.id};
-    final orphanSkills = [
-      for (final d in _existingSkillDeps)
-        if (_selectedSkillIds.contains(d.expectedLocalId) &&
-            !skillIds.contains(d.expectedLocalId))
-          d,
-    ];
-    final orphanPlugins = [
-      for (final d in _existingPluginDeps)
-        if (_selectedPluginIds.contains(d.expectedLocalId) &&
-            !pluginIds.contains(d.expectedLocalId))
-          d,
-    ];
-    final orphanMcps = [
-      for (final d in _existingMcpDeps)
-        if (_selectedMcpIds.contains(d.id) && !mcpIds.contains(d.id)) d,
-    ];
 
     return AppDialog(
       scrollable: true,
@@ -378,92 +383,30 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
           const SizedBox(height: 20),
           Text(l10n.expertEditorDepsHint, style: styles.sm),
           const SizedBox(height: 12),
-          _DepSectionTitle(l10n.expertEditorSkillsSection),
-          if (orphanSkills.isNotEmpty)
-            _OrphanDepList(
-              title: l10n.expertEditorOrphanDeps,
-              labels: [for (final d in orphanSkills) d.name],
-              onRemoveAt: (i) {
-                final id = orphanSkills[i].expectedLocalId;
-                setState(() => _selectedSkillIds.remove(id));
-              },
-            ),
-          if (skills.isEmpty)
-            Text(l10n.skillsNoInstalled, style: styles.sm)
-          else
-            for (final skill in skills)
-              TeamSkillRow(
-                key: Key('expert-editor-skill-${skill.id}'),
-                skill: skill,
-                assigned: _selectedSkillIds.contains(skill.id),
-                onAssignedChanged: (assigned) {
-                  setState(() {
-                    if (assigned) {
-                      _selectedSkillIds.add(skill.id);
-                    } else {
-                      _selectedSkillIds.remove(skill.id);
-                    }
-                  });
-                },
-              ),
-          const SizedBox(height: 12),
-          _DepSectionTitle(l10n.expertEditorPluginsSection),
-          if (orphanPlugins.isNotEmpty)
-            _OrphanDepList(
-              title: l10n.expertEditorOrphanDeps,
-              labels: [for (final d in orphanPlugins) d.name],
-              onRemoveAt: (i) {
-                final id = orphanPlugins[i].expectedLocalId;
-                setState(() => _selectedPluginIds.remove(id));
-              },
-            ),
-          if (plugins.isEmpty)
-            Text(l10n.pluginsNoInstalled, style: styles.sm)
-          else
-            for (final plugin in plugins)
-              TeamPluginRow(
-                key: Key('expert-editor-plugin-${plugin.id}'),
-                plugin: plugin,
-                assigned: _selectedPluginIds.contains(plugin.id),
-                onAssignedChanged: (assigned) {
-                  setState(() {
-                    if (assigned) {
-                      _selectedPluginIds.add(plugin.id);
-                    } else {
-                      _selectedPluginIds.remove(plugin.id);
-                    }
-                  });
-                },
-              ),
-          const SizedBox(height: 12),
-          _DepSectionTitle(l10n.expertEditorMcpSection),
-          if (orphanMcps.isNotEmpty)
-            _OrphanDepList(
-              title: l10n.expertEditorOrphanDeps,
-              labels: [for (final d in orphanMcps) d.name],
-              onRemoveAt: (i) {
-                final id = orphanMcps[i].id;
-                setState(() => _selectedMcpIds.remove(id));
-              },
-            ),
-          if (mcps.isEmpty)
-            Text(l10n.mcpNoInstalled, style: styles.sm)
-          else
-            for (final server in mcps)
-              TeamMcpRow(
-                key: Key('expert-editor-mcp-${server.id}'),
-                server: server,
-                assigned: _selectedMcpIds.contains(server.id),
-                onAssignedChanged: (assigned) {
-                  setState(() {
-                    if (assigned) {
-                      _selectedMcpIds.add(server.id);
-                    } else {
-                      _selectedMcpIds.remove(server.id);
-                    }
-                  });
-                },
-              ),
+          _ExpertEditorDepSummaryRow(
+            key: const Key('expert-editor-dep-skills'),
+            title: l10n.expertEditorSkillsSection,
+            countKey: const Key('expert-editor-skills-count'),
+            count: _selectedSkillIds.length,
+            configureKey: const Key('expert-editor-configure-skills'),
+            onConfigure: () => _openDepPicker(ExpertEditorDepCategory.skills),
+          ),
+          _ExpertEditorDepSummaryRow(
+            key: const Key('expert-editor-dep-plugins'),
+            title: l10n.expertEditorPluginsSection,
+            countKey: const Key('expert-editor-plugins-count'),
+            count: _selectedPluginIds.length,
+            configureKey: const Key('expert-editor-configure-plugins'),
+            onConfigure: () => _openDepPicker(ExpertEditorDepCategory.plugins),
+          ),
+          _ExpertEditorDepSummaryRow(
+            key: const Key('expert-editor-dep-mcp'),
+            title: l10n.expertEditorMcpSection,
+            countKey: const Key('expert-editor-mcp-count'),
+            count: _selectedMcpIds.length,
+            configureKey: const Key('expert-editor-configure-mcp'),
+            onConfigure: () => _openDepPicker(ExpertEditorDepCategory.mcp),
+          ),
           AppDialogActions(
             children: [
               TextButton(
@@ -483,56 +426,47 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
   }
 }
 
-class _DepSectionTitle extends StatelessWidget {
-  const _DepSectionTitle(this.title);
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        title,
-        style: AppTextStyles.of(
-          context,
-        ).mdBold,
-      ),
-    );
-  }
-}
-
-class _OrphanDepList extends StatelessWidget {
-  const _OrphanDepList({
+class _ExpertEditorDepSummaryRow extends StatelessWidget {
+  const _ExpertEditorDepSummaryRow({
+    super.key,
     required this.title,
-    required this.labels,
-    required this.onRemoveAt,
+    required this.count,
+    required this.countKey,
+    required this.configureKey,
+    required this.onConfigure,
   });
 
   final String title;
-  final List<String> labels;
-  final ValueChanged<int> onRemoveAt;
+  final int count;
+  final Key countKey;
+  final Key configureKey;
+  final VoidCallback onConfigure;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final styles = AppTextStyles.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
         children: [
-          Text(title, style: styles.xs),
-          for (var i = 0; i < labels.length; i++)
-            ListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              title: Text(labels[i]),
-              trailing: TextButton(
-                onPressed: () => onRemoveAt(i),
-                child: Text(l10n.expertEditorOrphanRemove),
-              ),
+          Expanded(
+            child: Row(
+              children: [
+                Text(title, style: styles.mdBold),
+                const SizedBox(width: 8),
+                KeyedSubtree(
+                  key: countKey,
+                  child: Text('$count', style: styles.sm),
+                ),
+              ],
             ),
+          ),
+          TextButton(
+            key: configureKey,
+            onPressed: onConfigure,
+            child: Text(l10n.configure),
+          ),
         ],
       ),
     );
