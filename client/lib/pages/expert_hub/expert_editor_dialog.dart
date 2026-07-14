@@ -16,7 +16,10 @@ import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../services/expert_hub/local_expert_writer.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/form/app_form.dart';
+import '../../widgets/form/app_form_field.dart';
 import '../../widgets/textarea/app_textarea.dart';
+import '../../widgets/textarea/app_textarea_form_field.dart';
 import 'expert_editor_dep_picker_dialog.dart';
 import 'expert_editor_deps.dart';
 
@@ -79,6 +82,7 @@ class ExpertEditorDialog extends StatefulWidget {
 }
 
 class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
+  final _formKey = GlobalKey<AppFormState>();
   late final TextEditingController _name;
   late final TextEditingController _description;
   late final TextEditingController _category;
@@ -204,25 +208,10 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
 
   Future<void> _submit() async {
     if (_saving) return;
+    if (_formKey.currentState?.validate() != true) return;
     final l10n = context.l10n;
     final name = _name.text.trim();
     final prompt = _prompt.text.trim();
-    if (name.isEmpty) {
-      AppToast.show(
-        context,
-        message: l10n.expertEditorNameRequired,
-        variant: AppToastVariant.error,
-      );
-      return;
-    }
-    if (prompt.isEmpty) {
-      AppToast.show(
-        context,
-        message: l10n.expertEditorPromptRequired,
-        variant: AppToastVariant.error,
-      );
-      return;
-    }
 
     setState(() => _saving = true);
     try {
@@ -303,111 +292,147 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
     }
   }
 
+  Widget _textField({
+    required String id,
+    required Key fieldKey,
+    required TextEditingController controller,
+    required String label,
+    String? hint,
+    String? Function(String?)? validator,
+    TextInputAction textInputAction = TextInputAction.next,
+  }) {
+    return AppFormField<String>(
+      id: id,
+      initialValue: controller.text,
+      label: Text(label),
+      validator: validator,
+      builder: (state) {
+        return TextField(
+          key: fieldKey,
+          controller: controller,
+          focusNode: state.focusNode,
+          textInputAction: textInputAction,
+          onChanged: state.didChange,
+          decoration: InputDecoration(
+            hintText: hint,
+            errorText: state.hasError ? '' : null,
+            errorStyle: const TextStyle(height: 0, fontSize: 0),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final styles = AppTextStyles.of(context);
+    final bodyStyle =
+        Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
 
     return AppDialog(
-      scrollable: true,
       maxHeight: MediaQuery.sizeOf(context).height * 0.85,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AppDialogHeader(
+      child: AppForm(
+        key: _formKey,
+        child: AppDialogPinnedLayout(
+          header: AppDialogHeader(
             title: _isEditing
                 ? l10n.expertEditorEditTitle
                 : l10n.expertEditorCreateTitle,
           ),
-          const SizedBox(height: 16),
-          TextField(
-            key: const Key('expert-editor-name'),
-            controller: _name,
-            decoration: InputDecoration(labelText: l10n.name),
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            key: const Key('expert-editor-description'),
-            controller: _description,
-            decoration: InputDecoration(
-              labelText: l10n.expertEditorDescription,
-            ),
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            key: const Key('expert-editor-category'),
-            controller: _category,
-            decoration: InputDecoration(labelText: l10n.expertEditorCategory),
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: 12),
-          Builder(
-            builder: (context) {
-              final bodyStyle =
-                  Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
-              return AppTextarea(
+          body: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _textField(
+                id: 'name',
+                fieldKey: const Key('expert-editor-name'),
+                controller: _name,
+                label: l10n.name,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? l10n.expertEditorNameRequired
+                    : null,
+              ),
+              const SizedBox(height: 12),
+              _textField(
+                id: 'description',
+                fieldKey: const Key('expert-editor-description'),
+                controller: _description,
+                label: l10n.expertEditorDescription,
+              ),
+              const SizedBox(height: 12),
+              _textField(
+                id: 'category',
+                fieldKey: const Key('expert-editor-category'),
+                controller: _category,
+                label: l10n.expertEditorCategory,
+              ),
+              const SizedBox(height: 12),
+              AppTextareaFormField(
                 key: const Key('expert-editor-prompt'),
+                id: 'prompt',
                 controller: _prompt,
-                decoration: InputDecoration(labelText: l10n.expertHubPrompt),
+                label: Text(l10n.expertHubPrompt),
+                decoration: InputDecoration(hintText: l10n.expertEditorPromptHint),
                 minHeight: appTextareaHeightForLines(bodyStyle, lines: 3),
                 maxHeight: appTextareaHeightForLines(bodyStyle, lines: 6),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          Builder(
-            builder: (context) {
-              final bodyStyle =
-                  Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
-              return AppTextarea(
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? l10n.expertEditorPromptRequired
+                    : null,
+              ),
+              const SizedBox(height: 12),
+              AppTextareaFormField(
                 key: const Key('expert-editor-playbook'),
+                id: 'playbook',
                 controller: _playbook,
-                decoration: InputDecoration(labelText: l10n.expertHubPlaybook),
+                label: Text(l10n.expertHubPlaybook),
+                decoration: InputDecoration(
+                  hintText: l10n.expertEditorPlaybookHint,
+                ),
                 minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
                 maxHeight: appTextareaHeightForLines(bodyStyle, lines: 5),
-              );
-            },
+              ),
+              const SizedBox(height: 12),
+              _textField(
+                id: 'tags',
+                fieldKey: const Key('expert-editor-tags'),
+                controller: _tags,
+                label: l10n.expertEditorTags,
+                hint: l10n.expertEditorTagsHint,
+                textInputAction: TextInputAction.done,
+              ),
+              const SizedBox(height: 20),
+              Text(l10n.expertEditorDepsHint, style: styles.sm),
+              const SizedBox(height: 12),
+              _ExpertEditorDepSummaryRow(
+                key: const Key('expert-editor-dep-skills'),
+                title: l10n.expertEditorSkillsSection,
+                countKey: const Key('expert-editor-skills-count'),
+                count: _selectedSkillIds.length,
+                configureKey: const Key('expert-editor-configure-skills'),
+                onConfigure: () =>
+                    _openDepPicker(ExpertEditorDepCategory.skills),
+              ),
+              _ExpertEditorDepSummaryRow(
+                key: const Key('expert-editor-dep-plugins'),
+                title: l10n.expertEditorPluginsSection,
+                countKey: const Key('expert-editor-plugins-count'),
+                count: _selectedPluginIds.length,
+                configureKey: const Key('expert-editor-configure-plugins'),
+                onConfigure: () =>
+                    _openDepPicker(ExpertEditorDepCategory.plugins),
+              ),
+              _ExpertEditorDepSummaryRow(
+                key: const Key('expert-editor-dep-mcp'),
+                title: l10n.expertEditorMcpSection,
+                countKey: const Key('expert-editor-mcp-count'),
+                count: _selectedMcpIds.length,
+                configureKey: const Key('expert-editor-configure-mcp'),
+                onConfigure: () => _openDepPicker(ExpertEditorDepCategory.mcp),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          TextField(
-            key: const Key('expert-editor-tags'),
-            controller: _tags,
-            decoration: InputDecoration(
-              labelText: l10n.expertEditorTags,
-              hintText: l10n.expertEditorTagsHint,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text(l10n.expertEditorDepsHint, style: styles.sm),
-          const SizedBox(height: 12),
-          _ExpertEditorDepSummaryRow(
-            key: const Key('expert-editor-dep-skills'),
-            title: l10n.expertEditorSkillsSection,
-            countKey: const Key('expert-editor-skills-count'),
-            count: _selectedSkillIds.length,
-            configureKey: const Key('expert-editor-configure-skills'),
-            onConfigure: () => _openDepPicker(ExpertEditorDepCategory.skills),
-          ),
-          _ExpertEditorDepSummaryRow(
-            key: const Key('expert-editor-dep-plugins'),
-            title: l10n.expertEditorPluginsSection,
-            countKey: const Key('expert-editor-plugins-count'),
-            count: _selectedPluginIds.length,
-            configureKey: const Key('expert-editor-configure-plugins'),
-            onConfigure: () => _openDepPicker(ExpertEditorDepCategory.plugins),
-          ),
-          _ExpertEditorDepSummaryRow(
-            key: const Key('expert-editor-dep-mcp'),
-            title: l10n.expertEditorMcpSection,
-            countKey: const Key('expert-editor-mcp-count'),
-            count: _selectedMcpIds.length,
-            configureKey: const Key('expert-editor-configure-mcp'),
-            onConfigure: () => _openDepPicker(ExpertEditorDepCategory.mcp),
-          ),
-          AppDialogActions(
+          footer: AppDialogActions(
             children: [
               TextButton(
                 onPressed: _saving ? null : () => Navigator.of(context).pop(),
@@ -420,7 +445,7 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

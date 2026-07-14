@@ -3452,7 +3452,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get expertEditorNameRequired => 'Name is required.';
 
   @override
-  String get expertEditorPromptRequired => 'Prompt is required.';
+  String get expertEditorPromptRequired => 'Responsibilities are required.';
+
+  @override
+  String get expertEditorPromptHint =>
+      'Describe this expert\'s role and what they are responsible for.';
+
+  @override
+  String get expertEditorPlaybookHint =>
+      'Optional step-by-step guidance this expert should follow.';
 
   @override
   String get expertEditorSkillsSection => 'Skills';
@@ -3665,7 +3673,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get expertHubSourceTeamExtract => 'From team';
 
   @override
-  String get expertHubPrompt => 'Prompt';
+  String get expertHubPrompt => 'Responsibilities';
 
   @override
   String get expertHubPlaybook => 'Playbook';

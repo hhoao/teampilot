@@ -3326,7 +3326,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get expertEditorNameRequired => '名称为必填项。';
 
   @override
-  String get expertEditorPromptRequired => '提示词为必填项。';
+  String get expertEditorPromptRequired => '职责为必填项。';
+
+  @override
+  String get expertEditorPromptHint => '描述该专家的职责与工作范围。';
+
+  @override
+  String get expertEditorPlaybookHint => '可选。该专家应遵循的工作步骤与规范。';
 
   @override
   String get expertEditorSkillsSection => '技能';
@@ -3535,7 +3541,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get expertHubSourceTeamExtract => '来自团队';
 
   @override
-  String get expertHubPrompt => '提示词';
+  String get expertHubPrompt => '职责';
 
   @override
   String get expertHubPlaybook => '工作手册';

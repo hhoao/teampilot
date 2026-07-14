@@ -6276,8 +6276,20 @@ abstract class AppLocalizations {
   /// No description provided for @expertEditorPromptRequired.
   ///
   /// In en, this message translates to:
-  /// **'Prompt is required.'**
+  /// **'Responsibilities are required.'**
   String get expertEditorPromptRequired;
+
+  /// No description provided for @expertEditorPromptHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe this expert\'s role and what they are responsible for.'**
+  String get expertEditorPromptHint;
+
+  /// No description provided for @expertEditorPlaybookHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional step-by-step guidance this expert should follow.'**
+  String get expertEditorPlaybookHint;
 
   /// No description provided for @expertEditorSkillsSection.
   ///
@@ -6666,7 +6678,7 @@ abstract class AppLocalizations {
   /// No description provided for @expertHubPrompt.
   ///
   /// In en, this message translates to:
-  /// **'Prompt'**
+  /// **'Responsibilities'**
   String get expertHubPrompt;
 
   /// No description provided for @expertHubPlaybook.

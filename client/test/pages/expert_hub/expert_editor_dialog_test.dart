@@ -628,4 +628,50 @@ void main() {
     expect(result?.member.prompt, 'new prompt');
     expect(writer.saved.single.key, 'local/fixed-id');
   });
+
+  testWidgets('empty name shows field error and does not save', (tester) async {
+    _largeSurface(tester);
+
+    final fs = InMemoryFilesystem();
+    final writer = _SpyWriter(
+      store: LocalMemberTemplateStore(fs: fs, dirOverride: '/t'),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () async {
+                await showExpertEditorDialog(
+                  context,
+                  writer: writer,
+                  skills: const [],
+                  plugins: const [],
+                  mcps: const [],
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('expert-editor-prompt')),
+      'Only prompt',
+    );
+    await tester.tap(find.byKey(const Key('expert-editor-submit')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Name is required.'), findsOneWidget);
+    expect(writer.saved, isEmpty);
+    expect(find.byKey(const Key('expert-editor-submit')), findsOneWidget);
+  });
 }

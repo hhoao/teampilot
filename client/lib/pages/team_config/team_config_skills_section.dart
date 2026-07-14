@@ -141,14 +141,17 @@ class TeamSkillRow extends StatelessWidget {
                           skill.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.of(context).mdBoldColored(textBase,),
+                          style: AppTextStyles.of(
+                            context,
+                          ).mdBoldColored(textBase),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         sourceLabel,
-                        style: AppTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.5),
-                        ),
+                        style: AppTextStyles.of(
+                          context,
+                        ).xsColored(textBase.withValues(alpha: 0.5)),
                       ),
                     ],
                   ),
@@ -158,8 +161,9 @@ class TeamSkillRow extends StatelessWidget {
                       skill.description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.of(context).smColored(textBase.withValues(alpha: 0.6),
-                      ),
+                      style: AppTextStyles.of(
+                        context,
+                      ).smColored(textBase.withValues(alpha: 0.6)),
                     ),
                   ],
                 ],
