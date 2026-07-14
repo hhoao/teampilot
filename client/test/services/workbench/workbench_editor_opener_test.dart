@@ -39,6 +39,30 @@ void main() {
     await pending;
     expect(editor.state.bucket('ws').openFilePaths, ['/repo/a.txt']);
   });
+
+  test('openFile ensures workbench tab for image paths', () async {
+    final gate = Completer<void>();
+    final fs = _GatedFilesystem(gate)
+      ..byteFiles['/repo/a.png'] = const [1, 2, 3];
+    final editor = EditorCubit(fs: fs);
+    final workbench = WorkbenchCubit();
+    addTearDown(editor.close);
+    addTearDown(workbench.close);
+
+    final opener = WorkbenchEditorOpener(
+      editor: editor,
+      workbench: workbench,
+      markdownViewModes: MarkdownViewModeStore(),
+      readMarkdownOpenMode: () => MarkdownOpenMode.preview,
+    );
+    final pending = opener.openFile('ws', '/repo/a.png');
+    await Future<void>.delayed(Duration.zero);
+
+    expect(workbench.activeTabId('ws'), WorkbenchTabId.file('/repo/a.png'));
+    gate.complete();
+    await pending;
+    expect(editor.bytesFor('ws', '/repo/a.png'), isNotNull);
+  });
 }
 
 class _GatedFilesystem extends InMemoryFilesystem {

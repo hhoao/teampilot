@@ -67,6 +67,8 @@ extension EditorL10n on AppLocalizations {
       EditorMessage.readOnly => editorFileReadOnly,
       EditorMessage.fileNotFound => editorFileNotFound,
       EditorMessage.fileTooLarge => editorFileTooLarge,
+      EditorMessage.imageTooLarge => editorImageTooLarge,
+      EditorMessage.imageDecodeFailed => editorImageDecodeFailed,
       EditorMessage.couldNotRead => editorCouldNotReadFile,
       _ => code,
     };

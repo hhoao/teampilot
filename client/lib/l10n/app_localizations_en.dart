@@ -1852,6 +1852,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'File is too large to edit in TeamPilot (max 2 MB).';
 
   @override
+  String get editorImageTooLarge =>
+      'Image is too large to preview in TeamPilot (max 25 MB).';
+
+  @override
+  String get editorImageDecodeFailed => 'Could not decode this image.';
+
+  @override
   String get editorCouldNotReadFile => 'Could not read file';
 
   @override

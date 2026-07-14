@@ -3,6 +3,8 @@ abstract final class EditorMessage {
   static const binaryFile = 'editor_binary_file';
   static const fileNotFound = 'editor_error_not_found';
   static const fileTooLarge = 'editor_error_too_large';
+  static const imageTooLarge = 'editor_error_image_too_large';
+  static const imageDecodeFailed = 'editor_error_image_decode_failed';
   static const couldNotRead = 'editor_error_read_failed';
   static const readOnly = 'editor_read_only';
 

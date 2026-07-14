@@ -1768,6 +1768,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorFileTooLarge => '文件过大，无法在 TeamPilot 中编辑（上限 2 MB）。';
 
   @override
+  String get editorImageTooLarge => '图片过大，无法在 TeamPilot 中预览（上限 25 MB）。';
+
+  @override
+  String get editorImageDecodeFailed => '无法解码此图片。';
+
+  @override
   String get editorCouldNotReadFile => '无法读取文件';
 
   @override

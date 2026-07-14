@@ -37,7 +37,7 @@ class WorkbenchEditorOpener {
     final normalized = path.trim();
     if (normalized.isEmpty) return;
     // Activate the tab immediately so preview is not gated on disk IO.
-    if (!isEditorOpenableFilePath(normalized)) {
+    if (!isWorkbenchOpenableFilePath(normalized)) {
       await _editor.openFile(workspaceId, normalized, fs: fs);
       return;
     }

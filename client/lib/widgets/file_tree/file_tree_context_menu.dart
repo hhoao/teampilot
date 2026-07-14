@@ -198,7 +198,7 @@ abstract final class FileTreeContextMenu {
           ? null
           : () {
               final created = cubit.fs.pathContext.join(parentDir, name.trim());
-              if (isEditorOpenableFilePath(created)) {
+              if (isWorkbenchOpenableFilePath(created)) {
                 unawaited(
                   context.read<WorkbenchEditorOpener>().openFile(
                     workspaceId,

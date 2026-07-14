@@ -125,6 +125,18 @@ const kEditorTextBasenames = {
 /// Maximum file size loaded into the editor (bytes).
 const kEditorMaxFileBytes = 2 * 1024 * 1024;
 
+const kEditorImageExtensions = {
+  'png',
+  'jpg',
+  'jpeg',
+  'gif',
+  'webp',
+  'bmp',
+};
+
+/// Max image bytes loaded for in-app preview (separate from text editor cap).
+const kEditorMaxImageBytes = 25 * 1024 * 1024;
+
 /// Whether [filePath] should open in the in-app text editor.
 bool isEditorOpenableFilePath(String filePath) {
   final ext = p.extension(filePath).replaceFirst('.', '').toLowerCase();
@@ -134,6 +146,14 @@ bool isEditorOpenableFilePath(String filePath) {
   final base = p.basename(filePath).toLowerCase();
   return kEditorTextBasenames.contains(base);
 }
+
+bool isImagePreviewPath(String filePath) {
+  final ext = p.extension(filePath).replaceFirst('.', '').toLowerCase();
+  return ext.isNotEmpty && kEditorImageExtensions.contains(ext);
+}
+
+bool isWorkbenchOpenableFilePath(String filePath) =>
+    isEditorOpenableFilePath(filePath) || isImagePreviewPath(filePath);
 
 /// Editor monospace size from [AppTypographyTheme.mono].
 double fileEditorFontSize(BuildContext context) => context.appTypography.mono;

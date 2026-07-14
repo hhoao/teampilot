@@ -116,7 +116,7 @@ class _FileTreeNodeState extends State<FileTreeNode> {
           (c) => c.state.expandedPaths.contains(widget.path),
         );
     final isActive = _isActiveEditorFile(context);
-    final canOpenInEditor = !isDir && isEditorOpenableFilePath(widget.path);
+    final canOpenInEditor = !isDir && isWorkbenchOpenableFilePath(widget.path);
     final cs = Theme.of(context).colorScheme;
     final labelColor = isActive
         ? cs.onSecondaryContainer
@@ -275,7 +275,7 @@ class _FileTreeNodeState extends State<FileTreeNode> {
     String filePath, {
     required bool preview,
   }) {
-    if (!isEditorOpenableFilePath(filePath)) {
+    if (!isWorkbenchOpenableFilePath(filePath)) {
       _openFileExternally(filePath);
       return;
     }

@@ -5,6 +5,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
+import 'package:teampilot/services/editor/editor_messages.dart';
+import 'package:teampilot/services/editor/file_editor_theme.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
@@ -233,6 +235,62 @@ void main() {
     await pending;
     expect(cubit.state.bucket(ws).openFilePaths, isEmpty);
     expect(cubit.controllerFor(ws, '/repo/a.txt'), isNull);
+  });
+
+  test('closeFile cancels in-flight image open so late read does not keep bytes',
+      () async {
+    final gate = Completer<void>();
+    final fs = _GatedFilesystem(gate);
+    fs.byteFiles['/repo/dot.png'] = <int>[
+      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+    ];
+
+    final cubit = EditorCubit(fs: fs);
+    addTearDown(cubit.close);
+
+    final pending = cubit.openFile(ws, '/repo/dot.png');
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state.bucket(ws).loadingPaths, contains('/repo/dot.png'));
+
+    expect(cubit.closeFile(ws, '/repo/dot.png', force: true), isTrue);
+    expect(cubit.state.bucket(ws).loadingPaths, isEmpty);
+
+    gate.complete();
+    await pending;
+    expect(cubit.state.bucket(ws).openFilePaths, isEmpty);
+    expect(cubit.bytesFor(ws, '/repo/dot.png'), isNull);
+  });
+
+  test('openFile loads image bytes without text controller', () async {
+    final fs = InMemoryFilesystem();
+    fs.byteFiles['/repo/dot.png'] = <int>[
+      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+    ];
+    final cubit = EditorCubit(fs: fs);
+    addTearDown(cubit.close);
+
+    await cubit.openFile(ws, '/repo/dot.png');
+    expect(cubit.state.bucket(ws).openFilePaths, ['/repo/dot.png']);
+    expect(cubit.controllerFor(ws, '/repo/dot.png'), isNull);
+    expect(cubit.bytesFor(ws, '/repo/dot.png'), isNotNull);
+    expect(cubit.documentSessionFor(ws, '/repo/dot.png'), isNull);
+
+    cubit.closeFile(ws, '/repo/dot.png', force: true);
+    expect(cubit.bytesFor(ws, '/repo/dot.png'), isNull);
+  });
+
+  test('openFile rejects oversized images', () async {
+    final fs = InMemoryFilesystem();
+    fs.byteFiles['/repo/big.png'] = List<int>.filled(kEditorMaxImageBytes + 1, 0);
+    final cubit = EditorCubit(fs: fs);
+    addTearDown(cubit.close);
+
+    await cubit.openFile(ws, '/repo/big.png');
+    expect(cubit.state.bucket(ws).openFilePaths, isEmpty);
+    expect(
+      cubit.state.bucket(ws).errorByPath['/repo/big.png'],
+      EditorMessage.imageTooLarge,
+    );
   });
 }
 
