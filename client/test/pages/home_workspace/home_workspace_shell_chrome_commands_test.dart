@@ -224,4 +224,25 @@ void main() {
       expect(host.openTabCount, 0);
     });
   });
+
+  group('HomeShell.resolveTabRoute', () {
+    test('falls back to bare workspace path', () {
+      expect(
+        HomeShell.resolveTabRoute(tab: _a, restorableLocations: const {}),
+        _a.route,
+      );
+    });
+
+    test('restores last deep link including manage view', () {
+      const manage =
+          '/home-v2/workspace/ws-a?view=manage&section=settings';
+      expect(
+        HomeShell.resolveTabRoute(
+          tab: _a,
+          restorableLocations: {_a.tabKey: manage},
+        ),
+        manage,
+      );
+    });
+  });
 }

@@ -71,16 +71,22 @@ class _WorkspacePageState extends State<WorkspacePage> {
     if (active && !_wasRouteActive) {
       _scheduleActivation();
     }
-    if (active &&
-        (view != _lastScopeView || (!_wasRouteActive && view == 'manage'))) {
-      if (view == 'manage') _visitedManage = true;
-      setState(() {
-        _section = _sectionFromRoute(view);
-        if (_section == WorkspaceSection.manage) _visitedManage = true;
-      });
+    if (active) {
+      final nextSection = _sectionFromRoute(view);
+      // Always resync on tab reactivation: inactive slots force view=null in
+      // the scope, and selecting a bare workspace route must not leave a stale
+      // manage section with a broken back affordance.
+      final shouldSync =
+          !_wasRouteActive || view != _lastScopeView || nextSection != _section;
+      if (shouldSync) {
+        setState(() {
+          _section = nextSection;
+          if (_section == WorkspaceSection.manage) _visitedManage = true;
+        });
+      }
+      _lastScopeView = view;
     }
     _wasRouteActive = active;
-    _lastScopeView = view;
     _syncProfileFromRoute();
     _syncExpertFromRoute();
     _syncSessionFromRoute();

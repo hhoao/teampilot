@@ -398,7 +398,8 @@ class WorkspaceSplitShell extends StatelessWidget {
   }
 }
 
-/// Fade + slide when hub section body identity changes.
+/// Fade + slide entry when hub section body identity changes — same motion as
+/// home left-nav pane switches ([PaneEntryAnimation] / workspace pane data).
 class _HubBodySwitcher extends StatelessWidget {
   const _HubBodySwitcher({required this.body});
 
@@ -406,20 +407,11 @@ class _HubBodySwitcher extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final disabled = MediaQuery.disableAnimationsOf(context);
-    final duration = disabled ? Duration.zero : WorkspaceSplitShell._bodySwitchDuration;
-    return AnimatedSwitcher(
-      duration: duration,
-      switchInCurve: Curves.easeOut,
-      switchOutCurve: Curves.easeIn,
-      // Keep only the incoming child so outgoing/incoming never stack.
-      layoutBuilder: (current, _) => current ?? const SizedBox.shrink(),
-      transitionBuilder: (child, animation) =>
-          paneSwitcherStructuralTransition(child, animation, context),
-      child: KeyedSubtree(
-        key: body.key ?? ValueKey<Type>(body.runtimeType),
-        child: body,
-      ),
+    final identity = body.key ?? ValueKey<Type>(body.runtimeType);
+    return PaneEntryAnimation(
+      key: identity,
+      duration: WorkspaceSplitShell._bodySwitchDuration,
+      child: body,
     );
   }
 }

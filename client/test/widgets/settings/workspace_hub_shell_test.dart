@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/widgets/pane_entry_animation.dart';
 import 'package:teampilot/widgets/split_layout.dart';
 import 'package:teampilot/widgets/settings/workspace_hub_shell.dart';
 
@@ -21,7 +22,7 @@ void main() {
     );
 
     expect(find.byType(TwoPaneSplitView), findsOneWidget);
-    expect(find.byType(AnimatedSwitcher), findsOneWidget);
+    expect(find.byType(PaneEntryAnimation), findsOneWidget);
     expect(find.text('Nav'), findsOneWidget);
     expect(find.text('Body'), findsOneWidget);
   });

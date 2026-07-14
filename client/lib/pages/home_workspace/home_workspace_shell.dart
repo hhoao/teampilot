@@ -68,6 +68,18 @@ class HomeShell extends StatefulWidget {
     return merged;
   }
 
+  /// Location to open when activating [tab]: last deep link for that tab if
+  /// known, otherwise the bare workspace path.
+  @visibleForTesting
+  static String resolveTabRoute({
+    required WorkspaceTabRef tab,
+    required Map<String, String> restorableLocations,
+  }) {
+    final restored = restorableLocations[tab.tabKey]?.trim();
+    if (restored != null && restored.isNotEmpty) return restored;
+    return tab.route;
+  }
+
   /// Tab to activate for `workbench.workspace.nextTab`: the tab after
   /// [activeTabKey] in [tabs], wrapping from the last tab back to the
   /// first. Returns the first tab when [activeTabKey] is `null` or not
@@ -108,6 +120,10 @@ class _HomeShellState extends State<HomeShell> {
   late List<WorkspaceTabRef> _openTabs;
   List<HomeClosedWorkspaceEntry> _recentlyClosed = const [];
 
+  /// Last in-tab location (incl. query) so Home ↔ workspace tab switches restore
+  /// manage/section deep links instead of dropping back to the bare workspace path.
+  final Map<String, String> _tabRestorableLocations = {};
+
   late CommandBus _commandBus;
   late WorkspaceChromeCommands _chromeCommands;
 
@@ -120,6 +136,9 @@ class _HomeShellState extends State<HomeShell> {
       persisted: cache.openWorkspaceTabs,
       routeTab: routeTab,
     );
+    if (routeTab != null) {
+      _tabRestorableLocations[routeTab.tabKey] = widget.location;
+    }
     _registerChromeCommands();
     unawaited(_finishOpenTabsBootstrap(routeTab));
     if (routeTab == null) {
@@ -244,6 +263,7 @@ class _HomeShellState extends State<HomeShell> {
     if (oldWidget.location != widget.location) {
       final routeTab = WorkspaceTabRef.fromLocation(widget.location);
       if (routeTab != null) {
+        _tabRestorableLocations[routeTab.tabKey] = widget.location;
         if (!_openTabs.any((t) => t.tabKey == routeTab.tabKey)) {
           _setOpenTabs([..._openTabs, routeTab]);
           unawaited(_persistOpenTabs());
@@ -258,7 +278,14 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
-  void _selectTab(WorkspaceTabRef tab) => context.go(tab.route);
+  void _selectTab(WorkspaceTabRef tab) {
+    context.go(
+      HomeShell.resolveTabRoute(
+        tab: tab,
+        restorableLocations: _tabRestorableLocations,
+      ),
+    );
+  }
 
   void _goHome() => context.go('/home-v2');
 
@@ -317,6 +344,7 @@ class _HomeShellState extends State<HomeShell> {
     final activeTab = WorkspaceTabRef.fromLocation(widget.location);
     final wasActive = activeTab?.tabKey == tabKey;
     final next = [..._openTabs]..removeAt(idx);
+    _tabRestorableLocations.remove(tabKey);
     _setOpenTabs(next);
     await _persistOpenTabs();
     await _reloadRecentlyClosed();
