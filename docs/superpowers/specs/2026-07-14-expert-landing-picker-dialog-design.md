@@ -52,14 +52,25 @@ Public function names may stay for compatibility; implementations switch from `s
 ### Detail step
 
 - Reuse `ExpertHubDetailOverlay` content in a **picker mode**:
-  - Primary CTA becomes **Confirm** (new l10n: e.g. `expertHubConfirmSelection` / 确认).
+  - **Confirm** is the primary filled CTA (new l10n: e.g. `expertHubConfirmSelection` / 确认), placed where the hub’s filled **Add to team** button sits today.
+  - **Add to team** and **Launch in workspace** remain as secondary outlined actions below/beside it.
   - Keep favorite toggle.
-  - Keep **Add to team** and **Launch in workspace** as secondary actions with the same handlers as the Expert Hub page (via the same callbacks the page already wires). Completing those actions must **not** imply picker confirmation; only Confirm selects.
+  - Only **Confirm** completes picker selection (`pop(key)` / `onApply`). Secondary actions never count as Confirm.
 - Back clears the in-dialog detail and shows the grid again.
+
+### Secondary-action lifecycle (picker)
+
+Handlers are the same functions the Expert Hub page uses today (`onAddToTeam` / `onLaunchInWorkspace` from `home_workspace_global_section.dart`). The picker dialog wires them once in its `show*` entrypoints (not per Landing/automation/team caller).
+
+| Action | After success |
+|--------|----------------|
+| Add to team | Close nested team picker; clear in-dialog detail and return to the **grid**; picker dialog **stays open**; no landing/apply selection |
+| Launch in workspace | **Dismiss** the picker with `null` / without `onApply` first, then run the launch handler (which may `context.go`). Never leave the modal stacked on a new route |
+| Confirm | Dismiss with selection as in the entry-points table |
 
 ### Selected-key highlight
 
-- Landing/automation may pass `selectedKey` so the grid can mark the current expert (same as today’s sheet).
+- Landing/automation may pass `selectedKey`. Today’s `ExpertHubBody` / cards do not highlight a current key — picker work includes a small API so the matching card can show selected state (same intent as the old sheet’s checkmark).
 
 ## Data and errors
 
