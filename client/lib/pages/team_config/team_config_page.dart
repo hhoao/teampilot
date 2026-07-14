@@ -196,7 +196,10 @@ class TeamConfigPage extends StatelessWidget {
         },
         l10n: l10n,
       ),
-      body: body,
+      body: KeyedSubtree(
+        key: ValueKey('${section.name}-${resolvedMemberId ?? ''}'),
+        child: body,
+      ),
     );
   }
 }

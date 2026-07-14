@@ -5,6 +5,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../pane_entry_animation.dart';
 import '../split_layout.dart';
 
 enum WorkspaceHubNavDensity { standard, relaxed, subItem }
@@ -353,6 +354,7 @@ class WorkspaceSplitShell extends StatelessWidget {
   final ValueChanged<double>? onNavWidthChanged;
 
   static const compactBreakpoint = 820.0;
+  static const _bodySwitchDuration = Duration(milliseconds: 220);
 
   @override
   Widget build(BuildContext context) {
@@ -380,7 +382,7 @@ class WorkspaceSplitShell extends StatelessWidget {
                 return SizedBox(
                   width: contentWidth,
                   height: inner.maxHeight,
-                  child: body,
+                  child: _HubBodySwitcher(body: body),
                 );
               },
             ),
@@ -392,6 +394,32 @@ class WorkspaceSplitShell extends StatelessWidget {
           onSizeChanged: onNavWidthChanged,
         );
       },
+    );
+  }
+}
+
+/// Fade + slide when hub section body identity changes.
+class _HubBodySwitcher extends StatelessWidget {
+  const _HubBodySwitcher({required this.body});
+
+  final Widget body;
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = MediaQuery.disableAnimationsOf(context);
+    final duration = disabled ? Duration.zero : WorkspaceSplitShell._bodySwitchDuration;
+    return AnimatedSwitcher(
+      duration: duration,
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      // Keep only the incoming child so outgoing/incoming never stack.
+      layoutBuilder: (current, _) => current ?? const SizedBox.shrink(),
+      transitionBuilder: (child, animation) =>
+          paneSwitcherStructuralTransition(child, animation, context),
+      child: KeyedSubtree(
+        key: body.key ?? ValueKey<Type>(body.runtimeType),
+        child: body,
+      ),
     );
   }
 }

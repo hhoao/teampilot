@@ -84,7 +84,13 @@ class _WorkspaceConfigPanelState extends State<WorkspaceConfigPanel> {
           l10n: l10n,
           onSelect: (s) => context.go(_managePath(s)),
         ),
-        body: _ProjectConfigBody(workspace: widget.workspace, section: section),
+        body: KeyedSubtree(
+          key: ValueKey(section),
+          child: _ProjectConfigBody(
+            workspace: widget.workspace,
+            section: section,
+          ),
+        ),
       ),
     );
   }

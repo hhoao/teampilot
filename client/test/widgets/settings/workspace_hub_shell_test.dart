@@ -21,8 +21,53 @@ void main() {
     );
 
     expect(find.byType(TwoPaneSplitView), findsOneWidget);
+    expect(find.byType(AnimatedSwitcher), findsOneWidget);
     expect(find.text('Nav'), findsOneWidget);
     expect(find.text('Body'), findsOneWidget);
+  });
+
+  testWidgets('split shell animates when body key changes', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 900,
+            height: 500,
+            child: WorkspaceSplitShell(
+              nav: const SizedBox(child: Text('Nav')),
+              body: const KeyedSubtree(
+                key: ValueKey('a'),
+                child: Text('Pane A'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Pane A'), findsOneWidget);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 900,
+            height: 500,
+            child: WorkspaceSplitShell(
+              nav: const SizedBox(child: Text('Nav')),
+              body: const KeyedSubtree(
+                key: ValueKey('b'),
+                child: Text('Pane B'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 220));
+
+    expect(find.text('Pane B'), findsOneWidget);
+    expect(find.text('Pane A'), findsNothing);
   });
 
   testWidgets('nav list renders entries without entry animation', (
