@@ -31,7 +31,7 @@
 - Modify: `client/lib/l10n/app_zh.arb`
 - Generated: `app_localizations*.dart` (via `flutter gen-l10n`)
 
-- [ ] **Step 1: Add ARB keys** (near existing `expertEditor*` keys)
+- [x] **Step 1: Add ARB keys** (near existing `expertEditor*` keys)
 
 English (`app_en.arb`):
 
@@ -57,7 +57,7 @@ Reuse existing `configure` for the Configure button label (do not add a duplicat
 
 Also update `expertEditorDepsHint` values as above (replace “勾选/Select” wording to match the new flow).
 
-- [ ] **Step 2: Regenerate l10n**
+- [x] **Step 2: Regenerate l10n**
 
 Run from `client/`:
 
@@ -73,7 +73,7 @@ If the project also regenerates warmup glyphs after ARB edits:
 dart run tool/gen_warmup_glyphs.dart
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add client/lib/l10n/
@@ -93,7 +93,7 @@ EOF
 
 Implement the picker first; cover behavior through `expert_editor_dialog_test.dart` in Task 3–4 (integration via the main dialog). No separate picker test file required.
 
-- [ ] **Step 1: Create picker API + widget**
+- [x] **Step 1: Create picker API + widget**
 
 Create `client/lib/pages/expert_hub/expert_editor_dep_picker_dialog.dart`:
 
@@ -237,7 +237,7 @@ Implement the full body for all three categories (skills / plugins / mcp) — th
 
 Keep row keys identical to today (`expert-editor-skill-$id`, `expert-editor-plugin-$id`, `expert-editor-mcp-$id`) so existing test finders still work once the picker is open.
 
-- [ ] **Step 2: Analyze**
+- [x] **Step 2: Analyze**
 
 ```bash
 cd client && dart analyze lib/pages/expert_hub/expert_editor_dep_picker_dialog.dart
@@ -245,7 +245,7 @@ cd client && dart analyze lib/pages/expert_hub/expert_editor_dep_picker_dialog.d
 
 Expected: no errors (may warn until main dialog imports it).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add client/lib/pages/expert_hub/expert_editor_dep_picker_dialog.dart
@@ -264,7 +264,7 @@ EOF
 - Modify: `client/lib/pages/expert_hub/expert_editor_dialog.dart`
 - Modify: `client/test/pages/expert_hub/expert_editor_dialog_test.dart`
 
-- [ ] **Step 1: Write failing tests for compact UI + Done path**
+- [x] **Step 1: Write failing tests for compact UI + Done path**
 
 In `expert_editor_dialog_test.dart`, update the existing `toggling portable skill saves skillDeps` test and add:
 
@@ -380,7 +380,7 @@ testWidgets('configure skills Cancel leaves selection unchanged', (tester) async
 });
 ```
 
-- [ ] **Step 2: Run tests — expect FAIL**
+- [x] **Step 2: Run tests — expect FAIL**
 
 ```bash
 cd client && flutter test test/pages/expert_hub/expert_editor_dialog_test.dart
@@ -388,7 +388,7 @@ cd client && flutter test test/pages/expert_hub/expert_editor_dialog_test.dart
 
 Expected: FAIL — missing configure keys / catalog still inlined or count widgets absent.
 
-- [ ] **Step 3: Refactor main dialog**
+- [x] **Step 3: Refactor main dialog**
 
 In `expert_editor_dialog.dart`:
 
@@ -517,13 +517,13 @@ class _ExpertEditorDepSummaryRow extends StatelessWidget {
 
 8. Drop orphan UI from the main dialog (lives only in the picker now).
 
-- [ ] **Step 4: Run tests — expect PASS** for new + existing create/edit tests
+- [x] **Step 4: Run tests — expect PASS** for new + existing create/edit tests
 
 ```bash
 cd client && flutter test test/pages/expert_hub/expert_editor_dialog_test.dart
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add client/lib/pages/expert_hub/expert_editor_dialog.dart \
@@ -542,7 +542,7 @@ EOF
 **Files:**
 - Modify: `client/test/pages/expert_hub/expert_editor_dialog_test.dart`
 
-- [ ] **Step 1: Write orphan test**
+- [x] **Step 1: Write orphan test**
 
 ```dart
 testWidgets('orphan skill counts on main; remove in picker updates count', (
@@ -603,13 +603,13 @@ testWidgets('orphan skill counts on main; remove in picker updates count', (
 
 Use English locale (default in existing tests) so orphan remove label is `Remove`.
 
-- [ ] **Step 2: Run test — FAIL then fix picker orphan remove if needed**
+- [x] **Step 2: Run test — FAIL then fix picker orphan remove if needed**
 
 ```bash
 cd client && flutter test test/pages/expert_hub/expert_editor_dialog_test.dart
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add client/test/pages/expert_hub/expert_editor_dialog_test.dart
@@ -624,7 +624,7 @@ EOF
 
 ### Task 5: Verification
 
-- [ ] **Step 1: Analyze + full targeted tests**
+- [x] **Step 1: Analyze + full targeted tests**
 
 ```bash
 cd client && flutter analyze --no-fatal-infos --no-fatal-warnings \
@@ -636,14 +636,14 @@ cd client && flutter test test/pages/expert_hub/expert_editor_dialog_test.dart
 
 Expected: clean analyze for touched files; all tests PASS.
 
-- [ ] **Step 2: Manual smoke (optional)**
+- [x] **Step 2: Manual smoke (optional)**
 
 1. My Experts → New expert → confirm three rows show `0` + Configure.
 2. Configure skills → select one → Done → count `1`.
 3. Configure again → Cancel after toggling → count unchanged.
 4. Save expert; reopen edit → count restored.
 
-- [ ] **Step 3: Final commit if any leftover fixes**
+- [x] **Step 3: Final commit if any leftover fixes**
 
 Only if analyze/tests required small fixes not already committed.
 
