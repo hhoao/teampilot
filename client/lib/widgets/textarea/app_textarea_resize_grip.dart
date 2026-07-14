@@ -1,31 +1,44 @@
 // Adapted from flutter-shadcn-ui Textarea grip; App* naming.
 import 'package:flutter/material.dart';
 
+/// Hit-target size for the resize grip (visual paint stays smaller).
+const double kAppTextareaResizeGripHitSize = 20;
+
+/// Painted grip size (matches ShadDefaultResizeGrip).
+const double kAppTextareaResizeGripVisualSize = 8;
+
 /// A small visual grip used to indicate that an [AppTextareaShell] is
-/// resizable by the user.
-///
-/// This widget appears in the bottom-right corner and allows the user to drag
-/// and resize the textarea vertically.
+/// resizable. Drag handling lives on the shell's [GestureDetector].
 class AppDefaultResizeGrip extends StatelessWidget {
   const AppDefaultResizeGrip({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return SizedBox(
       key: const Key('app-textarea-resize-grip'),
-      width: 8,
-      height: 8,
-      child: CustomPaint(
-        painter: AppResizeGripPainter(
-          color: Theme.of(context).colorScheme.outline,
+      width: kAppTextareaResizeGripHitSize,
+      height: kAppTextareaResizeGripHitSize,
+      child: Align(
+        alignment: Alignment.bottomRight,
+        child: Padding(
+          padding: const EdgeInsets.only(right: 2, bottom: 2),
+          child: SizedBox(
+            width: kAppTextareaResizeGripVisualSize,
+            height: kAppTextareaResizeGripVisualSize,
+            child: CustomPaint(
+              painter: AppResizeGripPainter(
+                color: scheme.outline.withValues(alpha: 0.7),
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-/// A customizable painter for drawing diagonal resize grip lines, typically
-/// used in the bottom-right corner of a resizable widget.
+/// Diagonal resize grip lines for the bottom-trailing corner.
 class AppResizeGripPainter extends CustomPainter {
   const AppResizeGripPainter({
     required this.color,

@@ -68,7 +68,8 @@ Tests under `client/test/widgets/textarea/`.
 - Familiar `TextField` surface: `controller` / `initialValue` (mutually exclusive), `focusNode`, `onChanged`, `enabled`, `readOnly`, `maxLength`, `decoration` / hint, `style`, etc.
 - Height/resize params forwarded to the shell.
 - Keyboard type: multiline.
-- Explicit decoration merge that clears fixed single-line height constraints from the global outline theme; horizontal padding follows `AppControlTheme` (+ existing input inset tweak); vertical padding suitable for multiline (not the single-line track).
+- **Visual (shadcn-aligned, still Material):** soft `outlineVariant` border; focus uses stronger border + `primary` ring (`spreadRadius: 3`, ~20% alpha); muted placeholder; `px-3` / `py-2` padding; light idle shadow; default outer `minHeight` 80; hide platform scrollbars; enlarge resize grip hit target (20px) while keeping 8px visual; drag-resize requests focus.
+- Explicit decoration merge that clears fixed single-line height constraints from the global outline theme.
 
 ### `AppTextareaFormField`
 

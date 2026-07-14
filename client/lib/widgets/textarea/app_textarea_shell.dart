@@ -1,6 +1,5 @@
 // Adapted from flutter-shadcn-ui Textarea; App* naming.
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'app_textarea_resize_grip.dart';
 
@@ -23,6 +22,7 @@ class AppTextareaShell extends StatefulWidget {
     this.resizeHandleBuilder,
     this.textStyle,
     this.verticalChrome = 0,
+    this.focusNode,
   });
 
   final Widget Function(BuildContext context, int lineCount) builder;
@@ -36,6 +36,9 @@ class AppTextareaShell extends StatefulWidget {
 
   /// Vertical inset subtracted before deriving [lineCount] (padding + borders).
   final double verticalChrome;
+
+  /// When set, drag-resize requests focus (matches ShadTextarea).
+  final FocusNode? focusNode;
 
   @override
   State<AppTextareaShell> createState() => _AppTextareaShellState();
@@ -64,6 +67,7 @@ class _AppTextareaShellState extends State<AppTextareaShell> {
       value.clamp(widget.minHeight, widget.maxHeight);
 
   void _handleResize(DragUpdateDetails details) {
+    widget.focusNode?.requestFocus();
     final newHeight = _clampHeight(_height + details.delta.dy);
     if (newHeight != _height) {
       setState(() => _height = newHeight);
@@ -101,8 +105,8 @@ class _AppTextareaShellState extends State<AppTextareaShell> {
         ),
         if (widget.resizable)
           Positioned(
-            bottom: 2,
-            right: 2,
+            bottom: 0,
+            right: 0,
             child: MouseRegion(
               cursor: SystemMouseCursors.resizeUpDown,
               child: GestureDetector(

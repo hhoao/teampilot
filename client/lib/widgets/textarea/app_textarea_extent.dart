@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
 
 /// Vertical contentPadding used by [appMultilineInputDecoration] (each side).
+/// Matches shadcn `py-2`.
 const double kAppTextareaVerticalPadding = 8;
 
-/// Outline border width budget for outer height (covers focused 1.5).
+/// Horizontal contentPadding (each side). Matches shadcn `px-3`.
+const double kAppTextareaHorizontalPadding = 12;
+
+/// Outline border width budget for outer height (idle 1px; focused uses ring).
 ///
 /// Top + bottom are applied via `borderWidth * 2` in
 /// [appTextareaHeightForLines] / [appTextareaVerticalChrome].
 const double kAppTextareaBorderWidth = 1;
+
+/// Focus ring spread outside the border (shadcn `ring-[3px]`).
+const double kAppTextareaFocusRingSpread = 3;
 
 /// Total vertical chrome (padding + border) for the AppTextarea path.
 ///
