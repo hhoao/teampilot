@@ -14,12 +14,12 @@ After v1, geometric tokens exist in both places: `TpTheme` (`shared_ui`) and par
 2. **Move semantic text styles into `shared_ui`:** `AppTextStyles` → `TpTextStyles` (no aliases).
 3. **Move font-family ThemeExtension into `shared_ui`:** `AppFontTheme` → `TpFontTheme` (families + fallbacks only; no Google Fonts / catalog).
 4. **First-class glyph warmup API in `shared_ui`:** enumerate styles + shape helpers; host supplies glyph charset and boot orchestration.
-5. Preserve UX: font loading, markdown/input warmup extras, toast, workspace surfaces stay host-owned where they encode product policy.
+5. Preserve UX: font loading, markdown/input warmup extras, and workspace surfaces stay host-owned where they encode product policy. Toast visual tokens move to `TpToastTheme` in a later follow-up ([2026-07-16-shared-ui-toast-design.md](./2026-07-16-shared-ui-toast-design.md)); host still owns recorder / global show / title-bar inset.
 
 ## Non-goals
 
 - Moving Google Fonts loading, `FontCatalog`, or `gen_warmup_glyphs` into the package.
-- Moving markdown style sheets or toast themes into the package.
+- Moving markdown style sheets into the package (toast theme ownership: see toast follow-up).
 - Changing visual baselines of spacing / icons / control metrics (same numbers, one owner).
 
 ## Decisions
@@ -72,7 +72,8 @@ Host keeps `bootstrapThemeForTextWarmup` / preference-aware theme (fonts + text 
 | Existing tokens / `TpTheme` | `AppTypographyScale` prefs → scale multipliers |
 | | `AppIconSizes.resolveIconMultiplier`, `AppIconColors` |
 | | Markdown / outline-input styles used as warmup *extras* |
-| | Toast, workspace surfaces, MaterialApp assembly |
+| | Workspace surfaces, MaterialApp assembly |
+| `TpToastTheme` (see toast follow-up) | `AppToast` product facade (recorder / showGlobal / title-bar margin) |
 
 ## Migration
 

@@ -213,3 +213,7 @@ Colors are **not** duplicated as a second palette: components use `Theme.of(cont
 ## Amendment (v1.1)
 
 Theme consolidation: [2026-07-15-shared-ui-theme-consolidation-design.md](./2026-07-15-shared-ui-theme-consolidation-design.md) — `TpTextStyles` / `TpFontTheme` / `TpGlyphWarmup` in package; delete duplicate geometric ThemeExtensions in the client.
+
+## Amendment (toast)
+
+Toast follow-up: [2026-07-16-shared-ui-toast-design.md](./2026-07-16-shared-ui-toast-design.md) — absorb vendored toastification into `shared_ui` as a private engine; public `TpToast*` API; client keeps thin `AppToast` for recorder / `showGlobal` / desktop title-bar inset. Supersedes the v1 “toast stays client-only” rows above.
