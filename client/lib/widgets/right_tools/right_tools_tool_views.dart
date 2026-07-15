@@ -17,12 +17,15 @@ import '../../models/app_session.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/member_instance.dart';
 import '../../models/member_presence.dart';
+import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
+import '../../models/workspace_topology.dart';
 import '../../pages/home_workspace/workspace/member_detail_dialog.dart';
 import '../../pages/home_workspace/workspace/member_config_directory_opener.dart';
 import '../../services/cli/member_config/member_config_inspector.dart';
+import '../../services/storage/home_target_controller.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
 import '../../theme/app_text_styles.dart';
@@ -442,6 +445,23 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
           if (TeamMemberNaming.isTeamLead(b)) return 1;
           return a.name.compareTo(b.name);
         });
+      // Spec: session targets when present; else remembered workspace pins.
+      // Empty session map falls back to remembered (hydrate edge case).
+      final MemberTargetAssignments memberTargets;
+      if (session != null && session.memberTargets.isNotEmpty) {
+        memberTargets = session.memberTargets;
+      } else {
+        final workspace = context
+            .read<ChatCubit>()
+            .state
+            .workspaces
+            .where((w) => w.workspaceId == widget.workspaceId)
+            .firstOrNull;
+        memberTargets = rememberedMemberTargets(
+          workspace?.memberTargetsByTeam ?? const {},
+          team.id,
+        );
+      }
       views.add(
         ToolView(
           icon: Icons.groups_outlined,
@@ -450,6 +470,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
             team: team,
             members: members,
             runtimeMembers: runtimeMembers,
+            memberTargets: memberTargets,
             selectedMemberId: chatSlice.selectedMemberId,
             canViewDetail: chatSlice.hasActiveTab,
             workspaceId: widget.workspaceId,
@@ -515,11 +536,12 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
   }
 }
 
-class _ScopedMembersPanel extends StatelessWidget {
+class _ScopedMembersPanel extends StatefulWidget {
   const _ScopedMembersPanel({
     required this.team,
     required this.members,
     required this.runtimeMembers,
+    required this.memberTargets,
     required this.selectedMemberId,
     required this.canViewDetail,
     required this.workspaceId,
@@ -531,12 +553,39 @@ class _ScopedMembersPanel extends StatelessWidget {
   final TeamProfile team;
   final List<TeamMemberConfig> members;
   final List<TeamMemberConfig> runtimeMembers;
+  final MemberTargetAssignments memberTargets;
   final String selectedMemberId;
   final bool canViewDetail;
   final String workspaceId;
   final String cwd;
   final WorkspaceToolsScopeState scope;
   final VoidCallback maybeDismissDrawer;
+
+  @override
+  State<_ScopedMembersPanel> createState() => _ScopedMembersPanelState();
+}
+
+class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
+  List<RuntimeTarget> _runtimeTargets = const [];
+  Future<void>? _targetsLoad;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _targetsLoad ??= _loadSelectableTargets();
+  }
+
+  Future<void> _loadSelectableTargets() async {
+    try {
+      final targets = await context
+          .read<HomeTargetController>()
+          .listSelectable();
+      if (!mounted) return;
+      setState(() => _runtimeTargets = targets);
+    } on Object {
+      // HomeTargetController unavailable in widget tests.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -549,36 +598,43 @@ class _ScopedMembersPanel extends StatelessWidget {
           (c) => c.state.providersByCli,
         );
     return MembersPanel(
-      team: team,
-      members: members,
+      team: widget.team,
+      members: widget.members,
       memberPresence: presence,
       providersByCli: providersByCli,
-      selectedMemberId: selectedMemberId,
+      selectedMemberId: widget.selectedMemberId,
+      memberTargets: widget.memberTargets,
+      runtimeTargets: _runtimeTargets,
+      groupByMachine: widget.team.teamMode == TeamMode.mixed,
       onSelected: (id) => _openMember(context, id),
       onOpen: (id) => _openMember(context, id),
       onLaunchAll: throttledAsync('right_tools_launch_all', () async {
         await context.read<ChatCubit>().launchAllMembers(
-          team,
-          workspaceCwd: cwd,
+          widget.team,
+          workspaceCwd: widget.cwd,
         );
-        maybeDismissDrawer();
+        widget.maybeDismissDrawer();
       }),
-      canViewDetail: canViewDetail,
+      canViewDetail: widget.canViewDetail,
       onViewDetail: (id) => _viewDetail(context, id),
       onOpenConfigDir: (id) => _openConfigDir(context, id),
     );
   }
 
   void _openMember(BuildContext context, String id) {
-    final member = runtimeMembers.firstWhere((m) => m.id == id);
+    final member = widget.runtimeMembers.firstWhere((m) => m.id == id);
     unawaited(
-      context.read<ChatCubit>().openMemberTab(team, member, workspaceCwd: cwd),
+      context.read<ChatCubit>().openMemberTab(
+        widget.team,
+        member,
+        workspaceCwd: widget.cwd,
+      ),
     );
-    maybeDismissDrawer();
+    widget.maybeDismissDrawer();
   }
 
   Future<void> _viewDetail(BuildContext context, String id) async {
-    final member = runtimeMembers.firstWhere((m) => m.id == id);
+    final member = widget.runtimeMembers.firstWhere((m) => m.id == id);
     final chatCubit = context.read<ChatCubit>();
     final activeTab = chatCubit.activeTab;
     final activeSessionId = chatCubit.state.activeSessionId;
@@ -589,18 +645,18 @@ class _ScopedMembersPanel extends StatelessWidget {
               .firstOrNull;
     await showMemberDetailDialog(
       context,
-      workspaceId: workspaceId,
+      workspaceId: widget.workspaceId,
       sessionId: activeTab?.info.id ?? '',
-      team: team,
+      team: widget.team,
       member: member,
       lifecycle: chatCubit.lifecycle,
       session: activeSession,
     );
-    maybeDismissDrawer();
+    widget.maybeDismissDrawer();
   }
 
   Future<void> _openConfigDir(BuildContext context, String id) async {
-    final member = runtimeMembers.firstWhere((m) => m.id == id);
+    final member = widget.runtimeMembers.firstWhere((m) => m.id == id);
     final chatCubit = context.read<ChatCubit>();
     final activeTab = chatCubit.activeTab;
     final activeSessionId = chatCubit.state.activeSessionId;
@@ -615,8 +671,8 @@ class _ScopedMembersPanel extends StatelessWidget {
     final launchCtx = WorkspaceLaunchContext(
       session: session,
       workspace: Workspace(
-        workspaceId: workspaceId,
-        folders: scope.effectiveFolders,
+        workspaceId: widget.workspaceId,
+        folders: widget.scope.effectiveFolders,
         createdAt: 0,
       ),
     );
@@ -627,9 +683,9 @@ class _ScopedMembersPanel extends StatelessWidget {
     final path = cached?.isNotEmpty == true
         ? cached!
         : (await MemberConfigInspector().inspect(
-            workspaceId: workspaceId,
+            workspaceId: widget.workspaceId,
             sessionId: activeTab?.info.id ?? '',
-            team: team,
+            team: widget.team,
             member: member,
             workContext: workContext,
             globalPresets: context.read<CliPresetsCubit>().state.presets,
@@ -641,7 +697,7 @@ class _ScopedMembersPanel extends StatelessWidget {
       path: path,
       workContext: workContext,
     );
-    maybeDismissDrawer();
+    widget.maybeDismissDrawer();
   }
 }
 
