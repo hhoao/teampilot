@@ -1,5 +1,6 @@
 import '../../models/team_config.dart';
 import '../../utils/team_member_naming.dart';
+import '../session/member_role_provision.dart';
 import 'registry/capabilities/launch_args_capability.dart';
 
 class CliLaunchContext {
@@ -134,6 +135,13 @@ class ClaudeCodeCliToolAdapter implements CliToolAdapter {
         ),
       ],
     ];
+
+    if (mixed) {
+      final denied = MemberRoleProvision.disallowedToolsForMixedClaude(
+        isLead: TeamMemberNaming.isTeamLead(member),
+      );
+      args.addAll(['--disallowedTools', ...denied]);
+    }
 
     if (member.model.trim().isNotEmpty) {
       args.addAll(['--model', member.model.trim()]);

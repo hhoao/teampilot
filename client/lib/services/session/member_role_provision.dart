@@ -29,6 +29,33 @@ abstract final class MemberRoleProvision {
     'mcp__$teammateBusMcpServerName',
   ];
 
+  /// Native Claude swarm / task tools denied via CLI `--disallowedTools` in
+  /// mixed mode (settings `permissions.deny` is omitted there — see
+  /// [teamSessionDenyTools]).
+  static const mixedClaudeDisallowedTools = <String>[
+    'TeamCreate',
+    'TeamDelete',
+    'SendMessage',
+    'TaskCreate',
+    'TaskUpdate',
+    'TaskList',
+    'TaskGet',
+    'TaskStop',
+    'TaskOutput',
+  ];
+
+  /// Extra CLI deny for mixed team-lead only (workers keep Agent for subagents).
+  static const mixedClaudeLeadExtraDisallowedTools = <String>['Agent'];
+
+  /// Tools passed to Claude Code `--disallowedTools` in mixed mode.
+  static List<String> disallowedToolsForMixedClaude({required bool isLead}) {
+    if (!isLead) return List<String>.from(mixedClaudeDisallowedTools);
+    return [
+      ...mixedClaudeDisallowedTools,
+      ...mixedClaudeLeadExtraDisallowedTools,
+    ];
+  }
+
   /// Appended to every team-lead [role.md] (identity and team layout).
   static const teamLeadRoleAddendum = '''
 # Team Leader (Swarm)
