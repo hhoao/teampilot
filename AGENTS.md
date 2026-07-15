@@ -13,7 +13,7 @@ Guidance for Claude Code and other AI assistants working in this repository.
 | [docs/PERFORMANCE_ANALYSIS.md](docs/PERFORMANCE_ANALYSIS.md) | DevTools performance JSON offline analysis (`tool/analyze_performance_json.dart`) |
 | [docs/workspace-storage-layout.md](docs/workspace-storage-layout.md) | On-disk layout under `<teampilotRoot>` |
 
-All app code lives under `client/lib/` (cubits, pages, repositories, services, models). Vendored deps: `client/packages/` (git submodules: xterm, flutter_pty_new, dartssh2, re-editor, flutter_alacritty).
+All app code lives under `client/lib/` (cubits, pages, repositories, services, models). Vendored deps: `client/packages/` (git submodules: xterm, flutter_pty_new, dartssh2, re-editor, flutter_alacritty, **shared_ui**). Cross-route UI primitives live in **`shared_ui`** as the **Tp** design system (`TpButton`, `TpInput`, `TpTheme`, …); see [client/packages/shared_ui/README.md](client/packages/shared_ui/README.md).
 
 ## Core concepts
 
@@ -177,6 +177,8 @@ Session runtime dirs: `workspace/workspaces/{workspaceId}/sessions/{sessionId}/r
 | Automations | `client/lib/services/automation/`, `client/lib/cubits/automation_cubit.dart` |
 | Session title from prompt | `client/lib/utils/first_user_line_capture.dart`, `session_display_title.dart` |
 | Extensions | `client/lib/services/extension/`, `extension_repository.dart`, `extension_cubit.dart` |
+| Shared UI / Tp design system | `client/packages/shared_ui` — cross-route `Tp*` primitives + `TpTheme`; wrap `MaterialApp` with `TpTheme` (see package README) |
+| Product / domain chrome | `client/lib/widgets/` — app-specific layout reused across routes (not new generic controls) |
 | Performance snapshot CLI | `client/tool/analyze_performance_json.dart` — [docs/PERFORMANCE_ANALYSIS.md](docs/PERFORMANCE_ANALYSIS.md) |
 
 **Routes** (`app_router.dart`):
@@ -201,7 +203,8 @@ See [docs/DEBUGGING.md](docs/DEBUGGING.md) for the systematic debugging process 
 Full guidelines: **[docs/CODE_QUALITY.md](docs/CODE_QUALITY.md)**. Summary:
 
 - Before claiming done: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && flutter test --exclude-tags integration` (full setup: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)).
-- **Layering:** Route shells in `pages/`; **route-only** UI sections in `pages/<domain>/`; **cross-route** UI in `widgets/`; logic in `cubits/` + `services/` + `repositories/`; no `Process.run` or raw paths in UI; state is **`flutter_bloc` only** (not `provider`).
+- **Layering:** Route shells in `pages/`; **route-only** UI sections in `pages/<domain>/`; **cross-route design primitives** in `packages/shared_ui` as `Tp*`; **product/domain chrome** in `widgets/`; logic in `cubits/` + `services/` + `repositories/`; no `Process.run` or raw paths in UI; state is **`flutter_bloc` only** (not `provider`).
+- **Shared UI:** New buttons, inputs, selects, dialogs, forms, etc. go in `client/packages/shared_ui` (`Tp*` + `TpTheme`). Do not add generic controls under `client/lib/widgets/`.
 - **File size (soft):** page shells ~400, cubits ~500, services ~600 lines — split oversized screens into `pages/<domain>/` section files; keep `build()` free of IO.
 - **Logging:** user errors → l10n; diagnostics → `AppLogger`; no `print`.
 - Paths: `AppStorage` / `RuntimeContextRegistry` — never `Directory.current` for default workspace directory.

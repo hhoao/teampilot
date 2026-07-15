@@ -19,7 +19,8 @@ Run these commands and confirm success before claiming work is done.
 | Layer | Path | Responsibility |
 |-------|------|----------------|
 | Single-screen module | `pages/<domain>/` | Route **shell** (`*_page.dart` / `*_workspace.dart`), sections, dialogs, route helpers (see `pages/mcp/`) |
-| Shared UI | `widgets/` | Controls and layout reused across routes (`dropdown/`, `settings/`, `split_layout.dart`, etc.) |
+| Shared UI | `packages/shared_ui` (`Tp*`) | Cross-route design-system primitives (Button, Input, Select, Dialog, Form, …) |
+| Product / domain chrome | `widgets/` | App-specific layout and chrome reused across routes (`dropdown/`, `settings/`, `split_layout.dart`, etc.) — not generic controls |
 | State | `cubits/` | Actions, loading/error; calls repositories / services |
 | Persistence | `repositories/` | JSON/files via `Filesystem` + `AppStorage` |
 | Domain | `services/` | Install, probe, terminal, CLI profiles, skill/plugin linking |
@@ -41,19 +42,22 @@ Apply these when adding or refactoring code. They complement the layering table 
 | **Interface segregation** | Prefer small, focused interfaces over fat ones. | Registry **capabilities** expose only what a CLI needs; cubits depend on narrow service seams (constructor injection), not whole `AppShell` or god-objects. |
 | **Dependency inversion** | Depend on abstractions, not concretions. | Inject `Filesystem`, `TerminalTransportFactory`, subprocess runners, and repositories from `app_shell.dart` / tests — no hidden `Process.run` or disk access inside `build()` or static singletons in feature code. |
 | **Law of Demeter** | Talk to immediate collaborators; avoid long chains. | Pages `context.read<Cubit>()` and call cubit methods; cubits call services/repositories — avoid `context.read<A>().read<B>().foo` or reaching through three layers of internal state from UI. |
-| **Composition over inheritance** | Favor composing objects/widgets over deep subclass trees. | Compose `pages/<domain>/` sections and small `widgets/`; use widget composition and capability composition — limit deep inheritance except where Flutter/SDK requires it. |
+| **Composition over inheritance** | Favor composing objects/widgets over deep subclass trees. | Compose `pages/<domain>/` sections, `shared_ui` `Tp*` primitives, and small product `widgets/`; use widget composition and capability composition — limit deep inheritance except where Flutter/SDK requires it. |
 
 When a change violates more than one principle, fix structure first (split file, inject dependency, add capability) before adding behavior.
 
-### `pages/` vs `widgets/`
+### `pages/` vs `widgets/` vs `shared_ui`
 
 | Question | Location | Examples |
 |----------|----------|----------|
 | Used by a single route / settings screen? | `pages/<domain>/` | `pages/skills/skill_discovery_section.dart`, `pages/team_config/team_config_member_section.dart` |
-| Imported from unrelated routes? | `widgets/` | `FlashskyDropdownField`, `WorkspaceHubPage`, `AppProviderListPanel` |
+| New cross-route **design primitive** (button, input, select, dialog, form, …)? | `client/packages/shared_ui` as `Tp*` | `TpButton`, `TpInput`, `TpSelect`, `TpDialog`, `TpForm` |
+| Product / domain chrome imported from unrelated routes? | `widgets/` | `FlashskyDropdownField`, `WorkspaceHubPage`, `AppProviderListPanel` |
 | Page shell + enum + hub? | `pages/*_page.dart` (may `export` types from the domain subfolder) | `mcp_management_page.dart`, `skill_management_page.dart` |
 
 **Do not** put route-only sections under `widgets/<feature>/` when the folder name mirrors a page. When splitting oversized pages, prefer **`pages/<domain>/`**, aligned with `pages/mcp/`.
+
+**Do not** add new generic controls under `client/lib/widgets/` — put them in `packages/shared_ui` as `Tp*` components. Keep `widgets/` for product/domain chrome only.
 
 Suggested layout (**shell and sections colocated**, see `pages/mcp/`):
 
@@ -92,7 +96,7 @@ pages/
 
 ## UI and state
 
-- Route-specific UI lives under **`pages/<domain>/`**; cross-route UI under **`widgets/`**. Pages connect via `BlocBuilder` / `context.read`.
+- Route-specific UI lives under **`pages/<domain>/`**; cross-route **design primitives** under **`packages/shared_ui`** (`Tp*`); product/domain chrome under **`widgets/`**. Pages connect via `BlocBuilder` / `context.read`.
 - **Use `flutter_bloc` (Cubit) for app state**; do not introduce `provider` / `ChangeNotifier` as a parallel pattern in feature code.
 - Cubit states: `Equatable` or immutable `copyWith`; explicit load/error; fine-grained busy sets where needed (`ExtensionCubit`).
 - User-facing errors: l10n, not raw `e.toString()` as final copy (logging is fine).
@@ -111,7 +115,7 @@ When touching oversized files (`team_config_page`, `llm_config_workspace`, `skil
 | `const` | Use `const` constructors where subtrees are stable to cut unnecessary desktop rebuilds. |
 | Typography | In `pages/` and `widgets/`, text styles must come from [`AppTextStyles`](../client/lib/theme/app_text_styles.dart) **named scale tokens** (`md`, `mdSemibold`, `xsBoldWide`, …) or other `lib/theme/` helpers (`dropdownFieldTextStyle`, `appMonoTextStyle`, `appTerminalTextStyle`, …). Do **not** construct `TextStyle(...)` inline, set `fontSize` / `letterSpacing` / `fontWeight` / `height` via `copyWith`, use raw `ThemeData.textTheme`, or invent combinations outside shipped getters. Prefer `*Colored` / `muted*`. Exceptions: syntax highlighting, terminal `TerminalStyle`, size-driven avatar glyphs, diff views that inherit editor font metrics. Every new `AppTextStyles` getter must be added to text warmup. |
 
-Shared pieces for multiple sections on the **same** screen (e.g. `mcp_shared_widgets.dart`) stay in the **same** `pages/<domain>/` folder. Move to `widgets/` only when a second route imports them.
+Shared pieces for multiple sections on the **same** screen (e.g. `mcp_shared_widgets.dart`) stay in the **same** `pages/<domain>/` folder. When a second route needs them: use **`packages/shared_ui`** for design primitives (`Tp*`), or **`widgets/`** for product/domain chrome only.
 
 ## Function and logic size
 
@@ -187,7 +191,7 @@ For post-frame work (`ChatCubit`), use `PostFrameTestHarness` / `runScheduledCal
 
 - `async`/`await` + `try/catch` should surface outcomes in cubits/services, not unhandled exceptions in `build`.
 - Naming: `PascalCase` types, `camelCase` members, `snake_case` files; avoid opaque abbreviations.
-- From `pages/<domain>/`: shared UI → `import '../../widgets/...'`; same domain → `import 'foo_section.dart'`.
+- From `pages/<domain>/`: `Tp*` primitives → `import 'package:shared_ui/shared_ui.dart'`; product chrome → `import '../../widgets/...'`; same domain → `import 'foo_section.dart'`.
 
 ## Tech debt
 
