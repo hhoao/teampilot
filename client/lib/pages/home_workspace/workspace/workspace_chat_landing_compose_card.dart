@@ -4,7 +4,6 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../../models/plugin.dart';
 import '../../../models/skill.dart';
 import '../../../models/config_bundle.dart';
-import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../services/workspace_dnd/workspace_drop_target.dart';
@@ -119,7 +118,7 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
   List<Widget> _idleActions(
     BuildContext context, {
     required WorkspaceChatLandingPalette palette,
-    required AppSpacingTheme spacing,
+    required TpSpacing spacing,
   }) {
     return [
       Expanded(
@@ -214,7 +213,7 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
   List<Widget> _voiceRecordingActions(
     BuildContext context, {
     required WorkspaceChatLandingPalette palette,
-    required AppSpacingTheme spacing,
+    required TpSpacing spacing,
   }) {
     return [
       _ComposeActionIcon(
@@ -261,7 +260,7 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = WorkspaceChatLandingPalette(Theme.of(context).colorScheme);
-    final spacing = context.appSpacing;
+    final spacing = context.tpSpacing;
 
     return _wrapDropTarget(
       Stack(

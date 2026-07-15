@@ -5,7 +5,6 @@ import '../../models/cli_preset.dart';
 import '../../models/config_bundle.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
-import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/compose/compose_focus_shell.dart';
@@ -122,7 +121,7 @@ class SessionReviewComposeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = WorkspaceChatLandingPalette(Theme.of(context).colorScheme);
-    final spacing = context.appSpacing;
+    final spacing = context.tpSpacing;
     final error = launchError?.trim();
 
     return ComposeFocusShell(
@@ -199,7 +198,7 @@ class SessionReviewComposeCard extends StatelessWidget {
 
   List<Widget> _idleActions({
     required WorkspaceChatLandingPalette palette,
-    required AppSpacingTheme spacing,
+    required TpSpacing spacing,
   }) {
     return [
       if (_showContinueToolbar)
@@ -292,7 +291,7 @@ class SessionReviewComposeCard extends StatelessWidget {
 
   List<Widget> _voiceRecordingActions({
     required WorkspaceChatLandingPalette palette,
-    required AppSpacingTheme spacing,
+    required TpSpacing spacing,
   }) {
     return [
       _ComposeActionIcon(
@@ -351,7 +350,7 @@ class _ContinueIdentityChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final spacing = context.appSpacing;
+    final spacing = context.tpSpacing;
     final icons = context.tpIconSizes;
     final labelStyle = AppTextStyles.of(context).smColored(palette.muted);
 

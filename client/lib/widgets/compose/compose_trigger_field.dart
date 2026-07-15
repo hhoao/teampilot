@@ -10,7 +10,6 @@ import '../../models/config_bundle.dart';
 import '../../services/commands/command_bus.dart';
 import '../../services/commands/shortcut_focus.dart';
 import '../../services/storage/app_storage.dart';
-import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../services/compose/compose_file_search.dart';
 import '../../services/compose/compose_slash_catalog.dart';
@@ -452,7 +451,7 @@ class _ComposeTriggerSuggestionPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final spacing = context.appSpacing;
+    final spacing = context.tpSpacing;
     final styles = AppTextStyles.of(context);
 
     return Material(
@@ -483,7 +482,7 @@ class _ComposeTriggerSuggestionPanel extends StatelessWidget {
   List<Widget> _buildPanelChildren({
     required BuildContext context,
     required ColorScheme cs,
-    required AppSpacingTheme spacing,
+    required TpSpacing spacing,
     required AppTextStyles styles,
   }) {
     final children = <Widget>[];
@@ -587,7 +586,7 @@ class _ComposeTriggerSectionHeader extends StatelessWidget {
   });
 
   final String label;
-  final AppSpacingTheme spacing;
+  final TpSpacing spacing;
   final AppTextStyles styles;
   final Color color;
 
