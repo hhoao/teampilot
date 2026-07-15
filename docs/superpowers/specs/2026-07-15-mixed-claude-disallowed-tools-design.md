@@ -15,7 +15,7 @@ In `TeamMode.mixed`, Claude Code members coordinate via teammate-bus MCP, not Cl
 4. **Lead-only extra:** `Agent` (blocks native teammate spawn via Agent; workers keep Agent for ordinary subagents).
 5. **Constants:** live next to `MemberRoleProvision.teamSessionDenyTools` / `mixedTeamSessionAllowTools`, with a small helper `disallowedToolsForMixedClaude({required bool isLead})`. Adapter only calls the helper.
 6. **Flag shape:** `--disallowedTools` followed by space-separated tool names (Claude Code `parseToolListFromCLI` accepts space/comma separators).
-7. **extraArgs:** do not parse or merge user `extraArgs` for this flag (YAGNI). TeamPilot always emits its own `--disallowedTools …`; if the user also passes one, both may apply — Claude Code unions CLI disallows.
+7. **extraArgs:** do not parse or merge user `extraArgs` for this flag (YAGNI). TeamPilot always emits its own `--disallowedTools` as separate argv tokens (`['--disallowedTools', 'TeamCreate', …]`). If the user also passes `--disallowedTools` in `extraArgs`, behavior depends on Claude Code/Commander (may replace or accumulate) — not a hard guarantee; do not add merge logic in this change.
 8. **Planning-only lead:** out of this change. Keep existing `forceTeamLeadDelegateMode` PreToolUse hooks; do not fold Bash/Edit/Write into `--disallowedTools` yet. Lists stay easy to extend later.
 
 ## Architecture
