@@ -4,6 +4,7 @@ import 'package:teampilot/services/cli/cli_tool_adapter.dart';
 import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
 import 'package:teampilot/services/cli/registry/capabilities/launch_args_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/session/member_role_provision.dart';
 
 void main() {
   const member = TeamMemberConfig(
@@ -329,5 +330,70 @@ void main() {
     );
 
     expect(args, isNot(contains('--dangerously-bypass-hook-trust')));
+  });
+
+  test('claude mixed worker gets shared disallowedTools without Agent', () {
+    const adapter = ClaudeCodeCliToolAdapter();
+    const mixedTeam = TeamProfile(
+      id: 'team-x',
+      name: 'mixers',
+      cli: CliTool.claude,
+      teamMode: TeamMode.mixed,
+    );
+    const worker = TeamMemberConfig(id: 'worker-1', name: 'Worker');
+
+    final args = adapter.buildArguments(
+      CliLaunchContext(team: mixedTeam, member: worker),
+    );
+
+    expect(args, isNot(contains('--team-name')));
+    final flagAt = args.indexOf('--disallowedTools');
+    expect(flagAt, isNonNegative);
+    final tools = args.sublist(flagAt + 1);
+    // Stop at next flag if any trailing flags exist after the tool list.
+    final nextFlag = tools.indexWhere((t) => t.startsWith('--'));
+    final denied = nextFlag < 0 ? tools : tools.sublist(0, nextFlag);
+    expect(denied, containsAll(MemberRoleProvision.mixedClaudeDisallowedTools));
+    expect(denied, isNot(contains('Agent')));
+  });
+
+  test('claude mixed team-lead disallowedTools includes Agent', () {
+    const adapter = ClaudeCodeCliToolAdapter();
+    const mixedTeam = TeamProfile(
+      id: 'team-x',
+      name: 'mixers',
+      cli: CliTool.claude,
+      teamMode: TeamMode.mixed,
+    );
+    const lead = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
+
+    final args = adapter.buildArguments(
+      CliLaunchContext(team: mixedTeam, member: lead),
+    );
+
+    final flagAt = args.indexOf('--disallowedTools');
+    expect(flagAt, isNonNegative);
+    final tools = args.sublist(flagAt + 1);
+    final nextFlag = tools.indexWhere((t) => t.startsWith('--'));
+    final denied = nextFlag < 0 ? tools : tools.sublist(0, nextFlag);
+    expect(denied, containsAll(MemberRoleProvision.mixedClaudeDisallowedTools));
+    expect(denied, contains('Agent'));
+  });
+
+  test('claude native omits disallowedTools', () {
+    const adapter = ClaudeCodeCliToolAdapter();
+    final args = adapter.buildArguments(
+      CliLaunchContext(
+        team: const TeamProfile(
+          id: 'team-1',
+          name: 'agent',
+          cli: CliTool.claude,
+        ),
+        member: const TeamMemberConfig(id: 'm1', name: 'My Planner'),
+      ),
+    );
+
+    expect(args, isNot(contains('--disallowedTools')));
+    expect(args, contains('--team-name'));
   });
 }
