@@ -780,6 +780,7 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
   String? _cachedTypographyScaleId;
   double? _cachedTypographyCustomMultiplier;
   double? _cachedEffectiveTextMult;
+  double? _cachedIconMultiplier;
   String? _cachedUiFontId;
   String? _cachedMonoFontId;
 
@@ -807,6 +808,11 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
       customMultiplier: widget.typographyCustomMultiplier,
       baseline: textBaseline,
     );
+    final iconMultiplier = AppIconSizes.resolveIconMultiplier(
+      effectiveTextMultiplier: effectiveTextMult,
+      textBaseline: textBaseline,
+    );
+    _cachedIconMultiplier = iconMultiplier;
     if (_lightTheme != null &&
         _darkTheme != null &&
         _cachedColorPreset == widget.colorPreset &&
@@ -823,12 +829,7 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
       monoFontId: _sessionMonoFontId,
     );
     final textScale = AppTypographyScale(multiplier: effectiveTextMult);
-    final iconScale = AppTypographyScale(
-      multiplier: AppIconSizes.resolveIconMultiplier(
-        effectiveTextMultiplier: effectiveTextMult,
-        textBaseline: textBaseline,
-      ),
-    );
+    final iconScale = AppTypographyScale(multiplier: iconMultiplier);
     _cachedColorPreset = widget.colorPreset;
     _cachedTypographyScaleId = widget.typographyScaleId;
     _cachedTypographyCustomMultiplier = widget.typographyCustomMultiplier;
@@ -915,13 +916,15 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
               if (!Platform.isAndroid) {
                 content = _DragToResizeWrapper(child: content);
               }
-              // TpTheme outside UiZoom; scale mirrors AppSpacingTheme until Task 10.
+              // TpTheme outside UiZoom; spacing scale mirrors AppSpacingTheme,
+              // iconScale matches Material AppIconSizeTheme (resolveIconMultiplier).
               return TpTheme(
                 data: TpThemeData.fromColorScheme(
                   Theme.of(context).colorScheme,
                   scale:
                       Theme.of(context).extension<AppSpacingTheme>()?.scale ??
                       1.0,
+                  iconScale: _cachedIconMultiplier ?? 1.0,
                 ),
                 child: content,
               );
