@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 import 'app_typography_scale.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Resolved spacing tokens on [ThemeData.extensions], derived from the active
 /// [AppTypographyScale] multiplier (the app-owned UI scale). Read via
-/// [BuildContext.appSpacing]; never hard-code [EdgeInsets] gaps in new code.
+/// [BuildContext.tpSpacing]; never hard-code [EdgeInsets] gaps in new code.
 @immutable
 final class AppSpacingTheme extends ThemeExtension<AppSpacingTheme> {
   const AppSpacingTheme({

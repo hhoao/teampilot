@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-
 import '../../../utils/logger.dart';
 import '../cancellation.dart';
 import 'jsonrpc.dart';

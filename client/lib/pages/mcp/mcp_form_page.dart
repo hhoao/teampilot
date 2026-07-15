@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
@@ -12,7 +12,6 @@ import '../../models/mcp_server.dart';
 import '../../theme/app_fonts.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../../widgets/textarea/app_textarea.dart';
 
 /// Add/edit MCP server for the workspace detail pane (not full-screen).
 class McpFormPage extends StatefulWidget {
@@ -180,7 +179,7 @@ class _McpFormPageState extends State<McpFormPage> {
                       )
                     : Icon(
                         _isEditing ? Icons.save : Icons.add,
-                        size: context.appIconSizes.md,
+                        size: context.tpIconSizes.md,
                       ),
                 label: Text(_isEditing ? l10n.save : l10n.mcpFormSubmitAdd),
               ),
@@ -244,10 +243,10 @@ class _McpFormPageState extends State<McpFormPage> {
                     final bodyStyle =
                         Theme.of(context).textTheme.bodyMedium ??
                         const TextStyle();
-                    return AppTextarea(
+                    return TpTextarea(
                       controller: _descriptionCtrl,
-                      minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
-                      maxHeight: appTextareaHeightForLines(bodyStyle, lines: 4),
+                      minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
+                      maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 4),
                       decoration: InputDecoration(
                         labelText: l10n.mcpFormDescriptionLabel,
                         hintText: l10n.mcpFormDescriptionHint,
@@ -308,10 +307,10 @@ class _McpFormPageState extends State<McpFormPage> {
               Builder(
                 builder: (context) {
                   final mono = appMonoTextStyle(context, height: 1.45);
-                  return AppTextarea(
+                  return TpTextarea(
                     controller: _jsonCtrl,
-                    minHeight: appTextareaHeightForLines(mono, lines: 8),
-                    maxHeight: appTextareaHeightForLines(mono, lines: 12),
+                    minHeight: tpTextareaHeightForLines(mono, lines: 8),
+                    maxHeight: tpTextareaHeightForLines(mono, lines: 12),
                     style: mono,
                     decoration: InputDecoration(
                       errorText: _jsonError,

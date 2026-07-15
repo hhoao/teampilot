@@ -6,7 +6,7 @@ import '../../models/discoverable_team.dart';
 import '../../models/mcp_server.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../team_config/team_config_mcp_section.dart';
 import '../team_config/team_config_plugins_section.dart';
 import '../team_config/team_config_skills_section.dart';
@@ -207,17 +207,17 @@ class _ExpertEditorDepPickerDialogState
   Widget build(BuildContext context) {
     final l10n = context.l10n;
 
-    return AppDialog(
+    return TpDialog(
       scrollable: true,
       maxHeight: MediaQuery.sizeOf(context).height * 0.85,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: _title(context)),
+          TpDialogHeader(title: _title(context)),
           const SizedBox(height: 16),
           ..._categoryBody(context),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 key: const Key('expert-editor-dep-picker-cancel'),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
@@ -321,7 +321,7 @@ class _MachineFolderCard extends StatelessWidget {
               children: [
                 Icon(
                   workspaceFolderTargetIcon(targetId),
-                  size: context.appIconSizes.md,
+                  size: context.tpIconSizes.md,
                   color: cs.onSurfaceVariant,
                 ),
                 const SizedBox(width: 10),
@@ -338,7 +338,7 @@ class _MachineFolderCard extends StatelessWidget {
                     onPressed: onAddDirectory,
                     icon: Icon(
                       Icons.create_new_folder_outlined,
-                      size: context.appIconSizes.sm,
+                      size: context.tpIconSizes.sm,
                     ),
                     label: Text(l10n.addWorkspaceDirectory),
                   ),

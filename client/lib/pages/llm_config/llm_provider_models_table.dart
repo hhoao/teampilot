@@ -4,7 +4,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/llm_config.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/app_keys.dart';
-import '../../widgets/app_icon_button.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'llm_model_edit_dialog.dart';
 
 class LlmProviderModelsTable extends StatelessWidget {
@@ -71,17 +71,17 @@ class LlmProviderModelsTable extends StatelessWidget {
                     },
                   ),
                 ),
-                AppIconButton(
+                TpIconButton(
                   icon: Icons.edit_outlined,
                   compact: true,
-                  size: AppIconButton.kCompactSize,
+                  size: TpIconButton.kCompactSize,
                   tooltip: l10n.edit,
                   onTap: () => _editModel(context, model),
                 ),
-                AppIconButton(
+                TpIconButton(
                   icon: Icons.delete_outline,
                   compact: true,
-                  size: AppIconButton.kCompactSize,
+                  size: TpIconButton.kCompactSize,
                   tooltip: l10n.delete,
                   onTap: () => onDelete(model.id),
                 ),

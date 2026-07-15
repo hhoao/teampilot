@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/automation_cubit.dart';
 import '../../cubits/automation_state.dart';
@@ -19,8 +19,6 @@ import '../../services/automation/automation_scope_label.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/coarse_relative_time.dart';
 import '../../utils/workspace_display_name.dart';
-import '../../widgets/app_dialog.dart';
-import '../../widgets/app_icon_button.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import 'automation_editor_dialog.dart';
 import 'automation_schedule_picker.dart';
@@ -158,16 +156,16 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
     final l10n = context.l10n;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AppDialog(
+      builder: (ctx) => TpDialog(
         maxWidth: 440,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppDialogHeader(title: l10n.automationsDeleteConfirm),
+            TpDialogHeader(title: l10n.automationsDeleteConfirm),
             const SizedBox(height: 12),
             Text(automation.name),
-            AppDialogActions(
+            TpDialogActions(
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
@@ -561,7 +559,7 @@ class AutomationRow extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
         child: Row(
           children: [
-            Icon(actionIcon, size: context.appIconSizes.md, color: cs.primary),
+            Icon(actionIcon, size: context.tpIconSizes.md, color: cs.primary),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -624,10 +622,10 @@ class AutomationRow extends StatelessWidget {
                 ],
               ),
             ),
-            AppIconButton(
+            TpIconButton(
               icon: Icons.history_rounded,
               compact: true,
-              size: AppIconButton.kCompactSize,
+              size: TpIconButton.kCompactSize,
               tooltip: l10n.automationsRunHistory,
               onTap: onShowRunHistory,
             ),
@@ -638,7 +636,7 @@ class AutomationRow extends StatelessWidget {
                   : (_) => onToggleEnabled(),
             ),
             SidebarActionMenuIconAnchor(
-              icon: Icon(Icons.more_vert, size: context.appIconSizes.md),
+              icon: Icon(Icons.more_vert, size: context.tpIconSizes.md),
               buildMenuChildren: (ctx, controller) => [
                 SidebarActionMenuItem(
                   icon: Icons.edit_outlined,
@@ -681,7 +679,7 @@ Future<void> showAutomationRunHistoryDialog(
 
   return showDialog<void>(
     context: context,
-    builder: (ctx) => AppDialog(
+    builder: (ctx) => TpDialog(
       maxWidth: 480,
       maxHeight: maxHeight,
       scrollable: true,
@@ -689,7 +687,7 @@ Future<void> showAutomationRunHistoryDialog(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.automationsRunHistory),
+          TpDialogHeader(title: l10n.automationsRunHistory),
           const SizedBox(height: 8),
           if (runs.isEmpty)
             Text(

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../models/cli_preset.dart';
 import '../../models/config_bundle.dart';
@@ -352,7 +352,7 @@ class _ContinueIdentityChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final spacing = context.appSpacing;
-    final icons = context.appIconSizes;
+    final icons = context.tpIconSizes;
     final labelStyle = AppTextStyles.of(context).smColored(palette.muted);
 
     return Material(
@@ -399,7 +399,7 @@ class _TeamSettingsButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icons = context.appIconSizes;
+    final icons = context.tpIconSizes;
     final color = enabled ? palette.muted : palette.disabled;
 
     return Tooltip(
@@ -458,7 +458,7 @@ class _SendButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icons = context.appIconSizes;
+    final icons = context.tpIconSizes;
     final active = canSubmit && !isSubmitting;
 
     return Material(
@@ -516,7 +516,7 @@ class _ComposeActionIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icons = context.appIconSizes;
+    final icons = context.tpIconSizes;
     final interactive = enabled && !isLoading;
     final color = !enabled ? palette.disabled : palette.muted;
 

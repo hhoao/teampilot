@@ -1,6 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
@@ -267,7 +267,7 @@ class CliExecutablePathSettingsRowState
                         )
                       : Icon(
                           Icons.download_outlined,
-                          size: context.appIconSizes.md,
+                          size: context.tpIconSizes.md,
                         ),
                   label: Text(
                     _isInstalling
@@ -282,7 +282,7 @@ class CliExecutablePathSettingsRowState
                 onPressed: isSshMode ? null : _pickFile,
                 icon: Icon(
                   Icons.folder_open_outlined,
-                  size: context.appIconSizes.md,
+                  size: context.tpIconSizes.md,
                 ),
                 label: Text(l10n.cliExecutablePathBrowse),
               ),

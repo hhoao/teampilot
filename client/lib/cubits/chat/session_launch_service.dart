@@ -225,7 +225,6 @@ class SessionLaunchService
     _h.removeSessionSnapshot(sessionId);
   }
 
-
   bool _shouldAutoConnect(SessionOpenRequest request) {
     if (!request.connectImmediately) return false;
     if (request.isPersonal) return true;
@@ -570,7 +569,6 @@ class SessionLaunchService
     final shell = tab.memberShells[memberId];
     return shell?.isConnecting ?? false;
   }
-
 
   Future<void> launchAllMembers(
     TeamProfile team, {

@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/llm_config.dart';
 import '../../utils/app_keys.dart';
-import '../../widgets/app_dialog.dart';
 import '../../theme/app_text_styles.dart';
-import '../../widgets/dropdown/app_dropdown_decoration.dart';
-import '../../widgets/dropdown/app_dropdown_field.dart';
 
 class LlmModelEditDialog extends StatefulWidget {
   const LlmModelEditDialog({
@@ -56,10 +53,10 @@ class LlmModelEditDialogState extends State<LlmModelEditDialog> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final providerNames = widget.providers.keys.toList()..sort();
-    final deco = AppDropdownDecorations.themed(
+    final deco = TpSelectDecorations.themed(
       context,
       borderRadius: 8,
-      suffixIconSize: context.appIconSizes.md,
+      suffixIconSize: context.tpIconSizes.md,
       expandedShadowBlurRadius: 18,
       expandedShadowAlphaDark: 0.45,
     );
@@ -67,13 +64,13 @@ class LlmModelEditDialogState extends State<LlmModelEditDialog> {
         ? _provider
         : null;
 
-    return AppDialog(
+    return TpDialog(
       maxWidth: 400,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: widget.title),
+          TpDialogHeader(title: widget.title),
           const SizedBox(height: 16),
           TextField(
             key: AppKeys.modelNameDialogField,
@@ -91,7 +88,7 @@ class LlmModelEditDialogState extends State<LlmModelEditDialog> {
                 style: AppTextStyles.of(context).mdSemibold,
               ),
               const SizedBox(height: 8),
-              AppDropdownField<String>(
+              TpSelect<String>(
                 key: AppKeys.modelProviderField,
                 items: providerNames,
                 initialItem: initialProvider,
@@ -116,7 +113,7 @@ class LlmModelEditDialogState extends State<LlmModelEditDialog> {
             value: _enabled,
             onChanged: (value) => setState(() => _enabled = value),
           ),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => Navigator.pop(context),

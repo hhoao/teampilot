@@ -6,11 +6,11 @@ import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/hub_publish/hub_publish_record_store.dart';
-import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../hub_publish/hub_publish_badge.dart';
 import '../team_hub/team_hub_cards.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 String formatMyTeamsTimestamp(int ms) {
   if (ms <= 0) return '—';
@@ -99,7 +99,7 @@ class _MyTeamsCardState extends State<MyTeamsCard> {
                           onPressed: widget.onUpload,
                           icon: Icon(
                             Icons.upload_outlined,
-                            size: context.appIconSizes.md,
+                            size: context.tpIconSizes.md,
                           ),
                         ),
                       IconButton(
@@ -108,7 +108,7 @@ class _MyTeamsCardState extends State<MyTeamsCard> {
                         onPressed: widget.onDelete,
                         icon: Icon(
                           Icons.delete_outline,
-                          size: context.appIconSizes.md,
+                          size: context.tpIconSizes.md,
                           color: cs.error,
                         ),
                       ),

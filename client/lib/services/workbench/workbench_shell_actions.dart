@@ -6,7 +6,7 @@ import '../../cubits/editor_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Tab-bar actions for the unified workbench (session / file / diff).
 abstract final class WorkbenchShellActions {
@@ -145,16 +145,16 @@ abstract final class WorkbenchShellActions {
     final l10n = context.l10n;
     return showDialog<bool>(
       context: context,
-      builder: (ctx) => AppDialog(
+      builder: (ctx) => TpDialog(
         maxWidth: 480,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppDialogHeader(title: l10n.editorUnsavedChangesTitle),
+            TpDialogHeader(title: l10n.editorUnsavedChangesTitle),
             const SizedBox(height: 16),
             Text(l10n.editorUnsavedChangesDiscardMultiple(1)),
-            AppDialogActions(
+            TpDialogActions(
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),

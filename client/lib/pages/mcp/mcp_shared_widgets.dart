@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_catalog_listing.dart';
@@ -177,7 +177,7 @@ class McpInstalledServerRow extends StatelessWidget {
               IconButton(
                 tooltip: l10n.mcpOpenHomepage,
                 visualDensity: VisualDensity.compact,
-                iconSize: context.appIconSizes.md,
+                iconSize: context.tpIconSizes.md,
                 onPressed: busy
                     ? null
                     : () => openGithubBrowseUrl(server.homepage.trim()),
@@ -188,14 +188,14 @@ class McpInstalledServerRow extends StatelessWidget {
             IconButton(
               tooltip: l10n.mcpEdit,
               onPressed: busy ? null : onEdit,
-              icon: Icon(Icons.edit_outlined, size: context.appIconSizes.md),
+              icon: Icon(Icons.edit_outlined, size: context.tpIconSizes.md),
             ),
             IconButton(
               tooltip: l10n.delete,
               onPressed: busy ? null : onDelete,
               icon: Icon(
                 Icons.delete_outline,
-                size: context.appIconSizes.md,
+                size: context.tpIconSizes.md,
                 color: cs.error,
               ),
             ),
@@ -257,7 +257,7 @@ class McpCatalogListingTile extends StatelessWidget {
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Icon(
                       Icons.hub_outlined,
-                      size: context.appIconSizes.md,
+                      size: context.tpIconSizes.md,
                       color: cs.onSurface.withValues(alpha: 0.4),
                     ),
                   ),
@@ -286,7 +286,7 @@ class McpCatalogListingTile extends StatelessWidget {
                             minHeight: 32,
                           ),
                           visualDensity: VisualDensity.compact,
-                          iconSize: context.appIconSizes.md,
+                          iconSize: context.tpIconSizes.md,
                           tooltip: l10n.mcpOpenHomepage,
                           onPressed: onOpenHomepage,
                           icon: Icon(Icons.open_in_new),

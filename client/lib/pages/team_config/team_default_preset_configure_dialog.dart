@@ -9,13 +9,12 @@ import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/cli_launch_config/cli_launch_custom_fields.dart';
 import '../../widgets/cli_launch_config/member_launch_config_type_field.dart';
 import '../../widgets/cli_launch_config/preset_launch_picker_field.dart';
 import '../../widgets/cli_launch_config/team_launch_config_kind.dart';
 import '../../widgets/cli_launch_config/team_launch_config_type_field.dart';
-import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../home_workspace/workspace/config/cli_presets_manage_dialog.dart';
 import 'team_config_helpers.dart';
@@ -152,7 +151,7 @@ class _TeamDefaultPresetConfigureDialogState
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final registry = CliToolRegistryScope.of(context);
-    final dropdownDeco = AppDropdownDecorations.themed(context);
+    final dropdownDeco = TpSelectDecorations.themed(context);
     context.watch<LaunchProfileCubit>();
     final team = _currentTeam;
     final allPresets = context.watch<CliPresetsCubit>().state.presets;
@@ -180,13 +179,13 @@ class _TeamDefaultPresetConfigureDialogState
         : <CliTool>[];
     final providerState = context.watch<AppProviderCubit>().state;
 
-    return AppDialog(
+    return TpDialog(
       maxWidth: 680,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.teamDefaultPresetLabel),
+          TpDialogHeader(title: l10n.teamDefaultPresetLabel),
           const SizedBox(height: 16),
           SettingsSurfaceCard(
             child: Column(
@@ -253,7 +252,7 @@ class _TeamDefaultPresetConfigureDialogState
               ],
             ),
           ),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: () {

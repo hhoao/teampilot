@@ -10,7 +10,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../services/commands/command_catalog.dart';
 import '../../services/commands/key_chord.dart';
 import '../../theme/app_toast_theme.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/app_toast/app_toast.dart';
 
 /// Footer row for the shortcuts settings page: reset-all, export (writes the
@@ -51,19 +51,19 @@ class ShortcutsFooterActions extends StatelessWidget {
     final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AppDialog(
+      builder: (ctx) => TpDialog(
         maxWidth: 440,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppDialogHeader(
+            TpDialogHeader(
               title: l10n.shortcutsResetAllConfirmTitle,
               onClose: () => Navigator.of(ctx).pop(false),
             ),
             const SizedBox(height: 16),
             Text(l10n.shortcutsResetAllConfirmMessage),
-            AppDialogActions(
+            TpDialogActions(
               children: [
                 TextButton(
                   onPressed: () => Navigator.of(ctx).pop(false),
@@ -158,19 +158,19 @@ class ShortcutsFooterActions extends StatelessWidget {
     final l10n = context.l10n;
     return showDialog<bool>(
       context: context,
-      builder: (ctx) => AppDialog(
+      builder: (ctx) => TpDialog(
         maxWidth: 440,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppDialogHeader(
+            TpDialogHeader(
               title: l10n.shortcutsImportConflictTitle,
               onClose: () => Navigator.of(ctx).pop(false),
             ),
             const SizedBox(height: 16),
             Text(l10n.shortcutsImportConflictMessage(count)),
-            AppDialogActions(
+            TpDialogActions(
               children: [
                 TextButton(
                   onPressed: () => Navigator.of(ctx).pop(false),

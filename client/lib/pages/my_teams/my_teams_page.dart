@@ -6,7 +6,7 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
 import '../../services/hub_publish/hub_publish_record_store.dart';
-import '../../widgets/empty_state_block.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../home_workspace/home_workspace_new_team_dialog.dart';
 import '../home_workspace/home_workspace_route.dart';
@@ -146,7 +146,7 @@ class _MyTeamsPageState extends State<MyTeamsPage> {
                 }
                 final teams = state.teams;
                 if (teams.isEmpty) {
-                  return EmptyStateBlock(
+                  return TpEmptyState(
                     centered: true,
                     icon: Icons.groups_2_outlined,
                     title: l10n.myTeamsEmptyTitle,

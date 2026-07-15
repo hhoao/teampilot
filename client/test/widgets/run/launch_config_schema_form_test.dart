@@ -3,8 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/run/launch_configuration.dart';
 import 'package:teampilot/services/run/shell_script_launch_schema.dart';
-import 'package:teampilot/widgets/dropdown/app_dropdown_field.dart';
-import 'package:teampilot/widgets/form/app_form.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/run/launch_config_schema_form.dart';
 
 void main() {
@@ -39,7 +38,7 @@ void main() {
         locale: const Locale('en'),
         home: Scaffold(
           body: SingleChildScrollView(
-            child: AppForm(
+            child: TpForm(
               child: LaunchConfigSchemaForm(
                 value: value,
                 onChanged: onChanged,
@@ -136,6 +135,6 @@ void main() {
       find.byKey(const Key('launch-config-field-scriptText')),
       findsOneWidget,
     );
-    expect(find.byType(AppDropdownField<String>), findsWidgets);
+    expect(find.byType(TpSelect<String>), findsWidgets);
   });
 }

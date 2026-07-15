@@ -9,10 +9,10 @@ import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../services/ssh/ssh_profile_connection_tester.dart';
 import '../services/terminal/terminal_transport_factory.dart';
-import '../widgets/app_dialog.dart';
 import 'ssh_profile_setup_page.dart';
 import 'ssh_profiles/ssh_profile_form_dialog.dart';
 import 'ssh_profiles/ssh_profiles_section.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Full-page host for SSH profile management.
 class SshProfilesPage extends StatelessWidget {
@@ -69,16 +69,16 @@ Future<void> confirmDeleteSshProfile(
 ) async {
   final confirmed = await showDialog<bool>(
     context: context,
-    builder: (dialogContext) => AppDialog(
+    builder: (dialogContext) => TpDialog(
       maxWidth: 480,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AppDialogHeader(title: '删除 SSH Profile'),
+          const TpDialogHeader(title: '删除 SSH Profile'),
           const SizedBox(height: 16),
           Text('确定删除 ${profile.name} 吗？保存的凭据也会一并删除。'),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(false),

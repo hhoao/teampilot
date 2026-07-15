@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/plugin_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/plugin.dart';
 import '../../theme/app_text_styles.dart';
-import '../../widgets/app_dialog.dart';
 import '../../utils/skill_repo_parse.dart';
-import '../../widgets/empty_state_block.dart';
 import 'plugin_management_cards.dart';
 
 class PluginMarketplacesSection extends StatelessWidget {
@@ -39,14 +37,14 @@ class PluginMarketplacesSection extends StatelessWidget {
                     ),
                     FilledButton.tonalIcon(
                       onPressed: () => _onAdd(context, cubit),
-                      icon: Icon(Icons.add, size: context.appIconSizes.md),
+                      icon: Icon(Icons.add, size: context.tpIconSizes.md),
                       label: Text(l10n.pluginsMarketplaceAdd),
                     ),
                   ],
                 ),
                 const SizedBox(height: 14),
                 if (state.marketplaces.isEmpty)
-                  EmptyStateBlock(
+                  TpEmptyState(
                     icon: Icons.store_outlined,
                     title: l10n.pluginsMarketplacesEmpty,
                     hint: l10n.pluginsNoInstalledHint,
@@ -127,13 +125,13 @@ class _AddPluginMarketplaceDialogState
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return AppDialog(
+    return TpDialog(
       maxWidth: 480,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(
+          TpDialogHeader(
             title: l10n.pluginsMarketplaceAdd,
             onClose: () => Navigator.of(context).pop(),
           ),
@@ -158,7 +156,7 @@ class _AddPluginMarketplaceDialogState
               ),
             ],
           ),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
@@ -233,12 +231,12 @@ class PluginMarketplaceRow extends StatelessWidget {
             onChanged: (v) => cubit.toggleMarketplaceEnabled(marketplace, v),
           ),
           IconButton(
-            icon: Icon(Icons.open_in_new, size: context.appIconSizes.md),
+            icon: Icon(Icons.open_in_new, size: context.tpIconSizes.md),
             tooltip: marketplace.githubUrl,
             onPressed: () => openPluginUrl(marketplace.githubUrl),
           ),
           IconButton(
-            icon: Icon(Icons.delete_outline, size: context.appIconSizes.md),
+            icon: Icon(Icons.delete_outline, size: context.tpIconSizes.md),
             tooltip: l10n.pluginsMarketplaceRemove,
             onPressed: () => _remove(context, l10n, cubit),
           ),

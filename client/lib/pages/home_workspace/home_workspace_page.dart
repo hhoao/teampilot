@@ -305,7 +305,6 @@ class _HomeRightPaneState extends State<_HomeRightPane> {
   }
 }
 
-
 class _HomeTeamPane extends StatelessWidget {
   const _HomeTeamPane({
     required this.teamId,

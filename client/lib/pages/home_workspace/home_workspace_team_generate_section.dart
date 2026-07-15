@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_text_styles.dart';
-import '../../widgets/textarea/app_textarea.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 typedef TeamDescriptionChanged = void Function(String description);
 
@@ -50,11 +50,11 @@ class _HomeTeamGenerateSectionState extends State<HomeTeamGenerateSection> {
           builder: (context) {
             final bodyStyle =
                 Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
-            return AppTextarea(
+            return TpTextarea(
               key: const ValueKey('team-gen-description'),
               controller: _controller,
-              minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
-              maxHeight: appTextareaHeightForLines(bodyStyle, lines: 4),
+              minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
+              maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 4),
               enabled: widget.enabled && !generating,
               onChanged: widget.onDescriptionChanged,
               decoration: InputDecoration(

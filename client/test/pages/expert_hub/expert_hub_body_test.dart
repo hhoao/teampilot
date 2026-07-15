@@ -8,7 +8,7 @@ import 'package:teampilot/pages/expert_hub/expert_hub_body.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import '../../support/stub_member_roster_service.dart';
-import 'package:teampilot/widgets/empty_state_block.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 class _FakeSource extends CompositeExpertHubSource {
   _FakeSource(this.members)
@@ -42,7 +42,7 @@ DiscoverableMember _member(String name) => DiscoverableMember(
 );
 
 void main() {
-  testWidgets('empty favorites shows EmptyStateBlock', (tester) async {
+  testWidgets('empty favorites shows TpEmptyState', (tester) async {
     tester.view.physicalSize = const Size(1600, 1200);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() {
@@ -74,7 +74,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(EmptyStateBlock), findsOneWidget);
+    expect(find.byType(TpEmptyState), findsOneWidget);
     expect(find.text('No favorites yet'), findsOneWidget);
   });
 }

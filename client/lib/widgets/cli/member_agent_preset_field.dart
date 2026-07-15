@@ -5,8 +5,7 @@ import '../../models/team_config.dart';
 import '../../services/app/flashskyai_agent_catalog_service.dart';
 import '../../services/cli/registry/capabilities/member_agent_preset_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../dropdown/app_dropdown_decoration.dart';
-import '../dropdown/app_dropdown_field.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../settings/focus_gated_text_field.dart';
 import '../../pages/team_config/team_config_helpers.dart';
 
@@ -85,7 +84,7 @@ class _FlashskyaiCatalogField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final dropdownDeco = AppDropdownDecorations.themed(context);
+    final dropdownDeco = TpSelectDecorations.themed(context);
     final showCustomAgentField =
         FlashskyaiAgentCatalog.activeDropdownValue(
           agent,
@@ -96,7 +95,7 @@ class _FlashskyaiCatalogField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AppDropdownField<String>(
+        TpSelect<String>(
           key: ValueKey(
             '$fieldKeyPrefix-agent-dd-$agent-${userAgentIds.join(",")}',
           ),

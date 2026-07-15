@@ -11,7 +11,7 @@ import '../../services/commands/key_chord.dart';
 import '../../services/commands/key_chord_formatter.dart';
 import '../../services/commands/shortcut_dispatcher_handle.dart';
 import '../../theme/app_text_styles.dart';
-import '../app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Opens the press-to-bind capture modal for [commandId].
 ///
@@ -192,13 +192,13 @@ class _ShortcutRebindDialogState extends State<ShortcutRebindDialog> {
       autofocus: true,
       skipTraversal: true,
       onKeyEvent: _onKeyEvent,
-      child: AppDialog(
+      child: TpDialog(
         maxWidth: 440,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppDialogHeader(
+            TpDialogHeader(
               title: l10n.shortcutsPressShortcutTitle,
               onClose: _cancel,
             ),
@@ -275,7 +275,7 @@ class _ConflictConfirm extends StatelessWidget {
           chordLabel,
           style: styles.lgBoldSnug,
         ),
-        AppDialogActions(
+        TpDialogActions(
           showDividerAbove: false,
           children: [
             TextButton(onPressed: onCancel, child: Text(l10n.cancel)),

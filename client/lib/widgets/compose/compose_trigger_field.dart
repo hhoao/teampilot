@@ -19,7 +19,7 @@ import '../../services/compose/compose_trigger_insert.dart';
 import '../../services/compose/compose_trigger_query.dart';
 import '../../services/keyboard/compose_keyboard_shortcut_handler.dart';
 import '../inline_token/inline_token_text_field.dart';
-import '../textarea/app_textarea_shell.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 sealed class ComposeTriggerSuggestion {}
 
@@ -393,7 +393,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           _fieldConstraints = constraints;
-          return AppTextareaShell(
+          return TpTextareaShell(
             minHeight: minH,
             maxHeight: maxH,
             initialHeight: minH,

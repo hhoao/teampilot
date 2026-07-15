@@ -3,10 +3,9 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_dialog_theme.dart';
-import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/deferred_mount_shell.dart';
 import 'settings_dialog_pane_host.dart';
 import 'workspace_hub_shell.dart';
@@ -36,7 +35,7 @@ class SettingsDialogEntry {
 
 const double _kSettingsDialogWidth = 1160;
 const double _kSettingsDialogHeight = 960;
-const double _kSettingsDialogInset = kAppDialogInsetExtent;
+const double _kSettingsDialogInset = kTpDialogInsetExtent;
 
 Future<void> showSettingsDialog(
   BuildContext context, {
@@ -89,7 +88,7 @@ class _SettingsDialogState extends State<_SettingsDialog> {
     );
     final cs = Theme.of(context).colorScheme;
 
-    return AppDialog(
+    return TpDialog(
       maxWidth: dialogWidth,
       maxHeight: dialogHeight,
       contentPadding: EdgeInsets.zero,
@@ -280,7 +279,7 @@ class _SettingsHeader extends StatelessWidget {
           IconButton(
             tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
             onPressed: onClose,
-            icon: Icon(Icons.close, size: context.appIconSizes.md),
+            icon: Icon(Icons.close, size: context.tpIconSizes.md),
             color: cs.onSurfaceVariant,
           ),
         ],

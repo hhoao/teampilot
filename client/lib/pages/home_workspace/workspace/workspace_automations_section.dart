@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../../cubits/automation_cubit.dart';
 import '../../../cubits/automation_state.dart';
@@ -13,7 +13,6 @@ import '../../../pages/automations/automation_editor_dialog.dart';
 import '../../../pages/automations/automations_dialog.dart';
 import '../../../services/automation/automation_workspace_summary.dart';
 import '../../../theme/app_text_styles.dart';
-import '../../../widgets/app_icon_button.dart';
 
 /// Workspace sidebar entry for automations — opens the merged workspace panel.
 class WorkspaceAutomationsSection extends StatefulWidget {
@@ -143,7 +142,7 @@ class _SectionHeaderState extends State<_SectionHeader> {
             children: [
               Icon(
                 Icons.bolt_rounded,
-                size: context.appIconSizes.md,
+                size: context.tpIconSizes.md,
                 color: cs.primary,
               ),
               const SizedBox(width: 8),
@@ -168,10 +167,10 @@ class _SectionHeaderState extends State<_SectionHeader> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              AppIconButton(
+              TpIconButton(
                 icon: Icons.add_rounded,
                 compact: true,
-                size: AppIconButton.kCompactSize,
+                size: TpIconButton.kCompactSize,
                 tooltip: l10n.automationsNew,
                 onTap: widget.onAdd,
               ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../l10n/l10n_extensions.dart';
 import '../models/runtime_target.dart';
@@ -125,7 +125,7 @@ class _WorkspaceCreateDirectoryPickerState
                     ),
                     child: Icon(
                       Icons.folder_open_rounded,
-                      size: context.appIconSizes.lg,
+                      size: context.tpIconSizes.lg,
                       color: cs.onPrimary,
                     ),
                   ),
@@ -150,7 +150,7 @@ class _WorkspaceCreateDirectoryPickerState
                     onPressed: _addDirectory,
                     icon: Icon(
                       Icons.drive_folder_upload_outlined,
-                      size: context.appIconSizes.md,
+                      size: context.tpIconSizes.md,
                     ),
                     label: Text(l10n.homeWorkspaceNewWorkspaceChooseDirectory),
                   ),

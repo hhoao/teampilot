@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../../models/plugin.dart';
 import '../../../models/skill.dart';
@@ -339,7 +339,7 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
                 child: Icon(
                   Icons.smart_toy_rounded,
                   color: palette.muted,
-                  size: context.appIconSizes.lg,
+                  size: context.tpIconSizes.lg,
                 ),
               ),
             ),
@@ -381,7 +381,7 @@ class _TeamSettingsButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icons = context.appIconSizes;
+    final icons = context.tpIconSizes;
     final color = enabled ? palette.muted : palette.disabled;
 
     return Tooltip(
@@ -445,7 +445,7 @@ class _SendButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icons = context.appIconSizes;
+    final icons = context.tpIconSizes;
     final active = canSubmit && !isSubmitting;
     final tooltip = blockedTooltip?.trim();
 
@@ -510,7 +510,7 @@ class _ComposeActionIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icons = context.appIconSizes;
+    final icons = context.tpIconSizes;
     final interactive = enabled && !isLoading;
     final color = !enabled ? palette.disabled : palette.muted;
 
@@ -567,7 +567,7 @@ class _ComposeFieldPlaceholder extends StatelessWidget {
         (hintStyle.fontSize ?? 14) * (hintStyle.height ?? 1.35);
     return SizedBox(
       width: double.infinity,
-      // Matches ComposeTriggerField / AppTextareaShell min (~3 lines).
+      // Matches ComposeTriggerField / TpTextareaShell min (~3 lines).
       height: lineHeight * 3,
       child: Align(
         alignment: Alignment.topLeft,

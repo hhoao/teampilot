@@ -5,9 +5,8 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/git_status.dart';
 import '../../services/git/git_changes_visible_rows.dart';
 import '../../theme/app_text_styles.dart';
-import '../app_icon_button.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../file_icon_widget.dart';
-import '../hover_widget.dart';
 
 /// One changed file row in the source control changes tree.
 ///
@@ -68,7 +67,7 @@ class _GitChangeTileState extends State<GitChangeTile> {
     final cs = Theme.of(context).colorScheme;
     final change = widget.change;
     final name = p.basename(change.path);
-    final rowColor = _hovered ? HoverWidget.defaultHoverColor(context) : null;
+    final rowColor = _hovered ? TpHover.defaultHoverColor(context) : null;
 
     return RepaintBoundary(
       child: MouseRegion(
@@ -140,27 +139,27 @@ class _GitChangeTileState extends State<GitChangeTile> {
     final l10n = context.l10n;
     if (widget.change.staged) {
       return [
-        AppIconButton(
+        TpIconButton(
           icon: Icons.remove,
           compact: true,
-          size: AppIconButton.kCompactSize,
+          size: TpIconButton.kCompactSize,
           tooltip: l10n.gitUnstage,
           onTap: widget.onUnstage,
         ),
       ];
     }
     return [
-      AppIconButton(
+      TpIconButton(
         icon: Icons.undo,
         compact: true,
-        size: AppIconButton.kCompactSize,
+        size: TpIconButton.kCompactSize,
         tooltip: l10n.gitDiscard,
         onTap: widget.onDiscard,
       ),
-      AppIconButton(
+      TpIconButton(
         icon: Icons.add,
         compact: true,
-        size: AppIconButton.kCompactSize,
+        size: TpIconButton.kCompactSize,
         tooltip: l10n.gitStage,
         onTap: widget.onStage,
       ),

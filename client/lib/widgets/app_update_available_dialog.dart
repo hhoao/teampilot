@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../cubits/app_update_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_release_info.dart';
 import '../router/app_router.dart';
-import '../theme/app_icon_sizes.dart';
 import '../theme/app_text_styles.dart';
 import '../utils/changelog_parser.dart';
-import 'app_dialog.dart';
 
 /// Popup shown when [AppUpdateCubit] surfaces a newer release (e.g. on the
 /// startup auto-check). Drives download/install through the shared cubit so the
@@ -50,14 +49,14 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
             state.status == AppUpdateStatus.downloading ||
             state.status == AppUpdateStatus.installing;
 
-        return AppDialog(
+        return TpDialog(
           maxWidth: 420,
           maxHeight: MediaQuery.sizeOf(context).height * 0.8,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppDialogHeader(title: l10n.appUpdateDialogTitle),
+              TpDialogHeader(title: l10n.appUpdateDialogTitle),
               Flexible(
                 child: SingleChildScrollView(
                   child: Column(
@@ -172,7 +171,7 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
         trailing: Icon(
           _changelogExpanded ? Icons.expand_less : Icons.expand_more,
           color: cs.onSurfaceVariant,
-          size: context.appIconSizes.md,
+          size: context.tpIconSizes.md,
         ),
         onExpansionChanged: (v) => setState(() => _changelogExpanded = v),
         children: [

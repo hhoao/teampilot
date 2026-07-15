@@ -14,15 +14,12 @@ import '../pages/automations/automation_editor_dialog.dart';
 import '../pages/automations/automations_dialog.dart';
 import '../pages/home_workspace/workspace/workspace_sidebar_row_metrics.dart';
 import '../repositories/session_repository.dart';
-import '../theme/app_icon_sizes.dart';
 import '../theme/app_text_styles.dart';
 import '../utils/coarse_relative_time.dart';
 import '../utils/debounce/debounce.dart';
-import 'app_dialog.dart';
-import 'app_icon_button.dart';
-import 'hover_text_tooltip.dart';
 import 'menu/sidebar_action_menu.dart';
 import 'session_working_spinner.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Session row for sidebars: rename, delete, overflow menu, and context menu.
 class SidebarSessionTile extends StatefulWidget {
@@ -353,10 +350,10 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                 ),
               ),
               SizedBox(
-                width: AppIconButton.kDefaultSize,
-                height: AppIconButton.kDefaultSize,
+                width: TpIconButton.kDefaultSize,
+                height: TpIconButton.kDefaultSize,
                 child: SidebarActionMenuIconAnchor(
-                  icon: Icon(Icons.more_horiz, size: context.appIconSizes.md),
+                  icon: Icon(Icons.more_horiz, size: context.tpIconSizes.md),
                   onOpen: () => setState(() => _menuOpen = true),
                   onClose: () => setState(() => _menuOpen = false),
                   buildMenuChildren: (context, controller) => [
@@ -449,7 +446,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   ) async {
     final repo = context.read<SessionRepository>();
     final chatCubit = context.read<ChatCubit>();
-    final name = await showAppTextPromptDialog(
+    final name = await showTpTextPromptDialog(
       context,
       title: l10n.renameConversationTitle,
       initialText: session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle),
@@ -504,7 +501,7 @@ class _SessionPinnedMark extends StatelessWidget {
       padding: const EdgeInsets.only(left: 4),
       child: Icon(
         Icons.push_pin,
-        size: context.appIconSizes.xs,
+        size: context.tpIconSizes.xs,
         color: cs.onSurfaceVariant.withValues(alpha: 0.55),
       ),
     );
@@ -530,10 +527,10 @@ class _SessionDeleteAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return AppIconButton(
+    return TpIconButton(
       icon: armed ? Icons.check : Icons.delete_outline,
       compact: true,
-      size: AppIconButton.kCompactSize,
+      size: TpIconButton.kCompactSize,
       tooltip: armed ? confirmLabel : deleteTooltip,
       color: armed ? cs.onError : cs.error,
       backgroundColor: armed ? cs.error : null,
@@ -634,7 +631,7 @@ class _SidebarTile extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          HoverTextTooltip(
+                          TpTooltip(
                             message: title,
                             child: Text(
                               title,

@@ -7,7 +7,7 @@ import '../models/ssh_profile.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../services/ssh/ssh_profile_connection_tester.dart';
-import '../widgets/textarea/app_textarea.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 class SshProfileSetupPage extends StatefulWidget {
   const SshProfileSetupPage({
@@ -263,10 +263,10 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      AppTextarea(
+                      TpTextarea(
                         controller: _privateKeyController,
-                        minHeight: appTextareaHeightForLines(bodyStyle, lines: 4),
-                        maxHeight: appTextareaHeightForLines(bodyStyle, lines: 8),
+                        minHeight: tpTextareaHeightForLines(bodyStyle, lines: 4),
+                        maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 8),
                         decoration: InputDecoration(
                           labelText: 'Private Key',
                           hintText: _isEditing

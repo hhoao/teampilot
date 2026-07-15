@@ -7,8 +7,7 @@ import '../../cubits/run_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/run/launch_adapter_protocol.dart';
 import '../../services/run/launch_config_l10n.dart';
-import '../../widgets/app_dialog.dart';
-import '../../widgets/app_icon_button.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import 'run_config_editor_dialog.dart';
@@ -171,7 +170,7 @@ class _ToolbarGlyph extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppIconButton(
+    return TpIconButton(
       key: keyId,
       icon: icon,
       tooltip: tooltip,
@@ -258,19 +257,19 @@ class _RunOrStopGlyph extends StatelessWidget {
     if (cubit.hasRunning(selected.selectionKey)) {
       final choice = await showDialog<_RerunChoice>(
         context: context,
-        builder: (dialogContext) => AppDialog(
+        builder: (dialogContext) => TpDialog(
           maxWidth: 420,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppDialogHeader(
+              TpDialogHeader(
                 title: l10n.runAlreadyRunningTitle,
                 onClose: () => Navigator.of(dialogContext).pop(),
               ),
               const SizedBox(height: 12),
               Text(l10n.runAlreadyRunningMessage),
-              AppDialogActions(
+              TpDialogActions(
                 children: [
                   TextButton(
                     onPressed: () => Navigator.of(dialogContext).pop(),
@@ -322,19 +321,19 @@ class _RunOrStopGlyph extends StatelessWidget {
     final l10n = context.l10n;
     final edit = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AppDialog(
+      builder: (dialogContext) => TpDialog(
         maxWidth: 420,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppDialogHeader(
+            TpDialogHeader(
               title: l10n.runEditConfigurations,
               onClose: () => Navigator.of(dialogContext).pop(false),
             ),
             const SizedBox(height: 12),
             Text(localizeLaunchConfigValidationJoined(l10n, error)),
-            AppDialogActions(
+            TpDialogActions(
               children: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),

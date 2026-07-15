@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/app_localizations.dart';
-import '../app_icon_button.dart';
 import '../menu/sidebar_action_menu.dart';
 
 enum FileTreeHeaderAction {
@@ -48,8 +47,8 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return SidebarActionMenuButton(
       tooltip: l10n.fileTree,
-      icon: Icon(Icons.more_vert, size: context.appIconSizes.sm),
-      size: AppIconButton.kCompactSize,
+      icon: Icon(Icons.more_vert, size: context.tpIconSizes.sm),
+      size: TpIconButton.kCompactSize,
       specs: [
         SidebarActionMenuSpec.item(
           value: FileTreeHeaderAction.refresh,

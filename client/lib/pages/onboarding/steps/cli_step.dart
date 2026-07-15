@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
@@ -285,8 +285,8 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
                       Row(
                         children: [
                           SizedBox(
-                            width: context.appIconSizes.md,
-                            height: context.appIconSizes.md,
+                            width: context.tpIconSizes.md,
+                            height: context.tpIconSizes.md,
                             child: const CircularProgressIndicator(
                               strokeWidth: 2,
                             ),
@@ -355,7 +355,7 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
               builder: (context, busy, _) {
                 return OutlinedButton.icon(
                   onPressed: busy ? null : _detect,
-                  icon: Icon(Icons.refresh, size: context.appIconSizes.md),
+                  icon: Icon(Icons.refresh, size: context.tpIconSizes.md),
                   label: Text(l10n.onboardingCliRedetect),
                 );
               },

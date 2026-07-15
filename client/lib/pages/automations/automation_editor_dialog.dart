@@ -18,8 +18,7 @@ import '../../services/automation/automation_launch_session_binding.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
 import '../../utils/landing_draft_resolver.dart';
 import '../../utils/workspace_path_utils.dart';
-import '../../widgets/app_dialog.dart';
-import '../../widgets/form/app_form.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'automation_editor_form_body.dart';
 import 'automation_schedule_picker.dart';
 
@@ -67,7 +66,7 @@ class AutomationEditorDialog extends StatefulWidget {
 }
 
 class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
-  final _formKey = GlobalKey<AppFormState>();
+  final _formKey = GlobalKey<TpFormState>();
   final _calculator = AutomationScheduleCalculator();
   late final TextEditingController _nameCtl;
   late final TextEditingController _messageCtl;
@@ -388,13 +387,13 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
               ? l10n.automationsCompactTitle
               : l10n.automationsCreateTitle);
 
-    return AppDialog(
+    return TpDialog(
       maxWidth: _isScheduledMessage ? 480 : 560,
       maxHeight: MediaQuery.sizeOf(context).height * 0.85,
-      child: AppForm(
+      child: TpForm(
         key: _formKey,
-        child: AppDialogPinnedLayout(
-          header: AppDialogHeader(title: title),
+        child: TpDialogPinnedLayout(
+          header: TpDialogHeader(title: title),
           body: AutomationEditorFormBody(
             isScheduledMessage: _isScheduledMessage,
             nameController: _nameCtl,
@@ -431,7 +430,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
                 setState(() => _dangerouslySkipPermissions = v),
             onTargetMemberChanged: (v) => setState(() => _targetMemberId = v),
           ),
-          footer: AppDialogActions(
+          footer: TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),

@@ -6,7 +6,7 @@ import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/widgets/app_provider/app_provider_form_sheet.dart';
-import 'package:teampilot/widgets/dropdown/app_dropdown_field.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 void main() {
   testWidgets('claude provider form shows advanced options', (tester) async {
@@ -73,7 +73,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(AppDropdownField<CliTool>).first);
+    await tester.tap(find.byType(TpSelect<CliTool>).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Claude Code').last);
     await tester.pumpAndSettle();

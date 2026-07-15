@@ -12,7 +12,7 @@ import '../../services/hub_publish/github_registry_publisher.dart';
 import '../../services/hub_publish/hub_publish_credentials_store.dart';
 import '../../services/hub_publish/hub_publish_record_store.dart';
 import '../../services/hub_publish/hub_publish_service.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'hub_publish_wizard_steps.dart';
 
 enum HubPublishWizardStep { auth, metadata, gates, confirm, success }
@@ -304,7 +304,7 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return AppDialog(
+    return TpDialog(
       key: const Key('hub-publish-wizard'),
       scrollable: true,
       maxWidth: 560,
@@ -313,7 +313,7 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(
+          TpDialogHeader(
             title: _title,
             onClose: _busy ? null : () => Navigator.of(context).pop(),
           ),
@@ -330,7 +330,7 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
           ],
           _buildStepBody(),
           if (_step != HubPublishWizardStep.success)
-            AppDialogActions(
+            TpDialogActions(
               children: [
                 if (_step != HubPublishWizardStep.auth)
                   TextButton(
@@ -363,7 +363,7 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
               ],
             )
           else
-            AppDialogActions(
+            TpDialogActions(
               children: [
                 FilledButton(
                   key: const Key('hub-publish-done'),

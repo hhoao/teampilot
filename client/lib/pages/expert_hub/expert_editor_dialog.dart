@@ -15,11 +15,7 @@ import '../../models/mcp_server.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../services/expert_hub/local_expert_writer.dart';
-import '../../widgets/app_dialog.dart';
-import '../../widgets/form/app_form.dart';
-import '../../widgets/form/app_form_field.dart';
-import '../../widgets/textarea/app_textarea.dart';
-import '../../widgets/textarea/app_textarea_form_field.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'expert_editor_dep_picker_dialog.dart';
 import 'expert_editor_deps.dart';
 
@@ -79,7 +75,7 @@ class ExpertEditorDialog extends StatefulWidget {
 }
 
 class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
-  final _formKey = GlobalKey<AppFormState>();
+  final _formKey = GlobalKey<TpFormState>();
   late final TextEditingController _name;
   late final TextEditingController _description;
   late final TextEditingController _category;
@@ -300,7 +296,7 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
     String? Function(String?)? validator,
     TextInputAction textInputAction = TextInputAction.next,
   }) {
-    return AppFormField<String>(
+    return TpFormField<String>(
       id: id,
       initialValue: controller.text,
       label: Text(label),
@@ -329,12 +325,12 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
     final bodyStyle =
         Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
 
-    return AppDialog(
+    return TpDialog(
       maxHeight: MediaQuery.sizeOf(context).height * 0.85,
-      child: AppForm(
+      child: TpForm(
         key: _formKey,
-        child: AppDialogPinnedLayout(
-          header: AppDialogHeader(
+        child: TpDialogPinnedLayout(
+          header: TpDialogHeader(
             title: _isEditing
                 ? l10n.expertEditorEditTitle
                 : l10n.expertEditorCreateTitle,
@@ -367,7 +363,7 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
                 label: l10n.expertEditorCategory,
               ),
               const SizedBox(height: 12),
-              AppTextareaFormField(
+              TpTextareaFormField(
                 key: const Key('expert-editor-prompt'),
                 id: 'prompt',
                 controller: _prompt,
@@ -375,14 +371,14 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
                 decoration: InputDecoration(
                   hintText: l10n.expertEditorPromptHint,
                 ),
-                minHeight: appTextareaHeightForLines(bodyStyle, lines: 3),
-                maxHeight: appTextareaHeightForLines(bodyStyle, lines: 6),
+                minHeight: tpTextareaHeightForLines(bodyStyle, lines: 3),
+                maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 6),
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? l10n.expertEditorPromptRequired
                     : null,
               ),
               const SizedBox(height: 12),
-              AppTextareaFormField(
+              TpTextareaFormField(
                 key: const Key('expert-editor-playbook'),
                 id: 'playbook',
                 controller: _playbook,
@@ -390,8 +386,8 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
                 decoration: InputDecoration(
                   hintText: l10n.expertEditorPlaybookHint,
                 ),
-                minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
-                maxHeight: appTextareaHeightForLines(bodyStyle, lines: 5),
+                minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
+                maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 5),
               ),
               const SizedBox(height: 12),
               _textField(
@@ -433,7 +429,7 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
               ),
             ],
           ),
-          footer: AppDialogActions(
+          footer: TpDialogActions(
             children: [
               TextButton(
                 onPressed: _saving ? null : () => Navigator.of(context).pop(),

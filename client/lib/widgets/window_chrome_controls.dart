@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../l10n/l10n_extensions.dart';
 import '../services/app/desktop_window_actions.dart';
@@ -107,8 +107,8 @@ class _MacTrafficLightControlsState extends State<MacTrafficLightControls> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final diameter = context.appIconSizes.md;
-    final gap = context.appIconSizes.xxs * 0.55;
+    final diameter = context.tpIconSizes.md;
+    final gap = context.tpIconSizes.xxs * 0.55;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -590,7 +590,7 @@ class _WindowsChromeButtonState extends State<_WindowsChromeButton> {
               highlightColor: Colors.transparent,
               child: Icon(
                 widget.icon,
-                size: context.appIconSizes.md,
+                size: context.tpIconSizes.md,
                 color: foreground,
               ),
             ),

@@ -1,5 +1,5 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,7 +12,6 @@ import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/skill_repo_parse.dart';
-import '../../widgets/empty_state_block.dart';
 import 'skill_management_cards.dart';
 
 class SkillReposSection extends StatefulWidget {
@@ -49,7 +48,7 @@ class SkillReposSectionState extends State<SkillReposSection> {
                 SkillCardHeader(title: l10n.skillsNavRepos),
                 const SizedBox(height: 12),
                 if (widget.state.repos.isEmpty)
-                  EmptyStateBlock(
+                  TpEmptyState(
                     icon: Icons.source_outlined,
                     title: l10n.skillsReposEmpty,
                     hint: l10n.skillsDiscoveryEmptyHint,
@@ -121,7 +120,7 @@ class SkillReposSectionState extends State<SkillReposSection> {
                       _urlCtl.clear();
                       _branchCtl.text = 'main';
                     }),
-                    icon: Icon(Icons.add, size: context.appIconSizes.md),
+                    icon: Icon(Icons.add, size: context.tpIconSizes.md),
                     label: Text(l10n.skillsAdd),
                   ),
                 ),
@@ -200,7 +199,7 @@ class SkillRepoRow extends StatelessWidget {
               },
               icon: Icon(
                 Icons.delete_outline,
-                size: context.appIconSizes.md,
+                size: context.tpIconSizes.md,
                 color: Theme.of(context).colorScheme.error,
               ),
             ),

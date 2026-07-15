@@ -4,8 +4,7 @@ import 'package:flutter/services.dart';
 import '../../services/inline_token/inline_token_chip_mirror.dart';
 import '../../services/inline_token/inline_token_edit.dart';
 import '../../services/inline_token/inline_token_palette.dart';
-import '../dropdown/popover/anchor.dart';
-import '../dropdown/popover/portal.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Multiline text field that renders [tokenPattern] matches as inline chips.
 ///
@@ -49,7 +48,7 @@ class InlineTokenTextField extends StatefulWidget {
   final int minLines;
   final int maxLines;
 
-  /// When true, fill the parent (e.g. [AppTextareaShell]) instead of sizing
+  /// When true, fill the parent (e.g. [TpTextareaShell]) instead of sizing
   /// from [minLines]/[maxLines]. Avoids untappable blank gaps below the field.
   final bool expands;
   final bool overlayVisible;
@@ -179,9 +178,9 @@ class _InlineTokenTextFieldState extends State<InlineTokenTextField> {
           return child;
         }
 
-        return AppPortal(
+        return TpPortal(
           visible: widget.overlayVisible,
-          anchor: AppGlobalAnchor(widget.overlayAnchor),
+          anchor: TpGlobalAnchor(widget.overlayAnchor),
           portalBuilder: (context) => SizedBox(
             width: constraints.maxWidth,
             child: widget.overlayBuilder!(context),

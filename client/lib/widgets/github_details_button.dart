@@ -1,5 +1,5 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Opens the GitHub (or other) browse URL in the system browser.
@@ -30,7 +30,7 @@ class GithubDetailsButton extends StatelessWidget {
     }
     return TextButton.icon(
       onPressed: () => openGithubBrowseUrl(target),
-      icon: Icon(Icons.open_in_new, size: context.appIconSizes.md),
+      icon: Icon(Icons.open_in_new, size: context.tpIconSizes.md),
       label: Text(label),
     );
   }

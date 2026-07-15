@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/skill_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../utils/github_source_url.dart';
-import '../../widgets/dropdown/app_dropdown_field.dart';
 import 'skill_discover_card.dart';
 import 'skill_discovery_helpers.dart';
-import '../../widgets/empty_state_block.dart';
 import 'skill_management_cards.dart';
 
 class SkillDiscoveryReposFilters extends StatefulWidget {
@@ -88,7 +86,7 @@ class _SkillDiscoveryReposFiltersState
                 controller: _searchCtl,
                 decoration: InputDecoration(
                   hintText: l10n.skillsSearchPlaceholder,
-                  prefixIcon: Icon(Icons.search, size: context.appIconSizes.md),
+                  prefixIcon: Icon(Icons.search, size: context.tpIconSizes.md),
                   floatingLabelBehavior: FloatingLabelBehavior.never,
                 ),
                 onChanged: widget.onSearchChanged,
@@ -96,7 +94,7 @@ class _SkillDiscoveryReposFiltersState
             ),
             SizedBox(
               width: 300,
-              child: AppDropdownField<String>(
+              child: TpSelect<String>(
                 key: ValueKey(repoItems.join('|')),
                 items: repoItems,
                 initialItem: effectiveRepo,
@@ -109,7 +107,7 @@ class _SkillDiscoveryReposFiltersState
             ),
             SizedBox(
               width: 160,
-              child: AppDropdownField<String>(
+              child: TpSelect<String>(
                 items: const ['all', 'installed', 'uninstalled'],
                 initialItem: widget.filterStatus,
                 overlayHeight: 200,
@@ -167,7 +165,7 @@ class SkillDiscoveryReposBody extends StatelessWidget {
             if (!grid.discoveryLoading && filtered.isEmpty) {
               return SingleChildScrollView(
                 child: SkillManagementCard(
-                  child: EmptyStateBlock(
+                  child: TpEmptyState(
                     icon: Icons.travel_explore_outlined,
                     title: l10n.skillsDiscoveryEmpty,
                     hint: l10n.skillsDiscoveryEmptyHint,

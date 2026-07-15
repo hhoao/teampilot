@@ -10,9 +10,9 @@ import '../../../../models/workspace.dart';
 import '../../../../models/workspace_topology.dart';
 import '../../../../repositories/session_repository.dart';
 import '../../../../services/launch/member_placement_save.dart';
-import '../../../../widgets/app_dialog.dart';
 import '../mixed_workspace_member_placement_panel.dart';
 import '../../../../theme/app_text_styles.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Edits workspace + team default member→machine pins (new sessions only).
 Future<bool?> showWorkspaceTeamMemberTargetsDialog(
@@ -130,13 +130,13 @@ class _WorkspaceTeamMemberTargetsDialogState
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return AppDialog(
+    return TpDialog(
       maxWidth: 820,
       maxHeight: 560,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.mixedWorkspaceMemberAssignmentTitle),
+          TpDialogHeader(title: l10n.mixedWorkspaceMemberAssignmentTitle),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Text(
@@ -168,7 +168,7 @@ class _WorkspaceTeamMemberTargetsDialogState
                 style: AppTextStyles.of(context).smColored(Theme.of(context).colorScheme.error),
               ),
             ),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: _saving

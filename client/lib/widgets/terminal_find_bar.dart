@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 
@@ -94,7 +94,7 @@ class _TerminalFindBarState extends State<TerminalFindBar> {
               tooltip: 'Previous',
               icon: Icon(
                 Icons.keyboard_arrow_up,
-                size: context.appIconSizes.md,
+                size: context.tpIconSizes.md,
               ),
               onPressed: () => _step(false),
             ),
@@ -102,13 +102,13 @@ class _TerminalFindBarState extends State<TerminalFindBar> {
               tooltip: 'Next',
               icon: Icon(
                 Icons.keyboard_arrow_down,
-                size: context.appIconSizes.md,
+                size: context.tpIconSizes.md,
               ),
               onPressed: () => _step(true),
             ),
             IconButton(
               tooltip: 'Close',
-              icon: Icon(Icons.close, size: context.appIconSizes.md),
+              icon: Icon(Icons.close, size: context.tpIconSizes.md),
               onPressed: _close,
             ),
           ],

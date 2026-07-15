@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
-import '../app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
@@ -267,13 +267,13 @@ class _ProviderCredentialActionBarState
     final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AppDialog(
+      builder: (dialogContext) => TpDialog(
         maxWidth: 480,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppDialogHeader(
+            TpDialogHeader(
               title: _actionLabel(
                 l10n,
                 provider.cli,
@@ -282,7 +282,7 @@ class _ProviderCredentialActionBarState
             ),
             const SizedBox(height: 16),
             Text(_revokeConfirmMessage(l10n, provider)),
-            AppDialogActions(
+            TpDialogActions(
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext, false),

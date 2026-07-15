@@ -3,7 +3,7 @@ import 'dart:io' show Platform, Process;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../cubits/file_tree_cubit.dart';
 import '../cubits/workbench/workbench_cubit.dart';
@@ -18,7 +18,6 @@ import '../services/workspace_dnd/workspace_file_ref.dart';
 import '../theme/app_text_styles.dart';
 import 'file_icon_widget.dart';
 import 'file_tree/file_tree_context_menu.dart';
-import 'hover_widget.dart';
 import 'workspace_dnd/draggable_file_row.dart';
 
 /// Single row in the flattened file tree (no nested children).
@@ -135,7 +134,7 @@ class _FileTreeNodeState extends State<FileTreeNode> {
     final rowColor = isActive
         ? cs.secondaryContainer
         : _hovered
-        ? HoverWidget.defaultHoverColor(context)
+        ? TpHover.defaultHoverColor(context)
         : null;
 
     return RepaintBoundary(
@@ -212,7 +211,7 @@ class _FileTreeNodeState extends State<FileTreeNode> {
                                   duration: const Duration(milliseconds: 150),
                                   child: Icon(
                                     Icons.chevron_right,
-                                    size: context.appIconSizes.md,
+                                    size: context.tpIconSizes.md,
                                     color: isActive
                                         ? iconMuted
                                         : widget.textColor.withValues(
@@ -225,8 +224,8 @@ class _FileTreeNodeState extends State<FileTreeNode> {
                       ),
                       const SizedBox(width: kFileTreeChevronIconGap),
                       SizedBox(
-                        width: context.appIconSizes.md,
-                        height: context.appIconSizes.md,
+                        width: context.tpIconSizes.md,
+                        height: context.tpIconSizes.md,
                         child: Center(
                           child: isDir
                               ? Icon(
@@ -235,11 +234,11 @@ class _FileTreeNodeState extends State<FileTreeNode> {
                                       : isExpanded
                                       ? Icons.folder_open
                                       : Icons.folder_outlined,
-                                  size: context.appIconSizes.md,
+                                  size: context.tpIconSizes.md,
                                 )
                               : FileIconWidget(
                                   fileName: widget.entry.name,
-                                  size: context.appIconSizes.md,
+                                  size: context.tpIconSizes.md,
                                 ),
                         ),
                       ),

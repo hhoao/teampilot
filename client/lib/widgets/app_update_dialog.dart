@@ -12,8 +12,7 @@ import 'package:teampilot/services/app/app_update_service.dart';
 import 'package:teampilot/services/app/backend_app_update_service.dart';
 import 'package:teampilot/theme/app_text_styles.dart';
 import 'package:teampilot/utils/changelog_parser.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
-import 'package:teampilot/widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -92,14 +91,14 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
     final latestApp = widget.updateInfo.latestApp;
     final currentApp = widget.updateInfo.currentApp;
 
-    return AppDialog(
+    return TpDialog(
       maxWidth: 400,
       maxHeight: MediaQuery.sizeOf(context).height * 0.8,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.appUpdateDialogTitle),
+          TpDialogHeader(title: l10n.appUpdateDialogTitle),
           Flexible(
             child: SingleChildScrollView(
               padding: EdgeInsets.zero,
@@ -198,7 +197,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                 trailing: Icon(
                   _isExpanded ? Icons.expand_less : Icons.expand_more,
                   color: Colors.grey[600],
-                  size: context.appIconSizes.md,
+                  size: context.tpIconSizes.md,
                 ),
                 onExpansionChanged: (expanded) {
                   setState(() => _isExpanded = expanded);
@@ -301,7 +300,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
             Expanded(
               child: _buildBottomButton(
                 () => _handleBrowserDownload(latestApp),
-                Icon(Icons.open_in_browser, size: context.appIconSizes.md),
+                Icon(Icons.open_in_browser, size: context.tpIconSizes.md),
                 l10n.appUpdateBrowserDownload,
               ),
             ),

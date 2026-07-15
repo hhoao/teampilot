@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../../cubits/app_provider_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
@@ -151,7 +151,7 @@ class _OnboardingProviderImportStepState
                       ),
                       trailing: Icon(
                         Icons.check,
-                        size: context.appIconSizes.md,
+                        size: context.tpIconSizes.md,
                       ),
                     ),
                     if (i < _providers.length - 1) const Divider(height: 1),
@@ -165,7 +165,7 @@ class _OnboardingProviderImportStepState
               alignment: Alignment.centerLeft,
               child: OutlinedButton.icon(
                 onPressed: _import,
-                icon: Icon(Icons.refresh, size: context.appIconSizes.md),
+                icon: Icon(Icons.refresh, size: context.tpIconSizes.md),
                 label: Text(l10n.onboardingProviderImportRescan),
               ),
             ),

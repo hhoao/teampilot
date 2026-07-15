@@ -9,7 +9,7 @@ import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../dropdown/app_dropdown_field.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../menu/sidebar_action_menu.dart';
 import '../settings/focus_gated_text_field.dart';
 import 'brand_dropdown_rows.dart';
@@ -309,7 +309,7 @@ class _ProviderListControls extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-          child: AppDropdownField<CliTool>(
+          child: TpSelect<CliTool>(
             items: CliTool.values,
             initialItem: selectedCli,
             itemLabel: (cli) {

@@ -5,7 +5,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
 import '../../models/team_config.dart';
 import '../../utils/team_member_naming.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../expert_hub/expert_landing_picker_sheet.dart';
 
 Future<void> confirmDeleteTeamMember(
@@ -17,19 +17,19 @@ Future<void> confirmDeleteTeamMember(
   final name = member.name.trim().isEmpty ? l10n.memberName : member.name;
   final confirmed = await showDialog<bool>(
     context: context,
-    builder: (ctx) => AppDialog(
+    builder: (ctx) => TpDialog(
       maxWidth: 480,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(
+          TpDialogHeader(
             title: l10n.delete,
             onClose: () => Navigator.of(ctx).pop(false),
           ),
           const SizedBox(height: 16),
           Text(name),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),

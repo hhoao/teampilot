@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/theme/app_text_styles.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -9,8 +9,6 @@ import '../../cubits/mcp_discovery_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_catalog_listing.dart';
 import '../../utils/debounce/debounce.dart';
-import '../../widgets/dropdown/app_dropdown_field.dart';
-import '../../widgets/empty_state_block.dart';
 import 'mcp_discovery_helpers.dart';
 import 'mcp_preset_listings.dart';
 import 'mcp_shared_widgets.dart';
@@ -109,7 +107,7 @@ class _McpDiscoveryHeader extends StatelessWidget {
             children: [
               SizedBox(
                 width: 200,
-                child: AppDropdownField<McpDiscoverySource>(
+                child: TpSelect<McpDiscoverySource>(
                   key: ValueKey(header.source),
                   items: mcpDiscoverySourceOrder,
                   itemLabel: (source) => mcpDiscoverySourceLabel(l10n, source),
@@ -130,7 +128,7 @@ class _McpDiscoveryHeader extends StatelessWidget {
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Icon(Icons.refresh, size: context.appIconSizes.md),
+                    : Icon(Icons.refresh, size: context.tpIconSizes.md),
               ),
             ],
           ),
@@ -171,7 +169,7 @@ class _McpDiscoverySearchField extends StatelessWidget {
               onSubmitted: onChanged,
               decoration: InputDecoration(
                 hintText: context.l10n.mcpRegistrySearchHint,
-                prefixIcon: Icon(Icons.search, size: context.appIconSizes.md),
+                prefixIcon: Icon(Icons.search, size: context.tpIconSizes.md),
                 isDense: true,
               ),
             ),
@@ -260,7 +258,7 @@ class _McpDiscoveryCatalogBody extends StatelessWidget {
                           catalog.source != McpDiscoverySource.all
                       ? const Center(child: CircularProgressIndicator())
                       : items.isEmpty
-                      ? EmptyStateBlock(
+                      ? TpEmptyState(
                           centered: true,
                           icon: Icons.search_off_outlined,
                           title: l10n.mcpCatalogEmpty,
@@ -341,7 +339,7 @@ class _McpDiscoveryDisabledHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return EmptyStateBlock(
+    return TpEmptyState(
       icon: Icons.cloud_off_outlined,
       title: l10n.mcpRepoDisabledHint,
       actionLabel: l10n.mcpEmptyGoRegistries,

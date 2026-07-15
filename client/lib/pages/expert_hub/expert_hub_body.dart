@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 import '../../cubits/expert_hub_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
-import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/debounce/debounce.dart';
-import '../../widgets/dropdown/app_dropdown_field.dart';
-import '../../widgets/empty_state_block.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'expert_hub_cards.dart';
 
 /// Single-page hub body: a toolbar (search + sort), an inline filter-chip bar
@@ -76,7 +74,7 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
                     hintText: l10n.expertHubSearchHint,
                     prefixIcon: Icon(
                       Icons.search,
-                      size: context.appIconSizes.md,
+                      size: context.tpIconSizes.md,
                     ),
                     floatingLabelBehavior: FloatingLabelBehavior.never,
                   ),
@@ -86,7 +84,7 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
               const SizedBox(width: 12),
               SizedBox(
                 width: 180,
-                child: AppDropdownField<MemberSort>(
+                child: TpSelect<MemberSort>(
                   items: const [MemberSort.name, MemberSort.updated],
                   initialItem: state.sort,
                   itemLabel: (s) => switch (s) {
@@ -126,7 +124,7 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
     if (members.isEmpty) {
       final isError = state.status == ExpertHubLoadStatus.error;
       if (state.favoritesOnly && !isError) {
-        return EmptyStateBlock(
+        return TpEmptyState(
           centered: true,
           icon: Icons.star_outline_rounded,
           title: l10n.expertHubFavoritesEmptyTitle,
@@ -135,7 +133,7 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
       }
       return Padding(
         padding: EdgeInsets.all(widget.inset),
-        child: EmptyStateBlock(
+        child: TpEmptyState(
           centered: true,
           icon: isError
               ? Icons.cloud_off_outlined

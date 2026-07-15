@@ -6,8 +6,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/cli_preset.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
-import '../dropdown/app_dropdown_decoration.dart';
-import '../dropdown/app_dropdown_field.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'cli_brand_icon.dart';
 
 /// Dropdown for choosing a global CLI preset (provider/model/CLI bundle).
@@ -54,11 +53,11 @@ class CliPresetDropdownField extends StatelessWidget {
           ),
           const SizedBox(height: 8),
         ],
-        AppDropdownField<String>(
+        TpSelect<String>(
           key: ValueKey('cli-preset-dropdown-$initialId'),
           items: presets.map((p) => p.id).toList(growable: false),
           initialItem: initialId,
-          decoration: AppDropdownDecorations.themed(context),
+          decoration: TpSelectDecorations.themed(context),
           onChanged: onChanged,
           itemLabel: (presetId) =>
               presetsState.presetById(presetId)?.name ?? presetId,

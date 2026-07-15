@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 
 /// Per-target "push credentials to this machine" opt-in (P3c §3.4). Default
@@ -62,13 +62,13 @@ Future<bool> showCredentialPushConfirm(
   final l10n = context.l10n;
   final confirmed = await showDialog<bool>(
     context: context,
-    builder: (ctx) => AppDialog(
+    builder: (ctx) => TpDialog(
       maxWidth: 520,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.credentialPushConfirmTitle),
+          TpDialogHeader(title: l10n.credentialPushConfirmTitle),
           const SizedBox(height: 12),
           Text(l10n.credentialPushConfirmBody(host)),
           const SizedBox(height: 20),

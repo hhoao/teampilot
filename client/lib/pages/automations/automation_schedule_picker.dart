@@ -4,10 +4,7 @@ import 'package:flutter/services.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/automation.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
-import '../../widgets/dropdown/app_dropdown_decoration.dart';
-import '../../widgets/dropdown/app_dropdown_field.dart';
-import '../../widgets/form/app_form_field.dart';
-import '../../widgets/form/app_form_field_layout.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Schedule fields edited by [AutomationEditorDialog].
 class AutomationScheduleDraft {
@@ -98,7 +95,7 @@ String _dayOfWeekLabel(AppLocalizations l10n, int dayOfWeek) {
   };
 }
 
-/// Inline [AppFormField] rows for automation schedule editing.
+/// Inline [TpFormField] rows for automation schedule editing.
 class AutomationSchedulePicker extends StatefulWidget {
   AutomationSchedulePicker({
     required this.draft,
@@ -162,12 +159,12 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
     final l10n = context.l10n;
     final draft = _draft;
     final presets = AutomationSchedulePreset.values;
-    final inline = AppFormFieldLayoutStyle.inline;
+    final inline = TpFormFieldLayoutStyle.inline;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AppFormField<AutomationSchedulePreset>(
+        TpFormField<AutomationSchedulePreset>(
           key: ValueKey('schedule-preset-${draft.preset.name}'),
           id: 'schedulePreset',
           initialValue: draft.preset,
@@ -175,10 +172,10 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
           layoutStyle: inline,
           labelWidth: widget.labelWidth,
           builder: (state) {
-            return AppDropdownField<AutomationSchedulePreset>(
+            return TpSelect<AutomationSchedulePreset>(
               items: presets,
               initialItem: state.value ?? draft.preset,
-              decoration: AppDropdownDecorations.themed(context),
+              decoration: TpSelectDecorations.themed(context),
               itemLabel: (p) => _presetLabel(l10n, p),
               onChanged: (value) {
                 if (value == null) return;
@@ -196,17 +193,17 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
         ),
         const SizedBox(height: 12),
         switch (draft.preset) {
-          AutomationSchedulePreset.hourly => AppFormField<int>(
+          AutomationSchedulePreset.hourly => TpFormField<int>(
             id: 'scheduleMinute',
             initialValue: draft.minute,
             label: Text(l10n.automationsTime),
             layoutStyle: inline,
             labelWidth: widget.labelWidth,
             builder: (state) {
-              return AppDropdownField<int>(
+              return TpSelect<int>(
                 items: List<int>.generate(60, (i) => i),
                 initialItem: (state.value ?? draft.minute).clamp(0, 59),
-                decoration: AppDropdownDecorations.themed(context),
+                decoration: TpSelectDecorations.themed(context),
                 itemLabel: (m) => l10n.automationsScheduleSummaryHourly(m),
                 onChanged: (value) {
                   if (value == null) return;
@@ -216,7 +213,7 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
               );
             },
           ),
-          AutomationSchedulePreset.custom => AppFormField<String>(
+          AutomationSchedulePreset.custom => TpFormField<String>(
             id: 'scheduleCustomCron',
             initialValue: draft.customCron ?? '',
             label: Text(l10n.automationsCustomCron),
@@ -248,7 +245,7 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
           _ => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppFormField<String>(
+              TpFormField<String>(
                 id: 'scheduleHourMinute',
                 initialValue: draft.hourMinute,
                 label: Text(l10n.automationsTime),
@@ -289,14 +286,14 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
               ),
               if (draft.preset == AutomationSchedulePreset.weekly) ...[
                 const SizedBox(height: 12),
-                AppFormField<int>(
+                TpFormField<int>(
                   id: 'scheduleDayOfWeek',
                   initialValue: draft.dayOfWeek ?? DateTime.monday,
                   label: Text(l10n.automationsScheduleWeekly),
                   layoutStyle: inline,
                   labelWidth: widget.labelWidth,
                   builder: (state) {
-                    return AppDropdownField<int>(
+                    return TpSelect<int>(
                       items: const [
                         DateTime.monday,
                         DateTime.tuesday,
@@ -307,7 +304,7 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
                         DateTime.sunday,
                       ],
                       initialItem: state.value ?? draft.dayOfWeek ?? DateTime.monday,
-                      decoration: AppDropdownDecorations.themed(context),
+                      decoration: TpSelectDecorations.themed(context),
                       itemLabel: (d) => _dayOfWeekLabel(l10n, d),
                       onChanged: (value) {
                         if (value == null) return;

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/team/launch_profile_selectors.dart';
@@ -304,7 +304,7 @@ class _MemberChipState extends State<_MemberChip> {
                   widget.member.isTeamLead
                       ? Icons.star_rounded
                       : Icons.person_outline,
-                  size: context.appIconSizes.md,
+                  size: context.tpIconSizes.md,
                   color: selected ? cs.primary : cs.onSurfaceVariant,
                 ),
                 const SizedBox(width: 6),
@@ -362,7 +362,7 @@ class _AddMemberChipState extends State<_AddMemberChip> {
           ),
           child: Icon(
             Icons.person_add_alt_1_outlined,
-            size: context.appIconSizes.md,
+            size: context.tpIconSizes.md,
             color: cs.onSurfaceVariant,
           ),
         ),

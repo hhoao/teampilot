@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/theme/font_catalog.dart';
-import 'package:teampilot/widgets/dropdown/app_dropdown_field.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/settings/font_preference_setting.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -32,7 +32,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(AppDropdownField<String>), findsOneWidget);
+    expect(find.byType(TpSelect<String>), findsOneWidget);
     expect(find.text('System'), findsOneWidget);
   });
 }

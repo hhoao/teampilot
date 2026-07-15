@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/theme/app_text_styles.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
@@ -127,7 +127,7 @@ class WorkspaceConfigDangerZone extends StatelessWidget {
             onPressed: () => confirmDeleteWorkspace(context, workspace),
             icon: Icon(
               Icons.delete_outline,
-              size: context.appIconSizes.md,
+              size: context.tpIconSizes.md,
               color: errorColor,
             ),
             label: Text(

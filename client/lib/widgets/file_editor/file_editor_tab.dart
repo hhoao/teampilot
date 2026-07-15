@@ -2,9 +2,10 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
+import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
 import '../file_icon_widget.dart';
 import '../menu/sidebar_action_menu.dart';
@@ -128,7 +129,7 @@ class _FileEditorTabState extends State<FileEditorTab> {
               children: [
                 FileIconWidget(
                   fileName: widget.fileName,
-                  size: context.appIconSizes.sm,
+                  size: context.tpIconSizes.sm,
                 ),
                 const SizedBox(width: 6),
                 Text(

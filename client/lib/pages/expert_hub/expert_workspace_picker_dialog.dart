@@ -5,7 +5,7 @@ import '../../cubits/chat_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
 import '../../utils/workspace_display_name.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/workspace_icon.dart';
 
 /// Picks an open workspace to launch an Expert Hub member into. Returns the
@@ -27,7 +27,7 @@ class ExpertWorkspacePickerDialog extends StatelessWidget {
       (c) => c.state.workspaces,
     );
 
-    return AppDialog(
+    return TpDialog(
       maxWidth: 480,
       maxHeight: MediaQuery.sizeOf(context).height * 0.7,
       scrollable: true,
@@ -35,7 +35,7 @@ class ExpertWorkspacePickerDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.expertHubLaunchInWorkspace),
+          TpDialogHeader(title: l10n.expertHubLaunchInWorkspace),
           const SizedBox(height: 8),
           for (final workspace in workspaces)
             ListTile(

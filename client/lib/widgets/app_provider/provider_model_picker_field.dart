@@ -6,9 +6,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../services/cli/registry/capabilities/provider_model_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../dropdown/app_dropdown_decoration.dart';
-import '../dropdown/app_dropdown_field.dart';
-import '../dropdown/app_dropdown_with_custom_input.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Registry-driven model picker for team members and workspace CLI defaults.
 class ProviderModelPickerField extends StatefulWidget {
@@ -28,7 +26,7 @@ class ProviderModelPickerField extends StatefulWidget {
   final AppProviderConfig? provider;
   final String value;
   final ValueChanged<String> onChanged;
-  final AppDropdownDecoration? decoration;
+  final TpSelectDecoration? decoration;
   final String? hintText;
 
   @override
@@ -111,13 +109,13 @@ class _ProviderModelPickerFieldState extends State<ProviderModelPickerField> {
       providerId: widget.providerId,
       currentModel: widget.value,
     );
-    final deco = widget.decoration ?? AppDropdownDecorations.themed(context);
+    final deco = widget.decoration ?? TpSelectDecorations.themed(context);
     final hint = widget.hintText ?? context.l10n.selectModel;
     final isLoading =
         capability is RefreshableProviderModelCapability && candidates.isEmpty;
 
     Widget picker = switch (mode) {
-      ProviderModelPickerMode.catalogDropdown => AppDropdownField<String>(
+      ProviderModelPickerMode.catalogDropdown => TpSelect<String>(
         key: ValueKey(
           'provider-model-dd-${widget.providerId}-${candidates.join("|")}-${widget.value}',
         ),
@@ -129,7 +127,7 @@ class _ProviderModelPickerFieldState extends State<ProviderModelPickerField> {
         itemLabel: (item) => item,
       ),
       ProviderModelPickerMode.catalogWithCustomEntry =>
-        AppDropdownWithCustomInput(
+        TpSelectWithCustomInput(
           key: ValueKey('provider-model-custom-${widget.providerId}'),
           value: widget.value,
           items: candidates,

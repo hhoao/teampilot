@@ -5,8 +5,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/llm_config.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../../widgets/app_dialog.dart';
-import '../../widgets/app_icon_button.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'llm_config_routes.dart';
 import 'llm_model_edit_dialog.dart';
 
@@ -79,7 +78,7 @@ class LlmProviderModelsView extends StatelessWidget {
             ),
             child: Row(
               children: [
-                AppIconButton(
+                TpIconButton(
                   icon: Icons.arrow_back,
                   size: 40,
                   tooltip: l10n.back,
@@ -172,14 +171,14 @@ class LlmProviderModelsView extends StatelessWidget {
                                 await _saveAll(context, next);
                               },
                             ),
-                            AppIconButton(
+                            TpIconButton(
                               icon: Icons.edit_outlined,
                               compact: true,
                               size: 36,
                               tooltip: l10n.edit,
                               onTap: () => _editModel(context, model),
                             ),
-                            AppIconButton(
+                            TpIconButton(
                               icon: Icons.delete_outline,
                               compact: true,
                               size: 36,
@@ -247,13 +246,13 @@ Future<void> _showValidationDialog(BuildContext context, LlmConfig config) {
   final messages = config.validationMessages;
   return showDialog<void>(
     context: context,
-    builder: (context) => AppDialog(
+    builder: (context) => TpDialog(
       maxWidth: 400,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.validation),
+          TpDialogHeader(title: l10n.validation),
           const SizedBox(height: 16),
           if (messages.isEmpty)
             Text(l10n.allChecksPassed)
@@ -271,7 +270,7 @@ Future<void> _showValidationDialog(BuildContext context, LlmConfig config) {
                 );
               },
             ),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               FilledButton(
                 onPressed: () => Navigator.pop(context),

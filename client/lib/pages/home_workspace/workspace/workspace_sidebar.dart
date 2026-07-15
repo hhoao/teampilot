@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
@@ -31,7 +31,6 @@ import '../../../utils/session_reorder_merge.dart';
 import '../../../utils/workspace_running_sessions.dart';
 import '../../../utils/workspace_sidebar_sessions.dart';
 import '../../../utils/workspace_tab_session_scope.dart';
-import '../../../widgets/app_icon_button.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'workspace_automations_section.dart';
@@ -150,10 +149,10 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                   onChanged: (s) => setState(() => _sessionSort = s),
                 ),
                 const SizedBox(width: 2),
-                AppIconButton(
+                TpIconButton(
                   icon: Icons.search_rounded,
                   compact: true,
-                  size: AppIconButton.kCompactSize,
+                  size: TpIconButton.kCompactSize,
                   tooltip: l10n.workspaceSearchTitle,
                   onTap: throttledTap(
                     'workspace_sidebar_search',
@@ -168,10 +167,10 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                 if (toolsContext != null &&
                     worktreeManagementEnabled(toolsContext)) ...[
                   const SizedBox(width: 2),
-                  AppIconButton(
+                  TpIconButton(
                     icon: Icons.refresh_rounded,
                     compact: true,
-                    size: AppIconButton.kCompactSize,
+                    size: TpIconButton.kCompactSize,
                     tooltip: l10n.worktreeRefreshTooltip,
                     onTap: throttledTap(
                       'workspace_sidebar_refresh_worktrees',
@@ -185,10 +184,10 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                     ),
                   ),
                   const SizedBox(width: 2),
-                  AppIconButton(
+                  TpIconButton(
                     icon: Icons.account_tree_outlined,
                     compact: true,
-                    size: AppIconButton.kCompactSize,
+                    size: TpIconButton.kCompactSize,
                     tooltip: l10n.worktreeNewWorktreeTooltip,
                     onTap: throttledTap(
                       'workspace_sidebar_new_worktree',
@@ -589,7 +588,7 @@ class _SidebarActionTileState extends State<_SidebarActionTile> {
               children: [
                 Icon(
                   widget.icon,
-                  size: context.appIconSizes.md,
+                  size: context.tpIconSizes.md,
                   color: foreground,
                 ),
                 const SizedBox(width: 10),
@@ -618,11 +617,11 @@ class _SessionSortButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return SidebarActionMenuIconAnchor(
-      size: AppIconButton.kCompactSize,
-      triggerBuilder: (context, controller) => AppIconButton(
+      size: TpIconButton.kCompactSize,
+      triggerBuilder: (context, controller) => TpIconButton(
         icon: Icons.sort_rounded,
         compact: true,
-        size: AppIconButton.kCompactSize,
+        size: TpIconButton.kCompactSize,
         tooltip: l10n.sessionSortTooltip,
         onTap: () {
           if (controller.isOpen) {
@@ -641,7 +640,7 @@ class _SessionSortButton extends StatelessWidget {
               trailing: sort == value
                   ? Icon(
                       Icons.check,
-                      size: context.appIconSizes.md,
+                      size: context.tpIconSizes.md,
                       color: Theme.of(
                         context,
                       ).colorScheme.onSurface.withValues(alpha: 0.7),
@@ -688,7 +687,7 @@ class _EmptyConversations extends StatelessWidget {
           children: [
             Icon(
               Icons.forum_outlined,
-              size: context.appIconSizes.md,
+              size: context.tpIconSizes.md,
               color: cs.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 10),

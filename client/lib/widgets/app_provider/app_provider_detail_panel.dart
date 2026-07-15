@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
@@ -19,7 +19,6 @@ import '../../services/provider/codex/codex_official_provider.dart';
 import '../../services/provider/credential_binding.dart';
 import '../../services/provider/tool_config_generator.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../app_icon_button.dart';
 import 'provider_brand_icon.dart';
 import 'claude_credential_binding_field.dart';
 import 'provider_credential_action_bar.dart';
@@ -85,15 +84,15 @@ class AppProviderDetailPanel extends StatelessWidget {
               if (provider.cli == CliTool.flashskyai)
                 TextButton.icon(
                   onPressed: onShowModels,
-                  icon: Icon(Icons.hub_outlined, size: context.appIconSizes.md),
+                  icon: Icon(Icons.hub_outlined, size: context.tpIconSizes.md),
                   label: Text(l10n.providerListModelCount(modelCount)),
                 ),
-              AppIconButton(
+              TpIconButton(
                 icon: Icons.edit_outlined,
                 tooltip: l10n.editProvider,
                 onTap: onEdit,
               ),
-              AppIconButton(
+              TpIconButton(
                 icon: Icons.delete_outline,
                 tooltip: l10n.deleteProviderTooltip,
                 onTap: onDelete,
@@ -274,7 +273,7 @@ class _ProviderJsonPreviewCopyButtonState
 
   @override
   Widget build(BuildContext context) {
-    return AppIconButton(
+    return TpIconButton(
       icon: Icons.content_copy_outlined,
       tooltip: context.l10n.copy,
       onTap: () => _copy(context),

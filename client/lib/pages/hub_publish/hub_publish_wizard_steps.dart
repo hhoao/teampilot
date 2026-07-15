@@ -4,7 +4,7 @@ import 'package:teampilot/theme/app_text_styles.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
 import '../../services/hub_publish/hub_publish_record_store.dart';
-import '../../widgets/textarea/app_textarea.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Auth step: GitHub token from store or paste.
 class HubPublishAuthStep extends StatelessWidget {
@@ -98,14 +98,14 @@ class HubPublishMetadataStep extends StatelessWidget {
           builder: (context) {
             final bodyStyle =
                 Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
-            return AppTextarea(
+            return TpTextarea(
               key: const Key('hub-publish-description'),
               controller: descriptionController,
               decoration: InputDecoration(
                 labelText: l10n.expertEditorDescription,
               ),
-              minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
-              maxHeight: appTextareaHeightForLines(bodyStyle, lines: 4),
+              minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
+              maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 4),
             );
           },
         ),

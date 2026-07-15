@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../dropdown/app_dropdown_field.dart';
-import '../dropdown/app_dropdown_decoration.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 
@@ -362,7 +361,7 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final decoration = AppDropdownDecorations.themed(context);
+    final decoration = TpSelectDecorations.themed(context);
     final values = entries.map((e) => e.$1).toList();
 
     String labelOf(T item) => entries
@@ -371,7 +370,7 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: _dropdownMinWidth),
-      child: AppDropdownField<T>(
+      child: TpSelect<T>(
         items: values,
         initialItem: value,
         onChanged: onChanged,

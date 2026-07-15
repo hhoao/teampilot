@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -9,7 +9,6 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_server.dart';
 import '../../models/team_config.dart';
 import '../../theme/app_text_styles.dart';
-import '../../widgets/empty_state_block.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'team_config_cards.dart';
 
@@ -55,14 +54,14 @@ class TeamMcpSection extends StatelessWidget {
                     onPressed: onManage,
                     icon: Icon(
                       Icons.hub_outlined,
-                      size: context.appIconSizes.md,
+                      size: context.tpIconSizes.md,
                     ),
                     label: Text(l10n.teamMcpManage),
                   ),
                 ),
                 const SizedBox(height: 14),
                 if (enabled.isEmpty)
-                  EmptyStateBlock(
+                  TpEmptyState(
                     icon: Icons.dns_outlined,
                     title: l10n.mcpNoInstalled,
                     hint: l10n.mcpNoInstalledHint,

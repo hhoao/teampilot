@@ -1,6 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/workspace_surface_layers.dart';
@@ -31,7 +31,7 @@ class LogViewerCenteredMessage extends StatelessWidget {
           children: [
             Icon(
               icon,
-              size: context.appIconSizes.md,
+              size: context.tpIconSizes.md,
               color: cs.primary.withValues(alpha: 0.55),
             ),
             const SizedBox(height: 16),

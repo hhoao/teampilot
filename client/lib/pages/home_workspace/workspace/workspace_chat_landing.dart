@@ -52,6 +52,7 @@ import 'workspace_chat_landing_compose_card.dart';
 import 'workspace_landing_launch_feedback.dart';
 import 'workspace_landing_selectors.dart';
 import 'workspace_landing_team_settings_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 enum _LandingConversationMode { team, simple }
 
@@ -1072,7 +1073,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final spacing = context.appSpacing;
+    final spacing = context.tpSpacing;
     final launchWorkspace = context.select<ChatCubit, Workspace>(
       (c) => c.state.workspaces.firstWhere(
         (w) => w.workspaceId == widget.workspace.workspaceId,

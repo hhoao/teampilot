@@ -443,7 +443,6 @@ class SessionLifecycleService {
     );
   }
 
-
   Future<
     ({
       LaunchPlan plan,
@@ -890,7 +889,6 @@ class SessionLifecycleService {
     );
   }
 
-
   Future<({LaunchPlan plan, TeamMemberConfig resolvedMember})>
   _prepareTeamLaunchPlanFromEnvironment({
     required AppSession session,
@@ -979,7 +977,6 @@ class SessionLifecycleService {
 
     return (plan: plan, resolvedMember: launchMember);
   }
-
 
   Future<
     ({
@@ -1110,7 +1107,6 @@ class SessionLifecycleService {
       member: member,
     );
   }
-
 
   Future<bool> hasCliState(
     AppSession session, {

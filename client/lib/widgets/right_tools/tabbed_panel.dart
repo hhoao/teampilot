@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/workspace_tools_cubit.dart';
-import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
-import '../hover_widget.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'tool_view.dart';
 
 /// VSCode-style tool panel: a horizontal row of icon buttons at the top
@@ -117,7 +116,7 @@ class _SwitcherButton extends StatelessWidget {
     final color = active ? cs.primary : cs.onSurfaceVariant;
     return Tooltip(
       message: view.label,
-      child: HoverWidget(
+      child: TpHover(
         width: 44,
         height: 40,
         borderRadius: BorderRadius.zero,
@@ -135,7 +134,7 @@ class _SwitcherButton extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              Icon(view.icon, size: context.appIconSizes.md, color: color),
+              Icon(view.icon, size: context.tpIconSizes.md, color: color),
               if (view.badgeCount > 0)
                 Positioned(
                   right: -6,

@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
@@ -11,6 +10,7 @@ import '../../utils/logger_utils.dart';
 import 'fatal_app_theme.dart';
 import 'log_config_workspace.dart';
 import 'log_helpers.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Fallback UI when startup fails before the main app shell loads.
 Future<void> showInitErrorApp({
@@ -169,7 +169,7 @@ ${AppLogger.instance.getFormattedPendingLogs()}
                             onPressed: () => _copyStack(context),
                             icon: Icon(
                               _copiedStack ? Icons.check : Icons.copy,
-                              size: context.appIconSizes.md,
+                              size: context.tpIconSizes.md,
                             ),
                             label: Text(
                               _copiedStack

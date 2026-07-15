@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../../l10n/l10n_extensions.dart';
 import '../../../services/cli/registry/cli_tool_definition.dart';
@@ -67,7 +67,7 @@ class OnboardingCliRow extends StatelessWidget {
           const SizedBox(width: 8),
           Icon(
             found ? Icons.check_circle_outline : Icons.info_outline,
-            size: context.appIconSizes.md,
+            size: context.tpIconSizes.md,
             color: found ? cs.primary : cs.onSurfaceVariant,
           ),
           const SizedBox(width: 8),
@@ -101,7 +101,7 @@ class OnboardingCliRow extends StatelessWidget {
                         )
                       : Icon(
                           Icons.download_outlined,
-                          size: context.appIconSizes.md,
+                          size: context.tpIconSizes.md,
                         ),
                 );
               },

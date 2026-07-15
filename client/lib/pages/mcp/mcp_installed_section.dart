@@ -1,5 +1,5 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/theme/app_text_styles.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
@@ -12,7 +12,6 @@ import '../../services/mcp/mcp_credentials_store.dart';
 import '../../services/mcp/mcp_oauth_flow.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'mcp_oauth_connect_dialog.dart';
-import '../../widgets/empty_state_block.dart';
 import 'mcp_shared_widgets.dart';
 
 class McpInstalledSection extends StatefulWidget {
@@ -113,13 +112,13 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
                   onPressed: toolbarBusy ? null : widget.onImport,
                   icon: Icon(
                     Icons.download_outlined,
-                    size: context.appIconSizes.md,
+                    size: context.tpIconSizes.md,
                   ),
                   label: Text(l10n.mcpImportExisting),
                 ),
                 OutlinedButton.icon(
                   onPressed: toolbarBusy ? null : widget.onAdd,
-                  icon: Icon(Icons.add, size: context.appIconSizes.md),
+                  icon: Icon(Icons.add, size: context.tpIconSizes.md),
                   label: Text(l10n.mcpAddButton),
                 ),
               ],
@@ -142,7 +141,7 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
               ),
             )
           else if (servers.isEmpty)
-            EmptyStateBlock(
+            TpEmptyState(
               icon: Icons.dns_outlined,
               title: l10n.mcpNoInstalled,
               hint: l10n.mcpNoInstalledHint,

@@ -3,10 +3,8 @@ import 'package:flutter/material.dart';
 import '../../cubits/team_hub_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_team.dart';
-import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
-import '../../widgets/dropdown/app_dropdown_field.dart';
-import '../../widgets/empty_state_block.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'team_hub_cards.dart';
 
 /// Single-page hub body: a toolbar (search + sort), an inline filter-chip bar
@@ -44,7 +42,7 @@ class TeamHubBody extends StatelessWidget {
                     hintText: l10n.teamHubSearchHint,
                     prefixIcon: Icon(
                       Icons.search,
-                      size: context.appIconSizes.md,
+                      size: context.tpIconSizes.md,
                     ),
                     floatingLabelBehavior: FloatingLabelBehavior.never,
                   ),
@@ -54,7 +52,7 @@ class TeamHubBody extends StatelessWidget {
               const SizedBox(width: 12),
               SizedBox(
                 width: 180,
-                child: AppDropdownField<TeamSort>(
+                child: TpSelect<TeamSort>(
                   items: const [TeamSort.name, TeamSort.updated],
                   initialItem: state.sort,
                   itemLabel: (s) => switch (s) {
@@ -85,7 +83,7 @@ class TeamHubBody extends StatelessWidget {
     if (teams.isEmpty) {
       final isError = state.status == TeamHubLoadStatus.error;
       if (state.favoritesOnly && !isError) {
-        return EmptyStateBlock(
+        return TpEmptyState(
           centered: true,
           icon: Icons.star_outline_rounded,
           title: l10n.teamHubFavoritesEmptyTitle,
@@ -94,7 +92,7 @@ class TeamHubBody extends StatelessWidget {
       }
       return Padding(
         padding: EdgeInsets.all(inset),
-        child: EmptyStateBlock(
+        child: TpEmptyState(
           centered: true,
           icon: isError
               ? Icons.cloud_off_outlined

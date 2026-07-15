@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/skill_cubit.dart';
@@ -8,7 +8,6 @@ import '../../theme/app_text_styles.dart';
 import '../../utils/github_source_url.dart';
 import 'skill_discover_card.dart';
 import 'skill_discovery_helpers.dart';
-import '../../widgets/empty_state_block.dart';
 import 'skill_management_cards.dart';
 
 class SkillDiscoverySkillsShSearchBar extends StatelessWidget {
@@ -31,7 +30,7 @@ class SkillDiscoverySkillsShSearchBar extends StatelessWidget {
             controller: controller,
             decoration: InputDecoration(
               hintText: l10n.skillsSkillsShPlaceholder,
-              prefixIcon: Icon(Icons.search, size: context.appIconSizes.md),
+              prefixIcon: Icon(Icons.search, size: context.tpIconSizes.md),
               floatingLabelBehavior: FloatingLabelBehavior.never,
             ),
             onSubmitted: (v) {
@@ -71,7 +70,7 @@ class SkillDiscoverySkillsShBody extends StatelessWidget {
             if (sh.query.isEmpty) {
               return SingleChildScrollView(
                 child: SkillManagementCard(
-                  child: EmptyStateBlock(
+                  child: TpEmptyState(
                     icon: Icons.search,
                     title: l10n.skillsSkillsShPlaceholder,
                     hint: '',
@@ -82,7 +81,7 @@ class SkillDiscoverySkillsShBody extends StatelessWidget {
             if (sh.entries.isEmpty) {
               return SingleChildScrollView(
                 child: SkillManagementCard(
-                  child: EmptyStateBlock(
+                  child: TpEmptyState(
                     icon: Icons.search_off,
                     title: l10n.skillsDiscoveryEmpty,
                     hint: l10n.skillsDiscoveryEmptyHint,
@@ -154,7 +153,7 @@ class SkillDiscoverySkillsShBody extends StatelessWidget {
                                 )
                               : Icon(
                                   Icons.expand_more,
-                                  size: context.appIconSizes.md,
+                                  size: context.tpIconSizes.md,
                                 ),
                           label: Text(l10n.skillsSkillsShLoadMore),
                         ),

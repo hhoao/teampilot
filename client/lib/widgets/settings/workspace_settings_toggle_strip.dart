@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../app_toggle_switch.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// One option in [WorkspaceSettingsToggleStrip].
 class WorkspaceToggleSegment<T extends Object> {
@@ -67,7 +67,7 @@ class _WorkspaceSettingsToggleStripState<T extends Object>
     return FittedBox(
       fit: BoxFit.scaleDown,
       alignment: widget.alignment,
-      child: AppToggleSwitch(
+      child: TpSegmentedControl(
         totalSwitches: widget.segments.length,
         initialLabelIndex: _index,
         labels: widget.segments.map((e) => e.label).toList(),

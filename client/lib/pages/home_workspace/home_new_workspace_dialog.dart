@@ -7,7 +7,7 @@ import '../../models/workspace_folder.dart';
 import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/session_repository.dart';
 import '../../theme/app_text_styles.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/workspace_create_directory_picker.dart';
 import '../../l10n/l10n_extensions.dart';
 
@@ -91,12 +91,12 @@ class _HomeNewWorkspaceDialogState extends State<HomeNewWorkspaceDialog> {
     final hasDirectory = _folders.isNotEmpty;
     final firstPath = hasDirectory ? _folders.first.path : '';
 
-    return AppDialog(
+    return TpDialog(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.newWorkspace),
+          TpDialogHeader(title: l10n.newWorkspace),
           const SizedBox(height: 8),
           Text(
             l10n.homeWorkspaceNewWorkspaceSubtitle,

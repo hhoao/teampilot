@@ -12,10 +12,7 @@ import '../../pages/home_workspace/workspace/workspace_landing_location_fields.d
 import '../../services/expert_hub/expert_member_resolver.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/cli/cli_preset_dropdown_field.dart';
-import '../../widgets/dropdown/app_dropdown_decoration.dart';
-import '../../widgets/dropdown/app_dropdown_field.dart';
-import '../../widgets/form/app_form_field.dart';
-import '../../widgets/form/app_form_field_layout.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Launch parameters for launch-prompt automations — mirrors landing compose.
 class AutomationEditorLaunchSection extends StatelessWidget {
@@ -82,18 +79,18 @@ class AutomationEditorLaunchSection extends StatelessWidget {
           onProjectChanged: onProjectChanged,
           onWorktreeChanged: onWorktreeChanged,
         ),
-        AppFormField<String>(
+        TpFormField<String>(
           key: ValueKey('launch-mode-$isPersonal'),
           id: 'launchMode',
           initialValue: isPersonal ? 'simple' : 'team',
           label: Text(l10n.automationsLaunchMode),
-          layoutStyle: AppFormFieldLayoutStyle.inline,
+          layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: labelWidth,
           builder: (state) {
-            return AppDropdownField<String>(
+            return TpSelect<String>(
               items: const ['simple', 'team'],
               initialItem: state.value ?? 'simple',
-              decoration: AppDropdownDecorations.themed(context),
+              decoration: TpSelectDecorations.themed(context),
               itemLabel: (value) => value == 'simple'
                   ? l10n.workspaceChatLandingModeSimple
                   : l10n.workspaceChatLandingModeTeam,
@@ -107,12 +104,12 @@ class AutomationEditorLaunchSection extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         if (isPersonal) ...[
-          AppFormField<String>(
+          TpFormField<String>(
             key: ValueKey('preset-${presetId ?? ''}'),
             id: 'presetId',
             initialValue: presetId ?? '',
             label: Text(l10n.presetPickerTitle),
-            layoutStyle: AppFormFieldLayoutStyle.inline,
+            layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: labelWidth,
             validator: (v) =>
                 (v == null || v.trim().isEmpty)
@@ -129,12 +126,12 @@ class AutomationEditorLaunchSection extends StatelessWidget {
             },
           ),
           const SizedBox(height: 12),
-          AppFormField<String>(
+          TpFormField<String>(
             key: ValueKey('expert-${expertKey ?? ''}'),
             id: 'expertKey',
             initialValue: expertKey ?? '',
             label: Text(l10n.hubPublishKindExpert),
-            layoutStyle: AppFormFieldLayoutStyle.inline,
+            layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: labelWidth,
             builder: (state) {
               final label = ExpertMemberResolver.labelForKey(
@@ -160,12 +157,12 @@ class AutomationEditorLaunchSection extends StatelessWidget {
             },
           ),
         ] else ...[
-          AppFormField<String>(
+          TpFormField<String>(
             key: ValueKey('team-${teamId ?? ''}'),
             id: 'teamId',
             initialValue: teamId ?? '',
             label: Text(l10n.selectTeam),
-            layoutStyle: AppFormFieldLayoutStyle.inline,
+            layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: labelWidth,
             validator: (v) {
               if (teams.isEmpty) return l10n.automationsValidationRequired;
@@ -185,10 +182,10 @@ class AutomationEditorLaunchSection extends StatelessWidget {
               final initial = teams.any((t) => t.id == state.value)
                   ? state.value
                   : teams.first.id;
-              return AppDropdownField<String>(
+              return TpSelect<String>(
                 items: teams.map((t) => t.id).toList(growable: false),
                 initialItem: initial,
-                decoration: AppDropdownDecorations.themed(context),
+                decoration: TpSelectDecorations.themed(context),
                 itemLabel: (id) {
                   final match = teams.where((t) => t.id == id).firstOrNull;
                   return match?.name.trim().isNotEmpty == true
@@ -204,12 +201,12 @@ class AutomationEditorLaunchSection extends StatelessWidget {
             },
           ),
           const SizedBox(height: 12),
-          AppFormField<String>(
+          TpFormField<String>(
             key: ValueKey('target-member-$targetMemberId'),
             id: 'targetMemberId',
             initialValue: targetMemberId,
             label: Text(l10n.automationsTargetMember),
-            layoutStyle: AppFormFieldLayoutStyle.inline,
+            layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: labelWidth,
             validator: (v) {
               if (teamMembers.isEmpty) {
@@ -231,10 +228,10 @@ class AutomationEditorLaunchSection extends StatelessWidget {
               final initial = teamMembers.any((m) => m.id == state.value)
                   ? state.value
                   : teamMembers.first.id;
-              return AppDropdownField<String>(
+              return TpSelect<String>(
                 items: teamMembers.map((m) => m.id).toList(growable: false),
                 initialItem: initial,
-                decoration: AppDropdownDecorations.themed(context),
+                decoration: TpSelectDecorations.themed(context),
                 itemLabel: (memberId) {
                   final member = teamMembers
                       .where((m) => m.id == memberId)
@@ -251,18 +248,18 @@ class AutomationEditorLaunchSection extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 12),
-        AppFormField<bool>(
+        TpFormField<bool>(
           key: ValueKey('permissions-$dangerouslySkipPermissions'),
           id: 'dangerouslySkipPermissions',
           initialValue: dangerouslySkipPermissions,
           label: Text(l10n.automationsPermissions),
-          layoutStyle: AppFormFieldLayoutStyle.inline,
+          layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: labelWidth,
           builder: (state) {
-            return AppDropdownField<bool>(
+            return TpSelect<bool>(
               items: const [false, true],
               initialItem: state.value ?? false,
-              decoration: AppDropdownDecorations.themed(context),
+              decoration: TpSelectDecorations.themed(context),
               itemLabel: (value) => value
                   ? l10n.workspaceChatLandingFullAccessPermissions
                   : l10n.workspaceChatLandingDefaultPermissions,

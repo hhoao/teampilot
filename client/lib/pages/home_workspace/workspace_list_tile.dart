@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
@@ -10,7 +10,6 @@ import '../../models/workspace.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/workspace_display_name.dart';
-import '../../widgets/app_icon_button.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import '../../widgets/workspace_icon.dart';
 import 'open_workspace_tab_actions.dart';
@@ -127,14 +126,14 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    AppIconButton(
+                    TpIconButton(
                       icon: Icons.open_in_new_rounded,
                       tooltip: l10n.homeWorkspaceOpenWorkspaceInNewTab,
-                      size: AppIconButton.kCompactSize,
+                      size: TpIconButton.kCompactSize,
                       compact: true,
                       onTap: _openInNewTab,
                     ),
-                    AppIconButton(
+                    TpIconButton(
                       icon: widget.favorited
                           ? Icons.star_rounded
                           : Icons.star_outline_rounded,
@@ -142,17 +141,17 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
                       tooltip: widget.favorited
                           ? l10n.homeWorkspaceUnfavoriteWorkspace
                           : l10n.homeWorkspaceFavoriteWorkspace,
-                      size: AppIconButton.kCompactSize,
+                      size: TpIconButton.kCompactSize,
                       compact: true,
                       onTap: () => unawaited(widget.onToggleFavorite()),
                     ),
                     SizedBox(
-                      width: AppIconButton.kCompactSize,
-                      height: AppIconButton.kCompactSize,
+                      width: TpIconButton.kCompactSize,
+                      height: TpIconButton.kCompactSize,
                       child: SidebarActionMenuIconAnchor(
                         icon: Icon(
                           Icons.more_horiz,
-                          size: context.appIconSizes.sm,
+                          size: context.tpIconSizes.sm,
                         ),
                         onOpen: () => setState(() => _menuOpen = true),
                         onClose: () => setState(() => _menuOpen = false),
@@ -189,7 +188,7 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
               else if (widget.favorited)
                 Icon(
                   Icons.star_rounded,
-                  size: context.appIconSizes.sm,
+                  size: context.tpIconSizes.sm,
                   color: cs.primary.withValues(alpha: 0.85),
                 ),
             ],

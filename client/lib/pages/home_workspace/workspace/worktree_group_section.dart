@@ -14,13 +14,11 @@ import '../../../services/git/git_worktree_service.dart';
 import '../../../services/git/worktree_removal.dart';
 import '../../../services/storage/runtime_context.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
-import '../../../theme/app_icon_sizes.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/app_session_sort.dart';
 import '../../../utils/session_reorder_merge.dart';
 import '../../../utils/session_worktree_grouping.dart';
 import '../../../utils/workspace_path_utils.dart';
-import '../../../widgets/app_icon_button.dart';
 import '../../../widgets/app_toast/app_toast.dart';
 import '../../../theme/app_toast_theme.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
@@ -28,6 +26,7 @@ import '../../../widgets/sidebar_session_tile.dart';
 import 'worktree_delete_dialog.dart';
 import 'workspace_session_actions.dart';
 import 'workspace_sidebar_row_metrics.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Collapse-set key for a group: worktree path, project folder path, or orphan.
 String worktreeGroupCollapseKey(WorktreeGroup group) {
@@ -334,10 +333,10 @@ class _WorktreeGroupHeaderState extends State<_WorktreeGroupHeader> {
                       ),
                     ),
                     if (widget.onNewConversation != null && _showRowActions)
-                      AppIconButton(
+                      TpIconButton(
                         icon: Icons.add_rounded,
                         compact: true,
-                        size: AppIconButton.kCompactSize,
+                        size: TpIconButton.kCompactSize,
                         tooltip: null,
                         onTap: widget.onNewConversation,
                       ),
@@ -364,7 +363,7 @@ class _GroupCollapseLeading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final icons = context.appIconSizes;
+    final icons = context.tpIconSizes;
     final icon = showChevron
         ? collapsed
               ? Icons.chevron_right_rounded

@@ -17,7 +17,7 @@ import '../../../services/cli/member_config/member_config_detail.dart';
 import '../../../services/session/session_lifecycle_service.dart';
 import '../../../services/storage/runtime_context.dart';
 import '../home_workspace_content_header.dart';
-import '../../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Opens the read-only member config detail dialog.
 Future<void> showMemberDetailDialog(
@@ -96,7 +96,7 @@ class _MemberDetailDialog extends StatelessWidget {
         body = const Center(child: CircularProgressIndicator());
     }
 
-    return AppDialog(maxWidth: 840, maxHeight: 720, child: body);
+    return TpDialog(maxWidth: 840, maxHeight: 720, child: body);
   }
 }
 
@@ -133,7 +133,7 @@ class _MemberDetailDialogBodyState extends State<MemberDetailDialogBody> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.memberDetailTitle),
+          TpDialogHeader(title: l10n.memberDetailTitle),
           const SizedBox(height: 24),
           Text(l10n.memberDetailEmpty, textAlign: TextAlign.center),
         ],
@@ -194,7 +194,7 @@ class _MemberDetailDialogBodyState extends State<MemberDetailDialogBody> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AppDialogHeader(
+        TpDialogHeader(
           title: '${l10n.memberDetailTitle} · ${widget.memberName}',
           showDividerBelow: false,
         ),

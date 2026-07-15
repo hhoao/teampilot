@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'workspace_surface_layers.dart';
+import 'package:shared_ui/shared_ui.dart';
 
-/// Shared corner radius for Material [Tooltip] and [HoverTextTooltip].
+/// Shared corner radius for Material [Tooltip] and [TpTooltip].
 const double kAppTooltipBorderRadius = 8;
 
 /// Tooltip label style. Flutter's default [Tooltip] hardcodes 12px on desktop;

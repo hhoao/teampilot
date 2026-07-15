@@ -1,26 +1,26 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Shared delete-team confirmation used by team config and My Teams.
 Future<bool> confirmDeleteTeam(BuildContext context, String teamName) async {
   final l10n = context.l10n;
   final confirmed = await showDialog<bool>(
     context: context,
-    builder: (ctx) => AppDialog(
+    builder: (ctx) => TpDialog(
       maxWidth: 480,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(
+          TpDialogHeader(
             title: l10n.deleteTeam,
             onClose: () => Navigator.of(ctx).pop(false),
           ),
           const SizedBox(height: 16),
           Text(l10n.deleteTeamConfirm(teamName)),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),

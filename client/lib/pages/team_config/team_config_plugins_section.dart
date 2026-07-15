@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -11,7 +11,6 @@ import '../../models/team_config.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/github_source_url.dart';
-import '../../widgets/empty_state_block.dart';
 import '../../widgets/github_details_button.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'team_config_cards.dart';
@@ -81,7 +80,7 @@ class TeamPluginsSection extends StatelessWidget {
                     onPressed: onManage,
                     icon: Icon(
                       Icons.widgets_outlined,
-                      size: context.appIconSizes.md,
+                      size: context.tpIconSizes.md,
                     ),
                     label: Text(l10n.teamPluginsManage),
                   ),
@@ -109,7 +108,7 @@ class TeamPluginsSection extends StatelessWidget {
                 ],
                 const SizedBox(height: 14),
                 if (installed.isEmpty && missingIds.isEmpty)
-                  EmptyStateBlock(
+                  TpEmptyState(
                     icon: Icons.inventory_2_outlined,
                     title: l10n.teamPluginsEmpty,
                     hint: l10n.teamPluginsEmptyHint,
@@ -234,7 +233,7 @@ class TeamPluginRow extends StatelessWidget {
                       children: [
                         Icon(
                           Icons.warning_amber_rounded,
-                          size: context.appIconSizes.md,
+                          size: context.tpIconSizes.md,
                           color: cs.tertiary,
                         ),
                         const SizedBox(width: 4),

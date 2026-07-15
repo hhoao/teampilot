@@ -21,10 +21,8 @@ import '../../services/git/git_repo_store.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../theme/app_text_styles.dart';
-import '../app_dialog.dart';
-import '../app_icon_button.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'git_branch_menu.dart';
-import '../textarea/app_textarea.dart';
 import 'git_changes_tree_list.dart';
 
 /// VSCode-style "Source Control" panel for the editor workbench left rail.
@@ -307,19 +305,19 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
     final l10n = context.l10n;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AppDialog(
+      builder: (ctx) => TpDialog(
         maxWidth: 480,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppDialogHeader(
+            TpDialogHeader(
               title: l10n.gitDiscardConfirmTitle,
               onClose: () => Navigator.of(ctx).pop(false),
             ),
             const SizedBox(height: 16),
             Text(l10n.gitDiscardConfirmBody(change.path)),
-            AppDialogActions(
+            TpDialogActions(
               children: [
                 TextButton(
                   onPressed: () => Navigator.of(ctx).pop(false),
@@ -641,33 +639,33 @@ class _Header extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
           ),
-        AppIconButton(
+        TpIconButton(
           icon: allFoldersExpanded ? Icons.unfold_less : Icons.unfold_more,
           compact: true,
-          size: AppIconButton.kCompactSize,
+          size: TpIconButton.kCompactSize,
           tooltip: allFoldersExpanded
               ? l10n.treeCollapseAllFolders
               : l10n.treeExpandAllFolders,
           onTap: onToggleExpandAll,
         ),
-        AppIconButton(
+        TpIconButton(
           icon: Icons.download_outlined,
           compact: true,
-          size: AppIconButton.kCompactSize,
+          size: TpIconButton.kCompactSize,
           tooltip: l10n.gitPull,
           onTap: onPull,
         ),
-        AppIconButton(
+        TpIconButton(
           icon: Icons.upload_outlined,
           compact: true,
-          size: AppIconButton.kCompactSize,
+          size: TpIconButton.kCompactSize,
           tooltip: l10n.gitPush,
           onTap: onPush,
         ),
-        AppIconButton(
+        TpIconButton(
           icon: Icons.refresh,
           compact: true,
-          size: AppIconButton.kCompactSize,
+          size: TpIconButton.kCompactSize,
           tooltip: l10n.gitRefresh,
           onTap: onRefresh,
         ),
@@ -712,10 +710,10 @@ class _CommitBox extends StatelessWidget {
                   final bodyStyle =
                       Theme.of(context).textTheme.bodyMedium ??
                       const TextStyle();
-                  return AppTextarea(
+                  return TpTextarea(
                     controller: controller,
-                    minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
-                    maxHeight: appTextareaHeightForLines(bodyStyle, lines: 6),
+                    minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
+                    maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 6),
                     enabled: !generating,
                     decoration:
                         InputDecoration(hintText: hint, isDense: true),

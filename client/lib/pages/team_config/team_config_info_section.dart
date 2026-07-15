@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/theme/app_text_styles.dart';
 
 import '../../cubits/app_provider_cubit.dart';
@@ -20,9 +20,7 @@ import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../widgets/app_provider/cli_effort_picker_field.dart';
 import '../../widgets/app_provider/provider_brand_icon.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
-import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
-import '../../widgets/textarea/app_textarea.dart';
 import 'team_delete_confirm_dialog.dart';
 import '../home_workspace/workspace/config/workspace_cli_config_helpers.dart';
 import 'team_config_helpers.dart';
@@ -171,14 +169,14 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                       final bodyStyle =
                           Theme.of(context).textTheme.bodyMedium ??
                           const TextStyle();
-                      return AppTextarea(
+                      return TpTextarea(
                         controller: _descCtl,
                         focusNode: _descFocus,
-                        minHeight: appTextareaHeightForLines(
+                        minHeight: tpTextareaHeightForLines(
                           bodyStyle,
                           lines: 3,
                         ),
-                        maxHeight: appTextareaHeightForLines(
+                        maxHeight: tpTextareaHeightForLines(
                           bodyStyle,
                           lines: 8,
                         ),
@@ -258,7 +256,7 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                       cli: widget.team.cli,
                       value: teamEffort,
                       team: widget.team,
-                      decoration: AppDropdownDecorations.themed(context),
+                      decoration: TpSelectDecorations.themed(context),
                       onChanged: (value) => widget.cubit.updateSelected(
                         widget.team.withEffortForCli(widget.team.cli, value),
                       ),
@@ -489,7 +487,7 @@ class TeamDefaultPresetRow extends StatelessWidget {
                   team: currentTeam,
                   cubit: cubit,
                 ),
-                icon: Icon(Icons.tune, size: context.appIconSizes.sm),
+                icon: Icon(Icons.tune, size: context.tpIconSizes.sm),
                 label: Text(l10n.workspaceCliConfigure),
               ),
             ],
@@ -562,7 +560,7 @@ class TeamConfigDangerZone extends StatelessWidget {
             onPressed: () => _confirmDelete(context),
             icon: Icon(
               Icons.delete_outline,
-              size: context.appIconSizes.md,
+              size: context.tpIconSizes.md,
               color: errorColor,
             ),
             label: Text(

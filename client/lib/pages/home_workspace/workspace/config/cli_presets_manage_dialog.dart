@@ -7,9 +7,9 @@ import '../../../../models/team_config.dart';
 import '../../../../services/cli/registry/cli_display_name.dart';
 import '../../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../../theme/app_text_styles.dart';
-import '../../../../widgets/app_dialog.dart';
 import 'cli_preset_edit_dialog.dart';
 import 'cli_preset_provider_navigation.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 class CliPresetsManageDialog extends StatelessWidget {
   const CliPresetsManageDialog({this.lockCli, super.key});
@@ -24,7 +24,7 @@ class CliPresetsManageDialog extends StatelessWidget {
     final state = context.watch<CliPresetsCubit>().state;
     final presets = state.presets;
 
-    return AppDialog(
+    return TpDialog(
       maxWidth: 640,
       scrollable: true,
       maxHeight: MediaQuery.sizeOf(context).height * 0.85,
@@ -32,7 +32,7 @@ class CliPresetsManageDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.workspaceCliPresetsManageTitle),
+          TpDialogHeader(title: l10n.workspaceCliPresetsManageTitle),
           const SizedBox(height: 16),
           if (presets.isEmpty)
             Padding(
@@ -51,7 +51,7 @@ class CliPresetsManageDialog extends StatelessWidget {
             icon: const Icon(Icons.add),
             label: Text(l10n.workspaceCliAddPresetTitle),
           ),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => _openProviders(context),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_text_styles.dart';
-import '../dropdown/app_dropdown_field.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 const _apiKeyFields = ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_API_KEY'];
 
@@ -34,7 +34,7 @@ class ClaudeProviderFormSection extends StatelessWidget {
           const SizedBox(height: 8),
           _FieldLabel(l10n.appProviderClaudeAuthField),
           const SizedBox(height: 6),
-          AppDropdownField<String>(
+          TpSelect<String>(
             items: _apiKeyFields,
             initialItem: _effectiveItem(apiKeyField, _apiKeyFields),
             itemLabel: l10n.appProviderClaudeAuthFieldOption,

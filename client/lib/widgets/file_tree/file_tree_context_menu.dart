@@ -16,7 +16,7 @@ import '../../services/io/system_terminal_opener.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../utils/debounce/debounce.dart';
-import '../app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../menu/sidebar_action_menu.dart';
 
 /// Right-click menu for a file-tree row.
@@ -180,7 +180,7 @@ abstract final class FileTreeContextMenu {
     required String workspaceId,
   }) async {
     final l10n = context.l10n;
-    final name = await showAppTextPromptDialog(
+    final name = await showTpTextPromptDialog(
       context,
       title: isFolder ? l10n.fileTreeNewFolder : l10n.fileTreeNewFile,
       hintText: l10n.fileTreeCreateNameHint,
@@ -219,7 +219,7 @@ abstract final class FileTreeContextMenu {
     required String currentName,
   }) async {
     final l10n = context.l10n;
-    final name = await showAppTextPromptDialog(
+    final name = await showTpTextPromptDialog(
       context,
       title: l10n.fileTreeRenameTitle,
       initialText: currentName,
@@ -244,16 +244,16 @@ abstract final class FileTreeContextMenu {
     final l10n = context.l10n;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AppDialog(
+      builder: (ctx) => TpDialog(
         maxWidth: 480,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppDialogHeader(title: l10n.fileTreeDeleteItemTitle),
+            TpDialogHeader(title: l10n.fileTreeDeleteItemTitle),
             const SizedBox(height: 16),
             Text(l10n.fileTreeDeleteItemConfirm(targetName)),
-            AppDialogActions(
+            TpDialogActions(
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),

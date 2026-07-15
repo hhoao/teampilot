@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/plugin_cubit.dart';
@@ -7,9 +7,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/plugin.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/github_source_url.dart';
-import '../../widgets/dropdown/app_dropdown_field.dart';
 import '../../widgets/github_details_button.dart';
-import '../../widgets/empty_state_block.dart';
 import 'plugin_management_cards.dart';
 
 class PluginDiscoverySection extends StatefulWidget {
@@ -110,7 +108,7 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
     if (marketplaces.isEmpty) {
       return SingleChildScrollView(
         child: PluginManagementCard(
-          child: EmptyStateBlock(
+          child: TpEmptyState(
             icon: Icons.store_outlined,
             title: l10n.pluginsMarketplacesEmpty,
             hint: l10n.pluginsNoInstalledHint,
@@ -137,7 +135,7 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
                         hintText: l10n.pluginsSearchPlaceholder,
                         prefixIcon: Icon(
                           Icons.search,
-                          size: context.appIconSizes.md,
+                          size: context.tpIconSizes.md,
                         ),
                         floatingLabelBehavior: FloatingLabelBehavior.never,
                       ),
@@ -158,7 +156,7 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
                             height: 14,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Icon(Icons.refresh, size: context.appIconSizes.md),
+                        : Icon(Icons.refresh, size: context.tpIconSizes.md),
                   ),
                 ],
               ),
@@ -216,7 +214,7 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
     if (!widget.state.discoveryLoading && filtered.isEmpty) {
       return SingleChildScrollView(
         child: PluginManagementCard(
-          child: EmptyStateBlock(
+          child: TpEmptyState(
             icon: Icons.travel_explore_outlined,
             title: l10n.pluginsDiscoveryEmpty,
             actionLabel: l10n.pluginsGoDiscovery,
@@ -264,7 +262,7 @@ class PluginMarketplaceDropdown extends StatelessWidget {
         m.fullName: m.displayName ?? m.fullName,
     };
     final keys = labels.keys.toList();
-    return AppDropdownField<String>(
+    return TpSelect<String>(
       items: keys,
       itemLabel: (k) => labels[k] ?? k,
       initialItem: value ?? '',
@@ -293,7 +291,7 @@ class PluginStatusDropdown extends StatelessWidget {
       'uninstalled': l10n.pluginsFilterUninstalled,
     };
     final keys = labels.keys.toList();
-    return AppDropdownField<String>(
+    return TpSelect<String>(
       items: keys,
       itemLabel: (k) => labels[k] ?? k,
       initialItem: value,

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -448,7 +448,7 @@ class _HomePill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.home_filled, size: context.appIconSizes.md, color: fg),
+            Icon(Icons.home_filled, size: context.tpIconSizes.md, color: fg),
             const SizedBox(width: 6),
             Text(label, style: styles.smColored(fg)),
           ],
@@ -586,7 +586,7 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
                   // to the ListView viewport height (~full title bar).
                   SizedBox(
                     width: 3,
-                    height: context.appIconSizes.md,
+                    height: context.tpIconSizes.md,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         color: barColor,
@@ -601,7 +601,7 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
                       topology: widget.topology,
                       colorScheme: cs,
                       brightness: brightness,
-                      size: context.appIconSizes.md,
+                      size: context.tpIconSizes.md,
                       active: active,
                       hovered: _hovered,
                     ),
@@ -684,7 +684,7 @@ class _RecentlyClosedOverflowButton extends StatefulWidget {
 
 class _RecentlyClosedOverflowButtonState
     extends State<_RecentlyClosedOverflowButton> {
-  final _popoverController = AppPopoverController();
+  final _popoverController = TpPopoverController();
   Timer? _closeTimer;
   var _pointerOnAnchor = false;
   var _pointerOnMenu = false;
@@ -904,7 +904,7 @@ class _ActionGlyphState extends State<_ActionGlyph> {
           ),
           child: Icon(
             widget.icon,
-            size: context.appIconSizes.md,
+            size: context.tpIconSizes.md,
             color: cs.onSurfaceVariant,
           ),
         ),

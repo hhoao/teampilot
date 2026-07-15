@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
@@ -99,7 +99,7 @@ class TeamConfigMemberNavAddTile extends StatelessWidget {
                   children: [
                     Icon(
                       Icons.add,
-                      size: context.appIconSizes.md,
+                      size: context.tpIconSizes.md,
                       color: muted,
                     ),
                     SizedBox(width: 10),

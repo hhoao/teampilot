@@ -5,7 +5,7 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 
 class PluginManagementCard extends StatelessWidget {
@@ -47,13 +47,13 @@ Future<bool> pluginConfirmDialog(
   final l10n = context.l10n;
   final result = await showDialog<bool>(
     context: context,
-    builder: (ctx) => AppDialog(
+    builder: (ctx) => TpDialog(
       maxWidth: 480,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: title),
+          TpDialogHeader(title: title),
           const SizedBox(height: 16),
           Column(
             mainAxisSize: MainAxisSize.min,
@@ -75,7 +75,7 @@ Future<bool> pluginConfirmDialog(
               ],
             ],
           ),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),

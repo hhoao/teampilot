@@ -213,7 +213,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     await _sync.removePluginFromAllTeams(pluginId);
   }
 
-
   // ===== Team lifecycle =====
 
   Future<void> load({
@@ -797,7 +796,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     return true;
   }
 
-
   /// Sets [presetId] as the active preset on every team.
   Future<void> applyDefaultPresetToAllIdentities(String presetId) async {
     final trimmed = presetId.trim();
@@ -820,7 +818,5 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
       await saveTeamProfiles(teams);
     }
   }
-
-
 
 }

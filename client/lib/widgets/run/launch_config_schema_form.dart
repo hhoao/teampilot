@@ -5,21 +5,17 @@ import '../../models/run/launch_configuration.dart';
 import '../../services/run/launch_config_l10n.dart';
 import '../../services/run/launch_config_schema_fields.dart';
 import '../../theme/app_text_styles.dart';
-import '../dropdown/app_dropdown_decoration.dart';
-import '../dropdown/app_dropdown_field.dart';
-import '../form/app_form_field.dart';
-import '../form/app_form_field_layout.dart';
-import '../textarea/app_textarea.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Shared label column width for inline run-config form rows.
 const double kLaunchConfigFormLabelWidth = 160;
 
 /// Schema-driven editor for a single [LaunchConfiguration].
 ///
-/// Must be a descendant of [AppForm]. Always shows Name above properties from
+/// Must be a descendant of [TpForm]. Always shows Name above properties from
 /// [schema]. Maps JSON-schema types to controls: string → text, string array →
 /// whitespace-separated text, string map → `KEY=VALUE` lines, boolean →
-/// [Checkbox], enum → [AppDropdownField].
+/// [Checkbox], enum → [TpSelect].
 ///
 /// Shell Script: shows `scriptPath` only when `execute == scriptFile`, and
 /// `scriptText` only when `execute == scriptText`.
@@ -201,7 +197,7 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
 
   InputDecoration _controlDecoration({required bool hasError}) {
     return InputDecoration(
-      // Border reflects error; message is shown by AppFormFieldLayout / errors.
+      // Border reflects error; message is shown by TpFormFieldLayout / errors.
       errorText: hasError ? '' : null,
       errorStyle: const TextStyle(height: 0, fontSize: 0),
     );
@@ -226,11 +222,11 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
               ),
             ),
         ],
-        AppFormField<String>(
+        TpFormField<String>(
           id: 'name',
           initialValue: _working.name,
           label: Text(l10n.runConfigurationName),
-          layoutStyle: AppFormFieldLayoutStyle.inline,
+          layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: kLaunchConfigFormLabelWidth,
           builder: (state) {
             return TextField(
@@ -266,11 +262,11 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
     final label = Text(localizeLaunchConfigFieldLabel(context.l10n, field));
     switch (field.type) {
       case LaunchConfigSchemaFieldType.boolean:
-        return AppFormField<bool>(
+        return TpFormField<bool>(
           id: field.key,
           initialValue: _readBool(_working, field.key) ?? false,
           label: label,
-          layoutStyle: AppFormFieldLayoutStyle.inline,
+          layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: kLaunchConfigFormLabelWidth,
           builder: (state) {
             return Align(
@@ -293,19 +289,19 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
         final initial = values.contains(current)
             ? current
             : (values.isNotEmpty ? values.first : null);
-        return AppFormField<String>(
+        return TpFormField<String>(
           id: field.key,
           initialValue: initial ?? '',
           label: label,
-          layoutStyle: AppFormFieldLayoutStyle.inline,
+          layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: kLaunchConfigFormLabelWidth,
           builder: (state) {
-            return AppDropdownField<String>(
+            return TpSelect<String>(
               key: fieldKey,
               items: values,
               initialItem: initial,
               searchable: false,
-              decoration: AppDropdownDecorations.themed(context),
+              decoration: TpSelectDecorations.themed(context),
               itemLabel: (value) =>
                   localizeLaunchConfigEnumValue(context.l10n, field.key, value),
               onChanged: (value) {
@@ -317,21 +313,21 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
           },
         );
       case LaunchConfigSchemaFieldType.stringMap:
-        return AppFormField<String>(
+        return TpFormField<String>(
           id: field.key,
           initialValue: _displayTextFor(_working, field),
           label: label,
-          layoutStyle: AppFormFieldLayoutStyle.inline,
+          layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: kLaunchConfigFormLabelWidth,
           builder: (state) {
             final textStyle = field.monospace ? styles.mono : styles.md;
-            return AppTextarea(
+            return TpTextarea(
               key: fieldKey,
               controller: _controllers[field.key],
               focusNode: state.focusNode,
               style: field.monospace ? styles.mono : null,
-              minHeight: appTextareaHeightForLines(textStyle, lines: 3),
-              maxHeight: appTextareaHeightForLines(textStyle, lines: 8),
+              minHeight: tpTextareaHeightForLines(textStyle, lines: 3),
+              maxHeight: tpTextareaHeightForLines(textStyle, lines: 8),
               onChanged: (t) {
                 state.didChange(t);
                 _onFieldTextChanged(field, t);
@@ -344,22 +340,22 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
         );
       case LaunchConfigSchemaFieldType.string:
       case LaunchConfigSchemaFieldType.stringArray:
-        return AppFormField<String>(
+        return TpFormField<String>(
           id: field.key,
           initialValue: _displayTextFor(_working, field),
           label: label,
-          layoutStyle: AppFormFieldLayoutStyle.inline,
+          layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: kLaunchConfigFormLabelWidth,
           builder: (state) {
             if (field.key == 'scriptText') {
               final textStyle = field.monospace ? styles.mono : styles.md;
-              return AppTextarea(
+              return TpTextarea(
                 key: fieldKey,
                 controller: _controllers[field.key],
                 focusNode: state.focusNode,
                 style: field.monospace ? styles.mono : null,
-                minHeight: appTextareaHeightForLines(textStyle, lines: 3),
-                maxHeight: appTextareaHeightForLines(textStyle, lines: 8),
+                minHeight: tpTextareaHeightForLines(textStyle, lines: 3),
+                maxHeight: tpTextareaHeightForLines(textStyle, lines: 8),
                 onChanged: (t) {
                   state.didChange(t);
                   _onFieldTextChanged(field, t);

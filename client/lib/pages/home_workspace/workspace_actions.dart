@@ -13,7 +13,7 @@ import '../../models/workspace.dart';
 import '../../repositories/session_repository.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/workspace_display_name.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Whether [location] is the workbench route for [workspaceId].
 bool isViewingWorkspaceRoute(String location, String workspaceId) {
@@ -44,7 +44,7 @@ Future<void> showRenameWorkspaceDialog(
   String? title,
 }) async {
   final l10n = context.l10n;
-  final display = await showAppTextPromptDialog(
+  final display = await showTpTextPromptDialog(
     context,
     title: title ?? l10n.homeWorkspaceRenameWorkspace,
     initialText: workspace.display,
@@ -104,16 +104,16 @@ Future<void> confirmDeleteWorkspace(
   await showDialog<void>(
     context: context,
     useRootNavigator: true,
-    builder: (ctx) => AppDialog(
+    builder: (ctx) => TpDialog(
       maxWidth: 480,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.deleteWorkspace),
+          TpDialogHeader(title: l10n.deleteWorkspace),
           const SizedBox(height: 16),
           Text(l10n.deleteWorkspaceConfirm(name)),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),

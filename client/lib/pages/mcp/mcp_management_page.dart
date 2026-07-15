@@ -13,7 +13,7 @@ import '../../services/app/platform_utils.dart';
 import '../../services/mcp/mcp_listing_install_service.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_section_host.dart';
 import '../../widgets/settings/workspace_section_navigation.dart';
@@ -172,13 +172,13 @@ class _McpManagementPageState extends State<McpManagementPage> {
 
     final overwrite = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AppDialog(
+      builder: (ctx) => TpDialog(
         maxWidth: 480,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppDialogHeader(title: l10n.mcpImportExisting),
+            TpDialogHeader(title: l10n.mcpImportExisting),
             const SizedBox(height: 16),
             Text(
               l10n.mcpImportSummary(
@@ -186,7 +186,7 @@ class _McpManagementPageState extends State<McpManagementPage> {
                 preview.conflicts.length,
               ),
             ),
-            AppDialogActions(
+            TpDialogActions(
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
@@ -224,16 +224,16 @@ class _McpManagementPageState extends State<McpManagementPage> {
     final l10n = context.l10n;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AppDialog(
+      builder: (ctx) => TpDialog(
         maxWidth: 480,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppDialogHeader(title: l10n.mcpDeleteConfirm),
+            TpDialogHeader(title: l10n.mcpDeleteConfirm),
             const SizedBox(height: 16),
             Text(server.name),
-            AppDialogActions(
+            TpDialogActions(
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),

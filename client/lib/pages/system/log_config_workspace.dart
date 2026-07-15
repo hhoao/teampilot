@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_dialog_theme.dart';
-import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import 'log_viewer_panel.dart';
 
@@ -21,15 +20,15 @@ Future<void> showLogViewerDialog(BuildContext context) {
       final media = MediaQuery.of(dialogContext);
       final width = _kLogViewerDialogWidth.clamp(
         0.0,
-        media.size.width - kAppDialogInsetExtent,
+        media.size.width - kTpDialogInsetExtent,
       );
       final height = _kLogViewerDialogHeight.clamp(
         0.0,
-        media.size.height - kAppDialogInsetExtent,
+        media.size.height - kTpDialogInsetExtent,
       );
       final cs = Theme.of(dialogContext).colorScheme;
 
-      return AppDialog(
+      return TpDialog(
         maxWidth: width,
         maxHeight: height,
         contentPadding: EdgeInsets.zero,
@@ -115,7 +114,7 @@ class _LogViewerDialogHeader extends StatelessWidget {
           IconButton(
             tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
             onPressed: onClose,
-            icon: Icon(Icons.close, size: context.appIconSizes.md),
+            icon: Icon(Icons.close, size: context.tpIconSizes.md),
             color: cs.onSurfaceVariant,
           ),
         ],

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
@@ -242,7 +242,7 @@ class _ShortcutRowState extends State<_ShortcutRow> {
               children: [
                 Icon(
                   widget.icon,
-                  size: context.appIconSizes.md,
+                  size: context.tpIconSizes.md,
                   color: active ? cs.primary : cs.onSurfaceVariant,
                 ),
                 const SizedBox(width: 8),
@@ -318,7 +318,7 @@ class _ProvidersButtonState extends State<_ProvidersButton> {
             children: [
               Icon(
                 Icons.memory_outlined,
-                size: context.appIconSizes.md,
+                size: context.tpIconSizes.md,
                 color: active ? cs.primary : cs.onSurfaceVariant,
               ),
               const SizedBox(width: 8),

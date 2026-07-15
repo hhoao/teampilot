@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Overrides for the three fills in [TeamPilotBrandLogo.assetPath].
 ///
@@ -72,8 +72,8 @@ class TeamPilotBrandLogo extends StatelessWidget {
 
   static const String assetPath = 'assets/icons/icon.svg';
 
-  /// When null, uses [BuildContext.appIconSize] (follows the app's text-size /
-  /// icon theme scale).
+  /// When null, uses [IconTheme] size or [BuildContext.tpIconSizes] `md`
+  /// (follows the app's text-size / icon theme scale).
   final double? size;
 
   /// Tints the whole mark to one color (skips theme three-tone mapping).
@@ -88,7 +88,8 @@ class TeamPilotBrandLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final resolvedSize = size ?? context.appIconSize;
+    final resolvedSize =
+        size ?? IconTheme.of(context).size ?? context.tpIconSizes.md;
     final mark = _buildMark(context, resolvedSize);
 
     final start = gradientStart;

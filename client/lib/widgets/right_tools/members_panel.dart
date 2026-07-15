@@ -13,7 +13,7 @@ import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
-import '../app_icon_button.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../app_provider/provider_brand_icon.dart';
 import '../cli/cli_brand_icon.dart';
 import '../member_presence_indicator.dart';
@@ -73,11 +73,11 @@ class MembersPanel extends StatelessWidget {
                   ).xsBoldWideColored(cs.onSurfaceVariant),
                 ),
               ),
-              AppIconButton(
+              TpIconButton(
                 icon: Icons.keyboard_double_arrow_right,
                 tooltip: l10n.openTeam,
                 color: cs.primary,
-                size: AppIconButton.kCompactSize,
+                size: TpIconButton.kCompactSize,
                 onTap: onLaunchAll,
               ),
             ],

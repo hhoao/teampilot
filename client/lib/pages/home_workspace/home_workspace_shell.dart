@@ -32,7 +32,7 @@ import '../../services/workspace/workspace_tools_scope_registry.dart';
 import '../../services/workspace/workspace_worktree_registry.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/workspace_display_name.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/run/run_toolbar.dart';
 import 'home_workspace_body_stack.dart';
 import 'home_workspace_tab_scope.dart';
@@ -379,19 +379,19 @@ class _HomeShellState extends State<HomeShell> {
     final l10n = context.l10n;
     return showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AppDialog(
+      builder: (dialogContext) => TpDialog(
         maxWidth: 480,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppDialogHeader(
+            TpDialogHeader(
               title: l10n.homeWorkspaceCloseWorkspaceTitle,
               onClose: () => Navigator.of(dialogContext).pop(false),
             ),
             const SizedBox(height: 16),
             Text(l10n.homeWorkspaceCloseWorkspaceMessage(running)),
-            AppDialogActions(
+            TpDialogActions(
               children: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),

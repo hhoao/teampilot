@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../services/team/team_config_launch_validator.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../team_config/team_config_section.dart';
 import '../../theme/app_text_styles.dart';
 
@@ -58,7 +58,7 @@ class _TeamConfigIncompleteDialog extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
-    return AppDialog(
+    return TpDialog(
       maxWidth: 400,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -80,7 +80,7 @@ class _TeamConfigIncompleteDialog extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          AppDialogHeader(
+          TpDialogHeader(
             title: l10n.teamConfigIncompleteTitle,
             onClose: () => Navigator.of(context).pop(false),
           ),
@@ -110,7 +110,7 @@ class _TeamConfigIncompleteDialog extends StatelessWidget {
               ],
             ),
           ),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),

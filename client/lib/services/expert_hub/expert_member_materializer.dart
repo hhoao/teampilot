@@ -62,7 +62,6 @@ abstract final class ExpertMemberMaterializer {
     return out;
   }
 
-
   static TeamMemberConfig _applyTeamInheritance(
     TeamMemberConfig member,
     TeamProfile team,

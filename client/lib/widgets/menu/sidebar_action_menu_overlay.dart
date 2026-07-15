@@ -4,7 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../dropdown/popover/anchor.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Closes the currently open floating context menu, if any.
 VoidCallback? _activeFloatingContextMenuCloser;

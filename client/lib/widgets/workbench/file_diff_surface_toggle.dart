@@ -10,7 +10,7 @@ import '../../services/git/git_repo_store.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
 import '../../theme/app_icon_sizes.dart';
-import '../app_icon_button.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Which surface the center pane is showing for a path.
 enum FileDiffSurfaceMode { file, diff }
@@ -28,7 +28,7 @@ class FileDiffSurfaceToggle extends StatelessWidget {
   final ValueChanged<FileDiffSurfaceMode> onModeChanged;
   final bool enabled;
 
-  static const double _size = AppIconButton.kCompactSize;
+  static const double _size = TpIconButton.kCompactSize;
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +104,7 @@ class _Segment extends StatelessWidget {
           child: SizedBox(
             width: 30,
             height: FileDiffSurfaceToggle._size,
-            child: Icon(icon, size: context.appIconSizes.sm, color: color),
+            child: Icon(icon, size: context.tpIconSizes.sm, color: color),
           ),
         ),
       ),

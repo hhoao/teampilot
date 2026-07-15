@@ -17,10 +17,9 @@ import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/file_tree/file_tree_visible_rows.dart';
 import '../../services/storage/runtime_context.dart';
-import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/app_keys.dart';
-import '../app_icon_button.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../file_tree_node.dart';
 import 'file_tree_header_overflow_menu.dart';
 import 'right_tools_lifecycle.dart';
@@ -327,53 +326,53 @@ class _FileTreePanelState extends State<FileTreePanel> {
     required bool filterVisible,
   }) {
     final actions = <Widget>[
-      AppIconButton(
+      TpIconButton(
         icon: filterVisible ? Icons.search_off : Icons.search,
         compact: true,
-        size: AppIconButton.kCompactSize,
+        size: TpIconButton.kCompactSize,
         tooltip: filterVisible
             ? l10n.fileTreeHideFilter
             : l10n.fileTreeShowFilter,
         onTap: _toggleFilterVisible,
       ),
-      AppIconButton(
+      TpIconButton(
         icon: Icons.refresh,
         compact: true,
-        size: AppIconButton.kCompactSize,
+        size: TpIconButton.kCompactSize,
         tooltip: l10n.fileTreeRefresh,
         onTap: _cubit.refresh,
       ),
-      AppIconButton(
+      TpIconButton(
         icon: Icons.my_location_outlined,
         compact: true,
-        size: AppIconButton.kCompactSize,
+        size: TpIconButton.kCompactSize,
         tooltip: l10n.fileTreeRevealActiveFile,
         onTap: () => unawaited(_revealActiveEditorFile()),
       ),
     ];
     actions.add(
-      AppIconButton(
+      TpIconButton(
         icon: Icons.unfold_less,
         compact: true,
-        size: AppIconButton.kCompactSize,
+        size: TpIconButton.kCompactSize,
         tooltip: l10n.treeCollapseAllFolders,
         onTap: _cubit.collapseAllFolders,
       ),
     );
     actions.addAll([
-      AppIconButton(
+      TpIconButton(
         icon: showHiddenFiles
             ? Icons.visibility_off_outlined
             : Icons.visibility_outlined,
         compact: true,
-        size: AppIconButton.kCompactSize,
+        size: TpIconButton.kCompactSize,
         tooltip: showHiddenFiles ? 'Hide hidden files' : 'Show hidden files',
         onTap: _cubit.toggleShowHidden,
       ),
-      AppIconButton(
+      TpIconButton(
         icon: Icons.copy,
-        iconSize: context.appIconSizes.md,
-        size: AppIconButton.kCompactSize,
+        iconSize: context.tpIconSizes.md,
+        size: TpIconButton.kCompactSize,
         tooltip: l10n.copy,
         onTap: () {
           if (rootPath.isNotEmpty) {
@@ -422,13 +421,13 @@ class _FileTreeFilterField extends StatelessWidget {
           controller: controller,
           decoration: InputDecoration(
             hintText: hintText,
-            prefixIcon: Icon(Icons.search, size: context.appIconSizes.md),
+            prefixIcon: Icon(Icons.search, size: context.tpIconSizes.md),
             floatingLabelBehavior: FloatingLabelBehavior.never,
             suffixIcon: value.text.isNotEmpty
-                ? AppIconButton(
+                ? TpIconButton(
                     icon: Icons.clear,
                     compact: true,
-                    size: AppIconButton.kCompactSize,
+                    size: TpIconButton.kCompactSize,
                     onTap: onClear,
                   )
                 : null,

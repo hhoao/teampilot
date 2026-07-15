@@ -1,10 +1,10 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../app_icon_button.dart';
 import '../workbench/file_diff_surface_toggle.dart';
 import 'diff_view_controller.dart';
 
@@ -54,7 +54,7 @@ class DiffToolbar extends StatelessWidget {
   /// Optional leading title (e.g. file name). Tools stay right-aligned.
   final String? title;
 
-  static const double _actionSize = AppIconButton.kCompactSize;
+  static const double _actionSize = TpIconButton.kCompactSize;
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +86,7 @@ class DiffToolbar extends StatelessWidget {
           else
             const Spacer(),
           if (showOpenSource)
-            AppIconButton(
+            TpIconButton(
               icon: Icons.description_outlined,
               tooltip: l10n.diffOpenSourceFile,
               size: _actionSize,
@@ -130,7 +130,7 @@ class DiffToolbar extends StatelessWidget {
               return Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  AppIconButton(
+                  TpIconButton(
                     icon: Icons.keyboard_arrow_up,
                     tooltip: l10n.diffPreviousChange,
                     size: _actionSize,
@@ -149,7 +149,7 @@ class DiffToolbar extends StatelessWidget {
                       style: styles.mutedSm,
                     ),
                   ),
-                  AppIconButton(
+                  TpIconButton(
                     icon: Icons.keyboard_arrow_down,
                     tooltip: l10n.diffNextChange,
                     size: _actionSize,
@@ -258,7 +258,7 @@ class _DiffModeSegment extends StatelessWidget {
           child: SizedBox(
             width: 30,
             height: DiffToolbar._actionSize,
-            child: Icon(icon, size: context.appIconSizes.sm, color: color),
+            child: Icon(icon, size: context.tpIconSizes.sm, color: color),
           ),
         ),
       ),
@@ -266,7 +266,7 @@ class _DiffModeSegment extends StatelessWidget {
   }
 }
 
-/// Icon on/off toggle with selected fill — same density as [AppIconButton].
+/// Icon on/off toggle with selected fill — same density as [TpIconButton].
 class _DiffToolbarIconToggle extends StatelessWidget {
   const _DiffToolbarIconToggle({
     required this.icon,
@@ -285,7 +285,7 @@ class _DiffToolbarIconToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return AppIconButton(
+    return TpIconButton(
       icon: icon,
       tooltip: tooltip,
       size: DiffToolbar._actionSize,

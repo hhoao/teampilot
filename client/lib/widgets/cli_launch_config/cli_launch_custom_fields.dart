@@ -13,8 +13,7 @@ import '../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../widgets/app_provider/cli_effort_picker_field.dart';
 import '../../widgets/app_provider/provider_model_picker_field.dart';
 import '../../theme/app_text_styles.dart';
-import '../../widgets/dropdown/app_dropdown_decoration.dart';
-import '../../widgets/dropdown/app_dropdown_field.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'cli_launch_config_dropdown.dart';
 
@@ -83,12 +82,12 @@ class CliLaunchCustomFields extends StatelessWidget {
   final String? modelTitle;
   final String? effortTitle;
   final String dropdownKeyPrefix;
-  final AppDropdownDecoration? decoration;
+  final TpSelectDecoration? decoration;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final dropdownDeco = decoration ?? AppDropdownDecorations.themed(context);
+    final dropdownDeco = decoration ?? TpSelectDecorations.themed(context);
     final providerIds = providers.map((p) => p.id).toList()..sort();
     if (providerId.isNotEmpty && !providerIds.contains(providerId)) {
       providerIds.add(providerId);
@@ -125,7 +124,7 @@ class CliLaunchCustomFields extends StatelessWidget {
           SettingsLabeledRow(
             title: providerTitle ?? l10n.provider,
             trailing: cliLaunchConfigDropdown(
-              AppDropdownField<String>(
+              TpSelect<String>(
                 key: ValueKey(
                   '$dropdownKeyPrefix-provider-$catalogCli-$providerId',
                 ),
@@ -196,13 +195,13 @@ class CliLaunchCustomFields extends StatelessWidget {
   Widget _buildCliRow(
     BuildContext context,
     AppLocalizations l10n,
-    AppDropdownDecoration dropdownDeco,
+    TpSelectDecoration dropdownDeco,
   ) {
     return switch (cliFieldKind) {
       CliLaunchCliFieldKind.toolList => SettingsLabeledRow(
         title: l10n.aiFeatureCliLabel,
         trailing: cliLaunchConfigDropdown(
-          AppDropdownField<CliTool>(
+          TpSelect<CliTool>(
             items: cliItems,
             initialItem: catalogCli,
             decoration: dropdownDeco,
@@ -222,7 +221,7 @@ class CliLaunchCustomFields extends StatelessWidget {
         title: l10n.teamCliLabel,
         subtitle: cliSubtitle,
         trailing: cliLaunchConfigDropdown(
-          AppDropdownField<CliTool>(
+          TpSelect<CliTool>(
             items: cliItems,
             initialItem: catalogCli,
             decoration: dropdownDeco,
@@ -250,7 +249,7 @@ class CliLaunchCustomFields extends StatelessWidget {
       CliLaunchCliFieldKind.mixedMember => SettingsLabeledRow(
         title: l10n.teamCliLabel,
         trailing: cliLaunchConfigDropdown(
-          AppDropdownField<String>(
+          TpSelect<String>(
             items: mixedMemberCliItems,
             initialItem: cliToken,
             decoration: dropdownDeco,

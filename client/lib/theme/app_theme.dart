@@ -277,7 +277,7 @@ ThemeData _applyTypography(
         AppSpacingTheme.fromScale(AppTypographyScale.standard),
         AppIconSizeTheme.fromScale(resolvedIconScale),
       ],
-      dialogTheme: buildAppDialogTheme(
+      dialogTheme: buildTpDialogTheme(
         colorScheme: scheme,
         textTheme: textTheme,
       ),
@@ -335,7 +335,7 @@ ThemeData _applyTypography(
       AppSpacingTheme.fromScale(AppTypographyScale.standard),
       AppIconSizeTheme.fromScale(resolvedIconScale),
     ],
-    dialogTheme: buildAppDialogTheme(
+    dialogTheme: buildTpDialogTheme(
       colorScheme: scheme,
       textTheme: mergedTextTheme,
     ),

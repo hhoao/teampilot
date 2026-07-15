@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
@@ -24,7 +24,6 @@ import '../../services/cli/registry/capabilities/provider_catalog_capability.dar
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
-import '../../widgets/app_dialog.dart';
 import '../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../widgets/app_provider/provider_brand_icon.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
@@ -313,7 +312,7 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
 
     final maxDialogHeight = MediaQuery.sizeOf(context).height * 0.92;
 
-    return AppDialog(
+    return TpDialog(
       maxWidth: 720,
       maxHeight: maxDialogHeight,
       scrollable: true,
@@ -321,7 +320,7 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(
+          TpDialogHeader(
             title: l10n.homeWorkspaceNewTeam,
             titleAlignment: Alignment.center,
             showDividerBelow: false,
@@ -552,7 +551,7 @@ class _ModeCardState extends State<_ModeCard> {
                 children: [
                   Icon(
                     widget.icon,
-                    size: context.appIconSizes.lg,
+                    size: context.tpIconSizes.lg,
                     color: selected ? cs.primary : cs.onSurfaceVariant,
                   ),
                   const SizedBox(width: 10),
@@ -745,7 +744,7 @@ class _NameField extends StatelessWidget {
             ),
             child: Icon(
               Icons.groups_2_rounded,
-              size: context.appIconSizes.lg,
+              size: context.tpIconSizes.lg,
               color: cs.onPrimary,
             ),
           ),

@@ -10,7 +10,7 @@ import '../../pages/workspace_shell/workspace_shell_tabs.dart';
 import '../../services/run/run_platform.dart';
 import '../../services/run/run_terminal_bridge.dart';
 import '../../theme/app_text_styles.dart';
-import '../../widgets/app_icon_button.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'run_session_dismiss.dart';
 import 'run_session_page.dart';
 
@@ -265,10 +265,10 @@ class _RunPanelState extends State<RunPanel> {
                               ),
                             ),
                     ),
-                    AppIconButton(
+                    TpIconButton(
                       icon: Icons.close,
                       color: cs.onSurfaceVariant,
-                      size: AppIconButton.kCompactSize,
+                      size: TpIconButton.kCompactSize,
                       tooltip: l10n.runClearExited,
                       onTap: () => unawaited(_clearExited()),
                     ),

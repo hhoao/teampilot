@@ -409,6 +409,8 @@ Future<AppShell> buildAppShell({
   // target authority is the device-local homeTargetStore read above. The
   // registry is used by the picker UI to list selectable targets.
   final targetsRepo = TargetsRepository();
+  SshProfile? sshProfileById(String id) =>
+      sshProfileCubit.state.profiles.where((p) => p.id == id).firstOrNull;
   final remoteCliReadiness = RemoteCliReadinessService(
     registry: cliToolRegistry,
     sshClientFactory: sshClientFactory,
@@ -422,9 +424,6 @@ Future<AppShell> buildAppShell({
     isWindows: Platform.isWindows,
     isAndroid: Platform.isAndroid,
   );
-
-  SshProfile? sshProfileById(String id) =>
-      sshProfileCubit.state.profiles.where((p) => p.id == id).firstOrNull;
 
   // P2: de-singleton. One resolver + a per-target context registry. The home
   // context (control plane) is materialized once and pushed onto AppStorage;

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../../cubits/worktree_cubit.dart';
 import '../../../models/git_worktree.dart';
@@ -237,7 +237,7 @@ class WorkspaceLandingHeaderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final spacing = context.appSpacing;
+    final spacing = context.tpSpacing;
 
     // Loose flex keeps chips content-sized and left-packed; max width still
     // constrains labels so they ellipsize instead of overflowing.
@@ -294,7 +294,7 @@ class WorkspaceLandingSelectorBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final palette = WorkspaceChatLandingPalette(cs);
-    final icons = context.appIconSizes;
+    final icons = context.tpIconSizes;
     final isEmpty = label.trim().isEmpty;
     final display = isEmpty ? hintWhenEmpty : label.trim();
     final foreground = isEmpty

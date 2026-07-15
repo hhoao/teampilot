@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/expert_hub_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
@@ -372,7 +372,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                           ),
                           icon: Icon(
                             Icons.delete_outline,
-                            size: context.appIconSizes.md,
+                            size: context.tpIconSizes.md,
                             color: errorColor,
                           ),
                         ),

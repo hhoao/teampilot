@@ -8,10 +8,8 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/run/launch_configuration.dart';
 import '../../models/workspace_folder.dart';
 import '../../services/run/shell_script_launch_schema.dart';
-import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
-import '../app_dialog.dart';
-import '../app_icon_button.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../menu/sidebar_action_menu.dart';
 import 'run_config_editor_dialog.dart';
 
@@ -27,13 +25,13 @@ class RunConfigurationsDialog extends StatelessWidget {
     final l10n = context.l10n;
     final maxHeight = MediaQuery.sizeOf(context).height * 0.85;
 
-    return AppDialog(
+    return TpDialog(
       maxWidth: 720,
       maxHeight: maxHeight,
-      child: AppDialogPinnedLayout(
-        header: AppDialogHeader(
+      child: TpDialogPinnedLayout(
+        header: TpDialogHeader(
           title: l10n.runConfigureLaunchItems,
-          trailing: AppIconButton(
+          trailing: TpIconButton(
             key: const Key('run-configurations-add'),
             icon: Icons.add_rounded,
             tooltip: l10n.runAddConfiguration,
@@ -160,7 +158,7 @@ class _RunConfigurationRow extends StatelessWidget {
           children: [
             Icon(
               Icons.play_arrow_outlined,
-              size: context.appIconSizes.md,
+              size: context.tpIconSizes.md,
               color: cs.primary,
             ),
             const SizedBox(width: 10),
@@ -195,7 +193,7 @@ class _RunConfigurationRow extends StatelessWidget {
             ),
             SidebarActionMenuIconAnchor(
               key: Key('run-config-row-menu-${owned.selectionKey}'),
-              icon: Icon(Icons.more_vert, size: context.appIconSizes.md),
+              icon: Icon(Icons.more_vert, size: context.tpIconSizes.md),
               buildMenuChildren: (ctx, controller) => [
                 SidebarActionMenuItem(
                   icon: Icons.edit_outlined,
@@ -233,13 +231,13 @@ class _RunConfigurationRow extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) {
-        return AppDialog(
+        return TpDialog(
           maxWidth: 420,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppDialogHeader(
+              TpDialogHeader(
                 title: l10n.runDeleteConfiguration,
                 onClose: () => Navigator.of(ctx).pop(false),
               ),
@@ -251,7 +249,7 @@ class _RunConfigurationRow extends StatelessWidget {
                       : owned.configuration.name,
                 ),
               ),
-              AppDialogActions(
+              TpDialogActions(
                 children: [
                   TextButton(
                     onPressed: () => Navigator.of(ctx).pop(false),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../models/workspace_topology.dart';
 import '../theme/workspace_topology_colors.dart';
@@ -29,7 +29,7 @@ class WorkspaceTopologyIcon extends StatelessWidget {
     );
     return Icon(
       iconFor(topology),
-      size: size ?? context.appIconSizes.sm,
+      size: size ?? context.tpIconSizes.sm,
       color: color,
     );
   }

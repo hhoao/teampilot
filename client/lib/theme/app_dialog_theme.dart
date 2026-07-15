@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'workspace_surface_layers.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Shared corner radius for [Dialog] / [AlertDialog] shells app-wide.
 const double kAppDialogBorderRadius = 32;
@@ -11,12 +12,12 @@ const EdgeInsets kAppDialogInsetPadding = EdgeInsets.all(24);
 /// Total horizontal/vertical inset (left + right, or top + bottom).
 const double kAppDialogInsetExtent = 48;
 
-/// Inner padding around an [AppDialog]'s content column.
+/// Inner padding around an [TpDialog]'s content column.
 ///
 /// `DialogThemeData` deliberately exposes no content padding (only
 /// `actionsPadding` / `insetPadding`), so this constant is the single source of
 /// truth for the gap between the dialog edge and its body. Override per-call via
-/// [AppDialog.contentPadding] when a dialog needs a tighter or wider frame.
+/// [TpDialog.contentPadding] when a dialog needs a tighter or wider frame.
 const EdgeInsets kAppDialogContentPadding = EdgeInsets.fromLTRB(32, 28, 32, 28);
 
 /// Horizontal inset of [kAppDialogContentPadding]; used to bleed section dividers.
@@ -37,7 +38,7 @@ TextStyle appDialogTitleStyle({
   );
 }
 
-DialogThemeData buildAppDialogTheme({
+DialogThemeData buildTpDialogTheme({
   required ColorScheme colorScheme,
   required TextTheme textTheme,
 }) {

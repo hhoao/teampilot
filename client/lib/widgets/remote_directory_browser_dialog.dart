@@ -5,9 +5,8 @@ import '../l10n/l10n_extensions.dart';
 import '../utils/logger.dart';
 import '../services/storage/remote_directory_browser.dart';
 import '../services/storage/workspace_directory_picker.dart';
-import '../theme/app_icon_sizes.dart';
 import '../theme/app_text_styles.dart';
-import 'app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// SFTP-backed remote directory browser. Resolves the [targetId]'s filesystem
 /// via [WorkspaceDirectoryPicker], navigates with [RemoteDirectoryBrowser], and
@@ -130,13 +129,13 @@ class _RemoteDirectoryBrowserDialogState
     final styles = AppTextStyles(theme);
     final listing = _listing;
 
-    return AppDialog(
+    return TpDialog(
       maxWidth: 520,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(
+          TpDialogHeader(
             title: widget.title ?? l10n.remoteDirectoryBrowserTitle,
           ),
           const SizedBox(height: 16),
@@ -146,7 +145,7 @@ class _RemoteDirectoryBrowserDialogState
                 tooltip: l10n.remoteDirectoryBrowserUpOneLevel,
                 icon: Icon(
                   Icons.arrow_upward_rounded,
-                  size: context.appIconSizes.md,
+                  size: context.tpIconSizes.md,
                 ),
                 onPressed:
                     listing != null && listing.parent != null && !_loading
@@ -198,7 +197,7 @@ class _RemoteDirectoryBrowserDialogState
               ],
             ),
           ],
-          AppDialogActions(
+          TpDialogActions(
             children: widget.browseOnly
                 ? [
                     FilledButton(
@@ -258,11 +257,11 @@ class _RemoteDirectoryBrowserDialogState
         itemBuilder: (context, index) {
           final name = listing.directories[index];
           return ListTile(
-            leading: Icon(Icons.folder_outlined, size: context.appIconSizes.md),
+            leading: Icon(Icons.folder_outlined, size: context.tpIconSizes.md),
             title: Text(name),
             trailing: Icon(
               Icons.chevron_right_rounded,
-              size: context.appIconSizes.md,
+              size: context.tpIconSizes.md,
             ),
             onTap: () => _open(_browser!.child(listing.path, name)),
           );

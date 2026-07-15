@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/provider/credential_binding.dart';
 import '../../theme/app_text_styles.dart';
-import '../dropdown/app_dropdown_field.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Official Claude OAuth: follow global `~/.claude` or use an isolated copy.
 class ClaudeCredentialBindingField extends StatelessWidget {
@@ -37,7 +37,7 @@ class ClaudeCredentialBindingField extends StatelessWidget {
           style: styles.mdSnug,
         ),
         const SizedBox(height: 6),
-        AppDropdownField<CredentialBindingKind>(
+        TpSelect<CredentialBindingKind>(
           items: _items,
           initialItem: value,
           enabled: !readOnly,

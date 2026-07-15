@@ -4,8 +4,7 @@ import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../dropdown/app_dropdown_decoration.dart';
-import '../dropdown/app_dropdown_field.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Registry-driven effort picker for team / member / provider forms.
 class CliEffortPickerField extends StatelessWidget {
@@ -31,7 +30,7 @@ class CliEffortPickerField extends StatelessWidget {
   final TeamMemberConfig? member;
   final AppProviderConfig? provider;
   final String model;
-  final AppDropdownDecoration? decoration;
+  final TpSelectDecoration? decoration;
   final String? hintText;
   final bool allowInherit;
   final String? inheritLabel;
@@ -57,10 +56,10 @@ class CliEffortPickerField extends StatelessWidget {
     if (candidates.isEmpty) return const SizedBox.shrink();
 
     final items = <String>[if (allowInherit) '', ...candidates];
-    final deco = decoration ?? AppDropdownDecorations.themed(context);
+    final deco = decoration ?? TpSelectDecorations.themed(context);
     final current = value.trim();
 
-    return AppDropdownField<String>(
+    return TpSelect<String>(
       key: ValueKey(
         'cli-effort-$cli-$resolvedModel-${items.join("|")}-$current',
       ),

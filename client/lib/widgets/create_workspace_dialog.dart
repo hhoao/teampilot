@@ -4,8 +4,8 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../l10n/l10n_extensions.dart';
 import '../models/workspace_folder.dart';
-import 'app_dialog.dart';
 import 'workspace_create_directory_picker.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 typedef CreateWorkspaceDraft = ({
   List<WorkspaceFolder> folders,
@@ -64,14 +64,14 @@ class _CreateWorkspaceDialogState extends State<_CreateWorkspaceDialog> {
     final hasDirectory = _folders.isNotEmpty;
     final firstPath = hasDirectory ? _folders.first.path : '';
 
-    return AppDialog(
+    return TpDialog(
       scrollable: true,
       maxHeight: MediaQuery.sizeOf(context).height * 0.85,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.newWorkspace),
+          TpDialogHeader(title: l10n.newWorkspace),
           const SizedBox(height: 16),
           WorkspaceCreateDirectoryPicker(
             targetId: _targetId,
@@ -87,7 +87,7 @@ class _CreateWorkspaceDialogState extends State<_CreateWorkspaceDialog> {
                 : l10n.homeWorkspaceNewWorkspaceNameHint,
             onSubmitted: (_) => _create(),
           ),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),

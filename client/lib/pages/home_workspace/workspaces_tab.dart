@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/app_bootstrap_cubit.dart';
@@ -207,7 +207,7 @@ class WorkspacesSortButton extends StatelessWidget {
               trailing: workspaceSort == sort
                   ? Icon(
                       Icons.check,
-                      size: context.appIconSizes.md,
+                      size: context.tpIconSizes.md,
                       color: Theme.of(
                         context,
                       ).colorScheme.onSurface.withValues(alpha: 0.7),
@@ -317,7 +317,7 @@ class _WorkspacesToggleCellState extends State<WorkspacesToggleCell> {
           ),
           child: Icon(
             widget.icon,
-            size: context.appIconSizes.md,
+            size: context.tpIconSizes.md,
             color: active ? cs.primary : cs.onSurfaceVariant,
           ),
         ),
@@ -372,7 +372,7 @@ class _WorkspacesIconChipState extends State<WorkspacesIconChip> {
           ),
           child: Icon(
             widget.icon,
-            size: context.appIconSizes.md,
+            size: context.tpIconSizes.md,
             color: cs.onSurfaceVariant,
           ),
         ),
@@ -431,7 +431,7 @@ class _WorkspacesPrimaryActionState extends State<WorkspacesPrimaryAction> {
             children: [
               Icon(
                 widget.icon,
-                size: context.appIconSizes.md,
+                size: context.tpIconSizes.md,
                 color: cs.onPrimary,
               ),
               const SizedBox(width: 7),
@@ -641,7 +641,7 @@ class HomeEmptyWorkspaces extends StatelessWidget {
         children: [
           Icon(
             Icons.folder_open_outlined,
-            size: context.appIconSizes.md,
+            size: context.tpIconSizes.md,
             color: cs.onSurfaceVariant.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 14),

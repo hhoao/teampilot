@@ -5,8 +5,7 @@ import '../../cubits/git_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/git/git_changes_visible_rows.dart';
 import '../../theme/app_text_styles.dart';
-import '../app_icon_button.dart';
-import '../hover_widget.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Folder row in the git changes tree view.
 class GitChangeFolderTile extends StatefulWidget {
@@ -54,10 +53,10 @@ class _GitChangeFolderTileState extends State<GitChangeFolderTile> {
     final actions = <Widget>[];
     if (widget.onUnstage != null) {
       actions.add(
-        AppIconButton(
+        TpIconButton(
           icon: Icons.remove,
           compact: true,
-          size: AppIconButton.kCompactSize,
+          size: TpIconButton.kCompactSize,
           tooltip: l10n.gitUnstageFolder,
           onTap: widget.onUnstage!,
         ),
@@ -65,10 +64,10 @@ class _GitChangeFolderTileState extends State<GitChangeFolderTile> {
     }
     if (widget.onStage != null) {
       actions.add(
-        AppIconButton(
+        TpIconButton(
           icon: Icons.add,
           compact: true,
-          size: AppIconButton.kCompactSize,
+          size: TpIconButton.kCompactSize,
           tooltip: l10n.gitStageFolder,
           onTap: widget.onStage!,
         ),
@@ -83,7 +82,7 @@ class _GitChangeFolderTileState extends State<GitChangeFolderTile> {
     final isExpanded = context.select<GitCubit, bool>(
       (c) => c.state.expandedFolderPaths.contains(widget.folderPath),
     );
-    final rowColor = _hovered ? HoverWidget.defaultHoverColor(context) : null;
+    final rowColor = _hovered ? TpHover.defaultHoverColor(context) : null;
     final showActions =
         _hovered && (widget.onStage != null || widget.onUnstage != null);
 

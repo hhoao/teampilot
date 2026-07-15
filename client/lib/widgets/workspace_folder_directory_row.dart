@@ -5,8 +5,7 @@ import '../l10n/l10n_extensions.dart';
 import '../models/runtime_target.dart';
 import '../models/workspace_folder.dart';
 import '../theme/app_text_styles.dart';
-import '../theme/app_icon_sizes.dart';
-import 'app_icon_button.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Basename segment for display in folder lists.
 String workspacePathBasename(String path) {
@@ -108,7 +107,7 @@ class WorkspaceFolderDirectoryRow extends StatelessWidget {
             isPrimary
                 ? Icons.star_rounded
                 : Icons.subdirectory_arrow_right_rounded,
-            size: context.appIconSizes.sm,
+            size: context.tpIconSizes.sm,
             color: isPrimary ? cs.primary : cs.onSurfaceVariant,
           ),
           const SizedBox(width: 8),
@@ -127,18 +126,18 @@ class WorkspaceFolderDirectoryRow extends StatelessWidget {
             ),
           ],
           if (onPickPath != null)
-            AppIconButton(
+            TpIconButton(
               icon: Icons.drive_file_rename_outline_rounded,
               onTap: onPickPath,
-              size: AppIconButton.kCompactSize,
+              size: TpIconButton.kCompactSize,
               compact: true,
               color: cs.onSurfaceVariant,
             ),
           if (onRemove != null)
-            AppIconButton(
+            TpIconButton(
               icon: Icons.close_rounded,
               onTap: onRemove,
-              size: AppIconButton.kCompactSize,
+              size: TpIconButton.kCompactSize,
               compact: true,
               color: cs.onSurfaceVariant,
             ),
@@ -201,7 +200,7 @@ class _TargetChip extends StatelessWidget {
       children: [
         Icon(
           workspaceFolderTargetIcon(targetId),
-          size: context.appIconSizes.sm,
+          size: context.tpIconSizes.sm,
           color: cs.onSurfaceVariant,
         ),
         const SizedBox(width: 4),

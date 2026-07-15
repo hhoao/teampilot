@@ -10,7 +10,7 @@ import '../../services/commands/key_chord.dart';
 import '../../services/commands/key_chord_formatter.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Opens the read-only keyboard shortcuts cheatsheet (`Mod+/` and the
 /// settings page button both land here).
@@ -29,7 +29,7 @@ class ShortcutCheatsheetDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
 
-    return AppDialog(
+    return TpDialog(
       maxWidth: 560,
       maxHeight: 720,
       child: BlocBuilder<ShortcutCubit, ShortcutState>(
@@ -39,7 +39,7 @@ class ShortcutCheatsheetDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppDialogHeader(title: l10n.shortcutsCheatsheetTitle),
+              TpDialogHeader(title: l10n.shortcutsCheatsheetTitle),
               Expanded(
                 child: ListView(
                   children: [

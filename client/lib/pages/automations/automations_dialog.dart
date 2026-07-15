@@ -7,10 +7,7 @@ import '../../cubits/automation_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/automation_list_scope.dart';
-import '../../widgets/app_dialog.dart';
-import '../../widgets/app_icon_button.dart';
-import '../../widgets/dropdown/app_dropdown_decoration.dart';
-import '../../widgets/dropdown/app_dropdown_field.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'automation_editor_dialog.dart';
 import 'automation_sort.dart';
 import 'automations_list_body.dart';
@@ -73,24 +70,24 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
     final l10n = context.l10n;
     final maxHeight = MediaQuery.sizeOf(context).height * 0.85;
 
-    return AppDialog(
+    return TpDialog(
       maxWidth: 720,
       maxHeight: maxHeight,
-      child: AppDialogPinnedLayout(
-        header: AppDialogHeader(
+      child: TpDialogPinnedLayout(
+        header: TpDialogHeader(
           title: l10n.automationsTitle,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
                 width: 132,
-                child: AppDropdownField<AutomationEnabledFilter>(
+                child: TpSelect<AutomationEnabledFilter>(
                   items: const [
                     AutomationEnabledFilter.all,
                     AutomationEnabledFilter.enabledOnly,
                   ],
                   initialItem: _enabledFilter,
-                  decoration: AppDropdownDecorations.themed(context),
+                  decoration: TpSelectDecorations.themed(context),
                   itemLabel: (f) => switch (f) {
                     AutomationEnabledFilter.all => l10n.automationsFilterAll,
                     AutomationEnabledFilter.enabledOnly =>
@@ -105,7 +102,7 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
                 ),
               ),
               const SizedBox(width: 8),
-              AppIconButton(
+              TpIconButton(
                 icon: Icons.add_rounded,
                 tooltip: l10n.automationsNew,
                 onTap: () => unawaited(_create()),

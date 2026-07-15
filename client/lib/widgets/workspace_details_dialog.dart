@@ -7,8 +7,8 @@ import '../models/workspace.dart';
 import '../models/workspace_folder.dart';
 import '../repositories/session_repository.dart';
 import '../theme/app_text_styles.dart';
-import 'app_dialog.dart';
 import 'workspace_folders_editor.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 Future<void> showWorkspaceDetailsDialog(
   BuildContext context,
@@ -94,14 +94,14 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
     final styles = AppTextStyles.of(context);
     final p = widget.workspace;
 
-    return AppDialog(
+    return TpDialog(
       scrollable: true,
       maxHeight: MediaQuery.sizeOf(context).height * 0.85,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.workspaceDetailsTitle),
+          TpDialogHeader(title: l10n.workspaceDetailsTitle),
           const SizedBox(height: 16),
           TextField(
             controller: _displayController,
@@ -133,7 +133,7 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
             label: l10n.workspaceUpdatedAt,
             value: _formatTimestamp(p.updatedAt),
           ),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: _saving ? null : () => Navigator.of(context).pop(),

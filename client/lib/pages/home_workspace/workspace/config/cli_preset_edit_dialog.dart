@@ -8,15 +8,13 @@ import '../../../../models/cli_preset.dart';
 import 'cli_preset_provider_navigation.dart';
 import '../../../../services/cli/registry/cli_display_name.dart';
 import '../../../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../../../widgets/app_dialog.dart';
 import '../../../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../../../widgets/app_provider/cli_effort_picker_field.dart';
 import '../../../../widgets/app_provider/provider_model_picker_field.dart';
-import '../../../../widgets/dropdown/app_dropdown_decoration.dart';
-import '../../../../widgets/dropdown/app_dropdown_field.dart';
 import '../../../../widgets/settings/workspace_settings_widgets.dart';
 import 'workspace_cli_config_helpers.dart';
 import 'workspace_cli_effort_helpers.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 class CliPresetEditDialog extends StatefulWidget {
   const CliPresetEditDialog({this.existing, this.lockCli, super.key});
@@ -101,7 +99,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final registry = CliToolRegistryScope.of(context);
-    final dropdownDeco = AppDropdownDecorations.themed(context);
+    final dropdownDeco = TpSelectDecorations.themed(context);
     final providers = context
         .watch<AppProviderCubit>()
         .state
@@ -120,13 +118,13 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
       model: _modelId,
     );
 
-    return AppDialog(
+    return TpDialog(
       maxWidth: 640,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(
+          TpDialogHeader(
             title: widget.isEditing
                 ? l10n.workspaceCliEditPresetTitle
                 : l10n.workspaceCliAddPresetTitle,
@@ -143,7 +141,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
           ),
           SettingsLabeledRow(
             title: l10n.teamCliLabel,
-            trailing: AppDropdownField<String>(
+            trailing: TpSelect<String>(
               items: [for (final def in registry.launchable) def.id.value],
               initialItem: _cli.value,
               decoration: dropdownDeco,
@@ -175,7 +173,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
           ),
           SettingsLabeledRow(
             title: l10n.provider,
-            trailing: AppDropdownField<String>(
+            trailing: TpSelect<String>(
               key: ValueKey('preset-provider-$_cli-$_providerId'),
               items: providers.map((p) => p.id).toList()..sort(),
               initialItem: _providerId.isEmpty ? null : _providerId,
@@ -250,7 +248,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
               ),
               showDividerBelow: false,
             ),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => _openProviderConfig(context),

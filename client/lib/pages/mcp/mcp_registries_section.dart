@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
@@ -9,7 +9,6 @@ import '../../services/mcp/mcp_registry_browse_service.dart';
 import '../../services/mcp/mcp_registry_config_service.dart';
 import '../../services/mcp/smithery_mcp_service.dart';
 import '../../theme/app_text_styles.dart';
-import '../../widgets/app_dialog.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'mcp_shared_widgets.dart';
 
@@ -91,15 +90,15 @@ class _McpRegistriesSectionState extends State<McpRegistriesSection> {
     final l10n = context.l10n;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AppDialog(
+      builder: (ctx) => TpDialog(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppDialogHeader(title: l10n.mcpRegistryResetTitle),
+            TpDialogHeader(title: l10n.mcpRegistryResetTitle),
             const SizedBox(height: 16),
             Text(l10n.mcpRegistryResetConfirm(_sourceLabel(source.kind, l10n))),
-            AppDialogActions(
+            TpDialogActions(
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
@@ -291,7 +290,7 @@ class _RegistrySourceEditDialogState extends State<_RegistrySourceEditDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return AppDialog(
+    return TpDialog(
       maxWidth: 420,
       scrollable: true,
       maxHeight: MediaQuery.sizeOf(context).height * 0.85,
@@ -299,7 +298,7 @@ class _RegistrySourceEditDialogState extends State<_RegistrySourceEditDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.mcpRegistryEditTitle),
+          TpDialogHeader(title: l10n.mcpRegistryEditTitle),
           const SizedBox(height: 16),
           TextField(
             controller: _urlCtrl,
@@ -323,7 +322,7 @@ class _RegistrySourceEditDialogState extends State<_RegistrySourceEditDialog> {
               ),
             ),
           ],
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -420,7 +419,7 @@ class _RegistryRow extends StatelessWidget {
                   onPressed: onReset,
                   icon: Icon(
                     Icons.delete_outline,
-                    size: context.appIconSizes.md,
+                    size: context.tpIconSizes.md,
                     color: cs.error,
                   ),
                 ),

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
-
-import 'hover_widget.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Close control for tab strips — explicit hover tint so it stays readable on
 /// active tab backgrounds ([ColorScheme.surfaceContainerHigh], etc.).
@@ -27,14 +25,14 @@ class TabCloseButton extends StatelessWidget {
     // Stronger hover on active tabs where the chip background is already filled.
     final hoverAlpha = active ? 0.14 : 0.08;
 
-    return HoverWidget(
+    return TpHover(
       borderRadius: BorderRadius.circular(5),
       padding: const EdgeInsets.all(2),
       hoverColor: cs.onSurface.withValues(alpha: hoverAlpha),
       onTap: onTap,
       child: Icon(
         Icons.close,
-        size: context.appIconSizes.md,
+        size: context.tpIconSizes.md,
         color: effectiveTint,
       ),
     );

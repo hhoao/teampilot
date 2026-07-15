@@ -6,8 +6,7 @@ import '../../models/cli_preset.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../theme/app_text_styles.dart';
 import '../../pages/team_config/team_config_helpers.dart';
-import '../../widgets/dropdown/app_dropdown_decoration.dart';
-import '../../widgets/dropdown/app_dropdown_field.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'cli_launch_config_dropdown.dart';
 
@@ -43,17 +42,17 @@ class PresetLaunchPickerField extends StatelessWidget {
   final CliToolRegistry registry;
   final AppProviderState providerState;
   final ValueChanged<String> onChanged;
-  final AppDropdownDecoration? decoration;
+  final TpSelectDecoration? decoration;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final dropdownDeco = decoration ?? AppDropdownDecorations.themed(context);
+    final dropdownDeco = decoration ?? TpSelectDecorations.themed(context);
 
     return SettingsLabeledRow(
       title: l10n.memberPresetLabel,
       trailing: cliLaunchConfigDropdown(
-        AppDropdownField<String>(
+        TpSelect<String>(
           items: items,
           initialItem: currentToken,
           hintText: l10n.memberPresetSelectPreset,

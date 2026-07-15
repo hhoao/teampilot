@@ -22,12 +22,12 @@ import '../services/terminal/workspace_terminal_session_ops.dart';
 import '../services/terminal/workspace_terminal_title_resolver.dart';
 import '../services/workspace/workspace_tools_scope.dart';
 import '../theme/workspace_surface_layers.dart';
-import 'app_icon_button.dart';
 import 'run/run_panel.dart';
 import 'run/run_session_dismiss.dart';
 import 'workspace_dock_tab.dart';
 import 'workspace_terminal/workspace_terminal_new_session_menu.dart';
 import 'workspace_terminal_panel.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Which bottom tool is visible in the workspace IDE shell.
 enum WorkspaceBottomDockTab { terminal, run }
@@ -456,10 +456,10 @@ class _DockHeader extends StatelessWidget {
                     ),
                   KeyedSubtree(
                     key: plusKey,
-                    child: AppIconButton(
+                    child: TpIconButton(
                       icon: Icons.add,
                       color: muted,
-                      size: AppIconButton.kCompactSize,
+                      size: TpIconButton.kCompactSize,
                       tooltip: newSessionTooltip,
                       onTap: onPlus,
                     ),
@@ -468,10 +468,10 @@ class _DockHeader extends StatelessWidget {
               ),
             ),
           ),
-          AppIconButton(
+          TpIconButton(
             icon: Icons.remove,
             color: muted,
-            size: AppIconButton.kCompactSize,
+            size: TpIconButton.kCompactSize,
             tooltip: hideTooltip,
             onTap: onHide,
           ),

@@ -8,9 +8,9 @@ import '../../../../cubits/plugin_cubit.dart';
 import '../../../../cubits/workspace_project_config_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../home_workspace_global_section.dart';
-import '../../../../widgets/empty_state_block.dart';
 import '../../../team_config/team_config_cards.dart';
 import '../../../team_config/team_config_plugins_section.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 class WorkspacePluginsSection extends StatelessWidget {
   const WorkspacePluginsSection({required this.workspaceId, super.key});
@@ -54,7 +54,7 @@ class WorkspacePluginsSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 if (installed.isEmpty)
-                  EmptyStateBlock(
+                  TpEmptyState(
                     icon: Icons.inventory_2_outlined,
                     title: l10n.workspacePluginsEmpty,
                     hint: l10n.workspacePluginsEmptyHint,

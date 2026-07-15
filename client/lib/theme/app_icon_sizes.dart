@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'app_typography_scale.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Central **icon sizes and colors** for TeamPilot UI.
 ///
@@ -10,7 +11,7 @@ import 'app_typography_scale.dart';
 /// Other size roles are available when a screen needs denser chrome or illustrations.
 ///
 /// Baseline design tokens at multiplier 1.0. Widgets should read scaled sizes via
-/// [BuildContext.appIconSizes] (from [AppIconSizeTheme], driven by
+/// [BuildContext.tpIconSizes] (from [AppIconSizeTheme], driven by
 /// [resolveIconMultiplier] in [buildLightTheme] / [buildDarkTheme]).
 abstract final class AppIconSizes {
   AppIconSizes._();
@@ -26,7 +27,7 @@ abstract final class AppIconSizes {
   /// Dense chrome (e.g. editor/terminal tab actions).
   static const double xsBase = 15;
 
-  /// Compact list/toolbar glyph ([AppIconButton] compact preset).
+  /// Compact list/toolbar glyph ([TpIconButton] compact preset).
   static const double smBase = 16;
 
   /// Default interactive icon: lists, toolbars, title bars, buttons.
@@ -120,7 +121,7 @@ extension AppIconSizesContext on BuildContext {
 
 /// Resolved icon sizes on [ThemeData.extensions], scaled by the active
 /// [AppTypographyScale] multiplier. Read non-default roles via
-/// [BuildContext.appIconSizes]; the default size also flows through
+/// [BuildContext.tpIconSizes]; the default size also flows through
 /// [ThemeData.iconTheme].
 @immutable
 final class AppIconSizeTheme extends ThemeExtension<AppIconSizeTheme> {

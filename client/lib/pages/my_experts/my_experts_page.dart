@@ -12,8 +12,7 @@ import '../../models/team_config.dart';
 import '../../services/expert_hub/local_expert_writer.dart';
 import '../../services/expert_hub/member_roster_service.dart';
 import '../../services/hub_publish/hub_publish_record_store.dart';
-import '../../widgets/app_dialog.dart';
-import '../../widgets/empty_state_block.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../expert_hub/expert_editor_dialog.dart';
 import '../expert_hub/expert_team_picker_dialog.dart';
@@ -157,19 +156,19 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
     if (refs.isNotEmpty) {
       await showDialog<void>(
         context: context,
-        builder: (ctx) => AppDialog(
+        builder: (ctx) => TpDialog(
           maxWidth: 480,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppDialogHeader(
+              TpDialogHeader(
                 title: l10n.myExpertsDelete,
                 onClose: () => Navigator.of(ctx).pop(),
               ),
               const SizedBox(height: 16),
               Text(l10n.myExpertsDeleteReferenced(member.name)),
-              AppDialogActions(
+              TpDialogActions(
                 children: [
                   FilledButton(
                     onPressed: () => Navigator.of(ctx).pop(),
@@ -186,19 +185,19 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AppDialog(
+      builder: (ctx) => TpDialog(
         maxWidth: 480,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppDialogHeader(
+            TpDialogHeader(
               title: l10n.myExpertsDelete,
               onClose: () => Navigator.of(ctx).pop(false),
             ),
             const SizedBox(height: 16),
             Text(l10n.myExpertsDeleteConfirm(member.name)),
-            AppDialogActions(
+            TpDialogActions(
               children: [
                 TextButton(
                   onPressed: () => Navigator.of(ctx).pop(false),
@@ -327,7 +326,7 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _members.isEmpty
-                ? EmptyStateBlock(
+                ? TpEmptyState(
                     centered: true,
                     icon: Icons.person_outline,
                     title: l10n.myExpertsEmptyTitle,

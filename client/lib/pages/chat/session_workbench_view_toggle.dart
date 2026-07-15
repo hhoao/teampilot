@@ -14,7 +14,7 @@ import '../../models/app_session.dart';
 import '../../models/team_config.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/team_member_naming.dart';
-import '../../widgets/app_icon_button.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Tab-bar control to switch a session between History and Terminal.
 class SessionWorkbenchViewToggle extends StatelessWidget {
@@ -46,7 +46,7 @@ class SessionWorkbenchViewToggle extends StatelessWidget {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
 
-    return AppIconButton(
+    return TpIconButton(
       key: AppKeys.sessionWorkbenchViewToggle,
       icon: showingHistory
           ? Icons.terminal_rounded

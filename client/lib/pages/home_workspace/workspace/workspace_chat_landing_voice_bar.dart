@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
@@ -37,7 +37,7 @@ class ComposeVoiceRecordingStatus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final spacing = context.appSpacing;
+    final spacing = context.tpSpacing;
     final styles = AppTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
 
@@ -176,7 +176,7 @@ class _ComposeVoiceIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icons = context.appIconSizes;
+    final icons = context.tpIconSizes;
     return Tooltip(
       message: tooltip,
       child: Material(

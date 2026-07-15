@@ -153,7 +153,7 @@ void main() {
 
     // Create a leftover gap between shell and intrinsic line metrics, then
     // tap that blank region — it must still hit the expanding TextField.
-    final grip = find.byKey(const Key('app-textarea-resize-grip'));
+    final grip = find.byKey(const Key('tp-textarea-resize-grip'));
     await tester.drag(grip, const Offset(0, 37));
     await tester.pump();
 
@@ -185,7 +185,7 @@ void main() {
       onSubmit: () {},
     );
 
-    final grip = find.byKey(const Key('app-textarea-resize-grip'));
+    final grip = find.byKey(const Key('tp-textarea-resize-grip'));
     expect(grip, findsOneWidget);
 
     await tester.drag(grip, const Offset(0, 24));

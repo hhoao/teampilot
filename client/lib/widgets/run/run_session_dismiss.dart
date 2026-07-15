@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../cubits/run_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/run/run_session.dart';
-import '../app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Confirms stop when needed, then dismisses [session] from [RunCubit].
 ///
@@ -21,19 +21,19 @@ Future<bool> dismissRunSessionWithConfirm({
     final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AppDialog(
+      builder: (dialogContext) => TpDialog(
         maxWidth: 420,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppDialogHeader(
+            TpDialogHeader(
               title: l10n.runStopSessionTitle,
               onClose: () => Navigator.of(dialogContext).pop(false),
             ),
             const SizedBox(height: 12),
             Text(l10n.runStopSessionMessage(session.owned.configuration.name)),
-            AppDialogActions(
+            TpDialogActions(
               children: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),

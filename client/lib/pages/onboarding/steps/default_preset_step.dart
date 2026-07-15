@@ -16,12 +16,12 @@ import '../../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../../widgets/app_provider/cli_effort_picker_field.dart';
 import '../../../widgets/app_provider/provider_model_picker_field.dart';
 import '../../../widgets/cli/cli_brand_icon.dart';
-import '../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
 import '../../home_workspace/workspace/config/workspace_cli_config_helpers.dart';
 import '../../home_workspace/workspace/config/workspace_cli_effort_helpers.dart';
 import '../../../theme/app_text_styles.dart';
 import 'onboarding_step_scaffold.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 class OnboardingDefaultPresetStep extends StatefulWidget {
   const OnboardingDefaultPresetStep({super.key, this.isActive = true});
@@ -190,7 +190,7 @@ class OnboardingDefaultPresetStepState
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final registry = CliToolRegistryScope.of(context);
-    final dropdownDeco = AppDropdownDecorations.themed(context);
+    final dropdownDeco = TpSelectDecorations.themed(context);
     final providers = _providersForCli(_cli);
     final selectedProvider = _selectedProvider();
     final hideModelPicker = workspaceCliHidesModelPicker(

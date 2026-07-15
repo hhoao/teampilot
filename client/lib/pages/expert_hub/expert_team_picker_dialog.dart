@@ -6,7 +6,7 @@ import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
 import '../../utils/launch_profile_display_name.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../team_hub/team_hub_visuals.dart';
 
 /// Picks a team to receive an Expert Hub member. Returns the selected [teamId],
@@ -28,7 +28,7 @@ class ExpertTeamPickerDialog extends StatelessWidget {
       (c) => c.state.teams,
     );
 
-    return AppDialog(
+    return TpDialog(
       maxWidth: 480,
       maxHeight: MediaQuery.sizeOf(context).height * 0.7,
       scrollable: true,
@@ -36,7 +36,7 @@ class ExpertTeamPickerDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.selectTeam),
+          TpDialogHeader(title: l10n.selectTeam),
           const SizedBox(height: 8),
           for (final team in teams)
             ListTile(

@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/chat_cubit.dart';
@@ -12,7 +12,6 @@ import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
-import '../../widgets/app_icon_button.dart';
 import '../../widgets/tab_close_button.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
@@ -51,7 +50,7 @@ class WorkspaceShellBottomDockVisibilityToggle extends StatelessWidget {
           b.preferences.workspaceTerminalVisible,
       builder: (context, state) {
         final visible = state.preferences.workspaceTerminalVisible;
-        return AppIconButton(
+        return TpIconButton(
           key: AppKeys.workspaceBottomDockVisibilityButton,
           icon: Icons.horizontal_split_outlined,
           tooltip: visible
@@ -84,7 +83,7 @@ class WorkspaceShellRightToolsVisibilityToggle extends StatelessWidget {
         final visible = composeLanding
             ? (state.landingRightToolsOverride ?? false)
             : state.preferences.rightToolsVisible;
-        return AppIconButton(
+        return TpIconButton(
           key: AppKeys.rightToolsVisibilityButton,
           icon: Icons.vertical_split_outlined,
           tooltip: visible
@@ -111,7 +110,7 @@ class WorkspaceShellSidebarVisibilityToggle extends StatelessWidget {
     return BlocBuilder<LayoutCubit, LayoutState>(
       builder: (context, state) {
         final visible = state.preferences.sidebarVisible;
-        return AppIconButton(
+        return TpIconButton(
           key: AppKeys.sidebarVisibilityButton,
           icon: Icons.view_sidebar_outlined,
           tooltip: visible ? l10n.sidebarPanelHidden : l10n.sidebarPanelVisible,
@@ -217,7 +216,7 @@ class WorkspaceShellNewChatButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppIconButton(
+    return TpIconButton(
       key: AppKeys.workspaceTabRowNewChatButton,
       icon: Icons.add_rounded,
       tooltip: tooltip,
@@ -407,7 +406,7 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
                   // Left accent bar
                   SizedBox(
                     width: 3,
-                    height: context.appIconSizes.md,
+                    height: context.tpIconSizes.md,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         color: barColor,
@@ -421,7 +420,7 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
                   if (widget.working)
                     SessionWorkingIndicator(
                       working: true,
-                      size: context.appIconSizes.sm,
+                      size: context.tpIconSizes.sm,
                       color: iconColor,
                     )
                   else
@@ -481,7 +480,7 @@ class _TabLeadingIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final cliTool = cli;
     if (cliTool == null) {
-      return Icon(icon, size: context.appIconSizes.md, color: iconColor);
+      return Icon(icon, size: context.tpIconSizes.md, color: iconColor);
     }
     final registry = CliToolRegistryScope.of(context);
     return Opacity(
@@ -489,7 +488,7 @@ class _TabLeadingIcon extends StatelessWidget {
       child: CliBrandIcon(
         cli: cliTool,
         definition: registry.tryGet(cliTool),
-        size: context.appIconSizes.md,
+        size: context.tpIconSizes.md,
         borderRadius: 4,
       ),
     );

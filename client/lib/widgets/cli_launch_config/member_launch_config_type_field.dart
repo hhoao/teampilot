@@ -10,8 +10,7 @@ import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../theme/app_text_styles.dart';
-import '../dropdown/app_dropdown_decoration.dart';
-import '../dropdown/app_dropdown_field.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../settings/workspace_settings_widgets.dart';
 import 'cli_launch_config_dropdown.dart';
 import 'member_launch_config_kind.dart';
@@ -29,7 +28,7 @@ class MemberLaunchConfigTypeField extends StatelessWidget {
 
   final MemberLaunchConfigKind currentKind;
   final ValueChanged<MemberLaunchConfigKind> onChanged;
-  final AppDropdownDecoration? decoration;
+  final TpSelectDecoration? decoration;
   final bool showDividerBelow;
 
   static const _items = MemberLaunchConfigKind.values;
@@ -37,12 +36,12 @@ class MemberLaunchConfigTypeField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final dropdownDeco = decoration ?? AppDropdownDecorations.themed(context);
+    final dropdownDeco = decoration ?? TpSelectDecorations.themed(context);
 
     return SettingsLabeledRow(
       title: l10n.memberLaunchConfigTypeLabel,
       trailing: cliLaunchConfigDropdown(
-        AppDropdownField<MemberLaunchConfigKind>(
+        TpSelect<MemberLaunchConfigKind>(
           items: _items,
           initialItem: currentKind,
           hintText: l10n.memberLaunchConfigTypeLabel,
@@ -173,7 +172,7 @@ class MemberLaunchPresetField extends StatelessWidget {
   final CliToolRegistry registry;
   final AppProviderState providerState;
   final ValueChanged<String> onChanged;
-  final AppDropdownDecoration? decoration;
+  final TpSelectDecoration? decoration;
 
   @override
   Widget build(BuildContext context) {

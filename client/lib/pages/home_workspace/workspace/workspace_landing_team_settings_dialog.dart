@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../../cubits/app_provider_cubit.dart';
 import '../../../cubits/chat_cubit.dart';
@@ -592,7 +592,7 @@ class _PaneHeader extends StatelessWidget {
           IconButton(
             tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
             onPressed: onClose,
-            icon: Icon(Icons.close, size: context.appIconSizes.md),
+            icon: Icon(Icons.close, size: context.tpIconSizes.md),
             color: cs.onSurfaceVariant,
           ),
         ],
@@ -870,7 +870,7 @@ class _TeamDefaultPresetSummary extends StatelessWidget {
               const SizedBox(width: 12),
               OutlinedButton.icon(
                 onPressed: onConfigure,
-                icon: Icon(Icons.tune, size: context.appIconSizes.sm),
+                icon: Icon(Icons.tune, size: context.tpIconSizes.sm),
                 label: Text(l10n.workspaceCliConfigure),
               ),
             ],
@@ -1039,7 +1039,7 @@ class _MemberRow extends StatelessWidget {
                   const SizedBox(width: 12),
                   OutlinedButton.icon(
                     onPressed: () => onOpenMemberConfigure(member),
-                    icon: Icon(Icons.tune, size: context.appIconSizes.sm),
+                    icon: Icon(Icons.tune, size: context.tpIconSizes.sm),
                     label: Text(l10n.workspaceCliConfigure),
                   ),
                 ],

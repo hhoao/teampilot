@@ -10,10 +10,8 @@ import '../../models/workspace.dart';
 import '../../services/run/launch_adapter_protocol.dart';
 import '../../services/run/launch_config_store.dart';
 import '../../services/run/launch_type_unavailable.dart';
-import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
-import '../app_dialog.dart';
-import '../app_icon_button.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../menu/sidebar_action_menu.dart';
 import 'run_config_editor_dialog.dart';
 import 'run_configurations_dialog.dart';
@@ -253,7 +251,7 @@ class RunToolbarConfigDropdown extends StatelessWidget {
     final check = selected
         ? Icon(
             Icons.check,
-            size: context.appIconSizes.md,
+            size: context.tpIconSizes.md,
             color: cs.onSurface.withValues(alpha: 0.7),
           )
         : null;
@@ -276,11 +274,11 @@ class RunToolbarConfigDropdown extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (check != null) ...[check, const SizedBox(width: 4)],
-          AppIconButton(
+          TpIconButton(
             key: Key('run-config-edit-${editable.selectionKey}'),
             icon: Icons.edit_outlined,
             tooltip: l10n.edit,
-            size: AppIconButton.kCompactSize,
+            size: TpIconButton.kCompactSize,
             compact: true,
             onTap: () {
               controller.close();
@@ -294,11 +292,11 @@ class RunToolbarConfigDropdown extends StatelessWidget {
             },
           ),
           if (showDelete)
-            AppIconButton(
+            TpIconButton(
               key: Key('run-config-delete-${editable.selectionKey}'),
               icon: Icons.delete_outline,
               tooltip: l10n.runDeleteConfiguration,
-              size: AppIconButton.kCompactSize,
+              size: TpIconButton.kCompactSize,
               compact: true,
               onTap: () {
                 controller.close();
@@ -320,13 +318,13 @@ class RunToolbarConfigDropdown extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) {
-        return AppDialog(
+        return TpDialog(
           maxWidth: 420,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppDialogHeader(
+              TpDialogHeader(
                 title: l10n.runDeleteConfiguration,
                 onClose: () => Navigator.of(ctx).pop(false),
               ),
@@ -338,7 +336,7 @@ class RunToolbarConfigDropdown extends StatelessWidget {
                       : owned.configuration.name,
                 ),
               ),
-              AppDialogActions(
+              TpDialogActions(
                 children: [
                   TextButton(
                     onPressed: () => Navigator.of(ctx).pop(false),

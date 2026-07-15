@@ -6,10 +6,7 @@ import '../../services/cli/registry/capabilities/provider_model_capability.dart'
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
-import '../app_dialog.dart';
-import '../app_icon_button.dart';
-import '../dropdown/app_dropdown_decoration.dart';
-import '../dropdown/app_dropdown_with_custom_input.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// One model row stored under `provider.config['models']`.
 @immutable
@@ -194,10 +191,10 @@ class ProviderModelsEditor extends StatelessWidget {
             Expanded(
               child: Text(l10n.models, style: styles.mdSnug),
             ),
-            AppIconButton(
+            TpIconButton(
               icon: Icons.add,
               compact: true,
-              size: AppIconButton.kCompactSize,
+              size: TpIconButton.kCompactSize,
               tooltip: l10n.addModel,
               onTap: () => _addOrEdit(context),
             ),
@@ -336,17 +333,17 @@ class _ModelRow extends StatelessWidget {
             width: 48,
             child: Switch(value: entry.enabled, onChanged: onToggleEnabled),
           ),
-          AppIconButton(
+          TpIconButton(
             icon: Icons.edit_outlined,
             compact: true,
-            size: AppIconButton.kCompactSize,
+            size: TpIconButton.kCompactSize,
             tooltip: l10n.edit,
             onTap: onEdit,
           ),
-          AppIconButton(
+          TpIconButton(
             icon: Icons.delete_outline,
             compact: true,
-            size: AppIconButton.kCompactSize,
+            size: TpIconButton.kCompactSize,
             tooltip: l10n.delete,
             onTap: onDelete,
           ),
@@ -396,18 +393,18 @@ class _ProviderModelEntryDialogState extends State<_ProviderModelEntryDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final deco = AppDropdownDecorations.themed(context, borderRadius: 8);
-    return AppDialog(
+    final deco = TpSelectDecorations.themed(context, borderRadius: 8);
+    return TpDialog(
       maxWidth: 400,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: widget.title),
+          TpDialogHeader(title: widget.title),
           const SizedBox(height: 16),
           Text(l10n.modelId, style: AppTextStyles.of(context).mdSnug),
           const SizedBox(height: 8),
-          AppDropdownWithCustomInput(
+          TpSelectWithCustomInput(
             value: _model,
             items: widget.suggestions,
             hintText: l10n.selectModel,
@@ -426,7 +423,7 @@ class _ProviderModelEntryDialogState extends State<_ProviderModelEntryDialog> {
             value: _enabled,
             onChanged: (value) => setState(() => _enabled = value),
           ),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => Navigator.pop(context),

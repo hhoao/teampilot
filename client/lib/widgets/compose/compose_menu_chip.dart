@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
 import '../../theme/app_spacing.dart';
@@ -71,8 +71,8 @@ class ComposeToolbarChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final spacing = context.appSpacing;
-    final icons = context.appIconSizes;
+    final spacing = context.tpSpacing;
+    final icons = context.tpIconSizes;
     final labelStyle = AppTextStyles.of(
       context,
     ).smColored(palette.muted);

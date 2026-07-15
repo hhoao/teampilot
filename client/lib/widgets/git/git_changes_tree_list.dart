@@ -9,7 +9,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/git_status.dart';
 import '../../services/git/git_changes_visible_rows.dart';
 import '../../theme/app_text_styles.dart';
-import '../app_icon_button.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'git_change_folder_tile.dart';
 import 'git_change_tile.dart';
 
@@ -107,10 +107,10 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
                           child: GitChangesSectionHeader(
                             title: l10n.gitStagedChanges,
                             count: stagedCount,
-                            action: AppIconButton(
+                            action: TpIconButton(
                               icon: Icons.remove,
                               compact: true,
-                              size: AppIconButton.kCompactSize,
+                              size: TpIconButton.kCompactSize,
                               tooltip: l10n.gitUnstageAll,
                               onTap: () => unawaited(widget.cubit.unstageAll()),
                             ),
@@ -135,10 +135,10 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
                           child: GitChangesSectionHeader(
                             title: l10n.gitChanges,
                             count: unstagedCount,
-                            action: AppIconButton(
+                            action: TpIconButton(
                               icon: Icons.add,
                               compact: true,
-                              size: AppIconButton.kCompactSize,
+                              size: TpIconButton.kCompactSize,
                               tooltip: l10n.gitStageAll,
                               onTap: () => unawaited(widget.cubit.stageAll()),
                             ),

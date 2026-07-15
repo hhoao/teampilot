@@ -14,9 +14,7 @@ import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import '../../services/ssh/ssh_profile_connection_tester.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
-import '../../widgets/app_dialog.dart';
-import '../../widgets/form/app_form.dart';
-import '../../widgets/form/app_form_field.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Desktop settings: Orca-style modal for adding/editing an SSH target.
 Future<void> showSshProfileFormDialog(
@@ -39,7 +37,7 @@ class _SshProfileFormDialog extends StatefulWidget {
 }
 
 class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
-  final _formKey = GlobalKey<AppFormState>();
+  final _formKey = GlobalKey<TpFormState>();
   late final TextEditingController _labelController;
   late final TextEditingController _hostController;
   late final TextEditingController _usernameController;
@@ -233,13 +231,13 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     final l10n = context.l10n;
     final busy = _saving || _testing;
 
-    return AppDialog(
+    return TpDialog(
       maxWidth: 560,
       maxHeight: MediaQuery.sizeOf(context).height * 0.9,
-      child: AppForm(
+      child: TpForm(
         key: _formKey,
-        child: AppDialogPinnedLayout(
-          header: AppDialogHeader(
+        child: TpDialogPinnedLayout(
+          header: TpDialogHeader(
             title: _isEditing
                 ? l10n.sshProfileFormTitleEdit
                 : l10n.sshProfileFormTitleNew,
@@ -324,7 +322,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
               ),
             ],
           ),
-          footer: AppDialogActions(
+          footer: TpDialogActions(
             children: [
               TextButton(
                 onPressed: busy ? null : () => Navigator.of(context).pop(),
@@ -372,7 +370,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) {
-    return AppFormField<String>(
+    return TpFormField<String>(
       id: id,
       initialValue: controller.text,
       label: Text(required ? '$label *' : label),
@@ -389,7 +387,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
             hintText: hint,
             prefixIcon: prefixIcon == null ? null : Icon(prefixIcon),
             suffixIcon: suffix,
-            // Border reflects error; message is shown by AppFormFieldLayout.
+            // Border reflects error; message is shown by TpFormFieldLayout.
             errorText: state.hasError ? '' : null,
             errorStyle: const TextStyle(height: 0, fontSize: 0),
           ),

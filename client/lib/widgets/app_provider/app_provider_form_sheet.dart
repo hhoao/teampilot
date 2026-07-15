@@ -20,15 +20,13 @@ import '../../services/provider/codex/codex_provider_form_capability.dart';
 import '../../services/provider/credential_binding.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';
-import '../app_icon_button.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'brand_dropdown_rows.dart';
 import 'cli_effort_picker_field.dart';
 import 'claude_credential_binding_field.dart';
 import 'provider_credential_action_bar.dart';
 import 'provider_model_picker_field.dart';
 import 'provider_models_editor.dart';
-import '../dropdown/app_dropdown_field.dart';
-import '../textarea/app_textarea.dart';
 
 class AppProviderFormPage extends StatefulWidget {
   const AppProviderFormPage({
@@ -290,7 +288,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                 if (!_isEditing && widget.onCliChanged != null)
                   SizedBox(
                     width: 180,
-                    child: AppDropdownField<CliTool>(
+                    child: TpSelect<CliTool>(
                       items: CliTool.values,
                       initialItem: widget.cli,
                       itemLabel: (cli) => l10n.appProviderToolLabel(cli),
@@ -306,7 +304,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                       },
                     ),
                   ),
-                AppIconButton(
+                TpIconButton(
                   icon: Icons.close,
                   tooltip: l10n.cancel,
                   onTap: widget.onCancel,
@@ -323,7 +321,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   style: AppTextStyles.of(context).mdSnug,
                 ),
                 const SizedBox(height: 8),
-                AppDropdownField<String>(
+                TpSelect<String>(
                   key: ValueKey('app-provider-preset-${widget.cli.value}'),
                   items: presetItems,
                   initialItem: _effectiveItem(_presetId, presetItems),
@@ -407,10 +405,10 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                       final bodyStyle =
                           Theme.of(context).textTheme.bodyMedium ??
                           const TextStyle();
-                      return AppTextarea(
+                      return TpTextarea(
                         controller: _jsonCtl,
-                        minHeight: appTextareaHeightForLines(bodyStyle, lines: 16),
-                        maxHeight: appTextareaHeightForLines(bodyStyle, lines: 28),
+                        minHeight: tpTextareaHeightForLines(bodyStyle, lines: 16),
+                        maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 28),
                         decoration: const InputDecoration(),
                       );
                     },
@@ -433,10 +431,10 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                       final bodyStyle =
                           Theme.of(context).textTheme.bodyMedium ??
                           const TextStyle();
-                      return AppTextarea(
+                      return TpTextarea(
                         controller: _notesCtl,
-                        minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
-                        maxHeight: appTextareaHeightForLines(bodyStyle, lines: 4),
+                        minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
+                        maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 4),
                         decoration: InputDecoration(labelText: l10n.notes),
                       );
                     },

@@ -12,12 +12,7 @@ import '../../services/run/launch_config_l10n.dart';
 import '../../services/run/shell_script_launch_schema.dart';
 import '../../theme/app_dialog_theme.dart';
 import '../../theme/app_text_styles.dart';
-import '../app_dialog.dart';
-import '../dropdown/app_dropdown_decoration.dart';
-import '../dropdown/app_dropdown_field.dart';
-import '../form/app_form.dart';
-import '../form/app_form_field.dart';
-import '../form/app_form_field_layout.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'launch_config_schema_form.dart';
 
 const double _kEditorWidth = 560;
@@ -74,7 +69,7 @@ class RunConfigEditorDialog extends StatefulWidget {
 enum _DirtyChoice { apply, discard, cancel }
 
 class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
-  final _formKey = GlobalKey<AppFormState>();
+  final _formKey = GlobalKey<TpFormState>();
   OwnedLaunchConfiguration? _draft;
   OwnedLaunchConfiguration? _baseline;
   List<String> _formErrors = const [];
@@ -173,19 +168,19 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
     return showDialog<_DirtyChoice>(
       context: context,
       builder: (ctx) {
-        return AppDialog(
+        return TpDialog(
           maxWidth: 420,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppDialogHeader(
+              TpDialogHeader(
                 title: l10n.runDiscardChangesTitle,
                 onClose: () => Navigator.of(ctx).pop(_DirtyChoice.cancel),
               ),
               const SizedBox(height: 12),
               Text(l10n.runDiscardChangesMessage),
-              AppDialogActions(
+              TpDialogActions(
                 children: [
                   TextButton(
                     onPressed: () =>
@@ -303,7 +298,7 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
     final media = MediaQuery.of(context);
     final dialogWidth = _kEditorWidth.clamp(
       0.0,
-      media.size.width - kAppDialogInsetExtent,
+      media.size.width - kTpDialogInsetExtent,
     );
     final maxHeight = media.size.height * 0.85;
     final title = _isCreating
@@ -316,15 +311,15 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
         if (didPop) return;
         unawaited(_onCancel());
       },
-      child: AppDialog(
+      child: TpDialog(
         maxWidth: dialogWidth,
         maxHeight: maxHeight,
-        child: AppForm(
+        child: TpForm(
           key: _formKey,
-          child: AppDialogPinnedLayout(
-            header: AppDialogHeader(title: title, onClose: _onCancel),
+          child: TpDialogPinnedLayout(
+            header: TpDialogHeader(title: title, onClose: _onCancel),
             body: _buildBody(context),
-            footer: AppDialogActions(
+            footer: TpDialogActions(
               children: [
                 TextButton(
                   key: const Key('run-config-editor-cancel'),
@@ -367,22 +362,22 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (showFolderPicker) ...[
-          AppFormField<String>(
+          TpFormField<String>(
             id: 'folder',
             initialValue: draft.owner.path,
             label: Text(l10n.runSelectFolder),
-            layoutStyle: AppFormFieldLayoutStyle.inline,
+            layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: kLaunchConfigFormLabelWidth,
             builder: (state) {
               final selected = folders
                   .where((f) => f.path == state.value)
                   .firstOrNull;
-              return AppDropdownField<WorkspaceFolder>(
+              return TpSelect<WorkspaceFolder>(
                 key: const Key('run-config-folder-dropdown'),
                 items: folders,
                 initialItem: selected ?? draft.owner,
                 searchable: folders.length >= 8,
-                decoration: AppDropdownDecorations.themed(context),
+                decoration: TpSelectDecorations.themed(context),
                 itemLabel: _folderLabel,
                 onChanged: (folder) {
                   if (folder == null) return;
@@ -394,12 +389,12 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
           ),
           const SizedBox(height: 12),
         ],
-        AppFormField<String>(
+        TpFormField<String>(
           key: ValueKey<String>('run-config-type-$type'),
           id: 'type',
           initialValue: type,
           label: Text(l10n.runConfigurationType),
-          layoutStyle: AppFormFieldLayoutStyle.inline,
+          layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: kLaunchConfigFormLabelWidth,
           builder: (state) {
             final targetId = draft.owner.targetId;
@@ -414,12 +409,12 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
                 )
                 .toList();
             final selected = types.where((t) => t.type == type).firstOrNull;
-            return AppDropdownField<LaunchTypeContribution>(
+            return TpSelect<LaunchTypeContribution>(
               key: const Key('run-config-type-dropdown'),
               items: types,
               initialItem: selected,
               searchable: types.length >= 8,
-              decoration: AppDropdownDecorations.themed(context),
+              decoration: TpSelectDecorations.themed(context),
               itemLabel: (item) => localizeLaunchTypeLabel(l10n, item.type),
               onChanged: (item) {
                 if (item == null) return;

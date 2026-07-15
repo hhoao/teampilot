@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../services/editor/markdown_view_mode_store.dart';
 import '../../theme/app_icon_sizes.dart';
-import '../app_icon_button.dart';
 
 /// Compact Source | Preview pill for markdown files (mirrors File|Diff).
 class MarkdownViewModeToggle extends StatelessWidget {
@@ -16,7 +16,7 @@ class MarkdownViewModeToggle extends StatelessWidget {
   final MarkdownViewMode mode;
   final ValueChanged<MarkdownViewMode> onModeChanged;
 
-  static const double _size = AppIconButton.kCompactSize;
+  static const double _size = TpIconButton.kCompactSize;
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +85,7 @@ class _Segment extends StatelessWidget {
           child: SizedBox(
             width: 30,
             height: MarkdownViewModeToggle._size,
-            child: Icon(icon, size: context.appIconSizes.sm, color: color),
+            child: Icon(icon, size: context.tpIconSizes.sm, color: color),
           ),
         ),
       ),

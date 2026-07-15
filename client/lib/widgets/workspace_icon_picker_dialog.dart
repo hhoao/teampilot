@@ -6,8 +6,8 @@ import '../models/workspace.dart';
 import '../models/workspace_icon_picker_result.dart';
 import '../models/workspace_icon_ref.dart';
 import '../utils/workspace_geometry_catalog.dart';
-import 'app_dialog.dart';
 import 'workspace_icon.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Pure UI for choosing a bundled icon; orchestration lives in [ChatCubit].
 Future<WorkspaceIconPickerResult> showWorkspaceIconPickerDialog(
@@ -64,12 +64,12 @@ class _WorkspaceIconPickerDialogState
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return AppDialog(
+    return TpDialog(
       maxWidth: 420,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          AppDialogHeader(title: widget.title),
+          TpDialogHeader(title: widget.title),
           const SizedBox(height: 16),
           WorkspaceIcon.fromWorkspace(
             widget.workspace,
@@ -146,7 +146,7 @@ class _WorkspaceIconPickerDialogState
               );
             },
           ),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => Navigator.of(

@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/plugin_cubit.dart';
@@ -12,11 +12,9 @@ import '../../models/plugin.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/github_source_url.dart';
-import '../../widgets/app_dialog.dart';
 import '../../widgets/github_details_button.dart';
 import '../../widgets/plugins/plugin_cli_support_disclosure.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
-import '../../widgets/empty_state_block.dart';
 import 'plugin_management_cards.dart';
 
 class PluginInstalledSection extends StatelessWidget {
@@ -56,7 +54,7 @@ class PluginInstalledSection extends StatelessWidget {
                                 ),
                           icon: Icon(
                             Icons.upgrade,
-                            size: context.appIconSizes.md,
+                            size: context.tpIconSizes.md,
                           ),
                           label: Text(
                             l10n.pluginsUpdateAll(state.updates.length),
@@ -71,7 +69,7 @@ class PluginInstalledSection extends StatelessWidget {
                               ),
                         icon: Icon(
                           Icons.folder_open_outlined,
-                          size: context.appIconSizes.md,
+                          size: context.tpIconSizes.md,
                         ),
                         label: Text(l10n.pluginsImportFromDisk),
                       ),
@@ -84,7 +82,7 @@ class PluginInstalledSection extends StatelessWidget {
                               ),
                         icon: Icon(
                           Icons.archive_outlined,
-                          size: context.appIconSizes.md,
+                          size: context.tpIconSizes.md,
                         ),
                         label: Text(l10n.pluginsInstallFromZip),
                       ),
@@ -105,7 +103,7 @@ class PluginInstalledSection extends StatelessWidget {
                               )
                             : Icon(
                                 Icons.refresh,
-                                size: context.appIconSizes.md,
+                                size: context.tpIconSizes.md,
                               ),
                         label: Text(
                           state.updatesLoading
@@ -118,7 +116,7 @@ class PluginInstalledSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 if (state.installed.isEmpty)
-                  EmptyStateBlock(
+                  TpEmptyState(
                     icon: Icons.extension_outlined,
                     title: l10n.pluginsNoInstalled,
                     hint: l10n.pluginsNoInstalledHint,
@@ -198,14 +196,14 @@ class PluginImportUnmanagedDialogState
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return AppDialog(
+    return TpDialog(
       maxWidth: 560,
       maxHeight: 600,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.pluginsImportTitle),
+          TpDialogHeader(title: l10n.pluginsImportTitle),
           const SizedBox(height: 12),
           Flexible(
             child: ListView.builder(
@@ -236,7 +234,7 @@ class PluginImportUnmanagedDialogState
               },
             ),
           ),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
@@ -339,12 +337,12 @@ class PluginInstalledRow extends StatelessWidget {
             if (updateInfo != null)
               TextButton.icon(
                 onPressed: () => cubit.updatePlugin(plugin),
-                icon: Icon(Icons.upgrade, size: context.appIconSizes.md),
+                icon: Icon(Icons.upgrade, size: context.tpIconSizes.md),
                 label: Text(l10n.pluginsCardUpdate),
               ),
             TextButton.icon(
               onPressed: () => _uninstall(context, plugin, l10n, cubit),
-              icon: Icon(Icons.delete_outline, size: context.appIconSizes.md),
+              icon: Icon(Icons.delete_outline, size: context.tpIconSizes.md),
               label: Text(l10n.pluginsCardUninstall),
             ),
           ],

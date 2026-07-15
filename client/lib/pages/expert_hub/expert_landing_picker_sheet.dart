@@ -8,7 +8,7 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import '../../cubits/expert_hub_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'expert_hub_body.dart';
 import 'expert_hub_detail_overlay.dart';
 
@@ -92,7 +92,7 @@ class _ExpertLandingPickerDialogState extends State<ExpertLandingPickerDialog> {
           setState(() => _detail = null);
         }
       },
-      child: AppDialog(
+      child: TpDialog(
         maxWidth: 960,
         maxHeight: maxHeight,
         contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
@@ -101,7 +101,7 @@ class _ExpertLandingPickerDialogState extends State<ExpertLandingPickerDialog> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppDialogHeader(title: l10n.expertHubTitle),
+              TpDialogHeader(title: l10n.expertHubTitle),
               const SizedBox(height: 8),
               Expanded(
                 child: BlocConsumer<ExpertHubCubit, ExpertHubState>(

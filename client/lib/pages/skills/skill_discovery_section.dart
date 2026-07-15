@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/skill_cubit.dart';
@@ -182,7 +182,7 @@ class _SkillDiscoveryRefreshButton extends StatelessWidget {
                   height: 14,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Icon(Icons.refresh, size: context.appIconSizes.md),
+              : Icon(Icons.refresh, size: context.tpIconSizes.md),
         );
       },
     );

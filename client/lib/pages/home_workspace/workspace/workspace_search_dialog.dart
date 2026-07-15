@@ -10,14 +10,12 @@ import '../../../models/app_session.dart';
 import '../../../services/file_tree/workspace_file_search.dart';
 import '../../../services/storage/app_storage.dart';
 import '../../../services/workbench/workbench_editor_opener.dart';
-import '../../../theme/app_icon_sizes.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../utils/workspace_sessions.dart';
-import '../../../widgets/app_dialog.dart';
-import '../../../widgets/app_icon_button.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'workspace_session_actions.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Opens the workspace search dialog, which searches both conversation sessions
 /// and workspace files by name. Reads the current session list and CLI fallback
@@ -152,14 +150,14 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
     final hasQuery = _query.trim().isNotEmpty;
     final hasResults = filteredSessions.isNotEmpty || _fileMatches.isNotEmpty;
 
-    return AppDialog(
+    return TpDialog(
       maxWidth: 560,
       maxHeight: 560,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.workspaceSearchTitle),
+          TpDialogHeader(title: l10n.workspaceSearchTitle),
           const SizedBox(height: 12),
           _SearchField(
             controller: _controller,
@@ -327,7 +325,7 @@ class _FileResultTileState extends State<_FileResultTile> {
               children: [
                 Icon(
                   Icons.insert_drive_file_outlined,
-                  size: context.appIconSizes.md,
+                  size: context.tpIconSizes.md,
                   color: cs.onSurfaceVariant,
                 ),
                 const SizedBox(width: 10),
@@ -389,7 +387,7 @@ class _SearchField extends StatelessWidget {
         ),
         prefixIcon: Icon(
           Icons.search_rounded,
-          size: context.appIconSizes.md,
+          size: context.tpIconSizes.md,
           color: cs.onSurfaceVariant,
         ),
         floatingLabelBehavior: FloatingLabelBehavior.never,
@@ -404,10 +402,10 @@ class _SearchField extends StatelessWidget {
           borderSide: BorderSide(color: cs.primary),
         ),
         suffixIcon: controller.text.isNotEmpty
-            ? AppIconButton(
+            ? TpIconButton(
                 icon: Icons.clear,
                 compact: true,
-                size: AppIconButton.kCompactSize,
+                size: TpIconButton.kCompactSize,
                 onTap: onClear,
               )
             : null,
@@ -434,7 +432,7 @@ class _EmptyResults extends StatelessWidget {
           children: [
             Icon(
               Icons.search_off_rounded,
-              size: context.appIconSizes.lg,
+              size: context.tpIconSizes.lg,
               color: cs.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 10),

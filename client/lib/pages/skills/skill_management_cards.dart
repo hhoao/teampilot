@@ -4,7 +4,7 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_text_styles.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 
 class SkillManagementCard extends StatelessWidget {
@@ -60,19 +60,19 @@ Future<bool> skillConfirmDialog(
   final l10n = context.l10n;
   final result = await showDialog<bool>(
     context: context,
-    builder: (ctx) => AppDialog(
+    builder: (ctx) => TpDialog(
       maxWidth: 480,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(
+          TpDialogHeader(
             title: title,
             onClose: () => Navigator.of(ctx).pop(false),
           ),
           const SizedBox(height: 16),
           Text(message),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),

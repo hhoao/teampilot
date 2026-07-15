@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_control_theme.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:path/path.dart' as p;
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../../widgets/app_icon_button.dart';
-import '../../widgets/dropdown/app_dropdown_decoration.dart';
-import '../../widgets/dropdown/app_dropdown_field.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import 'log_viewer_filter.dart';
 
@@ -106,7 +103,7 @@ class LogViewerToolbar extends StatelessWidget {
                   hintText: l10n.logViewerSearchHint,
                   prefixIcon: Icon(
                     Icons.search,
-                    size: context.appIconSizes.md,
+                    size: context.tpIconSizes.md,
                     color: cs.onSurfaceVariant,
                   ),
                 ),
@@ -250,9 +247,9 @@ class LogViewerToolbar extends StatelessWidget {
     required VoidCallback onPressed,
   }) {
     final cs = Theme.of(context).colorScheme;
-    return AppIconButton(
+    return TpIconButton(
       icon: value ? onIcon : offIcon,
-      iconSize: context.appIconSizes.md,
+      iconSize: context.tpIconSizes.md,
       size: 36,
       tooltip: tooltip,
       color: value ? cs.onPrimaryContainer : cs.onSurfaceVariant,
@@ -274,11 +271,11 @@ class LogViewerToolbar extends StatelessWidget {
     return SizedBox(
       width: width,
       height: context.appControl.height,
-      child: AppDropdownField<T>(
+      child: TpSelect<T>(
         key: ValueKey<T>(value),
         items: items,
         initialItem: value,
-        decoration: AppDropdownDecorations.themed(context),
+        decoration: TpSelectDecorations.themed(context),
         closedHeaderPadding: _dropdownPadding,
         expandedHeaderPadding: _dropdownPadding,
         itemLabel: itemLabel,

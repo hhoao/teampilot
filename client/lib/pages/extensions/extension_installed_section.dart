@@ -8,7 +8,7 @@ import '../../cubits/extension_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../../widgets/empty_state_block.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../skills/skill_management_cards.dart';
 
 /// Global Extensions list: install/uninstall + global enable toggle for every
@@ -75,7 +75,7 @@ class ExtensionInstalledSection extends StatelessWidget {
                     ),
                   )
                 else if (state.rows.isEmpty)
-                  EmptyStateBlock(
+                  TpEmptyState(
                     icon: Icons.power_outlined,
                     title: l10n.extensionsEmptyTitle,
                     hint: l10n.extensionsEmptyHint,

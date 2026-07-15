@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/skill_cubit.dart';
@@ -11,10 +11,8 @@ import '../../models/skill.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/github_source_url.dart';
-import '../../widgets/app_dialog.dart';
 import '../../widgets/github_details_button.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
-import '../../widgets/empty_state_block.dart';
 import 'skill_management_cards.dart';
 
 class SkillInstalledSection extends StatelessWidget {
@@ -54,7 +52,7 @@ class SkillInstalledSection extends StatelessWidget {
                                 ),
                           icon: Icon(
                             Icons.upgrade,
-                            size: context.appIconSizes.md,
+                            size: context.tpIconSizes.md,
                           ),
                           label: Text(
                             l10n.skillsUpdateAll(state.updates.length),
@@ -69,7 +67,7 @@ class SkillInstalledSection extends StatelessWidget {
                               ),
                         icon: Icon(
                           Icons.folder_open_outlined,
-                          size: context.appIconSizes.md,
+                          size: context.tpIconSizes.md,
                         ),
                         label: Text(l10n.skillsImportFromDisk),
                       ),
@@ -82,7 +80,7 @@ class SkillInstalledSection extends StatelessWidget {
                               ),
                         icon: Icon(
                           Icons.archive_outlined,
-                          size: context.appIconSizes.md,
+                          size: context.tpIconSizes.md,
                         ),
                         label: Text(l10n.skillsInstallFromZip),
                       ),
@@ -103,7 +101,7 @@ class SkillInstalledSection extends StatelessWidget {
                               )
                             : Icon(
                                 Icons.refresh,
-                                size: context.appIconSizes.md,
+                                size: context.tpIconSizes.md,
                               ),
                         label: Text(
                           state.updatesLoading
@@ -116,7 +114,7 @@ class SkillInstalledSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 if (state.installed.isEmpty)
-                  EmptyStateBlock(
+                  TpEmptyState(
                     icon: Icons.inventory_2_outlined,
                     title: l10n.skillsNoInstalled,
                     hint: l10n.skillsNoInstalledHint,
@@ -276,14 +274,14 @@ class SkillInstalledRow extends StatelessWidget {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Icon(Icons.upgrade, size: context.appIconSizes.md),
+                    : Icon(Icons.upgrade, size: context.tpIconSizes.md),
               ),
             IconButton(
               tooltip: l10n.skillsCardUninstall,
               onPressed: busy ? null : () => _onUninstall(context, skill),
               icon: Icon(
                 Icons.delete_outline,
-                size: context.appIconSizes.md,
+                size: context.tpIconSizes.md,
                 color: Theme.of(context).colorScheme.error,
               ),
             ),
@@ -331,14 +329,14 @@ class SkillImportUnmanagedDialogState
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return AppDialog(
+    return TpDialog(
       maxWidth: 560,
       maxHeight: 600,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.skillsImportTitle),
+          TpDialogHeader(title: l10n.skillsImportTitle),
           const SizedBox(height: 12),
           Flexible(
             child: ListView.builder(
@@ -369,7 +367,7 @@ class SkillImportUnmanagedDialogState
               },
             ),
           ),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),

@@ -23,7 +23,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
-import 'package:teampilot/widgets/form/app_form.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../support/automation_test_fixtures.dart';
 import '../../support/in_memory_filesystem.dart';
@@ -309,7 +309,7 @@ void main() {
     expect(nameField.controller?.text, 'Daily ping');
   });
 
-  testWidgets('empty message save shows AppForm field validation', (
+  testWidgets('empty message save shows TpForm field validation', (
     tester,
   ) async {
     final setup = testAutomationSetup();
@@ -333,7 +333,7 @@ void main() {
       tester.element(find.byType(AutomationEditorDialog)),
     );
 
-    expect(find.byType(AppForm), findsOneWidget);
+    expect(find.byType(TpForm), findsOneWidget);
 
     await tester.tap(find.text(l10n.save));
     await tester.pump();

@@ -4,17 +4,14 @@ import 'package:flutter/services.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
-import '../../widgets/form/app_form_field.dart';
-import '../../widgets/form/app_form_field_layout.dart';
-import '../../widgets/textarea/app_textarea.dart';
-import '../../widgets/textarea/app_textarea_form_field.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'automation_editor_launch_section.dart';
 import 'automation_schedule_picker.dart';
 
 /// Label column width for the automation editor inline form.
 const double kAutomationEditorFormLabelWidth = 160;
 
-/// Field body for [AutomationEditorDialog] under an [AppForm].
+/// Field body for [AutomationEditorDialog] under an [TpForm].
 class AutomationEditorFormBody extends StatelessWidget {
   const AutomationEditorFormBody({
     required this.isScheduledMessage,
@@ -93,11 +90,11 @@ class AutomationEditorFormBody extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AppFormField<String>(
+        TpFormField<String>(
           id: 'name',
           initialValue: nameController.text,
           label: Text(l10n.automationsName),
-          layoutStyle: AppFormFieldLayoutStyle.inline,
+          layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: kAutomationEditorFormLabelWidth,
           validator: (v) =>
               (v == null || v.trim().isEmpty)
@@ -116,14 +113,14 @@ class AutomationEditorFormBody extends StatelessWidget {
           },
         ),
         const SizedBox(height: 12),
-        AppTextareaFormField(
+        TpTextareaFormField(
           id: 'message',
           controller: messageController,
           label: Text(l10n.automationsMessage),
-          layoutStyle: AppFormFieldLayoutStyle.inline,
+          layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: kAutomationEditorFormLabelWidth,
-          minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
-          maxHeight: appTextareaHeightForLines(bodyStyle, lines: 5),
+          minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
+          maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 5),
           validator: (v) =>
               (v == null || v.trim().isEmpty)
               ? l10n.automationsValidationRequired
@@ -152,12 +149,12 @@ class AutomationEditorFormBody extends StatelessWidget {
             onTargetMemberChanged: onTargetMemberChanged ?? (_) {},
           ),
           const SizedBox(height: 12),
-          AppFormField<bool>(
+          TpFormField<bool>(
             id: 'reuseSession',
             initialValue: reuseSession,
             label: Text(l10n.automationsReuseSession),
             description: Text(reuseSessionSubtitle),
-            layoutStyle: AppFormFieldLayoutStyle.inline,
+            layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: kAutomationEditorFormLabelWidth,
             builder: (state) {
               return Align(
@@ -181,12 +178,12 @@ class AutomationEditorFormBody extends StatelessWidget {
           onChanged: onScheduleChanged,
         ),
         const SizedBox(height: 12),
-        AppFormField<String>(
+        TpFormField<String>(
           id: 'maxRunCount',
           initialValue: maxRunCountController.text,
           label: Text(l10n.automationsMaxRunCount),
           description: Text(l10n.automationsMaxRunCountHint),
-          layoutStyle: AppFormFieldLayoutStyle.inline,
+          layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: kAutomationEditorFormLabelWidth,
           validator: (v) {
             final raw = v?.trim() ?? '';
@@ -215,12 +212,12 @@ class AutomationEditorFormBody extends StatelessWidget {
           },
         ),
         const SizedBox(height: 12),
-        AppFormField<bool>(
+        TpFormField<bool>(
           key: ValueKey('enabled-$enabled-$runLimitReached'),
           id: 'enabled',
           initialValue: runLimitReached ? false : enabled,
           label: Text(l10n.automationsEnabled),
-          layoutStyle: AppFormFieldLayoutStyle.inline,
+          layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: kAutomationEditorFormLabelWidth,
           builder: (state) {
             return Align(

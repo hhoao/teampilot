@@ -41,6 +41,7 @@ import '../../utils/team_member_naming.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
 import 'ai_thread_selection_context_menu.dart';
 import 'session_review_compose_card.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// History list + slim compose for a non-running session body.
 class SessionHistoryReview extends StatefulWidget {
@@ -597,7 +598,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final spacing = context.appSpacing;
+    final spacing = context.tpSpacing;
     final cs = Theme.of(context).colorScheme;
     final skills = context.watch<SkillCubit>().state.installed;
     final plugins = context.watch<PluginCubit>().state.installed;
@@ -700,7 +701,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                                 strokeWidth: 2.5,
                               ),
                             ),
-                            SizedBox(height: context.appSpacing.md),
+                            SizedBox(height: context.tpSpacing.md),
                             Text(
                               context.l10n.sessionHistoryLoading,
                               style: AppTextStyles.of(context).mdColored(
@@ -736,7 +737,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                                 textAlign: TextAlign.center,
                               ),
                               if (detail != null && detail.isNotEmpty) ...[
-                                SizedBox(height: context.appSpacing.sm),
+                                SizedBox(height: context.tpSpacing.sm),
                                 Text(
                                   detail,
                                   style: AppTextStyles.of(context).smColored(
@@ -747,7 +748,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                                   textAlign: TextAlign.center,
                                 ),
                               ],
-                              SizedBox(height: context.appSpacing.md),
+                              SizedBox(height: context.tpSpacing.md),
                               TextButton(
                                 onPressed: onRetry,
                                 child: Text(context.l10n.sessionHistoryRetry),
@@ -761,7 +762,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                             final headerCs = Theme.of(context).colorScheme;
                             return Padding(
                               padding: EdgeInsets.only(
-                                bottom: context.appSpacing.md,
+                                bottom: context.tpSpacing.md,
                               ),
                               child: Center(
                                 child: isLoadingOlder
@@ -889,7 +890,7 @@ class _HistoryStatusPane extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: context.appSpacing.md),
+        padding: EdgeInsets.symmetric(horizontal: context.tpSpacing.md),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -898,7 +899,7 @@ class _HistoryStatusPane extends StatelessWidget {
               size: 32,
               color: cs.onSurfaceVariant.withValues(alpha: 0.55),
             ),
-            SizedBox(height: context.appSpacing.md),
+            SizedBox(height: context.tpSpacing.md),
             child,
           ],
         ),

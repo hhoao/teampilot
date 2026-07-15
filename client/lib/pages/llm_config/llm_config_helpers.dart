@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
-import '../../widgets/app_dialog.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 Future<String?> saveNewAppProvider(
   BuildContext context,
@@ -46,13 +46,13 @@ Future<void> confirmDeleteAppProvider(BuildContext context, String id) async {
   final hasCredentials = provider?.hasClaudeCredentialsReady ?? false;
   final confirmed = await showDialog<bool>(
     context: context,
-    builder: (ctx) => AppDialog(
+    builder: (ctx) => TpDialog(
       maxWidth: 480,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(
+          TpDialogHeader(
             title: l10n.deleteProvider,
             onClose: () => Navigator.pop(ctx, false),
           ),
@@ -62,7 +62,7 @@ Future<void> confirmDeleteAppProvider(BuildContext context, String id) async {
                 ? l10n.deleteProviderWithCredentialsConfirm(label)
                 : l10n.deleteProviderConfirm(label),
           ),
-          AppDialogActions(
+          TpDialogActions(
             children: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),

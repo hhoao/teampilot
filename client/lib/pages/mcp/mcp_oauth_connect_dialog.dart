@@ -3,13 +3,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_text_styles.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_server.dart';
-import '../../widgets/app_dialog.dart';
-import '../../widgets/textarea/app_textarea.dart';
 import '../../services/mcp/mcp_oauth_callback_server.dart';
 import '../../services/mcp/mcp_oauth_discovery.dart';
 import '../../services/mcp/mcp_oauth_flow.dart';
@@ -177,13 +175,13 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
         if (didPop || finishing) return;
         _cancel();
       },
-      child: AppDialog(
+      child: TpDialog(
         maxWidth: 480,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppDialogHeader(
+            TpDialogHeader(
               title: l10n.mcpOAuthConnectTitle(widget.server.name),
               onClose: finishing ? () {} : _cancel,
             ),
@@ -213,7 +211,7 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
                 onPressed: finishing ? null : _openBrowser,
                 icon: Icon(
                   Icons.open_in_browser,
-                  size: context.appIconSizes.md,
+                  size: context.tpIconSizes.md,
                 ),
                 label: Text(l10n.mcpOAuthOpenBrowser),
               ),
@@ -230,20 +228,20 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
                   final bodyStyle =
                       Theme.of(context).textTheme.bodyMedium ??
                       const TextStyle();
-                  return AppTextarea(
+                  return TpTextarea(
                     controller: _callbackController,
                     enabled: !finishing,
                     decoration: InputDecoration(
                       labelText: l10n.mcpOAuthCallbackUrlLabel,
                       hintText: l10n.mcpOAuthCallbackUrlHint,
                     ),
-                    minHeight: appTextareaHeightForLines(bodyStyle, lines: 2),
-                    maxHeight: appTextareaHeightForLines(bodyStyle, lines: 4),
+                    minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
+                    maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 4),
                   );
                 },
               ),
             ],
-            AppDialogActions(
+            TpDialogActions(
               children: [
                 TextButton(
                   onPressed: finishing ? null : _cancel,

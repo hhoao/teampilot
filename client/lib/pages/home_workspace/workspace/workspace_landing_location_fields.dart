@@ -9,9 +9,8 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/git_worktree.dart';
 import '../../../models/workspace.dart';
 import '../../../utils/workspace_path_utils.dart';
-import '../../../widgets/form/app_form_field.dart';
-import '../../../widgets/form/app_form_field_layout.dart';
 import 'workspace_landing_selectors.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Inline project + worktree pickers shared by landing-aligned launch forms.
 class WorkspaceLandingLocationFields extends StatefulWidget {
@@ -169,12 +168,12 @@ class _WorkspaceLandingLocationFieldsState
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (showProjectPicker) ...[
-          AppFormField<String>(
+          TpFormField<String>(
             key: ValueKey('project-$selectedProjectPath'),
             id: 'projectFolderPath',
             initialValue: selectedProjectPath,
             label: Text(l10n.automationsLaunchProject),
-            layoutStyle: AppFormFieldLayoutStyle.inline,
+            layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: widget.labelWidth,
             builder: (state) {
               return WorkspaceLandingSelectorBar(
@@ -192,12 +191,12 @@ class _WorkspaceLandingLocationFieldsState
           const SizedBox(height: 12),
         ],
         if (worktreeResolver.showsWorktreeSelector) ...[
-          AppFormField<String>(
+          TpFormField<String>(
             key: ValueKey('worktree-$selectedWorktreePath'),
             id: 'workingDirectoryPath',
             initialValue: selectedWorktreePath,
             label: Text(l10n.automationsLaunchWorktree),
-            layoutStyle: AppFormFieldLayoutStyle.inline,
+            layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: widget.labelWidth,
             builder: (state) {
               return WorkspaceLandingSelectorBar(

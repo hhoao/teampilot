@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
-import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/context_menu_position.dart';
-import '../app_icon_button.dart';
-import '../dropdown/popover/app_popover.dart';
 import 'sidebar_action_menu_overlay.dart';
 
-export '../dropdown/popover/app_popover.dart'
-    show AppAnchor, AppAnchorAuto, AppGlobalAnchor, AppPopoverController;
+export 'package:shared_ui/shared_ui.dart'
+    show TpAnchor, TpAnchorAuto, TpGlobalAnchor, TpPopoverController;
 
 /// Popover-backed menu controller (replaces [MenuAnchor]'s [MenuController]).
 class ActionMenuController {
   ActionMenuController(this._inner);
 
-  final AppPopoverController _inner;
+  final TpPopoverController _inner;
 
   bool get isOpen => _inner.isOpen;
 
@@ -33,7 +30,7 @@ Curve _popUpTransitionCurve(AnimationStyle? style) {
 }
 
 /// AppFlowy-inspired action menu: rounded panel, icon rows, hover highlight,
-/// optional dividers. Overlay uses [AppPopover] (portal, ~160ms scale/fade).
+/// optional dividers. Overlay uses [TpPopover] (portal, ~160ms scale/fade).
 abstract final class SidebarActionMenuMetrics {
   static const double minWidth = 160;
 
@@ -54,7 +51,7 @@ abstract final class SidebarActionMenuMetrics {
   static const double itemHorizontalMargin = 6;
   static const double itemPaddingLeft = 6;
   static const double itemPaddingRight = 6;
-  static double iconSize(BuildContext context) => context.appIconSizes.md;
+  static double iconSize(BuildContext context) => context.tpIconSizes.md;
   static const double iconGap = 10;
   static const double panelPaddingTop = 12;
   static const double panelPaddingHorizontal = 8;
@@ -137,7 +134,7 @@ class SidebarActionMenuPanel extends StatelessWidget {
         ),
       ),
     );
-    // Popover shell ([AppPopover]) already applies [panelPadding].
+    // Popover shell ([TpPopover]) already applies [panelPadding].
     if (menuAnchorShell) return content;
     return DecoratedBox(
       decoration: SidebarActionMenuMetrics.panelDecoration(context),
@@ -283,7 +280,7 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
                               style: labelStyle,
                             ),
                           ),
-                          SizedBox(width: context.appSpacing.lg),
+                          SizedBox(width: context.tpSpacing.lg),
                           Text(
                             widget.subtitleSuffix!,
                             maxLines: 1,
@@ -346,8 +343,8 @@ class ActionMenuPopoverAnchor extends StatefulWidget {
   final Widget child;
   final Widget Function(BuildContext context, ActionMenuController controller)
   popoverBuilder;
-  final AppPopoverController? controller;
-  final AppAnchorBase? anchor;
+  final TpPopoverController? controller;
+  final TpAnchorBase? anchor;
   final VoidCallback? onOpen;
   final VoidCallback? onClose;
   final double? minWidth;
@@ -364,16 +361,16 @@ class ActionMenuPopoverAnchor extends StatefulWidget {
 }
 
 class _ActionMenuPopoverAnchorState extends State<ActionMenuPopoverAnchor> {
-  AppPopoverController? _ownedController;
+  TpPopoverController? _ownedController;
 
-  AppPopoverController get _popoverController =>
+  TpPopoverController get _popoverController =>
       widget.controller ?? _ownedController!;
 
   @override
   void initState() {
     super.initState();
     _ownedController = widget.controller == null
-        ? AppPopoverController()
+        ? TpPopoverController()
         : null;
     _popoverController.addListener(_onPopoverChanged);
   }
@@ -390,7 +387,7 @@ class _ActionMenuPopoverAnchorState extends State<ActionMenuPopoverAnchor> {
         _ownedController = null;
       }
       if (widget.controller == null && _ownedController == null) {
-        _ownedController = AppPopoverController();
+        _ownedController = TpPopoverController();
       }
       _popoverController.addListener(_onPopoverChanged);
     }
@@ -417,12 +414,12 @@ class _ActionMenuPopoverAnchorState extends State<ActionMenuPopoverAnchor> {
   @override
   Widget build(BuildContext context) {
     final panelMin = widget.minWidth ?? SidebarActionMenuMetrics.minWidth;
-    return AppPopover(
+    return TpPopover(
       controller: _popoverController,
       closeOnTapOutside: widget.closeOnTapOutside,
       anchor:
           widget.anchor ??
-          const AppAnchor(
+          const TpAnchor(
             childAlignment: Alignment.topLeft,
             overlayAlignment: Alignment.bottomLeft,
             offset: Offset(0, 4),
@@ -448,7 +445,7 @@ class _ActionMenuPopoverAnchorState extends State<ActionMenuPopoverAnchor> {
   }
 }
 
-/// Icon button that opens an [AppPopover] action menu.
+/// Icon button that opens an [TpPopover] action menu.
 class SidebarActionMenuIconAnchor extends StatefulWidget {
   const SidebarActionMenuIconAnchor({
     super.key,
@@ -457,7 +454,7 @@ class SidebarActionMenuIconAnchor extends StatefulWidget {
     required this.buildMenuChildren,
     this.onOpen,
     this.onClose,
-    this.size = AppIconButton.kDefaultSize,
+    this.size = TpIconButton.kDefaultSize,
     this.minWidth = SidebarActionMenuMetrics.minWidth,
     this.anchor,
   }) : assert(icon != null || triggerBuilder != null);
@@ -474,7 +471,7 @@ class SidebarActionMenuIconAnchor extends StatefulWidget {
   final VoidCallback? onClose;
   final double size;
   final double minWidth;
-  final AppAnchorBase? anchor;
+  final TpAnchorBase? anchor;
 
   @override
   State<SidebarActionMenuIconAnchor> createState() =>
@@ -483,7 +480,7 @@ class SidebarActionMenuIconAnchor extends StatefulWidget {
 
 class _SidebarActionMenuIconAnchorState
     extends State<SidebarActionMenuIconAnchor> {
-  final _popoverController = AppPopoverController();
+  final _popoverController = TpPopoverController();
 
   @override
   void initState() {
@@ -512,11 +509,11 @@ class _SidebarActionMenuIconAnchorState
   @override
   Widget build(BuildContext context) {
     final menuController = _menuController;
-    return AppPopover(
+    return TpPopover(
       controller: _popoverController,
       anchor:
           widget.anchor ??
-          const AppAnchor(
+          const TpAnchor(
             childAlignment: Alignment.topLeft,
             overlayAlignment: Alignment.bottomLeft,
             offset: Offset(0, 4),
@@ -530,7 +527,7 @@ class _SidebarActionMenuIconAnchorState
       ),
       child: widget.triggerBuilder != null
           ? widget.triggerBuilder!(context, menuController)
-          : AppIconButton(
+          : TpIconButton(
               iconWidget: widget.icon,
               size: widget.size,
               onTap: _popoverController.toggle,
@@ -644,7 +641,7 @@ Widget _specToMenuItem({
   final trailing = spec.selected
       ? Icon(
           Icons.check,
-          size: context.appIconSizes.md,
+          size: context.tpIconSizes.md,
           color: (AppTextStyles.of(context).md.color ??
                   Theme.of(context).colorScheme.onSurface)
               .withValues(alpha: 0.7),
@@ -684,7 +681,7 @@ class SidebarActionMenuButton extends StatelessWidget {
     this.triggerBuilder,
     this.onOpen,
     this.onClose,
-    this.size = AppIconButton.kDefaultSize,
+    this.size = TpIconButton.kDefaultSize,
     this.minWidth = SidebarActionMenuMetrics.minWidth,
     this.tooltip,
   });
@@ -704,7 +701,7 @@ class SidebarActionMenuButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final anchor = SidebarActionMenuIconAnchor(
       icon: triggerBuilder == null
-          ? (icon ?? Icon(Icons.more_horiz, size: context.appIconSizes.md))
+          ? (icon ?? Icon(Icons.more_horiz, size: context.tpIconSizes.md))
           : null,
       triggerBuilder: triggerBuilder,
       size: size,
