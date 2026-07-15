@@ -1,6 +1,6 @@
 # Markdown WYSIWYG via AppFlowy Editor
 
-**Status:** Draft  
+**Status:** Ready for planning  
 **Date:** 2026-07-15
 
 ## Problem
@@ -73,7 +73,7 @@ Dependency: add `appflowy_editor` to `client/pubspec.yaml`. Register `AppFlowyEd
 | Mode | Behavior |
 |------|----------|
 | Source | Edit `controller` directly; no Document |
-| WYSIWYG | Enter: `markdownToDocument(current text)` → new `EditorState`. Edits encode back to text (debounced) and mark dirty |
+| WYSIWYG | Enter: `markdownToDocument(current text)` → new `EditorState`. Document changes mark dirty immediately; encode back to text is debounced |
 | Preview | Read-only render of current text; never writes back |
 
 **Rules**
@@ -84,7 +84,7 @@ Dependency: add `appflowy_editor` to `client/pubspec.yaml`. Register `AppFlowyEd
 4. **Controller text replaced from outside WYSIWYG** (external file reload, `revertFile`, or any non-encoder write to `controller.text`): if WYSIWYG is active, rebuild `EditorState` from the new text and clear the session’s unflushed flag.
 5. Debounce WYSIWYG → controller encode (~100–200ms) to avoid full encode per keystroke. On session dispose / tab close, **cancel pending debounce and flush immediately** if there are unflushed edits so the last keystrokes are not lost.
 
-**Unflushed edits:** `MarkdownWysiwygSession` tracks whether Document has changed since the last successful encode into `controller.text`. Entering WYSIWYG starts with no unflushed edits.
+**Unflushed edits:** `MarkdownWysiwygSession` tracks whether Document has changed since the last successful encode into `controller.text`. Entering WYSIWYG starts with no unflushed edits. **As soon as Document changes**, the session must mark the path dirty in `EditorCubit` (or an equivalent dirty signal the close/prompt path already consults)—**without waiting for the debounced encode**—so a tab close during the debounce window still prompts to save. Close / discard / `closeFile` must either (a) see that early dirty bit, or (b) flush WYSIWYG into the controller and re-check dirty **before** deciding discard and disposing the controller.
 
 `MarkdownOpenMode` may gain an optional default of `wysiwyg` (requires `seedOnOpen` + layout settings UI); otherwise keep current preview / source / remember behavior and only add the third in-session mode.
 
@@ -93,8 +93,9 @@ Dependency: add `appflowy_editor` to `client/pubspec.yaml`. Register `AppFlowyEd
 **Save**
 
 - `saveFile` continues to persist `controller.text` only.
-- If the active mode is WYSIWYG **and** the session has unflushed edits, flush Document → text immediately before write. If there are no unflushed edits, write `controller.text` as-is (no re-encode).
-- No second dirty channel for disk purposes; WYSIWYG mutations must surface through the controller / existing `EditorCubit` dirty set (encode updates the controller, which marks dirty as today).
+- Flush-before-save is owned by **`EditorCubit.saveFile`**: before writing, if a WYSIWYG session is registered for that path and has unflushed edits, ask the session to flush into the controller, then write. Surface Save buttons keep calling `saveFile` only (no duplicate flush logic in the pane).
+- If there are no unflushed edits, write `controller.text` as-is (no re-encode).
+- Dirty for prompts/close: set when Document first changes (see Unflushed edits above), not only after debounced encode. Encode still updates `controller.text` for Source/Preview consistency.
 
 **Supported subset (v1)**
 
@@ -130,7 +131,7 @@ Collaboration, AI assist, and non-Markdown blocks attach after the codec / produ
 
 1. **Unit:** round-trip fixtures for the common subset via `MarkdownBridge`.
 2. **Unit / cubit:** mode switch flushes WYSIWYG → text; mode switch does not call filesystem write.
-3. **Widget:** three-segment toggle; WYSIWYG edit marks dirty and save persists Markdown.
+3. **Widget:** three-segment toggle; WYSIWYG edit marks dirty and save persists Markdown; WYSIWYG edit → close tab **before** debounce fires → must prompt or retain edits (not silent drop).
 4. **Regression:** non-Markdown paths still use only `CodeEditor`.
 
 ## Implementation sketch (ordering)
