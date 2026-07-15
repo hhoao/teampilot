@@ -20,8 +20,8 @@ final class ListTasksTool extends TeammateBusTool {
 
   @override
   String get description =>
-      'List the shared work queue (board). Optional status filter: '
-      'pending | claimed | done | failed | cancelled.';
+      'List the shared work queue (board) as JSON {"tasks":[...]}. Optional '
+      'status filter: pending | claimed | done | failed | cancelled.';
 
   @override
   Map<String, Object?> get inputSchema =>

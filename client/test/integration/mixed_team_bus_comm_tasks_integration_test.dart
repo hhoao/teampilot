@@ -1,12 +1,25 @@
 @Tags(['integration', 'cross-platform'])
 library;
 
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
 import 'package:teampilot/services/team_bus/tasks/team_task.dart';
 
 import 'support/team_bus_comm_task_harness.dart';
 import 'support/teammate_bus_http_client.dart';
+
+bool _isTaskAssignmentJson(String text) {
+  try {
+    final json = jsonDecode(text);
+    return json is Map &&
+        json.containsKey('title') &&
+        !json.containsKey('messages');
+  } on Object {
+    return false;
+  }
+}
 
 void main() {
   group('mixed team bus communication + tasks (HTTP MCP)', () {
@@ -82,9 +95,9 @@ void main() {
       expect(TeammateBusHttpClient.toolSucceeded(enqueued), isTrue);
 
       final assigned = TeammateBusHttpClient.toolResultText(await wait);
-      expect(assigned, contains('ASSIGNED TASK'));
+      expect(_isTaskAssignmentJson(assigned), isTrue);
       expect(assigned, contains('implement endpoint'));
-      expect(assigned, contains('update_task'));
+      expect(assigned, isNot(contains('ASSIGNED TASK')));
 
       expect(
         harness.bus.listTasks(status: TaskStatus.claimed).single.assignee,
@@ -176,7 +189,7 @@ void main() {
         await backend.waitForMessage(),
       );
       expect(first, contains('urgent'));
-      expect(first, isNot(contains('ASSIGNED TASK')));
+      expect(_isTaskAssignmentJson(first), isFalse);
 
       expect(
         harness.bus.listTasks(status: TaskStatus.pending).single.title,
@@ -186,7 +199,7 @@ void main() {
       final second = TeammateBusHttpClient.toolResultText(
         await backend.waitForMessage(),
       );
-      expect(second, contains('ASSIGNED TASK'));
+      expect(_isTaskAssignmentJson(second), isTrue);
       expect(second, contains('orphan task'));
     });
 
@@ -218,7 +231,7 @@ void main() {
         );
 
         final first = TeammateBusHttpClient.toolResultText(await wait);
-        if (first.contains('ASSIGNED TASK')) {
+        if (_isTaskAssignmentJson(first)) {
           expect(first, contains('race task'));
           expect(first, isNot(contains('urgent')));
         } else {
@@ -372,8 +385,8 @@ void main() {
 
         final textA = TeammateBusHttpClient.toolResultText(await waitA);
         final textB = TeammateBusHttpClient.toolResultText(await waitB);
-        expect(textA, contains('ASSIGNED TASK'));
-        expect(textB, contains('ASSIGNED TASK'));
+        expect(_isTaskAssignmentJson(textA), isTrue);
+        expect(_isTaskAssignmentJson(textB), isTrue);
         expect(textA == textB, isFalse);
 
         final claimed = harness.bus.listTasks(status: TaskStatus.claimed);

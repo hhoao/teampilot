@@ -47,7 +47,7 @@ final class SendMessageTool extends TeammateBusTool {
     if (!outcome.delivered) {
       return call.toolError(
         'Message not delivered (${outcome.reason}): recipient "$to" '
-        'is not on the bus.${TeammateBusToolFormat.unknownRecipientHint(call.bus)}',
+        'is not on the bus.\n${TeammateBusToolFormat.unknownRecipientHint(call.bus)}',
       );
     }
     final resolved = outcome.memberId!;
