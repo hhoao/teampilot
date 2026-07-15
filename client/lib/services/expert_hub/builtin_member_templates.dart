@@ -25,7 +25,7 @@ DiscoverableMember _builtinMember({
     source: ExpertMemberSource.builtin,
     member: DiscoverableTeamMember(
       name: slug,
-      prompt: prompt,
+      responsibilities: prompt,
       playbook: playbook,
       capabilities: capabilities,
     ),

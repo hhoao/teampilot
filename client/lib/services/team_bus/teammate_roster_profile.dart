@@ -15,7 +15,7 @@ class TeammateRosterProfile {
     this.provider = '',
     this.cli = '',
     this.extraArgs = '',
-    this.prompt = '',
+    this.responsibilities = '',
     this.joinedAt = 0,
     this.isTeamLead = false,
     this.dangerouslySkipPermissions = false,
@@ -82,7 +82,7 @@ class TeammateRosterProfile {
       provider: launch.provider,
       cli: launch.cli.value,
       extraArgs: member.extraArgs.trim(),
-      prompt: member.prompt.trim(),
+      responsibilities: member.responsibilities.trim(),
       joinedAt: joinedAt,
       isTeamLead: isLead,
       dangerouslySkipPermissions: member.dangerouslySkipPermissions,
@@ -102,7 +102,7 @@ class TeammateRosterProfile {
   final String provider;
   final String cli;
   final String extraArgs;
-  final String prompt;
+  final String responsibilities;
   final int joinedAt;
   final bool isTeamLead;
   final bool dangerouslySkipPermissions;
@@ -118,8 +118,9 @@ class TeammateRosterProfile {
     return name.isEmpty ? memberId : name;
   }
 
-  String promptSummary({int excerptChars = 160}) {
-    final text = prompt.trim();
+  /// Truncated [responsibilities] for roster listing (responsibilities / WHAT only).
+  String responsibilitiesSummary({int excerptChars = 160}) {
+    final text = responsibilities.trim();
     if (text.isEmpty) return '(none)';
     if (text.length <= excerptChars) return text;
     return '${text.substring(0, excerptChars)}… (${text.length} chars total)';

@@ -15,7 +15,7 @@ void main() {
       const member = TeamMemberConfig(
         id: 'developer-one',
         name: 'Developer One',
-        prompt: 'Implement only assigned tasks.',
+        responsibilities: 'Implement only assigned tasks.',
       );
       final path = await MemberRoleProvision.syncRolePromptFile(
         fs: fs,
@@ -29,7 +29,7 @@ void main() {
       await MemberRoleProvision.syncRolePromptFile(
         fs: fs,
         memberToolDir: root,
-        member: member.copyWith(prompt: ''),
+        member: member.copyWith(responsibilities: ''),
       );
       expect((await fs.stat(path)).exists, isFalse);
     } finally {
@@ -44,7 +44,7 @@ void main() {
       const lead = TeamMemberConfig(
         id: 'team-lead',
         name: 'team-lead',
-        prompt: '',
+        responsibilities: '',
       );
       final path = await MemberRoleProvision.syncRolePromptFile(
         fs: fs,
@@ -67,7 +67,11 @@ void main() {
     final fs = LocalFilesystem(
       pathContext: AppPaths.pathContextForDataRoot(tmp.path),
     );
-    const m = TeamMemberConfig(id: 'worker', name: 'worker', prompt: 'Do X.');
+    const m = TeamMemberConfig(
+      id: 'worker',
+      name: 'worker',
+      responsibilities: 'Do X.',
+    );
 
     final path = await MemberRoleProvision.syncRolePromptFile(
       fs: fs,
@@ -81,7 +85,7 @@ void main() {
     expect(body, contains('send_message'));
   });
 
-  test('mixed mode writes member.prompt without team-lead addendum', () async {
+  test('mixed mode writes member.responsibilities without team-lead addendum', () async {
     final tmp = Directory.systemTemp.createTempSync('role_mixed_');
     addTearDown(() => tmp.deleteSync(recursive: true));
     final fs = LocalFilesystem(
@@ -90,7 +94,7 @@ void main() {
     const lead = TeamMemberConfig(
       id: 'team-lead',
       name: 'team-lead',
-      prompt: 'Coordinate.',
+      responsibilities: 'Coordinate.',
     );
 
     final path = await MemberRoleProvision.syncRolePromptFile(
@@ -112,7 +116,7 @@ void main() {
       const lead = TeamMemberConfig(
         id: 'team-lead',
         name: 'team-lead',
-        prompt: '',
+        responsibilities: '',
       );
       await MemberRoleProvision.syncRolePromptFile(
         fs: fs,

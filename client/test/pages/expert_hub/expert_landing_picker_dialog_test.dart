@@ -40,7 +40,10 @@ DiscoverableMember _member(String name) => DiscoverableMember(
   description: 'desc for $name',
   category: 'AI',
   source: ExpertMemberSource.registry,
-  member: DiscoverableTeamMember(name: name.toLowerCase(), prompt: 'prompt'),
+  member: DiscoverableTeamMember(
+    name: name.toLowerCase(),
+    responsibilities: 'prompt',
+  ),
 );
 
 void main() {

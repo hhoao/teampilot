@@ -34,13 +34,11 @@ void main() {
   group('ExpertMemberResolver.resolveMember', () {
     test('resolves builtin member by key', () async {
       final builtin = builtinExpertMembers().first;
-      final member = await ExpertMemberResolver.resolveMember(
-        key: builtin.key,
-      );
+      final member = await ExpertMemberResolver.resolveMember(key: builtin.key);
       expect(member, isNotNull);
       expect(member!.key, builtin.key);
       expect(member.name, builtin.name);
-      expect(member.member.prompt, builtin.member.prompt);
+      expect(member.member.responsibilities, builtin.member.responsibilities);
       expect(member.member.playbook, builtin.member.playbook);
     });
 
@@ -60,7 +58,7 @@ void main() {
         source: ExpertMemberSource.builtin,
         member: DiscoverableTeamMember(
           name: 'developer',
-          prompt: 'Custom prompt',
+          responsibilities: 'Custom prompt',
           playbook: 'Custom playbook',
         ),
       );
@@ -71,7 +69,7 @@ void main() {
       );
 
       expect(member?.name, 'Custom Dev');
-      expect(member?.member.prompt, 'Custom prompt');
+      expect(member?.member.responsibilities, 'Custom prompt');
       expect(member?.member.playbook, 'Custom playbook');
     });
   });
@@ -95,44 +93,47 @@ void main() {
       createdAt: 1,
     );
 
-    test('persists expertKey on simple-mode draft and runs preflight', () async {
-      final builtin = builtinExpertMembers().first;
-      final preflightKeys = <String>[];
-      final resolver = _RecordingResolver(
-        onPreflight: (key) async {
-          preflightKeys.add(key);
-          return ExpertCapabilityPack(
-            member: const TeamMemberConfig(
-              id: 'm1',
-              name: 'Dev',
-              prompt: 'p',
-              joinedAt: 1,
-            ),
-            bundle: const ConfigBundle(),
-            failedDeps: const [
-              DependencyFailure(DependencyKind.skill, 'broken'),
-            ],
-          );
-        },
-      );
+    test(
+      'persists expertKey on simple-mode draft and runs preflight',
+      () async {
+        final builtin = builtinExpertMembers().first;
+        final preflightKeys = <String>[];
+        final resolver = _RecordingResolver(
+          onPreflight: (key) async {
+            preflightKeys.add(key);
+            return ExpertCapabilityPack(
+              member: const TeamMemberConfig(
+                id: 'm1',
+                name: 'Dev',
+                responsibilities: 'p',
+                joinedAt: 1,
+              ),
+              bundle: const ConfigBundle(),
+              failedDeps: const [
+                DependencyFailure(DependencyKind.skill, 'broken'),
+              ],
+            );
+          },
+        );
 
-      final result = await applyExpertDeepLink(
-        expertKey: builtin.key,
-        workspaceId: workspace.workspaceId,
-        workspace: workspace,
-        routeProfileIsTeam: false,
-        hubState: ExpertHubState(allMembers: [builtin]),
-        store: store,
-        resolver: resolver,
-      );
+        final result = await applyExpertDeepLink(
+          expertKey: builtin.key,
+          workspaceId: workspace.workspaceId,
+          workspace: workspace,
+          routeProfileIsTeam: false,
+          hubState: ExpertHubState(allMembers: [builtin]),
+          store: store,
+          resolver: resolver,
+        );
 
-      expect(result.outcome, ExpertDeepLinkOutcome.applied);
-      expect(preflightKeys, [builtin.key]);
-      expect(result.pack?.hasFailures, isTrue);
-      final prefs = await store.prefsFor(workspace.workspaceId);
-      expect(prefs?.expertKey, builtin.key);
-      expect(prefs?.isPersonal, isTrue);
-    });
+        expect(result.outcome, ExpertDeepLinkOutcome.applied);
+        expect(preflightKeys, [builtin.key]);
+        expect(result.pack?.hasFailures, isTrue);
+        final prefs = await store.prefsFor(workspace.workspaceId);
+        expect(prefs?.expertKey, builtin.key);
+        expect(prefs?.isPersonal, isTrue);
+      },
+    );
 
     test('forces Simple when draft was team mode', () async {
       await store.save(
@@ -149,7 +150,7 @@ void main() {
             member: const TeamMemberConfig(
               id: 'm1',
               name: 'Dev',
-              prompt: 'p',
+              responsibilities: 'p',
               joinedAt: 1,
             ),
             bundle: const ConfigBundle(),
@@ -220,7 +221,8 @@ class _RecordingResolver extends ExpertCapabilityResolver {
 
   @override
   Future<ExpertCapabilityPack?> resolveKey(
-    String expertKey, {void Function(String)? onDepProgress, 
+    String expertKey, {
+    void Function(String)? onDepProgress,
     TeamRosterSlotOverrides? overrides,
     TeamProfile? team,
     String? slotId,

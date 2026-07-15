@@ -39,13 +39,13 @@ DiscoverableMember _discoverableFromDraftMember(TeamMemberConfig member) {
   return DiscoverableMember(
     key: '',
     name: displayName,
-    description: member.prompt.trim(),
+    description: member.responsibilities.trim(),
     category: 'AI generated',
     source: ExpertMemberSource.local,
     member: DiscoverableTeamMember(
       name: displayName,
       agentType: member.agentType,
-      prompt: member.prompt,
+      responsibilities: member.responsibilities,
       playbook: member.playbook,
     ),
   );

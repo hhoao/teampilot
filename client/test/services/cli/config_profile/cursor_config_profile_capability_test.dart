@@ -34,7 +34,7 @@ void main() {
   const member = TeamMemberConfig(
     id: 'planner',
     name: 'Planner',
-    prompt: '只做代码审查',
+    responsibilities: '只做代码审查',
   );
 
   late InMemoryFilesystem fs;

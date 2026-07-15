@@ -86,7 +86,7 @@ DiscoverableMember _localExpert() => DiscoverableMember(
   tags: const {'design'},
   member: const DiscoverableTeamMember(
     name: 'Arch',
-    prompt: 'design systems',
+    responsibilities: 'design systems',
   ),
   author: 'alice',
 );
@@ -97,7 +97,7 @@ DiscoverableMember _publishedExpert() => DiscoverableMember(
   description: '',
   category: 'Engineering',
   source: ExpertMemberSource.registry,
-  member: const DiscoverableTeamMember(name: 'Arch', prompt: ''),
+  member: const DiscoverableTeamMember(name: 'Arch', responsibilities: ''),
 );
 
 TeamProfile _teamWithLocalExpert({List<String> skillIds = const []}) =>

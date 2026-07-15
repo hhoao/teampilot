@@ -42,7 +42,7 @@ void main() {
   const member = TeamMemberConfig(
     id: 'planner',
     name: 'Planner',
-    prompt: '只做代码审查',
+    responsibilities: '只做代码审查',
   );
 
   setUp(() {
@@ -55,30 +55,36 @@ void main() {
   const localBusIdle = MemberBusIdleEndpoint(url: 'http://127.0.0.1:4321/idle');
 
   group('CursorHomeProvisioner', () {
-    test('provision mirrors real home passthrough when realHomeRoot set', () async {
-      const memberHome = '/data/tp/members/planner/cursor/home';
-      const realHome = '/home/user';
-      await fs.ensureDir(realHome);
-      await fs.ensureDir(fs.pathContext.join(realHome, '.pub-cache'));
+    test(
+      'provision mirrors real home passthrough when realHomeRoot set',
+      () async {
+        const memberHome = '/data/tp/members/planner/cursor/home';
+        const realHome = '/home/user';
+        await fs.ensureDir(realHome);
+        await fs.ensureDir(fs.pathContext.join(realHome, '.pub-cache'));
 
-      await provisioner.provision(
-        memberHome: memberHome,
-        providerId: null,
-        member: member,
-        busIdle: null,
-        forceTeamLeadDelegateMode: false,
-        mixed: false,
-        realHomeRoot: realHome,
-      );
+        await provisioner.provision(
+          memberHome: memberHome,
+          providerId: null,
+          member: member,
+          busIdle: null,
+          forceTeamLeadDelegateMode: false,
+          mixed: false,
+          realHomeRoot: realHome,
+        );
 
-      expect(
-        await fs.readSymlinkTarget(
-          fs.pathContext.join(memberHome, '.pub-cache'),
-        ),
-        fs.pathContext.join(realHome, '.pub-cache'),
-      );
-      expect((await fs.stat(layout.cursorDir(memberHome))).isDirectory, isTrue);
-    });
+        expect(
+          await fs.readSymlinkTarget(
+            fs.pathContext.join(memberHome, '.pub-cache'),
+          ),
+          fs.pathContext.join(realHome, '.pub-cache'),
+        );
+        expect(
+          (await fs.stat(layout.cursorDir(memberHome))).isDirectory,
+          isTrue,
+        );
+      },
+    );
 
     test('provision writes role.mdc in simple mode', () async {
       const memberHome = '/data/tp/members/planner/cursor/home';

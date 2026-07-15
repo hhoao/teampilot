@@ -136,12 +136,12 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
   }
 
   /// Composes the user-authored role body — the two layers a roster member owns:
-  /// `# Responsibilities` (member.prompt, WHAT the role is) and `# Working method`
+  /// `# Responsibilities` (member.responsibilities, WHAT the role is) and `# Working method`
   /// (member.playbook, HOW it operates). No mode addenda. Used standalone for the
   /// native Claude roster entry and as the base of [composeRolePrompt].
   /// Returns the empty string when both layers are empty.
   static String composeMemberRoleBody(TeamMemberConfig member) {
-    final responsibilities = member.prompt.trim();
+    final responsibilities = member.responsibilities.trim();
     final method = member.playbook.trim();
     final body = StringBuffer();
     if (responsibilities.isNotEmpty) {
@@ -197,8 +197,8 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
     return body.toString();
   }
 
-  /// Writes [member.prompt] under `{toolDir}/prompts/<slug>/role.md`.
-  /// Removes the file when prompt is empty. Returns the path when non-empty.
+  /// Writes [member.responsibilities] under `{toolDir}/prompts/<slug>/role.md`.
+  /// Removes the file when responsibilities is empty. Returns the path when non-empty.
   static Future<String?> syncRolePromptFile({
     required Filesystem fs,
     required String memberToolDir,

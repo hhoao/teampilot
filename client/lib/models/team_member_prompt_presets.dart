@@ -24,7 +24,7 @@ String teamMemberPromptPresetLabel(AppLocalizations l10n, String id) {
   };
 }
 
-/// Responsibilities text (WHAT the role is) → member.prompt.
+/// Responsibilities text (WHAT the role is) → member.responsibilities.
 String teamMemberPromptPresetText(AppLocalizations l10n, String id) {
   return switch (id) {
     'team_lead' => l10n.memberPromptPresetTeamLeadText,

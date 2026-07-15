@@ -173,7 +173,7 @@ void main() {
                   id: TeamMemberNaming.teamLeadName,
                   name: lead.name,
                   // Stale empty cache — UI must resolve from catalog expert.
-                  prompt: '',
+                  responsibilities: '',
                   playbook: '',
                 ),
               ],
@@ -241,48 +241,44 @@ void main() {
     },
   );
 
-  testWidgets(
-    'member form has no save-as-template overflow menu',
-    (tester) async {
-      final launchCubit = LaunchProfileCubit(
-        repository: testLaunchProfileRepository(
-          Directory.systemTemp.createTempSync('member_form_no_save_tpl_'),
-        ),
-        sessionRepository: SessionRepository(),
-        executableResolver: () => 'claude',
-      );
-      addTearDown(launchCubit.close);
-      launchCubit.applyState(
-        const LaunchProfileState(
-          isLoading: false,
-          identities: [
-            TeamProfile(
-              id: 'team-1',
-              name: 'Team',
-              cli: CliTool.claude,
-              roster: [
-                TeamRosterSlot(
-                  id: TeamMemberNaming.teamLeadName,
-                  expertKey: 'teampilot/builtin/team-lead',
-                ),
-              ],
-              members: [
-                TeamMemberConfig(
-                  id: TeamMemberNaming.teamLeadName,
-                  name: 'Lead',
-                ),
-              ],
-            ),
-          ],
-          selectedTeamId: 'team-1',
-        ),
-      );
+  testWidgets('member form has no save-as-template overflow menu', (
+    tester,
+  ) async {
+    final launchCubit = LaunchProfileCubit(
+      repository: testLaunchProfileRepository(
+        Directory.systemTemp.createTempSync('member_form_no_save_tpl_'),
+      ),
+      sessionRepository: SessionRepository(),
+      executableResolver: () => 'claude',
+    );
+    addTearDown(launchCubit.close);
+    launchCubit.applyState(
+      const LaunchProfileState(
+        isLoading: false,
+        identities: [
+          TeamProfile(
+            id: 'team-1',
+            name: 'Team',
+            cli: CliTool.claude,
+            roster: [
+              TeamRosterSlot(
+                id: TeamMemberNaming.teamLeadName,
+                expertKey: 'teampilot/builtin/team-lead',
+              ),
+            ],
+            members: [
+              TeamMemberConfig(id: TeamMemberNaming.teamLeadName, name: 'Lead'),
+            ],
+          ),
+        ],
+        selectedTeamId: 'team-1',
+      ),
+    );
 
-      await _pumpMemberForm(tester, launchCubit: launchCubit);
+    await _pumpMemberForm(tester, launchCubit: launchCubit);
 
-      // Save-as-template was removed; overflow must not offer it.
-      expect(find.byIcon(Icons.more_vert), findsNothing);
-      expect(find.text('Save as template'), findsNothing);
-    },
-  );
+    // Save-as-template was removed; overflow must not offer it.
+    expect(find.byIcon(Icons.more_vert), findsNothing);
+    expect(find.text('Save as template'), findsNothing);
+  });
 }

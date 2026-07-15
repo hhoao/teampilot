@@ -187,7 +187,7 @@ void main() {
         name: 'Member',
         model: 'gpt-test',
         provider: 'team-openai',
-        prompt: 'You are the reviewer.',
+        responsibilities: 'You are the reviewer.',
       );
       const team = TeamProfile(
         id: 'team-a',

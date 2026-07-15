@@ -264,7 +264,7 @@ requires_openai_auth = true
         provider: 'deepseek',
       ),
       runtimeBundle: const ConfigBundle(),
-      );
+    );
 
     final codexDir = _sessionToolDir(
       base.path,
@@ -339,7 +339,7 @@ base_url = "https://api.example.com/v1"
     const lead = TeamMemberConfig(
       id: 'team-lead',
       name: 'team-lead',
-      prompt: 'Coordinate only; delegate implementation.',
+      responsibilities: 'Coordinate only; delegate implementation.',
     );
     final env = (await service.prepareTeamLaunch(
       workspaceId: _testWorkspaceId,
@@ -407,7 +407,7 @@ base_url = "https://api.example.com/v1"
         member: lead,
         team: team,
         runtimeBundle: team.bundle,
-    )).environment;
+      )).environment;
 
       final claudeDir = _sessionClaudeDir(base.path, sessionId);
       final roleText = await File(
@@ -450,7 +450,7 @@ base_url = "https://api.example.com/v1"
       const lead = TeamMemberConfig(
         id: 'team-lead',
         name: 'team-lead',
-        prompt: 'Coordinate flashskyai teammates.',
+        responsibilities: 'Coordinate flashskyai teammates.',
       );
       final env = (await service.prepareTeamLaunch(
         workspaceId: _testWorkspaceId,
@@ -462,7 +462,7 @@ base_url = "https://api.example.com/v1"
         member: lead,
         workingDirectory: '/workspace',
         runtimeBundle: const ConfigBundle(),
-    )).environment;
+      )).environment;
 
       final flashskyaiDir = _sessionFlashskyaiDir(base.path, sessionId);
       final roleFile = p.join(flashskyaiDir, 'prompts', 'team-lead', 'role.md');
@@ -703,7 +703,7 @@ base_url = "https://api.example.com/v1"
       members: members,
       workingDirectory: '/ws',
       runtimeBundle: const ConfigBundle(),
-      );
+    );
     final rosterPath = p.join(
       _sessionClaudeDir(base.path, sessionId),
       'teams',
@@ -730,7 +730,7 @@ base_url = "https://api.example.com/v1"
       ),
       leadSessionId: 'chat-session-uuid',
       runtimeBundle: const ConfigBundle(),
-      );
+    );
     final second =
         jsonDecode(await File(rosterPath).readAsString())
             as Map<String, Object?>;
@@ -773,7 +773,7 @@ base_url = "https://api.example.com/v1"
           providerIdsByTool: const {'claude': 'custom'},
         ),
         runtimeBundle: const ConfigBundle(),
-    )).environment;
+      )).environment;
 
       final claudeDir = _sessionClaudeDir(base.path, sessionId);
       final developerSettings = p.join(claudeDir, 'settings', 'developer.json');
@@ -1023,7 +1023,7 @@ base_url = "https://api.example.com/v1"
       cli: CliTool.claude,
       members: const [TeamMemberConfig(id: 'developer', name: 'developer')],
       runtimeBundle: const ConfigBundle(),
-      );
+    );
 
     final roster = File(
       p.join(

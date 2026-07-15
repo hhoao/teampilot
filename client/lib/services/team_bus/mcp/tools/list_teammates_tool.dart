@@ -13,9 +13,10 @@ final class ListTeammatesTool extends TeammateBusTool {
 
   @override
   String get description =>
-      'List all team members and team config (Claude-style roster): ids, '
-      'agentId, agentType, model, provider, CLI, taskId, cwd, prompt '
-      'summary, plus live bus state (unread, wait_for_message, pty). '
+      'List all team members and team config: ids, '
+      'agentId, agentType, model, provider, CLI, taskId, cwd, '
+      'responsibilities, plus live '
+      'bus state (unread, wait_for_message, pty). '
       'Use member id in send_message(to=...).';
 
   @override

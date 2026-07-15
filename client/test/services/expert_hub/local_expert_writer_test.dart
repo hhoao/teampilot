@@ -25,7 +25,7 @@ void main() {
         description: '',
         category: '',
         source: ExpertMemberSource.local,
-        member: DiscoverableTeamMember(name: 'Arch', prompt: 'p'),
+        member: DiscoverableTeamMember(name: 'Arch', responsibilities: 'p'),
       ),
     );
 
@@ -41,7 +41,7 @@ void main() {
         description: '',
         category: '',
         source: ExpertMemberSource.local,
-        member: DiscoverableTeamMember(name: 'Arch', prompt: 'p'),
+        member: DiscoverableTeamMember(name: 'Arch', responsibilities: 'p'),
       ),
     );
 
@@ -58,7 +58,7 @@ void main() {
         description: '',
         category: '',
         source: ExpertMemberSource.local,
-        member: DiscoverableTeamMember(name: 'Arch', prompt: 'p'),
+        member: DiscoverableTeamMember(name: 'Arch', responsibilities: 'p'),
       ),
     );
 

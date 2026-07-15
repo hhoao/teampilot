@@ -117,7 +117,7 @@ DiscoverableMember _localExpert({
   description: '$name desc',
   category: 'Custom',
   source: ExpertMemberSource.local,
-  member: DiscoverableTeamMember(name: name, prompt: prompt),
+  member: DiscoverableTeamMember(name: name, responsibilities: prompt),
 );
 
 void main() {

@@ -8,7 +8,7 @@ class WorkspaceAgentConfig {
     this.agent = '',
     this.agentType = '',
     this.extraArgs = '',
-    this.prompt = '',
+    this.responsibilities = '',
     this.dangerouslySkipPermissions = false,
   });
 
@@ -17,7 +17,7 @@ class WorkspaceAgentConfig {
       agent: json['agent'] as String? ?? '',
       agentType: json['agentType'] as String? ?? '',
       extraArgs: json['extraArgs'] as String? ?? '',
-      prompt: json['prompt'] as String? ?? '',
+      responsibilities: json['responsibilities'] as String? ?? '',
       dangerouslySkipPermissions: json.containsKey('dangerouslySkipPermissions')
           ? TeamMemberConfig.decodeDangerouslySkipPermissions(
               json['dangerouslySkipPermissions'],
@@ -29,21 +29,21 @@ class WorkspaceAgentConfig {
   final String agent;
   final String agentType;
   final String extraArgs;
-  final String prompt;
+  final String responsibilities;
   final bool dangerouslySkipPermissions;
 
   WorkspaceAgentConfig copyWith({
     String? agent,
     String? agentType,
     String? extraArgs,
-    String? prompt,
+    String? responsibilities,
     bool? dangerouslySkipPermissions,
   }) {
     return WorkspaceAgentConfig(
       agent: agent ?? this.agent,
       agentType: agentType ?? this.agentType,
       extraArgs: extraArgs ?? this.extraArgs,
-      prompt: prompt ?? this.prompt,
+      responsibilities: responsibilities ?? this.responsibilities,
       dangerouslySkipPermissions:
           dangerouslySkipPermissions ?? this.dangerouslySkipPermissions,
     );
@@ -54,7 +54,7 @@ class WorkspaceAgentConfig {
       'agent': agent,
       if (agentType.isNotEmpty) 'agentType': agentType,
       'extraArgs': extraArgs,
-      'prompt': prompt,
+      'responsibilities': responsibilities,
       if (dangerouslySkipPermissions) 'dangerouslySkipPermissions': true,
     };
   }
@@ -67,7 +67,7 @@ class WorkspaceAgentConfig {
             agent == other.agent &&
             agentType == other.agentType &&
             extraArgs == other.extraArgs &&
-            prompt == other.prompt &&
+            responsibilities == other.responsibilities &&
             dangerouslySkipPermissions == other.dangerouslySkipPermissions;
   }
 
@@ -76,7 +76,7 @@ class WorkspaceAgentConfig {
     agent,
     agentType,
     extraArgs,
-    prompt,
+    responsibilities,
     dangerouslySkipPermissions,
   );
 }

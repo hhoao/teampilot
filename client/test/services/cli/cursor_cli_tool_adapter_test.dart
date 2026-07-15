@@ -10,20 +10,14 @@ void main() {
       id: 'm',
       name: 'planner',
       model: 'gpt-5.2',
-      prompt: 'You are the planner.',
+      responsibilities: 'You are the planner.',
       dangerouslySkipPermissions: true,
     );
     final args = const CursorCliToolAdapter().buildArguments(
       CliLaunchContext(team: team, member: member, workingDirectory: '/work'),
     );
 
-    expect(args, [
-      '--workspace',
-      '/work',
-      '--model',
-      'gpt-5.2',
-      '--force',
-    ]);
+    expect(args, ['--workspace', '/work', '--model', 'gpt-5.2', '--force']);
     expect(args, isNot(contains('You are the planner.')));
   });
 
@@ -32,7 +26,7 @@ void main() {
       id: 'm',
       name: 'planner',
       model: 'gpt-5.2',
-      prompt: 'You are the planner.',
+      responsibilities: 'You are the planner.',
       dangerouslySkipPermissions: false,
     );
     final args = const CursorCliToolAdapter().buildArguments(
@@ -78,7 +72,7 @@ void main() {
       id: 'm',
       name: 'planner',
       model: 'gpt-5.2',
-      prompt: 'You are the planner.',
+      responsibilities: 'You are the planner.',
       dangerouslySkipPermissions: false,
     );
     final args = const CursorCliToolAdapter().buildArguments(

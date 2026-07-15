@@ -60,7 +60,7 @@ TeamConfigDraft parseTeamConfigDraft(String rawJson, {required int joinedAt}) {
           id: TeamMemberNaming.slugMemberName(name),
           name: name,
           agentType: role,
-          prompt: responsibilities,
+          responsibilities: responsibilities,
           playbook: workingMethod,
           joinedAt: joinedAt,
         ),

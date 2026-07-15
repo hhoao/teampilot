@@ -70,7 +70,7 @@ void main() {
       tags: const {'design'},
       member: const DiscoverableTeamMember(
         name: 'Arch',
-        prompt: 'design systems',
+        responsibilities: 'design systems',
       ),
     );
 
@@ -103,7 +103,7 @@ void main() {
       description: '',
       category: '',
       source: ExpertMemberSource.local,
-      member: const DiscoverableTeamMember(name: 'Arch', prompt: ''),
+      member: const DiscoverableTeamMember(name: 'Arch', responsibilities: ''),
     );
 
     await expectLater(
@@ -126,7 +126,10 @@ void main() {
       name: 'Platform',
       description: 'Platform team',
       roster: const [
-        TeamRosterSlot(id: 'arch', expertKey: 'hhoao/teampilot/member-hub/arch'),
+        TeamRosterSlot(
+          id: 'arch',
+          expertKey: 'hhoao/teampilot/member-hub/arch',
+        ),
       ],
       createdAt: 1,
     );
@@ -143,7 +146,9 @@ void main() {
     expect(result.prUrl, isNotEmpty);
     expect(api.writtenPaths, contains('team-hub/teams/platform/team.json'));
     expect(
-      records.find(kind: HubPublishKind.team, slug: 'platform')?.registryFullName,
+      records
+          .find(kind: HubPublishKind.team, slug: 'platform')
+          ?.registryFullName,
       kDefaultTeamHubRegistry.catalogPrefix,
     );
     expect(

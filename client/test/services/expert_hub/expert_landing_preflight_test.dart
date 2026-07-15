@@ -38,7 +38,7 @@ void main() {
             member: const TeamMemberConfig(
               id: 'm1',
               name: 'Dev',
-              prompt: 'p',
+              responsibilities: 'p',
               joinedAt: 1,
             ),
             bundle: const ConfigBundle(skillIds: ['s1']),
@@ -83,7 +83,7 @@ void main() {
             member: const TeamMemberConfig(
               id: 'm1',
               name: 'Dev',
-              prompt: 'p',
+              responsibilities: 'p',
               joinedAt: 1,
             ),
             bundle: const ConfigBundle(skillIds: ['s1']),
@@ -141,7 +141,8 @@ class _RecordingResolver extends ExpertCapabilityResolver {
 
   @override
   Future<ExpertCapabilityPack?> resolveKey(
-    String expertKey, {void Function(String)? onDepProgress, 
+    String expertKey, {
+    void Function(String)? onDepProgress,
     TeamRosterSlotOverrides? overrides,
     TeamProfile? team,
     String? slotId,

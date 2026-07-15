@@ -25,7 +25,7 @@ void main() {
         'updatedAt': 2,
         'member': {
           'name': 'security-reviewer',
-          'prompt': 'Review for security vulnerabilities only.',
+          'responsibilities': 'Review for security vulnerabilities only.',
           'playbook': 'Check auth, injection, and secrets handling.',
         },
       }),
@@ -42,7 +42,7 @@ void main() {
     expect(members.single.source, ExpertMemberSource.registry);
     expect(members.single.name, 'Security Reviewer');
     expect(
-      members.single.member.prompt,
+      members.single.member.responsibilities,
       'Review for security vulnerabilities only.',
     );
 

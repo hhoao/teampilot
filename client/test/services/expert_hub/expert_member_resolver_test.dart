@@ -21,7 +21,7 @@ void main() {
       description: '',
       category: 'Development',
       source: ExpertMemberSource.builtin,
-      member: DiscoverableTeamMember(name: 'developer', prompt: 'p'),
+      member: DiscoverableTeamMember(name: 'developer', responsibilities: 'p'),
     );
 
     final resolved = ExpertMemberResolver.resolve(
@@ -53,7 +53,7 @@ void main() {
     expect(resolved, isNotNull);
     expect(resolved!.key, kBuiltinDefaultExpertKey);
     expect(resolved.name, 'Default');
-    expect(resolved.member.prompt, expectedPrompt);
+    expect(resolved.member.responsibilities, expectedPrompt);
     expect(resolved.skillDeps, hasLength(1));
     expect(resolved.skillDeps.single.name, 'Using Superpowers');
     expect(resolved.pluginDeps, isEmpty);
@@ -69,7 +69,7 @@ void main() {
       source: ExpertMemberSource.builtin,
       member: DiscoverableTeamMember(
         name: 'developer',
-        prompt: 'Build features',
+        responsibilities: 'Build features',
         playbook: 'Use TDD',
       ),
     );
@@ -79,7 +79,7 @@ void main() {
     );
     expect(resolved?.key, member.key);
     expect(resolved?.name, 'Developer');
-    expect(resolved?.member.prompt, 'Build features');
+    expect(resolved?.member.responsibilities, 'Build features');
     expect(resolved?.member.playbook, 'Use TDD');
   });
 }

@@ -17,40 +17,44 @@ void main() {
     }
   });
 
-  test('materialized superpowers roster carries prompts and inherit preset', () async {
-    final team = TeamProfile(
-      id: 'superpowers',
-      name: 'Superpowers',
-      roster: kSuperpowersTrioTeamTemplate.roster,
-    );
-    final configs = await ExpertMemberMaterializer.materializeRosterAsync(
-      team: team,
-    );
-    expect(configs, hasLength(4));
-    expect(configs[0].playbook, isNotEmpty);
-    expect(configs[1].prompt, contains('Do NOT'));
-    for (final member in configs) {
-      expect(member.inheritsTeamPreset, isTrue);
-      expect(member.activePresetId, TeamProfile.inheritPresetId);
-    }
-  });
+  test(
+    'materialized superpowers roster carries prompts and inherit preset',
+    () async {
+      final team = TeamProfile(
+        id: 'superpowers',
+        name: 'Superpowers',
+        roster: kSuperpowersTrioTeamTemplate.roster,
+      );
+      final configs = await ExpertMemberMaterializer.materializeRosterAsync(
+        team: team,
+      );
+      expect(configs, hasLength(4));
+      expect(configs[0].playbook, isNotEmpty);
+      expect(configs[1].responsibilities, contains('Do NOT'));
+      for (final member in configs) {
+        expect(member.inheritsTeamPreset, isTrue);
+        expect(member.activePresetId, TeamProfile.inheritPresetId);
+      }
+    },
+  );
 
-  test('delegate-only lead is not told to brainstorm or dispatch agents', () async {
-    final team = TeamProfile(
-      id: 'superpowers',
-      name: 'Superpowers',
-      roster: kSuperpowersTrioTeamTemplate.roster,
-    );
-    final configs = await ExpertMemberMaterializer.materializeRosterAsync(
-      team: team,
-    );
-    final lead = configs.firstWhere(
-      (m) => TeamMemberNaming.isTeamLead(m),
-    );
-    final text = '${lead.prompt}\n${lead.playbook}';
-    expect(text, isNot(contains('brainstorming')));
-    expect(text, isNot(contains('dispatching-parallel-agents')));
-  });
+  test(
+    'delegate-only lead is not told to brainstorm or dispatch agents',
+    () async {
+      final team = TeamProfile(
+        id: 'superpowers',
+        name: 'Superpowers',
+        roster: kSuperpowersTrioTeamTemplate.roster,
+      );
+      final configs = await ExpertMemberMaterializer.materializeRosterAsync(
+        team: team,
+      );
+      final lead = configs.firstWhere((m) => TeamMemberNaming.isTeamLead(m));
+      final text = '${lead.responsibilities}\n${lead.playbook}';
+      expect(text, isNot(contains('brainstorming')));
+      expect(text, isNot(contains('dispatching-parallel-agents')));
+    },
+  );
 
   test(
     'materialized workers inherit capabilities from expert catalog',
@@ -79,10 +83,8 @@ void main() {
     final configs = await ExpertMemberMaterializer.materializeRosterAsync(
       team: team,
     );
-    final lead = configs.firstWhere(
-      (m) => TeamMemberNaming.isTeamLead(m),
-    );
-    final text = '${lead.prompt}\n${lead.playbook}';
+    final lead = configs.firstWhere((m) => TeamMemberNaming.isTeamLead(m));
+    final text = '${lead.responsibilities}\n${lead.playbook}';
     expect(text, contains('architect'));
     expect(text, contains('builder'));
     expect(text, contains('reviewer'));

@@ -77,7 +77,7 @@ class TeamMemberConfig {
     this.agentType = '',
     this.capabilities = const {},
     this.extraArgs = '',
-    this.prompt = '',
+    this.responsibilities = '',
     this.playbook = '',
     this.joinedAt = 0,
     this.dangerouslySkipPermissions = true,
@@ -118,7 +118,7 @@ class TeamMemberConfig {
           if (c is String && c.trim().isNotEmpty) c.trim(),
       },
       extraArgs: json['extraArgs'] as String? ?? '',
-      prompt: json['prompt'] as String? ?? '',
+      responsibilities: json['responsibilities'] as String? ?? '',
       playbook: json['playbook'] as String? ?? '',
       joinedAt: (json['joinedAt'] as num?)?.toInt() ?? 0,
       dangerouslySkipPermissions: decodeDangerouslySkipPermissions(
@@ -150,10 +150,10 @@ class TeamMemberConfig {
   final String extraArgs;
 
   /// 职责层：声明这个角色是谁、负责什么（WHAT）。写入 role.md 的 Responsibilities 段。
-  final String prompt;
+  final String responsibilities;
 
   /// 工作方法层：声明这个角色具体怎么干活（HOW）——自由文本 SOP，可软引用 skill，
-  /// 但不绑定 skill 目录。写入 role.md 的 Working method 段，与 [prompt] 平级、语义不同。
+  /// 但不绑定 skill 目录。写入 role.md 的 Working method 段，与 [responsibilities] 平级、语义不同。
   final String playbook;
 
   final int joinedAt;
@@ -220,7 +220,7 @@ class TeamMemberConfig {
     String? agentType,
     Set<String>? capabilities,
     String? extraArgs,
-    String? prompt,
+    String? responsibilities,
     String? playbook,
     int? joinedAt,
     bool? dangerouslySkipPermissions,
@@ -243,7 +243,7 @@ class TeamMemberConfig {
       agentType: agentType ?? this.agentType,
       capabilities: capabilities ?? this.capabilities,
       extraArgs: extraArgs ?? this.extraArgs,
-      prompt: prompt ?? this.prompt,
+      responsibilities: responsibilities ?? this.responsibilities,
       playbook: playbook ?? this.playbook,
       joinedAt: joinedAt ?? this.joinedAt,
       dangerouslySkipPermissions:
@@ -270,7 +270,7 @@ class TeamMemberConfig {
       if (agentType.isNotEmpty) 'agentType': agentType,
       if (capabilities.isNotEmpty) 'capabilities': capabilities.toList(),
       'extraArgs': extraArgs,
-      'prompt': prompt,
+      'responsibilities': responsibilities,
       if (playbook.isNotEmpty) 'playbook': playbook,
       'joinedAt': joinedAt,
       if (!dangerouslySkipPermissions) 'dangerouslySkipPermissions': false,
@@ -297,7 +297,7 @@ class TeamMemberConfig {
             capabilities.length == other.capabilities.length &&
             capabilities.containsAll(other.capabilities) &&
             extraArgs == other.extraArgs &&
-            prompt == other.prompt &&
+            responsibilities == other.responsibilities &&
             playbook == other.playbook &&
             joinedAt == other.joinedAt &&
             dangerouslySkipPermissions == other.dangerouslySkipPermissions &&
@@ -318,7 +318,7 @@ class TeamMemberConfig {
     agentType,
     Object.hashAllUnordered(capabilities),
     extraArgs,
-    prompt,
+    responsibilities,
     playbook,
     joinedAt,
     dangerouslySkipPermissions,
@@ -530,6 +530,7 @@ class TeamProfile implements LaunchProfile {
   final String name;
   final String description;
   final String extraArgs;
+
   /// Persisted expert references for this team.
   final List<TeamRosterSlot> roster;
 

@@ -317,9 +317,9 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     // stale/empty materialized member cache cannot blank the read-only fields.
     final hasExpert = (expertKey?.trim().isNotEmpty ?? false);
     final responsibilities =
-        resolvedExpert?.member.prompt.trim().isNotEmpty == true
-        ? resolvedExpert!.member.prompt
-        : member.prompt;
+        resolvedExpert?.member.responsibilities.trim().isNotEmpty == true
+        ? resolvedExpert!.member.responsibilities
+        : member.responsibilities;
     final playbook = resolvedExpert?.member.playbook.trim().isNotEmpty == true
         ? resolvedExpert!.member.playbook
         : member.playbook;

@@ -25,7 +25,7 @@ void main() {
           id: TeamMemberNaming.teamLeadName,
           name: 'team-lead',
           agentType: 'coordinator',
-          prompt: 'Coordinate.',
+          responsibilities: 'Coordinate.',
           playbook: 'Decompose.',
           joinedAt: 100,
         ),
@@ -33,7 +33,7 @@ void main() {
           id: 'worker',
           name: 'Worker',
           agentType: 'dev',
-          prompt: 'Build it.',
+          responsibilities: 'Build it.',
           playbook: 'Test first.',
           joinedAt: 100,
         ),
@@ -46,9 +46,7 @@ void main() {
     expect(slots[0].id, TeamMemberNaming.teamLeadName);
     expect(slots[1].id, 'worker');
     expect(
-      slots.every(
-        (s) => LocalMemberTemplateStore.isLocalKey(s.expertKey),
-      ),
+      slots.every((s) => LocalMemberTemplateStore.isLocalKey(s.expertKey)),
       isTrue,
     );
 

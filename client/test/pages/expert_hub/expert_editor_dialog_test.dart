@@ -152,7 +152,7 @@ void main() {
     expect(result!.name, 'Archivist');
     expect(result!.description, 'Docs expert');
     expect(result!.category, 'Docs');
-    expect(result!.member.prompt, 'Keep the archive tidy.');
+    expect(result!.member.responsibilities, 'Keep the archive tidy.');
     expect(result!.member.playbook, 'Read first, then write.');
     expect(result!.tags, {'docs', 'archive'});
     expect(LocalMemberTemplateStore.isLocalKey(result!.key), isTrue);
@@ -334,7 +334,7 @@ void main() {
       source: ExpertMemberSource.local,
       member: const DiscoverableTeamMember(
         name: 'Orphaned',
-        prompt: 'prompt',
+        responsibilities: 'prompt',
       ),
       skillDeps: [orphan],
     );
@@ -577,7 +577,7 @@ void main() {
         source: ExpertMemberSource.local,
         member: const DiscoverableTeamMember(
           name: 'Old Name',
-          prompt: 'old prompt',
+          responsibilities: 'old prompt',
         ),
       ),
     );
@@ -625,7 +625,7 @@ void main() {
 
     expect(result?.key, 'local/fixed-id');
     expect(result?.name, 'New Name');
-    expect(result?.member.prompt, 'new prompt');
+    expect(result?.member.responsibilities, 'new prompt');
     expect(writer.saved.single.key, 'local/fixed-id');
   });
 

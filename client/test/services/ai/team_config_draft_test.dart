@@ -24,13 +24,13 @@ void main() {
     expect(draft.members, hasLength(2));
     final lead = draft.members.first;
     expect(lead.id, TeamMemberNaming.teamLeadName);
-    expect(lead.prompt, 'Coordinate. Do NOT implement.');
+    expect(lead.responsibilities, 'Coordinate. Do NOT implement.');
     expect(lead.playbook, 'Decompose, assign, synthesize.');
     // model/effort/cli are never generated — the user configures them later.
     expect(lead.model, '');
     expect(lead.effort, '');
     expect(lead.cli, isNull);
-    expect(draft.members[1].prompt, 'Build it.');
+    expect(draft.members[1].responsibilities, 'Build it.');
     expect(draft.members[1].cli, isNull);
   });
 

@@ -12,7 +12,7 @@ void main() {
       source: ExpertMemberSource.builtin,
       member: DiscoverableTeamMember(
         name: 'developer',
-        prompt: 'You implement code.',
+        responsibilities: 'You implement code.',
         playbook: 'Use TDD.',
         capabilities: {'implementation'},
       ),
@@ -28,11 +28,11 @@ void main() {
       description: '',
       category: 'Business',
       source: ExpertMemberSource.local,
-      member: DiscoverableTeamMember(name: 'Product Manager', prompt: 'Plan.'),
+      member: DiscoverableTeamMember(name: 'Product Manager', responsibilities: 'Plan.'),
     );
     final cfg = m.toMemberConfig(joinedAt: 1);
     expect(cfg.id, isNotEmpty);
-    expect(cfg.prompt, 'Plan.');
+    expect(cfg.responsibilities, 'Plan.');
     expect(cfg.joinedAt, 1);
   });
 
@@ -45,7 +45,7 @@ void main() {
       source: ExpertMemberSource.builtin,
       member: DiscoverableTeamMember(
         name: 'pack-expert',
-        prompt: 'Ship with deps.',
+        responsibilities: 'Ship with deps.',
       ),
       pluginDeps: [
         PluginDependencyRef(
@@ -60,7 +60,10 @@ void main() {
         McpDependencyRef(
           id: 'srv',
           name: 'Server',
-          server: {'command': 'npx', 'args': ['-y', 'pkg']},
+          server: {
+            'command': 'npx',
+            'args': ['-y', 'pkg'],
+          },
         ),
       ],
     );

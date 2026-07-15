@@ -127,7 +127,9 @@ abstract final class TeammateBusToolFormat {
       if (profile.joinedAt > 0) 'joinedAt: ${profile.joinedAt}',
       if (profile.extraArgs.isNotEmpty) 'extraArgs: ${profile.extraArgs}',
       'dangerouslySkipPermissions: ${profile.dangerouslySkipPermissions}',
-      'prompt: ${profile.promptSummary()}',
+      // Responsibilities (WHAT); playbook (HOW) is not listed here.
+      if (profile.responsibilities.trim().isNotEmpty)
+        'responsibilities: ${profile.responsibilitiesSummary()}',
       'bus.lifecycle: ${teammate.lifecycle.name}',
       'bus.activity: ${teammate.activity.name}',
       'bus.phase: ${teammate.busPhaseLabel}',

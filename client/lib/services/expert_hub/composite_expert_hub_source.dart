@@ -9,7 +9,7 @@ import 'team_member_index_source.dart';
 /// Stable hash of member prompt + playbook for deduping team-extracted entries
 /// against builtin/registry catalog entries.
 String memberContentHash(DiscoverableTeamMember member) =>
-    Object.hash(member.prompt, member.playbook).toString();
+    Object.hash(member.responsibilities, member.playbook).toString();
 
 /// Loads team templates for team-extracted member indexing (e.g. Team Hub source).
 typedef TeamIndexLoader = Future<List<DiscoverableTeam>> Function({

@@ -21,7 +21,7 @@ void main() {
   const member = TeamMemberConfig(
     id: 'planner',
     name: 'Planner',
-    prompt: '只做代码审查',
+    responsibilities: '只做代码审查',
   );
 
   const localBusIdle = MemberBusIdleEndpoint(url: 'http://127.0.0.1:4321/idle');
@@ -62,7 +62,10 @@ void main() {
       );
 
       for (final relative in CursorAuthArtifacts.busGenerated) {
-        final path = fs.pathContext.join(layout.cursorDir(memberHome), relative);
+        final path = fs.pathContext.join(
+          layout.cursorDir(memberHome),
+          relative,
+        );
         expect((await fs.stat(path)).isFile, isTrue, reason: relative);
       }
 
@@ -124,18 +127,21 @@ void main() {
       expect(allow, contains(CursorCliConfigPolicy.teamBusMcpAllowEntry));
     });
 
-    test('writes role.mdc but skips bus hooks/mcp when busIdle is null', () async {
-      await provisioner.provisionOverlayOnly(
-        memberHome: memberHome,
-        member: member,
-        busIdle: null,
-        forceTeamLeadDelegateMode: false,
-      );
+    test(
+      'writes role.mdc but skips bus hooks/mcp when busIdle is null',
+      () async {
+        await provisioner.provisionOverlayOnly(
+          memberHome: memberHome,
+          member: member,
+          busIdle: null,
+          forceTeamLeadDelegateMode: false,
+        );
 
-      expect((await fs.stat(layout.roleRule(memberHome))).isFile, isTrue);
-      expect((await fs.stat(layout.mcpConfig(memberHome))).isFile, isFalse);
-      expect((await fs.stat(layout.cliConfig(memberHome))).isFile, isTrue);
-    });
+        expect((await fs.stat(layout.roleRule(memberHome))).isFile, isTrue);
+        expect((await fs.stat(layout.mcpConfig(memberHome))).isFile, isFalse);
+        expect((await fs.stat(layout.cliConfig(memberHome))).isFile, isTrue);
+      },
+    );
 
     test('does not write auth.json', () async {
       await provisioner.provisionOverlayOnly(

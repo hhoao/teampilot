@@ -37,7 +37,7 @@ void main() {
       tags: const {'design'},
       member: const DiscoverableTeamMember(
         name: 'Arch',
-        prompt: 'design systems',
+        responsibilities: 'design systems',
       ),
       skillDeps: const [
         SkillDependencyRef(
@@ -83,7 +83,7 @@ void main() {
       description: '',
       category: 'Engineering',
       source: ExpertMemberSource.local,
-      member: const DiscoverableTeamMember(name: 'Arch', prompt: 'p'),
+      member: const DiscoverableTeamMember(name: 'Arch', responsibilities: 'p'),
       pluginDeps: const [
         PluginDependencyRef(
           marketplaceOwner: 'acme',
@@ -154,7 +154,7 @@ void main() {
       description: '',
       category: 'Engineering',
       source: ExpertMemberSource.local,
-      member: const DiscoverableTeamMember(name: 'Arch', prompt: 'p'),
+      member: const DiscoverableTeamMember(name: 'Arch', responsibilities: 'p'),
     );
 
     final result = ExpertPublishMapper.map(
@@ -194,7 +194,7 @@ void main() {
       description: '',
       category: 'Engineering',
       source: ExpertMemberSource.local,
-      member: const DiscoverableTeamMember(name: 'Arch', prompt: 'p'),
+      member: const DiscoverableTeamMember(name: 'Arch', responsibilities: 'p'),
       skillDeps: const [],
     );
 
@@ -233,7 +233,7 @@ void main() {
       description: '',
       category: 'Engineering',
       source: ExpertMemberSource.local,
-      member: const DiscoverableTeamMember(name: 'Arch', prompt: 'p'),
+      member: const DiscoverableTeamMember(name: 'Arch', responsibilities: 'p'),
     );
 
     final result = ExpertPublishMapper.map(

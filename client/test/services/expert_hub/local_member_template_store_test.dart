@@ -15,7 +15,7 @@ DiscoverableMember _sampleMember({String key = 'owner/repo/pm'}) {
     source: ExpertMemberSource.registry,
     member: const DiscoverableTeamMember(
       name: 'pm',
-      prompt: 'You are a PM.',
+      responsibilities: 'You are a PM.',
       playbook: 'Break work into milestones.',
     ),
   );
@@ -44,9 +44,7 @@ void main() {
   });
 
   test('save overwrites existing local key', () async {
-    final first = await store.save(
-      _sampleMember(key: 'local/existing-id'),
-    );
+    final first = await store.save(_sampleMember(key: 'local/existing-id'));
     final updated = await store.save(
       first.copyWith(description: 'Updated description'),
     );

@@ -21,7 +21,7 @@ DiscoverableMember expert({
   source: ExpertMemberSource.builtin,
   member: DiscoverableTeamMember(
     name: 'pack-expert',
-    prompt: 'You ship with deps.',
+    responsibilities: 'You ship with deps.',
   ),
   skillDeps: skillDeps,
   pluginDeps: pluginDeps,
@@ -51,60 +51,66 @@ const mcpDep = McpDependencyRef(
 );
 
 void main() {
-  test('resolve with no deps → empty ConfigBundle, non-empty persona', () async {
-    final resolver = ExpertCapabilityResolver(
-      installSkill: (_) async => fail('skill installer should not be called'),
-      installPlugin: (_) async => fail('plugin installer should not be called'),
-      installMcp: (_) async => fail('mcp installer should not be called'),
-    );
+  test(
+    'resolve with no deps → empty ConfigBundle, non-empty persona',
+    () async {
+      final resolver = ExpertCapabilityResolver(
+        installSkill: (_) async => fail('skill installer should not be called'),
+        installPlugin: (_) async =>
+            fail('plugin installer should not be called'),
+        installMcp: (_) async => fail('mcp installer should not be called'),
+      );
 
-    final pack = await resolver.resolve(expert());
+      final pack = await resolver.resolve(expert());
 
-    expect(pack.bundle, const ConfigBundle());
-    expect(pack.failedDeps, isEmpty);
-    expect(pack.member.name, 'Pack Expert');
-    expect(pack.member.prompt, contains('ship'));
-    expect(pack.member.id, isNotEmpty);
-  });
+      expect(pack.bundle, const ConfigBundle());
+      expect(pack.failedDeps, isEmpty);
+      expect(pack.member.name, 'Pack Expert');
+      expect(pack.member.responsibilities, contains('ship'));
+      expect(pack.member.id, isNotEmpty);
+    },
+  );
 
-  test('skill dep present → installSkill called; id in bundle.skillIds', () async {
-    SkillDependencyRef? seen;
-    final resolver = ExpertCapabilityResolver(
-      installSkill: (dep) async {
-        seen = dep;
-        return 'anthropics/skills:deep-research';
-      },
-      installPlugin: (_) async => null,
-      installMcp: (_) async => null,
-    );
+  test(
+    'skill dep present → installSkill called; id in bundle.skillIds',
+    () async {
+      SkillDependencyRef? seen;
+      final resolver = ExpertCapabilityResolver(
+        installSkill: (dep) async {
+          seen = dep;
+          return 'anthropics/skills:deep-research';
+        },
+        installPlugin: (_) async => null,
+        installMcp: (_) async => null,
+      );
 
-    final pack = await resolver.resolve(
-      expert(skillDeps: const [skillDep]),
-    );
+      final pack = await resolver.resolve(expert(skillDeps: const [skillDep]));
 
-    expect(seen, skillDep);
-    expect(pack.bundle.skillIds, ['anthropics/skills:deep-research']);
-    expect(pack.failedDeps, isEmpty);
-    expect(pack.member.prompt, contains('ship'));
-  });
+      expect(seen, skillDep);
+      expect(pack.bundle.skillIds, ['anthropics/skills:deep-research']);
+      expect(pack.failedDeps, isEmpty);
+      expect(pack.member.responsibilities, contains('ship'));
+    },
+  );
 
-  test('installSkill returns null → soft-fail; persona present; DependencyFailure listed', () async {
-    final resolver = ExpertCapabilityResolver(
-      installSkill: (_) async => null,
-      installPlugin: (_) async => null,
-      installMcp: (_) async => null,
-    );
+  test(
+    'installSkill returns null → soft-fail; persona present; DependencyFailure listed',
+    () async {
+      final resolver = ExpertCapabilityResolver(
+        installSkill: (_) async => null,
+        installPlugin: (_) async => null,
+        installMcp: (_) async => null,
+      );
 
-    final pack = await resolver.resolve(
-      expert(skillDeps: const [skillDep]),
-    );
+      final pack = await resolver.resolve(expert(skillDeps: const [skillDep]));
 
-    expect(pack.bundle.skillIds, isEmpty);
-    expect(pack.member.name, 'Pack Expert');
-    expect(pack.failedDeps, hasLength(1));
-    expect(pack.failedDeps.single.kind, DependencyKind.skill);
-    expect(pack.failedDeps.single.name, 'deep-research');
-  });
+      expect(pack.bundle.skillIds, isEmpty);
+      expect(pack.member.name, 'Pack Expert');
+      expect(pack.failedDeps, hasLength(1));
+      expect(pack.failedDeps.single.kind, DependencyKind.skill);
+      expect(pack.failedDeps.single.name, 'deep-research');
+    },
+  );
 
   test('preflight / resolveKey unknown key → null (hard fail)', () async {
     final resolver = ExpertCapabilityResolver(
@@ -144,31 +150,34 @@ void main() {
     expect(pack, isA<ExpertCapabilityPack>());
   });
 
-  test('resolve with team but no overrides → materialize path (slot id + inheritance)', () async {
-    final resolver = ExpertCapabilityResolver(
-      installSkill: (_) async => null,
-      installPlugin: (_) async => null,
-      installMcp: (_) async => null,
-    );
-    const team = TeamProfile(
-      id: 'team-1',
-      name: 'Test Team',
-      cli: CliTool.claude,
-      providerIdsByTool: {'claude': 'anthropic'},
-      modelsByTool: {'claude': 'claude-sonnet-4'},
-    );
+  test(
+    'resolve with team but no overrides → materialize path (slot id + inheritance)',
+    () async {
+      final resolver = ExpertCapabilityResolver(
+        installSkill: (_) async => null,
+        installPlugin: (_) async => null,
+        installMcp: (_) async => null,
+      );
+      const team = TeamProfile(
+        id: 'team-1',
+        name: 'Test Team',
+        cli: CliTool.claude,
+        providerIdsByTool: {'claude': 'anthropic'},
+        modelsByTool: {'claude': 'claude-sonnet-4'},
+      );
 
-    final pack = await resolver.resolve(
-      expert(),
-      team: team,
-      slotId: 'slot-alpha',
-    );
+      final pack = await resolver.resolve(
+        expert(),
+        team: team,
+        slotId: 'slot-alpha',
+      );
 
-    expect(pack.member.id, 'slot-alpha');
-    expect(pack.member.provider, 'anthropic');
-    expect(pack.member.model, 'claude-sonnet-4');
-    expect(pack.member.activePresetId, TeamProfile.inheritPresetId);
-  });
+      expect(pack.member.id, 'slot-alpha');
+      expect(pack.member.provider, 'anthropic');
+      expect(pack.member.model, 'claude-sonnet-4');
+      expect(pack.member.activePresetId, TeamProfile.inheritPresetId);
+    },
+  );
 
   test('resolveKey for builtin default returns a pack', () async {
     final resolver = ExpertCapabilityResolver(

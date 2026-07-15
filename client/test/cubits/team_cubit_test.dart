@@ -277,7 +277,7 @@ void main() {
     ]);
     expect(
       cubit.state.selectedTeam?.members.every(
-        (m) => m.prompt.trim().isNotEmpty,
+        (m) => m.responsibilities.trim().isNotEmpty,
       ),
       isTrue,
     );
@@ -355,7 +355,6 @@ void main() {
       await _deleteTeamTempDir(dir);
     },
   );
-
 
   test('addTeam creates team runtime profile directories', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_');
@@ -666,14 +665,18 @@ void main() {
       await cubit.bindClaudeProviderForTeamsWithoutBinding('deepseek');
 
       expect(
-        _teamById(cubit.state.teams, LaunchProfileProvisioner.defaultNativeTeamId)
-            .providerIdsByTool['claude'],
+        _teamById(
+          cubit.state.teams,
+          LaunchProfileProvisioner.defaultNativeTeamId,
+        ).providerIdsByTool['claude'],
         'deepseek',
       );
       final reloaded = await repo.loadTeamProfiles();
       expect(
-        _teamById(reloaded, LaunchProfileProvisioner.defaultNativeTeamId)
-            .providerIdsByTool['claude'],
+        _teamById(
+          reloaded,
+          LaunchProfileProvisioner.defaultNativeTeamId,
+        ).providerIdsByTool['claude'],
         'deepseek',
       );
 
@@ -717,5 +720,4 @@ void main() {
       await _deleteTeamTempDir(dir);
     },
   );
-
 }

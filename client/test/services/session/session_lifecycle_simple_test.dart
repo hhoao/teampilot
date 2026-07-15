@@ -61,12 +61,13 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  SessionLifecycleService service({CliPresetsRepository? cliPresetsRepository}) =>
-      SessionLifecycleService(
-        appDataBasePath: base.path,
-        storageRootsResolver: () async => _roots(base.path),
-        cliPresetsRepository: cliPresetsRepository,
-      );
+  SessionLifecycleService service({
+    CliPresetsRepository? cliPresetsRepository,
+  }) => SessionLifecycleService(
+    appDataBasePath: base.path,
+    storageRootsResolver: () async => _roots(base.path),
+    cliPresetsRepository: cliPresetsRepository,
+  );
 
   SessionRuntimePlan simplePlan({
     required String workspaceId,
@@ -88,7 +89,7 @@ void main() {
           const TeamMemberConfig(
             id: 'default',
             name: 'Default',
-            prompt: 'You are the default expert.',
+            responsibilities: 'You are the default expert.',
             agent: 'default',
           ),
     );
@@ -126,7 +127,7 @@ void main() {
         member: const TeamMemberConfig(
           id: 'architect',
           name: 'Architect',
-          prompt: 'design systems',
+          responsibilities: 'design systems',
           playbook: 'approved patterns',
           agent: 'architect',
           provider: 'anthropic',
@@ -135,20 +136,22 @@ void main() {
         ),
       );
 
-      final shellLaunch = await service(
-        cliPresetsRepository: presetsRepo,
-      ).prepareShellLaunchFromRuntimePlan(
-        session: session,
-        workspace: workspace,
-        plan: plan,
-        preset: await presetsRepo.load().then(
-          (list) => list.firstWhere((p) => p.id == 'preset-claude'),
-        ),
-      );
+      final shellLaunch = await service(cliPresetsRepository: presetsRepo)
+          .prepareShellLaunchFromRuntimePlan(
+            session: session,
+            workspace: workspace,
+            plan: plan,
+            preset: await presetsRepo.load().then(
+              (list) => list.firstWhere((p) => p.id == 'preset-claude'),
+            ),
+          );
 
       expect(shellLaunch.sessionTeam, sessionId);
       expect(shellLaunch.launchContext.member.id, 'architect');
-      expect(shellLaunch.launchContext.member.prompt, contains('design'));
+      expect(
+        shellLaunch.launchContext.member.responsibilities,
+        contains('design'),
+      );
       expect(shellLaunch.launchContext.member.playbook, contains('approved'));
       expect(shellLaunch.launchContext.team.skillIds, ['ex-skill', 'ws-skill']);
       expect(shellLaunch.launchContext.team.cli, CliTool.claude);
@@ -156,67 +159,61 @@ void main() {
     },
   );
 
-  test(
-    'simple prepare does not create identities-runtime directory',
-    () async {
-      const workspaceId = 'ws-simple';
-      const sessionId = 'sess-simple';
-      final workspace = Workspace(
-        workspaceId: workspaceId,
-        folders: const [WorkspaceFolder(path: '/work/simple')],
-        createdAt: 1,
-      );
-      final session = AppSession(
-        sessionId: sessionId,
-        workspaceId: workspaceId,
-        folders: const [WorkspaceFolder(path: '/work/simple')],
-        sessionTeam: '',
-        createdAt: 1,
-      );
-      final plan = simplePlan(workspaceId: workspaceId, sessionId: sessionId);
+  test('simple prepare does not create identities-runtime directory', () async {
+    const workspaceId = 'ws-simple';
+    const sessionId = 'sess-simple';
+    final workspace = Workspace(
+      workspaceId: workspaceId,
+      folders: const [WorkspaceFolder(path: '/work/simple')],
+      createdAt: 1,
+    );
+    final session = AppSession(
+      sessionId: sessionId,
+      workspaceId: workspaceId,
+      folders: const [WorkspaceFolder(path: '/work/simple')],
+      sessionTeam: '',
+      createdAt: 1,
+    );
+    final plan = simplePlan(workspaceId: workspaceId, sessionId: sessionId);
 
-      await service().prepareShellLaunchFromRuntimePlan(
+    await service().prepareShellLaunchFromRuntimePlan(
+      session: session,
+      workspace: workspace,
+      plan: plan,
+    );
+
+    final identityRoot = Directory(p.join(base.path, 'identities-runtime'));
+    expect(
+      await identityRoot.exists(),
+      isFalse,
+      reason: 'Simple mode must skip identities-runtime/',
+    );
+    final claudeDir = layout.sessionRuntimeToolDir(
+      workspaceId,
+      sessionId,
+      'claude',
+    );
+    expect(await Directory(claudeDir).exists(), isTrue);
+  });
+
+  test('prepareShellLaunch throws without a valid team member', () async {
+    final session = AppSession(
+      sessionId: 'team-sess',
+      workspaceId: 'proj',
+      folders: const [WorkspaceFolder(path: '/work/team')],
+      sessionTeam: 'tid',
+      cliTeamName: 'tid-1',
+      createdAt: 1,
+    );
+
+    expect(
+      () => service().prepareShellLaunch(
         session: session,
-        workspace: workspace,
-        plan: plan,
-      );
-
-      final identityRoot = Directory(p.join(base.path, 'identities-runtime'));
-      expect(
-        await identityRoot.exists(),
-        isFalse,
-        reason: 'Simple mode must skip identities-runtime/',
-      );
-      final claudeDir = layout.sessionRuntimeToolDir(
-        workspaceId,
-        sessionId,
-        'claude',
-      );
-      expect(await Directory(claudeDir).exists(), isTrue);
-    },
-  );
-
-  test(
-    'prepareShellLaunch throws without a valid team member',
-    () async {
-      final session = AppSession(
-        sessionId: 'team-sess',
-        workspaceId: 'proj',
-        folders: const [WorkspaceFolder(path: '/work/team')],
-        sessionTeam: 'tid',
-        cliTeamName: 'tid-1',
-        createdAt: 1,
-      );
-
-      expect(
-        () => service().prepareShellLaunch(
-          session: session,
-          team: const TeamProfile(id: 'tid', name: 'Team', members: []),
-        ),
-        throwsA(isA<StateError>()),
-      );
-    },
-  );
+        team: const TeamProfile(id: 'tid', name: 'Team', members: []),
+      ),
+      throwsA(isA<StateError>()),
+    );
+  });
 
   test('destroyStandaloneCliState removes session runtime tree', () async {
     const workspaceId = 'ws-simple';
@@ -328,73 +325,70 @@ void main() {
     },
   );
 
-  test(
-    'prepareLaunchFromRuntimePlan provisions expert pack skills from '
-    'plan.runtimeBundle',
-    () async {
-      const workspaceId = 'ws-pack';
-      const sessionId = 'sess-pack';
-      final skillsRoot = AppPaths.skillsDirForTeampilotRoot(base.path);
-      final skillDir = p.join(skillsRoot, 'expert-skill-dir');
-      await Directory(skillDir).create(recursive: true);
-      await File(p.join(skillDir, 'SKILL.md')).writeAsString('# expert-skill');
+  test('prepareLaunchFromRuntimePlan provisions expert pack skills from '
+      'plan.runtimeBundle', () async {
+    const workspaceId = 'ws-pack';
+    const sessionId = 'sess-pack';
+    final skillsRoot = AppPaths.skillsDirForTeampilotRoot(base.path);
+    final skillDir = p.join(skillsRoot, 'expert-skill-dir');
+    await Directory(skillDir).create(recursive: true);
+    await File(p.join(skillDir, 'SKILL.md')).writeAsString('# expert-skill');
 
-      final workspace = Workspace(
-        workspaceId: workspaceId,
-        folders: const [WorkspaceFolder(path: '/work/pack')],
-        createdAt: 1,
-      );
-      final session = AppSession(
-        sessionId: sessionId,
-        workspaceId: workspaceId,
-        folders: const [WorkspaceFolder(path: '/work/pack')],
-        sessionTeam: '',
-        expertKey: 'teampilot/builtin/default',
-        createdAt: 1,
-      );
-      final plan = simplePlan(
-        workspaceId: workspaceId,
-        sessionId: sessionId,
-        runtimeBundle: const ConfigBundle(skillIds: ['expert-skill']),
-        member: const TeamMemberConfig(
-          id: 'architect',
-          name: 'Architect',
-          agent: 'architect',
-          cli: CliTool.flashskyai,
+    final workspace = Workspace(
+      workspaceId: workspaceId,
+      folders: const [WorkspaceFolder(path: '/work/pack')],
+      createdAt: 1,
+    );
+    final session = AppSession(
+      sessionId: sessionId,
+      workspaceId: workspaceId,
+      folders: const [WorkspaceFolder(path: '/work/pack')],
+      sessionTeam: '',
+      expertKey: 'teampilot/builtin/default',
+      createdAt: 1,
+    );
+    final plan = simplePlan(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      runtimeBundle: const ConfigBundle(skillIds: ['expert-skill']),
+      member: const TeamMemberConfig(
+        id: 'architect',
+        name: 'Architect',
+        agent: 'architect',
+        cli: CliTool.flashskyai,
+      ),
+    );
+
+    await SessionLifecycleService(
+      appDataBasePath: base.path,
+      storageRootsResolver: () async => _roots(base.path),
+      loadInstalledSkills: () async => [
+        Skill(
+          id: 'expert-skill',
+          name: 'Expert Skill',
+          description: '',
+          directory: 'expert-skill-dir',
+          installedAt: 0,
+          updatedAt: 0,
         ),
-      );
+      ],
+    ).prepareLaunchFromRuntimePlan(
+      session: session,
+      workspace: workspace,
+      plan: plan,
+    );
 
-      await SessionLifecycleService(
-        appDataBasePath: base.path,
-        storageRootsResolver: () async => _roots(base.path),
-        loadInstalledSkills: () async => [
-          Skill(
-            id: 'expert-skill',
-            name: 'Expert Skill',
-            description: '',
-            directory: 'expert-skill-dir',
-            installedAt: 0,
-            updatedAt: 0,
-          ),
-        ],
-      ).prepareLaunchFromRuntimePlan(
-        session: session,
-        workspace: workspace,
-        plan: plan,
-      );
-
-      final leafSkills = p.join(
-        layout.sessionRuntimeToolDir(workspaceId, sessionId, 'flashskyai'),
-        'skills',
-      );
-      final entries = await Directory(leafSkills).list().toList();
-      expect(
-        entries.map((e) => p.basename(e.path)),
-        contains('expert-skill-dir'),
-        reason:
-            'expert pack skill from plan.runtimeBundle must be provisioned '
-            '(not workspace-only)',
-      );
-    },
-  );
+    final leafSkills = p.join(
+      layout.sessionRuntimeToolDir(workspaceId, sessionId, 'flashskyai'),
+      'skills',
+    );
+    final entries = await Directory(leafSkills).list().toList();
+    expect(
+      entries.map((e) => p.basename(e.path)),
+      contains('expert-skill-dir'),
+      reason:
+          'expert pack skill from plan.runtimeBundle must be provisioned '
+          '(not workspace-only)',
+    );
+  });
 }

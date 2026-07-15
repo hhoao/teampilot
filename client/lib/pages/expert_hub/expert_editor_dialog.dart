@@ -49,10 +49,7 @@ Future<DiscoverableMember?> showExpertEditorDialog(
         mcps: mcps,
       );
       if (hub != null) {
-        dialog = BlocProvider<ExpertHubCubit>.value(
-          value: hub,
-          child: dialog,
-        );
+        dialog = BlocProvider<ExpertHubCubit>.value(value: hub, child: dialog);
       }
       return dialog;
     },
@@ -107,7 +104,9 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
     _name = TextEditingController(text: initial?.name ?? '');
     _description = TextEditingController(text: initial?.description ?? '');
     _category = TextEditingController(text: initial?.category ?? '');
-    _prompt = TextEditingController(text: initial?.member.prompt ?? '');
+    _prompt = TextEditingController(
+      text: initial?.member.responsibilities ?? '',
+    );
     _playbook = TextEditingController(text: initial?.member.playbook ?? '');
     _tags = TextEditingController(
       text: initial == null || initial.tags.isEmpty
@@ -248,7 +247,7 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
         tags: _parseTags(_tags.text),
         member: DiscoverableTeamMember(
           name: name,
-          prompt: prompt,
+          responsibilities: prompt,
           playbook: _playbook.text.trim(),
           provider: initial?.member.provider ?? '',
           model: initial?.member.model ?? '',
@@ -373,7 +372,9 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
                 id: 'prompt',
                 controller: _prompt,
                 label: Text(l10n.expertHubPrompt),
-                decoration: InputDecoration(hintText: l10n.expertEditorPromptHint),
+                decoration: InputDecoration(
+                  hintText: l10n.expertEditorPromptHint,
+                ),
                 minHeight: appTextareaHeightForLines(bodyStyle, lines: 3),
                 maxHeight: appTextareaHeightForLines(bodyStyle, lines: 6),
                 validator: (v) => (v == null || v.trim().isEmpty)

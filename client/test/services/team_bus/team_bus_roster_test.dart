@@ -63,7 +63,7 @@ void main() {
       model: 'claude-sonnet-4-20250514',
       provider: 'anthropic',
       cli: CliTool.opencode,
-      prompt: 'You implement features.',
+      responsibilities: 'You implement features.',
     );
 
     final profile = TeammateRosterProfile.fromMember(
@@ -183,6 +183,8 @@ void main() {
                 name: 'Developer',
                 cli: CliTool.opencode,
                 agentType: 'implementer',
+                responsibilities: 'You implement features.',
+                playbook: 'Use TDD and open a PR.',
               ),
               team: const TeamProfile(
                 id: 'demo',
@@ -228,6 +230,9 @@ void main() {
       expect(text, contains('agentId: developer@demo-1'));
       expect(text, contains('agentType: implementer'));
       expect(text, contains('cli: opencode'));
+      expect(text, contains('responsibilities: You implement features.'));
+      expect(text, isNot(contains('playbook:')));
+      expect(text, isNot(contains('Use TDD and open a PR.')));
       expect(text, contains('bus.activity: active'));
       expect(text, contains('bus.phase: in_turn'));
       expect(text, contains('bus.unread: 1'));

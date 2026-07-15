@@ -178,10 +178,7 @@ class ExpertHubDetailOverlay extends StatelessWidget {
                   ),
                   if (member.description.isNotEmpty) ...[
                     const SizedBox(height: 16),
-                    Text(
-                      member.description,
-                      style: styles.mdRelaxed,
-                    ),
+                    Text(member.description, style: styles.mdRelaxed),
                   ],
                   if (member.originTeamKey != null &&
                       member.originTeamKey!.trim().isNotEmpty) ...[
@@ -200,11 +197,11 @@ class ExpertHubDetailOverlay extends StatelessWidget {
                       ),
                     ),
                   ],
-                  if (teamMember.prompt.trim().isNotEmpty) ...[
+                  if (teamMember.responsibilities.trim().isNotEmpty) ...[
                     const SizedBox(height: 16),
                     _ExpandableTextSection(
                       title: l10n.expertHubPrompt,
-                      body: teamMember.prompt,
+                      body: teamMember.responsibilities,
                     ),
                   ],
                   if (teamMember.playbook.trim().isNotEmpty) ...[
@@ -315,10 +312,7 @@ class _ExpandableTextSection extends StatelessWidget {
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: SelectableText(
-              body,
-              style: styles.mdRelaxed,
-            ),
+            child: SelectableText(body, style: styles.mdRelaxed),
           ),
         ],
       ),

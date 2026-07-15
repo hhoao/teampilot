@@ -45,7 +45,7 @@ DiscoverableMember _m(
   category: cat,
   source: source,
   updatedAt: updated,
-  member: DiscoverableTeamMember(name: name.toLowerCase(), prompt: 'p'),
+  member: DiscoverableTeamMember(name: name.toLowerCase(), responsibilities: 'p'),
 );
 
 void main() {

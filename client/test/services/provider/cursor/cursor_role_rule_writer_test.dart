@@ -30,7 +30,7 @@ void main() {
       const member = TeamMemberConfig(
         id: 'planner',
         name: 'Planner',
-        prompt: '只做代码审查',
+        responsibilities: '只做代码审查',
       );
 
       final path = await writer.sync(memberHome: memberHome, member: member);
@@ -40,9 +40,7 @@ void main() {
       expect(raw, startsWith('---\nalwaysApply: true\n---\n'));
       expect(
         raw,
-        contains(
-          MemberRoleProvision.composeRolePrompt(member: member).trim(),
-        ),
+        contains(MemberRoleProvision.composeRolePrompt(member: member).trim()),
       );
     });
 
@@ -64,7 +62,7 @@ void main() {
       const member = TeamMemberConfig(
         id: 'planner',
         name: 'Planner',
-        prompt: '只做代码审查',
+        responsibilities: '只做代码审查',
       );
 
       await writer.sync(

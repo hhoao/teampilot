@@ -30,21 +30,20 @@ DiscoverableMember member({
   List<SkillDependencyRef> skillDeps = const [],
   List<PluginDependencyRef> pluginDeps = const [],
   List<McpDependencyRef> mcpDeps = const [],
-}) =>
-    DiscoverableMember(
-      key: 'teampilot/builtin/developer',
-      name: 'Developer',
-      description: 'Implements features',
-      category: 'Development',
-      source: ExpertMemberSource.builtin,
-      member: const DiscoverableTeamMember(
-        name: 'developer',
-        prompt: 'You implement code.',
-      ),
-      skillDeps: skillDeps,
-      pluginDeps: pluginDeps,
-      mcpDeps: mcpDeps,
-    );
+}) => DiscoverableMember(
+  key: 'teampilot/builtin/developer',
+  name: 'Developer',
+  description: 'Implements features',
+  category: 'Development',
+  source: ExpertMemberSource.builtin,
+  member: const DiscoverableTeamMember(
+    name: 'developer',
+    responsibilities: 'You implement code.',
+  ),
+  skillDeps: skillDeps,
+  pluginDeps: pluginDeps,
+  mcpDeps: mcpDeps,
+);
 
 MemberRosterService buildService({
   SkillDepInstaller? installSkill,
@@ -108,7 +107,7 @@ void main() {
     );
     expect(team.members.any((m) => m.id == result.memberId), isTrue);
     expect(
-      team.members.firstWhere((m) => m.id == result.memberId).prompt,
+      team.members.firstWhere((m) => m.id == result.memberId).responsibilities,
       contains('Implement'),
     );
 
@@ -174,7 +173,9 @@ void main() {
   });
 
   test('addExpertToTeam reports per-dep progress during install', () async {
-    final dir = await Directory.systemTemp.createTemp('member-roster-progress-');
+    final dir = await Directory.systemTemp.createTemp(
+      'member-roster-progress-',
+    );
     final repo = testLaunchProfileRepository(dir);
     final cubit = buildCubit(repo);
     await cubit.load();
@@ -249,7 +250,10 @@ void main() {
 
       final result = await service.addExpertToTeam(
         teamId: teamId,
-        expert: member(pluginDeps: const [_pluginDep], mcpDeps: const [_mcpDep]),
+        expert: member(
+          pluginDeps: const [_pluginDep],
+          mcpDeps: const [_mcpDep],
+        ),
         launchProfiles: cubit,
       );
 

@@ -146,7 +146,7 @@ void main() {
           'name': 'Arch',
           'description': 'Architect',
           'category': 'Engineering',
-          'member': {'name': 'Arch', 'prompt': 'design'},
+          'member': {'name': 'Arch', 'responsibilities': 'design'},
         },
         token: 't',
       );
@@ -179,7 +179,7 @@ void main() {
             'name': 'Arch',
             'description': '',
             'category': '',
-            'member': {'name': 'Arch', 'prompt': ''},
+            'member': {'name': 'Arch', 'responsibilities': ''},
           },
           token: 't',
         ),
