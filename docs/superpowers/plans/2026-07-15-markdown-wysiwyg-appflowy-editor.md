@@ -17,7 +17,8 @@
 | File | Responsibility |
 |------|----------------|
 | `client/pubspec.yaml` | Add pinned `appflowy_editor` |
-| `client/lib/app/app_shell.dart` | Register `AppFlowyEditorLocalizations.delegate` |
+| `client/lib/main.dart` | Register `AppFlowyEditorLocalizations.delegate` on workbench `MaterialApp.router` (`_TeamPilotMaterialApp`) |
+| `client/lib/app/app_shell.dart` | Optional: same delegate on bootstrap/error `MaterialApp`s for parity |
 | `client/lib/l10n/app_en.arb`, `app_zh.arb` (+ gen) | Toggle + open-mode + optional help strings |
 | `client/lib/services/editor/markdown_view_mode_store.dart` | `MarkdownViewMode.wysiwyg`; seed rules |
 | `client/lib/widgets/workbench/markdown_view_mode_toggle.dart` | Three-segment toggle |
@@ -41,7 +42,8 @@
 
 **Files:**
 - Modify: `client/pubspec.yaml`
-- Modify: `client/lib/app/app_shell.dart` (MaterialApp `localizationsDelegates`)
+- Modify: `client/lib/main.dart` (`_TeamPilotMaterialApp` → `MaterialApp.router` `localizationsDelegates`)
+- Optional: `client/lib/app/app_shell.dart` (bootstrap/error `MaterialApp`s only)
 
 - [ ] **Step 1: Pin dependency**
 
@@ -53,9 +55,9 @@ flutter pub add appflowy_editor:6.2.0
 
 If resolve fails, pick the latest 6.x that resolves against the repo SDK and pin that exact version in `pubspec.yaml` (no caret drift in the plan commit message — record the chosen version in the commit body).
 
-- [ ] **Step 2: Register editor localizations**
+- [ ] **Step 2: Register editor localizations on the real app**
 
-In `app_shell.dart` where `localizationsDelegates: AppLocalizations.localizationsDelegates` is set, expand to:
+In `client/lib/main.dart` where `localizationsDelegates: AppLocalizations.localizationsDelegates` is set on `MaterialApp.router`, expand to:
 
 ```dart
 localizationsDelegates: [
@@ -66,10 +68,12 @@ localizationsDelegates: [
 
 Import: `package:appflowy_editor/appflowy_editor.dart`.
 
+Do **not** treat `app_shell.dart` as the production app — those `MaterialApp`s are bootstrap/error shells only. Optionally mirror the delegate there for parity.
+
 - [ ] **Step 3: Verify analyze still runs**
 
 ```bash
-cd client && flutter pub get && dart analyze lib/app/app_shell.dart
+cd client && flutter pub get && dart analyze lib/main.dart
 ```
 
 Expected: no errors related to the new import/delegate.
@@ -77,7 +81,8 @@ Expected: no errors related to the new import/delegate.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add client/pubspec.yaml client/pubspec.lock client/lib/app/app_shell.dart
+git add client/pubspec.yaml client/pubspec.lock client/lib/main.dart
+# include app_shell.dart only if you mirrored the delegate
 git commit -m "$(cat <<'EOF'
 chore: add appflowy_editor dependency for markdown WYSIWYG
 
@@ -368,7 +373,9 @@ test('flush with no edits does not call onEncode', () {
 });
 ```
 
-Prefer a package-visible `debugNotifyDocumentEdited()` **or** apply a real `EditorState` transaction in the test — real transaction is better if lightweight.
+Prefer a package-visible `debugNotifyDocumentEdited()` **or** apply a real AppFlowy `EditorState` transaction in the test — real transaction is better if lightweight.
+
+Default production debounce: **`Duration(milliseconds: 150)`** (injectable for tests).
 
 - [ ] **Step 2: Run — expect fail**
 
@@ -379,6 +386,8 @@ cd client && flutter test test/services/editor/markdown_wysiwyg_session_test.dar
 - [ ] **Step 3: Implement session**
 
 Keep file focused (~200–300 lines). Store `frontMatter` from initial parse; encode always reattaches it.
+
+**Do not** import `package:appflowy_editor` into `editor_cubit.dart` (TeamPilot already defines `EditorState`). Keep AppFlowy types behind `MarkdownWysiwygSession` only; cubit depends on the session interface / callbacks.
 
 - [ ] **Step 4: Run — expect pass**
 
@@ -503,7 +512,7 @@ Stateful widget that:
 4. On mode leave / dispose: `flush` then `unregister`
 5. Wire link taps to `handleMarkdownPreviewLink` when the package exposes a hook; otherwise skip links in v1 and note in commit message
 
-- [ ] **Step 3: Surface branch**
+- [ ] **Step 3: Surface branch + fidelity hint**
 
 In `_FileEditorBody`, for markdown paths:
 
@@ -516,6 +525,8 @@ switch (mode) {
 ```
 
 When `setMode` is invoked from the toggle, if leaving `wysiwyg`, call session flush via cubit lookup **before** rebuilding the body (flush in pane `deactivate`/`dispose` is the reliable path — prefer dispose flush + ensure toggle does not dispose controller).
+
+**Fidelity hint (required by spec):** surface `l10n.markdownWysiwygFidelityHint` when WYSIWYG is active — use the Edit segment tooltip **and** a one-line muted banner under the file toolbar (or inside the pane top). Do not leave the ARB key unused.
 
 - [ ] **Step 4: Manual smoke / analyze**
 
