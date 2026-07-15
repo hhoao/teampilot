@@ -629,6 +629,8 @@ For each `targetId` in `workspaceTargetIds`, if dead:
 
 Keep placement increment/decrement behavior unchanged for live hosts. Selecting a dead host still shows placement counts (read-only remapping is separate).
 
+After successful remap, refresh the `Workspace` held by parent dialogs (`workspace_landing_team_settings_dialog` / `workspace_team_member_targets_dialog`) — e.g. callback `onWorkspaceRemapped(Workspace)` or re-read from `ChatCubit` — so the host list does not keep a stale dead id.
+
 - [ ] **Step 2: Commit**
 
 ```bash
