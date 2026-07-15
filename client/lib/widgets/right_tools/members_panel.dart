@@ -4,7 +4,9 @@ import '../../cubits/cli_presets_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/member_presence.dart';
+import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
+import '../../models/workspace_topology.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/provider_catalog_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
@@ -13,12 +15,14 @@ import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
+import '../../utils/members_machine_groups.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../app_provider/provider_brand_icon.dart';
 import '../cli/cli_brand_icon.dart';
 import '../member_presence_indicator.dart';
 import '../menu/sidebar_action_menu.dart';
 import '../team/team_lead_badge.dart';
+import '../workspace_folder_directory_row.dart';
 
 /// Team roster list panel.
 class MembersPanel extends StatelessWidget {
@@ -34,6 +38,9 @@ class MembersPanel extends StatelessWidget {
     required this.canViewDetail,
     required this.onViewDetail,
     required this.onOpenConfigDir,
+    this.memberTargets = const {},
+    this.runtimeTargets = const [],
+    this.groupByMachine = false,
     super.key,
   });
 
@@ -51,12 +58,29 @@ class MembersPanel extends StatelessWidget {
   final ValueChanged<String> onViewDetail;
   final ValueChanged<String> onOpenConfigDir;
 
+  /// Instance id → machine target id (session or remembered workspace pins).
+  final MemberTargetAssignments memberTargets;
+
+  /// Selectable home/runtime targets for label resolution.
+  final List<RuntimeTarget> runtimeTargets;
+
+  /// When true (mixed team), attempt machine section headers if ≥2 targets.
+  final bool groupByMachine;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
     final l10n = context.l10n;
     final registry = CliToolRegistryScope.maybeOf(context);
+    final groups = groupByMachine
+        ? groupMembersByMachine(
+            members: members,
+            memberTargets: memberTargets,
+          )
+        : const <MembersMachineGroup>[];
+    final useSections = groups.length >= 2;
+
     return Container(
       key: AppKeys.membersPanel,
       padding: const EdgeInsets.all(13),
@@ -84,98 +108,125 @@ class MembersPanel extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Expanded(
-            child: ListView.builder(
-              itemCount: members.length,
-              itemBuilder: (context, index) {
-                final member = members[index];
-                final selected = member.id == selectedMemberId;
-                final presence =
-                    memberPresence[member.id] ?? const MemberPresence.offline();
-                final statusLabel = memberPresenceStatusLabel(l10n, presence);
-                final presets = context.watch<CliPresetsCubit>().state.presets;
-                final launch = resolveMemberLaunch(
-                  team: team,
-                  member: member,
-                  globalPresets: presets,
-                );
-                final memberCli = launch.cli;
-                final catalogCli = _catalogCli(registry, memberCli);
-                final memberProvider = _memberProvider(
-                  providersByCli[catalogCli] ?? const [],
-                  launch.provider,
-                );
-                final brandLabel =
-                    memberProvider?.name ??
-                    _cliDisplayLabel(registry, memberCli, l10n);
-                final meta = [
-                  brandLabel,
-                  launch.model,
-                ].where((v) => v.isNotEmpty).join(' / ');
-                final subtitle = meta.isEmpty
-                    ? statusLabel
-                    : '$statusLabel · $meta';
-                final titleColor = selected
-                    ? cs.onSecondaryContainer
-                    : cs.onSurface;
-                final subtitleColor = selected
-                    ? cs.onSecondaryContainer.withValues(alpha: 0.74)
-                    : cs.onSurfaceVariant;
-                return Container(
-                  key: AppKeys.memberRow(member.id),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onSecondaryTapDown: (d) =>
-                        _showMemberMenu(context, l10n, member, d),
-                    onLongPressStart: (d) => _showMemberMenu(
-                      context,
-                      l10n,
-                      member,
-                      TapDownDetails(globalPosition: d.globalPosition),
+            child: ListView(
+              children: [
+                if (useSections)
+                  for (final group in groups) ...[
+                    _MachineSectionHeader(
+                      targetId: group.targetId,
+                      runtimeTargets: runtimeTargets,
                     ),
-                    child: Material(
-                      color: selected
-                          ? cs.secondaryContainer
-                          : cs.workspaceInset,
-                      borderRadius: BorderRadius.circular(8),
-                      child: ListTile(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        leading: memberProvider != null
-                            ? ProviderBrandIcon.fromConfig(
-                                memberProvider,
-                                size: 28,
-                                borderRadius: 7,
-                              )
-                            : CliBrandIcon(
-                                cli: memberCli,
-                                size: 28,
-                                borderRadius: 7,
-                              ),
-                        title: MemberTitleRow(
-                          member: member,
-                          fallbackName: l10n.memberName,
-                          style: styles.md,
-                          textColor: titleColor,
-                          compactBadge: true,
-                        ),
-                        textColor: titleColor,
-                        iconColor: titleColor,
-                        subtitle: Text(
-                          subtitle,
-                          style: styles.mdColored(subtitleColor),
-                        ),
-                        trailing: MemberPresenceIndicator(presence: presence),
-                        onTap: () => onSelected(member.id),
+                    for (final member in group.members)
+                      _memberTile(
+                        context,
+                        member: member,
+                        cs: cs,
+                        styles: styles,
+                        l10n: l10n,
+                        registry: registry,
                       ),
+                  ]
+                else
+                  for (final member in members)
+                    _memberTile(
+                      context,
+                      member: member,
+                      cs: cs,
+                      styles: styles,
+                      l10n: l10n,
+                      registry: registry,
                     ),
-                  ),
-                );
-              },
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _memberTile(
+    BuildContext context, {
+    required TeamMemberConfig member,
+    required ColorScheme cs,
+    required AppTextStyles styles,
+    required AppLocalizations l10n,
+    required CliToolRegistry? registry,
+  }) {
+    final selected = member.id == selectedMemberId;
+    final presence =
+        memberPresence[member.id] ?? const MemberPresence.offline();
+    final statusLabel = memberPresenceStatusLabel(l10n, presence);
+    final presets = context.watch<CliPresetsCubit>().state.presets;
+    final launch = resolveMemberLaunch(
+      team: team,
+      member: member,
+      globalPresets: presets,
+    );
+    final memberCli = launch.cli;
+    final catalogCli = _catalogCli(registry, memberCli);
+    final memberProvider = _memberProvider(
+      providersByCli[catalogCli] ?? const [],
+      launch.provider,
+    );
+    final brandLabel =
+        memberProvider?.name ??
+        _cliDisplayLabel(registry, memberCli, l10n);
+    final meta = [
+      brandLabel,
+      launch.model,
+    ].where((v) => v.isNotEmpty).join(' / ');
+    final subtitle = meta.isEmpty ? statusLabel : '$statusLabel · $meta';
+    final titleColor = selected ? cs.onSecondaryContainer : cs.onSurface;
+    final subtitleColor = selected
+        ? cs.onSecondaryContainer.withValues(alpha: 0.74)
+        : cs.onSurfaceVariant;
+    return Container(
+      key: AppKeys.memberRow(member.id),
+      margin: const EdgeInsets.only(bottom: 8),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onSecondaryTapDown: (d) => _showMemberMenu(context, l10n, member, d),
+        onLongPressStart: (d) => _showMemberMenu(
+          context,
+          l10n,
+          member,
+          TapDownDetails(globalPosition: d.globalPosition),
+        ),
+        child: Material(
+          color: selected ? cs.secondaryContainer : cs.workspaceInset,
+          borderRadius: BorderRadius.circular(8),
+          child: ListTile(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            leading: memberProvider != null
+                ? ProviderBrandIcon.fromConfig(
+                    memberProvider,
+                    size: 28,
+                    borderRadius: 7,
+                  )
+                : CliBrandIcon(
+                    cli: memberCli,
+                    size: 28,
+                    borderRadius: 7,
+                  ),
+            title: MemberTitleRow(
+              member: member,
+              fallbackName: l10n.memberName,
+              style: styles.md,
+              textColor: titleColor,
+              compactBadge: true,
+            ),
+            textColor: titleColor,
+            iconColor: titleColor,
+            subtitle: Text(
+              subtitle,
+              style: styles.mdColored(subtitleColor),
+            ),
+            trailing: MemberPresenceIndicator(presence: presence),
+            onTap: () => onSelected(member.id),
+          ),
+        ),
       ),
     );
   }
@@ -230,6 +281,42 @@ class MembersPanel extends StatelessWidget {
       case null:
         break;
     }
+  }
+}
+
+class _MachineSectionHeader extends StatelessWidget {
+  const _MachineSectionHeader({
+    required this.targetId,
+    required this.runtimeTargets,
+  });
+
+  final String targetId;
+  final List<RuntimeTarget> runtimeTargets;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6, top: 4),
+      child: Row(
+        children: [
+          Icon(
+            workspaceFolderTargetIcon(targetId),
+            size: 16,
+            color: cs.onSurfaceVariant,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              workspaceFolderTargetLabel(runtimeTargets, targetId),
+              style: styles.xsBoldWideColored(cs.onSurfaceVariant),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

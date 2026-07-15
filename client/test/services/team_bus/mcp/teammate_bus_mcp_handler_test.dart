@@ -91,13 +91,20 @@ void main() {
     );
 
     final text = (res!.result!['content'] as List).first['text'] as String;
-    expect(text, contains('--- team-lead (self) ---'));
-    expect(text, contains('display_name: Team Lead'));
-    expect(text, contains('cli: claude'));
-    expect(text, contains('--- developer ---'));
-    expect(text, contains('bus.lifecycle: declared'));
-    expect(text, contains('bus.activity: none'));
-    expect(text, contains('bus.unread: 1'));
+    final json = jsonDecode(text) as Map<String, Object?>;
+    expect(json['caller'], 'team-lead');
+    final members = json['members'] as List;
+    expect(members, hasLength(2));
+    final byId = {
+      for (final m in members) (m as Map)['member_id'] as String: m,
+    };
+    expect(byId['team-lead']!['self'], isTrue);
+    expect(byId['team-lead']!['display_name'], 'Team Lead');
+    expect(byId['team-lead']!['cli'], 'claude');
+    expect(byId['developer']!['display_name'], 'Developer');
+    expect((byId['developer']!['bus'] as Map)['lifecycle'], 'declared');
+    expect((byId['developer']!['bus'] as Map)['activity'], 'none');
+    expect((byId['developer']!['bus'] as Map)['unread'], 1);
   });
 
   test('send_message resolves agentId and reports resolution', () async {
@@ -367,8 +374,12 @@ void main() {
       );
       async.elapse(const Duration(milliseconds: 50));
       final text = (res!.result!['content'] as List).first as Map;
-      expect(text['text'], contains('FROM w'));
-      expect(text['text'], contains('reply'));
+      final json = jsonDecode(text['text'] as String) as Map<String, Object?>;
+      final messages = json['messages'] as List;
+      expect(messages, hasLength(1));
+      expect((messages.single as Map)['from'], 'w');
+      expect((messages.single as Map)['content'], 'reply');
+      expect((messages.single as Map)['kind'], 'message');
     });
   });
 
@@ -537,9 +548,10 @@ void main() {
       async.flushMicrotasks();
 
       final text = (res!.result!['content'] as List).first as Map;
-      expect(text['text'], contains('ASSIGNED TASK'));
-      expect(text['text'], contains('ship it'));
-      expect(text['text'], contains('update_task'));
+      final json = jsonDecode(text['text'] as String) as Map<String, Object?>;
+      expect(json['title'], 'ship it');
+      expect(json.containsKey('messages'), isFalse);
+      expect(text['text'], isNot(contains('ASSIGNED TASK')));
       // auto-claimed for the asking worker
       expect(
         bus.listTasks(status: TaskStatus.claimed).single.assignee,

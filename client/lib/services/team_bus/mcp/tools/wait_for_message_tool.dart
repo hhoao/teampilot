@@ -18,12 +18,14 @@ final class WaitForMessageTool extends TeammateBusTool {
   @override
   String get description =>
       'Your single idle loop. Blocks indefinitely until there is something '
-      'to do, then returns ONE of: (a) a batch of teammate/operator '
-      'messages, or (b) a TASK already claimed for you from the shared '
-      'work queue. If it returns a task, do it and report via update_task; '
-      'if messages, handle them. Either way, call wait_for_message again '
-      'afterwards. User input while you wait appears as FROM user '
-      '(operator):. (Team leads only ever receive messages here.)';
+      'to do, then returns ONE JSON shape: (a) {"messages":[...]} for '
+      'teammate/operator mail, or (b) a bare task object '
+      '(id/status/title/brief) already claimed for you from the shared '
+      'work queue. Distinguish by top-level keys (messages vs id/title). '
+      'If a task, do it and report via update_task; if messages, handle '
+      'them. Either way, call wait_for_message again afterwards. User '
+      'input while you wait arrives as from:"user" in the messages array. '
+      '(Team leads only ever receive messages here.)';
 
   @override
   Map<String, Object?> get inputSchema => McpSchema.object();

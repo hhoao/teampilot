@@ -22,7 +22,9 @@ final class ClaimTaskTool extends TeammateBusTool {
       'Worker: self-pick a specific task you are eligible for from the '
       'board (use list_tasks to see eligible_for_you/match_score). Claims '
       'it atomically; fails if it is gone, already claimed, blocked, or you '
-      'are not eligible.';
+      'are not eligible. On success returns the claimed task as JSON '
+      '(id/status/title/brief). Do the work, then update_task, then call '
+      'wait_for_message again.';
 
   @override
   Map<String, Object?> get inputSchema => McpSchema.object(
