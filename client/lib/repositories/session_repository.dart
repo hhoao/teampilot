@@ -17,8 +17,10 @@ import '../services/io/filesystem.dart';
 import '../services/session/session_team_counter.dart';
 import '../services/storage/app_storage.dart';
 import '../models/workspace_icon_ref.dart';
+import '../services/workspace/target_liveness.dart';
 import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
+import '../services/workspace/workspace_target_remap.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/provider/workspace_trust_provisioner.dart';
 import '../utils/lock_pool.dart';
@@ -552,6 +554,67 @@ class SessionRepository {
         updatedAt: now,
       ),
     );
+  }
+
+  Future<Workspace> remapWorkspaceTarget(
+    String workspaceId, {
+    required String fromTargetId,
+    required String toTargetId,
+    required TargetLiveness liveness,
+  }) async {
+    final from = fromTargetId.trim();
+    final to = toTargetId.trim();
+    if (from.isEmpty || to.isEmpty) {
+      throw ArgumentError('fromTargetId and toTargetId must be non-empty');
+    }
+    final fs = await _fs();
+    final existing = await _readManifest(fs, workspaceId);
+    if (existing == null) {
+      throw StateError('Workspace "$workspaceId" not found');
+    }
+    final sessions = await loadSessionsForWorkspace(workspaceId);
+    if (!WorkspaceTargetRemap.usesTarget(
+      folders: existing.folders,
+      memberTargetsByTeam: existing.memberTargetsByTeam,
+      sessions: sessions,
+      targetId: from,
+    )) {
+      throw StateError('Nothing to remap for target "$from"');
+    }
+    if (from != to && !await liveness.isAlive(to)) {
+      throw StateError('Destination target "$to" is not available');
+    }
+
+    final applied = WorkspaceTargetRemap.apply(
+      folders: existing.folders,
+      memberTargetsByTeam: existing.memberTargetsByTeam,
+      sessions: sessions,
+      fromTargetId: from,
+      toTargetId: to,
+    );
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final updated = existing.copyWith(
+      folders: applied.folders,
+      memberTargetsByTeam: applied.memberTargetsByTeam,
+      updatedAt: now,
+    );
+    await _writeManifest(fs, updated);
+    await _provisionWorkspaceTrust(fs, updated);
+
+    for (final session in applied.sessions) {
+      try {
+        await _writeSession(fs, session.copyWith(updatedAt: now));
+      } on Object catch (error, stackTrace) {
+        appLogger.e(
+          '[workspace] remap session write failed '
+          'workspace=$workspaceId session=${session.sessionId}',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        rethrow;
+      }
+    }
+    return updated;
   }
 
   Future<void> _provisionWorkspaceTrust(
