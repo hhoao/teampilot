@@ -2329,6 +2329,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceFoldersPickRemoteTarget => 'Choose remote machine';
 
   @override
+  String get workspaceDeadTargetBadge => 'Missing machine';
+
+  @override
+  String get workspaceDeadTargetRemap => 'Remap…';
+
+  @override
+  String get workspaceDeadTargetRemapTitle => 'Remap machine';
+
+  @override
+  String workspaceDeadTargetRemapBody(String from) {
+    return 'Replace $from with another machine. Directory paths are not changed — they must already exist on the destination.';
+  }
+
+  @override
+  String get workspaceDeadTargetRemapPickFrom => 'Dead machine';
+
+  @override
+  String get workspaceDeadTargetRemapPickTo => 'Replacement machine';
+
+  @override
+  String get workspaceDeadTargetRemapConfirm => 'Remap';
+
+  @override
+  String get workspaceDeadTargetRemapNothing => 'Nothing to remap.';
+
+  @override
+  String get workspaceDeadTargetRemapFailed => 'Could not remap machine.';
+
+  @override
+  String get workspaceDeadTargetRemapFromLaunch => 'Remap machine…';
+
+  @override
   String get homeTargetTitle => 'Home device';
 
   @override

@@ -4280,6 +4280,66 @@ abstract class AppLocalizations {
   /// **'Choose remote machine'**
   String get workspaceFoldersPickRemoteTarget;
 
+  /// No description provided for @workspaceDeadTargetBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing machine'**
+  String get workspaceDeadTargetBadge;
+
+  /// No description provided for @workspaceDeadTargetRemap.
+  ///
+  /// In en, this message translates to:
+  /// **'Remap…'**
+  String get workspaceDeadTargetRemap;
+
+  /// No description provided for @workspaceDeadTargetRemapTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remap machine'**
+  String get workspaceDeadTargetRemapTitle;
+
+  /// No description provided for @workspaceDeadTargetRemapBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace {from} with another machine. Directory paths are not changed — they must already exist on the destination.'**
+  String workspaceDeadTargetRemapBody(String from);
+
+  /// No description provided for @workspaceDeadTargetRemapPickFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Dead machine'**
+  String get workspaceDeadTargetRemapPickFrom;
+
+  /// No description provided for @workspaceDeadTargetRemapPickTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Replacement machine'**
+  String get workspaceDeadTargetRemapPickTo;
+
+  /// No description provided for @workspaceDeadTargetRemapConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remap'**
+  String get workspaceDeadTargetRemapConfirm;
+
+  /// No description provided for @workspaceDeadTargetRemapNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to remap.'**
+  String get workspaceDeadTargetRemapNothing;
+
+  /// No description provided for @workspaceDeadTargetRemapFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not remap machine.'**
+  String get workspaceDeadTargetRemapFailed;
+
+  /// No description provided for @workspaceDeadTargetRemapFromLaunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Remap machine…'**
+  String get workspaceDeadTargetRemapFromLaunch;
+
   /// No description provided for @homeTargetTitle.
   ///
   /// In en, this message translates to:

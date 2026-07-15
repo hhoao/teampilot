@@ -955,6 +955,23 @@
   "workspaceFoldersApplyAllLocal": "Set all to local",
   "workspaceFoldersApplyAllRemote": "Set all to remote…",
   "workspaceFoldersPickRemoteTarget": "Choose remote machine",
+  "workspaceDeadTargetBadge": "Missing machine",
+  "workspaceDeadTargetRemap": "Remap…",
+  "workspaceDeadTargetRemapTitle": "Remap machine",
+  "workspaceDeadTargetRemapBody": "Replace {from} with another machine. Directory paths are not changed — they must already exist on the destination.",
+  "@workspaceDeadTargetRemapBody": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      }
+    }
+  },
+  "workspaceDeadTargetRemapPickFrom": "Dead machine",
+  "workspaceDeadTargetRemapPickTo": "Replacement machine",
+  "workspaceDeadTargetRemapConfirm": "Remap",
+  "workspaceDeadTargetRemapNothing": "Nothing to remap.",
+  "workspaceDeadTargetRemapFailed": "Could not remap machine.",
+  "workspaceDeadTargetRemapFromLaunch": "Remap machine…",
   "homeTargetTitle": "Home device",
   "homeTargetSubtitle": "Where TeamPilot stores teams, workspaces, and config (the control plane). Switching uses a separate data tree; nothing is migrated automatically.",
   "homeTargetSingleOptionHint": "This is the only available home on this platform.",

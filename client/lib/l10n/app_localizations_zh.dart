@@ -2233,6 +2233,38 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceFoldersPickRemoteTarget => '选择远程机器';
 
   @override
+  String get workspaceDeadTargetBadge => '机器不可用';
+
+  @override
+  String get workspaceDeadTargetRemap => '重新映射…';
+
+  @override
+  String get workspaceDeadTargetRemapTitle => '重新映射机器';
+
+  @override
+  String workspaceDeadTargetRemapBody(String from) {
+    return '将 $from 替换为另一台机器。目录路径不会改动，目标机器上必须已有相同路径。';
+  }
+
+  @override
+  String get workspaceDeadTargetRemapPickFrom => '失效机器';
+
+  @override
+  String get workspaceDeadTargetRemapPickTo => '替换为';
+
+  @override
+  String get workspaceDeadTargetRemapConfirm => '重新映射';
+
+  @override
+  String get workspaceDeadTargetRemapNothing => '没有可映射的目标。';
+
+  @override
+  String get workspaceDeadTargetRemapFailed => '无法重新映射机器。';
+
+  @override
+  String get workspaceDeadTargetRemapFromLaunch => '重新映射机器…';
+
+  @override
   String get homeTargetTitle => '主设备';
 
   @override

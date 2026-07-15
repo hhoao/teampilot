@@ -885,6 +885,23 @@
   "workspaceFoldersApplyAllLocal": "全部设为本地",
   "workspaceFoldersApplyAllRemote": "全部设为远程…",
   "workspaceFoldersPickRemoteTarget": "选择远程机器",
+  "workspaceDeadTargetBadge": "机器不可用",
+  "workspaceDeadTargetRemap": "重新映射…",
+  "workspaceDeadTargetRemapTitle": "重新映射机器",
+  "workspaceDeadTargetRemapBody": "将 {from} 替换为另一台机器。目录路径不会改动，目标机器上必须已有相同路径。",
+  "@workspaceDeadTargetRemapBody": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      }
+    }
+  },
+  "workspaceDeadTargetRemapPickFrom": "失效机器",
+  "workspaceDeadTargetRemapPickTo": "替换为",
+  "workspaceDeadTargetRemapConfirm": "重新映射",
+  "workspaceDeadTargetRemapNothing": "没有可映射的目标。",
+  "workspaceDeadTargetRemapFailed": "无法重新映射机器。",
+  "workspaceDeadTargetRemapFromLaunch": "重新映射机器…",
   "homeTargetTitle": "主设备",
   "homeTargetSubtitle": "TeamPilot 存放团队、工作区与配置的位置（控制面）。切换会使用独立的数据目录，不会自动迁移。",
   "homeTargetSingleOptionHint": "当前平台只有这一个可用的主设备。",
