@@ -4,7 +4,6 @@ import 'package:path/path.dart' as p;
 import '../l10n/l10n_extensions.dart';
 import '../models/runtime_target.dart';
 import '../models/workspace_folder.dart';
-import '../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 /// Basename segment for display in folder lists.
@@ -89,7 +88,7 @@ class WorkspaceFolderDirectoryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final path = folder.path.trim();
     final hasPath = path.isNotEmpty;
     final name = hasPath
@@ -149,7 +148,7 @@ class WorkspaceFolderDirectoryRow extends StatelessWidget {
   static Widget _pathLabel(
     String name,
     String parent,
-    AppTextStyles styles,
+    TpTextStyles styles,
     ColorScheme cs, {
     required bool muted,
   }) {
@@ -194,7 +193,7 @@ class _TargetChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final label = Row(
       mainAxisSize: MainAxisSize.min,
       children: [

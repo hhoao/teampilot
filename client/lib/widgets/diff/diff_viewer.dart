@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -8,7 +9,6 @@ import '../../services/diff/diff_engine.dart';
 import '../../services/diff/diff_model.dart';
 import '../../services/diff/diff_options.dart';
 import '../../services/diff/unified_diff_parser.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'diff_toolbar.dart';
 import 'diff_view_controller.dart';
@@ -186,7 +186,7 @@ class _DiffViewerState extends State<DiffViewer> {
       return Center(
         child: Text(
           context.l10n.diffNoChanges,
-          style: AppTextStyles.of(context).mutedMd,
+          style: TpTextStyles.of(context).mutedMd,
         ),
       );
     }

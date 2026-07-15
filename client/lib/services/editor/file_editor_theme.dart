@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../theme/app_fonts.dart';
 import '../../theme/app_typography_scale.dart';
@@ -165,7 +166,7 @@ CodeEditorStyle codeEditorStyleFor(
   Color? backgroundColor,
 }) {
   final cs = Theme.of(context).colorScheme;
-  final fonts = context.appFonts;
+  final fonts = context.tpFonts;
   final textScaler = MediaQuery.textScalerOf(context);
   final theme = EditorSyntaxTheme.forBrightness(Theme.of(context).brightness);
   return CodeEditorStyle(

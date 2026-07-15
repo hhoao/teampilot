@@ -8,7 +8,6 @@ import '../../services/commands/command_definition.dart';
 import '../../services/commands/command_l10n.dart';
 import '../../services/commands/key_chord.dart';
 import '../../services/commands/key_chord_formatter.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -85,7 +84,7 @@ class _CheatsheetCategorySection extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(4, 12, 4, 6),
             child: Text(
               titleForCategory(l10n, category),
-              style: AppTextStyles.of(context).xsTrackColored(
+              style: TpTextStyles.of(context).xsTrackColored(
                 Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
@@ -122,7 +121,7 @@ class _CheatsheetRow extends StatelessWidget {
           if (chords.isEmpty)
             Text(
               l10n.shortcutsNotSet,
-              style: AppTextStyles.of(context).mutedSm,
+              style: TpTextStyles.of(context).mutedSm,
             )
           else
             Wrap(
@@ -155,7 +154,7 @@ class _ChordChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AppTextStyles.of(context).smSemiboldColored(cs.onSurface),
+        style: TpTextStyles.of(context).smSemiboldColored(cs.onSurface),
       ),
     );
   }

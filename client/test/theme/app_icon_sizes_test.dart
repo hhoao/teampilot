@@ -1,38 +1,38 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 
 void main() {
-  test('AppIconSizeTheme.resolved uses baseline sizes at multiplier 1.0', () {
-    final resolved = AppIconSizeTheme.resolved();
-    expect(resolved.md, AppIconSizes.mdBase);
-    expect(resolved.list, AppIconSizes.listBase);
+  test('TpIconSizes.fromScale uses baseline sizes at multiplier 1.0', () {
+    final resolved = TpIconSizes.fromScale(1.0);
+    expect(resolved.md, TpIconSizes.mdBase);
+    expect(resolved.hero, TpIconSizes.heroBase);
   });
 
   test('resolveIconMultiplier ignores OS text baseline', () {
     const osBaseline = 1.5;
-    final mapped = AppIconSizes.resolveIconMultiplier(
+    final mapped = TpIconSizes.resolveIconMultiplier(
       effectiveTextMultiplier: osBaseline,
       textBaseline: osBaseline,
     );
-    expect(mapped, AppIconSizes.baselineScale);
+    expect(mapped, TpIconSizes.baselineScale);
     expect(mapped, lessThan(osBaseline));
   });
 
   test('resolveIconMultiplier dampens user preset delta', () {
     const baseline = 1.0;
     final comfy = AppTypographyScale.comfortable.multiplier;
-    final mapped = AppIconSizes.resolveIconMultiplier(
+    final mapped = TpIconSizes.resolveIconMultiplier(
       effectiveTextMultiplier: comfy,
       textBaseline: baseline,
     );
-    final linearMapped = AppIconSizes.baselineScale * comfy;
+    final linearMapped = TpIconSizes.baselineScale * comfy;
     expect(
       mapped,
       closeTo(
-        AppIconSizes.baselineScale *
-            (1.0 + (comfy - 1.0) * AppIconSizes.userScaleTracking),
+        TpIconSizes.baselineScale *
+            (1.0 + (comfy - 1.0) * TpIconSizes.userScaleTracking),
         0.001,
       ),
     );
@@ -43,15 +43,11 @@ void main() {
     final std = buildDarkTheme(null, AppTypographyScale.standard);
     final comfy = buildDarkTheme(null, AppTypographyScale.comfortable);
 
-    final stdIconMult = AppIconSizes.resolveIconMultiplier(
+    final stdIconMult = TpIconSizes.resolveIconMultiplier(
       effectiveTextMultiplier: 1.0,
       textBaseline: 1.0,
     );
-    expect(std.iconTheme.size, AppIconSizes.mdBase * stdIconMult);
+    expect(std.iconTheme.size, TpIconSizes.mdBase * stdIconMult);
     expect(comfy.iconTheme.size, greaterThan(std.iconTheme.size!));
-    expect(
-      comfy.extension<AppIconSizeTheme>()!.md,
-      greaterThan(std.extension<AppIconSizeTheme>()!.md),
-    );
   });
 }

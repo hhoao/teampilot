@@ -8,7 +8,6 @@ import '../../cubits/git_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_status.dart';
 import '../../services/git/git_changes_visible_rows.dart';
-import '../../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'git_change_folder_tile.dart';
 import 'git_change_tile.dart';
@@ -68,8 +67,8 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final fileLabelStyle = AppTextStyles.of(context).sm;
-        final folderLabelStyle = AppTextStyles.of(
+        final fileLabelStyle = TpTextStyles.of(context).sm;
+        final folderLabelStyle = TpTextStyles.of(
           context,
         ).smMedium;
         final contentWidth = math.max(
@@ -226,7 +225,7 @@ class GitChangesSectionHeader extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: AppTextStyles.of(
+              style: TpTextStyles.of(
                 context,
               ).xsBoldWideColored(cs.onSurfaceVariant),
             ),
@@ -257,7 +256,7 @@ class GitChangesCountBadge extends StatelessWidget {
       ),
       child: Text(
         '$count',
-        style: AppTextStyles.of(
+        style: TpTextStyles.of(
           context,
         ).xsColored(cs.onSurfaceVariant),
       ),

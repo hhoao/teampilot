@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../../cubits/layout_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
@@ -7,8 +8,6 @@ import '../../../models/layout_preferences.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/app_keys.dart';
 import '../../../widgets/settings/theme_color_preset_picker.dart';
-import '../../../widgets/settings/workspace_settings_toggle_strip.dart';
-import '../../../widgets/settings/workspace_settings_widgets.dart';
 import 'onboarding_step_scaffold.dart';
 
 class OnboardingAppearanceStep extends StatelessWidget {
@@ -40,26 +39,26 @@ class OnboardingAppearanceStep extends StatelessWidget {
         return OnboardingStepScaffold(
           title: l10n.onboardingAppearanceTitle,
           subtitle: l10n.onboardingAppearanceSubtitle,
-          body: SettingsSurfaceCard(
+          body: TpCard.outlined(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: l10n.themeModeTitle,
                   subtitle: l10n.themeModeDescription,
-                  trailing: WorkspaceSettingsToggleStrip<String>(
+                  trailing: TpSegmentedPicker<String>(
                     segments: [
-                      WorkspaceToggleSegment<String>(
+                      TpSegmentedOption<String>(
                         value: 'light',
                         label: l10n.themeLight,
                         icon: Icons.light_mode_outlined,
                       ),
-                      WorkspaceToggleSegment<String>(
+                      TpSegmentedOption<String>(
                         value: 'dark',
                         label: l10n.themeDark,
                         icon: Icons.dark_mode_outlined,
                       ),
-                      WorkspaceToggleSegment<String>(
+                      TpSegmentedOption<String>(
                         value: 'system',
                         label: l10n.themeSystem,
                         icon: Icons.desktop_windows_outlined,
@@ -70,7 +69,7 @@ class OnboardingAppearanceStep extends StatelessWidget {
                   ),
                   showDividerBelow: true,
                 ),
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: l10n.themeColorPresetTitle,
                   subtitle: l10n.themeColorPresetDescription,
                   trailing: ThemeColorPresetPicker(
@@ -79,10 +78,10 @@ class OnboardingAppearanceStep extends StatelessWidget {
                   ),
                   showDividerBelow: true,
                 ),
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: l10n.language,
                   subtitle: l10n.languageDescription,
-                  trailing: SettingsCompactDropdown<String>(
+                  trailing: TpCompactSelect<String>(
                     value: langValue,
                     entries: [
                       ('system', l10n.languageSystem),

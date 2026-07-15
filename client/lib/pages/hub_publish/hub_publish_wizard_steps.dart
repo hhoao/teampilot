@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_text_styles.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
@@ -29,7 +28,7 @@ class HubPublishAuthStep extends StatelessWidget {
         if (hasStoredToken) ...[
           Text(
             l10n.hubPublishTokenStored,
-            style: AppTextStyles.of(context).mutedSm,
+            style: TpTextStyles.of(context).mutedSm,
           ),
           const SizedBox(height: 8),
         ],
@@ -173,7 +172,7 @@ class HubPublishGatesStep extends StatelessWidget {
           for (final localKey in localExpertKeys) ...[
             Text(
               localKey,
-              style: AppTextStyles.of(context).mutedSm,
+              style: TpTextStyles.of(context).mutedSm,
             ),
             const SizedBox(height: 6),
             DropdownButtonFormField<String>(
@@ -202,7 +201,7 @@ class HubPublishGatesStep extends StatelessWidget {
           Text(
             key: const Key('hub-publish-non-portable'),
             l10n.hubPublishNonPortableHint,
-            style: AppTextStyles.of(context).mdColored(cs.error),
+            style: TpTextStyles.of(context).mdColored(cs.error),
           ),
           const SizedBox(height: 8),
           for (final id in nonPortableIds)
@@ -270,7 +269,7 @@ class HubPublishConfirmStep extends StatelessWidget {
           Text(
             error!,
             key: const Key('hub-publish-error'),
-            style: AppTextStyles.of(context).mdColored(cs.error),
+            style: TpTextStyles.of(context).mdColored(cs.error),
           ),
         ],
       ],
@@ -287,7 +286,7 @@ class HubPublishConfirmStep extends StatelessWidget {
             width: 100,
             child: Text(
               label,
-              style: AppTextStyles.of(context).mdSemibold,
+              style: TpTextStyles.of(context).mdSemibold,
             ),
           ),
           Expanded(child: Text(value)),

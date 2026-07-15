@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/ssh_profile.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'ssh_profile_connection_status.dart';
-import '../../theme/app_text_styles.dart';
 
 class SshProfileTargetCard extends StatelessWidget {
   const SshProfileTargetCard({
@@ -83,7 +83,7 @@ class SshProfileTargetCard extends StatelessWidget {
                         Flexible(
                           child: Text(
                             profile.name,
-                            style: AppTextStyles.of(context).mdSemiboldTightSnug,
+                            style: TpTextStyles.of(context).mdSemiboldTightSnug,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -99,21 +99,21 @@ class SshProfileTargetCard extends StatelessWidget {
                         const SizedBox(width: 6),
                         Text(
                           _statusLabel(context),
-                          style: AppTextStyles.of(context).mutedXs,
+                          style: TpTextStyles.of(context).mutedXs,
                         ),
                       ],
                     ),
                     const SizedBox(height: 2),
                     Text(
                       profile.hostIdentifier,
-                      style: AppTextStyles.of(context).mutedSm,
+                      style: TpTextStyles.of(context).mutedSm,
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (statusError != null && statusError!.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
                         statusError!,
-                        style: AppTextStyles.of(context).smColored(cs.error),
+                        style: TpTextStyles.of(context).smColored(cs.error),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 2,
                       ),

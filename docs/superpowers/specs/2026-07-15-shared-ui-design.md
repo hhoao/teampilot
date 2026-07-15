@@ -209,3 +209,7 @@ Colors are **not** duplicated as a second palette: components use `Theme.of(cont
 - Progressive replacement of remaining raw Material buttons/inputs with `Tp*`
 - Whether to remove unused `packages/flutter-shadcn-ui` from the monorepo
 - Richer catalog (Tabs, Sheet, Checkbox, Slider, …) as demand appears
+
+## Amendment (v1.1)
+
+Theme consolidation: [2026-07-15-shared-ui-theme-consolidation-design.md](./2026-07-15-shared-ui-theme-consolidation-design.md) — `TpTextStyles` / `TpFontTheme` / `TpGlyphWarmup` in package; delete duplicate geometric ThemeExtensions in the client.

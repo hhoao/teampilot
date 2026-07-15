@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 
 /// Per-target opt-in to inject `IS_SANDBOX=1` when launching Claude as root
 /// outside a detected container. Default **off**; enabling keeps
@@ -28,7 +27,7 @@ class RootSandboxEnvOptInTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return SettingsLabeledRow(
+    return TpPreferenceRow(
       title: l10n.rootSandboxEnvOptInTitle,
       subtitle: l10n.rootSandboxEnvOptInSubtitle,
       trailing: Switch(

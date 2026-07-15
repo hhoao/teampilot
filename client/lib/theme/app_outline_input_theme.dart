@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
-import 'app_control_theme.dart';
 import 'app_typography_scale.dart';
 import 'workspace_surface_layers.dart';
 
@@ -85,7 +85,7 @@ TextStyle appTextFieldStyle(TextTheme textTheme) {
 InputDecorationThemeData buildAppOutlineInputDecorationTheme({
   required ColorScheme colorScheme,
   required TextTheme textTheme,
-  required AppControlTheme control,
+  required TpControlMetrics control,
   double? borderRadius,
 }) {
   final outline = colorScheme.outlineVariant;
@@ -118,7 +118,7 @@ InputDecorationThemeData buildAppOutlineInputDecorationTheme({
     // shared track (ThemeData.compact alone shrinks decorator contentHeight).
     visualDensity: VisualDensity.compact,
     // Input paddings/height stay on [control.input] (32), independent of
-    // button medium ([AppControlTheme.heightBase]).
+    // button medium ([TpControlMetrics.heightBase]).
     contentPadding: EdgeInsets.symmetric(
       horizontal: control.input.horizontalPadding,
       vertical: control.input.verticalPadding,

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:toastification/toastification.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../router/app_router.dart';
 import '../../services/notification/notification_recorder.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/app_toast_theme.dart';
 
 /// Optional action button on a toast.
@@ -144,7 +144,7 @@ abstract final class AppToast {
     required Color accentColor,
     AppToastAction? action,
   }) {
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final messageStyle = styles.mdColored(foregroundColor);
 
     if (action == null) {

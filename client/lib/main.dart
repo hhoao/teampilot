@@ -73,8 +73,6 @@ import 'repositories/layout_repository.dart';
 import 'theme/app_font_prepare.dart';
 import 'theme/app_font_resolver.dart';
 import 'theme/installed_font_enumerator.dart';
-import 'theme/app_icon_sizes.dart';
-import 'theme/app_spacing.dart';
 import 'theme/app_toast_theme.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_typography_scale.dart';
@@ -808,7 +806,7 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
       customMultiplier: widget.typographyCustomMultiplier,
       baseline: textBaseline,
     );
-    final iconMultiplier = AppIconSizes.resolveIconMultiplier(
+    final iconMultiplier = TpIconSizes.resolveIconMultiplier(
       effectiveTextMultiplier: effectiveTextMult,
       textBaseline: textBaseline,
     );
@@ -916,15 +914,14 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
               if (!Platform.isAndroid) {
                 content = _DragToResizeWrapper(child: content);
               }
-              // TpTheme outside UiZoom; spacing scale mirrors AppSpacingTheme,
-              // iconScale matches Material AppIconSizeTheme (resolveIconMultiplier).
+              // TpTheme outside UiZoom. Spacing stays at design baseline;
+              // controlScale tracks text size; iconScale uses damped policy.
               return TpTheme(
                 data: TpThemeData.fromColorScheme(
                   Theme.of(context).colorScheme,
-                  scale:
-                      Theme.of(context).extension<AppSpacingTheme>()?.scale ??
-                      1.0,
+                  scale: 1.0,
                   iconScale: _cachedIconMultiplier ?? 1.0,
+                  controlScale: _cachedEffectiveTextMult ?? 1.0,
                 ),
                 child: content,
               );

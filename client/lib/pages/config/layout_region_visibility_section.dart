@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../utils/app_keys.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 
 class LayoutRegionVisibilitySection extends StatelessWidget {
   const LayoutRegionVisibilitySection({super.key});
@@ -43,8 +43,8 @@ class LayoutRegionVisibilitySection extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SettingsGroupHeader(title: l10n.regionVisibility),
-            SettingsLabeledRow(
+            TpSectionHeader(title: l10n.regionVisibility),
+            TpPreferenceRow(
               title: l10n.members,
               subtitle: l10n.visibilityMembersHint,
               trailing: Switch(
@@ -54,7 +54,7 @@ class LayoutRegionVisibilitySection extends StatelessWidget {
               ),
               showDividerBelow: true,
             ),
-            SettingsLabeledRow(
+            TpPreferenceRow(
               title: l10n.fileTree,
               subtitle: l10n.visibilityFileTreeHint,
               trailing: Switch(
@@ -64,7 +64,7 @@ class LayoutRegionVisibilitySection extends StatelessWidget {
               ),
               showDividerBelow: true,
             ),
-            SettingsLabeledRow(
+            TpPreferenceRow(
               title: l10n.sourceControl,
               subtitle: l10n.visibilityGitHint,
               trailing: Switch(
@@ -73,7 +73,7 @@ class LayoutRegionVisibilitySection extends StatelessWidget {
               ),
               showDividerBelow: true,
             ),
-            SettingsLabeledRow(
+            TpPreferenceRow(
               title: l10n.board,
               subtitle: l10n.visibilityBoardHint,
               trailing: Switch(

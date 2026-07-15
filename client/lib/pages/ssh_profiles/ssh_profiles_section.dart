@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,12 +13,10 @@ import '../../repositories/ssh_credential_store.dart';
 import '../../services/ssh/ssh_connection_failure.dart';
 import '../../services/ssh/ssh_profile_connection_tester.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../ssh_profiles_page.dart';
 import 'ssh_profile_connection_status.dart';
 import 'ssh_profile_target_card.dart';
 import 'ssh_profile_target_config_dialog.dart';
-import '../../theme/app_text_styles.dart';
 
 /// Orca-style SSH target list for settings (desktop + Android).
 class SshProfilesSection extends StatefulWidget {
@@ -167,7 +166,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
     final state = context.watch<SshProfileCubit>().state;
     final profiles = state.profiles;
 
-    return SettingsSurfaceCard(
+    return TpCard.outlined(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
         child: Column(
@@ -182,12 +181,12 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                     children: [
                       Text(
                         l10n.sshProfilesTargetsTitle,
-                        style: AppTextStyles.of(context).mdBoldTightSnug,
+                        style: TpTextStyles.of(context).mdBoldTightSnug,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         l10n.sshProfilesTargetsSubtitle,
-                        style: AppTextStyles.of(context).mutedSm,
+                        style: TpTextStyles.of(context).mutedSm,
                       ),
                     ],
                   ),
@@ -234,7 +233,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                 ),
                 child: Text(
                   l10n.sshProfilesEmpty,
-                  style: AppTextStyles.of(context).mutedMd,
+                  style: TpTextStyles.of(context).mutedMd,
                 ),
               )
             else

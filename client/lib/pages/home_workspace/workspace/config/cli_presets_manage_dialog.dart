@@ -6,7 +6,6 @@ import '../../../../models/cli_preset.dart';
 import '../../../../models/team_config.dart';
 import '../../../../services/cli/registry/cli_display_name.dart';
 import '../../../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../../../theme/app_text_styles.dart';
 import 'cli_preset_edit_dialog.dart';
 import 'cli_preset_provider_navigation.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -40,7 +39,7 @@ class CliPresetsManageDialog extends StatelessWidget {
               child: Text(
                 l10n.workspaceCliPresetsEmptyHint,
                 textAlign: TextAlign.center,
-                style: AppTextStyles.of(context).md,
+                style: TpTextStyles.of(context).md,
               ),
             )
           else
@@ -123,7 +122,7 @@ class _PresetRow extends StatelessWidget {
     final def = registry.tryGet(preset.cli);
     final cliName = def != null ? cliDisplayName(def, l10n) : preset.cli.value;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final subtitle = _subtitle(preset);
 
     return Padding(

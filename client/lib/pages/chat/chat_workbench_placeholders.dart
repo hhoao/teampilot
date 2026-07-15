@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
-import '../../theme/app_text_styles.dart';
 
 class ChatWorkbenchSessionLoadingView extends StatelessWidget {
   const ChatWorkbenchSessionLoadingView({super.key, required this.message});
@@ -23,7 +23,7 @@ class ChatWorkbenchSessionLoadingView extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             message,
-            style: AppTextStyles.of(
+            style: TpTextStyles.of(
               context,
             ).mdColored(textBase.withValues(alpha: 0.68)),
           ),

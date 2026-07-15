@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -16,7 +17,6 @@ import 'package:teampilot/services/run/process_run_executor.dart';
 import 'package:teampilot/services/run/run_platform.dart';
 import 'package:teampilot/services/run/run_session_manager.dart';
 import 'package:teampilot/services/run/shell_script_launch_schema.dart';
-import 'package:teampilot/theme/app_control_theme.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 import 'package:teampilot/widgets/menu/sidebar_action_menu.dart';
 import 'package:teampilot/widgets/run/run_config_editor_dialog.dart';
@@ -325,20 +325,25 @@ Future<void> _openConfigDropdown(WidgetTester tester) async {
 }
 
 Widget _host({required RunCubit cubit, RunActionPicker? pickActionResult}) {
+  final theme = ThemeData(useMaterial3: true);
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     locale: const Locale('en'),
-    theme: ThemeData(
-      useMaterial3: true,
-      extensions: [AppControlTheme.fromScale(AppTypographyScale.standard)],
-    ),
-    home: Scaffold(
-      body: BlocProvider<RunCubit>.value(
-        value: cubit,
-        child: RunToolbar(
-          workspaceId: 'ws-1',
-          pickActionResult: pickActionResult,
+    theme: theme,
+    home: TpTheme(
+      data: TpThemeData.fromColorScheme(
+        theme.colorScheme,
+        scale: 1.0,
+        controlScale: AppTypographyScale.standard.multiplier,
+      ),
+      child: Scaffold(
+        body: BlocProvider<RunCubit>.value(
+          value: cubit,
+          child: RunToolbar(
+            workspaceId: 'ws-1',
+            pickActionResult: pickActionResult,
+          ),
         ),
       ),
     ),

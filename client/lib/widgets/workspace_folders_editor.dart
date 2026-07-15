@@ -9,7 +9,6 @@ import '../models/runtime_target.dart';
 import '../models/workspace_folder.dart';
 import '../models/workspace_topology.dart';
 import '../services/storage/home_target_controller.dart';
-import '../theme/app_text_styles.dart';
 import '../utils/workspace_path_picker.dart';
 import '../utils/workspace_path_utils.dart';
 import 'workspace_folder_directory_row.dart';
@@ -300,7 +299,7 @@ class _MachineFolderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final listed = entries
         .where((e) => e.folder.path.trim().isNotEmpty)
         .toList();

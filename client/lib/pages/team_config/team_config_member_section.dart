@@ -14,11 +14,9 @@ import '../../models/team_roster_slot.dart';
 import '../../services/app/flashskyai_agent_catalog_service.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/expert_hub/expert_member_resolver.dart';
-import '../../theme/app_text_styles.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/cli/member_agent_preset_field.dart';
 import '../../widgets/settings/focus_gated_text_field.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../../widgets/team/team_lead_badge.dart';
 import '../expert_hub/expert_landing_picker_sheet.dart';
 import '../home_workspace/home_workspace_lazy_mount.dart';
@@ -58,7 +56,7 @@ class TeamMemberDetailSection extends StatelessWidget {
         child: Text(
           l10n.openMember,
           textAlign: TextAlign.center,
-          style: AppTextStyles.of(
+          style: TpTextStyles.of(
             context,
           ).mdColored(textBase.withValues(alpha: 0.55)),
         ),
@@ -275,7 +273,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final muted = Theme.of(
       context,
     ).colorScheme.onSurface.withValues(alpha: 0.55);
@@ -340,11 +338,11 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     final canDelete = teamShell.memberCount > 1 && !discrete.isTeamLead;
     final errorColor = Theme.of(context).colorScheme.error;
 
-    return SettingsSurfaceCard(
+    return TpCard.outlined(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SettingsLabeledStackedRow(
+          TpPreferenceStack(
             title: l10n.memberName,
             subtitle: l10n.memberNameSubtitle,
             titleTrailing: discrete.isTeamLead || canDelete
@@ -385,7 +383,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
             ),
             showDividerBelow: true,
           ),
-          SettingsLabeledStackedRow(
+          TpPreferenceStack(
             title: l10n.expertHubNav,
             subtitle: l10n.expertHubSubtitle,
             body: Row(
@@ -409,7 +407,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
             memberId: widget.memberId,
             onPersist: _persistImmediate,
           ),
-          SettingsLabeledStackedRow(
+          TpPreferenceStack(
             title: l10n.memberResponsibilities,
             subtitle: l10n.memberPromptSubtitle,
             body: _ReadOnlyMultilineText(
@@ -420,7 +418,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
             ),
             showDividerBelow: true,
           ),
-          SettingsLabeledStackedRow(
+          TpPreferenceStack(
             title: l10n.memberPlaybook,
             subtitle: l10n.memberPlaybookSubtitle,
             body: _ReadOnlyMultilineText(
@@ -431,14 +429,14 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
             ),
             showDividerBelow: true,
           ),
-          SettingsAdvancedExpansion(
+          TpDisclosure(
             title: l10n.workspaceAdvancedSettings,
             subtitle: l10n.workspaceAdvancedSettingsSubtitle,
             children: [
               if (showMemberAgentPreset &&
                   memberAgentStyle != null &&
                   agentPresetCli != null)
-                SettingsLabeledStackedRow(
+                TpPreferenceStack(
                   title: l10n.agent,
                   subtitle: memberAgentPresetSubtitle(l10n, memberAgentStyle),
                   body: MemberAgentPresetField(
@@ -454,7 +452,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                   ),
                   showDividerBelow: true,
                 ),
-              SettingsLabeledStackedRow(
+              TpPreferenceStack(
                 title: l10n.memberExtraArgs,
                 subtitle: l10n.memberExtraArgsSubtitle,
                 body: FocusGatedTextField(
@@ -519,7 +517,7 @@ class _MemberSkipPermissionsSwitch extends StatelessWidget {
     );
     if (skip == null) return const SizedBox.shrink();
 
-    return SettingsLabeledRow(
+    return TpPreferenceRow(
       title: l10n.memberDangerouslySkipPermissions,
       subtitle: l10n.memberDangerouslySkipPermissionsHint,
       trailing: Switch(

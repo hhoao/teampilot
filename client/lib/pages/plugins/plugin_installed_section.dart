@@ -9,12 +9,10 @@ import '../../cubits/plugin_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/plugin.dart';
-import '../../theme/app_text_styles.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/github_source_url.dart';
 import '../../widgets/github_details_button.dart';
 import '../../widgets/plugins/plugin_cli_support_disclosure.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'plugin_management_cards.dart';
 
 class PluginInstalledSection extends StatelessWidget {
@@ -42,7 +40,7 @@ class PluginInstalledSection extends StatelessWidget {
               children: [
                 PluginCardHeader(
                   title: l10n.pluginsInstalledCount(state.installed.length),
-                  trailing: CardHeaderActionRow(
+                  trailing: TpActionRow(
                     children: [
                       if (state.updates.isNotEmpty)
                         FilledButton.tonalIcon(
@@ -294,7 +292,7 @@ class PluginInstalledRow extends StatelessWidget {
                     Flexible(
                       child: Text(
                         plugin.name,
-                        style: AppTextStyles.of(
+                        style: TpTextStyles.of(
                           context,
                         ).mdSemiboldColored(textBase),
                       ),
@@ -303,7 +301,7 @@ class PluginInstalledRow extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         'v${plugin.version}',
-                        style: AppTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.45),
+                        style: TpTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.45),
                         ),
                       ),
                     ],
@@ -315,7 +313,7 @@ class PluginInstalledRow extends StatelessWidget {
                     plugin.description,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.of(context).smColored(textBase.withValues(alpha: 0.55),
+                    style: TpTextStyles.of(context).smColored(textBase.withValues(alpha: 0.55),
                     ),
                   ),
                 ],

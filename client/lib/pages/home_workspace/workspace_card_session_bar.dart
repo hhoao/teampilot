@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_topology.dart';
-import '../../theme/app_text_styles.dart';
 import '../../widgets/workspace_topology_icon.dart';
 import 'open_workspace_tab_actions.dart';
 
@@ -25,7 +25,7 @@ class WorkspaceCardSessionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final topology = workspaceTopologyOf(workspace.folders);
 
     return Row(

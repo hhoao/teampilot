@@ -7,7 +7,6 @@ import '../cubits/app_update_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_release_info.dart';
 import '../router/app_router.dart';
-import '../theme/app_text_styles.dart';
 import '../utils/changelog_parser.dart';
 
 /// Popup shown when [AppUpdateCubit] surfaces a newer release (e.g. on the
@@ -36,7 +35,7 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
     final changelogs = ChangelogData.parseMarkdownContent(
       widget.release.releaseNotes,
@@ -95,7 +94,7 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
   Widget _versionRow(
     BuildContext context,
     AppUpdateState state,
-    AppTextStyles styles,
+    TpTextStyles styles,
     ColorScheme cs,
   ) {
     return Row(
@@ -129,7 +128,7 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
     String label,
     String value,
     CrossAxisAlignment align,
-    AppTextStyles styles,
+    TpTextStyles styles,
     ColorScheme cs, {
     required bool highlight,
   }) {
@@ -149,7 +148,7 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
   Widget _changelog(
     BuildContext context,
     List<ChangelogEntry> changelogs,
-    AppTextStyles styles,
+    TpTextStyles styles,
     ColorScheme cs,
   ) {
     return Theme(
@@ -201,7 +200,7 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
   Widget _progress(
     BuildContext context,
     AppUpdateState state,
-    AppTextStyles styles,
+    TpTextStyles styles,
     ColorScheme cs,
   ) {
     final installing = state.status == AppUpdateStatus.installing;

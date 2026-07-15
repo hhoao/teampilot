@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../../../cubits/extension_cubit.dart';
 import '../../../../cubits/workspace_project_config_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
-import '../../../../theme/app_text_styles.dart';
 import '../../../team_config/team_config_cards.dart';
 import '../../../team_config/team_config_extensions_section.dart';
 
@@ -51,7 +51,7 @@ class WorkspaceExtensionsSection extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   l10n.workspaceExtensionsSubtitle,
-                  style: AppTextStyles.of(context).smColored(Theme.of(
+                  style: TpTextStyles.of(context).smColored(Theme.of(
                       context,).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),

@@ -10,7 +10,6 @@ import '../../models/workspace.dart';
 import '../../pages/expert_hub/expert_landing_picker_sheet.dart';
 import '../../pages/home_workspace/workspace/workspace_landing_location_fields.dart';
 import '../../services/expert_hub/expert_member_resolver.dart';
-import '../../theme/app_text_styles.dart';
 import '../../widgets/cli/cli_preset_dropdown_field.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -174,7 +173,7 @@ class AutomationEditorLaunchSection extends StatelessWidget {
               if (teams.isEmpty) {
                 return Text(
                   l10n.automationsValidationRequired,
-                  style: AppTextStyles.of(context).mdColored(
+                  style: TpTextStyles.of(context).mdColored(
                     Theme.of(context).colorScheme.error,
                   ),
                 );
@@ -220,7 +219,7 @@ class AutomationEditorLaunchSection extends StatelessWidget {
               if (teamMembers.isEmpty) {
                 return Text(
                   l10n.automationsValidationRequired,
-                  style: AppTextStyles.of(context).mdColored(
+                  style: TpTextStyles.of(context).mdColored(
                     Theme.of(context).colorScheme.error,
                   ),
                 );

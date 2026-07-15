@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/member_remote_provision_progress.dart';
-import '../../theme/app_text_styles.dart';
 import '../../widgets/cli_install_progress_panel.dart';
 
 /// Full-pane overlay while an SSH member's remote CLI/workspace is provisioning.
@@ -20,7 +20,7 @@ class ChatWorkbenchRemoteProvisionView extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final host = progress.hostLabel.trim();
     final title = host.isEmpty
         ? memberLabel

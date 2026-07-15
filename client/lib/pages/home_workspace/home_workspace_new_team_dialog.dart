@@ -23,12 +23,9 @@ import '../../services/ai/team_draft_roster_mapper.dart';
 import '../../services/cli/registry/capabilities/provider_catalog_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../theme/app_text_styles.dart';
 import '../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../widgets/app_provider/provider_brand_icon.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
-import '../../widgets/settings/workspace_settings_toggle_strip.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'home_workspace_team_generate_section.dart';
 
 enum _TeamCreationMethod { custom, ai }
@@ -308,7 +305,7 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
 
     final maxDialogHeight = MediaQuery.sizeOf(context).height * 0.92;
 
@@ -326,16 +323,16 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
             showDividerBelow: false,
           ),
           const SizedBox(height: 20),
-          WorkspaceSettingsToggleStrip<_TeamCreationMethod>(
+          TpSegmentedPicker<_TeamCreationMethod>(
             alignment: Alignment.center,
             customWidths: const [156, 120],
             segments: [
-              WorkspaceToggleSegment(
+              TpSegmentedOption(
                 value: _TeamCreationMethod.custom,
                 label: l10n.homeWorkspaceNewTeamMethodCustom,
                 icon: Icons.tune_outlined,
               ),
-              WorkspaceToggleSegment(
+              TpSegmentedOption(
                 value: _TeamCreationMethod.ai,
                 label: l10n.homeWorkspaceNewTeamMethodAi,
                 icon: Icons.auto_awesome_outlined,
@@ -511,7 +508,7 @@ class _ModeCardState extends State<_ModeCard> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final selected = widget.selected;
     final restingBg = cs.surfaceContainerHighest.withValues(alpha: 0.35);
     final hoverTint = cs.onSurface.withValues(alpha: 0.06);
@@ -588,7 +585,7 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final Color fg = primary ? cs.tertiary : cs.onSurfaceVariant;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -639,15 +636,15 @@ class _NativeTeamOptionsCard extends StatelessWidget {
         ? providerId
         : '';
 
-    return SettingsSurfaceCard(
+    return TpCard.outlined(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SettingsLabeledRow(
+          TpPreferenceRow(
             title: l10n.teamCliLabel,
             subtitle: l10n.teamCliSubtitle,
             titleLeading: CliBrandIcon(cli: cli, size: 28, borderRadius: 7),
-            trailing: SettingsCompactDropdown<CliTool>(
+            trailing: TpCompactSelect<CliTool>(
               value: cli,
               entries: [
                 for (final def in nativeTeamClis)
@@ -665,7 +662,7 @@ class _NativeTeamOptionsCard extends StatelessWidget {
             showDividerBelow: catalogCli != null,
           ),
           if (catalogCli != null)
-            SettingsLabeledRow(
+            TpPreferenceRow(
               title: l10n.provider,
               subtitle: l10n.appProviderTeamToolSubtitle,
               titleLeading:
@@ -684,9 +681,9 @@ class _NativeTeamOptionsCard extends StatelessWidget {
               trailing: providerEntries.isEmpty
                   ? Text(
                       l10n.onboardingDefaultPresetEmpty,
-                      style: AppTextStyles.of(context).mutedSm,
+                      style: TpTextStyles.of(context).mutedSm,
                     )
-                  : SettingsCompactDropdown<String>(
+                  : TpCompactSelect<String>(
                       value: effectiveProviderId,
                       entries: providerEntries,
                       itemBuilder: providerDropdownItemBuilder(
@@ -718,7 +715,7 @@ class _NameField extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(

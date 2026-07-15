@@ -16,7 +16,6 @@ import '../../models/automation_list_scope.dart';
 import '../../models/workspace.dart';
 import '../../services/automation/automation_launch_session_binding.dart';
 import '../../services/automation/automation_scope_label.dart';
-import '../../theme/app_text_styles.dart';
 import '../../utils/coarse_relative_time.dart';
 import '../../utils/workspace_display_name.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
@@ -222,7 +221,7 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
 
     return BlocBuilder<AutomationCubit, AutomationState>(
       builder: (context, state) {
@@ -396,7 +395,7 @@ class _GroupedList extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     return BlocBuilder<ChatCubit, ChatState>(
       builder: (context, chatState) {
         return BlocBuilder<LaunchProfileCubit, LaunchProfileState>(
@@ -546,7 +545,7 @@ class AutomationRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final actionIcon = automation.isScheduledMessage
         ? Icons.send_rounded
         : Icons.play_arrow_rounded;
@@ -674,7 +673,7 @@ Future<void> showAutomationRunHistoryDialog(
 }) {
   final l10n = context.l10n;
   final cs = Theme.of(context).colorScheme;
-  final styles = AppTextStyles.of(context);
+  final styles = TpTextStyles.of(context);
   final maxHeight = MediaQuery.sizeOf(context).height * 0.6;
 
   return showDialog<void>(
@@ -711,7 +710,7 @@ class AutomationRunHistoryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final when = DateTime.fromMillisecondsSinceEpoch(run.scheduledForMs);
     final label = _statusLabel(l10n, run.status);
     final statusColor = _statusColor(cs, run.status);

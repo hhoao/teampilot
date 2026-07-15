@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 
 /// Per-target "push credentials to this machine" opt-in (P3c §3.4). Default
 /// **off**. Turning it on first shows a trust-boundary confirmation naming the
@@ -31,7 +30,7 @@ class CredentialPushOptInTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return SettingsLabeledRow(
+    return TpPreferenceRow(
       title: l10n.credentialPushOptInTitle,
       subtitle: l10n.credentialPushOptInSubtitle,
       trailing: Switch(

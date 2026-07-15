@@ -3,7 +3,6 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../pane_entry_animation.dart';
 import '../split_layout.dart';
@@ -101,14 +100,14 @@ class WorkspaceHubTitleBar extends StatelessWidget {
           title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: AppTextStyles.of(context).lgSemiboldSnugColored(textBase),
+          style: TpTextStyles.of(context).lgSemiboldSnugColored(textBase),
         ),
         const SizedBox(height: 8),
         Text(
           subtitle,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: AppTextStyles.of(context).mdColored(
+          style: TpTextStyles.of(context).mdColored(
             textBase.withValues(alpha: 0.66),
           ),
         ),
@@ -212,10 +211,10 @@ class WorkspaceHubNavItem extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style:
                                   (hubStyle
-                                          ? AppTextStyles.of(
+                                          ? TpTextStyles.of(
                                               context,
                                             ).mdSemiboldTightSnug
-                                          : AppTextStyles.of(context).md)
+                                          : TpTextStyles.of(context).md)
                                       .copyWith(
                                         color: selected ? selectedFg : normalFg,
                                       ),
@@ -459,7 +458,7 @@ class WorkspaceSectionHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

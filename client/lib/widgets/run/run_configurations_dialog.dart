@@ -8,7 +8,6 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/run/launch_configuration.dart';
 import '../../models/workspace_folder.dart';
 import '../../services/run/shell_script_launch_schema.dart';
-import '../../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../menu/sidebar_action_menu.dart';
 import 'run_config_editor_dialog.dart';
@@ -92,7 +91,7 @@ class _RunConfigurationsListBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
 
     return BlocBuilder<RunCubit, RunState>(
       builder: (context, state) {
@@ -143,7 +142,7 @@ class _RunConfigurationRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final title = owned.configuration.name.isEmpty
         ? owned.configId
         : owned.configuration.name;

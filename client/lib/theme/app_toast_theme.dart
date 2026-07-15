@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:toastification/toastification.dart';
 
-import 'app_spacing.dart';
 import '../services/app/platform_utils.dart';
 import '../widgets/desktop_window_title_bar.dart';
 import 'workspace_surface_layers.dart';
@@ -57,7 +57,7 @@ ToastificationConfig buildAppToastificationConfig() {
     maxTitleLines: 3,
     maxDescriptionLines: 1,
     marginBuilder: (context, alignment) {
-      final spacing = AppSpacingTheme.fromContext(context);
+      final spacing = context.tpSpacing;
       final horizontal = spacing.lg;
       final y = alignment.resolve(Directionality.of(context)).y;
       if (y <= -0.5) {

@@ -6,8 +6,6 @@ import '../../../models/git_worktree.dart';
 import '../../../models/runtime_target.dart';
 import '../../../models/workspace.dart';
 import '../../../models/workspace_topology.dart';
-import '../../../theme/app_spacing.dart';
-import '../../../theme/app_text_styles.dart';
 import '../../../utils/workspace_path_utils.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
 import '../../../widgets/workspace_folder_directory_row.dart';
@@ -305,7 +303,7 @@ class WorkspaceLandingSelectorBar extends StatelessWidget {
       display,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: AppTextStyles.of(context).mdColored(foreground),
+      style: TpTextStyles.of(context).mdColored(foreground),
     );
     if (!selectable) {
       if (compact) return labelWidget;

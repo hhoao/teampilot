@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
@@ -65,11 +66,15 @@ void main() {
     ),
   );
 
-  testWidgets('desktop non-Windows shows only local', (tester) async {
+  testWidgets('desktop non-Windows shows local in a single-entry dropdown', (
+    tester,
+  ) async {
     await setup(home: 'local');
     await tester.pumpWidget(host());
     await tester.pumpAndSettle();
-    expect(find.text('local'), findsWidgets);
+    expect(find.byType(TpCompactSelect<String>), findsOneWidget);
+    expect(find.byType(TpPreferenceRow), findsOneWidget);
+    expect(find.text('This device'), findsOneWidget);
     expect(find.textContaining('ssh:'), findsNothing);
   });
 
@@ -79,7 +84,10 @@ void main() {
     await setup(home: 'ssh:p1', sshIds: ['p1', 'p2']);
     await tester.pumpWidget(host(isAndroid: true));
     await tester.pumpAndSettle();
-    // local is filtered out on Android
+    expect(find.byType(TpCompactSelect<String>), findsOneWidget);
+    // local is filtered out on Android; open menu then pick the other profile
+    await tester.tap(find.byType(TpSelect<String>));
+    await tester.pumpAndSettle();
     expect(find.text('box-p2'), findsOneWidget);
     await tester.tap(find.text('box-p2'));
     await tester.pumpAndSettle();

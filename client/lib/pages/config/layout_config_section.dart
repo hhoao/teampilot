@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'layout_appearance_in_layout_section.dart';
 import 'layout_region_visibility_section.dart';
 
@@ -41,9 +41,9 @@ class _LayoutSettingsScroll extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: const [
-          SettingsSurfaceCard(child: LayoutRegionVisibilitySection()),
+          TpCard.outlined(child: LayoutRegionVisibilitySection()),
           SizedBox(height: _cardGap),
-          SettingsSurfaceCard(child: LayoutAppearanceInLayoutSection()),
+          TpCard.outlined(child: LayoutAppearanceInLayoutSection()),
         ],
       ),
     );

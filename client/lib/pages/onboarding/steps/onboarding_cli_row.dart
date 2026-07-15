@@ -4,7 +4,6 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../../l10n/l10n_extensions.dart';
 import '../../../services/cli/registry/cli_tool_definition.dart';
-import '../../../theme/app_text_styles.dart';
 import '../../../utils/app_keys.dart';
 import '../../../widgets/cli/cli_brand_icon.dart';
 
@@ -61,7 +60,7 @@ class OnboardingCliRow extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.of(context).md,
+              style: TpTextStyles.of(context).md,
             ),
           ),
           const SizedBox(width: 8),

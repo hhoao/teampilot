@@ -8,7 +8,6 @@ import '../../cubits/skill_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/skill.dart';
 import '../../services/skill/skill_repo_disk_cache_service.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/skill_repo_parse.dart';
@@ -157,14 +156,14 @@ class SkillRepoRow extends StatelessWidget {
                 children: [
                   Text(
                     repo.githubUrl,
-                    style: AppTextStyles.of(
+                    style: TpTextStyles.of(
                       context,
                     ).mdColored(textBase),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '@${repo.branch}',
-                    style: AppTextStyles.of(
+                    style: TpTextStyles.of(
                       context,
                     ).xsColored(textBase.withValues(alpha: 0.55)),
                   ),

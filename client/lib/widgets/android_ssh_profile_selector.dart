@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../theme/app_text_styles.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -63,7 +62,7 @@ class AndroidSshProfileSelector extends StatelessWidget {
                     selected.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.of(context).mdSemiboldTightSnug,
+                    style: TpTextStyles.of(context).mdSemiboldTightSnug,
                   ),
                 ),
                 Icon(Icons.arrow_drop_down),
@@ -81,7 +80,7 @@ class AndroidSshProfileSelector extends StatelessWidget {
               label: profile.name,
               subtitle: Text(
                 profile.hostIdentifier,
-                style: AppTextStyles.of(context).sm,
+                style: TpTextStyles.of(context).sm,
               ),
               selected: profile.id == selected.id,
             ),

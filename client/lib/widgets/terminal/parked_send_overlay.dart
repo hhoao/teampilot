@@ -1,9 +1,9 @@
 import 'dart:async';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/app_text_styles.dart';
 import '../../services/terminal/pending_user_message.dart';
 
 /// Banner overlay that confirms lines sent to the team bus while a member is
@@ -90,7 +90,7 @@ class _ParkedSendOverlayState extends State<ParkedSendOverlay> {
   Widget build(BuildContext context) {
     if (_pending.isEmpty) return const SizedBox.shrink();
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final l10n = context.l10n;
     return Positioned(
       left: 8,

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -13,7 +14,6 @@ import '../../models/workspace_tab_ref.dart';
 import '../../services/home_workspace/home_recent_workspaces_store.dart';
 import '../../services/home_workspace/workspace_display_prefs_store.dart';
 import '../../services/home_workspace/workspace_favorites_store.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'home_workspace_library_view.dart';
 import 'workspace_card.dart';
@@ -73,7 +73,7 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final l10n = context.l10n;
     final isFavorites = widget.view == HomeLibraryView.favorites;
 
@@ -224,7 +224,7 @@ class _LibraryEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,

@@ -9,7 +9,6 @@ import '../../models/run/run_session.dart';
 import '../../pages/workspace_shell/workspace_shell_tabs.dart';
 import '../../services/run/run_platform.dart';
 import '../../services/run/run_terminal_bridge.dart';
-import '../../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'run_session_dismiss.dart';
 import 'run_session_page.dart';
@@ -157,7 +156,7 @@ class _RunPanelState extends State<RunPanel> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final l10n = context.l10n;
     return BlocConsumer<RunCubit, RunState>(
       listenWhen: (prev, next) => prev.sessions != next.sessions,

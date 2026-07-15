@@ -15,7 +15,6 @@ import '../../services/ssh/ssh_client_factory.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/cli_install_progress_panel.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'session_config_constants.dart';
 
 class CliExecutablePathSettingsRow extends StatefulWidget {
@@ -224,7 +223,7 @@ class CliExecutablePathSettingsRowState
     final fieldEmpty = _controller.text.trim().isEmpty;
     final hint = fieldEmpty ? '${l10n.cliExecutablePathUsing}$effective' : null;
 
-    return SettingsLabeledStackedRow(
+    return TpPreferenceStack(
       title: widget.title,
       subtitle: widget.subtitle,
       titleLeading: CliBrandIcon(

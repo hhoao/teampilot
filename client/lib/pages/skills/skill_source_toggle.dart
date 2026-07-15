@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
-import '../../theme/app_text_styles.dart';
 
 class SkillSourceToggle extends StatelessWidget {
   const SkillSourceToggle({
@@ -34,8 +34,8 @@ class SkillSourceToggle extends StatelessWidget {
           child: Text(
             label,
             style: selected
-                ? AppTextStyles.of(context).mdBold
-                : AppTextStyles.of(context).mdSemibold,
+                ? TpTextStyles.of(context).mdBold
+                : TpTextStyles.of(context).mdSemibold,
           ),
         ),
       ),

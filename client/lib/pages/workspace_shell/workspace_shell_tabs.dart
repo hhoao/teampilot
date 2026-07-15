@@ -9,7 +9,6 @@ import '../../cubits/chat_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
 import '../../widgets/tab_close_button.dart';
@@ -353,7 +352,7 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final active = widget.active;
     final Color fg = active ? cs.onSurface : cs.onSurfaceVariant;
     final Color accent = widget.accentColor ?? cs.primary;

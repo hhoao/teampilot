@@ -2,16 +2,14 @@ import 'dart:io' show Platform;
 
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart' hide buildTpDialogTheme;
 
 import 'app_button_theme.dart';
-import 'app_control_theme.dart';
 import 'app_dialog_theme.dart';
 import 'app_list_tile_theme.dart';
 import 'app_tooltip_theme.dart';
 import 'app_fonts.dart';
-import 'app_icon_sizes.dart';
 import 'app_outline_input_theme.dart';
-import 'app_spacing.dart';
 import 'app_typography_scale.dart';
 import 'font_catalog.dart';
 
@@ -109,7 +107,7 @@ Color themePresetSwatchSecondary(String presetId) =>
 
 const _subThemes = FlexSubThemesData(
   defaultRadius: 10,
-  /// Match [AppControlTheme.radiusBase] — rounded rect, not stadium/pill.
+  /// Match [TpControlMetrics.radiusBase] — rounded rect, not stadium/pill.
   filledButtonRadius: 8,
   outlinedButtonRadius: 8,
   elevatedButtonRadius: 8,
@@ -240,15 +238,15 @@ ThemeData _applyTypography(
   final resolvedIconScale =
       iconScale ??
       AppTypographyScale(
-        multiplier: AppIconSizes.resolveIconMultiplier(
+        multiplier: TpIconSizes.resolveIconMultiplier(
           effectiveTextMultiplier: typographyScale.multiplier,
           textBaseline: 1.0,
         ),
       );
   final typographyTheme = AppTypographyTheme.fromScale(typographyScale);
-  final control = AppControlTheme.fromScale(typographyScale);
+  final control = TpControlMetrics.fromScale(typographyScale.multiplier);
   final buttons = buildAppButtonThemes(control: control, flexTheme: flexTheme);
-  final fontTheme = buildAppFontTheme(resolvedFonts);
+  final fontTheme = buildTpFontTheme(resolvedFonts);
   final useRuntimeGoogleFonts = _googleFontsNetworkAllowed();
 
   if (!useRuntimeGoogleFonts) {
@@ -268,14 +266,11 @@ ThemeData _applyTypography(
     return flexTheme.copyWith(
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      iconTheme: AppIconSizes.iconTheme(scheme, scale: resolvedIconScale),
+      iconTheme: TpIconSizes.iconTheme(scheme, scale: resolvedIconScale.multiplier),
       textTheme: textTheme,
       extensions: [
         fontTheme,
         typographyTheme,
-        control,
-        AppSpacingTheme.fromScale(AppTypographyScale.standard),
-        AppIconSizeTheme.fromScale(resolvedIconScale),
       ],
       dialogTheme: buildTpDialogTheme(
         colorScheme: scheme,
@@ -325,15 +320,12 @@ ThemeData _applyTypography(
   return flexTheme.copyWith(
     visualDensity: VisualDensity.compact,
     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    iconTheme: AppIconSizes.iconTheme(scheme, scale: resolvedIconScale),
+    iconTheme: TpIconSizes.iconTheme(scheme, scale: resolvedIconScale.multiplier),
     textTheme: mergedTextTheme,
     primaryTextTheme: primaryTextTheme,
     extensions: [
       fontTheme,
       typographyTheme,
-      control,
-      AppSpacingTheme.fromScale(AppTypographyScale.standard),
-      AppIconSizeTheme.fromScale(resolvedIconScale),
     ],
     dialogTheme: buildTpDialogTheme(
       colorScheme: scheme,

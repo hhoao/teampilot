@@ -10,7 +10,6 @@ import '../../services/commands/command_l10n.dart';
 import '../../services/commands/key_chord.dart';
 import '../../services/commands/key_chord_formatter.dart';
 import '../../services/commands/shortcut_dispatcher_handle.dart';
-import '../../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 /// Opens the press-to-bind capture modal for [commandId].
@@ -184,7 +183,7 @@ class _ShortcutRebindDialogState extends State<ShortcutRebindDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final title = titleForCommand(l10n, widget.commandId);
 
     return Focus(
@@ -263,7 +262,7 @@ class _ConflictConfirm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

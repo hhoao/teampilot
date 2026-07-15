@@ -5,7 +5,6 @@ import '../../models/cli_preset.dart';
 import '../../models/config_bundle.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
-import '../../theme/app_text_styles.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/compose/compose_focus_shell.dart';
 import '../../widgets/compose/compose_model_preset_chip.dart';
@@ -159,7 +158,7 @@ class SessionReviewComposeCard extends StatelessWidget {
                   ),
                   child: Text(
                     error,
-                    style: AppTextStyles.of(context).smRelaxedColored(
+                    style: TpTextStyles.of(context).smRelaxedColored(
                       Theme.of(context).colorScheme.onErrorContainer,
                     ),
                   ),
@@ -352,7 +351,7 @@ class _ContinueIdentityChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final spacing = context.tpSpacing;
     final icons = context.tpIconSizes;
-    final labelStyle = AppTextStyles.of(context).smColored(palette.muted);
+    final labelStyle = TpTextStyles.of(context).smColored(palette.muted);
 
     return Material(
       color: palette.chipFill,

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/app_text_styles.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import '../home_workspace/workspaces_tab.dart';
 import 'automation_sort.dart';
@@ -187,7 +186,7 @@ class AutomationsFilterPanel extends StatelessWidget {
         children: [
           Text(
             l10n.automationsFilterStatusLabel,
-            style: AppTextStyles.of(context).smSemiboldColored(cs.onSurfaceVariant),
+            style: TpTextStyles.of(context).smSemiboldColored(cs.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -205,7 +204,7 @@ class AutomationsFilterPanel extends StatelessWidget {
           const SizedBox(height: 14),
           Text(
             l10n.automationsFilterActionLabel,
-            style: AppTextStyles.of(context).smSemiboldColored(cs.onSurfaceVariant),
+            style: TpTextStyles.of(context).smSemiboldColored(cs.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -266,7 +265,7 @@ class _FilterPillState extends State<_FilterPill> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final selected = widget.selected;
     final restingBg = selected
         ? cs.primary.withValues(alpha: 0.14)

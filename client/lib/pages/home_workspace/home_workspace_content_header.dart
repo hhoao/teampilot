@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/team/launch_profile_selectors.dart';
 import '../../models/team_config.dart';
-import '../../theme/app_text_styles.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../utils/launch_profile_display_name.dart';
 
@@ -18,7 +18,7 @@ class HomeTeamHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final l10n = context.l10n;
     final titleStyle = styles.xl;
     final isMixed = snapshot.teamMode == TeamMode.mixed;
@@ -109,7 +109,7 @@ class HomeContentTabItemState extends State<HomeContentTabItem> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final selected = widget.selected;
     return MouseRegion(
       cursor: SystemMouseCursors.click,

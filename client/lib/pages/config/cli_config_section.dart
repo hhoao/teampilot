@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/session_preferences_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -7,8 +8,6 @@ import '../../models/session_preferences.dart';
 import '../../models/team_config.dart';
 import '../../services/app/connection_mode_service.dart';
 import '../../utils/app_keys.dart';
-import '../../theme/app_text_styles.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'cli_executable_path_settings_row.dart';
 import 'toolchain_path_settings_row.dart';
 
@@ -44,7 +43,7 @@ class _CliHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -72,9 +71,9 @@ class _CliControls extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ---- AI CLI -----------------------------------------------------
-          SettingsGroupHeader(title: l10n.cliConfigAiCliGroup),
+          TpSectionHeader(title: l10n.cliConfigAiCliGroup),
           const SizedBox(height: 8),
-          SettingsSurfaceCard(
+          TpCard.outlined(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -168,9 +167,9 @@ class _CliControls extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           // ---- Toolchain --------------------------------------------------
-          SettingsGroupHeader(title: l10n.cliConfigToolchainGroup),
+          TpSectionHeader(title: l10n.cliConfigToolchainGroup),
           const SizedBox(height: 8),
-          SettingsSurfaceCard(
+          TpCard.outlined(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

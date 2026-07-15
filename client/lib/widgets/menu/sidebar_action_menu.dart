@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../../theme/app_text_styles.dart';
 import '../../utils/context_menu_position.dart';
 import 'sidebar_action_menu_overlay.dart';
 
@@ -209,7 +208,7 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hoverFill = isDark
         ? Colors.white.withValues(alpha: 0.08)
@@ -642,7 +641,7 @@ Widget _specToMenuItem({
       ? Icon(
           Icons.check,
           size: context.tpIconSizes.md,
-          color: (AppTextStyles.of(context).md.color ??
+          color: (TpTextStyles.of(context).md.color ??
                   Theme.of(context).colorScheme.onSurface)
               .withValues(alpha: 0.7),
         )

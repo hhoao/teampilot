@@ -35,8 +35,6 @@ import '../../services/session/session_continue_overrides_apply.dart';
 import '../../services/session/session_history_pagination.dart';
 import '../../services/storage/app_storage.dart';
 import '../../theme/app_markdown_style_sheet.dart';
-import '../../theme/app_spacing.dart';
-import '../../theme/app_text_styles.dart';
 import '../../utils/team_member_naming.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
 import 'ai_thread_selection_context_menu.dart';
@@ -704,7 +702,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                             SizedBox(height: context.tpSpacing.md),
                             Text(
                               context.l10n.sessionHistoryLoading,
-                              style: AppTextStyles.of(context).mdColored(
+                              style: TpTextStyles.of(context).mdColored(
                                 Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                               textAlign: TextAlign.center,
@@ -716,7 +714,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                         icon: Icons.chat_bubble_outline_rounded,
                         child: Text(
                           context.l10n.sessionHistoryEmpty,
-                          style: AppTextStyles.of(context).mdColored(
+                          style: TpTextStyles.of(context).mdColored(
                             Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                           textAlign: TextAlign.center,
@@ -731,7 +729,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                             children: [
                               Text(
                                 context.l10n.sessionHistoryError,
-                                style: AppTextStyles.of(context).mdColored(
+                                style: TpTextStyles.of(context).mdColored(
                                   Theme.of(context).colorScheme.error,
                                 ),
                                 textAlign: TextAlign.center,
@@ -740,7 +738,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                                 SizedBox(height: context.tpSpacing.sm),
                                 Text(
                                   detail,
-                                  style: AppTextStyles.of(context).smColored(
+                                  style: TpTextStyles.of(context).smColored(
                                     Theme.of(
                                       context,
                                     ).colorScheme.onSurfaceVariant,
@@ -777,7 +775,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                                         context
                                             .l10n
                                             .sessionHistoryLoadOlderHint,
-                                        style: AppTextStyles.of(context)
+                                        style: TpTextStyles.of(context)
                                             .smColored(
                                               headerCs.onSurfaceVariant
                                                   .withValues(alpha: 0.75),

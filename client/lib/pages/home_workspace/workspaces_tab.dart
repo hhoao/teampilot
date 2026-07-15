@@ -10,7 +10,6 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
 import '../../models/app_session.dart';
 import '../../repositories/session_repository.dart';
-import '../../theme/app_text_styles.dart';
 import '../../utils/home_workspace_display.dart';
 import '../../utils/workspace_display_name.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
@@ -407,7 +406,7 @@ class _WorkspacesPrimaryActionState extends State<WorkspacesPrimaryAction> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final hoverTint = cs.onPrimary.withValues(alpha: 0.12);
     final background = _hovered
         ? Color.alphaBlend(hoverTint, cs.primary)
@@ -633,7 +632,7 @@ class HomeEmptyWorkspaces extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final l10n = context.l10n;
     return Center(
       child: Column(

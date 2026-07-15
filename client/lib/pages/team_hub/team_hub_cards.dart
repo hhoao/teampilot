@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_team.dart';
-import '../../theme/app_text_styles.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'team_hub_visuals.dart';
+import 'package:teampilot/theme/workspace_surface_layers.dart';
 
 /// Bordered detail shell — matches [McpWorkspaceCard] / [SkillManagementCard].
 class TeamHubWorkspaceCard extends StatelessWidget {
@@ -38,7 +38,7 @@ class TeamHubCardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final header = ManagementCardHeader(title: title, trailing: trailing);
+    final header = TpCardHeader(title: title, trailing: trailing);
     if (leading == null) return header;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -79,7 +79,7 @@ class _TeamHubCardState extends State<TeamHubCard> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final team = widget.team;
     final accent = teamAccentColor(team.key, Theme.of(context).brightness);
     final borderColor = _hovered
@@ -240,7 +240,7 @@ class TeamStatChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final tint = accent;
     final fg = tint ?? cs.onSurfaceVariant;
     final bg = tint != null

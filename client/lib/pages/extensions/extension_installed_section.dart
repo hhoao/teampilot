@@ -6,7 +6,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/extension_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../skills/skill_management_cards.dart';
@@ -58,7 +57,7 @@ class ExtensionInstalledSection extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   l10n.extensionsSettingsDescription,
-                  style: AppTextStyles.of(context).smColored(Theme.of(
+                  style: TpTextStyles.of(context).smColored(Theme.of(
                       context,).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
@@ -112,7 +111,7 @@ class _CountBadge extends StatelessWidget {
       ),
       child: Text(
         '$count',
-        style: AppTextStyles.of(
+        style: TpTextStyles.of(
           context,
         ).xsBoldColored(cs.primary),
       ),
@@ -135,7 +134,7 @@ class _ExtensionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final cubit = context.read<ExtensionCubit>();
     final subtitle = row.homepage.isNotEmpty ? row.homepage : row.description;
 
@@ -247,7 +246,7 @@ class _DependencyRemediation extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final deps = row.missingRequirements.join(', ');
     final command = row.missingRequirements.map(_installCommand).join(' && ');
 
@@ -340,7 +339,7 @@ class _StatusChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AppTextStyles.of(
+        style: TpTextStyles.of(
           context,
         ).xsSemiboldColored(color),
       ),

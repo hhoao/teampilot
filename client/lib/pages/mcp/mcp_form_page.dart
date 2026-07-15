@@ -10,7 +10,6 @@ import '../../cubits/mcp_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_server.dart';
 import '../../theme/app_fonts.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 
 /// Add/edit MCP server for the workspace detail pane (not full-screen).
@@ -164,7 +163,7 @@ class _McpFormPageState extends State<McpFormPage> {
               Expanded(
                 child: Text(
                   _isEditing ? l10n.mcpEdit : l10n.mcpAddTitle,
-                  style: AppTextStyles.of(
+                  style: TpTextStyles.of(
                     context,
                   ).mdBoldColored(textBase),
                 ),
@@ -224,7 +223,7 @@ class _McpFormPageState extends State<McpFormPage> {
                     children: [
                       Text(
                         l10n.mcpFormMetadata,
-                        style: AppTextStyles.of(context).mdSemiboldTightSnug,
+                        style: TpTextStyles.of(context).mdSemiboldTightSnug,
                       ),
                       const Spacer(),
                       Icon(
@@ -294,7 +293,7 @@ class _McpFormPageState extends State<McpFormPage> {
                 children: [
                   Text(
                     l10n.mcpFormJsonLabel,
-                    style: AppTextStyles.of(context).mdSemiboldTightSnug,
+                    style: TpTextStyles.of(context).mdSemiboldTightSnug,
                   ),
                   const Spacer(),
                   TextButton(

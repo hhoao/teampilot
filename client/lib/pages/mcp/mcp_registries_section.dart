@@ -8,7 +8,6 @@ import '../../models/mcp_registry_source.dart';
 import '../../services/mcp/mcp_registry_browse_service.dart';
 import '../../services/mcp/mcp_registry_config_service.dart';
 import '../../services/mcp/smithery_mcp_service.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'mcp_shared_widgets.dart';
 
@@ -390,7 +389,7 @@ class _RegistryRow extends StatelessWidget {
                     children: [
                       Text(
                         source.baseUrl,
-                        style: AppTextStyles.of(
+                        style: TpTextStyles.of(
                           context,
                         ).mdSemiboldColored(textBase),
                         maxLines: 2,
@@ -399,7 +398,7 @@ class _RegistryRow extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         label,
-                        style: AppTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.55),
+                        style: TpTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.55),
                         ),
                       ),
                     ],

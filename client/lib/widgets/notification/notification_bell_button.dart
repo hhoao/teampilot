@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/notification_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/app_text_styles.dart';
 import '../menu/sidebar_action_menu.dart';
 import 'notification_list_tile.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -76,7 +75,7 @@ class _BellGlyphState extends State<_BellGlyph> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final hasUnread = widget.unread > 0;
     final badgeLabel = widget.unread > 9 ? '9+' : '${widget.unread}';
 
@@ -150,7 +149,7 @@ class _NotificationDropdownPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final cubit = context.read<NotificationCubit>();
     final items = context.select((NotificationCubit c) => c.state.items);
 

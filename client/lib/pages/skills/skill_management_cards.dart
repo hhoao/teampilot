@@ -3,9 +3,8 @@ import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
+import 'package:teampilot/theme/workspace_surface_layers.dart';
 
 class SkillManagementCard extends StatelessWidget {
   const SkillManagementCard({super.key, required this.child});
@@ -30,7 +29,7 @@ class SkillCardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ManagementCardHeader(title: title, trailing: trailing);
+    return TpCardHeader(title: title, trailing: trailing);
   }
 }
 
@@ -44,7 +43,7 @@ class SkillFieldLabel extends StatelessWidget {
     final textBase = cs.onSurface;
     return Text(
       text,
-      style: AppTextStyles.of(context).smSemiboldColored(textBase.withValues(alpha: 0.7),
+      style: TpTextStyles.of(context).smSemiboldColored(textBase.withValues(alpha: 0.7),
       ),
     );
   }

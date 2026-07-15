@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../cubits/expert_hub_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
-import '../../theme/app_text_styles.dart';
 import '../../utils/debounce/debounce.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'expert_hub_cards.dart';
@@ -254,7 +253,7 @@ class _FilterPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final fg = selected ? cs.primary : null;
     final border = selected
         ? cs.primary.withValues(alpha: 0.45)

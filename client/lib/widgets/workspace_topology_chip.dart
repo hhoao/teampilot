@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../l10n/l10n_extensions.dart';
 import '../models/workspace_topology.dart';
-import '../theme/app_text_styles.dart';
 import '../theme/workspace_topology_colors.dart';
 
 /// Read-only badge for [WorkspaceTopology.local], [remote], or [mixed].
@@ -19,7 +19,7 @@ class WorkspaceTopologyChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final color = WorkspaceTopologyColors.of(
       topology: topology,
       colorScheme: Theme.of(context).colorScheme,

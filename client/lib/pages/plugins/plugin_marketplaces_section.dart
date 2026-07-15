@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/plugin_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/plugin.dart';
-import '../../theme/app_text_styles.dart';
 import '../../utils/skill_repo_parse.dart';
 import 'plugin_management_cards.dart';
 
@@ -32,7 +31,7 @@ class PluginMarketplacesSection extends StatelessWidget {
                     Expanded(
                       child: Text(
                         l10n.pluginsNavMarketplaces,
-                        style: AppTextStyles.of(context).mdSemiboldTightSnug,
+                        style: TpTextStyles.of(context).mdSemiboldTightSnug,
                       ),
                     ),
                     FilledButton.tonalIcon(
@@ -203,7 +202,7 @@ class PluginMarketplaceRow extends StatelessWidget {
                     Flexible(
                       child: Text(
                         marketplace.displayName ?? marketplace.fullName,
-                        style: AppTextStyles.of(
+                        style: TpTextStyles.of(
                           context,
                         ).mdSemiboldColored(textBase),
                       ),
@@ -213,13 +212,13 @@ class PluginMarketplaceRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   marketplace.githubUrl,
-                  style: AppTextStyles.of(
+                  style: TpTextStyles.of(
                     context,
                   ).xsColored(textBase.withValues(alpha: 0.4)),
                 ),
                 Text(
                   'branch: ${marketplace.branch}',
-                  style: AppTextStyles.of(
+                  style: TpTextStyles.of(
                     context,
                   ).xsColored(textBase.withValues(alpha: 0.35)),
                 ),

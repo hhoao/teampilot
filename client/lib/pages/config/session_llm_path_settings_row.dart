@@ -7,7 +7,6 @@ import '../../cubits/llm_config_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'session_config_constants.dart';
 
 class SessionLlmConfigPathSettingsRow extends StatefulWidget {
@@ -131,7 +130,7 @@ class SessionLlmConfigPathSettingsRowState
 
     final isRemote = state.storageIsRemote;
 
-    return SettingsLabeledStackedRow(
+    return TpPreferenceStack(
       title: l10n.llmConfigPathLabel,
       subtitle: isRemote
           ? l10n.llmConfigPathSessionCardDescriptionSsh

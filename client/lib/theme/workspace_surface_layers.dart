@@ -95,7 +95,12 @@ class WorkspacePageCardShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderRadius = BorderRadius.circular(radius);
 
+    // Card fill must be [Material], not a colored [DecoratedBox]/[Container].
+    // ListTile paints tileColor / ink on the nearest Material; an opaque
+    // DecoratedBox between ListTile and that Material triggers Flutter's
+    // "ink splashes may be invisible" assertion and hides those effects.
     return ColoredBox(
       color: cs.workspacePageChrome(chrome),
       child: Padding(
@@ -103,8 +108,7 @@ class WorkspacePageCardShell extends StatelessWidget {
         child: Container(
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: cs.workspaceCardChrome(chrome),
-            borderRadius: BorderRadius.circular(radius),
+            borderRadius: borderRadius,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.08),
@@ -117,10 +121,13 @@ class WorkspacePageCardShell extends StatelessWidget {
           // content surfaces can't paint over it; also makes rounded corners
           // read against the near-identical page background.
           foregroundDecoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(radius),
+            borderRadius: borderRadius,
             border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
           ),
-          child: child,
+          child: Material(
+            color: cs.workspaceCardChrome(chrome),
+            child: child,
+          ),
         ),
       ),
     );

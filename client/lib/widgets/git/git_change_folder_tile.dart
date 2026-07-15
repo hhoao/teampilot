@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/git_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/git/git_changes_visible_rows.dart';
-import '../../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 /// Folder row in the git changes tree view.
@@ -142,7 +141,7 @@ class _GitChangeFolderTileState extends State<GitChangeFolderTile> {
                     Text(
                       widget.name,
                       maxLines: 1,
-                      style: AppTextStyles.of(context).md,
+                      style: TpTextStyles.of(context).md,
                     ),
                     if (showActions) ...[
                       const SizedBox(width: 8),

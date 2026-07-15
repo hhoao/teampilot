@@ -5,7 +5,6 @@ import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
 import '../../services/storage/targets_repository.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'credential_push_opt_in_tile.dart';
 import 'root_sandbox_env_opt_in_tile.dart';
 
@@ -25,7 +24,7 @@ Future<void> showSshProfileTargetConfigDialog(
           children: [
             TpDialogHeader(title: ctx.l10n.configure),
             const SizedBox(height: 12),
-            SettingsSurfaceCard(
+            TpCard.outlined(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [

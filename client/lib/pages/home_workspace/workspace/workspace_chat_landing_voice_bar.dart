@@ -3,8 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../../../theme/app_spacing.dart';
-import '../../../theme/app_text_styles.dart';
 import 'workspace_chat_landing_palette.dart';
 
 String formatComposeVoiceElapsed(Duration elapsed) {
@@ -38,7 +36,7 @@ class ComposeVoiceRecordingStatus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final spacing = context.tpSpacing;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
 
     return Row(

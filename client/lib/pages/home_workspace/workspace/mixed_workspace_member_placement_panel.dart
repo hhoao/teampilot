@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/cli_preset.dart';
@@ -11,7 +12,6 @@ import '../../../models/workspace_topology.dart';
 import '../../../services/remote/remote_cli_readiness.dart';
 import '../../../services/storage/home_target_controller.dart';
 import '../../../utils/team_member_naming.dart';
-import '../../../theme/app_text_styles.dart';
 import 'remote_cli_machine_readiness_panel.dart';
 
 /// Practical per-host cap for non-lead replica placement in mixed workspaces.
@@ -290,7 +290,7 @@ class _TargetTile extends StatelessWidget {
           pathPreview,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: AppTextStyles.of(context).sm,
+          style: TpTextStyles.of(context).sm,
         ),
         trailing: instanceCount > 0
             ? CircleAvatar(
@@ -298,7 +298,7 @@ class _TargetTile extends StatelessWidget {
                 backgroundColor: cs.primary,
                 child: Text(
                   '$instanceCount',
-                  style: AppTextStyles.of(context).xsColored(cs.onPrimary),
+                  style: TpTextStyles.of(context).xsColored(cs.onPrimary),
                 ),
               )
             : null,
@@ -343,11 +343,11 @@ class _MemberPlacementRow extends StatelessWidget {
                 placedTotal,
                 placedTotal,
               ),
-              style: AppTextStyles.of(context).sm,
+              style: TpTextStyles.of(context).sm,
             ),
             Text(
               l10n.mixedWorkspaceMemberPlacementOnMachine(countOnMachine),
-              style: AppTextStyles.of(context).sm,
+              style: TpTextStyles.of(context).sm,
             ),
           ],
         ),

@@ -12,7 +12,6 @@ import '../../services/cli/registry/capabilities/provider_catalog_capability.dar
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/members_machine_groups.dart';
@@ -70,7 +69,7 @@ class MembersPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final l10n = context.l10n;
     final registry = CliToolRegistryScope.maybeOf(context);
     final groups = groupByMachine
@@ -92,7 +91,7 @@ class MembersPanel extends StatelessWidget {
               Expanded(
                 child: Text(
                   l10n.members,
-                  style: AppTextStyles.of(
+                  style: TpTextStyles.of(
                     context,
                   ).xsBoldWideColored(cs.onSurfaceVariant),
                 ),
@@ -148,7 +147,7 @@ class MembersPanel extends StatelessWidget {
     BuildContext context, {
     required TeamMemberConfig member,
     required ColorScheme cs,
-    required AppTextStyles styles,
+    required TpTextStyles styles,
     required AppLocalizations l10n,
     required CliToolRegistry? registry,
   }) {
@@ -296,7 +295,7 @@ class _MachineSectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 6, top: 4),
       child: Row(

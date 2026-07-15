@@ -6,7 +6,6 @@ import '../l10n/l10n_extensions.dart';
 import '../models/workspace.dart';
 import '../models/workspace_folder.dart';
 import '../repositories/session_repository.dart';
-import '../theme/app_text_styles.dart';
 import 'workspace_folders_editor.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -91,7 +90,7 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final p = widget.workspace;
 
     return TpDialog(
@@ -165,7 +164,7 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

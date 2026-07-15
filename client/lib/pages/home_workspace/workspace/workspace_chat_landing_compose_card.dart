@@ -4,7 +4,6 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../../models/plugin.dart';
 import '../../../models/skill.dart';
 import '../../../models/config_bundle.dart';
-import '../../../theme/app_text_styles.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../services/workspace_dnd/workspace_drop_target.dart';
 import '../../../widgets/compose/compose_focus_shell.dart';
@@ -560,7 +559,7 @@ class _ComposeFieldPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final hintStyle = styles.mdColored(hintColor);
     final lineHeight =
         (hintStyle.fontSize ?? 14) * (hintStyle.height ?? 1.35);

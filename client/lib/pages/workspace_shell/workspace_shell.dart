@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../theme/app_spacing.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
 import 'workspace_shell_models.dart';
@@ -84,7 +84,7 @@ class WorkspaceShell extends StatelessWidget {
                         breadcrumb,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.52),
+                        style: TpTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.52),
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -92,14 +92,14 @@ class WorkspaceShell extends StatelessWidget {
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.of(context).mdBoldColored(textBase,),
+                        style: TpTextStyles.of(context).mdBoldColored(textBase,),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.58),
+                        style: TpTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.58),
                         ),
                       ),
                     ],

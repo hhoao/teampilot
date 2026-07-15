@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -8,7 +9,6 @@ import 'package:photo_view/photo_view.dart';
 
 import '../../cubits/editor_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 
 /// Workbench file-tab surface for bitmap image preview (zoom via photo_view).
@@ -143,7 +143,7 @@ class _FileEditorImagePreviewState extends State<FileEditorImagePreview> {
                 Expanded(
                   child: Text(
                     p.basename(widget.path),
-                    style: AppTextStyles.of(context).mdSemibold,
+                    style: TpTextStyles.of(context).mdSemibold,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -153,7 +153,7 @@ class _FileEditorImagePreviewState extends State<FileEditorImagePreview> {
                   icon: const Icon(Icons.remove, size: 18),
                   onPressed: canZoom ? () => _zoomBy(1 / _zoomStep) : null,
                 ),
-                Text('$_scalePercent%', style: AppTextStyles.of(context).sm),
+                Text('$_scalePercent%', style: TpTextStyles.of(context).sm),
                 IconButton(
                   tooltip: context.l10n.shortcutsZoomIn,
                   icon: const Icon(Icons.add, size: 18),

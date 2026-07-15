@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -28,7 +29,6 @@ import '../../services/cli/member_config/member_config_inspector.dart';
 import '../../services/storage/home_target_controller.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
-import '../../theme/app_text_styles.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/team_member_naming.dart';
 import '../../utils/workspace_path_utils.dart';
@@ -729,7 +729,7 @@ class _WorktreeBreadcrumb extends StatelessWidget {
               branch,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.of(
+              style: TpTextStyles.of(
                 context,
               ).smSemiboldColored(cs.onSurfaceVariant),
             ),

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../models/layout_preferences.dart';
 import '../../theme/app_font_resolver.dart';
@@ -59,15 +60,13 @@ abstract final class UiInteractiveWarmup {
         ? bootstrapThemeForTextWarmup()
         : themeForInteractiveWarmup(layoutPreferences);
     final raw = textStylesForThemeWarmup(theme);
-    final styles = dedupeTextStylesByShapeKey(raw);
+    final styles = TpGlyphWarmup.dedupeByShapeKey(raw);
     appLogger.i(
       '[boot] glyph warmup styles ${raw.length}→${styles.length} '
       '(shape fingerprints)',
     );
     final sw = Stopwatch()..start();
-    for (final style in styles) {
-      _shapeWarmupGlyphs(style);
-    }
+    TpGlyphWarmup.shapeAll(styles: styles, glyphs: warmupGlyphs);
     appLogger.i('[boot] glyph warmup shape done +${sw.elapsedMilliseconds}ms');
   }
 
@@ -75,14 +74,7 @@ abstract final class UiInteractiveWarmup {
   ///
   /// Boot splash is static, so we do not slice work across frames — cooperative
   /// yields previously dominated wall time without helping perceived smoothness.
-  static void _shapeWarmupGlyphs(TextStyle style) {
-    final painter = TextPainter(
-      text: TextSpan(text: warmupGlyphs, style: style),
-      textDirection: TextDirection.ltr,
-    )..layout(maxWidth: 1200);
-    painter.dispose();
-  }
-
+  // (shaping delegated to [TpGlyphWarmup])
   static Future<void> _warmTerminalEngine() async {
     final engine = TerminalEngine(
       config: TerminalConfig.defaults().copyWith(

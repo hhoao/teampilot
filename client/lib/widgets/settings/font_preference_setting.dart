@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_toast_theme.dart';
 import '../../theme/font_catalog.dart';
 import '../../theme/installed_font_enumerator.dart';
 import '../app_toast/app_toast.dart';
-import 'workspace_settings_widgets.dart';
 
 /// Searchable mixed font picker: catalog presets, then installed families.
 ///
@@ -106,7 +106,7 @@ class _FontPreferenceSettingState extends State<FontPreferenceSetting> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return SettingsCompactDropdown<String>(
+    return TpCompactSelect<String>(
       value: widget.value,
       entries: _buildEntries(l10n),
       searchHintText: l10n.fontSearchHint,

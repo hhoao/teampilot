@@ -7,7 +7,6 @@ import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../theme/app_fonts.dart';
-import '../../theme/app_text_styles.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/app_provider_cubit.dart';
@@ -40,7 +39,7 @@ class AppProviderDetailPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final requiresKey = provider.requiresApiKey;
     final modelCount = provider.flashskyaiModelCount;
 
@@ -224,7 +223,7 @@ class _ProviderJsonPreviewState extends State<_ProviderJsonPreview> {
     final json = _json;
     final textStyle = appMonoTextStyle(
       context,
-      base: AppTextStyles.of(context).sm,
+      base: TpTextStyles.of(context).sm,
     );
     return Container(
       padding: const EdgeInsets.all(12),

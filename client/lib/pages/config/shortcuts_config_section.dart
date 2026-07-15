@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/theme/app_text_styles.dart';
+import 'package:teampilot/theme/workspace_surface_layers.dart';
 
 import '../../cubits/shortcut_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -14,7 +14,6 @@ import '../../services/commands/key_chord.dart';
 import '../../services/commands/key_chord_formatter.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../../widgets/shortcuts/shortcut_cheatsheet_dialog.dart';
 import '../../widgets/shortcuts/shortcut_rebind_dialog.dart';
 import 'shortcuts_footer_actions.dart';
@@ -87,11 +86,11 @@ class _ShortcutsConfigWorkspaceState extends State<ShortcutsConfigWorkspace> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SettingsSurfaceCard(
+                    TpCard.outlined(
                       child: _ShortcutGroupList(state: state, query: _query),
                     ),
                     const SizedBox(height: 12),
-                    SettingsSurfaceCard(
+                    TpCard.outlined(
                       child: ShortcutsFooterActions(state: state),
                     ),
                   ],
@@ -150,7 +149,7 @@ class _ShortcutGroupList extends StatelessWidget {
       if (defs.isEmpty) continue;
 
       sections.add(
-        SettingsGroupHeader(title: titleForCategory(l10n, category)),
+        TpSectionHeader(title: titleForCategory(l10n, category)),
       );
       for (final (index, def) in defs.indexed) {
         sections.add(
@@ -169,7 +168,7 @@ class _ShortcutGroupList extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Text(
           l10n.shortcutsCheatsheetEmpty,
-          style: AppTextStyles.of(context).mutedMd,
+          style: TpTextStyles.of(context).mutedMd,
         ),
       );
     }
@@ -200,7 +199,7 @@ class _ShortcutRow extends StatelessWidget {
     final isMacOS = defaultIsMacOS();
     final cs = Theme.of(context).colorScheme;
 
-    return SettingsLabeledRow(
+    return TpPreferenceRow(
       title: titleForCommand(l10n, def.id),
       titleLeading: conflicted
           ? Tooltip(
@@ -219,7 +218,7 @@ class _ShortcutRow extends StatelessWidget {
           if (chords.isEmpty)
             Text(
               l10n.shortcutsNotSet,
-              style: AppTextStyles.of(context).mutedSm,
+              style: TpTextStyles.of(context).mutedSm,
             )
           else
             Wrap(
@@ -295,7 +294,7 @@ class _ChordChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
       ),
-      child: Text(label, style: AppTextStyles.of(context).sm),
+      child: Text(label, style: TpTextStyles.of(context).sm),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
@@ -18,7 +19,6 @@ import '../../../pages/home_workspace/home_workspace_route.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../services/expert_hub/expert_capability_resolver.dart';
 import '../../../services/expert_hub/expert_landing_deep_link.dart';
-import '../../../theme/app_text_styles.dart';
 import '../../../theme/workspace_surface_layers.dart';
 import '../../../theme/app_toast_theme.dart';
 import '../../../utils/logger.dart';
@@ -406,7 +406,7 @@ class _MissingWorkspace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Text(label, style: AppTextStyles.of(context).mutedMd),
+      child: Text(label, style: TpTextStyles.of(context).mutedMd),
     );
   }
 }

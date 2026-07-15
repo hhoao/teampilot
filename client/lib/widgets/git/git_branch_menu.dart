@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/app_text_styles.dart';
 
 /// Result of the branch picker: switch to [checkout] or create [createName].
 class GitBranchAction {
@@ -71,7 +71,7 @@ class _GitBranchSheetState extends State<GitBranchSheet> {
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
               child: Text(
                 l10n.gitSwitchBranch,
-                style: AppTextStyles.of(
+                style: TpTextStyles.of(
                   context,
                 ).mdSemibold,
               ),

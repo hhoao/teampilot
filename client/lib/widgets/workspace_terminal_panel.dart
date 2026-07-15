@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -22,7 +23,6 @@ import '../services/terminal/workspace_terminal_connect_coordinator.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
 import '../services/terminal/workspace_terminal_session_ops.dart';
 import '../services/workspace/workspace_tools_scope.dart';
-import '../theme/app_text_styles.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/app_keys.dart';
 import 'menu/sidebar_action_menu.dart';
@@ -492,7 +492,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
         terminalBody = Center(
           child: Text(
             l10n.workspaceTerminalNoWorkingDirectory,
-            style: AppTextStyles.of(context).smColored(
+            style: TpTextStyles.of(context).smColored(
               terminalForeground.withValues(alpha: 0.65),
             ),
           ),

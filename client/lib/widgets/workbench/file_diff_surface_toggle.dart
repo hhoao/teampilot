@@ -9,7 +9,6 @@ import '../../l10n/l10n_extensions.dart';
 import '../../services/git/git_repo_store.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
-import '../../theme/app_icon_sizes.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 /// Which surface the center pane is showing for a path.
@@ -34,7 +33,7 @@ class FileDiffSurfaceToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final color = cs.iconMuted;
+    final color = cs.tpIconMuted;
     return Opacity(
       opacity: enabled ? 1 : 0.38,
       child: Container(

@@ -10,7 +10,6 @@ import '../../models/workspace.dart';
 import '../../services/run/launch_adapter_protocol.dart';
 import '../../services/run/launch_config_store.dart';
 import '../../services/run/launch_type_unavailable.dart';
-import '../../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../menu/sidebar_action_menu.dart';
 import 'run_config_editor_dialog.dart';
@@ -96,7 +95,7 @@ class RunToolbarConfigDropdown extends StatelessWidget {
                     child: Text(
                       label,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.of(context).sm,
+                      style: TpTextStyles.of(context).sm,
                     ),
                   ),
                   Icon(Icons.arrow_drop_down, color: cs.onSurfaceVariant),

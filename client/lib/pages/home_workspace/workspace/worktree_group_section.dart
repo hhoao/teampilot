@@ -14,7 +14,6 @@ import '../../../services/git/git_worktree_service.dart';
 import '../../../services/git/worktree_removal.dart';
 import '../../../services/storage/runtime_context.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
-import '../../../theme/app_text_styles.dart';
 import '../../../utils/app_session_sort.dart';
 import '../../../utils/session_reorder_merge.dart';
 import '../../../utils/session_worktree_grouping.dart';
@@ -529,7 +528,7 @@ class _GroupShowMoreRowState extends State<_GroupShowMoreRow> {
                       widget.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.of(context).mdColored(cs.onSurface.withValues(alpha: 0.55),
+                      style: TpTextStyles.of(context).mdColored(cs.onSurface.withValues(alpha: 0.55),
                       ),
                     ),
                   ),

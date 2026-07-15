@@ -12,7 +12,6 @@ import '../../../models/workspace.dart';
 import '../../../pages/automations/automation_editor_dialog.dart';
 import '../../../pages/automations/automations_dialog.dart';
 import '../../../services/automation/automation_workspace_summary.dart';
-import '../../../theme/app_text_styles.dart';
 
 /// Workspace sidebar entry for automations — opens the merged workspace panel.
 class WorkspaceAutomationsSection extends StatefulWidget {
@@ -117,7 +116,7 @@ class _SectionHeaderState extends State<_SectionHeader> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final subtitle = _subtitle(l10n);
     final hoverTint = cs.onSurface.withValues(alpha: 0.05);
     final background = _hovered ? hoverTint : Colors.transparent;

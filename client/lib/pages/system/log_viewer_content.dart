@@ -6,7 +6,6 @@ import '../../l10n/l10n_extensions.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/logger_utils.dart';
 import 'log_helpers.dart';
-import '../../theme/app_text_styles.dart';
 
 class LogViewerCenteredMessage extends StatelessWidget {
   const LogViewerCenteredMessage({
@@ -38,13 +37,13 @@ class LogViewerCenteredMessage extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: AppTextStyles.of(context).lgBoldSnug,
+              style: TpTextStyles.of(context).lgBoldSnug,
             ),
             const SizedBox(height: 8),
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: AppTextStyles.of(context).mutedMd,
+              style: TpTextStyles.of(context).mutedMd,
             ),
           ],
         ),
@@ -180,14 +179,14 @@ class LogViewerBody extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: Text(
               l10n.logViewerPendingTitle,
-              style: AppTextStyles.of(context).mdBoldTightSnug,
+              style: TpTextStyles.of(context).mdBoldTightSnug,
             ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: Text(
               l10n.logViewerPendingBody,
-              style: AppTextStyles.of(context).mutedSm,
+              style: TpTextStyles.of(context).mutedSm,
             ),
           ),
           Expanded(

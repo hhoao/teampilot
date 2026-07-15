@@ -5,6 +5,7 @@ import 'package:teampilot/theme/app_fonts.dart';
 import 'package:teampilot/theme/app_markdown_style_sheet.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 void main() {
   test('buildAppMarkdownStyleSheet uses app mono, not monospace', () {
@@ -20,7 +21,7 @@ void main() {
       fonts,
     );
     final sheet = buildAppMarkdownStyleSheet(theme);
-    final mono = theme.extension<AppFontTheme>()!;
+    final mono = theme.extension<TpFontTheme>()!;
 
     expect(sheet.code?.fontFamily, mono.monoFontFamily);
     expect(sheet.code?.fontFamilyFallback, mono.monoFontFamilyFallback);

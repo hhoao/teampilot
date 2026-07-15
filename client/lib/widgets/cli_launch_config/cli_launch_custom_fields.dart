@@ -12,9 +12,7 @@ import '../../pages/team_config/team_config_helpers.dart';
 import '../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../widgets/app_provider/cli_effort_picker_field.dart';
 import '../../widgets/app_provider/provider_model_picker_field.dart';
-import '../../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'cli_launch_config_dropdown.dart';
 
 /// How the effort picker resolves visibility and labels.
@@ -112,16 +110,16 @@ class CliLaunchCustomFields extends StatelessWidget {
         if (cliFieldKind != CliLaunchCliFieldKind.hidden)
           _buildCliRow(context, l10n, dropdownDeco),
         if (providers.isEmpty)
-          SettingsLabeledRow(
+          TpPreferenceRow(
             title: providerTitle ?? l10n.provider,
             trailing: Text(
               l10n.onboardingDefaultPresetEmpty,
-              style: AppTextStyles.of(context).mutedSm,
+              style: TpTextStyles.of(context).mutedSm,
             ),
             showDividerBelow: false,
           )
         else ...[
-          SettingsLabeledRow(
+          TpPreferenceRow(
             title: providerTitle ?? l10n.provider,
             trailing: cliLaunchConfigDropdown(
               TpSelect<String>(
@@ -146,7 +144,7 @@ class CliLaunchCustomFields extends StatelessWidget {
             showDividerBelow: !hideModelPicker || showEffortPicker,
           ),
           if (!hideModelPicker)
-            SettingsLabeledRow(
+            TpPreferenceRow(
               title: modelTitle ?? l10n.model,
               trailing: cliLaunchConfigDropdown(
                 ProviderModelPickerField(
@@ -165,7 +163,7 @@ class CliLaunchCustomFields extends StatelessWidget {
               showDividerBelow: showEffortPicker,
             ),
           if (showEffortPicker)
-            SettingsLabeledRow(
+            TpPreferenceRow(
               title: effortTitle ?? l10n.teamEffortLevel,
               subtitle: effortSubtitle,
               trailing: cliLaunchConfigDropdown(
@@ -198,7 +196,7 @@ class CliLaunchCustomFields extends StatelessWidget {
     TpSelectDecoration dropdownDeco,
   ) {
     return switch (cliFieldKind) {
-      CliLaunchCliFieldKind.toolList => SettingsLabeledRow(
+      CliLaunchCliFieldKind.toolList => TpPreferenceRow(
         title: l10n.aiFeatureCliLabel,
         trailing: cliLaunchConfigDropdown(
           TpSelect<CliTool>(
@@ -217,7 +215,7 @@ class CliLaunchCustomFields extends StatelessWidget {
         ),
         showDividerBelow: providers.isNotEmpty,
       ),
-      CliLaunchCliFieldKind.mixedTeam => SettingsLabeledRow(
+      CliLaunchCliFieldKind.mixedTeam => TpPreferenceRow(
         title: l10n.teamCliLabel,
         subtitle: cliSubtitle,
         trailing: cliLaunchConfigDropdown(
@@ -246,7 +244,7 @@ class CliLaunchCustomFields extends StatelessWidget {
         ),
         showDividerBelow: true,
       ),
-      CliLaunchCliFieldKind.mixedMember => SettingsLabeledRow(
+      CliLaunchCliFieldKind.mixedMember => TpPreferenceRow(
         title: l10n.teamCliLabel,
         trailing: cliLaunchConfigDropdown(
           TpSelect<String>(

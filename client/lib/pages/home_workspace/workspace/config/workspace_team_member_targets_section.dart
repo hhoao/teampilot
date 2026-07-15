@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../../../cubits/chat_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
@@ -9,9 +10,7 @@ import '../../../../models/workspace.dart';
 import '../../../../models/workspace_folder.dart';
 import '../../../../models/workspace_topology.dart';
 import '../../../../repositories/session_repository.dart';
-import '../../../../widgets/settings/workspace_settings_widgets.dart';
 import 'workspace_team_member_targets_dialog.dart';
-import '../../../../theme/app_text_styles.dart';
 
 /// Summary card for workspace + team member→machine defaults. Opens a dialog to edit.
 class WorkspaceTeamMemberTargetsSection extends StatelessWidget {
@@ -61,8 +60,8 @@ class WorkspaceTeamMemberTargetsSection extends StatelessWidget {
               '${l10n.mixedWorkspaceMemberAssignmentIncomplete}'
         : l10n.workspaceMemberTargetsSectionSubtitle;
 
-    return SettingsSurfaceCard(
-      child: SettingsLabeledRow(
+    return TpCard.outlined(
+      child: TpPreferenceRow(
         title: l10n.workspaceMemberTargetsSectionTitle,
         subtitle: subtitle,
         trailing: Row(
@@ -166,7 +165,7 @@ class _AssignmentStatusChip extends StatelessWidget {
       ),
     };
 
-    final labelStyle = AppTextStyles.of(context).xsSemiboldColored(color);
+    final labelStyle = TpTextStyles.of(context).xsSemiboldColored(color);
     return DecoratedBox(
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),

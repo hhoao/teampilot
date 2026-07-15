@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../l10n/l10n_extensions.dart';
 import '../services/cli/cli_installer_service.dart';
-import '../theme/app_text_styles.dart';
-import 'settings/workspace_settings_widgets.dart';
 
 class CliInstallProgressPanel extends StatelessWidget {
   const CliInstallProgressPanel({
@@ -19,9 +18,9 @@ class CliInstallProgressPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
 
-    return SettingsSurfaceCard(
+    return TpCard.outlined(
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(

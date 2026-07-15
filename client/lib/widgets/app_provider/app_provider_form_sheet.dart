@@ -13,7 +13,6 @@ import '../../services/cli/registry/capabilities/provider_credential_capability.
 import '../../services/cli/registry/capabilities/provider_form_capability.dart';
 import '../../services/cli/registry/capabilities/provider_model_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
-import '../../theme/app_text_styles.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/provider/claude/claude_official_provider.dart';
 import '../../services/provider/codex/codex_provider_form_capability.dart';
@@ -282,7 +281,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                 Expanded(
                   child: Text(
                     _isEditing ? l10n.editProvider : l10n.addProvider,
-                    style: AppTextStyles.of(context).lg,
+                    style: TpTextStyles.of(context).lg,
                   ),
                 ),
                 if (!_isEditing && widget.onCliChanged != null)
@@ -318,7 +317,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
               children: [
                 Text(
                   l10n.appProviderPresetLabel,
-                  style: AppTextStyles.of(context).mdSnug,
+                  style: TpTextStyles.of(context).mdSnug,
                 ),
                 const SizedBox(height: 8),
                 TpSelect<String>(
@@ -611,7 +610,7 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.centerLeft,
-      child: Text(text, style: AppTextStyles.of(context).mdSnug),
+      child: Text(text, style: TpTextStyles.of(context).mdSnug),
     );
   }
 }

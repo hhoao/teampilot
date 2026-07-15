@@ -5,7 +5,6 @@ import '../l10n/l10n_extensions.dart';
 import '../utils/logger.dart';
 import '../services/storage/remote_directory_browser.dart';
 import '../services/storage/workspace_directory_picker.dart';
-import '../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 /// SFTP-backed remote directory browser. Resolves the [targetId]'s filesystem
@@ -126,7 +125,7 @@ class _RemoteDirectoryBrowserDialogState
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
-    final styles = AppTextStyles(theme);
+    final styles = TpTextStyles(theme);
     final listing = _listing;
 
     return TpDialog(
@@ -223,7 +222,7 @@ class _RemoteDirectoryBrowserDialogState
     );
   }
 
-  Widget _buildBody(AppTextStyles styles, ThemeData theme, AppLocalizations l10n) {
+  Widget _buildBody(TpTextStyles styles, ThemeData theme, AppLocalizations l10n) {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }

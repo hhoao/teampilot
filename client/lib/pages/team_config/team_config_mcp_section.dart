@@ -8,9 +8,8 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_server.dart';
 import '../../models/team_config.dart';
-import '../../theme/app_text_styles.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'team_config_cards.dart';
+import 'package:teampilot/theme/workspace_surface_layers.dart';
 
 class TeamMcpSection extends StatelessWidget {
   const TeamMcpSection({
@@ -120,13 +119,13 @@ class TeamMcpRow extends StatelessWidget {
                 children: [
                   Text(
                     server.name,
-                    style: AppTextStyles.of(
+                    style: TpTextStyles.of(
                       context,
                     ).mdBold,
                   ),
                   Text(
                     server.server['type']?.toString() ?? 'stdio',
-                    style: AppTextStyles.of(context).smColored(cs.onSurface.withValues(alpha: 0.6),
+                    style: TpTextStyles.of(context).smColored(cs.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ],

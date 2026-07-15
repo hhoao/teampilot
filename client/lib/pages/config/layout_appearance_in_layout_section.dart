@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -11,8 +12,6 @@ import '../../utils/app_keys.dart';
 import '../../widgets/settings/font_preference_setting.dart';
 import '../../widgets/settings/theme_color_preset_picker.dart';
 import '../../widgets/settings/typography_scale_setting.dart';
-import '../../widgets/settings/workspace_settings_toggle_strip.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 
 class LayoutAppearanceInLayoutSection extends StatelessWidget {
   const LayoutAppearanceInLayoutSection({super.key});
@@ -77,18 +76,18 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SettingsGroupHeader(title: l10n.appearance),
-                SettingsLabeledRow(
+                TpSectionHeader(title: l10n.appearance),
+                TpPreferenceRow(
                   title: l10n.workspaceEntryModeTitle,
                   subtitle: l10n.workspaceEntryModeDescription,
-                  trailing: WorkspaceSettingsToggleStrip<WorkspaceEntryMode>(
+                  trailing: TpSegmentedPicker<WorkspaceEntryMode>(
                     segments: [
-                      WorkspaceToggleSegment<WorkspaceEntryMode>(
+                      TpSegmentedOption<WorkspaceEntryMode>(
                         value: WorkspaceEntryMode.home,
                         label: l10n.workspaceEntryModeHome,
                         icon: Icons.home_outlined,
                       ),
-                      WorkspaceToggleSegment<WorkspaceEntryMode>(
+                      TpSegmentedOption<WorkspaceEntryMode>(
                         value: WorkspaceEntryMode.lastWorkspace,
                         label: l10n.workspaceEntryModeLastWorkspace,
                         icon: Icons.history,
@@ -99,22 +98,22 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   ),
                   showDividerBelow: true,
                 ),
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: l10n.themeModeTitle,
                   subtitle: l10n.themeModeDescription,
-                  trailing: WorkspaceSettingsToggleStrip<String>(
+                  trailing: TpSegmentedPicker<String>(
                     segments: [
-                      WorkspaceToggleSegment<String>(
+                      TpSegmentedOption<String>(
                         value: 'light',
                         label: l10n.themeLight,
                         icon: Icons.light_mode_outlined,
                       ),
-                      WorkspaceToggleSegment<String>(
+                      TpSegmentedOption<String>(
                         value: 'dark',
                         label: l10n.themeDark,
                         icon: Icons.dark_mode_outlined,
                       ),
-                      WorkspaceToggleSegment<String>(
+                      TpSegmentedOption<String>(
                         value: 'system',
                         label: l10n.themeSystem,
                         icon: Icons.desktop_windows_outlined,
@@ -125,7 +124,7 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   ),
                   showDividerBelow: true,
                 ),
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: l10n.themeColorPresetTitle,
                   subtitle: l10n.themeColorPresetDescription,
                   trailing: ThemeColorPresetPicker(
@@ -134,7 +133,7 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   ),
                   showDividerBelow: true,
                 ),
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: l10n.typographyScaleTitle,
                   subtitle: l10n.typographyScaleDescription,
                   trailing: TypographyScaleSetting(
@@ -146,7 +145,7 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   ),
                   showDividerBelow: true,
                 ),
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: l10n.fontUiTitle,
                   subtitle: l10n.fontUiDescription,
                   trailing: FontPreferenceSetting(
@@ -156,7 +155,7 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   ),
                   showDividerBelow: true,
                 ),
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: l10n.fontMonoTitle,
                   subtitle: l10n.fontMonoDescription,
                   trailing: FontPreferenceSetting(
@@ -166,7 +165,7 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   ),
                   showDividerBelow: true,
                 ),
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: l10n.uiZoomTitle,
                   subtitle: l10n.uiZoomDescription,
                   trailing: TypographyScaleSetting(
@@ -177,10 +176,10 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   ),
                   showDividerBelow: true,
                 ),
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: l10n.markdownOpenModeTitle,
                   subtitle: l10n.markdownOpenModeDescription,
-                  trailing: SettingsCompactDropdown<MarkdownOpenMode>(
+                  trailing: TpCompactSelect<MarkdownOpenMode>(
                     value: context.select<LayoutCubit, MarkdownOpenMode>(
                       (c) => c.state.preferences.markdownOpenMode,
                     ),
@@ -204,10 +203,10 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   ),
                   showDividerBelow: true,
                 ),
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: '终端主题',
                   subtitle: '跟随主题色或使用固定风格',
-                  trailing: SettingsCompactDropdown<String>(
+                  trailing: TpCompactSelect<String>(
                     value: terminalThemeMode,
                     entries: const [
                       ('adaptive', '跟随主题'),
@@ -220,10 +219,10 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   ),
                   showDividerBelow: true,
                 ),
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: l10n.language,
                   subtitle: l10n.languageDescription,
-                  trailing: SettingsCompactDropdown<String>(
+                  trailing: TpCompactSelect<String>(
                     value: langValue,
                     entries: [
                       ('system', l10n.languageSystem),

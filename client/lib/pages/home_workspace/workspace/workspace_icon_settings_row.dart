@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,7 +11,6 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../widgets/workspace_icon.dart';
-import '../../../theme/app_text_styles.dart';
 
 class WorkspaceIconSettingsRow extends StatelessWidget {
   const WorkspaceIconSettingsRow({
@@ -39,7 +39,7 @@ class WorkspaceIconSettingsRow extends StatelessWidget {
                 width: 168,
                 child: Text(
                   l10n.workspaceIcon,
-                  style: AppTextStyles.of(context).mdMediumColored(cs.onSurfaceVariant),
+                  style: TpTextStyles.of(context).mdMediumColored(cs.onSurfaceVariant),
                 ),
               ),
               WorkspaceIcon.fromWorkspace(

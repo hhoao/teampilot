@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,7 +11,6 @@ import '../../l10n/l10n_extensions.dart';
 import '../../services/storage/app_storage.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/logger_utils.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'log_viewer_content.dart';
 import 'log_viewer_filter.dart';
 import 'log_viewer_toolbar.dart';
@@ -284,6 +284,6 @@ class LogViewerPanelState extends State<LogViewerPanel> {
       return panel;
     }
 
-    return SettingsSurfaceCard(child: panel);
+    return TpCard.outlined(child: panel);
   }
 }

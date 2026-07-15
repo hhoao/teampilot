@@ -13,7 +13,6 @@ import '../../models/credential_action_result.dart';
 import '../../services/cli/registry/capabilities/provider_credential_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/storage/app_storage.dart';
-import '../../theme/app_text_styles.dart';
 import '../../utils/debounce/debounce.dart';
 import 'provider_credential_messages.dart';
 
@@ -70,7 +69,7 @@ class _ProviderCredentialActionBarState
             Expanded(
               child: Text(
                 _sectionTitle(l10n, widget.provider.cli),
-                style: AppTextStyles.of(context).mdSemiboldTightSnug,
+                style: TpTextStyles.of(context).mdSemiboldTightSnug,
               ),
             ),
             ProviderCredentialStatusBadge(
@@ -349,7 +348,7 @@ class ProviderCredentialStatusBadge extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         child: Text(
           label,
-          style: AppTextStyles.of(context).xsSemiboldSnugColored(fg),
+          style: TpTextStyles.of(context).xsSemiboldSnugColored(fg),
         ),
       ),
     );

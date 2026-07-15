@@ -32,12 +32,25 @@ class RemoteCliLocator {
   }
 
   /// Adapts a connected [SSHClient] into an [SshCommandRunner] (non-test path).
-  static SshCommandRunner runnerForClient(SSHClient client) {
+  ///
+  /// Locate probes keep [includeStderr] false so PATH chatter does not pollute
+  /// path parsing. Install / bootstrap must pass true so failure messages and
+  /// logs include remote stderr.
+  static SshCommandRunner runnerForClient(
+    SSHClient client, {
+    bool includeStderr = false,
+  }) {
     return (command) async {
-      final result = await client.runWithResult(command, stderr: false);
+      final result = await client.runWithResult(
+        command,
+        stderr: includeStderr,
+      );
       return SshCommandResult(
         exitCode: result.exitCode ?? 1,
         stdout: utf8.decode(result.stdout, allowMalformed: true),
+        stderr: includeStderr
+            ? utf8.decode(result.stderr, allowMalformed: true)
+            : '',
       );
     };
   }

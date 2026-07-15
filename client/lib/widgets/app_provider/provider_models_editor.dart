@@ -5,7 +5,6 @@ import '../../models/app_provider_config.dart';
 import '../../services/cli/registry/capabilities/provider_model_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 /// One model row stored under `provider.config['models']`.
@@ -178,7 +177,7 @@ class ProviderModelsEditor extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final entries = parse(models);
     final supportsTiers = _supportsTiers(context);
 
@@ -279,7 +278,7 @@ class _ModelRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final muted = theme.colorScheme.onSurfaceVariant;
     final isBackground = entry.tier == ProviderModelTier.background;
     return Padding(
@@ -402,7 +401,7 @@ class _ProviderModelEntryDialogState extends State<_ProviderModelEntryDialog> {
         children: [
           TpDialogHeader(title: widget.title),
           const SizedBox(height: 16),
-          Text(l10n.modelId, style: AppTextStyles.of(context).mdSnug),
+          Text(l10n.modelId, style: TpTextStyles.of(context).mdSnug),
           const SizedBox(height: 8),
           TpSelectWithCustomInput(
             value: _model,

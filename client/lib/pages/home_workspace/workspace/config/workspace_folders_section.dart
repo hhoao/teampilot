@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../../../cubits/chat_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../../../models/workspace.dart';
 import '../../../../models/workspace_folder.dart';
 import '../../../../repositories/session_repository.dart';
-import '../../../../widgets/settings/workspace_settings_widgets.dart';
 import '../../../../widgets/workspace_folders_editor.dart';
 
 /// Per-workspace directory + machine editor (local / project-remote / mixed).
@@ -61,7 +61,7 @@ class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {
         ? [const WorkspaceFolder(path: '')]
         : live.folders;
 
-    return SettingsSurfaceCard(
+    return TpCard.outlined(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -70,7 +70,7 @@ class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {
               padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: LinearProgressIndicator(),
             ),
-          SettingsLabeledStackedRow(
+          TpPreferenceStack(
             title: l10n.workspaceFoldersSectionTitle,
             subtitle: workspaceFoldersEditorHint(
               l10n,

@@ -4,7 +4,6 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../services/git/git_service.dart';
 import '../../../services/git/worktree_branch_options.dart';
 import '../../../services/storage/runtime_context.dart';
-import '../../../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 export '../../../services/git/worktree_branch_options.dart'
@@ -280,11 +279,11 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
             ],
             const SizedBox(height: 12),
             if (_previewPath.isNotEmpty) ...[
-              Text(l10n.worktreePathLabel, style: AppTextStyles(theme).xs),
+              Text(l10n.worktreePathLabel, style: TpTextStyles(theme).xs),
               const SizedBox(height: 2),
               Text(
                 _previewPath,
-                style: AppTextStyles(theme).sm,
+                style: TpTextStyles(theme).sm,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),

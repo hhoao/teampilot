@@ -2,8 +2,6 @@
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/app_icon_sizes.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../workbench/file_diff_surface_toggle.dart';
 import 'diff_view_controller.dart';
@@ -60,9 +58,9 @@ class DiffToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final titleText = title?.trim();
-    final iconColor = cs.iconMuted;
+    final iconColor = cs.tpIconMuted;
     final showOpenSource = onOpenSource != null && onSwitchToFile == null;
 
     return Container(

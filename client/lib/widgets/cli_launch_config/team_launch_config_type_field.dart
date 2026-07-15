@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../settings/workspace_settings_widgets.dart';
 import 'cli_launch_config_dropdown.dart';
 import 'team_launch_config_kind.dart';
 
@@ -28,7 +27,7 @@ class TeamLaunchConfigTypeField extends StatelessWidget {
     final l10n = context.l10n;
     final dropdownDeco = decoration ?? TpSelectDecorations.themed(context);
 
-    return SettingsLabeledRow(
+    return TpPreferenceRow(
       title: l10n.memberLaunchConfigTypeLabel,
       trailing: cliLaunchConfigDropdown(
         TpSelect<TeamLaunchConfigKind>(

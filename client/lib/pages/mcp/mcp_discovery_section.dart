@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/theme/app_text_styles.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -245,7 +244,7 @@ class _McpDiscoveryCatalogBody extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Text(
                       catalog.errorMessage!,
-                      style: AppTextStyles.of(context).mdColored(
+                      style: TpTextStyles.of(context).mdColored(
                         Theme.of(context).colorScheme.error,
                       ),
                     ),

@@ -5,7 +5,6 @@ import '../../cubits/cli_presets_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/cli_preset.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'cli_brand_icon.dart';
 
@@ -35,7 +34,7 @@ class CliPresetDropdownField extends StatelessWidget {
     if (presets.isEmpty) {
       return Text(
         l10n.workspaceCliPresetsEmptyHint,
-        style: AppTextStyles.of(context).sm,
+        style: TpTextStyles.of(context).sm,
       );
     }
 
@@ -47,7 +46,7 @@ class CliPresetDropdownField extends StatelessWidget {
         if (label != null) ...[
           Text(
             label!,
-            style: AppTextStyles.of(
+            style: TpTextStyles.of(
               context,
             ).smSemibold,
           ),
@@ -64,7 +63,7 @@ class CliPresetDropdownField extends StatelessWidget {
           itemBuilder: (context, presetId) {
             final preset = presetsState.presetById(presetId);
             if (preset == null) {
-              return Text(presetId, style: AppTextStyles.of(context).sm);
+              return Text(presetId, style: TpTextStyles.of(context).sm);
             }
             return _CliPresetDropdownItem(preset: preset);
           },
@@ -108,7 +107,7 @@ class _CliPresetDropdownItem extends StatelessWidget {
             preset.name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.of(
+            style: TpTextStyles.of(
               context,
             ).lgColored(cs.onSurface),
           ),

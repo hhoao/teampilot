@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../config/app_update_config.dart';
 import '../cubits/app_update_cubit.dart';
@@ -11,8 +12,6 @@ import '../pages/system/log_config_workspace.dart';
 import '../pages/onboarding/onboarding_gate.dart';
 import '../utils/app_keys.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
-import '../widgets/settings/workspace_settings_widgets.dart';
-import '../theme/app_text_styles.dart';
 
 /// About / app update section inside [ConfigWorkspace] (desktop split or Android hub).
 class AboutConfigWorkspace extends StatefulWidget {
@@ -66,11 +65,11 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
             },
             builder: (context, state) {
               return SingleChildScrollView(
-                child: SettingsSurfaceCard(
+                child: TpCard.outlined(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      SettingsLabeledRow(
+                      TpPreferenceRow(
                         title: l10n.aboutCurrentVersion,
                         subtitle: state.currentVersionLabel.isEmpty
                             ? l10n.aboutVersionLoading
@@ -78,7 +77,7 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                         trailing: _VersionUpdateActions(state: state),
                         showDividerBelow: true,
                       ),
-                      SettingsLabeledRow(
+                      TpPreferenceRow(
                         title: l10n.appUpdateAutoCheck,
                         subtitle: l10n.appUpdateAutoCheckHint,
                         trailing: Switch(
@@ -91,7 +90,7 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                         showDividerBelow: true,
                       ),
                       if (state.availableRelease != null) ...[
-                        SettingsLabeledStackedRow(
+                        TpPreferenceStack(
                           title: l10n.appUpdateNewVersion(
                             state.availableRelease!.version.toString(),
                           ),
@@ -120,7 +119,7 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                                 state.status == AppUpdateStatus.installing
                                     ? l10n.appUpdateInstalling
                                     : l10n.appUpdateDownloading,
-                                style: AppTextStyles.of(context).sm
+                                style: TpTextStyles.of(context).sm
                                     ?.copyWith(color: cs.onSurfaceVariant),
                               ),
                             ],
@@ -132,7 +131,7 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                           child: Text(
                             state.errorMessage!,
-                            style: AppTextStyles.of(context).smColored(cs.error),
+                            style: TpTextStyles.of(context).smColored(cs.error),
                           ),
                         ),
                       Padding(
@@ -262,7 +261,7 @@ class _ReleaseNotesPreview extends StatelessWidget {
     final preview = text.length > 600 ? '${text.substring(0, 600)}…' : text;
     return SelectableText(
       preview,
-      style: AppTextStyles.of(context).sm,
+      style: TpTextStyles.of(context).sm,
     );
   }
 }

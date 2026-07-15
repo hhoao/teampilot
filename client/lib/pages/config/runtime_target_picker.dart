@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -6,8 +7,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/runtime_target.dart';
 import '../../services/storage/home_target_controller.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
-import '../../theme/app_text_styles.dart';
 
 /// Platform-scoped home target selector. Replaces the legacy
 /// connection-mode / Windows-backend / select-profile knobs.
@@ -72,53 +71,58 @@ class _RuntimeTargetPickerState extends State<RuntimeTargetPicker> {
     }
   }
 
+  Widget _trailing(BuildContext context, List<RuntimeTarget> options) {
+    if (options.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final controller = context.read<HomeTargetController>();
+    final currentId = controller.currentId;
+    final value = options.any((t) => t.id == currentId)
+        ? currentId
+        : options.first.id;
+
+    return TpCompactSelect<String>(
+      value: value,
+      enabled: !_switching,
+      entries: [
+        for (final t in options) (t.id, t.label),
+      ],
+      onChanged: (id) {
+        if (id == null || id == currentId) return;
+        _select(id);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final controller = context.read<HomeTargetController>();
-    return SettingsLabeledStackedRow(
-      title: l10n.homeTargetTitle,
-      subtitle: l10n.homeTargetSubtitle,
-      showDividerBelow: true,
-      body: FutureBuilder<List<RuntimeTarget>>(
-        future: _targets,
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: LinearProgressIndicator(),
-            );
-          }
-          final options = _scoped(snapshot.data!).toList();
-          final currentId = controller.currentId;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (final t in options)
-                RadioListTile<String>(
-                  contentPadding: EdgeInsets.zero,
-                  value: t.id,
-                  groupValue: currentId,
-                  title: Text(t.label),
-                  subtitle: Text(t.id),
-                  onChanged: _switching || t.id == currentId
-                      ? null
-                      : (id) {
-                          if (id != null) _select(id);
-                        },
-                ),
-              if (options.length <= 1)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    l10n.homeTargetSingleOptionHint,
-                    style: AppTextStyles.of(context).sm,
-                  ),
-                ),
-            ],
+
+    return FutureBuilder<List<RuntimeTarget>>(
+      future: _targets,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return TpPreferenceRow(
+            title: l10n.homeTargetTitle,
+            subtitle: l10n.homeTargetSubtitle,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            trailing: const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
           );
-        },
-      ),
+        }
+
+        final options = _scoped(snapshot.data!).toList();
+        return TpPreferenceRow(
+          title: l10n.homeTargetTitle,
+          subtitle: l10n.homeTargetSubtitle,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          trailing: _trailing(context, options),
+        );
+      },
     );
   }
 }
