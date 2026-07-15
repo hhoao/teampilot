@@ -44,7 +44,8 @@ String _pathKey(String path) {
 
 String _separatorForPath(String path) {
   if (_isWindowsStylePath(path)) return r'\';
-  return p.separator;
+  // Keep POSIX `/` even when the host is Windows (WSL/SSH/test fixtures).
+  return '/';
 }
 
 String _stripRootPrefix(String path, String root) {

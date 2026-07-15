@@ -17,6 +17,16 @@ void main() {
       );
     });
 
+    test('uses relative POSIX path under workspace root on any host', () {
+      expect(
+        formatComposeFileReference(
+          '/repo/docs/readme.md',
+          workspaceRoot: '/repo',
+        ),
+        '@docs/readme.md',
+      );
+    });
+
     test('matches workspace root case-insensitively on Windows', () {
       expect(
         formatComposeFileReference(
