@@ -1,5 +1,7 @@
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
+import '../../models/runtime_target.dart';
+import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/team_bus/agent_node.dart';
@@ -9,6 +11,7 @@ import '../../services/team_bus/chat_cubit_member_launcher.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_handler.dart';
 import '../../services/team_bus/persistence/bus_message_log_factory.dart';
+import '../../services/team_bus/roster_machine.dart';
 import '../../services/team_bus/tasks/task_log_factory.dart';
 import '../../services/team_bus/tasks/task_queue.dart';
 import '../../services/team_bus/team_bus.dart';
@@ -25,6 +28,14 @@ class TabTeamBusCoordinator {
     required ChatTabStore tabStore,
     required MemberMaterializer materializer,
     required List<CliPreset> Function() globalPresets,
+    required RuntimeTarget Function(AppSession session, {String? memberId})
+    launchWorkTarget,
+    required ({String workingDirectory, List<String> addDirs}) Function(
+      AppSession session,
+      String memberId,
+    )
+    memberWorkDirs,
+    SshProfile? Function(String profileId)? sshProfileById,
     void Function()? onAfterTurnLatched,
     ArtifactTransferService Function(AppSession session)?
     artifactServiceFactory,
@@ -32,6 +43,9 @@ class TabTeamBusCoordinator {
        _tabStore = tabStore,
        _materializer = materializer,
        _globalPresets = globalPresets,
+       _launchWorkTarget = launchWorkTarget,
+       _memberWorkDirs = memberWorkDirs,
+       _sshProfileById = sshProfileById,
        _onAfterTurnLatched = onAfterTurnLatched,
        _artifactServiceFactory = artifactServiceFactory;
 
@@ -39,6 +53,14 @@ class TabTeamBusCoordinator {
   final ChatTabStore _tabStore;
   final MemberMaterializer _materializer;
   final List<CliPreset> Function() _globalPresets;
+  final RuntimeTarget Function(AppSession session, {String? memberId})
+  _launchWorkTarget;
+  final ({String workingDirectory, List<String> addDirs}) Function(
+    AppSession session,
+    String memberId,
+  )
+  _memberWorkDirs;
+  final SshProfile? Function(String profileId)? _sshProfileById;
   final void Function()? _onAfterTurnLatched;
 
   /// P3d: builds the per-session cross-machine artifact transfer service. Null =
@@ -112,15 +134,25 @@ class TabTeamBusCoordinator {
           .map((b) => b.taskId)
           .where((id) => id.isNotEmpty)
           .firstOrNull;
+      final target = _launchWorkTarget(session, memberId: m.id);
+      final profileId = target.sshProfileId ?? sshProfileIdOfId(target.id);
+      final ssh = (profileId != null && profileId.isNotEmpty)
+          ? _sshProfileById?.call(profileId)
+          : null;
+      final rosterMachine = rosterMachineFromTarget(target, profile: ssh);
+      final work = _memberWorkDirs(session, m.id);
       bus.declareMember(
         AgentNode(
           profile: TeammateRosterProfile.fromMember(
             member: m,
             team: team,
             cliTeamName: cliTeamName,
-            cwd: session.firstFolderPath,
+            cwd: work.workingDirectory,
             taskId: taskId,
             globalPresets: presets,
+            machine: rosterMachine.machine,
+            machineKind: rosterMachine.machineKind,
+            machineId: rosterMachine.machineId,
           ),
           lifecycle: MemberLifecycle.declared,
         ),
