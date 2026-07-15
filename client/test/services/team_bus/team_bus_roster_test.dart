@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
@@ -219,24 +221,29 @@ void main() {
       );
 
       final text = (res!.result!['content'] as List).first['text'] as String;
-      expect(text, contains('=== Team: Demo Team (demo-1) ==='));
-      expect(text, contains('description: Cross-CLI squad'));
-      expect(text, contains('lead_agent_id: team-lead'));
-      expect(text, contains('--- team-lead (self) ---'));
-      expect(text, contains('agentId: team-lead'));
-      expect(text, contains('model: claude-opus-4'));
-      expect(text, contains('taskId: lead-task'));
-      expect(text, contains('--- developer ---'));
-      expect(text, contains('agentId: developer@demo-1'));
-      expect(text, contains('agentType: implementer'));
-      expect(text, contains('cli: opencode'));
-      expect(text, contains('responsibilities: You implement features.'));
-      expect(text, isNot(contains('playbook:')));
+      final json = jsonDecode(text) as Map<String, Object?>;
+      expect((json['team'] as Map)['team_name'], 'Demo Team');
+      expect((json['team'] as Map)['cli_team_name'], 'demo-1');
+      expect((json['team'] as Map)['description'], 'Cross-CLI squad');
+      expect((json['team'] as Map)['lead_agent_id'], 'team-lead');
+      final byId = {
+        for (final m in json['members'] as List)
+          (m as Map)['member_id'] as String: m,
+      };
+      expect(byId['team-lead']!['self'], isTrue);
+      expect(byId['team-lead']!['agent_id'], 'team-lead');
+      expect(byId['team-lead']!['model'], 'claude-opus-4');
+      expect(byId['team-lead']!['task_id'], 'lead-task');
+      expect((byId['team-lead']!['bus'] as Map)['activity'], 'active');
+      expect((byId['team-lead']!['bus'] as Map)['phase'], 'in_turn');
+      expect(byId['developer']!['agent_id'], 'developer@demo-1');
+      expect(byId['developer']!['agent_type'], 'implementer');
+      expect(byId['developer']!['cli'], 'opencode');
+      expect(byId['developer']!['responsibilities'], 'You implement features.');
+      expect(text, isNot(contains('playbook')));
       expect(text, isNot(contains('Use TDD and open a PR.')));
-      expect(text, contains('bus.activity: active'));
-      expect(text, contains('bus.phase: in_turn'));
-      expect(text, contains('bus.unread: 1'));
-      expect(text, contains('pty.running: false'));
+      expect((byId['developer']!['bus'] as Map)['unread'], 1);
+      expect(byId['developer']!['pty_running'], isFalse);
     },
   );
 }

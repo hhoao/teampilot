@@ -18,10 +18,12 @@ final class ReadMessagesTool extends TeammateBusTool {
 
   @override
   String get description =>
-      'Page through persisted mailbox (unread by default) WITHOUT consuming. '
-      'Use after_id from the previous page for pagination. Set '
-      'mark_read=true to consume the returned page (mark read + drop from '
-      'the wait_for_message queue) instead of blocking in wait_for_message.';
+      'Page through persisted mailbox as JSON '
+      '{"messages":[...],"total_unread":n,"has_more":bool} (unread by '
+      'default) WITHOUT consuming. Use after_id from the previous page for '
+      'pagination. Set mark_read=true to consume the returned page (mark '
+      'read + drop from the wait_for_message queue) instead of blocking in '
+      'wait_for_message.';
 
   @override
   Map<String, Object?> get inputSchema => McpSchema.object(
