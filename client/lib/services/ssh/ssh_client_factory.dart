@@ -205,6 +205,17 @@ class SshClientFactory {
     }
   }
 
+  /// Canonical host-key identity for storage/UI.
+  ///
+  /// TerminalStudio dartssh2 (≥2.18) passes UTF-8 bytes of an OpenSSH-style
+  /// `SHA256:<base64>` fingerprint. Older forks passed a raw digest; those
+  /// remain hex-colon encoded for compatibility.
+  static String fingerprintIdentity(Uint8List fingerprint) {
+    final asText = utf8.decode(fingerprint, allowMalformed: true);
+    if (asText.startsWith('SHA256:')) return asText;
+    return fingerprintToHex(fingerprint);
+  }
+
   static String fingerprintToHex(Uint8List fingerprint) {
     final buffer = StringBuffer();
     for (var i = 0; i < fingerprint.length; i++) {
@@ -214,8 +225,13 @@ class SshClientFactory {
     return buffer.toString();
   }
 
-  static String fingerprintToBase64(Uint8List fingerprint) =>
-      base64.encode(fingerprint);
+  static String fingerprintToBase64(Uint8List fingerprint) {
+    final identity = fingerprintIdentity(fingerprint);
+    if (identity.startsWith('SHA256:')) {
+      return identity.substring('SHA256:'.length);
+    }
+    return base64.encode(fingerprint);
+  }
 
   /// Opens a fresh, caller-owned SSH connection for one member session plane.
   Future<SSHClient> createMemberClient(
@@ -365,7 +381,7 @@ class SshHostKeyTrustPolicy {
     required Uint8List fingerprint,
   }) async {
     final storageKey = '${profile.hostIdentifier}::$keyType';
-    final fingerprintHex = SshClientFactory.fingerprintToHex(fingerprint);
+    final fingerprintHex = SshClientFactory.fingerprintIdentity(fingerprint);
     final fingerprintBase64 = SshClientFactory.fingerprintToBase64(fingerprint);
     final existing = await _knownHostRepository.findFingerprint(
       profile.hostIdentifier,

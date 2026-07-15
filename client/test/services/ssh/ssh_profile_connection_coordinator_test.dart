@@ -128,6 +128,9 @@ class _FakeSSHSocket implements SSHSocket {
   Future<void> get done => _doneCompleter.future;
 
   @override
+  Future<void> flush() async {}
+
+  @override
   Future<void> close() async {
     if (!_doneCompleter.isCompleted) {
       _doneCompleter.complete();
