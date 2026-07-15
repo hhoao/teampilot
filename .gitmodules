@@ -27,3 +27,7 @@
 	path = client/packages/flutter_markdown_plus
 	url = https://github.com/hhoao/flutter_markdown_plus.git
 	branch = feat/continuous-selection
+[submodule "client/packages/shared_ui"]
+	path = client/packages/shared_ui
+	url = https://github.com/hhoao/shared_ui.git
+	branch = main

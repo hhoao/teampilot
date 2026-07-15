@@ -1245,6 +1245,13 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.4.1"
+  shared_ui:
+    dependency: "direct main"
+    description:
+      path: "packages/shared_ui"
+      relative: true
+    source: path
+    version: "0.2.0"
   shelf:
     dependency: transitive
     description:
