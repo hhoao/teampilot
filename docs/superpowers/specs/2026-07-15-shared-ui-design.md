@@ -77,7 +77,7 @@ shared_ui/
 | Tokens, `TpTheme`, component themes | Color preset table, font load/warmup, `MaterialApp` assembly |
 | Migrated generic primitives (see mapping) | Domain widgets (workspace, settings, terminal, git, providers, updates) |
 | Portal/popover primitives without product semantics | `workspace_surface_layers`, `workspace_topology_colors` |
-| Optional visual toast surface only | `AppToast` (router + notification recorder) — client thin wrapper |
+| — | `AppToast` + `app_toast_theme.dart` (toastification / platform chrome) |
 
 ## Theme model
 
