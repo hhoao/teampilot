@@ -149,4 +149,24 @@ void main() {
     expect(permissions['allow'], contains('mcp__teammate-bus'));
     expect(permissions['deny'], isNull);
   });
+
+  test('disallowedToolsForMixedClaude worker omits Agent', () {
+    final tools = MemberRoleProvision.disallowedToolsForMixedClaude(isLead: false);
+    expect(tools, containsAll(MemberRoleProvision.mixedClaudeDisallowedTools));
+    expect(tools, isNot(contains('Agent')));
+    expect(tools, isNot(contains('Bash')));
+  });
+
+  test('disallowedToolsForMixedClaude lead includes Agent', () {
+    final tools = MemberRoleProvision.disallowedToolsForMixedClaude(isLead: true);
+    expect(tools, containsAll(MemberRoleProvision.mixedClaudeDisallowedTools));
+    expect(tools, contains('Agent'));
+    expect(
+      tools,
+      containsAllInOrder([
+        ...MemberRoleProvision.mixedClaudeDisallowedTools,
+        'Agent',
+      ]),
+    );
+  });
 }
