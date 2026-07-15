@@ -9,6 +9,7 @@ import '../../cubits/ssh_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/ssh_profile.dart';
 import '../../repositories/ssh_credential_store.dart';
+import '../../services/ssh/ssh_connection_failure.dart';
 import '../../services/ssh/ssh_profile_connection_tester.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
@@ -50,8 +51,11 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
     });
   }
 
-  Future<bool> _runTest(SshProfile profile, {bool showToast = true}) async {
-    if (_testingIds.contains(profile.id)) return false;
+  /// Returns `null` on success, otherwise the caught failure.
+  Future<Object?> _runTest(SshProfile profile, {bool showToast = true}) async {
+    if (_testingIds.contains(profile.id)) {
+      return StateError('SSH profile test already in progress');
+    }
     setState(() => _testingIds.add(profile.id));
     _setStatus(profile.id, SshProfileConnectionStatus.connecting);
     try {
@@ -67,7 +71,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
         privateKey: creds.privateKey,
         privateKeyPassphrase: creds.passphrase,
       );
-      if (!mounted) return false;
+      if (!mounted) return StateError('Widget unmounted');
       _setStatus(profile.id, SshProfileConnectionStatus.connected);
       if (showToast) {
         AppToast.show(
@@ -76,22 +80,22 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
           variant: AppToastVariant.success,
         );
       }
-      return true;
+      return null;
     } on Object catch (e) {
-      if (!mounted) return false;
+      if (!mounted) return e;
       _setStatus(
         profile.id,
         SshProfileConnectionStatus.error,
-        error: e.toString(),
+        error: sshConnectionFailureLogMessage(e),
       );
       if (showToast) {
         AppToast.show(
           context,
-          message: context.l10n.sshProfileTestFailed,
+          message: sshConnectionFailureUserMessage(e, context.l10n),
           variant: AppToastVariant.error,
         );
       }
-      return false;
+      return e;
     } finally {
       if (mounted) setState(() => _testingIds.remove(profile.id));
     }
@@ -107,12 +111,12 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
         if (!mounted) return;
         _setStatus(profile.id, SshProfileConnectionStatus.connected);
       } else {
-        final ok = await _runTest(profile, showToast: false);
+        final failure = await _runTest(profile, showToast: false);
         if (!mounted) return;
-        if (!ok) {
+        if (failure != null) {
           AppToast.show(
             context,
-            message: context.l10n.sshProfileTestFailed,
+            message: sshConnectionFailureUserMessage(failure, context.l10n),
             variant: AppToastVariant.error,
           );
           return;

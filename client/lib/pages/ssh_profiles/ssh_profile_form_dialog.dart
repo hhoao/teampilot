@@ -12,6 +12,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/ssh_profile.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_profile_repository.dart';
+import '../../services/ssh/ssh_connection_failure.dart';
 import '../../services/ssh/ssh_profile_connection_tester.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -205,11 +206,11 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
         message: context.l10n.sshProfileTestSuccess,
         variant: AppToastVariant.success,
       );
-    } on Object {
+    } on Object catch (error) {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: context.l10n.sshProfileTestFailed,
+        message: sshConnectionFailureUserMessage(error, context.l10n),
         variant: AppToastVariant.error,
       );
     } finally {

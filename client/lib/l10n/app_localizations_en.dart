@@ -1649,9 +1649,58 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sshProfileTestFailed => 'Connection test failed';
 
   @override
+  String get sshProfileTestFailedHostKey => 'Host key was not trusted';
+
+  @override
+  String get sshProfileTestFailedAuth => 'Authentication failed';
+
+  @override
+  String sshProfileTestFailedAborted(String detail) {
+    return 'Connection closed before login: $detail';
+  }
+
+  @override
+  String sshProfileTestFailedDetail(String detail) {
+    return 'Connection test failed: $detail';
+  }
+
+  @override
   String sshProfileConnectSuccess(String host) {
     return 'Connected to $host';
   }
+
+  @override
+  String get sshHostKeyUnknownTitle => 'Verify SSH host key';
+
+  @override
+  String sshHostKeyUnknownBody(String host) {
+    return 'TeamPilot has not seen $host before. Confirm the fingerprint matches this machine before trusting it.';
+  }
+
+  @override
+  String get sshHostKeyMismatchTitle => 'SSH host key changed';
+
+  @override
+  String sshHostKeyMismatchBody(String host) {
+    return 'The host key for $host does not match the one TeamPilot saved earlier. This can happen after a reinstall — or if someone is intercepting the connection.';
+  }
+
+  @override
+  String get sshHostKeyFingerprintLabel => 'Fingerprint';
+
+  @override
+  String get sshHostKeyPreviousFingerprintLabel => 'Previously trusted';
+
+  @override
+  String sshHostKeyKeyTypeLabel(String keyType) {
+    return 'Key type: $keyType';
+  }
+
+  @override
+  String get sshHostKeyTrust => 'Trust and continue';
+
+  @override
+  String get sshHostKeyReplaceTrust => 'Replace and trust';
 
   @override
   String get sshProfileFormTitleNew => 'New SSH target';

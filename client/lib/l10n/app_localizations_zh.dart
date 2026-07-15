@@ -1571,9 +1571,58 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sshProfileTestFailed => '连接测试失败';
 
   @override
+  String get sshProfileTestFailedHostKey => '主机密钥未获信任';
+
+  @override
+  String get sshProfileTestFailedAuth => '身份验证失败';
+
+  @override
+  String sshProfileTestFailedAborted(String detail) {
+    return '登录前连接已断开：$detail';
+  }
+
+  @override
+  String sshProfileTestFailedDetail(String detail) {
+    return '连接测试失败：$detail';
+  }
+
+  @override
   String sshProfileConnectSuccess(String host) {
     return '已连接到 $host';
   }
+
+  @override
+  String get sshHostKeyUnknownTitle => '验证 SSH 主机密钥';
+
+  @override
+  String sshHostKeyUnknownBody(String host) {
+    return 'TeamPilot 尚未见过 $host。请确认指纹与该机器一致后再信任。';
+  }
+
+  @override
+  String get sshHostKeyMismatchTitle => 'SSH 主机密钥已变更';
+
+  @override
+  String sshHostKeyMismatchBody(String host) {
+    return '$host 的主机密钥与 TeamPilot 先前保存的不一致。可能是系统重装，也可能是连接被劫持。';
+  }
+
+  @override
+  String get sshHostKeyFingerprintLabel => '指纹';
+
+  @override
+  String get sshHostKeyPreviousFingerprintLabel => '先前信任的指纹';
+
+  @override
+  String sshHostKeyKeyTypeLabel(String keyType) {
+    return '密钥类型：$keyType';
+  }
+
+  @override
+  String get sshHostKeyTrust => '信任并继续';
+
+  @override
+  String get sshHostKeyReplaceTrust => '替换并信任';
 
   @override
   String get sshProfileFormTitleNew => '新的 SSH 目标';

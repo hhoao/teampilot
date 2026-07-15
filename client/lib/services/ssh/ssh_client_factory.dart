@@ -54,6 +54,8 @@ class SshClientFactory {
   }) : _credentialStore = credentialStore,
        _knownHostRepository = knownHostRepository,
        _events = events ?? SshConnectionEvents(),
+       _onHostKeyPrompt = onHostKeyPrompt,
+       _onHostKeyPersist = onHostKeyPersist,
        _hostKeyTrustPolicy = SshHostKeyTrustPolicy(
          knownHostRepository: knownHostRepository,
          onHostKeyPrompt: onHostKeyPrompt,
@@ -64,6 +66,9 @@ class SshClientFactory {
   final SshCredentialStore _credentialStore;
   final SshKnownHostRepository _knownHostRepository;
   final SshConnectionEvents _events;
+  final Future<bool> Function(HostKeyPromptInfo)? _onHostKeyPrompt;
+  final void Function(String storageKey, String fingerprintHex)?
+  _onHostKeyPersist;
   final SshHostKeyTrustPolicy _hostKeyTrustPolicy;
   final SshClientConnector? _connector;
   final Map<String, _PooledConnection> _pool = {};
@@ -193,6 +198,8 @@ class SshClientFactory {
     final ephemeral = SshClientFactory(
       credentialStore: store,
       knownHostRepository: _knownHostRepository,
+      onHostKeyPrompt: _onHostKeyPrompt,
+      onHostKeyPersist: _onHostKeyPersist,
       connector: _connector,
     );
     final client = await ephemeral.createClient(profile);

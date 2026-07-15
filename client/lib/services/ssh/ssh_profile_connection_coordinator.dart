@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:dartssh2/dartssh2.dart';
+
 import '../../models/ssh_profile.dart';
 import '../../utils/logger.dart';
 import '../remote/remote_connection_monitor.dart';
@@ -99,8 +101,15 @@ class SshProfileConnectionCoordinator {
     required bool markDown,
   }) {
     if (_disposed) return;
-    _pendingDisconnectErrors[profileId] = error;
-    _pendingDisconnectStacks[profileId] = stackTrace;
+    final previous = _pendingDisconnectErrors[profileId];
+    // Prefer a non-retryable cause (e.g. host-key rejection) over a later
+    // generic transport-closed StateError from the same disconnect wave.
+    if (previous == null ||
+        !_shouldSkipReconnect(previous) ||
+        _shouldSkipReconnect(error)) {
+      _pendingDisconnectErrors[profileId] = error;
+      _pendingDisconnectStacks[profileId] = stackTrace;
+    }
     if (markDown) {
       monitorFor(profileId).markDown();
     }
@@ -120,7 +129,21 @@ class SshProfileConnectionCoordinator {
     if (error == null) return;
 
     onDisconnect?.call(profileId, error, stackTrace);
+    if (_shouldSkipReconnect(error)) {
+      appLogger.w(
+        '[ssh] profile $profileId disconnect is not retryable: $error',
+      );
+      return;
+    }
     _scheduleReconnect(profileId);
+  }
+
+  bool _shouldSkipReconnect(Object error) {
+    if (error is SSHHostkeyError) return true;
+    if (error is SSHAuthAbortError && error.reason is SSHHostkeyError) {
+      return true;
+    }
+    return false;
   }
 
   void _scheduleReconnect(String profileId) {
@@ -177,7 +200,9 @@ class SshProfileConnectionCoordinator {
         error: error,
         stackTrace: stackTrace,
       );
-      _scheduleReconnect(profileId);
+      if (!_shouldSkipReconnect(error)) {
+        _scheduleReconnect(profileId);
+      }
     } finally {
       _reconnectInFlight[profileId] = false;
     }
