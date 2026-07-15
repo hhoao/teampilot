@@ -1,4 +1,6 @@
 import '../../models/team_config.dart';
+import '../../utils/logger.dart';
+import 'installer_types.dart';
 import 'remote_cli_locator.dart';
 
 /// Performs the actual install of [cli] on the work machine over its transport,
@@ -7,10 +9,16 @@ import 'remote_cli_locator.dart';
 typedef RemoteInstallAction =
     Future<String> Function({
       required SshCommandRunner run,
-      required void Function(String message) onProgress,
+      required void Function(CliInstallProgress progress) onProgress,
     });
 
-enum RemoteCliUnavailableReason { optInOff, noInstaller, installFailed }
+enum RemoteCliUnavailableReason {
+  /// CLI not found and connect/locate-only path will not install.
+  notInstalled,
+  optInOff,
+  noInstaller,
+  installFailed,
+}
 
 class RemoteCliUnavailableException implements Exception {
   RemoteCliUnavailableException(this.cli, this.reason);
@@ -19,6 +27,9 @@ class RemoteCliUnavailableException implements Exception {
 
   @override
   String toString() => switch (reason) {
+    RemoteCliUnavailableReason.notInstalled =>
+      '${cli.value} is not installed on the remote host. Open Machines and '
+          'install it, or set a manual CLI path for this target.',
     RemoteCliUnavailableReason.optInOff =>
       '${cli.value} not found on the remote host and auto-install is '
           'disabled for this target. Re-enable it or set a manual CLI path.',
@@ -31,30 +42,55 @@ class RemoteCliUnavailableException implements Exception {
   };
 }
 
-/// Ensures [cli] is present on the work machine (P3c §3.2): locate → (opt-in)
-/// install → use the path the install step reported. Returns the absolute remote
-/// path or throws a clear [RemoteCliUnavailableException].
+/// Locates and optionally installs [cli] on a remote work machine.
 class RemoteCliInstaller {
   RemoteCliInstaller({RemoteCliLocator? locator})
     : _locator = locator ?? RemoteCliLocator();
 
   final RemoteCliLocator _locator;
 
+  /// Locate only (manual override or remote probes). Never installs.
+  Future<String?> locate({
+    required CliTool cli,
+    required SshCommandRunner run,
+    String manualPathOverride = '',
+  }) {
+    return _locator.resolve(
+      cli: cli,
+      run: run,
+      manualPathOverride: manualPathOverride,
+    );
+  }
+
+  /// Locate → optional install. Used for **user-driven** Machines install only.
   Future<String> ensure({
     required CliTool cli,
     required SshCommandRunner run,
     required bool optIn,
     required bool supportsInstaller,
     RemoteInstallAction? install,
-    void Function(String message)? onProgress,
+    void Function(CliInstallProgress progress)? onProgress,
     String manualPathOverride = '',
   }) async {
-    final existing = await _locator.resolve(
+    appLogger.d(
+      '[remote-cli] locate begin cli=${cli.value} '
+      'manualOverride=${manualPathOverride.trim().isNotEmpty}',
+    );
+    final existing = await locate(
       cli: cli,
       run: run,
       manualPathOverride: manualPathOverride,
     );
-    if (existing != null) return existing;
+    if (existing != null) {
+      appLogger.d(
+        '[remote-cli] locate hit cli=${cli.value} path=$existing',
+      );
+      return existing;
+    }
+    appLogger.d(
+      '[remote-cli] locate miss cli=${cli.value} '
+      'optIn=$optIn supportsInstaller=$supportsInstaller',
+    );
 
     if (!optIn) {
       throw RemoteCliUnavailableException(
@@ -69,11 +105,17 @@ class RemoteCliInstaller {
       );
     }
 
+    appLogger.d('[remote-cli] install begin cli=${cli.value}');
     final installedPath = (await install(
       run: run,
       onProgress: onProgress ?? (_) {},
     )).trim();
-    if (installedPath.isNotEmpty) return installedPath;
+    if (installedPath.isNotEmpty) {
+      appLogger.d(
+        '[remote-cli] install done cli=${cli.value} path=$installedPath',
+      );
+      return installedPath;
+    }
     throw RemoteCliUnavailableException(
       cli,
       RemoteCliUnavailableReason.installFailed,

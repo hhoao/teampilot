@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/l10n_extensions.dart';
+import '../../../models/cli_preset.dart';
 import '../../../models/runtime_target.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../models/workspace_folder.dart';
 import '../../../models/workspace_topology.dart';
+import '../../../services/remote/remote_cli_readiness.dart';
 import '../../../services/storage/home_target_controller.dart';
 import '../../../utils/team_member_naming.dart';
 import '../../../theme/app_text_styles.dart';
+import 'remote_cli_machine_readiness_panel.dart';
 
 /// Practical per-host cap for non-lead replica placement in mixed workspaces.
 const memberPlacementMaxPerHost = 99;
@@ -50,6 +53,9 @@ class MixedWorkspaceMemberPlacementPanel extends StatefulWidget {
     required this.members,
     required this.placement,
     required this.onPlacementChanged,
+    this.team,
+    this.globalPresets = const [],
+    this.remoteCliReadiness,
     super.key,
   });
 
@@ -57,6 +63,9 @@ class MixedWorkspaceMemberPlacementPanel extends StatefulWidget {
   final List<TeamMemberConfig> members;
   final MemberPlacementByTarget placement;
   final ValueChanged<MemberPlacementByTarget> onPlacementChanged;
+  final TeamProfile? team;
+  final List<CliPreset> globalPresets;
+  final RemoteCliReadinessService? remoteCliReadiness;
 
   @override
   State<MixedWorkspaceMemberPlacementPanel> createState() =>
@@ -66,11 +75,31 @@ class MixedWorkspaceMemberPlacementPanel extends StatefulWidget {
 class _MixedWorkspaceMemberPlacementPanelState
     extends State<MixedWorkspaceMemberPlacementPanel> {
   late String _selectedTargetId;
+  List<RuntimeTarget> _selectableTargets = const [];
+  Future<void>? _targetsLoad;
 
   @override
   void initState() {
     super.initState();
     _selectedTargetId = workspaceTargetIds(widget.workspace.folders).first;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _targetsLoad ??= _loadSelectableTargets();
+  }
+
+  Future<void> _loadSelectableTargets() async {
+    try {
+      final targets = await context
+          .read<HomeTargetController>()
+          .listSelectable();
+      if (!mounted) return;
+      setState(() => _selectableTargets = targets);
+    } on Object {
+      // HomeTargetController unavailable in widget tests.
+    }
   }
 
   @override
@@ -117,96 +146,115 @@ class _MixedWorkspaceMemberPlacementPanelState
     final members = widget.members.where((m) => m.isValid).toList();
     final folders = widget.workspace.folders;
 
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(
-          width: 220,
-          child: FutureBuilder<List<RuntimeTarget>>(
-            future: controller.listSelectable(),
-            builder: (context, snapshot) {
-              final labels = {
-                for (final t in snapshot.data ?? const <RuntimeTarget>[])
-                  t.id: t.label,
-              };
-              return ListView(
-                children: [
-                  for (final targetId in targetIds)
-                    _TargetTile(
-                      selected: targetId == _selectedTargetId,
-                      label: labels[targetId] ?? targetId,
-                      paths: folderPathsForTarget(
-                        widget.workspace.folders,
-                        targetId,
-                      ),
-                      instanceCount: _instancesOnTarget(targetId),
-                      onTap: () => setState(() => _selectedTargetId = targetId),
-                    ),
-                ],
-              );
-            },
-          ),
-        ),
-        const VerticalDivider(width: 1),
         Expanded(
-          child: ListView(
-            padding: const EdgeInsets.only(left: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (final member in members)
-                Builder(
-                  builder: (context) {
-                    final placedTotal = memberPlacementCountForType(
-                      widget.placement,
-                      member.id,
-                    );
-                    final countOnMachine =
-                        widget.placement[_selectedTargetId]?[member.id] ?? 0;
-                    return _MemberPlacementRow(
-                      memberLabel: member.name.isEmpty
-                          ? l10n.memberName
-                          : member.name,
-                      placedTotal: placedTotal,
-                      countOnMachine: countOnMachine,
-                      canIncrement: canIncrementMemberPlacement(
-                        member: member,
-                        folders: folders,
-                        selectedTargetId: _selectedTargetId,
-                        countOnMachine: countOnMachine,
-                      ),
-                      canDecrement: canDecrementMemberPlacement(
-                        member: member,
-                        folders: folders,
-                        selectedTargetId: _selectedTargetId,
-                        countOnMachine: countOnMachine,
-                      ),
-                      onIncrement: () {
-                        if (!canIncrementMemberPlacement(
-                          member: member,
-                          folders: folders,
-                          selectedTargetId: _selectedTargetId,
-                          countOnMachine: countOnMachine,
-                        )) {
-                          return;
-                        }
-                        _setCount(member.id, countOnMachine + 1);
-                      },
-                      onDecrement: () {
-                        if (!canDecrementMemberPlacement(
-                          member: member,
-                          folders: folders,
-                          selectedTargetId: _selectedTargetId,
-                          countOnMachine: countOnMachine,
-                        )) {
-                          return;
-                        }
-                        _setCount(member.id, countOnMachine - 1);
-                      },
+              SizedBox(
+                width: 220,
+                child: FutureBuilder<List<RuntimeTarget>>(
+                  future: controller.listSelectable(),
+                  builder: (context, snapshot) {
+                    final labels = {
+                      for (final t in snapshot.data ?? const <RuntimeTarget>[])
+                        t.id: t.label,
+                    };
+                    return ListView(
+                      children: [
+                        for (final targetId in targetIds)
+                          _TargetTile(
+                            selected: targetId == _selectedTargetId,
+                            label: labels[targetId] ?? targetId,
+                            paths: folderPathsForTarget(
+                              widget.workspace.folders,
+                              targetId,
+                            ),
+                            instanceCount: _instancesOnTarget(targetId),
+                            onTap: () =>
+                                setState(() => _selectedTargetId = targetId),
+                          ),
+                      ],
                     );
                   },
                 ),
+              ),
+              const VerticalDivider(width: 1),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.only(left: 8),
+                  children: [
+                    for (final member in members)
+                      Builder(
+                        builder: (context) {
+                          final placedTotal = memberPlacementCountForType(
+                            widget.placement,
+                            member.id,
+                          );
+                          final countOnMachine =
+                              widget.placement[_selectedTargetId]?[member.id] ??
+                              0;
+                          return _MemberPlacementRow(
+                            memberLabel: member.name.isEmpty
+                                ? l10n.memberName
+                                : member.name,
+                            placedTotal: placedTotal,
+                            countOnMachine: countOnMachine,
+                            canIncrement: canIncrementMemberPlacement(
+                              member: member,
+                              folders: folders,
+                              selectedTargetId: _selectedTargetId,
+                              countOnMachine: countOnMachine,
+                            ),
+                            canDecrement: canDecrementMemberPlacement(
+                              member: member,
+                              folders: folders,
+                              selectedTargetId: _selectedTargetId,
+                              countOnMachine: countOnMachine,
+                            ),
+                            onIncrement: () {
+                              if (!canIncrementMemberPlacement(
+                                member: member,
+                                folders: folders,
+                                selectedTargetId: _selectedTargetId,
+                                countOnMachine: countOnMachine,
+                              )) {
+                                return;
+                              }
+                              _setCount(member.id, countOnMachine + 1);
+                            },
+                            onDecrement: () {
+                              if (!canDecrementMemberPlacement(
+                                member: member,
+                                folders: folders,
+                                selectedTargetId: _selectedTargetId,
+                                countOnMachine: countOnMachine,
+                              )) {
+                                return;
+                              }
+                              _setCount(member.id, countOnMachine - 1);
+                            },
+                          );
+                        },
+                      ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
+        if (widget.team != null && widget.remoteCliReadiness != null)
+          RemoteCliMachineReadinessPanel(
+            workspace: widget.workspace,
+            team: widget.team!,
+            placement: widget.placement,
+            selectedTargetId: _selectedTargetId,
+            globalPresets: widget.globalPresets,
+            selectableTargets: _selectableTargets,
+            readiness: widget.remoteCliReadiness!,
+          ),
       ],
     );
   }

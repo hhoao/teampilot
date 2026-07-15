@@ -2558,6 +2558,54 @@ abstract class AppLocalizations {
   /// **'Configure team and member model presets in Team Settings before sending.'**
   String get workspaceChatLandingTeamLaunchBlocked;
 
+  /// No description provided for @landingLaunchRemoteCliMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Install required CLIs on remote machines before starting.'**
+  String get landingLaunchRemoteCliMissing;
+
+  /// No description provided for @landingLaunchRemoteCliMissingDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'{cli} on {host}'**
+  String landingLaunchRemoteCliMissingDetail(String cli, String host);
+
+  /// No description provided for @remoteCliMachineReadinessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Required CLIs on this machine'**
+  String get remoteCliMachineReadinessTitle;
+
+  /// No description provided for @remoteCliMachineReadinessProbing.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get remoteCliMachineReadinessProbing;
+
+  /// No description provided for @remoteCliMachineReadinessReady.
+  ///
+  /// In en, this message translates to:
+  /// **'{cli} ready at {path}'**
+  String remoteCliMachineReadinessReady(String cli, String path);
+
+  /// No description provided for @remoteCliMachineReadinessMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'{cli} not found — install or set a manual path'**
+  String remoteCliMachineReadinessMissing(String cli);
+
+  /// No description provided for @remoteCliMachineReadinessFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'{cli}: {message}'**
+  String remoteCliMachineReadinessFailed(String cli, String message);
+
+  /// No description provided for @remoteCliMachineReadinessInstallHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Install for each missing CLI, or set a manual path in target settings.'**
+  String get remoteCliMachineReadinessInstallHint;
+
   /// No description provided for @sessionStartButton.
   ///
   /// In en, this message translates to:
@@ -3265,6 +3313,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Locating CLI executable…'**
   String get cliInstallProgressLocatingExecutable;
+
+  /// No description provided for @cliInstallProgressSyncingRemoteWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing remote workspace…'**
+  String get cliInstallProgressSyncingRemoteWorkspace;
+
+  /// No description provided for @sessionRemoteProvisionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing {member} on {host}'**
+  String sessionRemoteProvisionTitle(String member, String host);
+
+  /// No description provided for @sessionRemoteProvisionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote setup failed'**
+  String get sessionRemoteProvisionFailed;
 
   /// No description provided for @cliExecutablePathLabelFor.
   ///

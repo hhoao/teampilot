@@ -1,4 +1,5 @@
 import '../../models/team_config.dart';
+import '../../utils/logger.dart';
 import '../io/filesystem.dart';
 import 'materialization_manifest.dart';
 import 'remote_credential_materializer.dart';
@@ -55,11 +56,21 @@ class RemoteAppDataMaterializer {
     required String workspaceId,
     required bool optInCredentials,
   }) async {
+    final sw = Stopwatch()..start();
+    void step(String name) {
+      appLogger.d(
+        '[workspace-provision] materialize $name '
+        'cli=${cli.value} workspace=$workspaceId '
+        'elapsedMs=${sw.elapsedMilliseconds}',
+      );
+    }
+
     final manifest = MaterializationManifest(
       fs: workFs,
       machineRoot: machineRoot,
     );
 
+    step('reconcile begin');
     await WorkMachineMaterializer(
       homeFs: homeFs,
       homeRoot: homeRoot,
@@ -67,21 +78,31 @@ class RemoteAppDataMaterializer {
       machineRoot: machineRoot,
       manifest: manifest,
     ).reconcile(tools: {cli.value}, workspaceId: workspaceId);
+    step('reconcile done');
 
     // B4: skills/plugins link in-root + relay (long-blocking CLI).
-    await linkResources?.call(
-      workFs: workFs,
-      machineRoot: machineRoot,
-      cli: cli,
-      workspaceId: workspaceId,
-    );
-    await provisionRelay?.call(
-      workFs: workFs,
-      machineRoot: machineRoot,
-      cli: cli,
-    );
+    if (linkResources != null) {
+      step('link-resources begin');
+      await linkResources!(
+        workFs: workFs,
+        machineRoot: machineRoot,
+        cli: cli,
+        workspaceId: workspaceId,
+      );
+      step('link-resources done');
+    }
+    if (provisionRelay != null) {
+      step('provision-relay begin');
+      await provisionRelay!(
+        workFs: workFs,
+        machineRoot: machineRoot,
+        cli: cli,
+      );
+      step('provision-relay done');
+    }
 
     // B1: per-target opt-in credential push (off → no key leaves local).
+    step('credentials begin optIn=$optInCredentials');
     final credentials = RemoteCredentialMaterializer(manifest: manifest);
     await credentials.materialize(
       cli: cli,
@@ -93,5 +114,6 @@ class RemoteAppDataMaterializer {
           ? await loadLocalCredentials(cli)
           : const [],
     );
+    step('credentials done');
   }
 }

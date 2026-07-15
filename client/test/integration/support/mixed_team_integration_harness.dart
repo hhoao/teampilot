@@ -184,7 +184,6 @@ class MixedTeamIntegrationHarness {
         homeContext: registry.home,
         homeTarget: RuntimeTarget.local,
         isCredentialOptIn: (_) async => false,
-        isInstallOptIn: (_) async => true,
         cliPathOverride: (_, __) async => null,
         setCliPathOverride: (_, __, ___) async {},
         loadLocalCredentials: (_) async => const [],

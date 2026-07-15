@@ -6,12 +6,14 @@ import '../../cubits/chat/chat_tab_store.dart';
 import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/chat/session_launch_host.dart';
 import '../../models/app_session.dart';
+import '../../models/member_remote_provision_progress.dart';
 import '../../models/runtime_target.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
 import '../../repositories/session_repository.dart';
+import '../../services/cli/installer_types.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/launch/connect_shell_result.dart';
 import '../../services/launch/member_bus_mcp_transport_resolver.dart';
@@ -230,10 +232,17 @@ class SessionShellConnector {
           );
           return ConnectShellResult.failed;
         }
-        final connectResult = await _host.sessionConnect.prepareSimpleConnect(
-          session: activeSession,
-          workspace: workspace,
+        final progressMemberId = activeSession.sessionId;
+        final connectResult = await _prepareConnectWithProvisionUi(
+          tab: tab,
+          memberId: progressMemberId,
           launchTarget: launchTarget,
+          prepare: (onProgress) => _host.sessionConnect.prepareSimpleConnect(
+            session: activeSession,
+            workspace: workspace,
+            launchTarget: launchTarget,
+            onProvisionProgress: onProgress,
+          ),
         );
         shellLaunch = connectResult.shellLaunch;
         remoteCliPath = connectResult.remoteCliPath;
@@ -262,42 +271,49 @@ class SessionShellConnector {
           rosterMemberId ?? launchMember!.id,
           folders: _delegate.launchContextFor(activeSession).folderCatalog,
         );
-        final connectResult = await _host.sessionConnect.prepareTeamConnect(
-          session: activeSession,
-          team: team!,
-          member: launchMember!,
-          memberBinding: binding,
-          workspace: workspace,
+        final progressMemberId = launchMember!.id;
+        final connectResult = await _prepareConnectWithProvisionUi(
+          tab: tab,
+          memberId: progressMemberId,
           launchTarget: launchTarget,
-          workingDirectory: memberWork.workingDirectory,
-          additionalDirectories: memberWork.addDirs,
-          extraMcpServers: mixedBus
-              ? {
-                  teammateBusMcpServerName: resolveMemberBusMcpTransportConfig(
-                    cliRegistry: _host.cliRegistry,
-                    endpoint: _host.teammateBusMcpGateway.mcpEndpoint,
-                    sessionId: activeSession.sessionId,
-                    memberId: launchMember.id,
-                    cli: memberLaunchCli(
-                      team: team,
-                      member: launchMember,
-                      globalPresets: _host.lifecycle.globalPresets,
-                    ),
-                    remoteBinding: remoteBinding,
-                  ),
-                }
-              : null,
-          busIdle: mixedBus
-              ? switch (remoteBinding) {
-                  final binding? => MemberBusIdleEndpoint.remote(binding),
-                  null when launchTarget.kind != RuntimeKind.ssh =>
-                    MemberBusIdleEndpoint.local(
-                      _host.teammateBusMcpGateway,
+          prepare: (onProgress) => _host.sessionConnect.prepareTeamConnect(
+            session: activeSession,
+            team: team!,
+            member: launchMember,
+            memberBinding: binding,
+            workspace: workspace,
+            launchTarget: launchTarget,
+            workingDirectory: memberWork.workingDirectory,
+            additionalDirectories: memberWork.addDirs,
+            extraMcpServers: mixedBus
+                ? {
+                    teammateBusMcpServerName: resolveMemberBusMcpTransportConfig(
+                      cliRegistry: _host.cliRegistry,
+                      endpoint: _host.teammateBusMcpGateway.mcpEndpoint,
                       sessionId: activeSession.sessionId,
+                      memberId: launchMember.id,
+                      cli: memberLaunchCli(
+                        team: team,
+                        member: launchMember,
+                        globalPresets: _host.lifecycle.globalPresets,
+                      ),
+                      remoteBinding: remoteBinding,
                     ),
-                  null => null,
-                }
-              : null,
+                  }
+                : null,
+            busIdle: mixedBus
+                ? switch (remoteBinding) {
+                    final binding? => MemberBusIdleEndpoint.remote(binding),
+                    null when launchTarget.kind != RuntimeKind.ssh =>
+                      MemberBusIdleEndpoint.local(
+                        _host.teammateBusMcpGateway,
+                        sessionId: activeSession.sessionId,
+                      ),
+                    null => null,
+                  }
+                : null,
+            onProvisionProgress: onProgress,
+          ),
         );
         shellLaunch = connectResult.shellLaunch;
         remoteCliPath = connectResult.remoteCliPath;
@@ -603,6 +619,64 @@ class SessionShellConnector {
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
     return tab.persistedSession;
+  }
+
+  Future<
+    ({ShellLaunchSpec shellLaunch, List<String> warnings, String remoteCliPath})
+  >
+  _prepareConnectWithProvisionUi({
+    required ChatTab tab,
+    required String memberId,
+    required RuntimeTarget launchTarget,
+    required Future<
+      ({
+        ShellLaunchSpec shellLaunch,
+        List<String> warnings,
+        String remoteCliPath,
+      })
+    >
+    Function(void Function(CliInstallProgress progress)? onProgress)
+    prepare,
+  }) async {
+    final hostLabel = launchTarget.kind == RuntimeKind.ssh
+        ? (_host.shellFactory.profileFor(launchTarget)?.host.trim() ??
+              launchTarget.id)
+        : '';
+    MemberRemoteProvisionProgress? latest;
+    void onProgress(CliInstallProgress progress) {
+      latest = MemberRemoteProvisionProgress(
+        memberId: memberId,
+        phase: progress.phase,
+        detail: progress.detail,
+        hostLabel: hostLabel,
+      );
+      _host.setMemberRemoteProvisionProgress(tab.info.id, memberId, latest);
+    }
+
+    if (launchTarget.kind == RuntimeKind.ssh) {
+      onProgress(const CliInstallProgress(phase: CliInstallPhase.checkingNpm));
+    }
+
+    try {
+      final result = await prepare(
+        launchTarget.kind == RuntimeKind.ssh ? onProgress : null,
+      );
+      _host.setMemberRemoteProvisionProgress(tab.info.id, memberId, null);
+      return result;
+    } on Object catch (e) {
+      _host.setMemberRemoteProvisionProgress(
+        tab.info.id,
+        memberId,
+        (latest ??
+                MemberRemoteProvisionProgress(
+                  memberId: memberId,
+                  phase: CliInstallPhase.checkingNpm,
+                  hostLabel: hostLabel,
+                ))
+            .copyWith(error: '$e'),
+      );
+      rethrow;
+    }
   }
 
   /// Work context + reverse tunnels for a mixed remote member.

@@ -1,8 +1,11 @@
 import '../../models/cli_preset.dart';
 import '../../models/landing_launch_context.dart';
+import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_topology.dart';
+import '../remote/remote_cli_readiness.dart';
+import '../remote/remote_cli_requirements.dart';
 import '../team/team_config_launch_validator.dart';
 
 /// Why compose landing cannot start a team session yet.
@@ -32,6 +35,38 @@ final class TeamConfigIncompleteLaunchBlock extends WorkspaceLandingLaunchBlock 
   const TeamConfigIncompleteLaunchBlock(this.validation);
 
   final TeamConfigValidation validation;
+}
+
+/// SSH-placed members need CLIs that are not located on their remote hosts.
+final class RemoteCliMissingLaunchBlock extends WorkspaceLandingLaunchBlock {
+  const RemoteCliMissingLaunchBlock(this.missing);
+
+  final List<RemoteCliRequirement> missing;
+}
+
+/// Placement used by the landing gate (saved pins or in-memory defaults).
+MemberPlacementByTarget memberPlacementForLaunch({
+  required Workspace workspace,
+  required TeamProfile team,
+}) {
+  final remembered = rememberedMemberTargets(
+    workspace.memberTargetsByTeam,
+    team.id,
+  );
+  final members = healMemberReplicasFromTargets(
+    members: team.members,
+    targets: remembered,
+  );
+  if (remembered.isEmpty) {
+    return defaultMemberPlacement(
+      folders: workspace.folders,
+      members: members,
+    );
+  }
+  return memberPlacementFromMemberTargets(
+    members: members,
+    targets: remembered,
+  );
 }
 
 /// Pre-launch checks for compose landing (mirrors session create/open gates).
@@ -95,12 +130,46 @@ class WorkspaceLandingLaunchGate {
     return null;
   }
 
+  /// Probes required remote CLIs for the current placement; never installs.
+  Future<WorkspaceLandingLaunchBlock?> asyncRemoteCliBlock({
+    required Workspace workspace,
+    required TeamProfile team,
+    required List<CliPreset> globalPresets,
+    required List<RuntimeTarget> selectableTargets,
+    required RemoteCliReadinessService readiness,
+  }) async {
+    final placement = memberPlacementForLaunch(workspace: workspace, team: team);
+    final requirements = remoteCliRequirementsForPlacement(
+      workspace: workspace,
+      team: team,
+      placement: placement,
+      globalPresets: globalPresets,
+      selectableTargets: selectableTargets,
+    );
+    if (requirements.isEmpty) return null;
+
+    final missing = <RemoteCliRequirement>[];
+    for (final requirement in requirements) {
+      final result = await readiness.probe(
+        target: requirement.target,
+        cli: requirement.cli,
+      );
+      if (result is RemoteCliMissing || result is RemoteCliFailed) {
+        missing.add(requirement);
+      }
+    }
+    if (missing.isEmpty) return null;
+    return RemoteCliMissingLaunchBlock(missing);
+  }
+
   /// Runs [syncBlock] then [asyncBlock] for team-mode drafts.
   Future<WorkspaceLandingLaunchBlock?> evaluate({
     required Workspace workspace,
     required LandingLaunchContext draft,
     TeamProfile? team,
     List<CliPreset> globalPresets = const [],
+    List<RuntimeTarget> selectableTargets = const [],
+    RemoteCliReadinessService? remoteCliReadiness,
   }) async {
     final sync = syncBlock(
       workspace: workspace,
@@ -109,6 +178,20 @@ class WorkspaceLandingLaunchGate {
     );
     if (sync != null) return sync;
     if (draft.isPersonal || team == null) return null;
-    return asyncBlock(team: team, globalPresets: globalPresets);
+    final configBlock = await asyncBlock(
+      team: team,
+      globalPresets: globalPresets,
+    );
+    if (configBlock != null) return configBlock;
+    if (remoteCliReadiness == null || selectableTargets.isEmpty) {
+      return null;
+    }
+    return asyncRemoteCliBlock(
+      workspace: workspace,
+      team: team,
+      globalPresets: globalPresets,
+      selectableTargets: selectableTargets,
+      readiness: remoteCliReadiness,
+    );
   }
 }

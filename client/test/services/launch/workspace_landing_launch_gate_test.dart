@@ -1,9 +1,13 @@
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/landing_launch_context.dart';
+import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/launch/workspace_landing_launch_gate.dart';
+import 'package:teampilot/services/remote/remote_cli_readiness.dart';
+import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/team/team_config_launch_validator.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -87,6 +91,82 @@ void main() {
       expect(block, isA<LeadPlacementInvalidLaunchBlock>());
     });
   });
+
+  group('WorkspaceLandingLaunchGate.asyncRemoteCliBlock', () {
+    const sshTarget = RuntimeTarget(
+      id: 'ssh:host-a',
+      label: 'Remote',
+      kind: RuntimeKind.ssh,
+      sshProfileId: 'host-a',
+    );
+
+    test('allows when all required remote CLIs are ready', () async {
+      final team = TeamProfile(
+        id: 'team-1',
+        name: 'Team',
+        cli: CliTool.codex,
+        members: const [
+          TeamMemberConfig(id: 'dev', name: 'Dev'),
+        ],
+        createdAt: 1,
+      );
+      final workspace = Workspace(
+        workspaceId: 'ws-1',
+        folders: [
+          const WorkspaceFolder(path: '/remote', targetId: 'ssh:host-a'),
+        ],
+        createdAt: 1,
+        memberTargetsByTeam: {
+          team.id: {'dev': 'ssh:host-a'},
+        },
+        memberPlacementInitializedByTeam: {team.id: true},
+      );
+
+      final block = await gate.asyncRemoteCliBlock(
+        workspace: workspace,
+        team: team,
+        globalPresets: const [],
+        selectableTargets: const [sshTarget],
+        readiness: _FakeRemoteCliReadiness(alwaysReady: true),
+      );
+      expect(block, isNull);
+    });
+
+    test('blocks when a required remote CLI is missing', () async {
+      final team = TeamProfile(
+        id: 'team-1',
+        name: 'Team',
+        cli: CliTool.codex,
+        members: const [
+          TeamMemberConfig(id: 'dev', name: 'Dev'),
+        ],
+        createdAt: 1,
+      );
+      final workspace = Workspace(
+        workspaceId: 'ws-1',
+        folders: [
+          const WorkspaceFolder(path: '/remote', targetId: 'ssh:host-a'),
+        ],
+        createdAt: 1,
+        memberTargetsByTeam: {
+          team.id: {'dev': 'ssh:host-a'},
+        },
+        memberPlacementInitializedByTeam: {team.id: true},
+      );
+
+      final block = await gate.asyncRemoteCliBlock(
+        workspace: workspace,
+        team: team,
+        globalPresets: const [],
+        selectableTargets: const [sshTarget],
+        readiness: _FakeRemoteCliReadiness(alwaysReady: false),
+      );
+      expect(block, isA<RemoteCliMissingLaunchBlock>());
+      final missing = (block! as RemoteCliMissingLaunchBlock).missing;
+      expect(missing, hasLength(1));
+      expect(missing.single.cli, CliTool.codex);
+    });
+  });
 }
 
 Workspace _mixedWorkspace() {
@@ -138,4 +218,37 @@ class _AlwaysValidTeamConfigValidator extends TeamConfigLaunchValidator {
       issues: const [],
     );
   }
+}
+
+class _FakeRemoteCliReadiness extends RemoteCliReadinessService {
+  _FakeRemoteCliReadiness({required this.alwaysReady})
+    : super(
+        registry: CliToolRegistry.builtIn(),
+        sshClientFactory: _ThrowingSshClientFactory(),
+        profileById: (_) => null,
+        cliPathOverride: (_, __) async => null,
+        setCliPathOverride: (_, __, ___) async {},
+      );
+
+  final bool alwaysReady;
+
+  @override
+  Future<RemoteCliReadiness> probe({
+    required RuntimeTarget target,
+    required CliTool cli,
+  }) async {
+    if (alwaysReady) {
+      return RemoteCliReady(
+        targetId: target.id,
+        cli: cli,
+        path: '/bin/${cli.value}',
+      );
+    }
+    return RemoteCliMissing(targetId: target.id, cli: cli);
+  }
+}
+
+class _ThrowingSshClientFactory implements SshClientFactory {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }

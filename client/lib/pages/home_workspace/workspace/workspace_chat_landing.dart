@@ -502,14 +502,33 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       return;
     }
     final presets = context.read<CliPresetsCubit>().state.presets;
-    final block = await _launchGate.asyncBlock(
+    final configBlock = await _launchGate.asyncBlock(
       team: team,
       globalPresets: presets,
     );
     if (!mounted || generation != _teamLaunchReadinessGeneration) return;
+    if (configBlock != null) {
+      setState(() {
+        _teamConfigLaunchReady = false;
+        _launchWarningBlock = configBlock;
+      });
+      return;
+    }
+
+    final readiness = context.read<ChatCubit>().remoteCliReadiness;
+    final remoteBlock = readiness == null
+        ? null
+        : await _launchGate.asyncRemoteCliBlock(
+            workspace: _workspaceForLaunch(),
+            team: team,
+            globalPresets: presets,
+            selectableTargets: _runtimeTargets,
+            readiness: readiness,
+          );
+    if (!mounted || generation != _teamLaunchReadinessGeneration) return;
     setState(() {
-      _teamConfigLaunchReady = block == null;
-      _launchWarningBlock = block;
+      _teamConfigLaunchReady = remoteBlock == null;
+      _launchWarningBlock = remoteBlock;
     });
   }
 
@@ -522,6 +541,9 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     );
     if (sync != null) return sync;
     if (_launchWarningBlock is TeamConfigIncompleteLaunchBlock) {
+      return _launchWarningBlock;
+    }
+    if (_launchWarningBlock is RemoteCliMissingLaunchBlock) {
       return _launchWarningBlock;
     }
     return null;
@@ -699,6 +721,9 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       if (_launchWarningBlock is TeamConfigIncompleteLaunchBlock) {
         return false;
       }
+      if (_launchWarningBlock is RemoteCliMissingLaunchBlock) {
+        return false;
+      }
     }
     return true;
   }
@@ -735,21 +760,48 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
         return;
       }
 
+      if (_launchWarningBlock is RemoteCliMissingLaunchBlock) {
+        showWorkspaceLandingLaunchBlock(context, _launchWarningBlock!);
+        _scheduleTeamLaunchReadinessCheck();
+        return;
+      }
+
       if (team != null) {
         final presets = context.read<CliPresetsCubit>().state.presets;
-        final asyncBlock = await _launchGate.asyncBlock(
+        final configBlock = await _launchGate.asyncBlock(
           team: team,
           globalPresets: presets,
         );
         if (!mounted) return;
-        if (asyncBlock != null) {
+        if (configBlock != null) {
           setState(() {
             _teamConfigLaunchReady = false;
-            _launchWarningBlock = asyncBlock;
+            _launchWarningBlock = configBlock;
           });
-          showWorkspaceLandingLaunchBlock(context, asyncBlock);
+          showWorkspaceLandingLaunchBlock(context, configBlock);
           return;
         }
+
+        final readiness = context.read<ChatCubit>().remoteCliReadiness;
+        if (readiness != null) {
+          final remoteBlock = await _launchGate.asyncRemoteCliBlock(
+            workspace: workspace,
+            team: team,
+            globalPresets: presets,
+            selectableTargets: _runtimeTargets,
+            readiness: readiness,
+          );
+          if (!mounted) return;
+          if (remoteBlock != null) {
+            setState(() {
+              _teamConfigLaunchReady = false;
+              _launchWarningBlock = remoteBlock;
+            });
+            showWorkspaceLandingLaunchBlock(context, remoteBlock);
+            return;
+          }
+        }
+
         setState(() {
           _teamConfigLaunchReady = true;
           _launchWarningBlock = null;
@@ -1182,6 +1234,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
                           ? landingLaunchBlockMessage(
                               l10n,
                               launchWarningBlock,
+                              registry: CliToolRegistryScope.of(context),
                             )
                           : null,
                     ),

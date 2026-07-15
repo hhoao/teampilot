@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../services/team/team_config_launch_validator.dart';
 import '../../utils/logger.dart';
 import '../../utils/session_launch_error.dart';
+import '../../models/member_remote_provision_progress.dart';
 import 'chat_tab_store.dart';
 import 'model/chat_state.dart';
 
@@ -133,6 +134,25 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
         stateVersion: state.stateVersion + 1,
       ),
     );
+  }
+
+  void setMemberRemoteProvisionProgress(
+    String sessionId,
+    String memberId,
+    MemberRemoteProvisionProgress? progress,
+  ) {
+    if (isClosed) return;
+    final tab = tabStore.openTabBySessionId(sessionId);
+    if (tab == null) return;
+    final key = memberId.trim();
+    if (key.isEmpty) return;
+    if (progress == null) {
+      if (!tab.memberRemoteProvision.containsKey(key)) return;
+      tab.memberRemoteProvision.remove(key);
+    } else {
+      tab.memberRemoteProvision[key] = progress;
+    }
+    emit(state.copyWith(stateVersion: state.stateVersion + 1));
   }
 
   void clearTeamConfigValidation() {

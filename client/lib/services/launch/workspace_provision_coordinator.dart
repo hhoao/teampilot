@@ -3,6 +3,7 @@ import 'dart:async';
 import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
 import '../../utils/logger.dart';
+import '../cli/installer_types.dart';
 import 'launch_artifacts.dart';
 import 'workspace_provisioner.dart';
 
@@ -62,6 +63,7 @@ class WorkspaceProvisionCoordinator {
     required String workspaceId,
     required CliTool cli,
     Iterable<String> trustedDirectories = const [],
+    void Function(CliInstallProgress progress)? onProgress,
   }) async {
     final key = WorkspaceProvisionKey(
       targetId: target.id,
@@ -78,12 +80,16 @@ class WorkspaceProvisionCoordinator {
     }
 
     final inFlight = _inFlight[key.cacheKey];
-    if (inFlight != null) return inFlight;
+    if (inFlight != null) {
+      // Join in-flight work; progress callbacks only attach to the starter.
+      return inFlight;
+    }
 
     return _start(
       key,
       target: target,
       trustedDirectories: trustedDirectories,
+      onProgress: onProgress,
     );
   }
 
@@ -91,11 +97,13 @@ class WorkspaceProvisionCoordinator {
     WorkspaceProvisionKey key, {
     required RuntimeTarget target,
     Iterable<String> trustedDirectories = const [],
+    void Function(CliInstallProgress progress)? onProgress,
   }) {
     final future = _runProvision(
       key,
       target: target,
       trustedDirectories: trustedDirectories,
+      onProgress: onProgress,
     );
     _inFlight[key.cacheKey] = future;
     return future;
@@ -105,18 +113,30 @@ class WorkspaceProvisionCoordinator {
     WorkspaceProvisionKey key, {
     required RuntimeTarget target,
     Iterable<String> trustedDirectories = const [],
+    void Function(CliInstallProgress progress)? onProgress,
   }) async {
+    // Heartbeat while provision hangs without throwing (SSH/SFTP stalls).
+    final sw = Stopwatch()..start();
+    final heartbeat = Timer.periodic(const Duration(seconds: 15), (_) {
+      appLogger.w(
+        '[workspace-provision] still-running '
+        'target=${key.targetId} workspace=${key.workspaceId} '
+        'cli=${key.cli.value} elapsedMs=${sw.elapsedMilliseconds}',
+      );
+    });
     try {
       final result = await provisioner.provision(
         target: target,
         workspaceId: key.workspaceId,
         cli: key.cli,
         trustedDirectories: trustedDirectories,
+        onProgress: onProgress,
       );
       _ready[key.cacheKey] = result;
 
       return result;
     } finally {
+      heartbeat.cancel();
       _inFlight.remove(key.cacheKey);
     }
   }

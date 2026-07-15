@@ -14,6 +14,7 @@ import '../cubits/chat_cubit.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/remote/local_credential_exporter.dart';
+import '../services/remote/remote_cli_readiness.dart';
 import '../services/editor_platform/editor_platform.dart';
 import '../services/launch/launch_factory.dart';
 import '../cubits/board_cubit.dart';
@@ -408,6 +409,13 @@ Future<AppShell> buildAppShell({
   // target authority is the device-local homeTargetStore read above. The
   // registry is used by the picker UI to list selectable targets.
   final targetsRepo = TargetsRepository();
+  final remoteCliReadiness = RemoteCliReadinessService(
+    registry: cliToolRegistry,
+    sshClientFactory: sshClientFactory,
+    profileById: sshProfileById,
+    cliPathOverride: targetsRepo.cliPathOverride,
+    setCliPathOverride: targetsRepo.setCliPathOverride,
+  );
   final runtimeTargetRegistry = RuntimeTargetRegistry(
     repo: targetsRepo,
     sshProfileRepo: sshProfileRepo,
@@ -830,7 +838,6 @@ Future<AppShell> buildAppShell({
       homeContext: runtimeContextRegistry.home,
       homeTarget: defaultTargetResolver,
       isCredentialOptIn: targetsRepo.isCredentialOptIn,
-      isInstallOptIn: targetsRepo.isInstallOptIn,
       cliPathOverride: targetsRepo.cliPathOverride,
       setCliPathOverride: targetsRepo.setCliPathOverride,
       loadLocalCredentials: (cli) => LocalCredentialExporter().export(cli),
@@ -838,6 +845,7 @@ Future<AppShell> buildAppShell({
           sessionPreferencesCubit.resolveExecutable(cli),
       runtimePlanBuilder: sessionRuntimePlanBuilder,
     ),
+    remoteCliReadiness: remoteCliReadiness,
   );
 
   registerLayoutCommands(

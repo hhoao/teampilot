@@ -566,6 +566,37 @@
   "landingTeamSettingsNavMachines": "Machine assignment",
   "landingTeamSettingsGlobalHint": "Changes apply to this team's global configuration.",
   "workspaceChatLandingTeamLaunchBlocked": "Configure team and member model presets in Team Settings before sending.",
+  "landingLaunchRemoteCliMissing": "Install required CLIs on remote machines before starting.",
+  "landingLaunchRemoteCliMissingDetail": "{cli} on {host}",
+  "@landingLaunchRemoteCliMissingDetail": {
+    "placeholders": {
+      "cli": { "type": "String" },
+      "host": { "type": "String" }
+    }
+  },
+  "remoteCliMachineReadinessTitle": "Required CLIs on this machine",
+  "remoteCliMachineReadinessProbing": "Checking…",
+  "remoteCliMachineReadinessReady": "{cli} ready at {path}",
+  "@remoteCliMachineReadinessReady": {
+    "placeholders": {
+      "cli": { "type": "String" },
+      "path": { "type": "String" }
+    }
+  },
+  "remoteCliMachineReadinessMissing": "{cli} not found — install or set a manual path",
+  "@remoteCliMachineReadinessMissing": {
+    "placeholders": {
+      "cli": { "type": "String" }
+    }
+  },
+  "remoteCliMachineReadinessFailed": "{cli}: {message}",
+  "@remoteCliMachineReadinessFailed": {
+    "placeholders": {
+      "cli": { "type": "String" },
+      "message": { "type": "String" }
+    }
+  },
+  "remoteCliMachineReadinessInstallHint": "Use Install for each missing CLI, or set a manual path in target settings.",
   "sessionStartButton": "Start conversation",
   "sessionFailedTitle": "Couldn't start session",
   "sessionRetryButton": "Try again",
@@ -706,6 +737,15 @@
   "cliInstallProgressBootstrappingNode": "Installing Node.js…",
   "cliInstallProgressInstallingCli": "Installing CLI…",
   "cliInstallProgressLocatingExecutable": "Locating CLI executable…",
+  "cliInstallProgressSyncingRemoteWorkspace": "Syncing remote workspace…",
+  "sessionRemoteProvisionTitle": "Preparing {member} on {host}",
+  "@sessionRemoteProvisionTitle": {
+    "placeholders": {
+      "member": { "type": "String" },
+      "host": { "type": "String" }
+    }
+  },
+  "sessionRemoteProvisionFailed": "Remote setup failed",
   "cliExecutablePathLabelFor": "{cli} CLI path",
   "@cliExecutablePathLabelFor": { "placeholders": { "cli": { "type": "String" } } },
   "cliExecutablePathDescriptionFor": "Absolute path to the {cli} executable. Leave empty to use the one on PATH.",

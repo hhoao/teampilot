@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../cubits/chat_cubit.dart';
+import '../../../../cubits/cli_presets_cubit.dart';
 import '../../../../cubits/launch_profile_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../../../models/team_config.dart';
@@ -150,6 +152,9 @@ class _WorkspaceTeamMemberTargetsDialogState
                 members: widget.team.members,
                 placement: _placement,
                 onPlacementChanged: (next) => setState(() => _placement = next),
+                team: widget.team,
+                globalPresets: context.watch<CliPresetsCubit>().state.presets,
+                remoteCliReadiness: context.read<ChatCubit>().remoteCliReadiness,
               ),
             ),
           ),

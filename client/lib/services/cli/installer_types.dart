@@ -7,6 +7,9 @@ enum CliInstallPhase {
   bootstrappingNode,
   installingCli,
   locatingExecutable,
+
+  /// Off-home workspace materialize / config after CLI is present.
+  syncingRemoteWorkspace,
 }
 
 class CliInstallProgress {

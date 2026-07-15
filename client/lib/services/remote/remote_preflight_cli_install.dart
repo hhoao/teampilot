@@ -30,7 +30,7 @@ RemoteInstallAction buildRemotePreflightCliInstall({
       cli: cli,
       mode: CliInstallMode.ssh,
       sshProfile: profile,
-      onProgress: (progress) => onProgress(_progressLabel(progress)),
+      onProgress: onProgress,
     );
     if (!result.success) {
       throw StateError(result.message);
@@ -45,7 +45,8 @@ RemoteInstallAction buildRemotePreflightCliInstall({
   };
 }
 
-String _progressLabel(CliInstallProgress progress) {
+/// Human-readable label for logs / tests (UI uses [CliInstallPhase] + l10n).
+String remoteCliInstallProgressLabel(CliInstallProgress progress) {
   final detail = progress.detail?.trim();
   return switch (progress.phase) {
     CliInstallPhase.checkingNpm => 'Checking remote npm',
@@ -55,6 +56,7 @@ String _progressLabel(CliInstallProgress progress) {
           ? 'Installing CLI on remote host'
           : 'Installing $detail',
     CliInstallPhase.locatingExecutable => 'Locating remote CLI',
+    CliInstallPhase.syncingRemoteWorkspace => 'Syncing remote workspace',
   };
 }
 

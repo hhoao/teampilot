@@ -27,7 +27,6 @@ SessionConnectOrchestrator buildSessionConnectOrchestrator({
   required RuntimeContext Function() homeContext,
   required RuntimeTarget Function() homeTarget,
   required Future<bool> Function(String targetId) isCredentialOptIn,
-  required Future<bool> Function(String targetId) isInstallOptIn,
   required Future<String?> Function(String targetId, String cliValue)
   cliPathOverride,
   required Future<void> Function(String targetId, String cliValue, String path)
@@ -45,7 +44,6 @@ SessionConnectOrchestrator buildSessionConnectOrchestrator({
     contextForTarget: contextForTarget,
     homeContext: homeContext,
     isCredentialOptIn: isCredentialOptIn,
-    isInstallOptIn: isInstallOptIn,
     cliPathOverride: cliPathOverride,
     setCliPathOverride: setCliPathOverride,
     loadLocalCredentials: loadLocalCredentials,
@@ -123,7 +121,6 @@ SessionConnectOrchestrator buildDefaultSessionConnectOrchestrator({
     homeContext: homeContext,
     homeTarget: homeTarget ?? RuntimeTarget.local,
     isCredentialOptIn: (_) async => false,
-    isInstallOptIn: (_) async => false,
     cliPathOverride: (_, __) async => null,
     setCliPathOverride: (_, __, ___) async {},
     loadLocalCredentials: (_) async => const [],

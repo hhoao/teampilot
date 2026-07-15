@@ -6,6 +6,7 @@ import '../../models/team_config.dart';
 import '../../models/team_roster_slot.dart';
 import '../../models/workspace.dart';
 import '../../utils/team_member_naming.dart';
+import '../cli/installer_types.dart';
 import '../cli/registry/mcp_writers/claude_project_mcp_cleanup.dart';
 import '../cli/preset_resolver.dart';
 import '../provider/config_profile_service.dart';
@@ -54,6 +55,7 @@ class SessionConnectOrchestrator {
     required RuntimeTarget launchTarget,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
+    void Function(CliInstallProgress progress)? onProvisionProgress,
   }) async {
     final identity = session.simpleIdentity;
     final plan = await runtimePlanBuilder.buildSimple(
@@ -75,6 +77,7 @@ class SessionConnectOrchestrator {
       launchTarget: launchTarget,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
+      onProvisionProgress: onProvisionProgress,
     );
   }
 
@@ -92,6 +95,7 @@ class SessionConnectOrchestrator {
     List<String> additionalDirectories = const [],
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
+    void Function(CliInstallProgress progress)? onProvisionProgress,
   }) async {
     final resolvedWorkspace =
         workspace ??
@@ -133,6 +137,7 @@ class SessionConnectOrchestrator {
       additionalDirectories: additionalDirectories,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
+      onProvisionProgress: onProvisionProgress,
     );
   }
 
@@ -150,6 +155,7 @@ class SessionConnectOrchestrator {
     List<String> additionalDirectories = const [],
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
+    void Function(CliInstallProgress progress)? onProvisionProgress,
   }) async {
     final isSimple = plan.mode == SessionRuntimeMode.simple;
     final member = plan.member;
@@ -173,6 +179,7 @@ class SessionConnectOrchestrator {
         trustedDirectories: [
           for (final folder in workspace.folders) folder.path,
         ],
+        onProgress: onProvisionProgress,
       );
       workContext = provision.workContext;
       remoteCliPath = provision.remoteCliPath;

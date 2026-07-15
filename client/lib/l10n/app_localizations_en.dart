@@ -1372,6 +1372,40 @@ class AppLocalizationsEn extends AppLocalizations {
       'Configure team and member model presets in Team Settings before sending.';
 
   @override
+  String get landingLaunchRemoteCliMissing =>
+      'Install required CLIs on remote machines before starting.';
+
+  @override
+  String landingLaunchRemoteCliMissingDetail(String cli, String host) {
+    return '$cli on $host';
+  }
+
+  @override
+  String get remoteCliMachineReadinessTitle => 'Required CLIs on this machine';
+
+  @override
+  String get remoteCliMachineReadinessProbing => 'Checking…';
+
+  @override
+  String remoteCliMachineReadinessReady(String cli, String path) {
+    return '$cli ready at $path';
+  }
+
+  @override
+  String remoteCliMachineReadinessMissing(String cli) {
+    return '$cli not found — install or set a manual path';
+  }
+
+  @override
+  String remoteCliMachineReadinessFailed(String cli, String message) {
+    return '$cli: $message';
+  }
+
+  @override
+  String get remoteCliMachineReadinessInstallHint =>
+      'Use Install for each missing CLI, or set a manual path in target settings.';
+
+  @override
   String get sessionStartButton => 'Start conversation';
 
   @override
@@ -1748,6 +1782,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cliInstallProgressLocatingExecutable => 'Locating CLI executable…';
+
+  @override
+  String get cliInstallProgressSyncingRemoteWorkspace =>
+      'Syncing remote workspace…';
+
+  @override
+  String sessionRemoteProvisionTitle(String member, String host) {
+    return 'Preparing $member on $host';
+  }
+
+  @override
+  String get sessionRemoteProvisionFailed => 'Remote setup failed';
 
   @override
   String cliExecutablePathLabelFor(String cli) {

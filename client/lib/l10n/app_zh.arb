@@ -541,6 +541,37 @@
   "landingTeamSettingsNavMachines": "机器分配",
   "landingTeamSettingsGlobalHint": "更改将应用于该团队的全局配置。",
   "workspaceChatLandingTeamLaunchBlocked": "请先在团队设置中配置团队与成员的模型预设，再发送消息。",
+  "landingLaunchRemoteCliMissing": "启动前请在远程机器上安装所需的 CLI。",
+  "landingLaunchRemoteCliMissingDetail": "{host} 上缺少 {cli}",
+  "@landingLaunchRemoteCliMissingDetail": {
+    "placeholders": {
+      "cli": { "type": "String" },
+      "host": { "type": "String" }
+    }
+  },
+  "remoteCliMachineReadinessTitle": "此机器上需要的 CLI",
+  "remoteCliMachineReadinessProbing": "正在检测…",
+  "remoteCliMachineReadinessReady": "{cli} 已就绪：{path}",
+  "@remoteCliMachineReadinessReady": {
+    "placeholders": {
+      "cli": { "type": "String" },
+      "path": { "type": "String" }
+    }
+  },
+  "remoteCliMachineReadinessMissing": "未找到 {cli} — 请安装或设置手动路径",
+  "@remoteCliMachineReadinessMissing": {
+    "placeholders": {
+      "cli": { "type": "String" }
+    }
+  },
+  "remoteCliMachineReadinessFailed": "{cli}：{message}",
+  "@remoteCliMachineReadinessFailed": {
+    "placeholders": {
+      "cli": { "type": "String" },
+      "message": { "type": "String" }
+    }
+  },
+  "remoteCliMachineReadinessInstallHint": "对每个缺失的 CLI 点击安装，或在目标设置中指定手动路径。",
   "sessionStartButton": "开始对话",
   "sessionFailedTitle": "未能启动会话",
   "sessionRetryButton": "重试",
@@ -667,6 +698,15 @@
   "cliInstallProgressBootstrappingNode": "正在安装 Node.js…",
   "cliInstallProgressInstallingCli": "正在安装 CLI…",
   "cliInstallProgressLocatingExecutable": "正在定位 CLI 可执行文件…",
+  "cliInstallProgressSyncingRemoteWorkspace": "正在同步远程工作区…",
+  "sessionRemoteProvisionTitle": "正在准备 {member}（{host}）",
+  "@sessionRemoteProvisionTitle": {
+    "placeholders": {
+      "member": { "type": "String" },
+      "host": { "type": "String" }
+    }
+  },
+  "sessionRemoteProvisionFailed": "远程准备失败",
   "cliExecutablePathLabelFor": "{cli} CLI 路径",
   "@cliExecutablePathLabelFor": { "placeholders": { "cli": { "type": "String" } } },
   "cliExecutablePathDescriptionFor": "{cli} 可执行文件的绝对路径。留空则使用 PATH 中查找到的版本。",

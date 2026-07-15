@@ -24,8 +24,10 @@ import '../widgets/deferred_foreground_mount.dart';
 import '../utils/team_member_naming.dart';
 import 'home_workspace/workspace/workspace_route_active_scope.dart';
 import 'chat/chat_workbench_placeholders.dart';
+import 'chat/chat_workbench_remote_provision_view.dart';
 import 'chat/chat_workbench_slice.dart';
 import 'chat/chat_workbench_terminal.dart';
+import '../models/member_remote_provision_progress.dart';
 import 'chat/session_history_review.dart';
 import 'chat/session_history_review_submit.dart';
 
@@ -275,6 +277,23 @@ class _ChatWorkbenchBody extends StatelessWidget {
       return tab?.workbenchView ?? SessionWorkbenchView.history;
     });
 
+    final memberId = slice.selectedMemberId.isNotEmpty
+        ? slice.selectedMemberId
+        : '';
+    final remoteProvision =
+        context.select<ChatCubit, MemberRemoteProvisionProgress?>((c) {
+          final activeId = slice.activeSessionId;
+          if (activeId == null || activeId.isEmpty) return null;
+          final mid = memberId.isNotEmpty
+              ? memberId
+              : c.tabStore.openTabBySessionId(activeId)?.selectedMemberId ??
+                    '';
+          if (mid.isEmpty) return null;
+          return c.tabStore
+              .openTabBySessionId(activeId)
+              ?.memberRemoteProvision[mid];
+        });
+
     return Container(
       key: AppKeys.chatWorkspace,
       color: cs.surface,
@@ -289,6 +308,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
           sessionConnectInProgress: sessionConnectInProgress,
           launchError: launchError,
           workbenchView: workbenchView,
+          remoteProvision: remoteProvision,
         ),
       ),
     );
@@ -355,17 +375,21 @@ class _ChatWorkbenchBody extends StatelessWidget {
     required bool sessionConnectInProgress,
     required String? launchError,
     required SessionWorkbenchView workbenchView,
+    required MemberRemoteProvisionProgress? remoteProvision,
   }) {
     final routeForeground =
         routeActive && WorkspaceRouteActiveScope.routeActiveOf(context);
     final tickerActive = TickerMode.valuesOf(context).enabled;
     final terminalVisible = routeForeground && tickerActive;
 
+    final showRemoteProvision =
+        remoteProvision != null && !session.isRunning;
     final mountTerminalForLayout =
-        sessionConnectInProgress || session.isRunning;
+        sessionConnectInProgress || session.isRunning || showRemoteProvision;
     final showHistory =
         workbenchView == SessionWorkbenchView.history &&
-        !sessionConnectInProgress;
+        !sessionConnectInProgress &&
+        !showRemoteProvision;
 
     // Keep Alacritty mounted across title-bar workspace tab switches; hide with
     // [Offstage] so scrollback survives when the tab returns to foreground.
@@ -383,7 +407,9 @@ class _ChatWorkbenchBody extends StatelessWidget {
             children: [
               if (mountTerminalForLayout)
                 Offstage(
-                  offstage: sessionConnectInProgress || showHistory,
+                  offstage: sessionConnectInProgress ||
+                      showHistory ||
+                      showRemoteProvision,
                   child: buildRunningTerminal(
                     session: session,
                     terminalTheme: terminalTheme,
@@ -392,10 +418,19 @@ class _ChatWorkbenchBody extends StatelessWidget {
                     team: team,
                     autofocus: !sessionConnectInProgress &&
                         !showHistory &&
+                        !showRemoteProvision &&
                         terminalVisible,
                   ),
                 ),
-              if (sessionConnectInProgress)
+              if (showRemoteProvision)
+                ChatWorkbenchRemoteProvisionView(
+                  progress: remoteProvision,
+                  memberLabel: _memberDisplayLabel(
+                    team: team,
+                    memberId: remoteProvision.memberId,
+                  ),
+                )
+              else if (sessionConnectInProgress)
                 ChatWorkbenchSessionLoadingView(
                   message: context.l10n.sessionStarting,
                 )
@@ -411,6 +446,18 @@ class _ChatWorkbenchBody extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _memberDisplayLabel({
+    required TeamProfile? team,
+    required String memberId,
+  }) {
+    final mid = memberId.trim();
+    if (mid.isEmpty) return mid;
+    final member = team?.members.where((m) => m.id == mid).firstOrNull;
+    if (member == null) return mid;
+    final name = member.name.trim();
+    return name.isNotEmpty ? name : mid;
   }
 
   Widget _buildHistoryReview(

@@ -8,6 +8,7 @@ import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
+import 'package:teampilot/services/cli/installer_types.dart';
 import 'package:teampilot/services/cli/remote_cli_installer.dart';
 import 'package:teampilot/services/cli/remote_cli_locator.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -72,7 +73,7 @@ void main() {
         cli: CliTool.claude,
       );
 
-      final progress = <String>[];
+      final progress = <CliInstallProgress>[];
       final installer = RemoteCliInstaller();
       final path = await installer.ensure(
         cli: CliTool.claude,
@@ -87,12 +88,12 @@ void main() {
       expect(path, isNotEmpty);
       expect(path, contains('claude'));
       expect(
-        progress,
-        anyElement(startsWith('Bootstrapping Node.js')),
+        progress.map((p) => p.phase),
+        contains(CliInstallPhase.bootstrappingNode),
         reason: 'expected Node bootstrap on a bare image',
       );
       expect(
-        progress,
+        progress.map(remoteCliInstallProgressLabel),
         anyElement(contains('Claude Code')),
         reason: 'expected npm global install progress',
       );

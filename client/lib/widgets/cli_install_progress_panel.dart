@@ -68,6 +68,8 @@ class CliInstallProgressPanel extends StatelessWidget {
       CliInstallPhase.installingCli => l10n.cliInstallProgressInstallingCli,
       CliInstallPhase.locatingExecutable =>
         l10n.cliInstallProgressLocatingExecutable,
+      CliInstallPhase.syncingRemoteWorkspace =>
+        l10n.cliInstallProgressSyncingRemoteWorkspace,
     };
   }
 }

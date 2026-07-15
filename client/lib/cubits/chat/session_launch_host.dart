@@ -1,6 +1,7 @@
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 
 import '../../models/app_session.dart';
+import '../../models/member_remote_provision_progress.dart';
 import '../../models/team_config.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
@@ -28,6 +29,13 @@ abstract interface class SessionConnectStatePort {
   void setLaunchError(String sessionId, String rawMessage);
   void emitLaunchWarnings(List<String> warnings);
   void updateTabRunning(String tabId);
+
+  /// Updates (or clears) live remote provision UI for [memberId] on [sessionId].
+  void setMemberRemoteProvisionProgress(
+    String sessionId,
+    String memberId,
+    MemberRemoteProvisionProgress? progress,
+  );
 }
 
 /// Session snapshot writes routed through the cubit emit path.

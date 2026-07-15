@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../../models/app_session.dart';
+import '../../../models/member_remote_provision_progress.dart';
 import '../../../services/ssh/ssh_member_session.dart';
 import '../../../services/team_bus/mcp/teammate_bus_session_registry.dart';
 import '../../../services/team_bus/remote/remote_bus_mount.dart';
@@ -98,6 +99,9 @@ class ChatTab {
 
   /// Member ids with a scheduled or in-flight member connect.
   final Set<String> membersPendingConnect = {};
+
+  /// Per-member remote workspace/CLI provision UI (SSH off-home connect).
+  final Map<String, MemberRemoteProvisionProgress> memberRemoteProvision = {};
 
   /// Incremented when a new open/connect is requested; async prep aborts when
   /// this no longer matches.

@@ -1304,6 +1304,39 @@ class AppLocalizationsZh extends AppLocalizations {
       '请先在团队设置中配置团队与成员的模型预设，再发送消息。';
 
   @override
+  String get landingLaunchRemoteCliMissing => '启动前请在远程机器上安装所需的 CLI。';
+
+  @override
+  String landingLaunchRemoteCliMissingDetail(String cli, String host) {
+    return '$host 上缺少 $cli';
+  }
+
+  @override
+  String get remoteCliMachineReadinessTitle => '此机器上需要的 CLI';
+
+  @override
+  String get remoteCliMachineReadinessProbing => '正在检测…';
+
+  @override
+  String remoteCliMachineReadinessReady(String cli, String path) {
+    return '$cli 已就绪：$path';
+  }
+
+  @override
+  String remoteCliMachineReadinessMissing(String cli) {
+    return '未找到 $cli — 请安装或设置手动路径';
+  }
+
+  @override
+  String remoteCliMachineReadinessFailed(String cli, String message) {
+    return '$cli：$message';
+  }
+
+  @override
+  String get remoteCliMachineReadinessInstallHint =>
+      '对每个缺失的 CLI 点击安装，或在目标设置中指定手动路径。';
+
+  @override
   String get sessionStartButton => '开始对话';
 
   @override
@@ -1667,6 +1700,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cliInstallProgressLocatingExecutable => '正在定位 CLI 可执行文件…';
+
+  @override
+  String get cliInstallProgressSyncingRemoteWorkspace => '正在同步远程工作区…';
+
+  @override
+  String sessionRemoteProvisionTitle(String member, String host) {
+    return '正在准备 $member（$host）';
+  }
+
+  @override
+  String get sessionRemoteProvisionFailed => '远程准备失败';
 
   @override
   String cliExecutablePathLabelFor(String cli) {

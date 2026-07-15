@@ -23,6 +23,7 @@ import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
 import '../services/storage/app_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
+import '../services/remote/remote_cli_readiness.dart';
 import '../services/storage/targets_repository.dart';
 import '../services/team_bus/artifacts/artifact_registry.dart';
 import '../services/team_bus/artifacts/artifact_transfer_service.dart';
@@ -90,7 +91,9 @@ class ChatCubit extends Cubit<ChatState>
     Future<TeamProfile?> Function(String teamId)? teamById,
     required AutomationRepository automationRepository,
     LayoutCubit? layoutCubit,
+    RemoteCliReadinessService? remoteCliReadiness,
   }) : _remoteBusResolver = remoteBusResolver,
+       _remoteCliReadiness = remoteCliReadiness,
        _sessionConnect = sessionConnect,
        _teamById = teamById,
        _teammateBusMcpGateway =
@@ -119,7 +122,11 @@ class ChatCubit extends Cubit<ChatState>
   void Function(String sessionId)? onSessionHistoryStale;
 
   final RemoteBusBindingResolver? _remoteBusResolver;
+  final RemoteCliReadinessService? _remoteCliReadiness;
   final SessionConnectOrchestrator? _sessionConnect;
+
+  /// User-driven remote CLI locate/install (Machines panel + landing gate).
+  RemoteCliReadinessService? get remoteCliReadiness => _remoteCliReadiness;
   final Future<TeamProfile?> Function(String teamId)? _teamById;
   final TeammateBusMcpGateway _teammateBusMcpGateway;
   final AutomationRepository _automationRepository;
