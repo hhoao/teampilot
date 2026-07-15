@@ -7,6 +7,7 @@ import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:toastification/toastification.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -73,6 +74,7 @@ import 'theme/app_font_prepare.dart';
 import 'theme/app_font_resolver.dart';
 import 'theme/installed_font_enumerator.dart';
 import 'theme/app_icon_sizes.dart';
+import 'theme/app_spacing.dart';
 import 'theme/app_toast_theme.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_typography_scale.dart';
@@ -913,7 +915,16 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
               if (!Platform.isAndroid) {
                 content = _DragToResizeWrapper(child: content);
               }
-              return content;
+              // TpTheme outside UiZoom; scale mirrors AppSpacingTheme until Task 10.
+              return TpTheme(
+                data: TpThemeData.fromColorScheme(
+                  Theme.of(context).colorScheme,
+                  scale:
+                      Theme.of(context).extension<AppSpacingTheme>()?.scale ??
+                      1.0,
+                ),
+                child: content,
+              );
             },
           );
         },
