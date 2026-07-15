@@ -1,6 +1,6 @@
 # Shared UI toast (`TpToast`) — absorb toastification
 
-**Status:** Draft  
+**Status:** Approved  
 **Date:** 2026-07-16  
 **Parent:** [2026-07-15-shared-ui-design.md](./2026-07-15-shared-ui-design.md)
 
@@ -38,10 +38,11 @@ v1 of shared_ui explicitly deferred toast. That leaves the component library wit
 | Engine placement | **Absorb source into `shared_ui`** (not a path dep) | Toast is a design-system primitive; one package, one version |
 | Public surface | **`TpToast` + config/theme only**; engine private | Stable contract; avoid leaking upstream API churn |
 | Product hooks | **Thin `AppToast` in client** wraps `TpToast` + recorder + global | Honors shared_ui dependency rules |
-| Call sites | Keep `AppToast.show` / `dismiss` / `showGlobal`; rename **`AppToastVariant` → `TpToastVariant`** | Preserves NotificationRecorder side effect on every non-info show |
+| Call sites | Keep `AppToast.show` / `dismiss` / `showGlobal`; rename **`AppToastVariant` → `TpToastVariant`**, **`AppToastAction` → `TpToastAction`**, update `showAppToast` | Preserves NotificationRecorder side effect on every non-info show |
 | Domain model | `AppNotification.variant` becomes **`TpToastVariant`** | Same enum names (`info`/`success`/`warning`/`error`); avoid duplicate enums |
-| Visual defaults | Match current `appToastStyleFor` / `buildAppToastificationConfig` | No intentional visual redesign in this change |
-| Host surface color | Default theme uses `ColorScheme.surfaceContainer`; client may override with `workspaceCard` via `TpToastTheme` | Package stays free of `workspace_surface_layers` |
+| Visual defaults | Match current `appToastStyleFor` / `buildAppToastificationConfig` **and** `AppToast._buildTitle` (`TpTextStyles` + action `TextButton` row) | No intentional visual redesign in this change |
+| Theme attachment | **`TpToastTheme` on `TpThemeData`** (same pattern as `TpCardTheme`); `TpToast.show` resolves via `TpTheme.of(context).toastTheme` with ColorScheme fallbacks | One theme pattern for planners; no third attachment model |
+| Host surface color | Package default: `ColorScheme.surfaceContainer`. **TeamPilot must** pass `TpToastTheme(background: workspaceCard, …)` when building `TpThemeData` | Goal 3 parity; package stays free of `workspace_surface_layers` |
 
 ## Architecture
 
@@ -66,9 +67,11 @@ UI / services
 | `TpToast.dismiss()` | Dismiss visible toasts |
 | `TpToastWrapper` | App-root host for the overlay engine |
 | `TpToastConfig` | `alignment`, `itemWidth`, `maxToastLimit`, `animationDuration`, `maxTitleLines`, `maxDescriptionLines`, `marginBuilder`, default duration policy hooks as needed |
-| `TpToastTheme` | background, foreground, accent(per variant), border, radius, shadow, padding, iconSize — resolvable from `ColorScheme` + optional overrides |
+| `TpToastTheme` | background, foreground, accent(per variant), border, radius, shadow, padding, iconSize — slot on `TpThemeData`; `fromColorScheme` / defaults when unset |
 
 `shared_ui.dart` exports only the public toast files under `components/toast/`. Nothing under `toast/engine/` is exported.
+
+**Content layout (parity):** title row matches current `AppToast._buildTitle` — `TpTextStyles.md` / `mdSemibold` for message and action; action is a compact `TextButton` that dismisses then runs `onPressed`.
 
 ### Client facade (`AppToast`)
 
@@ -78,7 +81,7 @@ Retain `AppToast` as a **product** entry (not a design-system type):
 - `showGlobal`: navigatorKey lookup, 2s message dedupe (unchanged).
 - After present: if `variant != info`, `NotificationRecorder.maybeCurrent?.record(...)`.
 - Wire `TpToastWrapper` in `main.dart` with a `marginBuilder` that adds `kDesktopWindowTitleBarHeight` when using the custom desktop title bar (same behavior as today).
-- Optional: supply `TpToastTheme` with `backgroundColor: scheme.workspaceCard` so visuals stay identical.
+- **Required for parity:** when constructing `TpThemeData`, set toast theme background to `scheme.workspaceCard` (and keep other accents/borders matching today’s `appToastStyleFor`).
 
 Delete engine-mapping helpers from `app_toast_theme.dart` once moved into `TpToastTheme` / config factories. Prefer deleting `app_toast_theme.dart` if nothing product-specific remains beyond wrapper config construction (e.g. `buildTeamPilotToastConfig()` living next to `AppToast`).
 
@@ -132,7 +135,7 @@ Delete directory `client/packages/toastification` after the absorb lands and ana
 
 1. Copy toastification sources into `shared_ui/lib/src/toast/engine/`; rewrite imports; add deps; ensure engine is not barrel-exported.
 2. Implement `TpToast*` public layer + widget/unit tests (show, dismiss, theme accents, config margin/width).
-3. Client: replace `ToastificationWrapper` with `TpToastWrapper`; slim `AppToast` to wrap `TpToast`; replace `AppToastVariant` with `TpToastVariant` everywhere (UI + `AppNotification` + tests).
+3. Client: replace `ToastificationWrapper` with `TpToastWrapper`; slim `AppToast` to wrap `TpToast`; replace `AppToastVariant` / `AppToastAction` with `TpToastVariant` / `TpToastAction` everywhere (UI + `AppNotification` + `showAppToast` + tests); wire `TpToastTheme` with `workspaceCard` on `TpThemeData`.
 4. Remove `toastification` dependency and delete `packages/toastification`.
 5. Update docs: parent shared-ui spec amendment, `shared_ui` README component table, `CODE_QUALITY.md` / `AGENTS.md` if they still say toast stays client-only.
 
@@ -151,7 +154,8 @@ Delete directory `client/packages/toastification` after the absorb lands and ana
 - [ ] `packages/toastification` removed
 - [ ] Non-info toasts still appear in the notification center
 - [ ] Desktop top margin still clears the custom title bar
-- [ ] No `AppToastVariant` type remains
+- [ ] TeamPilot toast background uses `workspaceCard` via `TpToastTheme`
+- [ ] No `AppToastVariant` / `AppToastAction` types remain
 
 ## Risks
 
