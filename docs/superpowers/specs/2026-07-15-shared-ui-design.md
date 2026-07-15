@@ -1,6 +1,6 @@
 # TeamPilot `shared_ui` design system
 
-**Status:** Draft  
+**Status:** Approved  
 **Date:** 2026-07-15
 
 ## Problem
@@ -51,7 +51,8 @@ shared_ui/
         icon_button/
         input/
         textarea/
-        select/                    # includes popover primitives used by select
+        select/                    # TpSelect
+        popover/                   # TpPopover / TpPortal / TpAnchor (shared by Select + others)
         card/
         dialog/
         segmented_control/
