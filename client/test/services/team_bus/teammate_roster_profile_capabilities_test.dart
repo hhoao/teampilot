@@ -43,4 +43,20 @@ void main() {
       'reviewer',
     });
   });
+
+  test('fromMember stores machine fields', () {
+    final p = TeammateRosterProfile.fromMember(
+      member: const TeamMemberConfig(id: 'dev', name: 'Dev'),
+      team: team(),
+      cliTeamName: 'team-1-1',
+      cwd: '/work',
+      machine: 'local',
+      machineKind: 'local',
+      machineId: 'local',
+    );
+    expect(p.machine, 'local');
+    expect(p.machineKind, 'local');
+    expect(p.machineId, 'local');
+    expect(p.cwd, '/work');
+  });
 }

@@ -22,6 +22,9 @@ class TeammateRosterProfile {
     this.taskId = '',
     this.cwd = '',
     this.backendType = '',
+    this.machine = '',
+    this.machineKind = '',
+    this.machineId = '',
     this.capabilities = const {},
   });
 
@@ -53,6 +56,9 @@ class TeammateRosterProfile {
     required String cwd,
     String? taskId,
     List<CliPreset> globalPresets = const [],
+    String machine = '',
+    String machineKind = '',
+    String machineId = '',
   }) {
     final rosterName = member.id;
     final isLead = TeamMemberNaming.isTeamLead(member);
@@ -89,6 +95,9 @@ class TeammateRosterProfile {
       taskId: taskId?.trim() ?? '',
       cwd: cwd.trim(),
       backendType: launch.cli.value,
+      machine: machine,
+      machineKind: machineKind,
+      machineId: machineId,
       capabilities: caps,
     );
   }
@@ -109,6 +118,9 @@ class TeammateRosterProfile {
   final String taskId;
   final String cwd;
   final String backendType;
+  final String machine;
+  final String machineKind;
+  final String machineId;
 
   /// Capability tags for TeamBus task routing. Derived from [TeamMemberConfig].
   final Set<String> capabilities;
