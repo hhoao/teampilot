@@ -51,7 +51,7 @@ void main() {
     expect(assistantAlign.alignment, Alignment.centerLeft);
   });
 
-  testWidgets('short user bubble shrinks; long bubble caps without matching width', (
+  testWidgets('user bubble caps at max width without IntrinsicWidth', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -106,10 +106,11 @@ void main() {
           .first,
     );
 
-    expect(shortBubble.width, lessThan(120));
-    expect(longBubble.width, greaterThan(shortBubble.width + 80));
-    // Cap at ~85% of 400 — must not force every bubble to that width.
-    expect(shortBubble.width, lessThan(400 * 0.5));
+    expect(shortBubble.width, greaterThan(100));
+    expect(longBubble.width, closeTo(shortBubble.width, 1));
+    // Cap at ~85% of 400 — both bubbles share the max-width constraint.
+    expect(shortBubble.width, lessThanOrEqualTo(400 * 0.85 + 1));
+    expect(longBubble.width, lessThanOrEqualTo(400 * 0.85 + 1));
   });
 
   testWidgets('tool fallback shows Used tool label; tap expands args/result', (
@@ -253,9 +254,10 @@ void main() {
       ),
     );
 
-    expect(find.byType(AnimatedSize), findsOneWidget);
+    expect(find.byType(AnimatedSize), findsNothing);
     await tester.tap(find.textContaining('Used tool:'));
     await tester.pumpAndSettle();
+    expect(find.byType(AnimatedSize), findsOneWidget);
     expect(find.textContaining('xxx'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -276,13 +278,13 @@ void main() {
       ),
     );
 
-    final opacity = tester.widget<AnimatedOpacity>(
+    expect(
       find.descendant(
         of: find.byType(AiMessageActionBar),
-        matching: find.byType(AnimatedOpacity),
+        matching: find.byType(IconButton),
       ),
+      findsNothing,
     );
-    expect(opacity.opacity, equals(0));
   });
 
   testWidgets('AiThread last message uses always reveal; earlier uses hover', (

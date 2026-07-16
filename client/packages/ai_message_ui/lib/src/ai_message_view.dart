@@ -43,45 +43,47 @@ class _AiMessageViewState extends State<AiMessageView> {
       onExit: (_) => setState(() => _hovered = false),
       child: Padding(
         padding: EdgeInsets.only(bottom: aiTheme.messageSpacing),
-        child: switch (widget.message.role) {
-          AiRole.user => _UserBubble(
-            scheme: scheme,
-            aiTheme: aiTheme,
-            parts: parts,
-            message: widget.message,
-            showActionBar: widget.showActionBar,
-            actionBarReveal: widget.actionBarReveal,
-            hovered: _hovered,
-          ),
-          AiRole.assistant => _AssistantBlock(
-            scheme: scheme,
-            aiTheme: aiTheme,
-            parts: parts,
-            message: widget.message,
-            showActionBar: widget.showActionBar,
-            actionBarReveal: widget.actionBarReveal,
-            hovered: _hovered,
-          ),
-          AiRole.system => Align(
-            alignment: Alignment.center,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: aiTheme.resolveMutedSurface(scheme),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: DefaultTextStyle.merge(
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
+        child: RepaintBoundary(
+          child: switch (widget.message.role) {
+            AiRole.user => _UserBubble(
+              scheme: scheme,
+              aiTheme: aiTheme,
+              parts: parts,
+              message: widget.message,
+              showActionBar: widget.showActionBar,
+              actionBarReveal: widget.actionBarReveal,
+              hovered: _hovered,
+            ),
+            AiRole.assistant => _AssistantBlock(
+              scheme: scheme,
+              aiTheme: aiTheme,
+              parts: parts,
+              message: widget.message,
+              showActionBar: widget.showActionBar,
+              actionBarReveal: widget.actionBarReveal,
+              hovered: _hovered,
+            ),
+            AiRole.system => Align(
+              alignment: Alignment.center,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: aiTheme.resolveMutedSurface(scheme),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: DefaultTextStyle.merge(
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                    child: parts,
                   ),
-                  child: parts,
                 ),
               ),
             ),
-          ),
-        },
+          },
+        ),
       ),
     );
   }
@@ -158,8 +160,6 @@ class _UserBubble extends StatelessWidget {
             0.0,
             showActionBar ? threadMax - actionBarReserve : threadMax,
           );
-          // MarkdownBody expands to max width; IntrinsicWidth shrink-wraps
-          // short copy so "hi" is not as wide as a long message.
           return Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -172,25 +172,23 @@ class _UserBubble extends StatelessWidget {
                 ),
               ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: bubbleMax),
-                child: IntrinsicWidth(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: aiTheme.resolveUserBubble(scheme),
-                      borderRadius:
-                          BorderRadius.circular(aiTheme.userBubbleRadius),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: aiTheme.resolveUserBubble(scheme),
+                    borderRadius:
+                        BorderRadius.circular(aiTheme.userBubbleRadius),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
+                    child: DefaultTextStyle.merge(
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: aiTheme.resolveUserForeground(scheme),
+                        height: 1.5,
                       ),
-                      child: DefaultTextStyle.merge(
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: aiTheme.resolveUserForeground(scheme),
-                          height: 1.5,
-                        ),
-                        child: parts,
-                      ),
+                      child: parts,
                     ),
                   ),
                 ),

@@ -6,6 +6,51 @@ import 'package:markdown/markdown.dart' as md;
 import '../strings.dart';
 import '../theme.dart';
 
+/// LRU-ish cache of [MarkdownBody] subtrees keyed by prepared markdown + style.
+class MarkdownBodyCache {
+  MarkdownBodyCache({this.maxEntries = 64});
+
+  final int maxEntries;
+  final _map = <String, Widget>{};
+
+  Widget getOrCreate(String key, Widget Function() build) {
+    final hit = _map[key];
+    if (hit != null) return hit;
+    final w = build();
+    if (_map.length >= maxEntries) _map.remove(_map.keys.first);
+    _map[key] = w;
+    return w;
+  }
+
+  @visibleForTesting
+  int get debugLength => _map.length;
+}
+
+final MarkdownBodyCache _markdownBodyCache = MarkdownBodyCache();
+
+/// Stable cache key for [MarkdownBody] — never allocates a style sheet.
+@visibleForTesting
+String markdownBodyCacheKey({
+  required String preparedMarkdown,
+  required ThemeData theme,
+  required AiMessageTheme aiTheme,
+  MarkdownTapLinkCallback? onTapLink,
+}) {
+  final String styleKey;
+  final customSheet = aiTheme.markdownStyleSheet;
+  if (customSheet != null) {
+    styleKey = 'sheet:${identityHashCode(customSheet)}';
+  } else {
+    // Tokens that feed [defaultAiMarkdownSheet] without building the sheet.
+    final mutedArgb = aiTheme.mutedSurface?.toARGB32() ?? 0;
+    styleKey =
+        'default:${theme.brightness.name}|$mutedArgb|${aiTheme.codeBlockRadius}';
+  }
+  final linkKey =
+      onTapLink == null ? '0' : '${identityHashCode(onTapLink)}';
+  return '$preparedMarkdown|$styleKey|$linkKey';
+}
+
 /// Streaming-safe markdown aligned with assistant-ui MarkdownText / aui-md.
 class AiTextPartView extends StatelessWidget {
   const AiTextPartView({
@@ -26,17 +71,26 @@ class AiTextPartView extends StatelessWidget {
     final data = prepareStreamingMarkdown(text);
     final sheet =
         aiTheme.markdownStyleSheet ?? defaultAiMarkdownSheet(theme, aiTheme);
-
-    return MarkdownBody(
-      data: data,
-      styleSheet: sheet,
+    final cacheKey = markdownBodyCacheKey(
+      preparedMarkdown: data,
+      theme: theme,
+      aiTheme: aiTheme,
       onTapLink: onTapLink,
-      // Parent [SelectionArea]: text-only blocks merge into one Text.rich;
-      // code blocks / tables stay as widgets and split the tree.
-      selectable: false,
-      builders: {
-        'pre': _AuiCodeBlockBuilder(aiTheme: aiTheme),
-      },
+    );
+
+    return _markdownBodyCache.getOrCreate(
+      cacheKey,
+      () => MarkdownBody(
+        data: data,
+        styleSheet: sheet,
+        onTapLink: onTapLink,
+        // Parent [SelectionArea]: text-only blocks merge into one Text.rich;
+        // code blocks / tables stay as widgets and split the tree.
+        selectable: false,
+        builders: {
+          'pre': _AuiCodeBlockBuilder(aiTheme: aiTheme),
+        },
+      ),
     );
   }
 }

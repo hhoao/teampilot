@@ -30,6 +30,9 @@ dependencies:
     path: packages/ai_message_core
   ai_message_ui:
     path: packages/ai_message_ui
+  # Spike-only: compare Flyer ChatAnimatedList vs AiThread for history scroll.
+  flutter_chat_core: ^2.9.0
+  flutter_chat_ui: ^2.11.1
   shared_ui:
     path: packages/shared_ui
   teampilot_tree_sitter:
