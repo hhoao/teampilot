@@ -17,10 +17,11 @@ abstract final class MemberRoleProvision {
   static const rolePromptsDirName = 'prompts';
   static const rolePromptFileName = 'role.md';
 
-  /// Denied for native Claude team sessions — roster is provisioned by TeamPilot.
-  /// Omitted in mixed mode: those tools are not registered (teammate-bus MCP
-  /// replaces native swarm) and deny rules for unknown tools abort CLI startup.
-  static const teamSessionDenyTools = <String>['TeamCreate', 'TeamDelete'];
+  /// Native Claude swarm roster tools to deny via settings `permissions.deny`.
+  /// Empty: current Claude Code no longer registers TeamCreate/TeamDelete and
+  /// deny rules for unknown tools abort CLI startup (mixed mode uses
+  /// `--disallowedTools` instead — see [mixedClaudeDisallowedTools]).
+  static const teamSessionDenyTools = <String>[];
 
   /// Auto-allowed in mixed mode so the teammate-bus MCP tools (list_teammates,
   /// send_message, wait_for_message, add_tasks, update_task, …) never prompt.
@@ -33,8 +34,6 @@ abstract final class MemberRoleProvision {
   /// mixed mode (settings `permissions.deny` is omitted there — see
   /// [teamSessionDenyTools]).
   static const mixedClaudeDisallowedTools = <String>[
-    'TeamCreate',
-    'TeamDelete',
     'SendMessage',
     'TaskCreate',
     'TaskUpdate',

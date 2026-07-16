@@ -132,15 +132,10 @@ void main() {
     }
   });
 
-  test(
-    'applyTeamSessionPolicy denies TeamCreate and TeamDelete for native team',
-    () {
+  test('applyTeamSessionPolicy leaves permissions deny unset for native team', () {
       final settings = MemberRoleProvision.applyTeamSessionPolicy(const {});
-      final deny = settings['permissions']! as Map;
-      expect(deny['deny'], contains('TeamCreate'));
-      expect(deny['deny'], contains('TeamDelete'));
-      expect(deny['deny'], isNot(contains('Bash')));
-      expect(deny['deny'], isNot(contains('Edit')));
+      final permissions = settings['permissions']! as Map;
+      expect(permissions['deny'], isNull);
     },
   );
 

@@ -365,8 +365,8 @@ base_url = "https://api.example.com/v1"
     final settings =
         jsonDecode(await File(settingsPath).readAsString())
             as Map<String, Object?>;
-    final deny = (settings['permissions'] as Map)['deny'] as List;
-    expect(deny, contains('TeamCreate'));
+    final deny =
+        (settings['permissions'] as Map?)?['deny'] as List? ?? const [];
     expect(deny, isNot(contains('Bash')));
     expect(deny, isNot(contains('Edit')));
 
@@ -483,8 +483,9 @@ base_url = "https://api.example.com/v1"
                 ).readAsString(),
               )
               as Map<String, Object?>;
-      final deny = (settings['permissions'] as Map)['deny'] as List;
-      expect(deny, contains('TeamCreate'));
+      final deny =
+          (settings['permissions'] as Map?)?['deny'] as List? ?? const [];
+      expect(deny, isEmpty);
 
       final hookPath = p.join(
         flashskyaiDir,
@@ -581,7 +582,7 @@ base_url = "https://api.example.com/v1"
               as Map<String, Object?>;
       final devDeny =
           (settings['permissions'] as Map?)?['deny'] as List? ?? const [];
-      expect(devDeny, contains('TeamCreate'));
+      expect(devDeny, isEmpty);
       expect(settings['hooks'], isNull);
 
       final leadSettingsPath = p.join(claudeDir, 'settings', 'team-lead.json');
