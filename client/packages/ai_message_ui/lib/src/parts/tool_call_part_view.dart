@@ -62,7 +62,8 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
                       children: [
                         _StatusIcon(part: part, color: triggerColor),
                         const SizedBox(width: 8),
-                        Flexible(
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 480),
                           child: Text.rich(
                             TextSpan(
                               style: theme.textTheme.bodySmall?.copyWith(
@@ -85,6 +86,8 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
                                 ),
                               ],
                             ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 4),

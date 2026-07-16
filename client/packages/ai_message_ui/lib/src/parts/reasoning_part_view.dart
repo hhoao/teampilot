@@ -41,16 +41,17 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SelectionContainer.disabled(
-              child: MouseRegion(
-                onEnter: (_) => setState(() => _hovered = true),
-                onExit: (_) => setState(() => _hovered = false),
-                child: InkWell(
-                  onTap: () => setState(() => _open = !_open),
-                  borderRadius:
-                      BorderRadius.circular(aiTheme.panelRadius + 2),
-                  child: AnimatedScale(
-                    scale: _hovered ? 0.99 : 1,
-                    duration: const Duration(milliseconds: 100),
+              child: Semantics(
+                button: true,
+                expanded: _open,
+                label: strings.reasoning,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  onEnter: (_) => setState(() => _hovered = true),
+                  onExit: (_) => setState(() => _hovered = false),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _open = !_open),
+                    behavior: HitTestBehavior.opaque,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,

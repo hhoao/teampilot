@@ -21,6 +21,7 @@ void main() {
     );
     expect(find.byType(AnimatedSize), findsNothing);
     expect(find.textContaining('{'), findsNothing);
+    expect(find.byType(Flexible), findsNothing);
   });
 
   testWidgets('collapsed reasoning has no markdown body', (tester) async {
@@ -35,5 +36,7 @@ void main() {
     );
     expect(find.byType(AnimatedSize), findsNothing);
     expect(find.text('secret thoughts'), findsNothing);
+    expect(find.byType(InkWell), findsNothing);
+    expect(find.byType(AnimatedScale), findsNothing);
   });
 }
