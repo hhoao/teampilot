@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
+import '../../l10n/l10n_extensions.dart';
 import '../../models/cli_preset.dart';
+import '../../services/workspace/dead_ssh_target_error.dart';
 import '../../models/config_bundle.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
@@ -43,6 +45,7 @@ class SessionReviewComposeCard extends StatelessWidget {
     required this.slashBundle,
     this.isSubmitting = false,
     this.launchError,
+    this.onRemapDeadTarget,
     this.onPasteImage,
     this.floating = false,
     this.identityLabel,
@@ -88,6 +91,7 @@ class SessionReviewComposeCard extends StatelessWidget {
   final ConfigBundle slashBundle;
   final bool isSubmitting;
   final String? launchError;
+  final VoidCallback? onRemapDeadTarget;
   final Future<bool> Function()? onPasteImage;
   final bool floating;
 
@@ -123,6 +127,12 @@ class SessionReviewComposeCard extends StatelessWidget {
     final palette = WorkspaceChatLandingPalette(Theme.of(context).colorScheme);
     final spacing = context.tpSpacing;
     final error = launchError?.trim();
+    final deadTargetId = deadSshTargetIdFromError(launchError);
+    final showRemap =
+        error != null &&
+        error.isNotEmpty &&
+        deadTargetId != null &&
+        onRemapDeadTarget != null;
 
     return ComposeFocusShell(
       focusNode: focusNode,
@@ -157,11 +167,28 @@ class SessionReviewComposeCard extends StatelessWidget {
                     horizontal: spacing.md,
                     vertical: spacing.sm,
                   ),
-                  child: Text(
-                    error,
-                    style: AppTextStyles.of(context).smRelaxedColored(
-                      Theme.of(context).colorScheme.onErrorContainer,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        error,
+                        style: AppTextStyles.of(context).smRelaxedColored(
+                          Theme.of(context).colorScheme.onErrorContainer,
+                        ),
+                      ),
+                      if (showRemap) ...[
+                        SizedBox(height: spacing.xs),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton(
+                            onPressed: onRemapDeadTarget,
+                            child: Text(
+                              context.l10n.workspaceDeadTargetRemapFromLaunch,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),

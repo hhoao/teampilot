@@ -51,6 +51,7 @@ class SessionHistoryReview extends StatefulWidget {
     required this.onSubmit,
     this.team,
     this.launchError,
+    this.onRemapDeadTarget,
     this.isSubmitting = false,
     super.key,
   });
@@ -62,6 +63,7 @@ class SessionHistoryReview extends StatefulWidget {
   /// Returns `true` after successful connect+inject so compose can clear.
   final Future<bool> Function(String message) onSubmit;
   final String? launchError;
+  final VoidCallback? onRemapDeadTarget;
   final bool isSubmitting;
 
   @override
@@ -834,6 +836,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                   plugins: plugins,
                   slashBundle: _slashBundle(context),
                   launchError: widget.launchError,
+                  onRemapDeadTarget: widget.onRemapDeadTarget,
                   onPasteImage: _pasteComposeImage,
                   identityLabel: identityLabel,
                   identityIcon: session.isSimple

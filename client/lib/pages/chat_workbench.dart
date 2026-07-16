@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../cubits/chat/model/session_connect_request.dart';
 import '../cubits/chat/model/chat_tab.dart';
@@ -15,12 +19,17 @@ import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
+import '../repositories/ssh_profile_repository.dart';
+import '../services/storage/home_target_controller.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/terminal_theme_mapper.dart';
 import '../services/workbench/workbench_editor_opener.dart';
+import '../services/workspace/dead_ssh_target_error.dart';
+import '../services/workspace/target_liveness.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/app_keys.dart';
 import '../widgets/deferred_foreground_mount.dart';
+import '../widgets/workspace/workspace_dead_target_remap_dialog.dart';
 import '../utils/team_member_naming.dart';
 import 'home_workspace/workspace/workspace_route_active_scope.dart';
 import 'chat/chat_workbench_placeholders.dart';
@@ -62,6 +71,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
   var _findVisible = false;
   var _handledRouteSession = false;
+  var _remappingDeadTarget = false;
   int? _lastTerminalThemeFingerprint;
   TerminalSession? _themeSyncedSession;
   String? _lastThemeSyncedMemberId;
@@ -121,6 +131,61 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       _connectRequest(isPersonal: isPersonal, team: team),
       repo: context.read<SessionRepository>(),
     );
+  }
+
+  TargetLiveness _targetLiveness(BuildContext context) => DefaultTargetLiveness(
+    sshProfiles: context.read<SshProfileRepository>(),
+  );
+
+  Future<void> _remapDeadTargetFromLaunch({
+    required String launchError,
+    required String sessionId,
+  }) async {
+    final fromTargetId = deadSshTargetIdFromError(launchError);
+    if (fromTargetId == null || _remappingDeadTarget) return;
+
+    final chat = context.read<ChatCubit>();
+    final workspace = chat.state.workspaces.firstWhereOrNull(
+      (w) => w.workspaceId == widget.workspaceId,
+    );
+    if (workspace == null) return;
+
+    setState(() => _remappingDeadTarget = true);
+    final liveness = _targetLiveness(context);
+    final homeTarget = context.read<HomeTargetController>();
+    final repo = context.read<SessionRepository>();
+    try {
+      final selectable = await homeTarget.listSelectable();
+      if (!mounted) return;
+      final to = await showWorkspaceDeadTargetRemapDialog(
+        context: context,
+        fromTargetId: fromTargetId,
+        deadTargetIds: [fromTargetId],
+        selectable: selectable,
+        liveness: liveness,
+      );
+      if (to == null || !mounted) return;
+
+      final updated = await repo.remapWorkspaceTarget(
+        workspace.workspaceId,
+        fromTargetId: fromTargetId,
+        toTargetId: to,
+        liveness: liveness,
+      );
+      chat.invalidateWorkspaceProvision(updated);
+      await chat.loadWorkspaceData(repo);
+      chat.clearLaunchError(sessionId);
+    } on Object {
+      if (mounted) {
+        AppToast.show(
+          context,
+          message: context.l10n.workspaceDeadTargetRemapFailed,
+          variant: AppToastVariant.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _remappingDeadTarget = false);
+    }
   }
 
   void _syncTerminalTheme(
@@ -186,6 +251,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
         findVisible: _findVisible,
         onSyncTerminalTheme: _syncTerminalTheme,
         buildRunningTerminal: _buildRunningTerminal,
+        onRemapDeadTargetFromLaunch: _remapDeadTargetFromLaunch,
       ),
     );
   }
@@ -204,6 +270,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
     required this.findVisible,
     required this.onSyncTerminalTheme,
     required this.buildRunningTerminal,
+    required this.onRemapDeadTargetFromLaunch,
   });
 
   final String workspaceId;
@@ -226,6 +293,11 @@ class _ChatWorkbenchBody extends StatelessWidget {
     required bool autofocus,
   })
   buildRunningTerminal;
+  final Future<void> Function({
+    required String launchError,
+    required String sessionId,
+  })
+  onRemapDeadTargetFromLaunch;
 
   @override
   Widget build(BuildContext context) {
@@ -509,6 +581,14 @@ class _ChatWorkbenchBody extends StatelessWidget {
       selectedMemberId: historyMemberId,
       team: resolvedTeam,
       launchError: launchError,
+      onRemapDeadTarget: deadSshTargetIdFromError(launchError) != null
+          ? () => unawaited(
+              onRemapDeadTargetFromLaunch(
+                launchError: launchError!,
+                sessionId: appSession.sessionId,
+              ),
+            )
+          : null,
       onSubmit: (message) async {
         chatCubit.setSessionWorkbenchView(
           appSession.sessionId,
