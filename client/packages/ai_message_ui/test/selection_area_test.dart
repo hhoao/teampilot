@@ -32,7 +32,7 @@ void main() {
     expect(find.textContaining('First paragraph'), findsOneWidget);
   });
 
-  testWidgets('AiThread ListView spans full width for empty-margin scroll', (
+  testWidgets('AiThread scroll view spans full width for empty-margin scroll', (
     tester,
   ) async {
     final store = ExternalStoreAiThreadRuntime()
@@ -67,8 +67,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final listSize = tester.getSize(find.byType(ListView));
-    // ListView fills the host (not the message maxWidth=400).
+    final listSize = tester.getSize(find.byType(CustomScrollView));
+    // Scroll view fills the host (not the message maxWidth=400).
     expect(listSize.width, greaterThan(400));
     expect(listSize.width, equals(tester.getSize(find.byType(Scaffold)).width));
   });

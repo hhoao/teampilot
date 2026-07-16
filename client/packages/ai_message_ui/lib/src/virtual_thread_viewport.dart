@@ -21,6 +21,7 @@ class VirtualThreadViewport extends StatefulWidget {
     this.padding = const EdgeInsets.fromLTRB(0, 16, 0, 24),
     this.header,
     this.stickIntent = false,
+    this.onHeightChanged,
     super.key,
   });
 
@@ -32,6 +33,10 @@ class VirtualThreadViewport extends StatefulWidget {
   final EdgeInsets padding;
   final Widget? header;
   final bool stickIntent;
+
+  /// Fired after a turn height is recorded so the parent can re-stick while
+  /// [stickIntent] is true (viewport skips measure-driven scroll jumps then).
+  final VoidCallback? onHeightChanged;
 
   @override
   State<VirtualThreadViewport> createState() => _VirtualThreadViewportState();
@@ -137,23 +142,39 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
       return;
     }
 
-    final delta = height - previous;
-    widget.heightCache.setMeasured(turnId, height);
+    // While parent is sticking, ignore shrinks so maxScrollExtent does not
+    // collapse under the cursor and bounce/release stick intent.
+    if (widget.stickIntent) {
+      widget.heightCache.setMeasuredMonotonic(turnId, height);
+      final next = widget.heightCache.heightOf(turnId);
+      if ((next - previous).abs() < 0.5) return;
+    } else {
+      widget.heightCache.setMeasured(turnId, height);
+    }
+
+    final appliedDelta = widget.heightCache.heightOf(turnId) - previous;
 
     // Measure-driven scroll correction: keep content under the viewport stable
     // when a turn above the scroll offset changes height. Parent owns sticky.
     if (!widget.stickIntent &&
         widget.scrollController.hasClients &&
-        delta != 0) {
+        appliedDelta != 0) {
       final turnTop = _contentOrigin + _offsetOfTurn(index);
       final pixels = widget.scrollController.position.pixels;
       if (turnTop < pixels) {
-        final next = (pixels + delta).clamp(
-          0.0,
-          widget.scrollController.position.maxScrollExtent + delta,
-        );
-        widget.scrollController.jumpTo(next);
+        final upper =
+            widget.scrollController.position.maxScrollExtent + appliedDelta;
+        if (upper >= 0) {
+          final next = (pixels + appliedDelta).clamp(0.0, upper);
+          widget.scrollController.jumpTo(next);
+        }
       }
+    } else if (widget.stickIntent) {
+      // Spacers update this frame; parent re-sticks after layout.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        widget.onHeightChanged?.call();
+      });
     }
 
     setState(() => _range = _computeRange());
@@ -192,26 +213,44 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
             }
             return false;
           },
-          child: ListView(
+          // CustomScrollView + SliverToBoxAdapter so spacer heights contribute
+          // exact scrollExtent. ListView/SliverList estimates unlaid-out
+          // children from averages, which oscillates as the window moves.
+          child: CustomScrollView(
             controller: widget.scrollController,
-            padding: widget.padding,
-            children: [
+            slivers: [
+              SliverToBoxAdapter(
+                child: SizedBox(height: widget.padding.top),
+              ),
               if (widget.header != null)
-                _MeasuredBox(
-                  onHeight: _onHeaderHeight,
-                  child: widget.header!,
+                SliverToBoxAdapter(
+                  child: _MeasuredBox(
+                    onHeight: _onHeaderHeight,
+                    child: widget.header!,
+                  ),
                 ),
-              SizedBox(height: _range.paddingTop),
+              SliverToBoxAdapter(
+                child: SizedBox(height: _range.paddingTop),
+              ),
               if (_range.lastIndex >= _range.firstIndex)
                 for (var i = _range.firstIndex; i <= _range.lastIndex; i++)
-                  _MeasuredTurn(
-                    key: ValueKey(widget.turns[i].id),
-                    turnId: widget.turns[i].id,
-                    index: i,
-                    onHeight: _onTurnHeight,
-                    child: widget.turnBuilder(context, widget.turns[i]),
+                  SliverToBoxAdapter(
+                    child: _MeasuredTurn(
+                      key: ValueKey(widget.turns[i].id),
+                      turnId: widget.turns[i].id,
+                      index: i,
+                      layoutHeight:
+                          widget.heightCache.heightOf(widget.turns[i].id),
+                      onHeight: _onTurnHeight,
+                      child: widget.turnBuilder(context, widget.turns[i]),
+                    ),
                   ),
-              SizedBox(height: _range.paddingBottom),
+              SliverToBoxAdapter(
+                child: SizedBox(height: _range.paddingBottom),
+              ),
+              SliverToBoxAdapter(
+                child: SizedBox(height: widget.padding.bottom),
+              ),
             ],
           ),
         );
@@ -224,6 +263,7 @@ class _MeasuredTurn extends StatefulWidget {
   const _MeasuredTurn({
     required this.turnId,
     required this.index,
+    required this.layoutHeight,
     required this.onHeight,
     required this.child,
     super.key,
@@ -231,6 +271,7 @@ class _MeasuredTurn extends StatefulWidget {
 
   final String turnId;
   final int index;
+  final double layoutHeight;
   final void Function(int index, String turnId, double height) onHeight;
   final Widget child;
 
@@ -239,6 +280,8 @@ class _MeasuredTurn extends StatefulWidget {
 }
 
 class _MeasuredTurnState extends State<_MeasuredTurn> {
+  final GlobalKey _measureKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -248,26 +291,47 @@ class _MeasuredTurnState extends State<_MeasuredTurn> {
   @override
   void didUpdateWidget(covariant _MeasuredTurn oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.turnId != widget.turnId || oldWidget.child != widget.child) {
+    if (oldWidget.turnId != widget.turnId ||
+        oldWidget.child != widget.child ||
+        oldWidget.layoutHeight != widget.layoutHeight) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _report());
     }
   }
 
   void _report() {
     if (!mounted) return;
-    final height = context.size?.height;
+    final height = _measureKey.currentContext?.size?.height;
     if (height == null || height <= 0) return;
     widget.onHeight(widget.index, widget.turnId, height);
   }
 
   @override
   Widget build(BuildContext context) {
-    return NotificationListener<SizeChangedLayoutNotification>(
-      onNotification: (_) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _report());
-        return true;
-      },
-      child: SizeChangedLayoutNotifier(child: widget.child),
+    // Drive list extent from the height cache (same as spacers). Measure the
+    // child via a top-positioned stack slot with loose height.
+    return SizedBox(
+      height: widget.layoutHeight,
+      child: ClipRect(
+        child: Stack(
+          children: [
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: NotificationListener<SizeChangedLayoutNotification>(
+                onNotification: (_) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) => _report());
+                  return true;
+                },
+                child: SizeChangedLayoutNotifier(
+                  key: _measureKey,
+                  child: widget.child,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

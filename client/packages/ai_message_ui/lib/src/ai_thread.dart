@@ -9,6 +9,9 @@ import 'message_action_bar.dart';
 import 'part_registry.dart';
 import 'strings.dart';
 import 'theme.dart';
+import 'thread_turns.dart';
+import 'turn_height_cache.dart';
+import 'virtual_thread_viewport.dart';
 
 /// Binds an [AiThreadRuntime] and renders status / message list chrome.
 ///
@@ -76,6 +79,10 @@ class _AiThreadState extends State<AiThread> {
   /// Hide until first stick so open never paints the thread top.
   bool _listVisible = false;
 
+  /// Ignore scroll-up release until open stick has revealed and settled once.
+  /// Prevents measure/range flicker from clearing stick during first layout.
+  bool _stickReleaseArmed = false;
+
   int _stickGeneration = 0;
   int _atBottomStableFrames = 0;
   double _lastPixels = 0;
@@ -89,6 +96,11 @@ class _AiThreadState extends State<AiThread> {
   static const _maxStickFrames = 24;
 
   List<AiMessage> _messages = const [];
+  List<ThreadTurn> _turns = const [];
+  // Prefer under-estimate so extent grows as turns measure; over-estimate
+  // shrinks maxScrollExtent under the cursor and triggers overscroll bounce
+  // that falsely releases stick-to-bottom.
+  final TurnHeightCache _heightCache = TurnHeightCache(estimate: 80);
   AiThreadStatus _status = AiThreadStatus.empty;
   String? _errorMessage;
 
@@ -166,9 +178,35 @@ class _AiThreadState extends State<AiThread> {
   }
 
   void _syncFromRuntime() {
+    final previousMessages = _messages;
+    final previousTurns = _turns;
     _messages = widget.runtime.messages;
     _status = widget.runtime.status;
     _errorMessage = widget.runtime.errorMessage;
+    _syncTurns(
+      previousMessages: previousMessages,
+      previousTurns: previousTurns,
+    );
+  }
+
+  void _syncTurns({
+    required List<AiMessage> previousMessages,
+    required List<ThreadTurn> previousTurns,
+  }) {
+    final nextTurns = reuseTurnsIfSameMembership(
+      previous: previousTurns,
+      messages: _messages,
+    );
+    final previousById = {for (final turn in previousTurns) turn.id: turn};
+    for (final turn in nextTurns) {
+      final previous = previousById[turn.id];
+      if (previous == null) continue;
+      if (turnContentIdentity(previous, previousMessages) !=
+          turnContentIdentity(turn, _messages)) {
+        _heightCache.invalidate(turn.id);
+      }
+    }
+    _turns = nextTurns;
   }
 
   void _onScrollControllerTick() {
@@ -184,6 +222,7 @@ class _AiThreadState extends State<AiThread> {
     _stickGeneration++;
     final generation = _stickGeneration;
     _stickIntent = true;
+    _stickReleaseArmed = false;
     _atBottomStableFrames = 0;
     if (hideUntilStuck && _listVisible) {
       setState(() => _listVisible = false);
@@ -195,6 +234,7 @@ class _AiThreadState extends State<AiThread> {
 
   void _releaseStickIntent() {
     _stickIntent = false;
+    _stickReleaseArmed = false;
     _stickGeneration++;
   }
 
@@ -219,17 +259,22 @@ class _AiThreadState extends State<AiThread> {
         if (canReveal) {
           setState(() => _listVisible = true);
           _updateScrollToBottomVisibility();
+          // Fall through so we keep ticking after reveal.
+        } else {
+          _scheduleStickTick(
+            generation: generation,
+            framesLeft: framesLeft - 1,
+          );
           return;
         }
-        _scheduleStickTick(
-          generation: generation,
-          framesLeft: framesLeft - 1,
-        );
-        return;
       }
 
-      // Keep ticking briefly after reveal so deferred markdown growth sticks.
-      if (!atBottom && framesLeft > 0) {
+      if (_listVisible && _atBottomStableFrames >= 2) {
+        _stickReleaseArmed = true;
+      }
+
+      // Keep ticking while intent holds so deferred measure / markdown growth sticks.
+      if (_stickIntent && framesLeft > 0) {
         _scheduleStickTick(
           generation: generation,
           framesLeft: framesLeft - 1,
@@ -249,8 +294,9 @@ class _AiThreadState extends State<AiThread> {
     if (!_stickIntent || !_scrollController.hasClients) return;
     final position = _scrollController.position;
     final max = position.maxScrollExtent;
-    if (max > 0 && max - position.pixels > _bottomEpsilon) {
-      _scrollController.jumpTo(max);
+    // Include overscroll (pixels > max): jump back so bounce cannot release stick.
+    if ((position.pixels - max).abs() > _bottomEpsilon) {
+      _scrollController.jumpTo(max < 0 ? 0.0 : max);
     }
     if (_scrollController.hasClients) {
       _lastPixels = _scrollController.position.pixels;
@@ -263,17 +309,24 @@ class _AiThreadState extends State<AiThread> {
     required double maxExtent,
   }) {
     // Scroll-up with stable extent → release stick (aui handleScroll).
-    // Covers user drag and programmatic jumpTo away from bottom.
+    // Gated by [_stickReleaseArmed] so open-time measure flicker cannot clear
+    // stick before the first bottom settle.
+    final wasInRange = _lastPixels <= _lastMaxExtent + _bottomEpsilon;
+    final inRange = pixels <= maxExtent + _bottomEpsilon;
     if (_listVisible &&
         _stickIntent &&
+        _stickReleaseArmed &&
+        wasInRange &&
+        inRange &&
         pixels < _lastPixels - _bottomEpsilon &&
         (maxExtent - _lastMaxExtent).abs() <= _bottomEpsilon) {
       _releaseStickIntent();
     }
 
-    if (_stickIntent && maxExtent > 0 && maxExtent - pixels > _bottomEpsilon) {
+    if (_stickIntent && (pixels - maxExtent).abs() > _bottomEpsilon) {
       if (_scrollController.hasClients) {
-        _scrollController.jumpTo(maxExtent);
+        final max = _scrollController.position.maxScrollExtent;
+        _scrollController.jumpTo(max < 0 ? 0.0 : max);
         pixels = _scrollController.position.pixels;
         maxExtent = _scrollController.position.maxScrollExtent;
       }
@@ -467,7 +520,8 @@ class _AiThreadState extends State<AiThread> {
         return widget.errorBuilder(context, _errorMessage, widget.onRetry);
       case AiThreadStatus.idle:
         final aiTheme = AiMessageTheme.of(context);
-        final sentinelCount = widget.hasOlder ? 1 : 0;
+        final byId = {for (final message in _messages) message.id: message};
+        final lastMessageId = _messages.isEmpty ? null : _messages.last.id;
         return SelectionArea(
           contextMenuBuilder: widget.selectionContextMenuBuilder,
           child: Stack(
@@ -479,41 +533,52 @@ class _AiThreadState extends State<AiThread> {
                   opacity: _listVisible ? 1 : 0,
                   child: IgnorePointer(
                     ignoring: !_listVisible,
-                    child: ListView.builder(
-                      controller: _scrollController,
+                    child: VirtualThreadViewport(
+                      turns: _turns,
+                      heightCache: _heightCache,
+                      scrollController: _scrollController,
+                      overscan: kThreadOverscan,
                       padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
-                      itemCount: _messages.length + sentinelCount,
-                      itemBuilder: (context, index) {
-                        if (widget.hasOlder && index == 0) {
-                          return SelectionContainer.disabled(
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: aiTheme.threadHorizontalPadding,
+                      stickIntent: _stickIntent,
+                      onHeightChanged: _stickToBottomIfNeeded,
+                      header: widget.hasOlder
+                          ? SelectionContainer.disabled(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: aiTheme.threadHorizontalPadding,
+                                ),
+                                child: _buildLoadOlderHeader(context),
                               ),
-                              child: _buildLoadOlderHeader(context),
-                            ),
-                          );
-                        }
-                        final messageIndex =
-                            widget.hasOlder ? index - 1 : index;
-                        final isLast = messageIndex == _messages.length - 1;
-                        return Align(
-                          alignment: Alignment.topCenter,
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: aiTheme.threadHorizontalPadding,
-                            ),
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxWidth: aiTheme.threadMaxWidth,
-                              ),
-                              child: _buildMessage(
-                                context,
-                                _messages[messageIndex],
-                                isLast: isLast,
-                              ),
-                            ),
-                          ),
+                            )
+                          : null,
+                      turnBuilder: (context, turn) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (final messageId in turn.messageIds)
+                              if (byId[messageId] case final message?)
+                                RepaintBoundary(
+                                  child: Align(
+                                    alignment: Alignment.topCenter,
+                                    child: Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal:
+                                            aiTheme.threadHorizontalPadding,
+                                      ),
+                                      child: ConstrainedBox(
+                                        constraints: BoxConstraints(
+                                          maxWidth: aiTheme.threadMaxWidth,
+                                        ),
+                                        child: _buildMessage(
+                                          context,
+                                          message,
+                                          isLast: message.id == lastMessageId,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                          ],
                         );
                       },
                     ),

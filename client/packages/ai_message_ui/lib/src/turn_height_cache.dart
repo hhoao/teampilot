@@ -26,6 +26,14 @@ class TurnHeightCache {
     _measured[turnId] = height;
   }
 
+  /// Like [setMeasured] but ignores shrinks (extent flicker while sticking).
+  void setMeasuredMonotonic(String turnId, double height) {
+    if (height <= 0) return;
+    final previous = _measured[turnId];
+    if (previous != null && height < previous) return;
+    _measured[turnId] = height;
+  }
+
   void invalidate(String turnId) => _measured.remove(turnId);
 
   void invalidateAll() => _measured.clear();

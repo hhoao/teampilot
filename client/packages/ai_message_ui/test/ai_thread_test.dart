@@ -209,6 +209,112 @@ void main() {
       closeTo(scrollController.position.maxScrollExtent, 1),
     );
   });
+
+  testWidgets('AiThread idle mounts far fewer messages than window', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime();
+    store.setMessages(
+      List.generate(
+        40,
+        (i) => AiMessage(
+          id: 'm$i',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'line $i\n' * 3)],
+        ),
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SizedBox(
+          height: 400,
+          child: AiThread(
+            runtime: store,
+            loadingBuilder: (_) => const Text('LOADING'),
+            emptyBuilder: (_) => const Text('EMPTY'),
+            errorBuilder: (_, msg, retry) => Text('ERR:$msg'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(AiMessageView), findsWidgets);
+    expect(find.byType(AiMessageView).evaluate().length, lessThan(20));
+  });
+
+  testWidgets('AiThread load-older prepend preserves scroll anchor', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime();
+    final newer = List.generate(
+      20,
+      (i) => AiMessage(
+        id: 'n$i',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'newer $i\n' * 4)],
+      ),
+    );
+    store.setMessages(newer);
+    final scrollController = ScrollController();
+    var hasOlder = true;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StatefulBuilder(
+          builder: (context, setState) {
+            return SizedBox(
+              height: 400,
+              child: AiThread(
+                runtime: store,
+                scrollController: scrollController,
+                hasOlder: hasOlder,
+                isLoadingOlder: false,
+                onLoadOlder: () {
+                  final older = List.generate(
+                    10,
+                    (i) => AiMessage(
+                      id: 'o$i',
+                      role: AiRole.user,
+                      parts: [AiTextPart(text: 'older $i\n' * 4)],
+                    ),
+                  );
+                  setState(() {
+                    hasOlder = false;
+                    store.setMessages([...older, ...newer]);
+                  });
+                },
+                loadOlderHeaderBuilder: (context, {required isLoadingOlder}) {
+                  return const SizedBox(height: 24, child: Text('OLDER'));
+                },
+                loadingBuilder: (_) => const Text('LOADING'),
+                emptyBuilder: (_) => const Text('EMPTY'),
+                errorBuilder: (_, msg, retry) => Text('ERR:$msg'),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Leave bottom stick, stay above the load-older threshold so we can
+    // snapshot extent before prepend.
+    scrollController.jumpTo(200);
+    await tester.pumpAndSettle();
+    final beforeExtent = scrollController.position.maxScrollExtent;
+    const park = 40.0;
+    scrollController.jumpTo(park);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pumpAndSettle();
+
+    final afterExtent = scrollController.position.maxScrollExtent;
+    expect(afterExtent, greaterThan(beforeExtent));
+    final delta = afterExtent - beforeExtent;
+    // Content that was under [park] stays under the viewport after top prepend.
+    // AiThread snapshots pixels/extent immediately before onLoadOlder.
+    expect(scrollController.offset, closeTo(park + delta, 5.0));
+  });
 }
 
 class _GrowingMessageTile extends StatefulWidget {
