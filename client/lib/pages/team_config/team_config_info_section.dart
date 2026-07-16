@@ -1,9 +1,9 @@
 import 'dart:async';
+import 'package:teampilot/widgets/settings/configured_status_badge.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/theme/app_text_styles.dart';
 
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
@@ -20,7 +20,6 @@ import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../widgets/app_provider/cli_effort_picker_field.dart';
 import '../../widgets/app_provider/provider_brand_icon.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'team_delete_confirm_dialog.dart';
 import '../home_workspace/workspace/config/workspace_cli_config_helpers.dart';
 import 'team_config_helpers.dart';
@@ -148,20 +147,20 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SettingsSurfaceCard(
+          TpCard.outlined(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SettingsLabeledStackedRow(
+                TpPreferenceStack(
                   title: l10n.teamName,
                   body: Text(
                     key: AppKeys.teamNameField,
                     widget.team.name,
-                    style: AppTextStyles.of(context).mdMedium,
+                    style: TpTextStyles.of(context).mdMedium,
                   ),
                   showDividerBelow: true,
                 ),
-                SettingsLabeledStackedRow(
+                TpPreferenceStack(
                   title: l10n.teamDescription,
                   subtitle: l10n.teamDescriptionHint,
                   body: Builder(
@@ -187,10 +186,10 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                   ),
                   showDividerBelow: true,
                 ),
-                SettingsLabeledStackedRow(
+                TpPreferenceStack(
                   title: l10n.teamLoop,
                   subtitle: l10n.teamLoopSubtitle,
-                  body: SettingsCompactDropdown<String>(
+                  body: TpCompactSelect<String>(
                     value: loopKey,
                     entries: [
                       ('__default__', l10n.teamLoopDefault),
@@ -210,7 +209,7 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                   showDividerBelow: showTeamCliRow,
                 ),
                 if (showTeamCliRow)
-                  SettingsLabeledStackedRow(
+                  TpPreferenceStack(
                     title: l10n.teamCliLabel,
                     subtitle: l10n.teamCliLockedSubtitle,
                     body: Row(
@@ -229,14 +228,14 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                         Expanded(
                           child: Text(
                             teamCliDisplayLabel(context, l10n, widget.team.cli),
-                            style: AppTextStyles.of(context).md,
+                            style: TpTextStyles.of(context).md,
                           ),
                         ),
                       ],
                     ),
                     showDividerBelow: true,
                   ),
-                SettingsLabeledStackedRow(
+                TpPreferenceStack(
                   title: l10n.teamExtraArgs,
                   subtitle: l10n.teamExtraArgsHint,
                   body: TextField(
@@ -249,7 +248,7 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                       showDelegateRow || showTeamEffort || showForceWaitRow,
                 ),
                 if (showTeamEffort)
-                  SettingsLabeledStackedRow(
+                  TpPreferenceStack(
                     title: l10n.teamEffortLevel,
                     subtitle: l10n.teamEffortLevelSubtitle,
                     body: CliEffortPickerField(
@@ -269,7 +268,7 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                   showDividerBelow: showDelegateRow || showForceWaitRow,
                 ),
                 if (showDelegateRow)
-                  SettingsLabeledRow(
+                  TpPreferenceRow(
                     title: l10n.teamLeadDelegateOnlyTitle,
                     subtitle: l10n.teamLeadDelegateOnlySubtitle,
                     trailing: Switch(
@@ -284,7 +283,7 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                     showDividerBelow: showForceWaitRow,
                   ),
                 if (showForceWaitRow)
-                  SettingsLabeledRow(
+                  TpPreferenceRow(
                     title: l10n.teamForceWaitBeforeStopTitle,
                     subtitle: l10n.teamForceWaitBeforeStopSubtitle,
                     trailing: Switch(
@@ -326,7 +325,7 @@ class TeamDefaultPresetRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final registry = CliToolRegistryScope.of(context);
     final presets = context.watch<CliPresetsCubit>().state.presets;
     final currentTeam = context
@@ -457,7 +456,7 @@ class TeamDefaultPresetRow extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        SettingsConfiguredBadge(configured: configured),
+                        configuredStatusBadge(context, configured: configured),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -549,8 +548,8 @@ class TeamConfigDangerZone extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final errorColor = Theme.of(context).colorScheme.error;
-    return SettingsSurfaceCard(
-      child: SettingsLabeledStackedRow(
+    return TpCard.outlined(
+      child: TpPreferenceStack(
         title: l10n.dangerZone,
         subtitle: l10n.deleteTeamSubtitle,
         body: Align(
@@ -565,7 +564,7 @@ class TeamConfigDangerZone extends StatelessWidget {
             ),
             label: Text(
               l10n.deleteTeam,
-              style: AppTextStyles.of(context).mdColored(errorColor),
+              style: TpTextStyles.of(context).mdColored(errorColor),
             ),
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: errorColor.withValues(alpha: 0.4)),

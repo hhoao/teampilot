@@ -6,10 +6,8 @@ import '../l10n/l10n_extensions.dart';
 import '../models/runtime_target.dart';
 import '../models/workspace_folder.dart';
 import '../services/storage/home_target_controller.dart';
-import '../theme/app_text_styles.dart';
 import '../utils/workspace_path_picker.dart';
 import '../utils/workspace_path_utils.dart';
-import 'settings/workspace_settings_widgets.dart';
 import 'workspace_folder_directory_row.dart';
 
 /// Compact directory picker for the "new workspace" dialogs: pick a machine,
@@ -76,7 +74,7 @@ class _WorkspaceCreateDirectoryPickerState
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final hasDirectory = widget.folders.isNotEmpty;
 
     return FutureBuilder<List<RuntimeTarget>>(
@@ -137,7 +135,7 @@ class _WorkspaceCreateDirectoryPickerState
                     ),
                   ),
                   const SizedBox(width: 8),
-                  SettingsCompactDropdown<String>(
+                  TpCompactSelect<String>(
                     value: widget.targetId,
                     entries: entries,
                     onChanged: (id) {
@@ -200,7 +198,7 @@ class WorkspaceCreateNameField extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: BoxDecoration(

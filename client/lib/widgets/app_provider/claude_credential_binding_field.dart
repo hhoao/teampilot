@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../services/provider/credential_binding.dart';
-import '../../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 /// Official Claude OAuth: follow global `~/.claude` or use an isolated copy.
@@ -26,7 +25,7 @@ class ClaudeCredentialBindingField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final readOnly = onChanged == null;
 
     return Column(

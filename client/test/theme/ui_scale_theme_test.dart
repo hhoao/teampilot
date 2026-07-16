@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/theme/app_spacing.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
@@ -81,24 +81,24 @@ void main() {
   });
 
   test('spacing tokens are fixed (independent of the text-size scale)', () {
-    final std = buildDarkTheme(null, AppTypographyScale.standard);
-    final comfy = buildDarkTheme(null, AppTypographyScale.comfortable);
-
     // Text size scales fonts only; padding does not follow it (the whole-UI
-    // UiZoom is the knob that scales spacing).
-    expect(std.extension<AppSpacingTheme>()!.md, AppSpacingTheme.mdBase);
-    expect(comfy.extension<AppSpacingTheme>()!.md, AppSpacingTheme.mdBase);
+    // UiZoom is the knob that scales spacing). Material ThemeData no longer
+    // carries a spacing ThemeExtension — layout spacing lives on TpTheme.
+    final std = TpSpacing.fromScale(1.0);
+    final comfyText = AppTypographyScale.comfortable.multiplier;
+    expect(std.md, TpSpacing.mdBase);
+    expect(comfyText, greaterThan(1.0));
   });
 
   test('icon theme scales with the text-size preset (mapped, not 1:1)', () {
     final std = buildDarkTheme(null, AppTypographyScale.standard);
     final comfy = buildDarkTheme(null, AppTypographyScale.comfortable);
 
-    final stdIconMult = AppIconSizes.resolveIconMultiplier(
+    final stdIconMult = TpIconSizes.resolveIconMultiplier(
       effectiveTextMultiplier: 1.0,
       textBaseline: 1.0,
     );
-    expect(std.iconTheme.size, AppIconSizes.mdBase * stdIconMult);
+    expect(std.iconTheme.size, TpIconSizes.mdBase * stdIconMult);
     expect(comfy.iconTheme.size, greaterThan(std.iconTheme.size!));
   });
 
@@ -109,11 +109,18 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildDarkTheme(null, AppTypographyScale.comfortable),
-        home: Builder(
-          builder: (context) {
-            captured = context.uiScale;
-            return const SizedBox.shrink();
-          },
+        home: TpTheme(
+          data: TpThemeData.fromColorScheme(
+            ColorScheme.fromSeed(seedColor: const Color(0xFFD4A06A)),
+            scale: 1.0,
+            controlScale: AppTypographyScale.comfortable.multiplier,
+          ),
+          child: Builder(
+            builder: (context) {
+              captured = context.uiScale;
+              return const SizedBox.shrink();
+            },
+          ),
         ),
       ),
     );

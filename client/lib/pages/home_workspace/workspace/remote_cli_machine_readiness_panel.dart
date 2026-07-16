@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 
@@ -15,9 +16,7 @@ import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../services/remote/remote_cli_readiness.dart';
 import '../../../services/remote/remote_cli_requirements.dart';
-import '../../../theme/app_text_styles.dart';
 import '../../../widgets/cli_install_progress_panel.dart';
-import '../../../widgets/settings/workspace_settings_widgets.dart';
 
 /// Per-SSH-host CLI locate status and user-driven install for Machines placement.
 class RemoteCliMachineReadinessPanel extends StatefulWidget {
@@ -163,7 +162,7 @@ class _RemoteCliMachineReadinessPanelState
 
     return Padding(
       padding: const EdgeInsets.only(top: 12),
-      child: SettingsSurfaceCard(
+      child: TpCard.outlined(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: Column(
@@ -171,7 +170,7 @@ class _RemoteCliMachineReadinessPanelState
             children: [
               Text(
                 l10n.remoteCliMachineReadinessTitle,
-                style: AppTextStyles.of(context).mdMedium,
+                style: TpTextStyles.of(context).mdMedium,
               ),
               const SizedBox(height: 8),
               for (final requirement in requirements)
@@ -198,7 +197,7 @@ class _RemoteCliMachineReadinessPanelState
                 const SizedBox(height: 8),
                 Text(
                   l10n.remoteCliMachineReadinessInstallHint,
-                  style: AppTextStyles.of(context).smColored(cs.onSurfaceVariant),
+                  style: TpTextStyles.of(context).smColored(cs.onSurfaceVariant),
                 ),
               ],
             ],
@@ -275,10 +274,10 @@ class _CliReadinessRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(cliLabel, style: AppTextStyles.of(context).md),
+                Text(cliLabel, style: TpTextStyles.of(context).md),
                 Text(
                   subtitle,
-                  style: AppTextStyles.of(context).smColored(color),
+                  style: TpTextStyles.of(context).smColored(color),
                 ),
               ],
             ),

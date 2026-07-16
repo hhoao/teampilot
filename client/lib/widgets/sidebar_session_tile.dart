@@ -14,7 +14,6 @@ import '../pages/automations/automation_editor_dialog.dart';
 import '../pages/automations/automations_dialog.dart';
 import '../pages/home_workspace/workspace/workspace_sidebar_row_metrics.dart';
 import '../repositories/session_repository.dart';
-import '../theme/app_text_styles.dart';
 import '../utils/coarse_relative_time.dart';
 import '../utils/debounce/debounce.dart';
 import 'menu/sidebar_action_menu.dart';
@@ -482,7 +481,7 @@ class _SessionCoarseRelativeTime extends StatelessWidget {
         label,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: AppTextStyles.of(
+        style: TpTextStyles.of(
           context,
         ).xsColored(textBase.withValues(alpha: 0.52)),
       ),
@@ -501,7 +500,7 @@ class _SessionPinnedMark extends StatelessWidget {
       padding: const EdgeInsets.only(left: 4),
       child: Icon(
         Icons.push_pin,
-        size: context.tpIconSizes.xs,
+        size: context.tpIconSizes.sm,
         color: cs.onSurfaceVariant.withValues(alpha: 0.55),
       ),
     );
@@ -637,7 +636,7 @@ class _SidebarTile extends StatelessWidget {
                               title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.of(context).mdColored(textBase,),
+                              style: TpTextStyles.of(context).mdColored(textBase,),
                             ),
                           ),
                           if (subtitle.isNotEmpty) ...[
@@ -646,7 +645,7 @@ class _SidebarTile extends StatelessWidget {
                               subtitle,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.52),
+                              style: TpTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.52),
                               ),
                             ),
                           ],

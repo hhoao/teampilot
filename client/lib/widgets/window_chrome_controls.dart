@@ -108,7 +108,7 @@ class _MacTrafficLightControlsState extends State<MacTrafficLightControls> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final diameter = context.tpIconSizes.md;
-    final gap = context.tpIconSizes.xxs * 0.55;
+    final gap = context.tpIconSizes.sm * 0.55;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),

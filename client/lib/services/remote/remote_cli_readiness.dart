@@ -1,6 +1,7 @@
 import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
+import '../../utils/logger.dart';
 import '../cli/installer_types.dart';
 import '../cli/registry/capabilities/installer_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
@@ -108,11 +109,18 @@ class RemoteCliReadinessService {
         return RemoteCliMissing(targetId: target.id, cli: cli);
       }
       return RemoteCliReady(targetId: target.id, cli: cli, path: path);
-    } on Object catch (e) {
+    } on Object catch (e, st) {
+      final message = remoteCliFailureMessage(e);
+      appLogger.w(
+        '[remote-cli] probe failed target=${target.id} cli=${cli.value}: '
+        '$message',
+        error: e,
+        stackTrace: st,
+      );
       return RemoteCliFailed(
         targetId: target.id,
         cli: cli,
-        message: '$e',
+        message: message,
       );
     }
   }
@@ -149,7 +157,10 @@ class RemoteCliReadinessService {
 
     try {
       final client = await sshClientFactory.clientForStorage(profile);
-      final run = RemoteCliLocator.runnerForClient(client);
+      final run = RemoteCliLocator.runnerForClient(
+        client,
+        includeStderr: true,
+      );
       final storedPath = (await cliPathOverride(target.id, cli.value) ?? '')
           .trim();
       final path = await _installer.ensure(
@@ -175,11 +186,18 @@ class RemoteCliReadinessService {
         writeCliPathOverride: setCliPathOverride,
       );
       return RemoteCliReady(targetId: target.id, cli: cli, path: path);
-    } on Object catch (e) {
+    } on Object catch (e, st) {
+      final message = remoteCliFailureMessage(e);
+      appLogger.w(
+        '[remote-cli] install failed target=${target.id} cli=${cli.value}: '
+        '$message',
+        error: e,
+        stackTrace: st,
+      );
       return RemoteCliFailed(
         targetId: target.id,
         cli: cli,
-        message: '$e',
+        message: message,
       );
     }
   }
@@ -202,4 +220,13 @@ class RemoteCliReadinessService {
       manualPathOverride: storedPath,
     );
   }
+}
+
+/// User-facing install/probe error text without Dart's `Bad state:` prefix.
+String remoteCliFailureMessage(Object error) {
+  if (error is StateError) {
+    final message = error.message.trim();
+    if (message.isNotEmpty) return message;
+  }
+  return '$error';
 }

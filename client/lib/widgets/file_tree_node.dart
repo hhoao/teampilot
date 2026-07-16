@@ -15,7 +15,6 @@ import '../services/storage/runtime_context.dart';
 import '../services/workbench/workbench_editor_opener.dart';
 import '../services/workspace_dnd/path_namespace.dart';
 import '../services/workspace_dnd/workspace_file_ref.dart';
-import '../theme/app_text_styles.dart';
 import 'file_icon_widget.dart';
 import 'file_tree/file_tree_context_menu.dart';
 import 'workspace_dnd/draggable_file_row.dart';
@@ -247,14 +246,14 @@ class _FileTreeNodeState extends State<FileTreeNode> {
                         widget.entry.name,
                         maxLines: 1,
                         style: widget.isRoot
-                            ? AppTextStyles.of(context).mdBoldSpreadColored(
+                            ? TpTextStyles.of(context).mdBoldSpreadColored(
                                 widget.rootMissing
                                     ? cs.onSurfaceVariant.withValues(alpha: 0.5)
                                     : labelColor,
                               )
-                            : isActive ? AppTextStyles.of(context).mdSemiboldColored(widget.rootMissing
+                            : isActive ? TpTextStyles.of(context).mdSemiboldColored(widget.rootMissing
                                     ? cs.onSurfaceVariant.withValues(alpha: 0.5)
-                                    : labelColor) : AppTextStyles.of(context).mdMediumColored(widget.rootMissing
+                                    : labelColor) : TpTextStyles.of(context).mdMediumColored(widget.rootMissing
                                     ? cs.onSurfaceVariant.withValues(alpha: 0.5)
                                     : labelColor),
                       ),

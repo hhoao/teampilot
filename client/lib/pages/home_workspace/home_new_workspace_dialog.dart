@@ -6,7 +6,6 @@ import '../../cubits/chat_cubit.dart';
 import '../../models/workspace_folder.dart';
 import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/session_repository.dart';
-import '../../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/workspace_create_directory_picker.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -87,7 +86,7 @@ class _HomeNewWorkspaceDialogState extends State<HomeNewWorkspaceDialog> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final hasDirectory = _folders.isNotEmpty;
     final firstPath = hasDirectory ? _folders.first.path : '';
 

@@ -4,7 +4,6 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/llm_config.dart';
 import '../../utils/app_keys.dart';
-import '../../theme/app_text_styles.dart';
 
 class LlmModelEditDialog extends StatefulWidget {
   const LlmModelEditDialog({
@@ -85,7 +84,7 @@ class LlmModelEditDialogState extends State<LlmModelEditDialog> {
             children: [
               Text(
                 l10n.provider,
-                style: AppTextStyles.of(context).mdSemibold,
+                style: TpTextStyles.of(context).mdSemibold,
               ),
               const SizedBox(height: 8),
               TpSelect<String>(

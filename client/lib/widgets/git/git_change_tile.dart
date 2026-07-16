@@ -4,7 +4,6 @@ import 'package:path/path.dart' as p;
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_status.dart';
 import '../../services/git/git_changes_visible_rows.dart';
-import '../../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../file_icon_widget.dart';
 
@@ -110,7 +109,7 @@ class _GitChangeTileState extends State<GitChangeTile> {
                     Text(
                       name,
                       maxLines: 1,
-                      style: AppTextStyles.of(context).md,
+                      style: TpTextStyles.of(context).md,
                     ),
                     const SizedBox(width: 8),
                     if (_hovered) ..._actions(context) else _badge(cs),
@@ -129,7 +128,7 @@ class _GitChangeTileState extends State<GitChangeTile> {
     child: Text(
       widget.change.badge,
       textAlign: TextAlign.center,
-      style: AppTextStyles.of(
+      style: TpTextStyles.of(
         context,
       ).smBoldColored(_badgeColor(cs)),
     ),

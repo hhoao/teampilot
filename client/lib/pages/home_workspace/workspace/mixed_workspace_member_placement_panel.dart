@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../cubits/chat_cubit.dart';
@@ -17,7 +17,6 @@ import '../../../repositories/ssh_profile_repository.dart';
 import '../../../services/remote/remote_cli_readiness.dart';
 import '../../../services/storage/home_target_controller.dart';
 import '../../../services/workspace/target_liveness.dart';
-import '../../../theme/app_text_styles.dart';
 import '../../../utils/team_member_naming.dart';
 import '../../../widgets/workspace/workspace_dead_target_remap_dialog.dart';
 import 'remote_cli_machine_readiness_panel.dart';
@@ -227,7 +226,7 @@ class _MixedWorkspaceMemberPlacementPanelState
         AppToast.show(
           context,
           message: context.l10n.workspaceDeadTargetRemapFailed,
-          variant: AppToastVariant.error,
+          variant: TpToastVariant.error,
         );
       }
     } finally {
@@ -389,7 +388,7 @@ class _TargetTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final pathPreview = paths.join(', ');
     return Material(
       color: selected
@@ -509,11 +508,11 @@ class _MemberPlacementRow extends StatelessWidget {
                 placedTotal,
                 placedTotal,
               ),
-              style: AppTextStyles.of(context).sm,
+              style: TpTextStyles.of(context).sm,
             ),
             Text(
               l10n.mixedWorkspaceMemberPlacementOnMachine(countOnMachine),
-              style: AppTextStyles.of(context).sm,
+              style: TpTextStyles.of(context).sm,
             ),
           ],
         ),

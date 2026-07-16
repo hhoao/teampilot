@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../theme/app_fonts.dart';
-import '../../theme/app_text_styles.dart';
 
 TextStyle logMonospaceStyle(BuildContext context, {Color? color}) {
   final cs = Theme.of(context).colorScheme;
   return appMonoTextStyle(
     context,
-    base: AppTextStyles.of(context).sm,
+    base: TpTextStyles.of(context).sm,
     height: 1.45,
     color: color ?? cs.onSurface.withValues(alpha: 0.92),
   );

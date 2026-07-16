@@ -95,4 +95,62 @@ void main() {
       identity,
     );
   });
+
+  test('prompt can accept a mismatched host key and replace the pin', () async {
+    final repository = InMemorySshKnownHostRepository();
+    await repository.saveFingerprint(
+      profile.hostIdentifier,
+      'ssh-ed25519',
+      '01:02:03',
+    );
+    HostKeyPromptInfo? prompted;
+    final policy = SshHostKeyTrustPolicy(
+      knownHostRepository: repository,
+      onHostKeyPrompt: (info) async {
+        prompted = info;
+        return true;
+      },
+    );
+    const identity = 'SHA256:nThbg6kXUpJWGl7E1IGOCspRomTxdCARLviKw6E5SY8';
+
+    final accepted = await policy.verify(
+      profile: profile,
+      keyType: 'ssh-ed25519',
+      fingerprint: Uint8List.fromList(identity.codeUnits),
+    );
+
+    expect(accepted, isTrue);
+    expect(prompted?.isMismatch, isTrue);
+    expect(prompted?.previousFingerprintHex, '01:02:03');
+    expect(prompted?.fingerprintHex, identity);
+    expect(
+      await repository.findFingerprint(profile.hostIdentifier, 'ssh-ed25519'),
+      identity,
+    );
+  });
+
+  test('prompt rejection leaves the previous pin unchanged', () async {
+    final repository = InMemorySshKnownHostRepository();
+    await repository.saveFingerprint(
+      profile.hostIdentifier,
+      'ssh-ed25519',
+      '01:02:03',
+    );
+    final policy = SshHostKeyTrustPolicy(
+      knownHostRepository: repository,
+      onHostKeyPrompt: (_) async => false,
+    );
+
+    final accepted = await policy.verify(
+      profile: profile,
+      keyType: 'ssh-ed25519',
+      fingerprint: Uint8List.fromList('SHA256:abc'.codeUnits),
+    );
+
+    expect(accepted, isFalse);
+    expect(
+      await repository.findFingerprint(profile.hostIdentifier, 'ssh-ed25519'),
+      '01:02:03',
+    );
+  });
 }

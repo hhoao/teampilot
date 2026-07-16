@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_typography_scale.dart';
-import 'workspace_settings_toggle_strip.dart';
 
 /// Typography scale preset strip; shows a percent field when [scaleId] is `custom`.
 class TypographyScaleSetting extends StatefulWidget {
@@ -78,24 +78,24 @@ class _TypographyScaleSettingState extends State<TypographyScaleSetting> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          WorkspaceSettingsToggleStrip<String>(
+          TpSegmentedPicker<String>(
             segments: [
-              WorkspaceToggleSegment<String>(
+              TpSegmentedOption<String>(
                 value: 'compact',
                 label: l10n.typographyScaleCompact,
                 icon: Icons.density_small_outlined,
               ),
-              WorkspaceToggleSegment<String>(
+              TpSegmentedOption<String>(
                 value: 'standard',
                 label: l10n.typographyScaleStandard,
                 icon: Icons.density_medium_outlined,
               ),
-              WorkspaceToggleSegment<String>(
+              TpSegmentedOption<String>(
                 value: 'comfortable',
                 label: l10n.typographyScaleComfortable,
                 icon: Icons.density_large_outlined,
               ),
-              WorkspaceToggleSegment<String>(
+              TpSegmentedOption<String>(
                 value: 'custom',
                 label: l10n.typographyScaleCustom,
                 icon: Icons.tune_outlined,

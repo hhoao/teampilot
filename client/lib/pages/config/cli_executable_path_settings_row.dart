@@ -2,7 +2,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/session_preferences_cubit.dart';
@@ -15,7 +14,6 @@ import '../../services/ssh/ssh_client_factory.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/cli_install_progress_panel.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'session_config_constants.dart';
 
 class CliExecutablePathSettingsRow extends StatefulWidget {
@@ -172,8 +170,8 @@ class CliExecutablePathSettingsRowState
         context,
         message: result.message,
         variant: result.success
-            ? AppToastVariant.success
-            : AppToastVariant.error,
+            ? TpToastVariant.success
+            : TpToastVariant.error,
       );
     } finally {
       if (mounted) {
@@ -224,7 +222,7 @@ class CliExecutablePathSettingsRowState
     final fieldEmpty = _controller.text.trim().isEmpty;
     final hint = fieldEmpty ? '${l10n.cliExecutablePathUsing}$effective' : null;
 
-    return SettingsLabeledStackedRow(
+    return TpPreferenceStack(
       title: widget.title,
       subtitle: widget.subtitle,
       titleLeading: CliBrandIcon(

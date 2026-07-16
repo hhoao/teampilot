@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/repositories/notification_repository.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../support/in_memory_filesystem.dart';
 
@@ -27,21 +27,21 @@ void main() {
     await repo.append(
       id: 'n1',
       message: 'Saved',
-      variant: AppToastVariant.success,
+      variant: TpToastVariant.success,
     );
 
     final fresh = _repo(fs);
     final store = await fresh.load(forceReload: true);
     expect(store.items, hasLength(1));
     expect(store.items.first.message, 'Saved');
-    expect(store.items.first.variant, AppToastVariant.success);
+    expect(store.items.first.variant, TpToastVariant.success);
     expect(store.items.first.isRead, isFalse);
   });
 
   test('append skips info variant', () async {
     final fs = InMemoryFilesystem();
     final repo = _repo(fs);
-    await repo.append(id: 'n1', message: 'FYI', variant: AppToastVariant.info);
+    await repo.append(id: 'n1', message: 'FYI', variant: TpToastVariant.info);
     expect((await repo.load()).items, isEmpty);
   });
 
@@ -52,7 +52,7 @@ void main() {
     await repo.append(
       id: 'old',
       message: 'stale',
-      variant: AppToastVariant.warning,
+      variant: TpToastVariant.warning,
     );
 
     final later = now.add(const Duration(days: 8));
@@ -60,7 +60,7 @@ void main() {
     await pruned.append(
       id: 'new',
       message: 'fresh',
-      variant: AppToastVariant.error,
+      variant: TpToastVariant.error,
     );
 
     final store = await pruned.load(forceReload: true);
@@ -76,7 +76,7 @@ void main() {
       await repo.append(
         id: 'n$i',
         message: 'msg $i',
-        variant: AppToastVariant.success,
+        variant: TpToastVariant.success,
       );
     }
     expect((await repo.load()).items.length, notificationMaxItems);
@@ -88,9 +88,9 @@ void main() {
     await repo.append(
       id: 'a',
       message: 'one',
-      variant: AppToastVariant.success,
+      variant: TpToastVariant.success,
     );
-    await repo.append(id: 'b', message: 'two', variant: AppToastVariant.error);
+    await repo.append(id: 'b', message: 'two', variant: TpToastVariant.error);
 
     await repo.markRead('a');
     expect(

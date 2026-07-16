@@ -10,7 +10,6 @@ import '../../models/config_bundle.dart';
 import '../../services/commands/command_bus.dart';
 import '../../services/commands/shortcut_focus.dart';
 import '../../services/storage/app_storage.dart';
-import '../../theme/app_text_styles.dart';
 import '../../services/compose/compose_file_search.dart';
 import '../../services/compose/compose_slash_catalog.dart';
 import '../../services/compose/compose_trigger_caret.dart';
@@ -214,7 +213,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     final fieldBox = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
     if (fieldBox == null || !fieldBox.hasSize) return;
 
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final textStyle = styles.mdColored(widget.mutedColor);
     final anchor = composeTriggerMenuAnchor(
       context: context,
@@ -373,7 +372,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
 
   @override
   Widget build(BuildContext context) {
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final textStyle = styles.mdColored(widget.mutedColor);
 
     if (_overlayVisible) {
@@ -452,7 +451,7 @@ class _ComposeTriggerSuggestionPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final spacing = context.tpSpacing;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
 
     return Material(
       elevation: 8,
@@ -483,7 +482,7 @@ class _ComposeTriggerSuggestionPanel extends StatelessWidget {
     required BuildContext context,
     required ColorScheme cs,
     required TpSpacing spacing,
-    required AppTextStyles styles,
+    required TpTextStyles styles,
   }) {
     final children = <Widget>[];
     ComposeSlashCandidateKind? slashSection;
@@ -587,7 +586,7 @@ class _ComposeTriggerSectionHeader extends StatelessWidget {
 
   final String label;
   final TpSpacing spacing;
-  final AppTextStyles styles;
+  final TpTextStyles styles;
   final Color color;
 
   @override

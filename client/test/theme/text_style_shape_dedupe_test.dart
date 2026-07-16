@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/theme/app_font_resolver.dart';
 import 'package:teampilot/theme/app_text_styles_warmup.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 void main() {
   test('interactive warmup dedupes styles that share a shape fingerprint', () {
@@ -12,10 +13,10 @@ void main() {
     );
     final theme = bootstrapThemeForTextWarmup(fonts);
     final all = textStylesForThemeWarmup(theme);
-    final deduped = dedupeTextStylesByShapeKey(all);
+    final deduped = TpGlyphWarmup.dedupeByShapeKey(all);
 
-    final allKeys = all.map(textStyleShapeKey).toSet();
-    final dedupedKeys = deduped.map(textStyleShapeKey).toSet();
+    final allKeys = all.map(TpGlyphWarmup.shapeKey).toSet();
+    final dedupedKeys = deduped.map(TpGlyphWarmup.shapeKey).toSet();
 
     expect(
       deduped.length,
@@ -28,7 +29,7 @@ void main() {
     expect(deduped.length, lessThanOrEqualTo(all.length ~/ 2 + 5));
   });
 
-  test('textStyleShapeKey ignores height and letterSpacing', () {
+  test('TpGlyphWarmup.shapeKey ignores height and letterSpacing', () {
     const a = TextStyle(
       fontFamily: 'Noto Sans SC',
       fontSize: 14,
@@ -43,6 +44,6 @@ void main() {
       height: 1.5,
       letterSpacing: 0.5,
     );
-    expect(textStyleShapeKey(a), textStyleShapeKey(b));
+    expect(TpGlyphWarmup.shapeKey(a), TpGlyphWarmup.shapeKey(b));
   });
 }

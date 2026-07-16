@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -16,7 +17,6 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/widgets/app_provider/cli_effort_picker_field.dart';
 import 'package:teampilot/widgets/app_provider/provider_model_picker_field.dart';
-import 'package:teampilot/widgets/settings/workspace_settings_widgets.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
@@ -113,7 +113,7 @@ void main() {
       // Regression: empty-provider state used to hide the CLI picker entirely,
       // trapping users who picked a CLI with no providers.
       expect(find.text('CLI backend'), findsOneWidget);
-      expect(find.byType(SettingsCompactDropdown<String>), findsOneWidget);
+      expect(find.byType(TpCompactSelect<String>), findsOneWidget);
     },
   );
 
@@ -173,7 +173,7 @@ void main() {
         ),
       );
 
-      await tester.tap(find.byType(SettingsCompactDropdown<String>).first);
+      await tester.tap(find.byType(TpCompactSelect<String>).first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Codex').last);
       await tester.pumpAndSettle();

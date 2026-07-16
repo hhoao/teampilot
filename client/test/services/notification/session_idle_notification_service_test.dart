@@ -3,17 +3,17 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/services/notification/desktop_system_notifier.dart';
 import 'package:teampilot/services/notification/notification_recorder.dart';
 import 'package:teampilot/services/notification/session_idle_notification_service.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 class _RecordingNotifier implements NotificationRecorder {
   final titles = <String>[];
   final messages = <String>[];
-  final variants = <AppToastVariant>[];
+  final variants = <TpToastVariant>[];
 
   @override
   void record({
     required String message,
-    required AppToastVariant variant,
+    required TpToastVariant variant,
     String title = '',
   }) {
     titles.add(title);
@@ -63,7 +63,7 @@ void main() {
 
     expect(recorder.titles, ['Fix login bug']);
     expect(recorder.messages, ['Ready for your next message']);
-    expect(recorder.variants, [AppToastVariant.success]);
+    expect(recorder.variants, [TpToastVariant.success]);
     expect(shown, [
       (
         title: 'Fix login bug',

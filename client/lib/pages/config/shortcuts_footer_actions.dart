@@ -9,7 +9,6 @@ import '../../cubits/shortcut_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/commands/command_catalog.dart';
 import '../../services/commands/key_chord.dart';
-import '../../theme/app_toast_theme.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/app_toast/app_toast.dart';
 
@@ -109,7 +108,7 @@ class ShortcutsFooterActions extends StatelessWidget {
         AppToast.show(
           context,
           message: l10n.shortcutsExportFailed,
-          variant: AppToastVariant.error,
+          variant: TpToastVariant.error,
         );
       }
     }
@@ -131,7 +130,7 @@ class ShortcutsFooterActions extends StatelessWidget {
         AppToast.show(
           context,
           message: l10n.shortcutsImportInvalidFile,
-          variant: AppToastVariant.error,
+          variant: TpToastVariant.error,
         );
       }
       return;

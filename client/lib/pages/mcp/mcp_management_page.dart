@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/mcp_cubit.dart';
@@ -13,7 +13,6 @@ import '../../services/app/platform_utils.dart';
 import '../../services/mcp/mcp_listing_install_service.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
-import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_section_host.dart';
 import '../../widgets/settings/workspace_section_navigation.dart';
@@ -145,13 +144,13 @@ class _McpManagementPageState extends State<McpManagementPage> {
       AppToast.show(
         context,
         message: context.l10n.mcpCatalogAdded,
-        variant: AppToastVariant.success,
+        variant: TpToastVariant.success,
       );
       return;
     }
     final message = cubit.state.errorMessage;
     if (message != null) {
-      AppToast.show(context, message: message, variant: AppToastVariant.error);
+      AppToast.show(context, message: message, variant: TpToastVariant.error);
       navigateMcpEdit(context, draft);
     }
   }
@@ -165,7 +164,7 @@ class _McpManagementPageState extends State<McpManagementPage> {
       AppToast.show(
         context,
         message: l10n.mcpImportEmpty,
-        variant: AppToastVariant.warning,
+        variant: TpToastVariant.warning,
       );
       return;
     }
@@ -216,7 +215,7 @@ class _McpManagementPageState extends State<McpManagementPage> {
     AppToast.show(
       context,
       message: l10n.mcpImportDone,
-      variant: AppToastVariant.success,
+      variant: TpToastVariant.success,
     );
   }
 
@@ -264,7 +263,7 @@ class _McpManagementPageState extends State<McpManagementPage> {
         AppToast.show(
           context,
           message: state.errorMessage!,
-          variant: AppToastVariant.error,
+          variant: TpToastVariant.error,
         );
         context.read<McpCubit>().clearError();
       },

@@ -15,7 +15,6 @@ import '../../widgets/cli_launch_config/member_launch_config_type_field.dart';
 import '../../widgets/cli_launch_config/preset_launch_picker_field.dart';
 import '../../widgets/cli_launch_config/team_launch_config_kind.dart';
 import '../../widgets/cli_launch_config/team_launch_config_type_field.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../home_workspace/workspace/config/cli_presets_manage_dialog.dart';
 import 'team_config_helpers.dart';
 
@@ -187,7 +186,7 @@ class _TeamDefaultPresetConfigureDialogState
         children: [
           TpDialogHeader(title: l10n.teamDefaultPresetLabel),
           const SizedBox(height: 16),
-          SettingsSurfaceCard(
+          TpCard.outlined(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-import 'app_control_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 typedef AppButtonThemes = ({
   FilledButtonThemeData filled,
@@ -15,9 +14,9 @@ typedef AppButtonThemes = ({
 /// global theme (widget style merges over theme).
 ButtonStyle appButtonStyle(
   BuildContext context, {
-  AppControlSize size = AppControlSize.medium,
+  TpControlSize size = TpControlSize.medium,
 }) {
-  final control = AppControlTheme.fromContext(context);
+  final control = context.tpControl;
   return _buttonGeometry(
     metrics: control.metricsFor(size),
     radius: control.radius,
@@ -26,7 +25,7 @@ ButtonStyle appButtonStyle(
 }
 
 AppButtonThemes buildAppButtonThemes({
-  required AppControlTheme control,
+  required TpControlMetrics control,
   required ThemeData flexTheme,
 }) {
   final geometry = _buttonGeometry(
@@ -57,15 +56,15 @@ AppButtonThemes buildAppButtonThemes({
   );
 }
 
-/// Compact button track (independent of [AppControlTheme.input]).
+/// Compact button track (independent of [TpControlMetrics.input]).
 ///
 /// Horizontal padding only; [minimumSize]/[maximumSize] height from button
-/// metrics. Outline inputs use a taller [AppControlTheme.input] track so their
+/// metrics. Outline inputs use a taller [TpControlMetrics.input] track so their
 /// contentPadding is not collapsed.
 ///
 /// Labels/icons use [ColorScheme.onSurface]. Shape is a modest rounded rect.
 ButtonStyle _buttonGeometry({
-  required AppControlMetrics metrics,
+  required TpControlSizeMetrics metrics,
   required double radius,
   required Color onSurface,
 }) {

@@ -4,7 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:uuid/uuid.dart';
 
@@ -152,19 +152,19 @@ void _handleSessionOpenStatus(
       AppToast.show(
         context,
         message: blockedMixedMessage,
-        variant: AppToastVariant.warning,
+        variant: TpToastVariant.warning,
       );
     case SessionOpenStatus.missingWorkspace:
       AppToast.show(
         context,
         message: context.l10n.sessionLaunchMissingWorkspace,
-        variant: AppToastVariant.warning,
+        variant: TpToastVariant.warning,
       );
     case SessionOpenStatus.missingTeamMember:
       AppToast.show(
         context,
         message: context.l10n.sessionLaunchMissingTeamMember,
-        variant: AppToastVariant.warning,
+        variant: TpToastVariant.warning,
       );
   }
 }
@@ -320,7 +320,7 @@ Future<void> submitWorkspaceLandingMessage(
       AppToast.show(
         context,
         message: l10n.expertHubNotFound,
-        variant: AppToastVariant.warning,
+        variant: TpToastVariant.warning,
       );
       return;
     }
@@ -402,7 +402,7 @@ Future<void> submitWorkspaceLandingMessage(
       AppToast.show(
         context,
         message: l10n.homeWorkspaceNewConversation,
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
     }
     return;
@@ -427,7 +427,7 @@ Future<void> submitWorkspaceLandingMessage(
       AppToast.show(
         context,
         message: '${l10n.homeWorkspaceNewConversation}: $error',
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
     }
   }
@@ -540,7 +540,7 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
       AppToast.show(
         context,
         message: '${l10n.homeWorkspaceNewConversation}: $error',
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
     }
     return null;

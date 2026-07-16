@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -6,7 +7,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/board_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/app_text_styles.dart';
 import '../../models/board_column.dart';
 import '../../models/team_config.dart';
 import '../../services/team_bus/tasks/team_task.dart';
@@ -44,7 +44,7 @@ class BoardPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final l10n = context.l10n;
     final state = context.watch<BoardCubit>().state;
 
@@ -96,7 +96,7 @@ class _ColumnSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final l10n = context.l10n;
 
     final (icon, label) = switch (column) {
@@ -154,7 +154,7 @@ class _CardTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
 
     final isError =
         card.status == TaskStatus.failed || card.status == TaskStatus.cancelled;

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:shared_ui/shared_ui.dart';
 
-import 'app_fonts.dart';
-import 'app_text_styles.dart';
 
 /// Text styles [buildAppMarkdownStyleSheet] paints — keep in sync for boot
 /// glyph warmup ([textStylesForThemeWarmup]).
@@ -29,15 +28,15 @@ List<TextStyle> appMarkdownTextStyles(ThemeData theme) {
   ];
 }
 
-/// Session-history (and shared) markdown styles bound to [AppFontTheme].
+/// Session-history (and shared) markdown styles bound to [TpFontTheme].
 ///
-/// Uses only [AppTextStyles] variants (same size/weight as boot warmup) — no
+/// Uses only [TpTextStyles] variants (same size/weight as boot warmup) — no
 /// unique scaled sizes like `fontSize * 0.85` that miss the glyph cache.
 /// [MarkdownStyleSheet.fromTheme] hardcodes `monospace` for code; we replace
 /// that with the app mono face + CJK fallbacks.
 MarkdownStyleSheet buildAppMarkdownStyleSheet(ThemeData theme) {
-  final fonts = theme.extension<AppFontTheme>() ?? AppFontTheme.fallback;
-  final styles = AppTextStyles(theme);
+  final fonts = theme.extension<TpFontTheme>() ?? TpFontTheme.fallback;
+  final styles = TpTextStyles(theme);
   final scheme = theme.colorScheme;
   final base = MarkdownStyleSheet.fromTheme(theme);
 

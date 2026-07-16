@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../../cubits/chat_cubit.dart';
@@ -13,7 +13,6 @@ import '../../../../repositories/session_repository.dart';
 import '../../../../repositories/ssh_profile_repository.dart';
 import '../../../../services/storage/home_target_controller.dart';
 import '../../../../services/workspace/target_liveness.dart';
-import '../../../../widgets/settings/workspace_settings_widgets.dart';
 import '../../../../widgets/workspace/workspace_dead_target_remap_dialog.dart';
 import '../../../../widgets/workspace_folders_editor.dart';
 
@@ -122,7 +121,7 @@ class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {
         AppToast.show(
           context,
           message: context.l10n.workspaceDeadTargetRemapFailed,
-          variant: AppToastVariant.error,
+          variant: TpToastVariant.error,
         );
       }
     } finally {
@@ -145,7 +144,7 @@ class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {
 
     _ensureDeadTargetsChecked(live.folders);
 
-    return SettingsSurfaceCard(
+    return TpCard.outlined(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -154,7 +153,7 @@ class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {
               padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: LinearProgressIndicator(),
             ),
-          SettingsLabeledStackedRow(
+          TpPreferenceStack(
             title: l10n.workspaceFoldersSectionTitle,
             subtitle: workspaceFoldersEditorHint(
               l10n,

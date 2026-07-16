@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'package:teampilot/widgets/settings/configured_status_badge.dart';
 
 import '../../cubits/ai_feature_settings_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
@@ -11,12 +12,10 @@ import '../../models/app_provider_config.dart';
 import '../../services/ai/ai_feature_setting_resolver.dart';
 import '../../services/cli/registry/capabilities/provider_model_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../theme/app_text_styles.dart';
 import '../../widgets/app_provider/provider_brand_icon.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/cli_launch_config/cli_launch_custom_fields.dart';
 import '../../widgets/cli_launch_config/preset_launch_picker_field.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../home_workspace/workspace/config/cli_presets_manage_dialog.dart';
 import '../home_workspace/workspace/config/workspace_cli_config_helpers.dart';
 import '../home_workspace/workspace/config/workspace_cli_effort_helpers.dart';
@@ -34,17 +33,17 @@ class AiFeaturesConfigWorkspace extends StatelessWidget {
     return BlocBuilder<AiFeatureSettingsCubit, AiFeatureSettingsState>(
       builder: (context, state) {
         return SingleChildScrollView(
-          child: SettingsSurfaceCard(
+          child: TpCard.outlined(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (showHeading) ...[
-                  SettingsGroupHeader(title: l10n.aiFeatures),
+                  TpSectionHeader(title: l10n.aiFeatures),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
                     child: Text(
                       l10n.aiFeaturesPageSubtitle,
-                      style: AppTextStyles.of(context).smMediumColored(Theme.of(context).colorScheme.onSurfaceVariant),
+                      style: TpTextStyles.of(context).smMediumColored(Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                   ),
                 ],
@@ -95,7 +94,7 @@ class AiFeatureConfigRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final registry = CliToolRegistryScope.of(context);
     final appProviders = context.watch<AppProviderCubit>().state;
     final presets = context.watch<CliPresetsCubit>().state.presets;
@@ -173,7 +172,7 @@ class AiFeatureConfigRow extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        SettingsConfiguredBadge(configured: configured),
+                        configuredStatusBadge(context, configured: configured),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -392,7 +391,7 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
         children: [
           TpDialogHeader(title: widget.title),
           const SizedBox(height: 16),
-          SettingsSurfaceCard(
+          TpCard.outlined(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -1,21 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:toastification/toastification.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../router/app_router.dart';
 import '../../services/notification/notification_recorder.dart';
-import '../../theme/app_text_styles.dart';
-import '../../theme/app_toast_theme.dart';
 
-/// Optional action button on a toast.
-final class AppToastAction {
-  const AppToastAction({required this.label, required this.onPressed});
-
-  final String label;
-  final VoidCallback onPressed;
-}
-
-/// TeamPilot transient feedback — semantic toasts backed by vendored
-/// [toastification] overlay engine.
+/// TeamPilot transient feedback — product facade over [TpToast].
 abstract final class AppToast {
   static DateTime? _lastGlobalShownAt;
   static String? _lastGlobalMessage;
@@ -24,8 +13,8 @@ abstract final class AppToast {
   static void show(
     BuildContext context, {
     required String message,
-    AppToastVariant variant = AppToastVariant.info,
-    AppToastAction? action,
+    TpToastVariant variant = TpToastVariant.info,
+    TpToastAction? action,
     Duration? duration,
   }) {
     final trimmed = message.trim();
@@ -43,8 +32,8 @@ abstract final class AppToast {
   /// Shows a toast without [BuildContext] (services, error utils).
   static void showGlobal({
     required String message,
-    AppToastVariant variant = AppToastVariant.info,
-    AppToastAction? action,
+    TpToastVariant variant = TpToastVariant.info,
+    TpToastAction? action,
     Duration? duration,
     bool deduplicate = true,
   }) {
@@ -76,111 +65,38 @@ abstract final class AppToast {
 
   /// Dismisses any visible toast.
   static void dismiss() {
-    toastification.dismissAll(delayForAnimation: false);
+    TpToast.dismiss();
   }
 
   static void _present({
     required BuildContext context,
     required String message,
-    required AppToastVariant variant,
-    AppToastAction? action,
+    required TpToastVariant variant,
+    TpToastAction? action,
     Duration? duration,
   }) {
-    toastification.dismissAll(delayForAnimation: false);
-
-    final theme = Theme.of(context);
-    final style = appToastStyleFor(theme, variant);
-    final effectiveDuration =
-        duration ?? defaultAppToastDuration(variant, hasAction: action != null);
-
-    toastification.show(
-      context: context,
-      type: toastificationTypeFor(variant),
-      style: ToastificationStyle.flat,
-      autoCloseDuration: effectiveDuration,
-      animationDuration: const Duration(milliseconds: 200),
-      primaryColor: style.accentColor,
-      backgroundColor: style.backgroundColor,
-      foregroundColor: style.foregroundColor,
-      borderRadius: style.borderRadius,
-      borderSide: style.borderSide,
-      boxShadow: style.boxShadow,
-      padding: style.padding,
-      dragToClose: false,
-      pauseOnHover: true,
-      showIcon: true,
-      icon: Icon(
-        toastificationTypeFor(variant).icon,
-        color: style.accentColor,
-        size: 20,
-      ),
-      closeButton: const ToastCloseButton(showType: CloseButtonShowType.always),
-      title: _buildTitle(
-        context: context,
-        message: message,
-        foregroundColor: style.foregroundColor,
-        accentColor: style.accentColor,
-        action: action,
-      ),
-      callbacks: ToastificationCallbacks(
-        onCloseButtonTap: (item) {
-          toastification.dismiss(item, showRemoveAnimation: true);
-        },
-      ),
+    TpToast.show(
+      context,
+      message: message,
+      variant: variant,
+      action: action,
+      duration: duration,
     );
 
-    if (variant != AppToastVariant.info) {
+    if (variant != TpToastVariant.info) {
       NotificationRecorder.maybeCurrent?.record(
         message: message,
         variant: variant,
       );
     }
   }
-
-  static Widget _buildTitle({
-    required BuildContext context,
-    required String message,
-    required Color foregroundColor,
-    required Color accentColor,
-    AppToastAction? action,
-  }) {
-    final styles = AppTextStyles.of(context);
-    final messageStyle = styles.mdColored(foregroundColor);
-
-    if (action == null) {
-      return Text(message, style: messageStyle, maxLines: 3);
-    }
-
-    return Row(
-      children: [
-        Expanded(child: Text(message, style: messageStyle, maxLines: 3)),
-        TextButton(
-          onPressed: () {
-            dismiss();
-            action.onPressed();
-          },
-          style: TextButton.styleFrom(
-            foregroundColor: accentColor,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            minimumSize: const Size(48, 32),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            visualDensity: VisualDensity.compact,
-          ),
-          child: Text(
-            action.label,
-            style: styles.mdSemiboldColored(foregroundColor),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 extension AppToastContext on BuildContext {
   void showAppToast(
     String message, {
-    AppToastVariant variant = AppToastVariant.info,
-    AppToastAction? action,
+    TpToastVariant variant = TpToastVariant.info,
+    TpToastAction? action,
     Duration? duration,
   }) {
     AppToast.show(

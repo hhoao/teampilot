@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_text_styles.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/expert_hub_cubit.dart';
@@ -15,7 +14,6 @@ import '../../models/mcp_server.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../services/expert_hub/local_expert_writer.dart';
-import 'package:shared_ui/shared_ui.dart';
 import 'expert_editor_dep_picker_dialog.dart';
 import 'expert_editor_deps.dart';
 
@@ -231,7 +229,7 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
           message: l10n.expertEditorNonPortableSkipped(
             deps.skippedNonPortableIds.length,
           ),
-          variant: AppToastVariant.info,
+          variant: TpToastVariant.info,
         );
       }
       final member = DiscoverableMember(
@@ -282,7 +280,7 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
       AppToast.show(
         context,
         message: l10n.expertHubAddFailed,
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
     }
   }
@@ -321,7 +319,7 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final bodyStyle =
         Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
 
@@ -467,7 +465,7 @@ class _ExpertEditorDepSummaryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(

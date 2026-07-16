@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -19,7 +20,6 @@ import '../../services/editor_platform/editor_viewport_token_binder.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
 import '../../theme/app_markdown_style_sheet.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/workbench/file_diff_surface_toggle.dart';
 import '../../widgets/workbench/markdown_view_mode_toggle.dart';
@@ -101,7 +101,7 @@ class _FileEditorToolbar extends StatelessWidget {
             Expanded(
               child: Text(
                 dirty ? '$name •' : name,
-                style: AppTextStyles.of(
+                style: TpTextStyles.of(
                   context,
                 ).mdSemibold,
                 maxLines: 1,

@@ -7,6 +7,7 @@ import 'package:teampilot/theme/app_markdown_style_sheet.dart';
 import 'package:teampilot/theme/app_text_styles_warmup.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 void main() {
   test('markdown styles are covered by interactive warmup fingerprints', () {
@@ -17,12 +18,12 @@ void main() {
     );
     final theme = bootstrapThemeForTextWarmup(fonts);
     final sheet = buildAppMarkdownStyleSheet(theme);
-    final warmupKeys = dedupeTextStylesByShapeKey(
+    final warmupKeys = TpGlyphWarmup.dedupeByShapeKey(
       textStylesForThemeWarmup(theme),
-    ).map(textStyleShapeKey).toSet();
+    ).map(TpGlyphWarmup.shapeKey).toSet();
 
     for (final style in appMarkdownTextStyles(theme)) {
-      final key = textStyleShapeKey(style);
+      final key = TpGlyphWarmup.shapeKey(style);
       expect(
         warmupKeys.contains(key),
         isTrue,
@@ -33,10 +34,10 @@ void main() {
     }
 
     // Spot-check sheet fields still resolve to those styles.
-    expect(warmupKeys.contains(textStyleShapeKey(sheet.p!)), isTrue);
-    expect(warmupKeys.contains(textStyleShapeKey(sheet.code!)), isTrue);
-    expect(warmupKeys.contains(textStyleShapeKey(sheet.em!)), isTrue);
-    expect(warmupKeys.contains(textStyleShapeKey(sheet.strong!)), isTrue);
+    expect(warmupKeys.contains(TpGlyphWarmup.shapeKey(sheet.p!)), isTrue);
+    expect(warmupKeys.contains(TpGlyphWarmup.shapeKey(sheet.code!)), isTrue);
+    expect(warmupKeys.contains(TpGlyphWarmup.shapeKey(sheet.em!)), isTrue);
+    expect(warmupKeys.contains(TpGlyphWarmup.shapeKey(sheet.strong!)), isTrue);
   });
 
   test('markdown code uses mono body size, not a unique scaled size', () {
@@ -52,7 +53,7 @@ void main() {
       fonts,
     );
     final sheet = buildAppMarkdownStyleSheet(theme);
-    final mono = theme.extension<AppFontTheme>()!;
+    final mono = theme.extension<TpFontTheme>()!;
     final bodySize = theme.textTheme.bodyMedium!.fontSize;
 
     expect(sheet.code?.fontFamily, mono.monoFontFamily);

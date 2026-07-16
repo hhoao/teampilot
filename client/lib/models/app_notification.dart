@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-import '../theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Persisted app-level notification (from [AppToast], excluding info).
 class AppNotification extends Equatable {
@@ -14,7 +14,7 @@ class AppNotification extends Equatable {
   });
 
   final String id;
-  final AppToastVariant variant;
+  final TpToastVariant variant;
 
   /// Optional headline (e.g. session name). Empty for legacy toast-only rows.
   final String title;
@@ -26,7 +26,7 @@ class AppNotification extends Equatable {
 
   AppNotification copyWith({
     String? id,
-    AppToastVariant? variant,
+    TpToastVariant? variant,
     String? title,
     String? message,
     DateTime? createdAt,
@@ -121,9 +121,9 @@ class AppNotificationStore extends Equatable {
   List<Object?> get props => [version, items];
 }
 
-AppToastVariant? _parseVariant(String raw) {
-  for (final variant in AppToastVariant.values) {
-    if (variant.name == raw && variant != AppToastVariant.info) {
+TpToastVariant? _parseVariant(String raw) {
+  for (final variant in TpToastVariant.values) {
+    if (variant.name == raw && variant != TpToastVariant.info) {
       return variant;
     }
   }

@@ -8,7 +8,6 @@ import '../../../cubits/app_provider_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_provider_config.dart';
 import '../../../widgets/app_provider/provider_brand_icon.dart';
-import '../../../widgets/settings/workspace_settings_widgets.dart';
 import 'onboarding_step_scaffold.dart';
 
 class OnboardingProviderImportStep extends StatefulWidget {
@@ -106,7 +105,7 @@ class _OnboardingProviderImportStepState
               child: Center(child: CircularProgressIndicator()),
             )
           else if (_error != null)
-            SettingsSurfaceCard(
+            TpCard.outlined(
               child: ListTile(
                 leading: Icon(
                   Icons.error_outline,
@@ -117,7 +116,7 @@ class _OnboardingProviderImportStepState
               ),
             )
           else if (_providers.isEmpty)
-            SettingsSurfaceCard(
+            TpCard.outlined(
               child: ListTile(
                 leading: Icon(Icons.info_outline),
                 title: Text(l10n.onboardingProviderImportEmpty),
@@ -125,11 +124,11 @@ class _OnboardingProviderImportStepState
               ),
             )
           else
-            SettingsSurfaceCard(
+            TpCard.outlined(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SettingsGroupHeader(
+                  TpSectionHeader(
                     title: l10n.onboardingProviderImportResults,
                   ),
                   for (var i = 0; i < _providers.length; i++) ...[

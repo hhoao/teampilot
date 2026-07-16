@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../l10n/l10n_extensions.dart';
 import '../models/workspace_folder.dart';
 import 'workspace_create_directory_picker.dart';
-import 'package:shared_ui/shared_ui.dart';
 
 typedef CreateWorkspaceDraft = ({
   List<WorkspaceFolder> folders,
@@ -49,7 +48,7 @@ class _CreateWorkspaceDialogState extends State<_CreateWorkspaceDialog> {
       AppToast.show(
         context,
         message: l10n.workspacePrimaryPathRequired,
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
       return;
     }

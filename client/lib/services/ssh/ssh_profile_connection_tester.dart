@@ -1,6 +1,7 @@
-import 'package:logger/logger.dart';
 import '../../models/ssh_profile.dart';
+import '../../utils/logger.dart';
 import 'ssh_client_factory.dart';
+import 'ssh_connection_failure.dart';
 
 class SshProfileConnectionTester {
   const SshProfileConnectionTester({required SshClientFactory clientFactory})
@@ -21,10 +22,11 @@ class SshProfileConnectionTester {
         privateKey: privateKey,
         privateKeyPassphrase: privateKeyPassphrase,
       );
-    } catch (e, stackTrace) {
-      Logger().e(
-        'Error testing SSH profile connection',
-        error: e,
+    } on Object catch (error, stackTrace) {
+      appLogger.e(
+        '[ssh] profile ${profile.id} (${profile.hostIdentifier}) '
+        'connection test failed: ${sshConnectionFailureLogMessage(error)}',
+        error: sshConnectionFailureCause(error),
         stackTrace: stackTrace,
       );
       rethrow;

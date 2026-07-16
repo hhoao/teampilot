@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,8 +10,6 @@ import '../../l10n/l10n_extensions.dart';
 import '../../services/app/connection_mode_service.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
-import '../../theme/app_text_styles.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'runtime_target_picker.dart';
 import 'session_config_constants.dart';
 import 'session_llm_path_settings_row.dart';
@@ -47,7 +46,7 @@ class _SessionHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -163,13 +162,13 @@ class _SessionControlsState extends State<_SessionControls> {
       builder: (context, snapshot) {
         _syncFromState(snapshot.defaultSshWorkingDirectory);
         return SingleChildScrollView(
-          child: SettingsSurfaceCard(
+          child: TpCard.outlined(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const RuntimeTargetPicker(),
                 if (isSshMode) ...[
-                  SettingsLabeledStackedRow(
+                  TpPreferenceStack(
                     title: l10n.sshDefaultWorkingDirectoryTitle,
                     subtitle: l10n.sshDefaultWorkingDirectorySubtitle,
                     body: Row(
@@ -200,7 +199,7 @@ class _SessionControlsState extends State<_SessionControls> {
                     ),
                     showDividerBelow: true,
                   ),
-                  SettingsLabeledRow(
+                  TpPreferenceRow(
                     title: 'SSH 使用 bash 登录环境',
                     subtitle:
                         '通过 bash -lc 启动远端 flashskyai，以便读取远端 shell 配置中的 PATH。',
@@ -213,7 +212,7 @@ class _SessionControlsState extends State<_SessionControls> {
                 ],
                 if (kShowLlmConfigPathSetting)
                   const SessionLlmConfigPathSettingsRow(),
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: l10n.terminalScrollbackLinesTitle,
                   subtitle: l10n.terminalScrollbackLinesDescription,
                   trailing: SizedBox(
@@ -231,7 +230,7 @@ class _SessionControlsState extends State<_SessionControls> {
                   ),
                   showDividerBelow: true,
                 ),
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: l10n.terminalLinkClickOpensInAppTitle,
                   subtitle: l10n.terminalLinkClickOpensInAppDescription,
                   trailing: Switch(
@@ -242,7 +241,7 @@ class _SessionControlsState extends State<_SessionControls> {
                   ),
                   showDividerBelow: true,
                 ),
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: l10n.autoLaunchAllMembersTitle,
                   subtitle: l10n.autoLaunchAllMembersDescription,
                   trailing: Switch(
@@ -253,7 +252,7 @@ class _SessionControlsState extends State<_SessionControls> {
                   ),
                   showDividerBelow: true,
                 ),
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: l10n.openExistingSessionStartsTerminalTitle,
                   subtitle: l10n.openExistingSessionStartsTerminalDescription,
                   trailing: Switch(
@@ -264,7 +263,7 @@ class _SessionControlsState extends State<_SessionControls> {
                   ),
                   showDividerBelow: true,
                 ),
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: l10n.scopeSessionsToSelectedTeamTitle,
                   subtitle: l10n.scopeSessionsToSelectedTeamDescription,
                   trailing: Switch(
@@ -275,7 +274,7 @@ class _SessionControlsState extends State<_SessionControls> {
                   ),
                   showDividerBelow: true,
                 ),
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: l10n.notifyOnSessionIdleTitle,
                   subtitle: l10n.notifyOnSessionIdleDescription,
                   trailing: Switch(

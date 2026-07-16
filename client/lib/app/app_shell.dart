@@ -125,6 +125,7 @@ import '../services/skill/skill_repo_git_service.dart';
 import '../services/skill/skill_repo_service.dart';
 import '../services/ssh/ssh_client_factory.dart';
 import '../services/ssh/ssh_connection_events.dart';
+import '../widgets/ssh/ssh_host_key_prompt_dialog.dart';
 import '../services/ssh/ssh_profile_connection_coordinator.dart';
 import '../services/plugin/profile_plugin_linker_service.dart';
 import '../services/terminal/terminal_transport_factory.dart';
@@ -327,6 +328,7 @@ Future<AppShell> buildAppShell({
     credentialStore: sshCredentialStore,
     knownHostRepository: sshKnownHostRepo,
     events: sshConnectionEvents,
+    onHostKeyPrompt: showSshHostKeyPrompt,
   );
 
   // P1: the home target (the machine the control plane runs on) is the single

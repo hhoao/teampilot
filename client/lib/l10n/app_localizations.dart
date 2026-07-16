@@ -1046,6 +1046,12 @@ abstract class AppLocalizations {
   /// **'Open member'**
   String get openMember;
 
+  /// No description provided for @switchToMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to member'**
+  String get switchToMember;
+
   /// No description provided for @memberPresenceOffline.
   ///
   /// In en, this message translates to:
@@ -3062,11 +3068,89 @@ abstract class AppLocalizations {
   /// **'Connection test failed'**
   String get sshProfileTestFailed;
 
+  /// No description provided for @sshProfileTestFailedHostKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Host key was not trusted'**
+  String get sshProfileTestFailedHostKey;
+
+  /// No description provided for @sshProfileTestFailedAuth.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication failed'**
+  String get sshProfileTestFailedAuth;
+
+  /// No description provided for @sshProfileTestFailedAborted.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection closed before login: {detail}'**
+  String sshProfileTestFailedAborted(String detail);
+
+  /// No description provided for @sshProfileTestFailedDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection test failed: {detail}'**
+  String sshProfileTestFailedDetail(String detail);
+
   /// No description provided for @sshProfileConnectSuccess.
   ///
   /// In en, this message translates to:
   /// **'Connected to {host}'**
   String sshProfileConnectSuccess(String host);
+
+  /// No description provided for @sshHostKeyUnknownTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify SSH host key'**
+  String get sshHostKeyUnknownTitle;
+
+  /// No description provided for @sshHostKeyUnknownBody.
+  ///
+  /// In en, this message translates to:
+  /// **'TeamPilot has not seen {host} before. Confirm the fingerprint matches this machine before trusting it.'**
+  String sshHostKeyUnknownBody(String host);
+
+  /// No description provided for @sshHostKeyMismatchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH host key changed'**
+  String get sshHostKeyMismatchTitle;
+
+  /// No description provided for @sshHostKeyMismatchBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The host key for {host} does not match the one TeamPilot saved earlier. This can happen after a reinstall — or if someone is intercepting the connection.'**
+  String sshHostKeyMismatchBody(String host);
+
+  /// No description provided for @sshHostKeyFingerprintLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Fingerprint'**
+  String get sshHostKeyFingerprintLabel;
+
+  /// No description provided for @sshHostKeyPreviousFingerprintLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Previously trusted'**
+  String get sshHostKeyPreviousFingerprintLabel;
+
+  /// No description provided for @sshHostKeyKeyTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Key type: {keyType}'**
+  String sshHostKeyKeyTypeLabel(String keyType);
+
+  /// No description provided for @sshHostKeyTrust.
+  ///
+  /// In en, this message translates to:
+  /// **'Trust and continue'**
+  String get sshHostKeyTrust;
+
+  /// No description provided for @sshHostKeyReplaceTrust.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace and trust'**
+  String get sshHostKeyReplaceTrust;
 
   /// No description provided for @sshProfileFormTitleNew.
   ///

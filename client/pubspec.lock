@@ -269,7 +269,7 @@ packages:
       path: "packages/dartssh2"
       relative: true
     source: path
-    version: "2.17.1"
+    version: "2.22.2"
   dbus:
     dependency: transitive
     description:
@@ -1423,13 +1423,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "0.10.1"
-  toastification:
-    dependency: "direct main"
-    description:
-      path: "packages/toastification"
-      relative: true
-    source: path
-    version: "3.0.3"
   toggle_switch:
     dependency: "direct main"
     description:

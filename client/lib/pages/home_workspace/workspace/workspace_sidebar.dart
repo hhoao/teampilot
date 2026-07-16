@@ -20,10 +20,8 @@ import '../../../utils/session_project_grouping.dart';
 import '../../../utils/session_worktree_grouping.dart';
 import '../../../utils/workspace_chrome_profile.dart';
 import '../../../widgets/app_toast/app_toast.dart';
-import '../../../theme/app_toast_theme.dart';
 import 'worktree_create_dialog.dart';
 import 'worktree_group_section.dart';
-import '../../../theme/app_text_styles.dart';
 import '../../../utils/app_keys.dart';
 import '../../../utils/app_session_sort.dart';
 import '../../../utils/debounce/debounce.dart';
@@ -141,7 +139,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                 Expanded(
                   child: Text(
                     l10n.homeWorkspaceConversationsSection,
-                    style: AppTextStyles.of(context).mutedSm,
+                    style: TpTextStyles.of(context).mutedSm,
                   ),
                 ),
                 _SessionSortButton(
@@ -411,7 +409,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       AppToast.show(
         context,
         message: l10n.worktreeCreateFailed(error.toString()),
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
     }
   }
@@ -507,7 +505,7 @@ class _RunningSessionsSection extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(4, 0, 0, 8),
           child: Text(
             l10n.workspaceRunningSessionsSection,
-            style: AppTextStyles.of(context).mutedSm,
+            style: TpTextStyles.of(context).mutedSm,
           ),
         ),
         for (final session in sessions)
@@ -563,7 +561,7 @@ class _SidebarActionTileState extends State<_SidebarActionTile> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final background = !_enabled
         ? Colors.transparent
         : _hovered
@@ -678,7 +676,7 @@ class _EmptyConversations extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(12),

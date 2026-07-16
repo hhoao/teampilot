@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'package:teampilot/widgets/settings/configured_status_badge.dart';
 
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
@@ -14,14 +15,12 @@ import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../theme/app_text_styles.dart';
 import '../../widgets/app_provider/provider_brand_icon.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/cli_launch_config/cli_launch_custom_fields.dart';
 import '../../widgets/cli_launch_config/member_launch_config_kind.dart';
 import '../../widgets/cli_launch_config/member_launch_config_type_field.dart';
 import '../../widgets/cli_launch_config/preset_launch_picker_field.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../home_workspace/workspace/config/workspace_cli_config_helpers.dart';
 import 'team_config_helpers.dart';
 import 'team_member_launch_config_helpers.dart';
@@ -72,7 +71,7 @@ class _MemberLaunchConfigRowBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final registry = CliToolRegistryScope.of(context);
     final cubit = context.read<LaunchProfileCubit>();
     final team = LaunchProfileSelectors.teamById(
@@ -178,7 +177,7 @@ class _MemberLaunchConfigRowBody extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        SettingsConfiguredBadge(configured: configured),
+                        configuredStatusBadge(context, configured: configured),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -457,7 +456,7 @@ class _MemberLaunchConfigureDialogState
         children: [
           TpDialogHeader(title: l10n.memberLaunchConfigTitle),
           const SizedBox(height: 16),
-          SettingsSurfaceCard(
+          TpCard.outlined(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,

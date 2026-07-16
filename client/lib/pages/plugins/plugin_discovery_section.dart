@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/plugin_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/plugin.dart';
-import '../../theme/app_text_styles.dart';
 import '../../utils/github_source_url.dart';
 import '../../widgets/github_details_button.dart';
 import 'plugin_management_cards.dart';
@@ -173,7 +172,7 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
                     Expanded(
                       child: Text(
                         l10n.pluginsDiscoverySyncing,
-                        style: AppTextStyles.of(context).sm,
+                        style: TpTextStyles.of(context).sm,
                       ),
                     ),
                   ],
@@ -331,7 +330,7 @@ class PluginDiscoverableCard extends StatelessWidget {
                     Flexible(
                       child: Text(
                         plugin.name,
-                        style: AppTextStyles.of(
+                        style: TpTextStyles.of(
                           context,
                         ).mdSemiboldColored(textBase),
                       ),
@@ -340,7 +339,7 @@ class PluginDiscoverableCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         'v${plugin.version}',
-                        style: AppTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.45),
+                        style: TpTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.45),
                         ),
                       ),
                     ],
@@ -352,7 +351,7 @@ class PluginDiscoverableCard extends StatelessWidget {
                     plugin.description,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.of(context).smColored(textBase.withValues(alpha: 0.55),
+                    style: TpTextStyles.of(context).smColored(textBase.withValues(alpha: 0.55),
                     ),
                   ),
                 ],
@@ -360,7 +359,7 @@ class PluginDiscoverableCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     plugin.marketplaceFullName,
-                    style: AppTextStyles.of(
+                    style: TpTextStyles.of(
                       context,
                     ).xsColored(textBase.withValues(alpha: 0.35)),
                   ),

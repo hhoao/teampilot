@@ -12,7 +12,6 @@ import '../../models/workspace.dart';
 import '../../models/workspace_topology.dart';
 import '../../services/app/desktop_window_actions.dart';
 import '../../services/app/platform_utils.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../theme/workspace_topology_colors.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
@@ -427,7 +426,7 @@ class _HomePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final Color fg = active ? cs.primary : cs.onSurfaceVariant;
     return InkWell(
       onTap: onTap,
@@ -527,7 +526,7 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final active = widget.active;
     final Color fg = active ? cs.onSurface : cs.onSurfaceVariant;
     final brightness = Theme.of(context).brightness;
@@ -723,7 +722,7 @@ class _RecentlyClosedOverflowButtonState
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
     final entries = [
       for (final entry in widget.entries)
@@ -836,7 +835,7 @@ class _RecentlyClosedMenuItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
     final subtitle = recentlyClosedSubtitleLine(
       l10n: l10n,

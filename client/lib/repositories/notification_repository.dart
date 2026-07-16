@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import '../models/app_notification.dart';
 import '../services/io/filesystem.dart';
-import '../theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../utils/logger.dart';
 
 const notificationMaxItems = 50;
@@ -63,10 +63,10 @@ class NotificationRepository {
   Future<AppNotificationStore> append({
     required String id,
     required String message,
-    required AppToastVariant variant,
+    required TpToastVariant variant,
     String title = '',
   }) async {
-    if (variant == AppToastVariant.info) {
+    if (variant == TpToastVariant.info) {
       return _cache;
     }
     final now = _clock();

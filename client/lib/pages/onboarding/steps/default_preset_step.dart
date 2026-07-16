@@ -16,10 +16,8 @@ import '../../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../../widgets/app_provider/cli_effort_picker_field.dart';
 import '../../../widgets/app_provider/provider_model_picker_field.dart';
 import '../../../widgets/cli/cli_brand_icon.dart';
-import '../../../widgets/settings/workspace_settings_widgets.dart';
 import '../../home_workspace/workspace/config/workspace_cli_config_helpers.dart';
 import '../../home_workspace/workspace/config/workspace_cli_effort_helpers.dart';
-import '../../../theme/app_text_styles.dart';
 import 'onboarding_step_scaffold.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -205,9 +203,9 @@ class OnboardingDefaultPresetStepState
       model: _modelId,
     );
 
-    final cliPicker = SettingsLabeledRow(
+    final cliPicker = TpPreferenceRow(
       title: l10n.teamCliLabel,
-      trailing: SettingsCompactDropdown<String>(
+      trailing: TpCompactSelect<String>(
         value: _cli.value,
         entries: [
           for (final def in registry.launchable)
@@ -251,15 +249,15 @@ class OnboardingDefaultPresetStepState
       subtitle: providers.isEmpty
           ? l10n.onboardingDefaultPresetEmpty
           : l10n.onboardingDefaultPresetSubtitle,
-      body: SettingsSurfaceCard(
+      body: TpCard.outlined(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             cliPicker,
             if (providers.isNotEmpty) ...[
-              SettingsLabeledRow(
+              TpPreferenceRow(
                 title: l10n.provider,
-                trailing: SettingsCompactDropdown<String>(
+                trailing: TpCompactSelect<String>(
                   value: selectedProvider?.id ?? providers.first.id,
                   entries: [
                     for (final provider in providers)
@@ -288,12 +286,12 @@ class OnboardingDefaultPresetStepState
                 showDividerBelow: !hideModelPicker || showEffortPicker,
               ),
               if (!hideModelPicker)
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: l10n.defaultModel,
                   trailing: selectedProvider == null
                       ? Text(
                           l10n.selectModel,
-                          style: AppTextStyles.of(context).md.copyWith(
+                          style: TpTextStyles.of(context).md.copyWith(
                             color: Theme.of(
                               context,
                             ).colorScheme.onSurfaceVariant,
@@ -313,7 +311,7 @@ class OnboardingDefaultPresetStepState
                   showDividerBelow: showEffortPicker,
                 ),
               if (showEffortPicker)
-                SettingsLabeledRow(
+                TpPreferenceRow(
                   title: l10n.workspaceCliEffortLevel,
                   trailing: CliEffortPickerField(
                     cli: _cli,

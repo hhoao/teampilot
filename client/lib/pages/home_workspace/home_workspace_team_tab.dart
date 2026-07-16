@@ -5,7 +5,6 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/team/launch_profile_selectors.dart';
 import '../../models/team_config.dart';
-import '../../theme/app_text_styles.dart';
 import '../team_config/team_config_extensions_section.dart';
 import '../team_config/team_config_info_section.dart';
 import '../team_config/team_config_mcp_section.dart';
@@ -266,7 +265,7 @@ class _MemberChipState extends State<_MemberChip> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final selected = widget.selected;
     final restingBg = selected
         ? cs.primary.withValues(alpha: 0.14)

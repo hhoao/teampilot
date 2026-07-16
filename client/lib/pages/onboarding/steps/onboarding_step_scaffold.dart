@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
-import '../../../theme/app_text_styles.dart';
 
 /// Shared onboarding step chrome: pinned title/subtitle, scrollable body.
 ///
@@ -23,9 +23,9 @@ class OnboardingStepScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final header = <Widget>[
-      Text(title, style: AppTextStyles.of(context).display),
+      Text(title, style: TpTextStyles.of(context).display),
       const SizedBox(height: 8),
-      Text(subtitle, style: AppTextStyles.of(context).mutedMd),
+      Text(subtitle, style: TpTextStyles.of(context).mutedMd),
       if (headerTrailing != null) ...[
         const SizedBox(height: 12),
         headerTrailing!,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/github_details_button.dart';
 
@@ -43,7 +43,7 @@ class SkillDiscoverCard extends StatelessWidget {
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.of(context).mdBoldColored(textBase),
+                  style: TpTextStyles.of(context).mdBoldColored(textBase),
                 ),
               ),
             ],
@@ -51,7 +51,7 @@ class SkillDiscoverCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             source,
-            style: AppTextStyles.of(
+            style: TpTextStyles.of(
               context,
             ).xsColored(textBase.withValues(alpha: 0.55)),
           ),
@@ -61,7 +61,7 @@ class SkillDiscoverCard extends StatelessWidget {
               description,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.of(
+              style: TpTextStyles.of(
                 context,
               ).smColored(textBase.withValues(alpha: 0.7)),
             ),
@@ -89,7 +89,7 @@ class SkillDiscoverCard extends StatelessWidget {
                     ),
                     child: Text(
                       l10n.skillsCardInstalled,
-                      style: AppTextStyles.of(context).smBoldColored(const Color(0xFF15803D)),
+                      style: TpTextStyles.of(context).smBoldColored(const Color(0xFF15803D)),
                     ),
                   )
                 else

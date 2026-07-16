@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_control_theme.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:path/path.dart' as p;
 
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import 'log_viewer_filter.dart';
@@ -59,7 +57,7 @@ class LogViewerToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final controlHeight = context.appControl.height;
+    final controlHeight = context.tpControl.height;
     final fileValue =
         selectedFile ?? (logFiles.isNotEmpty ? logFiles.first : null);
 
@@ -97,7 +95,7 @@ class LogViewerToolbar extends StatelessWidget {
             Expanded(
               child: TextField(
                 controller: searchController,
-                style: AppTextStyles.of(context).md,
+                style: TpTextStyles.of(context).md,
                 decoration: _fieldDecoration(
                   context,
                   hintText: l10n.logViewerSearchHint,
@@ -196,7 +194,7 @@ class LogViewerToolbar extends StatelessWidget {
                       ),
                       child: Text(
                         l10n.logViewerLineCount(lineCount),
-                        style: AppTextStyles.of(context).xsSemiboldColored(cs.onPrimaryContainer),
+                        style: TpTextStyles.of(context).xsSemiboldColored(cs.onPrimaryContainer),
                       ),
                     ),
                   ],
@@ -221,7 +219,7 @@ class LogViewerToolbar extends StatelessWidget {
     );
     return InputDecoration(
       hintText: hintText,
-      hintStyle: AppTextStyles.of(
+      hintStyle: TpTextStyles.of(
         context,
       ).mdColored(cs.onSurfaceVariant),
       prefixIcon: prefixIcon,
@@ -270,7 +268,7 @@ class LogViewerToolbar extends StatelessWidget {
   }) {
     return SizedBox(
       width: width,
-      height: context.appControl.height,
+      height: context.tpControl.height,
       child: TpSelect<T>(
         key: ValueKey<T>(value),
         items: items,

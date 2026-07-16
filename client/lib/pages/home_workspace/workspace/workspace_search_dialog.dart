@@ -10,7 +10,6 @@ import '../../../models/app_session.dart';
 import '../../../services/file_tree/workspace_file_search.dart';
 import '../../../services/storage/app_storage.dart';
 import '../../../services/workbench/workbench_editor_opener.dart';
-import '../../../theme/app_text_styles.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../utils/workspace_sessions.dart';
 import '../../../widgets/sidebar_session_tile.dart';
@@ -263,7 +262,7 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 6),
       child: Text(
         label,
-        style: AppTextStyles.of(context).smSemiboldColored(cs.onSurfaceVariant),
+        style: TpTextStyles.of(context).smSemiboldColored(cs.onSurfaceVariant),
       ),
     );
   }
@@ -281,7 +280,7 @@ class _StatusRow extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
       child: Text(
         label,
-        style: AppTextStyles.of(
+        style: TpTextStyles.of(
           context,
         ).smColored(cs.onSurfaceVariant),
       ),
@@ -305,7 +304,7 @@ class _FileResultTileState extends State<_FileResultTile> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final background = _hovered
         ? cs.onSurface.withValues(alpha: 0.05)
         : Colors.transparent;
@@ -423,7 +422,7 @@ class _EmptyResults extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),

@@ -5,8 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/app_icon_sizes.dart';
-import '../../theme/app_text_styles.dart';
 import '../file_icon_widget.dart';
 import '../menu/sidebar_action_menu.dart';
 import '../tab_close_button.dart';
@@ -111,7 +109,7 @@ class _FileEditorTabState extends State<FileEditorTab> {
     final cs = Theme.of(context).colorScheme;
     final label = widget.dirty ? '${widget.fileName} •' : widget.fileName;
     final labelColor = widget.selected ? cs.onSecondaryContainer : cs.onSurface;
-    final closeColor = widget.selected ? cs.onSecondaryContainer : cs.iconMuted;
+    final closeColor = widget.selected ? cs.onSecondaryContainer : cs.tpIconMuted;
 
     return Tooltip(
       message: widget.filePath,
@@ -135,8 +133,8 @@ class _FileEditorTabState extends State<FileEditorTab> {
                 Text(
                   label,
                   style: widget.selected
-                      ? AppTextStyles.of(context).mdSemiboldColored(labelColor)
-                      : AppTextStyles.of(context).mdMediumColored(labelColor),
+                      ? TpTextStyles.of(context).mdSemiboldColored(labelColor)
+                      : TpTextStyles.of(context).mdMediumColored(labelColor),
                 ),
                 const SizedBox(width: 4),
                 TabCloseButton(

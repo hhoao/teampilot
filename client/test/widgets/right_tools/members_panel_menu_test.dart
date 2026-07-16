@@ -65,6 +65,7 @@ void main() {
           providersByCli: const {},
           selectedMemberId: '',
           onSelected: (_) {},
+          onSwitchTo: (_) {},
           onOpen: (_) {},
           onLaunchAll: () {},
           canViewDetail: true,
@@ -85,6 +86,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(l10n.memberDetailViewAction), findsOneWidget);
+    expect(find.text(l10n.switchToMember), findsOneWidget);
+    expect(find.text(l10n.openMember), findsOneWidget);
     expect(find.text(l10n.memberDetailOpenConfigDir), findsOneWidget);
   });
 
@@ -104,6 +107,7 @@ void main() {
           providersByCli: const {},
           selectedMemberId: '',
           onSelected: (_) {},
+          onSwitchTo: (_) {},
           onOpen: (_) {},
           onLaunchAll: () {},
           canViewDetail: true,
@@ -130,6 +134,84 @@ void main() {
     expect(find.text(l10n.memberDetailOpenConfigDir), findsNothing);
   });
 
+  testWidgets('tapping switch-to-member dispatches select-only', (
+    tester,
+  ) async {
+    final providerCubit = AppProviderCubit();
+    addTearDown(providerCubit.close);
+
+    String? switchedId;
+    String? openedId;
+    await tester.pumpWidget(
+      _host(
+        MembersPanel(
+          team: _team,
+          members: const [_member],
+          memberPresence: const {},
+          providersByCli: const {},
+          selectedMemberId: '',
+          onSelected: (_) {},
+          onSwitchTo: (id) => switchedId = id,
+          onOpen: (id) => openedId = id,
+          onLaunchAll: () {},
+          canViewDetail: true,
+          onViewDetail: (_) {},
+          onOpenConfigDir: (_) {},
+        ),
+        providerCubit,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final l10n = AppLocalizations.of(tester.element(find.byType(MembersPanel)));
+
+    await tester.tap(
+      find.byKey(const Key('member-row-m1')),
+      buttons: kSecondaryButton,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(l10n.switchToMember));
+    await tester.pumpAndSettle();
+
+    expect(switchedId, 'm1');
+    expect(openedId, isNull);
+  });
+
+  testWidgets('row tap dispatches onSelected without onOpen', (tester) async {
+    final providerCubit = AppProviderCubit();
+    addTearDown(providerCubit.close);
+
+    String? selectedId;
+    String? openedId;
+    await tester.pumpWidget(
+      _host(
+        MembersPanel(
+          team: _team,
+          members: const [_member],
+          memberPresence: const {},
+          providersByCli: const {},
+          selectedMemberId: '',
+          onSelected: (id) => selectedId = id,
+          onSwitchTo: (_) {},
+          onOpen: (id) => openedId = id,
+          onLaunchAll: () {},
+          canViewDetail: true,
+          onViewDetail: (_) {},
+          onOpenConfigDir: (_) {},
+        ),
+        providerCubit,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('member-row-m1')));
+    await tester.pumpAndSettle();
+
+    expect(selectedId, 'm1');
+    expect(openedId, isNull);
+  });
+
   testWidgets('disabled view-detail does not dispatch', (tester) async {
     final providerCubit = AppProviderCubit();
     addTearDown(providerCubit.close);
@@ -144,6 +226,7 @@ void main() {
           providersByCli: const {},
           selectedMemberId: '',
           onSelected: (_) {},
+          onSwitchTo: (_) {},
           onOpen: (_) {},
           onLaunchAll: () {},
           canViewDetail: false,

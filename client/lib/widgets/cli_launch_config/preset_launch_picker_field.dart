@@ -4,10 +4,8 @@ import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/cli_preset.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
-import '../../theme/app_text_styles.dart';
 import '../../pages/team_config/team_config_helpers.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'cli_launch_config_dropdown.dart';
 
 /// Dropdown sentinel for "custom configuration" in preset pickers (not persisted).
@@ -49,7 +47,7 @@ class PresetLaunchPickerField extends StatelessWidget {
     final l10n = context.l10n;
     final dropdownDeco = decoration ?? TpSelectDecorations.themed(context);
 
-    return SettingsLabeledRow(
+    return TpPreferenceRow(
       title: l10n.memberPresetLabel,
       trailing: cliLaunchConfigDropdown(
         TpSelect<String>(
@@ -142,7 +140,7 @@ class _PresetDropdownOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final alpha = enabled ? 1.0 : 0.38;
     return Opacity(
       opacity: alpha,

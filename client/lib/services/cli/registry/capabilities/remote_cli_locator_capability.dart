@@ -5,10 +5,15 @@ import '../cli_capability.dart';
 
 /// Result of a single remote command (over the target transport).
 class SshCommandResult {
-  const SshCommandResult({required this.exitCode, required this.stdout});
+  const SshCommandResult({
+    required this.exitCode,
+    required this.stdout,
+    this.stderr = '',
+  });
 
   final int exitCode;
   final String stdout;
+  final String stderr;
 }
 
 /// Runs one command on the work machine over its transport (SSH exec). Injected

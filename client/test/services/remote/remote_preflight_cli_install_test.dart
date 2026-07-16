@@ -1,21 +1,23 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/cli/installer_types.dart';
 import 'package:teampilot/services/cli/registry/capabilities/remote_cli_locator_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/remote/remote_preflight_cli_install.dart';
 
 void main() {
+  final profile = SshProfile(
+    id: 'p1',
+    name: 'remote',
+    host: 'example.com',
+    port: 22,
+    username: 'dev',
+  );
+
   test(
     'remote preflight install bootstraps node then npm-installs claude',
     () async {
-      final profile = SshProfile(
-        id: 'p1',
-        name: 'remote',
-        host: 'example.com',
-        port: 22,
-        username: 'dev',
-      );
       final calls = <String>[];
       final install = buildRemotePreflightCliInstall(
         registry: CliToolRegistry.builtIn(),
@@ -59,4 +61,62 @@ void main() {
       );
     },
   );
+
+  test(
+    'Node bootstrap failure includes remote stderr in the thrown message',
+    () async {
+      final install = buildRemotePreflightCliInstall(
+        registry: CliToolRegistry.builtIn(),
+        profile: profile,
+        cli: CliTool.claude,
+      );
+
+      await expectLater(
+        () => install(
+          run: (command) async {
+            if (command.contains('command -v npm')) {
+              return const SshCommandResult(exitCode: 1, stdout: '');
+            }
+            if (command.startsWith('sh -c') &&
+                command.contains('com.hhoa.teampilot/toolchain/node')) {
+              return const SshCommandResult(
+                exitCode: 1,
+                stdout: '',
+                stderr: 'curl: (22) The requested URL returned error: 403',
+              );
+            }
+            return const SshCommandResult(exitCode: 1, stdout: '');
+          },
+          onProgress: (_) {},
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              contains('Remote Node/npm install failed'),
+              contains('curl: (22) The requested URL returned error: 403'),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+
+  test('preflightSshInstallRunner forwards stderr into command result', () async {
+    final runner = preflightSshInstallRunner(profile, (command) async {
+      return const SshCommandResult(
+        exitCode: 7,
+        stdout: 'out-line',
+        stderr: 'err-line',
+      );
+    });
+    final result = await runner(
+      profile,
+      CliInstallerCommand.unixShellScript('true'),
+    );
+    expect(result.exitCode, 7);
+    expect(result.stdout, 'out-line');
+    expect(result.stderr, 'err-line');
+  });
 }

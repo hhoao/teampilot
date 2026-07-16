@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:teampilot/widgets/settings/configured_status_badge.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -20,13 +21,11 @@ import '../../../services/cli/preset_resolver.dart';
 import '../../../services/cli/registry/cli_display_name.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/launch/member_placement_save.dart';
-import '../../../theme/app_text_styles.dart';
 import '../../../utils/team_member_naming.dart';
 import '../../../widgets/cli/cli_brand_icon.dart';
 import '../../../widgets/deferred_mount_shell.dart';
 import '../../../widgets/settings/settings_dialog_pane_host.dart';
 import '../../../widgets/settings/workspace_hub_shell.dart';
-import '../../../widgets/settings/workspace_settings_widgets.dart';
 import '../../../widgets/team/team_lead_badge.dart';
 import '../../team_config/team_config_helpers.dart';
 import '../../team_config/team_default_preset_configure_dialog.dart';
@@ -34,6 +33,7 @@ import '../../team_config/team_member_launch_config_helpers.dart';
 import '../../team_config/team_member_launch_config_section.dart';
 import 'config/workspace_cli_config_helpers.dart';
 import 'mixed_workspace_member_placement_panel.dart';
+import 'package:teampilot/theme/workspace_surface_layers.dart';
 
 const double _kDialogWidth = 960;
 const double _kDialogHeight = 720;
@@ -461,7 +461,7 @@ class _Nav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final l10n = context.l10n;
 
     String label(_LandingTeamSettingsSection section) => switch (section) {
@@ -542,7 +542,7 @@ class _PaneHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
 
     final (title, subtitle) = switch (section) {
       _LandingTeamSettingsSection.team => (
@@ -585,7 +585,7 @@ class _PaneHeader extends StatelessWidget {
                     subtitle,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.of(context).mutedMd,
+                    style: TpTextStyles.of(context).mutedMd,
                   ),
                 ],
                 if (machinesHint != null &&
@@ -593,7 +593,7 @@ class _PaneHeader extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     machinesHint!,
-                    style: AppTextStyles.of(context).smColored(cs.error),
+                    style: TpTextStyles.of(context).smColored(cs.error),
                   ),
                 ],
               ],
@@ -698,10 +698,10 @@ class _TeamPane extends StatelessWidget {
         children: [
           Text(
             l10n.landingTeamSettingsGlobalHint,
-            style: AppTextStyles.of(context).mutedSm,
+            style: TpTextStyles.of(context).mutedSm,
           ),
           const SizedBox(height: 16),
-          SettingsSurfaceCard(
+          TpCard.outlined(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -711,7 +711,7 @@ class _TeamPane extends StatelessWidget {
                   showDividerBelow: showDelegateRow,
                 ),
                 if (showDelegateRow)
-                  SettingsLabeledRow(
+                  TpPreferenceRow(
                     title: l10n.teamLeadDelegateOnlyTitle,
                     subtitle: l10n.teamLeadDelegateOnlySubtitle,
                     trailing: Switch(
@@ -744,7 +744,7 @@ class _TeamDefaultPresetSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final registry = CliToolRegistryScope.of(context);
     final presets = context.watch<CliPresetsCubit>().state.presets;
     final catalogCli = team.cli;
@@ -865,7 +865,7 @@ class _TeamDefaultPresetSummary extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        SettingsConfiguredBadge(configured: configured),
+                        configuredStatusBadge(context, configured: configured),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -918,7 +918,7 @@ class _MembersPane extends StatelessWidget {
         if (member.isValid) member,
     ];
     return SingleChildScrollView(
-      child: SettingsSurfaceCard(
+      child: TpCard.outlined(
         child: Column(
           children: [
             for (final (index, member) in members.indexed)
@@ -955,7 +955,7 @@ class _MemberRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final registry = CliToolRegistryScope.of(context);
     final presets = context.watch<CliPresetsCubit>().state.presets;
     final providers = context
@@ -1058,7 +1058,7 @@ class _MemberRow extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              SettingsLabeledRow(
+              TpPreferenceRow(
                 title: l10n.memberDangerouslySkipPermissions,
                 subtitle: l10n.memberDangerouslySkipPermissionsHint,
                 trailing: Switch(
@@ -1106,7 +1106,7 @@ class _MachinesPane extends StatelessWidget {
       children: [
         Text(
           l10n.mixedWorkspaceMemberAssignmentSubtitle,
-          style: AppTextStyles.of(context).mutedSm,
+          style: TpTextStyles.of(context).mutedSm,
         ),
         const SizedBox(height: 12),
         Expanded(
@@ -1158,7 +1158,7 @@ class _Footer extends StatelessWidget {
             Expanded(
               child: Text(
                 placementHint!,
-                style: AppTextStyles.of(context).smColored(cs.error),
+                style: TpTextStyles.of(context).smColored(cs.error),
               ),
             )
           else

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../cubits/llm_config_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/llm_config.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'llm_config_routes.dart';
@@ -56,7 +55,7 @@ class LlmProviderModelsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final tx = AppTextStyles(theme);
+    final tx = TpTextStyles(theme);
     final l10n = context.l10n;
     final textBase = cs.onSurface;
     final providerModels = config.models.values
@@ -263,7 +262,7 @@ Future<void> _showValidationDialog(BuildContext context, LlmConfig config) {
               itemCount: messages.length,
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
-                final tx = AppTextStyles.of(context);
+                final tx = TpTextStyles.of(context);
                 return Text(
                   '${index + 1}. ${messages[index]}',
                   style: tx.md,

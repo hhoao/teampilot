@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,7 +12,6 @@ import '../../pages/ssh_profiles/ssh_profile_form_dialog.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import '../../services/terminal/workspace_shell_connector.dart';
 import '../../services/terminal/workspace_terminal_launch_catalog.dart';
-import '../../theme/app_text_styles.dart';
 import '../menu/sidebar_action_menu.dart';
 
 typedef WorkspaceTerminalSessionSelected =
@@ -126,7 +126,7 @@ Future<void> showWorkspaceTerminalSettingsSheet(BuildContext context) async {
                 children: [
                   Text(
                     context.l10n.workspaceTerminalSettings,
-                    style: AppTextStyles.of(context).mdSemiboldTightSnug,
+                    style: TpTextStyles.of(context).mdSemiboldTightSnug,
                   ),
                   const SizedBox(height: 12),
                   SegmentedButton<String>(

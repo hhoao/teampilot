@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -193,14 +192,14 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
               const SizedBox(height: 8),
               Text(
                 l10n.mcpOAuthDiscovering,
-                style: AppTextStyles.of(context).sm,
+                style: TpTextStyles.of(context).sm,
               ),
             ],
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(
                 _error!,
-                style: AppTextStyles.of(context).mdColored(
+                style: TpTextStyles.of(context).mdColored(
                   Theme.of(context).colorScheme.error,
                 ),
               ),
@@ -218,7 +217,7 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
               const SizedBox(height: 8),
               SelectableText(
                 _authorizationUrl!.toString(),
-                style: AppTextStyles.of(context).sm,
+                style: TpTextStyles.of(context).sm,
               ),
             ],
             if (_showCallbackField) ...[

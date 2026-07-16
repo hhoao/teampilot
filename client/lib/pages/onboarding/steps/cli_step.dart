@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../cubits/session_preferences_cubit.dart';
@@ -21,9 +20,7 @@ import '../../../services/cli/registry/cli_tool_definition.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/ssh/ssh_client_factory.dart';
-import '../../../theme/app_text_styles.dart';
 import '../../../widgets/cli_install_progress_panel.dart';
-import '../../../widgets/settings/workspace_settings_widgets.dart';
 import 'onboarding_cli_row.dart';
 import 'onboarding_step_scaffold.dart';
 
@@ -219,8 +216,8 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
         context,
         message: result.message,
         variant: result.success
-            ? AppToastVariant.success
-            : AppToastVariant.error,
+            ? TpToastVariant.success
+            : TpToastVariant.error,
       );
     } finally {
       if (mounted) {
@@ -276,7 +273,7 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Text(
                           _detectError!,
-                          style: AppTextStyles.of(context).mutedMd.copyWith(
+                          style: TpTextStyles.of(context).mutedMd.copyWith(
                             color: Theme.of(context).colorScheme.error,
                           ),
                         ),
@@ -295,7 +292,7 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
                           Expanded(
                             child: Text(
                               l10n.onboardingCliScanning,
-                              style: AppTextStyles.of(context).mutedMd,
+                              style: TpTextStyles.of(context).mutedMd,
                             ),
                           ),
                         ],
@@ -309,7 +306,7 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
               );
             },
           ),
-          SettingsSurfaceCard(
+          TpCard.outlined(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,

@@ -1,16 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/theme/app_button_theme.dart';
-import 'package:teampilot/theme/app_control_theme.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
+
+TpControlMetrics _controlFor(ThemeData theme, AppTypographyScale scale) {
+  // Control metrics are baked into button/input ThemeData at build time;
+  // they are not reinstalled as a ThemeExtension (TpTheme owns runtime tokens).
+  return TpControlMetrics.fromScale(scale.multiplier);
+}
+
+Widget _withTpTheme({
+  required ThemeData theme,
+  required double controlScale,
+  required Widget child,
+}) {
+  return MaterialApp(
+    theme: theme,
+    home: TpTheme(
+      data: TpThemeData.fromColorScheme(
+        theme.colorScheme,
+        scale: 1.0,
+        controlScale: controlScale,
+      ),
+      child: child,
+    ),
+  );
+}
 
 void main() {
   test('buttons keep compact track with horizontal-only padding', () {
     final theme = buildDarkTheme();
-    final control = theme.extension<AppControlTheme>()!;
-    expect(control.height, AppControlTheme.heightBase);
-    expect(control.horizontalPadding, AppControlTheme.horizontalPaddingBase);
+    final control = _controlFor(theme, AppTypographyScale.standard);
+    expect(control.height, TpControlMetrics.heightBase);
+    expect(control.horizontalPadding, TpControlMetrics.horizontalPaddingBase);
     expect(control.medium.height, lessThan(control.input.height));
 
     Size? minOf(ButtonStyle? style) => style?.minimumSize?.resolve({});
@@ -30,15 +54,15 @@ void main() {
 
   test('outline inputs keep taller track with real vertical padding', () {
     final theme = buildDarkTheme();
-    final control = theme.extension<AppControlTheme>()!;
-    expect(control.input.height, AppControlTheme.inputHeightBase);
+    final control = _controlFor(theme, AppTypographyScale.standard);
+    expect(control.input.height, TpControlMetrics.inputHeightBase);
     expect(
       control.input.horizontalPadding,
-      AppControlTheme.inputHorizontalPaddingBase,
+      TpControlMetrics.inputHorizontalPaddingBase,
     );
     expect(
       control.input.verticalPadding,
-      AppControlTheme.inputVerticalPaddingBase,
+      TpControlMetrics.inputVerticalPaddingBase,
     );
 
     expect(
@@ -60,17 +84,13 @@ void main() {
   test('control height tracks typography scale', () {
     final std = buildDarkTheme(null, AppTypographyScale.standard);
     final comfy = buildDarkTheme(null, AppTypographyScale.comfortable);
-    expect(
-      comfy.extension<AppControlTheme>()!.height,
-      greaterThan(std.extension<AppControlTheme>()!.height),
-    );
-    expect(
-      comfy.extension<AppControlTheme>()!.input.height,
-      greaterThan(std.extension<AppControlTheme>()!.input.height),
-    );
+    final stdControl = _controlFor(std, AppTypographyScale.standard);
+    final comfyControl = _controlFor(comfy, AppTypographyScale.comfortable);
+    expect(comfyControl.height, greaterThan(stdControl.height));
+    expect(comfyControl.input.height, greaterThan(stdControl.input.height));
     expect(
       comfy.inputDecorationTheme.constraints?.minHeight,
-      comfy.extension<AppControlTheme>()!.input.height,
+      comfyControl.input.height,
     );
   });
 
@@ -106,7 +126,7 @@ void main() {
 
   test('filled/outlined/elevated use modest rounded rect, not stadium', () {
     final theme = buildDarkTheme();
-    final control = theme.extension<AppControlTheme>()!;
+    final control = _controlFor(theme, AppTypographyScale.standard);
     OutlinedBorder? shapeOf(ButtonStyle? style) {
       final s = style?.shape?.resolve({});
       return s is OutlinedBorder ? s : null;
@@ -128,7 +148,7 @@ void main() {
 
   testWidgets('buttons stay below input track height', (tester) async {
     final theme = buildDarkTheme();
-    final control = theme.extension<AppControlTheme>()!;
+    final control = _controlFor(theme, AppTypographyScale.standard);
     await tester.pumpWidget(
       MaterialApp(
         theme: theme,
@@ -159,14 +179,14 @@ void main() {
       tester.getSize(find.byType(OutlinedButton)).height,
       control.medium.height,
     );
-    expect(control.medium.height, AppControlTheme.heightBase);
-    expect(control.input.height, AppControlTheme.inputHeightBase);
+    expect(control.medium.height, TpControlMetrics.heightBase);
+    expect(control.input.height, TpControlMetrics.inputHeightBase);
     expect(control.medium.height, lessThan(control.input.height));
   });
 
   testWidgets('TextField hint stays inset from outline edges', (tester) async {
     final theme = buildDarkTheme();
-    final control = theme.extension<AppControlTheme>()!;
+    final control = _controlFor(theme, AppTypographyScale.standard);
     await tester.pumpWidget(
       MaterialApp(
         theme: theme,
@@ -193,27 +213,28 @@ void main() {
     tester,
   ) async {
     final theme = buildDarkTheme();
-    final control = theme.extension<AppControlTheme>()!;
+    final control = _controlFor(theme, AppTypographyScale.standard);
     await tester.pumpWidget(
-      MaterialApp(
+      _withTpTheme(
         theme: theme,
-        home: Builder(
+        controlScale: 1.0,
+        child: Builder(
           builder: (context) {
             return Scaffold(
               body: Column(
                 children: [
                   FilledButton(
-                    style: appButtonStyle(context, size: AppControlSize.small),
+                    style: appButtonStyle(context, size: TpControlSize.small),
                     onPressed: () {},
                     child: const Text('S'),
                   ),
                   FilledButton(
-                    style: appButtonStyle(context, size: AppControlSize.medium),
+                    style: appButtonStyle(context, size: TpControlSize.medium),
                     onPressed: () {},
                     child: const Text('M'),
                   ),
                   FilledButton(
-                    style: appButtonStyle(context, size: AppControlSize.large),
+                    style: appButtonStyle(context, size: TpControlSize.large),
                     onPressed: () {},
                     child: const Text('L'),
                   ),

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/theme/app_control_theme.dart';
 import 'package:teampilot/theme/app_font_resolver.dart';
 import 'package:teampilot/theme/app_fonts.dart';
 import 'package:teampilot/theme/app_outline_input_theme.dart';
 import 'package:teampilot/theme/app_text_styles_warmup.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 import 'package:teampilot/theme/font_catalog.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 void main() {
   late TextTheme textTheme;
@@ -18,7 +18,9 @@ void main() {
       monoFontId: FontCatalog.defaultMonoId,
     );
     final seed = ThemeData(brightness: Brightness.dark, useMaterial3: true);
-    final control = AppControlTheme.fromScale(AppTypographyScale.standard);
+    final control = TpControlMetrics.fromScale(
+      AppTypographyScale.standard.multiplier,
+    );
     textTheme = applyAppInputTextStyles(
       materializeM3TextThemeSizes(buildAppUiTextTheme(seed.textTheme, fonts)),
     );
@@ -47,8 +49,8 @@ void main() {
       final floating = decoratorLabelStyle(inputTheme.floatingLabelStyle);
 
       expect(
-        textStyleShapeKey(floating),
-        textStyleShapeKey(inline),
+        TpGlyphWarmup.shapeKey(floating),
+        TpGlyphWarmup.shapeKey(inline),
         reason:
             'floatingLabelStyle must differ from labelStyle by color only, '
             'not by layout-affecting fields',

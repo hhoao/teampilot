@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -8,7 +7,6 @@ import '../../models/mcp_registry_source.dart';
 import '../../services/mcp/mcp_registry_browse_service.dart';
 import '../../services/mcp/mcp_registry_config_service.dart';
 import '../../services/mcp/smithery_mcp_service.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'mcp_shared_widgets.dart';
 
@@ -174,7 +172,7 @@ class _McpRegistriesSectionState extends State<McpRegistriesSection> {
     AppToast.show(
       context,
       message: l10n.mcpRepoConfigSaved,
-      variant: AppToastVariant.success,
+      variant: TpToastVariant.success,
     );
   }
 
@@ -267,14 +265,14 @@ class _RegistrySourceEditDialogState extends State<_RegistrySourceEditDialog> {
       AppToast.show(
         context,
         message: l10n.mcpRepoTestOk,
-        variant: AppToastVariant.success,
+        variant: TpToastVariant.success,
       );
     } catch (e) {
       if (!mounted) return;
       AppToast.show(
         context,
         message: l10n.mcpRepoTestFailed(e.toString()),
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
     } finally {
       if (mounted) setState(() => _testing = false);
@@ -390,7 +388,7 @@ class _RegistryRow extends StatelessWidget {
                     children: [
                       Text(
                         source.baseUrl,
-                        style: AppTextStyles.of(
+                        style: TpTextStyles.of(
                           context,
                         ).mdSemiboldColored(textBase),
                         maxLines: 2,
@@ -399,7 +397,7 @@ class _RegistryRow extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         label,
-                        style: AppTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.55),
+                        style: TpTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.55),
                         ),
                       ),
                     ],

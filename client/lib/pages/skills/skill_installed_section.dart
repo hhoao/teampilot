@@ -8,12 +8,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/skill_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/skill.dart';
-import '../../theme/app_text_styles.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/github_source_url.dart';
 import '../../widgets/github_details_button.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'skill_management_cards.dart';
+import 'package:teampilot/theme/workspace_surface_layers.dart';
 
 class SkillInstalledSection extends StatelessWidget {
   const SkillInstalledSection({
@@ -40,7 +39,7 @@ class SkillInstalledSection extends StatelessWidget {
               children: [
                 SkillCardHeader(
                   title: l10n.skillsInstalledCount(state.installed.length),
-                  trailing: CardHeaderActionRow(
+                  trailing: TpActionRow(
                     children: [
                       if (state.updates.isNotEmpty)
                         FilledButton.tonalIcon(
@@ -212,7 +211,7 @@ class SkillInstalledRow extends StatelessWidget {
                           skill.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.of(
+                          style: TpTextStyles.of(
                             context,
                           ).mdSemiboldColored(textBase),
                         ),
@@ -220,7 +219,7 @@ class SkillInstalledRow extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         sourceLabel,
-                        style: AppTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.5),
+                        style: TpTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.5),
                         ),
                       ),
                       if (hasUpdate) ...[
@@ -236,7 +235,7 @@ class SkillInstalledRow extends StatelessWidget {
                           ),
                           child: Text(
                             l10n.skillsUpdateAvailable,
-                            style: AppTextStyles.of(context).xsBoldColored(const Color(0xFFB45309)),
+                            style: TpTextStyles.of(context).xsBoldColored(const Color(0xFFB45309)),
                           ),
                         ),
                       ],
@@ -248,7 +247,7 @@ class SkillInstalledRow extends StatelessWidget {
                       skill.description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.of(context).smColored(textBase.withValues(alpha: 0.6),
+                      style: TpTextStyles.of(context).smColored(textBase.withValues(alpha: 0.6),
                       ),
                     ),
                   ],

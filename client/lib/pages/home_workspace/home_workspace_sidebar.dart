@@ -3,7 +3,6 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
 import 'home_workspace_global_section.dart';
@@ -214,7 +213,7 @@ class _ShortcutRowState extends State<_ShortcutRow> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final active = widget.active;
     final Color fg = active ? cs.primary : cs.onSurface;
     final Color background = active
@@ -283,7 +282,7 @@ class _ProvidersButtonState extends State<_ProvidersButton> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final active = widget.active;
     final Color fg = active ? cs.primary : cs.onSurface;
     final restingBg = active

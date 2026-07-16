@@ -1,22 +1,21 @@
 import 'dart:io';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/ssh_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/ssh_profile.dart';
 import '../../repositories/ssh_credential_store.dart';
+import '../../services/ssh/ssh_connection_failure.dart';
 import '../../services/ssh/ssh_profile_connection_tester.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../ssh_profiles_page.dart';
 import 'ssh_profile_connection_status.dart';
 import 'ssh_profile_target_card.dart';
 import 'ssh_profile_target_config_dialog.dart';
-import '../../theme/app_text_styles.dart';
 
 /// Orca-style SSH target list for settings (desktop + Android).
 class SshProfilesSection extends StatefulWidget {
@@ -50,8 +49,11 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
     });
   }
 
-  Future<bool> _runTest(SshProfile profile, {bool showToast = true}) async {
-    if (_testingIds.contains(profile.id)) return false;
+  /// Returns `null` on success, otherwise the caught failure.
+  Future<Object?> _runTest(SshProfile profile, {bool showToast = true}) async {
+    if (_testingIds.contains(profile.id)) {
+      return StateError('SSH profile test already in progress');
+    }
     setState(() => _testingIds.add(profile.id));
     _setStatus(profile.id, SshProfileConnectionStatus.connecting);
     try {
@@ -67,31 +69,31 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
         privateKey: creds.privateKey,
         privateKeyPassphrase: creds.passphrase,
       );
-      if (!mounted) return false;
+      if (!mounted) return StateError('Widget unmounted');
       _setStatus(profile.id, SshProfileConnectionStatus.connected);
       if (showToast) {
         AppToast.show(
           context,
           message: context.l10n.sshProfileTestSuccess,
-          variant: AppToastVariant.success,
+          variant: TpToastVariant.success,
         );
       }
-      return true;
+      return null;
     } on Object catch (e) {
-      if (!mounted) return false;
+      if (!mounted) return e;
       _setStatus(
         profile.id,
         SshProfileConnectionStatus.error,
-        error: e.toString(),
+        error: sshConnectionFailureLogMessage(e),
       );
       if (showToast) {
         AppToast.show(
           context,
-          message: context.l10n.sshProfileTestFailed,
-          variant: AppToastVariant.error,
+          message: sshConnectionFailureUserMessage(e, context.l10n),
+          variant: TpToastVariant.error,
         );
       }
-      return false;
+      return e;
     } finally {
       if (mounted) setState(() => _testingIds.remove(profile.id));
     }
@@ -107,13 +109,13 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
         if (!mounted) return;
         _setStatus(profile.id, SshProfileConnectionStatus.connected);
       } else {
-        final ok = await _runTest(profile, showToast: false);
+        final failure = await _runTest(profile, showToast: false);
         if (!mounted) return;
-        if (!ok) {
+        if (failure != null) {
           AppToast.show(
             context,
-            message: context.l10n.sshProfileTestFailed,
-            variant: AppToastVariant.error,
+            message: sshConnectionFailureUserMessage(failure, context.l10n),
+            variant: TpToastVariant.error,
           );
           return;
         }
@@ -122,7 +124,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
       AppToast.show(
         context,
         message: context.l10n.sshProfileConnectSuccess(profile.host),
-        variant: AppToastVariant.success,
+        variant: TpToastVariant.success,
       );
     } on Object catch (e) {
       if (!mounted) return;
@@ -163,7 +165,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
     final state = context.watch<SshProfileCubit>().state;
     final profiles = state.profiles;
 
-    return SettingsSurfaceCard(
+    return TpCard.outlined(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
         child: Column(
@@ -178,12 +180,12 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                     children: [
                       Text(
                         l10n.sshProfilesTargetsTitle,
-                        style: AppTextStyles.of(context).mdBoldTightSnug,
+                        style: TpTextStyles.of(context).mdBoldTightSnug,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         l10n.sshProfilesTargetsSubtitle,
-                        style: AppTextStyles.of(context).mutedSm,
+                        style: TpTextStyles.of(context).mutedSm,
                       ),
                     ],
                   ),
@@ -193,7 +195,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                     AppToast.show(
                       context,
                       message: l10n.sshProfilesImportUnavailable,
-                      variant: AppToastVariant.info,
+                      variant: TpToastVariant.info,
                     );
                   },
                   icon: const Icon(Icons.upload_outlined, size: 18),
@@ -230,7 +232,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                 ),
                 child: Text(
                   l10n.sshProfilesEmpty,
-                  style: AppTextStyles.of(context).mutedMd,
+                  style: TpTextStyles.of(context).mutedMd,
                 ),
               )
             else

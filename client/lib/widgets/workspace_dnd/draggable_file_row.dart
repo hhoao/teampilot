@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../services/workspace_dnd/workspace_file_ref.dart';
-import '../../theme/app_text_styles.dart';
 
 /// Wraps a file-tree-style row so it can be dragged onto a [WorkspaceDropTarget]
 /// (e.g. a terminal). The drag-source half of workspace drag-and-drop: any row
@@ -79,7 +79,7 @@ class _DragFeedback extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               text,
-              style: AppTextStyles.of(
+              style: TpTextStyles.of(
                 context,
               ).smColored(cs.onSecondaryContainer),
             ),

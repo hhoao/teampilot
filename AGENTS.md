@@ -177,7 +177,7 @@ Session runtime dirs: `workspace/workspaces/{workspaceId}/sessions/{sessionId}/r
 | Automations | `client/lib/services/automation/`, `client/lib/cubits/automation_cubit.dart` |
 | Session title from prompt | `client/lib/utils/first_user_line_capture.dart`, `session_display_title.dart` |
 | Extensions | `client/lib/services/extension/`, `extension_repository.dart`, `extension_cubit.dart` |
-| Shared UI / Tp design system | `client/packages/shared_ui` — cross-route `Tp*` primitives + `TpTheme`; wrap `MaterialApp` with `TpTheme` (see package README) |
+| Shared UI / Tp design system | `client/packages/shared_ui` — cross-route `Tp*` primitives + `TpTheme` / `TpTextStyles` / `TpFontTheme`; wrap `MaterialApp` with `TpTheme` (see package README) |
 | Product / domain chrome | `client/lib/widgets/` — app-specific layout reused across routes (not new generic controls) |
 | Performance snapshot CLI | `client/tool/analyze_performance_json.dart` — [docs/PERFORMANCE_ANALYSIS.md](docs/PERFORMANCE_ANALYSIS.md) |
 

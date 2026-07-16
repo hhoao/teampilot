@@ -1,6 +1,6 @@
 import '../../models/app_session.dart';
 import '../../pages/home_workspace/home_workspace_route.dart';
-import '../../theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../utils/logger.dart';
 import 'desktop_system_notifier.dart';
 import 'notification_recorder.dart';
@@ -42,7 +42,7 @@ class SessionIdleNotificationService {
       _recorder?.record(
         title: sessionTitle,
         message: notificationSubtitle,
-        variant: AppToastVariant.success,
+        variant: TpToastVariant.success,
       );
 
       if (!systemNotificationEnabled) continue;

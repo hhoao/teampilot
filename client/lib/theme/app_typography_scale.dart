@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Central **font size** configuration for TeamPilot UI.
 ///
 /// Edit base values or [AppTypographyScale.standard.multiplier] here (or pass
 /// another scale when building [ThemeData]) — widgets read sizes via
-/// [TextTheme] / [AppTextStyles], not these constants directly.
+/// [TextTheme] / [TpTextStyles], not these constants directly.
 ///
 /// Exceptions: terminal [TerminalStyle] uses [terminal]; see `chat_workbench.dart`.
 

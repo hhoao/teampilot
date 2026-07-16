@@ -14,19 +14,17 @@ import '../../../services/git/git_worktree_service.dart';
 import '../../../services/git/worktree_removal.dart';
 import '../../../services/storage/runtime_context.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
-import '../../../theme/app_text_styles.dart';
 import '../../../utils/app_session_sort.dart';
 import '../../../utils/session_reorder_merge.dart';
 import '../../../utils/session_worktree_grouping.dart';
 import '../../../utils/workspace_path_utils.dart';
 import '../../../widgets/app_toast/app_toast.dart';
-import '../../../theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'worktree_delete_dialog.dart';
 import 'workspace_session_actions.dart';
 import 'workspace_sidebar_row_metrics.dart';
-import 'package:shared_ui/shared_ui.dart';
 
 /// Collapse-set key for a group: worktree path, project folder path, or orphan.
 String worktreeGroupCollapseKey(WorktreeGroup group) {
@@ -163,7 +161,7 @@ class WorktreeGroupSection extends StatelessWidget {
       AppToast.show(
         context,
         message: l10n.worktreeDeleteBusyWarning,
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
       return;
     }
@@ -199,7 +197,7 @@ class WorktreeGroupSection extends StatelessWidget {
       AppToast.show(
         context,
         message: l10n.worktreeDeleteFailed(error.toString()),
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
     }
   }
@@ -529,7 +527,7 @@ class _GroupShowMoreRowState extends State<_GroupShowMoreRow> {
                       widget.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.of(context).mdColored(cs.onSurface.withValues(alpha: 0.55),
+                      style: TpTextStyles.of(context).mdColored(cs.onSurface.withValues(alpha: 0.55),
                       ),
                     ),
                   ),

@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../cubits/app_provider_cubit.dart';
@@ -36,7 +36,6 @@ import '../../../services/expert_hub/expert_landing_preflight.dart';
 import '../../../services/expert_hub/expert_member_resolver.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../pages/home_workspace/home_workspace_route.dart';
-import '../../../theme/app_spacing.dart';
 import '../../../utils/landing_draft_resolver.dart';
 import '../../../utils/workspace_path_utils.dart';
 import '../../../services/storage/home_target_controller.dart';
@@ -52,7 +51,6 @@ import 'workspace_chat_landing_compose_card.dart';
 import 'workspace_landing_launch_feedback.dart';
 import 'workspace_landing_selectors.dart';
 import 'workspace_landing_team_settings_dialog.dart';
-import 'package:shared_ui/shared_ui.dart';
 
 enum _LandingConversationMode { team, simple }
 
@@ -145,7 +143,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
         AppToast.show(
           context,
           message: message,
-          variant: AppToastVariant.warning,
+          variant: TpToastVariant.warning,
         );
         _applyVoiceListening(false);
       },
@@ -315,7 +313,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       AppToast.show(
         context,
         message: context.l10n.workspaceChatLandingEnhanceNotConfigured,
-        variant: AppToastVariant.warning,
+        variant: TpToastVariant.warning,
       );
       return;
     }
@@ -333,7 +331,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
         AppToast.show(
           context,
           message: context.l10n.workspaceChatLandingEnhanceFailed,
-          variant: AppToastVariant.warning,
+          variant: TpToastVariant.warning,
         );
         return;
       }
@@ -346,14 +344,14 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       AppToast.show(
         context,
         message: e.message,
-        variant: AppToastVariant.warning,
+        variant: TpToastVariant.warning,
       );
     } on Object {
       if (!mounted) return;
       AppToast.show(
         context,
         message: context.l10n.workspaceChatLandingEnhanceFailed,
-        variant: AppToastVariant.warning,
+        variant: TpToastVariant.warning,
       );
     } finally {
       if (mounted) setState(() => _enhancing = false);
@@ -371,7 +369,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
         message: _voiceInput.permissionDenied
             ? context.l10n.workspaceChatLandingVoicePermissionDenied
             : context.l10n.workspaceChatLandingVoiceUnavailable,
-        variant: AppToastVariant.warning,
+        variant: TpToastVariant.warning,
       );
       return;
     }
@@ -903,7 +901,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       AppToast.show(
         context,
         message: l10n.expertHubNotFound,
-        variant: AppToastVariant.warning,
+        variant: TpToastVariant.warning,
       );
       return;
     }
@@ -919,7 +917,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     AppToast.show(
       context,
       message: message,
-      variant: AppToastVariant.warning,
+      variant: TpToastVariant.warning,
     );
   }
 

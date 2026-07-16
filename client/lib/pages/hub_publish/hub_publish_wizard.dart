@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:teampilot/theme/app_text_styles.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -322,7 +321,7 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
             Text(
               _stepError!,
               key: const Key('hub-publish-step-error'),
-              style: AppTextStyles.of(context).mdColored(
+              style: TpTextStyles.of(context).mdColored(
                 Theme.of(context).colorScheme.error,
               ),
             ),

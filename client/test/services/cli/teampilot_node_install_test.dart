@@ -30,14 +30,19 @@ void main() {
     expect(windows.arguments.last, contains(TeampilotNodeInstall.version));
   });
 
-  test('ssh bootstrap uses unix install script', () {
+  test('ssh bootstrap uses unix install script with glibc fallback', () {
     final command = node.sshBootstrapCommand();
     expect(command.executable, 'sh');
     final script = command.arguments.last;
     expect(script, contains('nodejs.org/dist/'));
     expect(script, contains('npmmirror.com/mirrors/node/'));
-    expect(script, contains('attempt \$attempt'));
+    expect(script, contains('unofficial-builds.nodejs.org'));
+    expect(script, contains('linux-x64-glibc-217'));
     expect(script, contains(TeampilotNodeInstall.version));
+    expect(script, contains(TeampilotNodeInstall.legacyGlibcVersion));
+    expect(script, contains('ldd --version'));
+    expect(script, contains('\$base/current'));
+    expect(script, contains('attempt \$attempt'));
   });
 
   test('bootstrapped local package install references teampilot node path', () {
@@ -54,6 +59,7 @@ void main() {
       contains('npm install -g @anthropic-ai/claude-code'),
     );
     expect(unix.commandLine, contains('export PATH='));
+    expect(unix.commandLine, contains('/current/bin:'));
 
     final windowsRunner = HostExecutionEnvironment.resolve(
       isWindowsHost: true,
@@ -73,10 +79,10 @@ void main() {
     expect(psCommand, contains('@anthropic-ai/claude-code'));
   });
 
-  test('bootstrapped unix npm path is stable', () {
+  test('bootstrapped unix npm path uses current symlink', () {
     expect(
       TeampilotNodeInstall.bootstrappedUnixNpmPath,
-      '${TeampilotNodeInstall.unixToolchainNodeBase}/${TeampilotNodeInstall.version}/bin/npm',
+      '${TeampilotNodeInstall.unixToolchainNodeBase}/current/bin/npm',
     );
   });
 }

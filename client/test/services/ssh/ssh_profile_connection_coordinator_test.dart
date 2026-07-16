@@ -98,6 +98,48 @@ void main() {
     );
     await coordinator.dispose();
   });
+
+  test('hostkey verification failures do not schedule reconnect', () async {
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    var createCount = 0;
+    final events = SshConnectionEvents();
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      events: events,
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        createCount += 1;
+        return _ClosableClient();
+      },
+    );
+    final coordinator = SshProfileConnectionCoordinator(
+      factory: factory,
+      events: events,
+      profileResolver: (_) => profile,
+      policy: const SshProfileReconnectPolicy(
+        disconnectCoalesce: Duration(milliseconds: 20),
+        maxAttempts: 3,
+      ),
+    );
+
+    final client = await factory.clientForStorage(profile);
+    events.onTransportClosed?.call(
+      profile.id,
+      SSHHostkeyError('Hostkey verification failed'),
+      StackTrace.current,
+    );
+    client.close();
+
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    expect(createCount, 1);
+    await coordinator.dispose();
+  });
 }
 
 class _InstantAuthClient extends SSHClient {

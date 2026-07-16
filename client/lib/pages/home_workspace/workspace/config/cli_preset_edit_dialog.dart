@@ -11,7 +11,6 @@ import '../../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../../../widgets/app_provider/cli_effort_picker_field.dart';
 import '../../../../widgets/app_provider/provider_model_picker_field.dart';
-import '../../../../widgets/settings/workspace_settings_widgets.dart';
 import 'workspace_cli_config_helpers.dart';
 import 'workspace_cli_effort_helpers.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -130,7 +129,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
                 : l10n.workspaceCliAddPresetTitle,
           ),
           const SizedBox(height: 16),
-          SettingsLabeledStackedRow(
+          TpPreferenceStack(
             title: l10n.workspaceCliPresetNameLabel,
             body: TextField(
               controller: _nameCtl,
@@ -139,7 +138,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
             ),
             showDividerBelow: true,
           ),
-          SettingsLabeledRow(
+          TpPreferenceRow(
             title: l10n.teamCliLabel,
             trailing: TpSelect<String>(
               items: [for (final def in registry.launchable) def.id.value],
@@ -171,7 +170,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
             ),
             showDividerBelow: true,
           ),
-          SettingsLabeledRow(
+          TpPreferenceRow(
             title: l10n.provider,
             trailing: TpSelect<String>(
               key: ValueKey('preset-provider-$_cli-$_providerId'),
@@ -205,7 +204,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
             showDividerBelow: hideModelPicker || showEffortPicker,
           ),
           if (!hideModelPicker)
-            SettingsLabeledRow(
+            TpPreferenceRow(
               title: l10n.model,
               trailing: ProviderModelPickerField(
                 key: ValueKey('preset-model-$_providerId-$_modelId'),
@@ -230,7 +229,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
               showDividerBelow: showEffortPicker,
             ),
           if (showEffortPicker)
-            SettingsLabeledRow(
+            TpPreferenceRow(
               title: l10n.workspaceCliEffortLevel,
               subtitle: l10n.workspaceCliEffortLevelSubtitle,
               trailing: CliEffortPickerField(

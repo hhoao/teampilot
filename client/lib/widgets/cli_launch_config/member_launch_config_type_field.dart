@@ -9,9 +9,7 @@ import '../../pages/team_config/team_config_helpers.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
-import '../../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../settings/workspace_settings_widgets.dart';
 import 'cli_launch_config_dropdown.dart';
 import 'member_launch_config_kind.dart';
 import 'preset_launch_picker_field.dart';
@@ -38,7 +36,7 @@ class MemberLaunchConfigTypeField extends StatelessWidget {
     final l10n = context.l10n;
     final dropdownDeco = decoration ?? TpSelectDecorations.themed(context);
 
-    return SettingsLabeledRow(
+    return TpPreferenceRow(
       title: l10n.memberLaunchConfigTypeLabel,
       trailing: cliLaunchConfigDropdown(
         TpSelect<MemberLaunchConfigKind>(
@@ -85,7 +83,7 @@ class MemberLaunchInheritSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final bundle = resolveTeamLaunchBundle(team: team, globalPresets: presets);
     final subtitle = bundle.isConfigured
         ? _bundleSummary(

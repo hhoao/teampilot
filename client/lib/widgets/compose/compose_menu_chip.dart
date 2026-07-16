@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
-import '../../theme/app_spacing.dart';
-import '../../theme/app_text_styles.dart';
 import '../menu/sidebar_action_menu.dart';
 
 /// Popover menu chip matching landing compose toolbar visuals.
@@ -73,7 +71,7 @@ class ComposeToolbarChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final spacing = context.tpSpacing;
     final icons = context.tpIconSizes;
-    final labelStyle = AppTextStyles.of(
+    final labelStyle = TpTextStyles.of(
       context,
     ).smColored(palette.muted);
 

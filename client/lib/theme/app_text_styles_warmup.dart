@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../models/layout_preferences.dart';
-import 'app_control_theme.dart';
 import 'app_fonts.dart';
 import 'app_markdown_style_sheet.dart';
 import 'app_outline_input_theme.dart';
-import 'app_text_styles.dart';
 import 'app_typography_scale.dart';
 import 'font_catalog.dart';
 
@@ -20,13 +19,18 @@ ResolvedFonts _fontsFromPreferences(LayoutPreferences? preferences) {
 ThemeData bootstrapThemeForTextWarmup([ResolvedFonts? fonts]) {
   final resolved = fonts ?? _fontsFromPreferences(null);
   final seed = ThemeData(brightness: Brightness.light, useMaterial3: true);
-  final control = AppControlTheme.fromScale(AppTypographyScale.standard);
+  final control = TpControlMetrics.fromScale(AppTypographyScale.standard.multiplier);
   final textTheme = applyAppInputTextStyles(
     materializeM3TextThemeSizes(buildAppUiTextTheme(seed.textTheme, resolved)),
   );
   return seed.copyWith(
     textTheme: textTheme,
-    extensions: [buildAppFontTheme(resolved), control],
+    extensions: [buildTpFontTheme(resolved)],
+    inputDecorationTheme: buildAppOutlineInputDecorationTheme(
+      colorScheme: seed.colorScheme,
+      textTheme: textTheme,
+      control: control,
+    ),
   );
 }
 
@@ -43,15 +47,18 @@ ThemeData themeForInteractiveWarmup(LayoutPreferences preferences) {
   );
   final textScale = AppTypographyScale(multiplier: effectiveTextMult);
   final seed = bootstrapThemeForTextWarmup(fonts);
+  final control = TpControlMetrics.fromScale(textScale.multiplier);
   final textTheme = applyAppInputTextStyles(
     materializeM3TextThemeSizes(seed.textTheme, scale: textScale),
   );
   return seed.copyWith(
     textTheme: textTheme,
-    extensions: [
-      buildAppFontTheme(fonts),
-      AppControlTheme.fromScale(textScale),
-    ],
+    extensions: [buildTpFontTheme(fonts)],
+    inputDecorationTheme: buildAppOutlineInputDecorationTheme(
+      colorScheme: seed.colorScheme,
+      textTheme: textTheme,
+      control: control,
+    ),
   );
 }
 
@@ -66,19 +73,10 @@ double _systemTextBaseline() {
   );
 }
 
-List<TextStyle> _appUiTextStylesFromTheme(ThemeData theme) {
-  final styles = AppTextStyles(theme);
+List<TextStyle> _hostExtraWarmupStyles(ThemeData theme) {
   final textTheme = theme.textTheme;
-  final scheme = theme.colorScheme;
-  final fonts = theme.extension<AppFontTheme>() ?? AppFontTheme.fallback;
-  final control =
-      theme.extension<AppControlTheme>() ??
-      AppControlTheme.fromScale(AppTypographyScale.standard);
-  final inputTheme = buildAppOutlineInputDecorationTheme(
-    colorScheme: scheme,
-    textTheme: textTheme,
-    control: control,
-  );
+  final fonts = theme.extension<TpFontTheme>() ?? TpFontTheme.fallback;
+  final inputTheme = theme.inputDecorationTheme;
   final bodyMedium = textTheme.bodyMedium ?? const TextStyle();
   final labelLarge = textTheme.labelLarge ?? bodyMedium;
 
@@ -87,104 +85,31 @@ List<TextStyle> _appUiTextStylesFromTheme(ThemeData theme) {
     fontFamilyFallback: fonts.uiFontFamilyFallback,
   );
 
+  final hint = inputTheme.hintStyle;
   return [
-    withUi(styles.xs),
-    withUi(styles.xsMedium),
-    withUi(styles.xsSemibold),
-    withUi(styles.xsBold),
-    withUi(styles.xsSemiboldSnug),
-    withUi(styles.xsBoldWide),
-    withUi(styles.xsTrack),
-    withUi(styles.sm),
-    withUi(styles.smMedium),
-    withUi(styles.smSemibold),
-    withUi(styles.smBold),
-    withUi(styles.smRelaxed),
-    withUi(styles.smSemiboldTrack),
-    withUi(styles.md),
-    withUi(styles.mdSnug),
-    withUi(styles.mdMedium),
-    withUi(styles.mdMediumSnug),
-    withUi(styles.mdSemibold),
-    withUi(styles.mdBold),
-    withUi(styles.mdRelaxed),
-    withUi(styles.mdSemiboldTightSnug),
-    withUi(styles.mdBoldTightSnug),
-    withUi(styles.mdBoldSpread),
-    withUi(styles.lg),
-    withUi(styles.lgMedium),
-    withUi(styles.lgSemibold),
-    withUi(styles.lgBold),
-    withUi(styles.lgSnug),
-    withUi(styles.lgBoldSnug),
-    withUi(styles.lgSemiboldSnug),
-    withUi(styles.xl),
-    withUi(styles.display),
-    withUi(styles.mutedXs),
-    withUi(styles.mutedSm),
-    withUi(styles.mutedMd),
+    if (hint != null) withUi(hint),
     withUi(appTextFieldStyle(textTheme)),
-    withUi(inputTheme.hintStyle!),
     withUi(bodyMedium.copyWith(fontWeight: FontWeight.w500, height: 1.25)),
     withUi(bodyMedium.copyWith(fontWeight: FontWeight.w400, height: 1.25)),
-    styles.mono.copyWith(
-      fontFamily: fonts.monoFontFamily,
-      fontFamilyFallback: fonts.monoFontFamilyFallback,
-    ),
     withUi(labelLarge),
-    // md + italic — markdown `em` (and any italic body copy)
-    withUi(styles.md.copyWith(fontStyle: FontStyle.italic)),
-    withUi(styles.md.copyWith(decoration: TextDecoration.lineThrough)),
   ];
 }
 
-/// All [TextStyle]s shaped at boot for [theme] (UI + markdown).
+/// All [TextStyle]s shaped at boot for [theme] (UI + host extras + markdown).
 List<TextStyle> textStylesForThemeWarmup(ThemeData theme) {
   return [
-    ..._appUiTextStylesFromTheme(theme),
+    ...TpTextStyles(theme).stylesForWarmup(),
+    ..._hostExtraWarmupStyles(theme),
     ...appMarkdownTextStyles(theme),
   ];
 }
 
-/// Glyph-cache fingerprint: family / size / weight / style.
-///
-/// Height, letterSpacing, color, and decoration do not need separate shaping
-/// for the same glyphs ([docs/PERFORMANCE_ANALYSIS.md]).
-typedef TextStyleShapeKey = ({
-  String? family,
-  double? size,
-  FontWeight? weight,
-  FontStyle? style,
-});
-
-TextStyleShapeKey textStyleShapeKey(TextStyle style) => (
-  family: style.fontFamily,
-  size: style.fontSize,
-  weight: style.fontWeight,
-  style: style.fontStyle,
-);
-
-/// Keeps the first style for each [textStyleShapeKey] — same coverage, less work.
-List<TextStyle> dedupeTextStylesByShapeKey(Iterable<TextStyle> styles) {
-  final seen = <TextStyleShapeKey>{};
-  final out = <TextStyle>[];
-  for (final style in styles) {
-    if (seen.add(textStyleShapeKey(style))) {
-      out.add(style);
-    }
-  }
-  return out;
-}
-
-/// Semantic [TextStyle]s to shape against [warmupGlyphs] at boot — the same
-/// variants the UI uses ([AppTextStyles], inputs, dropdowns, markdown), not
-/// widget literals. Deduped by [textStyleShapeKey] so boot does not reshape
-/// styles that only differ in layout metrics.
+/// Semantic [TextStyle]s to shape against host glyphs at boot.
 List<TextStyle> textStylesForInteractiveWarmup({
   LayoutPreferences? preferences,
 }) {
   final theme = preferences == null
       ? bootstrapThemeForTextWarmup()
       : themeForInteractiveWarmup(preferences);
-  return dedupeTextStylesByShapeKey(textStylesForThemeWarmup(theme));
+  return TpGlyphWarmup.dedupeByShapeKey(textStylesForThemeWarmup(theme));
 }

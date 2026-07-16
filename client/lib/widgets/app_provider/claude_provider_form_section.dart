@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 const _apiKeyFields = ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_API_KEY'];
@@ -19,7 +18,7 @@ class ClaudeProviderFormSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     return Material(
       color: Colors.transparent,
       child: ExpansionTile(
@@ -62,7 +61,7 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.centerLeft,
-      child: Text(text, style: AppTextStyles.of(context).mdSnug),
+      child: Text(text, style: TpTextStyles.of(context).mdSnug),
     );
   }
 }

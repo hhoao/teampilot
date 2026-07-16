@@ -74,6 +74,7 @@ SshCliInstallRunner preflightSshInstallRunner(
     return CliInstallerCommandResult(
       exitCode: result.exitCode,
       stdout: result.stdout,
+      stderr: result.stderr,
     );
   };
 }

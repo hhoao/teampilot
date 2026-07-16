@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_dialog_theme.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/deferred_mount_shell.dart';
@@ -176,7 +175,7 @@ class _SettingsNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
 
     return RepaintBoundary(
       child: Container(
@@ -240,7 +239,7 @@ class _SettingsHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),

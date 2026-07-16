@@ -11,7 +11,6 @@ import '../../models/workspace_folder.dart';
 import '../../services/run/launch_config_l10n.dart';
 import '../../services/run/shell_script_launch_schema.dart';
 import '../../theme/app_dialog_theme.dart';
-import '../../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'launch_config_schema_form.dart';
 
@@ -346,7 +345,7 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
 
   Widget _buildBody(BuildContext context) {
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final cubit = context.read<RunCubit>();
     final draft = _draft;
 

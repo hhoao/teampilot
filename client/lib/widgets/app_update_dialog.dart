@@ -10,11 +10,9 @@ import 'package:teampilot/router/app_router.dart';
 import 'package:teampilot/services/app/app_update_installer.dart';
 import 'package:teampilot/services/app/app_update_service.dart';
 import 'package:teampilot/services/app/backend_app_update_service.dart';
-import 'package:teampilot/theme/app_text_styles.dart';
 import 'package:teampilot/utils/changelog_parser.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Backend-driven update dialog: download and install on Android and desktop.
@@ -136,14 +134,14 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                   children: [
                     Text(
                       l10n.aboutCurrentVersion,
-                      style: AppTextStyles.of(
+                      style: TpTextStyles.of(
                         context,
                       ).mdColored(Colors.grey.shade600),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       currentApp?.version ?? '—',
-                      style: AppTextStyles.of(
+                      style: TpTextStyles.of(
                         context,
                       ).mdMedium,
                     ),
@@ -157,14 +155,14 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                   children: [
                     Text(
                       l10n.appUpdateLatestVersion,
-                      style: AppTextStyles.of(
+                      style: TpTextStyles.of(
                         context,
                       ).mdColored(Colors.grey.shade600),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       latestApp?.version ?? l10n.appUpdateUnknownVersion,
-                      style: AppTextStyles.of(context).mdMediumColored(Colors.blue),
+                      style: TpTextStyles.of(context).mdMediumColored(Colors.blue),
                     ),
                   ],
                 ),
@@ -186,7 +184,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                 collapsedBackgroundColor: Colors.transparent,
                 title: Text(
                   l10n.appUpdateChangelogTitle,
-                  style: AppTextStyles.of(
+                  style: TpTextStyles.of(
                     context,
                   ).smColored(Colors.grey.shade600),
                 ),
@@ -243,14 +241,14 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
               Expanded(
                 child: Text(
                   _downloadStatus,
-                  style: AppTextStyles.of(
+                  style: TpTextStyles.of(
                     context,
                   ).smColored(Colors.blue.shade700),
                 ),
               ),
               Text(
                 '${(_downloadProgress * 100).toStringAsFixed(1)}%',
-                style: AppTextStyles.of(
+                style: TpTextStyles.of(
                   context,
                 ).mdSemiboldColored(Colors.blue.shade800),
               ),
@@ -493,10 +491,10 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
   }) {
     if (!mounted) return;
     final variant = isError
-        ? AppToastVariant.error
+        ? TpToastVariant.error
         : isSuccess
-        ? AppToastVariant.success
-        : AppToastVariant.info;
+        ? TpToastVariant.success
+        : TpToastVariant.info;
     AppToast.show(
       context,
       message: message,
@@ -516,7 +514,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (prefix != null) prefix,
-          Text(text, style: AppTextStyles.of(context).md),
+          Text(text, style: TpTextStyles.of(context).md),
         ],
       ),
     );

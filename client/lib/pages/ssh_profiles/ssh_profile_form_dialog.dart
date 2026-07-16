@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:uuid/uuid.dart';
 
@@ -12,9 +12,9 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/ssh_profile.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_profile_repository.dart';
+import '../../services/ssh/ssh_connection_failure.dart';
 import '../../services/ssh/ssh_profile_connection_tester.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
-import 'package:shared_ui/shared_ui.dart';
 
 /// Desktop settings: Orca-style modal for adding/editing an SSH target.
 Future<void> showSshProfileFormDialog(
@@ -153,7 +153,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       AppToast.show(
         context,
         message: context.l10n.sshProfileFormCredentialRequired,
-        variant: AppToastVariant.warning,
+        variant: TpToastVariant.warning,
       );
       return null;
     }
@@ -203,14 +203,14 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       AppToast.show(
         context,
         message: context.l10n.sshProfileTestSuccess,
-        variant: AppToastVariant.success,
+        variant: TpToastVariant.success,
       );
-    } on Object {
+    } on Object catch (error) {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: context.l10n.sshProfileTestFailed,
-        variant: AppToastVariant.error,
+        message: sshConnectionFailureUserMessage(error, context.l10n),
+        variant: TpToastVariant.error,
       );
     } finally {
       if (mounted) setState(() => _testing = false);

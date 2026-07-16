@@ -7,7 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/file_tree_cubit.dart';
@@ -17,9 +17,7 @@ import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/file_tree/file_tree_visible_rows.dart';
 import '../../services/storage/runtime_context.dart';
-import '../../theme/app_text_styles.dart';
 import '../../utils/app_keys.dart';
-import 'package:shared_ui/shared_ui.dart';
 import '../file_tree_node.dart';
 import 'file_tree_header_overflow_menu.dart';
 import 'right_tools_lifecycle.dart';
@@ -90,7 +88,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
       AppToast.show(
         context,
         message: context.l10n.fileTreeRevealFailed,
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
       return;
     }
@@ -183,7 +181,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
                         Expanded(
                           child: Text(
                             l10n.fileTree,
-                            style: AppTextStyles.of(
+                            style: TpTextStyles.of(
                               context,
                             ).xsBoldWideColored(cs.onSurfaceVariant),
                             overflow: TextOverflow.ellipsis,
@@ -262,14 +260,14 @@ class _FileTreePanelState extends State<FileTreePanel> {
                             rootPath,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.of(
+                            style: TpTextStyles.of(
                               context,
                             ).smColored(cs.onSurfaceVariant),
                           );
                         }
                         return Text(
                           'Directory unavailable',
-                          style: AppTextStyles.of(context).smColored(cs.onSurfaceVariant.withValues(alpha: 0.7),
+                          style: TpTextStyles.of(context).smColored(cs.onSurfaceVariant.withValues(alpha: 0.7),
                           ),
                         );
                       },
@@ -503,17 +501,17 @@ class _FileTreeListState extends State<_FileTreeList> {
     if (rows.isEmpty) {
       return Text(
         '(empty)',
-        style: AppTextStyles.of(
+        style: TpTextStyles.of(
           context,
         ).smColored(widget.textColor.withValues(alpha: 0.35)),
       );
     }
     return LayoutBuilder(
       builder: (context, constraints) {
-        final labelStyle = AppTextStyles.of(
+        final labelStyle = TpTextStyles.of(
           context,
         ).mdMedium;
-        final emptyLabelStyle = AppTextStyles.of(context).xs;
+        final emptyLabelStyle = TpTextStyles.of(context).xs;
         final contentWidth = math.max(
           constraints.maxWidth,
           fileTreeMinContentWidth(
@@ -566,7 +564,7 @@ class _FileTreeListState extends State<_FileTreeList> {
                                 ),
                                 child: Text(
                                   '(empty)',
-                                  style: AppTextStyles.of(context).xs
+                                  style: TpTextStyles.of(context).xs
                                       .copyWith(
                                         color: widget.textColor.withValues(
                                           alpha: 0.35,

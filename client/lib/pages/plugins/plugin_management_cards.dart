@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_text_styles.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import 'package:shared_ui/shared_ui.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
+import 'package:teampilot/theme/workspace_surface_layers.dart';
 
 class PluginManagementCard extends StatelessWidget {
   const PluginManagementCard({super.key, required this.child});
@@ -31,7 +29,7 @@ class PluginCardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ManagementCardHeader(title: title, trailing: trailing);
+    return TpCardHeader(title: title, trailing: trailing);
   }
 }
 
@@ -65,7 +63,7 @@ Future<bool> pluginConfirmDialog(
                 if (detailHeading != null)
                   Text(
                     detailHeading,
-                    style: AppTextStyles.of(ctx).mdSemibold,
+                    style: TpTextStyles.of(ctx).mdSemibold,
                   ),
                 for (final line in detailLines)
                   Padding(
@@ -102,7 +100,7 @@ Future<bool> pluginConfirmDialog(
 void showPluginSnack(
   BuildContext context,
   String message, {
-  AppToastVariant variant = AppToastVariant.info,
+  TpToastVariant variant = TpToastVariant.info,
 }) {
   AppToast.show(context, message: message, variant: variant);
 }

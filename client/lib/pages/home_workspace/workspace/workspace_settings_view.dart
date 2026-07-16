@@ -1,18 +1,16 @@
 import 'dart:io';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
-import '../../../theme/app_text_styles.dart';
 import '../../../utils/workspace_display_name.dart';
 import '../../../widgets/workspace_details_dialog.dart';
 import '../../../widgets/settings/workspace_hub_shell.dart';
-import '../../../widgets/settings/workspace_settings_widgets.dart';
 import '../workspace_actions.dart';
 import 'workspace_section.dart';
 import 'workspace_icon_settings_row.dart';
@@ -129,17 +127,17 @@ class _WorkspaceSettingsBasicSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SettingsSurfaceCard(
+        TpCard.outlined(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SettingsGroupHeader(
+              TpSectionHeader(
                 title: l10n.homeWorkspaceWorkspaceSettingsBasicInfo,
               ),
               WorkspaceIconSettingsRow(workspace: workspace),
@@ -223,8 +221,8 @@ class _WorkspaceSettingsDangerSection extends StatelessWidget {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
 
-    return SettingsSurfaceCard(
-      child: SettingsLabeledStackedRow(
+    return TpCard.outlined(
+      child: TpPreferenceStack(
         title: l10n.dangerZone,
         subtitle: l10n.deleteWorkspaceSubtitle,
         showDividerBelow: false,
@@ -285,13 +283,13 @@ class _WorkspaceSettingsInlineRow extends StatelessWidget {
                 width: 168,
                 child: Text(
                   label,
-                  style: AppTextStyles.of(context).mdMediumColored(cs.onSurfaceVariant),
+                  style: TpTextStyles.of(context).mdMediumColored(cs.onSurfaceVariant),
                 ),
               ),
               Expanded(
                 child: Text(
                   value,
-                  style: AppTextStyles.of(context).mdMedium,
+                  style: TpTextStyles.of(context).mdMedium,
                 ),
               ),
               if (trailing != null) trailing!,
@@ -323,7 +321,7 @@ void _copyText(BuildContext context, String text) {
   AppToast.show(
     context,
     message: context.l10n.pathCopied(text),
-    variant: AppToastVariant.success,
+    variant: TpToastVariant.success,
   );
 }
 

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_notification.dart';
-import '../../theme/app_text_styles.dart';
-import '../../theme/app_toast_theme.dart';
 import '../app_toast/app_toast.dart';
 
 const _collapsedMessageMaxLines = 2;
@@ -30,15 +29,15 @@ bool notificationMessageIsExpandable(String message) {
   return message.length > _expandableMessageCharThreshold;
 }
 
-IconData notificationVariantIcon(AppToastVariant variant) => switch (variant) {
-  AppToastVariant.info => Icons.info_outline,
-  AppToastVariant.success => Icons.check_circle_outline,
-  AppToastVariant.warning => Icons.warning_amber_outlined,
-  AppToastVariant.error => Icons.error_outline,
+IconData notificationVariantIcon(TpToastVariant variant) => switch (variant) {
+  TpToastVariant.info => Icons.info_outline,
+  TpToastVariant.success => Icons.check_circle_outline,
+  TpToastVariant.warning => Icons.warning_amber_outlined,
+  TpToastVariant.error => Icons.error_outline,
 };
 
-Color notificationVariantAccent(ColorScheme scheme, AppToastVariant variant) =>
-    appToastAccentColor(scheme, variant);
+Color notificationVariantAccent(ColorScheme scheme, TpToastVariant variant) =>
+    TpToastTheme.fromColorScheme(scheme).accentFor(variant);
 
 /// Shared notification row for the bell dropdown.
 class NotificationListTile extends StatefulWidget {
@@ -68,7 +67,7 @@ class _NotificationListTileState extends State<NotificationListTile> {
     AppToast.show(
       context,
       message: context.l10n.initErrorCopied,
-      variant: AppToastVariant.info,
+      variant: TpToastVariant.info,
     );
   }
 
@@ -80,7 +79,7 @@ class _NotificationListTileState extends State<NotificationListTile> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final accent = notificationVariantAccent(cs, widget.notification.variant);
     final l10n = context.l10n;
     final notification = widget.notification;

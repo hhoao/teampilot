@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
 import '../../services/cli/registry/cli_display_name.dart';
@@ -259,7 +258,7 @@ class _ProviderListControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -362,7 +361,7 @@ class _ProviderListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final subtitle = provider.cli == CliTool.flashskyai
         ? l10n.providerListModelCount(provider.flashskyaiModelCount)
         : l10n.appProviderToolLabel(provider.cli);
@@ -379,58 +378,61 @@ class _ProviderListTile extends StatelessWidget {
         ? styles.mdSemiboldColored(titleColor)
         : styles.mdMediumColored(titleColor);
 
-    return ListTile(
-      selected: selected,
-      tileColor: tileColor,
-      selectedTileColor: cs.primaryContainer,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      iconColor: titleColor,
-      textColor: titleColor,
-      leading: ProviderBrandIcon.fromConfig(
-        provider,
-        size: 32,
-        borderRadius: 8,
+    final radius = BorderRadius.circular(8);
+    return Material(
+      color: tileColor,
+      borderRadius: radius,
+      child: ListTile(
+        selected: selected,
+        shape: RoundedRectangleBorder(borderRadius: radius),
+        iconColor: titleColor,
+        textColor: titleColor,
+        leading: ProviderBrandIcon.fromConfig(
+          provider,
+          size: 32,
+          borderRadius: 8,
+        ),
+        title: Text(
+          provider.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: titleStyle,
+        ),
+        subtitle: Text(
+          subtitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: styles.smColored(subtitleColor),
+        ),
+        trailing: hubStyle
+            ? Icon(Icons.chevron_right, color: titleColor)
+            : SidebarActionMenuButton(
+                icon: Icon(Icons.more_horiz, color: titleColor),
+                specs: [
+                  SidebarActionMenuSpec.item(
+                    value: 'edit',
+                    icon: Icons.edit_outlined,
+                    label: l10n.edit,
+                  ),
+                  SidebarActionMenuSpec.item(
+                    value: 'delete',
+                    icon: Icons.delete_outline,
+                    label: l10n.delete,
+                    destructive: true,
+                  ),
+                ],
+                onSelected: (action) {
+                  switch (action) {
+                    case 'edit':
+                      onEdit();
+                    case 'delete':
+                      onDelete();
+                  }
+                },
+              ),
+        onTap: onTap,
+        onLongPress: onEdit,
       ),
-      title: Text(
-        provider.name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: titleStyle,
-      ),
-      subtitle: Text(
-        subtitle,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: styles.smColored(subtitleColor),
-      ),
-      trailing: hubStyle
-          ? Icon(Icons.chevron_right, color: titleColor)
-          : SidebarActionMenuButton(
-              icon: Icon(Icons.more_horiz, color: titleColor),
-              specs: [
-                SidebarActionMenuSpec.item(
-                  value: 'edit',
-                  icon: Icons.edit_outlined,
-                  label: l10n.edit,
-                ),
-                SidebarActionMenuSpec.item(
-                  value: 'delete',
-                  icon: Icons.delete_outline,
-                  label: l10n.delete,
-                  destructive: true,
-                ),
-              ],
-              onSelected: (action) {
-                switch (action) {
-                  case 'edit':
-                    onEdit();
-                  case 'delete':
-                    onDelete();
-                }
-              },
-            ),
-      onTap: onTap,
-      onLongPress: onEdit,
     );
   }
 }

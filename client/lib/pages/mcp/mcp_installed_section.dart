@@ -1,8 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/theme/app_text_styles.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/mcp_cubit.dart';
@@ -10,7 +8,6 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_server.dart';
 import '../../services/mcp/mcp_credentials_store.dart';
 import '../../services/mcp/mcp_oauth_flow.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'mcp_oauth_connect_dialog.dart';
 import 'mcp_shared_widgets.dart';
 
@@ -88,7 +85,7 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
     AppToast.show(
       context,
       message: context.l10n.mcpOAuthConnectSuccess,
-      variant: AppToastVariant.success,
+      variant: TpToastVariant.success,
     );
   }
 
@@ -106,7 +103,7 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
         children: [
           McpCardHeader(
             title: l10n.mcpInstalledCount(servers.length),
-            trailing: CardHeaderActionRow(
+            trailing: TpActionRow(
               children: [
                 OutlinedButton.icon(
                   onPressed: toolbarBusy ? null : widget.onImport,
@@ -135,7 +132,7 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Text(
                 state.errorMessage ?? 'Error',
-                style: AppTextStyles.of(context).mdColored(
+                style: TpTextStyles.of(context).mdColored(
                   Theme.of(context).colorScheme.error,
                 ),
               ),

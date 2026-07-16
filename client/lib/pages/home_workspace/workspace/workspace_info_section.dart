@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/theme/app_text_styles.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../cubits/chat_cubit.dart';
@@ -14,7 +12,6 @@ import '../../../models/workspace.dart';
 import '../../../models/workspace_topology.dart';
 import '../../../widgets/workspace_topology_chip.dart';
 import '../../../utils/workspace_display_name.dart';
-import '../../../widgets/settings/workspace_settings_widgets.dart';
 import '../workspace_actions.dart';
 import 'config/workspace_folders_section.dart';
 import 'config/workspace_team_member_targets_section.dart';
@@ -45,11 +42,11 @@ class WorkspaceInfoSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SettingsSurfaceCard(
+          TpCard.outlined(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SettingsGroupHeader(
+                TpSectionHeader(
                   title: l10n.homeWorkspaceWorkspaceSettingsBasicInfo,
                 ),
                 WorkspaceIconSettingsRow(workspace: live),
@@ -117,8 +114,8 @@ class WorkspaceConfigDangerZone extends StatelessWidget {
     final l10n = context.l10n;
     final errorColor = Theme.of(context).colorScheme.error;
 
-    return SettingsSurfaceCard(
-      child: SettingsLabeledStackedRow(
+    return TpCard.outlined(
+      child: TpPreferenceStack(
         title: l10n.dangerZone,
         subtitle: l10n.deleteWorkspaceSubtitle,
         body: Align(
@@ -132,7 +129,7 @@ class WorkspaceConfigDangerZone extends StatelessWidget {
             ),
             label: Text(
               l10n.deleteWorkspace,
-              style: AppTextStyles.of(context).mdColored(errorColor),
+              style: TpTextStyles.of(context).mdColored(errorColor),
             ),
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: errorColor.withValues(alpha: 0.4)),
@@ -187,7 +184,7 @@ class _WorkspaceSettingsInlineRow extends StatelessWidget {
                 width: 168,
                 child: Text(
                   label,
-                  style: AppTextStyles.of(context).mdMediumColored(cs.onSurfaceVariant),
+                  style: TpTextStyles.of(context).mdMediumColored(cs.onSurfaceVariant),
                 ),
               ),
               Expanded(
@@ -195,7 +192,7 @@ class _WorkspaceSettingsInlineRow extends StatelessWidget {
                     valueWidget ??
                     Text(
                       value,
-                      style: AppTextStyles.of(context).mdMedium,
+                      style: TpTextStyles.of(context).mdMedium,
                     ),
               ),
               if (trailing != null) trailing!,
@@ -264,6 +261,6 @@ void _copyText(BuildContext context, String text) {
   AppToast.show(
     context,
     message: context.l10n.pathCopied(text),
-    variant: AppToastVariant.success,
+    variant: TpToastVariant.success,
   );
 }

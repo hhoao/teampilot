@@ -8,7 +8,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:toastification/toastification.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app/app_shell.dart';
@@ -73,10 +72,9 @@ import 'repositories/layout_repository.dart';
 import 'theme/app_font_prepare.dart';
 import 'theme/app_font_resolver.dart';
 import 'theme/installed_font_enumerator.dart';
-import 'theme/app_icon_sizes.dart';
-import 'theme/app_spacing.dart';
-import 'theme/app_toast_theme.dart';
 import 'theme/app_theme.dart';
+import 'theme/team_pilot_toast_config.dart';
+import 'theme/workspace_surface_layers.dart';
 import 'theme/app_typography_scale.dart';
 import 'pages/system/error_page.dart';
 import 'services/automation/automation_scheduler.dart';
@@ -808,7 +806,7 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
       customMultiplier: widget.typographyCustomMultiplier,
       baseline: textBaseline,
     );
-    final iconMultiplier = AppIconSizes.resolveIconMultiplier(
+    final iconMultiplier = TpIconSizes.resolveIconMultiplier(
       effectiveTextMultiplier: effectiveTextMult,
       textBaseline: textBaseline,
     );
@@ -861,8 +859,8 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
   Widget build(BuildContext context) {
     final themes = _resolveThemes();
 
-    return ToastificationWrapper(
-      config: buildAppToastificationConfig(),
+    return TpToastWrapper(
+      config: buildTeamPilotToastConfig(),
       child: MaterialApp.router(
         debugShowCheckedModeBanner: false,
         title: 'TeamPilot',
@@ -916,15 +914,19 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
               if (!Platform.isAndroid) {
                 content = _DragToResizeWrapper(child: content);
               }
-              // TpTheme outside UiZoom; spacing scale mirrors AppSpacingTheme,
-              // iconScale matches Material AppIconSizeTheme (resolveIconMultiplier).
+              // TpTheme outside UiZoom. Spacing stays at design baseline;
+              // controlScale tracks text size; iconScale uses damped policy.
+              final scheme = Theme.of(context).colorScheme;
               return TpTheme(
                 data: TpThemeData.fromColorScheme(
-                  Theme.of(context).colorScheme,
-                  scale:
-                      Theme.of(context).extension<AppSpacingTheme>()?.scale ??
-                      1.0,
+                  scheme,
+                  scale: 1.0,
                   iconScale: _cachedIconMultiplier ?? 1.0,
+                  controlScale: _cachedEffectiveTextMult ?? 1.0,
+                  toast: TpToastTheme.fromColorScheme(
+                    scheme,
+                    backgroundColor: scheme.workspaceCard,
+                  ),
                 ),
                 child: content,
               );

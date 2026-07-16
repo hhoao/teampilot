@@ -1,7 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/session_preferences_cubit.dart';
@@ -11,7 +10,6 @@ import '../../services/cli/cli_installer_service.dart';
 import '../../services/cli/git_installer.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/cli_install_progress_panel.dart';
-import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'session_config_constants.dart';
 
 /// A settings row for a toolchain executable path (git, node, etc.).
@@ -187,7 +185,7 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
         context,
         message:
             'Please install Node.js from https://nodejs.org and set the path manually.',
-        variant: AppToastVariant.info,
+        variant: TpToastVariant.info,
       );
       return;
     } else {
@@ -212,8 +210,8 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
         context,
         message: result.message,
         variant: result.success
-            ? AppToastVariant.success
-            : AppToastVariant.error,
+            ? TpToastVariant.success
+            : TpToastVariant.error,
       );
     } finally {
       if (mounted) {
@@ -271,7 +269,7 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
     final fieldEmpty = _controller.text.trim().isEmpty;
     final hint = fieldEmpty ? '${l10n.cliExecutablePathUsing}$effective' : null;
 
-    return SettingsLabeledStackedRow(
+    return TpPreferenceStack(
       title: widget.title,
       subtitle: widget.subtitle,
       titleLeading: Icon(widget.leadingIcon, size: 28),

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_text_styles.dart';
 
 import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/member_config_cubit.dart';
@@ -257,7 +256,7 @@ class _OverviewTab extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               child: Text(
                 source,
-                style: AppTextStyles.of(context).md,
+                style: TpTextStyles.of(context).md,
               ),
             ),
           ),
@@ -282,10 +281,10 @@ class _OverviewTab extends StatelessWidget {
             width: 110,
             child: Text(
               k,
-              style: AppTextStyles(theme).mutedMd,
+              style: TpTextStyles(theme).mutedMd,
             ),
           ),
-          Expanded(child: SelectableText(v, style: AppTextStyles(theme).md)),
+          Expanded(child: SelectableText(v, style: TpTextStyles(theme).md)),
         ],
       ),
     );
@@ -308,18 +307,18 @@ class _ListTab extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
     final content = items.isEmpty
-        ? Center(child: Text(empty, style: AppTextStyles(theme).md))
+        ? Center(child: Text(empty, style: TpTextStyles(theme).md))
         : ListView.builder(
             itemCount: items.length,
             itemBuilder: (_, i) => Material(
               color: Colors.transparent,
               child: ListTile(
-                title: Text(items[i].title, style: AppTextStyles(theme).md),
+                title: Text(items[i].title, style: TpTextStyles(theme).md),
                 subtitle: items[i].subtitle.isEmpty
                     ? null
                     : Text(
                         items[i].subtitle,
-                        style: AppTextStyles(theme).mutedSm,
+                        style: TpTextStyles(theme).mutedSm,
                       ),
               ),
             ),
@@ -346,7 +345,7 @@ class _ListTab extends StatelessWidget {
               Expanded(
                 child: Text(
                   l10n.memberDetailLoadError,
-                  style: AppTextStyles.of(context).mdColored(
+                  style: TpTextStyles.of(context).mdColored(
                     cs.onErrorContainer,
                   ),
                 ),

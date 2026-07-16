@@ -4,7 +4,6 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/run/launch_configuration.dart';
 import '../../services/run/launch_config_l10n.dart';
 import '../../services/run/launch_config_schema_fields.dart';
-import '../../theme/app_text_styles.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 /// Shared label column width for inline run-config form rows.
@@ -206,7 +205,7 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
 
     return Column(
@@ -256,7 +255,7 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
   Widget _buildField(
     BuildContext context,
     LaunchConfigSchemaField field,
-    AppTextStyles styles,
+    TpTextStyles styles,
   ) {
     final fieldKey = Key('launch-config-field-${field.key}');
     final label = Text(localizeLaunchConfigFieldLabel(context.l10n, field));

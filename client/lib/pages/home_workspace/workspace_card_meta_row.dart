@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_topology.dart';
-import '../../theme/app_text_styles.dart';
 import '../../widgets/workspace_topology_chip.dart';
 
 /// Primary directory label + workspace topology badge for home workspace tiles.
@@ -21,7 +21,7 @@ class WorkspaceCardMetaRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
+    final styles = TpTextStyles.of(context);
     final hasPrimary = workspace.firstFolderPath.isNotEmpty;
     final primaryLabel = hasPrimary
         ? workspace.firstFolderPath
