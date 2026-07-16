@@ -34,18 +34,26 @@ String messageContentIdentity(AiMessage m) {
       case AiToolCallPart(
         :final toolCallId,
         :final toolName,
+        :final args,
         :final argsText,
         :final status,
         :final isError,
         :final result,
       ):
         buf.write(
-          'c:$toolCallId:$toolName:${argsText ?? ''}:'
+          'c:$toolCallId:$toolName:${_stableArgs(args)}:${argsText ?? ''}:'
           '${status.name}:$isError:${result ?? ''}',
         );
     }
   }
   return buf.toString();
+}
+
+/// Stable encoding of tool args for content identity (sorted keys).
+String _stableArgs(Map<String, Object?>? args) {
+  if (args == null) return '';
+  final keys = args.keys.toList()..sort();
+  return '{${keys.map((k) => '$k:${args[k]}').join(',')}}';
 }
 
 String turnContentIdentity(ThreadTurn turn, List<AiMessage> messages) {
