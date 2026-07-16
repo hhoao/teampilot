@@ -158,7 +158,13 @@ final class TableBlock extends ContentBlock {
   }
 
   @override
-  int get hashCode => Object.hash(Object.hashAll(headers), Object.hashAll(rows));
+  int get hashCode {
+    var hash = Object.hashAll(headers);
+    for (final row in rows) {
+      hash = Object.hash(hash, Object.hashAll(row));
+    }
+    return hash;
+  }
 }
 
 final class UnsupportedBlock extends ContentBlock {

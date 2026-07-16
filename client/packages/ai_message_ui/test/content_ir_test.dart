@@ -76,6 +76,43 @@ void main() {
     expect(copy.hashCode, doc.hashCode);
   });
 
+  test('non-const equal table blocks satisfy hash contract', () {
+    final headersA = [
+      InlineDocument(runs: [TextRun('Name')]),
+      InlineDocument(runs: [TextRun('Value')]),
+    ];
+    final rowsA = [
+      [
+        InlineDocument(runs: [TextRun('foo')]),
+        InlineDocument(
+          runs: [StrongRun(children: [TextRun('bar')])],
+        ),
+      ],
+    ];
+    final docA = MessageContentDocument(
+      blocks: [TableBlock(headers: headersA, rows: rowsA)],
+    );
+
+    final headersB = [
+      InlineDocument(runs: [TextRun('Name')]),
+      InlineDocument(runs: [TextRun('Value')]),
+    ];
+    final rowsB = [
+      [
+        InlineDocument(runs: [TextRun('foo')]),
+        InlineDocument(
+          runs: [StrongRun(children: [TextRun('bar')])],
+        ),
+      ],
+    ];
+    final docB = MessageContentDocument(
+      blocks: [TableBlock(headers: headersB, rows: rowsB)],
+    );
+
+    expect(docA, equals(docB));
+    expect(docA.hashCode, docB.hashCode);
+  });
+
   test('inline run kinds are distinguishable', () {
     const runs = <InlineRun>[
       TextRun('plain'),
@@ -138,6 +175,33 @@ void main() {
     expect(doc.blocks[4], isA<CodeBlock>());
     expect(doc.blocks[5], isA<UnsupportedBlock>());
 
-    expect(doc, equals(doc));
+    final copy = MessageContentDocument(
+      blocks: [
+        HeadingBlock(level: 2, runs: [TextRun('Title')]),
+        ListBlock(
+          ordered: true,
+          items: [
+            ContentListItem(
+              runs: [TextRun('one')],
+              children: [
+                ParagraphBlock(runs: [TextRun('nested')]),
+              ],
+            ),
+            ContentListItem(
+              runs: [TextRun('task')],
+              isTaskChecked: true,
+            ),
+          ],
+        ),
+        BlockquoteBlock(
+          blocks: [ParagraphBlock(runs: [TextRun('quoted')])],
+        ),
+        HorizontalRuleBlock(),
+        CodeBlock(language: 'dart', text: 'void main() {}'),
+        UnsupportedBlock(rawMarkdown: '![img](x.png)'),
+      ],
+    );
+    expect(copy, equals(doc));
+    expect(copy.hashCode, doc.hashCode);
   });
 }
