@@ -1,7 +1,11 @@
 /// Extracts a claimed task id from an inbound Anthropic `/v1/messages` body.
 ///
 /// L2 integration tests script `update_task` after `wait_for_message` returns
-/// ASSIGNED TASK; the task id is only known at runtime from the tool result.
+/// a claimed task; the task id is only known at runtime from the tool result.
+library;
+
+import 'dart:convert';
+
 String? extractAssignedTaskIdFromAnthropicRequest(
   Map<String, Object?>? body,
 ) {
@@ -16,8 +20,9 @@ final _claimedTaskHeader = RegExp(
 
 String? _scanValue(Object? value) {
   if (value is String) {
-    if (!value.contains('ASSIGNED TASK')) return null;
-    return _claimedTaskHeader.firstMatch(value)?.group(1);
+    final fromLegacy = _extractLegacyAssignedTaskId(value);
+    if (fromLegacy != null) return fromLegacy;
+    return _extractTaskIdFromJsonAssignment(value);
   }
   if (value is List<Object?>) {
     for (final item in value) {
@@ -33,4 +38,28 @@ String? _scanValue(Object? value) {
     }
   }
   return null;
+}
+
+String? _extractLegacyAssignedTaskId(String value) {
+  if (!value.contains('ASSIGNED TASK')) return null;
+  return _claimedTaskHeader.firstMatch(value)?.group(1);
+}
+
+/// Bare task JSON from [TeammateBusToolFormat.encodeTaskAssignment].
+String? _extractTaskIdFromJsonAssignment(String text) {
+  final trimmed = text.trim();
+  if (!trimmed.startsWith('{')) return null;
+  try {
+    final decoded = jsonDecode(trimmed);
+    if (decoded is! Map) return null;
+    final id = decoded['id'];
+    if (id is! String || id.isEmpty) return null;
+    final status = decoded['status'];
+    if (status == 'claimed' || decoded.containsKey('title')) {
+      return id;
+    }
+    return null;
+  } on Object {
+    return null;
+  }
 }

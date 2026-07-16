@@ -33,4 +33,29 @@ void main() {
       isNull,
     );
   });
+
+  test('extracts task id from bare JSON task assignment tool result', () {
+    const body = {
+      'messages': [
+        {
+          'role': 'user',
+          'content': [
+            {
+              'type': 'tool_result',
+              'tool_use_id': 'tu_wait_task',
+              'content':
+                  '{"id":"8ba4fa9c-a804-424e-9f91-ab9e2ca62fea",'
+                  '"status":"claimed","title":"complete-widget",'
+                  '"brief":"Ship the widget API and mark the task done."}',
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(
+      extractAssignedTaskIdFromAnthropicRequest(body),
+      '8ba4fa9c-a804-424e-9f91-ab9e2ca62fea',
+    );
+  });
 }
