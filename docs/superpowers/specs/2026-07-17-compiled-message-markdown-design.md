@@ -127,3 +127,17 @@ dart run tool/analyze_performance_json.dart ~/Downloads/test4N.json --format sum
 - **gpt_markdown default** — feature-oriented; unproven for Flyer layout jank  
 - **Heavier MarkdownBody cache only** — insufficient for mounted table layout  
 - **Raster/screenshot cache of messages** — breaks selection/theme  
+
+## Implementation status
+
+- Branch: `feat/compiled-message-markdown`
+- Tasks 1–6 landed:
+  - `0d93a05b` feat(ai_message_ui): add message content IR for compiled markdown
+  - `02a5bad2` feat(ai_message_ui): compile GFM markdown to content IR
+  - `dd8d76ef` fix(ai_message_ui): treat table-cell images as unsupported markdown
+  - `71477b3c` test(ai_message_ui): add markdown corpus gate and compiler cache
+  - `6b8998d5` feat(ai_message_ui): render compiled markdown with Text.rich and lite tables
+  - `a5977fcb` feat(ai_message_ui): use compiled markdown path in AiTextPartView
+  - `f075fe9f` perf(ai_message_ui): cheapen collapsed reasoning and tool chrome
+- Package tests green: **58** passed (`flutter test` in `client/packages/ai_message_ui`); `flutter analyze --no-fatal-infos --no-fatal-warnings` clean
+- Perf re-export vs test41 still **pending** — capture `~/Downloads/test42.json` after running the app from this worktree, then compare with `analyze_performance_json.dart`
