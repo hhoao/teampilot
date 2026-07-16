@@ -646,36 +646,52 @@ testWidgets('mounts only overscan window not all turns', (tester) async {
 
 - [ ] **Step 3: Implement viewport**
 
+Lock production overscan in this file (tests may pass a smaller value):
+
+```dart
+/// Spec default: 3 turns above and below the viewport.
+const int kThreadOverscan = 3;
+```
+
 Structure:
 
 ```dart
 class VirtualThreadViewport extends StatefulWidget {
-  // turns, heightCache, scrollController, overscan,
-  // headerBuilder?, turnBuilder, onScrollMetrics?
+  // turns, heightCache, scrollController,
+  // overscan (default kThreadOverscan),
+  // padding (default EdgeInsets.fromLTRB(0, 16, 0, 24) — match old AiThread),
+  // headerBuilder?, turnBuilder, stickIntent, onScrollMetrics?
 }
 ```
 
 Build tree:
 
 ```dart
-ListView(
-  controller: scrollController,
-  // IMPORTANT: single child column — NOT itemBuilder for all turns
-  children: [
-    if (header != null) header,
-    SizedBox(height: range.paddingTop),
-    for (i in first..last)
-      _MeasuredTurn(
-        key: ValueKey(turns[i].id),
-        onHeight: (h) => heightCache.setMeasured(turns[i].id, h),
-        child: turnBuilder(context, turns[i]),
-      ),
-    SizedBox(height: range.paddingBottom),
-  ],
+NotificationListener<ScrollNotification>(
+  onNotification: (_) {
+    _recomputeRange(); // setState when first/last/paddings change
+    return false;
+  },
+  child: ListView(
+    controller: scrollController,
+    padding: padding,
+    // IMPORTANT: spacer children — NOT itemBuilder for all turns
+    children: [
+      if (header != null) header,
+      SizedBox(height: range.paddingTop),
+      for (i in first..last)
+        _MeasuredTurn(
+          key: ValueKey(turns[i].id),
+          onHeight: (h) => heightCache.setMeasured(turns[i].id, h),
+          child: turnBuilder(context, turns[i]),
+        ),
+      SizedBox(height: range.paddingBottom),
+    ],
+  ),
 )
 ```
 
-Recompute `range` on scroll + after measure (`setState`). While parent reports stick-intent, skip scroll corrections from measure that would move away from bottom (callback `bool stickIntent` / `suppressMeasureScroll`).
+Also listen to `scrollController` (in addition to notifications) so programmatic `jumpTo` recomputes the window. Recompute `range` after measure (`setState`). While parent reports stick-intent, skip scroll corrections from measure that would move away from bottom (`stickIntent` / `suppressMeasureScroll`).
 
 `_MeasuredTurn`: `NotificationListener<SizeChangedLayoutNotification>` or post-frame `context.size!.height`.
 
@@ -701,7 +717,7 @@ git commit -m "feat(ai_message_ui): add spacer-based virtual thread viewport"
 - Modify: `client/packages/ai_message_ui/test/ai_thread_test.dart`
 - Modify: `client/packages/ai_message_ui/test/selection_area_test.dart` if needed
 
-- [ ] **Step 1: Add failing mount-cap test on `AiThread`**
+- [ ] **Step 1: Add failing mount-cap + load-older anchor tests on `AiThread`**
 
 ```dart
 testWidgets('AiThread idle mounts far fewer messages than window', (tester) async {
@@ -720,16 +736,84 @@ testWidgets('AiThread idle mounts far fewer messages than window', (tester) asyn
   expect(find.byType(AiMessageView), findsWidgets);
   expect(find.byType(AiMessageView).evaluate().length, lessThan(20));
 });
+
+testWidgets('AiThread load-older prepend preserves scroll anchor', (tester) async {
+  final store = ExternalStoreAiThreadRuntime();
+  final newer = List.generate(
+    20,
+    (i) => AiMessage(
+      id: 'n$i',
+      role: AiRole.user,
+      parts: [AiTextPart(text: 'newer $i\n' * 4)],
+    ),
+  );
+  store.setMessages(newer);
+  final scrollController = ScrollController();
+  var hasOlder = true;
+
+  await tester.pumpWidget(
+    MaterialApp(
+      home: StatefulBuilder(
+        builder: (context, setState) {
+          return SizedBox(
+            height: 400,
+            child: AiThread(
+              runtime: store,
+              scrollController: scrollController,
+              hasOlder: hasOlder,
+              isLoadingOlder: false,
+              onLoadOlder: () {
+                final older = List.generate(
+                  10,
+                  (i) => AiMessage(
+                    id: 'o$i',
+                    role: AiRole.user,
+                    parts: [AiTextPart(text: 'older $i\n' * 4)],
+                  ),
+                );
+                setState(() {
+                  hasOlder = false;
+                  store.setMessages([...older, ...newer]);
+                });
+              },
+              loadOlderHeaderBuilder: (context, {required isLoadingOlder}) {
+                return const SizedBox(height: 24, child: Text('OLDER'));
+              },
+              loadingBuilder: (_) => const Text('LOADING'),
+              emptyBuilder: (_) => const Text('EMPTY'),
+              errorBuilder: (_, msg, retry) => Text('ERR:$msg'),
+            ),
+          );
+        },
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+
+  // Park near top (triggers load-older) but not necessarily 0 — AiThread
+  // snapshots pixels/extent immediately before onLoadOlder.
+  const park = 40.0;
+  scrollController.jumpTo(park);
+  await tester.pump();
+  final beforeExtent = scrollController.position.maxScrollExtent;
+  await tester.pump(const Duration(milliseconds: 16));
+  await tester.pumpAndSettle();
+
+  final afterExtent = scrollController.position.maxScrollExtent;
+  expect(afterExtent, greaterThan(beforeExtent));
+  final delta = afterExtent - beforeExtent;
+  // Content that was under [park] stays under the viewport after top prepend.
+  expect(scrollController.offset, closeTo(park + delta, 5.0));
+});
 ```
 
-- [ ] **Step 2: Run — expect FAIL** (today builds many via cacheExtent)
-
+- [ ] **Step 2: Run — expect FAIL** (mount-cap must fail on current ListView; anchor may already pass — keep both as regression net after virtualization)
 - [ ] **Step 3: Replace idle `ListView.builder` with `VirtualThreadViewport`**
 
 In `_AiThreadState`:
 
-1. Keep sticky / load-older / opacity reveal logic.
-2. On message sync: `turns = reuseTurnsIfSameMembership(...)`; invalidate height cache entries whose `turnContentIdentity` changed.
+1. Keep sticky / load-older / opacity reveal logic (`_restoreScrollAfterOlderLoad` must still run after prepend).
+2. On message sync: `turns = reuseTurnsIfSameMembership(...)`; for each turn whose `turnContentIdentity` changed vs previous snapshot, `heightCache.invalidate(turn.id)`.
 3. Build message map `id → AiMessage`.
 4. `turnBuilder`: for each `messageId`, resolve message; skip null; wrap:
 
@@ -752,7 +836,7 @@ RepaintBoundary(
 )
 ```
 
-5. Pass `stickIntent: _stickIntent` into viewport so measure updates call `_stickToBottomIfNeeded` instead of fighting scroll.
+5. Pass `stickIntent: _stickIntent`, `overscan: kThreadOverscan`, and the same list padding `EdgeInsets.fromLTRB(0, 16, 0, 24)` into viewport so measure updates call `_stickToBottomIfNeeded` instead of fighting scroll.
 6. Header: existing load-older header when `hasOlder`.
 7. In `ai_message_view.dart`: wrap role switch output in `RepaintBoundary`; remove user-bubble `IntrinsicWidth` (keep max-width `ConstrainedBox` + Align end) so measured heights stay stable.
 
@@ -762,7 +846,7 @@ RepaintBoundary(
 cd client && flutter test packages/ai_message_ui
 ```
 
-Expected: PASS. Fix any test that counted all `ListView` children or assumed full mount.
+Expected: PASS including mount-cap and load-older anchor. Fix any test that counted all `ListView` children or assumed full mount.
 
 - [ ] **Step 5: Commit**
 
