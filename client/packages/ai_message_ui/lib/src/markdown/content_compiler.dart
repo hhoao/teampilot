@@ -1,22 +1,55 @@
+import 'package:flutter/foundation.dart';
 import 'package:markdown/markdown.dart' as md;
 
 import 'content_ir.dart';
 import 'streaming_markdown.dart';
 
+const int _kMessageContentCacheMax = 64;
+
+/// LRU cache of compiled docs keyed by [prepareStreamingMarkdown] output.
+final Map<String, MessageContentDocument> _messageContentCache =
+    <String, MessageContentDocument>{};
+
+@visibleForTesting
+int messageContentCacheHits = 0;
+
+@visibleForTesting
+int get messageContentCacheLength => _messageContentCache.length;
+
+@visibleForTesting
+void clearMessageContentCache() {
+  _messageContentCache.clear();
+  messageContentCacheHits = 0;
+}
+
 /// Compiles GFM markdown into a style-free [MessageContentDocument].
 ///
 /// Images and raw HTML become [UnsupportedBlock] slices. Task-list checkboxes
 /// are recognized and do not count as unsupported HTML.
+///
+/// Results are cached (LRU, max 64) by the prepared markdown string. Cache hits
+/// return the identical [MessageContentDocument] instance.
 MessageContentDocument compileMessageContent(String markdown) {
   final prepared = prepareStreamingMarkdown(markdown);
+  final cached = _messageContentCache.remove(prepared);
+  if (cached != null) {
+    messageContentCacheHits++;
+    _messageContentCache[prepared] = cached;
+    return cached;
+  }
   final document = md.Document(
     extensionSet: md.ExtensionSet.gitHubFlavored,
     encodeHtml: false,
   );
   final nodes = document.parse(prepared);
-  return MessageContentDocument(
+  final compiled = MessageContentDocument(
     blocks: [for (final node in nodes) _compileTopLevel(node)],
   );
+  if (_messageContentCache.length >= _kMessageContentCacheMax) {
+    _messageContentCache.remove(_messageContentCache.keys.first);
+  }
+  _messageContentCache[prepared] = compiled;
+  return compiled;
 }
 
 ContentBlock _compileTopLevel(md.Node node) {
