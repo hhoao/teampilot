@@ -154,7 +154,7 @@ class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {
               padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: LinearProgressIndicator(),
             ),
-          TpPreferenceStack(
+          SettingsLabeledStackedRow(
             title: l10n.workspaceFoldersSectionTitle,
             subtitle: workspaceFoldersEditorHint(
               l10n,
