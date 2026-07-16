@@ -152,6 +152,78 @@ void main() {
       isFalse,
     );
   });
+
+  test('locateNeedle finds soft-wrapped CJK tail across two rows', () {
+    // Logical paste (no prefix in needle). Composer prefix only on first row.
+    const line0 =
+        '❯ 帮我估算一下这个需求的时间：分类分级系统接入银行统一身份认证体系，实现登录双因素认证（优先手机令牌方式），同时评估';
+    const line1 = '是否支持 LDAP/AD 域认证作为标准登录方式，详细信息参考附件';
+    const full =
+        '帮我估算一下这个需求的时间：分类分级系统接入银行统一身份认证体系，实现登录双因素认证（优先手机令牌方式），同时评估是否支持 LDAP/AD 域认证作为标准登录方式，详细信息参考附件';
+    final needle = full.substring(full.length - 40);
+    // needle starts with "式），同时评估" which ends line0 and continues on line1.
+
+    // columns must force the soft wrap used in fixtures: measure with wide=2.
+    // Use a columns value that fits line0's cells exactly (no trailing content cell).
+    final grid = _FakeGrid.wrappedWideLines(
+      columns: _displayWidth(line0),
+      lineTexts: [line0, line1],
+    );
+
+    final anchor = locateFullscreenPromptNeedle(grid, needle, scanRows: 8);
+    expect(anchor, isNotNull, reason: 'needle spans soft wrap; single-row match misses');
+    expect(anchor!.row, 0);
+    expect(isFullscreenPromptAtAnchor(grid, anchor), isTrue);
+  });
+
+  test('locateNeedle does not stitch across blank row', () {
+    final grid = _FakeGrid.fromRows([
+      'AAAAUNIQUEPART',
+      '              ', // padding-only
+      'CONTINUATIONZZ',
+    ]);
+    expect(
+      locateFullscreenPromptNeedle(grid, 'UNIQUEPARTCONTINUATIONZZ'),
+      isNull,
+    );
+  });
+
+  test('locateNeedle finds ASCII soft-wrapped needle across two rows', () {
+    final grid = _FakeGrid.fromRows([
+      '❯ hello_WORLD_PART',
+      '_CONTINUES_HERE',
+    ]);
+    final anchor = locateFullscreenPromptNeedle(
+      grid,
+      'WORLD_PART_CONTINUES_HERE',
+    );
+    expect(anchor, isNotNull);
+    expect(anchor!.row, 0);
+  });
+
+  test('isAtAnchor false after clearing soft-wrapped staged cells', () {
+    final grid = _FakeGrid.fromRows([
+      '❯ hello_WORLD_PART',
+      '_CONTINUES_HERE',
+    ]);
+    final anchor = locateFullscreenPromptNeedle(
+      grid,
+      'WORLD_PART_CONTINUES_HERE',
+    )!;
+    expect(isFullscreenPromptAtAnchor(grid, anchor), isTrue);
+
+    grid.rowsData[0] = List.filled(grid.columns, 0x20);
+    grid.rowsData[1] = List.filled(grid.columns, 0x20);
+    expect(isFullscreenPromptAtAnchor(grid, anchor), isFalse);
+  });
+}
+
+int _displayWidth(String text) {
+  var w = 0;
+  for (final cp in text.runes) {
+    w += cp > 0x7f ? 2 : 1;
+  }
+  return w;
 }
 
 final class _FakeGrid implements TerminalScreenGrid {
@@ -202,6 +274,32 @@ final class _FakeGrid implements TerminalScreenGrid {
         rows.add(List<int>.filled(width, 0x20));
         flagRows.add(List<int>.filled(width, 0));
       }
+    }
+    return _FakeGrid(rows, flagRows);
+  }
+
+  /// Soft-wrapped composer lines with CJK wide spacers (alacritty mirror layout).
+  /// [lineTexts] are logical strings per row (may include ASCII and CJK).
+  factory _FakeGrid.wrappedWideLines({
+    required int columns,
+    required List<String> lineTexts,
+  }) {
+    final rows = <List<int>>[];
+    final flagRows = <List<int>>[];
+    for (final text in lineTexts) {
+      final codepoints = List<int>.filled(columns, 0x20);
+      final flags = List<int>.filled(columns, 0);
+      var col = 0;
+      for (final cp in text.runes) {
+        final isWide = cp > 0x7f; // good enough for these fixtures (CJK)
+        final width = isWide ? 2 : 1;
+        if (col + width > columns) break;
+        codepoints[col] = cp;
+        if (isWide) flags[col + 1] = 1 << 5;
+        col += width;
+      }
+      rows.add(codepoints);
+      flagRows.add(flags);
     }
     return _FakeGrid(rows, flagRows);
   }
