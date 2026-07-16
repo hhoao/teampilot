@@ -37,6 +37,8 @@ class WorkspaceFoldersEditor extends StatefulWidget {
     required this.onChanged,
     this.enabled = true,
     this.lockTargets = false,
+    this.deadTargetIds = const {},
+    this.onRemapDeadTarget,
     super.key,
   });
 
@@ -46,6 +48,12 @@ class WorkspaceFoldersEditor extends StatefulWidget {
 
   /// When true, folder [targetId] is read-only (e.g. personal launch identity).
   final bool lockTargets;
+
+  /// Target ids with no live runtime (e.g. deleted SSH profile).
+  final Set<String> deadTargetIds;
+
+  /// Remap [fromTargetId] to another machine without changing folder paths.
+  final ValueChanged<String>? onRemapDeadTarget;
 
   @override
   State<WorkspaceFoldersEditor> createState() => _WorkspaceFoldersEditorState();
@@ -234,6 +242,11 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
                 primaryIndex: primaryIndex,
                 enabled: widget.enabled,
                 allowRowTargetChange: !lockTargets,
+                isDead: widget.deadTargetIds.contains(groups.first.targetId),
+                onRemapDeadTarget: widget.enabled &&
+                        widget.deadTargetIds.contains(groups.first.targetId)
+                    ? widget.onRemapDeadTarget
+                    : null,
                 onAddDirectory: () => _addFolderOnTarget(groups.first.targetId),
                 onPickPath: _pickPath,
                 onPickTargetForRow: _pickTargetForRow,
@@ -257,6 +270,11 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
                         !lockTargets &&
                         workspaceTopologyOf(_folders) !=
                             WorkspaceTopology.mixed,
+                    isDead: widget.deadTargetIds.contains(group.targetId),
+                    onRemapDeadTarget: widget.enabled &&
+                            widget.deadTargetIds.contains(group.targetId)
+                        ? widget.onRemapDeadTarget
+                        : null,
                     onAddDirectory: () => _addFolderOnTarget(group.targetId),
                     onPickPath: _pickPath,
                     onPickTargetForRow: _pickTargetForRow,
@@ -278,6 +296,8 @@ class _MachineFolderCard extends StatelessWidget {
     required this.primaryIndex,
     required this.enabled,
     required this.allowRowTargetChange,
+    required this.isDead,
+    required this.onRemapDeadTarget,
     required this.onAddDirectory,
     required this.onPickPath,
     required this.onPickTargetForRow,
@@ -291,6 +311,8 @@ class _MachineFolderCard extends StatelessWidget {
   final int primaryIndex;
   final bool enabled;
   final bool allowRowTargetChange;
+  final bool isDead;
+  final ValueChanged<String>? onRemapDeadTarget;
   final VoidCallback onAddDirectory;
   final ValueChanged<int> onPickPath;
   final ValueChanged<int> onPickTargetForRow;
@@ -333,6 +355,27 @@ class _MachineFolderCard extends StatelessWidget {
                     style: styles.mdSemiboldColored(cs.onSurface),
                   ),
                 ),
+                if (isDead) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cs.errorContainer,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      l10n.workspaceDeadTargetBadge,
+                      style: styles.xsColored(cs.onErrorContainer),
+                    ),
+                  ),
+                  if (onRemapDeadTarget != null)
+                    TextButton(
+                      onPressed: () => onRemapDeadTarget!(targetId),
+                      child: Text(l10n.workspaceDeadTargetRemap),
+                    ),
+                ],
                 if (enabled)
                   TextButton.icon(
                     onPressed: onAddDirectory,
