@@ -209,7 +209,11 @@ Create: `test/components/token_field/tp_token_text_field_test.dart` — field wi
 
 - [ ] **Step 3: Implement under `lib/src/components/token_field/`**
 
-Move field + chip mirror + edit helpers + palette **typedefs**. Rename to `Tp*`. Ensure **zero** imports of TeamPilot. Product `resolveSlashAtTokenPalette` stays in TeamPilot (Task 5).
+Move field + chip mirror + edit helpers + palette **typedefs**. Rename to `Tp*`. Ensure **zero** imports of TeamPilot.
+
+**Sever product defaults (required):** do **not** default `tokenPattern` / `resolveTokenPalette` to TeamPilot `defaultInlineTokenPattern` / `resolveSlashAtTokenPalette`. Make those parameters **required**, or default only to inert package-safe values (e.g. never-matching `RegExp` + grey palette) — prefer **required** so call sites must wire product behavior.
+
+Product `resolveSlashAtTokenPalette` + default compose `RegExp` stay in TeamPilot (Task 5).
 
 - [ ] **Step 4: Export + `flutter test`**
 
@@ -285,20 +289,24 @@ git add client/packages/shared_ui
 cd client && flutter pub get
 ```
 
-- [ ] **Step 2: Mechanical rename / imports**
+- [ ] **Step 2: Mechanical rename / imports (`lib` + `test`)**
 
 ```bash
 cd client
-rg -l "SidebarActionMenu|showSidebarActionMenu|showFloatingActionMenuOverlay|ActionMenuController|ActionMenuPopoverAnchor" lib --glob '*.dart'
+rg -l "SidebarActionMenu|showSidebarActionMenu|showFloatingActionMenuOverlay|ActionMenuController|ActionMenuPopoverAnchor" lib test --glob '*.dart'
 # Replace with Tp* / showTp*; import package:shared_ui/shared_ui.dart
+# Update tests that imported lib/widgets/menu/ (e.g. sidebar_action_menu_text_scale_test,
+# run_toolbar_test, expert_landing_chip*_test, workspace_landing_header_row_test)
 # Delete lib/widgets/menu/
 ```
 
-- [ ] **Step 3: Token field remount**
+- [ ] **Step 3: Token field remount (`lib` + `test`)**
 
 - Replace `InlineTokenTextField` → `TpTokenTextField`
+- **Wire required** `tokenPattern` + `resolveTokenPalette` at every call site (at least `compose_trigger_field.dart` — today it relied on field defaults)
 - Point `compose_trigger_chip_style.dart` / any chip-mirror imports at package
 - Keep `services/inline_token/inline_token_palette.dart` product resolvers; typedefs may re-export or wrap `TpTokenPalette*`
+- Update `test/services/inline_token/inline_token_chip_mirror_test.dart` (and any field tests) to import package APIs
 - Delete `lib/widgets/inline_token/`
 - Trim `services/inline_token/` files that fully moved (mirror/edit) — leave thin product-only modules
 
@@ -317,15 +325,15 @@ Expected: 0 errors.
 - [ ] **Step 6: Acceptance grep**
 
 ```bash
-rg "SidebarActionMenu|showSidebarActionMenu|showFloatingActionMenuOverlay|InlineTokenTextField" lib --glob '*.dart' || true
+rg "SidebarActionMenu|showSidebarActionMenu|showFloatingActionMenuOverlay|InlineTokenTextField" lib test --glob '*.dart' || true
 ```
 
-Expected: empty (product palette file names OK).
+Expected: empty (product palette file / `resolveSlashAtTokenPalette` OK).
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add -A client/lib client/packages/shared_ui client/pubspec.lock
+git add -A client/lib client/test client/packages/shared_ui client/pubspec.lock
 git commit -m "feat(ui): remount action menu and token field onto shared_ui"
 ```
 
@@ -345,10 +353,10 @@ git add huji-app/packages/shared_ui
 cd huji-app && flutter pub get
 ```
 
-- [ ] **Step 2: Remount menu + calendar**
+- [ ] **Step 2: Remount menu + calendar (`lib` + `test`)**
 
 ```bash
-rg -l "SidebarActionMenu|showSidebarActionMenu|AppDateRangePicker|AppRangeCalendar" lib --glob '*.dart'
+rg -l "SidebarActionMenu|showSidebarActionMenu|AppDateRangePicker|AppRangeCalendar" lib test --glob '*.dart'
 # → TpActionMenu* / TpDateRangePicker / TpRangeCalendar
 # Delete lib/widgets/menu/, lib/widgets/calendar/
 ```
@@ -356,7 +364,7 @@ rg -l "SidebarActionMenu|showSidebarActionMenu|AppDateRangePicker|AppRangeCalend
 - [ ] **Step 3: Orphan cleanup**
 
 ```bash
-rg "AppPopover|widgets/dropdown/popover|HoverWidget|widgets/controls/hover_widget" lib --glob '*.dart' || true
+rg "AppPopover|widgets/dropdown/popover|HoverWidget|widgets/controls/hover_widget" lib test --glob '*.dart' || true
 ```
 
 If only calendar used them: delete `widgets/dropdown/popover/` and `widgets/controls/hover_widget.dart` if unused. Keep `ChromeIconButton` / other controls still referenced by non-menu code.
@@ -365,7 +373,7 @@ If only calendar used them: delete `widgets/dropdown/popover/` and `widgets/cont
 
 ```bash
 flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | rg "error •" | head -40
-rg "SidebarActionMenu|AppDateRangePicker|AppRangeCalendar" lib --glob '*.dart' || true
+rg "SidebarActionMenu|AppDateRangePicker|AppRangeCalendar" lib test --glob '*.dart' || true
 ```
 
 - [ ] **Step 5: Commit**
