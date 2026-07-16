@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/expert_hub_cubit.dart';
@@ -12,7 +12,6 @@ import '../../models/team_config.dart';
 import '../../services/expert_hub/local_expert_writer.dart';
 import '../../services/expert_hub/member_roster_service.dart';
 import '../../services/hub_publish/hub_publish_record_store.dart';
-import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../expert_hub/expert_editor_dialog.dart';
 import '../expert_hub/expert_team_picker_dialog.dart';
@@ -259,15 +258,15 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
           result: result,
         ),
         variant: memberHubAddToastIsWarning(result)
-            ? AppToastVariant.warning
-            : AppToastVariant.success,
+            ? TpToastVariant.warning
+            : TpToastVariant.success,
       );
     } on MemberAddException {
       if (!mounted) return;
       AppToast.show(
         context,
         message: l10n.expertHubAddFailed,
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
     }
   }

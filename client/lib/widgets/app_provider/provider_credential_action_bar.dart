@@ -2,10 +2,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
-import 'package:shared_ui/shared_ui.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
@@ -130,7 +129,7 @@ class _ProviderCredentialActionBarState
           AppToast.show(
             context,
             message: l10n.providerName,
-            variant: AppToastVariant.error,
+            variant: TpToastVariant.error,
           );
           return;
         }
@@ -314,7 +313,7 @@ class _ProviderCredentialActionBarState
       message: result.ok
           ? providerCredentialSuccessMessage(l10n, widget.provider.cli)
           : providerCredentialFailureMessage(l10n, widget.provider.cli, result),
-      variant: result.ok ? AppToastVariant.success : AppToastVariant.error,
+      variant: result.ok ? TpToastVariant.success : TpToastVariant.error,
     );
   }
 }

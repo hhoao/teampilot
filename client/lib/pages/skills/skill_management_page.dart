@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/skill_cubit.dart';
@@ -68,7 +68,7 @@ class SkillManagementPage extends StatelessWidget {
         AppToast.show(
           context,
           message: state.errorMessage!,
-          variant: AppToastVariant.error,
+          variant: TpToastVariant.error,
           duration: const Duration(seconds: 4),
         );
         context.read<SkillCubit>().clearError();

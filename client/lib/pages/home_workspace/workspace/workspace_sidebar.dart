@@ -20,7 +20,6 @@ import '../../../utils/session_project_grouping.dart';
 import '../../../utils/session_worktree_grouping.dart';
 import '../../../utils/workspace_chrome_profile.dart';
 import '../../../widgets/app_toast/app_toast.dart';
-import '../../../theme/app_toast_theme.dart';
 import 'worktree_create_dialog.dart';
 import 'worktree_group_section.dart';
 import '../../../utils/app_keys.dart';
@@ -410,7 +409,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       AppToast.show(
         context,
         message: l10n.worktreeCreateFailed(error.toString()),
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
     }
   }

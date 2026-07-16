@@ -8,7 +8,7 @@ import '../models/app_notification.dart';
 import '../repositories/notification_repository.dart';
 import '../services/notification/notification_recorder.dart';
 import '../services/storage/app_storage.dart';
-import '../theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 class NotificationState extends Equatable {
   const NotificationState({this.items = const [], this.unreadCount = 0});
@@ -42,16 +42,16 @@ class NotificationCubit extends Cubit<NotificationState>
   @override
   void record({
     required String message,
-    required AppToastVariant variant,
+    required TpToastVariant variant,
     String title = '',
   }) {
-    if (variant == AppToastVariant.info) return;
+    if (variant == TpToastVariant.info) return;
     unawaited(_record(message: message, variant: variant, title: title));
   }
 
   Future<void> _record({
     required String message,
-    required AppToastVariant variant,
+    required TpToastVariant variant,
     String title = '',
   }) async {
     final store = await _repository.append(

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../l10n/l10n_extensions.dart';
@@ -128,7 +127,7 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
       AppToast.show(
         context,
         message: context.l10n.workspaceDirectoryAlreadyAdded,
-        variant: AppToastVariant.warning,
+        variant: TpToastVariant.warning,
       );
       return;
     }

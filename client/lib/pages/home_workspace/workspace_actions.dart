@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/chat_cubit.dart';
@@ -13,7 +13,6 @@ import '../../models/workspace.dart';
 import '../../repositories/session_repository.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/workspace_display_name.dart';
-import 'package:shared_ui/shared_ui.dart';
 
 /// Whether [location] is the workbench route for [workspaceId].
 bool isViewingWorkspaceRoute(String location, String workspaceId) {
@@ -78,7 +77,7 @@ Future<void> cloneWorkspace(BuildContext context, Workspace workspace) async {
     AppToast.show(
       context,
       message: l10n.homeWorkspaceCloneWorkspaceSuccess(baseName),
-      variant: AppToastVariant.success,
+      variant: TpToastVariant.success,
     );
     context.go('/home-v2/workspace/${cloned.workspaceId}');
   } on Object catch (error) {
@@ -86,7 +85,7 @@ Future<void> cloneWorkspace(BuildContext context, Workspace workspace) async {
     AppToast.show(
       context,
       message: '${l10n.homeWorkspaceCloneWorkspaceFailed}: $error',
-      variant: AppToastVariant.error,
+      variant: TpToastVariant.error,
     );
   }
 }

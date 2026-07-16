@@ -3,7 +3,6 @@ import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/ssh_profile_cubit.dart';
@@ -76,7 +75,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
         AppToast.show(
           context,
           message: context.l10n.sshProfileTestSuccess,
-          variant: AppToastVariant.success,
+          variant: TpToastVariant.success,
         );
       }
       return null;
@@ -91,7 +90,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
         AppToast.show(
           context,
           message: sshConnectionFailureUserMessage(e, context.l10n),
-          variant: AppToastVariant.error,
+          variant: TpToastVariant.error,
         );
       }
       return e;
@@ -116,7 +115,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
           AppToast.show(
             context,
             message: sshConnectionFailureUserMessage(failure, context.l10n),
-            variant: AppToastVariant.error,
+            variant: TpToastVariant.error,
           );
           return;
         }
@@ -125,7 +124,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
       AppToast.show(
         context,
         message: context.l10n.sshProfileConnectSuccess(profile.host),
-        variant: AppToastVariant.success,
+        variant: TpToastVariant.success,
       );
     } on Object catch (e) {
       if (!mounted) return;
@@ -196,7 +195,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                     AppToast.show(
                       context,
                       message: l10n.sshProfilesImportUnavailable,
-                      variant: AppToastVariant.info,
+                      variant: TpToastVariant.info,
                     );
                   },
                   icon: const Icon(Icons.upload_outlined, size: 18),

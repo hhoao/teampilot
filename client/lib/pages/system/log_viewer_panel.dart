@@ -4,7 +4,6 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -184,7 +183,7 @@ class LogViewerPanelState extends State<LogViewerPanel> {
     AppToast.show(
       context,
       message: context.l10n.logViewerPathCopied(p.basename(path)),
-      variant: AppToastVariant.success,
+      variant: TpToastVariant.success,
     );
   }
 
@@ -197,14 +196,14 @@ class LogViewerPanelState extends State<LogViewerPanel> {
       AppToast.show(
         context,
         message: l10n.logViewerClearDone,
-        variant: AppToastVariant.success,
+        variant: TpToastVariant.success,
       );
     } on Object catch (e) {
       if (!mounted) return;
       AppToast.show(
         context,
         message: l10n.logViewerClearFailed('$e'),
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
     }
   }

@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/chat_cubit.dart';
@@ -388,8 +388,8 @@ Widget _chatLaunchListener(BuildContext context, Widget child) {
         listenerContext,
         message: message,
         variant: code == 'claude_credentials_missing'
-            ? AppToastVariant.warning
-            : AppToastVariant.info,
+            ? TpToastVariant.warning
+            : TpToastVariant.info,
       );
       listenerContext.read<ChatCubit>().clearSnackbarMessage();
     },
