@@ -9,6 +9,9 @@ bool _isClaudeNpmInstall(String line) =>
 bool _isRemoteClaudeLocate(String line) =>
     line.startsWith('sh -c') && line.contains('command -v claude');
 
+bool _isNpmVersionProbe(String line) =>
+    line.startsWith('sh -c') && line.contains('--version');
+
 void main() {
   test(
     'installs Claude Code locally with npm and resolves the executable',
@@ -319,6 +322,10 @@ void main() {
             stdout: '/usr/bin/npm\n',
           );
         }
+        if (_isNpmVersionProbe(command.commandLine) &&
+            command.commandLine.contains('/usr/bin/npm')) {
+          return const CliInstallerCommandResult(exitCode: 0);
+        }
         if (_isClaudeNpmInstall(command.commandLine) &&
             command.commandLine.contains('/usr/bin/npm')) {
           return const CliInstallerCommandResult(exitCode: 0);
@@ -341,10 +348,11 @@ void main() {
 
     expect(result.success, isTrue);
     expect(result.executablePath, '/home/alice/.npm-global/bin/claude');
-    expect(commands.length, 3);
+    expect(commands.length, 4);
     expect(commands[0], 'command -v npm');
-    expect(_isClaudeNpmInstall(commands[1]), isTrue);
-    expect(_isRemoteClaudeLocate(commands[2]), isTrue);
+    expect(_isNpmVersionProbe(commands[1]), isTrue);
+    expect(_isClaudeNpmInstall(commands[2]), isTrue);
+    expect(_isRemoteClaudeLocate(commands[3]), isTrue);
   });
 
   test('bootstraps Node npm on SSH host when npm is missing', () async {
@@ -415,6 +423,10 @@ void main() {
               stdout: '/opt/homebrew/bin/npm\n',
             );
           }
+          if (_isNpmVersionProbe(command.commandLine) &&
+              command.commandLine.contains('/opt/homebrew/bin/npm')) {
+            return const CliInstallerCommandResult(exitCode: 0);
+          }
           if (_isClaudeNpmInstall(command.commandLine) &&
               command.commandLine.contains('/opt/homebrew/bin/npm')) {
             return const CliInstallerCommandResult(exitCode: 0);
@@ -437,11 +449,12 @@ void main() {
 
       expect(result.success, isTrue, reason: result.message);
       expect(result.executablePath, '/opt/homebrew/bin/claude');
-      expect(commands.length, 4);
+      expect(commands.length, 5);
       expect(commands[0], 'command -v npm');
       expect(commands[1], "bash -ilc 'command -v npm'");
-      expect(_isClaudeNpmInstall(commands[2]), isTrue);
-      expect(_isRemoteClaudeLocate(commands[3]), isTrue);
+      expect(_isNpmVersionProbe(commands[2]), isTrue);
+      expect(_isClaudeNpmInstall(commands[3]), isTrue);
+      expect(_isRemoteClaudeLocate(commands[4]), isTrue);
     },
   );
 

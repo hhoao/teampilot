@@ -8,6 +8,7 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace/config/workspace_folders_section.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/storage/home_target_controller.dart';
 
 import '../../../support/test_home_target_controller.dart';
@@ -43,6 +44,9 @@ void main() {
               providers: [
                 RepositoryProvider<HomeTargetController>.value(
                   value: testHomeTargetController(),
+                ),
+                RepositoryProvider<SshProfileRepository>.value(
+                  value: testSshProfileRepository(),
                 ),
                 RepositoryProvider<SessionRepository>.value(value: repo),
               ],

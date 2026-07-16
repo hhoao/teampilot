@@ -31,10 +31,11 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('ws_info_target_');
       addTearDown(() => tmp.deleteSync(recursive: true));
       final fs = LocalFilesystem();
+      final sshRepo = SshProfileRepository(rootDir: tmp.path, fs: fs);
       final controller = HomeTargetController(
         registry: RuntimeTargetRegistry(
           repo: TargetsRepository(rootDir: tmp.path, fs: fs),
-          sshProfileRepo: SshProfileRepository(rootDir: tmp.path, fs: fs),
+          sshProfileRepo: sshRepo,
           isWindows: false,
           isAndroid: false,
         ),
@@ -66,6 +67,7 @@ void main() {
           home: MultiRepositoryProvider(
             providers: [
               RepositoryProvider<HomeTargetController>.value(value: controller),
+              RepositoryProvider<SshProfileRepository>.value(value: sshRepo),
               RepositoryProvider<SessionRepository>.value(
                 value: SessionRepository(rootDir: tmp.path),
               ),
