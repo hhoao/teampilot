@@ -722,7 +722,6 @@ git commit -m "feat(ai_message_ui): add spacer-based virtual thread viewport"
 ```dart
 testWidgets('AiThread idle mounts far fewer messages than window', (tester) async {
   final store = ExternalStoreAiThreadRuntime();
-  // 40 user messages = 40 turns of ~3 lines each
   store.setMessages(List.generate(
     40,
     (i) => AiMessage(
@@ -731,7 +730,19 @@ testWidgets('AiThread idle mounts far fewer messages than window', (tester) asyn
       parts: [AiTextPart(text: 'line $i\n' * 3)],
     ),
   ));
-  await tester.pumpWidget(/* AiThread in 400px height */);
+  await tester.pumpWidget(
+    MaterialApp(
+      home: SizedBox(
+        height: 400,
+        child: AiThread(
+          runtime: store,
+          loadingBuilder: (_) => const Text('LOADING'),
+          emptyBuilder: (_) => const Text('EMPTY'),
+          errorBuilder: (_, msg, retry) => Text('ERR:$msg'),
+        ),
+      ),
+    ),
+  );
   await tester.pumpAndSettle();
   expect(find.byType(AiMessageView), findsWidgets);
   expect(find.byType(AiMessageView).evaluate().length, lessThan(20));
