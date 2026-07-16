@@ -78,7 +78,7 @@ shared_ui/
 | Tokens, `TpTheme`, component themes | Color preset table, font load/warmup, `MaterialApp` assembly |
 | Migrated generic primitives (see mapping) | Domain widgets (workspace, settings, terminal, git, providers, updates) |
 | Portal/popover primitives without product semantics | `workspace_surface_layers`, `workspace_topology_colors` |
-| — | `AppToast` + `app_toast_theme.dart` (toastification / platform chrome) |
+| `TpToast*` + private toast engine | Thin `AppToast` facade (recorder / `showGlobal` / desktop title-bar inset) |
 
 ## Theme model
 
@@ -109,8 +109,8 @@ TpTheme(
 | Typography scale / text styles used by controls | `TpTypography` |
 | `AppIconSizes` | `TpIconSizes` |
 | `AppControlTheme` | `TpControlMetrics` |
-| Dialog / outline input / tooltip theme pieces (no toast) | Matching `Tp*Theme` |
-| `app_toast_theme.dart` / `AppToast*` | **Stay in client** (depends on toastification, platform chrome, workspace surfaces) |
+| Dialog / outline input / tooltip / toast theme pieces | Matching `Tp*Theme` (incl. `TpToastTheme`) |
+| — | Thin `AppToast` product facade only (see [toast follow-up](./2026-07-16-shared-ui-toast-design.md)) |
 
 Colors are **not** duplicated as a second palette: components use `Theme.of(context).colorScheme` plus geometric tokens.
 
