@@ -1,6 +1,7 @@
 # shared_ui: TpActionMenu, TpDateRangePicker, TpTokenTextField
 
-**Status:** Approved (design)  
+**Status:** Landed  
+**shared_ui SHA:** `901e0538e5611a22c6e94b4979b76139a6168166`  
 **Date:** 2026-07-16  
 **Related:** Huji Tp* adapt (`huji` repo: `docs/superpowers/specs/2026-07-16-huji-tp-shared-ui-adapt-design.md`); theme consolidation / TpToast already on `shared_ui` `main`
 
