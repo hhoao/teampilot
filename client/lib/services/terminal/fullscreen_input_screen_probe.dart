@@ -25,7 +25,8 @@ class FullscreenPromptAnchor {
   final int row;
   final int startCol;
 
-  /// Distinctive substring located on [row] at [startCol].
+  /// Distinctive substring starting at [row] and [startCol]; may continue onto
+  /// following rows via soft wrap.
   final String needle;
 
   @override
