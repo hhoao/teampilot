@@ -123,6 +123,13 @@ void main() {
     expect(doc.blocks.single, isA<HorizontalRuleBlock>());
   });
 
+  test('heading with inline image becomes unsupported', () {
+    final doc = compileMessageContent('## Hello ![alt](x.png)');
+    expect(doc.blocks.single, isA<UnsupportedBlock>());
+    final block = doc.blocks.single as UnsupportedBlock;
+    expect(block.rawMarkdown, '## Hello ![alt](x.png)');
+  });
+
   test('images become unsupported', () {
     final doc = compileMessageContent('![alt](x.png)\n');
     expect(doc.blocks, isNotEmpty);

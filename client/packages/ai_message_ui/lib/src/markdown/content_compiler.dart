@@ -78,6 +78,9 @@ ContentBlock _compileElement(md.Element element) {
     case 'h4':
     case 'h5':
     case 'h6':
+      if (_hasUnsupportedInline(element.children)) {
+        return UnsupportedBlock(rawMarkdown: _reconstructUnsupported(element));
+      }
       return HeadingBlock(
         level: int.parse(tag.substring(1)),
         runs: _compileInlines(element.children),
@@ -350,6 +353,16 @@ String _reconstructUnsupported(md.Node node) {
       parts.add(_reconstructUnsupported(child));
     }
     return parts.join();
+  }
+  if (node is md.Element && node.tag.startsWith('h')) {
+    final level = int.tryParse(node.tag.substring(1));
+    if (level != null && level >= 1 && level <= 6) {
+      final parts = <String>[];
+      for (final child in node.children ?? const <md.Node>[]) {
+        parts.add(_reconstructUnsupported(child));
+      }
+      return '${'#' * level} ${parts.join()}';
+    }
   }
   if (node is md.Element && (node.tag == 'td' || node.tag == 'th')) {
     final parts = <String>[];
