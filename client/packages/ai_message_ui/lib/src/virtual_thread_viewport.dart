@@ -21,6 +21,7 @@ class VirtualThreadViewport extends StatefulWidget {
     this.padding = const EdgeInsets.fromLTRB(0, 16, 0, 24),
     this.header,
     this.stickIntent = false,
+    this.cacheGeneration = 0,
     this.onHeightChanged,
     super.key,
   });
@@ -33,6 +34,10 @@ class VirtualThreadViewport extends StatefulWidget {
   final EdgeInsets padding;
   final Widget? header;
   final bool stickIntent;
+
+  /// Bumped by the parent when height-cache entries are invalidated/pruned so
+  /// spacers recompute even if [turns] list identity is unchanged.
+  final int cacheGeneration;
 
   /// Fired after a turn height is recorded so the parent can re-stick while
   /// [stickIntent] is true (viewport skips measure-driven scroll jumps then).
@@ -69,7 +74,8 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
     if (oldWidget.turns != widget.turns ||
         oldWidget.overscan != widget.overscan ||
         oldWidget.padding != widget.padding ||
-        oldWidget.header != widget.header) {
+        oldWidget.header != widget.header ||
+        oldWidget.cacheGeneration != widget.cacheGeneration) {
       _recomputeRange();
     }
   }

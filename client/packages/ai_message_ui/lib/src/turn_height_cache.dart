@@ -38,6 +38,11 @@ class TurnHeightCache {
 
   void invalidateAll() => _measured.clear();
 
+  /// Drop cached heights for turn ids not in [keepIds].
+  void retainOnly(Set<String> keepIds) {
+    _measured.removeWhere((id, _) => !keepIds.contains(id));
+  }
+
   double totalExtent(List<ThreadTurn> turns) {
     var sum = 0.0;
     for (final t in turns) {

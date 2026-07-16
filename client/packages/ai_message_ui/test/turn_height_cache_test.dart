@@ -61,4 +61,15 @@ void main() {
     cache.invalidate('a');
     expect(cache.heightOf('a'), 200);
   });
+
+  test('retainOnly drops heights for removed turn ids', () {
+    final cache = TurnHeightCache(estimate: 200);
+    cache.setMeasured('a', 50);
+    cache.setMeasured('b', 60);
+    cache.setMeasured('c', 70);
+    cache.retainOnly({'a', 'c'});
+    expect(cache.heightOf('a'), 50);
+    expect(cache.heightOf('b'), 200);
+    expect(cache.heightOf('c'), 70);
+  });
 }

@@ -101,6 +101,9 @@ class _AiThreadState extends State<AiThread> {
   // shrinks maxScrollExtent under the cursor and triggers overscroll bounce
   // that falsely releases stick-to-bottom.
   final TurnHeightCache _heightCache = TurnHeightCache(estimate: 80);
+  /// Bumped when measured heights are invalidated/pruned so the viewport
+  /// recomputes spacers even if turn list identity is reused.
+  int _cacheGeneration = 0;
   AiThreadStatus _status = AiThreadStatus.empty;
   String? _errorMessage;
 
@@ -131,6 +134,8 @@ class _AiThreadState extends State<AiThread> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.runtime != widget.runtime) {
       _subscription?.cancel();
+      _heightCache.invalidateAll();
+      _cacheGeneration++;
       _syncFromRuntime();
       _subscription = widget.runtime.changes.listen((_) {
         if (!mounted) return;
@@ -197,6 +202,7 @@ class _AiThreadState extends State<AiThread> {
       previous: previousTurns,
       messages: _messages,
     );
+    var cacheDirty = false;
     final previousById = {for (final turn in previousTurns) turn.id: turn};
     for (final turn in nextTurns) {
       final previous = previousById[turn.id];
@@ -204,7 +210,15 @@ class _AiThreadState extends State<AiThread> {
       if (turnContentIdentity(previous, previousMessages) !=
           turnContentIdentity(turn, _messages)) {
         _heightCache.invalidate(turn.id);
+        cacheDirty = true;
       }
+    }
+    if (!identical(nextTurns, previousTurns)) {
+      _heightCache.retainOnly({for (final turn in nextTurns) turn.id});
+      cacheDirty = true;
+    }
+    if (cacheDirty) {
+      _cacheGeneration++;
     }
     _turns = nextTurns;
   }
@@ -221,21 +235,29 @@ class _AiThreadState extends State<AiThread> {
   void _plantStickIntent({required bool hideUntilStuck}) {
     _stickGeneration++;
     final generation = _stickGeneration;
+    final intentChanged = !_stickIntent;
     _stickIntent = true;
     _stickReleaseArmed = false;
     _atBottomStableFrames = 0;
     if (hideUntilStuck && _listVisible) {
+      // Rebuilds viewport with stickIntent=true as well.
       setState(() => _listVisible = false);
     } else if (hideUntilStuck) {
       _listVisible = false;
+      // mounted is false during initState — first build picks up stickIntent.
+      if (intentChanged && mounted) setState(() {});
+    } else if (intentChanged && mounted) {
+      setState(() {});
     }
     _scheduleStickTick(generation: generation, framesLeft: _maxStickFrames);
   }
 
   void _releaseStickIntent() {
+    final intentChanged = _stickIntent;
     _stickIntent = false;
     _stickReleaseArmed = false;
     _stickGeneration++;
+    if (intentChanged && mounted) setState(() {});
   }
 
   void _scheduleStickTick({
@@ -540,6 +562,7 @@ class _AiThreadState extends State<AiThread> {
                       overscan: kThreadOverscan,
                       padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
                       stickIntent: _stickIntent,
+                      cacheGeneration: _cacheGeneration,
                       onHeightChanged: _stickToBottomIfNeeded,
                       header: widget.hasOlder
                           ? SelectionContainer.disabled(

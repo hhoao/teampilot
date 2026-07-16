@@ -1,5 +1,6 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
+import 'package:ai_message_ui/src/virtual_thread_viewport.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -314,6 +315,47 @@ void main() {
     // Content that was under [park] stays under the viewport after top prepend.
     // AiThread snapshots pixels/extent immediately before onLoadOlder.
     expect(scrollController.offset, closeTo(park + delta, 5.0));
+  });
+
+  testWidgets('AiThread scroll-up rebuilds viewport with stickIntent false', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime();
+    store.setMessages([
+      for (var i = 0; i < 30; i++) _msg('m$i', 'message line $i\n' * 4),
+    ]);
+    final scrollController = ScrollController();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SizedBox(
+          height: 400,
+          child: AiThread(
+            runtime: store,
+            scrollController: scrollController,
+            loadingBuilder: (_) => const Text('LOADING'),
+            emptyBuilder: (_) => const Text('EMPTY'),
+            errorBuilder: (_, msg, retry) => Text('ERR:$msg'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final stuck = tester.widget<VirtualThreadViewport>(
+      find.byType(VirtualThreadViewport),
+    );
+    expect(stuck.stickIntent, isTrue);
+
+    scrollController.jumpTo(0);
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final released = tester.widget<VirtualThreadViewport>(
+      find.byType(VirtualThreadViewport),
+    );
+    expect(released.stickIntent, isFalse);
+    expect(find.byTooltip('Scroll to bottom'), findsOneWidget);
   });
 }
 
