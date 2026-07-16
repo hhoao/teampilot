@@ -13,7 +13,8 @@ abstract interface class TerminalScreenGrid {
   int flagsAt(int row, int col);
 }
 
-/// Screen position of a staged prompt substring (one row, column-aligned).
+/// Screen position of a staged prompt substring; the [needle] may continue onto
+/// following rows via soft wrap.
 class FullscreenPromptAnchor {
   const FullscreenPromptAnchor({
     required this.row,
@@ -40,6 +41,9 @@ const int _flagWideSpacer = 1 << 5;
 const int fullscreenComposerLocateAboveSlack = 12;
 
 /// Bottom-up search for [needle] in the last [scanRows] visible rows.
+///
+/// Search tries each column start on every row; a match may consume subsequent
+/// rows when the needle continues past a soft wrap.
 ///
 /// When [composerPrefix] is set, only rows at or above the bottommost composer
 /// chrome row (within [composerAboveSlack]) are searched so stale transcript
@@ -108,7 +112,9 @@ int _composerLocateStartRow(
   return (composerRow - composerAboveSlack).clamp(windowStart, grid.rows - 1);
 }
 
-/// True when [anchor.needle] still occupies the same cells on [anchor.row].
+/// True when [anchor.needle] still occupies the same cells starting at
+/// [anchor.row]; the needle may occupy cells on [anchor.row] and following
+/// soft-wrapped rows.
 bool isFullscreenPromptAtAnchor(
   TerminalScreenGrid grid,
   FullscreenPromptAnchor anchor,
@@ -194,14 +200,46 @@ bool _matchesNeedleAt(
   int startCol,
   List<int> needleRunes,
 ) {
+  var r = row;
   var col = startCol;
   for (final cp in needleRunes) {
-    col = _skipWideSpacers(grid, row, col);
-    if (col >= grid.columns) return false;
-    if (grid.codepointAt(row, col) != cp) return false;
-    col = _advancePastCell(grid, row, col);
+    while (true) {
+      if (r >= grid.rows) return false;
+      col = _skipWideSpacers(grid, r, col);
+      if (col < grid.columns && !_rowRemainderIsPadding(grid, r, col)) {
+        break;
+      }
+      // Soft-wrap before comparing this rune.
+      // Padding at end of row triggers wrap before comparing the current
+      // needle rune (trailing spaces are not consumed as needle content
+      // unless the matcher is still on a content cell).
+      r += 1;
+      col = 0;
+      if (r >= grid.rows) return false;
+      if (!_rowHasNonSpaceContent(grid, r) && cp != 0x20) return false;
+    }
+    if (grid.codepointAt(r, col) != cp) return false;
+    col = _advancePastCell(grid, r, col);
   }
   return true;
+}
+
+bool _rowRemainderIsPadding(TerminalScreenGrid grid, int row, int fromCol) {
+  for (var c = fromCol; c < grid.columns; c++) {
+    if (_isWideSpacer(grid, row, c)) continue;
+    final cp = grid.codepointAt(row, c);
+    if (cp != 0 && cp != 0x20) return false;
+  }
+  return true;
+}
+
+bool _rowHasNonSpaceContent(TerminalScreenGrid grid, int row) {
+  for (var c = 0; c < grid.columns; c++) {
+    if (_isWideSpacer(grid, row, c)) continue;
+    final cp = grid.codepointAt(row, c);
+    if (cp != 0 && cp != 0x20) return true;
+  }
+  return false;
 }
 
 (int start, int endCol)? _trimmedLogicalBounds(
