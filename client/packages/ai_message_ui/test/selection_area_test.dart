@@ -67,7 +67,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final listSize = tester.getSize(find.byType(CustomScrollView));
+    final listSize = tester.getSize(find.byType(ListView));
     // Scroll view fills the host (not the message maxWidth=400).
     expect(listSize.width, greaterThan(400));
     expect(listSize.width, equals(tester.getSize(find.byType(Scaffold)).width));

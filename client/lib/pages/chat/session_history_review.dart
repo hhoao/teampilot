@@ -37,7 +37,7 @@ import '../../services/storage/app_storage.dart';
 import '../../theme/app_markdown_style_sheet.dart';
 import '../../utils/team/team_member_naming.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
-import 'ai_thread_selection_context_menu.dart';
+import 'session_history_thread.dart';
 import 'session_review_compose_card.dart';
 
 /// History list + slim compose for a non-running session body.
@@ -641,7 +641,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
         children: [
           Expanded(
             // Full-bleed scroll surface: margins beside the text column still
-            // receive wheel / drag. Message width is capped inside AiThread.
+            // receive wheel / drag. Message width is capped inside SessionHistoryThread.
             child: Theme(
               data: Theme.of(context).copyWith(
                 extensions: [
@@ -679,17 +679,8 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                 child: BlocBuilder<AiHistoryCubit, AiHistoryState>(
                   builder: (context, state) {
                     final cubit = context.read<AiHistoryCubit>();
-                    return AiThread(
-                      runtime: cubit.runtime,
-                      hasOlder: state.hasOlder,
-                      isLoadingOlder: state.isLoadingOlder,
-                      onLoadOlder: cubit.loadOlder,
-                      loadOlderScrollThreshold:
-                          kSessionHistoryLoadOlderScrollThreshold,
-                      onRetry: () => _loadHistory(force: true),
-                      selectionContextMenuBuilder:
-                          buildAiThreadSelectionContextMenu,
-                      loadingBuilder: (context) => _HistoryStatusPane(
+                    return switch (state.status) {
+                      AiHistoryViewStatus.loading => _HistoryStatusPane(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -711,7 +702,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                           ],
                         ),
                       ),
-                      emptyBuilder: (context) => _HistoryStatusPane(
+                      AiHistoryViewStatus.empty => _HistoryStatusPane(
                         icon: Icons.chat_bubble_outline_rounded,
                         child: Text(
                           context.l10n.sessionHistoryEmpty,
@@ -721,72 +712,45 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                           textAlign: TextAlign.center,
                         ),
                       ),
-                      errorBuilder: (context, message, onRetry) {
-                        final detail = message?.trim();
-                        return _HistoryStatusPane(
-                          icon: Icons.error_outline_rounded,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
+                      AiHistoryViewStatus.error => _HistoryStatusPane(
+                        icon: Icons.error_outline_rounded,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              context.l10n.sessionHistoryError,
+                              style: TpTextStyles.of(context).mdColored(
+                                Theme.of(context).colorScheme.error,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            if ((state.errorMessage?.trim() ?? '').isNotEmpty) ...[
+                              SizedBox(height: context.tpSpacing.sm),
                               Text(
-                                context.l10n.sessionHistoryError,
-                                style: TpTextStyles.of(context).mdColored(
-                                  Theme.of(context).colorScheme.error,
+                                state.errorMessage!.trim(),
+                                style: TpTextStyles.of(context).smColored(
+                                  Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
-                              if (detail != null && detail.isNotEmpty) ...[
-                                SizedBox(height: context.tpSpacing.sm),
-                                Text(
-                                  detail,
-                                  style: TpTextStyles.of(context).smColored(
-                                    Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                              SizedBox(height: context.tpSpacing.md),
-                              TextButton(
-                                onPressed: onRetry,
-                                child: Text(context.l10n.sessionHistoryRetry),
-                              ),
                             ],
-                          ),
-                        );
-                      },
-                      loadOlderHeaderBuilder:
-                          (context, {required bool isLoadingOlder}) {
-                            final headerCs = Theme.of(context).colorScheme;
-                            return Padding(
-                              padding: EdgeInsets.only(
-                                bottom: context.tpSpacing.md,
-                              ),
-                              child: Center(
-                                child: isLoadingOlder
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : Text(
-                                        context
-                                            .l10n
-                                            .sessionHistoryLoadOlderHint,
-                                        style: TpTextStyles.of(context)
-                                            .smColored(
-                                              headerCs.onSurfaceVariant
-                                                  .withValues(alpha: 0.75),
-                                            ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                              ),
-                            );
-                          },
-                    );
+                            SizedBox(height: context.tpSpacing.md),
+                            TextButton(
+                              onPressed: () => _loadHistory(force: true),
+                              child: Text(context.l10n.sessionHistoryRetry),
+                            ),
+                          ],
+                        ),
+                      ),
+                      AiHistoryViewStatus.ready => SessionHistoryThread(
+                        runtime: cubit.runtime,
+                        hasOlder: state.hasOlder,
+                        isLoadingOlder: state.isLoadingOlder,
+                        onLoadOlder: cubit.loadOlder,
+                      ),
+                    };
                   },
                 ),
               ),

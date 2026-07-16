@@ -42,15 +42,20 @@ class _AiMessageActionBarState extends State<AiMessageActionBar> {
     final scheme = Theme.of(context).colorScheme;
     final aiTheme = AiMessageTheme.of(context);
     final color = aiTheme.resolveToolTrigger(scheme);
-    final plain = plainTextForCopy(widget.message);
-    final markdown = markdownForExport(widget.message);
-    if (plain.isEmpty && markdown.isEmpty) return const SizedBox.shrink();
 
     final visible = widget.reveal == AiActionBarReveal.always ||
         widget.forceVisible ||
         _hovered ||
         _copied ||
         _exported;
+
+    // Avoid serializing the whole message on every rebuild — only when the
+    // bar is actually shown (or about to handle a press).
+    final plain = visible ? plainTextForCopy(widget.message) : '';
+    final markdown = visible ? markdownForExport(widget.message) : '';
+    if (visible && plain.isEmpty && markdown.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return SelectionContainer.disabled(
       child: MouseRegion(
