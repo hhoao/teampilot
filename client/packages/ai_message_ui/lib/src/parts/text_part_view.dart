@@ -3,8 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:markdown/markdown.dart' as md;
 
+import '../markdown/streaming_markdown.dart';
 import '../strings.dart';
 import '../theme.dart';
+
+export '../markdown/streaming_markdown.dart';
 
 /// LRU-ish cache of [MarkdownBody] subtrees keyed by prepared markdown + style.
 class MarkdownBodyCache {
@@ -93,17 +96,6 @@ class AiTextPartView extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Exposed for tests / hosts that want the same fence repair rules.
-String prepareStreamingMarkdown(String raw) {
-  // Match line-start fences including indented ones (CommonMark-ish).
-  final fenceCount =
-      RegExp(r'^[ \t]{0,3}```', multiLine: true).allMatches(raw).length;
-  if (fenceCount.isOdd) {
-    return '$raw\n```';
-  }
-  return raw;
 }
 
 MarkdownStyleSheet defaultAiMarkdownSheet(
