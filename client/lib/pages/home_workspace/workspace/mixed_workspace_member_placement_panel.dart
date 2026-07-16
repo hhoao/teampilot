@@ -1,6 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
+import '../../../cubits/chat_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/cli_preset.dart';
 import '../../../models/runtime_target.dart';
@@ -8,10 +12,14 @@ import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../models/workspace_folder.dart';
 import '../../../models/workspace_topology.dart';
+import '../../../repositories/session_repository.dart';
+import '../../../repositories/ssh_profile_repository.dart';
 import '../../../services/remote/remote_cli_readiness.dart';
 import '../../../services/storage/home_target_controller.dart';
-import '../../../utils/team_member_naming.dart';
+import '../../../services/workspace/target_liveness.dart';
 import '../../../theme/app_text_styles.dart';
+import '../../../utils/team_member_naming.dart';
+import '../../../widgets/workspace/workspace_dead_target_remap_dialog.dart';
 import 'remote_cli_machine_readiness_panel.dart';
 
 /// Practical per-host cap for non-lead replica placement in mixed workspaces.
@@ -53,6 +61,7 @@ class MixedWorkspaceMemberPlacementPanel extends StatefulWidget {
     required this.members,
     required this.placement,
     required this.onPlacementChanged,
+    this.onWorkspaceRemapped,
     this.team,
     this.globalPresets = const [],
     this.remoteCliReadiness,
@@ -63,6 +72,7 @@ class MixedWorkspaceMemberPlacementPanel extends StatefulWidget {
   final List<TeamMemberConfig> members;
   final MemberPlacementByTarget placement;
   final ValueChanged<MemberPlacementByTarget> onPlacementChanged;
+  final ValueChanged<Workspace>? onWorkspaceRemapped;
   final TeamProfile? team;
   final List<CliPreset> globalPresets;
   final RemoteCliReadinessService? remoteCliReadiness;
@@ -77,6 +87,44 @@ class _MixedWorkspaceMemberPlacementPanelState
   late String _selectedTargetId;
   List<RuntimeTarget> _selectableTargets = const [];
   Future<void>? _targetsLoad;
+  var _remapping = false;
+  Set<String> _deadTargetIds = const {};
+  List<String>? _deadCheckKey;
+
+  TargetLiveness _liveness(BuildContext context) => DefaultTargetLiveness(
+    sshProfiles: context.read<SshProfileRepository>(),
+  );
+
+  void _ensureDeadTargetsChecked(List<String> targetIds) {
+    if (_deadCheckKey != null && listEquals(_deadCheckKey, targetIds)) return;
+    _deadCheckKey = List<String>.from(targetIds);
+    _loadDeadTargets(targetIds);
+  }
+
+  Future<void> _loadDeadTargets(List<String> targetIds) async {
+    final TargetLiveness liveness;
+    try {
+      liveness = _liveness(context);
+    } on Object {
+      // SshProfileRepository unavailable in lightweight widget tests.
+      return;
+    }
+    final dead = <String>{};
+    for (final id in targetIds) {
+      if (!await liveness.isAlive(id)) {
+        dead.add(id);
+      }
+    }
+    if (!mounted) return;
+    if (_deadCheckKey != null && listEquals(_deadCheckKey, targetIds)) {
+      setState(() => _deadTargetIds = dead);
+    }
+  }
+
+  void _invalidateDeadTargetCache() {
+    _deadCheckKey = null;
+    _deadTargetIds = const {};
+  }
 
   @override
   void initState() {
@@ -138,6 +186,55 @@ class _MixedWorkspaceMemberPlacementPanelState
     return counts.values.fold<int>(0, (sum, n) => sum + n);
   }
 
+  Future<void> _remapDeadTarget(String fromTargetId) async {
+    if (_remapping) return;
+    setState(() => _remapping = true);
+    final liveness = _liveness(context);
+    final homeTarget = context.read<HomeTargetController>();
+    final repo = context.read<SessionRepository>();
+    final chat = context.read<ChatCubit>();
+    try {
+      final selectable = await homeTarget.listSelectable();
+      if (!mounted) return;
+      final to = await showWorkspaceDeadTargetRemapDialog(
+        context: context,
+        fromTargetId: fromTargetId,
+        deadTargetIds: _deadTargetIds.toList(),
+        selectable: selectable,
+        liveness: liveness,
+      );
+      if (to == null || !mounted) return;
+
+      final updated = await repo.remapWorkspaceTarget(
+        widget.workspace.workspaceId,
+        fromTargetId: fromTargetId,
+        toTargetId: to,
+        liveness: liveness,
+      );
+      chat.invalidateWorkspaceProvision(updated);
+      await chat.loadWorkspaceData(repo);
+      _invalidateDeadTargetCache();
+      widget.onWorkspaceRemapped?.call(updated);
+      if (!mounted) return;
+      final ids = workspaceTargetIds(updated.folders);
+      setState(() {
+        if (!ids.contains(_selectedTargetId)) {
+          _selectedTargetId = ids.first;
+        }
+      });
+    } on Object {
+      if (mounted) {
+        AppToast.show(
+          context,
+          message: context.l10n.workspaceDeadTargetRemapFailed,
+          variant: AppToastVariant.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _remapping = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -145,6 +242,8 @@ class _MixedWorkspaceMemberPlacementPanelState
     final targetIds = workspaceTargetIds(widget.workspace.folders);
     final members = widget.members.where((m) => m.isValid).toList();
     final folders = widget.workspace.folders;
+
+    _ensureDeadTargetsChecked(targetIds);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -173,6 +272,11 @@ class _MixedWorkspaceMemberPlacementPanelState
                               targetId,
                             ),
                             instanceCount: _instancesOnTarget(targetId),
+                            isDead: _deadTargetIds.contains(targetId),
+                            remapping: _remapping,
+                            onRemap: _deadTargetIds.contains(targetId)
+                                ? () => _remapDeadTarget(targetId)
+                                : null,
                             onTap: () =>
                                 setState(() => _selectedTargetId = targetId),
                           ),
@@ -266,6 +370,9 @@ class _TargetTile extends StatelessWidget {
     required this.label,
     required this.paths,
     required this.instanceCount,
+    required this.isDead,
+    required this.remapping,
+    required this.onRemap,
     required this.onTap,
   });
 
@@ -273,36 +380,95 @@ class _TargetTile extends StatelessWidget {
   final String label;
   final List<String> paths;
   final int instanceCount;
+  final bool isDead;
+  final bool remapping;
+  final VoidCallback? onRemap;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
     final pathPreview = paths.join(', ');
     return Material(
       color: selected
           ? cs.primaryContainer.withValues(alpha: 0.35)
           : Colors.transparent,
-      child: ListTile(
-        selected: selected,
-        title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text(
-          pathPreview,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: AppTextStyles.of(context).sm,
-        ),
-        trailing: instanceCount > 0
-            ? CircleAvatar(
-                radius: 12,
-                backgroundColor: cs.primary,
-                child: Text(
-                  '$instanceCount',
-                  style: AppTextStyles.of(context).xsColored(cs.onPrimary),
-                ),
-              )
-            : null,
+      child: InkWell(
         onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: styles.mdSemiboldColored(cs.onSurface),
+                    ),
+                  ),
+                  if (instanceCount > 0)
+                    CircleAvatar(
+                      radius: 12,
+                      backgroundColor: cs.primary,
+                      child: Text(
+                        '$instanceCount',
+                        style: styles.xsColored(cs.onPrimary),
+                      ),
+                    ),
+                ],
+              ),
+              if (pathPreview.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  pathPreview,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: styles.sm,
+                ),
+              ],
+              if (isDead) ...[
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: cs.errorContainer,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        l10n.workspaceDeadTargetBadge,
+                        style: styles.xsColored(cs.onErrorContainer),
+                      ),
+                    ),
+                    if (onRemap != null)
+                      TextButton(
+                        onPressed: remapping ? null : onRemap,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(l10n.workspaceDeadTargetRemap),
+                      ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

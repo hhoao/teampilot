@@ -104,14 +104,15 @@ class _LandingTeamSettingsDialogState
   late final ValueNotifier<int> _selectedIndex;
   late TeamProfile _initialTeam;
   late TeamProfile _teamDraft;
+  late Workspace _workspace;
   late MemberPlacementByTarget _placement;
   var _saving = false;
   var _cubitDirty = false;
 
   bool get _needsMixedInit => workspaceNeedsMixedPlacementInit(
-    folders: widget.workspace.folders,
+    folders: _workspace.folders,
     teamId: widget.team.id,
-    initializedByTeam: widget.workspace.memberPlacementInitializedByTeam,
+    initializedByTeam: _workspace.memberPlacementInitializedByTeam,
   );
 
   List<_LandingTeamSettingsSection> get _sections => [
@@ -123,10 +124,11 @@ class _LandingTeamSettingsDialogState
   @override
   void initState() {
     super.initState();
+    _workspace = widget.workspace;
     final cubit = context.read<LaunchProfileCubit>();
     _initialTeam = _teamFromCubit(cubit) ?? widget.team;
     _teamDraft = _initialTeam;
-    _placement = _placementFromWorkspace(widget.workspace, _teamDraft);
+    _placement = _placementFromWorkspace(_workspace, _teamDraft);
     final initialIndex = _needsMixedInit
         ? _sections.indexOf(_LandingTeamSettingsSection.machines)
         : 0;
@@ -176,9 +178,16 @@ class _LandingTeamSettingsDialogState
 
   PreparedMemberPlacementSave get _preparedSave => prepareMemberPlacementSave(
     team: _teamDraft,
-    folders: widget.workspace.folders,
+    folders: _workspace.folders,
     placement: _placement,
   );
+
+  void _onWorkspaceRemapped(Workspace updated) {
+    setState(() {
+      _workspace = updated;
+      _placement = _placementFromWorkspace(_workspace, _teamDraft);
+    });
+  }
 
   bool get _canSave => !_saving && _preparedSave.leadValid;
 
@@ -283,7 +292,7 @@ class _LandingTeamSettingsDialogState
       final sessions = context.read<SessionRepository>();
       final prepared = prepareMemberPlacementSave(
         team: _teamDraft,
-        folders: widget.workspace.folders,
+        folders: _workspace.folders,
         placement: _placement,
       );
       if (!prepared.leadValid) return;
@@ -297,7 +306,7 @@ class _LandingTeamSettingsDialogState
       _teamDraft = prepared.team;
       await cubit.updateSelected(_teamDraft);
       await sessions.updateWorkspaceMemberPlacement(
-        widget.workspace.workspaceId,
+        _workspace.workspaceId,
         widget.team.id,
         targets: prepared.targets,
       );
@@ -385,10 +394,11 @@ class _LandingTeamSettingsDialogState
                                     return _PaneBody(
                                       section: active,
                                       teamDraft: _teamDraft,
-                                      workspace: widget.workspace,
+                                      workspace: _workspace,
                                       placement: _placement,
                                       onPlacementChanged: (next) =>
                                           setState(() => _placement = next),
+                                      onWorkspaceRemapped: _onWorkspaceRemapped,
                                       onDelegateChanged: (value) => setState(
                                         () => _teamDraft = _teamDraft.copyWith(
                                           forceTeamLeadDelegateMode: value,
@@ -622,6 +632,7 @@ class _PaneBody extends StatelessWidget {
     required this.workspace,
     required this.placement,
     required this.onPlacementChanged,
+    required this.onWorkspaceRemapped,
     required this.onDelegateChanged,
     required this.onMemberUpdated,
     required this.onOpenTeamPresetConfigure,
@@ -633,6 +644,7 @@ class _PaneBody extends StatelessWidget {
   final Workspace workspace;
   final MemberPlacementByTarget placement;
   final ValueChanged<MemberPlacementByTarget> onPlacementChanged;
+  final ValueChanged<Workspace> onWorkspaceRemapped;
   final ValueChanged<bool> onDelegateChanged;
   final ValueChanged<TeamMemberConfig> onMemberUpdated;
   final Future<void> Function() onOpenTeamPresetConfigure;
@@ -656,6 +668,7 @@ class _PaneBody extends StatelessWidget {
         team: teamDraft,
         placement: placement,
         onPlacementChanged: onPlacementChanged,
+        onWorkspaceRemapped: onWorkspaceRemapped,
       ),
     };
   }
@@ -1076,12 +1089,14 @@ class _MachinesPane extends StatelessWidget {
     required this.team,
     required this.placement,
     required this.onPlacementChanged,
+    required this.onWorkspaceRemapped,
   });
 
   final Workspace workspace;
   final TeamProfile team;
   final MemberPlacementByTarget placement;
   final ValueChanged<MemberPlacementByTarget> onPlacementChanged;
+  final ValueChanged<Workspace> onWorkspaceRemapped;
 
   @override
   Widget build(BuildContext context) {
@@ -1100,6 +1115,7 @@ class _MachinesPane extends StatelessWidget {
             members: team.members,
             placement: placement,
             onPlacementChanged: onPlacementChanged,
+            onWorkspaceRemapped: onWorkspaceRemapped,
             team: team,
             globalPresets: context.watch<CliPresetsCubit>().state.presets,
             remoteCliReadiness: context.read<ChatCubit>().remoteCliReadiness,

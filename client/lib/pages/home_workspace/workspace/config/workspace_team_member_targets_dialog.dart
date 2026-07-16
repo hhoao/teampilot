@@ -49,13 +49,22 @@ class _WorkspaceTeamMemberTargetsDialog extends StatefulWidget {
 
 class _WorkspaceTeamMemberTargetsDialogState
     extends State<_WorkspaceTeamMemberTargetsDialog> {
+  late Workspace _workspace;
   late MemberPlacementByTarget _placement;
   var _saving = false;
 
   @override
   void initState() {
     super.initState();
-    _syncFromWorkspace(widget.workspace);
+    _workspace = widget.workspace;
+    _syncFromWorkspace(_workspace);
+  }
+
+  void _onWorkspaceRemapped(Workspace updated) {
+    setState(() {
+      _workspace = updated;
+      _syncFromWorkspace(_workspace);
+    });
   }
 
   void _syncFromWorkspace(Workspace workspace) {
@@ -83,16 +92,16 @@ class _WorkspaceTeamMemberTargetsDialogState
 
   PreparedMemberPlacementSave get _preparedSave => prepareMemberPlacementSave(
     team: widget.team,
-    folders: widget.workspace.folders,
+    folders: _workspace.folders,
     placement: _placement,
   );
 
   bool get _canSave => !_saving && _preparedSave.leadValid;
 
   bool get _needsMixedInit => workspaceNeedsMixedPlacementInit(
-    folders: widget.workspace.folders,
+    folders: _workspace.folders,
     teamId: widget.team.id,
-    initializedByTeam: widget.workspace.memberPlacementInitializedByTeam,
+    initializedByTeam: _workspace.memberPlacementInitializedByTeam,
   );
 
   Future<void> _save() async {
@@ -101,7 +110,7 @@ class _WorkspaceTeamMemberTargetsDialogState
     try {
       final prepared = prepareMemberPlacementSave(
         team: widget.team,
-        folders: widget.workspace.folders,
+        folders: _workspace.folders,
         placement: _placement,
       );
       if (!prepared.leadValid) return;
@@ -116,7 +125,7 @@ class _WorkspaceTeamMemberTargetsDialogState
       // are runtime-only and would be dropped on the next materialize).
       await cubit.updateSelected(prepared.team);
       await widget.repository.updateWorkspaceMemberPlacement(
-        widget.workspace.workspaceId,
+        _workspace.workspaceId,
         widget.team.id,
         targets: prepared.targets,
       );
@@ -148,10 +157,11 @@ class _WorkspaceTeamMemberTargetsDialogState
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: MixedWorkspaceMemberPlacementPanel(
-                workspace: widget.workspace,
+                workspace: _workspace,
                 members: widget.team.members,
                 placement: _placement,
                 onPlacementChanged: (next) => setState(() => _placement = next),
+                onWorkspaceRemapped: _onWorkspaceRemapped,
                 team: widget.team,
                 globalPresets: context.watch<CliPresetsCubit>().state.presets,
                 remoteCliReadiness: context.read<ChatCubit>().remoteCliReadiness,
