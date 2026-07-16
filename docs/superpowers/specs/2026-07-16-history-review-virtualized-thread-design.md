@@ -40,9 +40,9 @@ assistant-ui’s guidance: default `content-visibility` covers typical threads; 
 | Row identity | Turn id = first message id in the turn; messages rendered by **id** |
 | Spacer model | Document-flow list with **paddingTop / paddingBottom** (or equivalent sliver spacers) — not absolute-positioned rows |
 | Scroll ownership | `AiThread` owns the scroll element + sticky intent; measurement updates must not fight stick-to-bottom (aui `scrollToFn` guard) |
-| Height cache | `Map<String, double>` turnId → measured height; estimate default **200** until measured; invalidate on content identity change for that turn |
+| Height cache | `Map<String, double>` turnId → measured height; estimate default **200** until measured; invalidate when any message in the turn changes **content identity** (message id set + concatenated part payload / hash). Expand/collapse UI state is **not** a content-identity change — rely on remeasure only |
 | Overscan | **3** turns above and below viewport (tunable constant) |
-| Data window | Keep `AiHistoryCubit` initial/load-older window as IO bound; rendering must not mount the whole window |
+| Data window | Keep `AiHistoryCubit` initial/load-older window as IO bound; rendering must not mount the whole window. Note: `kSessionHistoryInitialTurns` is a **message** count today despite the name — do not silently reinterpret as turn count |
 | Package boundary | Work lives in `client/packages/ai_message_ui` (+ tests); `session_history_review.dart` stays a thin host |
 | Third-party scroll lib | Prefer **in-package** virtual viewport; add a dependency only if it clearly reduces correctness risk for measure/anchor |
 
@@ -91,6 +91,8 @@ Each mounted turn:
 - `Key` / identity = turn id.
 - After layout, record height into `HeightCache` (post-frame or `SizeChangedLayoutNotifier` / measure callback).
 - Renders its `messageIds` via existing `AiMessageView` (or a thin `MessageById` lookup on the runtime list).
+- Honor `AiThread.messageBuilder` when set (existing tests depend on it).
+- `isLast` / `AiActionBarReveal.always` is computed **per message** against the full runtime message list (last message id), not per turn — a turn may contain user + assistant and only the thread-final message gets always-visible ActionBar.
 
 Scroll position ↔ index: derive visible range from `ScrollPosition.pixels`, cumulative heights (cache + estimate), and viewport dimension. On cache miss use estimate so the scrollbar remains usable before first measure pass.
 
@@ -139,7 +141,7 @@ Virtualization-specific rules (from aui):
 | Unit | `buildTurns` grouping; height cache estimate vs measured; visible range from pixels + cumulative heights |
 | Widget | Idle thread mounts ≤ overscan×2+visible turns for a long fake list; load-older preserves anchor; stick open still ends at bottom; ActionBar hidden has no `IconButton`; collapsed tool has no expanded panel |
 | Existing | Keep `ai_thread_test`, `selection_area_test` green; update expectations that assumed full `ListView` child counts |
-| Perf | Re-export DevTools on the same session: worst build frame down; single-frame `AiMessageView` rebuild count ≈ visible+overscan, not ~30–40 |
+| Perf | Re-export DevTools on a long history-review session (baseline was local `~/Downloads/test35.json`, not in-repo): worst build frame down; single-frame `AiMessageView` rebuild count ≈ visible+overscan, not ~30–40. Plan should document how to reproduce the scenario |
 
 ## File touch map (expected)
 
