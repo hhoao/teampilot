@@ -579,7 +579,7 @@ Test: two builds with same `(preparedText, styleGen)` key → `debugLength == 1`
 
 - [ ] **Step 3: Wire `AiTextPartView` through cache**
 
-Key = `'${prepareStreamingMarkdown(text)}|${sheet.hashCode}'` (or style sheet generation id from theme). Store the **built `MarkdownBody` widget** (immutable inputs). Clear is LRU via insert order.
+Key = `'${prepareStreamingMarkdown(text)}|$styleKey'` where `styleKey` is a **stable** token (e.g. `aiTheme.markdownStyleSheet == null ? 'default' : identityHashCode(aiTheme.markdownStyleSheet)` on the theme extension instance, **not** `defaultAiMarkdownSheet(...).hashCode` which allocates a new sheet every build and would defeat the cache). Store the built `MarkdownBody` widget. LRU via insert order.
 
 Note: `MarkdownBody` must not capture a stale `BuildContext` beyond what Flutter already does for StatelessWidgets — cache at the widget instance level returned from `build` is OK if style sheet is recomputed into the key.
 
@@ -826,27 +826,37 @@ In `_AiThreadState`:
 1. Keep sticky / load-older / opacity reveal logic (`_restoreScrollAfterOlderLoad` must still run after prepend).
 2. On message sync: `turns = reuseTurnsIfSameMembership(...)`; for each turn whose `turnContentIdentity` changed vs previous snapshot, `heightCache.invalidate(turn.id)`.
 3. Build message map `id → AiMessage`.
-4. `turnBuilder`: for each `messageId`, resolve message; skip null; wrap:
+4. `turnBuilder`: for each turn, render **all** `turn.messageIds` in a `Column` (one message per id). For each id, resolve from the map; skip null; wrap each message:
 
 ```dart
-RepaintBoundary(
-  child: Align(
-    alignment: Alignment.topCenter,
-    child: Padding(
-      padding: EdgeInsets.symmetric(horizontal: aiTheme.threadHorizontalPadding),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: aiTheme.threadMaxWidth),
-        child: _buildMessage(
-          context,
-          message,
-          isLast: message.id == _messages.last.id,
+Column(
+  crossAxisAlignment: CrossAxisAlignment.stretch,
+  children: [
+    for (final messageId in turn.messageIds)
+      if (byId[messageId] case final message?)
+        RepaintBoundary(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: aiTheme.threadHorizontalPadding,
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: aiTheme.threadMaxWidth),
+                child: _buildMessage(
+                  context,
+                  message,
+                  isLast: message.id == _messages.last.id,
+                ),
+              ),
+            ),
+          ),
         ),
-      ),
-    ),
-  ),
+  ],
 )
 ```
 
+Preserve existing sticky / scroll-to-bottom / hide-until-stuck coverage in `ai_thread_test.dart` — those cases must stay green after the swap.
 5. Pass `stickIntent: _stickIntent`, `overscan: kThreadOverscan`, and the same list padding `EdgeInsets.fromLTRB(0, 16, 0, 24)` into viewport so measure updates call `_stickToBottomIfNeeded` instead of fighting scroll.
 6. Header: existing load-older header when `hasOlder`.
 7. In `ai_message_view.dart`: wrap role switch output in `RepaintBoundary`; remove user-bubble `IntrinsicWidth` (keep max-width `ConstrainedBox` + Align end) so measured heights stay stable.
