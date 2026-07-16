@@ -1,5 +1,7 @@
 import 'package:ai_message_ui/ai_message_ui.dart';
+import 'package:ai_message_ui/src/markdown/compiled_text_part_view.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -32,26 +34,30 @@ void main() {
     expect(sheet.tableCellsPadding, isNotNull);
   });
 
-  testWidgets('AiTextPartView renders GFM table and forwards onTapLink', (
-    tester,
-  ) async {
-    String? tappedHref;
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: AiTextPartView(
-            text: '| A | B |\n| --- | --- |\n| 1 | 2 |\n\n[link](https://example.com)',
-            onTapLink: (text, href, title) {
-              tappedHref = href;
-            },
+  testWidgets(
+    'AiTextPartView uses compiled path for GFM table and onTapLink',
+    (tester) async {
+      String? tappedHref;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: AiTextPartView(
+              text:
+                  '| A | B |\n| --- | --- |\n| 1 | 2 |\n\n[link](https://example.com)',
+              onTapLink: (text, href, title) {
+                tappedHref = href;
+              },
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.byType(Table), findsOneWidget);
-    await tester.tap(find.text('link'));
-    await tester.pump();
-    expect(tappedHref, 'https://example.com');
-  });
+      expect(find.byType(CompiledTextPartView), findsOneWidget);
+      expect(find.byType(MarkdownBody), findsNothing);
+      expect(find.byType(Table), findsOneWidget);
+      await tester.tap(find.text('link'));
+      await tester.pump();
+      expect(tappedHref, 'https://example.com');
+    },
+  );
 }

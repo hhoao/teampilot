@@ -1,136 +1,37 @@
-import 'package:ai_message_ui/src/parts/text_part_view.dart';
-import 'package:ai_message_ui/src/theme.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:ai_message_ui/src/markdown/content_compiler.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('same key reuses entry — debugLength stays 1', () {
-    final cache = MarkdownBodyCache();
-    final a = cache.getOrCreate('hello|default', () => const SizedBox());
-    final b = cache.getOrCreate('hello|default', () => const SizedBox());
+  setUp(clearMessageContentCache);
+
+  test('same markdown reuses identical cached document', () {
+    final a = compileMessageContent('hello **world**');
+    final b = compileMessageContent('hello **world**');
     expect(identical(a, b), isTrue);
-    expect(cache.debugLength, 1);
+    expect(messageContentCacheHits, 1);
+    expect(messageContentCacheLength, 1);
   });
 
-  test('different text keys create separate entries', () {
-    final cache = MarkdownBodyCache();
-    cache.getOrCreate('one|default', () => const SizedBox());
-    cache.getOrCreate('two|default', () => const SizedBox());
-    expect(cache.debugLength, 2);
+  test('different markdown creates separate cache entries', () {
+    compileMessageContent('one');
+    compileMessageContent('two');
+    expect(messageContentCacheLength, 2);
+    expect(messageContentCacheHits, 0);
   });
 
-  test('evicts oldest when over maxEntries', () {
-    final cache = MarkdownBodyCache(maxEntries: 2);
-    cache.getOrCreate('a|default', () => const SizedBox());
-    cache.getOrCreate('b|default', () => const SizedBox());
-    cache.getOrCreate('c|default', () => const SizedBox());
-    expect(cache.debugLength, 2);
-    // Oldest key 'a' should be gone; rebuilding returns a new widget.
-    final rebuilt = cache.getOrCreate('a|default', () => const Text('new'));
-    expect(cache.debugLength, 2);
-    expect(rebuilt, isA<Text>());
-  });
+  test('evicts oldest when over maxEntries (64)', () {
+    for (var i = 0; i < 64; i++) {
+      compileMessageContent('slot-$i');
+    }
+    expect(messageContentCacheLength, 64);
 
-  group('markdownBodyCacheKey', () {
-    final light = ThemeData(brightness: Brightness.light);
-    final dark = ThemeData(brightness: Brightness.dark);
-    const ai = AiMessageTheme();
+    compileMessageContent('slot-overflow');
+    expect(messageContentCacheLength, 64);
 
-    test('same inputs produce identical keys', () {
-      final a = markdownBodyCacheKey(
-        preparedMarkdown: 'hi',
-        theme: light,
-        aiTheme: ai,
-      );
-      final b = markdownBodyCacheKey(
-        preparedMarkdown: 'hi',
-        theme: light,
-        aiTheme: ai,
-      );
-      expect(a, b);
-    });
-
-    test('brightness change yields different style key', () {
-      final lightKey = markdownBodyCacheKey(
-        preparedMarkdown: 'hi',
-        theme: light,
-        aiTheme: ai,
-      );
-      final darkKey = markdownBodyCacheKey(
-        preparedMarkdown: 'hi',
-        theme: dark,
-        aiTheme: ai,
-      );
-      expect(lightKey, isNot(darkKey));
-    });
-
-    test('AiMessageTheme mutedSurface / codeBlockRadius affect key', () {
-      final base = markdownBodyCacheKey(
-        preparedMarkdown: 'hi',
-        theme: light,
-        aiTheme: ai,
-      );
-      final muted = markdownBodyCacheKey(
-        preparedMarkdown: 'hi',
-        theme: light,
-        aiTheme: const AiMessageTheme(mutedSurface: Color(0xFF112233)),
-      );
-      final radius = markdownBodyCacheKey(
-        preparedMarkdown: 'hi',
-        theme: light,
-        aiTheme: const AiMessageTheme(codeBlockRadius: 4),
-      );
-      expect(muted, isNot(base));
-      expect(radius, isNot(base));
-      expect(muted, isNot(radius));
-    });
-
-    test('custom markdownStyleSheet uses identity, not default tokens', () {
-      final sheet = MarkdownStyleSheet();
-      final a = markdownBodyCacheKey(
-        preparedMarkdown: 'hi',
-        theme: light,
-        aiTheme: AiMessageTheme(markdownStyleSheet: sheet),
-      );
-      final b = markdownBodyCacheKey(
-        preparedMarkdown: 'hi',
-        theme: dark, // brightness ignored when custom sheet is set
-        aiTheme: AiMessageTheme(markdownStyleSheet: sheet),
-      );
-      expect(a, b);
-      final otherSheet = MarkdownStyleSheet();
-      final c = markdownBodyCacheKey(
-        preparedMarkdown: 'hi',
-        theme: light,
-        aiTheme: AiMessageTheme(markdownStyleSheet: otherSheet),
-      );
-      expect(c, isNot(a));
-    });
-
-    test('onTapLink identity is part of the key', () {
-      void handler(String text, String? href, String title) {}
-      final without = markdownBodyCacheKey(
-        preparedMarkdown: 'hi',
-        theme: light,
-        aiTheme: ai,
-      );
-      final withLink = markdownBodyCacheKey(
-        preparedMarkdown: 'hi',
-        theme: light,
-        aiTheme: ai,
-        onTapLink: handler,
-      );
-      expect(withLink, isNot(without));
-      expect(
-        withLink,
-        markdownBodyCacheKey(
-          preparedMarkdown: 'hi',
-          theme: light,
-          aiTheme: ai,
-          onTapLink: handler,
-        ),
-      );
-    });
+    // Oldest key 'slot-0' should be gone; compiling it is a miss then insert.
+    final beforeHits = messageContentCacheHits;
+    compileMessageContent('slot-0');
+    expect(messageContentCacheHits, beforeHits);
+    expect(messageContentCacheLength, 64);
   });
 }
