@@ -4,7 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../cubits/chat/model/session_connect_request.dart';
@@ -180,7 +180,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
         AppToast.show(
           context,
           message: context.l10n.workspaceDeadTargetRemapFailed,
-          variant: AppToastVariant.error,
+          variant: TpToastVariant.error,
         );
       }
     } finally {
