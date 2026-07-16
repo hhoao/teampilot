@@ -8,8 +8,8 @@ import '../models/runtime_target.dart';
 import '../models/workspace_folder.dart';
 import '../models/workspace_topology.dart';
 import '../services/storage/home_target_controller.dart';
-import '../utils/workspace_path_picker.dart';
-import '../utils/workspace_path_utils.dart';
+import '../utils/workspace/workspace_path_picker.dart';
+import '../utils/workspace/workspace_path_utils.dart';
 import 'workspace_folder_directory_row.dart';
 
 /// Hint copy for the workspace folders settings section.

@@ -5,7 +5,7 @@ import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../../utils/app_keys.dart';
+import '../../utils/ui/app_keys.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:shared_ui/shared_ui.dart';

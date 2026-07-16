@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/ai/team_config_draft.dart';
-import 'package:teampilot/utils/team_member_naming.dart';
+import 'package:teampilot/utils/team/team_member_naming.dart';
 
 void main() {
   test('parses members + team fields; model/effort/cli left unset', () {

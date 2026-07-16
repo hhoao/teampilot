@@ -8,7 +8,7 @@ import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../services/session/ai_history_loader.dart';
 import '../services/session/session_history_pagination.dart';
-import '../utils/logger.dart';
+import '../utils/logging/logger.dart';
 
 /// Host-local AI history status — not session connect / "starting…".
 enum AiHistoryViewStatus { loading, ready, empty, error }

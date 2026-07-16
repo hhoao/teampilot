@@ -17,7 +17,7 @@ import '../../theme/workspace_topology_colors.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import '../../widgets/tab_close_button.dart';
 import '../../widgets/notification/notification_bell_button.dart';
-import '../../utils/context_menu_position.dart';
+import '../../utils/ui/context_menu_position.dart';
 import '../../widgets/team_pilot_brand_logo.dart';
 import '../../widgets/window_chrome_controls.dart';
 import '../../widgets/window_drag_area.dart';

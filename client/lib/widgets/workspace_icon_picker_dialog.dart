@@ -5,7 +5,7 @@ import '../l10n/l10n_extensions.dart';
 import '../models/workspace.dart';
 import '../models/workspace_icon_picker_result.dart';
 import '../models/workspace_icon_ref.dart';
-import '../utils/workspace_geometry_catalog.dart';
+import '../utils/workspace/workspace_geometry_catalog.dart';
 import 'workspace_icon.dart';
 import 'package:shared_ui/shared_ui.dart';
 

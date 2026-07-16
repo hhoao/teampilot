@@ -9,7 +9,7 @@ import '../../models/skill.dart';
 import '../../services/skill/skill_repo_disk_cache_service.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';
-import '../../utils/skill_repo_parse.dart';
+import '../../utils/github/skill_repo_parse.dart';
 import 'skill_management_cards.dart';
 
 class SkillReposSection extends StatefulWidget {

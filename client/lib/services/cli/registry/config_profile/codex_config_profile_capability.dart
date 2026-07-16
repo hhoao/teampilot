@@ -17,7 +17,7 @@ import '../../../launch/work_plane_paths.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../session/member_role_provision.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
-import '../../../../utils/trusted_project_paths.dart';
+import '../../../../utils/workspace/trusted_project_paths.dart';
 import '../capabilities/config_profile_capability.dart';
 
 /// Codex CLI launch: provisions provider `auth.json` + `config.toml` under

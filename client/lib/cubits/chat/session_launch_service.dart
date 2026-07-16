@@ -30,8 +30,8 @@ import 'session_launch_host.dart';
 
 export 'session_launch_host.dart';
 import '../../services/terminal/terminal_session.dart';
-import '../../utils/logger.dart';
-import '../../utils/team_member_naming.dart';
+import '../../utils/logging/logger.dart';
+import '../../utils/team/team_member_naming.dart';
 import 'chat_tab_store.dart';
 import 'model/chat_state.dart';
 import 'model/chat_tab.dart';

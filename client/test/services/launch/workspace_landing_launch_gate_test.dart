@@ -9,7 +9,7 @@ import 'package:teampilot/services/launch/workspace_landing_launch_gate.dart';
 import 'package:teampilot/services/remote/remote_cli_readiness.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/team/team_config_launch_validator.dart';
-import 'package:teampilot/utils/team_member_naming.dart';
+import 'package:teampilot/utils/team/team_member_naming.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

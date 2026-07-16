@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../../models/git_status.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import '../storage/runtime_context.dart';
 import 'git_command_runner.dart';
 

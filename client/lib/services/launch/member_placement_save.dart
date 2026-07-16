@@ -2,7 +2,7 @@ import '../../models/team_config.dart';
 import '../../models/team_roster_slot.dart';
 import '../../models/workspace_folder.dart';
 import '../../models/workspace_topology.dart';
-import '../../utils/team_member_naming.dart';
+import '../../utils/team/team_member_naming.dart';
 
 class PreparedMemberPlacementSave {
   const PreparedMemberPlacementSave({

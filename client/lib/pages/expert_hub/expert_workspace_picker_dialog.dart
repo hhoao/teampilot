@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
-import '../../utils/workspace_display_name.dart';
+import '../../utils/workspace/workspace_display_name.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/workspace_icon.dart';
 

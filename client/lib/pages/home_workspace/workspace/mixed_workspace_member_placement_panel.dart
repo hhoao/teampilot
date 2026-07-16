@@ -17,7 +17,7 @@ import '../../../repositories/ssh_profile_repository.dart';
 import '../../../services/remote/remote_cli_readiness.dart';
 import '../../../services/storage/home_target_controller.dart';
 import '../../../services/workspace/target_liveness.dart';
-import '../../../utils/team_member_naming.dart';
+import '../../../utils/team/team_member_naming.dart';
 import '../../../widgets/workspace/workspace_dead_target_remap_dialog.dart';
 import 'remote_cli_machine_readiness_panel.dart';
 

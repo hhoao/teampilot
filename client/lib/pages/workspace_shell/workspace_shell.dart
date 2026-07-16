@@ -3,7 +3,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../theme/app_spacing.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../../utils/app_keys.dart';
+import '../../utils/ui/app_keys.dart';
 import 'workspace_shell_models.dart';
 import 'workspace_shell_tabs.dart';
 

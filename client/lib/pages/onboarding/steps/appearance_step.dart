@@ -6,7 +6,7 @@ import '../../../cubits/layout_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/layout_preferences.dart';
 import '../../../theme/app_theme.dart';
-import '../../../utils/app_keys.dart';
+import '../../../utils/ui/app_keys.dart';
 import '../../../widgets/settings/theme_color_preset_picker.dart';
 import 'onboarding_step_scaffold.dart';
 

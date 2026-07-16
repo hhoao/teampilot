@@ -4,7 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../utils/app_keys.dart';
+import '../../utils/ui/app_keys.dart';
 
 class LayoutRegionVisibilitySection extends StatelessWidget {
   const LayoutRegionVisibilitySection({super.key});

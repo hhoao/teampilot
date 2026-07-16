@@ -20,7 +20,7 @@ import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import '../../support/stub_member_roster_service.dart';
-import 'package:teampilot/utils/team_member_naming.dart';
+import 'package:teampilot/utils/team/team_member_naming.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';

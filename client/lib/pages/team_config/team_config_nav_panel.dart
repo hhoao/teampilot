@@ -4,7 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
 import '../../utils/debounce/debounce.dart';
-import '../../utils/team_member_naming.dart';
+import '../../utils/team/team_member_naming.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_section_host.dart';
 import 'dotted_border_container.dart';

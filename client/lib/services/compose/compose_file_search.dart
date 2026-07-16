@@ -1,6 +1,6 @@
 import 'package:path/path.dart' as p;
 
-import '../../utils/workspace_path_utils.dart';
+import '../../utils/workspace/workspace_path_utils.dart';
 import '../io/filesystem.dart';
 
 class ComposeFileCandidate {

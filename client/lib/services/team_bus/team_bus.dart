@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import 'agent_node.dart';
 import 'bus_feed_entry.dart';
 import 'cancellation.dart';

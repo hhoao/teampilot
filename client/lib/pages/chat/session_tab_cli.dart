@@ -3,7 +3,7 @@ import '../../models/team_config.dart';
 import '../../cubits/chat/model/chat_tab.dart';
 import '../../models/app_session.dart';
 import '../../services/cli/preset_resolver.dart';
-import '../../utils/team_member_naming.dart';
+import '../../utils/team/team_member_naming.dart';
 
 /// CLI brand shown on a workspace session tab.
 CliTool resolveSessionTabCli({

@@ -18,8 +18,8 @@
 
 | Path | Responsibility |
 |------|----------------|
-| Create: `client/lib/utils/members_machine_groups.dart` | `MembersMachineGroup`, `groupMembersByMachine`, pin resolve helpers |
-| Create: `client/test/utils/members_machine_groups_test.dart` | Pure grouping tests |
+| Create: `client/lib/utils/team/members_machine_groups.dart` | `MembersMachineGroup`, `groupMembersByMachine`, pin resolve helpers |
+| Create: `client/test/utils/team/members_machine_groups_test.dart` | Pure grouping tests |
 | Modify: `client/lib/widgets/right_tools/members_panel.dart` | Render sections when `groups.length >= 2` |
 | Modify: `client/lib/widgets/right_tools/right_tools_tool_views.dart` | Resolve `memberTargets`; convert `_ScopedMembersPanel` to **StatefulWidget** to async-load `HomeTargetController.listSelectable()`; pass into `MembersPanel` |
 
@@ -28,16 +28,16 @@
 ### Task 1: Pure grouping helper (TDD)
 
 **Files:**
-- Create: `client/lib/utils/members_machine_groups.dart`
-- Test: `client/test/utils/members_machine_groups_test.dart`
+- Create: `client/lib/utils/team/members_machine_groups.dart`
+- Test: `client/test/utils/team/members_machine_groups_test.dart`
 
 - [ ] **Step 1: Write the failing tests**
 
 ```dart
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/utils/members_machine_groups.dart';
-import 'package:teampilot/utils/team_member_naming.dart';
+import 'package:teampilot/utils/team/members_machine_groups.dart';
+import 'package:teampilot/utils/team/team_member_naming.dart';
 
 TeamMemberConfig _m(String id, {String name = ''}) => TeamMemberConfig(
   id: id,
@@ -103,7 +103,7 @@ void main() {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd client && flutter test test/utils/members_machine_groups_test.dart`
+Run: `cd client && flutter test test/utils/team/members_machine_groups_test.dart`
 
 Expected: FAIL (library / symbol not found)
 
@@ -179,13 +179,13 @@ List<TeamMemberConfig> _leadFirst(List<TeamMemberConfig> list) {
 
 - [ ] **Step 4: Run tests — expect PASS**
 
-Run: `cd client && flutter test test/utils/members_machine_groups_test.dart`
+Run: `cd client && flutter test test/utils/team/members_machine_groups_test.dart`
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add client/lib/utils/members_machine_groups.dart \
-  client/test/utils/members_machine_groups_test.dart
+git add client/lib/utils/team/members_machine_groups.dart \
+  client/test/utils/team/members_machine_groups_test.dart
 git commit -m "feat: add members_machine_groups pure grouping helper"
 ```
 
@@ -196,7 +196,7 @@ git commit -m "feat: add members_machine_groups pure grouping helper"
 **Files:**
 - Modify: `client/lib/widgets/right_tools/members_panel.dart`
 - Modify: `client/lib/widgets/right_tools/right_tools_tool_views.dart`
-- Test: extend `client/test/utils/members_machine_groups_test.dart` if needed (optional widget test skipped unless cheap)
+- Test: extend `client/test/utils/team/members_machine_groups_test.dart` if needed (optional widget test skipped unless cheap)
 
 - [ ] **Step 1: Resolve targets in `_buildViews` / `_ScopedMembersPanel`**
 
@@ -276,7 +276,7 @@ No member count in header. Extract existing tile body into a private method to a
 
 - [ ] **Step 4: Manual / analyze**
 
-Run: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings lib/widgets/right_tools/members_panel.dart lib/widgets/right_tools/right_tools_tool_views.dart lib/utils/members_machine_groups.dart`
+Run: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings lib/widgets/right_tools/members_panel.dart lib/widgets/right_tools/right_tools_tool_views.dart lib/utils/team/members_machine_groups.dart`
 
 Expected: no errors
 
@@ -293,7 +293,7 @@ git commit -m "feat: group Members panel by machine when mixed multi-host"
 ## Verification
 
 ```bash
-cd client && flutter test test/utils/members_machine_groups_test.dart
+cd client && flutter test test/utils/team/members_machine_groups_test.dart
 cd client && flutter analyze --no-fatal-infos --no-fatal-warnings
 ```
 

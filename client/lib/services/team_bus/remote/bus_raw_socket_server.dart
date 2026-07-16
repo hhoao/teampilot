@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import '../../../utils/logger.dart';
+import '../../../utils/logging/logger.dart';
 import '../cancellation.dart';
 import '../mcp/jsonrpc.dart';
 import '../mcp/teammate_bus_mcp_handler.dart';

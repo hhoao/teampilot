@@ -14,7 +14,7 @@ import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/plugin/profile_plugin_linker_service.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 import 'package:teampilot/models/team_roster_slot.dart';
-import 'package:teampilot/utils/team_member_naming.dart';
+import 'package:teampilot/utils/team/team_member_naming.dart';
 
 import '../support/post_frame_test_harness.dart';
 

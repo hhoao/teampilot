@@ -1,5 +1,5 @@
 import '../../models/team_config.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
 import 'materialization_manifest.dart';
 import 'remote_credential_materializer.dart';

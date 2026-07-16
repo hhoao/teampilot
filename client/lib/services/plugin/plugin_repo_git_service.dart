@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:path/path.dart' as p;
 
 import '../../models/plugin.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import '../cli/cli_tool_locator.dart';
 import '../io/filesystem.dart';
 import 'plugin_exceptions.dart';

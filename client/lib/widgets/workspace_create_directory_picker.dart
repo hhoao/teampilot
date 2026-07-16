@@ -6,8 +6,8 @@ import '../l10n/l10n_extensions.dart';
 import '../models/runtime_target.dart';
 import '../models/workspace_folder.dart';
 import '../services/storage/home_target_controller.dart';
-import '../utils/workspace_path_picker.dart';
-import '../utils/workspace_path_utils.dart';
+import '../utils/workspace/workspace_path_picker.dart';
+import '../utils/workspace/workspace_path_utils.dart';
 import 'workspace_folder_directory_row.dart';
 
 /// Compact directory picker for the "new workspace" dialogs: pick a machine,

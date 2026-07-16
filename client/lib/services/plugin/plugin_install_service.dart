@@ -4,7 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 
 import '../../models/plugin.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import '../storage/app_storage.dart';
 import '../io/filesystem.dart';
 import 'plugin_exceptions.dart';

@@ -1,6 +1,6 @@
 import '../../models/workspace.dart';
 import '../../cubits/expert_hub_cubit.dart';
-import '../../utils/landing_draft_resolver.dart';
+import '../../utils/workspace/landing_draft_resolver.dart';
 import '../home_workspace/landing_prefs_store.dart';
 import 'composite_expert_hub_source.dart';
 import 'expert_capability_pack.dart';

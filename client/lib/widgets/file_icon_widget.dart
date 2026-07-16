@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../utils/file_icon.dart';
+import '../utils/ui/file_icon.dart';
 
 /// Renders a colored Material Icon Theme SVG for [fileName].
 ///

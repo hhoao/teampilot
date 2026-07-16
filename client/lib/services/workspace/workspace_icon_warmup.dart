@@ -5,9 +5,9 @@ import 'dart:ui' as ui;
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../models/workspace.dart';
-import '../../utils/workspace_geometry_catalog.dart';
-import '../../utils/workspace_icon_resolver.dart';
-import '../../utils/yield_ui_frame.dart';
+import '../../utils/workspace/workspace_geometry_catalog.dart';
+import '../../utils/workspace/workspace_icon_resolver.dart';
+import '../../utils/ui/yield_ui_frame.dart';
 import '../storage/app_storage.dart';
 import '../storage/workspace_layout.dart';
 import 'workspace_icon_service.dart';

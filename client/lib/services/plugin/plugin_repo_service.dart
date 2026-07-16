@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 
 import '../../models/plugin.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import '../storage/app_storage.dart';
 import '../storage/remote_file_store.dart';
 

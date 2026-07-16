@@ -3,7 +3,7 @@ import 'package:teampilot/models/ai_feature_setting.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/ai/team_config_draft.dart';
 import 'package:teampilot/services/ai/team_config_generator.dart';
-import 'package:teampilot/utils/team_member_naming.dart';
+import 'package:teampilot/utils/team/team_member_naming.dart';
 
 const _setting = AiFeatureSetting(
   cli: CliTool.claude,

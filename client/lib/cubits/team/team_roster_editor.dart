@@ -2,7 +2,7 @@ import '../../models/default_team_roster.dart';
 import '../../models/team_config.dart';
 import '../../models/team_roster_slot.dart';
 import '../../services/storage/launch_profile_provisioner.dart';
-import '../../utils/team_member_naming.dart';
+import '../../utils/team/team_member_naming.dart';
 
 /// Outcome of a roster mutation: either an [team] to persist, or a
 /// [statusMessage] explaining why the mutation was rejected. Exactly one of

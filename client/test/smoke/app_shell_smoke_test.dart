@@ -13,7 +13,7 @@ import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
 import 'package:teampilot/router/app_router.dart';
 import 'package:teampilot/services/workspace/workspace_pane_policy.dart';
 import 'package:teampilot/theme/app_theme.dart';
-import 'package:teampilot/utils/app_keys.dart';
+import 'package:teampilot/utils/ui/app_keys.dart';
 
 import '../support/desktop_app_harness.dart';
 import '../support/fake_terminal_session.dart';

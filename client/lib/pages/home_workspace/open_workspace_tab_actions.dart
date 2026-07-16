@@ -8,7 +8,7 @@ import '../../models/workspace.dart';
 import '../../models/workspace_folder.dart';
 import '../../models/workspace_topology.dart';
 import '../../models/runtime_target.dart';
-import '../../utils/workspace_display_name.dart';
+import '../../utils/workspace/workspace_display_name.dart';
 import 'home_workspace_tab_scope.dart';
 
 String workspaceTabDisplayLabel({

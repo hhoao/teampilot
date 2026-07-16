@@ -1,4 +1,4 @@
-import '../../../utils/logger.dart';
+import '../../../utils/logging/logger.dart';
 import 'bus_observation.dart';
 
 /// 领域事件的去处。默认 [LoggingBusEventSink];测试可注入捕获型 sink 做断言。

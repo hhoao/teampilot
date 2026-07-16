@@ -13,7 +13,7 @@ import 'dart:io';
 
 const _packageName = 'material-icon-theme';
 const _targetSvgDir = 'assets/file_icons';
-const _targetMappingFile = 'lib/utils/file_icon_mapping.g.dart';
+const _targetMappingFile = 'lib/utils/ui/file_icon_mapping.g.dart';
 
 Future<Directory> _prepareNpmPackage(List<String> args) async {
   final pkgArgIdx = args.indexOf('--npm-package');
@@ -145,7 +145,7 @@ Set<String> _collectReferencedIconNames(Map<String, dynamic> json) {
   return (copied: copied, missing: missing);
 }
 
-/// Writes lib/utils/file_icon_mapping.g.dart with sorted const maps.
+/// Writes lib/utils/ui/file_icon_mapping.g.dart with sorted const maps.
 void _writeMappingFile({
   required String version,
   required Map<String, dynamic> json,

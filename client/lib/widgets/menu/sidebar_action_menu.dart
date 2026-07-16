@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../../utils/context_menu_position.dart';
+import '../../utils/ui/context_menu_position.dart';
 import 'sidebar_action_menu_overlay.dart';
 
 export 'package:shared_ui/shared_ui.dart'

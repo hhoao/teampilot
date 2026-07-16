@@ -4,7 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../../utils/app_keys.dart';
+import '../../utils/ui/app_keys.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_library_view.dart';
 

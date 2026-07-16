@@ -11,7 +11,7 @@ import '../../models/mcp_catalog_listing.dart';
 import '../../models/mcp_server.dart';
 import '../../services/app/platform_utils.dart';
 import '../../services/mcp/mcp_listing_install_service.dart';
-import '../../utils/app_keys.dart';
+import '../../utils/ui/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_section_host.dart';

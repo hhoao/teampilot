@@ -2,7 +2,7 @@ import 'dart:async';
 
 import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import '../cli/installer_types.dart';
 import 'launch_artifacts.dart';
 import 'workspace_provisioner.dart';

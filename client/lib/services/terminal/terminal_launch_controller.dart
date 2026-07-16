@@ -7,7 +7,7 @@ import 'package:flutter_alacritty/flutter_alacritty.dart';
 
 import '../cli/cli_executable_validator.dart';
 import '../team/terminal_activity_tracker.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import 'terminal_startup_failure_detector.dart';
 import 'terminal_theme_mapper.dart';
 import 'terminal_transport.dart';

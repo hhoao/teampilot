@@ -12,7 +12,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
 import '../../repositories/session_repository.dart';
 import '../../utils/debounce/debounce.dart';
-import '../../utils/workspace_display_name.dart';
+import '../../utils/workspace/workspace_display_name.dart';
 
 /// Whether [location] is the workbench route for [workspaceId].
 bool isViewingWorkspaceRoute(String location, String workspaceId) {

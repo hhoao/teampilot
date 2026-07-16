@@ -6,8 +6,8 @@ import '../models/git_worktree.dart';
 import '../services/git/git_worktree_service.dart';
 import '../services/home_workspace/worktree_ui_prefs_store.dart';
 import '../services/workspace/workspace_worktree_store.dart';
-import '../utils/session_worktree_grouping.dart';
-import '../utils/workspace_path_utils.dart';
+import '../utils/session/session_worktree_grouping.dart';
+import '../utils/workspace/workspace_path_utils.dart';
 
 /// Narrow seam so tests inject a fake without a real GitWorktreeService.
 abstract class WorktreeLister {

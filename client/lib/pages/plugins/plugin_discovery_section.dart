@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/plugin_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/plugin.dart';
-import '../../utils/github_source_url.dart';
+import '../../utils/github/github_source_url.dart';
 import '../../widgets/github_details_button.dart';
 import 'plugin_management_cards.dart';
 

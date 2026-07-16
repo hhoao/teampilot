@@ -5,7 +5,7 @@ import '../../models/team_config.dart';
 import '../cli/registry/capabilities/plugin_manifest_paths.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import 'cli_plugin_layout.dart';
 import 'cli_plugin_provision_cache.dart';
 import 'installed_plugin_catalog.dart';

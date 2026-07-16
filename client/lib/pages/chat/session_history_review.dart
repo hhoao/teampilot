@@ -35,7 +35,7 @@ import '../../services/session/session_continue_overrides_apply.dart';
 import '../../services/session/session_history_pagination.dart';
 import '../../services/storage/app_storage.dart';
 import '../../theme/app_markdown_style_sheet.dart';
-import '../../utils/team_member_naming.dart';
+import '../../utils/team/team_member_naming.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
 import 'ai_thread_selection_context_menu.dart';
 import 'session_review_compose_card.dart';

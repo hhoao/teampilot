@@ -1,5 +1,5 @@
 import '../services/team_hub/builtin_team_templates.dart';
-import '../utils/team_member_naming.dart';
+import '../utils/team/team_member_naming.dart';
 import 'team_roster_slot.dart';
 
 /// Default roster slots for a newly created team (leader + developer + reviewer).

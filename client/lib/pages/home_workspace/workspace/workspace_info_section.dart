@@ -11,7 +11,7 @@ import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../models/workspace_topology.dart';
 import '../../../widgets/workspace_topology_chip.dart';
-import '../../../utils/workspace_display_name.dart';
+import '../../../utils/workspace/workspace_display_name.dart';
 import '../workspace_actions.dart';
 import 'config/workspace_folders_section.dart';
 import 'config/workspace_team_member_targets_section.dart';

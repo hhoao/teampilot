@@ -5,7 +5,7 @@ import '../../models/workspace.dart';
 import '../../models/workspace_folder.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/storage/app_storage.dart';
-import '../../utils/workspace_path_utils.dart';
+import '../../utils/workspace/workspace_path_utils.dart';
 import '../expert_hub/expert_member_materializer.dart';
 
 /// First-launch bootstrap for the built-in workspace and starter sessions.

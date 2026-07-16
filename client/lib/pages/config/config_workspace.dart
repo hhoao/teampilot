@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../cubits/config_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../utils/app_keys.dart';
+import '../../utils/ui/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/settings/settings_dialog.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';

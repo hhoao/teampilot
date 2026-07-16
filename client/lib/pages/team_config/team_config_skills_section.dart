@@ -8,7 +8,7 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
-import '../../utils/github_source_url.dart';
+import '../../utils/github/github_source_url.dart';
 import '../../widgets/github_details_button.dart';
 import 'team_config_cards.dart';
 import 'package:teampilot/theme/workspace_surface_layers.dart';

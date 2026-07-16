@@ -15,7 +15,7 @@ import '../../services/terminal/terminal_uri_opener.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workspace_dnd/terminal_drop_ingestor.dart';
 import '../../services/workspace_dnd/workspace_drop_target.dart';
-import '../../utils/team_member_naming.dart';
+import '../../utils/team/team_member_naming.dart';
 import '../../widgets/terminal/parked_send_overlay.dart';
 import '../../widgets/terminal/teampilot_alacritty_terminal.dart';
 import '../../widgets/terminal_find_bar.dart';

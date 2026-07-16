@@ -8,7 +8,7 @@ import '../../models/session_preferences.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/app/connection_mode_service.dart';
-import '../../utils/app_keys.dart';
+import '../../utils/ui/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import 'runtime_target_picker.dart';
 import 'session_config_constants.dart';

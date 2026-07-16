@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/llm_config.dart';
-import '../../utils/app_keys.dart';
+import '../../utils/ui/app_keys.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'llm_model_edit_dialog.dart';
 

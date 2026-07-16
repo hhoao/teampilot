@@ -9,7 +9,7 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/storage/app_storage.dart';
 import '../../utils/debounce/debounce.dart';
-import '../../utils/logger_utils.dart';
+import '../../utils/logging/logger_utils.dart';
 import 'log_viewer_content.dart';
 import 'log_viewer_filter.dart';
 import 'log_viewer_toolbar.dart';

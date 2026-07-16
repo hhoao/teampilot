@@ -10,7 +10,7 @@ import '../repositories/skill_repository.dart';
 import '../services/skill/skill_fetch_service.dart';
 import '../services/skill/skill_install_service.dart';
 import '../services/skill/skill_repo_disk_cache_service.dart';
-import '../utils/logger.dart';
+import '../utils/logging/logger.dart';
 
 enum SkillLoadStatus { idle, loading, ready, error }
 

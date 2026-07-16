@@ -1,4 +1,4 @@
-import '../../utils/trusted_project_paths.dart';
+import '../../utils/workspace/trusted_project_paths.dart';
 import '../cli/registry/config_profile/claude_config_profile_capability.dart';
 import '../cli/registry/config_profile/codex_config_profile_capability.dart';
 import '../cli/registry/config_profile/cursor_config_profile_capability.dart';

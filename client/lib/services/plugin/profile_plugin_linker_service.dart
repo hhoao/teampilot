@@ -1,5 +1,5 @@
 import '../../models/plugin.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import '../storage/app_storage.dart';
 import '../storage/runtime_layout.dart';
 import 'cli_plugin_layout.dart';

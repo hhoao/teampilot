@@ -3,7 +3,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import '../cli/preset_resolver.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
 import '../io/filesystem.dart';

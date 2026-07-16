@@ -8,7 +8,7 @@ import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/git_worktree.dart';
 import '../../../models/workspace.dart';
-import '../../../utils/workspace_path_utils.dart';
+import '../../../utils/workspace/workspace_path_utils.dart';
 import 'workspace_landing_selectors.dart';
 import 'package:shared_ui/shared_ui.dart';
 

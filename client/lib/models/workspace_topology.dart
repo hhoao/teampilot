@@ -2,8 +2,8 @@ import 'member_instance.dart';
 import 'runtime_target.dart';
 import 'team_config.dart';
 import 'workspace_folder.dart';
-import '../utils/team_member_naming.dart';
-import '../utils/workspace_path_utils.dart';
+import '../utils/team/team_member_naming.dart';
+import '../utils/workspace/workspace_path_utils.dart';
 
 /// Mixed-workspace machine pin per runtime instance (instanceId → targetId).
 typedef MemberTargetAssignments = Map<String, String>;

@@ -175,7 +175,7 @@ Session runtime dirs: `workspace/workspaces/{workspaceId}/sessions/{sessionId}/r
 | Storage layout | `workspace_layout.dart`, `runtime_layout.dart` |
 | Worktrees | `client/lib/services/workspace/workspace_worktree_registry.dart` |
 | Automations | `client/lib/services/automation/`, `client/lib/cubits/automation_cubit.dart` |
-| Session title from prompt | `client/lib/utils/first_user_line_capture.dart`, `session_display_title.dart` |
+| Session title from prompt | `client/lib/utils/terminal/first_user_line_capture.dart`, `client/lib/utils/session/session_display_title.dart` |
 | Extensions | `client/lib/services/extension/`, `extension_repository.dart`, `extension_cubit.dart` |
 | Shared UI / Tp design system | `client/packages/shared_ui` — cross-route `Tp*` primitives + `TpTheme` / `TpTextStyles` / `TpFontTheme`; wrap `MaterialApp` with `TpTheme` (see package README) |
 | Product / domain chrome | `client/lib/widgets/` — app-specific layout reused across routes (not new generic controls) |

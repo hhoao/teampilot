@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import 'language_registry.dart';
 import 'tree_sitter_worker_pool.dart';
 import 'worker_protocol.dart';

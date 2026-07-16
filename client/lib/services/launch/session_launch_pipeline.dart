@@ -17,7 +17,7 @@ import '../../models/workspace.dart';
 import '../../models/workspace_topology.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/terminal/terminal_session.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import 'launch_operation.dart';
 import 'launch_outcome.dart';
 import 'session_default_materializer.dart';

@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import '../../models/skill.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import '../storage/app_storage.dart';
 import '../io/filesystem.dart';
 import 'skill_fetch_service.dart';

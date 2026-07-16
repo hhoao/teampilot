@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:path/path.dart' as p;
 
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import 'filesystem.dart';
 
 /// Watches a workspace [root] for filesystem changes and exposes a single

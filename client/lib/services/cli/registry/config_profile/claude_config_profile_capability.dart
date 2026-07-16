@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import '../../../../models/claude_credential_link_result.dart';
 import '../../../../models/team_config.dart';
-import '../../../../utils/team_member_naming.dart';
+import '../../../../utils/team/team_member_naming.dart';
 import '../../../provider/claude/claude_effort_capability.dart';
 import '../../../provider/claude/claude_official_provider.dart';
 import '../capabilities/cli_effort_capability.dart';
@@ -18,7 +18,7 @@ import '../capabilities/config_profile_capability.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import 'bus_idle_stop_hook.dart';
-import '../../../../utils/logger.dart';
+import '../../../../utils/logging/logger.dart';
 
 void _logClaudeContributeLaunchStep(
   Stopwatch sw,

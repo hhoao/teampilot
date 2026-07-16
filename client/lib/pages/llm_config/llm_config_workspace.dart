@@ -7,7 +7,7 @@ import '../../cubits/llm_config_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../services/app/platform_utils.dart';
-import '../../utils/app_keys.dart';
+import '../../utils/ui/app_keys.dart';
 import '../../widgets/app_provider/app_provider_detail_panel.dart';
 import '../../widgets/app_provider/app_provider_form_sheet.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';

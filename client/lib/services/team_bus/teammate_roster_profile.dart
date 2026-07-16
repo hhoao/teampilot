@@ -1,7 +1,7 @@
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../cli/preset_resolver.dart';
-import '../../utils/team_member_naming.dart';
+import '../../utils/team/team_member_naming.dart';
 
 /// 成员静态配置（对齐 Claude `teams/<name>/config.json` member 行 + TeamPilot 字段）。
 class TeammateRosterProfile {

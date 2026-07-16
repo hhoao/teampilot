@@ -9,7 +9,7 @@ import '../cubits/app_update_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../pages/system/log_config_workspace.dart';
 import '../pages/onboarding/onboarding_gate.dart';
-import '../utils/app_keys.dart';
+import '../utils/ui/app_keys.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
 
 /// About / app update section inside [ConfigWorkspace] (desktop split or Android hub).

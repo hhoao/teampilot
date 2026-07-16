@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../utils/logger.dart';
+import '../utils/logging/logger.dart';
 import '../services/team/runtime_roster_cache.dart';
 import '../models/app_session.dart';
 import '../models/member_presence.dart';

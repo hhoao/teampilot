@@ -7,7 +7,7 @@ import '../cubits/app_update_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_release_info.dart';
 import '../router/app_router.dart';
-import '../utils/changelog_parser.dart';
+import '../utils/ui/changelog_parser.dart';
 
 /// Popup shown when [AppUpdateCubit] surfaces a newer release (e.g. on the
 /// startup auto-check). Drives download/install through the shared cubit so the

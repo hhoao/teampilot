@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../utils/team_member_naming.dart';
+import '../utils/team/team_member_naming.dart';
 import 'skill.dart';
 import 'team_config.dart';
 import 'team_roster_slot.dart';

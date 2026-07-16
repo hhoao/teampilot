@@ -9,8 +9,8 @@ import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
 import '../services/storage/app_storage.dart';
 import '../services/storage/workspace_layout.dart';
-import '../utils/workspace_geometry_catalog.dart';
-import '../utils/workspace_icon_resolver.dart';
+import '../utils/workspace/workspace_geometry_catalog.dart';
+import '../utils/workspace/workspace_icon_resolver.dart';
 
 /// Renders a workspace avatar from [Workspace.icon].
 class WorkspaceIcon extends StatelessWidget {

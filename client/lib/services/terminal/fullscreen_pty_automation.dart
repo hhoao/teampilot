@@ -3,7 +3,7 @@ import 'fullscreen_input_screen_probe.dart';
 import 'fullscreen_pty_delivery_port.dart';
 import 'pty_automation_needle.dart';
 import 'pty_inject_ack_retry.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 
 /// Outcome of a full-screen paste+CR or CR-only automation pass.
 enum FullscreenPtyDeliveryOutcome {

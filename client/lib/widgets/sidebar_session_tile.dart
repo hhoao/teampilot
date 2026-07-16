@@ -14,7 +14,7 @@ import '../pages/automations/automation_editor_dialog.dart';
 import '../pages/automations/automations_dialog.dart';
 import '../pages/home_workspace/workspace/workspace_sidebar_row_metrics.dart';
 import '../repositories/session_repository.dart';
-import '../utils/coarse_relative_time.dart';
+import '../utils/ui/coarse_relative_time.dart';
 import '../utils/debounce/debounce.dart';
 import 'menu/sidebar_action_menu.dart';
 import 'session_working_spinner.dart';

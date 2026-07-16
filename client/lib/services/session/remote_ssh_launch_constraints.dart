@@ -1,6 +1,6 @@
 import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import '../ssh/ssh_member_session.dart';
 import '../ssh/ssh_run_result.dart';
 import 'shell_launch_spec.dart';

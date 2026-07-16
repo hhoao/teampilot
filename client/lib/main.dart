@@ -78,7 +78,7 @@ import 'theme/workspace_surface_layers.dart';
 import 'theme/app_typography_scale.dart';
 import 'pages/system/error_page.dart';
 import 'services/automation/automation_scheduler.dart';
-import 'utils/logger.dart';
+import 'utils/logging/logger.dart';
 import 'widgets/app_text_scale_boundary.dart';
 import 'widgets/app_update_available_dialog.dart';
 import 'widgets/ui_zoom.dart';

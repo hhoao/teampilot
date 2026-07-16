@@ -14,7 +14,7 @@ import '../services/cli/registry/capabilities/provider_credential_capability.dar
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/provider/provider_import_service.dart';
 import '../services/provider/tool_config_generator.dart';
-import '../utils/logger.dart';
+import '../utils/logging/logger.dart';
 
 class AppProviderState extends Equatable {
   const AppProviderState({

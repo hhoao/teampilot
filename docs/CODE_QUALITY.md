@@ -125,7 +125,7 @@ Shared pieces for multiple sections on the **same** screen (e.g. `mcp_shared_wid
 ## Errors and logging
 
 - Expected failures (install failed, probe miss) → result types or cubit error state; **no** silent catches.
-- User copy → **l10n + cubit state**; diagnostics → **`AppLogger`** (`utils/logger.dart`). **No** `print`; do not rely on `debugPrint` as persistent logging.
+- User copy → **l10n + cubit state**; diagnostics → **`AppLogger`** (`utils/logging/logger.dart`). **No** `print`; do not rely on `debugPrint` as persistent logging.
 - Follow [DEBUGGING.md](DEBUGGING.md) for framework/engine errors before changing app logic.
 
 ## Models and code generation

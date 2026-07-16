@@ -4,7 +4,7 @@ import 'package:synchronized/synchronized.dart';
 
 import '../models/workspace.dart';
 import '../services/io/local_filesystem.dart';
-import '../utils/logger.dart';
+import '../utils/logging/logger.dart';
 import 'index_snapshot_isolate.dart';
 import 'session_repository_fs.dart';
 

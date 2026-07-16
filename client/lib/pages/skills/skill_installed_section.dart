@@ -9,7 +9,7 @@ import '../../cubits/skill_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/skill.dart';
 import '../../utils/debounce/debounce.dart';
-import '../../utils/github_source_url.dart';
+import '../../utils/github/github_source_url.dart';
 import '../../widgets/github_details_button.dart';
 import 'skill_management_cards.dart';
 import 'package:teampilot/theme/workspace_surface_layers.dart';

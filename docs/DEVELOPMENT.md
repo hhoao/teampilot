@@ -27,7 +27,7 @@ Work inside `client`:
 cd client
 flutter pub get
 dart run tool/sync_bundled_google_fonts.dart   # first run / after clean: Noto Sans SC (~50MB, gitignored)
-dart run tool/sync_material_icons.dart      # file type icons: regenerates lib/utils/file_icon_mapping.g.dart and assets/file_icons/*.svg
+dart run tool/sync_material_icons.dart      # file type icons: regenerates lib/utils/ui/file_icon_mapping.g.dart and assets/file_icons/*.svg
 dart run native_splash_screen_cli gen         # Linux/Windows native splash sources (gitignored; required before desktop build)
 flutter run -d linux      # or macos, windows, android
 ```
@@ -38,7 +38,7 @@ Regenerate after changing `native_splash_screen.yaml` or on a fresh clone before
 desktop build. CI runs the same `gen` step.
 
 - File type icons (VSCode Material Icon Theme): `dart run tool/sync_material_icons.dart`
-  — regenerates `lib/utils/file_icon_mapping.g.dart` and `assets/file_icons/*.svg`
+  — regenerates `lib/utils/ui/file_icon_mapping.g.dart` and `assets/file_icons/*.svg`
   from the `material-icon-theme` npm package. Use `--npm-package <path>` to point
   at a pre-extracted package, `--force` to skip the version cache check.
 

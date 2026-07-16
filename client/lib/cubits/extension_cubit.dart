@@ -6,7 +6,7 @@ import '../models/extension_state.dart';
 import '../repositories/extension_repository.dart';
 import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_detector.dart';
-import '../utils/yield_ui_frame.dart';
+import '../utils/ui/yield_ui_frame.dart';
 
 enum ExtensionLoadStatus { idle, loading, ready, error }
 

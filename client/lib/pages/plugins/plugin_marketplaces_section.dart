@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/plugin_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/plugin.dart';
-import '../../utils/skill_repo_parse.dart';
+import '../../utils/github/skill_repo_parse.dart';
 import 'plugin_management_cards.dart';
 
 class PluginMarketplacesSection extends StatelessWidget {

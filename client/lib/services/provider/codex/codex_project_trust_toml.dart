@@ -1,4 +1,4 @@
-import '../../../utils/workspace_path_utils.dart';
+import '../../../utils/workspace/workspace_path_utils.dart';
 
 /// Injects Codex workspace trust tables into `config.toml`.
 ///

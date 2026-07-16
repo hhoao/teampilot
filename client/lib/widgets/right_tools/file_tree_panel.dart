@@ -17,7 +17,7 @@ import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/file_tree/file_tree_visible_rows.dart';
 import '../../services/storage/runtime_context.dart';
-import '../../utils/app_keys.dart';
+import '../../utils/ui/app_keys.dart';
 import '../file_tree_node.dart';
 import 'file_tree_header_overflow_menu.dart';
 import 'right_tools_lifecycle.dart';

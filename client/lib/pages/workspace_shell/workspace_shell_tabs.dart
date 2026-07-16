@@ -10,7 +10,7 @@ import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../../utils/app_keys.dart';
+import '../../utils/ui/app_keys.dart';
 import '../../widgets/tab_close_button.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';

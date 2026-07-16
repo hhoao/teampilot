@@ -3,7 +3,7 @@ import '../../models/credential_action_result.dart';
 import '../../services/provider/claude/claude_official_provider.dart';
 import '../../services/provider/claude/claude_provider_credentials_service.dart';
 import '../../services/provider/credential_binding.dart';
-import '../../utils/logger_utils.dart';
+import '../../utils/logging/logger_utils.dart';
 import 'provider_persistence_strategy.dart';
 
 /// Claude: probe official-account credentials on load; clean stale native dirs

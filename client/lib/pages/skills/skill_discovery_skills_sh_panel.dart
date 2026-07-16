@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/skill_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../utils/github_source_url.dart';
+import '../../utils/github/github_source_url.dart';
 import 'skill_discover_card.dart';
 import 'skill_discovery_helpers.dart';
 import 'skill_management_cards.dart';

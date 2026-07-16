@@ -5,8 +5,8 @@ import 'dart:typed_data';
 import '../team_bus/bus_user_line_capture.dart';
 import 'pending_user_message.dart';
 import 'terminal_color_scheme_report.dart';
-import '../../utils/every_user_line_capture.dart';
-import '../../utils/first_user_line_capture.dart';
+import '../../utils/terminal/every_user_line_capture.dart';
+import '../../utils/terminal/first_user_line_capture.dart';
 
 /// Engine→PTY byte path: user-line capture, bus intercept, OSC 997 stripping.
 ///

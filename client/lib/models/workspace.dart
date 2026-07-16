@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../utils/workspace_path_utils.dart';
+import '../utils/workspace/workspace_path_utils.dart';
 import 'workspace_folder.dart';
 import 'workspace_icon_ref.dart';
 import 'workspace_topology.dart';

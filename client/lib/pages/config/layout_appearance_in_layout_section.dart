@@ -8,7 +8,7 @@ import '../../models/layout_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_typography_scale.dart';
 import '../../theme/font_catalog.dart';
-import '../../utils/app_keys.dart';
+import '../../utils/ui/app_keys.dart';
 import '../../widgets/settings/font_preference_setting.dart';
 import '../../widgets/settings/theme_color_preset_picker.dart';
 import '../../widgets/settings/typography_scale_setting.dart';

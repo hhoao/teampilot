@@ -28,7 +28,7 @@ import 'package:teampilot/cubits/notification_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
-import 'package:teampilot/utils/workspace_tab_session_scope.dart';
+import 'package:teampilot/utils/session/workspace_tab_session_scope.dart';
 import 'package:teampilot/main.dart';
 import 'package:teampilot/models/llm_config.dart';
 import 'package:teampilot/models/runtime_target.dart';

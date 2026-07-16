@@ -4,7 +4,7 @@ import '../../cubits/chat/model/chat_state.dart';
 import '../../cubits/chat/session_launch_host.dart';
 import '../../models/app_session.dart';
 import '../../repositories/session_repository.dart';
-import '../../utils/session_display_title.dart';
+import '../../utils/session/session_display_title.dart';
 
 /// Auto-rename and debounced touch hooks driven by first/every user prompt lines.
 class SessionPromptMetadataSync {

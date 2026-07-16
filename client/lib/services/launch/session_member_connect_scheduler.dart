@@ -8,7 +8,7 @@ import '../../services/cli/preset_resolver.dart';
 import '../../services/launch/connect_shell_result.dart';
 import '../../services/launch/session_shell_connector.dart';
 import '../../services/terminal/terminal_session.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 
 typedef ShellForLaunchFn =
     TerminalSession Function({

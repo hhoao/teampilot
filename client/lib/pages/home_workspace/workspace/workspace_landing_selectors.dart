@@ -6,7 +6,7 @@ import '../../../models/git_worktree.dart';
 import '../../../models/runtime_target.dart';
 import '../../../models/workspace.dart';
 import '../../../models/workspace_topology.dart';
-import '../../../utils/workspace_path_utils.dart';
+import '../../../utils/workspace/workspace_path_utils.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
 import '../../../widgets/workspace_folder_directory_row.dart';
 import 'workspace_chat_landing_palette.dart';

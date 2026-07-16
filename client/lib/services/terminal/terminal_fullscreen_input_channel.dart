@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 
 /// Serialized bracketed-paste + CR injections for full-screen TUI CLIs.
 ///

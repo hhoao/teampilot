@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import '../../models/app_models.dart';
-import '../../utils/format_bytes.dart';
+import '../../utils/ui/format_bytes.dart';
 import 'app_update_asset_selector.dart';
 
 /// Downloads release packages from the TeamPilot backend (not GitHub Releases).

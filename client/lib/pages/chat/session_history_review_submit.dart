@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import '../../cubits/chat/model/session_connect_request.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 
 /// Connects an already-open review tab, waits for the selected member, then
 /// injects [message] at the PTY prompt.

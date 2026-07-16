@@ -8,7 +8,7 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
-import '../../../utils/workspace_display_name.dart';
+import '../../../utils/workspace/workspace_display_name.dart';
 import '../../../widgets/workspace_details_dialog.dart';
 import '../../../widgets/settings/workspace_hub_shell.dart';
 import '../workspace_actions.dart';

@@ -36,7 +36,7 @@ import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/terminal_theme_for_launch.dart';
 import '../services/terminal/terminal_transport_factory.dart';
-import '../utils/workspace_sessions.dart';
+import '../utils/session/workspace_sessions.dart';
 import '../../widgets/workspace_icon_picker_dialog.dart';
 import 'chat/chat_connect_state_mixin.dart';
 import 'chat/session_data_store.dart';

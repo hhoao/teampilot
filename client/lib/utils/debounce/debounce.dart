@@ -1,4 +1,4 @@
 export 'button_callbacks.dart';
 export 'debounces.dart';
-export 'ratelimts.dart';
+export 'ratelimits.dart';
 export 'throttles.dart';

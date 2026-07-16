@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/expert_hub/expert_member_materializer.dart';
 import 'package:teampilot/services/team_hub/builtin_team_templates.dart';
-import 'package:teampilot/utils/team_member_naming.dart';
+import 'package:teampilot/utils/team/team_member_naming.dart';
 
 void main() {
   test('superpowers quartet roster references four builtin experts', () {

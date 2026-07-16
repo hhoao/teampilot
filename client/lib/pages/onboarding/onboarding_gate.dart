@@ -13,7 +13,7 @@ import '../../models/workspace.dart';
 import '../../repositories/app_settings_repository.dart';
 import '../../services/app/onboarding_service.dart';
 import '../../services/team/default_workspace_service.dart';
-import '../../utils/workspace_path_utils.dart';
+import '../../utils/workspace/workspace_path_utils.dart';
 import 'onboarding_wizard.dart';
 
 /// App-wide handle for [OnboardingGateState]; wired in [appRouter].

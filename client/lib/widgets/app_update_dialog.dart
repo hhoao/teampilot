@@ -10,7 +10,7 @@ import 'package:teampilot/router/app_router.dart';
 import 'package:teampilot/services/app/app_update_installer.dart';
 import 'package:teampilot/services/app/app_update_service.dart';
 import 'package:teampilot/services/app/backend_app_update_service.dart';
-import 'package:teampilot/utils/changelog_parser.dart';
+import 'package:teampilot/utils/ui/changelog_parser.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:url_launcher/url_launcher.dart';

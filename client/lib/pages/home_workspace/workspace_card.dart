@@ -8,7 +8,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/workspace.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../../utils/workspace_display_name.dart';
+import '../../utils/workspace/workspace_display_name.dart';
 import '../../widgets/workspace_icon.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import 'open_workspace_tab_actions.dart';

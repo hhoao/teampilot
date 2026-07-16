@@ -31,7 +31,7 @@ import '../../services/workspace/workspace_run_registry.dart';
 import '../../services/workspace/workspace_tools_scope_registry.dart';
 import '../../services/workspace/workspace_worktree_registry.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../../utils/workspace_display_name.dart';
+import '../../utils/workspace/workspace_display_name.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/run/run_toolbar.dart';
 import 'home_workspace_body_stack.dart';

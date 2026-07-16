@@ -12,8 +12,8 @@ import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
-import '../../utils/app_keys.dart';
-import '../../utils/team_member_naming.dart';
+import '../../utils/ui/app_keys.dart';
+import '../../utils/team/team_member_naming.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 /// Tab-bar control to switch a session between History and Terminal.

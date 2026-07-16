@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import 'language_pack.dart';
 import 'language_registry.dart';
 import 'token_span.dart';

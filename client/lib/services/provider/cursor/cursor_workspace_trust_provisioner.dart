@@ -1,5 +1,5 @@
-import '../../../utils/trusted_project_paths.dart';
-import '../../../utils/workspace_path_utils.dart';
+import '../../../utils/workspace/trusted_project_paths.dart';
+import '../../../utils/workspace/workspace_path_utils.dart';
 import '../../io/filesystem.dart';
 import 'cursor_workspace_trust.dart';
 

@@ -13,7 +13,7 @@ import 'package:teampilot/services/cli/registry/config_profile/claude_config_pro
 import 'package:teampilot/services/expert_hub/expert_member_materializer.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
-import 'package:teampilot/utils/team_member_naming.dart';
+import 'package:teampilot/utils/team/team_member_naming.dart';
 
 import '../support/fake_terminal_session.dart';
 import '../support/fixed_resume_lifecycle_service.dart';

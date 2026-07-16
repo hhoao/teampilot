@@ -4,7 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../../utils/app_keys.dart';
+import '../../utils/ui/app_keys.dart';
 import 'automation_sort.dart';
 import 'automations_management_tab.dart';
 

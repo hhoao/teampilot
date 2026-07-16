@@ -4,7 +4,7 @@ import 'package:teampilot/services/ai/team_config_draft.dart';
 import 'package:teampilot/services/ai/team_draft_roster_mapper.dart';
 import 'package:teampilot/services/expert_hub/local_expert_writer.dart';
 import 'package:teampilot/services/expert_hub/local_member_template_store.dart';
-import 'package:teampilot/utils/team_member_naming.dart';
+import 'package:teampilot/utils/team/team_member_naming.dart';
 
 import '../../support/in_memory_filesystem.dart';
 

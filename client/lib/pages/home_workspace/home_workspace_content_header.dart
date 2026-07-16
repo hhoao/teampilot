@@ -4,7 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../cubits/team/launch_profile_selectors.dart';
 import '../../models/team_config.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../utils/launch_profile_display_name.dart';
+import '../../utils/team/launch_profile_display_name.dart';
 
 class HomeTeamHeader extends StatelessWidget {
   const HomeTeamHeader({super.key, required this.snapshot});

@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../../models/team_config.dart';
-import '../../utils/team_member_naming.dart';
+import '../../utils/team/team_member_naming.dart';
 import 'model/launch_profile_state.dart';
 
 /// Member picker chips — rebuild when roster ids/names/lead flags change.

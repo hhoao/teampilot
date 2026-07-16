@@ -1,7 +1,7 @@
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
-import '../../utils/workspace_path_utils.dart';
+import '../../utils/workspace/workspace_path_utils.dart';
 
 /// Read-only workspace/session lookups for the launch flow.
 class SessionLaunchWorkspaceIndex {

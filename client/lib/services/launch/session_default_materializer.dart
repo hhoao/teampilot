@@ -4,7 +4,7 @@ import '../../cubits/chat/session_launch_host.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../repositories/session_repository.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import 'session_launch_workspace_index.dart';
 
 typedef SessionOpenFn = Future<SessionOpenStatus> Function(SessionOpenRequest);

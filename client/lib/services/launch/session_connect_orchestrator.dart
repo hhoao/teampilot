@@ -5,7 +5,7 @@ import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
 import '../../models/team_roster_slot.dart';
 import '../../models/workspace.dart';
-import '../../utils/team_member_naming.dart';
+import '../../utils/team/team_member_naming.dart';
 import '../cli/installer_types.dart';
 import '../cli/registry/mcp_writers/claude_project_mcp_cleanup.dart';
 import '../cli/preset_resolver.dart';

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../utils/team_member_naming.dart';
+import '../../utils/team/team_member_naming.dart';
 import '../../models/team_config.dart';
 
 /// Compact pill shown beside team-lead members in lists and settings.

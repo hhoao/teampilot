@@ -7,7 +7,7 @@ import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 
 import '../../models/skill.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import '../storage/app_storage.dart';
 import 'skill_fetch_service.dart';
 import 'skill_manifest_service.dart';

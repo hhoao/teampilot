@@ -7,7 +7,7 @@ import '../../cubits/mailbox_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
 import '../../models/layout_preferences.dart';
 import '../../models/team_config.dart';
-import '../../utils/app_keys.dart';
+import '../../utils/ui/app_keys.dart';
 import 'right_tools_lifecycle.dart';
 import 'right_tools_tool_preferences.dart';
 import 'right_tools_tool_views.dart';

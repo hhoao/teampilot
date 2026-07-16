@@ -4,7 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../../utils/logger_utils.dart';
+import '../../utils/logging/logger_utils.dart';
 import 'log_helpers.dart';
 
 class LogViewerCenteredMessage extends StatelessWidget {

@@ -4,7 +4,7 @@ import '../models/automation.dart';
 import '../services/automation/automation_launch_session_binding.dart';
 import '../services/io/filesystem.dart';
 import '../services/storage/workspace_layout.dart';
-import '../utils/logger.dart';
+import '../utils/logging/logger.dart';
 
 class _WorkspaceAutomationStore {
   const _WorkspaceAutomationStore({required this.automations, required this.runs});

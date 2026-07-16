@@ -14,7 +14,7 @@ import '../../services/terminal/pty_automation_retry_queue.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../services/terminal/terminal_input_controller.dart';
 import '../../services/terminal/terminal_session.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import 'chat_session_shell_factory.dart';
 import 'chat_tab_store.dart';
 import 'tab_member_coordination_factory.dart';

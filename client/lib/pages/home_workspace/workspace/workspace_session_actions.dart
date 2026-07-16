@@ -30,10 +30,10 @@ import '../../../services/expert_hub/expert_hub_recent_store.dart';
 import '../../../services/expert_hub/expert_landing_preflight.dart';
 import '../../../services/expert_hub/expert_member_resolver.dart';
 import '../../../services/workbench/workbench_shell_actions.dart';
-import '../../../utils/landing_draft_resolver.dart';
-import '../../../utils/team_member_naming.dart';
-import '../../../utils/logger.dart';
-import '../../../utils/workspace_path_utils.dart';
+import '../../../utils/workspace/landing_draft_resolver.dart';
+import '../../../utils/team/team_member_naming.dart';
+import '../../../utils/logging/logger.dart';
+import '../../../utils/workspace/workspace_path_utils.dart';
 
 const _uuid = Uuid();
 

@@ -1,5 +1,5 @@
 import '../../../../models/team_config.dart';
-import '../../../../utils/team_member_naming.dart';
+import '../../../../utils/team/team_member_naming.dart';
 import '../../../launch/work_plane_paths.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/flashskyai/flashskyai_effort_capability.dart';

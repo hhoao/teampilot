@@ -18,7 +18,7 @@ import '../services/remote/remote_cli_readiness.dart';
 import '../services/editor_platform/editor_platform.dart';
 import '../services/launch/launch_factory.dart';
 import '../cubits/board_cubit.dart';
-import '../utils/workspace_tab_session_scope.dart';
+import '../utils/session/workspace_tab_session_scope.dart';
 import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
 import '../cubits/notification_cubit.dart';
@@ -54,7 +54,7 @@ import '../models/runtime_target.dart';
 import '../models/ssh_profile.dart';
 import '../models/team_config.dart';
 import '../services/app/boot_splash.dart';
-import '../utils/yield_ui_frame.dart';
+import '../utils/ui/yield_ui_frame.dart';
 import '../l10n/app_localizations.dart';
 import '../pages/system/app_bootstrap_loading_page.dart';
 import '../repositories/app_settings_repository.dart';
@@ -139,7 +139,7 @@ import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
 import '../services/terminal/workspace_terminal_run_service.dart';
 import '../services/terminal/workspace_terminal_session_ops.dart';
-import '../utils/logger.dart';
+import '../utils/logging/logger.dart';
 import 'ui_zoom_baseline.dart';
 
 /// Fully wired app dependencies produced after async bootstrap.

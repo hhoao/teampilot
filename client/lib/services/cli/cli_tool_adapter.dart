@@ -1,5 +1,5 @@
 import '../../models/team_config.dart';
-import '../../utils/team_member_naming.dart';
+import '../../utils/team/team_member_naming.dart';
 import '../session/member_role_provision.dart';
 import 'registry/capabilities/launch_args_capability.dart';
 

@@ -10,8 +10,8 @@ import '../../models/layout_preferences.dart';
 import '../../theme/app_font_resolver.dart';
 import '../../theme/app_text_styles_warmup.dart';
 import '../../theme/font_catalog.dart';
-import '../../utils/logger.dart';
-import '../../utils/yield_ui_frame.dart';
+import '../../utils/logging/logger.dart';
+import '../../utils/ui/yield_ui_frame.dart';
 import '../../widgets/warmup_glyphs.g.dart';
 
 /// Heavy UI-thread work during [AppDataBootstrap] — fonts, glyph shaping, and

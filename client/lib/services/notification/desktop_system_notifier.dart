@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 
 typedef NotificationTapHandler = void Function(String? payload);
 

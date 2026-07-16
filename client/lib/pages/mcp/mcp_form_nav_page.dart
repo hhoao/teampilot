@@ -8,7 +8,7 @@ import '../../cubits/mcp_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_server.dart';
 import '../../services/app/platform_utils.dart';
-import '../../utils/app_keys.dart';
+import '../../utils/ui/app_keys.dart';
 import '../../widgets/settings/workspace_section_host.dart';
 import 'mcp_form_page.dart';
 import 'mcp_management_page.dart';

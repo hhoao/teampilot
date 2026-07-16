@@ -12,8 +12,8 @@ import '../../../services/git/git_command_runner.dart';
 import '../../../services/git/git_worktree_service.dart';
 import '../../../services/storage/runtime_context.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
-import '../../../utils/workspace_path_utils.dart';
-import '../../../utils/workspace_tab_session_scope.dart';
+import '../../../utils/workspace/workspace_path_utils.dart';
+import '../../../utils/session/workspace_tab_session_scope.dart';
 import 'workspace_route_active_scope.dart';
 
 /// Keeps [WorkspaceToolsScopeCubit] and [WorktreeCubit]'s git runner aligned

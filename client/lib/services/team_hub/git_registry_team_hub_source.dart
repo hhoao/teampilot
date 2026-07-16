@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../models/discoverable_team.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 import 'team_hub_source.dart';

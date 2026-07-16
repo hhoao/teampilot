@@ -1,8 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../services/team/team_config_launch_validator.dart';
-import '../../utils/logger.dart';
-import '../../utils/session_launch_error.dart';
+import '../../utils/logging/logger.dart';
+import '../../utils/session/session_launch_error.dart';
 import '../../models/member_remote_provision_progress.dart';
 import 'chat_tab_store.dart';
 import 'model/chat_state.dart';

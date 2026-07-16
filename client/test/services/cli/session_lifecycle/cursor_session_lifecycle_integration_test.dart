@@ -7,7 +7,7 @@ import 'package:teampilot/services/cli/session_lifecycle/cursor/cursor_session_l
 import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
-import 'package:teampilot/utils/team_member_naming.dart';
+import 'package:teampilot/utils/team/team_member_naming.dart';
 
 import '../../../support/cursor_lifecycle_test_paths.dart';
 import '../../../support/in_memory_filesystem.dart';

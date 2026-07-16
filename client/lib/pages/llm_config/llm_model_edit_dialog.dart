@@ -3,7 +3,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/llm_config.dart';
-import '../../utils/app_keys.dart';
+import '../../utils/ui/app_keys.dart';
 
 class LlmModelEditDialog extends StatefulWidget {
   const LlmModelEditDialog({

@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/llm_config_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../utils/app_keys.dart';
+import '../../utils/ui/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import 'session_config_constants.dart';
 

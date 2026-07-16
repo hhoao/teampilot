@@ -7,7 +7,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/session_preferences.dart';
 import '../../models/team_config.dart';
 import '../../services/app/connection_mode_service.dart';
-import '../../utils/app_keys.dart';
+import '../../utils/ui/app_keys.dart';
 import 'cli_executable_path_settings_row.dart';
 import 'toolchain_path_settings_row.dart';
 

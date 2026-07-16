@@ -4,7 +4,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
-import '../../utils/logger_utils.dart';
+import '../../utils/logging/logger_utils.dart';
 import 'fatal_app_theme.dart';
 import 'log_config_workspace.dart';
 import 'log_helpers.dart';

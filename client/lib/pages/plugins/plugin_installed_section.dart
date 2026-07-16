@@ -10,7 +10,7 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/plugin.dart';
 import '../../utils/debounce/debounce.dart';
-import '../../utils/github_source_url.dart';
+import '../../utils/github/github_source_url.dart';
 import '../../widgets/github_details_button.dart';
 import '../../widgets/plugins/plugin_cli_support_disclosure.dart';
 import 'plugin_management_cards.dart';

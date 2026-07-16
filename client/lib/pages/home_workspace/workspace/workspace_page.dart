@@ -20,7 +20,7 @@ import '../../../repositories/session_repository.dart';
 import '../../../services/expert_hub/expert_capability_resolver.dart';
 import '../../../services/expert_hub/expert_landing_deep_link.dart';
 import '../../../theme/workspace_surface_layers.dart';
-import '../../../utils/logger.dart';
+import '../../../utils/logging/logger.dart';
 import '../../../widgets/app_toast/app_toast.dart';
 import '../../expert_hub/expert_landing_preflight_feedback.dart';
 import 'workspace_config_workspace.dart';

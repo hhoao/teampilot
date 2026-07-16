@@ -1,4 +1,4 @@
-import '../utils/team_member_naming.dart';
+import '../utils/team/team_member_naming.dart';
 import 'team_config.dart';
 
 /// A runtime instance (Pod) of a member [type] (Deployment). Holds no copy of

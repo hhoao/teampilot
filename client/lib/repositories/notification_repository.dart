@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../models/app_notification.dart';
 import '../services/io/filesystem.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../utils/logger.dart';
+import '../utils/logging/logger.dart';
 
 const notificationMaxItems = 50;
 const notificationMaxAge = Duration(days: 7);

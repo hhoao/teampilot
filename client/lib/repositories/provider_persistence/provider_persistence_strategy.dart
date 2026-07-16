@@ -3,7 +3,7 @@ import '../../models/claude_credential_link_result.dart';
 import '../../models/credential_action_result.dart';
 import '../../services/io/filesystem.dart';
 import '../../services/provider/tool_config_generator.dart';
-import '../../utils/logger_utils.dart';
+import '../../utils/logging/logger_utils.dart';
 
 /// Thrown when persisting a provider's native tool config fails (e.g. an
 /// invalid Codex `config.toml`).

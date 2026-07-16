@@ -8,7 +8,7 @@ import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace_launch_context.dart';
 import '../../services/launch/connect_shell_result.dart';
-import '../../utils/logger.dart';
+import '../../utils/logging/logger.dart';
 
 typedef ScheduleMemberConnectFn =
     void Function(TeamProfile team, TeamMemberConfig member, ChatTab tab);

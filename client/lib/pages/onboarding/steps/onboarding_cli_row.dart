@@ -4,7 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../../l10n/l10n_extensions.dart';
 import '../../../services/cli/registry/cli_tool_definition.dart';
-import '../../../utils/app_keys.dart';
+import '../../../utils/ui/app_keys.dart';
 import '../../../widgets/cli/cli_brand_icon.dart';
 
 /// One launchable CLI row in the onboarding detect step.

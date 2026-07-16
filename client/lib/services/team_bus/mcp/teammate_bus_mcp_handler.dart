@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import '../../../utils/logger.dart';
+import '../../../utils/logging/logger.dart';
 import '../artifacts/artifact_transfer_service.dart';
 import '../cancellation.dart';
 import '../team_bus.dart';

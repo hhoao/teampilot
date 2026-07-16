@@ -24,7 +24,7 @@ import '../services/terminal/workspace_terminal_registry.dart';
 import '../services/terminal/workspace_terminal_session_ops.dart';
 import '../services/workspace/workspace_tools_scope.dart';
 import '../theme/workspace_surface_layers.dart';
-import '../utils/app_keys.dart';
+import '../utils/ui/app_keys.dart';
 import 'menu/sidebar_action_menu.dart';
 import 'workspace_terminal/workspace_terminal_body_kind.dart';
 import 'workspace_terminal/workspace_terminal_empty_pane.dart';

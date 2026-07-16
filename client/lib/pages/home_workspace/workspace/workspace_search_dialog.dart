@@ -11,7 +11,7 @@ import '../../../services/file_tree/workspace_file_search.dart';
 import '../../../services/storage/app_storage.dart';
 import '../../../services/workbench/workbench_editor_opener.dart';
 import '../../../utils/debounce/debounce.dart';
-import '../../../utils/workspace_sessions.dart';
+import '../../../utils/session/workspace_sessions.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'workspace_session_actions.dart';
 import 'package:shared_ui/shared_ui.dart';

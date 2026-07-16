@@ -4,8 +4,8 @@ import 'package:path/path.dart' as p;
 
 import '../../models/extension_manifest.dart';
 import '../../models/team_config.dart';
-import '../../utils/trusted_project_paths.dart';
-import '../../utils/team_member_naming.dart';
+import '../../utils/workspace/trusted_project_paths.dart';
+import '../../utils/team/team_member_naming.dart';
 import '../storage/runtime_layout.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
 import '../extension/builtin_manifests.dart';

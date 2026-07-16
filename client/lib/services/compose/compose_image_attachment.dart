@@ -3,7 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
-import '../../utils/workspace_path_utils.dart';
+import '../../utils/workspace/workspace_path_utils.dart';
 import 'compose_file_attach.dart';
 
 const _uuid = Uuid();

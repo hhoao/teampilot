@@ -7,7 +7,7 @@ import 'package:teampilot/cubits/notification_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_title_bar.dart';
 import 'package:teampilot/pages/workspace_shell/workspace_shell_tabs.dart';
-import 'package:teampilot/utils/app_keys.dart';
+import 'package:teampilot/utils/ui/app_keys.dart';
 
 import '../../support/post_frame_test_harness.dart';
 

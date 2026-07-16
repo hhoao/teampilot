@@ -8,7 +8,7 @@ import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/pages/config/cli_config_section.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
-import 'package:teampilot/utils/app_keys.dart';
+import 'package:teampilot/utils/ui/app_keys.dart';
 
 import '../../support/post_frame_test_harness.dart';
 

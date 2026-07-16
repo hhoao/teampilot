@@ -5,7 +5,7 @@ import '../models/team_config.dart';
 import '../services/cli/member_config/member_config_detail.dart';
 import '../services/cli/member_config/member_config_inspector.dart';
 import '../services/storage/runtime_context.dart';
-import '../utils/logger.dart';
+import '../utils/logging/logger.dart';
 
 enum MemberConfigStatus { idle, loading, loaded, error }
 
