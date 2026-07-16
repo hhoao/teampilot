@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
@@ -71,9 +73,8 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
                               ),
                             ),
                           ),
-                          AnimatedRotation(
-                            turns: _open ? 0 : -0.25,
-                            duration: const Duration(milliseconds: 200),
+                          Transform.rotate(
+                            angle: _open ? 0 : -math.pi / 2,
                             child: Icon(
                               Icons.expand_more,
                               size: 16,
@@ -87,28 +88,27 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
                 ),
               ),
             ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeInOut,
-              alignment: Alignment.topCenter,
-              child: _open
-                  ? Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 256),
-                        child: SingleChildScrollView(
-                          child: DefaultTextStyle.merge(
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                              height: 1.5,
-                            ),
-                            child: AiTextPartView(text: widget.part.text),
-                          ),
+            if (_open)
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 256),
+                    child: SingleChildScrollView(
+                      child: DefaultTextStyle.merge(
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          height: 1.5,
                         ),
+                        child: AiTextPartView(text: widget.part.text),
                       ),
-                    )
-                  : const SizedBox.shrink(),
-            ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

@@ -253,9 +253,10 @@ void main() {
       ),
     );
 
-    expect(find.byType(AnimatedSize), findsOneWidget);
+    expect(find.byType(AnimatedSize), findsNothing);
     await tester.tap(find.textContaining('Used tool:'));
     await tester.pumpAndSettle();
+    expect(find.byType(AnimatedSize), findsOneWidget);
     expect(find.textContaining('xxx'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -276,13 +277,13 @@ void main() {
       ),
     );
 
-    final opacity = tester.widget<AnimatedOpacity>(
+    expect(
       find.descendant(
         of: find.byType(AiMessageActionBar),
-        matching: find.byType(AnimatedOpacity),
+        matching: find.byType(IconButton),
       ),
+      findsNothing,
     );
-    expect(opacity.opacity, equals(0));
   });
 
   testWidgets('AiThread last message uses always reveal; earlier uses hover', (

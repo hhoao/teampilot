@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
@@ -87,9 +88,8 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        AnimatedRotation(
-                          turns: _open ? 0 : -0.25,
-                          duration: const Duration(milliseconds: 200),
+                        Transform.rotate(
+                          angle: _open ? 0 : -math.pi / 2,
                           child: Icon(
                             Icons.expand_more,
                             size: 16,
@@ -103,49 +103,46 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
               ),
             ),
           ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            alignment: Alignment.topLeft,
-            child: _open
-                ? Padding(
-                    padding:
-                        const EdgeInsets.only(left: 24, top: 4, bottom: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (_hasArgs(part))
-                          _MutedPre(
-                            text: _argsText(part),
-                            color: aiTheme.resolveToolPanel(scheme),
-                            radius: aiTheme.panelRadius,
-                            foreground:
-                                scheme.onSurface.withValues(alpha: 0.9),
-                          ),
-                        if (part.result != null) ...[
-                          if (_hasArgs(part)) const SizedBox(height: 8),
-                          Text(
-                            '${strings.result}:',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: triggerColor,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          _MutedPre(
-                            text: _stringify(part.result),
-                            color: aiTheme.resolveToolPanel(scheme),
-                            radius: aiTheme.panelRadius,
-                            foreground: part.isError
-                                ? scheme.error
-                                : scheme.onSurface.withValues(alpha: 0.9),
-                          ),
-                        ],
-                      ],
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
+          if (_open)
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 24, top: 4, bottom: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (_hasArgs(part))
+                      _MutedPre(
+                        text: _argsText(part),
+                        color: aiTheme.resolveToolPanel(scheme),
+                        radius: aiTheme.panelRadius,
+                        foreground: scheme.onSurface.withValues(alpha: 0.9),
+                      ),
+                    if (part.result != null) ...[
+                      if (_hasArgs(part)) const SizedBox(height: 8),
+                      Text(
+                        '${strings.result}:',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: triggerColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      _MutedPre(
+                        text: _stringify(part.result),
+                        color: aiTheme.resolveToolPanel(scheme),
+                        radius: aiTheme.panelRadius,
+                        foreground: part.isError
+                            ? scheme.error
+                            : scheme.onSurface.withValues(alpha: 0.9),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
