@@ -32,8 +32,6 @@ dependencies:
     path: packages/ai_message_ui
   shared_ui:
     path: packages/shared_ui
-  system_fonts:
-    path: packages/system_fonts
   teampilot_tree_sitter:
     path: packages/teampilot_tree_sitter
   flutter_bloc: ^9.1.0

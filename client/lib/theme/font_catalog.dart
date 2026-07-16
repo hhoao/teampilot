@@ -18,7 +18,7 @@ class FontCatalogEntry {
   final List<String> assetPaths;
 }
 
-/// Preference prefix for a face discovered via `system_fonts` (`installed:<key>`).
+/// Preference prefix for an installed system font face (`installed:<key>`).
 const kInstalledFontIdPrefix = 'installed:';
 
 bool isInstalledFontId(String? id) {

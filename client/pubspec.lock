@@ -1385,13 +1385,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "3.4.1"
-  system_fonts:
-    dependency: "direct main"
-    description:
-      path: "packages/system_fonts"
-      relative: true
-    source: path
-    version: "1.0.1"
   teampilot_tree_sitter:
     dependency: "direct main"
     description:

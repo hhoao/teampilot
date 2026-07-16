@@ -19,10 +19,6 @@
 [submodule "client/packages/flutter_pty_new"]
 	path = client/packages/flutter_pty_new
 	url = https://github.com/hhoao/flutter_pty_new.git
-[submodule "client/packages/system_fonts"]
-	path = client/packages/system_fonts
-	url = https://github.com/hhoao/system_fonts.git
-	branch = master
 [submodule "client/packages/flutter_markdown_plus"]
 	path = client/packages/flutter_markdown_plus
 	url = https://github.com/hhoao/flutter_markdown_plus.git

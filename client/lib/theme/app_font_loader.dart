@@ -1,8 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:system_fonts/system_fonts.dart';
-
 import '../utils/logging/logger.dart';
+import 'system_fonts.dart';
 import 'app_font_resolver.dart';
 import 'font_catalog.dart';
 

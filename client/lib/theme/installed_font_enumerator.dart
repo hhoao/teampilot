@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:system_fonts/system_fonts.dart';
+import 'system_fonts.dart';
 
 /// Discovers installed desktop font family names for [TextStyle.fontFamily].
 ///
