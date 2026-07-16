@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/app_toast_theme.dart';
 import '../../theme/font_catalog.dart';
 import '../../theme/installed_font_enumerator.dart';
 import '../app_toast/app_toast.dart';
@@ -68,7 +67,7 @@ class _FontPreferenceSettingState extends State<FontPreferenceSetting> {
     AppToast.show(
       context,
       message: context.l10n.fontChangeAppliesOnRestart,
-      variant: AppToastVariant.info,
+      variant: TpToastVariant.info,
     );
   }
 

@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../theme/app_fonts.dart';
@@ -266,7 +265,7 @@ class _ProviderJsonPreviewCopyButtonState
     AppToast.show(
       context,
       message: context.l10n.extensionCommandCopied,
-      variant: AppToastVariant.success,
+      variant: TpToastVariant.success,
     );
   }
 

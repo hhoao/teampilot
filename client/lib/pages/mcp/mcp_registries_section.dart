@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -173,7 +172,7 @@ class _McpRegistriesSectionState extends State<McpRegistriesSection> {
     AppToast.show(
       context,
       message: l10n.mcpRepoConfigSaved,
-      variant: AppToastVariant.success,
+      variant: TpToastVariant.success,
     );
   }
 
@@ -266,14 +265,14 @@ class _RegistrySourceEditDialogState extends State<_RegistrySourceEditDialog> {
       AppToast.show(
         context,
         message: l10n.mcpRepoTestOk,
-        variant: AppToastVariant.success,
+        variant: TpToastVariant.success,
       );
     } catch (e) {
       if (!mounted) return;
       AppToast.show(
         context,
         message: l10n.mcpRepoTestFailed(e.toString()),
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
     } finally {
       if (mounted) setState(() => _testing = false);

@@ -1,9 +1,8 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:shared_ui/shared_ui.dart';
 
 import '../config/app_update_config.dart';
 import '../cubits/app_update_cubit.dart';
@@ -59,7 +58,7 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                 AppToast.show(
                   context,
                   message: l10n.appUpdateUpToDate,
-                  variant: AppToastVariant.success,
+                  variant: TpToastVariant.success,
                 );
               }
             },

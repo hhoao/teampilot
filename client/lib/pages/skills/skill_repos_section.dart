@@ -1,6 +1,5 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -104,7 +103,7 @@ class SkillReposSectionState extends State<SkillReposSection> {
                         AppToast.show(
                           context,
                           message: l10n.skillsRepoInvalidUrl,
-                          variant: AppToastVariant.error,
+                          variant: TpToastVariant.error,
                         );
                         return;
                       }

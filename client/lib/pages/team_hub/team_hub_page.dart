@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/team_hub_cubit.dart';
@@ -88,15 +88,15 @@ class _TeamHubPageState extends State<TeamHubPage> {
           result: result,
         ),
         variant: teamHubCloneToastIsWarning(result)
-            ? AppToastVariant.warning
-            : AppToastVariant.success,
+            ? TpToastVariant.warning
+            : TpToastVariant.success,
       );
     } on CloneException {
       if (!mounted) return;
       AppToast.show(
         context,
         message: l10n.teamHubCloneFailed,
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
     }
   }
@@ -117,7 +117,7 @@ class _TeamHubPageState extends State<TeamHubPage> {
         AppToast.show(
           context,
           message: context.l10n.teamHubLoadError,
-          variant: AppToastVariant.error,
+          variant: TpToastVariant.error,
         );
         context.read<TeamHubCubit>().clearError();
       },

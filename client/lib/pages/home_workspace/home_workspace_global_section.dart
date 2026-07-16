@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/expert_hub_cubit.dart';
@@ -144,8 +144,8 @@ Future<void> expertHubAddToTeam(
       result: result,
     ),
     variant: memberHubAddToastIsWarning(result)
-        ? AppToastVariant.warning
-        : AppToastVariant.success,
+        ? TpToastVariant.warning
+        : TpToastVariant.success,
   );
 }
 

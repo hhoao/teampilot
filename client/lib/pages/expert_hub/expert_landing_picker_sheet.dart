@@ -2,13 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/expert_hub_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
-import 'package:shared_ui/shared_ui.dart';
 import 'expert_hub_body.dart';
 import 'expert_hub_detail_overlay.dart';
 
@@ -113,7 +112,7 @@ class _ExpertLandingPickerDialogState extends State<ExpertLandingPickerDialog> {
                     AppToast.show(
                       context,
                       message: context.l10n.expertHubLoadError,
-                      variant: AppToastVariant.error,
+                      variant: TpToastVariant.error,
                     );
                     context.read<ExpertHubCubit>().clearError();
                   },

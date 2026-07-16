@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/ai_history_cubit.dart';
@@ -39,7 +39,6 @@ import '../../utils/team_member_naming.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
 import 'ai_thread_selection_context_menu.dart';
 import 'session_review_compose_card.dart';
-import 'package:shared_ui/shared_ui.dart';
 
 /// History list + slim compose for a non-running session body.
 class SessionHistoryReview extends StatefulWidget {
@@ -118,7 +117,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
         AppToast.show(
           context,
           message: message,
-          variant: AppToastVariant.warning,
+          variant: TpToastVariant.warning,
         );
         _applyVoiceListening(false);
       },
@@ -408,7 +407,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     AppToast.show(
       context,
       message: context.l10n.sessionHistoryContinueSaveFailed,
-      variant: AppToastVariant.warning,
+      variant: TpToastVariant.warning,
     );
   }
 
@@ -500,7 +499,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
       AppToast.show(
         context,
         message: context.l10n.workspaceChatLandingEnhanceNotConfigured,
-        variant: AppToastVariant.warning,
+        variant: TpToastVariant.warning,
       );
       return;
     }
@@ -518,7 +517,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
         AppToast.show(
           context,
           message: context.l10n.workspaceChatLandingEnhanceFailed,
-          variant: AppToastVariant.warning,
+          variant: TpToastVariant.warning,
         );
         return;
       }
@@ -531,14 +530,14 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
       AppToast.show(
         context,
         message: e.message,
-        variant: AppToastVariant.warning,
+        variant: TpToastVariant.warning,
       );
     } on Object {
       if (!mounted) return;
       AppToast.show(
         context,
         message: context.l10n.workspaceChatLandingEnhanceFailed,
-        variant: AppToastVariant.warning,
+        variant: TpToastVariant.warning,
       );
     } finally {
       if (mounted) setState(() => _enhancing = false);
@@ -556,7 +555,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
         message: _voiceInput.permissionDenied
             ? context.l10n.workspaceChatLandingVoicePermissionDenied
             : context.l10n.workspaceChatLandingVoiceUnavailable,
-        variant: AppToastVariant.warning,
+        variant: TpToastVariant.warning,
       );
       return;
     }

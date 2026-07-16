@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 import '../widgets/app_toast/app_toast.dart';
-import '../theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 enum AppErrorKind { unexpected, network, storage, ssh, cancelled }
 
@@ -80,7 +80,7 @@ class AppErrorUtils {
   }
 
   static void showUserMessage(String message) {
-    AppToast.showGlobal(message: message, variant: AppToastVariant.error);
+    AppToast.showGlobal(message: message, variant: TpToastVariant.error);
   }
 
   static bool _isCancelledError(Object error) {

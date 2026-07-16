@@ -4,7 +4,7 @@ import 'dart:io' show Platform, Process;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/file_tree_cubit.dart';
@@ -16,7 +16,6 @@ import '../../services/io/system_terminal_opener.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../utils/debounce/debounce.dart';
-import 'package:shared_ui/shared_ui.dart';
 import '../menu/sidebar_action_menu.dart';
 
 /// Right-click menu for a file-tree row.
@@ -292,21 +291,21 @@ abstract final class FileTreeContextMenu {
       AppToast.show(
         context,
         message: success,
-        variant: AppToastVariant.success,
+        variant: TpToastVariant.success,
       );
     } on FileTreeOperationException catch (e) {
       if (!context.mounted) return;
       AppToast.show(
         context,
         message: _mapError(context, e.message),
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
     } on Object catch (e) {
       if (!context.mounted) return;
       AppToast.show(
         context,
         message: e.toString(),
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
     }
   }
@@ -364,7 +363,7 @@ abstract final class FileTreeContextMenu {
       AppToast.show(
         context,
         message: context.l10n.fileTreeOpenInTerminalFailed,
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
     }
   }

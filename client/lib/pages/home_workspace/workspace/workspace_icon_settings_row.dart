@@ -3,7 +3,6 @@ import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../cubits/chat_cubit.dart';
@@ -73,6 +72,6 @@ class WorkspaceIconSettingsRow extends StatelessWidget {
       workspace,
     );
     if (error == null || !context.mounted) return;
-    AppToast.show(context, message: error, variant: AppToastVariant.error);
+    AppToast.show(context, message: error, variant: TpToastVariant.error);
   }
 }

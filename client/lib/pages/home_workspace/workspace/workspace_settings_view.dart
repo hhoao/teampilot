@@ -4,7 +4,6 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
@@ -322,7 +321,7 @@ void _copyText(BuildContext context, String text) {
   AppToast.show(
     context,
     message: context.l10n.pathCopied(text),
-    variant: AppToastVariant.success,
+    variant: TpToastVariant.success,
   );
 }
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/expert_hub_cubit.dart';
@@ -113,7 +113,7 @@ class _ExpertHubPageState extends State<ExpertHubPage> {
       AppToast.show(
         context,
         message: l10n.expertHubAddFailed,
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
     }
   }
@@ -147,15 +147,15 @@ class _ExpertHubPageState extends State<ExpertHubPage> {
           result: result,
         ),
         variant: memberHubAddToastIsWarning(result)
-            ? AppToastVariant.warning
-            : AppToastVariant.success,
+            ? TpToastVariant.warning
+            : TpToastVariant.success,
       );
     } on MemberAddException {
       if (!mounted) return;
       AppToast.show(
         context,
         message: l10n.expertHubAddFailed,
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
     }
   }
@@ -176,7 +176,7 @@ class _ExpertHubPageState extends State<ExpertHubPage> {
         AppToast.show(
           context,
           message: context.l10n.expertHubLoadError,
-          variant: AppToastVariant.error,
+          variant: TpToastVariant.error,
         );
         context.read<ExpertHubCubit>().clearError();
       },

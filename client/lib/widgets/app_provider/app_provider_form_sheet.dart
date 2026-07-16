@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/app_provider_cubit.dart';
@@ -19,7 +19,6 @@ import '../../services/provider/codex/codex_provider_form_capability.dart';
 import '../../services/provider/credential_binding.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';
-import 'package:shared_ui/shared_ui.dart';
 import 'brand_dropdown_rows.dart';
 import 'cli_effort_picker_field.dart';
 import 'claude_credential_binding_field.dart';
@@ -540,7 +539,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                             AppToast.show(
                               context,
                               message: l10n.invalidJson,
-                              variant: AppToastVariant.error,
+                              variant: TpToastVariant.error,
                             );
                             return;
                           }

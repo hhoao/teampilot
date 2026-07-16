@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/ai_feature_settings_cubit.dart';
@@ -20,7 +20,6 @@ import '../../models/git_status.dart';
 import '../../services/git/git_repo_store.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
-import 'package:shared_ui/shared_ui.dart';
 import 'git_branch_menu.dart';
 import 'git_changes_tree_list.dart';
 
@@ -367,7 +366,7 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
             AppToast.show(
               context,
               message: context.l10n.gitError(state.errorMessage ?? ''),
-              variant: AppToastVariant.error,
+              variant: TpToastVariant.error,
             );
           }
           if (_commitController.text != state.commitMessage) {
@@ -469,7 +468,7 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                     AppToast.show(
                       context,
                       message: l10n.gitGenerateCommitMessageNoProvider,
-                      variant: AppToastVariant.error,
+                      variant: TpToastVariant.error,
                     );
                     return;
                   }

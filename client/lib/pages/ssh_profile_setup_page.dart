@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:uuid/uuid.dart';
 
@@ -9,7 +9,6 @@ import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../services/ssh/ssh_connection_failure.dart';
 import '../services/ssh/ssh_profile_connection_tester.dart';
-import 'package:shared_ui/shared_ui.dart';
 
 class SshProfileSetupPage extends StatefulWidget {
   const SshProfileSetupPage({
@@ -161,14 +160,14 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
       AppToast.show(
         context,
         message: context.l10n.sshProfileTestSuccess,
-        variant: AppToastVariant.success,
+        variant: TpToastVariant.success,
       );
     } on Object catch (error) {
       if (!mounted) return;
       AppToast.show(
         context,
         message: sshConnectionFailureUserMessage(error, context.l10n),
-        variant: AppToastVariant.error,
+        variant: TpToastVariant.error,
       );
     } finally {
       if (mounted) setState(() => _testing = false);

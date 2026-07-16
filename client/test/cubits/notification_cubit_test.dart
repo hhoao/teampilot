@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/notification_cubit.dart';
 import 'package:teampilot/repositories/notification_repository.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../support/in_memory_filesystem.dart';
 
@@ -21,7 +21,7 @@ void main() {
     final cubit = _cubit();
     addTearDown(cubit.close);
 
-    cubit.record(message: 'Done', variant: AppToastVariant.success);
+    cubit.record(message: 'Done', variant: TpToastVariant.success);
     await Future<void>.delayed(const Duration(milliseconds: 50));
 
     expect(cubit.state.unreadCount, 1);
@@ -32,7 +32,7 @@ void main() {
     final cubit = _cubit();
     addTearDown(cubit.close);
 
-    cubit.record(message: 'FYI', variant: AppToastVariant.info);
+    cubit.record(message: 'FYI', variant: TpToastVariant.info);
     await Future<void>.delayed(const Duration(milliseconds: 50));
 
     expect(cubit.state.items, isEmpty);
@@ -43,7 +43,7 @@ void main() {
     final cubit = _cubit();
     addTearDown(cubit.close);
 
-    cubit.record(message: 'Done', variant: AppToastVariant.success);
+    cubit.record(message: 'Done', variant: TpToastVariant.success);
     await Future<void>.delayed(const Duration(milliseconds: 50));
     await cubit.markAllRead();
 

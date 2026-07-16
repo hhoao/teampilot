@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../cubits/session_preferences_cubit.dart';
@@ -217,8 +216,8 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
         context,
         message: result.message,
         variant: result.success
-            ? AppToastVariant.success
-            : AppToastVariant.error,
+            ? TpToastVariant.success
+            : TpToastVariant.error,
       );
     } finally {
       if (mounted) {
