@@ -16,8 +16,6 @@ import '../../services/io/system_terminal_opener.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../utils/debounce/debounce.dart';
-import '../menu/sidebar_action_menu.dart';
-
 /// Right-click menu for a file-tree row.
 abstract final class FileTreeContextMenu {
   static Future<void> show({
@@ -36,78 +34,78 @@ abstract final class FileTreeContextMenu {
     final ctx = cubit.fs.pathContext;
     final parentDir = isDirectory ? targetPath : ctx.dirname(targetPath);
     final canPaste = cubit.state.clipboard != null;
-    final specs = <SidebarActionMenuSpec>[
-      SidebarActionMenuSpec.item(
+    final specs = <TpActionMenuSpec>[
+      TpActionMenuSpec.item(
         value: 'new_file',
         icon: Icons.note_add_outlined,
         label: l10n.fileTreeNewFile,
       ),
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: 'new_folder',
         icon: Icons.create_new_folder_outlined,
         label: l10n.fileTreeNewFolder,
       ),
-      const SidebarActionMenuSpec.divider(),
-      SidebarActionMenuSpec.item(
+      const TpActionMenuSpec.divider(),
+      TpActionMenuSpec.item(
         value: 'cut',
         icon: Icons.content_cut,
         label: l10n.fileTreeCut,
       ),
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: 'copy',
         icon: Icons.content_copy,
         label: l10n.fileTreeCopy,
       ),
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: 'paste',
         icon: Icons.content_paste,
         label: l10n.fileTreePaste,
         enabled: canPaste,
       ),
-      const SidebarActionMenuSpec.divider(),
-      SidebarActionMenuSpec.item(
+      const TpActionMenuSpec.divider(),
+      TpActionMenuSpec.item(
         value: 'rename',
         icon: Icons.drive_file_rename_outline,
         label: l10n.fileTreeRename,
       ),
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: 'delete',
         icon: Icons.delete_outline,
         label: l10n.fileTreeDeleteItemTitle,
         destructive: true,
       ),
-      const SidebarActionMenuSpec.divider(),
+      const TpActionMenuSpec.divider(),
       if (!isDirectory && desktopShellActions)
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: 'external',
           icon: Icons.open_in_new,
           label: l10n.fileTreeOpenWithSystemApp,
         ),
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: 'copy_path',
         icon: Icons.copy,
         label: l10n.fileTreeCopyPath,
       ),
       if (desktopShellActions) ...[
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: 'file_manager',
           icon: Icons.folder_open_outlined,
           label: l10n.fileTreeOpenInFileManager,
         ),
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: 'terminal',
           icon: Icons.terminal,
           label: l10n.fileTreeOpenInTerminal,
         ),
       ] else if (remoteFileManagerActions)
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: 'file_manager',
           icon: Icons.folder_open_outlined,
           label: l10n.fileTreeOpenInFileManager,
         ),
     ];
 
-    final value = await showSidebarActionMenuFromSpecsAtTap<String>(
+    final value = await showTpActionMenuFromSpecsAtTap<String>(
       context: context,
       tapDetails: tapDetails,
       specs: specs,

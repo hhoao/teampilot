@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/app_localizations.dart';
-import '../menu/sidebar_action_menu.dart';
-
 enum FileTreeHeaderAction {
   refresh,
   reveal,
@@ -45,42 +43,42 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SidebarActionMenuButton(
+    return TpActionMenuButton(
       tooltip: l10n.fileTree,
       icon: Icon(Icons.more_vert, size: context.tpIconSizes.sm),
       size: TpIconButton.kCompactSize,
       specs: [
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: FileTreeHeaderAction.refresh,
           icon: Icons.refresh,
           label: l10n.fileTreeRefresh,
         ),
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: FileTreeHeaderAction.reveal,
           icon: Icons.my_location_outlined,
           label: l10n.fileTreeRevealActiveFile,
         ),
         if (hasExpandedFolders)
-          SidebarActionMenuSpec.item(
+          TpActionMenuSpec.item(
             value: FileTreeHeaderAction.collapseAll,
             icon: Icons.unfold_less,
             label: l10n.treeCollapseAllFolders,
           ),
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: FileTreeHeaderAction.toggleFilter,
           icon: filterVisible ? Icons.search_off : Icons.search,
           label: filterVisible
               ? l10n.fileTreeHideFilter
               : l10n.fileTreeShowFilter,
         ),
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: FileTreeHeaderAction.toggleHidden,
           icon: showHiddenFiles
               ? Icons.visibility_off_outlined
               : Icons.visibility_outlined,
           label: showHiddenFiles ? 'Hide hidden files' : 'Show hidden files',
         ),
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: FileTreeHeaderAction.copy,
           icon: Icons.copy,
           label: l10n.copy,

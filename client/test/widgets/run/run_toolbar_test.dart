@@ -18,7 +18,6 @@ import 'package:teampilot/services/run/run_platform.dart';
 import 'package:teampilot/services/run/run_session_manager.dart';
 import 'package:teampilot/services/run/shell_script_launch_schema.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
-import 'package:teampilot/widgets/menu/sidebar_action_menu.dart';
 import 'package:teampilot/widgets/run/run_config_editor_dialog.dart';
 import 'package:teampilot/widgets/run/run_toolbar.dart';
 
@@ -695,7 +694,7 @@ void main() {
     expect(optionFinder, findsOneWidget);
     expect(find.byKey(const Key('run-toolbar-more')), findsNothing);
 
-    final button = tester.widget<SidebarActionMenuButton>(optionFinder);
+    final button = tester.widget<TpActionMenuButton>(optionFinder);
     final chrome = button.specs.where((s) => !s.isDivider).last;
     expect(chrome.label, 'Chrome');
     button.onSelected(chrome.value);

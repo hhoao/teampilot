@@ -7,7 +7,6 @@ import '../../../models/runtime_target.dart';
 import '../../../models/workspace.dart';
 import '../../../models/workspace_topology.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';
-import '../../../widgets/menu/sidebar_action_menu.dart';
 import '../../../widgets/workspace_folder_directory_row.dart';
 import 'workspace_chat_landing_palette.dart';
 
@@ -86,10 +85,10 @@ class WorkspaceLandingProjectResolver {
     return Workspace.directoryName(projectPath);
   }
 
-  List<SidebarActionMenuSpec> menuSpecs(String selectedPath) {
+  List<TpActionMenuSpec> menuSpecs(String selectedPath) {
     return [
       for (final option in options)
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: option.path,
           icon: option.icon,
           label: option.label,
@@ -194,10 +193,10 @@ class WorkspaceLandingWorktreeResolver {
     return Workspace.directoryName(selectedPath);
   }
 
-  List<SidebarActionMenuSpec> menuSpecs(String selectedPath) {
+  List<TpActionMenuSpec> menuSpecs(String selectedPath) {
     return [
       for (final option in options)
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: option.path,
           icon: option.icon,
           label: option.label,
@@ -225,12 +224,12 @@ class WorkspaceLandingHeaderRow extends StatelessWidget {
 
   final String projectLabel;
   final String projectHintWhenEmpty;
-  final List<SidebarActionMenuSpec> projectMenuSpecs;
+  final List<TpActionMenuSpec> projectMenuSpecs;
   final ValueChanged<Object?> onProjectSelected;
   final bool showWorktreeSelector;
   final String worktreeLabel;
   final String worktreeHintWhenEmpty;
-  final List<SidebarActionMenuSpec> worktreeMenuSpecs;
+  final List<TpActionMenuSpec> worktreeMenuSpecs;
   final ValueChanged<Object?>? onWorktreeSelected;
 
   @override
@@ -282,7 +281,7 @@ class WorkspaceLandingSelectorBar extends StatelessWidget {
 
   final String label;
   final String hintWhenEmpty;
-  final List<SidebarActionMenuSpec> menuSpecs;
+  final List<TpActionMenuSpec> menuSpecs;
   final ValueChanged<Object?>? onSelected;
 
   /// When true, content-sizes under a loose [Flexible] in [WorkspaceLandingHeaderRow].
@@ -346,7 +345,7 @@ class WorkspaceLandingSelectorBar extends StatelessWidget {
 
     final menu = MouseRegion(
       cursor: SystemMouseCursors.click,
-      child: SidebarActionMenuIconAnchor(
+      child: TpActionMenuIconAnchor(
         minWidth: 240,
         triggerBuilder: (context, controller) => _LandingSelectorMenuTrigger(
           onTap: () {
@@ -359,7 +358,7 @@ class WorkspaceLandingSelectorBar extends StatelessWidget {
           child: menuRow,
         ),
         buildMenuChildren: (context, controller) =>
-            buildSidebarActionMenuChildren(
+            buildTpActionMenuChildren(
               context: context,
               specs: menuSpecs,
               menuController: controller,

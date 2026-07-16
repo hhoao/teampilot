@@ -1,16 +1,10 @@
 import 'package:flutter/material.dart';
-
-/// Background and foreground colors for one inline token chip.
-typedef InlineTokenPalette = ({Color background, Color foreground});
-
-/// Resolves chip colors for a matched [token] string.
-typedef InlineTokenPaletteResolver =
-    InlineTokenPalette Function(String token, ColorScheme colorScheme);
+import 'package:shared_ui/shared_ui.dart';
 
 /// Default pattern for compose `@path` and `/skill` tokens.
 final RegExp defaultInlineTokenPattern = RegExp(r'@\S+|/\S+');
 
-InlineTokenPalette resolveSlashAtTokenPalette(
+TpTokenPalette resolveSlashAtTokenPalette(
   String token,
   ColorScheme colorScheme,
 ) {

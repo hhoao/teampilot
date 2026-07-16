@@ -10,7 +10,6 @@ import '../../models/workspace.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/workspace/workspace_display_name.dart';
 import '../../widgets/workspace_icon.dart';
-import '../../widgets/menu/sidebar_action_menu.dart';
 import 'open_workspace_tab_actions.dart';
 import 'workspace_actions.dart';
 import 'workspace_card_meta_row.dart';
@@ -90,25 +89,25 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
           SizedBox(
             width: TpIconButton.kCompactSize,
             height: TpIconButton.kCompactSize,
-            child: SidebarActionMenuIconAnchor(
+            child: TpActionMenuIconAnchor(
               icon: Icon(Icons.more_horiz, size: context.tpIconSizes.sm),
               onOpen: () => setState(() => _menuOpen = true),
               onClose: () => setState(() => _menuOpen = false),
               buildMenuChildren: (context, controller) => [
-                SidebarActionMenuItem(
+                TpActionMenuItem(
                   icon: Icons.drive_file_rename_outline,
                   label: l10n.homeWorkspaceRenameWorkspace,
                   menuController: controller,
                   onTap: () =>
                       unawaited(showRenameWorkspaceDialog(context, workspace)),
                 ),
-                SidebarActionMenuItem(
+                TpActionMenuItem(
                   icon: Icons.copy_all_outlined,
                   label: l10n.homeWorkspaceCloneWorkspace,
                   menuController: controller,
                   onTap: () => unawaited(cloneWorkspace(context, workspace)),
                 ),
-                SidebarActionMenuItem(
+                TpActionMenuItem(
                   icon: Icons.delete_outline,
                   label: l10n.deleteWorkspace,
                   destructive: true,
@@ -151,11 +150,11 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
 
   Future<void> _showContextMenu(TapUpDetails details) async {
     final l10n = context.l10n;
-    final selected = await showSidebarActionMenuFromSpecsAtTap<String>(
+    final selected = await showTpActionMenuFromSpecsAtTap<String>(
       context: context,
       tapDetails: TapDownDetails(globalPosition: details.globalPosition),
       specs: [
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: 'newTab',
           icon: Icons.open_in_new_rounded,
           label: l10n.homeWorkspaceOpenWorkspaceInNewTab,

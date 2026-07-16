@@ -12,14 +12,12 @@ import '../../pages/ssh_profiles/ssh_profile_form_dialog.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import '../../services/terminal/workspace_shell_connector.dart';
 import '../../services/terminal/workspace_terminal_launch_catalog.dart';
-import '../menu/sidebar_action_menu.dart';
-
 typedef WorkspaceTerminalSessionSelected =
     void Function(WorkspaceTerminalSessionSpec spec);
 
 /// Shows the workspace shell launch catalog at [globalPosition] (Orca-style +).
 ///
-/// Uses [showSidebarActionMenuFromSpecs] (root overlay) so PTY-driven rebuilds
+/// Uses [showTpActionMenuFromSpecs] (root overlay) so PTY-driven rebuilds
 /// cannot tear down an anchored popover mid-stream.
 Future<void> showWorkspaceTerminalLaunchMenu({
   required BuildContext context,
@@ -36,7 +34,7 @@ Future<void> showWorkspaceTerminalLaunchMenu({
   if (!context.mounted) return;
 
   final selected =
-      await showSidebarActionMenuFromSpecs<WorkspaceTerminalLaunchMenuItem>(
+      await showTpActionMenuFromSpecs<WorkspaceTerminalLaunchMenuItem>(
         context: context,
         globalPosition: globalPosition,
         specs: _launchMenuSpecs(context, items),
@@ -49,21 +47,21 @@ Future<void> showWorkspaceTerminalLaunchMenu({
   );
 }
 
-List<SidebarActionMenuSpec> _launchMenuSpecs(
+List<TpActionMenuSpec> _launchMenuSpecs(
   BuildContext context,
   List<WorkspaceTerminalLaunchMenuItem> items,
 ) {
   final l10n = context.l10n;
-  final specs = <SidebarActionMenuSpec>[];
+  final specs = <TpActionMenuSpec>[];
   for (final item in items) {
     if (item.isDivider) {
-      specs.add(const SidebarActionMenuSpec.divider());
+      specs.add(const TpActionMenuSpec.divider());
       continue;
     }
     switch (item.action) {
       case WorkspaceTerminalLaunchAction.openSession:
         specs.add(
-          SidebarActionMenuSpec.item(
+          TpActionMenuSpec.item(
             value: item,
             label: item.label,
             icon: Icons.terminal,
@@ -71,7 +69,7 @@ List<SidebarActionMenuSpec> _launchMenuSpecs(
         );
       case WorkspaceTerminalLaunchAction.newSshProfile:
         specs.add(
-          SidebarActionMenuSpec.item(
+          TpActionMenuSpec.item(
             value: item,
             label: l10n.workspaceTerminalNewSshSession,
             icon: Icons.add_link,
@@ -79,7 +77,7 @@ List<SidebarActionMenuSpec> _launchMenuSpecs(
         );
       case WorkspaceTerminalLaunchAction.settings:
         specs.add(
-          SidebarActionMenuSpec.item(
+          TpActionMenuSpec.item(
             value: item,
             label: l10n.workspaceTerminalSettings,
             icon: Icons.settings_outlined,

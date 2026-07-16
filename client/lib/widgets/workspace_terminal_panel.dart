@@ -25,7 +25,6 @@ import '../services/terminal/workspace_terminal_session_ops.dart';
 import '../services/workspace/workspace_tools_scope.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/ui/app_keys.dart';
-import 'menu/sidebar_action_menu.dart';
 import 'workspace_terminal/workspace_terminal_body_kind.dart';
 import 'workspace_terminal/workspace_terminal_empty_pane.dart';
 import 'workspace_terminal/workspace_terminal_view.dart';
@@ -377,20 +376,20 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     final linkUri = cellOffset != null
         ? entry.session.engine.hyperlinkAt(cellOffset.row, cellOffset.column)
         : null;
-    final specs = <SidebarActionMenuSpec>[
+    final specs = <TpActionMenuSpec>[
       if (linkUri != null)
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: 'openLink',
           icon: Icons.link,
           label: context.l10n.terminalOpenLink,
         ),
-      if (linkUri != null) const SidebarActionMenuSpec.divider(),
-      SidebarActionMenuSpec.item(
+      if (linkUri != null) const TpActionMenuSpec.divider(),
+      TpActionMenuSpec.item(
         value: 'paste',
         icon: Icons.content_paste,
         label: mloc.pasteButtonLabel,
       ),
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: 'copy',
         icon: Icons.content_copy,
         label: (!hasSelection && mouseReporting)
@@ -398,14 +397,14 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
             : mloc.copyButtonLabel,
         enabled: hasSelection,
       ),
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: 'selectAll',
         icon: Icons.select_all,
         label: mloc.selectAllButtonLabel,
       ),
     ];
 
-    final selected = await showSidebarActionMenuFromSpecs<String>(
+    final selected = await showTpActionMenuFromSpecs<String>(
       context: menuContext,
       globalPosition: globalPosition,
       popUpAnimationStyle: const AnimationStyle(duration: Duration.zero),

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
-import 'package:teampilot/widgets/menu/sidebar_action_menu.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 // Regression: context-menu item labels (workspace / session / member right-click
-// menus all use SidebarActionMenuItem) must follow the in-app "Text size"
+// menus all use TpActionMenuItem) must follow the in-app "Text size"
 // (typography) setting instead of a hardcoded font size.
 void main() {
   Future<double> labelFontSizeFor(
@@ -16,9 +16,9 @@ void main() {
       MaterialApp(
         theme: buildLightTheme(null, typography),
         home: const Scaffold(
-          body: SidebarActionMenuPanel(
+          body: TpActionMenuPanel(
             children: [
-              SidebarActionMenuItem(icon: Icons.edit, label: 'Rename'),
+              TpActionMenuItem(icon: Icons.edit, label: 'Rename'),
             ],
           ),
         ),

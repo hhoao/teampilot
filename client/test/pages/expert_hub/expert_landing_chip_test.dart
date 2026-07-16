@@ -3,8 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing_compose_card.dart';
-import 'package:teampilot/widgets/menu/sidebar_action_menu.dart';
-
+import 'package:shared_ui/shared_ui.dart';
 void main() {
   Widget pumpComposeCard({
     required String? expertChipLabel,
@@ -41,7 +40,7 @@ void main() {
           expertChipSpecs: expertChipLabel == null
               ? const []
               : const [
-                  SidebarActionMenuSpec.item(
+                  TpActionMenuSpec.item(
                     icon: Icons.person_off_outlined,
                     label: 'No expert',
                   ),

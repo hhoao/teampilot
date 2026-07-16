@@ -19,7 +19,6 @@ import 'package:shared_ui/shared_ui.dart';
 import '../app_provider/provider_brand_icon.dart';
 import '../cli/cli_brand_icon.dart';
 import '../member_presence_indicator.dart';
-import '../menu/sidebar_action_menu.dart';
 import '../team/team_lead_badge.dart';
 import '../workspace_folder_directory_row.dart';
 
@@ -243,34 +242,34 @@ class MembersPanel extends StatelessWidget {
     // Dispatch via the menu's return value (not inline `onAction`): actions that
     // push a route — e.g. the detail dialog — must run AFTER the menu route has
     // popped, otherwise the menu's own pop tears down the route we just pushed.
-    final action = await showSidebarActionMenuFromSpecsAtTap<_MemberMenuAction>(
+    final action = await showTpActionMenuFromSpecsAtTap<_MemberMenuAction>(
       context: context,
       tapDetails: details,
       specs: [
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: _MemberMenuAction.viewDetail,
           icon: Icons.info_outline,
           label: l10n.memberDetailViewAction,
           enabled: canViewDetail,
           tooltip: canViewDetail ? null : l10n.memberDetailNeedsSession,
         ),
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: _MemberMenuAction.switchTo,
           icon: Icons.swap_horiz,
           label: l10n.switchToMember,
         ),
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: _MemberMenuAction.open,
           icon: Icons.open_in_new,
           label: l10n.openMember,
         ),
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: _MemberMenuAction.openConfigDir,
           icon: Icons.folder_open,
           label: l10n.memberDetailOpenConfigDir,
         ),
-        const SidebarActionMenuSpec.divider(),
-        SidebarActionMenuSpec.item(
+        const TpActionMenuSpec.divider(),
+        TpActionMenuSpec.item(
           value: _MemberMenuAction.launchAll,
           icon: Icons.play_arrow,
           label: l10n.openTeam,

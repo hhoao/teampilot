@@ -9,8 +9,7 @@ import 'package:flutter_alacritty/input/term_mode.dart' show anyMouse;
 
 import '../../l10n/l10n_extensions.dart';
 import '../../services/terminal/terminal_export.dart';
-import '../../widgets/menu/sidebar_action_menu.dart';
-
+import 'package:shared_ui/shared_ui.dart';
 /// Right-click menu for the chat workbench terminal surface.
 Future<void> showChatWorkbenchTerminalContextMenu({
   required BuildContext context,
@@ -32,30 +31,30 @@ Future<void> showChatWorkbenchTerminalContextMenu({
   final linkUri = cellOffset != null
       ? engine.hyperlinkAt(cellOffset.row, cellOffset.column)
       : null;
-  final specs = <SidebarActionMenuSpec>[
-    SidebarActionMenuSpec.item(
+  final specs = <TpActionMenuSpec>[
+    TpActionMenuSpec.item(
       value: 'find',
       icon: Icons.search,
       label: context.l10n.terminalFind,
     ),
     if (linkUri != null)
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: 'openLink',
         icon: Icons.link,
         label: context.l10n.terminalOpenLink,
       ),
-    SidebarActionMenuSpec.item(
+    TpActionMenuSpec.item(
       value: 'export',
       icon: Icons.download_outlined,
       label: context.l10n.terminalExportScrollback,
     ),
-    const SidebarActionMenuSpec.divider(),
-    SidebarActionMenuSpec.item(
+    const TpActionMenuSpec.divider(),
+    TpActionMenuSpec.item(
       value: 'paste',
       icon: Icons.content_paste,
       label: mloc.pasteButtonLabel,
     ),
-    SidebarActionMenuSpec.item(
+    TpActionMenuSpec.item(
       value: 'copy',
       icon: Icons.content_copy,
       label: (!hasSelection && mouseReporting)
@@ -63,24 +62,24 @@ Future<void> showChatWorkbenchTerminalContextMenu({
           : mloc.copyButtonLabel,
       enabled: hasSelection,
     ),
-    SidebarActionMenuSpec.item(
+    TpActionMenuSpec.item(
       value: 'selectAll',
       icon: Icons.select_all,
       label: mloc.selectAllButtonLabel,
     ),
-    SidebarActionMenuSpec.item(
+    TpActionMenuSpec.item(
       value: 'clearSelection',
       icon: Icons.deselect,
       label: 'Clear selection',
     ),
     if (sessionRunning) ...[
-      const SidebarActionMenuSpec.divider(),
-      const SidebarActionMenuSpec.item(
+      const TpActionMenuSpec.divider(),
+      const TpActionMenuSpec.item(
         value: 'disconnect',
         icon: Icons.link_off,
         label: 'Disconnect',
       ),
-      const SidebarActionMenuSpec.item(
+      const TpActionMenuSpec.item(
         value: 'restart',
         icon: Icons.restart_alt,
         label: 'Restart session',
@@ -88,7 +87,7 @@ Future<void> showChatWorkbenchTerminalContextMenu({
     ],
   ];
 
-  final selected = await showSidebarActionMenuFromSpecs<String>(
+  final selected = await showTpActionMenuFromSpecs<String>(
     context: menuContext,
     globalPosition: globalPosition,
     specs: specs,

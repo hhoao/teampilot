@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../models/cli_preset.dart';
 import '../../pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
-import '../menu/sidebar_action_menu.dart';
 import 'compose_menu_chip.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Sentinel for the optional "manage presets" menu row.
 abstract final class ComposeModelPresetChipAction {
@@ -13,15 +13,15 @@ abstract final class ComposeModelPresetChipAction {
 /// Builds preset menu specs for same-CLI preset pickers.
 ///
 /// Caller must filter [sameCliPresets] with [presetsForCli] when needed.
-List<SidebarActionMenuSpec> buildComposeModelPresetMenuSpecs({
+List<TpActionMenuSpec> buildComposeModelPresetMenuSpecs({
   required List<CliPreset> sameCliPresets,
   required String? selectedPresetId,
   required String emptyHintLabel,
   String? managePresetsLabel,
 }) {
-  final specs = <SidebarActionMenuSpec>[
+  final specs = <TpActionMenuSpec>[
     if (sameCliPresets.isEmpty)
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: null,
         icon: Icons.tune,
         label: emptyHintLabel,
@@ -29,7 +29,7 @@ List<SidebarActionMenuSpec> buildComposeModelPresetMenuSpecs({
       )
     else
       for (final preset in sameCliPresets)
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: preset.id,
           icon: Icons.tune,
           label: preset.name,
@@ -37,9 +37,9 @@ List<SidebarActionMenuSpec> buildComposeModelPresetMenuSpecs({
         ),
   ];
   if (managePresetsLabel != null) {
-    specs.add(const SidebarActionMenuSpec.divider());
+    specs.add(const TpActionMenuSpec.divider());
     specs.add(
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: ComposeModelPresetChipAction.manage,
         icon: Icons.add,
         label: managePresetsLabel,

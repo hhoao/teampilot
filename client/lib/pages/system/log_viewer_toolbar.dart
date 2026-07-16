@@ -4,7 +4,6 @@ import 'package:path/path.dart' as p;
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../../widgets/menu/sidebar_action_menu.dart';
 import 'log_viewer_filter.dart';
 
 class LogViewerToolbar extends StatelessWidget {
@@ -143,26 +142,26 @@ class LogViewerToolbar extends StatelessWidget {
                       value: wrapLines,
                       onPressed: () => onWrapLinesChanged(!wrapLines),
                     ),
-                    SidebarActionMenuButton(
+                    TpActionMenuButton(
                       tooltip: l10n.logViewerActionsMenu,
                       icon: Icon(Icons.more_horiz, color: cs.onSurfaceVariant),
                       specs: [
-                        SidebarActionMenuSpec.item(
+                        TpActionMenuSpec.item(
                           value: 'refresh',
                           icon: Icons.refresh,
                           label: l10n.logViewerRefresh,
                         ),
-                        SidebarActionMenuSpec.item(
+                        TpActionMenuSpec.item(
                           value: 'copy',
                           icon: Icons.copy_outlined,
                           label: l10n.logViewerCopyPath,
                         ),
-                        SidebarActionMenuSpec.item(
+                        TpActionMenuSpec.item(
                           value: 'clear',
                           icon: Icons.cleaning_services_outlined,
                           label: l10n.logViewerClearOld,
                         ),
-                        SidebarActionMenuSpec.item(
+                        TpActionMenuSpec.item(
                           value: 'reverse',
                           icon: Icons.swap_vert,
                           label: l10n.logViewerReverseOrder,

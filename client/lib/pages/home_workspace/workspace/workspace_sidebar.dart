@@ -29,7 +29,6 @@ import '../../../utils/session/session_reorder_merge.dart';
 import '../../../utils/session/workspace_running_sessions.dart';
 import '../../../utils/session/workspace_sidebar_sessions.dart';
 import '../../../utils/session/workspace_tab_session_scope.dart';
-import '../../../widgets/menu/sidebar_action_menu.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'workspace_automations_section.dart';
 import 'workspace_search_dialog.dart';
@@ -614,7 +613,7 @@ class _SessionSortButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return SidebarActionMenuIconAnchor(
+    return TpActionMenuIconAnchor(
       size: TpIconButton.kCompactSize,
       triggerBuilder: (context, controller) => TpIconButton(
         icon: Icons.sort_rounded,
@@ -632,7 +631,7 @@ class _SessionSortButton extends StatelessWidget {
       buildMenuChildren: (context, controller) {
         return [
           for (final value in AppSessionSort.menuValues)
-            SidebarActionMenuItem(
+            TpActionMenuItem(
               icon: _iconForSessionSort(value),
               label: _labelForSessionSort(value, l10n),
               trailing: sort == value

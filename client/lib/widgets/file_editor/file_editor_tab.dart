@@ -6,7 +6,6 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../file_icon_widget.dart';
-import '../menu/sidebar_action_menu.dart';
 import '../tab_close_button.dart';
 
 /// Single open-file tab in the editor tab bar (icon, label, close, context menu).
@@ -48,20 +47,20 @@ class _FileEditorTabState extends State<FileEditorTab> {
     }
   }
 
-  List<SidebarActionMenuSpec> _menuSpecs(BuildContext menuContext) {
+  List<TpActionMenuSpec> _menuSpecs(BuildContext menuContext) {
     final l10n = menuContext.l10n;
     return [
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: 'close',
         icon: Icons.close,
         label: l10n.closeTab,
       ),
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: 'closeOthers',
         icon: Icons.tab_unselected,
         label: l10n.closeOtherTabs,
       ),
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: 'closeRight',
         icon: Icons.arrow_forward,
         label: l10n.closeRightTabs,
@@ -71,7 +70,7 @@ class _FileEditorTabState extends State<FileEditorTab> {
 
   Future<void> _showContextMenuAtTap(TapDownDetails details) async {
     if (!mounted) return;
-    final selected = await showSidebarActionMenuFromSpecsAtTap<String>(
+    final selected = await showTpActionMenuFromSpecsAtTap<String>(
       context: context,
       tapDetails: details,
       specs: _menuSpecs(context),
@@ -95,7 +94,7 @@ class _FileEditorTabState extends State<FileEditorTab> {
 
   Future<void> _showContextMenuAtPosition(Offset globalPosition) async {
     if (!mounted) return;
-    final selected = await showSidebarActionMenuFromSpecs<String>(
+    final selected = await showTpActionMenuFromSpecs<String>(
       context: context,
       globalPosition: globalPosition,
       specs: _menuSpecs(context),

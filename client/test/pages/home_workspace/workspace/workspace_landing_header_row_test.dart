@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_landing_selectors.dart';
-import 'package:teampilot/widgets/menu/sidebar_action_menu.dart';
-
+import 'package:shared_ui/shared_ui.dart';
 Widget _header({
   required double width,
   required String projectLabel,
@@ -16,7 +15,7 @@ Widget _header({
           projectLabel: projectLabel,
           projectHintWhenEmpty: 'Select project',
           projectMenuSpecs: [
-            SidebarActionMenuSpec.item(
+            TpActionMenuSpec.item(
               value: '/project',
               icon: Icons.folder_outlined,
               label: projectLabel,
@@ -27,7 +26,7 @@ Widget _header({
           worktreeLabel: worktreeLabel,
           worktreeHintWhenEmpty: 'Select worktree',
           worktreeMenuSpecs: [
-            SidebarActionMenuSpec.item(
+            TpActionMenuSpec.item(
               value: '/worktree',
               icon: Icons.account_tree_outlined,
               label: worktreeLabel,

@@ -40,7 +40,6 @@ import '../../../utils/workspace/landing_draft_resolver.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';
 import '../../../services/storage/home_target_controller.dart';
 import '../../../widgets/compose/compose_model_preset_chip.dart';
-import '../../../widgets/menu/sidebar_action_menu.dart';
 import '../../../services/launch/workspace_landing_launch_gate.dart';
 import '../../../repositories/workspace_project_config_repository.dart';
 import '../../expert_hub/expert_landing_chip_menu.dart';
@@ -965,7 +964,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     );
   }
 
-  List<SidebarActionMenuSpec> _expertChipSpecs(
+  List<TpActionMenuSpec> _expertChipSpecs(
     AppLocalizations l10n,
     ExpertHubState? hubState,
   ) {
@@ -1015,15 +1014,15 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
         : l10n.selectTeam;
   }
 
-  List<SidebarActionMenuSpec> _conversationModeSpecs(AppLocalizations l10n) {
+  List<TpActionMenuSpec> _conversationModeSpecs(AppLocalizations l10n) {
     return [
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: _LandingConversationMode.team,
         icon: Icons.groups_outlined,
         label: l10n.workspaceChatLandingModeTeam,
         selected: _conversationMode == _LandingConversationMode.team,
       ),
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: _LandingConversationMode.simple,
         icon: Icons.chat_bubble_outline,
         label: l10n.workspaceChatLandingModeSimple,
@@ -1032,7 +1031,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     ];
   }
 
-  List<SidebarActionMenuSpec> _autoChipSpecs(
+  List<TpActionMenuSpec> _autoChipSpecs(
     AppLocalizations l10n, {
     required List<CliPreset> presets,
     required List<TeamProfile> teams,
@@ -1048,7 +1047,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
 
     if (teams.isEmpty) {
       return [
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: null,
           icon: Icons.groups_outlined,
           label: l10n.selectTeam,
@@ -1058,7 +1057,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     }
     return [
       for (final team in teams)
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: team.id,
           icon: Icons.groups_outlined,
           label: team.name,

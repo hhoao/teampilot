@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
-import '../menu/sidebar_action_menu.dart';
 import 'compose_menu_chip.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Shared permission menu chip for Landing and History continue chrome.
 ///
@@ -27,15 +27,15 @@ class ComposePermissionChip extends StatelessWidget {
   String get _chipLabel =>
       dangerouslySkipPermissions ? fullAccessLabel : defaultLabel;
 
-  List<SidebarActionMenuSpec> _specs() {
+  List<TpActionMenuSpec> _specs() {
     return [
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: false,
         icon: Icons.verified_outlined,
         label: defaultLabel,
         selected: !dangerouslySkipPermissions,
       ),
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: true,
         icon: Icons.lock_open_outlined,
         label: fullAccessLabel,

@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/notification_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../menu/sidebar_action_menu.dart';
 import 'notification_list_tile.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -35,7 +34,7 @@ class _NotificationBellButtonState extends State<NotificationBellButton> {
     );
     final l10n = context.l10n;
 
-    return ActionMenuPopoverAnchor(
+    return TpActionMenuAnchor(
       controller: _popoverController,
       fixedPanelWidth: _dropdownWidth,
       anchor: const TpAnchor(
@@ -175,7 +174,7 @@ class _NotificationDropdownPanel extends StatelessWidget {
               ),
             ],
           ),
-          const SidebarActionMenuDivider(),
+          const TpActionMenuDivider(),
           if (items.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
@@ -211,7 +210,7 @@ class _NotificationDropdownPanel extends StatelessWidget {
                 ),
               ),
             ),
-          const SidebarActionMenuDivider(),
+          const TpActionMenuDivider(),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton(

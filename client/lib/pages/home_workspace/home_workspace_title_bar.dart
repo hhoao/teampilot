@@ -14,10 +14,8 @@ import '../../services/app/desktop_window_actions.dart';
 import '../../services/app/platform_utils.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../theme/workspace_topology_colors.dart';
-import '../../widgets/menu/sidebar_action_menu.dart';
 import '../../widgets/tab_close_button.dart';
 import '../../widgets/notification/notification_bell_button.dart';
-import '../../utils/ui/context_menu_position.dart';
 import '../../widgets/team_pilot_brand_logo.dart';
 import '../../widgets/window_chrome_controls.dart';
 import '../../widgets/window_drag_area.dart';
@@ -489,11 +487,11 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
   Future<void> _showTabContextMenuAtGlobal(Offset globalPosition) async {
     if (!widget.closable || widget.onClose == null) return;
     final l10n = context.l10n;
-    final selected = await showSidebarActionMenuFromSpecs<String>(
+    final selected = await showTpActionMenuFromSpecs<String>(
       context: context,
       globalPosition: globalPosition,
       specs: [
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: 'close',
           icon: Icons.close,
           label: l10n.closeTab,
@@ -688,8 +686,8 @@ class _RecentlyClosedOverflowButtonState
   var _pointerOnAnchor = false;
   var _pointerOnMenu = false;
 
-  ActionMenuController get _menuController =>
-      ActionMenuController(_popoverController);
+  TpActionMenuController get _menuController =>
+      TpActionMenuController(_popoverController);
 
   @override
   void dispose() {
@@ -734,7 +732,7 @@ class _RecentlyClosedOverflowButtonState
     };
     final identities = widget.launchProfiles;
 
-    return ActionMenuPopoverAnchor(
+    return TpActionMenuAnchor(
       controller: _popoverController,
       minWidth: _RecentlyClosedOverflowButton._menuWidth,
       fixedPanelWidth: _RecentlyClosedOverflowButton._menuWidth,
@@ -760,7 +758,7 @@ class _RecentlyClosedOverflowButtonState
               ),
             ),
             if (entries.isEmpty)
-              SidebarActionMenuItem(
+              TpActionMenuItem(
                 icon: Icons.inbox_outlined,
                 label: l10n.homeWorkspaceRecentlyClosedEmpty,
                 enabled: false,
@@ -779,7 +777,7 @@ class _RecentlyClosedOverflowButtonState
                       for (var i = 0; i < entries.length; i++) ...[
                         if (i > 0)
                           const SizedBox(
-                            height: SidebarActionMenuMetrics.itemGap,
+                            height: TpActionMenuMetrics.itemGap,
                           ),
                         _RecentlyClosedMenuItem(
                           entry: entries[i],
@@ -829,7 +827,7 @@ class _RecentlyClosedMenuItem extends StatelessWidget {
   final List<HomeClosedWorkspaceEntry> entries;
   final Workspace? workspace;
   final List<LaunchProfile> identities;
-  final ActionMenuController menuController;
+  final TpActionMenuController menuController;
   final ValueChanged<String>? onReopen;
 
   @override
@@ -846,12 +844,12 @@ class _RecentlyClosedMenuItem extends StatelessWidget {
     final topology = recentlyClosedTopology(entry: entry, workspace: workspace);
     final brightness = Theme.of(context).brightness;
 
-    return SidebarActionMenuItem(
+    return TpActionMenuItem(
       iconWidget: WorkspaceTabTopologyIcon(
         topology: topology ?? WorkspaceTopology.local,
         colorScheme: cs,
         brightness: brightness,
-        size: SidebarActionMenuMetrics.iconSize(context),
+        size: TpActionMenuMetrics.iconSize(context),
       ),
       label: recentlyClosedEntryLabel(entry),
       subtitle: subtitle == null

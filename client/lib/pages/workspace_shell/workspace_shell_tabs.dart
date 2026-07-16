@@ -13,7 +13,6 @@ import '../../theme/workspace_surface_layers.dart';
 import '../../utils/ui/app_keys.dart';
 import '../../widgets/tab_close_button.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
-import '../../widgets/menu/sidebar_action_menu.dart';
 import '../../widgets/session_working_spinner.dart';
 import 'workspace_shell_models.dart';
 
@@ -266,7 +265,7 @@ class WorkspaceShellTabChip extends StatefulWidget {
 class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
   var _hovered = false;
 
-  /// Keeps overflow actions (and [SidebarActionMenuButton]) mounted while the menu is
+  /// Keeps overflow actions (and [TpActionMenuButton]) mounted while the menu is
   /// open; otherwise moving the pointer onto the overlay triggers
   /// [MouseRegion.onExit] and removes the button before [onSelected] runs.
   final _overflowMenuOpen = false;
@@ -283,26 +282,26 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
     }
   }
 
-  List<SidebarActionMenuSpec> _tabMenuSpecs(BuildContext menuContext) {
+  List<TpActionMenuSpec> _tabMenuSpecs(BuildContext menuContext) {
     final l10n = menuContext.l10n;
     return [
       if (widget.pinnable && widget.onPin != null)
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: 'pin',
           icon: widget.pinned ? Icons.push_pin : Icons.push_pin_outlined,
           label: widget.pinned ? l10n.unpinConversation : l10n.pinConversation,
         ),
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: 'close',
         icon: Icons.close,
         label: l10n.closeTab,
       ),
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: 'closeOthers',
         icon: Icons.tab_unselected,
         label: l10n.closeOtherTabs,
       ),
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: 'closeRight',
         icon: Icons.arrow_forward,
         label: l10n.closeRightTabs,
@@ -312,7 +311,7 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
 
   Future<void> _showTabContextMenuAtTap(TapDownDetails details) async {
     if (!mounted) return;
-    final selected = await showSidebarActionMenuFromSpecsAtTap<String>(
+    final selected = await showTpActionMenuFromSpecsAtTap<String>(
       context: context,
       tapDetails: details,
       specs: _tabMenuSpecs(context),
@@ -327,7 +326,7 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
 
   Future<void> _showTabContextMenu(Offset globalPosition) async {
     if (!mounted) return;
-    final selected = await showSidebarActionMenuFromSpecs<String>(
+    final selected = await showTpActionMenuFromSpecs<String>(
       context: context,
       globalPosition: globalPosition,
       specs: _tabMenuSpecs(context),

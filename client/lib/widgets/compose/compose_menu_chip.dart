@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
-import '../menu/sidebar_action_menu.dart';
-
 /// Popover menu chip matching landing compose toolbar visuals.
 class ComposeMenuChip extends StatelessWidget {
   const ComposeMenuChip({
@@ -19,13 +17,13 @@ class ComposeMenuChip extends StatelessWidget {
   final WorkspaceChatLandingPalette palette;
   final IconData icon;
   final String label;
-  final List<SidebarActionMenuSpec> specs;
+  final List<TpActionMenuSpec> specs;
   final ValueChanged<Object?> onSelected;
   final double minWidth;
 
   @override
   Widget build(BuildContext context) {
-    return SidebarActionMenuIconAnchor(
+    return TpActionMenuIconAnchor(
       minWidth: minWidth,
       triggerBuilder: (context, controller) => ComposeToolbarChip(
         palette: palette,
@@ -40,7 +38,7 @@ class ComposeMenuChip extends StatelessWidget {
         },
       ),
       buildMenuChildren: (context, controller) =>
-          buildSidebarActionMenuChildren(
+          buildTpActionMenuChildren(
             context: context,
             specs: specs,
             menuController: controller,

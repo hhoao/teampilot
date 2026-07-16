@@ -9,7 +9,6 @@ import '../../models/run/launch_configuration.dart';
 import '../../models/workspace_folder.dart';
 import '../../services/run/shell_script_launch_schema.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../menu/sidebar_action_menu.dart';
 import 'run_config_editor_dialog.dart';
 
 /// Workspace-scoped launch configurations list in a modal dialog
@@ -190,17 +189,17 @@ class _RunConfigurationRow extends StatelessWidget {
                 ],
               ),
             ),
-            SidebarActionMenuIconAnchor(
+            TpActionMenuIconAnchor(
               key: Key('run-config-row-menu-${owned.selectionKey}'),
               icon: Icon(Icons.more_vert, size: context.tpIconSizes.md),
               buildMenuChildren: (ctx, controller) => [
-                SidebarActionMenuItem(
+                TpActionMenuItem(
                   icon: Icons.edit_outlined,
                   label: l10n.edit,
                   menuController: controller,
                   onTap: () => unawaited(_edit(context)),
                 ),
-                SidebarActionMenuItem(
+                TpActionMenuItem(
                   icon: Icons.delete_outline,
                   label: l10n.runDeleteConfiguration,
                   destructive: true,

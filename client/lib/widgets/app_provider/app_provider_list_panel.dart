@@ -9,7 +9,6 @@ import '../../utils/ui/app_keys.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../menu/sidebar_action_menu.dart';
 import '../settings/focus_gated_text_field.dart';
 import 'brand_dropdown_rows.dart';
 import 'provider_brand_icon.dart';
@@ -277,17 +276,17 @@ class _ProviderListControls extends StatelessWidget {
                   style: styles.mdSemiboldTightSnug,
                 ),
               ),
-              SidebarActionMenuButton(
+              TpActionMenuButton(
                 tooltip: l10n.add,
                 icon: Icon(Icons.add),
                 size: 32,
                 specs: [
-                  SidebarActionMenuSpec.item(
+                  TpActionMenuSpec.item(
                     value: 'add',
                     icon: Icons.add,
                     label: l10n.addProvider,
                   ),
-                  SidebarActionMenuSpec.item(
+                  TpActionMenuSpec.item(
                     value: 'import',
                     icon: Icons.upload_file_outlined,
                     label: l10n.appProviderImport,
@@ -406,15 +405,15 @@ class _ProviderListTile extends StatelessWidget {
         ),
         trailing: hubStyle
             ? Icon(Icons.chevron_right, color: titleColor)
-            : SidebarActionMenuButton(
+            : TpActionMenuButton(
                 icon: Icon(Icons.more_horiz, color: titleColor),
                 specs: [
-                  SidebarActionMenuSpec.item(
+                  TpActionMenuSpec.item(
                     value: 'edit',
                     icon: Icons.edit_outlined,
                     label: l10n.edit,
                   ),
-                  SidebarActionMenuSpec.item(
+                  TpActionMenuSpec.item(
                     value: 'delete',
                     icon: Icons.delete_outline,
                     label: l10n.delete,

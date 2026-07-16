@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/inline_token/inline_token_chip_mirror.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/services/inline_token/inline_token_palette.dart';
 
 void main() {
-  test('buildInlineTokenMirrorLayoutSpans keeps token glyphs transparent', () {
+  test('buildTpTokenMirrorLayoutSpans keeps token glyphs transparent', () {
     const style = TextStyle(fontSize: 14, height: 1.5, color: Colors.black);
-    final spans = buildInlineTokenMirrorLayoutSpans(
+    final spans = buildTpTokenMirrorLayoutSpans(
       text: 'use /writing-plans on @src/main.dart',
       baseStyle: style,
       tokenPattern: defaultInlineTokenPattern,
@@ -19,11 +19,11 @@ void main() {
     expect(slash.style?.color, Colors.transparent);
   });
 
-  test('inlineTokenPillWidth never extends past layout token end', () {
+  test('tpTokenPillWidth never extends past layout token end', () {
     const layoutWidth = 180.0;
     expect(
-      inlineTokenPillWidth(layoutWidth),
-      layoutWidth + inlineTokenPillLeftBleed,
+      tpTokenPillWidth(layoutWidth),
+      layoutWidth + tpTokenPillLeftBleed,
     );
   });
 }

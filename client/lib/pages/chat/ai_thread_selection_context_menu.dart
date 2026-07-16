@@ -1,10 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
-import '../../widgets/menu/sidebar_action_menu.dart';
-
-/// [SelectionArea] toolbar that opens [SidebarActionMenu] (same as editor /
+/// [SelectionArea] toolbar that opens [TpActionMenu] (same as editor /
 /// terminal context menus) instead of the platform Material text toolbar.
 Widget buildAiThreadSelectionContextMenu(
   BuildContext context,
@@ -45,16 +44,16 @@ class _AiThreadSelectionContextMenuState
       return;
     }
 
-    final specs = <SidebarActionMenuSpec>[
+    final specs = <TpActionMenuSpec>[
       for (final item in items)
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           icon: _iconFor(item.type),
           label: item.label ?? _fallbackLabel(context, item.type),
           onAction: () => item.onPressed?.call(),
         ),
     ];
 
-    await showSidebarActionMenuFromSpecs<void>(
+    await showTpActionMenuFromSpecs<void>(
       context: context,
       globalPosition: state.contextMenuAnchors.primaryAnchor,
       specs: specs,

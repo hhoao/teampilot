@@ -18,7 +18,6 @@ import '../../services/automation/automation_launch_session_binding.dart';
 import '../../services/automation/automation_scope_label.dart';
 import '../../utils/ui/coarse_relative_time.dart';
 import '../../utils/workspace/workspace_display_name.dart';
-import '../../widgets/menu/sidebar_action_menu.dart';
 import 'automation_editor_dialog.dart';
 import 'automation_schedule_picker.dart';
 import 'automation_sort.dart';
@@ -634,23 +633,23 @@ class AutomationRow extends StatelessWidget {
                   ? null
                   : (_) => onToggleEnabled(),
             ),
-            SidebarActionMenuIconAnchor(
+            TpActionMenuIconAnchor(
               icon: Icon(Icons.more_vert, size: context.tpIconSizes.md),
               buildMenuChildren: (ctx, controller) => [
-                SidebarActionMenuItem(
+                TpActionMenuItem(
                   icon: Icons.edit_outlined,
                   label: l10n.automationsEdit,
                   menuController: controller,
                   onTap: onEdit,
                 ),
-                SidebarActionMenuItem(
+                TpActionMenuItem(
                   icon: Icons.play_circle_outline,
                   label: l10n.automationsRunNow,
                   menuController: controller,
                   enabled: !automation.isRunLimitReached,
                   onTap: onRunNow,
                 ),
-                SidebarActionMenuItem(
+                TpActionMenuItem(
                   icon: Icons.delete_outline,
                   label: l10n.automationsDelete,
                   destructive: true,

@@ -12,7 +12,6 @@ import '../../models/app_session.dart';
 import '../../repositories/session_repository.dart';
 import '../../utils/workspace/home_workspace_display.dart';
 import '../../utils/workspace/workspace_display_name.dart';
-import '../../widgets/menu/sidebar_action_menu.dart';
 import 'home_new_workspace_dialog.dart';
 import 'open_workspace_tab_actions.dart';
 import 'workspace_card.dart';
@@ -182,7 +181,7 @@ class WorkspacesSortButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return SidebarActionMenuIconAnchor(
+    return TpActionMenuIconAnchor(
       minWidth: 220,
       triggerBuilder: (context, controller) {
         return WorkspacesIconChip(
@@ -200,7 +199,7 @@ class WorkspacesSortButton extends StatelessWidget {
       buildMenuChildren: (context, controller) {
         return [
           for (final sort in WorkspaceSort.values)
-            SidebarActionMenuItem(
+            TpActionMenuItem(
               icon: _iconForSort(sort),
               label: sort.label(l10n),
               trailing: workspaceSort == sort

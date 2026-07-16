@@ -20,7 +20,6 @@ import '../../../utils/session/session_worktree_grouping.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';
 import '../../../widgets/app_toast/app_toast.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../../../widgets/menu/sidebar_action_menu.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'worktree_delete_dialog.dart';
 import 'workspace_session_actions.dart';
@@ -240,21 +239,21 @@ class _WorktreeGroupHeaderState extends State<_WorktreeGroupHeader> {
 
   Future<void> _showContextMenu(TapDownDetails details) async {
     final l10n = context.l10n;
-    final specs = <SidebarActionMenuSpec>[
+    final specs = <TpActionMenuSpec>[
       if (widget.onNewConversation != null)
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: 'new',
           icon: Icons.edit_outlined,
           label: l10n.worktreeNewConversationHere,
         ),
       if (widget.onCopyPath != null)
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: 'copy',
           icon: Icons.copy_rounded,
           label: l10n.worktreeMenuCopyPath,
         ),
       if (widget.onDelete != null)
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: 'delete',
           icon: Icons.delete_outline_rounded,
           label: l10n.worktreeMenuRemove,
@@ -264,7 +263,7 @@ class _WorktreeGroupHeaderState extends State<_WorktreeGroupHeader> {
     if (specs.isEmpty) return;
 
     setState(() => _menuOpen = true);
-    final selected = await showSidebarActionMenuFromSpecsAtTap<String>(
+    final selected = await showTpActionMenuFromSpecsAtTap<String>(
       context: context,
       tapDetails: details,
       specs: specs,

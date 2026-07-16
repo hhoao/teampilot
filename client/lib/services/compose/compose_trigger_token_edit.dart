@@ -1,27 +1,25 @@
 import 'package:flutter/services.dart';
+import 'package:shared_ui/shared_ui.dart';
 
-import '../inline_token/inline_token_edit.dart';
 import '../inline_token/inline_token_palette.dart';
 
-export '../inline_token/inline_token_edit.dart';
-
-typedef ComposeTokenRange = InlineTokenRange;
+typedef ComposeTokenRange = TpTokenRange;
 
 Iterable<ComposeTokenRange> composeTokenRanges(String text) =>
-    inlineTokenRanges(text, defaultInlineTokenPattern);
+    tpTokenRanges(text, defaultInlineTokenPattern);
 
 ComposeTokenRange? composeTokenRangeForBackspace(String text, int offset) =>
-    inlineTokenRangeForBackspace(text, offset, defaultInlineTokenPattern);
+    tpTokenRangeForBackspace(text, offset, defaultInlineTokenPattern);
 
 ComposeTokenRange? composeTokenRangeForDelete(String text, int offset) =>
-    inlineTokenRangeForDelete(text, offset, defaultInlineTokenPattern);
+    tpTokenRangeForDelete(text, offset, defaultInlineTokenPattern);
 
 TextRange expandRangeToComposeTokens({
   required String text,
   required int start,
   required int end,
 }) {
-  return expandRangeToInlineTokens(
+  return expandRangeToTpTokens(
     text: text,
     start: start,
     end: end,
@@ -30,7 +28,7 @@ TextRange expandRangeToComposeTokens({
 }
 
 TextEditingValue? applyComposeTokenBackspace(TextEditingValue value) =>
-    applyInlineTokenBackspace(value, defaultInlineTokenPattern);
+    applyTpTokenBackspace(value, defaultInlineTokenPattern);
 
 TextEditingValue? applyComposeTokenDelete(TextEditingValue value) =>
-    applyInlineTokenDelete(value, defaultInlineTokenPattern);
+    applyTpTokenDelete(value, defaultInlineTokenPattern);

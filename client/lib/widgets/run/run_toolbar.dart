@@ -8,7 +8,6 @@ import '../../l10n/l10n_extensions.dart';
 import '../../services/run/launch_adapter_protocol.dart';
 import '../../services/run/launch_config_l10n.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../../widgets/menu/sidebar_action_menu.dart';
 import 'run_config_editor_dialog.dart';
 import 'run_toolbar_config_dropdown.dart';
 
@@ -96,9 +95,9 @@ class _ChoiceOptionSelector extends StatelessWidget {
         .firstOrNull;
     final label = selectedLabel ?? option.label;
 
-    final specs = <SidebarActionMenuSpec>[
+    final specs = <TpActionMenuSpec>[
       for (final choice in option.choices)
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           value: choice.value,
           icon: Icons.circle_outlined,
           label: choice.label,
@@ -107,7 +106,7 @@ class _ChoiceOptionSelector extends StatelessWidget {
     ];
 
     final cs = Theme.of(context).colorScheme;
-    return SidebarActionMenuButton(
+    return TpActionMenuButton(
       key: Key('run-toolbar-option-${option.id}'),
       tooltip: option.label,
       minWidth: 120,

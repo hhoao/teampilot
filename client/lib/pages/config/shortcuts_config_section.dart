@@ -12,7 +12,6 @@ import '../../services/commands/command_definition.dart';
 import '../../services/commands/command_l10n.dart';
 import '../../services/commands/key_chord.dart';
 import '../../services/commands/key_chord_formatter.dart';
-import '../../widgets/menu/sidebar_action_menu.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/shortcuts/shortcut_cheatsheet_dialog.dart';
 import '../../widgets/shortcuts/shortcut_rebind_dialog.dart';
@@ -230,7 +229,7 @@ class _ShortcutRow extends StatelessWidget {
               ],
             ),
           const SizedBox(width: 8),
-          SidebarActionMenuButton(
+          TpActionMenuButton(
             size: TpIconButton.kCompactSize,
             icon: Icon(
               Icons.more_vert,
@@ -238,17 +237,17 @@ class _ShortcutRow extends StatelessWidget {
               color: cs.onSurfaceVariant,
             ),
             specs: [
-              SidebarActionMenuSpec.item(
+              TpActionMenuSpec.item(
                 value: _ShortcutRowAction.change,
                 icon: Icons.edit_outlined,
                 label: l10n.shortcutsChangeAction,
               ),
-              SidebarActionMenuSpec.item(
+              TpActionMenuSpec.item(
                 value: _ShortcutRowAction.reset,
                 icon: Icons.restart_alt_outlined,
                 label: l10n.shortcutsResetAction,
               ),
-              SidebarActionMenuSpec.item(
+              TpActionMenuSpec.item(
                 value: _ShortcutRowAction.unbind,
                 icon: Icons.link_off_outlined,
                 label: l10n.shortcutsUnbindAction,

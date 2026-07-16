@@ -9,8 +9,8 @@ import '../../cubits/editor_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../widgets/menu/sidebar_action_menu.dart';
 import 'file_editor_ai_context.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Desktop/mobile context menu for [CodeEditor] (right-click / long-press).
 class FileEditorContextMenuController implements SelectionToolbarController {
@@ -45,20 +45,20 @@ class FileEditorContextMenuController implements SelectionToolbarController {
         workspaceId != null &&
         editorCubit.isReadOnly(workspaceId, path);
 
-    final specs = <SidebarActionMenuSpec>[
+    final specs = <TpActionMenuSpec>[
       if (!readOnly)
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           icon: Icons.content_cut,
           label: l10n.editorCut,
           onAction: controller.cut,
         ),
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         icon: Icons.content_copy,
         label: l10n.editorCopy,
         onAction: controller.copy,
       ),
       if (path != null)
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           icon: Icons.auto_awesome_outlined,
           label: l10n.editorCopyAsAiContext,
           onAction: () {
@@ -73,25 +73,25 @@ class FileEditorContextMenuController implements SelectionToolbarController {
           },
         ),
       if (!readOnly)
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           icon: Icons.content_paste,
           label: l10n.editorPaste,
           onAction: controller.paste,
         ),
-      const SidebarActionMenuSpec.divider(),
-      SidebarActionMenuSpec.item(
+      const TpActionMenuSpec.divider(),
+      TpActionMenuSpec.item(
         icon: Icons.select_all,
         label: l10n.editorSelectAll,
         onAction: controller.selectAll,
       ),
       if (!readOnly && controller.canUndo)
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           icon: Icons.undo,
           label: l10n.editorUndoEdit,
           onAction: controller.undo,
         ),
       if (!readOnly && controller.canRedo)
-        SidebarActionMenuSpec.item(
+        TpActionMenuSpec.item(
           icon: Icons.redo,
           label: l10n.editorRedoEdit,
           onAction: controller.redo,
@@ -99,7 +99,7 @@ class FileEditorContextMenuController implements SelectionToolbarController {
     ];
 
     unawaited(
-      showSidebarActionMenuFromSpecs<void>(
+      showTpActionMenuFromSpecs<void>(
         context: context,
         globalPosition: anchors.primaryAnchor,
         specs: specs,

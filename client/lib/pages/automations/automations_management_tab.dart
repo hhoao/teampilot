@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../widgets/menu/sidebar_action_menu.dart';
 import '../home_workspace/workspaces_tab.dart';
 import 'automation_sort.dart';
 import 'automations_list_body.dart';
@@ -110,7 +109,7 @@ class AutomationsSortButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return SidebarActionMenuIconAnchor(
+    return TpActionMenuIconAnchor(
       minWidth: 220,
       triggerBuilder: (context, controller) {
         return WorkspacesIconChip(
@@ -128,7 +127,7 @@ class AutomationsSortButton extends StatelessWidget {
       buildMenuChildren: (context, controller) {
         return [
           for (final value in AutomationSort.values)
-            SidebarActionMenuItem(
+            TpActionMenuItem(
               icon: _iconForSort(value),
               label: value.label(l10n),
               trailing: sort == value

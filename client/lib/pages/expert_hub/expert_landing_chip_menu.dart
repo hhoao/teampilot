@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-import '../../widgets/menu/sidebar_action_menu.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Max recent experts shown in the Landing expert chip menu.
 const kExpertLandingChipRecentLimit = 5;
@@ -9,7 +8,7 @@ const kExpertLandingChipRecentLimit = 5;
 enum ExpertLandingChipAction { clear, browseAll }
 
 /// Builds Landing expert-chip menu: clear → recent (≤5) → divider → browse all.
-List<SidebarActionMenuSpec> buildExpertLandingChipMenuSpecs({
+List<TpActionMenuSpec> buildExpertLandingChipMenuSpecs({
   required String noneSelectedLabel,
   required String browseAllLabel,
   required String? selectedExpertKey,
@@ -18,8 +17,8 @@ List<SidebarActionMenuSpec> buildExpertLandingChipMenuSpecs({
   final selected = selectedExpertKey?.trim() ?? '';
   final noneSelected = selected.isEmpty;
 
-  final specs = <SidebarActionMenuSpec>[
-    SidebarActionMenuSpec.item(
+  final specs = <TpActionMenuSpec>[
+    TpActionMenuSpec.item(
       value: ExpertLandingChipAction.clear,
       icon: Icons.person_off_outlined,
       label: noneSelectedLabel,
@@ -34,7 +33,7 @@ List<SidebarActionMenuSpec> buildExpertLandingChipMenuSpecs({
 
   for (final expert in recent) {
     specs.add(
-      SidebarActionMenuSpec.item(
+      TpActionMenuSpec.item(
         value: expert.key,
         icon: Icons.psychology_outlined,
         label: expert.name,
@@ -43,9 +42,9 @@ List<SidebarActionMenuSpec> buildExpertLandingChipMenuSpecs({
     );
   }
 
-  specs.add(const SidebarActionMenuSpec.divider());
+  specs.add(const TpActionMenuSpec.divider());
   specs.add(
-    SidebarActionMenuSpec.item(
+    TpActionMenuSpec.item(
       value: ExpertLandingChipAction.browseAll,
       icon: Icons.travel_explore_outlined,
       label: browseAllLabel,

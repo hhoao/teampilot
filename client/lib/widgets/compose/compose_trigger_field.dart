@@ -16,7 +16,7 @@ import '../../services/compose/compose_trigger_caret.dart';
 import '../../services/compose/compose_trigger_insert.dart';
 import '../../services/compose/compose_trigger_query.dart';
 import '../../services/keyboard/compose_keyboard_shortcut_handler.dart';
-import '../inline_token/inline_token_text_field.dart';
+import '../../services/inline_token/inline_token_palette.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 sealed class ComposeTriggerSuggestion {}
@@ -399,7 +399,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
             textStyle: textStyle,
             focusNode: widget.focusNode,
             builder: (context, lineCount) {
-              return InlineTokenTextField(
+              return TpTokenTextField(
                 fieldKey: _fieldKey,
                 controller: widget.controller,
                 focusNode: widget.focusNode,
@@ -409,6 +409,8 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
                 textStyle: textStyle,
                 hintStyle: styles.mdColored(widget.hintColor),
                 cursorColor: widget.mutedColor,
+                tokenPattern: defaultInlineTokenPattern,
+                resolveTokenPalette: resolveSlashAtTokenPalette,
                 // Fill the shell so blank viewport areas remain tappable.
                 expands: true,
                 minLines: lineCount,

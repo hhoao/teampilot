@@ -16,7 +16,6 @@ import '../pages/home_workspace/workspace/workspace_sidebar_row_metrics.dart';
 import '../repositories/session_repository.dart';
 import '../utils/ui/coarse_relative_time.dart';
 import '../utils/debounce/debounce.dart';
-import 'menu/sidebar_action_menu.dart';
 import 'session_working_spinner.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -133,22 +132,22 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     await chatCubit.deleteSession(repo, widget.session.sessionId);
   }
 
-  List<SidebarActionMenuPopupItem<String>> _contextMenuItems(
+  List<TpActionMenuPopupItem<String>> _contextMenuItems(
     AppLocalizations l10n,
     AppSession session,
   ) {
-    final items = <SidebarActionMenuPopupItem<String>>[
-      SidebarActionMenuPopupItem(
+    final items = <TpActionMenuPopupItem<String>>[
+      TpActionMenuPopupItem(
         value: 'rename',
         icon: Icons.drive_file_rename_outline,
         label: l10n.renameConversation,
       ),
-      SidebarActionMenuPopupItem(
+      TpActionMenuPopupItem(
         value: 'pin',
         icon: session.pinned ? Icons.push_pin : Icons.push_pin_outlined,
         label: session.pinned ? l10n.unpinConversation : l10n.pinConversation,
       ),
-      SidebarActionMenuPopupItem(
+      TpActionMenuPopupItem(
         value: 'schedule',
         icon: Icons.schedule_rounded,
         label: l10n.automationsSessionContextMenu,
@@ -156,7 +155,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     ];
     if (_sessionAutomationCount > 0) {
       items.add(
-        SidebarActionMenuPopupItem(
+        TpActionMenuPopupItem(
           value: 'manage_schedule',
           icon: Icons.event_repeat_rounded,
           label: l10n.automationsManageSessionContextMenu,
@@ -164,7 +163,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       );
     }
     items.add(
-      SidebarActionMenuPopupItem(
+      TpActionMenuPopupItem(
         value: 'delete',
         icon: Icons.delete_outline,
         label: l10n.deleteConversation,
@@ -218,7 +217,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final session = widget.session;
     final menuItems = _contextMenuItems(l10n, session);
     setState(() => _menuOpen = true);
-    final selected = await showSidebarActionMenuAtTap<String>(
+    final selected = await showTpActionMenuAtTap<String>(
       context: context,
       tapDetails: details,
       itemCount: menuItems.length,
@@ -241,7 +240,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final session = widget.session;
     final menuItems = _contextMenuItems(l10n, session);
     setState(() => _menuOpen = true);
-    final selected = await showSidebarActionMenu<String>(
+    final selected = await showTpActionMenu<String>(
       context: context,
       globalPosition: globalPosition,
       itemCount: menuItems.length,
@@ -351,19 +350,19 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
               SizedBox(
                 width: TpIconButton.kDefaultSize,
                 height: TpIconButton.kDefaultSize,
-                child: SidebarActionMenuIconAnchor(
+                child: TpActionMenuIconAnchor(
                   icon: Icon(Icons.more_horiz, size: context.tpIconSizes.md),
                   onOpen: () => setState(() => _menuOpen = true),
                   onClose: () => setState(() => _menuOpen = false),
                   buildMenuChildren: (context, controller) => [
-                    SidebarActionMenuItem(
+                    TpActionMenuItem(
                       icon: Icons.drive_file_rename_outline,
                       label: l10n.renameConversation,
                       menuController: controller,
                       onTap: () =>
                           unawaited(_showRenameDialog(context, session, l10n)),
                     ),
-                    SidebarActionMenuItem(
+                    TpActionMenuItem(
                       icon: session.pinned
                           ? Icons.push_pin
                           : Icons.push_pin_outlined,
@@ -377,7 +376,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                         ),
                       ),
                     ),
-                    SidebarActionMenuItem(
+                    TpActionMenuItem(
                       icon: Icons.delete_outline,
                       label: l10n.deleteConversation,
                       destructive: true,

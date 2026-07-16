@@ -11,7 +11,6 @@ import '../../services/run/launch_adapter_protocol.dart';
 import '../../services/run/launch_config_store.dart';
 import '../../services/run/launch_type_unavailable.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../menu/sidebar_action_menu.dart';
 import 'run_config_editor_dialog.dart';
 import 'run_configurations_dialog.dart';
 
@@ -72,7 +71,7 @@ class RunToolbarConfigDropdown extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Tooltip(
       message: l10n.runConfigurationTooltip,
-      child: SidebarActionMenuIconAnchor(
+      child: TpActionMenuIconAnchor(
         key: const Key('run-config-dropdown'),
         minWidth: 280,
         triggerBuilder: (context, controller) {
@@ -107,7 +106,7 @@ class RunToolbarConfigDropdown extends StatelessWidget {
         buildMenuChildren: (menuContext, controller) {
           return [
             for (final entry in entries)
-              SidebarActionMenuItem(
+              TpActionMenuItem(
                 icon: _entryIcon(entry),
                 label: _entryText(menuContext, entry),
                 enabled: _isEnabled(cubit, entry),
@@ -124,8 +123,8 @@ class RunToolbarConfigDropdown extends StatelessWidget {
                     ? () => unawaited(_onSelected(context, cubit, entry))
                     : null,
               ),
-            const SidebarActionMenuDivider(),
-            SidebarActionMenuItem(
+            const TpActionMenuDivider(),
+            TpActionMenuItem(
               key: const Key('run-config-add-configuration'),
               icon: Icons.add_rounded,
               label: l10n.runAddConfiguration,
@@ -136,7 +135,7 @@ class RunToolbarConfigDropdown extends StatelessWidget {
                 );
               },
             ),
-            SidebarActionMenuItem(
+            TpActionMenuItem(
               key: const Key('run-config-add'),
               icon: Icons.settings_outlined,
               label: l10n.runConfigureLaunchItems,
@@ -240,7 +239,7 @@ class RunToolbarConfigDropdown extends StatelessWidget {
 
   Widget? _entryTrailing(
     BuildContext context, {
-    required ActionMenuController controller,
+    required TpActionMenuController controller,
     required RunCubit cubit,
     required _DropdownEntry entry,
     required bool selected,

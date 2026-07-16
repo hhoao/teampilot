@@ -10,8 +10,6 @@ import '../l10n/l10n_extensions.dart';
 import '../models/runtime_target.dart';
 import '../services/app/connection_mode_service.dart';
 import '../services/storage/home_target_controller.dart';
-import 'menu/sidebar_action_menu.dart';
-
 /// Android app-bar control: shows the active SSH server and switches profiles.
 class AndroidSshProfileSelector extends StatelessWidget {
   const AndroidSshProfileSelector({super.key});
@@ -38,7 +36,7 @@ class AndroidSshProfileSelector extends StatelessWidget {
         sshState.profiles.first;
     final l10n = context.l10n;
 
-    return SidebarActionMenuIconAnchor(
+    return TpActionMenuIconAnchor(
       minWidth: 260,
       triggerBuilder: (context, controller) {
         return InkWell(
@@ -72,9 +70,9 @@ class AndroidSshProfileSelector extends StatelessWidget {
         );
       },
       buildMenuChildren: (context, controller) {
-        final specs = <SidebarActionMenuSpec>[
+        final specs = <TpActionMenuSpec>[
           for (final profile in sshState.profiles)
-            SidebarActionMenuSpec.item(
+            TpActionMenuSpec.item(
               value: profile.id,
               icon: Icons.dns_outlined,
               label: profile.name,
@@ -84,14 +82,14 @@ class AndroidSshProfileSelector extends StatelessWidget {
               ),
               selected: profile.id == selected.id,
             ),
-          const SidebarActionMenuSpec.divider(),
-          SidebarActionMenuSpec.item(
+          const TpActionMenuSpec.divider(),
+          TpActionMenuSpec.item(
             value: _manageProfilesValue,
             icon: Icons.settings_outlined,
             label: l10n.sshProfileSelectorManage,
           ),
         ];
-        return buildSidebarActionMenuChildren(
+        return buildTpActionMenuChildren(
           context: context,
           specs: specs,
           menuController: controller,
