@@ -1046,6 +1046,12 @@ abstract class AppLocalizations {
   /// **'Open member'**
   String get openMember;
 
+  /// No description provided for @switchToMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to member'**
+  String get switchToMember;
+
   /// No description provided for @memberPresenceOffline.
   ///
   /// In en, this message translates to:

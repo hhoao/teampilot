@@ -212,6 +212,7 @@
   },
   "openTeam": "Open Team",
   "openMember": "Open member",
+  "switchToMember": "Switch to member",
   "memberPresenceOffline": "Offline",
   "memberPresenceConnecting": "Connecting…",
   "memberPresenceBooting": "Starting…",

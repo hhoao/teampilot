@@ -504,6 +504,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get openMember => '打开成员';
 
   @override
+  String get switchToMember => '切换到成员';
+
+  @override
   String get memberPresenceOffline => '未连接';
 
   @override

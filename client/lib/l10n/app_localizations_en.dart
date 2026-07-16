@@ -524,6 +524,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openMember => 'Open member';
 
   @override
+  String get switchToMember => 'Switch to member';
+
+  @override
   String get memberPresenceOffline => 'Offline';
 
   @override

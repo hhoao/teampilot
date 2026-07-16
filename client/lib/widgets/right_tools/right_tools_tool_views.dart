@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/chat/model/session_workbench_view.dart';
 import '../../cubits/file_tree_cubit.dart';
 import '../../cubits/mailbox_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
@@ -606,7 +607,8 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
       memberTargets: widget.memberTargets,
       runtimeTargets: _runtimeTargets,
       groupByMachine: widget.team.teamMode == TeamMode.mixed,
-      onSelected: (id) => _openMember(context, id),
+      onSelected: (id) => _onMemberRowTap(context, id),
+      onSwitchTo: (id) => _switchToMember(context, id),
       onOpen: (id) => _openMember(context, id),
       onLaunchAll: throttledAsync('right_tools_launch_all', () async {
         await context.read<ChatCubit>().launchAllMembers(
@@ -621,10 +623,38 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
     );
   }
 
+  SessionWorkbenchView _activeWorkbenchView(ChatCubit chat) {
+    final sessionId = chat.state.activeSessionId;
+    if (sessionId == null || sessionId.isEmpty) {
+      return SessionWorkbenchView.history;
+    }
+    final tab = chat.tabStore.openTabBySessionId(sessionId);
+    return tab?.workbenchView ?? SessionWorkbenchView.history;
+  }
+
+  void _onMemberRowTap(BuildContext context, String id) {
+    final chat = context.read<ChatCubit>();
+    if (_activeWorkbenchView(chat) == SessionWorkbenchView.history) {
+      _switchToMember(context, id);
+      return;
+    }
+    _openMember(context, id);
+  }
+
+  void _switchToMember(BuildContext context, String id) {
+    context.read<ChatCubit>().selectMember(id);
+    widget.maybeDismissDrawer();
+  }
+
   void _openMember(BuildContext context, String id) {
+    final chat = context.read<ChatCubit>();
+    final sessionId = chat.state.activeSessionId;
+    if (sessionId != null && sessionId.isNotEmpty) {
+      chat.setSessionWorkbenchView(sessionId, SessionWorkbenchView.terminal);
+    }
     final member = widget.runtimeMembers.firstWhere((m) => m.id == id);
     unawaited(
-      context.read<ChatCubit>().openMemberTab(
+      chat.openMemberTab(
         widget.team,
         member,
         workspaceCwd: widget.cwd,

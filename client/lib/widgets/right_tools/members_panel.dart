@@ -32,6 +32,7 @@ class MembersPanel extends StatelessWidget {
     required this.providersByCli,
     required this.selectedMemberId,
     required this.onSelected,
+    required this.onSwitchTo,
     required this.onOpen,
     required this.onLaunchAll,
     required this.canViewDetail,
@@ -49,6 +50,9 @@ class MembersPanel extends StatelessWidget {
   final Map<CliTool, List<AppProviderConfig>> providersByCli;
   final String selectedMemberId;
   final ValueChanged<String> onSelected;
+
+  /// Select member without starting a PTY (context-menu action).
+  final ValueChanged<String> onSwitchTo;
   final ValueChanged<String> onOpen;
   final VoidCallback onLaunchAll;
 
@@ -251,6 +255,11 @@ class MembersPanel extends StatelessWidget {
           tooltip: canViewDetail ? null : l10n.memberDetailNeedsSession,
         ),
         SidebarActionMenuSpec.item(
+          value: _MemberMenuAction.switchTo,
+          icon: Icons.swap_horiz,
+          label: l10n.switchToMember,
+        ),
+        SidebarActionMenuSpec.item(
           value: _MemberMenuAction.open,
           icon: Icons.open_in_new,
           label: l10n.openMember,
@@ -271,6 +280,8 @@ class MembersPanel extends StatelessWidget {
     switch (action) {
       case _MemberMenuAction.viewDetail:
         onViewDetail(member.id);
+      case _MemberMenuAction.switchTo:
+        onSwitchTo(member.id);
       case _MemberMenuAction.open:
         onOpen(member.id);
       case _MemberMenuAction.openConfigDir:
@@ -319,7 +330,13 @@ class _MachineSectionHeader extends StatelessWidget {
   }
 }
 
-enum _MemberMenuAction { viewDetail, open, openConfigDir, launchAll }
+enum _MemberMenuAction {
+  viewDetail,
+  switchTo,
+  open,
+  openConfigDir,
+  launchAll,
+}
 
 CliTool _catalogCli(CliToolRegistry? registry, CliTool memberCli) {
   if (registry != null &&

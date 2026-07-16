@@ -203,6 +203,7 @@
   },
   "openTeam": "启动所有成员",
   "openMember": "打开成员",
+  "switchToMember": "切换到成员",
   "memberPresenceOffline": "未连接",
   "memberPresenceConnecting": "连接中…",
   "memberPresenceBooting": "启动中…",
