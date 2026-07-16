@@ -3,8 +3,6 @@ import 'package:markdown/markdown.dart' as md;
 import 'content_ir.dart';
 import 'streaming_markdown.dart';
 
-export 'streaming_markdown.dart';
-
 /// Compiles GFM markdown into a style-free [MessageContentDocument].
 ///
 /// Images and raw HTML become [UnsupportedBlock] slices. Task-list checkboxes
@@ -108,6 +106,8 @@ ContentListItem _compileListItem(md.Element li) {
   final runs = <InlineRun>[];
   final children = <ContentBlock>[];
 
+  // Unsupported inlines (images, raw HTML) follow the paragraph policy: emit an
+  // [UnsupportedBlock] for that item region instead of silently dropping content.
   for (final child in li.children ?? const <md.Node>[]) {
     if (child is md.Element &&
         child.tag == 'input' &&
@@ -167,7 +167,11 @@ bool _isBlockChild(md.Node node) {
   }
 }
 
-TableBlock _compileTable(md.Element table) {
+ContentBlock _compileTable(md.Element table) {
+  if (_tableHasUnsupportedInline(table)) {
+    return UnsupportedBlock(rawMarkdown: _reconstructUnsupported(table));
+  }
+
   final headers = <InlineDocument>[];
   final rows = <List<InlineDocument>>[];
 
@@ -197,6 +201,22 @@ List<InlineDocument> _compileTableRow(md.Element row, {required bool header}) {
     cells.add(InlineDocument(runs: _compileInlines(cell.children)));
   }
   return cells;
+}
+
+bool _tableHasUnsupportedInline(md.Element table) {
+  for (final section in table.children ?? const <md.Node>[]) {
+    if (section is! md.Element) continue;
+    if (section.tag != 'thead' && section.tag != 'tbody') continue;
+    for (final row in section.children ?? const <md.Node>[]) {
+      if (row is! md.Element || row.tag != 'tr') continue;
+      for (final cell in row.children ?? const <md.Node>[]) {
+        if (cell is! md.Element) continue;
+        if (cell.tag != 'th' && cell.tag != 'td') continue;
+        if (_hasUnsupportedInline(cell.children)) return true;
+      }
+    }
+  }
+  return false;
 }
 
 List<InlineRun> _compileInlines(List<md.Node>? nodes) {
@@ -297,6 +317,51 @@ String _reconstructUnsupported(md.Node node) {
       parts.add(_reconstructUnsupported(child));
     }
     return parts.join();
+  }
+  if (node is md.Element && (node.tag == 'td' || node.tag == 'th')) {
+    final parts = <String>[];
+    for (final child in node.children ?? const <md.Node>[]) {
+      parts.add(_reconstructUnsupported(child));
+    }
+    return parts.join();
+  }
+  if (node is md.Element && node.tag == 'tr') {
+    final cells = <String>[];
+    for (final child in node.children ?? const <md.Node>[]) {
+      if (child is md.Element && (child.tag == 'td' || child.tag == 'th')) {
+        cells.add(_reconstructUnsupported(child));
+      }
+    }
+    return '| ${cells.join(' | ')} |';
+  }
+  if (node is md.Element && node.tag == 'table') {
+    final lines = <String>[];
+    var headerCellCount = 0;
+    for (final section in node.children ?? const <md.Node>[]) {
+      if (section is! md.Element) continue;
+      final isHeader = section.tag == 'thead';
+      for (final row in section.children ?? const <md.Node>[]) {
+        if (row is! md.Element || row.tag != 'tr') continue;
+        lines.add(_reconstructUnsupported(row));
+        if (isHeader && headerCellCount == 0) {
+          headerCellCount = row.children
+                  ?.where(
+                    (child) =>
+                        child is md.Element &&
+                        (child.tag == 'td' || child.tag == 'th'),
+                  )
+                  .length ??
+              0;
+        }
+      }
+    }
+    if (headerCellCount > 0) {
+      lines.insert(
+        1,
+        '| ${List.filled(headerCellCount, '---').join(' | ')} |',
+      );
+    }
+    return lines.join('\n');
   }
   if (node is md.Text) {
     return node.textContent;

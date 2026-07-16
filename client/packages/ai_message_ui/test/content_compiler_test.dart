@@ -71,6 +71,15 @@ void main() {
     );
   });
 
+  test('GFM table with image in cell becomes unsupported', () {
+    final doc = compileMessageContent(
+      '| A | B |\n| --- | --- |\n| x | ![alt](x.png) |\n',
+    );
+    expect(doc.blocks.single, isA<UnsupportedBlock>());
+    final block = doc.blocks.single as UnsupportedBlock;
+    expect(block.rawMarkdown, contains('![alt](x.png)'));
+  });
+
   test('compiles nested list', () {
     final doc = compileMessageContent('- a\n  - b\n');
     expect(hasUnsupported(doc), isFalse);
@@ -118,6 +127,18 @@ void main() {
     final doc = compileMessageContent('![alt](x.png)\n');
     expect(doc.blocks, isNotEmpty);
     expect(doc.blocks.any((b) => b is UnsupportedBlock), isTrue);
+  });
+
+  test('list item with inline image promotes unsupported child', () {
+    final doc = compileMessageContent('- ![alt](x.png)\n');
+    expect(hasUnsupported(doc), isFalse);
+    expect(doc.blocks.single, isA<ListBlock>());
+    final item = (doc.blocks.single as ListBlock).items.single;
+    expect(item.children.single, isA<UnsupportedBlock>());
+    expect(
+      (item.children.single as UnsupportedBlock).rawMarkdown,
+      '![alt](x.png)',
+    );
   });
 
   test('raw HTML becomes unsupported', () {
