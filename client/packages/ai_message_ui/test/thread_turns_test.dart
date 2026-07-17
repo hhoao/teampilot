@@ -39,6 +39,24 @@ void main() {
     expect(messageContentIdentity(a), isNot(messageContentIdentity(b)));
   });
 
+  test('messageContentIdentity changes when only tool args change', () {
+    AiMessage toolMsg(Map<String, Object?> args) => AiMessage(
+      id: 'a1',
+      role: AiRole.assistant,
+      parts: [
+        AiToolCallPart(
+          toolCallId: 'tc1',
+          toolName: 'read_file',
+          args: args,
+        ),
+      ],
+    );
+    expect(
+      messageContentIdentity(toolMsg({'path': '/a'})),
+      isNot(messageContentIdentity(toolMsg({'path': '/b'}))),
+    );
+  });
+
   test('turnContentIdentity stable when ids+parts unchanged', () {
     final msgs = [user('u1', 'hi'), asst('a1', 'yo')];
     final t = buildTurns(msgs).single;

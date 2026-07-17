@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:ai_message_core/ai_message_core.dart';
 
 class ThreadTurn {
@@ -34,13 +36,15 @@ String messageContentIdentity(AiMessage m) {
       case AiToolCallPart(
         :final toolCallId,
         :final toolName,
+        :final args,
         :final argsText,
         :final status,
         :final isError,
         :final result,
       ):
+        final argsJson = args != null && args.isNotEmpty ? jsonEncode(args) : '';
         buf.write(
-          'c:$toolCallId:$toolName:${argsText ?? ''}:'
+          'c:$toolCallId:$toolName:${argsText ?? ''}:$argsJson:'
           '${status.name}:$isError:${result ?? ''}',
         );
     }
