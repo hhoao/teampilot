@@ -2135,8 +2135,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get rootSandboxEnvConfirmTitle => '确认为 root 启用 sandbox 环境变量？';
 
   @override
-  String rootSandboxEnvConfirmBody(Object host) {
-    return '在 $host 上以 root 启动 Claude 时，TeamPilot 将设置 IS_SANDBOX=1 并保留 --dangerously-skip-permissions。请仅对你信任的机器开启。';
+  String rootSandboxEnvConfirmBody(Object workspace) {
+    return '在工作区 $workspace 中以 root 启动 Claude 时，TeamPilot 将设置 IS_SANDBOX=1 并保留 --dangerously-skip-permissions。请仅对你信任的工作区开启。';
   }
 
   @override
