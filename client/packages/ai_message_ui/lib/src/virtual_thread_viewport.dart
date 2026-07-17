@@ -119,6 +119,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
   }
 
   void _onHeaderMeasured(double height) {
+    if (!mounted) return;
     if (height <= 0) {
       if (_headerHeight == 0) return;
       _headerHeight = 0;
@@ -131,6 +132,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
   }
 
   void _syncVisibleRange() {
+    if (!mounted) return;
     final TurnVisibleRange range;
     final controller = widget.scrollController;
     // hasClients can be true before the first layout sets viewportDimension.
@@ -177,6 +179,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
   }
 
   void _onTurnMeasured(String turnId, double height) {
+    if (!mounted) return;
     if (height <= 0) return;
     final before = _cache.heightOf(turnId);
     _cache.setMeasured(turnId, height);
@@ -211,6 +214,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
     if (_correctionScheduled) return;
     _correctionScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _correctionScheduled = false;
       final delta = _pendingCorrection;
       _pendingCorrection = 0;
@@ -282,16 +286,23 @@ class _MeasuredBoxState extends State<_MeasuredBox> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _measure();
+    });
   }
 
   @override
   void didUpdateWidget(covariant _MeasuredBox oldWidget) {
     super.didUpdateWidget(oldWidget);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _measure();
+    });
   }
 
   void _measure() {
+    if (!mounted) return;
     final box = _key.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) return;
     widget.onMeasured(box.size.height);
@@ -301,7 +312,10 @@ class _MeasuredBoxState extends State<_MeasuredBox> {
   Widget build(BuildContext context) {
     return NotificationListener<SizeChangedLayoutNotification>(
       onNotification: (_) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _measure();
+        });
         return true;
       },
       child: SizeChangedLayoutNotifier(

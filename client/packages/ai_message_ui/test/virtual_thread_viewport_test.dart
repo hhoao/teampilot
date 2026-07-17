@@ -250,4 +250,58 @@ void main() {
 
     expect(corrections, isEmpty);
   });
+
+  testWidgets('suppressMeasureScrollCorrection skips fully-above expand', (
+    tester,
+  ) async {
+    final controller = ScrollController();
+    final messages = _soloUserMessages(20);
+    final heights = <String, double>{
+      for (final m in messages) m.id: 100,
+    };
+    final corrections = <double>[];
+
+    late void Function(void Function()) setHarnessState;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StatefulBuilder(
+          builder: (context, setState) {
+            setHarnessState = setState;
+            return SizedBox(
+              height: 400,
+              child: SingleChildScrollView(
+                controller: controller,
+                child: VirtualThreadViewport(
+                  messages: messages,
+                  scrollController: controller,
+                  overscan: 3,
+                  estimateHeight: 100,
+                  suppressMeasureScrollCorrection: true,
+                  onMeasureScrollCorrection: corrections.add,
+                  messageBuilder: (_, m) => SizedBox(
+                    height: heights[m.id]!,
+                    width: double.infinity,
+                    child: Text(m.id, key: ValueKey('msg-${m.id}')),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    controller.jumpTo(250);
+    await tester.pumpAndSettle();
+    corrections.clear();
+
+    setHarnessState(() {
+      heights['m0'] = 200;
+    });
+    await tester.pumpAndSettle();
+
+    expect(corrections, isEmpty);
+  });
 }
