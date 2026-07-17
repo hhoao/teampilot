@@ -140,7 +140,8 @@ void main() {
       ),
     );
 
-    expect(find.byType(Table), findsOneWidget);
+    // Row/Column flex layout — avoid Flutter Table / RenderTable.
+    expect(find.byType(Table), findsNothing);
     expect(find.textContaining('bold-cell'), findsOneWidget);
 
     final richTexts = tester.widgetList<RichText>(find.byType(RichText));
@@ -150,11 +151,6 @@ void main() {
         .firstWhere((s) => s.text == 'bold-cell');
     expect(boldSpan.style?.fontWeight, FontWeight.w700);
 
-    // Lite tables must not use IntrinsicColumnWidth.
-    final table = tester.widget<Table>(find.byType(Table));
-    for (final width in table.columnWidths?.values ?? <TableColumnWidth>[]) {
-      expect(width, isNot(isA<IntrinsicColumnWidth>()));
-    }
     expect(find.byType(MarkdownBody), findsNothing);
   });
 

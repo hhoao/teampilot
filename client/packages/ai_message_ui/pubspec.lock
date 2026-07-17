@@ -75,7 +75,7 @@ packages:
       path: "../flutter_markdown_plus"
       relative: true
     source: path
-    version: "1.0.13"
+    version: "1.0.15"
   flutter_test:
     dependency: "direct dev"
     description: flutter

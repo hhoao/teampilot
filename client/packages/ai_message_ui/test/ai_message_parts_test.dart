@@ -281,6 +281,13 @@ void main() {
     expect(
       find.descendant(
         of: find.byType(AiMessageActionBar),
+        matching: find.byIcon(Icons.copy_rounded),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(AiMessageActionBar),
         matching: find.byType(IconButton),
       ),
       findsNothing,

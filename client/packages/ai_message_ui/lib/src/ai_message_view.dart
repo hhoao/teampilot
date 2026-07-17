@@ -1,4 +1,5 @@
 import 'package:ai_message_core/ai_message_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'ai_message_parts.dart';
@@ -14,6 +15,7 @@ class AiMessageView extends StatefulWidget {
     this.registry = AiPartRegistry.defaults,
     this.showActionBar = true,
     this.actionBarReveal = AiActionBarReveal.always,
+    this.actionBarHoverEnabled,
     super.key,
   });
 
@@ -22,12 +24,47 @@ class AiMessageView extends StatefulWidget {
   final bool showActionBar;
   final AiActionBarReveal actionBarReveal;
 
+  /// When `false`, ignore pointer-enter for hover ActionBars (history fling).
+  /// Defaults to always enabled when null.
+  final ValueListenable<bool>? actionBarHoverEnabled;
+
   @override
   State<AiMessageView> createState() => _AiMessageViewState();
 }
 
 class _AiMessageViewState extends State<AiMessageView> {
-  bool _hovered = false;
+  /// Hover is isolated from message body rebuilds (markdown / tools).
+  final ValueNotifier<bool> _hovered = ValueNotifier(false);
+
+  @override
+  void initState() {
+    super.initState();
+    widget.actionBarHoverEnabled?.addListener(_onHoverEnabledChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant AiMessageView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.actionBarHoverEnabled != widget.actionBarHoverEnabled) {
+      oldWidget.actionBarHoverEnabled?.removeListener(_onHoverEnabledChanged);
+      widget.actionBarHoverEnabled?.addListener(_onHoverEnabledChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.actionBarHoverEnabled?.removeListener(_onHoverEnabledChanged);
+    _hovered.dispose();
+    super.dispose();
+  }
+
+  bool get _hoverAllowed => widget.actionBarHoverEnabled?.value ?? true;
+
+  void _onHoverEnabledChanged() {
+    if (!_hoverAllowed && _hovered.value) {
+      _hovered.value = false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,54 +74,79 @@ class _AiMessageViewState extends State<AiMessageView> {
       parts: widget.message.parts,
       registry: widget.registry,
     );
+    final trackHover = widget.showActionBar &&
+        widget.actionBarReveal == AiActionBarReveal.hover;
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: Padding(
-        padding: EdgeInsets.only(bottom: aiTheme.messageSpacing),
-        child: RepaintBoundary(
-          child: switch (widget.message.role) {
-            AiRole.user => _UserBubble(
-              scheme: scheme,
-              aiTheme: aiTheme,
-              parts: parts,
-              message: widget.message,
-              showActionBar: widget.showActionBar,
-              actionBarReveal: widget.actionBarReveal,
-              hovered: _hovered,
-            ),
-            AiRole.assistant => _AssistantBlock(
-              scheme: scheme,
-              aiTheme: aiTheme,
-              parts: parts,
-              message: widget.message,
-              showActionBar: widget.showActionBar,
-              actionBarReveal: widget.actionBarReveal,
-              hovered: _hovered,
-            ),
-            AiRole.system => Align(
-              alignment: Alignment.center,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: aiTheme.resolveMutedSurface(scheme),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: DefaultTextStyle.merge(
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                    child: parts,
+    final body = Padding(
+      padding: EdgeInsets.only(bottom: aiTheme.messageSpacing),
+      child: RepaintBoundary(
+        child: switch (widget.message.role) {
+          AiRole.user => _UserBubble(
+            scheme: scheme,
+            aiTheme: aiTheme,
+            parts: parts,
+            message: widget.message,
+            showActionBar: widget.showActionBar,
+            actionBarReveal: widget.actionBarReveal,
+            hoverListenable: trackHover ? _hovered : null,
+          ),
+          AiRole.assistant => _AssistantBlock(
+            scheme: scheme,
+            aiTheme: aiTheme,
+            parts: parts,
+            message: widget.message,
+            showActionBar: widget.showActionBar,
+            actionBarReveal: widget.actionBarReveal,
+            hoverListenable: trackHover ? _hovered : null,
+          ),
+          AiRole.system => Align(
+            alignment: Alignment.center,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: aiTheme.resolveMutedSurface(scheme),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: DefaultTextStyle.merge(
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
                   ),
+                  child: parts,
                 ),
               ),
             ),
-          },
-        ),
+          ),
+        },
       ),
+    );
+
+    if (!trackHover) return body;
+
+    final hoverGate = widget.actionBarHoverEnabled;
+    if (hoverGate == null) {
+      return MouseRegion(
+        onEnter: (_) => _hovered.value = true,
+        onExit: (_) => _hovered.value = false,
+        child: body,
+      );
+    }
+
+    // While scrolling (gate false), drop MouseRegion so fling hit-tests skip
+    // per-message hover tracking entirely.
+    return ListenableBuilder(
+      listenable: hoverGate,
+      builder: (context, child) {
+        if (!hoverGate.value) {
+          return child!;
+        }
+        return MouseRegion(
+          onEnter: (_) => _hovered.value = true,
+          onExit: (_) => _hovered.value = false,
+          child: child,
+        );
+      },
+      child: body,
     );
   }
 }
@@ -134,7 +196,7 @@ class _UserBubble extends StatelessWidget {
     required this.message,
     required this.showActionBar,
     required this.actionBarReveal,
-    required this.hovered,
+    this.hoverListenable,
   });
 
   final ColorScheme scheme;
@@ -143,7 +205,7 @@ class _UserBubble extends StatelessWidget {
   final AiMessage message;
   final bool showActionBar;
   final AiActionBarReveal actionBarReveal;
-  final bool hovered;
+  final ValueListenable<bool>? hoverListenable;
 
   @override
   Widget build(BuildContext context) {
@@ -165,10 +227,10 @@ class _UserBubble extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (showActionBar)
-                AiMessageActionBar(
+                _HoverScopedActionBar(
                   message: message,
                   reveal: actionBarReveal,
-                  forceVisible: hovered,
+                  hoverListenable: hoverListenable,
                 ),
               ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: bubbleMax),
@@ -209,7 +271,7 @@ class _AssistantBlock extends StatelessWidget {
     required this.message,
     required this.showActionBar,
     required this.actionBarReveal,
-    required this.hovered,
+    this.hoverListenable,
   });
 
   final ColorScheme scheme;
@@ -218,7 +280,7 @@ class _AssistantBlock extends StatelessWidget {
   final AiMessage message;
   final bool showActionBar;
   final AiActionBarReveal actionBarReveal;
-  final bool hovered;
+  final ValueListenable<bool>? hoverListenable;
 
   @override
   Widget build(BuildContext context) {
@@ -240,15 +302,37 @@ class _AssistantBlock extends StatelessWidget {
             if (showActionBar)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: AiMessageActionBar(
+                child: _HoverScopedActionBar(
                   message: message,
                   reveal: actionBarReveal,
-                  forceVisible: hovered,
+                  hoverListenable: hoverListenable,
                 ),
               ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Passes hover visibility into the action bar without rebuilding message body.
+class _HoverScopedActionBar extends StatelessWidget {
+  const _HoverScopedActionBar({
+    required this.message,
+    required this.reveal,
+    this.hoverListenable,
+  });
+
+  final AiMessage message;
+  final AiActionBarReveal reveal;
+  final ValueListenable<bool>? hoverListenable;
+
+  @override
+  Widget build(BuildContext context) {
+    return AiMessageActionBar(
+      message: message,
+      reveal: reveal,
+      forceVisibleListenable: hoverListenable,
     );
   }
 }

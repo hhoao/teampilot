@@ -19,7 +19,6 @@ class AiReasoningPartView extends StatefulWidget {
 
 class _AiReasoningPartViewState extends State<AiReasoningPartView> {
   bool _open = false;
-  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -27,8 +26,7 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
     final scheme = theme.colorScheme;
     final aiTheme = AiMessageTheme.of(context);
     final strings = AiMessageStrings.of(context);
-    final baseTrigger = aiTheme.resolveToolTrigger(scheme);
-    final triggerColor = _hovered ? scheme.onSurface : baseTrigger;
+    final triggerColor = aiTheme.resolveToolTrigger(scheme);
 
     return Padding(
       padding: EdgeInsets.only(bottom: aiTheme.partSpacing + 4),
@@ -47,8 +45,6 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
                 label: strings.reasoning,
                 child: MouseRegion(
                   cursor: SystemMouseCursors.click,
-                  onEnter: (_) => setState(() => _hovered = true),
-                  onExit: (_) => setState(() => _hovered = false),
                   child: GestureDetector(
                     onTap: () => setState(() => _open = !_open),
                     behavior: HitTestBehavior.opaque,
@@ -58,21 +54,25 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
                         vertical: 8,
                       ),
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(
-                            Icons.psychology_outlined,
-                            size: 16,
-                            color: triggerColor,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              strings.reasoning,
-                              style: theme.textTheme.bodySmall?.copyWith(
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.psychology_outlined,
+                                size: 16,
                                 color: triggerColor,
-                                fontWeight: FontWeight.w600,
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              Text(
+                                strings.reasoning,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: triggerColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
                           Transform.rotate(
                             angle: _open ? 0 : -math.pi / 2,

@@ -24,7 +24,6 @@ class AiToolCallPartView extends StatefulWidget {
 
 class _AiToolCallPartViewState extends State<AiToolCallPartView> {
   bool _open = false;
-  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -32,9 +31,7 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
     final scheme = theme.colorScheme;
     final aiTheme = AiMessageTheme.of(context);
     final strings = AiMessageStrings.of(context);
-    final baseTrigger = aiTheme.resolveToolTrigger(scheme);
-    final triggerColor =
-        _hovered ? scheme.onSurface : baseTrigger;
+    final triggerColor = aiTheme.resolveToolTrigger(scheme);
     final part = widget.part;
     final cancelled = part.isCancelled;
     final bottom = widget.dense ? 2.0 : aiTheme.partSpacing;
@@ -45,15 +42,15 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SelectionContainer.disabled(
-            child: MouseRegion(
-              onEnter: (_) => setState(() => _hovered = true),
-              onExit: (_) => setState(() => _hovered = false),
-              child: InkWell(
-                onTap: () => setState(() => _open = !_open),
-                borderRadius: BorderRadius.circular(6),
-                child: AnimatedScale(
-                  scale: _hovered ? 0.99 : 1,
-                  duration: const Duration(milliseconds: 100),
+            child: Semantics(
+              button: true,
+              expanded: _open,
+              label: cancelled ? strings.cancelledTool : strings.usedTool,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () => setState(() => _open = !_open),
+                  behavior: HitTestBehavior.opaque,
                   child: Padding(
                     padding:
                         EdgeInsets.symmetric(vertical: widget.dense ? 4 : 6),

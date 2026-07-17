@@ -54,7 +54,9 @@ void main() {
 
       expect(find.byType(CompiledTextPartView), findsOneWidget);
       expect(find.byType(MarkdownBody), findsNothing);
-      expect(find.byType(Table), findsOneWidget);
+      // Lite tables use Column/Row, not Flutter Table.
+      expect(find.byType(Table), findsNothing);
+      expect(find.textContaining('1'), findsOneWidget);
       await tester.tap(find.text('link'));
       await tester.pump();
       expect(tappedHref, 'https://example.com');

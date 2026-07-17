@@ -375,44 +375,72 @@ class _CompiledTable extends StatelessWidget {
         : (rows.isNotEmpty ? rows.first.length : 0);
     if (colCount == 0) return const SizedBox.shrink();
 
-    final columnWidths = <int, TableColumnWidth>{
-      for (var c = 0; c < colCount; c++) c: const FlexColumnWidth(),
-    };
+    // Column+Row with Expanded beats Flutter Table/RenderTable layout cost
+    // on history fling (see post-compile DevTools: _CompiledTable / RenderTable).
+    final border = BorderSide(color: style.borderColor, width: 1);
 
-    TableRow cellRow(List<InlineDocument> cells, {required bool isHeader}) {
+    Widget cellRow(List<InlineDocument> cells, {required bool isHeader}) {
       final cellStyle = isHeader ? style.tableHead : style.tableBody;
-      return TableRow(
-        decoration: isHeader
-            ? BoxDecoration(color: style.mutedSurface.withValues(alpha: 0.85))
-            : null,
-        children: [
-          for (var c = 0; c < colCount; c++)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              child: Text.rich(
-                TextSpan(
-                  style: cellStyle,
-                  children: _cellSpans(
-                    c < cells.length ? cells[c].runs : const [],
-                    cellStyle,
+      return ColoredBox(
+        color: isHeader
+            ? style.mutedSurface.withValues(alpha: 0.85)
+            : Colors.transparent,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var c = 0; c < colCount; c++)
+              Expanded(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      right: c < colCount - 1 ? border : BorderSide.none,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    child: Text.rich(
+                      TextSpan(
+                        style: cellStyle,
+                        children: _cellSpans(
+                          c < cells.length ? cells[c].runs : const [],
+                          cellStyle,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       );
     }
 
+    final rowWidgets = <Widget>[
+      if (headers.isNotEmpty) cellRow(headers, isHeader: true),
+      for (final row in rows) cellRow(row, isHeader: false),
+    ];
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Table(
-        columnWidths: columnWidths,
-        defaultColumnWidth: const FlexColumnWidth(),
-        border: TableBorder.all(color: style.borderColor, width: 1),
-        children: [
-          if (headers.isNotEmpty) cellRow(headers, isHeader: true),
-          for (final row in rows) cellRow(row, isHeader: false),
-        ],
+      child: DecoratedBox(
+        decoration: BoxDecoration(border: Border.fromBorderSide(border)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < rowWidgets.length; i++)
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  border: i < rowWidgets.length - 1
+                      ? Border(bottom: border)
+                      : null,
+                ),
+                child: rowWidgets[i],
+              ),
+          ],
+        ),
       ),
     );
   }

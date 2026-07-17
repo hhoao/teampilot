@@ -60,14 +60,15 @@ markdown string
 | Textual | Prefer **merging adjacent text blocks** into as few `Text.rich` as practical for selection quality |
 | Links | `TapGestureRecognizer` / equivalent; forward to `AiTextPartView.onTapLink` when provided |
 | Code | Muted surface + monospace `Text` + existing copy affordance pattern; no highlighter in v1 |
-| Table | Flutter `Table` with **fixed/flex column widths** (no `IntrinsicColumnWidth`); cell content = `Text.rich` from inline runs; `RepaintBoundary` optional for paint isolation only (not a layout fix) |
+| Table | **Column + Row + `Expanded`** equal flex columns (no Flutter `Table` / `RenderTable`); cell content = `Text.rich` from inline runs; bordered cells; `RepaintBoundary` optional for paint isolation only (not a layout fix) |
 
 No scroll-time upgrade path in v1 (avoids Flyer item extent jumps).
 
 ### Reasoning / tool (same initiative, separate AC)
 
-- Reasoning collapsed: keep body unmounted (already true); replace header **`InkWell` + `AnimatedScale`** with a cheaper hit target where possible.  
-- Tool collapsed: remove **`Flexible`** from `mainAxisSize: min` rows (use non-flex layout).  
+- Reasoning collapsed: keep body unmounted (already true); header is **`GestureDetector`** (no `InkWell` / `AnimatedScale` / hover-`setState` color flip).  
+- Tool collapsed / tool group: same cheap header pattern; remove **`Flexible`** from `mainAxisSize: min` rows.  
+- ActionBar: lite icons + **lazy mount until first reveal**; subsequent hide/show is `Opacity` only (no `IconButton` / `Tooltip`); **delayed unmount** after hide; history host passes `actionBarHoverEnabled` and suppresses hover while scrolling (scroll-under-cursor).  
 - Expanded bodies mount once; not re-created on unrelated sibling hover.
 
 ### Host / Flyer
@@ -101,7 +102,7 @@ dart run tool/analyze_performance_json.dart ~/Downloads/test4N.json --format sum
 |-------|----------|
 | `MarkdownBody` in top UI hot paths on fling/hover frames | **Absent from top 5** UI self-time paths (fallback-only mounts allowed if not in top 5) |
 | ActionBar › IconButton | Remains out of top 5 UI hot paths (no regression vs test41) |
-| Table / markdown layout self-time | `RenderTable` / `MarkdownBody` combined self-time on precision frames **≤ 50%** of test41’s corresponding hot-path self-time (document numbers in the perf note) |
+| Table / markdown layout self-time | `_CompiledTable` / former `RenderTable` path self-time on precision frames **≤ 50%** of test41’s corresponding hot-path self-time (document numbers in the perf note); post-compile follow-up replaces Flutter `Table` with Column/Row flex |
 | Fixture gate | ≥95% zero-`unsupported` |
 | Widget tests | headings, lists (incl. task), links+`onTapLink`, table (incl. bold cell), code, SelectionArea copy smoke |
 
