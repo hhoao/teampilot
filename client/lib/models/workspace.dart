@@ -18,6 +18,7 @@ class Workspace {
     this.sessionIds = const [],
     this.memberTargetsByTeam = const {},
     this.memberPlacementInitializedByTeam = const {},
+    this.rootSandboxEnvOptIn = false,
   });
 
   factory Workspace({
@@ -31,6 +32,7 @@ class Workspace {
     List<String> sessionIds = const [],
     Map<String, MemberTargetAssignments> memberTargetsByTeam = const {},
     Map<String, bool> memberPlacementInitializedByTeam = const {},
+    bool rootSandboxEnvOptIn = false,
   }) {
     return Workspace._(
       workspaceId: workspaceId,
@@ -45,6 +47,7 @@ class Workspace {
       memberPlacementInitializedByTeam: _freezeInitializedByTeam(
         memberPlacementInitializedByTeam,
       ),
+      rootSandboxEnvOptIn: rootSandboxEnvOptIn,
     );
   }
 
@@ -66,6 +69,7 @@ class Workspace {
       memberPlacementInitializedByTeam: _initializedByTeamFromJson(
         json['memberPlacementInitializedByTeam'],
       ),
+      rootSandboxEnvOptIn: json['rootSandboxEnvOptIn'] == true,
     );
   }
 
@@ -83,6 +87,8 @@ class Workspace {
 
   /// Teams whose member placement has been initialized for this workspace.
   final Map<String, bool> memberPlacementInitializedByTeam;
+
+  final bool rootSandboxEnvOptIn;
 
   String get firstFolderPath => folders.isEmpty ? '' : folders.first.path;
   List<String> get extraFolderPaths => folders.length <= 1
@@ -152,6 +158,7 @@ class Workspace {
     List<String>? sessionIds,
     Map<String, MemberTargetAssignments>? memberTargetsByTeam,
     Map<String, bool>? memberPlacementInitializedByTeam,
+    bool? rootSandboxEnvOptIn,
   }) {
     return Workspace(
       workspaceId: workspaceId ?? this.workspaceId,
@@ -166,6 +173,7 @@ class Workspace {
       memberPlacementInitializedByTeam:
           memberPlacementInitializedByTeam ??
           this.memberPlacementInitializedByTeam,
+      rootSandboxEnvOptIn: rootSandboxEnvOptIn ?? this.rootSandboxEnvOptIn,
     );
   }
 
@@ -188,6 +196,7 @@ class Workspace {
           for (final e in memberPlacementInitializedByTeam.entries)
             e.key: e.value,
         },
+      if (rootSandboxEnvOptIn) 'rootSandboxEnvOptIn': true,
     };
   }
 
@@ -266,7 +275,8 @@ class Workspace {
             mapEquals(
               memberPlacementInitializedByTeam,
               other.memberPlacementInitializedByTeam,
-            );
+            ) &&
+            rootSandboxEnvOptIn == other.rootSandboxEnvOptIn;
   }
 
   @override
@@ -285,6 +295,7 @@ class Workspace {
       ),
     ),
     Object.hashAll(memberPlacementInitializedByTeam.entries),
+    rootSandboxEnvOptIn,
   );
 }
 

@@ -11,7 +11,6 @@ class TargetsRegistryFile {
     this.schemaVersion = 1,
     this.targets = const [],
     this.credentialOptIn = const [],
-    this.rootSandboxEnvOptIn = const [],
     this.installOptOut = const [],
     this.cliPathOverrides = const {},
   });
@@ -24,10 +23,6 @@ class TargetsRegistryFile {
   /// the [RuntimeTarget] runtime identity.
   final List<String> credentialOptIn;
 
-  /// Per-target opt-in: inject `IS_SANDBOX=1` when launching Claude as root
-  /// outside a detected container so `--dangerously-skip-permissions` is kept.
-  final List<String> rootSandboxEnvOptIn;
-
   /// P3c: target ids where remote CLI auto-install is disabled (default empty =
   /// auto-install is on for every target after locate fails).
   final List<String> installOptOut;
@@ -39,7 +34,6 @@ class TargetsRegistryFile {
   factory TargetsRegistryFile.fromJson(Map<String, Object?> json) {
     final raw = json['targets'];
     final optIn = json['credentialOptIn'];
-    final rootSandbox = json['rootSandboxEnvOptIn'];
     final installOptOut = json['installOptOut'];
     final overrides = json['cliPathOverrides'];
     return TargetsRegistryFile(
@@ -52,11 +46,6 @@ class TargetsRegistryFile {
           : const [],
       credentialOptIn: optIn is List
           ? [for (final e in optIn) '$e'].where((s) => s.isNotEmpty).toList()
-          : const [],
-      rootSandboxEnvOptIn: rootSandbox is List
-          ? [
-              for (final e in rootSandbox) '$e',
-            ].where((s) => s.isNotEmpty).toList()
           : const [],
       installOptOut: installOptOut is List
           ? [
@@ -80,8 +69,6 @@ class TargetsRegistryFile {
     'schemaVersion': schemaVersion,
     'targets': targets.map((t) => t.toJson()).toList(),
     if (credentialOptIn.isNotEmpty) 'credentialOptIn': credentialOptIn,
-    if (rootSandboxEnvOptIn.isNotEmpty)
-      'rootSandboxEnvOptIn': rootSandboxEnvOptIn,
     if (installOptOut.isNotEmpty) 'installOptOut': installOptOut,
     if (cliPathOverrides.isNotEmpty) 'cliPathOverrides': cliPathOverrides,
   };
@@ -89,14 +76,12 @@ class TargetsRegistryFile {
   TargetsRegistryFile copyWith({
     List<RuntimeTarget>? targets,
     List<String>? credentialOptIn,
-    List<String>? rootSandboxEnvOptIn,
     List<String>? installOptOut,
     Map<String, Map<String, String>>? cliPathOverrides,
   }) => TargetsRegistryFile(
     schemaVersion: schemaVersion,
     targets: targets ?? this.targets,
     credentialOptIn: credentialOptIn ?? this.credentialOptIn,
-    rootSandboxEnvOptIn: rootSandboxEnvOptIn ?? this.rootSandboxEnvOptIn,
     installOptOut: installOptOut ?? this.installOptOut,
     cliPathOverrides: cliPathOverrides ?? this.cliPathOverrides,
   );
@@ -154,20 +139,6 @@ class TargetsRepository {
       next.remove(targetId);
     }
     await save(file.copyWith(credentialOptIn: (next.toList()..sort())));
-  }
-
-  Future<bool> isRootSandboxEnvOptIn(String targetId) async =>
-      (await load()).rootSandboxEnvOptIn.contains(targetId);
-
-  Future<void> setRootSandboxEnvOptIn(String targetId, bool optIn) async {
-    final file = await load();
-    final next = file.rootSandboxEnvOptIn.toSet();
-    if (optIn) {
-      next.add(targetId);
-    } else {
-      next.remove(targetId);
-    }
-    await save(file.copyWith(rootSandboxEnvOptIn: (next.toList()..sort())));
   }
 
   Future<bool> isInstallOptIn(String targetId) async =>

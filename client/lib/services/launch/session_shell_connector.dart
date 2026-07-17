@@ -345,8 +345,8 @@ class SessionShellConnector {
       }
 
       if (launchTarget.kind == RuntimeKind.ssh) {
-        final injectRootSandboxEnv = await _host.isRootSandboxEnvOptIn(
-          launchTarget.id,
+        final injectRootSandboxEnv = await _host.isWorkspaceRootSandboxEnvOptIn(
+          activeSession.workspaceId,
         );
         shellLaunch = await applyRemoteSshLaunchConstraints(
           spec: shellLaunch,

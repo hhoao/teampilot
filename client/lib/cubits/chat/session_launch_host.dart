@@ -105,8 +105,8 @@ abstract interface class SessionLaunchHost
 
   Future<TeamProfile?> teamProfileById(String teamId);
 
-  /// SSH root-sandbox env injection preference for a runtime target.
-  Future<bool> isRootSandboxEnvOptIn(String targetId);
+  /// Workspace opt-in: inject IS_SANDBOX when launching Claude as root over SSH.
+  Future<bool> isWorkspaceRootSandboxEnvOptIn(String workspaceId);
 
   /// Terminal theme for member PTY spawn (COLORFGBG / Claude `theme: auto`).
   /// Null skips apply — tests and early bootstrap may omit it.

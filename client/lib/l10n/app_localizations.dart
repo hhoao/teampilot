@@ -4103,8 +4103,8 @@ abstract class AppLocalizations {
   /// No description provided for @rootSandboxEnvConfirmBody.
   ///
   /// In en, this message translates to:
-  /// **'TeamPilot will set IS_SANDBOX=1 when launching Claude as root on {host}, keeping --dangerously-skip-permissions. Only enable on machines you trust.'**
-  String rootSandboxEnvConfirmBody(Object host);
+  /// **'TeamPilot will set IS_SANDBOX=1 when launching Claude as root in workspace {workspace}, keeping --dangerously-skip-permissions. Only enable for workspaces you trust.'**
+  String rootSandboxEnvConfirmBody(Object workspace);
 
   /// No description provided for @rootSandboxEnvConfirmAction.
   ///

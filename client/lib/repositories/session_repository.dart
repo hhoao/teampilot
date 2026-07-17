@@ -372,6 +372,7 @@ class SessionRepository {
     String workspaceId, {
     String? display,
     String? defaultProfileId,
+    bool? rootSandboxEnvOptIn,
   }) async {
     final fs = await _fs();
     final existing = await _readManifest(fs, workspaceId);
@@ -383,6 +384,8 @@ class SessionRepository {
           ? defaultProfileId.trim()
           : existing.defaultProfileId,
       folders: existing.folders,
+      rootSandboxEnvOptIn:
+          rootSandboxEnvOptIn ?? existing.rootSandboxEnvOptIn,
       updatedAt: now,
     );
     await _writeManifest(fs, updated);

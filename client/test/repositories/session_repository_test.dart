@@ -255,6 +255,22 @@ void main() {
     expect(loaded.single.extraFolderPaths, ['/a']);
   });
 
+  test('updateWorkspaceMetadata persists rootSandboxEnvOptIn', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+
+    final repo = SessionRepository(rootDir: tmp.path);
+    final p = await repo.createWorkspace([WorkspaceFolder(path: '/base')]);
+    expect(p.rootSandboxEnvOptIn, isFalse);
+
+    await repo.updateWorkspaceMetadata(
+      p.workspaceId,
+      rootSandboxEnvOptIn: true,
+    );
+    final loaded = await repo.loadWorkspaces();
+    expect(loaded.single.rootSandboxEnvOptIn, isTrue);
+  });
+
   test('applyWorkspaceIcon persists preset and auto icons', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));

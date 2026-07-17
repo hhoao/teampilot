@@ -24,7 +24,6 @@ import '../services/workspace/workspace_icon_storage.dart';
 import '../services/storage/app_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/remote/remote_cli_readiness.dart';
-import '../services/storage/targets_repository.dart';
 import '../services/team_bus/artifacts/artifact_registry.dart';
 import '../services/team_bus/artifacts/artifact_transfer_service.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
@@ -392,8 +391,14 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   @override
-  Future<bool> isRootSandboxEnvOptIn(String targetId) =>
-      TargetsRepository().isRootSandboxEnvOptIn(targetId);
+  Future<bool> isWorkspaceRootSandboxEnvOptIn(String workspaceId) async {
+    final id = workspaceId.trim();
+    if (id.isEmpty) return false;
+    for (final w in state.workspaces) {
+      if (w.workspaceId == id) return w.rootSandboxEnvOptIn;
+    }
+    return false;
+  }
 
   @override
   TerminalTheme? resolveTerminalThemeForLaunch() {
@@ -805,6 +810,7 @@ class ChatCubit extends Cubit<ChatState>
     String workspaceId, {
     String? display,
     String? defaultProfileId,
+    bool? rootSandboxEnvOptIn,
   }) async {
     _emitSnapshot(
       await _dataStore.updateWorkspaceMetadata(
@@ -812,6 +818,7 @@ class ChatCubit extends Cubit<ChatState>
         workspaceId,
         display: display,
         defaultProfileId: defaultProfileId,
+        rootSandboxEnvOptIn: rootSandboxEnvOptIn,
       ),
     );
   }
