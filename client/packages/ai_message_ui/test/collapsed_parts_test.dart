@@ -41,4 +41,53 @@ void main() {
     expect(find.byType(InkWell), findsNothing);
     expect(find.byType(AnimatedScale), findsNothing);
   });
+
+  testWidgets('collapsed tool with result has no result panel', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiToolCallPartView(
+            part: AiToolCallPart(
+              toolCallId: '1',
+              toolName: 'Bash',
+              status: AiToolCallStatus.complete,
+              argsText: '{"x":1}',
+              result: 'stdout line',
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.byType(AnimatedSize), findsNothing);
+    expect(find.text('Result:'), findsNothing);
+    expect(find.textContaining('stdout line'), findsNothing);
+  });
+
+  testWidgets('collapsed tool group has no nested tool bodies', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiToolGroupView(
+            tools: const [
+              AiToolCallPart(
+                toolCallId: '1',
+                toolName: 'Read',
+                argsText: '{"path":"/secret"}',
+              ),
+              AiToolCallPart(
+                toolCallId: '2',
+                toolName: 'Grep',
+                argsText: '{"pattern":"token"}',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(find.textContaining('Used 2 tools'), findsOneWidget);
+    expect(find.byType(AnimatedSize), findsNothing);
+    expect(find.textContaining('Used tool:'), findsNothing);
+    expect(find.textContaining('/secret'), findsNothing);
+    expect(find.textContaining('token'), findsNothing);
+  });
 }
