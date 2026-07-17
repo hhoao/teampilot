@@ -69,12 +69,20 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.runtime != widget.runtime) {
       _runtimeSub?.cancel();
-      _stickToEnd = true;
+      _setStickToEnd(true);
       _paginationArmed = true;
       _messages = widget.runtime.messages;
       _runtimeSub = widget.runtime.changes.listen((_) => _onRuntimeChanged());
       _scheduleStickFrames();
     }
+  }
+
+  /// Rebuilds so [VirtualThreadViewport.suppressMeasureScrollCorrection]
+  /// tracks stick state (must not stay true after stick release).
+  void _setStickToEnd(bool value) {
+    if (_stickToEnd == value) return;
+    if (!mounted) return;
+    setState(() => _stickToEnd = value);
   }
 
   @override
@@ -128,7 +136,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     if (_stickToEnd &&
         pixels < _lastPixels - _bottomEpsilon &&
         (max - _lastMaxExtent).abs() <= _bottomEpsilon) {
-      _stickToEnd = false;
+      _setStickToEnd(false);
     }
 
     _lastPixels = pixels;
@@ -191,7 +199,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   bool _onScrollNotification(ScrollNotification notification) {
     if (notification is UserScrollNotification &&
         notification.direction != ScrollDirection.idle) {
-      _stickToEnd = false;
+      _setStickToEnd(false);
     }
 
     if (notification is ScrollEndNotification) {
@@ -208,7 +216,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       if (delta != null && delta != 0) {
         _suppressHoverForScroll();
         if (delta < 0) {
-          _stickToEnd = false;
+          _setStickToEnd(false);
         }
       }
       _maybeLoadOlder(notification.metrics);
@@ -220,7 +228,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     if (_loadOlderInFlight) return;
     if (!widget.hasOlder || widget.onLoadOlder == null) return;
     _loadOlderInFlight = true;
-    _stickToEnd = false;
+    _setStickToEnd(false);
 
     try {
       double? pixelsBefore;

@@ -86,4 +86,28 @@ void main() {
       expect(loadOlderCalls, greaterThan(0));
     },
   );
+
+  testWidgets(
+    'scroll-up rebuilds viewport with suppressMeasureScrollCorrection false',
+    (tester) async {
+      final store = ExternalStoreAiThreadRuntime()
+        ..setMessages(_soloUserMessages(20));
+
+      await tester.pumpWidget(_harness(runtime: store));
+      await tester.pumpAndSettle();
+
+      final before = tester.widget<VirtualThreadViewport>(
+        find.byType(VirtualThreadViewport),
+      );
+      expect(before.suppressMeasureScrollCorrection, isTrue);
+
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, 120));
+      await tester.pumpAndSettle();
+
+      final after = tester.widget<VirtualThreadViewport>(
+        find.byType(VirtualThreadViewport),
+      );
+      expect(after.suppressMeasureScrollCorrection, isFalse);
+    },
+  );
 }
