@@ -259,11 +259,13 @@ class SessionDataStore {
     String workspaceId, {
     String? display,
     String? defaultProfileId,
+    bool? rootSandboxEnvOptIn,
   }) async {
     await repo.updateWorkspaceMetadata(
       workspaceId,
       display: display,
       defaultProfileId: defaultProfileId,
+      rootSandboxEnvOptIn: rootSandboxEnvOptIn,
     );
     return loadWorkspaceData(repo);
   }

@@ -805,6 +805,7 @@ class ChatCubit extends Cubit<ChatState>
     String workspaceId, {
     String? display,
     String? defaultProfileId,
+    bool? rootSandboxEnvOptIn,
   }) async {
     _emitSnapshot(
       await _dataStore.updateWorkspaceMetadata(
@@ -812,6 +813,7 @@ class ChatCubit extends Cubit<ChatState>
         workspaceId,
         display: display,
         defaultProfileId: defaultProfileId,
+        rootSandboxEnvOptIn: rootSandboxEnvOptIn,
       ),
     );
   }
