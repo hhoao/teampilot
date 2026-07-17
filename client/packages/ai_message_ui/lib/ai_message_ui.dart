@@ -14,3 +14,4 @@ export 'src/parts/tool_group_view.dart';
 export 'src/strings.dart';
 export 'src/theme.dart';
 export 'src/thread_turns.dart';
+export 'src/turn_height_cache.dart';
