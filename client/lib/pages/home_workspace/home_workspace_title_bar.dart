@@ -426,29 +426,31 @@ class _HomePill extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
     final Color fg = active ? cs.primary : cs.onSurfaceVariant;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
+    return Material(
+      color: active
+          ? cs.primary.withValues(alpha: 0.16)
+          : Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
           color: active
-              ? cs.primary.withValues(alpha: 0.16)
+              ? cs.primary.withValues(alpha: 0.28)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: active
-                ? cs.primary.withValues(alpha: 0.28)
-                : Colors.transparent,
-          ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.home_filled, size: context.tpIconSizes.md, color: fg),
-            const SizedBox(width: 6),
-            Text(label, style: styles.smColored(fg)),
-          ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.home_filled, size: context.tpIconSizes.md, color: fg),
+              const SizedBox(width: 6),
+              Text(label, style: styles.smColored(fg)),
+            ],
+          ),
         ),
       ),
     );
@@ -551,79 +553,85 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
               widget.closable && widget.onClose != null && Platform.isAndroid
               ? _showTabContextMenuAtChipCenter
               : null,
-          child: InkWell(
-            onTap: widget.onTap,
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 200),
-              padding: const EdgeInsets.only(
-                left: 10,
-                right: 6,
-                top: 6,
-                bottom: 6,
-              ),
-              decoration: BoxDecoration(
+          // Material owns fill/border/clip so close-button hover cannot paint
+          // past the rounded outer chrome.
+          child: Material(
+            color: active
+                ? cs.surfaceContainerHigh
+                : _hovered
+                ? cs.onSurface.withValues(alpha: 0.05)
+                : Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(
                 color: active
-                    ? cs.surfaceContainerHigh
-                    : _hovered
-                    ? cs.onSurface.withValues(alpha: 0.05)
+                    ? cs.outlineVariant.withValues(alpha: 0.7)
                     : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: active
-                      ? cs.outlineVariant.withValues(alpha: 0.7)
-                      : Colors.transparent,
-                ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Fixed height: CrossAxisAlignment.stretch would expand the row
-                  // to the ListView viewport height (~full title bar).
-                  SizedBox(
-                    width: 3,
-                    height: context.tpIconSizes.md,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: barColor,
-                        borderRadius: BorderRadius.circular(1.5),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: widget.onTap,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 200),
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                    left: 10,
+                    right: 6,
+                    top: 6,
+                    bottom: 6,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Fixed height: CrossAxisAlignment.stretch would expand
+                      // the row to the ListView viewport height (~full title bar).
+                      SizedBox(
+                        width: 3,
+                        height: context.tpIconSizes.md,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: barColor,
+                            borderRadius: BorderRadius.circular(1.5),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  _TabChromeSlot(
-                    visible: _showChrome,
-                    child: WorkspaceTabTopologyIcon(
-                      topology: widget.topology,
-                      colorScheme: cs,
-                      brightness: brightness,
-                      size: context.tpIconSizes.md,
-                      active: active,
-                      hovered: _hovered,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Flexible(
-                    child: Text(
-                      widget.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: styles.smColored(fg),
-                    ),
-                  ),
-                  if (widget.closable) ...[
-                    const SizedBox(width: 8),
-                    _TabChromeSlot(
-                      visible: _showChrome,
-                      child: TabCloseButton(
-                        active: active,
-                        onTap: widget.onClose,
+                      const SizedBox(width: 8),
+                      _TabChromeSlot(
+                        visible: _showChrome,
+                        child: WorkspaceTabTopologyIcon(
+                          topology: widget.topology,
+                          colorScheme: cs,
+                          brightness: brightness,
+                          size: context.tpIconSizes.md,
+                          active: active,
+                          hovered: _hovered,
+                        ),
                       ),
-                    ),
-                  ] else
-                    const SizedBox(width: 6),
-                ],
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: Text(
+                          widget.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: styles.smColored(fg),
+                        ),
+                      ),
+                      if (widget.closable) ...[
+                        const SizedBox(width: 8),
+                        _TabChromeSlot(
+                          visible: _showChrome,
+                          child: TabCloseButton(
+                            active: active,
+                            onTap: widget.onClose,
+                          ),
+                        ),
+                      ] else
+                        const SizedBox(width: 6),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),

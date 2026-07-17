@@ -373,85 +373,89 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
           onLongPress: Platform.isAndroid
               ? _showTabContextMenuAtChipCenter
               : null,
-          child: InkWell(
-            onTap: widget.onTap,
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 200),
-              padding: const EdgeInsets.only(
-                left: 10,
-                right: 6,
-                top: 6,
-                bottom: 6,
-              ),
-              decoration: BoxDecoration(
+          child: Material(
+            color: active
+                ? cs.surfaceContainerHigh
+                : _hovered
+                ? cs.onSurface.withValues(alpha: 0.05)
+                : Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(
                 color: active
-                    ? cs.surfaceContainerHigh
-                    : _hovered
-                    ? cs.onSurface.withValues(alpha: 0.05)
+                    ? cs.outlineVariant.withValues(alpha: 0.7)
                     : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: active
-                      ? cs.outlineVariant.withValues(alpha: 0.7)
-                      : Colors.transparent,
-                ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Left accent bar
-                  SizedBox(
-                    width: 3,
-                    height: context.tpIconSizes.md,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: barColor,
-                        borderRadius: BorderRadius.circular(1.5),
-                      ),
-                    ),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: widget.onTap,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 200),
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                    left: 10,
+                    right: 6,
+                    top: 6,
+                    bottom: 6,
                   ),
-                  const SizedBox(width: 8),
-                  // Working indicator always visible when working;
-                  // icon fades with chrome when idle.
-                  if (widget.working)
-                    SessionWorkingIndicator(
-                      working: true,
-                      size: context.tpIconSizes.sm,
-                      color: iconColor,
-                    )
-                  else
-                    _TabChromeSlot(
-                      visible: _showChrome,
-                      child: _TabLeadingIcon(
-                        cli: widget.cli,
-                        icon: widget.icon,
-                        iconColor: iconColor,
-                        iconOpacity: iconAlpha,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Left accent bar
+                      SizedBox(
+                        width: 3,
+                        height: context.tpIconSizes.md,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: barColor,
+                            borderRadius: BorderRadius.circular(1.5),
+                          ),
+                        ),
                       ),
-                    ),
-                  const SizedBox(width: 12),
-                  // Title
-                  Flexible(
-                    child: Text(
-                      widget.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: styles.smColored(
-                        widget.preview ? fg.withValues(alpha: 0.72) : fg,
+                      const SizedBox(width: 8),
+                      // Working indicator always visible when working;
+                      // icon fades with chrome when idle.
+                      if (widget.working)
+                        SessionWorkingIndicator(
+                          working: true,
+                          size: context.tpIconSizes.sm,
+                          color: iconColor,
+                        )
+                      else
+                        _TabChromeSlot(
+                          visible: _showChrome,
+                          child: _TabLeadingIcon(
+                            cli: widget.cli,
+                            icon: widget.icon,
+                            iconColor: iconColor,
+                            iconOpacity: iconAlpha,
+                          ),
+                        ),
+                      const SizedBox(width: 12),
+                      // Title
+                      Flexible(
+                        child: Text(
+                          widget.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: styles.smColored(
+                            widget.preview ? fg.withValues(alpha: 0.72) : fg,
+                          ),
+                        ),
                       ),
-                    ),
+                      // Close button
+                      _TabChromeSlot(
+                        visible: _showChrome,
+                        child: TabCloseButton(
+                          active: active,
+                          onTap: widget.onClose,
+                        ),
+                      ),
+                    ],
                   ),
-                  // Close button
-                  _TabChromeSlot(
-                    visible: _showChrome,
-                    child: TabCloseButton(
-                      active: active,
-                      onTap: widget.onClose,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

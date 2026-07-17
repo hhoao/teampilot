@@ -75,30 +75,37 @@ class RunToolbarConfigDropdown extends StatelessWidget {
         key: const Key('run-config-dropdown'),
         minWidth: 280,
         triggerBuilder: (context, controller) {
-          return InkWell(
+          // Local Material clips InkWell hover to the rounded rect so it
+          // cannot paint past the trigger chrome on the title-bar Material.
+          return Material(
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(6),
-            onTap: () {
-              if (controller.isOpen) {
-                controller.close();
-              } else {
-                controller.open();
-              }
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 200),
-                    child: Text(
-                      label,
-                      overflow: TextOverflow.ellipsis,
-                      style: TpTextStyles.of(context).sm,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(6),
+              onTap: () {
+                if (controller.isOpen) {
+                  controller.close();
+                } else {
+                  controller.open();
+                }
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 200),
+                      child: Text(
+                        label,
+                        overflow: TextOverflow.ellipsis,
+                        style: TpTextStyles.of(context).sm,
+                      ),
                     ),
-                  ),
-                  Icon(Icons.arrow_drop_down, color: cs.onSurfaceVariant),
-                ],
+                    Icon(Icons.arrow_drop_down, color: cs.onSurfaceVariant),
+                  ],
+                ),
               ),
             ),
           );
