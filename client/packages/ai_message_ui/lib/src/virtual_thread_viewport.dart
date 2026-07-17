@@ -45,6 +45,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
   int _lastIndex = -1;
   double _paddingTop = 0;
   double _paddingBottom = 0;
+  double _headerHeight = 0;
 
   bool _correctionScheduled = false;
   double _pendingCorrection = 0;
@@ -71,6 +72,9 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
     }
     if (oldWidget.estimateHeight != widget.estimateHeight) {
       _cache = TurnHeightCache(estimate: widget.estimateHeight);
+    }
+    if (widget.header == null) {
+      _headerHeight = 0;
     }
     if (!identical(oldWidget.messages, widget.messages)) {
       _rebuildTurns(previous: _turns);
@@ -108,16 +112,33 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
     _syncVisibleRange();
   }
 
+  /// Scroll offset in turn-space (turns start after the optional header).
+  double _scrollPixelsInTurnSpace(double documentPixels) {
+    final inTurn = documentPixels - _headerHeight;
+    return inTurn < 0 ? 0.0 : inTurn;
+  }
+
+  void _onHeaderMeasured(double height) {
+    if (height <= 0) {
+      if (_headerHeight == 0) return;
+      _headerHeight = 0;
+      _syncVisibleRange();
+      return;
+    }
+    if ((height - _headerHeight).abs() < 0.5) return;
+    _headerHeight = height;
+    _syncVisibleRange();
+  }
+
   void _syncVisibleRange() {
     final TurnVisibleRange range;
     final controller = widget.scrollController;
     // hasClients can be true before the first layout sets viewportDimension.
-    if (controller.hasClients &&
-        controller.position.hasViewportDimension) {
+    if (controller.hasClients && controller.position.hasViewportDimension) {
       final position = controller.position;
       range = _cache.visibleRange(
         turns: _turns,
-        scrollPixels: position.pixels,
+        scrollPixels: _scrollPixelsInTurnSpace(position.pixels),
         viewportHeight: position.viewportDimension,
         overscan: widget.overscan,
       );
@@ -167,11 +188,15 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
       if (turnIndex >= 0) {
         // Start of this turn (heights of turns before it); own height excluded.
         final turnStart = _cache.offsetBefore(_turns, turnIndex);
-        final scrollPixels = widget.scrollController.hasClients
-            ? widget.scrollController.position.pixels
+        final scrollInTurn = widget.scrollController.hasClients
+            ? _scrollPixelsInTurnSpace(
+                widget.scrollController.position.pixels,
+              )
             : 0.0;
+        // Only correct when the turn was fully above the viewport top.
+        final fullyAbove = turnStart + before <= scrollInTurn;
         if (!widget.suppressMeasureScrollCorrection &&
-            turnStart < scrollPixels &&
+            fullyAbove &&
             widget.onMeasureScrollCorrection != null) {
           _pendingCorrection += delta;
           _scheduleCorrection();
@@ -198,7 +223,11 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
   @override
   Widget build(BuildContext context) {
     final children = <Widget>[
-      if (widget.header != null) widget.header!,
+      if (widget.header != null)
+        _MeasuredBox(
+          onMeasured: _onHeaderMeasured,
+          child: widget.header!,
+        ),
       SizedBox(height: _paddingTop),
     ];
 
@@ -206,10 +235,9 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
       for (var i = _firstIndex; i <= _lastIndex; i++) {
         final turn = _turns[i];
         children.add(
-          _MeasuredTurn(
+          _MeasuredBox(
             key: ValueKey(turn.id),
-            turnId: turn.id,
-            onMeasured: _onTurnMeasured,
+            onMeasured: (h) => _onTurnMeasured(turn.id, h),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -234,23 +262,21 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
   }
 }
 
-class _MeasuredTurn extends StatefulWidget {
-  const _MeasuredTurn({
-    required this.turnId,
+class _MeasuredBox extends StatefulWidget {
+  const _MeasuredBox({
     required this.onMeasured,
     required this.child,
     super.key,
   });
 
-  final String turnId;
-  final void Function(String turnId, double height) onMeasured;
+  final void Function(double height) onMeasured;
   final Widget child;
 
   @override
-  State<_MeasuredTurn> createState() => _MeasuredTurnState();
+  State<_MeasuredBox> createState() => _MeasuredBoxState();
 }
 
-class _MeasuredTurnState extends State<_MeasuredTurn> {
+class _MeasuredBoxState extends State<_MeasuredBox> {
   final GlobalKey _key = GlobalKey();
 
   @override
@@ -260,7 +286,7 @@ class _MeasuredTurnState extends State<_MeasuredTurn> {
   }
 
   @override
-  void didUpdateWidget(covariant _MeasuredTurn oldWidget) {
+  void didUpdateWidget(covariant _MeasuredBox oldWidget) {
     super.didUpdateWidget(oldWidget);
     WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
   }
@@ -268,7 +294,7 @@ class _MeasuredTurnState extends State<_MeasuredTurn> {
   void _measure() {
     final box = _key.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) return;
-    widget.onMeasured(widget.turnId, box.size.height);
+    widget.onMeasured(box.size.height);
   }
 
   @override
