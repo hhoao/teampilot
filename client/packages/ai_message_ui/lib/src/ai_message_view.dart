@@ -123,29 +123,15 @@ class _AiMessageViewState extends State<AiMessageView> {
 
     if (!trackHover) return body;
 
-    final hoverGate = widget.actionBarHoverEnabled;
-    if (hoverGate == null) {
-      return MouseRegion(
-        onEnter: (_) => _hovered.value = true,
-        onExit: (_) => _hovered.value = false,
-        child: body,
-      );
-    }
-
-    // While scrolling (gate false), drop MouseRegion so fling hit-tests skip
-    // per-message hover tracking entirely.
-    return ListenableBuilder(
-      listenable: hoverGate,
-      builder: (context, child) {
-        if (!hoverGate.value) {
-          return child!;
-        }
-        return MouseRegion(
-          onEnter: (_) => _hovered.value = true,
-          onExit: (_) => _hovered.value = false,
-          child: child,
-        );
+    // Keep MouseRegion mounted always — swapping it via ListenableBuilder when
+    // the scroll gate flips remounts hit-targets under the cursor and jitters
+    // scroll metrics. Gate only ignores enter; exit/clear still via listener.
+    return MouseRegion(
+      onEnter: (_) {
+        if (!_hoverAllowed) return;
+        _hovered.value = true;
       },
+      onExit: (_) => _hovered.value = false,
       child: body,
     );
   }
