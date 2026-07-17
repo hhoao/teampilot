@@ -92,6 +92,7 @@ SSH session connect
 - 删除 `targets_repository` 中 `rootSandboxEnvOptIn` 用例（或改为断言字段已不存在）。
 - `remote_ssh_launch_constraints_test`：策略仍由 `injectRootSandboxEnv` 布尔驱动，无需因存储迁移而改断言语义。
 - 若有 connector / host mock 测试依赖 `isRootSandboxEnvOptIn(targetId)`，改为 workspace 签名。
+- 建议在 `workspace_info_section_*` 相关测试中为新卡片加 smoke（开关可见 + 可选 confirm/persist 接线），避免仅改模型未挂 UI。
 
 ## Out of scope follow-ups
 
