@@ -145,4 +145,39 @@ void main() {
     final decoded = Workspace.fromJson(json);
     expect(decoded.memberPlacementInitializedByTeam['team-1'], isFalse);
   });
+
+  test('rootSandboxEnvOptIn defaults false and is omitted from toJson', () {
+    final ws = Workspace(
+      workspaceId: 'p1',
+      folders: const [WorkspaceFolder(path: '/tmp/repo')],
+      createdAt: 1,
+    );
+    expect(ws.rootSandboxEnvOptIn, isFalse);
+    expect(ws.toJson().containsKey('rootSandboxEnvOptIn'), isFalse);
+  });
+
+  test('rootSandboxEnvOptIn true round-trips', () {
+    final ws = Workspace(
+      workspaceId: 'p1',
+      folders: const [WorkspaceFolder(path: '/tmp/repo')],
+      createdAt: 1,
+      rootSandboxEnvOptIn: true,
+    );
+    final json = ws.toJson();
+    expect(json['rootSandboxEnvOptIn'], isTrue);
+    final restored = Workspace.fromJson(json);
+    expect(restored.rootSandboxEnvOptIn, isTrue);
+  });
+
+  test('rootSandboxEnvOptIn ignores non-true json values', () {
+    final restored = Workspace.fromJson({
+      'workspaceId': 'p1',
+      'folders': const [
+        {'path': '/tmp/repo', 'targetId': 'local'},
+      ],
+      'createdAt': 1,
+      'rootSandboxEnvOptIn': 'yes',
+    });
+    expect(restored.rootSandboxEnvOptIn, isFalse);
+  });
 }
