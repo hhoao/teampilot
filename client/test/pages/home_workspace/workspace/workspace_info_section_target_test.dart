@@ -88,6 +88,7 @@ void main() {
 
       final l10n = await AppLocalizations.delegate.load(const Locale('en'));
       expect(find.text(l10n.workspaceFoldersSectionTitle), findsOneWidget);
+      expect(find.text(l10n.rootSandboxEnvOptInTitle), findsOneWidget);
     });
   });
 }

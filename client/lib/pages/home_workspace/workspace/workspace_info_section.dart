@@ -9,12 +9,14 @@ import '../../../cubits/launch_profile_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
+import '../../../repositories/session_repository.dart';
 import '../../../models/workspace_topology.dart';
 import '../../../widgets/workspace_topology_chip.dart';
 import '../../../utils/workspace/workspace_display_name.dart';
 import '../workspace_actions.dart';
 import 'config/workspace_folders_section.dart';
 import 'config/workspace_team_member_targets_section.dart';
+import 'root_sandbox_env_opt_in_tile.dart';
 import 'workspace_icon_settings_row.dart';
 
 /// Workspace basic settings + danger zone (same layout as [TeamInfoSection]).
@@ -91,6 +93,10 @@ class WorkspaceInfoSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
+          TpCard.outlined(
+            child: WorkspaceRootSandboxEnvOptInCard(workspace: live),
+          ),
+          const SizedBox(height: 12),
           WorkspaceFoldersSection(workspace: live, lockTargets: true),
           // Placement is configured for all topologies; section lists teams that
           // already have remembered targets (local/remote/mixed).
@@ -100,6 +106,35 @@ class WorkspaceInfoSection extends StatelessWidget {
           WorkspaceConfigDangerZone(workspace: live),
         ],
       ),
+    );
+  }
+}
+
+class WorkspaceRootSandboxEnvOptInCard extends StatelessWidget {
+  const WorkspaceRootSandboxEnvOptInCard({required this.workspace, super.key});
+
+  final Workspace workspace;
+
+  @override
+  Widget build(BuildContext context) {
+    final live = context.select<ChatCubit, Workspace>(
+      (c) => c.state.workspaces.firstWhere(
+        (p) => p.workspaceId == workspace.workspaceId,
+        orElse: () => workspace,
+      ),
+    );
+    final l10n = context.l10n;
+    return RootSandboxEnvOptInTile(
+      workspaceLabel: live.localizedName(l10n),
+      optedIn: live.rootSandboxEnvOptIn,
+      showDividerBelow: false,
+      onChanged: (next) async {
+        await context.read<ChatCubit>().updateWorkspaceMetadata(
+          context.read<SessionRepository>(),
+          live.workspaceId,
+          rootSandboxEnvOptIn: next,
+        );
+      },
     );
   }
 }

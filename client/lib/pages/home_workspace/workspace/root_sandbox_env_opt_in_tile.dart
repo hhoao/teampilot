@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../../l10n/l10n_extensions.dart';
+import '../../../l10n/l10n_extensions.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-/// Per-target opt-in to inject `IS_SANDBOX=1` when launching Claude as root
-/// outside a detected container. Default **off**; enabling keeps
+/// Workspace-scoped opt-in to inject `IS_SANDBOX=1` when launching Claude as
+/// root outside a detected container. Default **off**; enabling keeps
 /// `--dangerously-skip-permissions` instead of dropping it at launch.
 class RootSandboxEnvOptInTile extends StatelessWidget {
   const RootSandboxEnvOptInTile({
-    required this.host,
+    required this.workspaceLabel,
     required this.optedIn,
     required this.onChanged,
     this.confirmTrustBoundary,
@@ -16,12 +16,12 @@ class RootSandboxEnvOptInTile extends StatelessWidget {
     super.key,
   });
 
-  final String host;
+  final String workspaceLabel;
   final bool optedIn;
   final ValueChanged<bool> onChanged;
   final bool showDividerBelow;
 
-  /// Returns true when the user confirms root sandbox env on [host].
+  /// Returns true when the user confirms root sandbox env on [workspaceLabel].
   final Future<bool> Function()? confirmTrustBoundary;
 
   @override
@@ -39,7 +39,7 @@ class RootSandboxEnvOptInTile extends StatelessWidget {
           }
           final confirm =
               confirmTrustBoundary ??
-              () => showRootSandboxEnvConfirm(context, host);
+              () => showRootSandboxEnvConfirm(context, workspaceLabel);
           confirm().then((ok) {
             if (ok) onChanged(true);
           });
@@ -52,7 +52,7 @@ class RootSandboxEnvOptInTile extends StatelessWidget {
 
 Future<bool> showRootSandboxEnvConfirm(
   BuildContext context,
-  String host,
+  String workspaceLabel,
 ) async {
   final l10n = context.l10n;
   final confirmed = await showDialog<bool>(
@@ -65,7 +65,7 @@ Future<bool> showRootSandboxEnvConfirm(
         children: [
           TpDialogHeader(title: l10n.rootSandboxEnvConfirmTitle),
           const SizedBox(height: 12),
-          Text(l10n.rootSandboxEnvConfirmBody(host)),
+          Text(l10n.rootSandboxEnvConfirmBody(workspaceLabel)),
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
