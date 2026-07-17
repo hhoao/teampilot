@@ -9,10 +9,11 @@ import 'ai_thread_selection_context_menu.dart';
 
 /// History message list for session review.
 ///
-/// Uses [SingleChildScrollView] + [Column] (not a lazy list). Variable-height
-/// messages entering/leaving a [ListView]/Flyer cache swing [maxScrollExtent]
-/// by huge mirrored deltas and jump the viewport; laying out every row keeps
-/// extent stable while flinging.
+/// Owns scroll chrome (stick-to-end, load-older anchoring, ActionBar hover
+/// gate, [SelectionArea]) and embeds [VirtualThreadViewport] so only nearby
+/// turns (+ overscan) mount. Unmounted turns are spacer extent from a height
+/// cache — avoids mid-scroll jumps from naive lazy lists while capping mount
+/// cost vs a full [Column] of every message.
 class SessionHistoryThread extends StatefulWidget {
   const SessionHistoryThread({
     required this.runtime,
@@ -255,6 +256,23 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     final lastId = _messages.isEmpty ? null : _messages.last.id;
     final aiTheme = AiMessageTheme.of(context);
 
+    final Widget? header = widget.hasOlder
+        ? SelectionContainer.disabled(
+            child: SizedBox(
+              height: 24,
+              child: widget.isLoadingOlder
+                  ? const Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : null,
+            ),
+          )
+        : null;
+
     return NotificationListener<ScrollNotification>(
       onNotification: _onScrollNotification,
       child: SelectionArea(
@@ -262,47 +280,42 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
         child: SingleChildScrollView(
           controller: _scrollController,
           padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (widget.hasOlder)
-                SelectionContainer.disabled(
-                  child: SizedBox(
-                    height: 24,
-                    child: widget.isLoadingOlder
-                        ? const Center(
-                            child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          )
-                        : null,
+          child: VirtualThreadViewport(
+            messages: _messages,
+            scrollController: _scrollController,
+            header: header,
+            suppressMeasureScrollCorrection: _stickToEnd,
+            onMeasureScrollCorrection: (delta) {
+              if (!_scrollController.hasClients || delta.abs() < 0.5) return;
+              final next = (_scrollController.position.pixels + delta).clamp(
+                0.0,
+                _scrollController.position.maxScrollExtent,
+              );
+              _jumpTo(next);
+            },
+            messageBuilder: (context, ai) {
+              return Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: aiTheme.threadHorizontalPadding,
                   ),
-                ),
-              for (final ai in _messages)
-                Align(
-                  alignment: Alignment.topCenter,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: aiTheme.threadHorizontalPadding,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: aiTheme.threadMaxWidth,
                     ),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: aiTheme.threadMaxWidth,
-                      ),
-                      child: AiMessageView(
-                        key: ValueKey(ai.id),
-                        message: ai,
-                        actionBarHoverEnabled: _actionBarHoverEnabled,
-                        actionBarReveal: ai.id == lastId
-                            ? AiActionBarReveal.always
-                            : AiActionBarReveal.hover,
-                      ),
+                    child: AiMessageView(
+                      key: ValueKey(ai.id),
+                      message: ai,
+                      actionBarHoverEnabled: _actionBarHoverEnabled,
+                      actionBarReveal: ai.id == lastId
+                          ? AiActionBarReveal.always
+                          : AiActionBarReveal.hover,
                     ),
                   ),
                 ),
-            ],
+              );
+            },
           ),
         ),
       ),
