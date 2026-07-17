@@ -15,3 +15,4 @@ export 'src/strings.dart';
 export 'src/theme.dart';
 export 'src/thread_turns.dart';
 export 'src/turn_height_cache.dart';
+export 'src/virtual_thread_viewport.dart';
