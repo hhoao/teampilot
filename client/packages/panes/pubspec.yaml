@@ -1,0 +1,18 @@
+name: panes
+description: A powerful Flutter package for creating complex, resizable, multi-pane layouts. Ideal for building IDE-like interfaces, advanced dashboards, and desktop applications.
+version: 1.3.0
+homepage: https://github.com/SoFluffyOS/panes
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0

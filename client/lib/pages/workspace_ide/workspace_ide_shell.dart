@@ -64,7 +64,7 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
   bool _syncScheduled = false;
   WorkspaceIdePaneSnapshot? _pending;
 
-  /// Last viewport size from [LayoutBuilder]; used by [BlocListener] to derive
+  /// Last viewport size from [PaneSizeReporter]; used by [BlocListener] to derive
   /// [WorkspacePanePolicy.effective] before the next layout pass.
   double _viewportWidth = WorkspacePanePolicy.narrowBreakpointWidth;
   double _viewportHeight = 900;
@@ -83,10 +83,14 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
   /// run (during layout of the root `MultiPane`).
   bool _narrow = false;
 
-  /// Effective dock flags from the latest [LayoutBuilder] frame. Chrome uses
+  /// Effective dock flags from the latest viewport measure. Chrome uses
   /// this instead of [PaneController.isVisible] so padding/radius track user
   /// intent immediately — the controller sync is intentionally post-frame.
   WorkspaceIdePaneSnapshot? _layoutSnapshot;
+
+  /// First open skips pane size tweens so sidebar/terminal do not animate
+  /// through dozens of layouts on the landing critical path.
+  var _paneAnimationEnabled = false;
 
   @override
   void initState() {
@@ -142,6 +146,10 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
       preferences: prefs,
       effective: effective,
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _paneAnimationEnabled) return;
+      setState(() => _paneAnimationEnabled = true);
+    });
   }
 
   @override
@@ -237,6 +245,46 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
   void _onLayoutPreferencesChanged() {
     if (!mounted) return;
     _requestSync(_snapshotFor(context.read<LayoutCubit>().state.preferences));
+  }
+
+  void _onViewportSize(Size size) {
+    if (!mounted) return;
+    if (size.width == _viewportWidth && size.height == _viewportHeight) {
+      return;
+    }
+    final layoutState = context.read<LayoutCubit>().state;
+    final was = WorkspacePanePolicy.effective(
+      preferences: layoutState.preferences,
+      viewportWidth: _viewportWidth,
+      composeLanding: widget.composeLanding,
+      landingRightToolsOverride: layoutState.landingRightToolsOverride,
+    );
+    _viewportWidth = size.width;
+    _viewportHeight = size.height;
+    final now = WorkspacePanePolicy.effective(
+      preferences: layoutState.preferences,
+      viewportWidth: _viewportWidth,
+      composeLanding: widget.composeLanding,
+      landingRightToolsOverride: layoutState.landingRightToolsOverride,
+    );
+    final snapshot = WorkspaceIdePaneSnapshot.from(
+      preferences: layoutState.preferences,
+      effective: now,
+    );
+    _layoutSnapshot = snapshot;
+    _requestSync(snapshot);
+    _requestBoundsSync(snapshot);
+    _narrow = now.isNarrow;
+    final policyChanged =
+        was.isNarrow != now.isNarrow ||
+        was.dockLeft != now.dockLeft ||
+        was.dockRight != now.dockRight ||
+        was.dockBottom != now.dockBottom ||
+        was.overlayLeft != now.overlayLeft ||
+        was.overlayRight != now.overlayRight;
+    if (policyChanged) {
+      setState(() {});
+    }
   }
 
   void _requestSync(WorkspaceIdePaneSnapshot snapshot) {
@@ -561,9 +609,14 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
     return MultiPane(
       direction: Axis.horizontal,
       controller: _rowController,
+      animationDuration: _paneAnimationDuration,
       paneBuilder: _rowPaneBuilder,
     );
   }
+
+  Duration get _paneAnimationDuration => _paneAnimationEnabled
+      ? const Duration(milliseconds: 250)
+      : Duration.zero;
 
   @override
   Widget build(BuildContext context) {
@@ -578,55 +631,54 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
             _relevantPrefsChanged(a.preferences, b.preferences) ||
             a.landingRightToolsOverride != b.landingRightToolsOverride,
         builder: (context, layoutState) {
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              _viewportWidth = constraints.maxWidth;
-              _viewportHeight = constraints.maxHeight;
-              final effective = WorkspacePanePolicy.effective(
-                preferences: layoutState.preferences,
-                viewportWidth: constraints.maxWidth,
-                composeLanding: widget.composeLanding,
-                landingRightToolsOverride:
-                    layoutState.landingRightToolsOverride,
-              );
-              final snapshot = WorkspaceIdePaneSnapshot.from(
-                preferences: layoutState.preferences,
-                effective: effective,
-              );
-              _layoutSnapshot = snapshot;
-              _requestSync(snapshot);
-              _requestBoundsSync(snapshot);
-              // Set before building `MultiPane`: the pane builders run during the
-              // root pane's layout, which is after this synchronous assignment.
-              _narrow = effective.isNarrow;
-              final prefs = layoutState.preferences;
-              return PaneTheme(
-                data: workspaceIdePaneTheme(cs),
-                child: PaneOverlayHost(
-                    showLeft: effective.overlayLeft,
-                    showRight: effective.overlayRight,
-                    leftWidth: prefs.sidebarWidth,
-                    rightWidth: prefs.rightToolsWidth,
-                    left: WorkspaceIdePaneChrome(child: widget.left),
-                    right: WorkspaceIdePaneChrome(child: widget.right),
-                    onDismissLeft: () =>
-                        context.read<LayoutCubit>().setSidebarVisible(false),
-                    onDismissRight: () {
-                      final layout = context.read<LayoutCubit>();
-                      if (widget.composeLanding) {
-                        layout.setLandingRightToolsOverride(false);
-                      } else {
-                        layout.setRightToolsVisible(false);
-                      }
-                    },
-                    child: MultiPane(
-                      direction: Axis.vertical,
-                      controller: _rootController,
-                      paneBuilder: _rootPaneBuilder,
-                    ),
-                  ),
-              );
-            },
+          final effective = WorkspacePanePolicy.effective(
+            preferences: layoutState.preferences,
+            viewportWidth: _viewportWidth,
+            composeLanding: widget.composeLanding,
+            landingRightToolsOverride: layoutState.landingRightToolsOverride,
+          );
+          final snapshot = WorkspaceIdePaneSnapshot.from(
+            preferences: layoutState.preferences,
+            effective: effective,
+          );
+          _layoutSnapshot = snapshot;
+          _requestSync(snapshot);
+          _requestBoundsSync(snapshot);
+          // Set before building `MultiPane`: the pane builders run during the
+          // root pane's layout, which is after this synchronous assignment.
+          _narrow = effective.isNarrow;
+          final prefs = layoutState.preferences;
+          // Measure via PaneSizeReporter so center/sidebar BUILD stays in the
+          // normal build phase — not nested under LayoutBuilder layout.
+          return PaneSizeReporter(
+            onSize: _onViewportSize,
+            child: PaneTheme(
+              data: workspaceIdePaneTheme(cs),
+              child: PaneOverlayHost(
+                showLeft: effective.overlayLeft,
+                showRight: effective.overlayRight,
+                leftWidth: prefs.sidebarWidth,
+                rightWidth: prefs.rightToolsWidth,
+                left: WorkspaceIdePaneChrome(child: widget.left),
+                right: WorkspaceIdePaneChrome(child: widget.right),
+                onDismissLeft: () =>
+                    context.read<LayoutCubit>().setSidebarVisible(false),
+                onDismissRight: () {
+                  final layout = context.read<LayoutCubit>();
+                  if (widget.composeLanding) {
+                    layout.setLandingRightToolsOverride(false);
+                  } else {
+                    layout.setRightToolsVisible(false);
+                  }
+                },
+                child: MultiPane(
+                  direction: Axis.vertical,
+                  controller: _rootController,
+                  animationDuration: _paneAnimationDuration,
+                  paneBuilder: _rootPaneBuilder,
+                ),
+              ),
+            ),
           );
         },
       ),

@@ -9,6 +9,7 @@ import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/commands/command_catalog.dart';
 import 'package:teampilot/services/commands/shortcut_context.dart';
 import 'package:teampilot/services/commands/shortcut_dispatcher.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
 
 /// End-to-end regression test for the Task 6 review finding: while the `/`
@@ -167,6 +168,48 @@ void main() {
     await tester.pump();
     expect(controller.text, 'from blank tap');
   });
+
+  testWidgets(
+    'does not nest LayoutBuilder around the token field (landing open path)',
+    (tester) async {
+      final bus = CommandBus();
+      final controller = TextEditingController();
+      final focusNode = FocusNode();
+      addTearDown(() {
+        controller.dispose();
+        focusNode.dispose();
+      });
+
+      await pumpField(
+        tester,
+        bus: bus,
+        controller: controller,
+        focusNode: focusNode,
+        onSubmit: () {},
+      );
+
+      // Nested LayoutBuilder between ComposeTriggerField and TpTextareaShell
+      // forces BUILD during parent layout and spikes landing first-open.
+      final shell = find.byType(TpTextareaShell);
+      expect(shell, findsOneWidget);
+      var nestedLayoutBuilder = false;
+      tester.element(shell).visitAncestorElements((ancestor) {
+        if (ancestor.widget is ComposeTriggerField) return false;
+        if (ancestor.widget is LayoutBuilder) {
+          nestedLayoutBuilder = true;
+          return false;
+        }
+        return true;
+      });
+      expect(nestedLayoutBuilder, isFalse);
+
+      focusNode.requestFocus();
+      await tester.pump();
+      await tester.enterText(find.byType(TextField), 'still editable');
+      await tester.pump();
+      expect(controller.text, 'still editable');
+    },
+  );
 
   testWidgets('typing works after dragging the resize grip', (tester) async {
     final bus = CommandBus();

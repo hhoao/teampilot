@@ -158,9 +158,10 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
                 tabScopeId: widget.tabScopeId,
               ),
               // Side panes are off the first-open critical path: chrome +
-              // landing paint first, then tools / terminal mount.
+              // landing paint first, then tools / terminal mount after the
+              // compose field has had a chance to layout.
               right: DeferredMountShell(
-                delayFrames: 2,
+                delayFrames: 4,
                 child: _WorkspaceRightToolsPane(
                   cwd: cwd,
                   additionalPaths: widget.workspace.extraFolderPaths,
@@ -172,7 +173,7 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
               // cwd change keeps the panel State so the update flows through
               // didUpdateWidget instead of recreating (and stranding) sessions.
               bottom: DeferredMountShell(
-                delayFrames: 2,
+                delayFrames: 4,
                 child: WorkspaceBottomDock(
                   workspaceId: widget.tabScopeId,
                   workingDirectory: cwd,

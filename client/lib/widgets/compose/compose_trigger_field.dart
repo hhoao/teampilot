@@ -79,7 +79,6 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   Timer? _searchDebounce;
   Timer? _focusClearTimer;
   Offset _menuAnchor = Offset.zero;
-  BoxConstraints? _fieldConstraints;
   VoidCallback? _newlineDisposer;
   VoidCallback? _submitDisposer;
 
@@ -208,8 +207,6 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   }
 
   void _updateMenuAnchor() {
-    final constraints = _fieldConstraints;
-    if (constraints == null) return;
     final fieldBox = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
     if (fieldBox == null || !fieldBox.hasSize) return;
 
@@ -220,7 +217,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
       fieldBox: fieldBox,
       value: widget.controller.value,
       textStyle: textStyle,
-      maxWidth: constraints.maxWidth,
+      maxWidth: fieldBox.size.width,
     );
     if (anchor == null || anchor == _menuAnchor) return;
     setState(() => _menuAnchor = anchor);
@@ -388,47 +385,42 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
 
     return ShortcutFocus(
       kind: ShortcutFocusKind.compose,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          _fieldConstraints = constraints;
-          return TpTextareaShell(
-            minHeight: minH,
-            maxHeight: maxH,
-            initialHeight: minH,
-            resizable: true,
-            textStyle: textStyle,
+      child: TpTextareaShell(
+        minHeight: minH,
+        maxHeight: maxH,
+        initialHeight: minH,
+        resizable: true,
+        textStyle: textStyle,
+        focusNode: widget.focusNode,
+        builder: (context, lineCount) {
+          return TpTokenTextField(
+            fieldKey: _fieldKey,
+            controller: widget.controller,
             focusNode: widget.focusNode,
-            builder: (context, lineCount) {
-              return TpTokenTextField(
-                fieldKey: _fieldKey,
-                controller: widget.controller,
-                focusNode: widget.focusNode,
-                hint: widget.hint,
-                enabled: widget.enabled,
-                onChanged: widget.onChanged,
-                textStyle: textStyle,
-                hintStyle: styles.mdColored(widget.hintColor),
-                cursorColor: widget.mutedColor,
-                tokenPattern: defaultInlineTokenPattern,
-                resolveTokenPalette: resolveSlashAtTokenPalette,
-                // Fill the shell so blank viewport areas remain tappable.
-                expands: true,
-                minLines: lineCount,
-                maxLines: lineCount,
-                onKeyEvent: _handleComposeKey,
-                overlayVisible: _overlayVisible,
-                overlayAnchor: _menuAnchor,
-                overlayBuilder: _overlayVisible
-                    ? (context) => _ComposeTriggerSuggestionPanel(
-                        suggestions: _suggestions,
-                        selectedIndex: _selectedIndex,
-                        onSelected: _selectSuggestion,
-                        onHover: (index) =>
-                            setState(() => _selectedIndex = index),
-                      )
-                    : null,
-              );
-            },
+            hint: widget.hint,
+            enabled: widget.enabled,
+            onChanged: widget.onChanged,
+            textStyle: textStyle,
+            hintStyle: styles.mdColored(widget.hintColor),
+            cursorColor: widget.mutedColor,
+            tokenPattern: defaultInlineTokenPattern,
+            resolveTokenPalette: resolveSlashAtTokenPalette,
+            // Fill the shell so blank viewport areas remain tappable.
+            expands: true,
+            minLines: lineCount,
+            maxLines: lineCount,
+            onKeyEvent: _handleComposeKey,
+            overlayVisible: _overlayVisible,
+            overlayAnchor: _menuAnchor,
+            overlayBuilder: _overlayVisible
+                ? (context) => _ComposeTriggerSuggestionPanel(
+                    suggestions: _suggestions,
+                    selectedIndex: _selectedIndex,
+                    onSelected: _selectSuggestion,
+                    onHover: (index) =>
+                        setState(() => _selectedIndex = index),
+                  )
+                : null,
           );
         },
       ),

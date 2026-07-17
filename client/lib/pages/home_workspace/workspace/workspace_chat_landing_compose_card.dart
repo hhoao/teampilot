@@ -16,6 +16,12 @@ import '../../../widgets/workspace_dnd/workspace_file_drop_region.dart';
 import 'workspace_chat_landing_palette.dart';
 import 'workspace_chat_landing_voice_bar.dart';
 
+/// Frames to wait before mounting the landing [ComposeTriggerField].
+///
+/// Keeps first-open LAYOUT off [RenderEditable] (test56 ~442 ms). Field becomes
+/// typeable on the following frame; tests mount immediately via
+/// [DeferredMountShell].
+const kLandingComposeFieldDelayFrames = 1;
 /// Compose input card for [WorkspaceChatLanding].
 class WorkspaceChatLandingComposeCard extends StatelessWidget {
   const WorkspaceChatLandingComposeCard({
@@ -278,13 +284,15 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Defer EditableText past the first workspace paint so
-                  // Clipboard/LiveText/ProcessText probes are off the open path.
+                  // Defer TextField past the workspace shell's first LAYOUT so
+                  // RenderEditable is not on the open-workspace critical frame
+                  // (test56). Placeholder keeps card height stable.
                   DeferredMountShell(
-                    delayFrames: 2,
-                    placeholder: _ComposeFieldPlaceholder(
+                    delayFrames: kLandingComposeFieldDelayFrames,
+                    placeholder: _ComposeFieldMountPlaceholder(
                       hint: hint,
                       hintColor: palette.hint,
+                      mutedColor: palette.muted,
                     ),
                     child: ComposeTriggerField(
                       controller: controller,
@@ -354,6 +362,41 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
       child: WorkspaceFileDropRegion(
         target: target,
         child: child,
+      ),
+    );
+  }
+}
+
+/// Reserves the same min height as [ComposeTriggerField]'s textarea shell.
+class _ComposeFieldMountPlaceholder extends StatelessWidget {
+  const _ComposeFieldMountPlaceholder({
+    required this.hint,
+    required this.hintColor,
+    required this.mutedColor,
+  });
+
+  final String hint;
+  final Color hintColor;
+  final Color mutedColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final styles = TpTextStyles.of(context);
+    final textStyle = styles.mdColored(mutedColor);
+    final lineHeight = (textStyle.fontSize ?? 14) * (textStyle.height ?? 1.35);
+    final minH = lineHeight * 3;
+
+    return SizedBox(
+      height: minH,
+      width: double.infinity,
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: Text(
+          hint,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: styles.mdColored(hintColor),
+        ),
       ),
     );
   }
@@ -541,34 +584,6 @@ class _ComposeActionIcon extends StatelessWidget {
                   ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// Non-interactive stand-in matching ~3-line compose field height.
-class _ComposeFieldPlaceholder extends StatelessWidget {
-  const _ComposeFieldPlaceholder({
-    required this.hint,
-    required this.hintColor,
-  });
-
-  final String hint;
-  final Color hintColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final styles = TpTextStyles.of(context);
-    final hintStyle = styles.mdColored(hintColor);
-    final lineHeight =
-        (hintStyle.fontSize ?? 14) * (hintStyle.height ?? 1.35);
-    return SizedBox(
-      width: double.infinity,
-      // Matches ComposeTriggerField / TpTextareaShell min (~3 lines).
-      height: lineHeight * 3,
-      child: Align(
-        alignment: Alignment.topLeft,
-        child: Text(hint, style: hintStyle),
       ),
     );
   }
