@@ -4,6 +4,7 @@ import 'dart:io' show Directory, File;
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:sqlite3/sqlite3.dart';
 
+import '../../../../session/ai_history_watch_meta.dart';
 import '../../../../session/session_history_context.dart';
 
 /// Locate OpenCode session/message/part files under `$OPENCODE_DATA_DIR`.
@@ -45,12 +46,15 @@ Future<AiTranscriptBundle?> _locateJsonStorage(
   final messageFiles = await _listJsonFiles(ctx, messageDir);
   if (messageFiles.isEmpty) return null;
 
+  final storageDir = path.join(dataDir, 'storage');
   final fragments = <AiTranscriptFragment>[];
+  final readPaths = <String>[];
 
   final sessionPath = await _findSessionFile(ctx, dataDir, sessionId);
   if (sessionPath != null) {
     final bytes = await ctx.fs.readBytes(sessionPath);
     if (bytes != null) {
+      readPaths.add(sessionPath);
       fragments.add(
         AiTranscriptFragment(name: 'session/$sessionId.json', bytes: bytes),
       );
@@ -60,6 +64,7 @@ Future<AiTranscriptBundle?> _locateJsonStorage(
   for (final filePath in messageFiles) {
     final bytes = await ctx.fs.readBytes(filePath);
     if (bytes == null) continue;
+    readPaths.add(filePath);
     final messageId = path.basenameWithoutExtension(filePath);
     fragments.add(
       AiTranscriptFragment(name: 'message/$messageId.json', bytes: bytes),
@@ -73,6 +78,7 @@ Future<AiTranscriptBundle?> _locateJsonStorage(
     for (final partPath in partFiles) {
       final bytes = await ctx.fs.readBytes(partPath);
       if (bytes == null) continue;
+      readPaths.add(partPath);
       final partId = path.basenameWithoutExtension(partPath);
       fragments.add(
         AiTranscriptFragment(
@@ -96,6 +102,10 @@ Future<AiTranscriptBundle?> _locateJsonStorage(
       'sessionId': sessionId,
       'source': 'json',
       'cacheToken': 'opencode-json|$sessionId|$totalBytes',
+      ...AiHistoryWatchMeta(
+        changeWatchRoot: storageDir,
+        cacheTokenPaths: readPaths,
+      ).toHints(),
     },
   );
 }
@@ -188,6 +198,10 @@ ORDER BY time_created ASC, id ASC
         'sessionId': sessionId,
         'source': 'sqlite',
         'cacheToken': 'opencode-sqlite|$sessionId|$totalBytes',
+        ...AiHistoryWatchMeta(
+          changeWatchRoot: dataDir,
+          cacheTokenPaths: [dbPath],
+        ).toHints(),
       },
     );
   } on Object {

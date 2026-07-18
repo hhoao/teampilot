@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 
 import '../../../../provider/cursor/cursor_home_layout.dart';
 import '../../../../session/ai_history_cache_token.dart';
+import '../../../../session/ai_history_watch_meta.dart';
 import '../../../../session/session_history_context.dart';
 
 /// Locate Cursor agent transcript under CURSOR_CONFIG_DIR / projects.
@@ -30,7 +31,13 @@ Future<AiTranscriptBundle?> locateCursorTranscript(
         bytes: bytes,
       ),
     ],
-    hints: {'cacheToken': cacheToken},
+    hints: {
+      'cacheToken': cacheToken,
+      ...AiHistoryWatchMeta(
+        changeWatchRoot: ctx.fs.pathContext.dirname(transcriptPath),
+        cacheTokenPaths: [transcriptPath],
+      ).toHints(),
+    },
   );
 }
 

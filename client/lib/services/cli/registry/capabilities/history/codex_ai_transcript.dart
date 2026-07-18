@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:ai_message_core/ai_message_core.dart';
 
 import '../../../../session/ai_history_cache_token.dart';
+import '../../../../session/ai_history_watch_meta.dart';
 import '../../../../session/session_history_context.dart';
 
 /// Locate Codex rollout JSONL under `$CODEX_HOME/sessions/**/rollout-*.jsonl`.
@@ -28,7 +29,13 @@ Future<AiTranscriptBundle?> locateCodexTranscript(
         bytes: bytes,
       ),
     ],
-    hints: {'cacheToken': cacheToken},
+    hints: {
+      'cacheToken': cacheToken,
+      ...AiHistoryWatchMeta(
+        changeWatchRoot: ctx.fs.pathContext.dirname(path),
+        cacheTokenPaths: [path],
+      ).toHints(),
+    },
   );
 }
 
