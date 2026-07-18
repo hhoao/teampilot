@@ -11,6 +11,7 @@ import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/ai_history_locator.dart';
+import 'package:teampilot/services/session/ai_history_watch_meta.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
@@ -133,6 +134,43 @@ void main() {
     expect(
       AiHistoryLoader.defaultAdapters[CliTool.claude],
       isA<ClaudeAiTranscriptAdapter>(),
+    );
+  });
+
+  test('resolveWatchMeta returns hints from locate without parsing', () async {
+    final locator = _CountingLocator(() async {
+      return AiTranscriptBundle(
+        adapterId: 'claude',
+        fragments: const [
+          AiTranscriptFragment(name: 'canned.jsonl', bytes: []),
+        ],
+        hints: const AiHistoryWatchMeta(
+          changeWatchRoot: '/proj',
+          cacheTokenPaths: ['/proj/a.jsonl'],
+        ).toHints(),
+      );
+    });
+    final loader = buildLoader(
+      locator: locator,
+      adapters: const {}, // parse must not be required
+    );
+
+    final meta = await loader.resolveWatchMeta(
+      session: simpleSession(),
+      memberId: '',
+    );
+    expect(meta?.changeWatchRoot, '/proj');
+    expect(meta?.cacheTokenPaths, ['/proj/a.jsonl']);
+  });
+
+  test('resolveWatchMeta returns null when locate misses', () async {
+    final loader = buildLoader(
+      locator: _CountingLocator(() async => null),
+      adapters: const {},
+    );
+    expect(
+      await loader.resolveWatchMeta(session: simpleSession(), memberId: ''),
+      isNull,
     );
   });
 }

@@ -11,6 +11,7 @@ import '../storage/runtime_layout.dart';
 import '../terminal/session_member_cli_resolver.dart';
 import 'ai_history_locator.dart';
 import 'ai_history_providers.dart';
+import 'ai_history_watch_meta.dart';
 import 'session_history_context.dart';
 import 'session_history_context_builder.dart';
 
@@ -19,6 +20,18 @@ class _AiHistoryCacheEntry {
 
   final String token;
   final List<AiMessage> messages;
+}
+
+class _AiHistorySeat {
+  const _AiHistorySeat({
+    required this.cli,
+    required this.effectiveMemberId,
+    required this.ctx,
+  });
+
+  final CliTool cli;
+  final String effectiveMemberId;
+  final SessionHistoryContext ctx;
 }
 
 /// Resolves seat CLI → locate bundle → [AiTranscriptAdapter] → messages, with
@@ -58,6 +71,24 @@ final class AiHistoryLoader {
 
   final _cache = <String, _AiHistoryCacheEntry>{};
 
+  /// Locate-only watch hints for live transcript refresh (no full parse).
+  Future<AiHistoryWatchMeta?> resolveWatchMeta({
+    required AppSession session,
+    required String memberId,
+    TeamProfile? team,
+    String? workingDirectory,
+  }) async {
+    final seat = _resolveSeat(
+      session: session,
+      memberId: memberId,
+      team: team,
+      workingDirectory: workingDirectory,
+    );
+    final bundle = await _locator.locate(ctx: seat.ctx, cli: seat.cli);
+    if (bundle == null) return null;
+    return AiHistoryWatchMeta.fromHints(bundle.hints);
+  }
+
   Future<List<AiMessage>> load({
     required AppSession session,
     required String memberId,
@@ -65,40 +96,15 @@ final class AiHistoryLoader {
     String? workingDirectory,
     bool force = false,
   }) async {
-    final sessionTeam = session.sessionTeam.trim();
-    final teamId = () {
-      final fromTeam = team?.id.trim() ?? '';
-      if (fromTeam.isNotEmpty) return fromTeam;
-      return sessionTeam;
-    }();
-    var effectiveMemberId = memberId.trim();
-    // Selected-member UUID without a team id cannot locate team runtime roots.
-    if (effectiveMemberId.isNotEmpty && teamId.isEmpty) {
-      appLogger.w(
-        '[ai-history] drop memberId=$effectiveMemberId without teamId '
-        'session=${session.sessionId} (treating as simple seat)',
-      );
-      effectiveMemberId = '';
-    }
-
-    final cli = SessionMemberCliResolver.resolve(
-      persistedSession: session,
+    final seat = _resolveSeat(
+      session: session,
+      memberId: memberId,
       team: team,
-      memberId: effectiveMemberId,
-      globalPresets: _globalPresets?.call() ?? const [],
-      cliForMember: (t, id, {List<CliPreset> globalPresets = const []}) {
-        for (final m in t.members) {
-          if (m.id == id) {
-            return memberLaunchCli(
-              team: t,
-              member: m,
-              globalPresets: globalPresets,
-            );
-          }
-        }
-        return t.cli;
-      },
+      workingDirectory: workingDirectory,
     );
+    final cli = seat.cli;
+    final effectiveMemberId = seat.effectiveMemberId;
+    final ctx = seat.ctx;
 
     final adapter = _adapters[cli];
     if (adapter == null) {
@@ -108,17 +114,6 @@ final class AiHistoryLoader {
       );
       throw StateError('AiTranscriptAdapter missing for launch CLI $cli');
     }
-
-    final ctx = _contextBuilder.build(
-      fs: _fs(),
-      layout: _layout(),
-      appDataRoot: _appDataRoot(),
-      session: session,
-      memberId: effectiveMemberId,
-      cli: cli,
-      workingDirectory: workingDirectory,
-      teamId: teamId.isEmpty ? null : teamId,
-    );
 
     final cacheKey = _cacheKey(session.sessionId, effectiveMemberId);
     final preliminaryToken = await (_resolveCacheToken ?? _defaultCacheToken)(
@@ -180,6 +175,65 @@ final class AiHistoryLoader {
     }
     final prefix = '${sessionId.trim()}\u0000';
     _cache.removeWhere((key, _) => key.startsWith(prefix));
+  }
+
+  _AiHistorySeat _resolveSeat({
+    required AppSession session,
+    required String memberId,
+    TeamProfile? team,
+    String? workingDirectory,
+  }) {
+    final sessionTeam = session.sessionTeam.trim();
+    final teamId = () {
+      final fromTeam = team?.id.trim() ?? '';
+      if (fromTeam.isNotEmpty) return fromTeam;
+      return sessionTeam;
+    }();
+    var effectiveMemberId = memberId.trim();
+    // Selected-member UUID without a team id cannot locate team runtime roots.
+    if (effectiveMemberId.isNotEmpty && teamId.isEmpty) {
+      appLogger.w(
+        '[ai-history] drop memberId=$effectiveMemberId without teamId '
+        'session=${session.sessionId} (treating as simple seat)',
+      );
+      effectiveMemberId = '';
+    }
+
+    final cli = SessionMemberCliResolver.resolve(
+      persistedSession: session,
+      team: team,
+      memberId: effectiveMemberId,
+      globalPresets: _globalPresets?.call() ?? const [],
+      cliForMember: (t, id, {List<CliPreset> globalPresets = const []}) {
+        for (final m in t.members) {
+          if (m.id == id) {
+            return memberLaunchCli(
+              team: t,
+              member: m,
+              globalPresets: globalPresets,
+            );
+          }
+        }
+        return t.cli;
+      },
+    );
+
+    final ctx = _contextBuilder.build(
+      fs: _fs(),
+      layout: _layout(),
+      appDataRoot: _appDataRoot(),
+      session: session,
+      memberId: effectiveMemberId,
+      cli: cli,
+      workingDirectory: workingDirectory,
+      teamId: teamId.isEmpty ? null : teamId,
+    );
+
+    return _AiHistorySeat(
+      cli: cli,
+      effectiveMemberId: effectiveMemberId,
+      ctx: ctx,
+    );
   }
 
   static String _cacheKey(String sessionId, String memberId) =>
