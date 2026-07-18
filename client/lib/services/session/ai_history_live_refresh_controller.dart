@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../cubits/ai_history_cubit.dart';
+import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
 import 'ai_history_watch_meta.dart';
 import 'transcript_change_signal.dart';
@@ -27,18 +28,22 @@ class AiHistoryLiveRefreshController {
     required Filesystem Function() fs,
     required Future<AiHistoryWatchMeta?> Function() resolveWatchMeta,
     AiHistoryLiveRefreshSignalFactory? createSignal,
+    Duration? metaRetryInterval,
   }) : _cubit = cubit,
        _fs = fs,
        _resolveWatchMeta = resolveWatchMeta,
-       _createSignal = createSignal ?? _defaultCreateSignal;
+       _createSignal = createSignal ?? _defaultCreateSignal,
+       _metaRetryIntervalOverride = metaRetryInterval;
 
   final AiHistoryCubit _cubit;
   final Filesystem Function() _fs;
   final Future<AiHistoryWatchMeta?> Function() _resolveWatchMeta;
   final AiHistoryLiveRefreshSignalFactory _createSignal;
+  final Duration? _metaRetryIntervalOverride;
 
   AiHistoryWatchMeta? _meta;
   TranscriptChangeSignalHandle? _signal;
+  Timer? _metaRetryTimer;
   bool _started = false;
   bool _reloadInFlight = false;
   bool _reloadQueued = false;
@@ -49,12 +54,14 @@ class AiHistoryLiveRefreshController {
     await refreshNow();
     if (!_started) return;
     await _attachSignal();
+    _syncMetaRetry();
   }
 
   Future<void> stop() async {
     if (!_started) return;
     _started = false;
     _reloadQueued = false;
+    _cancelMetaRetry();
     final signal = _signal;
     _signal = null;
     await signal?.stop();
@@ -63,14 +70,18 @@ class AiHistoryLiveRefreshController {
   /// Force one softReload (e.g. return-to-History).
   Future<void> refreshNow() => _requestReload();
 
+  Duration _pollIntervalFor(Filesystem filesystem) {
+    return filesystem is FsWatcher
+        ? const Duration(milliseconds: 750)
+        : const Duration(milliseconds: 1200);
+  }
+
   Future<void> _attachSignal() async {
     await _signal?.stop();
     if (!_started) return;
 
     final filesystem = _fs();
-    final pollInterval = filesystem is FsWatcher
-        ? const Duration(milliseconds: 750)
-        : const Duration(milliseconds: 1200);
+    final pollInterval = _pollIntervalFor(filesystem);
 
     _signal = _createSignal(
       fs: filesystem,
@@ -87,6 +98,40 @@ class AiHistoryLiveRefreshController {
     unawaited(_requestReload());
   }
 
+  void _cancelMetaRetry() {
+    _metaRetryTimer?.cancel();
+    _metaRetryTimer = null;
+  }
+
+  void _syncMetaRetry() {
+    if (!_started || _meta != null) {
+      _cancelMetaRetry();
+      return;
+    }
+    if (_metaRetryTimer != null) return;
+    final interval =
+        _metaRetryIntervalOverride ?? _pollIntervalFor(_fs());
+    _metaRetryTimer = Timer.periodic(interval, (_) {
+      if (!_started || _meta != null) {
+        _cancelMetaRetry();
+        return;
+      }
+      unawaited(_requestReload());
+    });
+  }
+
+  bool _metaWatchChanged(AiHistoryWatchMeta? previous, AiHistoryWatchMeta next) {
+    if (previous == null) return true;
+    if (previous.changeWatchRoot != next.changeWatchRoot) return true;
+    final a = previous.cacheTokenPaths;
+    final b = next.cacheTokenPaths;
+    if (a.length != b.length) return true;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return true;
+    }
+    return false;
+  }
+
   Future<void> _requestReload() async {
     if (!_started) return;
     if (_reloadInFlight) {
@@ -98,12 +143,39 @@ class AiHistoryLiveRefreshController {
       do {
         _reloadQueued = false;
         if (!_started) break;
-        _meta = await _resolveWatchMeta();
-        if (!_started) break;
-        await _cubit.softReload();
+        final previous = _meta;
+        try {
+          final next = await _resolveWatchMeta();
+          if (!_started) break;
+          if (next != null) {
+            // Rearm only when a live signal already exists and watch targets
+            // change (null→meta or root/paths). Start attaches after refreshNow.
+            final shouldRearm =
+                _signal != null && _metaWatchChanged(previous, next);
+            _meta = next;
+            await _cubit.softReload();
+            if (!_started) break;
+            if (shouldRearm) {
+              await _attachSignal();
+            }
+          } else {
+            await _cubit.softReload();
+          }
+        } on Object catch (e, st) {
+          // Keep last [_meta]; softReload errors are already swallowed in cubit.
+          appLogger.w(
+            '[ai-history-live-refresh] reload failed: $e',
+            error: e,
+            stackTrace: st,
+          );
+        }
+        _syncMetaRetry();
       } while (_reloadQueued && _started);
     } finally {
       _reloadInFlight = false;
+    }
+    if (_reloadQueued && _started) {
+      unawaited(_requestReload());
     }
   }
 

@@ -49,6 +49,7 @@ void main() {
   AiHistoryLiveRefreshController buildController({
     Future<AiHistoryWatchMeta?> Function()? resolveWatchMeta,
     Filesystem Function()? fsFn,
+    Duration? metaRetryInterval,
   }) {
     return AiHistoryLiveRefreshController(
       cubit: cubit,
@@ -59,6 +60,7 @@ void main() {
             changeWatchRoot: '/proj',
             cacheTokenPaths: ['/proj/a.jsonl'],
           ),
+      metaRetryInterval: metaRetryInterval,
       createSignal:
           ({
             required Filesystem fs,
@@ -202,6 +204,92 @@ void main() {
     await controller.start();
 
     expect(pollIntervals, [const Duration(milliseconds: 750)]);
+    await controller.stop();
+  });
+
+  test('null watch meta keeps signal; later meta softReloads and rearms', () async {
+    holderMessages = messages(1);
+    locator.emitBundle = true;
+    await cubit.load(session: simpleSession(), memberId: '');
+    expect(cubit.state.totalMessageCount, 1);
+
+    AiHistoryWatchMeta? meta;
+    var resolveCount = 0;
+    final controller = buildController(
+      metaRetryInterval: const Duration(milliseconds: 20),
+      resolveWatchMeta: () async {
+        resolveCount++;
+        return meta;
+      },
+    );
+    await controller.start();
+
+    expect(lastSignal, isNotNull);
+    expect(lastSignal!.started, isTrue);
+    final firstSignal = lastSignal!;
+    expect(resolveCount, greaterThanOrEqualTo(1));
+    expect(cubit.state.totalMessageCount, 1);
+
+    meta = const AiHistoryWatchMeta(
+      changeWatchRoot: '/proj',
+      cacheTokenPaths: ['/proj/a.jsonl'],
+    );
+    holderMessages = messages(3);
+
+    // Interval re-resolve (pre-locate) must find meta without a prior onChanged.
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    await pumpEventQueue();
+
+    expect(resolveCount, greaterThan(1));
+    expect(cubit.state.totalMessageCount, 3);
+    expect(lastSignal, isNot(same(firstSignal)));
+    expect(lastSignal!.started, isTrue);
+    expect(firstSignal.stopped, isTrue);
+
+    await controller.stop();
+  });
+
+  test('resolveWatchMeta throw keeps last meta and drains coalesced queue', () async {
+    holderMessages = messages(1);
+    locator.emitBundle = true;
+    await cubit.load(session: simpleSession(), memberId: '');
+
+    const stableMeta = AiHistoryWatchMeta(
+      changeWatchRoot: '/proj',
+      cacheTokenPaths: ['/proj/a.jsonl'],
+    );
+    final resolveBlock = Completer<void>();
+    var resolveCount = 0;
+
+    final controller = buildController(
+      resolveWatchMeta: () async {
+        resolveCount++;
+        if (resolveCount == 2) {
+          await resolveBlock.future;
+          throw StateError('resolve failed');
+        }
+        return stableMeta;
+      },
+    );
+    await controller.start();
+    expect(resolveCount, 1);
+    expect(cubit.state.totalMessageCount, 1);
+
+    lastSignal!.fire();
+    await pumpEventQueue();
+    expect(resolveCount, 2); // blocked before throw
+
+    holderMessages = messages(4);
+    lastSignal!.fire(); // coalesce while resolve #2 is in flight
+    await pumpEventQueue();
+    expect(resolveCount, 2);
+
+    resolveBlock.complete();
+    await pumpEventQueue();
+    // finally must reschedule queued work; last good meta kept for closures.
+    expect(resolveCount, greaterThanOrEqualTo(3));
+    expect(cubit.state.totalMessageCount, 4);
+
     await controller.stop();
   });
 }
