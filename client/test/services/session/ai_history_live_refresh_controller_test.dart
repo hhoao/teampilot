@@ -130,6 +130,39 @@ void main() {
     await controller.stop();
   });
 
+  test(
+    'start(skipInitialRefresh: true) attaches signal without softReload',
+    () async {
+      holderMessages = messages(2);
+      locator.emitBundle = true;
+      await cubit.load(session: simpleSession(), memberId: '');
+      expect(cubit.state.totalMessageCount, 2);
+
+      var softReloadPasses = 0;
+      locator.onLocate = () async {
+        softReloadPasses++;
+        return _dummyBundle();
+      };
+
+      final controller = buildController();
+      await controller.start(skipInitialRefresh: true);
+
+      expect(lastSignal, isNotNull);
+      expect(lastSignal!.started, isTrue);
+      // Load path already softReloadOrLoad'd — do not stack a second softReload.
+      expect(softReloadPasses, 0);
+      expect(cubit.state.totalMessageCount, 2);
+
+      holderMessages = messages(3);
+      lastSignal!.fire();
+      await pumpEventQueue();
+      expect(softReloadPasses, 1);
+      expect(cubit.state.totalMessageCount, 3);
+
+      await controller.stop();
+    },
+  );
+
   test('second change while reload in flight coalesces to one follow-up', () async {
     holderMessages = messages(1);
     locator.emitBundle = true;

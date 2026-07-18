@@ -48,17 +48,26 @@ class AiHistoryLiveRefreshController {
   bool _reloadInFlight = false;
   bool _reloadQueued = false;
 
-  Future<void> start() async {
+  /// Starts watching transcript changes.
+  ///
+  /// When [skipInitialRefresh] is true, attaches the change signal without
+  /// calling [refreshNow]. Use after the caller already soft-reloaded (e.g.
+  /// [AiHistoryCubit.softReloadOrLoad] on History remount) so we do not stack
+  /// a second softReload.
+  Future<void> start({bool skipInitialRefresh = false}) async {
     if (_started) return;
     _started = true;
-    await refreshNow();
+    if (!skipInitialRefresh) {
+      await refreshNow();
+    }
     if (!_started) return;
     await _attachSignal();
     _syncMetaRetry();
   }
 
   /// Idempotent alias for [start] (History continue / remount callers).
-  Future<void> ensureStarted() => start();
+  Future<void> ensureStarted({bool skipInitialRefresh = false}) =>
+      start(skipInitialRefresh: skipInitialRefresh);
 
   Future<void> stop() async {
     if (!_started) return;

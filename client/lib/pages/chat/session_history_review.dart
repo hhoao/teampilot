@@ -38,6 +38,7 @@ import '../../services/storage/app_storage.dart';
 import '../../theme/app_markdown_style_sheet.dart';
 import '../../utils/team/team_member_naming.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
+import 'session_history_review_submit.dart';
 import 'session_history_thread.dart';
 import 'session_review_compose_card.dart';
 
@@ -75,6 +76,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
   final _headlessAi = HeadlessAiService();
   AiHistoryLiveRefreshController? _liveRefresh;
 
+  final _submitLock = HistoryContinueSubmitLock();
   var _enhancing = false;
   var _voiceListening = false;
   var _voiceSoundLevel = 0.0;
@@ -201,6 +203,8 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     _voiceSoundLevel = 0;
   }
 
+  bool get _isSubmitting => _submitLock.isBusy || widget.isSubmitting;
+
   Duration get _voiceElapsed => _voiceStopwatch?.elapsed ?? Duration.zero;
 
   String get _workspaceRoot {
@@ -266,7 +270,9 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     _ensureLiveRefreshController();
     final running = context.read<ChatCubit>().isMemberRunning(_shellMemberId);
     if (!running) return;
-    unawaited(_liveRefresh!.ensureStarted());
+    // softReloadOrLoad already refreshed once on this load path — attach the
+    // change signal without stacking ensureStarted → refreshNow softReload.
+    unawaited(_liveRefresh!.ensureStarted(skipInitialRefresh: true));
   }
 
   Future<void> _stopLiveRefreshForSeatChange() async {
@@ -526,7 +532,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
   }
 
   Future<void> _attachFiles() async {
-    if (widget.isSubmitting || _enhancing) return;
+    if (_isSubmitting || _enhancing) return;
     await pickAndInsertComposeFileReferences(
       controller: _controller,
       workspaceRoot: _workspaceRoot,
@@ -538,7 +544,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
   }
 
   Future<bool> _pasteComposeImage() async {
-    if (widget.isSubmitting || _enhancing) return false;
+    if (_isSubmitting || _enhancing) return false;
     final pasted = await pasteComposeImageAttachment(
       controller: _controller,
       workspaceRoot: _workspaceRoot,
@@ -549,7 +555,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
 
   Future<void> _enhancePrompt() async {
     final draft = _controller.text.trim();
-    if (draft.isEmpty || widget.isSubmitting || _enhancing) return;
+    if (draft.isEmpty || _isSubmitting || _enhancing) return;
 
     final setting = resolveLandingEnhanceSetting(
       draft: _enhanceDraft(),
@@ -608,7 +614,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
   }
 
   Future<void> _toggleVoice() async {
-    if (widget.isSubmitting || _enhancing) return;
+    if (_isSubmitting || _enhancing) return;
 
     final available = await _voiceInput.initialize();
     if (!mounted) return;
@@ -647,16 +653,21 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
 
   Future<void> _handleSubmit() async {
     final text = _controller.text.trim();
-    if (text.isEmpty || widget.isSubmitting) return;
-    final ok = await widget.onSubmit(text);
-    if (!ok || !mounted) return;
+    if (text.isEmpty || _isSubmitting) return;
+
+    final ok = await _submitLock.run(() async {
+      if (mounted) setState(() {});
+      return widget.onSubmit(text);
+    });
+    if (!mounted) return;
+    setState(() {});
+    if (!ok) return;
     // Clear only after successful inject; keep text on connect/inject failure.
     _controller.clear();
     // Stay on History: optimistic pending bubble + live transcript refresh.
     context.read<AiHistoryCubit>().enqueuePendingUser(text);
     _ensureLiveRefreshController();
     unawaited(_liveRefresh!.ensureStarted());
-    setState(() {});
   }
 
   @override
@@ -671,7 +682,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     final team = _liveTeam(context);
     final hubState = _expertHubState(context);
     final canSubmit =
-        _controller.text.trim().isNotEmpty && !widget.isSubmitting;
+        _controller.text.trim().isNotEmpty && !_isSubmitting;
 
     final lockedCli = _lockedCli(
       session: session,
@@ -842,7 +853,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                   focusNode: _focusNode,
                   hint: l10n.sessionHistoryComposeHint,
                   canSubmit: canSubmit,
-                  isSubmitting: widget.isSubmitting,
+                  isSubmitting: _isSubmitting,
                   onSubmit: () => unawaited(_handleSubmit()),
                   onChanged: (_) => setState(() {}),
                   attachTooltip: l10n.workspaceChatLandingAttach,

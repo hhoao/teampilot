@@ -8,6 +8,27 @@ bool shouldSwitchToTerminalAfterHistorySubmit(
   bool historySubmitSwitchesToTerminal,
 ) => historySubmitSwitchesToTerminal;
 
+/// Re-entrancy lock for History continue while connect/inject is in flight.
+///
+/// History stays mounted during submit, so compose can fire twice before the
+/// first await returns; callers must gate UI on [isBusy] as well.
+final class HistoryContinueSubmitLock {
+  var _busy = false;
+
+  bool get isBusy => _busy;
+
+  /// Runs [action] once; overlapping calls return `false` without invoking it.
+  Future<bool> run(Future<bool> Function() action) async {
+    if (_busy) return false;
+    _busy = true;
+    try {
+      return await action();
+    } finally {
+      _busy = false;
+    }
+  }
+}
+
 /// Connects an already-open review tab, waits for the selected member, then
 /// injects [message] at the PTY prompt.
 ///
