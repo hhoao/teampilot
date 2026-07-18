@@ -248,5 +248,39 @@ void main() {
         async.flushMicrotasks();
       });
     });
+
+    test('poll resumes after cacheTokenPaths throws once', () {
+      fakeAsync((async) {
+        final fs = InMemoryFilesystem();
+        unawaited(fs.writeString('/proj/a.jsonl', 'data'));
+        async.flushMicrotasks();
+
+        var notifies = 0;
+        var pathCalls = 0;
+        final signal = TranscriptChangeSignal(
+          fs: fs,
+          watchRoot: () => null,
+          cacheTokenPaths: () {
+            pathCalls++;
+            if (pathCalls == 1) throw StateError('transient');
+            return const ['/proj/a.jsonl'];
+          },
+          onChanged: () => notifies++,
+          pollInterval: const Duration(milliseconds: 750),
+        );
+
+        unawaited(signal.start());
+        async.flushMicrotasks();
+        expect(notifies, 0);
+
+        // First tick throws; the next periodic tick should recover.
+        async.elapse(const Duration(milliseconds: 750));
+        async.flushMicrotasks();
+        expect(notifies, 1);
+
+        unawaited(signal.stop());
+        async.flushMicrotasks();
+      });
+    });
   });
 }

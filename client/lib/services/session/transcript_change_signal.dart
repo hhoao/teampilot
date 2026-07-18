@@ -52,6 +52,7 @@ class TranscriptChangeSignal {
     _pollTimer = null;
     await _stopWatch();
     _lastToken = null;
+    _chain = Future<void>.value();
   }
 
   Future<void> _arm() async {
@@ -105,12 +106,14 @@ class TranscriptChangeSignal {
 
   void _startPoll() {
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(_pollInterval, (_) {
-      _chain = _chain.then((_) => _pollTick());
-    });
+    _pollTimer = Timer.periodic(_pollInterval, (_) => _enqueuePollTick());
     // Immediate first tick so late-locate paths are observed without waiting
     // a full interval after start.
-    _chain = _chain.then((_) => _pollTick());
+    _enqueuePollTick();
+  }
+
+  void _enqueuePollTick() {
+    _chain = _chain.then((_) => _pollTick()).catchError((_) {});
   }
 
   Future<void> _pollTick() async {
