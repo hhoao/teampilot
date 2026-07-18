@@ -590,10 +590,19 @@ class _ChatWorkbenchBody extends StatelessWidget {
             )
           : null,
       onSubmit: (message) async {
-        chatCubit.setSessionWorkbenchView(
-          appSession.sessionId,
-          SessionWorkbenchView.terminal,
+        final switchToTerminal = shouldSwitchToTerminalAfterHistorySubmit(
+          context
+              .read<SessionPreferencesCubit>()
+              .state
+              .preferences
+              .historySubmitSwitchesToTerminal,
         );
+        if (switchToTerminal) {
+          chatCubit.setSessionWorkbenchView(
+            appSession.sessionId,
+            SessionWorkbenchView.terminal,
+          );
+        }
         context.read<WorkbenchCubit>().ensureTab(
           workspaceId,
           WorkbenchTabId.session(appSession.sessionId),

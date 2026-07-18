@@ -933,7 +933,7 @@ Future<AppShell> buildAppShell({
   );
   final aiHistoryCubit = AiHistoryCubit(loader: aiHistoryLoader);
   chatCubit.onSessionHistoryStale = (sessionId) {
-    unawaited(aiHistoryCubit.invalidateAndReload(sessionId));
+    unawaited(aiHistoryCubit.softReloadIfSession(sessionId));
   };
 
   final notificationCubit = NotificationCubit();

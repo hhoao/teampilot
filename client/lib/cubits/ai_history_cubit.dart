@@ -92,6 +92,9 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
   final AiHistoryLoader _loader;
   final ExternalStoreAiThreadRuntime runtime = ExternalStoreAiThreadRuntime();
 
+  /// Shared loader for live-refresh watch-meta resolve.
+  AiHistoryLoader get loader => _loader;
+
   int _loadGeneration = 0;
   List<AiMessage> _allMessages = const [];
   int _visibleCount = 0;

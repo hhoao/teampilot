@@ -274,6 +274,46 @@ void main() {
     expect((pendings.single.parts.single as AiTextPart).text, 'b');
   });
 
+
+  test('softReloadOrLoad soft-reloads when already ready for same seat', () async {
+    holderMessages = messages(2);
+    locator.emitBundle = true;
+    await cubit.load(session: simpleSession(), memberId: '');
+    expect(cubit.state.status, AiHistoryViewStatus.ready);
+
+    final statuses = <AiHistoryViewStatus>[];
+    final sub = cubit.stream.listen((s) => statuses.add(s.status));
+
+    holderMessages = messages(3);
+    await cubit.softReloadOrLoad(
+      session: simpleSession(),
+      memberId: '',
+    );
+    await sub.cancel();
+
+    expect(statuses, isNot(contains(AiHistoryViewStatus.loading)));
+    expect(cubit.state.status, AiHistoryViewStatus.ready);
+    expect(cubit.state.totalMessageCount, 3);
+  });
+
+  test('softReloadIfSession soft-reloads when ready for session', () async {
+    holderMessages = messages(2);
+    locator.emitBundle = true;
+    await cubit.load(session: simpleSession(), memberId: '');
+    expect(cubit.state.status, AiHistoryViewStatus.ready);
+
+    final statuses = <AiHistoryViewStatus>[];
+    final sub = cubit.stream.listen((s) => statuses.add(s.status));
+
+    holderMessages = messages(4);
+    await cubit.softReloadIfSession('sess-a');
+    await sub.cancel();
+
+    expect(statuses, isNot(contains(AiHistoryViewStatus.loading)));
+    expect(cubit.state.status, AiHistoryViewStatus.ready);
+    expect(cubit.state.totalMessageCount, 4);
+  });
+
   test('softReload no-ops after seat clear / generation bump', () async {
     holderMessages = messages(2);
     locator.emitBundle = true;

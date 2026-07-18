@@ -3,6 +3,11 @@ import 'dart:async';
 import '../../cubits/chat/model/session_connect_request.dart';
 import '../../utils/logging/logger.dart';
 
+/// Preference gate: when false (default), History continue stays on History.
+bool shouldSwitchToTerminalAfterHistorySubmit(
+  bool historySubmitSwitchesToTerminal,
+) => historySubmitSwitchesToTerminal;
+
 /// Connects an already-open review tab, waits for the selected member, then
 /// injects [message] at the PTY prompt.
 ///

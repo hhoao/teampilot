@@ -31,6 +31,7 @@ import '../../services/compose/compose_prompt_enhance.dart';
 import '../../services/compose/compose_text_edit.dart';
 import '../../services/compose/compose_voice_input.dart';
 import '../../services/expert_hub/expert_member_resolver.dart';
+import '../../services/session/ai_history_live_refresh_controller.dart';
 import '../../services/session/session_continue_overrides_apply.dart';
 import '../../services/session/session_history_pagination.dart';
 import '../../services/storage/app_storage.dart';
@@ -72,6 +73,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
   late final FocusNode _focusNode;
   late final ComposeVoiceInput _voiceInput;
   final _headlessAi = HeadlessAiService();
+  AiHistoryLiveRefreshController? _liveRefresh;
 
   var _enhancing = false;
   var _voiceListening = false;
@@ -126,6 +128,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     );
     unawaited(_voiceInput.initialize());
     _controller.addListener(_onComposeChanged);
+    _ensureLiveRefreshController();
     _loadHistory();
     unawaited(_loadWorkspaceProjectBundle());
   }
@@ -155,6 +158,8 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     if (oldWidget.session.sessionId != widget.session.sessionId ||
         oldWidget.selectedMemberId != widget.selectedMemberId ||
         oldWidget.team?.id != widget.team?.id) {
+      context.read<AiHistoryCubit>().clearPendings();
+      unawaited(_stopLiveRefreshForSeatChange());
       _loadHistory();
     }
     if (oldWidget.session.workspaceId != widget.session.workspaceId) {
@@ -166,6 +171,9 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
   void dispose() {
     _controller.removeListener(_onComposeChanged);
     _stopVoiceSessionClock();
+    final live = _liveRefresh;
+    _liveRefresh = null;
+    unawaited(live?.stop() ?? Future<void>.value());
     _voiceInput.dispose();
     _controller.dispose();
     _focusNode.dispose();
@@ -205,13 +213,66 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
   }
 
   void _loadHistory({bool force = false}) {
-    context.read<AiHistoryCubit>().load(
-      session: widget.session,
-      memberId: widget.selectedMemberId,
-      team: widget.team,
-      workingDirectory: _workspaceRoot,
-      force: force,
+    final cubit = context.read<AiHistoryCubit>();
+    if (force) {
+      cubit.load(
+        session: widget.session,
+        memberId: widget.selectedMemberId,
+        team: widget.team,
+        workingDirectory: _workspaceRoot,
+        force: true,
+      );
+      return;
+    }
+    // Soft when already ready for this seat — no loading flash / hard reload.
+    unawaited(
+      cubit
+          .softReloadOrLoad(
+            session: widget.session,
+            memberId: widget.selectedMemberId,
+            team: widget.team,
+            workingDirectory: _workspaceRoot,
+          )
+          .then((_) {
+            if (mounted) _maybeStartLiveRefreshForRunningPty();
+          }),
     );
+  }
+
+  /// PTY shells for Simple seats are keyed by [AppSession.sessionId].
+  String get _shellMemberId {
+    final mid = widget.selectedMemberId.trim();
+    if (mid.isEmpty) return widget.session.sessionId;
+    return mid;
+  }
+
+  void _ensureLiveRefreshController() {
+    if (_liveRefresh != null) return;
+    final cubit = context.read<AiHistoryCubit>();
+    _liveRefresh = AiHistoryLiveRefreshController(
+      cubit: cubit,
+      fs: () => AppStorage.fs,
+      resolveWatchMeta: () => cubit.loader.resolveWatchMeta(
+        session: widget.session,
+        memberId: widget.selectedMemberId,
+        team: widget.team,
+        workingDirectory: _workspaceRoot,
+      ),
+    );
+  }
+
+  void _maybeStartLiveRefreshForRunningPty() {
+    if (!mounted) return;
+    _ensureLiveRefreshController();
+    final running = context.read<ChatCubit>().isMemberRunning(_shellMemberId);
+    if (!running) return;
+    unawaited(_liveRefresh!.ensureStarted());
+  }
+
+  Future<void> _stopLiveRefreshForSeatChange() async {
+    final previous = _liveRefresh;
+    _liveRefresh = null;
+    await previous?.stop();
   }
 
   Future<void> _loadWorkspaceProjectBundle() async {
@@ -591,6 +652,10 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     if (!ok || !mounted) return;
     // Clear only after successful inject; keep text on connect/inject failure.
     _controller.clear();
+    // Stay on History: optimistic pending bubble + live transcript refresh.
+    context.read<AiHistoryCubit>().enqueuePendingUser(text);
+    _ensureLiveRefreshController();
+    unawaited(_liveRefresh!.ensureStarted());
     setState(() {});
   }
 

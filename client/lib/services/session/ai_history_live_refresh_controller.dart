@@ -57,6 +57,9 @@ class AiHistoryLiveRefreshController {
     _syncMetaRetry();
   }
 
+  /// Idempotent alias for [start] (History continue / remount callers).
+  Future<void> ensureStarted() => start();
+
   Future<void> stop() async {
     if (!_started) return;
     _started = false;
