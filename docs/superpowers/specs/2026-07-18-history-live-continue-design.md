@@ -38,7 +38,7 @@ Users want a Claude Code extension–like **conversation continue** experience w
 | CLI scope | All five via shared controller + provider watch metadata |
 | Optimistic UI | Pending user message on successful inject; drop by concrete match rule below |
 | Multi-seat | Refresh only the selected seat; restart on seat change |
-| softReload window | Never reset pagination to the initial tip window while already `ready` |
+| softReload window | Tip-anchored: grow `_visibleCount` by tip Δ so older `start` is preserved; stick vs chip is scroll-only |
 
 ## Architecture
 
@@ -73,13 +73,27 @@ onSubmit:
 
 ### softReload pagination invariants (locked)
 
-Today `load()` → `_applyMessages` resets `_visibleCount` to `kSessionHistoryInitialTurns`. Live softReload **must not** reuse that reset while status is already `ready`:
+Visible slice is **tip-anchored**: `start = length - _visibleCount` (same as today’s cubit). Live softReload **must not** call the initial-load path that resets `_visibleCount` to `kSessionHistoryInitialTurns` while status is already `ready`.
 
-1. Replace `_allMessages` with the new full parse.
-2. If the user is **stick-to-bottom** (at tip): set `_visibleCount = max(previousVisibleCount, tipGrowthNeed)` so new tip turns are included; may grow the tip window, never shrink below what was already loaded for older pages unless the transcript shrank (rare truncate — then clamp).
-3. If the user has **scrolled up** (auto-stick paused): keep `_visibleCount` at least as large as before (do not yank back to the initial tip-only window). New tip turns land in `_allMessages` but stay outside the visible slice until the user taps “↓ New messages” or scrolls to bottom (chip action re-windows to include the tip, same as stick path).
-4. Never emit `AiHistoryViewStatus.loading` on softReload when already `ready` / `empty` with prior content; keep `AiHistoryRenderScope` (History light-open budget).
+On successful softReload:
+
+1. Let `oldLength = _allMessages.length` (before replace), `oldVisible = _visibleCount`.
+2. Replace `_allMessages` with the new full parse (`newLength`).
+3. **Grow visible count by tip Δ** (preserve `start` when the transcript only appends):
+   - `tipDelta = max(0, newLength - oldLength)`
+   - `_visibleCount = min(newLength, oldVisible + tipDelta)`
+   - If `newLength < oldLength` (rare truncate/rewrite): `_visibleCount = min(oldVisible, newLength)`.
+4. Never emit `AiHistoryViewStatus.loading` on softReload when already `ready` / showing prior content; keep `AiHistoryRenderScope` (History light-open budget).
 5. On parse failure: leave `_allMessages` / `_visibleCount` / runtime messages unchanged; show non-blocking error.
+6. After applying the parsed window, **re-merge** any still-unmatched optimistic pendings onto the runtime tip.
+
+**Stick vs scrolled-up is viewport/chip only** (not a second cubit window model):
+
+- softReload always applies the tip-Δ growth above so older pages already in the window stay mounted (`start` stable on append).
+- If the user is stick-to-bottom: thread auto-scrolls to tip after reload.
+- If the user has scrolled up: do **not** auto-scroll; show “↓ New messages”; chip / jump-to-bottom scrolls to tip (visible window already includes new tip turns via tip-Δ growth).
+
+Cubit does not need a stick-state branch for pagination — host/thread owns stick and the chip.
 
 ### Optimistic pending user messages (locked)
 
@@ -106,8 +120,7 @@ On return to History: force softReload once, then restart signal
 
 - Clear compose after successful inject; show pending user bubble immediately.
 - Light “Running…” footer while live refresh is active and seat is not idle (best-effort; idle detection may reuse existing presence/idle hooks when available).
-- Stick-to-bottom while user is at bottom; if user scrolls up, pause auto-stick and show a “↓ New messages” chip (host-owned chrome; virtualization viewport keeps spacer stick math — this chip is an intentional product addition beyond the virtualization spec’s “no FAB required” note).
-- Chip / return-to-bottom expands the visible window to include the tip (see softReload invariants).
+- Stick-to-bottom while user is at bottom; if user scrolls up, pause auto-stick and show a “↓ New messages” chip (host-owned chrome; virtualization viewport keeps spacer stick math — intentional product addition beyond the virtualization spec’s “no FAB required” note). Chip scrolls to tip; pagination already includes new tip turns via tip-Δ growth on softReload.
 - Existing History ↔ Terminal tab toggle unchanged.
 - Optional banner: “Needs Terminal confirmation” + jump action when we can detect wait-for-input; first ship may ship the jump affordance without perfect detection.
 
