@@ -1,7 +1,7 @@
 # History live continue: stay on History + transcript hot reload
 
 **Date:** 2026-07-18  
-**Status:** Draft (awaiting implementation plan)  
+**Status:** Approved for planning (spec review 2026-07-18)  
 **Related:** [`2026-07-17-history-review-virtualized-thread-design.md`](2026-07-17-history-review-virtualized-thread-design.md), [`2026-07-18-history-claude-aligned-light-open-design.md`](2026-07-18-history-claude-aligned-light-open-design.md)
 
 ## Problem
