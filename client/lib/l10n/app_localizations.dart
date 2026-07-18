@@ -4028,6 +4028,18 @@ abstract class AppLocalizations {
   /// **'When enabled, opening a conversation from the sidebar connects the terminal immediately. When off (default), open the history review panel first; submit from compose to start the terminal.'**
   String get openExistingSessionStartsTerminalDescription;
 
+  /// No description provided for @historySubmitSwitchesToTerminalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to Terminal after continue'**
+  String get historySubmitSwitchesToTerminalTitle;
+
+  /// No description provided for @historySubmitSwitchesToTerminalDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'When off (default), submitting from History keeps the conversation view and refreshes from the transcript while the terminal runs in the background. When on, switch to the terminal after submit (previous behavior).'**
+  String get historySubmitSwitchesToTerminalDescription;
+
   /// No description provided for @scopeSessionsToSelectedTeamTitle.
   ///
   /// In en, this message translates to:

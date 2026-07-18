@@ -10,6 +10,7 @@ class SessionPreferences {
     this.terminalLinkClickOpensInApp = true,
     this.notifyOnSessionIdle = true,
     this.openExistingSessionStartsTerminal = false,
+    this.historySubmitSwitchesToTerminal = false,
   }) : cliExecutablePaths = Map.unmodifiable(
          _normalizeCliExecutablePaths(cliExecutablePaths),
        ),
@@ -41,6 +42,8 @@ class SessionPreferences {
       notifyOnSessionIdle: json['notifyOnSessionIdle'] as bool? ?? true,
       openExistingSessionStartsTerminal:
           json['openExistingSessionStartsTerminal'] as bool? ?? false,
+      historySubmitSwitchesToTerminal:
+          json['historySubmitSwitchesToTerminal'] as bool? ?? false,
     );
   }
 
@@ -86,6 +89,11 @@ class SessionPreferences {
   /// in history-review mode until the user submits from slim compose.
   final bool openExistingSessionStartsTerminal;
 
+  /// When true, submitting from history review switches to the terminal view.
+  /// When false (default), stay on history while the terminal runs in the
+  /// background.
+  final bool historySubmitSwitchesToTerminal;
+
   String cliExecutablePathFor(String toolId) =>
       cliExecutablePaths[toolId]?.trim() ?? '';
 
@@ -100,6 +108,7 @@ class SessionPreferences {
     bool? terminalLinkClickOpensInApp,
     bool? notifyOnSessionIdle,
     bool? openExistingSessionStartsTerminal,
+    bool? historySubmitSwitchesToTerminal,
   }) {
     return SessionPreferences(
       cliExecutablePaths: cliExecutablePaths ?? this.cliExecutablePaths,
@@ -119,6 +128,9 @@ class SessionPreferences {
       openExistingSessionStartsTerminal:
           openExistingSessionStartsTerminal ??
           this.openExistingSessionStartsTerminal,
+      historySubmitSwitchesToTerminal:
+          historySubmitSwitchesToTerminal ??
+          this.historySubmitSwitchesToTerminal,
     );
   }
 
@@ -134,6 +146,7 @@ class SessionPreferences {
       'terminalLinkClickOpensInApp': terminalLinkClickOpensInApp,
       'notifyOnSessionIdle': notifyOnSessionIdle,
       'openExistingSessionStartsTerminal': openExistingSessionStartsTerminal,
+      'historySubmitSwitchesToTerminal': historySubmitSwitchesToTerminal,
     };
   }
 

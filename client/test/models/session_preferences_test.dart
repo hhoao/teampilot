@@ -73,6 +73,16 @@ void main() {
       expect(next.openExistingSessionStartsTerminal, true);
     });
 
+    test('historySubmitSwitchesToTerminal defaults false', () {
+      expect(SessionPreferences().historySubmitSwitchesToTerminal, isFalse);
+    });
+
+    test('historySubmitSwitchesToTerminal JSON round-trip', () {
+      final prefs = SessionPreferences(historySubmitSwitchesToTerminal: true);
+      final again = SessionPreferences.fromJson(prefs.toJson());
+      expect(again.historySubmitSwitchesToTerminal, isTrue);
+    });
+
     test('fromJson ignores non-string cli executable path entries', () {
       final restored = SessionPreferences.fromJson(const <String, Object?>{
         'cliExecutablePaths': {

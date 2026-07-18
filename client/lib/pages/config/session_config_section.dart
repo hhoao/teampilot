@@ -264,6 +264,17 @@ class _SessionControlsState extends State<_SessionControls> {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
+                  title: l10n.historySubmitSwitchesToTerminalTitle,
+                  subtitle: l10n.historySubmitSwitchesToTerminalDescription,
+                  trailing: Switch(
+                    key: AppKeys.historySubmitSwitchesToTerminalSwitch,
+                    value: snapshot.historySubmitSwitchesToTerminal,
+                    onChanged: (value) =>
+                        cubit.setHistorySubmitSwitchesToTerminal(value),
+                  ),
+                  showDividerBelow: true,
+                ),
+                TpPreferenceRow(
                   title: l10n.scopeSessionsToSelectedTeamTitle,
                   subtitle: l10n.scopeSessionsToSelectedTeamDescription,
                   trailing: Switch(
@@ -300,6 +311,7 @@ class _SessionControlsSnapshot {
     required this.terminalLinkClickOpensInApp,
     required this.autoLaunchAllMembersOnConnect,
     required this.openExistingSessionStartsTerminal,
+    required this.historySubmitSwitchesToTerminal,
     required this.scopeSessionsToSelectedTeam,
     required this.notifyOnSessionIdle,
   });
@@ -310,6 +322,7 @@ class _SessionControlsSnapshot {
   final bool terminalLinkClickOpensInApp;
   final bool autoLaunchAllMembersOnConnect;
   final bool openExistingSessionStartsTerminal;
+  final bool historySubmitSwitchesToTerminal;
   final bool scopeSessionsToSelectedTeam;
   final bool notifyOnSessionIdle;
 
@@ -322,6 +335,8 @@ class _SessionControlsSnapshot {
       autoLaunchAllMembersOnConnect: preferences.autoLaunchAllMembersOnConnect,
       openExistingSessionStartsTerminal:
           preferences.openExistingSessionStartsTerminal,
+      historySubmitSwitchesToTerminal:
+          preferences.historySubmitSwitchesToTerminal,
       scopeSessionsToSelectedTeam: preferences.scopeSessionsToSelectedTeam,
       notifyOnSessionIdle: preferences.notifyOnSessionIdle,
     );
@@ -337,6 +352,8 @@ class _SessionControlsSnapshot {
         other.autoLaunchAllMembersOnConnect == autoLaunchAllMembersOnConnect &&
         other.openExistingSessionStartsTerminal ==
             openExistingSessionStartsTerminal &&
+        other.historySubmitSwitchesToTerminal ==
+            historySubmitSwitchesToTerminal &&
         other.scopeSessionsToSelectedTeam == scopeSessionsToSelectedTeam &&
         other.notifyOnSessionIdle == notifyOnSessionIdle;
   }
@@ -349,6 +366,7 @@ class _SessionControlsSnapshot {
     terminalLinkClickOpensInApp,
     autoLaunchAllMembersOnConnect,
     openExistingSessionStartsTerminal,
+    historySubmitSwitchesToTerminal,
     scopeSessionsToSelectedTeam,
     notifyOnSessionIdle,
   );

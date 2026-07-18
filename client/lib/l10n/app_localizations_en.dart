@@ -2184,6 +2184,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'When enabled, opening a conversation from the sidebar connects the terminal immediately. When off (default), open the history review panel first; submit from compose to start the terminal.';
 
   @override
+  String get historySubmitSwitchesToTerminalTitle =>
+      'Switch to Terminal after continue';
+
+  @override
+  String get historySubmitSwitchesToTerminalDescription =>
+      'When off (default), submitting from History keeps the conversation view and refreshes from the transcript while the terminal runs in the background. When on, switch to the terminal after submit (previous behavior).';
+
+  @override
   String get scopeSessionsToSelectedTeamTitle =>
       'Scope sessions to selected team';
 

@@ -2092,6 +2092,13 @@ class AppLocalizationsZh extends AppLocalizations {
       '开启后，从侧边栏打开对话会立即连接终端。关闭（默认）时先显示历史回顾面板，在输入框发送后才启动终端。';
 
   @override
+  String get historySubmitSwitchesToTerminalTitle => '继续后切换到终端';
+
+  @override
+  String get historySubmitSwitchesToTerminalDescription =>
+      '关闭（默认）时，从历史回顾提交后仍留在对话视图，终端在后台运行并刷新转录。开启后，提交后切换到终端（旧行为）。';
+
+  @override
   String get scopeSessionsToSelectedTeamTitle => '按所选团队筛选会话';
 
   @override

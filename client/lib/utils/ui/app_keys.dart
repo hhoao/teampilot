@@ -42,6 +42,9 @@ class AppKeys {
   static const openExistingSessionStartsTerminalSwitch = Key(
     'open-existing-session-starts-terminal-switch',
   );
+  static const historySubmitSwitchesToTerminalSwitch = Key(
+    'history-submit-switches-to-terminal-switch',
+  );
   static const sessionWorkbenchViewToggle = Key(
     'session-workbench-view-toggle',
   );
