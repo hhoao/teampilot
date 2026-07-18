@@ -5,6 +5,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/registry/capabilities/history/claude_ai_transcript.dart';
+import 'package:teampilot/services/session/ai_history_watch_meta.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
@@ -133,6 +134,12 @@ not-json
     expect(bundle.fragments, hasLength(1));
     expect(bundle.fragments.single.name, 'task-1.jsonl');
     expect(bundle.fragments.single.bytes, fixture);
+
+    final transcriptPath = p.join(projects, 'task-1.jsonl');
+    final watchMeta = AiHistoryWatchMeta.fromHints(bundle.hints);
+    expect(watchMeta, isNotNull);
+    expect(watchMeta!.changeWatchRoot, p.dirname(transcriptPath));
+    expect(watchMeta.cacheTokenPaths, [transcriptPath]);
   });
 
   test('locateClaudeTranscript returns null when missing', () async {

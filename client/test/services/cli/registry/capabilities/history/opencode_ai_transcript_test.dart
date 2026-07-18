@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/opencode_ai_transcript.dart';
+import 'package:teampilot/services/session/ai_history_watch_meta.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
@@ -112,6 +113,23 @@ void main() {
       isTrue,
     );
     expect(bundle.hints['sessionId'], 'ses_demo001');
+
+    final storageDir = p.join(base.path, 'storage');
+    final watchMeta = AiHistoryWatchMeta.fromHints(bundle.hints);
+    expect(watchMeta, isNotNull);
+    expect(watchMeta!.changeWatchRoot, storageDir);
+    expect(
+      watchMeta.cacheTokenPaths,
+      containsAll([
+        p.join(storageDir, 'session', 'proj_demo', 'ses_demo001.json'),
+        p.join(storageDir, 'message', 'ses_demo001', 'msg_user1.json'),
+        p.join(storageDir, 'message', 'ses_demo001', 'msg_asst1.json'),
+        p.join(storageDir, 'part', 'msg_user1', 'prt_text1.json'),
+        p.join(storageDir, 'part', 'msg_asst1', 'prt_text2.json'),
+        p.join(storageDir, 'part', 'msg_asst1', 'prt_tool1.json'),
+        p.join(storageDir, 'part', 'msg_asst1', 'prt_bad.json'),
+      ]),
+    );
   });
 
   test('locateOpencodeTranscript returns null when missing', () async {
@@ -251,6 +269,11 @@ VALUES (
     );
     expect(bundle, isNotNull);
     expect(bundle!.hints['source'], 'sqlite');
+
+    final watchMeta = AiHistoryWatchMeta.fromHints(bundle.hints);
+    expect(watchMeta, isNotNull);
+    expect(watchMeta!.changeWatchRoot, base.path);
+    expect(watchMeta.cacheTokenPaths, [dbPath]);
 
     final messages = await const OpencodeAiTranscriptAdapter().parse(bundle);
     expect(messages, hasLength(2));

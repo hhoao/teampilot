@@ -15,5 +15,16 @@ void main() {
     test('returns null when root missing', () {
       expect(AiHistoryWatchMeta.fromHints({'cacheToken': 'x'}), isNull);
     });
+
+    test('round-trips through toHints and fromHints', () {
+      const original = AiHistoryWatchMeta(
+        changeWatchRoot: '/proj',
+        cacheTokenPaths: ['/proj/a.jsonl', '/proj/b.jsonl'],
+      );
+      final roundTripped = AiHistoryWatchMeta.fromHints(original.toHints());
+      expect(roundTripped, isNotNull);
+      expect(roundTripped!.changeWatchRoot, original.changeWatchRoot);
+      expect(roundTripped.cacheTokenPaths, original.cacheTokenPaths);
+    });
   });
 }
