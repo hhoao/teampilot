@@ -493,6 +493,8 @@
   "sessionHistoryComposeHint": "继续对话… @ 引用文件，/ 调用技能与指令",
   "sessionHistoryContinueSaveFailed": "无法保存继续会话设置。",
   "sessionHistoryLoadOlderHint": "上滑查看更早消息",
+  "sessionHistoryNewMessages": "新消息",
+  "sessionHistoryRunning": "运行中…",
   "aiMessageUsedTool": "已使用工具",
   "aiMessageCancelledTool": "已取消工具",
   "aiMessageToolsUsed": "已使用 {count} 个工具",

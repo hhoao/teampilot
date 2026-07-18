@@ -2312,6 +2312,18 @@ abstract class AppLocalizations {
   /// **'Scroll up for earlier messages'**
   String get sessionHistoryLoadOlderHint;
 
+  /// No description provided for @sessionHistoryNewMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'New messages'**
+  String get sessionHistoryNewMessages;
+
+  /// No description provided for @sessionHistoryRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running…'**
+  String get sessionHistoryRunning;
+
   /// No description provided for @aiMessageUsedTool.
   ///
   /// In en, this message translates to:

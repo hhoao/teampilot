@@ -1175,6 +1175,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionHistoryLoadOlderHint => '上滑查看更早消息';
 
   @override
+  String get sessionHistoryNewMessages => '新消息';
+
+  @override
+  String get sessionHistoryRunning => '运行中…';
+
+  @override
   String get aiMessageUsedTool => '已使用工具';
 
   @override

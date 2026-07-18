@@ -4,22 +4,35 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:shared_ui/shared_ui.dart';
 
+import '../../l10n/l10n_extensions.dart';
 import 'ai_thread_selection_context_menu.dart';
+
+/// Finder key for the “new messages” jump chip.
+const Key kSessionHistoryNewMessagesChipKey = ValueKey(
+  'session-history-new-messages-chip',
+);
+
+/// Finder key for the live-refresh “Running…” footer.
+const Key kSessionHistoryRunningFooterKey = ValueKey(
+  'session-history-running-footer',
+);
 
 /// History message list for session review.
 ///
 /// Owns scroll chrome (stick-to-end, load-older anchoring, ActionBar hover
-/// gate, [SelectionArea]). Mounts the full pagination data window (retain +
-/// chunked fill) so scrolling does not remount markdown — Claude-like
-/// residency within the loaded message set. Older pages still arrive via
-/// [onLoadOlder].
+/// gate, [SelectionArea], new-messages chip). Mounts the full pagination data
+/// window (retain + chunked fill) so scrolling does not remount markdown —
+/// Claude-like residency within the loaded message set. Older pages still
+/// arrive via [onLoadOlder].
 class SessionHistoryThread extends StatefulWidget {
   const SessionHistoryThread({
     required this.runtime,
     required this.hasOlder,
     required this.isLoadingOlder,
     this.onLoadOlder,
+    this.liveRefreshActive = false,
     super.key,
   });
 
@@ -27,6 +40,9 @@ class SessionHistoryThread extends StatefulWidget {
   final bool hasOlder;
   final bool isLoadingOlder;
   final VoidCallback? onLoadOlder;
+
+  /// When true, shows a slim “Running…” footer under the scroll surface.
+  final bool liveRefreshActive;
 
   @override
   State<SessionHistoryThread> createState() => _SessionHistoryThreadState();
@@ -49,6 +65,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   /// Delay message mounts until after the first jump-to-end so open does not
   /// build the top of the thread under a scroll offset of 0.
   var _mountTurns = false;
+
+  /// Tip grew while stick was paused — show jump chip until user resumes.
+  var _showNewMessagesChip = false;
 
   double _lastPixels = 0;
   double _lastMaxExtent = 0;
@@ -73,6 +92,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     if (oldWidget.runtime != widget.runtime) {
       _runtimeSub?.cancel();
       _setStickToEnd(true);
+      _showNewMessagesChip = false;
       _paginationArmed = true;
       _mountTurns = false;
       _messages = widget.runtime.messages;
@@ -86,7 +106,10 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   void _setStickToEnd(bool value) {
     if (_stickToEnd == value) return;
     if (!mounted) return;
-    setState(() => _stickToEnd = value);
+    setState(() {
+      _stickToEnd = value;
+      if (value) _showNewMessagesChip = false;
+    });
   }
 
   @override
@@ -105,7 +128,13 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     if (!mounted) return;
     final next = widget.runtime.messages;
     final wasPrepend = _isPrepend(_messages, next);
-    setState(() => _messages = next);
+    final tipGrew = _tipGrew(_messages, next, wasPrepend: wasPrepend);
+    setState(() {
+      _messages = next;
+      if (!_stickToEnd && tipGrew) {
+        _showNewMessagesChip = true;
+      }
+    });
     if (_stickToEnd && !wasPrepend) {
       _scheduleStickFrames();
     }
@@ -118,6 +147,18 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       if (current[i].id != next[i + offset].id) return false;
     }
     return offset > 0;
+  }
+
+  static bool _tipGrew(
+    List<AiMessage> current,
+    List<AiMessage> next, {
+    required bool wasPrepend,
+  }) {
+    if (wasPrepend) return false;
+    if (next.isEmpty) return false;
+    if (current.isEmpty) return true;
+    if (next.length > current.length) return true;
+    return next.last.id != current.last.id;
   }
 
   void _jumpTo(double offset) {
@@ -182,6 +223,11 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     }
 
     tick(framesLeft);
+  }
+
+  void _resumeStickToTip() {
+    _setStickToEnd(true);
+    _scheduleStickFrames();
   }
 
   void _setHoverEnabled(bool enabled) {
@@ -279,6 +325,69 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     }
   }
 
+  Widget _buildNewMessagesChip(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: widget.liveRefreshActive ? 36 : 12,
+      child: Center(
+        child: SelectionContainer.disabled(
+          child: Material(
+            key: kSessionHistoryNewMessagesChipKey,
+            color: scheme.surfaceContainerHigh,
+            elevation: 2,
+            shadowColor: Colors.black.withValues(alpha: 0.12),
+            shape: const StadiumBorder(),
+            child: InkWell(
+              customBorder: const StadiumBorder(),
+              onTap: _resumeStickToTip,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 18,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      l10n.sessionHistoryNewMessages,
+                      style: TpTextStyles.of(
+                        context,
+                      ).smColored(scheme.onSurface),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRunningFooter(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SelectionContainer.disabled(
+      child: Padding(
+        key: kSessionHistoryRunningFooterKey,
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+        child: Text(
+          context.l10n.sessionHistoryRunning,
+          textAlign: TextAlign.center,
+          style: TpTextStyles.of(context).xsColored(scheme.onSurfaceVariant),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final lastId = _messages.isEmpty ? null : _messages.last.id;
@@ -301,7 +410,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
           )
         : null;
 
-    return NotificationListener<ScrollNotification>(
+    final thread = NotificationListener<ScrollNotification>(
       onNotification: _onScrollNotification,
       child: SelectionArea(
         contextMenuBuilder: buildAiThreadSelectionContextMenu,
@@ -356,6 +465,22 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
           ),
         ),
       ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: Stack(
+            children: [
+              thread,
+              if (_showNewMessagesChip && !_stickToEnd)
+                _buildNewMessagesChip(context),
+            ],
+          ),
+        ),
+        if (widget.liveRefreshActive) _buildRunningFooter(context),
+      ],
     );
   }
 }

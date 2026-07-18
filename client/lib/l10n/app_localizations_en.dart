@@ -1235,6 +1235,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionHistoryLoadOlderHint => 'Scroll up for earlier messages';
 
   @override
+  String get sessionHistoryNewMessages => 'New messages';
+
+  @override
+  String get sessionHistoryRunning => 'Running…';
+
+  @override
   String get aiMessageUsedTool => 'Used tool';
 
   @override

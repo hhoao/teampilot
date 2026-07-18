@@ -518,6 +518,8 @@
   "sessionHistoryComposeHint": "Continue this conversation… @ reference files, / invoke skills",
   "sessionHistoryContinueSaveFailed": "Couldn't save continue settings.",
   "sessionHistoryLoadOlderHint": "Scroll up for earlier messages",
+  "sessionHistoryNewMessages": "New messages",
+  "sessionHistoryRunning": "Running…",
   "aiMessageUsedTool": "Used tool",
   "aiMessageCancelledTool": "Cancelled tool",
   "aiMessageToolsUsed": "Used {count} tools",

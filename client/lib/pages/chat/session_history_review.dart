@@ -272,13 +272,22 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     if (!running) return;
     // softReloadOrLoad already refreshed once on this load path — attach the
     // change signal without stacking ensureStarted → refreshNow softReload.
-    unawaited(_liveRefresh!.ensureStarted(skipInitialRefresh: true));
+    unawaited(_startLiveRefresh(skipInitialRefresh: true));
+  }
+
+  Future<void> _startLiveRefresh({bool skipInitialRefresh = false}) async {
+    _ensureLiveRefreshController();
+    final live = _liveRefresh;
+    if (live == null) return;
+    await live.ensureStarted(skipInitialRefresh: skipInitialRefresh);
+    if (mounted) setState(() {});
   }
 
   Future<void> _stopLiveRefreshForSeatChange() async {
     final previous = _liveRefresh;
     _liveRefresh = null;
     await previous?.stop();
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadWorkspaceProjectBundle() async {
@@ -666,8 +675,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     _controller.clear();
     // Stay on History: optimistic pending bubble + live transcript refresh.
     context.read<AiHistoryCubit>().enqueuePendingUser(text);
-    _ensureLiveRefreshController();
-    unawaited(_liveRefresh!.ensureStarted());
+    unawaited(_startLiveRefresh());
   }
 
   @override
@@ -827,6 +835,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                         hasOlder: state.hasOlder,
                         isLoadingOlder: state.isLoadingOlder,
                         onLoadOlder: cubit.loadOlder,
+                        liveRefreshActive: _liveRefresh?.isActive ?? false,
                       ),
                     };
                   },

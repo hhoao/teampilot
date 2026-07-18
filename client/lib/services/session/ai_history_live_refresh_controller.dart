@@ -48,6 +48,9 @@ class AiHistoryLiveRefreshController {
   bool _reloadInFlight = false;
   bool _reloadQueued = false;
 
+  /// True while [start] / [ensureStarted] has begun and [stop] has not finished.
+  bool get isActive => _started;
+
   /// Starts watching transcript changes.
   ///
   /// When [skipInitialRefresh] is true, attaches the change signal without
