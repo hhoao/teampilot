@@ -144,6 +144,7 @@ Virtualization (`VirtualThreadViewport`) and Claude-aligned IR budget (`AiHistor
 - Controller starts/stops with view/seat/PTY state.
 - `FsWatcher` branch vs poll branch (mock filesystem).
 - `softReload` does not emit `AiHistoryViewStatus.loading` when already `ready`.
+- Tip-Δ unit cases: append grows `_visibleCount` by Δ and preserves `start`; truncate clamps `_visibleCount`; snapshot `oldLength`/`oldVisible` immediately before replace (after await) so a concurrent `loadOlder` is not clobbered by a stale pre-await snapshot; honor load generation / seat-id so in-flight softReload no-ops after seat change or dispose.
 - Optimistic pending drops once a reparsed tip user turn equals pending text under the normalize + tip-window rule above; multi-pending queue clears in order across reloads.
 - SSH/poll path: token change triggers reload (unit with fake clock + stat).
 
