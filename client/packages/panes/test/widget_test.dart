@@ -140,6 +140,61 @@ void main() {
       expect(controller.isVisible('a'), isFalse);
     });
 
+    testWidgets('pixel pane show/hide animates width instead of jumping', (
+      tester,
+    ) async {
+      final controller = PaneController(
+        entries: [
+          PaneEntry(id: 'a', initialSize: PaneSize.pixel(200)),
+          PaneEntry(id: 'b', initialSize: PaneSize.fraction(1.0)),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 400,
+              child: MultiPane(
+                direction: Axis.horizontal,
+                controller: controller,
+                animationDuration: const Duration(milliseconds: 200),
+                paneBuilder: (context, id, progress) =>
+                    Container(key: Key('pane_$id')),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      double paneAWidth() =>
+          tester.getSize(find.byKey(const ValueKey('pane-slot-a'))).width;
+
+      expect(paneAWidth(), closeTo(200, 1));
+
+      controller.hide('a');
+      await tester.pump(); // start tween
+      await tester.pump(const Duration(milliseconds: 50));
+      final midHide = paneAWidth();
+      expect(midHide, greaterThan(1));
+      expect(midHide, lessThan(199));
+
+      await tester.pumpAndSettle();
+      expect(paneAWidth(), closeTo(0, 1));
+
+      controller.show('a');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      final midShow = paneAWidth();
+      expect(midShow, greaterThan(1));
+      expect(midShow, lessThan(199));
+
+      await tester.pumpAndSettle();
+      expect(paneAWidth(), closeTo(200, 1));
+    });
+
     testWidgets('resizer is focusable and responds to keyboard',
         (tester) async {
       final controller = PaneController(

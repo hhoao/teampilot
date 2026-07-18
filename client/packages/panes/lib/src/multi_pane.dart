@@ -127,11 +127,9 @@ class _MultiPaneState extends State<MultiPane> {
 
       Widget wrappedChild = switch (effectiveSize) {
         PaneSizePixel(:final pixels) => TweenAnimationBuilder<double>(
-            // Rebuild pane content when target size / visibility changes,
-            // but not on every animation tick (child is reused below).
-            key: ValueKey<Object>(
-              'pane-${entry.id}-$isVisible-${pixels.toStringAsFixed(2)}',
-            ),
+            // Stable per pane — including isVisible/pixels in the key remounts
+            // the tween at its end value and kills show/hide animation.
+            key: ValueKey<String>('pane-${entry.id}'),
             tween: Tween<double>(end: isVisible ? pixels : 0.0),
             duration: isResizing ? Duration.zero : widget.animationDuration,
             curve: widget.animationCurve,
@@ -142,6 +140,7 @@ class _MultiPaneState extends State<MultiPane> {
             ),
             builder: (context, currentSize, child) {
               return SizedBox(
+                key: ValueKey<String>('pane-slot-${entry.id}'),
                 width: widget.direction == Axis.horizontal
                     ? currentSize
                     : null,
