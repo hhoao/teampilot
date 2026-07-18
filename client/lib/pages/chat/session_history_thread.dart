@@ -14,9 +14,17 @@ const Key kSessionHistoryNewMessagesChipKey = ValueKey(
   'session-history-new-messages-chip',
 );
 
-/// Finder key for the live-refresh “Running…” footer.
+/// Finder key for the in-thread “Running…” assistant placeholder.
 const Key kSessionHistoryRunningFooterKey = ValueKey(
   'session-history-running-footer',
+);
+
+/// Synthetic tip message while continue is awaiting the assistant turn.
+const AiMessage kSessionHistoryRunningPlaceholder = AiMessage(
+  id: 'pending:running',
+  role: AiRole.assistant,
+  status: AiMessageStatus.incomplete,
+  parts: [],
 );
 
 /// History message list for session review.
@@ -98,6 +106,10 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       _messages = widget.runtime.messages;
       _runtimeSub = widget.runtime.changes.listen((_) => _onRuntimeChanged());
       _scheduleOpenAtEnd();
+    } else if (oldWidget.liveRefreshActive != widget.liveRefreshActive) {
+      if (widget.liveRefreshActive && _stickToEnd) {
+        _scheduleStickFrames();
+      }
     }
   }
 
@@ -377,41 +389,43 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     );
   }
 
-  Widget _buildRunningFooter(BuildContext context) {
+  Widget _buildRunningInMessage(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final aiTheme = AiMessageTheme.of(context);
-    // Match messageBuilder: center the thread column, then left-align inside it.
-    return SelectionContainer.disabled(
-      child: Align(
-        key: kSessionHistoryRunningFooterKey,
-        alignment: Alignment.topCenter,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            aiTheme.threadHorizontalPadding,
-            8,
-            aiTheme.threadHorizontalPadding,
-            10,
-          ),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: aiTheme.threadMaxWidth),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: scheme.primary,
+    // Same column chrome as messageBuilder, left-aligned like assistant text.
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: aiTheme.threadHorizontalPadding,
+        ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: aiTheme.threadMaxWidth),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              key: kSessionHistoryRunningFooterKey,
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 16),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  context.l10n.sessionHistoryRunning,
-                  style: TpTextStyles.of(
-                    context,
-                  ).smColored(scheme.onSurfaceVariant),
-                ),
-              ],
+                  const SizedBox(width: 10),
+                  Text(
+                    context.l10n.sessionHistoryRunning,
+                    style: TpTextStyles.of(
+                      context,
+                    ).smColored(scheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -419,9 +433,18 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     );
   }
 
+  List<AiMessage> get _displayMessages {
+    if (!widget.liveRefreshActive) return _messages;
+    if (_messages.any((m) => m.id == kSessionHistoryRunningPlaceholder.id)) {
+      return _messages;
+    }
+    return [..._messages, kSessionHistoryRunningPlaceholder];
+  }
+
   @override
   Widget build(BuildContext context) {
-    final lastId = _messages.isEmpty ? null : _messages.last.id;
+    final displayMessages = _displayMessages;
+    final lastId = displayMessages.isEmpty ? null : displayMessages.last.id;
     final aiTheme = AiMessageTheme.of(context);
 
     final Widget? header = widget.hasOlder
@@ -449,7 +472,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
           controller: _scrollController,
           padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
           child: VirtualThreadViewport(
-            messages: _messages,
+            messages: displayMessages,
             scrollController: _scrollController,
             header: header,
             anchorEnd: true,
@@ -469,6 +492,11 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
               _jumpTo(next);
             },
             messageBuilder: (context, ai) {
+              if (ai.id == kSessionHistoryRunningPlaceholder.id) {
+                return SelectionContainer.disabled(
+                  child: _buildRunningInMessage(context),
+                );
+              }
               return Align(
                 alignment: Alignment.topCenter,
                 child: Padding(
@@ -498,19 +526,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       ),
     );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Stack(
+      fit: StackFit.expand,
       children: [
-        Expanded(
-          child: Stack(
-            children: [
-              thread,
-              if (_showNewMessagesChip && !_stickToEnd)
-                _buildNewMessagesChip(context),
-            ],
-          ),
-        ),
-        if (widget.liveRefreshActive) _buildRunningFooter(context),
+        thread,
+        if (_showNewMessagesChip && !_stickToEnd)
+          _buildNewMessagesChip(context),
       ],
     );
   }
