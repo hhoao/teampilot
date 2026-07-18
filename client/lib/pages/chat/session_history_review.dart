@@ -87,6 +87,10 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
   var _workspaceProjectBundle = const ConfigBundle();
   var _workspaceBundleGeneration = 0;
 
+  /// Latched once this continue turn appears in [ChatState.workingSessionIds];
+  /// falling edge clears awaiting so multi-assistant replies keep Running.
+  var _sawSessionWorkingWhileAwaiting = false;
+
   @override
   void initState() {
     super.initState();
@@ -688,6 +692,23 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     unawaited(_startLiveRefresh());
   }
 
+  void _syncAwaitingFromWorkingSessions(ChatState chat) {
+    final history = context.read<AiHistoryCubit>();
+    if (!history.state.awaitingAssistant) {
+      _sawSessionWorkingWhileAwaiting = false;
+      return;
+    }
+    final working = chat.workingSessionIds.contains(widget.session.sessionId);
+    if (working) {
+      _sawSessionWorkingWhileAwaiting = true;
+      return;
+    }
+    if (!_sawSessionWorkingWhileAwaiting) return;
+    // Idle: reveal any held assistant tip and drop Running in one beat.
+    history.flushHeldTip(endAwaiting: true);
+    _sawSessionWorkingWhileAwaiting = false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -728,7 +749,11 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
         workspace != null &&
         landingTeamSettingsNeedsAttention(workspace: workspace, team: team);
 
-    return ColoredBox(
+    return BlocListener<ChatCubit, ChatState>(
+      listenWhen: (previous, current) =>
+          previous.workingSessionIds != current.workingSessionIds,
+      listener: (context, state) => _syncAwaitingFromWorkingSessions(state),
+      child: ColoredBox(
       color: cs.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -775,13 +800,22 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                 child: BlocBuilder<AiHistoryCubit, AiHistoryState>(
                   builder: (context, state) {
                     final cubit = context.read<AiHistoryCubit>();
+                    final sessionWorking = context.select<ChatCubit, bool>(
+                      (c) => c.state.workingSessionIds.contains(
+                        widget.session.sessionId,
+                      ),
+                    );
                     return SessionHistoryReviewMessages(
                       state: state,
                       runtime: cubit.runtime,
                       onRetry: () => _loadHistory(force: true),
                       onLoadOlder: cubit.loadOlder,
+                      // Keep Running for the whole seat turn — not just until
+                      // the first assistant tip lands in the transcript.
                       liveRefreshActive:
-                          _isSubmitting || state.awaitingAssistant,
+                          _isSubmitting ||
+                          state.awaitingAssistant ||
+                          sessionWorking,
                     );
                   },
                 ),
@@ -871,6 +905,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
           ),
         ],
       ),
+    ),
     );
   }
 }

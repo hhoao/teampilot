@@ -393,6 +393,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     final scheme = Theme.of(context).colorScheme;
     final aiTheme = AiMessageTheme.of(context);
     // Same column chrome as messageBuilder, left-aligned like assistant text.
+    // Tip message already uses a tightened messageSpacing while Running is on.
     return Align(
       alignment: Alignment.topCenter,
       child: Padding(
@@ -405,7 +406,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
             alignment: Alignment.centerLeft,
             child: Padding(
               key: kSessionHistoryRunningFooterKey,
-              padding: const EdgeInsets.fromLTRB(8, 4, 8, 16),
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -497,6 +498,24 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                   child: _buildRunningInMessage(context),
                 );
               }
+              // While Running is appended as the tip turn, keep the real tip's
+              // bottom gap tight so Running sits under it like in-turn chrome.
+              final tightenForRunning = widget.liveRefreshActive &&
+                  displayMessages.length >= 2 &&
+                  displayMessages.last.id ==
+                      kSessionHistoryRunningPlaceholder.id &&
+                  ai.id ==
+                      displayMessages[displayMessages.length - 2].id;
+              final messageChild = AiHistoryRenderScope(
+                child: AiMessageView(
+                  key: ValueKey(ai.id),
+                  message: ai,
+                  actionBarHoverEnabled: _actionBarHoverEnabled,
+                  actionBarReveal: ai.id == lastId
+                      ? AiActionBarReveal.always
+                      : AiActionBarReveal.hover,
+                ),
+              );
               return Align(
                 alignment: Alignment.topCenter,
                 child: Padding(
@@ -507,16 +526,19 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                     constraints: BoxConstraints(
                       maxWidth: aiTheme.threadMaxWidth,
                     ),
-                    child: AiHistoryRenderScope(
-                      child: AiMessageView(
-                        key: ValueKey(ai.id),
-                        message: ai,
-                        actionBarHoverEnabled: _actionBarHoverEnabled,
-                        actionBarReveal: ai.id == lastId
-                            ? AiActionBarReveal.always
-                            : AiActionBarReveal.hover,
-                      ),
-                    ),
+                    child: tightenForRunning
+                        ? Theme(
+                            data: Theme.of(context).copyWith(
+                              extensions: [
+                                ...Theme.of(context).extensions.values.where(
+                                  (e) => e is! AiMessageTheme,
+                                ),
+                                aiTheme.copyWith(messageSpacing: 8),
+                              ],
+                            ),
+                            child: messageChild,
+                          )
+                        : messageChild,
                   ),
                 ),
               );

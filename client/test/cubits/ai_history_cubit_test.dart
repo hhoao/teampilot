@@ -257,7 +257,63 @@ void main() {
       ),
     ];
     await cubit.softReload();
+    expect(cubit.state.awaitingAssistant, isTrue);
+    // Assistant tip is held for idleAfter-aligned window.
+    expect(cubit.hasHeldAssistantTip, isTrue);
+    expect(cubit.runtime.messages.last.id, 'u-hello');
+
+    holderMessages = [
+      ...holderMessages,
+      const AiMessage(
+        id: 'a-2',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'more')],
+      ),
+    ];
+    await cubit.softReload();
+    expect(cubit.state.awaitingAssistant, isTrue);
+    expect(cubit.hasHeldAssistantTip, isTrue);
+    expect(cubit.runtime.messages.last.id, 'u-hello');
+
+    // Still working after hold: reveal tip, keep Running.
+    await Future<void>.delayed(
+      AiHistoryCubit.tipHoldAfterAssistant + const Duration(milliseconds: 50),
+    );
+    expect(cubit.state.awaitingAssistant, isTrue);
+    expect(cubit.hasHeldAssistantTip, isFalse);
+    expect(cubit.runtime.messages.last.id, 'a-2');
+
+    cubit.flushHeldTip(endAwaiting: true);
     expect(cubit.state.awaitingAssistant, isFalse);
+  });
+
+  test('held assistant tip flushes immediately on idle endAwaiting', () async {
+    holderMessages = messages(1);
+    locator.emitBundle = true;
+    await cubit.load(session: simpleSession(), memberId: '');
+
+    cubit.enqueuePendingUser('hello');
+    holderMessages = [
+      ...messages(1),
+      const AiMessage(
+        id: 'u-1',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'hello')],
+      ),
+      const AiMessage(
+        id: 'a-1',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'hi')],
+      ),
+    ];
+    await cubit.softReload();
+    expect(cubit.hasHeldAssistantTip, isTrue);
+    expect(cubit.runtime.messages.last.id, 'u-1');
+
+    cubit.flushHeldTip(endAwaiting: true);
+    expect(cubit.hasHeldAssistantTip, isFalse);
+    expect(cubit.state.awaitingAssistant, isFalse);
+    expect(cubit.runtime.messages.last.id, 'a-1');
   });
 
   test('multi pending drops independently by normalized text', () async {

@@ -201,6 +201,58 @@ void main() {
     expect(anchor!.row, 0);
   });
 
+  test('locateNeedle finds soft-wrapped needle when continuation is indented', () {
+    // Claude Code wraps long composer lines and indents the continuation past
+    // the prompt prefix. describeProbeWindow trims leading spaces, so the miss
+    // log looks contiguous while col=0 matching fails on spaces.
+    final grid = _FakeGrid.fromRows([
+      '❯ 这个仓库怎么样https://github.com/hhoao/flutter',
+      '  _alacritty',
+    ]);
+    const needle = 'tps://github.com/hhoao/flutter_alacritty';
+    final anchor = locateFullscreenPromptNeedle(grid, needle, scanRows: 8);
+    expect(
+      anchor,
+      isNotNull,
+      reason: 'indented soft-wrap continuation must still match',
+    );
+    expect(isFullscreenPromptAtAnchor(grid, anchor!), isTrue);
+  });
+
+  test('locateNeedle collapses needle spaces across indented soft wrap', () {
+    // Wrap lands on the word-break space; continuation indent has MORE spaces
+    // than the single space in the needle.
+    final grid = _FakeGrid.fromRows([
+      '❯ say hello',
+      '     world_TAIL',
+    ]);
+    final anchor = locateFullscreenPromptNeedle(
+      grid,
+      'hello world_TAIL',
+      scanRows: 8,
+    );
+    expect(
+      anchor,
+      isNotNull,
+      reason: 'extra wrap indent must not consume needle word-break spaces',
+    );
+    expect(isFullscreenPromptAtAnchor(grid, anchor!), isTrue);
+  });
+
+  test('locateNeedle collapses multiple needle spaces after soft wrap', () {
+    final grid = _FakeGrid.fromRows([
+      '❯ say hello',
+      '     world_TAIL',
+    ]);
+    final anchor = locateFullscreenPromptNeedle(
+      grid,
+      'hello   world_TAIL',
+      scanRows: 8,
+    );
+    expect(anchor, isNotNull);
+    expect(isFullscreenPromptAtAnchor(grid, anchor!), isTrue);
+  });
+
   test('isAtAnchor false after clearing soft-wrapped staged cells', () {
     final grid = _FakeGrid.fromRows([
       '❯ hello_WORLD_PART',

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:ai_message_core/ai_message_core.dart';
@@ -35,8 +36,9 @@ class AiHistoryState extends Equatable {
   final String? errorMessage;
   final String? softReloadError;
 
-  /// True from continue-send until transcript catches the pending user turn
-  /// (or the send fails). Drives in-thread running chrome like assistant-ui.
+  /// True from continue-send until the assistant turn settles (host clears on
+  /// idle / send failure). SoftReload alone must not clear this — one turn may
+  /// flush many assistant messages.
   final bool awaitingAssistant;
   final String? sessionId;
   final String? memberId;
@@ -97,6 +99,11 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
 
   static const _uuid = Uuid();
 
+  /// Aligns with [TerminalActivityTracker.idleAfter], plus a small slack so the
+  /// seat-idle falling edge usually wins the race and reveals the tip as Running
+  /// clears — avoiding a flash of final text under a still-spinning indicator.
+  static const tipHoldAfterAssistant = Duration(milliseconds: 2800);
+
   final AiHistoryLoader _loader;
   final ExternalStoreAiThreadRuntime runtime = ExternalStoreAiThreadRuntime();
 
@@ -106,12 +113,20 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
   int _loadGeneration = 0;
   List<AiMessage> _allMessages = const [];
   int _visibleCount = 0;
+
+  /// Prefix of [_allMessages] published to the thread. Trailing assistants may
+  /// stay held while [awaitingAssistant] until idle or [tipHoldAfterAssistant].
+  int _committedLength = 0;
   final List<_PendingUser> _pendingQueue = [];
+  Timer? _tipHoldTimer;
 
   AppSession? _lastSession;
   String? _lastMemberId;
   TeamProfile? _lastTeam;
   String? _lastWorkingDirectory;
+
+  /// True when assistant tip is loaded but not yet shown.
+  bool get hasHeldAssistantTip => _committedLength < _allMessages.length;
 
   Future<void> load({
     required AppSession session,
@@ -132,12 +147,16 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     _lastWorkingDirectory = workingDirectory;
 
     final gen = ++_loadGeneration;
+    _cancelTipHoldTimer();
     _allMessages = const [];
     _visibleCount = 0;
+    _committedLength = 0;
     runtime.setLoading();
     emit(
       AiHistoryState(
         status: AiHistoryViewStatus.loading,
+        // Preserve turn chrome across soft→cold remounts of the same seat.
+        awaitingAssistant: !seatChanged && state.awaitingAssistant,
         sessionId: session.sessionId,
         memberId: memberId,
       ),
@@ -163,6 +182,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
       if (gen != _loadGeneration || isClosed) return;
       _allMessages = const [];
       _visibleCount = 0;
+      _committedLength = 0;
       runtime.setError(e.toString());
       emit(
         AiHistoryState(
@@ -272,18 +292,74 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     if (_pendingQueue.length == before && state.awaitingAssistant == false) {
       return;
     }
+    _cancelTipHoldTimer();
+    _commitAll();
     _remergePendingsOntoRuntime();
     emit(state.copyWith(awaitingAssistant: false));
   }
 
   void setAwaitingAssistant(bool value) {
-    if (state.awaitingAssistant == value) return;
-    emit(state.copyWith(awaitingAssistant: value));
+    if (!value) {
+      _cancelTipHoldTimer();
+      if (hasHeldAssistantTip) {
+        _commitAll();
+        if (state.status == AiHistoryViewStatus.ready) {
+          runtime.setMessages(_visibleSlice());
+        } else {
+          _remergePendingsOntoRuntime();
+        }
+      }
+    }
+    if (state.awaitingAssistant == value &&
+        state.totalMessageCount == _committedLength) {
+      return;
+    }
+    emit(
+      state.copyWith(
+        awaitingAssistant: value,
+        totalMessageCount: _committedLength,
+        hasOlder: _hasOlder(),
+      ),
+    );
+  }
+
+  /// Publish any held assistant tip. When [endAwaiting] is true (seat idle),
+  /// also clear Running chrome so the final tip and spinner settle together.
+  void flushHeldTip({bool endAwaiting = false}) {
+    _cancelTipHoldTimer();
+    final hadHeld = hasHeldAssistantTip;
+    if (hadHeld) _commitAll();
+
+    if (endAwaiting) {
+      if (!hadHeld && !state.awaitingAssistant) return;
+      if (state.status == AiHistoryViewStatus.ready) {
+        runtime.setMessages(_visibleSlice());
+      } else if (state.status == AiHistoryViewStatus.empty) {
+        _remergePendingsOntoRuntime();
+      }
+      emit(
+        state.copyWith(
+          awaitingAssistant: false,
+          totalMessageCount: _committedLength,
+          hasOlder: _hasOlder(),
+          isLoadingOlder: false,
+        ),
+      );
+      return;
+    }
+
+    if (hadHeld) {
+      _emitReadyWindow(state.sessionId, state.memberId);
+    }
   }
 
   void clearPendings() {
-    if (_pendingQueue.isEmpty && !state.awaitingAssistant) return;
+    _cancelTipHoldTimer();
+    if (_pendingQueue.isEmpty && !state.awaitingAssistant && !hasHeldAssistantTip) {
+      return;
+    }
     _pendingQueue.clear();
+    _commitAll();
     if (state.status == AiHistoryViewStatus.ready ||
         state.status == AiHistoryViewStatus.empty) {
       _remergePendingsOntoRuntime();
@@ -320,15 +396,17 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     emit(state.copyWith(isLoadingOlder: true));
     _visibleCount = math.min(
       _visibleCount + kSessionHistoryOlderPageSize,
-      _allMessages.length,
+      _committedLength,
     );
     _emitReadyWindow(state.sessionId, state.memberId);
   }
 
   void clear() {
     _loadGeneration++;
+    _cancelTipHoldTimer();
     _allMessages = const [];
     _visibleCount = 0;
+    _committedLength = 0;
     _pendingQueue.clear();
     _lastSession = null;
     _lastMemberId = null;
@@ -343,8 +421,10 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     String sessionId,
     String memberId,
   ) {
+    _cancelTipHoldTimer();
     _allMessages = messages;
-    _visibleCount = math.min(kSessionHistoryInitialTurns, _allMessages.length);
+    _committedLength = _allMessages.length;
+    _visibleCount = math.min(kSessionHistoryInitialTurns, _committedLength);
     _dropMatchedPendings();
 
     if (_allMessages.isEmpty) {
@@ -363,23 +443,74 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
   ) {
     final oldLength = _allMessages.length;
     final oldVisible = _visibleCount;
+    final oldCommitted = _committedLength;
     final newLength = messages.length;
     _allMessages = messages;
     final tipDelta = math.max(0, newLength - oldLength);
     if (newLength < oldLength) {
       _visibleCount = math.min(oldVisible, newLength);
+      _committedLength = math.min(oldCommitted, newLength);
     } else {
       _visibleCount = math.min(newLength, oldVisible + tipDelta);
     }
     _dropMatchedPendings();
 
     if (_allMessages.isEmpty) {
+      _cancelTipHoldTimer();
+      _committedLength = 0;
       _emitEmptyOrPendingReady(sessionId, memberId);
       return;
     }
 
+    if (!state.awaitingAssistant && _pendingQueue.isEmpty) {
+      _cancelTipHoldTimer();
+      _committedLength = _allMessages.length;
+    } else {
+      _committedLength = _commitThroughLatestUser(
+        math.min(oldCommitted, _allMessages.length),
+      );
+      if (hasHeldAssistantTip) {
+        _scheduleTipHoldFlush();
+      } else {
+        _cancelTipHoldTimer();
+      }
+    }
+
     _emitReadyWindow(sessionId, memberId);
     _remergePendingsOntoRuntime();
+  }
+
+  /// Publish transcript through the latest user turn; leave trailing non-user
+  /// tip held while the seat is still awaiting.
+  int _commitThroughLatestUser(int from) {
+    var committed = from.clamp(0, _allMessages.length);
+    for (var i = committed; i < _allMessages.length; i++) {
+      if (_allMessages[i].role == AiRole.user) {
+        committed = i + 1;
+      } else {
+        break;
+      }
+    }
+    return committed;
+  }
+
+  void _commitAll() {
+    _committedLength = _allMessages.length;
+  }
+
+  void _cancelTipHoldTimer() {
+    _tipHoldTimer?.cancel();
+    _tipHoldTimer = null;
+  }
+
+  void _scheduleTipHoldFlush() {
+    _cancelTipHoldTimer();
+    if (!hasHeldAssistantTip) return;
+    _tipHoldTimer = Timer(tipHoldAfterAssistant, () {
+      if (isClosed) return;
+      // Still in turn: reveal held tip but keep Running.
+      flushHeldTip(endAwaiting: false);
+    });
   }
 
   /// Empty transcript with unmatched pendings stays on the thread path.
@@ -443,13 +574,11 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
       ..addAll(remaining);
   }
 
-  /// After a softReload: keep awaiting until pending users flush and an
-  /// assistant tip appears (assistant-ui-style isRunning).
+  /// Soft reload must not clear this — a turn may flush many assistant messages.
+  /// Host clears via [flushHeldTip] / [setAwaitingAssistant] when idle (or send fails).
   bool _computeAwaitingAssistant() {
     if (_pendingQueue.isNotEmpty) return true;
-    if (!state.awaitingAssistant) return false;
-    if (_allMessages.isEmpty) return false;
-    return _allMessages.last.role != AiRole.assistant;
+    return state.awaitingAssistant;
   }
 
   void _remergePendingsOntoRuntime() {
@@ -480,7 +609,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     emit(
       AiHistoryState(
         status: AiHistoryViewStatus.ready,
-        totalMessageCount: _allMessages.length,
+        totalMessageCount: _committedLength,
         hasOlder: _hasOlder(),
         isLoadingOlder: false,
         softReloadError: state.softReloadError,
@@ -492,15 +621,20 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
   }
 
   List<AiMessage> _visibleSlice() {
-    if (_allMessages.isEmpty) return const [];
-    final start = math.max(0, _allMessages.length - _visibleCount);
-    return _allMessages.sublist(start);
+    if (_committedLength <= 0 || _allMessages.isEmpty) return const [];
+    final committed = _committedLength >= _allMessages.length
+        ? _allMessages
+        : _allMessages.sublist(0, _committedLength);
+    final count = math.min(_visibleCount, committed.length);
+    final start = math.max(0, committed.length - count);
+    return committed.sublist(start);
   }
 
-  bool _hasOlder() => _visibleCount < _allMessages.length;
+  bool _hasOlder() => _visibleCount < _committedLength;
 
   @override
   Future<void> close() {
+    _cancelTipHoldTimer();
     runtime.close();
     return super.close();
   }

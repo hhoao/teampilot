@@ -203,7 +203,12 @@ bool _matchesNeedleAt(
 ) {
   var r = row;
   var col = startCol;
-  for (final cp in needleRunes) {
+  // After a soft wrap, leading indent is chrome and word-break spaces in the
+  // needle may not appear as grid cells — collapse them until content.
+  var collapseWrapSpaces = false;
+  for (var i = 0; i < needleRunes.length; i++) {
+    final cp = needleRunes[i];
+    var wrapped = false;
     while (true) {
       if (r >= grid.rows) return false;
       col = _skipWideSpacers(grid, r, col);
@@ -218,8 +223,20 @@ bool _matchesNeedleAt(
       col = 0;
       if (r >= grid.rows) return false;
       if (!_rowHasNonSpaceContent(grid, r) && cp != 0x20) return false;
+      // Claude / other TUIs indent wrapped composer lines past the prompt
+      // prefix. Leading spaces are chrome, not paste content.
+      col = _skipLeadingPadding(grid, r);
+      wrapped = true;
     }
-    if (grid.codepointAt(r, col) != cp) return false;
+    if (wrapped) collapseWrapSpaces = true;
+    if (cp == 0x20 && collapseWrapSpaces) {
+      final gridCp = col < grid.columns ? grid.codepointAt(r, col) : 0;
+      if (gridCp != 0 && gridCp != 0x20) {
+        continue;
+      }
+    }
+    collapseWrapSpaces = false;
+    if (col >= grid.columns || grid.codepointAt(r, col) != cp) return false;
     col = _advancePastCell(grid, r, col);
   }
   return true;
@@ -290,6 +307,19 @@ bool _isWideSpacer(TerminalScreenGrid grid, int row, int col) =>
 
 int _skipWideSpacers(TerminalScreenGrid grid, int row, int col) {
   while (col < grid.columns && _isWideSpacer(grid, row, col)) {
+    col++;
+  }
+  return col;
+}
+
+/// Advances past leading empty / space cells on a soft-wrapped continuation row.
+int _skipLeadingPadding(TerminalScreenGrid grid, int row) {
+  var col = 0;
+  while (col < grid.columns) {
+    col = _skipWideSpacers(grid, row, col);
+    if (col >= grid.columns) break;
+    final cp = grid.codepointAt(row, col);
+    if (cp != 0 && cp != 0x20) break;
     col++;
   }
   return col;
