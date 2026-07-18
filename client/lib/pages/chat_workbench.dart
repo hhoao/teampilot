@@ -32,6 +32,7 @@ import '../widgets/deferred_foreground_mount.dart';
 import '../widgets/workspace/workspace_dead_target_remap_dialog.dart';
 import '../utils/team/team_member_naming.dart';
 import 'home_workspace/workspace/workspace_route_active_scope.dart';
+import 'chat/chat_workbench_overlay.dart';
 import 'chat/chat_workbench_placeholders.dart';
 import 'chat/chat_workbench_remote_provision_view.dart';
 import 'chat/chat_workbench_slice.dart';
@@ -458,10 +459,14 @@ class _ChatWorkbenchBody extends StatelessWidget {
         remoteProvision != null && !session.isRunning;
     final mountTerminalForLayout =
         sessionConnectInProgress || session.isRunning || showRemoteProvision;
-    final showHistory =
-        workbenchView == SessionWorkbenchView.history &&
-        !sessionConnectInProgress &&
-        !showRemoteProvision;
+    final overlay = resolveChatWorkbenchOverlay(
+      workbenchView: workbenchView,
+      sessionConnectInProgress: sessionConnectInProgress,
+      showRemoteProvision: showRemoteProvision,
+    );
+    final showHistory = overlay == ChatWorkbenchOverlay.history;
+    final showSessionStarting =
+        overlay == ChatWorkbenchOverlay.sessionStarting;
 
     // Keep Alacritty mounted across title-bar workspace tab switches; hide with
     // [Offstage] so scrollback survives when the tab returns to foreground.
@@ -479,7 +484,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
             children: [
               if (mountTerminalForLayout)
                 Offstage(
-                  offstage: sessionConnectInProgress ||
+                  offstage: showSessionStarting ||
                       showHistory ||
                       showRemoteProvision,
                   child: buildRunningTerminal(
@@ -488,7 +493,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
                     chatCubit: chatCubit,
                     isPersonal: isPersonalContext,
                     team: team,
-                    autofocus: !sessionConnectInProgress &&
+                    autofocus: !showSessionStarting &&
                         !showHistory &&
                         !showRemoteProvision &&
                         terminalVisible,
@@ -502,16 +507,16 @@ class _ChatWorkbenchBody extends StatelessWidget {
                     memberId: remoteProvision.memberId,
                   ),
                 )
-              else if (sessionConnectInProgress)
-                ChatWorkbenchSessionLoadingView(
-                  message: context.l10n.sessionStarting,
-                )
               else if (showHistory)
                 _buildHistoryReview(
                   context,
                   chatCubit: chatCubit,
                   team: team,
                   launchError: launchError,
+                )
+              else if (showSessionStarting)
+                ChatWorkbenchSessionLoadingView(
+                  message: context.l10n.sessionStarting,
                 ),
             ],
           ),
