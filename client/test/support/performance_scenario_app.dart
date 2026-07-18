@@ -25,25 +25,36 @@ import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/llm_config_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/notification_cubit.dart';
+import 'package:teampilot/cubits/plugin_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
+import 'package:teampilot/cubits/shortcut_cubit.dart';
+import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/utils/session/workspace_tab_session_scope.dart';
+import 'package:teampilot/app/ui_zoom_baseline.dart';
 import 'package:teampilot/main.dart';
 import 'package:teampilot/models/llm_config.dart';
 import 'package:teampilot/models/runtime_target.dart';
+import 'package:teampilot/pages/home_workspace/workspace_chrome_commands.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/extension_repository.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
+import 'package:teampilot/repositories/plugin_repository.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/repositories/skill_repository.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
+import 'package:teampilot/repositories/workspace_project_config_repository.dart';
 import 'package:teampilot/router/app_router.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
+import 'package:teampilot/services/commands/command_bus.dart';
+import 'package:teampilot/services/commands/run_command_registrar.dart';
+import 'package:teampilot/services/commands/workspace_search_command_registrar.dart';
 import 'package:teampilot/services/extension/builtin_manifests.dart';
 import 'package:teampilot/services/extension/extension_acquisition_engine.dart';
 import 'package:teampilot/services/extension/extension_detector.dart';
@@ -53,6 +64,8 @@ import 'package:teampilot/services/file_tree/workspace_file_tree_store.dart';
 import 'package:teampilot/services/home_workspace/home_workspace_ui_cache.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/installer_types.dart';
+import 'package:teampilot/services/plugin/plugin_repo_service.dart';
+import 'package:teampilot/services/run/workspace_run_platform_factory.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
@@ -61,6 +74,7 @@ import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 import 'package:teampilot/services/terminal/workspace_shell_connector.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
+import 'package:teampilot/services/workspace/workspace_run_registry.dart';
 import 'package:teampilot/services/workspace/workspace_tools_scope_registry.dart';
 import 'package:teampilot/services/workspace/workspace_worktree_registry.dart';
 
@@ -117,9 +131,30 @@ class PerformanceScenarioApp {
       knownHostRepository: sshKnownHosts,
       events: sshEvents,
     );
+    final extensionFs = InMemoryFilesystem();
+    final extensionRepo = ExtensionRepository(
+      fs: extensionFs,
+      stateFilePath: '/test/extensions/state.json',
+      manifests: builtInExtensionManifests(),
+    );
+    final workspaceRunRegistry = WorkspaceRunRegistry(
+      platformFactory: WorkspaceRunPlatformFactory(
+        extensionRepository: extensionRepo,
+        projectConfigRepository: WorkspaceProjectConfigRepository(),
+        fs: extensionFs,
+        detector: ExtensionDetector(
+          processRunner: (e, a, {environment}) async =>
+              ProcessResult(0, 1, '', ''),
+        ),
+      ),
+    );
 
     return BlocProvider(
-      create: (_) => AppBootstrapCubit(),
+      create: (_) {
+        final bootstrap = AppBootstrapCubit();
+        bootstrap.markAppReady(showOnboardingWizard: false);
+        return bootstrap;
+      },
       child: MultiRepositoryProvider(
         providers: [
           RepositoryProvider<AppSettingsRepository>.value(value: settings),
@@ -172,6 +207,22 @@ class PerformanceScenarioApp {
           RepositoryProvider<WorkspaceToolsScopeRegistry>(
             create: (_) => WorkspaceToolsScopeRegistry(),
           ),
+          RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
+          RepositoryProvider<WorkspaceChromeCommands>(
+            create: (_) => WorkspaceChromeCommands(),
+          ),
+          RepositoryProvider<UiZoomBaseline>(
+            create: (_) => UiZoomBaseline(),
+          ),
+          RepositoryProvider<WorkspaceRunRegistry>.value(
+            value: workspaceRunRegistry,
+          ),
+          RepositoryProvider<RunCommandHost>(
+            create: (_) => RunCommandHost(),
+          ),
+          RepositoryProvider<WorkspaceSearchHost>(
+            create: (_) => WorkspaceSearchHost(),
+          ),
         ],
         child: MultiBlocProvider(
           providers: [
@@ -201,11 +252,7 @@ class PerformanceScenarioApp {
             BlocProvider(create: (_) => WorkbenchCubit()),
             BlocProvider(
               create: (_) => ExtensionCubit(
-                ExtensionRepository(
-                  fs: InMemoryFilesystem(),
-                  stateFilePath: '/test/extensions/state.json',
-                  manifests: builtInExtensionManifests(),
-                ),
+                extensionRepo,
                 ExtensionAcquisitionEngine(
                   runner: (c) async =>
                       const CliInstallerCommandResult(exitCode: 0),
@@ -218,6 +265,23 @@ class PerformanceScenarioApp {
             ),
             BlocProvider(create: (_) => WorkspaceToolsCubit()),
             BlocProvider(create: (_) => NotificationCubit()),
+            BlocProvider(create: (_) => ShortcutCubit()),
+            BlocProvider(create: (_) => SkillCubit(SkillRepository())),
+            BlocProvider(
+              create: (_) {
+                final repo = PluginRepository();
+                return PluginCubit(
+                  repository: repo,
+                  installService: repo.install,
+                  repoService: PluginRepoService(),
+                );
+              },
+            ),
+            BlocProvider(
+              create: (_) => testAutomationCubit(
+                sessionRepository: sessionRepository,
+              ),
+            ),
             BlocProvider(
               create: (_) => CliPresetsCubit(
                 repository: CliPresetsRepository(

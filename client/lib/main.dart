@@ -46,6 +46,7 @@ import 'services/expert_hub/expert_capability_resolver.dart';
 import 'services/home_workspace/home_workspace_ui_cache.dart';
 import 'pages/home_workspace/workspace_chrome_commands.dart';
 import 'services/storage/app_storage.dart';
+import 'services/perf/live_perf_driver.dart';
 import 'services/app/boot_splash.dart';
 import 'services/app/desktop_text_input_probe_bypass.dart';
 import 'services/app/windows_keyboard_workaround.dart';
@@ -393,6 +394,7 @@ void main() async {
   // Custom binding installs DesktopTextInputProbeBypassMessenger — must run
   // before any other Flutter binding (full restart required, not hot reload).
   final binding = TeampilotWidgetsFlutterBinding.ensureInitialized();
+  unawaited(LivePerfDriver.ensureStarted());
   final messenger = ServicesBinding.instance.defaultBinaryMessenger;
   // ignore: avoid_print
   print(

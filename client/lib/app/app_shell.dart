@@ -74,6 +74,7 @@ import '../services/extension/builtin_manifests.dart';
 import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
 import '../services/storage/app_storage.dart';
+import '../services/perf/live_perf_driver.dart';
 import '../services/storage/workspace_layout.dart';
 import '../services/automation/automation_bus_gateway.dart';
 import '../services/automation/automation_dispatcher.dart';
@@ -1038,6 +1039,7 @@ Future<AppShell> buildAppShell({
       workspaces: chatCubit.state.workspaces,
     );
     bootstrapCubit?.markAppReady(showOnboardingWizard: showOnboarding);
+    LivePerfDriver.instance?.markAppReady();
     boot('bootstrapAppData complete');
     automationScheduler.start();
   }
