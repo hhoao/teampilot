@@ -380,21 +380,21 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   Widget _buildRunningFooter(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final aiTheme = AiMessageTheme.of(context);
+    // Match messageBuilder: center the thread column, then left-align inside it.
     return SelectionContainer.disabled(
-      child: Padding(
+      child: Align(
         key: kSessionHistoryRunningFooterKey,
-        padding: EdgeInsets.fromLTRB(
-          aiTheme.threadHorizontalPadding,
-          8,
-          aiTheme.threadHorizontalPadding,
-          10,
-        ),
-        child: Align(
-          alignment: Alignment.centerLeft,
+        alignment: Alignment.topCenter,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            aiTheme.threadHorizontalPadding,
+            8,
+            aiTheme.threadHorizontalPadding,
+            10,
+          ),
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: aiTheme.threadMaxWidth),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
                 SizedBox(
                   width: 14,
