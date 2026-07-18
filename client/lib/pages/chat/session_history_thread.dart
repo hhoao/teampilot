@@ -182,6 +182,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
         pixels < _lastPixels - _bottomEpsilon &&
         (max - _lastMaxExtent).abs() <= _bottomEpsilon) {
       _setStickToEnd(false);
+    } else if (!_stickToEnd && max - pixels <= _bottomEpsilon) {
+      // Manual scroll back to tip — same as tapping the new-messages chip.
+      _resumeStickToTip();
     }
 
     _lastPixels = pixels;
@@ -331,7 +334,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     return Positioned(
       left: 0,
       right: 0,
-      bottom: widget.liveRefreshActive ? 36 : 12,
+      // Footer sits below this Stack (Column sibling), not overlaid — no offset.
+      bottom: 12,
       child: Center(
         child: SelectionContainer.disabled(
           child: Material(

@@ -192,6 +192,45 @@ void main() {
   );
 
   testWidgets(
+    'scrolling to tip dismisses new-messages chip and resumes stick',
+    (tester) async {
+      final store = ExternalStoreAiThreadRuntime()
+        ..setMessages(_soloUserMessages(20));
+
+      await tester.pumpWidget(_harness(runtime: store));
+      await tester.pumpAndSettle();
+
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, 120));
+      await tester.pumpAndSettle();
+
+      store.setMessages([
+        ..._soloUserMessages(20),
+        AiMessage(
+          id: 'm20',
+          role: AiRole.assistant,
+          parts: const [AiTextPart(text: 'new tip')],
+        ),
+      ]);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(kSessionHistoryNewMessagesChipKey), findsOneWidget);
+
+      final position = tester
+          .state<ScrollableState>(find.byType(Scrollable).first)
+          .position;
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(kSessionHistoryNewMessagesChipKey), findsNothing);
+
+      final viewport = tester.widget<VirtualThreadViewport>(
+        find.byType(VirtualThreadViewport),
+      );
+      expect(viewport.suppressMeasureScrollCorrection, isTrue);
+    },
+  );
+
+  testWidgets(
     'running footer visible when liveRefreshActive',
     (tester) async {
       final store = ExternalStoreAiThreadRuntime()
