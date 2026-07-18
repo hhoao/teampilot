@@ -664,17 +664,27 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     final text = _controller.text.trim();
     if (text.isEmpty || _isSubmitting) return;
 
+    final cubit = context.read<AiHistoryCubit>();
+    // Optimistic UX (assistant-ui): show the user bubble + running chrome
+    // immediately — do not wait for connect/inject.
+    cubit.enqueuePendingUser(text);
+    _controller.clear();
+    if (mounted) setState(() {});
+
     final ok = await _submitLock.run(() async {
       if (mounted) setState(() {});
       return widget.onSubmit(text);
     });
     if (!mounted) return;
     setState(() {});
-    if (!ok) return;
-    // Clear only after successful inject; keep text on connect/inject failure.
-    _controller.clear();
-    // Stay on History: optimistic pending bubble + live transcript refresh.
-    context.read<AiHistoryCubit>().enqueuePendingUser(text);
+    if (!ok) {
+      cubit.removePendingMatching(text);
+      _controller
+        ..text = text
+        ..selection = TextSelection.collapsed(offset: text.length);
+      setState(() {});
+      return;
+    }
     unawaited(_startLiveRefresh());
   }
 
@@ -770,7 +780,8 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                       runtime: cubit.runtime,
                       onRetry: () => _loadHistory(force: true),
                       onLoadOlder: cubit.loadOlder,
-                      liveRefreshActive: _liveRefresh?.isActive ?? false,
+                      liveRefreshActive:
+                          _isSubmitting || state.awaitingAssistant,
                     );
                   },
                 ),

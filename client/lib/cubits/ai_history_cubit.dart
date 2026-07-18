@@ -23,6 +23,7 @@ class AiHistoryState extends Equatable {
     this.isLoadingOlder = false,
     this.errorMessage,
     this.softReloadError,
+    this.awaitingAssistant = false,
     this.sessionId,
     this.memberId,
   });
@@ -33,6 +34,10 @@ class AiHistoryState extends Equatable {
   final bool isLoadingOlder;
   final String? errorMessage;
   final String? softReloadError;
+
+  /// True from continue-send until transcript catches the pending user turn
+  /// (or the send fails). Drives in-thread running chrome like assistant-ui.
+  final bool awaitingAssistant;
   final String? sessionId;
   final String? memberId;
 
@@ -45,6 +50,7 @@ class AiHistoryState extends Equatable {
     bool clearError = false,
     String? softReloadError,
     bool clearSoftReloadError = false,
+    bool? awaitingAssistant,
     String? sessionId,
     String? memberId,
   }) {
@@ -57,6 +63,7 @@ class AiHistoryState extends Equatable {
       softReloadError: clearSoftReloadError
           ? null
           : (softReloadError ?? this.softReloadError),
+      awaitingAssistant: awaitingAssistant ?? this.awaitingAssistant,
       sessionId: sessionId ?? this.sessionId,
       memberId: memberId ?? this.memberId,
     );
@@ -70,6 +77,7 @@ class AiHistoryState extends Equatable {
     isLoadingOlder,
     errorMessage,
     softReloadError,
+    awaitingAssistant,
     sessionId,
     memberId,
   ];
@@ -243,16 +251,45 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     // Empty / pre-locate: promote to ready so History shows the pending bubble
     // instead of the empty pane (runtime already has the tip message).
     if (state.status == AiHistoryViewStatus.empty) {
-      emit(state.copyWith(status: AiHistoryViewStatus.ready));
+      emit(
+        state.copyWith(
+          status: AiHistoryViewStatus.ready,
+          awaitingAssistant: true,
+        ),
+      );
+    } else {
+      emit(state.copyWith(awaitingAssistant: true));
     }
   }
 
+  /// Rolls back an optimistic pending when connect/inject fails.
+  void removePendingMatching(String text) {
+    final target = normalizeAiHistoryPendingText(text);
+    final before = _pendingQueue.length;
+    _pendingQueue.removeWhere(
+      (p) => normalizeAiHistoryPendingText(p.text) == target,
+    );
+    if (_pendingQueue.length == before && state.awaitingAssistant == false) {
+      return;
+    }
+    _remergePendingsOntoRuntime();
+    emit(state.copyWith(awaitingAssistant: false));
+  }
+
+  void setAwaitingAssistant(bool value) {
+    if (state.awaitingAssistant == value) return;
+    emit(state.copyWith(awaitingAssistant: value));
+  }
+
   void clearPendings() {
-    if (_pendingQueue.isEmpty) return;
+    if (_pendingQueue.isEmpty && !state.awaitingAssistant) return;
     _pendingQueue.clear();
     if (state.status == AiHistoryViewStatus.ready ||
         state.status == AiHistoryViewStatus.empty) {
       _remergePendingsOntoRuntime();
+    }
+    if (state.awaitingAssistant) {
+      emit(state.copyWith(awaitingAssistant: false));
     }
   }
 
@@ -362,6 +399,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     emit(
       AiHistoryState(
         status: AiHistoryViewStatus.ready,
+        awaitingAssistant: _computeAwaitingAssistant(),
         sessionId: sessionId,
         memberId: memberId,
       ),
@@ -405,6 +443,15 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
       ..addAll(remaining);
   }
 
+  /// After a softReload: keep awaiting until pending users flush and an
+  /// assistant tip appears (assistant-ui-style isRunning).
+  bool _computeAwaitingAssistant() {
+    if (_pendingQueue.isNotEmpty) return true;
+    if (!state.awaitingAssistant) return false;
+    if (_allMessages.isEmpty) return false;
+    return _allMessages.last.role != AiRole.assistant;
+  }
+
   void _remergePendingsOntoRuntime() {
     if (_pendingQueue.isEmpty) {
       if (state.status == AiHistoryViewStatus.ready) {
@@ -436,6 +483,8 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
         totalMessageCount: _allMessages.length,
         hasOlder: _hasOlder(),
         isLoadingOlder: false,
+        softReloadError: state.softReloadError,
+        awaitingAssistant: _computeAwaitingAssistant(),
         sessionId: sessionId,
         memberId: memberId,
       ),

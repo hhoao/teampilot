@@ -222,6 +222,7 @@ void main() {
     await cubit.load(session: simpleSession(), memberId: '');
 
     cubit.enqueuePendingUser('hello   world');
+    expect(cubit.state.awaitingAssistant, isTrue);
     expect(cubit.runtime.messages, hasLength(3));
     expect(cubit.runtime.messages.last.id, startsWith('pending:'));
     expect(
@@ -244,6 +245,19 @@ void main() {
       isEmpty,
     );
     expect(cubit.runtime.messages.last.id, 'u-hello');
+    // Pending flushed but tip is still user — keep awaiting until assistant tip.
+    expect(cubit.state.awaitingAssistant, isTrue);
+
+    holderMessages = [
+      ...holderMessages,
+      const AiMessage(
+        id: 'a-1',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'hi')],
+      ),
+    ];
+    await cubit.softReload();
+    expect(cubit.state.awaitingAssistant, isFalse);
   });
 
   test('multi pending drops independently by normalized text', () async {

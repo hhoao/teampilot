@@ -239,7 +239,8 @@ void main() {
       await tester.pumpWidget(
         _harness(runtime: store, liveRefreshActive: true),
       );
-      await tester.pumpAndSettle();
+      // CircularProgressIndicator animates forever — do not pumpAndSettle.
+      await tester.pump();
 
       expect(find.byKey(kSessionHistoryRunningFooterKey), findsOneWidget);
       expect(find.text('Running…'), findsOneWidget);

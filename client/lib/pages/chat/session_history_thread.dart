@@ -379,14 +379,41 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   Widget _buildRunningFooter(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final aiTheme = AiMessageTheme.of(context);
     return SelectionContainer.disabled(
       child: Padding(
         key: kSessionHistoryRunningFooterKey,
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-        child: Text(
-          context.l10n.sessionHistoryRunning,
-          textAlign: TextAlign.center,
-          style: TpTextStyles.of(context).xsColored(scheme.onSurfaceVariant),
+        padding: EdgeInsets.fromLTRB(
+          aiTheme.threadHorizontalPadding,
+          8,
+          aiTheme.threadHorizontalPadding,
+          10,
+        ),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: aiTheme.threadMaxWidth),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: scheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  context.l10n.sessionHistoryRunning,
+                  style: TpTextStyles.of(
+                    context,
+                  ).smColored(scheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
