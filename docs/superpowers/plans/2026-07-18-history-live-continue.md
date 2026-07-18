@@ -83,9 +83,10 @@ In `SessionPreferencesCubit`: `setHistorySubmitSwitchesToTerminal(bool)` mirrori
 
 In `session_config_section.dart`: new `TpPreferenceRow` **immediately below** the open-existing-session switch:
 
-- EN title: `Stay on History after continue`
+- EN title: `Switch to Terminal after continue`
 - EN description: `When off (default), submitting from History keeps the conversation view and refreshes from the transcript while the terminal runs in the background. When on, switch to the terminal after submit (previous behavior).`
-- ZH: 对等文案（继续对话后留在 History / 开启则提交后切到终端）
+- ZH: 对等文案（开启则提交后切到终端；关闭默认留在 History）
+- Bind switch **directly** to `historySubmitSwitchesToTerminal` (ON = switch; no inverted UI).
 
 Add `AppKeys.historySubmitSwitchesToTerminalSwitch`.
 
