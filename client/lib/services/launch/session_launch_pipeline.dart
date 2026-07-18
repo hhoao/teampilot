@@ -256,12 +256,14 @@ class SessionLaunchPipeline {
         :final team,
         :final member,
         :final workspace,
+        :final preserveWorkbenchView,
       ):
         await _connectExistingSession(
           session: session,
           team: team,
           member: member,
           workspace: workspace,
+          preserveWorkbenchView: preserveWorkbenchView,
           repo: repo,
         );
     }
@@ -424,6 +426,7 @@ class SessionLaunchPipeline {
     TeamProfile? team,
     TeamMemberConfig? member,
     Workspace? workspace,
+    bool preserveWorkbenchView = false,
     SessionRepository? repo,
   }) async {
     final r = repo ?? _host.sessionRepository;
@@ -481,6 +484,7 @@ class SessionLaunchPipeline {
         member: isPersonal ? null : member,
         repo: r,
         connectImmediately: true,
+        preserveWorkbenchView: preserveWorkbenchView,
       ),
     );
   }

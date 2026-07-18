@@ -14,6 +14,7 @@ class SessionOpenRequest {
     this.repo,
     this.emptyDisplayTitleFallback = 'New Chat',
     this.connectImmediately = true,
+    this.preserveWorkbenchView = false,
     this.persistParams,
   });
 
@@ -24,6 +25,10 @@ class SessionOpenRequest {
   final SessionRepository? repo;
   final String emptyDisplayTitleFallback;
   final bool connectImmediately;
+
+  /// When true with [connectImmediately], keep the tab's current
+  /// [SessionWorkbenchView] (e.g. History continue) instead of forcing Terminal.
+  final bool preserveWorkbenchView;
 
   /// When set, the session is staged in memory first; disk write runs in prepare.
   final SessionPersistParams? persistParams;
@@ -39,6 +44,7 @@ class SessionOpenRequest {
       repo: repo,
       emptyDisplayTitleFallback: emptyDisplayTitleFallback,
       connectImmediately: connectImmediately,
+      preserveWorkbenchView: preserveWorkbenchView,
       persistParams: persistParams,
     );
   }

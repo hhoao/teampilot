@@ -570,12 +570,6 @@ class _ChatWorkbenchBody extends StatelessWidget {
     final shellMemberId = isPersonal
         ? appSession.sessionId
         : (connectMember?.id ?? memberId);
-    final connectRequest = ExistingSessionConnect(
-      session: appSession,
-      team: resolvedTeam,
-      member: connectMember,
-    );
-
     return SessionHistoryReview(
       session: appSession,
       selectedMemberId: historyMemberId,
@@ -607,6 +601,13 @@ class _ChatWorkbenchBody extends StatelessWidget {
           workspaceId,
           WorkbenchTabId.session(appSession.sessionId),
           preview: false,
+        );
+        final connectRequest = ExistingSessionConnect(
+          session: appSession,
+          team: resolvedTeam,
+          member: connectMember,
+          // Stay-on-History must not let connect force-switch to Terminal.
+          preserveWorkbenchView: !switchToTerminal,
         );
         return submitSessionHistoryReviewMessage(
           sessionId: appSession.sessionId,

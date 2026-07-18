@@ -111,7 +111,11 @@ class SessionTabSurfaceCoordinator {
       );
       return SessionOpenStatus.opened;
     }
-    existing.workbenchView = SessionWorkbenchView.terminal;
+    // History continue connects the PTY while staying on History; do not
+    // force-switch the workbench (would unmount SessionHistoryReview).
+    if (!request.preserveWorkbenchView) {
+      existing.workbenchView = SessionWorkbenchView.terminal;
+    }
     if (_shouldAutoConnect(request) && !connectAlreadyScheduled) {
       _host.beginSessionConnect(session.sessionId);
     }
@@ -187,7 +191,9 @@ class SessionTabSurfaceCoordinator {
       return SessionOpenStatus.opened;
     }
 
-    tab.workbenchView = SessionWorkbenchView.terminal;
+    if (!request.preserveWorkbenchView) {
+      tab.workbenchView = SessionWorkbenchView.terminal;
+    }
     if (_shouldAutoConnect(request)) {
       _host.beginSessionConnect(session.sessionId);
       unawaited(

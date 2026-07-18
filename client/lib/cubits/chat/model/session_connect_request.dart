@@ -33,10 +33,14 @@ final class ExistingSessionConnect extends SessionConnectRequest {
     this.team,
     this.member,
     this.workspace,
+    this.preserveWorkbenchView = false,
   });
 
   final AppSession session;
   final TeamProfile? team;
   final TeamMemberConfig? member;
   final Workspace? workspace;
+
+  /// When true, connect without forcing the tab onto Terminal (History continue).
+  final bool preserveWorkbenchView;
 }
