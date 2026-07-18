@@ -506,15 +506,13 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                       kSessionHistoryRunningPlaceholder.id &&
                   ai.id ==
                       displayMessages[displayMessages.length - 2].id;
-              final messageChild = AiHistoryRenderScope(
-                child: AiMessageView(
-                  key: ValueKey(ai.id),
-                  message: ai,
-                  actionBarHoverEnabled: _actionBarHoverEnabled,
-                  actionBarReveal: ai.id == lastId
-                      ? AiActionBarReveal.always
-                      : AiActionBarReveal.hover,
-                ),
+              final messageChild = AiMessageView(
+                key: ValueKey(ai.id),
+                message: ai,
+                actionBarHoverEnabled: _actionBarHoverEnabled,
+                actionBarReveal: ai.id == lastId
+                    ? AiActionBarReveal.always
+                    : AiActionBarReveal.hover,
               );
               return Align(
                 alignment: Alignment.topCenter,
