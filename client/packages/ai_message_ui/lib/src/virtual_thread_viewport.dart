@@ -86,7 +86,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
   Timer? _keepAliveTimer;
   var _fillScheduled = false;
 
-  static const _fillChunk = 4;
+  static const _fillChunk = 2;
 
   @override
   void initState() {
@@ -115,10 +115,19 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
       _headerHeight = 0;
     }
     if (!identical(oldWidget.messages, widget.messages)) {
-      _rebuildTurns(previous: _turns);
-      // Membership changed (incl. load-older prepend): re-pin from ideal then
-      // refill so indices stay valid.
-      if (widget.retainMountedTurns || widget.fillDataWindow) {
+      final previousTurns = _turns;
+      final prevFirst = _firstIndex;
+      final prevLast = _lastIndex;
+      _rebuildTurns(previous: previousTurns);
+      if ((widget.retainMountedTurns || widget.fillDataWindow) &&
+          prevLast >= prevFirst &&
+          previousTurns.isNotEmpty) {
+        _remapRetainWindow(
+          previousTurns: previousTurns,
+          prevFirst: prevFirst,
+          prevLast: prevLast,
+        );
+      } else if (widget.retainMountedTurns || widget.fillDataWindow) {
         _firstIndex = 0;
         _lastIndex = -1;
         _fillScheduled = false;
@@ -296,6 +305,47 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
 
   DateTime get _now => widget.clock?.call() ?? DateTime.now();
 
+  /// Keep already-mounted turns pinned across list membership changes (e.g.
+  /// load-older prepend) by remapping turn ids to the new index range.
+  void _remapRetainWindow({
+    required List<ThreadTurn> previousTurns,
+    required int prevFirst,
+    required int prevLast,
+  }) {
+    final pinnedIds = <String>{};
+    for (var i = prevFirst; i <= prevLast; i++) {
+      if (i >= 0 && i < previousTurns.length) {
+        pinnedIds.add(previousTurns[i].id);
+      }
+    }
+    if (pinnedIds.isEmpty || _turns.isEmpty) {
+      _firstIndex = 0;
+      _lastIndex = -1;
+      _fillScheduled = false;
+      return;
+    }
+
+    var first = _turns.length;
+    var last = -1;
+    for (var i = 0; i < _turns.length; i++) {
+      if (!pinnedIds.contains(_turns[i].id)) continue;
+      if (i < first) first = i;
+      if (i > last) last = i;
+    }
+    if (last < first) {
+      _firstIndex = 0;
+      _lastIndex = -1;
+    } else {
+      _firstIndex = first;
+      _lastIndex = last;
+      _paddingTop = _cache.offsetBefore(_turns, first);
+      _paddingBottom = _cache.totalExtent(_turns) -
+          _cache.offsetBefore(_turns, last + 1);
+    }
+    // Allow fill to grow into newly prepended turns only.
+    _fillScheduled = false;
+  }
+
   TurnVisibleRange _retainUnion(TurnVisibleRange ideal) {
     if (_lastIndex < _firstIndex || _turns.isEmpty) return ideal;
     final first = ideal.firstIndex < _firstIndex ? ideal.firstIndex : _firstIndex;
@@ -332,10 +382,10 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
       }
       final beforeFirst = first;
       final beforeLast = last;
+      // One edge per frame keeps fill spikes smaller (test62).
       if (first > 0) {
         first = (first - _fillChunk).clamp(0, first);
-      }
-      if (last < _turns.length - 1) {
+      } else if (last < _turns.length - 1) {
         last = (last + _fillChunk).clamp(last, _turns.length - 1);
       }
       if (first == beforeFirst && last == beforeLast) return;

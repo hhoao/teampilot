@@ -478,8 +478,8 @@ void main() {
         ),
       ),
     );
-    // Chunked fill (~4/frame) needs several pumps.
-    for (var i = 0; i < 20; i++) {
+    // Chunked fill (~2/frame, one edge) needs several pumps.
+    for (var i = 0; i < 40; i++) {
       await tester.pump();
     }
     await tester.pumpAndSettle();
@@ -498,6 +498,62 @@ void main() {
     controller.jumpTo(0);
     await tester.pumpAndSettle();
     expect(mounts['m0'], 1);
+  });
+
+  testWidgets('retain remaps pin across load-older prepend without remount', (
+    tester,
+  ) async {
+    final mounts = <String, int>{};
+    final controller = ScrollController();
+    var messages = _soloUserMessages(12);
+
+    await tester.pumpWidget(
+      _harness(
+        messages: messages,
+        controller: controller,
+        overscan: 1,
+        estimateHeight: 100,
+        retainMountedTurns: true,
+        fillDataWindow: true,
+        messageBuilder: (_, m) => _MountCountingBox(
+          id: m.id,
+          mounts: mounts,
+        ),
+      ),
+    );
+    for (var i = 0; i < 30; i++) {
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+    expect(mounts['m0'], 1);
+
+    // Prepend older page (new ids ahead of existing).
+    messages = [
+      ..._soloUserMessages(4).map(
+        (m) => AiMessage(
+          id: 'old-${m.id}',
+          role: m.role,
+          parts: m.parts,
+        ),
+      ),
+      ...messages,
+    ];
+    await tester.pumpWidget(
+      _harness(
+        messages: messages,
+        controller: controller,
+        overscan: 1,
+        estimateHeight: 100,
+        retainMountedTurns: true,
+        fillDataWindow: true,
+        messageBuilder: (_, m) => _MountCountingBox(
+          id: m.id,
+          mounts: mounts,
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(mounts['m0'], 1, reason: 'existing turns must not remount on prepend');
   });
 }
 
