@@ -8,6 +8,7 @@ import 'package:shared_ui/shared_ui.dart';
 class _RecordingNotifier implements NotificationRecorder {
   final titles = <String>[];
   final messages = <String>[];
+  final payloads = <String>[];
   final variants = <TpToastVariant>[];
 
   @override
@@ -15,9 +16,11 @@ class _RecordingNotifier implements NotificationRecorder {
     required String message,
     required TpToastVariant variant,
     String title = '',
+    String payload = '',
   }) {
     titles.add(title);
     messages.add(message);
+    payloads.add(payload);
     variants.add(variant);
   }
 }
@@ -36,6 +39,7 @@ void main() {
     final service = SessionIdleNotificationService(
       recorder: recorder,
       desktopNotifier: DesktopSystemNotifier(
+        isAppFocused: () async => false,
         show: ({required title, required body, subtitle, payload}) async =>
             shown.add((
               title: title,
@@ -59,10 +63,12 @@ void main() {
       emptySessionTitle: 'New Chat',
       notificationSubtitle: 'Ready for your next message',
       notificationBadge: 'Agent ready',
+      activeSessionId: 'other',
     );
 
     expect(recorder.titles, ['Fix login bug']);
     expect(recorder.messages, ['Ready for your next message']);
+    expect(recorder.payloads, ['/home-v2/workspace/w1?session=s1']);
     expect(recorder.variants, [TpToastVariant.success]);
     expect(shown, [
       (
@@ -75,13 +81,14 @@ void main() {
   });
 
   test(
-    'notifySessionsBecameIdle always shows OS notification even when focused',
+    'notifySessionsBecameIdle skips center and OS notify for focused active tab',
     () async {
       final recorder = _RecordingNotifier();
       final shown = <_Shown>[];
       final service = SessionIdleNotificationService(
         recorder: recorder,
         desktopNotifier: DesktopSystemNotifier(
+          isAppFocused: () async => true,
           show: ({required title, required body, subtitle, payload}) async =>
               shown.add((
                 title: title,
@@ -100,10 +107,50 @@ void main() {
         emptySessionTitle: 'New Chat',
         notificationSubtitle: 'Ready for your next message',
         notificationBadge: 'Agent ready',
+        activeSessionId: 's1',
       );
 
-      expect(recorder.titles, ['New Chat']);
-      expect(recorder.messages, ['Ready for your next message']);
+      expect(recorder.messages, isEmpty);
+      expect(shown, isEmpty);
+    },
+  );
+
+  test(
+    'notifySessionsBecameIdle still notifies when focused on another session',
+    () async {
+      final recorder = _RecordingNotifier();
+      final shown = <_Shown>[];
+      final service = SessionIdleNotificationService(
+        recorder: recorder,
+        desktopNotifier: DesktopSystemNotifier(
+          isAppFocused: () async => true,
+          show: ({required title, required body, subtitle, payload}) async =>
+              shown.add((
+                title: title,
+                body: body,
+                subtitle: subtitle,
+                payload: payload,
+              )),
+        ),
+      );
+
+      await service.notifySessionsBecameIdle(
+        sessionIds: {'s1'},
+        sessions: [
+          AppSession(
+            sessionId: 's1',
+            workspaceId: 'w1',
+            display: 'Background session',
+            createdAt: 0,
+          ),
+        ],
+        emptySessionTitle: 'New Chat',
+        notificationSubtitle: 'Ready for your next message',
+        notificationBadge: 'Agent ready',
+        activeSessionId: 'other',
+      );
+
+      expect(recorder.titles, ['Background session']);
       expect(shown, hasLength(1));
       expect(shown.single.payload, '/home-v2/workspace/w1?session=s1');
     },
@@ -117,6 +164,7 @@ void main() {
       final service = SessionIdleNotificationService(
         recorder: recorder,
         desktopNotifier: DesktopSystemNotifier(
+          isAppFocused: () async => false,
           show: ({required title, required body, subtitle, payload}) async =>
               shown.add((
                 title: title,
@@ -154,6 +202,7 @@ void main() {
     final service = SessionIdleNotificationService(
       recorder: recorder,
       desktopNotifier: DesktopSystemNotifier(
+        isAppFocused: () async => false,
         show: ({required title, required body, subtitle, payload}) async {},
       ),
     );

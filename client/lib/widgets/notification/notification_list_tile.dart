@@ -45,12 +45,14 @@ class NotificationListTile extends StatefulWidget {
     required this.notification,
     required this.onMarkRead,
     required this.onDelete,
+    required this.onOpen,
     super.key,
   });
 
   final AppNotification notification;
   final VoidCallback onMarkRead;
   final VoidCallback onDelete;
+  final VoidCallback onOpen;
 
   @override
   State<NotificationListTile> createState() => _NotificationListTileState();
@@ -107,33 +109,30 @@ class _NotificationListTileState extends State<NotificationListTile> {
       color: notification.isRead
           ? Colors.transparent
           : cs.primaryContainer.withValues(alpha: 0.22),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: widget.onOpen,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  notificationVariantIcon(notification.variant),
+                  size: 20,
+                  color: accent,
+                ),
               ),
-              child: Icon(
-                notificationVariantIcon(notification.variant),
-                size: 20,
-                color: accent,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: GestureDetector(
-                onTap: expandable ? _toggleExpanded : null,
-                behavior: HitTestBehavior.opaque,
+              const SizedBox(width: 12),
+              Expanded(
                 child: MouseRegion(
-                  cursor: expandable
-                      ? SystemMouseCursors.click
-                      : SystemMouseCursors.basic,
+                  cursor: SystemMouseCursors.click,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -151,14 +150,18 @@ class _NotificationListTileState extends State<NotificationListTile> {
                         children: [
                           Expanded(child: messageBody),
                           if (expandable)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 4, top: 2),
-                              child: Icon(
-                                _expanded
-                                    ? Icons.expand_less
-                                    : Icons.expand_more,
-                                size: 18,
-                                color: cs.onSurfaceVariant,
+                            GestureDetector(
+                              onTap: _toggleExpanded,
+                              behavior: HitTestBehavior.opaque,
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 4, top: 2),
+                                child: Icon(
+                                  _expanded
+                                      ? Icons.expand_less
+                                      : Icons.expand_more,
+                                  size: 18,
+                                  color: cs.onSurfaceVariant,
+                                ),
                               ),
                             ),
                         ],
@@ -172,39 +175,41 @@ class _NotificationListTileState extends State<NotificationListTile> {
                   ),
                 ),
               ),
-            ),
-            if (!notification.isRead)
-              Container(
-                width: 8,
-                height: 8,
-                margin: const EdgeInsets.only(top: 6, right: 4),
-                decoration: BoxDecoration(
-                  color: cs.primary,
-                  shape: BoxShape.circle,
+              if (!notification.isRead)
+                Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.only(top: 6, right: 4),
+                  decoration: BoxDecoration(
+                    color: cs.primary,
+                    shape: BoxShape.circle,
+                  ),
                 ),
+              IconButton(
+                tooltip: l10n.copy,
+                onPressed: _copyMessage,
+                icon: const Icon(Icons.copy_outlined, size: 18),
+                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               ),
-            IconButton(
-              tooltip: l10n.copy,
-              onPressed: _copyMessage,
-              icon: const Icon(Icons.copy_outlined, size: 18),
-              visualDensity: VisualDensity.compact,
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            ),
-            IconButton(
-              tooltip: l10n.notificationMarkRead,
-              onPressed: widget.notification.isRead ? null : widget.onMarkRead,
-              icon: const Icon(Icons.check_circle_outline, size: 18),
-              visualDensity: VisualDensity.compact,
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            ),
-            IconButton(
-              tooltip: l10n.notificationDelete,
-              onPressed: widget.onDelete,
-              icon: Icon(Icons.close, size: 18, color: cs.error),
-              visualDensity: VisualDensity.compact,
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            ),
-          ],
+              IconButton(
+                tooltip: l10n.notificationMarkRead,
+                onPressed: widget.notification.isRead
+                    ? null
+                    : widget.onMarkRead,
+                icon: const Icon(Icons.check_circle_outline, size: 18),
+                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+              IconButton(
+                tooltip: l10n.notificationDelete,
+                onPressed: widget.onDelete,
+                icon: Icon(Icons.close, size: 18, color: cs.error),
+                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+            ],
+          ),
         ),
       ),
     );

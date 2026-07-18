@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../../utils/logging/logger.dart';
 
@@ -11,6 +13,7 @@ typedef NotificationTapHandler = void Function(String? payload);
 class DesktopSystemNotifier {
   DesktopSystemNotifier({
     FlutterLocalNotificationsPlugin? plugin,
+    Future<bool> Function()? isAppFocused,
     Future<void> Function(String appName)? setup,
     Future<void> Function({
       required String title,
@@ -20,6 +23,7 @@ class DesktopSystemNotifier {
     })?
     show,
   }) : _plugin = plugin,
+       _isAppFocused = isAppFocused ?? _defaultIsAppFocused,
        _setup = setup,
        _show = show;
 
@@ -36,6 +40,7 @@ class DesktopSystemNotifier {
   static const _linuxAppIconPath = 'assets/icons/icon_bg.png';
 
   final FlutterLocalNotificationsPlugin? _plugin;
+  final Future<bool> Function() _isAppFocused;
   final Future<void> Function(String appName)? _setup;
   final Future<void> Function({
     required String title,
@@ -78,6 +83,8 @@ class DesktopSystemNotifier {
     _onNotificationTap?.call(payload);
   }
 
+  Future<bool> isAppFocused() => _isAppFocused();
+
   Future<void> showNotification({
     required String title,
     required String body,
@@ -111,6 +118,13 @@ class DesktopSystemNotifier {
     if (!_initialized) {
       await ensureInitialized();
     }
+  }
+
+  static Future<bool> _defaultIsAppFocused() async {
+    if (Platform.isAndroid || Platform.isIOS) {
+      return WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+    }
+    return windowManager.isFocused();
   }
 
   static Future<void> _initializePlugin(

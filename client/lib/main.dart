@@ -515,6 +515,12 @@ void main() async {
         handleSessionIdleNotificationTap(
           payload: payload,
           go: appRouter.go,
+          markReadMatchingPayload: (location) async {
+            final recorder = NotificationRecorder.maybeCurrent;
+            if (recorder is NotificationCubit) {
+              await recorder.markReadMatchingPayload(location);
+            }
+          },
           focusWindow: () async {
             if (Platform.isAndroid) return;
             await windowManager.show();

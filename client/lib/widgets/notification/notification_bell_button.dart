@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/notification_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../router/app_router.dart';
+import '../../services/notification/notification_center_open.dart';
 import 'notification_list_tile.dart';
-import 'package:shared_ui/shared_ui.dart';
 
 const _dropdownWidth = 560.0;
 const _dropdownListMaxHeight = 360.0;
@@ -43,7 +47,7 @@ class _NotificationBellButtonState extends State<NotificationBellButton> {
         offset: Offset(-(_dropdownWidth - _bellWidth), 8),
       ),
       popoverBuilder: (context, controller) =>
-          const _NotificationDropdownPanel(),
+          _NotificationDropdownPanel(onClose: controller.close),
       child: _BellGlyph(
         unread: unread,
         tooltip: l10n.notificationCenterTitle,
@@ -142,7 +146,9 @@ class _BellGlyphState extends State<_BellGlyph> {
 }
 
 class _NotificationDropdownPanel extends StatelessWidget {
-  const _NotificationDropdownPanel();
+  const _NotificationDropdownPanel({required this.onClose});
+
+  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
@@ -204,6 +210,19 @@ class _NotificationDropdownPanel extends StatelessWidget {
                         notification: items[i],
                         onMarkRead: () => cubit.markRead(items[i].id),
                         onDelete: () => cubit.delete(items[i].id),
+                        onOpen: () {
+                          final item = items[i];
+                          unawaited(
+                            openNotificationCenterItem(
+                              notification: item,
+                              markRead: cubit.markRead,
+                              go: (location) {
+                                onClose();
+                                appRouter.go(location);
+                              },
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ],

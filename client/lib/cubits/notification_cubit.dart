@@ -44,27 +44,42 @@ class NotificationCubit extends Cubit<NotificationState>
     required String message,
     required TpToastVariant variant,
     String title = '',
+    String payload = '',
   }) {
     if (variant == TpToastVariant.info) return;
-    unawaited(_record(message: message, variant: variant, title: title));
+    unawaited(
+      _record(
+        message: message,
+        variant: variant,
+        title: title,
+        payload: payload,
+      ),
+    );
   }
 
   Future<void> _record({
     required String message,
     required TpToastVariant variant,
     String title = '',
+    String payload = '',
   }) async {
     final store = await _repository.append(
       id: _uuid.v4(),
       message: message,
       variant: variant,
       title: title,
+      payload: payload,
     );
     _emitFromStore(store);
   }
 
   Future<void> markRead(String id) async {
     final store = await _repository.markRead(id);
+    _emitFromStore(store);
+  }
+
+  Future<void> markReadMatchingPayload(String payload) async {
+    final store = await _repository.markReadMatchingPayload(payload);
     _emitFromStore(store);
   }
 

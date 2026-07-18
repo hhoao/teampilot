@@ -13,6 +13,7 @@ class _RecordingRecorder implements NotificationRecorder {
     required String message,
     required TpToastVariant variant,
     String title = '',
+    String payload = '',
   }) {
     records.add((message: message, variant: variant));
   }

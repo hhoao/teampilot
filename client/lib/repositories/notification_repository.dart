@@ -65,6 +65,7 @@ class NotificationRepository {
     required String message,
     required TpToastVariant variant,
     String title = '',
+    String payload = '',
   }) async {
     if (variant == TpToastVariant.info) {
       return _cache;
@@ -75,6 +76,7 @@ class NotificationRepository {
       variant: variant,
       title: title.trim(),
       message: message,
+      payload: payload.trim(),
       createdAt: now,
     );
     final pruned = _prune([next, ..._cache.items], now: now);
@@ -109,6 +111,19 @@ class NotificationRepository {
     final items = [
       for (final item in _cache.items)
         if (item.id == id) item.copyWith(isRead: true) else item,
+    ];
+    return save(_cache.copyWith(items: items));
+  }
+
+  Future<AppNotificationStore> markReadMatchingPayload(String payload) async {
+    final target = payload.trim();
+    if (target.isEmpty) return _cache;
+    final items = [
+      for (final item in _cache.items)
+        if (item.payload.trim() == target)
+          item.copyWith(isRead: true)
+        else
+          item,
     ];
     return save(_cache.copyWith(items: items));
   }

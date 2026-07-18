@@ -38,6 +38,22 @@ void main() {
     expect(store.items.first.isRead, isFalse);
   });
 
+  test('append persists optional payload for deep links', () async {
+    final fs = InMemoryFilesystem();
+    final repo = _repo(fs, clock: () => DateTime(2026, 6, 13, 12));
+    await repo.append(
+      id: 'n1',
+      message: 'Ready',
+      variant: TpToastVariant.success,
+      title: 'Session',
+      payload: '/home-v2/workspace/w1?session=s1',
+    );
+
+    final store = await _repo(fs).load(forceReload: true);
+    expect(store.items.single.payload, '/home-v2/workspace/w1?session=s1');
+    expect(store.items.single.title, 'Session');
+  });
+
   test('append skips info variant', () async {
     final fs = InMemoryFilesystem();
     final repo = _repo(fs);
@@ -106,5 +122,27 @@ void main() {
 
     await repo.clearAll();
     expect((await repo.load()).items, isEmpty);
+  });
+
+  test('markReadMatchingPayload marks matching unread items', () async {
+    final fs = InMemoryFilesystem();
+    final repo = _repo(fs);
+    await repo.append(
+      id: 'a',
+      message: 'one',
+      variant: TpToastVariant.success,
+      payload: '/home-v2/workspace/w1?session=s1',
+    );
+    await repo.append(
+      id: 'b',
+      message: 'two',
+      variant: TpToastVariant.success,
+      payload: '/home-v2/workspace/w1?session=s2',
+    );
+
+    await repo.markReadMatchingPayload('/home-v2/workspace/w1?session=s1');
+    final store = await repo.load();
+    expect(store.items.firstWhere((e) => e.id == 'a').isRead, isTrue);
+    expect(store.items.firstWhere((e) => e.id == 'b').isRead, isFalse);
   });
 }

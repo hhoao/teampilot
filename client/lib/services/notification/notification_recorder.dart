@@ -6,6 +6,7 @@ abstract interface class NotificationRecorder {
     required String message,
     required TpToastVariant variant,
     String title = '',
+    String payload = '',
   });
 
   static NotificationRecorder? _current;

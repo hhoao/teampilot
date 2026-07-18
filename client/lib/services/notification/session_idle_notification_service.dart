@@ -23,9 +23,12 @@ class SessionIdleNotificationService {
     required String notificationSubtitle,
     required String notificationBadge,
     bool systemNotificationEnabled = true,
+    String? activeSessionId,
   }) async {
     final ids = sessionIds.toList();
     if (ids.isEmpty) return;
+
+    final focused = await _desktop.isAppFocused();
 
     for (final sessionId in ids) {
       AppSession? session;
@@ -38,19 +41,22 @@ class SessionIdleNotificationService {
       if (session == null) continue;
 
       final sessionTitle = session.resolveDisplayTitle(emptySessionTitle);
+      final payload = HomeWorkspaceRoute.sessionLocation(
+        workspaceId: session.workspaceId,
+        sessionId: session.sessionId,
+      );
+
+      // Skip center + OS notify when the user is already looking at this session.
+      if (focused && activeSessionId == sessionId) continue;
 
       _recorder?.record(
         title: sessionTitle,
         message: notificationSubtitle,
         variant: TpToastVariant.success,
+        payload: payload,
       );
 
       if (!systemNotificationEnabled) continue;
-
-      final payload = HomeWorkspaceRoute.sessionLocation(
-        workspaceId: session.workspaceId,
-        sessionId: session.sessionId,
-      );
 
       try {
         await _desktop.showNotification(

@@ -10,6 +10,7 @@ class AppNotification extends Equatable {
     required this.message,
     required this.createdAt,
     this.title = '',
+    this.payload = '',
     this.isRead = false,
   });
 
@@ -19,16 +20,21 @@ class AppNotification extends Equatable {
   /// Optional headline (e.g. session name). Empty for legacy toast-only rows.
   final String title;
   final String message;
+
+  /// Optional deep-link location (e.g. session idle → workspace session).
+  final String payload;
   final DateTime createdAt;
   final bool isRead;
 
   bool get hasTitle => title.trim().isNotEmpty;
+  bool get hasPayload => payload.trim().isNotEmpty;
 
   AppNotification copyWith({
     String? id,
     TpToastVariant? variant,
     String? title,
     String? message,
+    String? payload,
     DateTime? createdAt,
     bool? isRead,
   }) {
@@ -37,6 +43,7 @@ class AppNotification extends Equatable {
       variant: variant ?? this.variant,
       title: title ?? this.title,
       message: message ?? this.message,
+      payload: payload ?? this.payload,
       createdAt: createdAt ?? this.createdAt,
       isRead: isRead ?? this.isRead,
     );
@@ -47,6 +54,7 @@ class AppNotification extends Equatable {
     'variant': variant.name,
     if (title.trim().isNotEmpty) 'title': title.trim(),
     'message': message,
+    if (payload.trim().isNotEmpty) 'payload': payload.trim(),
     'createdAt': createdAt.toUtc().toIso8601String(),
     'isRead': isRead,
   };
@@ -71,13 +79,22 @@ class AppNotification extends Equatable {
       variant: variant,
       title: json['title']?.toString().trim() ?? '',
       message: message,
+      payload: json['payload']?.toString().trim() ?? '',
       createdAt: createdAt.toLocal(),
       isRead: json['isRead'] == true,
     );
   }
 
   @override
-  List<Object?> get props => [id, variant, title, message, createdAt, isRead];
+  List<Object?> get props => [
+    id,
+    variant,
+    title,
+    message,
+    payload,
+    createdAt,
+    isRead,
+  ];
 }
 
 class AppNotificationStore extends Equatable {
