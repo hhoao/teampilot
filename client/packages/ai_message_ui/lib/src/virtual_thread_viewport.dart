@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/widgets.dart';
 
+import 'frozen_size.dart';
 import 'thread_turns.dart';
 import 'turn_height_cache.dart';
+import 'turn_mount_keep_alive.dart';
 
 class VirtualThreadViewport extends StatefulWidget {
   const VirtualThreadViewport({
@@ -15,6 +19,24 @@ class VirtualThreadViewport extends StatefulWidget {
     /// When true, measurement must not request scroll corrections upward.
     this.suppressMeasureScrollCorrection = false,
     this.onMeasureScrollCorrection,
+    /// History opens stick-to-end: cold / estimate windows prefer the suffix.
+    this.anchorEnd = false,
+    /// When false, only spacers (estimated extent) — no message widgets.
+    /// Hosts set true after the first jump-to-end so open does not build the
+    /// wrong end of the thread under [SingleChildScrollView].
+    this.mountTurns = true,
+    /// How long recently scrolled-off turns keep their Element in an offstage
+    /// freeze cache (Claude DOM-like). [Duration.zero] disables.
+    this.keepAliveDuration = Duration.zero,
+    /// Cap on offstage cached turns (does not widen the scroll Column).
+    this.keepAliveMaxExtra = 12,
+    /// Never shrink the mounted index range (Claude-like residency while scrolling).
+    this.retainMountedTurns = false,
+    /// After the first mount window, grow in chunks until every turn in
+    /// [messages] is mounted (pagination already bounds the data window).
+    this.fillDataWindow = false,
+    /// Injectable clock (tests); defaults to [DateTime.now].
+    this.clock,
     super.key,
   });
 
@@ -30,6 +52,14 @@ class VirtualThreadViewport extends StatefulWidget {
   /// / expand). Must be called post-frame — never from a scroll listener body
   /// that re-enters via jumpTo.
   final void Function(double deltaPixels)? onMeasureScrollCorrection;
+
+  final bool anchorEnd;
+  final bool mountTurns;
+  final Duration keepAliveDuration;
+  final int keepAliveMaxExtra;
+  final bool retainMountedTurns;
+  final bool fillDataWindow;
+  final DateTime Function()? clock;
 
   @override
   State<VirtualThreadViewport> createState() => _VirtualThreadViewportState();
@@ -49,6 +79,14 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
 
   bool _correctionScheduled = false;
   double _pendingCorrection = 0;
+
+  final Map<String, DateTime> _keepAliveUntil = {};
+  List<String> _offstageIds = const [];
+  final Map<String, GlobalKey> _turnKeys = {};
+  Timer? _keepAliveTimer;
+  var _fillScheduled = false;
+
+  static const _fillChunk = 4;
 
   @override
   void initState() {
@@ -78,12 +116,20 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
     }
     if (!identical(oldWidget.messages, widget.messages)) {
       _rebuildTurns(previous: _turns);
+      // Membership changed (incl. load-older prepend): re-pin from ideal then
+      // refill so indices stay valid.
+      if (widget.retainMountedTurns || widget.fillDataWindow) {
+        _firstIndex = 0;
+        _lastIndex = -1;
+        _fillScheduled = false;
+      }
     }
     _syncVisibleRange();
   }
 
   @override
   void dispose() {
+    _keepAliveTimer?.cancel();
     widget.scrollController.removeListener(_onScroll);
     super.dispose();
   }
@@ -105,6 +151,8 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
       _identityByTurnId[turn.id] = identity;
     }
     _identityByTurnId.removeWhere((id, _) => !liveIds.contains(id));
+    _keepAliveUntil.removeWhere((id, _) => !liveIds.contains(id));
+    _turnKeys.removeWhere((id, _) => !liveIds.contains(id));
   }
 
   void _onScroll() {
@@ -131,19 +179,77 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
     _syncVisibleRange();
   }
 
+  Set<String> _idealIds(TurnVisibleRange range) {
+    if (range.lastIndex < range.firstIndex || _turns.isEmpty) {
+      return {};
+    }
+    final ids = <String>{};
+    for (var i = range.firstIndex; i <= range.lastIndex; i++) {
+      ids.add(_turns[i].id);
+    }
+    return ids;
+  }
+
   void _syncVisibleRange() {
     if (!mounted) return;
-    final TurnVisibleRange range;
+    TurnVisibleRange range;
     final controller = widget.scrollController;
-    // hasClients can be true before the first layout sets viewportDimension.
-    if (controller.hasClients && controller.position.hasViewportDimension) {
-      final position = controller.position;
-      range = _cache.visibleRange(
-        turns: _turns,
-        scrollPixels: _scrollPixelsInTurnSpace(position.pixels),
-        viewportHeight: position.viewportDimension,
-        overscan: widget.overscan,
+    var offstageChanged = false;
+
+    if (!widget.mountTurns) {
+      // Estimated full extent only — lets the host jumpTo end before mounting.
+      _keepAliveUntil.clear();
+      _offstageIds = const [];
+      _keepAliveTimer?.cancel();
+      _keepAliveTimer = null;
+      range = TurnVisibleRange(
+        firstIndex: 0,
+        lastIndex: -1,
+        paddingTop: 0,
+        paddingBottom: _cache.totalExtent(_turns),
       );
+      offstageChanged = true;
+    } else if (controller.hasClients &&
+        controller.position.hasViewportDimension) {
+      final position = controller.position;
+      var scrollPixels = position.pixels;
+      // Only while stick-to-end: first layout may still be at 0 while we intend
+      // the bottom. Do NOT remap pixels<=1 after the user scrolls to the top —
+      // that mounts the suffix under a huge paddingTop and paints a blank frame.
+      final stickToEnd = widget.suppressMeasureScrollCorrection;
+      if (stickToEnd &&
+          widget.anchorEnd &&
+          position.maxScrollExtent > 0 &&
+          scrollPixels <= 1.0) {
+        scrollPixels = position.maxScrollExtent;
+      }
+      range = _cache.clampUnmeasuredMounts(
+        turns: _turns,
+        range: _cache.visibleRange(
+          turns: _turns,
+          scrollPixels: _scrollPixelsInTurnSpace(scrollPixels),
+          viewportHeight: position.viewportDimension,
+          overscan: widget.overscan,
+        ),
+        maxUnmeasured: _coldMountLimit,
+        preferEnd: stickToEnd || _scrolledNearEnd(scrollPixels),
+      );
+      if (widget.retainMountedTurns) {
+        range = _retainUnion(range);
+      }
+      // Offstage TTL is redundant when we retain/fill the data window.
+      if (!widget.retainMountedTurns && !widget.fillDataWindow) {
+        offstageChanged = _syncOffstageCache(range);
+      } else if (_offstageIds.isNotEmpty || _keepAliveUntil.isNotEmpty) {
+        _keepAliveUntil.clear();
+        _offstageIds = const [];
+        _keepAliveTimer?.cancel();
+        _keepAliveTimer = null;
+        offstageChanged = true;
+      }
+      if (widget.fillDataWindow) {
+        _scheduleFillDataWindow();
+      }
     } else if (_turns.isEmpty) {
       range = const TurnVisibleRange(
         firstIndex: 0,
@@ -152,30 +258,168 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
         paddingBottom: 0,
       );
     } else {
-      // Small prefix until first layout can measure.
-      final count = (widget.overscan * 2 + 1).clamp(1, _turns.length);
-      final last = count - 1;
-      range = TurnVisibleRange(
-        firstIndex: 0,
-        lastIndex: last,
-        paddingTop: 0,
-        paddingBottom:
-            _cache.totalExtent(_turns) - _cache.offsetBefore(_turns, last + 1),
-      );
+      // Until first layout: mount a small window at the anchored end.
+      final count = _coldMountLimit.clamp(1, _turns.length);
+      if (widget.anchorEnd) {
+        final first = _turns.length - count;
+        range = TurnVisibleRange(
+          firstIndex: first,
+          lastIndex: _turns.length - 1,
+          paddingTop: _cache.offsetBefore(_turns, first),
+          paddingBottom: 0,
+        );
+      } else {
+        final last = count - 1;
+        range = TurnVisibleRange(
+          firstIndex: 0,
+          lastIndex: last,
+          paddingTop: 0,
+          paddingBottom: _cache.totalExtent(_turns) -
+              _cache.offsetBefore(_turns, last + 1),
+        );
+      }
     }
 
-    if (range.firstIndex == _firstIndex &&
-        range.lastIndex == _lastIndex &&
-        range.paddingTop == _paddingTop &&
-        range.paddingBottom == _paddingBottom) {
-      return;
-    }
+    final rangeChanged = range.firstIndex != _firstIndex ||
+        range.lastIndex != _lastIndex ||
+        range.paddingTop != _paddingTop ||
+        range.paddingBottom != _paddingBottom;
+    if (!rangeChanged && !offstageChanged) return;
+
     setState(() {
       _firstIndex = range.firstIndex;
       _lastIndex = range.lastIndex;
       _paddingTop = range.paddingTop;
       _paddingBottom = range.paddingBottom;
     });
+  }
+
+  DateTime get _now => widget.clock?.call() ?? DateTime.now();
+
+  TurnVisibleRange _retainUnion(TurnVisibleRange ideal) {
+    if (_lastIndex < _firstIndex || _turns.isEmpty) return ideal;
+    final first = ideal.firstIndex < _firstIndex ? ideal.firstIndex : _firstIndex;
+    final last = ideal.lastIndex > _lastIndex ? ideal.lastIndex : _lastIndex;
+    return TurnVisibleRange(
+      firstIndex: first,
+      lastIndex: last,
+      paddingTop: _cache.offsetBefore(_turns, first),
+      paddingBottom:
+          _cache.totalExtent(_turns) - _cache.offsetBefore(_turns, last + 1),
+    );
+  }
+
+  void _scheduleFillDataWindow() {
+    if (!widget.fillDataWindow || !widget.mountTurns) return;
+    if (_turns.isEmpty) return;
+    if (_lastIndex >= _firstIndex &&
+        _firstIndex <= 0 &&
+        _lastIndex >= _turns.length - 1) {
+      return;
+    }
+    if (_fillScheduled) return;
+    _fillScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fillScheduled = false;
+      if (!mounted || !widget.fillDataWindow || !widget.mountTurns) return;
+      if (_turns.isEmpty) return;
+
+      var first = _firstIndex;
+      var last = _lastIndex;
+      if (last < first) {
+        // Seed from current pin emptiness — sync will have set a cold window.
+        return;
+      }
+      final beforeFirst = first;
+      final beforeLast = last;
+      if (first > 0) {
+        first = (first - _fillChunk).clamp(0, first);
+      }
+      if (last < _turns.length - 1) {
+        last = (last + _fillChunk).clamp(last, _turns.length - 1);
+      }
+      if (first == beforeFirst && last == beforeLast) return;
+
+      setState(() {
+        _firstIndex = first;
+        _lastIndex = last;
+        _paddingTop = _cache.offsetBefore(_turns, first);
+        _paddingBottom = _cache.totalExtent(_turns) -
+            _cache.offsetBefore(_turns, last + 1);
+      });
+      if (first > 0 || last < _turns.length - 1) {
+        _scheduleFillDataWindow();
+      }
+    });
+  }
+
+  /// Parks departed turns in an offstage freeze cache; does not widen [ideal].
+  bool _syncOffstageCache(TurnVisibleRange ideal) {
+    final previousIdeal = _idealIds(
+      TurnVisibleRange(
+        firstIndex: _firstIndex,
+        lastIndex: _lastIndex,
+        paddingTop: _paddingTop,
+        paddingBottom: _paddingBottom,
+      ),
+    );
+    final now = _now;
+    final result = syncOffstageTurnCache(
+      turns: _turns,
+      idealIds: _idealIds(ideal),
+      previousIdealIds: previousIdeal,
+      keepAliveUntil: _keepAliveUntil,
+      now: now,
+      ttl: widget.keepAliveDuration,
+      maxCached: widget.keepAliveMaxExtra,
+    );
+    _scheduleKeepAliveTick(result.nextExpiry, now);
+    final idsChanged = result.offstageIds.length != _offstageIds.length ||
+        !_listEquals(result.offstageIds, _offstageIds);
+    if (idsChanged) {
+      // Drop keys for fully evicted turns so Elements dispose.
+      final live = {..._idealIds(ideal), ...result.offstageIds};
+      _turnKeys.removeWhere((id, _) => !live.contains(id));
+      _offstageIds = result.offstageIds;
+    }
+    return result.changed || idsChanged;
+  }
+
+  bool _listEquals(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  void _scheduleKeepAliveTick(DateTime? nextExpiry, DateTime now) {
+    _keepAliveTimer?.cancel();
+    _keepAliveTimer = null;
+    if (nextExpiry == null) return;
+    final delay = nextExpiry.difference(now);
+    if (delay <= Duration.zero) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _syncVisibleRange();
+      });
+      return;
+    }
+    _keepAliveTimer = Timer(delay, () {
+      if (!mounted) return;
+      _syncVisibleRange();
+    });
+  }
+
+  /// Max turns mounted while heights are still estimates.
+  int get _coldMountLimit => (widget.overscan < 1 ? 1 : widget.overscan);
+
+  bool _scrolledNearEnd(double documentPixels) {
+    final controller = widget.scrollController;
+    if (!controller.hasClients) return widget.anchorEnd;
+    final max = controller.position.maxScrollExtent;
+    if (max <= 0) return widget.anchorEnd;
+    return max - documentPixels <= controller.position.viewportDimension;
   }
 
   void _onTurnMeasured(String turnId, double height) {
@@ -224,35 +468,74 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
     });
   }
 
+  GlobalKey _keyFor(String turnId) =>
+      _turnKeys.putIfAbsent(turnId, GlobalKey.new);
+
+  Widget _buildTurn({required ThreadTurn turn, required bool frozen}) {
+    final height = _cache.isMeasured(turn.id)
+        ? _cache.heightOf(turn.id)
+        : widget.estimateHeight;
+    return FrozenSize(
+      key: _keyFor(turn.id),
+      frozen: frozen,
+      frozenHeight: height,
+      child: _MeasuredBox(
+        onMeasured: frozen ? (_) {} : (h) => _onTurnMeasured(turn.id, h),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final id in turn.messageIds)
+              if (_messageById[id] case final message?)
+                widget.messageBuilder(context, message),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final idealIds = <String>{};
+    if (_lastIndex >= _firstIndex && _turns.isNotEmpty) {
+      for (var i = _firstIndex; i <= _lastIndex; i++) {
+        idealIds.add(_turns[i].id);
+      }
+    }
+
+    final offstageTurns = <ThreadTurn>[];
+    for (final id in _offstageIds) {
+      if (idealIds.contains(id)) continue;
+      final idx = _turns.indexWhere((t) => t.id == id);
+      if (idx >= 0) offstageTurns.add(_turns[idx]);
+    }
+
     final children = <Widget>[
       if (widget.header != null)
         _MeasuredBox(
           onMeasured: _onHeaderMeasured,
           child: widget.header!,
         ),
+      if (offstageTurns.isNotEmpty)
+        Offstage(
+          offstage: true,
+          child: TickerMode(
+            enabled: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final turn in offstageTurns)
+                  _buildTurn(turn: turn, frozen: true),
+              ],
+            ),
+          ),
+        ),
       SizedBox(height: _paddingTop),
     ];
 
     if (_lastIndex >= _firstIndex && _turns.isNotEmpty) {
       for (var i = _firstIndex; i <= _lastIndex; i++) {
-        final turn = _turns[i];
-        children.add(
-          _MeasuredBox(
-            key: ValueKey(turn.id),
-            onMeasured: (h) => _onTurnMeasured(turn.id, h),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final id in turn.messageIds)
-                  if (_messageById[id] case final message?)
-                    widget.messageBuilder(context, message),
-              ],
-            ),
-          ),
-        );
+        children.add(_buildTurn(turn: _turns[i], frozen: false));
       }
     }
 

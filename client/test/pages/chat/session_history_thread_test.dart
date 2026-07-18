@@ -100,6 +100,8 @@ void main() {
         find.byType(VirtualThreadViewport),
       );
       expect(before.suppressMeasureScrollCorrection, isTrue);
+      expect(before.retainMountedTurns, isTrue);
+      expect(before.fillDataWindow, isTrue);
 
       await tester.drag(find.byType(Scrollable).first, const Offset(0, 120));
       await tester.pumpAndSettle();

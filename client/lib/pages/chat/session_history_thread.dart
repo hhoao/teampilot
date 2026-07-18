@@ -10,10 +10,10 @@ import 'ai_thread_selection_context_menu.dart';
 /// History message list for session review.
 ///
 /// Owns scroll chrome (stick-to-end, load-older anchoring, ActionBar hover
-/// gate, [SelectionArea]) and embeds [VirtualThreadViewport] so only nearby
-/// turns (+ overscan) mount. Unmounted turns are spacer extent from a height
-/// cache — avoids mid-scroll jumps from naive lazy lists while capping mount
-/// cost vs a full [Column] of every message.
+/// gate, [SelectionArea]). Mounts the full pagination data window (retain +
+/// chunked fill) so scrolling does not remount markdown — Claude-like
+/// residency within the loaded message set. Older pages still arrive via
+/// [onLoadOlder].
 class SessionHistoryThread extends StatefulWidget {
   const SessionHistoryThread({
     required this.runtime,
@@ -46,6 +46,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   var _stickToEnd = true;
   var _stickGeneration = 0;
+  /// Delay message mounts until after the first jump-to-end so open does not
+  /// build the top of the thread under a scroll offset of 0.
+  var _mountTurns = false;
 
   double _lastPixels = 0;
   double _lastMaxExtent = 0;
@@ -61,7 +64,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     _messages = widget.runtime.messages;
     _scrollController = ScrollController()..addListener(_onScrollTick);
     _runtimeSub = widget.runtime.changes.listen((_) => _onRuntimeChanged());
-    _scheduleStickFrames();
+    _scheduleOpenAtEnd();
   }
 
   @override
@@ -71,9 +74,10 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       _runtimeSub?.cancel();
       _setStickToEnd(true);
       _paginationArmed = true;
+      _mountTurns = false;
       _messages = widget.runtime.messages;
       _runtimeSub = widget.runtime.changes.listen((_) => _onRuntimeChanged());
-      _scheduleStickFrames();
+      _scheduleOpenAtEnd();
     }
   }
 
@@ -141,6 +145,22 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
     _lastPixels = pixels;
     _lastMaxExtent = max;
+  }
+
+  void _scheduleOpenAtEnd() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_scrollController.hasClients) {
+        final max = _scrollController.position.maxScrollExtent;
+        if (max > 0) {
+          _jumpTo(max);
+        }
+      }
+      if (!_mountTurns) {
+        setState(() => _mountTurns = true);
+      }
+      _scheduleStickFrames();
+    });
   }
 
   void _scheduleStickFrames({int framesLeft = 12}) {
@@ -292,6 +312,13 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
             messages: _messages,
             scrollController: _scrollController,
             header: header,
+            anchorEnd: true,
+            overscan: 5,
+            // Claude-like: keep the loaded pagination window mounted while
+            // scrolling; fill in chunks after open so the first paint stays light.
+            retainMountedTurns: true,
+            fillDataWindow: true,
+            mountTurns: _mountTurns,
             suppressMeasureScrollCorrection: _stickToEnd,
             onMeasureScrollCorrection: (delta) {
               if (!_scrollController.hasClients || delta.abs() < 0.5) return;
@@ -312,13 +339,15 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                     constraints: BoxConstraints(
                       maxWidth: aiTheme.threadMaxWidth,
                     ),
-                    child: AiMessageView(
-                      key: ValueKey(ai.id),
-                      message: ai,
-                      actionBarHoverEnabled: _actionBarHoverEnabled,
-                      actionBarReveal: ai.id == lastId
-                          ? AiActionBarReveal.always
-                          : AiActionBarReveal.hover,
+                    child: AiHistoryRenderScope(
+                      child: AiMessageView(
+                        key: ValueKey(ai.id),
+                        message: ai,
+                        actionBarHoverEnabled: _actionBarHoverEnabled,
+                        actionBarReveal: ai.id == lastId
+                            ? AiActionBarReveal.always
+                            : AiActionBarReveal.hover,
+                      ),
                     ),
                   ),
                 ),

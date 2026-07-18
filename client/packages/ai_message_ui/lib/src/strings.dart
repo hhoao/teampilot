@@ -16,6 +16,8 @@ class AiMessageStrings {
     this.messageIncomplete = 'Message incomplete',
     this.messageCancelled = 'Message cancelled',
     this.scrollToBottom = 'Scroll to bottom',
+    this.showMore = 'Show more',
+    this.showLess = 'Show less',
   });
 
   final String usedTool;
@@ -30,6 +32,8 @@ class AiMessageStrings {
   final String messageIncomplete;
   final String messageCancelled;
   final String scrollToBottom;
+  final String showMore;
+  final String showLess;
 
   String toolsUsedLabel(int count) => formatToolsUsed(count);
 

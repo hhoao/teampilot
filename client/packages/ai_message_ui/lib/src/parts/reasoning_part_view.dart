@@ -54,26 +54,25 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
                         vertical: 8,
                       ),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.psychology_outlined,
-                                size: 16,
-                                color: triggerColor,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                strings.reasoning,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: triggerColor,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
+                          Icon(
+                            Icons.psychology_outlined,
+                            size: 16,
+                            color: triggerColor,
                           ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              strings.reasoning,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: triggerColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
                           Transform.rotate(
                             angle: _open ? 0 : -math.pi / 2,
                             child: Icon(

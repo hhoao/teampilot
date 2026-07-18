@@ -675,6 +675,8 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                   messageIncomplete: l10n.aiMessageIncomplete,
                   messageCancelled: l10n.aiMessageCancelled,
                   scrollToBottom: l10n.aiMessageScrollToBottom,
+                  showMore: l10n.aiMessageShowMore,
+                  showLess: l10n.aiMessageShowLess,
                 ),
                 child: BlocBuilder<AiHistoryCubit, AiHistoryState>(
                   builder: (context, state) {

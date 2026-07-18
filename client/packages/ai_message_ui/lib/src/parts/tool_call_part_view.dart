@@ -55,12 +55,10 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
                     padding:
                         EdgeInsets.symmetric(vertical: widget.dense ? 4 : 6),
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
                         _StatusIcon(part: part, color: triggerColor),
                         const SizedBox(width: 8),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 480),
+                        Expanded(
                           child: Text.rich(
                             TextSpan(
                               style: theme.textTheme.bodySmall?.copyWith(

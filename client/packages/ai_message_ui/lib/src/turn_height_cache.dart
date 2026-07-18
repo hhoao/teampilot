@@ -21,6 +21,8 @@ class TurnHeightCache {
 
   double heightOf(String turnId) => _measured[turnId] ?? estimate;
 
+  bool isMeasured(String turnId) => _measured.containsKey(turnId);
+
   void setMeasured(String turnId, double height) {
     if (height <= 0) return;
     _measured[turnId] = height;
@@ -83,6 +85,65 @@ class TurnHeightCache {
     first = (first - overscan).clamp(0, turns.length - 1);
     last = (last + overscan).clamp(0, turns.length - 1);
     if (last < first) last = first;
+    return TurnVisibleRange(
+      firstIndex: first,
+      lastIndex: last,
+      paddingTop: offsetBefore(turns, first),
+      paddingBottom: totalExtent(turns) - offsetBefore(turns, last + 1),
+    );
+  }
+
+  /// Shrinks [range] so at most [maxUnmeasured] turns lack a measured height.
+  ///
+  /// The window stays contiguous. From the focus edge ([preferEnd] → suffix,
+  /// else prefix), keep every measured turn and admit unmeasured turns until
+  /// [maxUnmeasured]. Avoids dropping already-measured neighbors (scroll churn)
+  /// while still capping how many cold rows layout in one frame.
+  TurnVisibleRange clampUnmeasuredMounts({
+    required List<ThreadTurn> turns,
+    required TurnVisibleRange range,
+    required int maxUnmeasured,
+    required bool preferEnd,
+  }) {
+    if (turns.isEmpty || range.lastIndex < range.firstIndex) return range;
+    final limit = maxUnmeasured < 1 ? 1 : maxUnmeasured;
+
+    var unmeasured = 0;
+    for (var i = range.firstIndex; i <= range.lastIndex; i++) {
+      if (!isMeasured(turns[i].id)) unmeasured++;
+    }
+    if (unmeasured <= limit) return range;
+
+    final int first;
+    final int last;
+    if (preferEnd) {
+      last = range.lastIndex;
+      var start = last;
+      var keptUnmeasured = 0;
+      for (var i = range.lastIndex; i >= range.firstIndex; i--) {
+        final isUn = !isMeasured(turns[i].id);
+        if (isUn) {
+          if (keptUnmeasured >= limit) break;
+          keptUnmeasured++;
+        }
+        start = i;
+      }
+      first = start;
+    } else {
+      first = range.firstIndex;
+      var end = first;
+      var keptUnmeasured = 0;
+      for (var i = range.firstIndex; i <= range.lastIndex; i++) {
+        final isUn = !isMeasured(turns[i].id);
+        if (isUn) {
+          if (keptUnmeasured >= limit) break;
+          keptUnmeasured++;
+        }
+        end = i;
+      }
+      last = end;
+    }
+
     return TurnVisibleRange(
       firstIndex: first,
       lastIndex: last,

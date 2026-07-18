@@ -21,7 +21,7 @@ History fling chrome goals for this initiative are **met**. Remaining cost is co
 
 1. **Compile → IR → `CompiledTextPartView`** — GFM via `package:markdown`; tables are Column/Row/`Expanded` (no Flutter `Table`/`RenderTable`).
 2. **ActionBar** — lite icons (no `IconButton`/`Tooltip`); lazy mount; Opacity toggle; delayed unmount; `actionBarHoverEnabled` gate.
-3. **History host** — `SessionHistoryThread` suppresses hover while scrolling (~120 ms idle resume); drops per-message `MouseRegion` while gate is off.
+3. **History host** — `SessionHistoryThread` suppresses hover on scroll start/update and resumes only on **ScrollEnd** (+ short idle); `MouseRegion` stays mounted (gate ignores enter) to avoid scrollbar jitter from remounting hit-targets mid-fling.
 4. **Tool / reasoning / tool-group** — `GestureDetector` headers (no `InkWell` / `AnimatedScale` / hover-`setState`).
 
 ## Out of scope (next initiative if needed)
