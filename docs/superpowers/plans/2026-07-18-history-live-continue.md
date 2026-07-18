@@ -327,9 +327,12 @@ cd client && flutter test test/cubits/ai_history_cubit_test.dart
 API sketch:
 
 ```dart
-Future<void> softReload() async { /* use _lastSession…; force load; tip-Δ apply */ }
+Future<void> softReload() async {
+  // MUST invalidate / force:true so AiHistoryLoader does not return a stale cache hit.
+  /* tip-Δ apply via _applySoftReloadMessages */
+}
 
-void enqueuePendingUser(String text) { /* pending:<uuid> incomplete? or complete local */ }
+void enqueuePendingUser(String text) { /* pending:<uuid> */ }
 
 void clearPendings() { /* seat change */ }
 
@@ -355,22 +358,40 @@ Never call `runtime.setLoading()` / emit `loading` from softReload. On parse fai
 
 `enqueuePendingUser` / seat change in `load()` when sessionId/memberId changes → `clearPendings()`.
 
-Also add:
+Also add both return-path APIs in this task (Task 6 wires them):
 
 ```dart
-/// Prefer this when returning to History for an already-ready seat.
-Future<void> softReloadOrLoad({...}) async {
+/// Review remount: soft when already ready for this seat, else cold load.
+Future<void> softReloadOrLoad({
+  required AppSession session,
+  required String memberId,
+  TeamProfile? team,
+  String? workingDirectory,
+}) async {
   if (state.status == AiHistoryViewStatus.ready &&
       state.sessionId == session.sessionId &&
       state.memberId == memberId) {
     await softReload();
     return;
   }
-  await load(...);
+  await load(
+    session: session,
+    memberId: memberId,
+    team: team,
+    workingDirectory: workingDirectory,
+  );
+}
+
+/// Stale hook from ChatCubit (`app_shell.dart`): soft when ready for sessionId.
+Future<void> softReloadIfSession(String sessionId) async {
+  if (state.status == AiHistoryViewStatus.ready &&
+      state.sessionId == sessionId) {
+    await softReload();
+    return;
+  }
+  await invalidateAndReload(sessionId);
 }
 ```
-
-(Exact signature can match existing `load` params; used by review remount + stale hook.)
 
 - [ ] **Step 4: Run — expect PASS**
 
