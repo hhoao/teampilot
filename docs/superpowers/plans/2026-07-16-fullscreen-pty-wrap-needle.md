@@ -160,7 +160,7 @@ test('isAtAnchor false after clearing soft-wrapped staged cells', () {
 cd client && flutter test test/services/terminal/fullscreen_input_screen_probe_test.dart
 ```
 
-Expected: `locateNeedle finds soft-wrapped CJK tail across two rows` **FAIL** (`anchor` null). Existing tests still pass.
+Expected: `locateNeedle finds soft-wrapped CJK tail across two rows` and `locateNeedle finds ASCII soft-wrapped needle across two rows` **FAIL** (`anchor` null). Existing tests still pass. Blank-row and clear-after-wrap tests may also fail or throw until locate works.
 
 - [ ] **Step 6: Commit failing tests**
 

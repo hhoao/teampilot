@@ -19,6 +19,21 @@ dart run tool/analyze_performance_json.dart /path/to/snapshot.json [options]
 
 Optional: enable **Rebuild Stats** in DevTools before recording if you need `rebuildCountModel` in the export (widget rebuild counts per frame).
 
+### Automated capture (live app — real local data)
+
+Records **startup → open a real workspace** against your on-disk TeamPilot data (`~/.local/share/com.hhoa.teampilot` on Linux). Uses a debug-only loopback driver (no Computer Use, no mock harness).
+
+```bash
+cd client
+# Option A: let the tool launch the app
+dart run tool/run_live_workspace_open_perf.dart
+# Option B: already running with the driver
+flutter run -d linux --dart-define=PERF_DRIVER=true
+dart run tool/run_live_workspace_open_perf.dart --no-launch --workspace <id>
+```
+
+Writes `build/perf_live_workspace_open.json` by default and prints a summary. See [live-workspace-open-perf design](superpowers/specs/2026-07-18-live-workspace-open-perf-design.md).
+
 ### Automated capture (integration test)
 
 A first scenario covers **app startup → open two workspace tabs → switch between them**. It records frame timings + Perfetto timeline via the in-process VM service and writes DevTools-compatible JSON.
