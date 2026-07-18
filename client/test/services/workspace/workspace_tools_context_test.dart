@@ -147,4 +147,150 @@ void main() {
 
     await cubit.close();
   });
+
+  test(
+    'mixed sync keeps local tools when remote target resolve fails',
+    () async {
+      final home = testRuntimeContext('/home');
+      final lifecycle = SessionLifecycleService(
+        storageRootsResolver: () async => home,
+        workContextResolver: (target) async {
+          if (target.kind == RuntimeKind.ssh) {
+            throw StateError('ssh unreachable');
+          }
+          return home;
+        },
+      );
+      final folders = const [
+        WorkspaceFolder(path: '/local', targetId: 'local'),
+        WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+      ];
+      final cubit = WorkspaceToolsScopeCubit(lifecycle: lifecycle);
+      await cubit.sync(
+        workspaceFolders: folders,
+        cwd: '/local',
+        additionalPaths: const [],
+      );
+
+      expect(cubit.state.resolving, isFalse);
+      expect(cubit.state.isReady, isTrue);
+      expect(cubit.state.tools?.targetId, 'local');
+      expect(cubit.state.targetSlices.map((s) => s.targetId), ['local']);
+      expect(cubit.state.failedTargetIds, ['ssh:p1']);
+      expect(cubit.state.resolveError, isNotNull);
+
+      await cubit.close();
+    },
+  );
+
+  test(
+    'mixed sync surfaces local tools before a slow remote finishes',
+    () async {
+      final home = testRuntimeContext('/home');
+      final remoteReady = Completer<void>();
+      final lifecycle = SessionLifecycleService(
+        storageRootsResolver: () async => home,
+        workContextResolver: (target) async {
+          if (target.kind == RuntimeKind.ssh) {
+            await remoteReady.future;
+            return RuntimeContext(
+              target: RuntimeTarget.ssh('p1', label: 'box'),
+              filesystem: InMemoryFilesystem(),
+              home: '/remote',
+              cwd: '/remote',
+              appDataRoot: '/remote/app',
+              paths: home.paths,
+            );
+          }
+          return home;
+        },
+      );
+      final folders = const [
+        WorkspaceFolder(path: '/local', targetId: 'local'),
+        WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+      ];
+      final cubit = WorkspaceToolsScopeCubit(lifecycle: lifecycle);
+      final ready = cubit.stream.firstWhere(
+        (s) => s.isReady && s.tools?.targetId == 'local',
+      );
+      final syncFuture = cubit.sync(
+        workspaceFolders: folders,
+        cwd: '/local',
+        additionalPaths: const [],
+      );
+
+      await ready;
+      expect(cubit.state.targetSlices.map((s) => s.targetId), ['local']);
+
+      remoteReady.complete();
+      await syncFuture;
+      expect(cubit.state.targetSlices.map((s) => s.targetId).toSet(), {
+        'local',
+        'ssh:p1',
+      });
+
+      await cubit.close();
+    },
+  );
+
+  test(
+    'mixed sync falls back to local when active remote resolve fails',
+    () async {
+      final home = testRuntimeContext('/home');
+      final lifecycle = SessionLifecycleService(
+        storageRootsResolver: () async => home,
+        workContextResolver: (target) async {
+          if (target.kind == RuntimeKind.ssh) {
+            throw StateError('ssh unreachable');
+          }
+          return home;
+        },
+      );
+      final folders = const [
+        WorkspaceFolder(path: '/local', targetId: 'local'),
+        WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+      ];
+      final cubit = WorkspaceToolsScopeCubit(lifecycle: lifecycle);
+      await cubit.sync(
+        workspaceFolders: folders,
+        cwd: '/remote',
+        additionalPaths: const [],
+      );
+
+      expect(cubit.state.resolving, isFalse);
+      expect(cubit.state.isReady, isTrue);
+      expect(cubit.state.tools?.targetId, 'local');
+      expect(cubit.state.targetSlices.map((s) => s.targetId), ['local']);
+      expect(cubit.state.failedTargetIds, contains('ssh:p1'));
+
+      await cubit.close();
+    },
+  );
+
+  test('sync ends resolving when every target fails', () async {
+    final lifecycle = SessionLifecycleService(
+      storageRootsResolver: () async => testRuntimeContext('/home'),
+      workContextResolver: (_) async {
+        throw StateError('all unreachable');
+      },
+    );
+    final folders = const [
+      WorkspaceFolder(path: '/local', targetId: 'local'),
+      WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+    ];
+    final cubit = WorkspaceToolsScopeCubit(lifecycle: lifecycle);
+    await cubit.sync(
+      workspaceFolders: folders,
+      cwd: '/local',
+      additionalPaths: const [],
+    );
+
+    expect(cubit.state.resolving, isFalse);
+    expect(cubit.state.isReady, isFalse);
+    expect(cubit.state.tools, isNull);
+    expect(cubit.state.resolveError, isNotNull);
+    expect(cubit.state.failedTargetIds, isNotEmpty);
+
+    await cubit.close();
+  });
 }

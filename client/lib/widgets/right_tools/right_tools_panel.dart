@@ -5,8 +5,10 @@ import '../../cubits/board_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/mailbox_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
 import '../../models/team_config.dart';
+import '../../services/workspace/workspace_tools_scope.dart';
 import '../../utils/ui/app_keys.dart';
 import 'right_tools_lifecycle.dart';
 import 'right_tools_tool_preferences.dart';
@@ -157,29 +159,79 @@ class _RightToolsPanelBody extends StatelessWidget {
     final tools = scope.tools;
     final fileTreeCubit = lifecycle.fileTreeCubit;
 
-    if (!scope.isReady || tools == null || fileTreeCubit == null) {
-      return const SizedBox.shrink();
-    }
-
-    return RightToolsWorkingTurnListener(
-      onTurnEnd: lifecycle.pokeOnTurnEnd,
-      child: RightToolsPresenceTeamSync(
-        team: team,
-        child: Container(
-          key: panelKey,
-          child: RightToolsToolViews(
-            preferences: toolPreferences,
-            cwd: cwd,
-            workspaceId: workspaceId,
-            toolsScopeId: toolsScopeId,
-            isPersonalContext: isPersonalContext,
-            team: team,
-            dismissDrawerOnAction: dismissDrawerOnAction,
-            fileTreeCubit: fileTreeCubit,
-            workContext: tools.context,
-            scope: scope,
+    if (scope.isReady && tools != null && fileTreeCubit != null) {
+      return RightToolsWorkingTurnListener(
+        onTurnEnd: lifecycle.pokeOnTurnEnd,
+        child: RightToolsPresenceTeamSync(
+          team: team,
+          child: Container(
+            key: panelKey,
+            child: RightToolsToolViews(
+              preferences: toolPreferences,
+              cwd: cwd,
+              workspaceId: workspaceId,
+              toolsScopeId: toolsScopeId,
+              isPersonalContext: isPersonalContext,
+              team: team,
+              dismissDrawerOnAction: dismissDrawerOnAction,
+              fileTreeCubit: fileTreeCubit,
+              workContext: tools.context,
+              scope: scope,
+            ),
           ),
         ),
+      );
+    }
+
+    if (!scope.resolving && scope.resolveError != null && tools == null) {
+      return _RightToolsResolveError(panelKey: panelKey);
+    }
+
+    return const SizedBox.shrink();
+  }
+}
+
+class _RightToolsResolveError extends StatelessWidget {
+  const _RightToolsResolveError({required this.panelKey});
+
+  final Key panelKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    return Container(
+      key: panelKey,
+      padding: const EdgeInsets.all(16),
+      alignment: Alignment.topCenter,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.cloud_off_outlined,
+            size: 28,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            l10n.workspaceToolsResolveFailed,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleSmall,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l10n.workspaceToolsResolveFailedHint,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.tonal(
+            onPressed: () => context.read<WorkspaceToolsScopeCubit>().retry(),
+            child: Text(l10n.sessionRetryButton),
+          ),
+        ],
       ),
     );
   }

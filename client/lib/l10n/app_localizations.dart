@@ -2372,6 +2372,18 @@ abstract class AppLocalizations {
   /// **'Scroll to bottom'**
   String get aiMessageScrollToBottom;
 
+  /// No description provided for @aiMessageShowMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Show more'**
+  String get aiMessageShowMore;
+
+  /// No description provided for @aiMessageShowLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Show less'**
+  String get aiMessageShowLess;
+
   /// No description provided for @sessionWorkbenchShowTerminal.
   ///
   /// In en, this message translates to:
@@ -3890,6 +3902,18 @@ abstract class AppLocalizations {
   /// **'SSH profile not found or connection failed'**
   String get workspaceTerminalSshConnectFailed;
 
+  /// No description provided for @workspaceToolsResolveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open workspace tools'**
+  String get workspaceToolsResolveFailed;
+
+  /// No description provided for @workspaceToolsResolveFailedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Check that remote machines are reachable, then try again.'**
+  String get workspaceToolsResolveFailedHint;
+
   /// No description provided for @workspaceTerminalCloseSession.
   ///
   /// In en, this message translates to:
@@ -4103,8 +4127,8 @@ abstract class AppLocalizations {
   /// No description provided for @rootSandboxEnvConfirmBody.
   ///
   /// In en, this message translates to:
-  /// **'TeamPilot will set IS_SANDBOX=1 when launching Claude as root in workspace {workspace}, keeping --dangerously-skip-permissions. Only enable for workspaces you trust.'**
-  String rootSandboxEnvConfirmBody(Object workspace);
+  /// **'TeamPilot will set IS_SANDBOX=1 when launching Claude as root on {host}, keeping --dangerously-skip-permissions. Only enable on machines you trust.'**
+  String rootSandboxEnvConfirmBody(Object host);
 
   /// No description provided for @rootSandboxEnvConfirmAction.
   ///

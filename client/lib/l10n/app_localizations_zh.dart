@@ -1207,6 +1207,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiMessageScrollToBottom => '滚动到底部';
 
   @override
+  String get aiMessageShowMore => '显示更多';
+
+  @override
+  String get aiMessageShowLess => '收起';
+
+  @override
   String get sessionWorkbenchShowTerminal => '显示终端';
 
   @override
@@ -2018,6 +2024,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceTerminalSshConnectFailed => 'SSH 配置未找到或连接失败';
 
   @override
+  String get workspaceToolsResolveFailed => '无法打开工作区工具';
+
+  @override
+  String get workspaceToolsResolveFailedHint => '请确认远程机器可连通后再重试。';
+
+  @override
   String get workspaceTerminalCloseSession => '关闭终端';
 
   @override
@@ -2135,8 +2147,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get rootSandboxEnvConfirmTitle => '确认为 root 启用 sandbox 环境变量？';
 
   @override
-  String rootSandboxEnvConfirmBody(Object workspace) {
-    return '在工作区 $workspace 中以 root 启动 Claude 时，TeamPilot 将设置 IS_SANDBOX=1 并保留 --dangerously-skip-permissions。请仅对你信任的工作区开启。';
+  String rootSandboxEnvConfirmBody(Object host) {
+    return '在 $host 上以 root 启动 Claude 时，TeamPilot 将设置 IS_SANDBOX=1 并保留 --dangerously-skip-permissions。请仅对你信任的机器开启。';
   }
 
   @override

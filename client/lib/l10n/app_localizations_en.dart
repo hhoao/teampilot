@@ -1267,6 +1267,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiMessageScrollToBottom => 'Scroll to bottom';
 
   @override
+  String get aiMessageShowMore => 'Show more';
+
+  @override
+  String get aiMessageShowLess => 'Show less';
+
+  @override
   String get sessionWorkbenchShowTerminal => 'Show terminal';
 
   @override
@@ -2107,6 +2113,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'SSH profile not found or connection failed';
 
   @override
+  String get workspaceToolsResolveFailed => 'Could not open workspace tools';
+
+  @override
+  String get workspaceToolsResolveFailedHint =>
+      'Check that remote machines are reachable, then try again.';
+
+  @override
   String get workspaceTerminalCloseSession => 'Close terminal';
 
   @override
@@ -2228,8 +2241,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rootSandboxEnvConfirmTitle => 'Enable root sandbox env?';
 
   @override
-  String rootSandboxEnvConfirmBody(Object workspace) {
-    return 'TeamPilot will set IS_SANDBOX=1 when launching Claude as root in workspace $workspace, keeping --dangerously-skip-permissions. Only enable for workspaces you trust.';
+  String rootSandboxEnvConfirmBody(Object host) {
+    return 'TeamPilot will set IS_SANDBOX=1 when launching Claude as root on $host, keeping --dangerously-skip-permissions. Only enable on machines you trust.';
   }
 
   @override
