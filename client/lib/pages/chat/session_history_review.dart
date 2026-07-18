@@ -38,8 +38,8 @@ import '../../services/storage/app_storage.dart';
 import '../../theme/app_markdown_style_sheet.dart';
 import '../../utils/team/team_member_naming.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
+import 'session_history_review_messages.dart';
 import 'session_history_review_submit.dart';
-import 'session_history_thread.dart';
 import 'session_review_compose_card.dart';
 
 /// History list + slim compose for a non-running session body.
@@ -765,79 +765,13 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                 child: BlocBuilder<AiHistoryCubit, AiHistoryState>(
                   builder: (context, state) {
                     final cubit = context.read<AiHistoryCubit>();
-                    return switch (state.status) {
-                      AiHistoryViewStatus.loading => _HistoryStatusPane(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const SizedBox(
-                              width: 28,
-                              height: 28,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                              ),
-                            ),
-                            SizedBox(height: context.tpSpacing.md),
-                            Text(
-                              context.l10n.sessionHistoryLoading,
-                              style: TpTextStyles.of(context).mdColored(
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                      AiHistoryViewStatus.empty => _HistoryStatusPane(
-                        icon: Icons.chat_bubble_outline_rounded,
-                        child: Text(
-                          context.l10n.sessionHistoryEmpty,
-                          style: TpTextStyles.of(context).mdColored(
-                            Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      AiHistoryViewStatus.error => _HistoryStatusPane(
-                        icon: Icons.error_outline_rounded,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              context.l10n.sessionHistoryError,
-                              style: TpTextStyles.of(context).mdColored(
-                                Theme.of(context).colorScheme.error,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            if ((state.errorMessage?.trim() ?? '').isNotEmpty) ...[
-                              SizedBox(height: context.tpSpacing.sm),
-                              Text(
-                                state.errorMessage!.trim(),
-                                style: TpTextStyles.of(context).smColored(
-                                  Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                            SizedBox(height: context.tpSpacing.md),
-                            TextButton(
-                              onPressed: () => _loadHistory(force: true),
-                              child: Text(context.l10n.sessionHistoryRetry),
-                            ),
-                          ],
-                        ),
-                      ),
-                      AiHistoryViewStatus.ready => SessionHistoryThread(
-                        runtime: cubit.runtime,
-                        hasOlder: state.hasOlder,
-                        isLoadingOlder: state.isLoadingOlder,
-                        onLoadOlder: cubit.loadOlder,
-                        liveRefreshActive: _liveRefresh?.isActive ?? false,
-                      ),
-                    };
+                    return SessionHistoryReviewMessages(
+                      state: state,
+                      runtime: cubit.runtime,
+                      onRetry: () => _loadHistory(force: true),
+                      onLoadOlder: cubit.loadOlder,
+                      liveRefreshActive: _liveRefresh?.isActive ?? false,
+                    );
                   },
                 ),
               ),
@@ -925,35 +859,6 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _HistoryStatusPane extends StatelessWidget {
-  const _HistoryStatusPane({this.icon, required this.child});
-
-  final IconData? icon;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: context.tpSpacing.md),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) Icon(
-              icon,
-              size: 32,
-              color: cs.onSurfaceVariant.withValues(alpha: 0.55),
-            ),
-            SizedBox(height: context.tpSpacing.md),
-            child,
-          ],
-        ),
       ),
     );
   }

@@ -274,6 +274,21 @@ void main() {
     expect((pendings.single.parts.single as AiTextPart).text, 'b');
   });
 
+  test('enqueuePendingUser on empty promotes to ready with pending tip', () async {
+    locator.emitBundle = false;
+    await cubit.load(session: simpleSession(), memberId: '');
+    expect(cubit.state.status, AiHistoryViewStatus.empty);
+
+    cubit.enqueuePendingUser('continue me');
+
+    expect(cubit.state.status, AiHistoryViewStatus.ready);
+    expect(cubit.runtime.messages, hasLength(1));
+    expect(cubit.runtime.messages.single.id, startsWith('pending:'));
+    expect(
+      (cubit.runtime.messages.single.parts.single as AiTextPart).text,
+      'continue me',
+    );
+  });
 
   test('softReloadOrLoad soft-reloads when already ready for same seat', () async {
     holderMessages = messages(2);

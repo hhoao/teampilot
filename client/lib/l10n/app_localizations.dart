@@ -2264,6 +2264,12 @@ abstract class AppLocalizations {
   /// **'Couldn\'t load conversation history.'**
   String get sessionHistoryError;
 
+  /// No description provided for @sessionHistorySoftReloadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t refresh conversation history.'**
+  String get sessionHistorySoftReloadError;
+
   /// No description provided for @sessionHistoryRetry.
   ///
   /// In en, this message translates to:

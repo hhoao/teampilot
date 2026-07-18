@@ -240,6 +240,11 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     final pending = _PendingUser(id: 'pending:${_uuid.v4()}', text: text);
     _pendingQueue.add(pending);
     _remergePendingsOntoRuntime();
+    // Empty / pre-locate: promote to ready so History shows the pending bubble
+    // instead of the empty pane (runtime already has the tip message).
+    if (state.status == AiHistoryViewStatus.empty) {
+      emit(state.copyWith(status: AiHistoryViewStatus.ready));
+    }
   }
 
   void clearPendings() {
@@ -306,15 +311,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     _dropMatchedPendings();
 
     if (_allMessages.isEmpty) {
-      runtime.setEmpty();
-      emit(
-        AiHistoryState(
-          status: AiHistoryViewStatus.empty,
-          sessionId: sessionId,
-          memberId: memberId,
-        ),
-      );
-      _remergePendingsOntoRuntime();
+      _emitEmptyOrPendingReady(sessionId, memberId);
       return;
     }
 
@@ -340,6 +337,17 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     _dropMatchedPendings();
 
     if (_allMessages.isEmpty) {
+      _emitEmptyOrPendingReady(sessionId, memberId);
+      return;
+    }
+
+    _emitReadyWindow(sessionId, memberId);
+    _remergePendingsOntoRuntime();
+  }
+
+  /// Empty transcript with unmatched pendings stays on the thread path.
+  void _emitEmptyOrPendingReady(String sessionId, String memberId) {
+    if (_pendingQueue.isEmpty) {
       runtime.setEmpty();
       emit(
         AiHistoryState(
@@ -348,12 +356,16 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
           memberId: memberId,
         ),
       );
-      _remergePendingsOntoRuntime();
       return;
     }
-
-    _emitReadyWindow(sessionId, memberId);
     _remergePendingsOntoRuntime();
+    emit(
+      AiHistoryState(
+        status: AiHistoryViewStatus.ready,
+        sessionId: sessionId,
+        memberId: memberId,
+      ),
+    );
   }
 
   void _dropMatchedPendings() {

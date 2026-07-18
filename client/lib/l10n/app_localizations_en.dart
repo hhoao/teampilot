@@ -1209,6 +1209,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionHistoryError => 'Couldn\'t load conversation history.';
 
   @override
+  String get sessionHistorySoftReloadError =>
+      'Couldn\'t refresh conversation history.';
+
+  @override
   String get sessionHistoryRetry => 'Retry';
 
   @override

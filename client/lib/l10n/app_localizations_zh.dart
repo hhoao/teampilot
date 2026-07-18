@@ -1151,6 +1151,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionHistoryError => '无法加载对话历史。';
 
   @override
+  String get sessionHistorySoftReloadError => '无法刷新对话历史。';
+
+  @override
   String get sessionHistoryRetry => '重试';
 
   @override
