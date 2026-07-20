@@ -107,6 +107,28 @@ void main() {
     expect(out.dangerouslySkipPermissions, isFalse);
   });
 
+  test('simple finalize sets member.id to session.sessionId for X-Member', () {
+    const base = TeamMemberConfig(
+      id: 'expert-pack-slug',
+      name: 'Simple',
+      cli: CliTool.claude,
+    );
+    final session = AppSession(
+      sessionId: 'sess-abc',
+      workspaceId: 'w1',
+      cli: CliTool.claude,
+      createdAt: 1,
+    );
+    final out = finalizeSessionLaunchMember(
+      session: session,
+      baseMember: base,
+      memberId: session.sessionId,
+      isSimple: true,
+    );
+    expect(out.id, session.sessionId);
+    expect(out.id, isNot('expert-pack-slug'));
+  });
+
   test('other member overrides do not affect this member', () {
     const base = TeamMemberConfig(
       id: 'builder-0',

@@ -120,3 +120,20 @@ abstract interface class SessionLaunchHost
   /// Null skips apply — tests and early bootstrap may omit it.
   TerminalTheme? resolveTerminalThemeForLaunch();
 }
+
+/// Drop attention + seat lookup for one seat (PTY exit, disconnect, reconnect).
+extension SessionLaunchHostAgentStatus on SessionLaunchHost {
+  void clearAgentStatusSeat({
+    required String sessionId,
+    required String memberId,
+  }) {
+    agentAttentionCubit?.clearSeat(
+      sessionId: sessionId,
+      memberId: memberId,
+    );
+    agentStatusSeatLookup?.unregisterSeat(
+      sessionId: sessionId,
+      memberId: memberId,
+    );
+  }
+}

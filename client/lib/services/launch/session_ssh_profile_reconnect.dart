@@ -87,6 +87,7 @@ class SessionSshProfileReconnect {
     shell.disconnect();
     await tab.closeMemberRemotePlane(member.id);
     tab.membersPendingConnect.remove(member.id);
+    _host.clearAgentStatusSeat(sessionId: tab.info.id, memberId: member.id);
     _scheduleMemberConnect(team, member, tab);
   }
 
@@ -108,6 +109,10 @@ class SessionSshProfileReconnect {
 
     shell.disconnect();
     await tab.closeMemberRemotePlane(session.sessionId);
+    _host.clearAgentStatusSeat(
+      sessionId: tab.info.id,
+      memberId: session.sessionId,
+    );
 
     final workspace = _workspaceIndex().byId(session.workspaceId);
     if (workspace == null) return;

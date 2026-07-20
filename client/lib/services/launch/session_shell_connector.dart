@@ -345,16 +345,9 @@ class SessionShellConnector {
         launchWarnings.addAll(connectResult.warnings);
       }
 
-      _registerAgentStatusSeat(
-        sessionId: activeSession.sessionId,
-        memberId: isPersonal
-            ? activeSession.sessionId
-            : preflightMemberId,
-        cli: launchCli,
-        skipPermissions:
-            shellLaunch.launchContext.member.dangerouslySkipPermissions,
-        agentStatus: agentStatus,
-      );
+      final agentStatusSeatMemberId = isPersonal
+          ? activeSession.sessionId
+          : preflightMemberId;
 
       if (!connectShellStillValid(tab: tab, shell: shell)) {
         abortConnectShellIfStale(
@@ -402,6 +395,16 @@ class SessionShellConnector {
         );
         return ConnectShellResult.aborted;
       }
+
+      // After SSH constraints may flip skip-permissions (root dropFlag).
+      _registerAgentStatusSeat(
+        sessionId: activeSession.sessionId,
+        memberId: agentStatusSeatMemberId,
+        cli: launchCli,
+        skipPermissions:
+            shellLaunch.launchContext.member.dangerouslySkipPermissions,
+        agentStatus: agentStatus,
+      );
 
       final plan = shellLaunch.plan;
       appLogger.d(
@@ -466,7 +469,13 @@ class SessionShellConnector {
           }
           _host.failSessionConnect(tab.info.id, message);
         },
-        onProcessExited: () => _host.updateTabRunning(tab.info.id),
+        onProcessExited: () {
+          _host.clearAgentStatusSeat(
+            sessionId: activeSession.sessionId,
+            memberId: agentStatusSeatMemberId,
+          );
+          _host.updateTabRunning(tab.info.id);
+        },
         onProcessStarted: () {
           if (team != null && member != null) {
             _delegate.cancelLifecycleConnectRetry(tab.info.id, member.id);

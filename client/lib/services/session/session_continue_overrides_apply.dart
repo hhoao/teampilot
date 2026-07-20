@@ -54,6 +54,8 @@ TeamMemberConfig applySessionContinueOverrides({
 
   if (isSimple) {
     return baseMember.copyWith(
+      // Seat key / X-Member for simple = session.sessionId (passed as memberId).
+      id: memberId,
       dangerouslySkipPermissions: resolveContinueSkipPermissions(
         sessionLevel: overrides.dangerouslySkipPermissions,
         memberLevel: null,
