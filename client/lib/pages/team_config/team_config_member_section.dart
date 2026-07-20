@@ -16,7 +16,6 @@ import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/expert_hub/expert_member_resolver.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/cli/member_agent_preset_field.dart';
-import '../../widgets/settings/focus_gated_text_field.dart';
 import '../../widgets/team/team_lead_badge.dart';
 import '../expert_hub/expert_landing_picker_sheet.dart';
 import '../home_workspace/home_workspace_lazy_mount.dart';
@@ -455,7 +454,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
               TpPreferenceStack(
                 title: l10n.memberExtraArgs,
                 subtitle: l10n.memberExtraArgsSubtitle,
-                body: FocusGatedTextField(
+                body: TextField(
                   controller: _argsCtl,
                   focusNode: _argsFocus,
                   decoration: const InputDecoration(),

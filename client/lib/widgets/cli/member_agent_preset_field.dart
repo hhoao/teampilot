@@ -6,7 +6,6 @@ import '../../services/app/flashskyai_agent_catalog_service.dart';
 import '../../services/cli/registry/capabilities/member_agent_preset_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../settings/focus_gated_text_field.dart';
 import '../../pages/team_config/team_config_helpers.dart';
 
 /// Agent preset field for team members and personal workspaces.
@@ -50,7 +49,7 @@ class MemberAgentPresetField extends StatelessWidget {
       MemberAgentPresetStyle.claudeAgentType =>
         customAgentController == null
             ? const SizedBox.shrink()
-            : FocusGatedTextField(
+            : TextField(
                 controller: customAgentController!,
                 decoration: InputDecoration(
                   hintText: l10n.agentClaudeTypeHint,
@@ -144,7 +143,7 @@ class _FlashskyaiCatalogField extends StatelessWidget {
         ),
         if (showCustomAgentField && customAgentController != null) ...[
           const SizedBox(height: 8),
-          FocusGatedTextField(
+          TextField(
             controller: customAgentController!,
             decoration: InputDecoration(
               hintText: customIdHint,

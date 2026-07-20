@@ -9,7 +9,6 @@ import '../../utils/ui/app_keys.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../settings/focus_gated_text_field.dart';
 import 'brand_dropdown_rows.dart';
 import 'provider_brand_icon.dart';
 
@@ -325,7 +324,7 @@ class _ProviderListControls extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-          child: FocusGatedTextField(
+          child: TextField(
             controller: search,
             decoration: InputDecoration(
               hintText: l10n.filterProviders,
