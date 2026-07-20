@@ -221,7 +221,13 @@ class TeammateBusMcpGateway {
     required String memberId,
   }) {
     final handler = _agentStatusHandler;
-    if (handler == null || memberId.isEmpty) return;
+    if (handler == null) return;
+    // Some Windows HttpClient keep-alive paths omit X-Member on a follow-up
+    // POST /idle; fall back to clearing the whole session's attention.
+    if (memberId.isEmpty) {
+      handler.attention.clearSession(sessionId);
+      return;
+    }
     // Drop prior sticky PermissionRequest context, then stamp done so idle
     // backup always clears waiting even if a concurrent hook races.
     handler.attention.clearSeat(sessionId: sessionId, memberId: memberId);
