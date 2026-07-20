@@ -130,6 +130,23 @@ void main() {
     expect(cubit.state.sessionHasWaiting('status-only'), isTrue);
   });
 
+  test('status-only X-Bus-Token auth without X-Session applies waiting', () async {
+    final token = gateway.registerAgentStatusSession(sessionId: 'remote-s1');
+    expect(gateway.isSessionRegistered('remote-s1'), isFalse);
+
+    final resp = await postAgentStatus(
+      busToken: token,
+      member: 'm1',
+      body: {
+        'hook_event_name': 'PermissionRequest',
+        'tool_name': 'Bash',
+      },
+    );
+    expect(resp.statusCode, HttpStatus.ok);
+    await resp.drain<void>();
+    expect(cubit.state.sessionHasWaiting('remote-s1'), isTrue);
+  });
+
   test('TeamBus-registered session can POST /agent-status', () async {
     final bus = TeamBus(launcher: FakeMemberLauncher());
     gateway.register(
