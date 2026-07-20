@@ -25,7 +25,6 @@ class _RightToolsVisibilityProbe extends StatelessWidget {
 }
 
 void main() {
-  const bottomKey = ValueKey('landing-right-bottom');
   const centerKey = ValueKey('landing-right-center');
   const rightKey = ValueKey('landing-right-pane');
 
@@ -56,10 +55,6 @@ void main() {
               right:
                   right ??
                   const ColoredBox(key: rightKey, color: Colors.transparent),
-              bottom: const ColoredBox(
-                key: bottomKey,
-                color: Colors.black,
-              ),
             ),
           ),
         ),

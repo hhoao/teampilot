@@ -49,6 +49,7 @@ class LayoutCubit extends Cubit<LayoutState> {
   Future<void> load() async {
     emit(state.copyWith(isLoading: true));
     final prefs = await _repository?.load() ?? const LayoutPreferences();
+    // workspaceTerminalVisible is legacy (bottom dock removed); always ignore.
     emit(
       state.copyWith(
         preferences: prefs.copyWith(workspaceTerminalVisible: false),
@@ -59,7 +60,7 @@ class LayoutCubit extends Cubit<LayoutState> {
 
   Future<void> _save(LayoutPreferences preferences) async {
     emit(state.copyWith(preferences: preferences));
-    // Bottom terminal starts hidden each launch; only height/sidebar width persist.
+    // Keep JSON field for compat but never persist a visible bottom dock.
     await _repository?.save(
       preferences.copyWith(workspaceTerminalVisible: false),
     );
@@ -194,8 +195,8 @@ class LayoutCubit extends Cubit<LayoutState> {
     return setRightToolsVisible(!state.preferences.rightToolsVisible);
   }
 
-  Future<void> toggleWorkspaceTerminal() =>
-      setWorkspaceTerminalVisible(!state.preferences.workspaceTerminalVisible);
+  /// No-op: bottom dock removed; shell lives as center workbench tabs.
+  Future<void> toggleWorkspaceTerminal() => Future.value();
 
   Future<void> setTerminalThemeMode(String mode) =>
       _save(state.preferences.copyWith(terminalThemeMode: mode));
@@ -209,8 +210,8 @@ class LayoutCubit extends Cubit<LayoutState> {
   Future<void> setMonoFontId(String id) =>
       _save(state.preferences.copyWith(monoFontId: normalizeMonoFontId(id)));
 
-  Future<void> setWorkspaceTerminalVisible(bool visible) =>
-      _save(state.preferences.copyWith(workspaceTerminalVisible: visible));
+  /// No-op: bottom dock removed; keep method for callers / prefs compat.
+  Future<void> setWorkspaceTerminalVisible(bool visible) => Future.value();
 
   Future<void> setWorkspaceTerminalHeight(double height) =>
       _save(state.preferences.copyWith(workspaceTerminalHeight: height));

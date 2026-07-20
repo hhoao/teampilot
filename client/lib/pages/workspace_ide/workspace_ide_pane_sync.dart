@@ -12,15 +12,12 @@ class WorkspaceIdePaneSnapshot {
     required this.isNarrow,
     required this.dockLeft,
     required this.dockRight,
-    required this.dockBottom,
     required this.overlayLeft,
     required this.overlayRight,
     required this.intentSidebarVisible,
     required this.intentRightToolsVisible,
-    required this.intentTerminalVisible,
     required this.sidebarWidth,
     required this.rightToolsWidth,
-    required this.workspaceTerminalHeight,
   });
 
   factory WorkspaceIdePaneSnapshot.from({
@@ -31,35 +28,29 @@ class WorkspaceIdePaneSnapshot {
       isNarrow: effective.isNarrow,
       dockLeft: effective.dockLeft,
       dockRight: effective.dockRight,
-      dockBottom: effective.dockBottom,
       overlayLeft: effective.overlayLeft,
       overlayRight: effective.overlayRight,
       intentSidebarVisible: preferences.sidebarVisible,
       intentRightToolsVisible: preferences.rightToolsVisible,
-      intentTerminalVisible: preferences.workspaceTerminalVisible,
       sidebarWidth: preferences.sidebarWidth,
       rightToolsWidth: preferences.rightToolsWidth,
-      workspaceTerminalHeight: preferences.workspaceTerminalHeight,
     );
   }
 
   final bool isNarrow;
   final bool dockLeft;
   final bool dockRight;
-  final bool dockBottom;
   final bool overlayLeft;
   final bool overlayRight;
 
   final bool intentSidebarVisible;
   final bool intentRightToolsVisible;
-  final bool intentTerminalVisible;
 
   final double sidebarWidth;
   final double rightToolsWidth;
-  final double workspaceTerminalHeight;
 }
 
-/// Dynamic max extents for side/bottom panes so the main workbench keeps
+/// Dynamic max extents for side panes so the main workbench keeps
 /// [LayoutPreferences.minWorkbenchMainWidth] / [minWorkbenchMainHeight].
 ///
 /// Side panes no longer have a hard global max; these caps are derived from the
@@ -68,7 +59,6 @@ class WorkspaceIdePaneBounds {
   const WorkspaceIdePaneBounds({
     required this.leftMax,
     required this.rightMax,
-    required this.bottomMax,
   });
 
   /// Keep aligned with [WorkspaceIdePaneChrome.resizerThickness].
@@ -79,16 +69,13 @@ class WorkspaceIdePaneBounds {
 
   final double leftMax;
   final double rightMax;
-  final double bottomMax;
 
-  /// [availableWidth]/[availableHeight] are the MultiPane host size after shell
-  /// gutters (see [shellAvailableSize]).
+  /// [availableWidth] is the MultiPane host width after shell gutters
+  /// (see [shellAvailableSize]).
   factory WorkspaceIdePaneBounds.compute({
     required double availableWidth,
-    required double availableHeight,
     required bool dockLeft,
     required bool dockRight,
-    required bool dockBottom,
     required double sidebarWidth,
     required double rightToolsWidth,
   }) {
@@ -100,7 +87,6 @@ class WorkspaceIdePaneBounds {
       (false, false) => 0,
     };
     final rowResizerSpace = rowResizers * resizerThickness;
-    final rootResizerSpace = dockBottom ? resizerThickness : 0.0;
 
     return WorkspaceIdePaneBounds(
       leftMax: _atLeast(
@@ -117,12 +103,6 @@ class WorkspaceIdePaneBounds {
             rowResizerSpace,
         LayoutPreferences.minRightToolsWidth,
       ),
-      bottomMax: _atLeast(
-        availableHeight -
-            LayoutPreferences.minWorkbenchMainHeight -
-            rootResizerSpace,
-        LayoutPreferences.minWorkspaceTerminalHeight,
-      ),
     );
   }
 
@@ -132,11 +112,10 @@ class WorkspaceIdePaneBounds {
     required double viewportHeight,
     required bool dockLeft,
     required bool dockRight,
-    required bool dockBottom,
   }) {
     final horizontal =
         (dockLeft ? shellGutter : 0.0) + (dockRight ? shellGutter : 0.0);
-    final vertical = shellGutter + (dockBottom ? shellGutter : 0.0);
+    final vertical = shellGutter * 2;
     return (
       width: viewportWidth - horizontal,
       height: viewportHeight - vertical,
@@ -150,16 +129,15 @@ class WorkspaceIdePaneBounds {
   bool operator ==(Object other) {
     return other is WorkspaceIdePaneBounds &&
         other.leftMax == leftMax &&
-        other.rightMax == rightMax &&
-        other.bottomMax == bottomMax;
+        other.rightMax == rightMax;
   }
 
   @override
-  int get hashCode => Object.hash(leftMax, rightMax, bottomMax);
+  int get hashCode => Object.hash(leftMax, rightMax);
 }
 
 /// Which prefs-backed size a [WorkspaceIdePendingDrag] is tracking.
-enum WorkspaceIdeDragTarget { sidebar, rightTools, workspaceTerminal }
+enum WorkspaceIdeDragTarget { sidebar, rightTools }
 
 /// A size to write back to `LayoutCubit` once a drag ends.
 class WorkspaceIdeDragCommit {

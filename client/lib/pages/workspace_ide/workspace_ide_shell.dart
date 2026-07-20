@@ -10,22 +10,22 @@ import 'pane_overlay_host.dart';
 import 'workspace_ide_pane_chrome.dart';
 import 'workspace_ide_pane_sync.dart';
 
-/// App-owned IDE shell that lays out the workspace as left | center | right over
-/// a full-bleed bottom terminal, using `panes` as the interaction engine.
+/// App-owned IDE shell that lays out the workspace as left | center | right,
+/// using `panes` as the interaction engine.
 ///
+/// Shell / Run live as center workbench tabs (not a bottom dock).
 /// [LayoutCubit] / [LayoutPreferences] stay the sole source of layout intent:
 /// the `panes` controllers are derived from prefs on build, and drag-end sizes
 /// are committed back through the cubit (never mid-drag — see the design spec's
-/// write-back rules). Side / bottom panes use [PaneSize.pixel] so hiding them
-/// keeps their child `State` mounted (fractional hide disposes children), which
-/// is what protects the bottom PTY and center agent terminals from teardown when
-/// a sibling pane toggles.
+/// write-back rules). Side panes use [PaneSize.pixel] so hiding them keeps
+/// their child `State` mounted (fractional hide disposes children), which
+/// protects center agent / shell terminals from teardown when a sibling pane
+/// toggles.
 class WorkspaceIdeShell extends StatefulWidget {
   const WorkspaceIdeShell({
     required this.left,
     required this.center,
     required this.right,
-    required this.bottom,
     this.composeLanding = false,
     this.terminalHold,
     super.key,
@@ -35,15 +35,12 @@ class WorkspaceIdeShell extends StatefulWidget {
   final Widget center;
   final Widget right;
 
-  /// The bottom workspace terminal. Callers must give it a stable, workspace
-  /// scoped [ValueKey] (`workspace-terminal-<id>`) so it survives pane toggles.
-  final Widget bottom;
-
   /// When true, right-tools visibility follows landing override policy instead
   /// of persisted [LayoutPreferences.rightToolsVisible].
   final bool composeLanding;
 
-  /// Bridge used to bracket PTY resizes of [bottom] during a split drag.
+  /// Bridge used to bracket PTY resizes of center shell terminals during a
+  /// split drag.
   final WorkspaceTerminalHoldHandle? terminalHold;
 
   @override
@@ -54,11 +51,8 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
   static const _leftId = 'left';
   static const _centerId = 'center';
   static const _rightId = 'right';
-  static const _mainRowId = 'mainRow';
-  static const _bottomId = 'bottom';
 
   late final PaneController _rowController;
-  late final PaneController _rootController;
 
   WorkspaceIdePaneSnapshot? _applied;
   bool _syncScheduled = false;
@@ -75,7 +69,6 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
   WorkspaceIdePaneSnapshot? _pendingBoundsSnapshot;
 
   bool _rowResizing = false;
-  bool _rootResizing = false;
 
   /// When narrow, the side regions render as overlays (see [PaneOverlayHost]),
   /// so the docked panes render nothing for left/right to avoid double-mounting
@@ -127,21 +120,6 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
         ),
       ],
     )..addListener(_onRowChanged);
-    _rootController = PaneController(
-      entries: [
-        PaneEntry(
-          id: _mainRowId,
-          initialSize: PaneSize.fraction(1),
-          minSize: PaneSize.pixel(LayoutPreferences.minWorkbenchMainHeight),
-        ),
-        PaneEntry(
-          id: _bottomId,
-          visible: effective.dockBottom,
-          initialSize: PaneSize.pixel(prefs.workspaceTerminalHeight),
-          minSize: PaneSize.pixel(LayoutPreferences.minWorkspaceTerminalHeight),
-        ),
-      ],
-    )..addListener(_onRootChanged);
     _applied = WorkspaceIdePaneSnapshot.from(
       preferences: prefs,
       effective: effective,
@@ -166,9 +144,7 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
   @override
   void dispose() {
     _rowController.removeListener(_onRowChanged);
-    _rootController.removeListener(_onRootChanged);
     _rowController.dispose();
-    _rootController.dispose();
     super.dispose();
   }
 
@@ -186,18 +162,6 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
     }
   }
 
-  void _onRootChanged() {
-    final resizing = _rootController.isResizing;
-    if (resizing == _rootResizing) return;
-    _rootResizing = resizing;
-    if (resizing) {
-      widget.terminalHold?.beginPtyHold();
-    } else {
-      _commitRootSizes();
-      widget.terminalHold?.endPtyHold(flush: true);
-    }
-  }
-
   void _commitRowSizes() {
     if (!mounted) return;
     final cubit = context.read<LayoutCubit>();
@@ -205,14 +169,6 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
     if (left != null) cubit.setSidebarWidth(left);
     final right = _rowController.getVisualPixelSize(_rightId);
     if (right != null) cubit.setRightToolsWidth(right);
-  }
-
-  void _commitRootSizes() {
-    if (!mounted) return;
-    final bottom = _rootController.getVisualPixelSize(_bottomId);
-    if (bottom != null) {
-      context.read<LayoutCubit>().setWorkspaceTerminalHeight(bottom);
-    }
   }
 
   // --- Prefs/effective → controllers ----------------------------------------
@@ -235,10 +191,8 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
     if (applied == null) return false;
     return applied.sidebarWidth == next.sidebarWidth &&
         applied.rightToolsWidth == next.rightToolsWidth &&
-        applied.workspaceTerminalHeight == next.workspaceTerminalHeight &&
         (applied.dockLeft != next.dockLeft ||
             applied.dockRight != next.dockRight ||
-            applied.dockBottom != next.dockBottom ||
             applied.isNarrow != next.isNarrow);
   }
 
@@ -279,7 +233,6 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
         was.isNarrow != now.isNarrow ||
         was.dockLeft != now.dockLeft ||
         was.dockRight != now.dockRight ||
-        was.dockBottom != now.dockBottom ||
         was.overlayLeft != now.overlayLeft ||
         was.overlayRight != now.overlayRight;
     if (policyChanged) {
@@ -290,7 +243,7 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
   void _requestSync(WorkspaceIdePaneSnapshot snapshot) {
     if (_sameAsApplied(snapshot)) return;
     _pending = snapshot;
-    if (_rowController.isResizing || _rootController.isResizing) {
+    if (_rowController.isResizing) {
       _scheduleSyncPostFrame();
       return;
     }
@@ -309,7 +262,7 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
       _syncScheduled = false;
       final pending = _pending;
       if (!mounted || pending == null || _sameAsApplied(pending)) return;
-      if (_rowController.isResizing || _rootController.isResizing) {
+      if (_rowController.isResizing) {
         _scheduleSyncPostFrame();
         return;
       }
@@ -323,10 +276,8 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
     return a != null &&
         a.dockLeft == s.dockLeft &&
         a.dockRight == s.dockRight &&
-        a.dockBottom == s.dockBottom &&
         a.sidebarWidth == s.sidebarWidth &&
-        a.rightToolsWidth == s.rightToolsWidth &&
-        a.workspaceTerminalHeight == s.workspaceTerminalHeight;
+        a.rightToolsWidth == s.rightToolsWidth;
   }
 
   void _applySnapshot(WorkspaceIdePaneSnapshot s) {
@@ -340,18 +291,10 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
         visible: s.dockRight,
       );
     }
-    if (!_rootController.isResizing) {
-      _applyPane(
-        _rootController,
-        _bottomId,
-        s.workspaceTerminalHeight,
-        visible: s.dockBottom,
-      );
-    }
     _applied = s;
     // Re-apply viewport caps after prefs sizes so a large persisted width cannot
     // crush the main column when the window is narrower than before.
-    if (!_rowController.isResizing && !_rootController.isResizing) {
+    if (!_rowController.isResizing) {
       _applyPaneBounds(_boundsFor(s), s);
     }
   }
@@ -379,14 +322,11 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
       viewportHeight: _viewportHeight,
       dockLeft: snapshot.dockLeft,
       dockRight: snapshot.dockRight,
-      dockBottom: snapshot.dockBottom,
     );
     return WorkspaceIdePaneBounds.compute(
       availableWidth: available.width,
-      availableHeight: available.height,
       dockLeft: snapshot.dockLeft,
       dockRight: snapshot.dockRight,
-      dockBottom: snapshot.dockBottom,
       sidebarWidth: snapshot.sidebarWidth,
       rightToolsWidth: snapshot.rightToolsWidth,
     );
@@ -414,10 +354,6 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
       final visual = _rowController.getVisualPixelSize(_rightId);
       if (visual != null && visual > bounds.rightMax) return true;
     }
-    if (snapshot.dockBottom) {
-      final visual = _rootController.getVisualPixelSize(_bottomId);
-      if (visual != null && visual > bounds.bottomMax) return true;
-    }
     return false;
   }
 
@@ -429,7 +365,7 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
       final bounds = _pendingBounds;
       final snapshot = _pendingBoundsSnapshot;
       if (!mounted || bounds == null || snapshot == null) return;
-      if (_rowController.isResizing || _rootController.isResizing) {
+      if (_rowController.isResizing) {
         _scheduleBoundsSyncPostFrame();
         return;
       }
@@ -445,15 +381,11 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
   ) {
     _setPixelPaneMax(_rowController, _leftId, bounds.leftMax);
     _setPixelPaneMax(_rowController, _rightId, bounds.rightMax);
-    _setPixelPaneMax(_rootController, _bottomId, bounds.bottomMax);
     if (snapshot.dockLeft) {
       _clampVisualPixelSize(_rowController, _leftId, bounds.leftMax);
     }
     if (snapshot.dockRight) {
       _clampVisualPixelSize(_rowController, _rightId, bounds.rightMax);
-    }
-    if (snapshot.dockBottom) {
-      _clampVisualPixelSize(_rootController, _bottomId, bounds.bottomMax);
     }
     _appliedBounds = bounds;
   }
@@ -484,18 +416,6 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
   bool get _leftDocked => _layoutSnapshot?.dockLeft ?? false;
 
   bool get _rightDocked => _layoutSnapshot?.dockRight ?? false;
-
-  bool get _bottomDocked => _layoutSnapshot?.dockBottom ?? false;
-
-  EdgeInsets _shellPadding() {
-    const g = WorkspaceIdePaneChrome.shellGutter;
-    return EdgeInsets.fromLTRB(
-      _leftDocked ? g : 0,
-      g,
-      _rightDocked ? g : 0,
-      _bottomDocked ? g : 0,
-    );
-  }
 
   static BorderRadius _paneRadiusOnly({
     required bool topLeft,
@@ -578,42 +498,6 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
     };
   }
 
-  Widget _bottomChrome() {
-    const inset = WorkspaceIdePaneChrome.paneInset;
-    return WorkspaceIdePaneChrome(
-      padding: EdgeInsets.fromLTRB(
-        _leftDocked ? inset : 0,
-        inset,
-        _rightDocked ? inset : 0,
-        inset,
-      ),
-      borderRadius: _paneRadiusOnly(
-        topLeft: false,
-        bottomLeft: _leftDocked,
-        topRight: false,
-        bottomRight: _rightDocked,
-      ),
-      child: widget.bottom,
-    );
-  }
-
-  Widget _rootPaneBuilder(BuildContext context, String id, double progress) {
-    if (id == _bottomId) {
-      // Always mount [bottom] so the workspace PTY survives hide toggles;
-      // [PaneController.hide] collapses height while keeping this subtree.
-      if (!_bottomDocked) {
-        return widget.bottom;
-      }
-      return _bottomChrome();
-    }
-    return MultiPane(
-      direction: Axis.horizontal,
-      controller: _rowController,
-      animationDuration: _paneAnimationDuration,
-      paneBuilder: _rowPaneBuilder,
-    );
-  }
-
   Duration get _paneAnimationDuration => _paneAnimationEnabled
       ? const Duration(milliseconds: 250)
       : Duration.zero;
@@ -672,10 +556,10 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
                   }
                 },
                 child: MultiPane(
-                  direction: Axis.vertical,
-                  controller: _rootController,
+                  direction: Axis.horizontal,
+                  controller: _rowController,
                   animationDuration: _paneAnimationDuration,
-                  paneBuilder: _rootPaneBuilder,
+                  paneBuilder: _rowPaneBuilder,
                 ),
               ),
             ),
@@ -688,9 +572,7 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
   bool _relevantPrefsChanged(LayoutPreferences a, LayoutPreferences b) {
     return a.sidebarVisible != b.sidebarVisible ||
         a.rightToolsVisible != b.rightToolsVisible ||
-        a.workspaceTerminalVisible != b.workspaceTerminalVisible ||
         a.sidebarWidth != b.sidebarWidth ||
-        a.rightToolsWidth != b.rightToolsWidth ||
-        a.workspaceTerminalHeight != b.workspaceTerminalHeight;
+        a.rightToolsWidth != b.rightToolsWidth;
   }
 }

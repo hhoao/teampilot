@@ -6,7 +6,6 @@ void main() {
   const prefs = LayoutPreferences(
     sidebarVisible: true,
     rightToolsVisible: true,
-    workspaceTerminalVisible: true,
   );
 
   test('wide docks all intent-visible panes', () {
@@ -17,7 +16,6 @@ void main() {
     expect(e.isNarrow, isFalse);
     expect(e.dockLeft, isTrue);
     expect(e.dockRight, isTrue);
-    expect(e.dockBottom, isTrue);
     expect(e.overlayLeft, isFalse);
     expect(e.overlayRight, isFalse);
   });
@@ -32,7 +30,6 @@ void main() {
     expect(e.dockRight, isFalse);
     expect(e.overlayLeft, isTrue);
     expect(e.overlayRight, isTrue);
-    expect(e.dockBottom, isTrue); // bottom still follows intent when not forced
   });
 
   test('narrow + hidden intent → no overlay eligibility', () {
@@ -55,7 +52,6 @@ void main() {
     );
     expect(e.dockRight, isFalse);
     expect(e.dockLeft, isTrue);
-    expect(e.dockBottom, isTrue);
   });
 
   test('compose landing + override true docks right', () {

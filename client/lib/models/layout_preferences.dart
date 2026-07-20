@@ -188,6 +188,8 @@ class LayoutPreferences {
   final String locale;
   final String uiFontId;
   final String monoFontId;
+
+  /// Legacy bottom-dock flag kept for JSON compat; layout always treats as false.
   final bool workspaceTerminalVisible;
   final double workspaceTerminalHeight;
   final MarkdownOpenMode markdownOpenMode;

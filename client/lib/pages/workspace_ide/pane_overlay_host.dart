@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 /// Presents the left / right IDE regions as drawer-like overlays on top of
 /// [child] (the docked [WorkspaceIdeShell] pane tree) for narrow layouts.
 ///
-/// The shell keeps center + bottom PTY subtrees inside the docked `MultiPane`
+/// The shell keeps center workbench subtrees inside the docked `MultiPane`
 /// at all times; only the side regions move here when the viewport collapses
 /// below the narrow breakpoint. That means the [left] / [right] widgets are the
 /// *only* instances of those regions on narrow (the docked panes render nothing

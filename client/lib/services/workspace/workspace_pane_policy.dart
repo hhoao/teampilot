@@ -5,7 +5,6 @@ class WorkspacePaneEffective {
     required this.isNarrow,
     required this.dockLeft,
     required this.dockRight,
-    required this.dockBottom,
     required this.overlayLeft,
     required this.overlayRight,
   });
@@ -13,7 +12,6 @@ class WorkspacePaneEffective {
   final bool isNarrow;
   final bool dockLeft;
   final bool dockRight;
-  final bool dockBottom;
   final bool overlayLeft;
   final bool overlayRight;
 }
@@ -37,7 +35,6 @@ abstract final class WorkspacePanePolicy {
         isNarrow: false,
         dockLeft: preferences.sidebarVisible,
         dockRight: rightIntent,
-        dockBottom: preferences.workspaceTerminalVisible,
         overlayLeft: false,
         overlayRight: false,
       );
@@ -46,7 +43,6 @@ abstract final class WorkspacePanePolicy {
       isNarrow: true,
       dockLeft: false,
       dockRight: false,
-      dockBottom: preferences.workspaceTerminalVisible,
       overlayLeft: preferences.sidebarVisible,
       overlayRight: rightIntent,
     );

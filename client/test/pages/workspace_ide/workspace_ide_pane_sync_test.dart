@@ -10,7 +10,6 @@ void main() {
       rightToolsVisible: true,
       sidebarWidth: 260,
       rightToolsWidth: 320,
-      workspaceTerminalHeight: 220,
     );
     final effective = WorkspacePanePolicy.effective(
       preferences: prefs,
@@ -29,7 +28,6 @@ void main() {
     const prefs = LayoutPreferences(
       sidebarVisible: true,
       rightToolsVisible: true,
-      workspaceTerminalVisible: true,
     );
     final effective = WorkspacePanePolicy.effective(
       preferences: prefs,
@@ -42,7 +40,6 @@ void main() {
     expect(snapshot.isNarrow, isFalse);
     expect(snapshot.dockLeft, isTrue);
     expect(snapshot.dockRight, isTrue);
-    expect(snapshot.dockBottom, isTrue);
     expect(snapshot.overlayLeft, isFalse);
     expect(snapshot.overlayRight, isFalse);
   });
@@ -51,7 +48,6 @@ void main() {
     const prefs = LayoutPreferences(
       sidebarWidth: 300,
       rightToolsWidth: 400,
-      workspaceTerminalHeight: 260,
     );
     final effective = WorkspacePanePolicy.effective(
       preferences: prefs,
@@ -63,14 +59,12 @@ void main() {
     );
     expect(snapshot.sidebarWidth, 300);
     expect(snapshot.rightToolsWidth, 400);
-    expect(snapshot.workspaceTerminalHeight, 260);
   });
 
   test('intent fields mirror preferences even when narrow hides docking', () {
     const prefs = LayoutPreferences(
       sidebarVisible: false,
       rightToolsVisible: true,
-      workspaceTerminalVisible: false,
     );
     final effective = WorkspacePanePolicy.effective(
       preferences: prefs,
@@ -82,7 +76,6 @@ void main() {
     );
     expect(snapshot.intentSidebarVisible, isFalse);
     expect(snapshot.intentRightToolsVisible, isTrue);
-    expect(snapshot.intentTerminalVisible, isFalse);
     expect(snapshot.overlayLeft, isFalse);
     expect(snapshot.overlayRight, isTrue);
   });
@@ -91,10 +84,8 @@ void main() {
     test('leaves room for the main workbench beside both side panes', () {
       final bounds = WorkspaceIdePaneBounds.compute(
         availableWidth: 1000,
-        availableHeight: 800,
         dockLeft: true,
         dockRight: true,
-        dockBottom: true,
         sidebarWidth: 260,
         rightToolsWidth: 320,
       );
@@ -102,8 +93,6 @@ void main() {
       expect(bounds.leftMax, 1000 - 320 - 320 - 2);
       // 1000 - 260 - 320 - 2 = 418
       expect(bounds.rightMax, 1000 - 260 - 320 - 2);
-      // 800 - 200 - 1 = 599
-      expect(bounds.bottomMax, 800 - 200 - 1);
       expect(
         bounds.leftMax,
         greaterThanOrEqualTo(LayoutPreferences.minSidebarWidth),
@@ -113,10 +102,8 @@ void main() {
     test('ignores undocked opposite pane when computing side max', () {
       final bounds = WorkspaceIdePaneBounds.compute(
         availableWidth: 1000,
-        availableHeight: 800,
         dockLeft: true,
         dockRight: false,
-        dockBottom: false,
         sidebarWidth: 260,
         rightToolsWidth: 900,
       );
@@ -124,10 +111,6 @@ void main() {
       expect(
         bounds.leftMax,
         1000 - LayoutPreferences.minWorkbenchMainWidth - 1,
-      );
-      expect(
-        bounds.bottomMax,
-        greaterThanOrEqualTo(LayoutPreferences.minWorkspaceTerminalHeight),
       );
     });
   });
@@ -159,7 +142,7 @@ void main() {
 
     test('drag state resets after end so a stale commit is not reissued', () {
       final drag = WorkspaceIdePendingDrag();
-      drag.start(WorkspaceIdeDragTarget.workspaceTerminal);
+      drag.start(WorkspaceIdeDragTarget.sidebar);
       drag.update(200);
       drag.end();
       expect(drag.isDragging, isFalse);

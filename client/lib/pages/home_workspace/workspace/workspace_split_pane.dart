@@ -20,7 +20,6 @@ import '../../../utils/workspace/workspace_active_context.dart';
 import '../../../utils/workspace/workspace_compose_active.dart';
 import '../../../widgets/deferred_mount_shell.dart';
 import '../../../widgets/right_tools/right_tools_panel.dart';
-import '../../../widgets/workspace_bottom_dock.dart';
 import '../../../widgets/workspace_terminal_panel.dart';
 import '../../chat_page.dart';
 import '../../workspace_ide/workspace_ide_shell.dart';
@@ -44,8 +43,8 @@ class WorkspaceSplitPane extends StatefulWidget {
 }
 
 class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
-  /// Bridges an IDE-shell split drag to the bottom terminal's PTY resize hold.
-  /// Owned here so it shares a lifetime with the terminal panel instance.
+  /// Bridges an IDE-shell split drag to center shell terminals' PTY resize hold.
+  /// Owned here so it shares a lifetime with the workbench shell surfaces.
   final _terminalHold = WorkspaceTerminalHoldHandle();
   RunCubit? _boundRunCubit;
   RunCommandHost? _runCommandHost;
@@ -159,7 +158,7 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
                 holdHandle: _terminalHold,
               ),
               // Side panes are off the first-open critical path: chrome +
-              // landing paint first, then tools / terminal mount.
+              // landing paint first, then tools mount.
               right: DeferredMountShell(
                 delayFrames: 2,
                 child: _WorkspaceRightToolsPane(
@@ -167,21 +166,6 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
                   additionalPaths: widget.workspace.extraFolderPaths,
                   workspaceId: widget.workspace.workspaceId,
                   tabScopeId: widget.tabScopeId,
-                ),
-              ),
-              // Keyed by workspace-group identity (never cwd): a same-workspace
-              // cwd change keeps the panel State so the update flows through
-              // didUpdateWidget instead of recreating (and stranding) sessions.
-              // Hold binds to center ShellTerminalSurface (Task 6); dock keeps
-              // chrome until Task 8 but must not steal HoldHandle.
-              bottom: DeferredMountShell(
-                delayFrames: 2,
-                child: WorkspaceBottomDock(
-                  workspaceId: widget.tabScopeId,
-                  workingDirectory: cwd,
-                  terminalKey: ValueKey(
-                    'workspace-terminal-${widget.tabScopeId}',
-                  ),
                 ),
               ),
             ),

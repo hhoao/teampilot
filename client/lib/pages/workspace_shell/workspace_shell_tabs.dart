@@ -17,7 +17,7 @@ import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/session_working_spinner.dart';
 import 'workspace_shell_models.dart';
 
-/// Sidebar + right-tools + bottom-dock visibility toggles for the workspace IDE shell.
+/// Sidebar + right-tools visibility toggles for the workspace IDE shell.
 class WorkspaceShellPaneVisibilityToggles extends StatelessWidget {
   const WorkspaceShellPaneVisibilityToggles({super.key});
 
@@ -29,37 +29,7 @@ class WorkspaceShellPaneVisibilityToggles extends StatelessWidget {
         WorkspaceShellSidebarVisibilityToggle(),
         SizedBox(width: 2),
         WorkspaceShellRightToolsVisibilityToggle(),
-        SizedBox(width: 2),
-        WorkspaceShellBottomDockVisibilityToggle(),
       ],
-    );
-  }
-}
-
-class WorkspaceShellBottomDockVisibilityToggle extends StatelessWidget {
-  const WorkspaceShellBottomDockVisibilityToggle({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
-    return BlocBuilder<LayoutCubit, LayoutState>(
-      buildWhen: (a, b) =>
-          a.preferences.workspaceTerminalVisible !=
-          b.preferences.workspaceTerminalVisible,
-      builder: (context, state) {
-        final visible = state.preferences.workspaceTerminalVisible;
-        return TpIconButton(
-          key: AppKeys.workspaceBottomDockVisibilityButton,
-          icon: Icons.horizontal_split_outlined,
-          tooltip: visible
-              ? l10n.bottomDockPanelHidden
-              : l10n.bottomDockPanelVisible,
-          color: visible ? cs.primary : cs.onSurfaceVariant,
-          backgroundColor: Colors.transparent,
-          onTap: () => context.read<LayoutCubit>().toggleWorkspaceTerminal(),
-        );
-      },
     );
   }
 }

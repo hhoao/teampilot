@@ -6,7 +6,6 @@ import 'package:teampilot/models/layout_preferences.dart';
 import 'package:teampilot/pages/workspace_ide/workspace_ide_shell.dart';
 
 void main() {
-  const bottomKey = ValueKey('workspace-terminal-smoke');
   const centerKey = ValueKey('center-smoke');
   const rightKey = ValueKey('right-smoke');
 
@@ -32,7 +31,6 @@ void main() {
               left: SizedBox(child: Text('left')),
               center: ColoredBox(key: centerKey, color: Colors.transparent),
               right: ColoredBox(key: rightKey, color: Colors.transparent),
-              bottom: ColoredBox(key: bottomKey, color: Colors.black),
             ),
           ),
         ),
@@ -42,39 +40,25 @@ void main() {
     return layout;
   }
 
-  testWidgets('four builders mount under the IDE shell', (tester) async {
+  testWidgets('three builders mount under the IDE shell', (tester) async {
     await pumpShell(tester);
     expect(find.text('left'), findsOneWidget);
     expect(find.byKey(centerKey), findsOneWidget);
     expect(find.byKey(rightKey), findsOneWidget);
-    expect(find.byKey(bottomKey), findsOneWidget);
   });
 
-  testWidgets('toggling right tools keeps the bottom terminal element identity', (
+  testWidgets('toggling right tools keeps the center workbench identity', (
     tester,
   ) async {
     final layout = await pumpShell(tester);
 
-    final bottomBefore = tester.element(find.byKey(bottomKey));
     final centerBefore = tester.element(find.byKey(centerKey));
 
-    // Hide right tools, then show again — bottom + center must not reparent.
     await layout.setRightToolsVisible(false);
     await tester.pumpAndSettle();
-    expect(find.byKey(bottomKey), findsOneWidget);
-    expect(
-      identical(tester.element(find.byKey(bottomKey)), bottomBefore),
-      isTrue,
-      reason: 'bottom terminal was reparented/disposed on right-tools hide',
-    );
 
     await layout.setRightToolsVisible(true);
     await tester.pumpAndSettle();
-    expect(
-      identical(tester.element(find.byKey(bottomKey)), bottomBefore),
-      isTrue,
-      reason: 'bottom terminal was reparented/disposed on right-tools show',
-    );
     expect(
       identical(tester.element(find.byKey(centerKey)), centerBefore),
       isTrue,
@@ -90,10 +74,9 @@ void main() {
     await pumpShell(tester, size: const Size(600, 900));
 
     // The single mounted `left` is the overlay copy (docked pane renders
-    // nothing for the sides on narrow), and center/bottom still mount.
+    // nothing for the sides on narrow), and center still mounts.
     expect(find.text('left'), findsOneWidget);
     expect(find.byKey(centerKey), findsOneWidget);
-    expect(find.byKey(bottomKey), findsOneWidget);
   });
 
   testWidgets('dismissing the narrow left overlay clears sidebar intent', (
@@ -114,11 +97,11 @@ void main() {
     expect(find.text('left'), findsNothing);
   });
 
-  testWidgets('narrow overlay toggle keeps the bottom terminal identity', (
+  testWidgets('narrow overlay toggle keeps the center workbench identity', (
     tester,
   ) async {
     final layout = await pumpShell(tester, size: const Size(600, 900));
-    final bottomBefore = tester.element(find.byKey(bottomKey));
+    final centerBefore = tester.element(find.byKey(centerKey));
 
     await layout.setSidebarVisible(false);
     await tester.pumpAndSettle();
@@ -126,9 +109,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      identical(tester.element(find.byKey(bottomKey)), bottomBefore),
+      identical(tester.element(find.byKey(centerKey)), centerBefore),
       isTrue,
-      reason: 'bottom terminal was reparented when overlay toggled on narrow',
+      reason: 'center was reparented when overlay toggled on narrow',
     );
   });
 
@@ -136,7 +119,6 @@ void main() {
     tester,
   ) async {
     final layout = await pumpShell(tester, size: const Size(1000, 900));
-    await layout.setWorkspaceTerminalVisible(false);
     await tester.pumpAndSettle();
 
     // Grow the left pane far past the old hard max; center must keep ≥ 320.
