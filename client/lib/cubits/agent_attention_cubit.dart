@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -6,6 +8,10 @@ import '../services/agent_status/agent_status_event.dart';
 
 /// Orca-aligned TTL: drop seat attention with no refresh after this duration.
 const Duration agentAttentionStaleAfter = Duration(minutes: 30);
+
+/// How often [AgentAttentionCubit] physically prunes stale seats so BlocBuilder
+/// consumers clear waiting without waiting for a new hook.
+const Duration agentAttentionPruneInterval = Duration(minutes: 1);
 
 /// Per-seat attention snapshot with last-update timestamp for stale pruning.
 class AgentSeatAttentionEntry extends Equatable {
@@ -86,11 +92,26 @@ class AgentAttentionState extends Equatable {
 
 /// Holds seat-keyed attention; skip-permissions gate + 30m stale TTL.
 class AgentAttentionCubit extends Cubit<AgentAttentionState> {
-  AgentAttentionCubit({DateTime Function()? clock})
-    : _clock = clock ?? DateTime.now,
-      super(AgentAttentionState(clock: clock ?? DateTime.now));
+  AgentAttentionCubit({
+    DateTime Function()? clock,
+    Duration? pruneInterval = agentAttentionPruneInterval,
+  }) : _clock = clock ?? DateTime.now,
+       super(AgentAttentionState(clock: clock ?? DateTime.now)) {
+    if (pruneInterval != null) {
+      _pruneTimer = Timer.periodic(pruneInterval, (_) => pruneStale());
+    }
+  }
 
   final DateTime Function() _clock;
+  Timer? _pruneTimer;
+
+  /// Physically drop stale seats and emit when the map changes so BlocBuilder
+  /// consumers clear waiting after TTL without a new hook.
+  void pruneStale() {
+    if (isClosed) return;
+    final pruned = state.pruned(_clock());
+    if (pruned != state) emit(pruned);
+  }
 
   /// Apply a normalized status event for one seat.
   ///
@@ -103,8 +124,7 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
     required bool skipPermissions,
   }) {
     if (skipPermissions && event.state == AgentSeatAttention.waiting) {
-      final pruned = state.pruned(_clock());
-      if (pruned != state) emit(pruned);
+      pruneStale();
       return;
     }
 
@@ -137,5 +157,12 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
     seats.removeWhere((k, _) => k.startsWith(prefix));
     if (seats.length == before) return;
     emit(AgentAttentionState(seats: seats, clock: _clock));
+  }
+
+  @override
+  Future<void> close() {
+    _pruneTimer?.cancel();
+    _pruneTimer = null;
+    return super.close();
   }
 }
