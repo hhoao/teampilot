@@ -28,12 +28,22 @@ void main() {
         expect(toml, contains('[[hooks.PostToolUse]]'));
         expect(toml, contains('[[hooks.Stop]]'));
         expect(toml, contains('type = "command"'));
+        expect(toml, contains('hook_event_name'));
+        expect(toml, contains('PermissionRequest'));
         expect(
           toml,
           contains(
             'command = "curl -sS -X POST -H \\"X-Member: worker-1\\" '
             '-H \\"X-Session: sess-codex\\" '
+            '-H \\"Content-Type: application/json\\" '
+            '-d \'{\\"hook_event_name\\":\\"PermissionRequest\\"}\' '
             'http://127.0.0.1:12345/agent-status"',
+          ),
+        );
+        expect(
+          toml,
+          contains(
+            '-d \'{\\"hook_event_name\\":\\"PostToolUse\\"}\'',
           ),
         );
       },
