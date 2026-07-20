@@ -355,7 +355,9 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
 
   void clearPendings() {
     _cancelTipHoldTimer();
-    if (_pendingQueue.isEmpty && !state.awaitingAssistant && !hasHeldAssistantTip) {
+    if (_pendingQueue.isEmpty &&
+        !state.awaitingAssistant &&
+        !hasHeldAssistantTip) {
       return;
     }
     _pendingQueue.clear();
