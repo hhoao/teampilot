@@ -12,7 +12,6 @@ import '../models/run/run_ui_intent.dart';
 import '../models/workspace_folder.dart';
 import '../models/workspace_terminal_session_spec.dart';
 import '../pages/workspace_shell/workspace_shell_tabs.dart';
-import '../services/run/launch_type_normalize.dart';
 import '../services/terminal/terminal_theme_mapper.dart';
 import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_connect_coordinator.dart';
@@ -73,7 +72,6 @@ class _WorkspaceBottomDockState extends State<WorkspaceBottomDock> {
   final _sessionOps = WorkspaceTerminalSessionOps();
 
   WorkspaceDockTab? _active;
-  Set<String> _seenSessionIds = {};
   StreamSubscription<RunUiIntent>? _uiIntentSub;
   RunCubit? _subscribedCubit;
 
@@ -105,52 +103,11 @@ class _WorkspaceBottomDockState extends State<WorkspaceBottomDock> {
   }
 
   void _onUiIntent(RunUiIntent intent) {
-    if (!mounted) return;
-
-    final nextTab = dockTabForActivateIntent(intent);
-    if (nextTab != null) {
-      final layout = context.read<LayoutCubit>();
-      if (!layout.state.preferences.workspaceTerminalVisible) {
-        unawaited(layout.setWorkspaceTerminalVisible(true));
-      }
-    }
-
-    final entryId = intent.terminalEntryId?.trim();
-    if (entryId != null &&
-        entryId.isNotEmpty &&
-        intent.surface == RunToolSurface.terminal) {
-      widget.holdHandle?.selectEntry(entryId);
-      setState(() => _active = WorkspaceDockShellTab(entryId));
-    } else if (nextTab == WorkspaceBottomDockTab.run) {
-      final sessions = context.read<RunCubit>().state.sessions;
-      if (sessions.isNotEmpty) {
-        setState(() => _active = WorkspaceDockRunTab(sessions.last.id));
-      }
-    }
-
-    if (intent.focusToolWindow &&
-        intent.surface == RunToolSurface.terminal) {
-      widget.holdHandle?.requestFocus();
-    }
+    // Center WorkbenchShellRunSync owns reveal/selection for RunUiIntent.
   }
 
   void _onSessionsChanged(RunState state) {
-    final ids = state.sessions.map((s) => s.id).toSet();
-    final added = ids.difference(_seenSessionIds);
-    _seenSessionIds = ids;
-    if (added.isEmpty) return;
-
-    final shouldRevealRun = state.sessions.any(
-      (session) =>
-          added.contains(session.id) && _sessionUsesRunPanel(session),
-    );
-    if (!shouldRevealRun) return;
-
-    final layout = context.read<LayoutCubit>();
-    if (!layout.state.preferences.workspaceTerminalVisible) {
-      unawaited(layout.setWorkspaceTerminalVisible(true));
-    }
-    setState(() => _active = WorkspaceDockRunTab(added.last));
+    // Center WorkbenchShellRunSync owns selection for new RunPanel sessions.
   }
 
   void _selectShell(String entryId) {
@@ -198,9 +155,7 @@ class _WorkspaceBottomDockState extends State<WorkspaceBottomDock> {
           _active = WorkspaceDockRunTab(runs.last.id);
         } else {
           final nextShell = _group.activeId;
-          _active = nextShell == null
-              ? null
-              : WorkspaceDockShellTab(nextShell);
+          _active = nextShell == null ? null : WorkspaceDockShellTab(nextShell);
         }
       }
     }
@@ -211,9 +166,7 @@ class _WorkspaceBottomDockState extends State<WorkspaceBottomDock> {
     final hasShell = _group.entries.isNotEmpty;
     final hasRun = context.read<RunCubit>().state.sessions.isNotEmpty;
     if (!hasShell && !hasRun && mounted) {
-      unawaited(
-        context.read<LayoutCubit>().setWorkspaceTerminalVisible(false),
-      );
+      unawaited(context.read<LayoutCubit>().setWorkspaceTerminalVisible(false));
     }
   }
 
@@ -369,10 +322,6 @@ class _WorkspaceBottomDockState extends State<WorkspaceBottomDock> {
       _active = null;
     }
   }
-}
-
-bool _sessionUsesRunPanel(RunSession session) {
-  return !isBuiltInShellType(session.owned.configuration.type);
 }
 
 class _DockHeader extends StatelessWidget {

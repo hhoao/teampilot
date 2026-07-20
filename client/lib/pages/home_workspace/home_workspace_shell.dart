@@ -12,6 +12,7 @@ import '../../cubits/layout_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/run_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';
+import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workspace_tools_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/home_closed_workspace_entry.dart';
@@ -351,6 +352,7 @@ class _HomeShellState extends State<HomeShell> {
     if (!mounted) return;
 
     terminalRegistry.disposeWorkspace(tab.tabKey);
+    context.read<WorkbenchCubit>().clearWorkspace(tab.workspaceId);
     workspaceTools.removeWorkspace(tab.tabKey);
     context.read<WorkspaceToolsScopeRegistry>().removeScope(tab.tabKey);
     context.read<WorkspaceRunRegistry>().removeScope(tab.tabKey);

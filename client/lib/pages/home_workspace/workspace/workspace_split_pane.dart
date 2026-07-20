@@ -156,6 +156,7 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
                 additionalPaths: widget.workspace.extraFolderPaths,
                 workspaceId: widget.workspace.workspaceId,
                 tabScopeId: widget.tabScopeId,
+                holdHandle: _terminalHold,
               ),
               // Side panes are off the first-open critical path: chrome +
               // landing paint first, then tools / terminal mount.

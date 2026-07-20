@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,10 +10,15 @@ import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
+import '../../cubits/run_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../utils/workspace/workspace_chrome_profile.dart';
+import '../../models/run/run_session.dart';
 import '../../models/team_config.dart';
+import '../../services/run/run_panel_session.dart';
+import '../../services/terminal/workspace_terminal_registry.dart';
+import '../../services/terminal/workspace_terminal_title_resolver.dart';
 import '../../services/workbench/workbench_shell_actions.dart';
 import '../../services/workbench/workbench_tab_projection.dart';
 import '../../utils/ui/app_keys.dart';
@@ -21,6 +26,8 @@ import '../../utils/debounce/debounce.dart';
 import '../../utils/workspace/workspace_active_context.dart';
 import '../../cubits/workspace_landing_context_cubit.dart';
 import '../../widgets/workbench/workbench_session_sync.dart';
+import '../../widgets/workbench/workbench_shell_run_sync.dart';
+import '../../widgets/workspace_terminal_panel.dart';
 import '../workbench/workbench_body.dart';
 import '../workspace_shell/workspace_shell.dart';
 import 'chat_scoped_tab_view.dart';
@@ -36,6 +43,7 @@ class ChatPageShell extends StatelessWidget {
     this.routeActive = true,
     this.additionalPaths = const [],
     this.sessionId,
+    this.holdHandle,
     super.key,
   });
 
@@ -47,6 +55,7 @@ class ChatPageShell extends StatelessWidget {
   final String workspaceId;
   final String tabScopeId;
   final bool routeActive;
+  final WorkspaceTerminalHoldHandle? holdHandle;
 
   WorkspaceActiveContext _activeContext(BuildContext context) {
     return WorkspaceActiveContext.resolve(
@@ -72,6 +81,7 @@ class ChatPageShell extends StatelessWidget {
         tabScopeId: tabScopeId,
         routeActive: routeActive,
         team: active.team,
+        holdHandle: holdHandle,
       ),
     );
   }
@@ -86,6 +96,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
     required this.tabScopeId,
     required this.routeActive,
     required this.team,
+    this.holdHandle,
   });
 
   final String cwd;
@@ -95,6 +106,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
   final String tabScopeId;
   final bool routeActive;
   final TeamProfile? team;
+  final WorkspaceTerminalHoldHandle? holdHandle;
 
   String? _profileId(BuildContext context) {
     try {
@@ -159,160 +171,202 @@ class _ChatWorkspaceShell extends StatelessWidget {
           sessionIds: sessionIds,
           activeSessionId: view.workbenchSlice.activeSessionId,
           composeActive: view.composeActive,
-          child: BlocBuilder<WorkbenchCubit, WorkbenchState>(
-            buildWhen: (prev, next) =>
-                prev.bucket(workspaceId) != next.bucket(workspaceId),
-            builder: (context, workbenchState) {
-              final editorBucket = context.select<EditorCubit, WorkspaceEditorBucket>(
-                (c) => c.state.bucket(workspaceId),
-              );
-              final order = workbenchState.bucket(workspaceId).tabOrder;
-              final activeId = workbenchState.bucket(workspaceId).activeTabId;
-              final sessionTitles = {
-                for (final t in view.tabs) t.id: t.title,
-              };
-              final sessionWorking = {
-                for (final id in view.workingSessionIds) id: true,
-              };
-              final sessionCli = <String, CliTool?>{
-                for (final t in view.tabs)
-                  t.id: () {
-                    final runtimeTab = tabById[t.id];
-                    if (runtimeTab == null) return null;
-                    return resolveSessionTabCli(
-                      tab: runtimeTab,
-                      sessions: state.sessions,
-                      isPersonal: isPersonalContext,
-                      team: teamConfig,
-                      personalFallbackCli: personalFallbackCli,
-                      globalPresets: context
-                          .read<CliPresetsCubit>()
-                          .state
-                          .presets,
+          child: WorkbenchShellRunSync(
+            workspaceId: workspaceId,
+            tabScopeId: tabScopeId,
+            holdHandle: holdHandle,
+            child: BlocBuilder<WorkbenchCubit, WorkbenchState>(
+              buildWhen: (prev, next) =>
+                  prev.bucket(workspaceId) != next.bucket(workspaceId),
+              builder: (context, workbenchState) {
+                final editorBucket = context
+                    .select<EditorCubit, WorkspaceEditorBucket>(
+                      (c) => c.state.bucket(workspaceId),
                     );
-                  }(),
-              };
-              final sessionPinned = {
-                for (final s in state.sessions)
-                  if (sessionIds.contains(s.sessionId)) s.sessionId: s.pinned,
-              };
-              final tabs = projectWorkbenchTabs(
-                tabOrder: order,
-                sessionTitles: sessionTitles,
-                sessionWorking: sessionWorking,
-                sessionCli: sessionCli,
-                sessionPinned: sessionPinned,
-                editorBucket: editorBucket,
-                previewTabIds: workbenchState.bucket(workspaceId).previewTabIds,
-                sessionAccent: Theme.of(context).colorScheme.primary,
-              );
-              final activeTabIndex = activeId == null
-                  ? 0
-                  : order.indexOf(activeId).clamp(0, tabs.isEmpty ? 0 : tabs.length - 1);
+                final order = workbenchState.bucket(workspaceId).tabOrder;
+                final activeId = workbenchState.bucket(workspaceId).activeTabId;
+                final sessionTitles = {
+                  for (final t in view.tabs) t.id: t.title,
+                };
+                final sessionWorking = {
+                  for (final id in view.workingSessionIds) id: true,
+                };
+                final sessionCli = <String, CliTool?>{
+                  for (final t in view.tabs)
+                    t.id: () {
+                      final runtimeTab = tabById[t.id];
+                      if (runtimeTab == null) return null;
+                      return resolveSessionTabCli(
+                        tab: runtimeTab,
+                        sessions: state.sessions,
+                        isPersonal: isPersonalContext,
+                        team: teamConfig,
+                        personalFallbackCli: personalFallbackCli,
+                        globalPresets: context
+                            .read<CliPresetsCubit>()
+                            .state
+                            .presets,
+                      );
+                    }(),
+                };
+                final sessionPinned = {
+                  for (final s in state.sessions)
+                    if (sessionIds.contains(s.sessionId)) s.sessionId: s.pinned,
+                };
+                final shellGroup = context
+                    .read<WorkspaceTerminalRegistry>()
+                    .groupFor(tabScopeId);
+                final shellEntries = shellGroup.entries;
+                final shellTitles = {
+                  for (final entry in shellEntries)
+                    entry.id: WorkspaceTerminalTitleResolver.tabTitle(
+                      entry: entry,
+                      siblings: shellEntries,
+                      baseLabel: entry.titleLabel.isEmpty
+                          ? '…'
+                          : entry.titleLabel,
+                    ),
+                };
+                final runSessions = context.watch<RunCubit>().state.sessions;
+                final runTitles = {
+                  for (final session in runSessions)
+                    if (sessionUsesRunPanel(session))
+                      session.id: session.owned.configuration.name,
+                };
+                final runWorking = {
+                  for (final session in runSessions)
+                    if (sessionUsesRunPanel(session) &&
+                        (session.status == RunSessionStatus.running ||
+                            session.status == RunSessionStatus.starting))
+                      session.id: true,
+                };
+                final tabs = projectWorkbenchTabs(
+                  tabOrder: order,
+                  sessionTitles: sessionTitles,
+                  sessionWorking: sessionWorking,
+                  sessionCli: sessionCli,
+                  sessionPinned: sessionPinned,
+                  editorBucket: editorBucket,
+                  previewTabIds: workbenchState
+                      .bucket(workspaceId)
+                      .previewTabIds,
+                  shellTitles: shellTitles,
+                  runTitles: runTitles,
+                  runWorking: runWorking,
+                  sessionAccent: Theme.of(context).colorScheme.primary,
+                );
+                final activeTabIndex = activeId == null
+                    ? 0
+                    : order
+                          .indexOf(activeId)
+                          .clamp(0, tabs.isEmpty ? 0 : tabs.length - 1);
 
-              return WorkspaceShell(
-                showHeader: false,
-                breadcrumb: isPersonalContext
-                    ? 'Personal / Chat / Shell chat workbench'
-                    : '${teamConfig?.name ?? 'Team'} / Chat / Shell chat workbench',
-                title: 'Shell chat workbench',
-                subtitle: isPersonalContext
-                    ? 'personal workspace / shell wrapper mode'
-                    : 'target: ${teamConfig != null ? cubit.selectedMemberName(teamConfig) : 'team'} / shell wrapper mode',
-                showNewChatButton: tabs.isNotEmpty,
-                newChatTooltip: context.l10n.homeWorkspaceNewConversation,
-                onNewChatPressed: routeActive
-                    ? () {
-                        context.read<WorkbenchCubit>().clearActive(workspaceId);
-                        cubit.enterComposeMode(tabScopeId);
-                      }
-                    : null,
-                tabs: tabs,
-                activeTabIndex: activeTabIndex,
-                onTabSelected: routeActive
-                    ? (index) {
-                        if (index < 0 || index >= order.length) return;
-                        unawaited(
-                          WorkbenchShellActions.select(
-                            context: context,
-                            workspaceId: workspaceId,
-                            tabScopeId: tabScopeId,
-                            tab: order[index],
-                          ),
-                        );
-                      }
-                    : null,
-                onTabClosed: routeActive
-                    ? (index) {
-                        if (index < 0 || index >= order.length) return;
-                        unawaited(
-                          WorkbenchShellActions.closeAt(
-                            context: context,
-                            workspaceId: workspaceId,
-                            tabScopeId: tabScopeId,
-                            tab: order[index],
-                          ),
-                        );
-                      }
-                    : null,
-                onTabCloseOthers: routeActive
-                    ? (index) {
-                        if (index < 0 || index >= order.length) return;
-                        unawaited(
-                          WorkbenchShellActions.closeOthers(
-                            context: context,
-                            workspaceId: workspaceId,
-                            tabScopeId: tabScopeId,
-                            keep: order[index],
-                          ),
-                        );
-                      }
-                    : null,
-                onTabCloseRight: routeActive
-                    ? (index) {
-                        if (index < 0 || index >= order.length) return;
-                        unawaited(
-                          WorkbenchShellActions.closeRight(
-                            context: context,
-                            workspaceId: workspaceId,
-                            tabScopeId: tabScopeId,
-                            anchor: order[index],
-                          ),
-                        );
-                      }
-                    : null,
-                onTabPin: routeActive
-                    ? (index) {
-                        if (index < 0 || index >= order.length) return;
-                        final sessionId = order[index].sessionId;
-                        if (sessionId == null) return;
-                        unawaited(cubit.toggleSessionPin(sessionId));
-                      }
-                    : null,
-                tabBarTrailing: Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: SessionWorkbenchViewToggle(
+                return WorkspaceShell(
+                  showHeader: false,
+                  breadcrumb: isPersonalContext
+                      ? 'Personal / Chat / Shell chat workbench'
+                      : '${teamConfig?.name ?? 'Team'} / Chat / Shell chat workbench',
+                  title: 'Shell chat workbench',
+                  subtitle: isPersonalContext
+                      ? 'personal workspace / shell wrapper mode'
+                      : 'target: ${teamConfig != null ? cubit.selectedMemberName(teamConfig) : 'team'} / shell wrapper mode',
+                  showNewChatButton: tabs.isNotEmpty,
+                  newChatTooltip: context.l10n.homeWorkspaceNewConversation,
+                  onNewChatPressed: routeActive
+                      ? () {
+                          context.read<WorkbenchCubit>().clearActive(
+                            workspaceId,
+                          );
+                          cubit.enterComposeMode(tabScopeId);
+                        }
+                      : null,
+                  tabs: tabs,
+                  activeTabIndex: activeTabIndex,
+                  onTabSelected: routeActive
+                      ? (index) {
+                          if (index < 0 || index >= order.length) return;
+                          unawaited(
+                            WorkbenchShellActions.select(
+                              context: context,
+                              workspaceId: workspaceId,
+                              tabScopeId: tabScopeId,
+                              tab: order[index],
+                            ),
+                          );
+                        }
+                      : null,
+                  onTabClosed: routeActive
+                      ? (index) {
+                          if (index < 0 || index >= order.length) return;
+                          unawaited(
+                            WorkbenchShellActions.closeAt(
+                              context: context,
+                              workspaceId: workspaceId,
+                              tabScopeId: tabScopeId,
+                              tab: order[index],
+                            ),
+                          );
+                        }
+                      : null,
+                  onTabCloseOthers: routeActive
+                      ? (index) {
+                          if (index < 0 || index >= order.length) return;
+                          unawaited(
+                            WorkbenchShellActions.closeOthers(
+                              context: context,
+                              workspaceId: workspaceId,
+                              tabScopeId: tabScopeId,
+                              keep: order[index],
+                            ),
+                          );
+                        }
+                      : null,
+                  onTabCloseRight: routeActive
+                      ? (index) {
+                          if (index < 0 || index >= order.length) return;
+                          unawaited(
+                            WorkbenchShellActions.closeRight(
+                              context: context,
+                              workspaceId: workspaceId,
+                              tabScopeId: tabScopeId,
+                              anchor: order[index],
+                            ),
+                          );
+                        }
+                      : null,
+                  onTabPin: routeActive
+                      ? (index) {
+                          if (index < 0 || index >= order.length) return;
+                          final sessionId = order[index].sessionId;
+                          if (sessionId == null) return;
+                          unawaited(cubit.toggleSessionPin(sessionId));
+                        }
+                      : null,
+                  tabBarTrailing: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: SessionWorkbenchViewToggle(
+                      workspaceId: workspaceId,
+                      tabScopeId: tabScopeId,
+                      team: teamConfig,
+                    ),
+                  ),
+                  actions: isPersonalContext || teamConfig == null
+                      ? const []
+                      : _chatActions(context, teamConfig),
+                  child: WorkbenchBody(
                     workspaceId: workspaceId,
                     tabScopeId: tabScopeId,
-                    team: teamConfig,
+                    workspace: workspace,
+                    profileId: _profileId(context),
+                    routeActive: routeActive,
+                    sessionId: sessionId,
+                    isPersonalContext: isPersonalContext,
+                    team: team,
+                    workbenchSlice: view.workbenchSlice,
                   ),
-                ),
-                actions: isPersonalContext || teamConfig == null
-                    ? const []
-                    : _chatActions(context, teamConfig),
-                child: WorkbenchBody(
-                  workspaceId: workspaceId,
-                  tabScopeId: tabScopeId,
-                  workspace: workspace,
-                  profileId: _profileId(context),
-                  routeActive: routeActive,
-                  sessionId: sessionId,
-                  isPersonalContext: isPersonalContext,
-                  team: team,
-                  workbenchSlice: view.workbenchSlice,
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         );
       },

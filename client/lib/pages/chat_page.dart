@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/launch_profile_cubit.dart';
 import '../utils/workspace/workspace_active_context.dart';
+import '../widgets/workspace_terminal_panel.dart';
 import 'chat/chat_page_shell.dart';
 
 class ChatPage extends StatelessWidget {
@@ -13,6 +14,7 @@ class ChatPage extends StatelessWidget {
     this.tabScopeId,
     this.additionalPaths = const [],
     this.sessionId,
+    this.holdHandle,
     super.key,
   });
 
@@ -32,6 +34,8 @@ class ChatPage extends StatelessWidget {
   /// Scopes workspace terminals and right-tools selection; defaults to [workspaceId].
   final String? tabScopeId;
 
+  final WorkspaceTerminalHoldHandle? holdHandle;
+
   String get _tabScopeId => tabScopeId ?? workspaceId;
 
   @override
@@ -50,6 +54,7 @@ class ChatPage extends StatelessWidget {
       sessionId: sessionId ?? active.activeSessionId,
       workspaceId: workspaceId,
       tabScopeId: _tabScopeId,
+      holdHandle: holdHandle,
     );
   }
 }
