@@ -43,6 +43,7 @@ class SessionReviewComposeCard extends StatelessWidget {
     required this.plugins,
     required this.slashBundle,
     this.isSubmitting = false,
+    this.composeEnabled = true,
     this.launchError,
     this.onRemapDeadTarget,
     this.onPasteImage,
@@ -89,6 +90,9 @@ class SessionReviewComposeCard extends StatelessWidget {
   final List<Plugin> plugins;
   final ConfigBundle slashBundle;
   final bool isSubmitting;
+
+  /// When false, field and toolbar actions are locked (e.g. permission wait).
+  final bool composeEnabled;
   final String? launchError;
   final VoidCallback? onRemapDeadTarget;
   final Future<bool> Function()? onPasteImage;
@@ -113,7 +117,8 @@ class SessionReviewComposeCard extends StatelessWidget {
   final VoidCallback? onTeamSettings;
   final bool showTeamSettingsAttention;
 
-  bool get _composeActionsEnabled => !isSubmitting && !isEnhancing;
+  bool get _composeActionsEnabled =>
+      composeEnabled && !isSubmitting && !isEnhancing;
 
   bool get _showContinueToolbar =>
       identityLabel != null ||
@@ -197,10 +202,10 @@ class SessionReviewComposeCard extends StatelessWidget {
               controller: controller,
               focusNode: focusNode,
               hint: hint,
-              enabled: !isSubmitting,
+              enabled: composeEnabled && !isSubmitting,
               onChanged: onChanged,
               onSubmit: onSubmit,
-              canSubmit: () => canSubmit,
+              canSubmit: () => composeEnabled && canSubmit,
               workspaceRoot: workspaceRoot,
               skills: skills,
               plugins: plugins,
@@ -308,7 +313,7 @@ class SessionReviewComposeCard extends StatelessWidget {
       SizedBox(width: spacing.xs),
       _SendButton(
         palette: palette,
-        canSubmit: canSubmit,
+        canSubmit: composeEnabled && canSubmit,
         isSubmitting: isSubmitting,
         onSubmit: onSubmit,
       ),
@@ -352,7 +357,7 @@ class SessionReviewComposeCard extends StatelessWidget {
       SizedBox(width: spacing.xs),
       _SendButton(
         palette: palette,
-        canSubmit: canSubmit,
+        canSubmit: composeEnabled && canSubmit,
         isSubmitting: isSubmitting,
         onSubmit: onSubmit,
       ),

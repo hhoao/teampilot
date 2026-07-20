@@ -4,15 +4,29 @@ const _agentStatusHookEvents = [
   'PermissionRequest',
   'PreToolUse',
   'PostToolUse',
+  'PostToolUseFailure',
   'Stop',
+  'StopFailure',
   'UserPromptSubmit',
 ];
+
+/// Tool-lifecycle events that accept a matcher (Orca uses `*`).
+const _agentStatusMatcherEvents = {
+  'PermissionRequest',
+  'PreToolUse',
+  'PostToolUse',
+  'PostToolUseFailure',
+};
 
 /// Install HTTP hooks that POST seat lifecycle events to `/agent-status`
 /// (permission attention + idle/done). Headers via [endpoint.headersFor].
 ///
-/// Idempotent for the same URL. Install for simple and team seats whenever
-/// [endpoint] is non-null — not gated on mixed mode.
+/// Each event gets a distinct URL (`?event=<name>`) so Claude's HTTP-hook
+/// dedupe-by-URL cannot collapse PermissionRequest with PostToolUse/Stop —
+/// that left waiting sticky after the turn finished.
+///
+/// Idempotent for the same event URL. Install for simple and team seats
+/// whenever [endpoint] is non-null — not gated on mixed mode.
 Map<String, Object?> mergeAgentStatusHooks(
   Map<String, Object?> settings,
   String memberId,
@@ -23,23 +37,41 @@ Map<String, Object?> mergeAgentStatusHooks(
   );
   final headers = endpoint.headersFor(memberId);
   for (final event in _agentStatusHookEvents) {
+    final eventUrl = agentStatusHookUrl(endpoint.url, event);
     final entries = List<Object?>.from((hooks[event] as List?) ?? const []);
     final exists = entries.any(
       (e) =>
           e is Map &&
           (e['hooks'] as List?)?.any(
-                (h) => h is Map && h['url'] == endpoint.url,
+                (h) => h is Map && h['url'] == eventUrl,
               ) ==
               true,
     );
     if (!exists) {
-      entries.add({
-        'hooks': [
-          {'type': 'http', 'url': endpoint.url, 'headers': headers},
-        ],
-      });
+      final hook = <String, Object?>{
+        'type': 'http',
+        'url': eventUrl,
+        'headers': headers,
+        // Status reporting only — do not sit on Claude's 600s default.
+        'timeout': 5,
+      };
+      final entry = <String, Object?>{
+        'hooks': [hook],
+      };
+      if (_agentStatusMatcherEvents.contains(event)) {
+        entry['matcher'] = '*';
+      }
+      entries.add(entry);
     }
     hooks[event] = entries;
   }
   return {...settings, 'hooks': hooks};
+}
+
+/// Per-event status URL so identical-handler dedupe keeps every lifecycle hook.
+String agentStatusHookUrl(String baseUrl, String eventName) {
+  final uri = Uri.parse(baseUrl);
+  final next = Map<String, String>.from(uri.queryParameters)
+    ..['event'] = eventName;
+  return uri.replace(queryParameters: next).toString();
 }

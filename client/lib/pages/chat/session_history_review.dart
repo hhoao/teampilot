@@ -7,6 +7,7 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/ai_history_cubit.dart';
+import '../../cubits/agent_attention_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
@@ -39,6 +40,7 @@ import '../../theme/app_markdown_style_sheet.dart';
 import '../../utils/team/team_member_naming.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
 import 'agent_permission_attention_banner.dart';
+import 'history_awaiting_working_sync.dart';
 import 'session_history_review_messages.dart';
 import 'session_history_review_submit.dart';
 import 'session_review_compose_card.dart';
@@ -88,9 +90,10 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
   var _workspaceProjectBundle = const ConfigBundle();
   var _workspaceBundleGeneration = 0;
 
-  /// Latched once this continue turn appears in [ChatState.workingSessionIds];
-  /// falling edge clears awaiting so multi-assistant replies keep Running.
+  /// Latched once this continue turn appears in [ChatState.workingSessionIds]
+  /// (or was already working at submit); falling edge clears awaiting.
   var _sawSessionWorkingWhileAwaiting = false;
+  Timer? _awaitingIdleGraceTimer;
 
   @override
   void initState() {
@@ -176,6 +179,8 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
 
   @override
   void dispose() {
+    _awaitingIdleGraceTimer?.cancel();
+    _awaitingIdleGraceTimer = null;
     _controller.removeListener(_onComposeChanged);
     _stopVoiceSessionClock();
     final live = _liveRefresh;
@@ -668,11 +673,22 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
   Future<void> _handleSubmit() async {
     final text = _controller.text.trim();
     if (text.isEmpty || _isSubmitting) return;
+    final selectedMemberId = context.read<ChatCubit>().state.selectedMemberId;
+    if (AgentPermissionAttentionBanner.isSelectedSeatWaiting(
+      attention: context.read<AgentAttentionCubit>(),
+      session: widget.session,
+      selectedMemberId: selectedMemberId,
+    )) {
+      return;
+    }
 
     final cubit = context.read<AiHistoryCubit>();
     // Optimistic UX (assistant-ui): show the user bubble + running chrome
     // immediately — do not wait for connect/inject.
     cubit.enqueuePendingUser(text);
+    // Latch if the seat is already working (no rising edge after this).
+    // Otherwise start grace clear so never-working turns do not stick Running.
+    _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
     _controller.clear();
     if (mounted) setState(() {});
 
@@ -683,6 +699,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     if (!mounted) return;
     setState(() {});
     if (!ok) {
+      _cancelAwaitingIdleGrace();
       cubit.removePendingMatching(text);
       _controller
         ..text = text
@@ -693,21 +710,58 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     unawaited(_startLiveRefresh());
   }
 
+  void _cancelAwaitingIdleGrace() {
+    _awaitingIdleGraceTimer?.cancel();
+    _awaitingIdleGraceTimer = null;
+  }
+
+  void _scheduleAwaitingIdleGrace() {
+    if (_awaitingIdleGraceTimer != null) return;
+    _awaitingIdleGraceTimer = Timer(historyAwaitingIdleGrace, () {
+      _awaitingIdleGraceTimer = null;
+      if (!mounted) return;
+      final history = context.read<AiHistoryCubit>();
+      if (!history.state.awaitingAssistant) return;
+      final working = context.read<ChatCubit>().state.workingSessionIds.contains(
+        widget.session.sessionId,
+      );
+      if (working) {
+        _sawSessionWorkingWhileAwaiting = true;
+        return;
+      }
+      history.flushHeldTip(endAwaiting: true);
+      _sawSessionWorkingWhileAwaiting = false;
+    });
+  }
+
   void _syncAwaitingFromWorkingSessions(ChatState chat) {
     final history = context.read<AiHistoryCubit>();
-    if (!history.state.awaitingAssistant) {
-      _sawSessionWorkingWhileAwaiting = false;
-      return;
-    }
     final working = chat.workingSessionIds.contains(widget.session.sessionId);
-    if (working) {
-      _sawSessionWorkingWhileAwaiting = true;
-      return;
+    final action = resolveHistoryAwaitingWorkingAction(
+      awaitingAssistant: history.state.awaitingAssistant,
+      sessionWorking: working,
+      sawWorkingWhileAwaiting: _sawSessionWorkingWhileAwaiting,
+    );
+    switch (action) {
+      case HistoryAwaitingWorkingAction.none:
+        return;
+      case HistoryAwaitingWorkingAction.resetLatch:
+        _sawSessionWorkingWhileAwaiting = false;
+        _cancelAwaitingIdleGrace();
+        return;
+      case HistoryAwaitingWorkingAction.latchWorking:
+        _sawSessionWorkingWhileAwaiting = true;
+        _cancelAwaitingIdleGrace();
+        return;
+      case HistoryAwaitingWorkingAction.clearAwaiting:
+        history.flushHeldTip(endAwaiting: true);
+        _sawSessionWorkingWhileAwaiting = false;
+        _cancelAwaitingIdleGrace();
+        return;
+      case HistoryAwaitingWorkingAction.scheduleGraceClear:
+        _scheduleAwaitingIdleGrace();
+        return;
     }
-    if (!_sawSessionWorkingWhileAwaiting) return;
-    // Idle: reveal any held assistant tip and drop Running in one beat.
-    history.flushHeldTip(endAwaiting: true);
-    _sawSessionWorkingWhileAwaiting = false;
   }
 
   @override
@@ -721,8 +775,25 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     final session = _displaySession(context);
     final team = _liveTeam(context);
     final hubState = _expertHubState(context);
+    final selectedMemberId = context.select<ChatCubit, String>(
+      (c) => c.state.selectedMemberId,
+    );
+    final permissionWaiting = context.select<AgentAttentionCubit, bool>(
+      (c) => AgentPermissionAttentionBanner.isSelectedSeatWaiting(
+        attention: c,
+        session: session,
+        selectedMemberId: selectedMemberId,
+      ),
+    );
+    if (permissionWaiting && _focusNode.hasFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _focusNode.hasFocus) _focusNode.unfocus();
+      });
+    }
     final canSubmit =
-        _controller.text.trim().isNotEmpty && !_isSubmitting;
+        !permissionWaiting &&
+        _controller.text.trim().isNotEmpty &&
+        !_isSubmitting;
 
     final lockedCli = _lockedCli(
       session: session,
@@ -755,159 +826,167 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
           previous.workingSessionIds != current.workingSessionIds,
       listener: (context, state) => _syncAwaitingFromWorkingSessions(state),
       child: ColoredBox(
-      color: cs.surface,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AgentPermissionAttentionBanner(session: widget.session),
-          Expanded(
-            // Full-bleed scroll surface: margins beside the text column still
-            // receive wheel / drag. Message width is capped inside SessionHistoryThread.
-            child: Theme(
-              data: Theme.of(context).copyWith(
-                extensions: [
-                  ...Theme.of(context).extensions.values,
-                  AiMessageTheme(
-                    userBubbleColor: cs.surfaceContainerHighest,
-                    userBubbleForeground: cs.onSurface,
-                    mutedSurface: cs.surfaceContainerHighest.withValues(
-                      alpha: 0.55,
-                    ),
-                    toolTriggerColor: cs.onSurfaceVariant,
-                    markdownStyleSheet: buildAppMarkdownStyleSheet(
-                      Theme.of(context),
-                    ),
-                    messageSpacing: 24,
-                    threadMaxWidth: kSessionHistoryColumnMaxWidth,
-                    threadHorizontalPadding: spacing.md,
-                  ),
-                ],
-              ),
-              child: AiMessageStringsScope(
-                strings: AiMessageStrings(
-                  usedTool: l10n.aiMessageUsedTool,
-                  cancelledTool: l10n.aiMessageCancelledTool,
-                  formatToolsUsed: l10n.aiMessageToolsUsed,
-                  reasoning: l10n.aiMessageReasoning,
-                  result: l10n.aiMessageToolResult,
-                  copy: l10n.copy,
-                  copied: l10n.aiMessageCopied,
-                  exportMarkdown: l10n.aiMessageExportMarkdown,
-                  messageIncomplete: l10n.aiMessageIncomplete,
-                  messageCancelled: l10n.aiMessageCancelled,
-                  scrollToBottom: l10n.aiMessageScrollToBottom,
-                  showMore: l10n.aiMessageShowMore,
-                  showLess: l10n.aiMessageShowLess,
-                ),
-                child: BlocBuilder<AiHistoryCubit, AiHistoryState>(
-                  builder: (context, state) {
-                    final cubit = context.read<AiHistoryCubit>();
-                    final sessionWorking = context.select<ChatCubit, bool>(
-                      (c) => c.state.workingSessionIds.contains(
-                        widget.session.sessionId,
+        color: cs.surface,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              // Full-bleed scroll surface: margins beside the text column still
+              // receive wheel / drag. Message width is capped inside SessionHistoryThread.
+              child: Theme(
+                data: Theme.of(context).copyWith(
+                  extensions: [
+                    ...Theme.of(context).extensions.values,
+                    AiMessageTheme(
+                      userBubbleColor: cs.surfaceContainerHighest,
+                      userBubbleForeground: cs.onSurface,
+                      mutedSurface: cs.surfaceContainerHighest.withValues(
+                        alpha: 0.55,
                       ),
-                    );
-                    return SessionHistoryReviewMessages(
-                      state: state,
-                      runtime: cubit.runtime,
-                      onRetry: () => _loadHistory(force: true),
-                      onLoadOlder: cubit.loadOlder,
-                      // Keep Running for the whole seat turn — not just until
-                      // the first assistant tip lands in the transcript.
-                      liveRefreshActive:
-                          _isSubmitting ||
-                          state.awaitingAssistant ||
-                          sessionWorking,
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: kSessionHistoryColumnMaxWidth,
-              ),
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  spacing.md,
-                  0,
-                  spacing.md,
-                  spacing.lg,
-                ),
-                child: SessionReviewComposeCard(
-                  floating: true,
-                  controller: _controller,
-                  focusNode: _focusNode,
-                  hint: l10n.sessionHistoryComposeHint,
-                  canSubmit: canSubmit,
-                  isSubmitting: _isSubmitting,
-                  onSubmit: () => unawaited(_handleSubmit()),
-                  onChanged: (_) => setState(() {}),
-                  attachTooltip: l10n.workspaceChatLandingAttach,
-                  enhanceTooltip: l10n.workspaceChatLandingEnhance,
-                  voiceTooltip: l10n.workspaceChatLandingVoice,
-                  voiceCancelTooltip: l10n.workspaceChatLandingVoiceCancel,
-                  voiceStopTooltip: l10n.workspaceChatLandingVoiceStop,
-                  isEnhancing: _enhancing,
-                  isVoiceListening: _voiceListening,
-                  voiceElapsed: _voiceElapsed,
-                  voiceSoundLevel: _voiceSoundLevel,
-                  onAttach: () => unawaited(_attachFiles()),
-                  onEnhance: () => unawaited(_enhancePrompt()),
-                  onVoice: () => unawaited(_toggleVoice()),
-                  onVoiceCancel: () => unawaited(_cancelVoice()),
-                  onVoiceStop: () => unawaited(_stopVoice()),
-                  workspaceRoot: _workspaceRoot,
-                  skills: skills,
-                  plugins: plugins,
-                  slashBundle: _slashBundle(context),
-                  launchError: widget.launchError,
-                  onRemapDeadTarget: widget.onRemapDeadTarget,
-                  onPasteImage: _pasteComposeImage,
-                  identityLabel: identityLabel,
-                  identityIcon: session.isSimple
-                      ? Icons.psychology_outlined
-                      : Icons.groups_outlined,
-                  sameCliPresets: sameCliPresets,
-                  selectedPresetId: selectedPresetId,
-                  modelPresetLabel: modelLabel,
-                  emptyPresetHintLabel: l10n.workspaceCliPresetsEmptyHint,
-                  onPresetSelected: (presetId) => unawaited(
-                    _onPresetSelected(
-                      presetId: presetId,
-                      team: team,
-                      sameCliPresets: sameCliPresets,
-                      lockedCli: lockedCli,
+                      toolTriggerColor: cs.onSurfaceVariant,
+                      markdownStyleSheet: buildAppMarkdownStyleSheet(
+                        Theme.of(context),
+                      ),
+                      messageSpacing: 24,
+                      threadMaxWidth: kSessionHistoryColumnMaxWidth,
+                      threadHorizontalPadding: spacing.md,
                     ),
+                  ],
+                ),
+                child: AiMessageStringsScope(
+                  strings: AiMessageStrings(
+                    usedTool: l10n.aiMessageUsedTool,
+                    cancelledTool: l10n.aiMessageCancelledTool,
+                    formatToolsUsed: l10n.aiMessageToolsUsed,
+                    reasoning: l10n.aiMessageReasoning,
+                    result: l10n.aiMessageToolResult,
+                    copy: l10n.copy,
+                    copied: l10n.aiMessageCopied,
+                    exportMarkdown: l10n.aiMessageExportMarkdown,
+                    messageIncomplete: l10n.aiMessageIncomplete,
+                    messageCancelled: l10n.aiMessageCancelled,
+                    scrollToBottom: l10n.aiMessageScrollToBottom,
+                    showMore: l10n.aiMessageShowMore,
+                    showLess: l10n.aiMessageShowLess,
                   ),
-                  dangerouslySkipPermissions: _effectivePermission(
-                    session: session,
-                    team: team,
+                  child: BlocBuilder<AiHistoryCubit, AiHistoryState>(
+                    builder: (context, state) {
+                      final cubit = context.read<AiHistoryCubit>();
+                      final sessionWorking = context.select<ChatCubit, bool>(
+                        (c) => c.state.workingSessionIds.contains(
+                          widget.session.sessionId,
+                        ),
+                      );
+                      return SessionHistoryReviewMessages(
+                        state: state,
+                        runtime: cubit.runtime,
+                        onRetry: () => _loadHistory(force: true),
+                        onLoadOlder: cubit.loadOlder,
+                        // Keep Running for the whole seat turn — not just until
+                        // the first assistant tip lands in the transcript.
+                        liveRefreshActive:
+                            _isSubmitting ||
+                            state.awaitingAssistant ||
+                            sessionWorking,
+                      );
+                    },
                   ),
-                  defaultPermissionsLabel:
-                      l10n.workspaceChatLandingDefaultPermissions,
-                  fullAccessPermissionsLabel:
-                      l10n.workspaceChatLandingFullAccessPermissions,
-                  onPermissionSelected: (value) => unawaited(
-                    _onPermissionSelected(value: value, team: team),
-                  ),
-                  teamSettingsTooltip: showTeamSettings
-                      ? l10n.teamSettings
-                      : null,
-                  onTeamSettings: showTeamSettings
-                      ? () => unawaited(_openTeamSettings(team))
-                      : null,
-                  showTeamSettingsAttention: teamSettingsAttention,
                 ),
               ),
             ),
-          ),
-        ],
+            Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: kSessionHistoryColumnMaxWidth,
+                ),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    spacing.md,
+                    0,
+                    spacing.md,
+                    spacing.lg,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AgentPermissionAttentionBanner(session: widget.session),
+                      SessionReviewComposeCard(
+                        floating: true,
+                        controller: _controller,
+                        focusNode: _focusNode,
+                        hint: l10n.sessionHistoryComposeHint,
+                        canSubmit: canSubmit,
+                        isSubmitting: _isSubmitting,
+                        composeEnabled: !permissionWaiting,
+                        onSubmit: () => unawaited(_handleSubmit()),
+                        onChanged: (_) => setState(() {}),
+                        attachTooltip: l10n.workspaceChatLandingAttach,
+                        enhanceTooltip: l10n.workspaceChatLandingEnhance,
+                        voiceTooltip: l10n.workspaceChatLandingVoice,
+                        voiceCancelTooltip:
+                            l10n.workspaceChatLandingVoiceCancel,
+                        voiceStopTooltip: l10n.workspaceChatLandingVoiceStop,
+                        isEnhancing: _enhancing,
+                        isVoiceListening: _voiceListening,
+                        voiceElapsed: _voiceElapsed,
+                        voiceSoundLevel: _voiceSoundLevel,
+                        onAttach: () => unawaited(_attachFiles()),
+                        onEnhance: () => unawaited(_enhancePrompt()),
+                        onVoice: () => unawaited(_toggleVoice()),
+                        onVoiceCancel: () => unawaited(_cancelVoice()),
+                        onVoiceStop: () => unawaited(_stopVoice()),
+                        workspaceRoot: _workspaceRoot,
+                        skills: skills,
+                        plugins: plugins,
+                        slashBundle: _slashBundle(context),
+                        launchError: widget.launchError,
+                        onRemapDeadTarget: widget.onRemapDeadTarget,
+                        onPasteImage: _pasteComposeImage,
+                        identityLabel: identityLabel,
+                        identityIcon: session.isSimple
+                            ? Icons.psychology_outlined
+                            : Icons.groups_outlined,
+                        sameCliPresets: sameCliPresets,
+                        selectedPresetId: selectedPresetId,
+                        modelPresetLabel: modelLabel,
+                        emptyPresetHintLabel: l10n.workspaceCliPresetsEmptyHint,
+                        onPresetSelected: (presetId) => unawaited(
+                          _onPresetSelected(
+                            presetId: presetId,
+                            team: team,
+                            sameCliPresets: sameCliPresets,
+                            lockedCli: lockedCli,
+                          ),
+                        ),
+                        dangerouslySkipPermissions: _effectivePermission(
+                          session: session,
+                          team: team,
+                        ),
+                        defaultPermissionsLabel:
+                            l10n.workspaceChatLandingDefaultPermissions,
+                        fullAccessPermissionsLabel:
+                            l10n.workspaceChatLandingFullAccessPermissions,
+                        onPermissionSelected: (value) => unawaited(
+                          _onPermissionSelected(value: value, team: team),
+                        ),
+                        teamSettingsTooltip: showTeamSettings
+                            ? l10n.teamSettings
+                            : null,
+                        onTeamSettings: showTeamSettings
+                            ? () => unawaited(_openTeamSettings(team))
+                            : null,
+                        showTeamSettingsAttention: teamSettingsAttention,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
     );
   }
 }

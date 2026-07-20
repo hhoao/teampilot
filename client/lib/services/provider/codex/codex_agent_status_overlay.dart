@@ -15,7 +15,9 @@ abstract final class CodexAgentStatusOverlay {
     'PermissionRequest',
     'PreToolUse',
     'PostToolUse',
+    'PostToolUseFailure',
     'Stop',
+    'StopFailure',
     'UserPromptSubmit',
   ];
 
@@ -23,7 +25,8 @@ abstract final class CodexAgentStatusOverlay {
   ///
   /// Each event embeds `-d '{"hook_event_name":"<Event>"}'` so
   /// [AgentStatusNormalizer] can map the body (Stop→`/idle` posts empty and
-  /// does not need a body; `/agent-status` does).
+  /// does not need a body; `/agent-status` does). Per-event `?event=` keeps
+  /// URLs distinct (same Claude HTTP dedupe concern if Codex ever shares it).
   static String build({
     required String memberId,
     required MemberAgentStatusEndpoint endpoint,
@@ -42,8 +45,8 @@ abstract final class CodexAgentStatusOverlay {
       // Single-quoted shell -d so JSON double-quotes stay literal; TOML
       // double-quoted command string still needs \" for those quotes.
       final body = '-d \'{\\"hook_event_name\\":\\"$event\\"}\'';
-      final command =
-          'curl -sS -X POST $headerArgs $body ${endpoint.url}';
+      final url = _eventUrl(endpoint.url, event);
+      final command = 'curl -sS -X POST $headerArgs $body $url';
       buffer.writeln();
       buffer.writeln('[[hooks.$event]]');
       buffer.writeln();
@@ -53,6 +56,12 @@ abstract final class CodexAgentStatusOverlay {
       buffer.writeln('timeout = 30');
     }
     return buffer.toString().trim();
+  }
+
+  static String _eventUrl(String baseUrl, String event) {
+    final uri = Uri.parse(baseUrl);
+    final next = Map<String, String>.from(uri.queryParameters)..['event'] = event;
+    return uri.replace(queryParameters: next).toString();
   }
 
   static bool containsOverlay(String toml) =>

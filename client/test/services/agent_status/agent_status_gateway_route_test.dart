@@ -194,4 +194,41 @@ void main() {
     expect(jsonDecode(text), <String, Object?>{});
     expect(cubit.state.sessionHasWaiting('s1'), isTrue);
   });
+
+  test('POST /idle clears sticky waiting for that seat', () async {
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    gateway.register(
+      sessionId: 'idle-sess',
+      handler: TeammateBusMcpHandler(bus: bus),
+    );
+    gateway.registerAgentStatusSession(sessionId: 'idle-sess');
+
+    final wait = await postAgentStatus(
+      sessionId: 'idle-sess',
+      member: 'm1',
+      body: {
+        'hook_event_name': 'PermissionRequest',
+        'tool_name': 'Bash',
+      },
+    );
+    expect(wait.statusCode, HttpStatus.ok);
+    await wait.drain<void>();
+    expect(cubit.state.sessionHasWaiting('idle-sess'), isTrue);
+
+    final idleUri = Uri.parse('http://127.0.0.1:${gateway.httpPort}/idle');
+    final idleReq = await client.postUrl(idleUri);
+    idleReq.headers.set(teammateBusMcpSessionHeader, 'idle-sess');
+    idleReq.headers.set(teammateBusMcpMemberHeader, 'm1');
+    final idleResp = await idleReq.close();
+    expect(idleResp.statusCode, HttpStatus.ok);
+    await idleResp.drain<void>();
+
+    expect(cubit.state.sessionHasWaiting('idle-sess'), isFalse);
+    expect(
+      cubit.state.attentionFor(sessionId: 'idle-sess', memberId: 'm1'),
+      AgentSeatAttention.done,
+    );
+
+    await gateway.unregister('idle-sess');
+  });
 }

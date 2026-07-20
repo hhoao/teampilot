@@ -1,11 +1,14 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/models/member_presence.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/agent_status/agent_attention_state.dart';
+import 'package:teampilot/services/agent_status/agent_status_event.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -32,6 +35,7 @@ void main() {
     late Directory tmp;
     late SessionRepository repo;
     late ChatCubit cubit;
+    late AgentAttentionCubit attention;
     late PostFrameTestHarness postFrame;
     final created = <_RunningFakeSession>[];
 
@@ -40,11 +44,13 @@ void main() {
       repo = SessionRepository(rootDir: tmp.path);
       postFrame = PostFrameTestHarness();
       created.clear();
+      attention = AgentAttentionCubit(pruneInterval: null);
       cubit = ChatCubit(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
         sessionRepository: repo,
         postFrameScheduler: postFrame.scheduler,
+        agentAttentionCubit: attention,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
               final s = _RunningFakeSession(executable: executable);
@@ -58,6 +64,7 @@ void main() {
       await postFrame.flush();
       await drainPendingAsyncWork();
       await cubit.close();
+      await attention.close();
       await drainPendingAsyncWork();
       await deleteTempDirBestEffort(tmp);
     });
@@ -188,5 +195,69 @@ void main() {
         reason: 'ensureIdleWatch must start the periodic timer at tab open',
       );
     });
+
+    test(
+      'agent-status working keeps sidebar busy after PTY turn latch ends',
+      () async {
+        final workspace = await repo.createWorkspace([
+          WorkspaceFolder(path: '/tmp'),
+        ]);
+        final session = await repo.createSession(workspace.workspaceId);
+        await cubit.loadWorkspaceData(repo);
+
+        await cubit.requestOpenSession(
+          SessionOpenRequest(
+            session: session,
+            workspace: workspace,
+            repo: repo,
+            connectImmediately: false,
+          ),
+        );
+        await drainPendingAsyncWork();
+        final shell = created.single;
+        final memberId = cubit.activeTab!.memberShells.keys.single;
+
+        // Simulate permission hold ending the PTY latch (quiet wait).
+        shell.markUserTurnStarted();
+        cubit.debugTickIdleWatch();
+        await drainPendingAsyncWork();
+        expect(cubit.state.workingSessionIds, contains(session.sessionId));
+
+        shell.markUserTurnIdle();
+        cubit.debugRecomputeWorkingSessions();
+        expect(cubit.state.workingSessionIds, isEmpty);
+
+        // Permission cleared → hook working (Orca). Latch stays false.
+        attention.applyEvent(
+          sessionId: session.sessionId,
+          memberId: memberId,
+          event: const AgentStatusEvent(
+            state: AgentSeatAttention.working,
+            hookEventName: 'PostToolUse',
+            toolName: 'Bash',
+            toolUseId: 'toolu-1',
+          ),
+          skipPermissions: false,
+        );
+        await drainPendingAsyncWork();
+        expect(
+          cubit.state.workingSessionIds,
+          contains(session.sessionId),
+          reason: 'attention.working must light sidebar after permission',
+        );
+
+        attention.applyEvent(
+          sessionId: session.sessionId,
+          memberId: memberId,
+          event: const AgentStatusEvent(
+            state: AgentSeatAttention.done,
+            hookEventName: 'Stop',
+          ),
+          skipPermissions: false,
+        );
+        await drainPendingAsyncWork();
+        expect(cubit.state.workingSessionIds, isEmpty);
+      },
+    );
   });
 }

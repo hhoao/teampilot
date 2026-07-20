@@ -3,6 +3,8 @@ import 'dart:math';
 
 import 'package:meta/meta.dart';
 
+import '../../agent_status/agent_attention_state.dart';
+import '../../agent_status/agent_status_event.dart';
 import '../../agent_status/agent_status_http_handler.dart';
 import 'teammate_bus_mcp_config.dart';
 import 'teammate_bus_mcp_handler.dart';
@@ -150,6 +152,9 @@ class TeammateBusMcpGateway {
 
       if (request.method == 'POST' && request.uri.path == '/idle') {
         await delegate.handleIdleRequest(request, memberId: member);
+        // Stop fired for this seat — clear sticky permission attention even if
+        // the parallel `/agent-status` Stop hook was deduped or dropped.
+        _clearAttentionOnIdle(sessionId: sessionId, memberId: member);
         return;
       }
 
@@ -210,6 +215,20 @@ class TeammateBusMcpGateway {
     }
 
     return null;
+  }
+
+  void _clearAttentionOnIdle({
+    required String sessionId,
+    required String memberId,
+  }) {
+    final handler = _agentStatusHandler;
+    if (handler == null || memberId.isEmpty) return;
+    handler.attention.applyEvent(
+      sessionId: sessionId,
+      memberId: memberId,
+      event: const AgentStatusEvent(state: AgentSeatAttention.done),
+      skipPermissions: false,
+    );
   }
 }
 

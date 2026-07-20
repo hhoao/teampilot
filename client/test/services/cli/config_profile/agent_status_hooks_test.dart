@@ -17,25 +17,41 @@ void main() {
     'PermissionRequest',
     'PreToolUse',
     'PostToolUse',
+    'PostToolUseFailure',
     'Stop',
+    'StopFailure',
     'UserPromptSubmit',
   ];
 
   test(
-    'mergeAgentStatusHooks adds http hooks with X-Member for status events',
+    'mergeAgentStatusHooks adds per-event http URLs so clear hooks survive dedupe',
     () {
       final merged = mergeAgentStatusHooks(const {}, memberId, endpoint);
       final hooks = merged['hooks']! as Map;
       for (final name in eventNames) {
         final entries = hooks[name]! as List;
         expect(entries, hasLength(1), reason: name);
-        final eventHooks = (entries.first as Map)['hooks']! as List;
+        final entry = entries.first as Map;
+        final eventHooks = entry['hooks']! as List;
         expect(eventHooks.first, {
           'type': 'http',
-          'url': endpoint.url,
+          'url': agentStatusHookUrl(endpoint.url, name),
           'headers': {'X-Member': memberId},
+          'timeout': 5,
         }, reason: name);
+        if (name == 'PermissionRequest' ||
+            name == 'PreToolUse' ||
+            name == 'PostToolUse' ||
+            name == 'PostToolUseFailure') {
+          expect(entry['matcher'], '*', reason: name);
+        } else {
+          expect(entry.containsKey('matcher'), isFalse, reason: name);
+        }
       }
+      final urls = eventNames
+          .map((n) => agentStatusHookUrl(endpoint.url, n))
+          .toSet();
+      expect(urls, hasLength(eventNames.length));
     },
   );
 

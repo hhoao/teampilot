@@ -28,6 +28,8 @@ import '../services/team_bus/artifacts/artifact_registry.dart';
 import '../services/team_bus/artifacts/artifact_transfer_service.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
+import '../services/agent_status/agent_attention_state.dart';
+import '../services/agent_status/agent_status_event.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
 import 'agent_attention_cubit.dart';
 import '../services/launch/launch_factory.dart';
@@ -121,7 +123,14 @@ class ChatCubit extends Cubit<ChatState>
        _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
        _lifecycle = lifecycleService ?? SessionLifecycleService(),
        _sessionRepository = sessionRepository,
-       super(const ChatState());
+       super(const ChatState()) {
+    final attention = _agentAttentionCubit;
+    if (attention != null) {
+      _agentAttentionSub = attention.stream.listen((_) {
+        if (!isClosed) _recomputeWorkingSessions();
+      });
+    }
+  }
 
   /// Fired when History should drop cache / reload (disconnect or switch back).
   void Function(String sessionId)? onSessionHistoryStale;
@@ -136,6 +145,7 @@ class ChatCubit extends Cubit<ChatState>
   final TeammateBusMcpGateway _teammateBusMcpGateway;
   final AgentStatusSeatLookup? _agentStatusSeatLookup;
   final AgentAttentionCubit? _agentAttentionCubit;
+  StreamSubscription<AgentAttentionState>? _agentAttentionSub;
   final AutomationRepository _automationRepository;
   final LayoutCubit? _layoutCubit;
   VoidCallback? _onAutomationsChanged;
@@ -161,8 +171,11 @@ class ChatCubit extends Cubit<ChatState>
         globalPresets: () => _lifecycle.globalPresets,
         activeSessionId: () => state.activeSessionId,
         presence: () => _presenceCubit?.state.presence ?? const {},
+        sessionBusyFromAttention: (sessionId) =>
+            _agentAttentionCubit?.state.sessionIsAgentActive(sessionId) ??
+            false,
         onAfterIdleWatchTick: () => unawaited(_onIdleWatchTick()),
-        onAfterTurnLatched: _recomputeWorkingSessions,
+        onAfterTurnLatched: _onOperatorTurnLatched,
       );
   late final TabMemberMaterializer _memberMaterializer = TabMemberMaterializer(
     runtime: _sessionRuntime,
@@ -179,7 +192,7 @@ class ChatCubit extends Cubit<ChatState>
     tabStore: _tabStore,
     materializer: _memberMaterializer,
     globalPresets: () => _lifecycle.globalPresets,
-    onAfterTurnLatched: _recomputeWorkingSessions,
+    onAfterTurnLatched: _onOperatorTurnLatched,
     artifactServiceFactory: _buildArtifactService,
     launchWorkTarget: (session, {String? memberId}) =>
         _lifecycle.launchWorkTarget(
@@ -447,6 +460,21 @@ class ChatCubit extends Cubit<ChatState>
 
   void _recomputeWorkingSessions() {
     _updateWorkingSessions(_sessionRuntime.recomputeWorkingSessions());
+  }
+
+  /// History / Terminal operator submit latched a seat turn — refresh session
+  /// working and clear sticky permission waiting so the sidebar spinner can show.
+  void _onOperatorTurnLatched(String sessionId, String memberId) {
+    final attention = _agentAttentionCubit;
+    if (attention != null && memberId.trim().isNotEmpty) {
+      attention.applyEvent(
+        sessionId: sessionId,
+        memberId: memberId,
+        event: const AgentStatusEvent(state: AgentSeatAttention.working),
+        skipPermissions: false,
+      );
+    }
+    _recomputeWorkingSessions();
   }
 
   @visibleForTesting
@@ -1489,6 +1517,8 @@ class ChatCubit extends Cubit<ChatState>
   @override
   Future<void> close() async {
     if (isClosed) return;
+    await _agentAttentionSub?.cancel();
+    _agentAttentionSub = null;
     _sessionRuntime.disposeIdleWatch();
     final busDisposals = <Future<void>>[];
     for (final tab in _tabStore.openTabs) {

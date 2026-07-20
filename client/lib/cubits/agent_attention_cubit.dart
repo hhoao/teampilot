@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../services/agent_status/agent_attention_state.dart';
 import '../services/agent_status/agent_status_event.dart';
+import '../services/agent_status/claude_permission_sticky.dart';
 
 /// Orca-aligned TTL: drop seat attention with no refresh after this duration.
 const Duration agentAttentionStaleAfter = Duration(minutes: 30);
@@ -18,13 +19,17 @@ class AgentSeatAttentionEntry extends Equatable {
   const AgentSeatAttentionEntry({
     required this.attention,
     required this.updatedAt,
+    this.lastEvent,
   });
 
   final AgentSeatAttention attention;
   final DateTime updatedAt;
 
+  /// Last applied event (sticky permission context).
+  final AgentStatusEvent? lastEvent;
+
   @override
-  List<Object?> get props => [attention, updatedAt];
+  List<Object?> get props => [attention, updatedAt, lastEvent];
 }
 
 /// Seat-keyed agent attention for History banner / sidebar consumers.
@@ -53,6 +58,24 @@ class AgentAttentionState extends Equatable {
   /// True when any fresh seat in [sessionId] is [AgentSeatAttention.waiting].
   bool sessionHasWaiting(String sessionId) =>
       waitingMemberIds(sessionId).isNotEmpty;
+
+  /// True when any fresh seat is [AgentSeatAttention.waiting] or
+  /// [AgentSeatAttention.working] — Orca-style "agent still in a turn" for
+  /// sidebar / History working indicators (PTY idle-watch may have ended the
+  /// latch while permission was held).
+  bool sessionIsAgentActive(String sessionId) {
+    final prefix = '${sessionId.trim()}\u0000';
+    final now = _now;
+    for (final e in seats.entries) {
+      if (!e.key.startsWith(prefix)) continue;
+      if (_isStale(e.value, now)) continue;
+      final a = e.value.attention;
+      if (a == AgentSeatAttention.waiting || a == AgentSeatAttention.working) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   /// Member ids currently waiting (fresh) for [sessionId].
   List<String> waitingMemberIds(String sessionId) {
@@ -117,6 +140,10 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
   ///
   /// When [skipPermissions] is true and [event] is waiting, the event is
   /// ignored (prior non-waiting state kept, or no-op if absent).
+  ///
+  /// Sticky Claude permission (Orca): concurrent subagent tool activity does
+  /// not clear waiting unless the approved tool resumes or an explicit prompt
+  /// arrives.
   void applyEvent({
     required String sessionId,
     required String memberId,
@@ -130,12 +157,21 @@ class AgentAttentionCubit extends Cubit<AgentAttentionState> {
 
     final now = _clock();
     final key = agentSeatKey(sessionId: sessionId, memberId: memberId);
-    final seats = Map<String, AgentSeatAttentionEntry>.of(
-      state.pruned(now).seats,
-    );
+    final pruned = state.pruned(now);
+    final previous = pruned.seats[key]?.lastEvent;
+    final effective = attachClaudePermissionToolUseId(previous, event);
+
+    if (shouldKeepClaudePermissionVisible(previous, effective)) {
+      // Keep the waiting row; do not let other-subagent activity overwrite it.
+      if (pruned != state) emit(pruned);
+      return;
+    }
+
+    final seats = Map<String, AgentSeatAttentionEntry>.of(pruned.seats);
     seats[key] = AgentSeatAttentionEntry(
-      attention: event.state,
+      attention: effective.state,
       updatedAt: now,
+      lastEvent: effective,
     );
     emit(AgentAttentionState(seats: seats, clock: _clock));
   }

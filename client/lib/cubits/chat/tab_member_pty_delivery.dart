@@ -28,7 +28,7 @@ final class TabMemberPtyDelivery {
     required TeamProfile? Function() activeTeam,
     required bool Function() isClosed,
     required TabMemberCoordinationFactory coordinationFactory,
-    VoidCallback? onAfterTurnLatched,
+    void Function(String sessionId, String memberId)? onAfterTurnLatched,
     MemberPtyInjectService? ptyInject,
   }) : _tabStore = tabStore,
        _shellFactory = shellFactory,
@@ -50,7 +50,7 @@ final class TabMemberPtyDelivery {
   final TeamProfile? Function() _activeTeam;
   final bool Function() _isClosed;
   final TabMemberCoordinationFactory _coordinationFactory;
-  final VoidCallback? _onAfterTurnLatched;
+  final void Function(String sessionId, String memberId)? _onAfterTurnLatched;
   late final MemberPtyInjectService _ptyInject;
 
   TeamBus? busForSession(String sessionId) =>
@@ -401,7 +401,7 @@ final class TabMemberPtyDelivery {
     switch (outcome) {
       case FullscreenPtyDeliveryOutcome.submitted:
         bus.noteMailDeliverySubmitted(memberId);
-        _onAfterTurnLatched?.call();
+        _onAfterTurnLatched?.call(sessionId, memberId);
       case FullscreenPtyDeliveryOutcome.crStuck:
         bus.noteMailDeliveryAttemptFailed(
           memberId,
@@ -422,7 +422,7 @@ final class TabMemberPtyDelivery {
     String memberId,
   ) {
     _coordinationFactory.forMember(sessionId, memberId)?.latchTurnStarted();
-    _onAfterTurnLatched?.call();
+    _onAfterTurnLatched?.call(sessionId, memberId);
   }
 
   void _onDeliveryRetryExhausted(

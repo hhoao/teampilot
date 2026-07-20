@@ -36,7 +36,7 @@ class TabTeamBusCoordinator {
     )
     memberWorkDirs,
     SshProfile? Function(String profileId)? sshProfileById,
-    void Function()? onAfterTurnLatched,
+    void Function(String sessionId, String memberId)? onAfterTurnLatched,
     ArtifactTransferService Function(AppSession session)?
     artifactServiceFactory,
   }) : _gateway = gateway,
@@ -61,7 +61,7 @@ class TabTeamBusCoordinator {
   )
   _memberWorkDirs;
   final SshProfile? Function(String profileId)? _sshProfileById;
-  final void Function()? _onAfterTurnLatched;
+  final void Function(String sessionId, String memberId)? _onAfterTurnLatched;
 
   /// P3d: builds the per-session cross-machine artifact transfer service. Null =
   /// the three artifact MCP tools are not advertised (single-machine / tests).
@@ -196,7 +196,7 @@ class TabTeamBusCoordinator {
       onTurnStart: () {
         shell?.activityTracker.latchTurnQuietBaseline();
         bus.markTurnStarted(memberId);
-        _onAfterTurnLatched?.call();
+        _onAfterTurnLatched?.call(tab.info.id, memberId);
       },
     );
   }

@@ -37,7 +37,7 @@ void main() {
             '-H \\"X-Session: sess-codex\\" '
             '-H \\"Content-Type: application/json\\" '
             '-d \'{\\"hook_event_name\\":\\"PermissionRequest\\"}\' '
-            'http://127.0.0.1:12345/agent-status"',
+            'http://127.0.0.1:12345/agent-status?event=PermissionRequest"',
           ),
         );
         expect(
@@ -46,6 +46,8 @@ void main() {
             '-d \'{\\"hook_event_name\\":\\"PostToolUse\\"}\'',
           ),
         );
+        expect(toml, contains('[[hooks.PostToolUseFailure]]'));
+        expect(toml, contains('event=PostToolUse'));
       },
     );
 

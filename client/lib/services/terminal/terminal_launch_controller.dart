@@ -234,7 +234,7 @@ final class TerminalLaunchController {
     bool Function() skipPermissions,
   ) {
     // Bare native title is a no-op so per-turn re-emissions cannot clear sticky
-    // waiting (Orca rule).
+    // waiting (Orca rule). Clear only on a non-native title that is not waiting.
     if (isCursorNativeTitle(title)) return;
 
     final classified = detectCursorTitleAttention(title);

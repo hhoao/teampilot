@@ -173,5 +173,172 @@ void main() {
       expect(c.state.sessionHasWaiting('s1'), isFalse);
       expect(c.state.seats.containsKey(key), isFalse);
     });
+
+    test('sticky: other-subagent PreToolUse does not clear waiting', () {
+      final c = _cubit();
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.waiting,
+          hookEventName: 'PermissionRequest',
+          toolName: 'Bash',
+          toolInput: 'rm -rf /tmp/x',
+          toolAgentId: 'agent-a',
+        ),
+        skipPermissions: false,
+      );
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.working,
+          hookEventName: 'PreToolUse',
+          toolName: 'Read',
+          toolInput: '/tmp/other.txt',
+          toolUseId: 'toolu-other',
+          toolAgentId: 'agent-b',
+        ),
+        skipPermissions: false,
+      );
+      expect(
+        c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+        AgentSeatAttention.waiting,
+      );
+    });
+
+    test('sticky: matching agent_id PreToolUse clears waiting', () {
+      final c = _cubit();
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.waiting,
+          hookEventName: 'PermissionRequest',
+          toolName: 'Bash',
+          toolInput: 'pnpm test',
+          toolAgentId: 'agent-a',
+          toolAgentType: 'Review',
+        ),
+        skipPermissions: false,
+      );
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.working,
+          hookEventName: 'PreToolUse',
+          toolName: 'Bash',
+          toolInput: 'pnpm test',
+          toolUseId: 'toolu-approved',
+          toolAgentId: 'agent-a',
+          toolAgentType: 'Review',
+        ),
+        skipPermissions: false,
+      );
+      expect(
+        c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+        AgentSeatAttention.working,
+      );
+    });
+
+    test('sticky: inherits tool_use_id then PostToolUse clears', () {
+      final c = _cubit();
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.working,
+          hookEventName: 'PreToolUse',
+          toolName: 'Bash',
+          toolInput: 'echo hi',
+          toolUseId: 'toolu-1',
+        ),
+        skipPermissions: false,
+      );
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.waiting,
+          hookEventName: 'PermissionRequest',
+          toolName: 'Bash',
+          toolInput: 'echo hi',
+        ),
+        skipPermissions: false,
+      );
+      expect(
+        c.state.seats[agentSeatKey(sessionId: 's1', memberId: 'm1')]
+            ?.lastEvent
+            ?.toolUseId,
+        'toolu-1',
+      );
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.working,
+          hookEventName: 'PostToolUse',
+          toolName: 'Bash',
+          toolInput: 'echo hi',
+          toolUseId: 'toolu-1',
+        ),
+        skipPermissions: false,
+      );
+      expect(
+        c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+        AgentSeatAttention.working,
+      );
+    });
+
+    test('synthetic working (no hook) clears waiting', () {
+      final c = _cubit();
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.waiting,
+          hookEventName: 'PermissionRequest',
+          toolName: 'Bash',
+        ),
+        skipPermissions: false,
+      );
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(state: AgentSeatAttention.working),
+        skipPermissions: false,
+      );
+      expect(
+        c.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+        AgentSeatAttention.working,
+      );
+    });
+
+    test('sessionIsAgentActive for waiting and working, not done', () {
+      final c = _cubit();
+      expect(c.state.sessionIsAgentActive('s1'), isFalse);
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(state: AgentSeatAttention.waiting),
+        skipPermissions: false,
+      );
+      expect(c.state.sessionIsAgentActive('s1'), isTrue);
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(state: AgentSeatAttention.working),
+        skipPermissions: false,
+      );
+      expect(c.state.sessionIsAgentActive('s1'), isTrue);
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'm1',
+        event: const AgentStatusEvent(state: AgentSeatAttention.done),
+        skipPermissions: false,
+      );
+      expect(c.state.sessionIsAgentActive('s1'), isFalse);
+    });
   });
 }

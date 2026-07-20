@@ -14,12 +14,14 @@ final class TabWorkingAggregator {
     required TeamProfile? Function() activeTeam,
     required String? Function() activeSessionId,
     required Map<String, MemberPresence> Function() presence,
+    bool Function(String sessionId)? sessionBusyFromAttention,
   }) : _tabStore = tabStore,
        _sessionWorking = sessionWorking,
        _globalPresets = globalPresets,
        _activeTeam = activeTeam,
        _activeSessionId = activeSessionId,
-       _presence = presence;
+       _presence = presence,
+       _sessionBusyFromAttention = sessionBusyFromAttention;
 
   final ChatTabStore _tabStore;
   final SessionWorkingResolver _sessionWorking;
@@ -27,6 +29,7 @@ final class TabWorkingAggregator {
   final TeamProfile? Function() _activeTeam;
   final String? Function() _activeSessionId;
   final Map<String, MemberPresence> Function() _presence;
+  final bool Function(String sessionId)? _sessionBusyFromAttention;
 
   Set<String> compute() {
     final working = <String>{};
@@ -47,7 +50,12 @@ final class TabWorkingAggregator {
               team: _teamForTab(tab),
               globalPresets: _globalPresets(),
             );
-      if (sessionWorking) working.add(sessionId);
+      // Why: Orca sidebar follows agent-hook waiting/working; PTY idle-watch
+      // often ends the turn latch while a permission prompt is held, so after
+      // approval the hook goes working but latch stays false without this OR.
+      final attentionBusy =
+          _sessionBusyFromAttention?.call(sessionId) ?? false;
+      if (sessionWorking || attentionBusy) working.add(sessionId);
     }
     return working;
   }

@@ -9,10 +9,8 @@ import '../../models/app_session.dart';
 import '../../services/agent_status/agent_attention_state.dart';
 import '../../utils/ui/app_keys.dart';
 
-/// History strip when the selected seat is waiting on a Terminal permission.
-///
-/// Does not auto-switch the workbench; the CTA jumps to Terminal (and selects
-/// the waiting seat when it differs from the current selection).
+/// Compact card shown just above History compose when the seat needs Terminal
+/// confirmation. Does not auto-switch; CTA jumps to Terminal.
 class AgentPermissionAttentionBanner extends StatelessWidget {
   const AgentPermissionAttentionBanner({required this.session, super.key});
 
@@ -26,6 +24,23 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
     if (session.isSimple) return session.sessionId;
     final mid = selectedMemberId.trim();
     return mid.isEmpty ? session.sessionId : mid;
+  }
+
+  /// Whether History compose should lock for the selected seat.
+  static bool isSelectedSeatWaiting({
+    required AgentAttentionCubit attention,
+    required AppSession session,
+    required String selectedMemberId,
+  }) {
+    final seatId = attentionMemberId(
+      session: session,
+      selectedMemberId: selectedMemberId,
+    );
+    return attention.state.attentionFor(
+          sessionId: session.sessionId,
+          memberId: seatId,
+        ) ==
+        AgentSeatAttention.waiting;
   }
 
   @override
@@ -53,38 +68,50 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
     if (!waiting) return const SizedBox.shrink();
 
     final cs = Theme.of(context).colorScheme;
+    final spacing = context.tpSpacing;
     final l10n = context.l10n;
-    return Material(
-      key: AppKeys.agentPermissionAttentionBanner,
-      color: cs.tertiaryContainer.withValues(alpha: 0.55),
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: context.tpSpacing.md,
-          vertical: context.tpSpacing.sm,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                l10n.agentPermissionAttentionBanner,
-                style: TpTextStyles.of(
+    final radius = TpTheme.of(context).control.radius;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: spacing.sm),
+      child: Material(
+        key: AppKeys.agentPermissionAttentionBanner,
+        elevation: 2,
+        shadowColor: cs.shadow.withValues(alpha: 0.28),
+        color: cs.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(radius),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            spacing.md,
+            spacing.sm,
+            spacing.sm,
+            spacing.sm,
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.front_hand_rounded, size: 16, color: cs.tertiary),
+              SizedBox(width: spacing.sm),
+              Expanded(
+                child: Text(
+                  l10n.agentPermissionAttentionBanner,
+                  style: TpTextStyles.of(context).smColored(cs.onSurface),
+                ),
+              ),
+              SizedBox(width: spacing.sm),
+              TpButton(
+                key: AppKeys.agentPermissionOpenTerminalButton,
+                variant: TpButtonVariant.primary,
+                size: TpControlSize.small,
+                onPressed: () => _openTerminal(
                   context,
-                ).smColored(cs.onTertiaryContainer),
+                  sessionId: sessionId,
+                  seatId: seatId,
+                  selectedMemberId: selectedMemberId,
+                ),
+                child: Text(l10n.agentPermissionOpenTerminal),
               ),
-            ),
-            SizedBox(width: context.tpSpacing.sm),
-            TpButton(
-              key: AppKeys.agentPermissionOpenTerminalButton,
-              size: TpControlSize.small,
-              onPressed: () => _openTerminal(
-                context,
-                sessionId: sessionId,
-                seatId: seatId,
-                selectedMemberId: selectedMemberId,
-              ),
-              child: Text(l10n.agentPermissionOpenTerminal),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

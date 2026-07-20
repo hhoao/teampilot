@@ -28,9 +28,10 @@ class TabSessionRuntimeCoordinator {
     TabSessionIdleWatch? idleWatch,
     TabWorkingAggregator? workingAggregator,
     VoidCallback? onAfterIdleWatchTick,
-    VoidCallback? onAfterTurnLatched,
+    void Function(String sessionId, String memberId)? onAfterTurnLatched,
     String? Function()? activeSessionId,
     Map<String, MemberPresence> Function()? presence,
+    bool Function(String sessionId)? sessionBusyFromAttention,
     SessionWorkingResolver? sessionWorking,
   }) {
     final working =
@@ -73,6 +74,7 @@ class TabSessionRuntimeCoordinator {
           activeTeam: activeTeam,
           activeSessionId: activeSessionId ?? () => null,
           presence: presence ?? () => const {},
+          sessionBusyFromAttention: sessionBusyFromAttention,
         );
     return TabSessionRuntimeCoordinator._(
       coordinationFactory: coordination,
