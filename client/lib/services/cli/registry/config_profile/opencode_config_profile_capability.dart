@@ -19,6 +19,7 @@ import '../../../team_bus/mcp/bus_bridge_locator.dart';
 import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../capabilities/cli_effort_capability.dart';
 import '../capabilities/config_profile_capability.dart';
+import 'opencode_agent_status_plugin.dart';
 import 'opencode_idle_plugin.dart';
 
 /// Parses bus idle URL (e.g. `http://127.0.0.1:12345/idle`) to the listening port.
@@ -58,6 +59,43 @@ Map<String, Object?> mergeOpencodeIdlePlugin(
         e[1] is Map &&
         (e[1] as Map)['member'] == memberId &&
         (e[1] as Map)['port'] == port,
+  );
+  if (!exists) {
+    plugins.add(entry);
+  }
+  return {...config, 'plugin': plugins};
+}
+
+/// Merges opencode.json `plugin` entry for `/agent-status` reporting.
+///
+/// Install whenever [url] is stamped (simple + team) — not gated on mixed.
+@visibleForTesting
+Map<String, Object?> mergeOpencodeAgentStatusPlugin(
+  Map<String, Object?> config,
+  String memberId,
+  String url, {
+  String? token,
+  String? sessionId,
+}) {
+  final pluginPath = './$opencodeAgentStatusPluginFileName';
+  final options = <String, Object?>{'member': memberId, 'url': url};
+  if (sessionId != null && sessionId.isNotEmpty) {
+    options['session'] = sessionId;
+  }
+  if (token != null && token.isNotEmpty) {
+    options['token'] = token;
+  }
+  final entry = <Object?>[pluginPath, options];
+  final plugins = List<Object?>.from((config['plugin'] as List?) ?? const []);
+  final exists = plugins.any(
+    (e) =>
+        e is List &&
+        e.isNotEmpty &&
+        e[0] == pluginPath &&
+        e.length > 1 &&
+        e[1] is Map &&
+        (e[1] as Map)['member'] == memberId &&
+        (e[1] as Map)['url'] == url,
   );
   if (!exists) {
     plugins.add(entry);
@@ -340,6 +378,20 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
       }
     }
 
+    // Agent-status plugin: simple + team whenever stamped — not mixed-gated.
+    final agentStatus = ctx.agentStatus;
+    if (agentStatus != null && member != null && member.isValid) {
+      await _writeAgentStatusPlugin(paths: paths, opencodeDir: opencodeDir);
+      config = mergeOpencodeAgentStatusPlugin(
+        config,
+        member.id,
+        agentStatus.url,
+        token: agentStatus.token,
+        sessionId: agentStatus.sessionId,
+      );
+      changed = true;
+    }
+
     if (changed) {
       await paths.writeJsonIfChanged(configPath, config);
     }
@@ -442,6 +494,21 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
       return;
     }
     await paths.fs.atomicWrite(pluginPath, opencodeIdlePluginSource);
+  }
+
+  Future<void> _writeAgentStatusPlugin({
+    required ConfigProfileDelegate paths,
+    required String opencodeDir,
+  }) async {
+    final pluginPath = paths.joinWork(
+      opencodeDir,
+      opencodeAgentStatusPluginFileName,
+    );
+    final existing = await paths.fs.readString(pluginPath);
+    if (existing == opencodeAgentStatusPluginSource) {
+      return;
+    }
+    await paths.fs.atomicWrite(pluginPath, opencodeAgentStatusPluginSource);
   }
 
   static String _resolveOpencodeEffort({
