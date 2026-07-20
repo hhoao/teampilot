@@ -58,6 +58,9 @@ abstract final class WorkbenchShellActions {
       case WorkbenchTabKind.diff:
         editor.closeDiff(workspaceId, tab.id);
         workbench.removeTab(workspaceId, tab);
+      case WorkbenchTabKind.shell:
+      case WorkbenchTabKind.run:
+        workbench.removeTab(workspaceId, tab);
     }
   }
 
@@ -138,6 +141,9 @@ abstract final class WorkbenchShellActions {
         editor.closeFile(workspaceId, tab.id, force: true);
       case WorkbenchTabKind.diff:
         editor.closeDiff(workspaceId, tab.id);
+      case WorkbenchTabKind.shell:
+      case WorkbenchTabKind.run:
+        break;
     }
   }
 

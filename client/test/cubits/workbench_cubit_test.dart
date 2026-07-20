@@ -228,5 +228,59 @@ void main() {
       cubit.pinTab(ws, file);
       expect(cubit.isPreview(ws, file), isFalse);
     });
+
+    test('shell/run factories and equality', () {
+      final a = WorkbenchTabId.shell('e1');
+      final b = WorkbenchTabId.shell('e1');
+      final c = WorkbenchTabId.run('r1');
+      expect(a, b);
+      expect(a.kind, WorkbenchTabKind.shell);
+      expect(c.kind, WorkbenchTabKind.run);
+      expect(a, isNot(c));
+    });
+
+    test('ensureTab shell/run ignores preview flag (never enters preview set)',
+        () {
+      const ws = 'ws';
+      final session = WorkbenchTabId.session('s1');
+      cubit.ensureTab(ws, session, preview: true);
+      expect(cubit.isPreview(ws, session), isTrue);
+
+      final shell = WorkbenchTabId.shell('e1');
+      cubit.ensureTab(ws, shell, preview: true);
+      expect(cubit.isPreview(ws, shell), isFalse);
+      expect(cubit.isPreview(ws, session), isTrue); // not displaced
+    });
+
+    test('syncSessions preserves shell/run tabs', () {
+      const ws = 'ws';
+      final s1 = WorkbenchTabId.session('s1');
+      final shell = WorkbenchTabId.shell('e1');
+      final run = WorkbenchTabId.run('r1');
+      cubit.ensureTab(ws, s1);
+      cubit.ensureTab(ws, shell);
+      cubit.ensureTab(ws, run);
+      cubit.syncSessions(ws, ['s1', 's2']);
+      expect(
+        cubit.tabOrder(ws),
+        containsAll([shell, run, WorkbenchTabId.session('s2')]),
+      );
+      expect(cubit.tabOrder(ws), contains(shell));
+    });
+
+    test('select shell updates lastFocusedShellTabId; resolveMostRecentShell',
+        () {
+      const ws = 'ws';
+      final e1 = WorkbenchTabId.shell('e1');
+      final e2 = WorkbenchTabId.shell('e2');
+      cubit.ensureTab(ws, e1);
+      cubit.ensureTab(ws, e2);
+      cubit.select(ws, e1);
+      expect(cubit.lastFocusedShellTabId(ws), e1);
+      // ensure session first before selecting it
+      cubit.ensureTab(ws, WorkbenchTabId.session('s1'));
+      cubit.select(ws, WorkbenchTabId.session('s1'));
+      expect(cubit.resolveMostRecentShell(ws), e1);
+    });
   });
 }

@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum WorkbenchTabKind { session, file, diff }
+enum WorkbenchTabKind { session, file, diff, shell, run }
 
 /// Which git diff a center-pane diff tab is showing.
 enum WorkbenchDiffSource {
@@ -44,6 +44,12 @@ class WorkbenchTabId extends Equatable {
   /// File↔Diff toggle: HEAD vs working tree.
   factory WorkbenchTabId.diffChanges(String absolutePath) =>
       WorkbenchTabId.diff(absolutePath, source: WorkbenchDiffSource.changes);
+
+  factory WorkbenchTabId.shell(String entryId) =>
+      WorkbenchTabId._(WorkbenchTabKind.shell, entryId);
+
+  factory WorkbenchTabId.run(String runSessionId) =>
+      WorkbenchTabId._(WorkbenchTabKind.run, runSessionId);
 
   static String diffKey(
     String absolutePath, {

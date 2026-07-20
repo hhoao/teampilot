@@ -71,6 +71,9 @@ class WorkbenchBody extends StatelessWidget {
           workspaceId: workspaceId,
           diffKey: active.id,
         );
+      case WorkbenchTabKind.shell:
+      case WorkbenchTabKind.run:
+        return const SizedBox.shrink();
     }
   }
 }

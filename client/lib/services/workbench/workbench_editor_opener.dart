@@ -124,6 +124,9 @@ class WorkbenchEditorOpener {
         _editor.closeFile(workspaceId, replaced.id, force: true);
       case WorkbenchTabKind.diff:
         _editor.closeDiff(workspaceId, replaced.id);
+      case WorkbenchTabKind.shell:
+      case WorkbenchTabKind.run:
+        break;
     }
   }
 }

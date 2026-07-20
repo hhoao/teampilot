@@ -8,6 +8,7 @@ class WorkbenchWorkspaceState extends Equatable {
     this.tabOrder = const [],
     this.activeTabId,
     this.previewTabIds = const {},
+    this.lastFocusedShellTabId,
   });
 
   final List<WorkbenchTabId> tabOrder;
@@ -18,23 +19,30 @@ class WorkbenchWorkspaceState extends Equatable {
   /// Shared across session / file / diff — at most one preview slot.
   final Set<WorkbenchTabId> previewTabIds;
 
+  /// Last shell tab the user focused in this workspace (for re-open).
+  final WorkbenchTabId? lastFocusedShellTabId;
+
   bool isPreview(WorkbenchTabId tab) => previewTabIds.contains(tab);
 
   WorkbenchWorkspaceState copyWith({
     List<WorkbenchTabId>? tabOrder,
     WorkbenchTabId? activeTabId,
     Set<WorkbenchTabId>? previewTabIds,
+    WorkbenchTabId? lastFocusedShellTabId,
     bool clearActive = false,
   }) {
     return WorkbenchWorkspaceState(
       tabOrder: tabOrder ?? this.tabOrder,
       activeTabId: clearActive ? null : (activeTabId ?? this.activeTabId),
       previewTabIds: previewTabIds ?? this.previewTabIds,
+      lastFocusedShellTabId:
+          lastFocusedShellTabId ?? this.lastFocusedShellTabId,
     );
   }
 
   @override
-  List<Object?> get props => [tabOrder, activeTabId, previewTabIds];
+  List<Object?> get props =>
+      [tabOrder, activeTabId, previewTabIds, lastFocusedShellTabId];
 }
 
 class WorkbenchState extends Equatable {
@@ -68,6 +76,25 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   bool isPreview(String workspaceId, WorkbenchTabId tab) =>
       state.bucket(workspaceId).isPreview(tab);
 
+  WorkbenchTabId? lastFocusedShellTabId(String workspaceId) =>
+      state.bucket(workspaceId).lastFocusedShellTabId;
+
+  WorkbenchTabId? resolveMostRecentShell(String workspaceId) {
+    final bucket = state.bucket(workspaceId);
+    final last = bucket.lastFocusedShellTabId;
+    if (last != null &&
+        last.kind == WorkbenchTabKind.shell &&
+        bucket.tabOrder.contains(last)) {
+      return last;
+    }
+    for (var i = bucket.tabOrder.length - 1; i >= 0; i--) {
+      if (bucket.tabOrder[i].kind == WorkbenchTabKind.shell) {
+        return bucket.tabOrder[i];
+      }
+    }
+    return null;
+  }
+
   /// Ensures [tab] is in the bar and active.
   ///
   /// When [preview] is true and another preview exists (any kind), that preview
@@ -77,11 +104,17 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   /// If [tab] already exists as a permanent tab and [preview] is true, it is
   /// adopted into the shared preview slot (used after [syncSessions] appends a
   /// session before the open path marks it preview).
+  ///
+  /// Shell and run tabs never enter the preview slot.
   WorkbenchTabId? ensureTab(
     String workspaceId,
     WorkbenchTabId tab, {
     bool preview = false,
   }) {
+    if (tab.kind == WorkbenchTabKind.shell ||
+        tab.kind == WorkbenchTabKind.run) {
+      preview = false;
+    }
     final bucket = state.bucket(workspaceId);
     final order = List<WorkbenchTabId>.from(bucket.tabOrder);
     final previews = Set<WorkbenchTabId>.from(bucket.previewTabIds);
@@ -171,7 +204,11 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     emit(
       state.withBucket(
         workspaceId,
-        bucket.copyWith(activeTabId: tab),
+        bucket.copyWith(
+          activeTabId: tab,
+          lastFocusedShellTabId:
+              tab.kind == WorkbenchTabKind.shell ? tab : null,
+        ),
       ),
     );
   }
@@ -202,6 +239,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
           tabOrder: order,
           activeTabId: nextActive,
           previewTabIds: previews,
+          lastFocusedShellTabId: bucket.lastFocusedShellTabId,
         ),
       ),
     );
@@ -223,6 +261,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
           tabOrder: [keep],
           activeTabId: keep,
           previewTabIds: previews,
+          lastFocusedShellTabId: bucket.lastFocusedShellTabId,
         ),
       ),
     );
@@ -251,6 +290,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
           tabOrder: kept,
           activeTabId: nextActive,
           previewTabIds: previews,
+          lastFocusedShellTabId: bucket.lastFocusedShellTabId,
         ),
       ),
     );
@@ -337,6 +377,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
           tabOrder: order,
           activeTabId: active,
           previewTabIds: previews,
+          lastFocusedShellTabId: bucket.lastFocusedShellTabId,
         ),
       ),
     );

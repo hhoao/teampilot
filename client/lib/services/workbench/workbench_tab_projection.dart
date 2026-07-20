@@ -43,6 +43,10 @@ List<TabInfo> projectWorkbenchTabs({
           icon: Icons.difference_outlined,
           preview: previewTabIds.contains(tab),
         ),
+        WorkbenchTabKind.shell || WorkbenchTabKind.run => TabInfo(
+          id: tab.id,
+          title: tab.id,
+        ),
       },
   ];
 }
