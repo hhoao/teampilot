@@ -34,6 +34,9 @@ enum WorkspaceBottomDockTab { terminal, run }
 
 /// Dock tab to select for [intent], or null when [RunUiIntent.activateToolWindow]
 /// is false (do not switch tab / reveal dock).
+///
+/// Prefer `resolveWorkbenchTabForRunIntent` in `workbench_run_intent.dart` for
+/// center workbench shell/run tabs; this helper remains until the dock is removed.
 WorkspaceBottomDockTab? dockTabForActivateIntent(RunUiIntent intent) {
   if (!intent.activateToolWindow) return null;
   return intent.surface == RunToolSurface.terminal

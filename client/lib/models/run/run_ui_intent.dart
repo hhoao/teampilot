@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 
-/// Which bottom-dock tool surface a Shell Script / Run launch should target.
+/// Which workbench tool surface a Shell Script / Run launch should target.
 enum RunToolSurface { terminal, run }
 
-/// Dock activation / focus request emitted after a successful run start.
+/// Workbench tab activation / focus request emitted after a successful run start.
 @immutable
 class RunUiIntent {
   const RunUiIntent({
@@ -17,7 +17,7 @@ class RunUiIntent {
   final bool activateToolWindow;
   final bool focusToolWindow;
 
-  /// Workspace Terminal entry to select when [surface] is [RunToolSurface.terminal].
+  /// Shell terminal entry to select when [surface] is [RunToolSurface.terminal].
   final String? terminalEntryId;
 
   @override
