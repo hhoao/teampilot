@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teampilot/app/ui_zoom_baseline.dart';
+import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
 import 'package:teampilot/cubits/app_bootstrap_cubit.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
@@ -250,6 +251,9 @@ Widget buildTestApp({
         BlocProvider.value(value: teamCubit),
         BlocProvider.value(value: chat),
         BlocProvider.value(value: presence),
+        BlocProvider(
+          create: (_) => AgentAttentionCubit(pruneInterval: null),
+        ),
         BlocProvider(create: (_) => ConfigCubit()),
         BlocProvider.value(value: llmConfigCubit ?? testLlmConfigCubit()),
         BlocProvider.value(value: appProviderCubit!),

@@ -817,6 +817,9 @@ class SessionShellConnector {
     required List<String> launchWarnings,
   }) async {
     final gateway = _host.teammateBusMcpGateway;
+    // Local seats stamp the gateway /agent-status URL; start listeners even
+    // when TeamBus was never installed (native / simple connect paths).
+    await gateway.ensureStarted();
     if (!needsAgentStatusOnlyHttpTunnel(
       launchKind: launchTarget.kind,
       mixedRemoteBinding: mixedRemoteBinding,
