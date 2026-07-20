@@ -59,6 +59,8 @@ When a change violates more than one principle, fix structure first (split file,
 
 **Do not** add new generic controls under `client/lib/widgets/` — put them in `packages/shared_ui` as `Tp*` components. Keep `widgets/` for product/domain chrome only.
 
+**Progressive paint** (Frame 0 chrome → skeletons → content → idle heavy controls): see [PERFORMANCE.md](PERFORMANCE.md). Do not put the full timeline convention in feature design specs under `docs/superpowers/specs/`.
+
 Suggested layout (**shell and sections colocated**, see `pages/mcp/`):
 
 ```
@@ -213,3 +215,5 @@ For post-frame work (`ChatCubit`), use `PostFrameTestHarness` / `runScheduledCal
 | [AGENTS.md](../AGENTS.md) | Architecture |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Commands, integration tests |
 | [DEBUGGING.md](DEBUGGING.md) | Debugging process |
+| [PERFORMANCE.md](PERFORMANCE.md) | Progressive paint / UX jank optimization |
+| [PERFORMANCE_ANALYSIS.md](PERFORMANCE_ANALYSIS.md) | DevTools snapshot CLI |

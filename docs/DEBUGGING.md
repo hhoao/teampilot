@@ -47,7 +47,7 @@ cd client
 dart run tool/analyze_performance_json.dart /path/to/snapshot.json --format summary
 ```
 
-See [PERFORMANCE_ANALYSIS.md](PERFORMANCE_ANALYSIS.md) for CLI options, JSON output for agents, and comparison between before/after snapshots.
+See [PERFORMANCE_ANALYSIS.md](PERFORMANCE_ANALYSIS.md) for CLI options, JSON output for agents, and comparison between before/after snapshots. Optimization conventions: [PERFORMANCE.md](PERFORMANCE.md).
 
 ### 6. Revert failed workarounds
 
