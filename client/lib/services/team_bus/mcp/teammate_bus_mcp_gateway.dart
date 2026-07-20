@@ -237,6 +237,17 @@ class TeammateBusMcpGateway {
       event: const AgentStatusEvent(state: AgentSeatAttention.done),
       skipPermissions: false,
     );
+    // If seat-key update missed the waiting row, force a session clear then
+    // re-stamp done for this member.
+    if (handler.attention.state.sessionHasWaiting(sessionId)) {
+      handler.attention.clearSession(sessionId);
+      handler.attention.applyEvent(
+        sessionId: sessionId,
+        memberId: memberId,
+        event: const AgentStatusEvent(state: AgentSeatAttention.done),
+        skipPermissions: false,
+      );
+    }
   }
 }
 
