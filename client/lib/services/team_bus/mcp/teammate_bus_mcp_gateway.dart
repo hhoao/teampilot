@@ -151,10 +151,10 @@ class TeammateBusMcpGateway {
       final member = _headerValue(request.headers, teammateBusMcpMemberHeader);
 
       if (request.method == 'POST' && request.uri.path == '/idle') {
-        await delegate.handleIdleRequest(request, memberId: member);
-        // Stop fired for this seat — clear sticky permission attention even if
-        // the parallel `/agent-status` Stop hook was deduped or dropped.
+        // Clear attention before closing the response so clients that drain
+        // the body cannot race ahead of the sticky-waiting update (Windows CI).
         _clearAttentionOnIdle(sessionId: sessionId, memberId: member);
+        await delegate.handleIdleRequest(request, memberId: member);
         return;
       }
 
