@@ -1157,6 +1157,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionHistorySoftReloadError => '无法刷新对话历史。';
 
   @override
+  String get agentPermissionAttentionBanner => '此智能体需要在终端中确认。';
+
+  @override
+  String get agentPermissionOpenTerminal => '打开终端';
+
+  @override
   String get sessionHistoryRetry => '重试';
 
   @override

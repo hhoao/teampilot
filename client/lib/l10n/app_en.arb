@@ -512,6 +512,8 @@
   "sessionHistoryEmpty": "No prior messages for this member yet.",
   "sessionHistoryError": "Couldn't load conversation history.",
   "sessionHistorySoftReloadError": "Couldn't refresh conversation history.",
+  "agentPermissionAttentionBanner": "This agent needs confirmation in the Terminal.",
+  "agentPermissionOpenTerminal": "Open Terminal",
   "sessionHistoryRetry": "Retry",
   "sessionHistoryToolTurn": "Tool",
   "sessionHistoryRoleUser": "You",

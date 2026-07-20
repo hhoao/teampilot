@@ -2276,6 +2276,18 @@ abstract class AppLocalizations {
   /// **'Couldn\'t refresh conversation history.'**
   String get sessionHistorySoftReloadError;
 
+  /// No description provided for @agentPermissionAttentionBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'This agent needs confirmation in the Terminal.'**
+  String get agentPermissionAttentionBanner;
+
+  /// No description provided for @agentPermissionOpenTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Terminal'**
+  String get agentPermissionOpenTerminal;
+
   /// No description provided for @sessionHistoryRetry.
   ///
   /// In en, this message translates to:

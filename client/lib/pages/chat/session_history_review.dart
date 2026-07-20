@@ -38,6 +38,7 @@ import '../../services/storage/app_storage.dart';
 import '../../theme/app_markdown_style_sheet.dart';
 import '../../utils/team/team_member_naming.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
+import 'agent_permission_attention_banner.dart';
 import 'session_history_review_messages.dart';
 import 'session_history_review_submit.dart';
 import 'session_review_compose_card.dart';
@@ -758,6 +759,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          AgentPermissionAttentionBanner(session: widget.session),
           Expanded(
             // Full-bleed scroll surface: margins beside the text column still
             // receive wheel / drag. Message width is capped inside SessionHistoryThread.

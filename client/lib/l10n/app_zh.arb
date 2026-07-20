@@ -487,6 +487,8 @@
   "sessionHistoryEmpty": "该成员暂无历史消息。",
   "sessionHistoryError": "无法加载对话历史。",
   "sessionHistorySoftReloadError": "无法刷新对话历史。",
+  "agentPermissionAttentionBanner": "此智能体需要在终端中确认。",
+  "agentPermissionOpenTerminal": "打开终端",
   "sessionHistoryRetry": "重试",
   "sessionHistoryToolTurn": "工具",
   "sessionHistoryRoleUser": "你",
