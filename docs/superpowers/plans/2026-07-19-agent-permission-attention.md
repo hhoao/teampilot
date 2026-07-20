@@ -560,11 +560,11 @@ EOF
 - Modify: `sidebar_session_tile.dart`, working indicator sibling, sidebar builders
 - Extend `sidebar_session_tile_test.dart`
 
-- [ ] **Step 1: Test** — waiting marker distinct from `workingSessionIds` spinner
+- [x] **Step 1: Test** — waiting marker distinct from `workingSessionIds` spinner
 
-- [ ] **Step 2: Implement** distinct affordance; click → open session + Terminal + first waiting seat
+- [x] **Step 2: Implement** distinct affordance; click → open session + Terminal + first waiting seat
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git commit -m "$(cat <<'EOF'

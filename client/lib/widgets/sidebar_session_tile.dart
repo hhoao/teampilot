@@ -4,8 +4,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../cubits/agent_attention_cubit.dart';
 import '../cubits/automation_cubit.dart';
 import '../cubits/automation_state.dart';
+import '../cubits/chat/model/session_workbench_view.dart';
 import '../cubits/chat_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
@@ -264,6 +266,24 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   bool get _showSessionActions =>
       _hovered || _menuOpen || _deleteArmed || Platform.isAndroid;
 
+  /// Activates the session via [SidebarSessionTile.onTap]; when needs-you,
+  /// also selects the first waiting seat and switches to Terminal.
+  void _onSessionTap() {
+    widget.onTap();
+    if (!mounted) return;
+    final waitingIds = context
+        .read<AgentAttentionCubit>()
+        .state
+        .waitingMemberIds(widget.session.sessionId);
+    if (waitingIds.isEmpty) return;
+    final chat = context.read<ChatCubit>();
+    chat.selectMember(waitingIds.first);
+    chat.setSessionWorkbenchView(
+      widget.session.sessionId,
+      SessionWorkbenchView.terminal,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = widget.session;
@@ -275,14 +295,20 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final working = context.select<ChatCubit, bool>(
       (cubit) => cubit.state.workingSessionIds.contains(session.sessionId),
     );
+    final waiting = context.select<AgentAttentionCubit, bool>(
+      (cubit) => cubit.state.sessionHasWaiting(session.sessionId),
+    );
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
 
     // Leading area: shared 24×24 slot — indicator (idle) ↔ drag handle (hover).
+    // Waiting (needs-you) wins over working spinner — distinct tertiary hand icon.
     final Widget indicator = SessionWorkingIndicator(
       working: working,
+      waiting: waiting,
       size: 13,
       color: cs.primary,
+      waitingColor: cs.tertiary,
       idleColor: (selected ? cs.primary : cs.onSurfaceVariant).withValues(
         alpha: 0.5,
       ),
@@ -413,7 +439,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         leading: leadingWidget,
         onTap: throttledTap(
           '${widget.tapThrottleKeyPrefix}_${session.sessionId}',
-          widget.onTap,
+          _onSessionTap,
         ),
         onSecondaryTapDown: _showSessionContextMenuFromTap,
         onLongPress: Platform.isAndroid
