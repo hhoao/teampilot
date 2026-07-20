@@ -26,7 +26,10 @@ class WorkspaceShell extends StatelessWidget {
     this.onTabPin,
     this.showNewChatButton = false,
     this.newChatTooltip = '',
-    this.onNewChatPressed,
+    this.newConversationLabel = '',
+    this.newTerminalLabel = '',
+    this.onNewConversation,
+    this.onNewTerminal,
     this.tabBarTrailing,
     super.key,
   });
@@ -45,10 +48,13 @@ class WorkspaceShell extends StatelessWidget {
   final ValueChanged<int>? onTabCloseRight;
   final ValueChanged<int>? onTabPin;
 
-  /// "+" action at the end of the session tab row — opens landing; not a tab.
+  /// "+" action at the end of the session tab row — New conversation / terminal.
   final bool showNewChatButton;
   final String newChatTooltip;
-  final VoidCallback? onNewChatPressed;
+  final String newConversationLabel;
+  final String newTerminalLabel;
+  final VoidCallback? onNewConversation;
+  final void Function(Offset anchor)? onNewTerminal;
 
   /// Extra controls on the right of the tab row (e.g. History/Terminal toggle).
   final Widget? tabBarTrailing;
@@ -125,7 +131,10 @@ class WorkspaceShell extends StatelessWidget {
             newChatButton: showNewChatButton
                 ? WorkspaceShellNewChatButton(
                     tooltip: newChatTooltip,
-                    onPressed: onNewChatPressed,
+                    newConversationLabel: newConversationLabel,
+                    newTerminalLabel: newTerminalLabel,
+                    onNewConversation: onNewConversation,
+                    onNewTerminal: onNewTerminal,
                   )
                 : null,
             trailing: tabBarTrailing ??

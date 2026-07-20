@@ -27,6 +27,7 @@ import '../cubits/shortcut_cubit.dart';
 import '../cubits/editor_cubit.dart';
 import '../cubits/workbench/workbench_cubit.dart';
 import '../services/workbench/workbench_editor_opener.dart';
+import '../services/workbench/workbench_shell_launcher.dart';
 import '../services/editor/markdown_view_mode_store.dart';
 import '../services/session/ai_history_loader.dart';
 import '../services/session/session_history_context_builder.dart';
@@ -157,6 +158,7 @@ class AppShell {
     required this.editorCubit,
     required this.workbenchCubit,
     required this.workbenchEditorOpener,
+    required this.workbenchShellLauncher,
     required this.sessionRepo,
     required this.workspaceProjectConfigRepository,
     required this.sshProfileRepo,
@@ -222,6 +224,7 @@ class AppShell {
   final EditorCubit editorCubit;
   final WorkbenchCubit workbenchCubit;
   final WorkbenchEditorOpener workbenchEditorOpener;
+  final WorkbenchShellLauncher workbenchShellLauncher;
   final SessionRepository sessionRepo;
   final WorkspaceProjectConfigRepository workspaceProjectConfigRepository;
   final SshProfileRepository sshProfileRepo;
@@ -850,11 +853,16 @@ Future<AppShell> buildAppShell({
     remoteCliReadiness: remoteCliReadiness,
   );
 
+  // Bound after [WorkbenchCubit] exists; togglePanel no-ops until then.
+  WorkbenchShellLauncher? workbenchShellLauncher;
   registerLayoutCommands(
     commandBus,
     layoutCubit,
     uiZoomBaseline: () => uiZoomBaseline.value,
     composeLanding: () => chatCubit.state.composeActive,
+    onTogglePanel: () async {
+      await workbenchShellLauncher?.focusOrCreateDefaultShell();
+    },
   );
   registerSessionCommands(commandBus, chatCubit);
 
@@ -1058,6 +1066,15 @@ Future<AppShell> buildAppShell({
     readMarkdownOpenMode: () =>
         layoutCubit.state.preferences.markdownOpenMode,
   );
+  final resolvedShellLauncher = WorkbenchShellLauncher(
+    workbench: workbenchCubit,
+    chat: chatCubit,
+    registry: workspaceTerminalRegistry,
+    connector: workspaceShellConnector,
+    layout: layoutCubit,
+    sessionOps: workspaceTerminalSessionOps,
+  );
+  workbenchShellLauncher = resolvedShellLauncher;
 
   // P1: switching the home target persists the id, rebinds the home context,
   // then reinstalls + reloads all remote-backed app data (same chain the old
@@ -1093,6 +1110,7 @@ Future<AppShell> buildAppShell({
     editorCubit: editorCubit,
     workbenchCubit: workbenchCubit,
     workbenchEditorOpener: workbenchEditorOpener,
+    workbenchShellLauncher: resolvedShellLauncher,
     sessionRepo: sessionRepo,
     workspaceProjectConfigRepository: workspaceProjectConfigRepository,
     sshProfileRepo: sshProfileRepo,

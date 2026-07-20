@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -201,28 +202,81 @@ class WorkspaceShellTabRow extends StatelessWidget {
   }
 }
 
-/// "+" action beside session tabs — navigates to landing; not a tab chip.
-class WorkspaceShellNewChatButton extends StatelessWidget {
+/// "+" action beside session tabs — opens New conversation / New terminal menu.
+class WorkspaceShellNewChatButton extends StatefulWidget {
   const WorkspaceShellNewChatButton({
     required this.tooltip,
-    this.onPressed,
+    required this.newConversationLabel,
+    required this.newTerminalLabel,
+    this.onNewConversation,
+    this.onNewTerminal,
     super.key,
   });
 
   final String tooltip;
-  final VoidCallback? onPressed;
+  final String newConversationLabel;
+  final String newTerminalLabel;
+  final VoidCallback? onNewConversation;
+
+  /// Called with the `+` button anchor when "New terminal" is chosen.
+  final void Function(Offset anchor)? onNewTerminal;
+
+  @override
+  State<WorkspaceShellNewChatButton> createState() =>
+      _WorkspaceShellNewChatButtonState();
+}
+
+class _WorkspaceShellNewChatButtonState
+    extends State<WorkspaceShellNewChatButton> {
+  final _anchorKey = GlobalKey();
+
+  Future<void> _showMenu() async {
+    final box = _anchorKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final anchor = box.localToGlobal(box.size.bottomLeft(Offset.zero));
+    final selected = await showTpActionMenuFromSpecs<String>(
+      context: context,
+      globalPosition: anchor + const Offset(0, 4),
+      specs: [
+        TpActionMenuSpec.item(
+          value: 'conversation',
+          label: widget.newConversationLabel,
+          icon: Icons.chat_bubble_outline_rounded,
+        ),
+        TpActionMenuSpec.item(
+          value: 'terminal',
+          label: widget.newTerminalLabel,
+          icon: Icons.terminal_rounded,
+        ),
+      ],
+    );
+    if (!mounted || selected == null) return;
+    switch (selected) {
+      case 'conversation':
+        widget.onNewConversation?.call();
+      case 'terminal':
+        widget.onNewTerminal?.call(anchor + const Offset(0, 4));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return TpIconButton(
-      key: AppKeys.workspaceTabRowNewChatButton,
-      icon: Icons.add_rounded,
-      tooltip: tooltip,
-      compact: true,
-      onTap: onPressed,
+    final enabled =
+        widget.onNewConversation != null || widget.onNewTerminal != null;
+    return KeyedSubtree(
+      key: _anchorKey,
+      child: TpIconButton(
+        key: AppKeys.workspaceTabRowNewChatButton,
+        icon: Icons.add_rounded,
+        tooltip: widget.tooltip,
+        compact: true,
+        enabled: enabled,
+        onTap: enabled ? () => unawaited(_showMenu()) : null,
+      ),
     );
   }
 }
+
 
 class WorkspaceShellTabChip extends StatefulWidget {
   const WorkspaceShellTabChip({

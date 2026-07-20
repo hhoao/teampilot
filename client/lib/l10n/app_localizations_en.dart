@@ -1095,6 +1095,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'New conversation with CLI…';
 
   @override
+  String get workbenchStripNewMenuTooltip => 'New';
+
+  @override
   String get homeWorkspaceNoConversations =>
       'No conversations in this workspace yet';
 

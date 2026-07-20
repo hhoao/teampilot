@@ -2054,6 +2054,12 @@ abstract class AppLocalizations {
   /// **'New conversation with CLI…'**
   String get homeWorkspaceNewConversationChooseCli;
 
+  /// No description provided for @workbenchStripNewMenuTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get workbenchStripNewMenuTooltip;
+
   /// No description provided for @homeWorkspaceNoConversations.
   ///
   /// In en, this message translates to:

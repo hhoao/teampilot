@@ -667,6 +667,7 @@ void main() async {
                   BlocProvider.value(value: shell.editorCubit),
                   BlocProvider.value(value: shell.workbenchCubit),
                   RepositoryProvider.value(value: shell.workbenchEditorOpener),
+                  RepositoryProvider.value(value: shell.workbenchShellLauncher),
                   BlocProvider.value(value: shell.configCubit),
                   BlocProvider.value(value: shell.appProviderCubit),
                   BlocProvider.value(value: shell.llmConfigCubit),

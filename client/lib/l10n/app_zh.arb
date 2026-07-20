@@ -440,6 +440,7 @@
   "homeWorkspaceInviteMembers": "邀请成员",
   "homeWorkspaceNewConversation": "新建对话",
   "homeWorkspaceNewConversationChooseCli": "选择 CLI 新建对话",
+  "workbenchStripNewMenuTooltip": "新建",
   "homeWorkspaceNoConversations": "该工作区还没有对话",
   "homeWorkspaceSearchHint": "搜索",
   "homeWorkspaceNoSearchResults": "没有匹配的对话",

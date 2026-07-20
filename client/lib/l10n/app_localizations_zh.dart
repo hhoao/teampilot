@@ -1042,6 +1042,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceNewConversationChooseCli => '选择 CLI 新建对话';
 
   @override
+  String get workbenchStripNewMenuTooltip => '新建';
+
+  @override
   String get homeWorkspaceNoConversations => '该工作区还没有对话';
 
   @override

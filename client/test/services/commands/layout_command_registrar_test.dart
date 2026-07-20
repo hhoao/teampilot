@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
+import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/commands/command_ids.dart';
 import 'package:teampilot/services/commands/layout_command_registrar.dart';
@@ -92,13 +94,46 @@ void main() {
       expect(layout.state.preferences.sidebarVisible, !initial);
     });
 
-    test('togglePanel command flips workspaceTerminalVisible', () async {
-      final initial = layout.state.preferences.workspaceTerminalVisible;
+    test(
+      'togglePanel without handler is a no-op on workspaceTerminalVisible',
+      () async {
+        final initial = layout.state.preferences.workspaceTerminalVisible;
 
-      bus.invoke(CommandIds.togglePanel);
+        bus.invoke(CommandIds.togglePanel);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(layout.state.preferences.workspaceTerminalVisible, initial);
+      },
+    );
+
+    test('togglePanel invokes onTogglePanel create-or-focus handler', () async {
+      final workbench = WorkbenchCubit();
+      addTearDown(workbench.close);
+      var calls = 0;
+      final panelBus = CommandBus();
+      registerLayoutCommands(
+        panelBus,
+        layout,
+        uiZoomBaseline: () => baseline,
+        onTogglePanel: () async {
+          calls++;
+          const ws = 'ws';
+          final shell = WorkbenchTabId.shell('e1');
+          workbench.ensureTab(ws, shell);
+          workbench.select(ws, shell);
+        },
+      );
+      final terminalVisible = layout.state.preferences.workspaceTerminalVisible;
+
+      panelBus.invoke(CommandIds.togglePanel);
       await Future<void>.delayed(Duration.zero);
 
-      expect(layout.state.preferences.workspaceTerminalVisible, !initial);
+      expect(calls, 1);
+      expect(layout.state.preferences.workspaceTerminalVisible, terminalVisible);
+      expect(
+        workbench.resolveMostRecentShell('ws'),
+        WorkbenchTabId.shell('e1'),
+      );
     });
 
     test('toggleSecondarySidebar command flips rightToolsVisible', () async {

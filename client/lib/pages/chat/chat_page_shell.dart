@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -17,16 +17,20 @@ import '../../utils/workspace/workspace_chrome_profile.dart';
 import '../../models/run/run_session.dart';
 import '../../models/team_config.dart';
 import '../../services/run/run_panel_session.dart';
+import '../../services/terminal/workspace_shell_connector.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../services/terminal/workspace_terminal_title_resolver.dart';
 import '../../services/workbench/workbench_shell_actions.dart';
+import '../../services/workbench/workbench_shell_launcher.dart';
 import '../../services/workbench/workbench_tab_projection.dart';
+import '../../services/workspace/workspace_tools_scope.dart';
 import '../../utils/ui/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/workspace/workspace_active_context.dart';
 import '../../cubits/workspace_landing_context_cubit.dart';
 import '../../widgets/workbench/workbench_session_sync.dart';
 import '../../widgets/workbench/workbench_shell_run_sync.dart';
+import '../../widgets/workspace_terminal/workspace_terminal_new_session_menu.dart';
 import '../../widgets/workspace_terminal_panel.dart';
 import '../workbench/workbench_body.dart';
 import '../workspace_shell/workspace_shell.dart';
@@ -34,6 +38,41 @@ import 'chat_scoped_tab_view.dart';
 import 'session_tab_cli.dart';
 import 'session_workbench_view_toggle.dart';
 import 'team_config_incomplete_dialog.dart';
+
+Future<void> _showStripNewTerminalMenu({
+  required BuildContext context,
+  required String workspaceId,
+  required String tabScopeId,
+  required String cwd,
+  required Offset anchor,
+}) async {
+  final trimmedCwd = cwd.trim();
+  if (trimmedCwd.isEmpty || !context.mounted) return;
+  final folders =
+      WorkspaceToolsScope.maybeOf(context)?.effectiveFolders ?? const [];
+  final connector = context.read<WorkspaceShellConnector>();
+  final launcher = context.read<WorkbenchShellLauncher>();
+  final sshFailed = context.l10n.workspaceTerminalSshConnectFailed;
+  await showWorkspaceTerminalLaunchMenu(
+    context: context,
+    globalPosition: anchor,
+    folders: folders,
+    connector: connector,
+    onSessionSelected: (spec) {
+      unawaited(
+        launcher.openAndSelect(
+          workspaceId: workspaceId,
+          tabScopeId: tabScopeId,
+          cwd: trimmedCwd,
+          spec: spec,
+          sshConnectFailedMessage: sshFailed,
+          onStateChanged: () {},
+          mounted: () => context.mounted,
+        ),
+      );
+    },
+  );
+}
 
 class ChatPageShell extends StatelessWidget {
   const ChatPageShell({
@@ -271,14 +310,28 @@ class _ChatWorkspaceShell extends StatelessWidget {
                       ? 'personal workspace / shell wrapper mode'
                       : 'target: ${teamConfig != null ? cubit.selectedMemberName(teamConfig) : 'team'} / shell wrapper mode',
                   showNewChatButton: tabs.isNotEmpty,
-                  newChatTooltip: context.l10n.homeWorkspaceNewConversation,
-                  onNewChatPressed: routeActive
+                  newChatTooltip: context.l10n.workbenchStripNewMenuTooltip,
+                  newConversationLabel:
+                      context.l10n.homeWorkspaceNewConversation,
+                  newTerminalLabel: context.l10n.workspaceTerminalNewSession,
+                  onNewConversation: routeActive
                       ? () {
                           context.read<WorkbenchCubit>().clearActive(
                             workspaceId,
                           );
                           cubit.enterComposeMode(tabScopeId);
                         }
+                      : null,
+                  onNewTerminal: routeActive
+                      ? (anchor) => unawaited(
+                          _showStripNewTerminalMenu(
+                            context: context,
+                            workspaceId: workspaceId,
+                            tabScopeId: tabScopeId,
+                            cwd: cwd,
+                            anchor: anchor,
+                          ),
+                        )
                       : null,
                   tabs: tabs,
                   activeTabIndex: activeTabIndex,

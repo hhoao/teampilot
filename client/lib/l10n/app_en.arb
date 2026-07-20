@@ -465,6 +465,7 @@
   "homeWorkspaceInviteMembers": "Invite",
   "homeWorkspaceNewConversation": "New Conversation",
   "homeWorkspaceNewConversationChooseCli": "New conversation with CLI…",
+  "workbenchStripNewMenuTooltip": "New",
   "homeWorkspaceNoConversations": "No conversations in this workspace yet",
   "homeWorkspaceSearchHint": "Search",
   "homeWorkspaceNoSearchResults": "No conversations match your search",
