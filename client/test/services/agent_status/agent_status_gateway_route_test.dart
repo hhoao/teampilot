@@ -215,8 +215,12 @@ void main() {
     await wait.drain<void>();
     expect(cubit.state.sessionHasWaiting('idle-sess'), isTrue);
 
+    // Fresh client avoids Windows keep-alive dropping custom headers on the
+    // second request against the same HttpClient connection.
+    final idleClient = HttpClient();
+    addTearDown(() => idleClient.close(force: true));
     final idleUri = Uri.parse('http://127.0.0.1:${gateway.httpPort}/idle');
-    final idleReq = await client.postUrl(idleUri);
+    final idleReq = await idleClient.postUrl(idleUri);
     idleReq.headers.set(teammateBusMcpSessionHeader, 'idle-sess');
     idleReq.headers.set(teammateBusMcpMemberHeader, 'm1');
     final idleResp = await idleReq.close();

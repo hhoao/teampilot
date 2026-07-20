@@ -148,7 +148,7 @@ class TeammateBusMcpGateway {
         return;
       }
 
-      final member = request.headers.value('x-member')?.trim() ?? '';
+      final member = _headerValue(request.headers, teammateBusMcpMemberHeader);
 
       if (request.method == 'POST' && request.uri.path == '/idle') {
         await delegate.handleIdleRequest(request, memberId: member);
@@ -187,7 +187,7 @@ class TeammateBusMcpGateway {
       return;
     }
 
-    final member = request.headers.value('x-member')?.trim() ?? '';
+    final member = _headerValue(request.headers, teammateBusMcpMemberHeader);
     if (member.isEmpty) {
       request.response.statusCode = HttpStatus.badRequest;
       await request.response.close();
@@ -198,17 +198,16 @@ class TeammateBusMcpGateway {
   }
 
   String? _resolveSessionId(HttpRequest request) {
-    final sessionHeader = request.headers
-        .value(teammateBusMcpSessionHeader.toLowerCase())
-        ?.trim();
-    if (sessionHeader != null && sessionHeader.isNotEmpty) {
+    final sessionHeader = _headerValue(
+      request.headers,
+      teammateBusMcpSessionHeader,
+    );
+    if (sessionHeader.isNotEmpty) {
       return sessionHeader;
     }
 
-    final token = request.headers
-        .value(teammateBusTokenHeader.toLowerCase())
-        ?.trim();
-    if (token != null && token.isNotEmpty) {
+    final token = _headerValue(request.headers, teammateBusTokenHeader);
+    if (token.isNotEmpty) {
       final fromRegistry = _registry.sessionForToken(token);
       if (fromRegistry != null) return fromRegistry;
       return _agentStatusTokenToSession[token];
@@ -223,6 +222,9 @@ class TeammateBusMcpGateway {
   }) {
     final handler = _agentStatusHandler;
     if (handler == null || memberId.isEmpty) return;
+    // Drop prior sticky PermissionRequest context, then stamp done so idle
+    // backup always clears waiting even if a concurrent hook races.
+    handler.attention.clearSeat(sessionId: sessionId, memberId: memberId);
     handler.attention.applyEvent(
       sessionId: sessionId,
       memberId: memberId,
@@ -230,6 +232,21 @@ class TeammateBusMcpGateway {
       skipPermissions: false,
     );
   }
+}
+
+/// Case-insensitive header read with forEach fallback (Windows keep-alive).
+String _headerValue(HttpHeaders headers, String name) {
+  final want = name.toLowerCase();
+  final direct = headers.value(want)?.trim() ?? headers.value(name)?.trim();
+  if (direct != null && direct.isNotEmpty) return direct;
+  var found = '';
+  headers.forEach((key, values) {
+    if (found.isNotEmpty) return;
+    if (key.toLowerCase() == want && values.isNotEmpty) {
+      found = values.first.trim();
+    }
+  });
+  return found;
 }
 
 String _randomStatusToken() {
