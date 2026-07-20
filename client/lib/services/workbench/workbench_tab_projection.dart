@@ -15,6 +15,9 @@ List<TabInfo> projectWorkbenchTabs({
   required WorkspaceEditorBucket editorBucket,
   required Set<WorkbenchTabId> previewTabIds,
   Map<String, bool> sessionPinned = const {},
+  Map<String, String> shellTitles = const {},
+  Map<String, String> runTitles = const {},
+  Map<String, bool> runWorking = const {},
   Color? sessionAccent,
 }) {
   return [
@@ -43,9 +46,18 @@ List<TabInfo> projectWorkbenchTabs({
           icon: Icons.difference_outlined,
           preview: previewTabIds.contains(tab),
         ),
-        WorkbenchTabKind.shell || WorkbenchTabKind.run => TabInfo(
+        WorkbenchTabKind.shell => TabInfo(
           id: tab.id,
-          title: tab.id,
+          title: shellTitles[tab.id] ?? tab.id,
+          icon: Icons.terminal_outlined,
+          pinnable: false,
+        ),
+        WorkbenchTabKind.run => TabInfo(
+          id: tab.id,
+          title: runTitles[tab.id] ?? tab.id,
+          icon: Icons.play_arrow_rounded,
+          working: runWorking[tab.id] ?? false,
+          pinnable: false,
         ),
       },
   ];
