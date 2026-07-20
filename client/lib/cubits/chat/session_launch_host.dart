@@ -121,6 +121,19 @@ abstract interface class SessionLaunchHost
   TerminalTheme? resolveTerminalThemeForLaunch();
 }
 
+/// Drop attention + seat lookup for every seat in [sessionId].
+///
+/// Used on team-session restart (shells disconnect without [onProcessExited]).
+/// Does not unregister the gateway status session — reconnect re-registers seats.
+void clearAgentStatusSessionSeats({
+  AgentAttentionCubit? attention,
+  AgentStatusSeatLookup? seatLookup,
+  required String sessionId,
+}) {
+  attention?.clearSession(sessionId);
+  seatLookup?.clearSession(sessionId);
+}
+
 /// Drop attention + seat lookup for one seat (PTY exit, disconnect, reconnect).
 extension SessionLaunchHostAgentStatus on SessionLaunchHost {
   void clearAgentStatusSeat({
@@ -134,6 +147,14 @@ extension SessionLaunchHostAgentStatus on SessionLaunchHost {
     agentStatusSeatLookup?.unregisterSeat(
       sessionId: sessionId,
       memberId: memberId,
+    );
+  }
+
+  void clearAgentStatusSession(String sessionId) {
+    clearAgentStatusSessionSeats(
+      attention: agentAttentionCubit,
+      seatLookup: agentStatusSeatLookup,
+      sessionId: sessionId,
     );
   }
 }
