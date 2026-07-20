@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -53,15 +55,20 @@ class _RecordingChatCubit extends ChatCubit {
 
   final workbenchViews = <(String, SessionWorkbenchView)>[];
   final selectedMembers = <String>[];
+  final activeSessionAtSelectMember = <String?>[];
+  final eventOrder = <String>[];
 
   @override
   void setSessionWorkbenchView(String sessionId, SessionWorkbenchView view) {
+    eventOrder.add('workbench:$sessionId');
     workbenchViews.add((sessionId, view));
     super.setSessionWorkbenchView(sessionId, view);
   }
 
   @override
   void selectMember(String memberId) {
+    eventOrder.add('selectMember:$memberId');
+    activeSessionAtSelectMember.add(state.activeSessionId);
     selectedMembers.add(memberId);
     super.selectMember(memberId);
   }
@@ -73,7 +80,7 @@ Widget _host({
   required SessionRepository sessionRepository,
   required AgentAttentionCubit attentionCubit,
   Widget? child,
-  VoidCallback? onTap,
+  FutureOr<void> Function()? onTap,
 }) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -342,4 +349,85 @@ void main() {
       (_session.sessionId, SessionWorkbenchView.terminal),
     ]);
   });
+
+  testWidgets(
+    'cross-session waiting jump awaits open before seat/Terminal',
+    (tester) async {
+      final sessionB = AppSession(
+        sessionId: 'sess-b',
+        workspaceId: 'ws1',
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      final chatCubit = _RecordingChatCubit();
+      final (attention, automationCubit) = _tileCubits();
+      addTearDown(chatCubit.close);
+      addTearDown(automationCubit.close);
+      addTearDown(attention.close);
+
+      // Session A is active; waiting is on B.
+      chatCubit.emit(
+        chatCubit.state.copyWith(
+          activeSessionId: 'sess-a',
+          selectedMemberId: 'member-a',
+        ),
+      );
+      attention.applyEvent(
+        sessionId: sessionB.sessionId,
+        memberId: 'seat-b',
+        event: const AgentStatusEvent(state: AgentSeatAttention.waiting),
+        skipPermissions: false,
+      );
+
+      final openCompleter = Completer<void>();
+      await tester.pumpWidget(
+        _host(
+          chatCubit: chatCubit,
+          automationCubit: automationCubit,
+          sessionRepository: SessionRepository(),
+          attentionCubit: attention,
+          child: SidebarSessionTile(
+            session: sessionB,
+            onTap: () async {
+              chatCubit.eventOrder.add('activate-start');
+              await openCompleter.future;
+              chatCubit.emit(
+                chatCubit.state.copyWith(
+                  activeSessionId: sessionB.sessionId,
+                  selectedMemberId: '',
+                ),
+              );
+              chatCubit.eventOrder.add('activate-done');
+            },
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.byType(SidebarSessionTile));
+      await tester.pump();
+
+      // Still opening B — must not selectMember / switch Terminal on A yet.
+      expect(chatCubit.selectedMembers, isEmpty);
+      expect(chatCubit.workbenchViews, isEmpty);
+      expect(chatCubit.state.activeSessionId, 'sess-a');
+
+      openCompleter.complete();
+      await tester.pump();
+      await tester.pump();
+
+      expect(chatCubit.state.activeSessionId, sessionB.sessionId);
+      expect(chatCubit.activeSessionAtSelectMember, [sessionB.sessionId]);
+      expect(chatCubit.selectedMembers, ['seat-b']);
+      expect(chatCubit.workbenchViews, [
+        (sessionB.sessionId, SessionWorkbenchView.terminal),
+      ]);
+      expect(chatCubit.eventOrder, [
+        'activate-start',
+        'activate-done',
+        'selectMember:seat-b',
+        'workbench:sess-b',
+      ]);
+    },
+  );
 }

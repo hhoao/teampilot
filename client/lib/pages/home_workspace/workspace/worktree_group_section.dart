@@ -451,16 +451,12 @@ class _GroupSessionListState extends State<_GroupSessionList> {
               highlightSessionId: widget.highlightSessionId,
               contentLeftInset: 0,
               tapThrottleKeyPrefix: 'worktree_sidebar_session',
-              onTap: () {
-                unawaited(
-                  openWorkspaceSessionTab(
-                    context,
-                    widget.workspace,
-                    session,
-                    tabScopeId: widget.tabScopeId,
-                  ),
-                );
-              },
+              onTap: () => openWorkspaceSessionTab(
+                context,
+                widget.workspace,
+                session,
+                tabScopeId: widget.tabScopeId,
+              ),
             );
           },
         ),

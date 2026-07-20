@@ -7,7 +7,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubits/agent_attention_cubit.dart';
 import '../cubits/automation_cubit.dart';
 import '../cubits/automation_state.dart';
-import '../cubits/chat/model/session_workbench_view.dart';
 import '../cubits/chat_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
@@ -34,7 +33,11 @@ class SidebarSessionTile extends StatefulWidget {
   });
 
   final AppSession session;
-  final VoidCallback onTap;
+
+  /// Activates / opens the session. May be async — when the row needs-you,
+  /// the tile awaits this before [ChatCubit.selectMember] / Terminal jump so
+  /// those land on the target tab, not the previously active one.
+  final FutureOr<void> Function() onTap;
 
   /// When set, selection highlight follows this id instead of the global
   /// [ChatState.activeSessionId] (kept-alive background workspace tabs).
@@ -267,21 +270,20 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       _hovered || _menuOpen || _deleteArmed || Platform.isAndroid;
 
   /// Activates the session via [SidebarSessionTile.onTap]; when needs-you,
-  /// also selects the first waiting seat and switches to Terminal.
-  void _onSessionTap() {
-    widget.onTap();
-    if (!mounted) return;
+  /// awaits open first so [ChatCubit.selectMember] targets the opened tab,
+  /// then switches that session to Terminal.
+  Future<void> _onSessionTap() async {
+    final sessionId = widget.session.sessionId;
     final waitingIds = context
         .read<AgentAttentionCubit>()
         .state
-        .waitingMemberIds(widget.session.sessionId);
-    if (waitingIds.isEmpty) return;
+        .waitingMemberIds(sessionId);
+    final open = widget.onTap();
+    if (open is Future) await open;
+    if (!mounted || waitingIds.isEmpty) return;
     final chat = context.read<ChatCubit>();
     chat.selectMember(waitingIds.first);
-    chat.setSessionWorkbenchView(
-      widget.session.sessionId,
-      SessionWorkbenchView.terminal,
-    );
+    chat.setSessionWorkbenchView(sessionId, SessionWorkbenchView.terminal);
   }
 
   @override
@@ -437,7 +439,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         rowHovered: _hovered || _menuOpen,
         contentLeftInset: widget.contentLeftInset,
         leading: leadingWidget,
-        onTap: throttledTap(
+        onTap: throttledAsync(
           '${widget.tapThrottleKeyPrefix}_${session.sessionId}',
           _onSessionTap,
         ),
