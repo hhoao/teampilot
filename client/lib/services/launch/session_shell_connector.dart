@@ -405,6 +405,24 @@ class SessionShellConnector {
             shellLaunch.launchContext.member.dangerouslySkipPermissions,
         agentStatus: agentStatus,
       );
+      if (launchCli == CliTool.cursor) {
+        final attention = _host.agentAttentionCubit;
+        if (attention != null) {
+          final sessionId = activeSession.sessionId;
+          final memberId = agentStatusSeatMemberId;
+          shell.bindCursorTitleAttention(
+            sessionId: sessionId,
+            memberId: memberId,
+            attention: attention,
+            skipPermissions: () =>
+                _host.agentStatusSeatLookup?.resolveSkipPermissions(
+                  sessionId,
+                  memberId,
+                ) ??
+                false,
+          );
+        }
+      }
 
       final plan = shellLaunch.plan;
       appLogger.d(

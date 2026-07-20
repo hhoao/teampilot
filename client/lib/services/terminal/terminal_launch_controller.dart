@@ -5,9 +5,14 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 
+import '../../cubits/agent_attention_cubit.dart';
+import '../../utils/logging/logger.dart';
+import '../../utils/terminal/osc_title_extractor.dart';
+import '../agent_status/agent_attention_state.dart';
+import '../agent_status/agent_status_event.dart';
+import '../agent_status/cursor_title_attention.dart';
 import '../cli/cli_executable_validator.dart';
 import '../team/terminal_activity_tracker.dart';
-import '../../utils/logging/logger.dart';
 import 'terminal_startup_failure_detector.dart';
 import 'terminal_theme_mapper.dart';
 import 'terminal_transport.dart';
@@ -67,7 +72,43 @@ final class TerminalLaunchController {
   void Function(String text)? writeToDisplay;
   void Function()? onConfirmedRunning;
 
+  /// Cursor-only OSC title → attention binding (null until [bindCursorTitleAttention]).
+  String? _cursorSessionId;
+  String? _cursorMemberId;
+  AgentAttentionCubit? _cursorAttention;
+  bool Function()? _cursorSkipPermissions;
+  OscTitleExtractor? _cursorOscTitles;
+  var _cursorTitleWaiting = false;
+
   bool get isDisposed => _disposed;
+
+  /// Enable live OSC title attention for a Cursor seat. No-op for other CLIs —
+  /// only call when the seat launches Cursor.
+  void bindCursorTitleAttention({
+    required String sessionId,
+    required String memberId,
+    required AgentAttentionCubit attention,
+    required bool Function() skipPermissions,
+  }) {
+    _cursorSessionId = sessionId;
+    _cursorMemberId = memberId;
+    _cursorAttention = attention;
+    _cursorSkipPermissions = skipPermissions;
+    _cursorOscTitles = OscTitleExtractor();
+    _cursorTitleWaiting = false;
+  }
+
+  /// Drop Cursor title observation (disconnect / non-Cursor reconnect).
+  void clearCursorTitleAttention() {
+    _cursorSessionId = null;
+    _cursorMemberId = null;
+    _cursorAttention = null;
+    _cursorSkipPermissions = null;
+    _cursorOscTitles?.reset();
+    _cursorOscTitles = null;
+    _cursorTitleWaiting = false;
+  }
+
   bool get startFailed => _startFailed;
   TerminalLaunchPhase get phase => _phase;
 
@@ -161,13 +202,70 @@ final class TerminalLaunchController {
     if (isConnected) {
       activityTracker.notePtyBytes(data);
     }
+    _observeCursorOscTitles(data);
     engine.feed(data);
+  }
+
+  void _observeCursorOscTitles(Uint8List data) {
+    final extractor = _cursorOscTitles;
+    final attention = _cursorAttention;
+    final sessionId = _cursorSessionId;
+    final memberId = _cursorMemberId;
+    final skipPermissions = _cursorSkipPermissions;
+    if (extractor == null ||
+        attention == null ||
+        sessionId == null ||
+        memberId == null ||
+        skipPermissions == null) {
+      return;
+    }
+
+    final text = utf8.decode(data, allowMalformed: true);
+    for (final title in extractor.push(text)) {
+      _applyCursorTitle(title, attention, sessionId, memberId, skipPermissions);
+    }
+  }
+
+  void _applyCursorTitle(
+    String title,
+    AgentAttentionCubit attention,
+    String sessionId,
+    String memberId,
+    bool Function() skipPermissions,
+  ) {
+    // Bare native title is a no-op so per-turn re-emissions cannot clear sticky
+    // waiting (Orca rule).
+    if (isCursorNativeTitle(title)) return;
+
+    final classified = detectCursorTitleAttention(title);
+    if (classified == AgentSeatAttention.waiting) {
+      final skip = skipPermissions();
+      attention.applyEvent(
+        sessionId: sessionId,
+        memberId: memberId,
+        event: const AgentStatusEvent(state: AgentSeatAttention.waiting),
+        skipPermissions: skip,
+      );
+      if (!skip) _cursorTitleWaiting = true;
+      return;
+    }
+
+    if (_cursorTitleWaiting) {
+      attention.applyEvent(
+        sessionId: sessionId,
+        memberId: memberId,
+        event: const AgentStatusEvent(state: AgentSeatAttention.done),
+        skipPermissions: skipPermissions(),
+      );
+      _cursorTitleWaiting = false;
+    }
   }
 
   void disconnect() {
     _transportStartGeneration++;
     _startFailed = false;
     _spawnRequested = false;
+    clearCursorTitleAttention();
     _teardownPtyState();
     onProcessFailed = null;
     onProcessExited = null;
