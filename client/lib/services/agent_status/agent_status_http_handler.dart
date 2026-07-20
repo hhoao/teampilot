@@ -21,7 +21,7 @@ class AgentStatusHttpHandler {
   });
 
   final AgentAttentionCubit attention;
-  final CliTool Function(String sessionId, String memberId) resolveCli;
+  final CliTool? Function(String sessionId, String memberId) resolveCli;
   final bool Function(String sessionId, String memberId) resolveSkipPermissions;
 
   Future<void> handle(
@@ -32,17 +32,17 @@ class AgentStatusHttpHandler {
     try {
       final body = await _readJsonBody(request);
       if (body != null) {
-        final event = AgentStatusNormalizer.normalize(
-          cli: resolveCli(sessionId, memberId),
-          body: body,
-        );
-        if (event != null) {
-          attention.applyEvent(
-            sessionId: sessionId,
-            memberId: memberId,
-            event: event,
-            skipPermissions: resolveSkipPermissions(sessionId, memberId),
-          );
+        final cli = resolveCli(sessionId, memberId);
+        if (cli != null) {
+          final event = AgentStatusNormalizer.normalize(cli: cli, body: body);
+          if (event != null) {
+            attention.applyEvent(
+              sessionId: sessionId,
+              memberId: memberId,
+              event: event,
+              skipPermissions: resolveSkipPermissions(sessionId, memberId),
+            );
+          }
         }
       }
       await _writeOkEmpty(request);
