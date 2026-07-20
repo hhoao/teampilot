@@ -20,6 +20,8 @@ import '../../services/launch/member_bus_mcp_transport_resolver.dart';
 import '../../services/session/shell_launch_spec.dart';
 import '../../services/session/remote_ssh_launch_constraints.dart';
 import '../../services/ssh/ssh_member_session.dart';
+import '../../services/agent_status/member_agent_status_endpoint.dart';
+import '../../services/agent_status/member_agent_status_endpoint_resolver.dart';
 import '../../services/team_bus/member_bus_idle_endpoint.dart';
 import '../../services/team_bus/remote/member_bus_mcp_config.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_config.dart';
@@ -223,6 +225,7 @@ class SessionShellConnector {
       String? remoteCliPath;
       ShellLaunchSpec shellLaunch;
       final launchWarnings = <String>[];
+      MemberAgentStatusEndpoint? agentStatus;
 
       if (isPersonal) {
         if (workspace == null) {
@@ -232,6 +235,16 @@ class SessionShellConnector {
           );
           return ConnectShellResult.failed;
         }
+        agentStatus = await _resolveAgentStatusForSeat(
+          tab: tab,
+          sessionId: activeSession.sessionId,
+          memberId: activeSession.sessionId,
+          launchTarget: launchTarget,
+          launchCli: launchCli,
+          memberSshSession: memberSshSession,
+          mixedRemoteBinding: null,
+          launchWarnings: launchWarnings,
+        );
         final progressMemberId = activeSession.sessionId;
         final connectResult = await _prepareConnectWithProvisionUi(
           tab: tab,
@@ -241,6 +254,7 @@ class SessionShellConnector {
             session: activeSession,
             workspace: workspace,
             launchTarget: launchTarget,
+            agentStatus: agentStatus,
             onProvisionProgress: onProgress,
           ),
         );
@@ -267,6 +281,16 @@ class SessionShellConnector {
             launchWarnings.add('remote_bus_binding_unavailable');
           }
         }
+        agentStatus = await _resolveAgentStatusForSeat(
+          tab: tab,
+          sessionId: activeSession.sessionId,
+          memberId: preflightMemberId,
+          launchTarget: launchTarget,
+          launchCli: launchCli,
+          memberSshSession: memberSshSession,
+          mixedRemoteBinding: remoteBinding,
+          launchWarnings: launchWarnings,
+        );
         final memberWork = activeSession.workDirsForMember(
           rosterMemberId ?? launchMember!.id,
           folders: _delegate.launchContextFor(activeSession).folderCatalog,
@@ -312,6 +336,7 @@ class SessionShellConnector {
                     null => null,
                   }
                 : null,
+            agentStatus: agentStatus,
             onProvisionProgress: onProgress,
           ),
         );
@@ -319,6 +344,17 @@ class SessionShellConnector {
         remoteCliPath = connectResult.remoteCliPath;
         launchWarnings.addAll(connectResult.warnings);
       }
+
+      _registerAgentStatusSeat(
+        sessionId: activeSession.sessionId,
+        memberId: isPersonal
+            ? activeSession.sessionId
+            : preflightMemberId,
+        cli: launchCli,
+        skipPermissions:
+            shellLaunch.launchContext.member.dangerouslySkipPermissions,
+        agentStatus: agentStatus,
+      );
 
       if (!connectShellStillValid(tab: tab, shell: shell)) {
         abortConnectShellIfStale(
@@ -739,6 +775,95 @@ class SessionShellConnector {
         timeout,
       );
     }
+  }
+
+  /// Builds [MemberAgentStatusEndpoint] for a seat. Soft-fails status-only SSH
+  /// tunnels (launch continues without attention).
+  Future<MemberAgentStatusEndpoint?> _resolveAgentStatusForSeat({
+    required ChatTab tab,
+    required String sessionId,
+    required String memberId,
+    required RuntimeTarget launchTarget,
+    required CliTool launchCli,
+    required SshMemberSession? memberSshSession,
+    required RemoteBusBinding? mixedRemoteBinding,
+    required List<String> launchWarnings,
+  }) async {
+    final gateway = _host.teammateBusMcpGateway;
+    if (!needsAgentStatusOnlyHttpTunnel(
+      launchKind: launchTarget.kind,
+      mixedRemoteBinding: mixedRemoteBinding,
+    )) {
+      return resolveMemberAgentStatusEndpoint(
+        gateway: gateway,
+        sessionId: sessionId,
+        remoteBinding: mixedRemoteBinding,
+      );
+    }
+
+    if (memberSshSession == null) {
+      appLogger.w(
+        '[agent-status] status-only SSH tunnel skipped '
+        'session=$sessionId member=$memberId reason=no_ssh_session',
+      );
+      launchWarnings.add('agent_status_tunnel_unavailable');
+      return null;
+    }
+
+    try {
+      final token = gateway.registerAgentStatusSession(sessionId: sessionId);
+      final workCtx = await _host.lifecycle.resolveWorkContextForTargetId(
+        launchTarget.id,
+      );
+      final arch = archFromUname(await memberSshSession.run('uname -m'));
+      final mount = buildStatusOnlyRemoteBusMount(
+        memberSession: memberSshSession,
+        gateway: gateway,
+        storageFs: workCtx.fs,
+        arch: arch,
+        token: token,
+      );
+      tab.memberRemoteBusMounts[memberId] = mount;
+      final binding = await mount.bindHttpMember(memberId);
+      appLogger.d(
+        '[agent-status] status-only SSH tunnel ready '
+        'session=$sessionId member=$memberId cli=${launchCli.value}',
+      );
+      return MemberAgentStatusEndpoint.remote(binding);
+    } on Object catch (e, st) {
+      await tab.closeMemberRemoteBusMount(memberId);
+      appLogger.w(
+        '[agent-status] status-only SSH tunnel failed '
+        'session=$sessionId member=$memberId: $e',
+        error: e,
+        stackTrace: st,
+      );
+      launchWarnings.add('agent_status_tunnel_failed');
+      return null;
+    }
+  }
+
+  void _registerAgentStatusSeat({
+    required String sessionId,
+    required String memberId,
+    required CliTool cli,
+    required bool skipPermissions,
+    required MemberAgentStatusEndpoint? agentStatus,
+  }) {
+    final lookup = _host.agentStatusSeatLookup;
+    if (lookup == null) return;
+
+    final token = agentStatus?.token;
+    _host.teammateBusMcpGateway.registerAgentStatusSession(
+      sessionId: sessionId,
+      token: token,
+    );
+    lookup.registerSeat(
+      sessionId: sessionId,
+      memberId: memberId,
+      cli: cli,
+      skipPermissions: skipPermissions,
+    );
   }
 
   Future<SshMemberSession?> _beginRemoteMemberSshSession({

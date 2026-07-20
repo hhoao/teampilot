@@ -14,6 +14,7 @@ import '../session/session_continue_overrides_apply.dart';
 import '../session/session_lifecycle_service.dart';
 import '../storage/runtime_context.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
+import '../agent_status/member_agent_status_endpoint.dart';
 import 'launch_manifest.dart';
 import 'launch_manifest_paths.dart';
 import 'manifest_executor.dart';
@@ -55,6 +56,7 @@ class SessionConnectOrchestrator {
     required RuntimeTarget launchTarget,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
     void Function(CliInstallProgress progress)? onProvisionProgress,
   }) async {
     final identity = session.simpleIdentity;
@@ -77,6 +79,7 @@ class SessionConnectOrchestrator {
       launchTarget: launchTarget,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
+      agentStatus: agentStatus,
       onProvisionProgress: onProvisionProgress,
     );
   }
@@ -95,6 +98,7 @@ class SessionConnectOrchestrator {
     List<String> additionalDirectories = const [],
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
     void Function(CliInstallProgress progress)? onProvisionProgress,
   }) async {
     final resolvedWorkspace =
@@ -137,6 +141,7 @@ class SessionConnectOrchestrator {
       additionalDirectories: additionalDirectories,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
+      agentStatus: agentStatus,
       onProvisionProgress: onProvisionProgress,
     );
   }
@@ -155,6 +160,7 @@ class SessionConnectOrchestrator {
     List<String> additionalDirectories = const [],
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
     void Function(CliInstallProgress progress)? onProvisionProgress,
   }) async {
     final isSimple = plan.mode == SessionRuntimeMode.simple;
@@ -211,6 +217,7 @@ class SessionConnectOrchestrator {
             : session.extraFolderPaths,
         extraMcpServers: extraMcpServers,
         busIdle: busIdle,
+        agentStatus: agentStatus,
       );
     } else {
       final teamId = team!.id.trim();
@@ -243,6 +250,7 @@ class SessionConnectOrchestrator {
         leadSessionId: leadSessionId,
         extraMcpServers: extraMcpServers,
         busIdle: busIdle,
+        agentStatus: agentStatus,
       );
 
       await maybeRemoveStaleProjectTeammateBus(
@@ -275,6 +283,7 @@ class SessionConnectOrchestrator {
       environment: environment,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
+      agentStatus: agentStatus,
     );
 
     return (

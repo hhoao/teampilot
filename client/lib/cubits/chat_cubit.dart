@@ -28,6 +28,8 @@ import '../services/team_bus/artifacts/artifact_registry.dart';
 import '../services/team_bus/artifacts/artifact_transfer_service.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
+import '../services/agent_status/agent_status_seat_lookup.dart';
+import 'agent_attention_cubit.dart';
 import '../services/launch/launch_factory.dart';
 import '../services/launch/session_connect_orchestrator.dart';
 import '../services/launch/workspace_provision_coordinator.dart';
@@ -87,6 +89,8 @@ class ChatCubit extends Cubit<ChatState>
     RemoteBusBindingResolver? remoteBusResolver,
     SessionConnectOrchestrator? sessionConnect,
     TeammateBusMcpGateway? teammateBusMcpGateway,
+    AgentStatusSeatLookup? agentStatusSeatLookup,
+    AgentAttentionCubit? agentAttentionCubit,
     Future<TeamProfile?> Function(String teamId)? teamById,
     required AutomationRepository automationRepository,
     LayoutCubit? layoutCubit,
@@ -97,6 +101,8 @@ class ChatCubit extends Cubit<ChatState>
        _teamById = teamById,
        _teammateBusMcpGateway =
            teammateBusMcpGateway ?? TeammateBusMcpGateway(),
+       _agentStatusSeatLookup = agentStatusSeatLookup,
+       _agentAttentionCubit = agentAttentionCubit,
        _automationRepository = automationRepository,
        _layoutCubit = layoutCubit,
        _shellFactory = ChatSessionShellFactory(
@@ -128,6 +134,8 @@ class ChatCubit extends Cubit<ChatState>
   RemoteCliReadinessService? get remoteCliReadiness => _remoteCliReadiness;
   final Future<TeamProfile?> Function(String teamId)? _teamById;
   final TeammateBusMcpGateway _teammateBusMcpGateway;
+  final AgentStatusSeatLookup? _agentStatusSeatLookup;
+  final AgentAttentionCubit? _agentAttentionCubit;
   final AutomationRepository _automationRepository;
   final LayoutCubit? _layoutCubit;
   VoidCallback? _onAutomationsChanged;
@@ -338,6 +346,12 @@ class ChatCubit extends Cubit<ChatState>
 
   @override
   TeammateBusMcpGateway get teammateBusMcpGateway => _teammateBusMcpGateway;
+
+  @override
+  AgentStatusSeatLookup? get agentStatusSeatLookup => _agentStatusSeatLookup;
+
+  @override
+  AgentAttentionCubit? get agentAttentionCubit => _agentAttentionCubit;
 
   @override
   SessionLifecycleService get lifecycle => _lifecycle;
@@ -926,10 +940,14 @@ class ChatCubit extends Cubit<ChatState>
       _launchService.reconnectSshProfile(profileId);
 
   Future<void> _tearDownTab(ChatTab tab) async {
+    final sessionId = tab.info.id;
     for (final session in tab.sessions) {
       session.dispose();
     }
-    await _teamBus.disposeSessionBus(tab.info.id);
+    _agentAttentionCubit?.clearSession(sessionId);
+    _agentStatusSeatLookup?.clearSession(sessionId);
+    _teammateBusMcpGateway.unregisterAgentStatusSession(sessionId);
+    await _teamBus.disposeSessionBus(sessionId);
     await tab.disposeBus();
   }
 

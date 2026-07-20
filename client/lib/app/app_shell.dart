@@ -824,6 +824,8 @@ Future<AppShell> buildAppShell({
 
   chatCubit = ChatCubit(
     teammateBusMcpGateway: teammateBusMcpGateway,
+    agentStatusSeatLookup: agentStatusSeatLookup,
+    agentAttentionCubit: agentAttentionCubit,
     sessionRepository: sessionRepo,
     lifecycleService: sessionLifecycleService,
     automationRepository: automationRepo,

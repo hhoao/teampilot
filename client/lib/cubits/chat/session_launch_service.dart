@@ -620,6 +620,15 @@ class SessionLaunchService
     tab.membersPendingConnect.remove(memberId);
     tab.memberShells[memberId]?.disconnect();
     unawaited(tab.closeMemberRemotePlane(memberId));
+    final sessionId = tab.info.id;
+    _h.agentAttentionCubit?.clearSeat(
+      sessionId: sessionId,
+      memberId: memberId,
+    );
+    _h.agentStatusSeatLookup?.unregisterSeat(
+      sessionId: sessionId,
+      memberId: memberId,
+    );
     _h.clearLaunchError(tab.info.id);
     _h.updateTabRunning(tab.info.id);
   }

@@ -2,6 +2,9 @@ import '../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../team_bus/remote/member_bus_mcp_config.dart';
 
+/// Launch env key for seat status hooks (OpenCode plugin fallback, etc.).
+const agentStatusUrlEnvKey = 'TEAMPILOT_AGENT_STATUS_URL';
+
 /// Where a seat reports permission / status hooks (`POST /agent-status`).
 ///
 /// Local seats dial the TeamBus gateway loopback. Remote (SSH) seats dial their
@@ -37,12 +40,12 @@ class MemberAgentStatusEndpoint {
     sessionId: sessionId,
   );
 
-  /// Remote binding: same host/port as idle tunnel, path `/agent-status`.
-  factory MemberAgentStatusEndpoint.remote(RemoteBusBinding binding) {
-    final idle = Uri.parse(binding.idleUrl);
-    final status = idle.replace(path: '/agent-status');
-    return MemberAgentStatusEndpoint(url: status.toString(), token: binding.token);
-  }
+  /// Remote binding: reverse-tunnel loopback URL + bus token.
+  factory MemberAgentStatusEndpoint.remote(RemoteBusBinding binding) =>
+      MemberAgentStatusEndpoint(
+        url: binding.agentStatusUrl,
+        token: binding.token,
+      );
 
   Map<String, String> headersFor(String memberId) {
     final headers = <String, String>{teammateBusMcpMemberHeader: memberId};

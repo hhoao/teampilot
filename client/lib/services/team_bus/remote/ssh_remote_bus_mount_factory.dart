@@ -21,3 +21,24 @@ RemoteBusMount buildRemoteBusMount({
     token: registration.token,
   );
 }
+
+/// HTTP-only reverse tunnel for agent-status on simple / non-mixed SSH seats.
+///
+/// Uses [token] from [TeammateBusMcpGateway.registerAgentStatusSession] so the
+/// remote agent can authenticate without a TeamBus MCP registration.
+RemoteBusMount buildStatusOnlyRemoteBusMount({
+  required SshMemberSession memberSession,
+  required TeammateBusMcpGateway gateway,
+  required Filesystem storageFs,
+  required String arch,
+  required String token,
+}) {
+  return RemoteBusMount(
+    httpBusPort: gateway.httpPort,
+    rawSocketPort: gateway.rawSocketPort,
+    memberSession: memberSession,
+    storageFs: storageFs,
+    arch: arch,
+    token: token,
+  );
+}

@@ -77,18 +77,24 @@ class TeammateBusMcpGateway {
 
   /// Status-only session auth (no TeamBus MCP `_delegates` entry required).
   ///
-  /// Returns the remote [X-Bus-Token] value (provided or generated).
+  /// Returns the remote [X-Bus-Token] value (provided, existing, or generated).
+  /// When [token] is omitted and the session is already registered, reuses the
+  /// prior token so multi-seat status-only SSH mounts stay authenticated.
   String registerAgentStatusSession({
     required String sessionId,
     String? token,
   }) {
     _agentStatusSessions.add(sessionId);
+    final explicit = token != null && token.isNotEmpty ? token : null;
+    if (explicit == null) {
+      final existing = _agentStatusSessionToToken[sessionId];
+      if (existing != null) return existing;
+    }
     final previous = _agentStatusSessionToToken.remove(sessionId);
     if (previous != null) {
       _agentStatusTokenToSession.remove(previous);
     }
-    final effective =
-        (token != null && token.isNotEmpty) ? token : _randomStatusToken();
+    final effective = explicit ?? _randomStatusToken();
     _agentStatusTokenToSession[effective] = sessionId;
     _agentStatusSessionToToken[sessionId] = effective;
     return effective;
