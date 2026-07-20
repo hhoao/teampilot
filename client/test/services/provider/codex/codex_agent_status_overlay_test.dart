@@ -54,7 +54,7 @@ void main() {
         memberId: 'worker-1',
         endpoint: remoteEndpoint,
       );
-      expect(toml, contains('${teammateBusTokenHeader}: sess-tok'));
+      expect(toml, contains('$teammateBusTokenHeader: sess-tok'));
       expect(toml, contains('http://127.0.0.1:54321/agent-status'));
     });
   });
