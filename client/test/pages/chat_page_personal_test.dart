@@ -10,6 +10,7 @@ import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/cubits/plugin_cubit.dart';
+import 'package:teampilot/cubits/run_cubit.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/cubits/workspace_landing_context_cubit.dart';
@@ -31,8 +32,10 @@ import 'package:teampilot/services/git/git_repo_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_repo_service.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/services/workspace/workspace_tools_scope.dart';
 
+import '../support/idle_run_platform.dart';
 import '../support/in_memory_filesystem.dart';
 import '../support/post_frame_test_harness.dart';
 
@@ -90,6 +93,12 @@ void main() {
     final workbenchCubit = WorkbenchCubit();
     addTearDown(() => workbenchCubit.close());
 
+    final runCubit = RunCubit(
+      platform: IdleRunPlatform(),
+      folders: const [WorkspaceFolder(path: '/tmp/personal-workspace')],
+    );
+    addTearDown(() => runCubit.close());
+
     final skillCubit = SkillCubit(SkillRepository());
     addTearDown(() => skillCubit.close());
 
@@ -141,6 +150,9 @@ void main() {
               create: (_) => WorkspaceFileTreeStore(),
             ),
             RepositoryProvider<SessionRepository>.value(value: sessionRepo),
+            RepositoryProvider<WorkspaceTerminalRegistry>(
+              create: (_) => WorkspaceTerminalRegistry(),
+            ),
           ],
           child: MultiBlocProvider(
             providers: [
@@ -149,6 +161,7 @@ void main() {
               BlocProvider.value(value: layoutCubit),
               BlocProvider.value(value: editorCubit),
               BlocProvider.value(value: workbenchCubit),
+              BlocProvider.value(value: runCubit),
               BlocProvider.value(value: skillCubit),
               BlocProvider.value(value: pluginCubit),
               BlocProvider.value(value: worktreeCubit),
