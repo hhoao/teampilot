@@ -282,5 +282,17 @@ void main() {
       cubit.select(ws, WorkbenchTabId.session('s1'));
       expect(cubit.resolveMostRecentShell(ws), e1);
     });
+
+    test('select already-active shell still sets lastFocusedShellTabId', () {
+      const ws = 'ws';
+      final shell = WorkbenchTabId.shell('e1');
+      cubit.ensureTab(ws, shell);
+      expect(cubit.activeTabId(ws), shell);
+      expect(cubit.lastFocusedShellTabId(ws), isNull);
+
+      cubit.select(ws, shell);
+      expect(cubit.lastFocusedShellTabId(ws), shell);
+      expect(cubit.activeTabId(ws), shell);
+    });
   });
 }

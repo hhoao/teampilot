@@ -200,15 +200,28 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   void select(String workspaceId, WorkbenchTabId tab) {
     final bucket = state.bucket(workspaceId);
     if (!bucket.tabOrder.contains(tab)) return;
-    if (bucket.activeTabId == tab) return;
+    final alreadyActive = bucket.activeTabId == tab;
+    final needsShellFocus = tab.kind == WorkbenchTabKind.shell &&
+        bucket.lastFocusedShellTabId != tab;
+    if (alreadyActive && !needsShellFocus) return;
+
+    if (alreadyActive) {
+      // Still record shell focus when ensureTab already activated this tab.
+      emit(
+        state.withBucket(
+          workspaceId,
+          bucket.copyWith(lastFocusedShellTabId: tab),
+        ),
+      );
+      return;
+    }
+
     emit(
       state.withBucket(
         workspaceId,
-        bucket.copyWith(
-          activeTabId: tab,
-          lastFocusedShellTabId:
-              tab.kind == WorkbenchTabKind.shell ? tab : null,
-        ),
+        tab.kind == WorkbenchTabKind.shell
+            ? bucket.copyWith(activeTabId: tab, lastFocusedShellTabId: tab)
+            : bucket.copyWith(activeTabId: tab),
       ),
     );
   }
