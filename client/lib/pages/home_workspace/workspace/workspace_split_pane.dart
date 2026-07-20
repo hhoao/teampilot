@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
@@ -18,11 +19,11 @@ import '../../../services/workspace/workspace_worktree_registry.dart';
 import '../../../utils/ui/app_keys.dart';
 import '../../../utils/workspace/workspace_active_context.dart';
 import '../../../utils/workspace/workspace_compose_active.dart';
-import '../../../widgets/deferred_mount_shell.dart';
 import '../../../widgets/right_tools/right_tools_panel.dart';
 import '../../../widgets/workspace_terminal_panel.dart';
 import '../../chat_page.dart';
 import '../../workspace_ide/workspace_ide_shell.dart';
+import 'workspace_ide_center.dart';
 import 'workspace_route_active_scope.dart';
 import 'workspace_search_dialog.dart';
 import 'workspace_sidebar.dart';
@@ -150,16 +151,21 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
                 workspace: widget.workspace,
                 tabScopeId: widget.tabScopeId,
               ),
-              center: ChatPage(
-                cwd: cwd,
-                additionalPaths: widget.workspace.extraFolderPaths,
-                workspaceId: widget.workspace.workspaceId,
-                tabScopeId: widget.tabScopeId,
-                holdHandle: _terminalHold,
+              // Compose landing skips ChatPageShell / workbench projection.
+              center: buildWorkspaceIdeCenter(
+                composeLanding: composeLanding,
+                workspace: widget.workspace,
+                chatPage: ChatPage(
+                  cwd: cwd,
+                  additionalPaths: widget.workspace.extraFolderPaths,
+                  workspaceId: widget.workspace.workspaceId,
+                  tabScopeId: widget.tabScopeId,
+                  holdHandle: _terminalHold,
+                ),
               ),
               // Side panes are off the first-open critical path: chrome +
               // landing paint first, then tools mount.
-              right: DeferredMountShell(
+              right: TpDeferredMountShell(
                 delayFrames: 2,
                 child: _WorkspaceRightToolsPane(
                   cwd: cwd,

@@ -5,7 +5,6 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing_compose_card.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
-import 'package:teampilot/widgets/deferred_mount_shell.dart';
 
 void main() {
   Widget pumpComposeCard({
@@ -86,11 +85,11 @@ void main() {
   });
 
   testWidgets(
-    'defers compose field behind DeferredMountShell',
+    'defers compose field behind TpDeferredMountShell',
     (tester) async {
       await tester.pumpWidget(pumpComposeCard(expertChipLabel: null));
 
-      expect(find.byType(DeferredMountShell), findsOneWidget);
+      expect(find.byType(TpDeferredMountShell), findsOneWidget);
       // Tests mount the child immediately (FLUTTER_TEST).
       expect(find.byType(ComposeTriggerField), findsOneWidget);
     },

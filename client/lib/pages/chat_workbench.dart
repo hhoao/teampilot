@@ -28,7 +28,6 @@ import '../services/workspace/dead_ssh_target_error.dart';
 import '../services/workspace/target_liveness.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/ui/app_keys.dart';
-import '../widgets/deferred_foreground_mount.dart';
 import '../widgets/workspace/workspace_dead_target_remap_dialog.dart';
 import '../utils/team/team_member_naming.dart';
 import 'home_workspace/workspace/workspace_route_active_scope.dart';
@@ -471,7 +470,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
     // Keep Alacritty mounted across title-bar workspace tab switches; hide with
     // [Offstage] so scrollback survives when the tab returns to foreground.
     // Also keep it mounted while History is shown over a running PTY.
-    return DeferredForegroundMount(
+    return TpDeferredForegroundMount(
       active: terminalVisible,
       retainWhenInactive: true,
       builder: (context) => Offstage(

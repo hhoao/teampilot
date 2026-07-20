@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/workspace_landing_context_cubit.dart';
@@ -9,9 +10,10 @@ import 'home_workspace_route.dart';
 import 'home_workspace_page.dart';
 import 'workspace/workspace_page.dart';
 import 'workspace/workspace_route_active_scope.dart';
+import 'workspace/workspace_tab_deferred_mount.dart';
 
 /// Home page plus one kept-alive [WorkspacePage] per open title-bar tab.
-/// Inactive tabs stay mounted under [Offstage] (no layout/paint) with
+/// Inactive tabs stay mounted under [TpKeepAliveLayer] (skip layout/paint) with
 /// [TickerMode] disabled so shell terminals detach and OS file drops stay scoped
 /// to the foreground workspace.
 class HomeWorkspaceBodyStack extends StatelessWidget {
@@ -36,8 +38,7 @@ class HomeWorkspaceBodyStack extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               _HomeBodyLayer(
-                offstage: activeTab != null,
-                enabled: activeTab == null,
+                active: activeTab == null,
                 child: _HomePageLayer(location: location),
               ),
               for (final tab in openTabs)
@@ -73,32 +74,31 @@ class _HomePageLayer extends StatelessWidget {
 
 class _HomeBodyLayer extends StatelessWidget {
   const _HomeBodyLayer({
-    required this.offstage,
-    required this.enabled,
+    required this.active,
     required this.child,
   });
 
-  final bool offstage;
-  final bool enabled;
+  final bool active;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return ExcludeSemantics(
-      excluding: offstage,
-      child: Offstage(
-        offstage: offstage,
+    return TpKeepAliveLayer(
+      active: active,
+      child: ExcludeSemantics(
+        excluding: !active,
         child: TickerMode(
-          enabled: enabled,
-          child: IgnorePointer(ignoring: offstage, child: child),
+          enabled: active,
+          child: IgnorePointer(ignoring: !active, child: child),
         ),
       ),
     );
   }
 }
 
-/// One kept-alive workspace tab. [WorkspacePage] is a stable child; only the
-/// [WorkspaceRouteActiveScope] + visibility wrappers update on tab switches.
+/// One kept-alive workspace tab. Heavy [WorkspacePage] mounts one frame after
+/// the tab becomes active via [WorkspaceTabDeferredMount] (empty card chrome
+/// first). Inactive tabs stay under [TpKeepAliveLayer] with [TickerMode] off.
 class _WorkspaceTabSlot extends StatelessWidget {
   const _WorkspaceTabSlot({
     required this.tab,
@@ -132,21 +132,24 @@ class _WorkspaceTabSlot extends StatelessWidget {
       view: view,
       configSection: configSection,
       child: RepaintBoundary(
-        child: ExcludeSemantics(
-          excluding: !isActive,
-          child: Offstage(
-            offstage: !isActive,
+        child: TpKeepAliveLayer(
+          active: isActive,
+          child: ExcludeSemantics(
+            excluding: !isActive,
             child: TickerMode(
               enabled: isActive,
               child: IgnorePointer(
                 ignoring: !isActive,
-                child: BlocProvider(
-                  create: (_) =>
-                      WorkspaceLandingContextCubit(workspaceId: tab.workspaceId)
-                        ..initialize(workspace),
-                  child: WorkspacePage(
-                    key: ValueKey('workspace-body-${tab.tabKey}'),
-                    workspaceId: tab.workspaceId,
+                child: WorkspaceTabDeferredMount(
+                  active: isActive,
+                  builder: (_) => BlocProvider(
+                    create: (_) => WorkspaceLandingContextCubit(
+                      workspaceId: tab.workspaceId,
+                    )..initialize(workspace),
+                    child: WorkspacePage(
+                      key: ValueKey('workspace-body-${tab.tabKey}'),
+                      workspaceId: tab.workspaceId,
+                    ),
                   ),
                 ),
               ),

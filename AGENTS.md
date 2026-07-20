@@ -177,7 +177,7 @@ Session runtime dirs: `workspace/workspaces/{workspaceId}/sessions/{sessionId}/r
 | Automations | `client/lib/services/automation/`, `client/lib/cubits/automation_cubit.dart` |
 | Session title from prompt | `client/lib/utils/terminal/first_user_line_capture.dart`, `client/lib/utils/session/session_display_title.dart` |
 | Extensions | `client/lib/services/extension/`, `extension_repository.dart`, `extension_cubit.dart` |
-| Shared UI / Tp design system | `client/packages/shared_ui` — cross-route `Tp*` primitives + `TpTheme` / `TpTextStyles` / `TpFontTheme`; wrap `MaterialApp` with `TpTheme` (see package README) |
+| Shared UI / Tp design system | `client/packages/shared_ui` — cross-route `Tp*` primitives + `TpTheme` / `TpTextStyles` / `TpFontTheme`; progressive mount helpers (`TpDeferredMountShell`, `TpDeferredForegroundMount`, `TpKeepAliveLayer`); wrap `MaterialApp` with `TpTheme` (see package README) |
 | Product / domain chrome | `client/lib/widgets/` — app-specific layout reused across routes (not new generic controls) |
 | Performance snapshot CLI | `client/tool/analyze_performance_json.dart` — [docs/PERFORMANCE_ANALYSIS.md](docs/PERFORMANCE_ANALYSIS.md) |
 
@@ -204,7 +204,7 @@ Full guidelines: **[docs/CODE_QUALITY.md](docs/CODE_QUALITY.md)**. Summary:
 
 - Before claiming done: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && flutter test --exclude-tags integration` (full setup: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)).
 - **Layering:** Route shells in `pages/`; **route-only** UI sections in `pages/<domain>/`; **cross-route design primitives** in `packages/shared_ui` as `Tp*`; **product/domain chrome** in `widgets/`; logic in `cubits/` + `services/` + `repositories/`; no `Process.run` or raw paths in UI; state is **`flutter_bloc` only** (not `provider`).
-- **Shared UI:** New buttons, inputs, selects, dialogs, forms, etc. go in `client/packages/shared_ui` (`Tp*` + `TpTheme`). Do not add generic controls under `client/lib/widgets/`.
+- **Shared UI:** New buttons, inputs, selects, dialogs, forms, deferred-mount helpers, etc. go in `client/packages/shared_ui` (`Tp*` + `TpTheme`). Do not add generic controls under `client/lib/widgets/`. Progressive open timeline: [docs/superpowers/specs/2026-07-20-progressive-paint-timeline-design.md](docs/superpowers/specs/2026-07-20-progressive-paint-timeline-design.md).
 - **File size (soft):** page shells ~400, cubits ~500, services ~600 lines — split oversized screens into `pages/<domain>/` section files; keep `build()` free of IO.
 - **Logging:** user errors → l10n; diagnostics → `AppLogger`; no `print`.
 - Paths: `AppStorage` / `RuntimeContextRegistry` — never `Directory.current` for default workspace directory.

@@ -19,7 +19,7 @@ Run these commands and confirm success before claiming work is done.
 | Layer | Path | Responsibility |
 |-------|------|----------------|
 | Single-screen module | `pages/<domain>/` | Route **shell** (`*_page.dart` / `*_workspace.dart`), sections, dialogs, route helpers (see `pages/mcp/`) |
-| Shared UI | `packages/shared_ui` (`Tp*`) | Cross-route design-system primitives (Button, Input, Select, Dialog, Form, …) |
+| Shared UI | `packages/shared_ui` (`Tp*`) | Cross-route design-system primitives (Button, Input, Select, Dialog, Form, Deferred mount / KeepAlive, …) |
 | Product / domain chrome | `widgets/` | App-specific layout and chrome reused across routes (`dropdown/`, `settings/`, `split_layout.dart`, etc.) — not generic controls |
 | State | `cubits/` | Actions, loading/error; calls repositories / services |
 | Persistence | `repositories/` | JSON/files via `Filesystem` + `AppStorage` |
@@ -51,7 +51,7 @@ When a change violates more than one principle, fix structure first (split file,
 | Question | Location | Examples |
 |----------|----------|----------|
 | Used by a single route / settings screen? | `pages/<domain>/` | `pages/skills/skill_discovery_section.dart`, `pages/team_config/team_config_member_section.dart` |
-| New cross-route **design primitive** (button, input, select, dialog, form, …)? | `client/packages/shared_ui` as `Tp*` | `TpButton`, `TpInput`, `TpSelect`, `TpDialog`, `TpForm` |
+| New cross-route **design primitive** (button, input, select, dialog, form, deferred mount, …)? | `client/packages/shared_ui` as `Tp*` | `TpButton`, `TpInput`, `TpSelect`, `TpDialog`, `TpForm`, `TpDeferredMountShell` |
 | Product / domain chrome imported from unrelated routes? | `widgets/` | `FlashskyDropdownField`, `WorkspaceHubPage`, `AppProviderListPanel` |
 | Page shell + enum + hub? | `pages/*_page.dart` (may `export` types from the domain subfolder) | `mcp_management_page.dart`, `skill_management_page.dart` |
 

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
@@ -14,6 +15,7 @@ import '../../../utils/ui/app_keys.dart';
 import '../../../utils/workspace/landing_draft_resolver.dart';
 import '../../chat/chat_workbench_placeholders.dart';
 import 'workspace_chat_landing.dart';
+import 'workspace_landing_skeleton.dart';
 import 'workspace_session_actions.dart';
 
 /// Full main-pane compose landing — sibling to [ChatPage], not inside the shell.
@@ -100,10 +102,18 @@ class _WorkspaceComposeLandingPaneState extends State<WorkspaceComposeLandingPan
             ? ChatWorkbenchSessionLoadingView(
                 message: context.l10n.sessionStarting,
               )
-            : WorkspaceChatLanding(
-                workspace: workspace,
-                isSubmitting: _submitting,
-                onSubmit: (message, draft) => unawaited(_submit(message, draft)),
+            // One frame after sidebar list (delayFrames: 1) so real session
+            // list and landing body do not share the same mount frame.
+            : TpDeferredMountShell(
+                delayFrames: 2,
+                awaitIdle: false,
+                placeholder: const WorkspaceLandingSkeleton(),
+                child: WorkspaceChatLanding(
+                  workspace: workspace,
+                  isSubmitting: _submitting,
+                  onSubmit: (message, draft) =>
+                      unawaited(_submit(message, draft)),
+                ),
               ),
       ),
     );

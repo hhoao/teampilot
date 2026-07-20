@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../cubits/chat_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_folder.dart';
@@ -68,12 +65,11 @@ String formatWorkspaceTabTooltip({
   return '$headline\n${pathLines.join('\n')}';
 }
 
-/// Opens [workspace] in a title-bar tab and navigates directly.
+/// Opens [workspace] in a title-bar tab and navigates immediately.
+///
+/// Session hydration is started by [HomeShell] prefetch / [WorkspacePage]
+/// activation — do not await it here. The sidebar shows a skeleton until
+/// [ChatCubit.sessionsLoadedForWorkspace] is true so chrome can paint first.
 Future<void> openWorkspace(BuildContext context, Workspace workspace) async {
-  await context.read<ChatCubit>().ensureSessionsForWorkspace(
-    workspace.workspaceId,
-  );
-  if (!context.mounted) return;
   HomeTabScope.openInTab(context, workspace.workspaceId);
-  context.go('/home-v2/workspace/${workspace.workspaceId}');
 }

@@ -23,7 +23,6 @@ import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/launch/member_placement_save.dart';
 import '../../../utils/team/team_member_naming.dart';
 import '../../../widgets/cli/cli_brand_icon.dart';
-import '../../../widgets/deferred_mount_shell.dart';
 import '../../../widgets/settings/settings_dialog_pane_host.dart';
 import '../../../widgets/settings/workspace_hub_shell.dart';
 import '../../../widgets/team/team_lead_badge.dart';
@@ -355,7 +354,7 @@ class _LandingTeamSettingsDialogState
                   horizontal: 18,
                   vertical: 16,
                 ),
-                child: DeferredMountShell(
+                child: TpDeferredMountShell(
                   delayFrames: 1,
                   child: ListenableBuilder(
                     listenable: _selectedIndex,

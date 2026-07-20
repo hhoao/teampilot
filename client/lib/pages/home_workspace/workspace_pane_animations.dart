@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
-import '../../widgets/deferred_mount_shell.dart';
 import '../../widgets/pane_entry_animation.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_library_view.dart';
@@ -85,9 +85,9 @@ abstract final class WorkspacePaneAnimations {
     final duration = disabled ? Duration.zero : slideDuration;
 
     final paneChild = duration > Duration.zero
-        ? DeferredMountAfter(
+        ? TpDeferredMountAfter(
             delay: duration,
-            child: DeferredMountShell(delayFrames: 1, child: child),
+            child: TpDeferredMountShell(delayFrames: 1, child: child),
           )
         : child;
 

@@ -1,11 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_dialog_theme.dart';
 import '../../theme/workspace_surface_layers.dart';
-import 'package:shared_ui/shared_ui.dart';
-import '../../widgets/deferred_mount_shell.dart';
 import 'settings_dialog_pane_host.dart';
 import 'workspace_hub_shell.dart';
 
@@ -109,7 +108,7 @@ class _SettingsDialogState extends State<_SettingsDialog> {
                   horizontal: 18,
                   vertical: 16,
                 ),
-                child: DeferredMountShell(
+                child: TpDeferredMountShell(
                   delayFrames: 1,
                   child: ListenableBuilder(
                     listenable: _selected,

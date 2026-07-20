@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/llm_config_cubit.dart';
@@ -10,7 +11,6 @@ import '../../models/layout_preferences.dart';
 import '../../services/app/platform_utils.dart';
 import '../../widgets/app_provider/app_provider_detail_panel.dart';
 import '../../widgets/app_provider/app_provider_form_sheet.dart';
-import '../../widgets/deferred_mount_shell.dart';
 import '../../widgets/split_layout.dart';
 import 'llm_config_helpers.dart';
 import 'llm_config_routes.dart';
@@ -218,7 +218,7 @@ class _LlmProvidersRightPanel extends StatelessWidget {
         }
 
         return RepaintBoundary(
-          child: DeferredMountShell(
+          child: TpDeferredMountShell(
             key: ValueKey('provider-detail-${selected.id}'),
             delayFrames: 1,
             child: AppProviderDetailPanel(

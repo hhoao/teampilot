@@ -196,11 +196,15 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
             ),
           ),
           Expanded(
-            child: _buildBody(
-              context,
-              sortedSessions,
-              wtView,
-              sessionsHydrated: sessionsHydrated,
+            child: TpDeferredMountShell(
+              delayFrames: 1,
+              placeholder: const _SessionListSkeleton(),
+              child: _buildBody(
+                context,
+                sortedSessions,
+                wtView,
+                sessionsHydrated: sessionsHydrated,
+              ),
             ),
           ),
           const SizedBox(height: 8),

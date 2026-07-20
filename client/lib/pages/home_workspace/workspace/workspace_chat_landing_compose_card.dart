@@ -10,7 +10,6 @@ import '../../../widgets/compose/compose_focus_shell.dart';
 import '../../../widgets/compose/compose_menu_chip.dart';
 import '../../../widgets/compose/compose_permission_chip.dart';
 import '../../../widgets/compose/compose_trigger_field.dart';
-import '../../../widgets/deferred_mount_shell.dart';
 import '../../../widgets/workspace_dnd/external_file_drop_region.dart';
 import '../../../widgets/workspace_dnd/workspace_file_drop_region.dart';
 import 'workspace_chat_landing_palette.dart';
@@ -18,10 +17,11 @@ import 'workspace_chat_landing_voice_bar.dart';
 
 /// Frames to wait before mounting the landing [ComposeTriggerField].
 ///
-/// Keeps first-open LAYOUT off [RenderEditable] (test56 ~442 ms). Field becomes
-/// typeable on the following frame; tests mount immediately via
-/// [DeferredMountShell].
-const kLandingComposeFieldDelayFrames = 1;
+/// Keeps first-open LAYOUT off [RenderEditable] (test56 ~442 ms). Combined with
+/// [TpDeferredMountShell.awaitIdle] so the field does not share a busy shell
+/// frame. Tests mount immediately via [TpDeferredMountShell].
+const kLandingComposeFieldDelayFrames = 2;
+
 /// Compose input card for [WorkspaceChatLanding].
 class WorkspaceChatLandingComposeCard extends StatelessWidget {
   const WorkspaceChatLandingComposeCard({
@@ -155,8 +155,7 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
                   onTap: onTeamSettings!,
                 ),
               ],
-              if (expertChipLabel != null &&
-                  onExpertChipSelected != null) ...[
+              if (expertChipLabel != null && onExpertChipSelected != null) ...[
                 SizedBox(width: spacing.sm),
                 ComposeMenuChip(
                   palette: palette,
@@ -191,8 +190,7 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
         palette: palette,
         tooltip: enhanceTooltip,
         icon: Icons.auto_awesome_outlined,
-        enabled:
-            _composeActionsEnabled && controller.text.trim().isNotEmpty,
+        enabled: _composeActionsEnabled && controller.text.trim().isNotEmpty,
         isLoading: isEnhancing,
         onTap: onEnhance,
       ),
@@ -231,8 +229,7 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
         palette: palette,
         tooltip: enhanceTooltip,
         icon: Icons.auto_awesome_outlined,
-        enabled:
-            _composeActionsEnabled && controller.text.trim().isNotEmpty,
+        enabled: _composeActionsEnabled && controller.text.trim().isNotEmpty,
         isLoading: isEnhancing,
         onTap: onEnhance,
       ),
@@ -284,11 +281,12 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Defer TextField past the workspace shell's first LAYOUT so
-                  // RenderEditable is not on the open-workspace critical frame
-                  // (test56). Placeholder keeps card height stable.
-                  DeferredMountShell(
+                  // Defer TextField past the workspace shell's first LAYOUT, then
+                  // mount at idle priority so RenderEditable does not share a
+                  // busy shell frame (test56/67/68). Placeholder keeps height.
+                  TpDeferredMountShell(
                     delayFrames: kLandingComposeFieldDelayFrames,
+                    awaitIdle: true,
                     placeholder: _ComposeFieldMountPlaceholder(
                       hint: hint,
                       hintColor: palette.hint,
@@ -359,10 +357,7 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
     if (target == null) return child;
     return ExternalFileDropRegion(
       target: target,
-      child: WorkspaceFileDropRegion(
-        target: target,
-        child: child,
-      ),
+      child: WorkspaceFileDropRegion(target: target, child: child),
     );
   }
 }
@@ -450,10 +445,7 @@ class _TeamSettingsButton extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.error,
                         shape: BoxShape.circle,
-                        border: Border.all(
-                          color: palette.chipFill,
-                          width: 1.5,
-                        ),
+                        border: Border.all(color: palette.chipFill, width: 1.5),
                       ),
                     ),
                   ),
@@ -577,11 +569,7 @@ class _ComposeActionIcon extends StatelessWidget {
                       ),
                     ),
                   )
-                : Icon(
-                    icon,
-                    size: icons.md,
-                    color: color,
-                  ),
+                : Icon(icon, size: icons.md, color: color),
           ),
         ),
       ),

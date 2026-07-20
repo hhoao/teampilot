@@ -350,11 +350,11 @@ class _WorkspacePageState extends State<WorkspacePage> {
       );
     }
 
-    final cardBody = _buildCardBody(workspace: workspace);
-
+    // Heavy body mounts at the tab-slot [WorkspaceTabDeferredMount]; this
+    // page paints immediately once that defer reveals.
     return WorkspacePageCardShell(
       chrome: WorkspacePageChrome.workspace,
-      child: cardBody,
+      child: _buildCardBody(workspace: workspace),
     );
   }
 
@@ -363,25 +363,31 @@ class _WorkspacePageState extends State<WorkspacePage> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        Offstage(
-          offstage: showManage,
+        TpKeepAliveLayer(
+          active: !showManage,
           child: TickerMode(
             enabled: !showManage,
-            child: WorkspaceSplitPane(
-              key: ValueKey('conversations-${widget.tabKey}'),
-              workspace: workspace,
-              tabScopeId: widget.tabKey,
+            child: IgnorePointer(
+              ignoring: showManage,
+              child: WorkspaceSplitPane(
+                key: ValueKey('conversations-${widget.tabKey}'),
+                workspace: workspace,
+                tabScopeId: widget.tabKey,
+              ),
             ),
           ),
         ),
         if (_visitedManage)
-          Offstage(
-            offstage: !showManage,
+          TpKeepAliveLayer(
+            active: showManage,
             child: TickerMode(
               enabled: showManage,
-              child: WorkspaceConfigPanel(
-                workspace: workspace,
-                section: _configSection(context),
+              child: IgnorePointer(
+                ignoring: !showManage,
+                child: WorkspaceConfigPanel(
+                  workspace: workspace,
+                  section: _configSection(context),
+                ),
               ),
             ),
           ),

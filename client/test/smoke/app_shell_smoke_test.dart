@@ -18,6 +18,7 @@ import 'package:teampilot/utils/ui/app_keys.dart';
 import '../support/desktop_app_harness.dart';
 import '../support/fake_terminal_session.dart';
 import '../support/post_frame_test_harness.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 void main() {
   GoogleFonts.config.allowRuntimeFetching = false;
@@ -125,7 +126,7 @@ void main() {
     expect(chatCubit.isMemberRunning('team-lead'), isTrue);
     await pumpPhaseTransitions(tester);
     // Session exits compose: prefs dock restored. Prefer key mount over
-    // hitTestable — pane size sync can lag DeferredMountShell in smoke.
+    // hitTestable — pane size sync can lag TpDeferredMountShell in smoke.
     expect(chatCubit.state.composeActive, isFalse);
     expect(
       WorkspacePanePolicy.effective(
