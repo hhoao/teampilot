@@ -8,6 +8,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import 'ai_thread_selection_context_menu.dart';
+import 'history_scroll_cursor_lock.dart';
 
 /// Finder key for the “new messages” jump chip.
 const Key kSessionHistoryNewMessagesChipKey = ValueKey(
@@ -29,11 +30,11 @@ const AiMessage kSessionHistoryRunningPlaceholder = AiMessage(
 
 /// History message list for session review.
 ///
-/// Owns scroll chrome (stick-to-end, load-older anchoring, ActionBar hover
-/// gate, [SelectionArea], new-messages chip). Mounts the full pagination data
-/// window (retain + chunked fill) so scrolling does not remount markdown —
-/// Claude-like residency within the loaded message set. Older pages still
-/// arrive via [onLoadOlder].
+/// Owns scroll chrome (stick-to-end, load-older anchoring, hover-effects
+/// gate + cursor lock, [SelectionArea], new-messages chip). Mounts the full
+/// pagination data window (retain + chunked fill) so scrolling does not remount
+/// markdown — Claude-like residency within the loaded message set. Older pages
+/// still arrive via [onLoadOlder].
 class SessionHistoryThread extends StatefulWidget {
   const SessionHistoryThread({
     required this.runtime,
@@ -64,8 +65,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   late final ScrollController _scrollController;
   StreamSubscription<void>? _runtimeSub;
 
-  /// While false, hover ActionBars ignore pointer-enter (scroll-under-cursor).
-  final ValueNotifier<bool> _actionBarHoverEnabled = ValueNotifier(true);
+  /// While false, ignore ActionBar hover-enter and force basic cursor
+  /// (scroll-under-pointer).
+  final ValueNotifier<bool> _hoverEffectsEnabled = ValueNotifier(true);
   Timer? _hoverResumeTimer;
 
   var _stickToEnd = true;
@@ -128,7 +130,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   void dispose() {
     _stickGeneration++;
     _hoverResumeTimer?.cancel();
-    _actionBarHoverEnabled.dispose();
+    _hoverEffectsEnabled.dispose();
     _runtimeSub?.cancel();
     _scrollController
       ..removeListener(_onScrollTick)
@@ -246,8 +248,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   }
 
   void _setHoverEnabled(bool enabled) {
-    if (_actionBarHoverEnabled.value == enabled) return;
-    _actionBarHoverEnabled.value = enabled;
+    if (_hoverEffectsEnabled.value == enabled) return;
+    _hoverEffectsEnabled.value = enabled;
   }
 
   void _suppressHoverForScroll() {
@@ -467,80 +469,91 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
     final thread = NotificationListener<ScrollNotification>(
       onNotification: _onScrollNotification,
-      child: SelectionArea(
-        contextMenuBuilder: buildAiThreadSelectionContextMenu,
-        child: SingleChildScrollView(
-          controller: _scrollController,
-          padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
-          child: VirtualThreadViewport(
-            messages: displayMessages,
-            scrollController: _scrollController,
-            header: header,
-            anchorEnd: true,
-            overscan: 5,
-            // Claude-like: keep the loaded pagination window mounted while
-            // scrolling; fill in chunks after open so the first paint stays light.
-            retainMountedTurns: true,
-            fillDataWindow: true,
-            mountTurns: _mountTurns,
-            suppressMeasureScrollCorrection: _stickToEnd,
-            onMeasureScrollCorrection: (delta) {
-              if (!_scrollController.hasClients || delta.abs() < 0.5) return;
-              final next = (_scrollController.position.pixels + delta).clamp(
-                0.0,
-                _scrollController.position.maxScrollExtent,
-              );
-              _jumpTo(next);
-            },
-            messageBuilder: (context, ai) {
-              if (ai.id == kSessionHistoryRunningPlaceholder.id) {
-                return SelectionContainer.disabled(
-                  child: _buildRunningInMessage(context),
+      child: ValueListenableBuilder<bool>(
+        valueListenable: _hoverEffectsEnabled,
+        builder: (context, hoverEnabled, child) {
+          return HistoryScrollCursorLock(
+            active: !hoverEnabled,
+            child: child!,
+          );
+        },
+        child: SelectionArea(
+          contextMenuBuilder: buildAiThreadSelectionContextMenu,
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            padding: const EdgeInsets.fromLTRB(0, 16, 0, 24),
+            child: VirtualThreadViewport(
+              messages: displayMessages,
+              scrollController: _scrollController,
+              header: header,
+              anchorEnd: true,
+              overscan: 5,
+              // Claude-like: keep the loaded pagination window mounted while
+              // scrolling; fill in chunks after open so the first paint stays light.
+              retainMountedTurns: true,
+              fillDataWindow: true,
+              mountTurns: _mountTurns,
+              suppressMeasureScrollCorrection: _stickToEnd,
+              onMeasureScrollCorrection: (delta) {
+                if (!_scrollController.hasClients || delta.abs() < 0.5) {
+                  return;
+                }
+                final next = (_scrollController.position.pixels + delta).clamp(
+                  0.0,
+                  _scrollController.position.maxScrollExtent,
                 );
-              }
-              // While Running is appended as the tip turn, keep the real tip's
-              // bottom gap tight so Running sits under it like in-turn chrome.
-              final tightenForRunning = widget.liveRefreshActive &&
-                  displayMessages.length >= 2 &&
-                  displayMessages.last.id ==
-                      kSessionHistoryRunningPlaceholder.id &&
-                  ai.id ==
-                      displayMessages[displayMessages.length - 2].id;
-              final messageChild = AiMessageView(
-                key: ValueKey(ai.id),
-                message: ai,
-                actionBarHoverEnabled: _actionBarHoverEnabled,
-                actionBarReveal: ai.id == lastId
-                    ? AiActionBarReveal.always
-                    : AiActionBarReveal.hover,
-              );
-              return Align(
-                alignment: Alignment.topCenter,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: aiTheme.threadHorizontalPadding,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: aiTheme.threadMaxWidth,
+                _jumpTo(next);
+              },
+              messageBuilder: (context, ai) {
+                if (ai.id == kSessionHistoryRunningPlaceholder.id) {
+                  return SelectionContainer.disabled(
+                    child: _buildRunningInMessage(context),
+                  );
+                }
+                // While Running is appended as the tip turn, keep the real tip's
+                // bottom gap tight so Running sits under it like in-turn chrome.
+                final tightenForRunning = widget.liveRefreshActive &&
+                    displayMessages.length >= 2 &&
+                    displayMessages.last.id ==
+                        kSessionHistoryRunningPlaceholder.id &&
+                    ai.id ==
+                        displayMessages[displayMessages.length - 2].id;
+                final messageChild = AiMessageView(
+                  key: ValueKey(ai.id),
+                  message: ai,
+                  actionBarHoverEnabled: _hoverEffectsEnabled,
+                  actionBarReveal: ai.id == lastId
+                      ? AiActionBarReveal.always
+                      : AiActionBarReveal.hover,
+                );
+                return Align(
+                  alignment: Alignment.topCenter,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: aiTheme.threadHorizontalPadding,
                     ),
-                    child: tightenForRunning
-                        ? Theme(
-                            data: Theme.of(context).copyWith(
-                              extensions: [
-                                ...Theme.of(context).extensions.values.where(
-                                  (e) => e is! AiMessageTheme,
-                                ),
-                                aiTheme.copyWith(messageSpacing: 8),
-                              ],
-                            ),
-                            child: messageChild,
-                          )
-                        : messageChild,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: aiTheme.threadMaxWidth,
+                      ),
+                      child: tightenForRunning
+                          ? Theme(
+                              data: Theme.of(context).copyWith(
+                                extensions: [
+                                  ...Theme.of(context).extensions.values.where(
+                                    (e) => e is! AiMessageTheme,
+                                  ),
+                                  aiTheme.copyWith(messageSpacing: 8),
+                                ],
+                              ),
+                              child: messageChild,
+                            )
+                          : messageChild,
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),

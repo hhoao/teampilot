@@ -24,26 +24,29 @@ void main() {
     expect(tracker.isWorking, isTrue);
   });
 
-  test('reading isWorking after reset does not arm before first PTY output', () {
-    final tracker = TerminalActivityTracker(idleAfter: idle);
-    tracker.reset();
+  test(
+    'reading isWorking after reset does not arm before first PTY output',
+    () {
+      final tracker = TerminalActivityTracker(idleAfter: idle);
+      tracker.reset();
 
-    // Idle-watch polls isWorking while the shell is still silent after
-    // onConfirmedRunning → reset(). That must not arm the tracker, or the
-    // first startup banner is treated as a finished agent turn.
-    expect(tracker.isWorking, isFalse);
+      // Idle-watch polls isWorking while the shell is still silent after
+      // onConfirmedRunning → reset(). That must not arm the tracker, or the
+      // first startup banner is treated as a finished agent turn.
+      expect(tracker.isWorking, isFalse);
 
-    final now = DateTime.now();
-    tracker.notePtyBytes(
-      Uint8List.fromList('welcome\n'.codeUnits),
-      now.subtract(idle),
-    );
-    expect(
-      tracker.isWorking,
-      isFalse,
-      reason: 'boot quiet arm must not invent activity without post-arm PTY',
-    );
-  });
+      final now = DateTime.now();
+      tracker.notePtyBytes(
+        Uint8List.fromList('welcome\n'.codeUnits),
+        now.subtract(idle),
+      );
+      expect(
+        tracker.isWorking,
+        isFalse,
+        reason: 'boot quiet arm must not invent activity without post-arm PTY',
+      );
+    },
+  );
 
   test('boot output burst does not show working until quiet', () {
     final tracker = TerminalActivityTracker(idleAfter: idle);

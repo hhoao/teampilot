@@ -3,6 +3,7 @@ import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/pages/chat/history_scroll_cursor_lock.dart';
 import 'package:teampilot/pages/chat/session_history_thread.dart';
 
 List<AiMessage> _soloUserMessages(int count) {
@@ -227,6 +228,44 @@ void main() {
         find.byType(VirtualThreadViewport),
       );
       expect(viewport.suppressMeasureScrollCorrection, isTrue);
+    },
+  );
+
+  testWidgets(
+    'scroll suppresses hover effects then resumes cursor lock after idle',
+    (tester) async {
+      final store = ExternalStoreAiThreadRuntime()
+        ..setMessages(_soloUserMessages(20));
+
+      await tester.pumpWidget(_harness(runtime: store));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widget<HistoryScrollCursorLock>(
+          find.byType(HistoryScrollCursorLock),
+        ).active,
+        isFalse,
+      );
+
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, 120));
+      await tester.pump();
+
+      expect(
+        tester.widget<HistoryScrollCursorLock>(
+          find.byType(HistoryScrollCursorLock),
+        ).active,
+        isTrue,
+      );
+
+      await tester.pump(const Duration(milliseconds: 160));
+      await tester.pump();
+
+      expect(
+        tester.widget<HistoryScrollCursorLock>(
+          find.byType(HistoryScrollCursorLock),
+        ).active,
+        isFalse,
+      );
     },
   );
 
