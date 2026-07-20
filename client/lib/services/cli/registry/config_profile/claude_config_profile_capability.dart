@@ -16,7 +16,9 @@ import '../../../session/member_role_provision.dart';
 import '../../../team/claude_team_roster_service.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
+import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
+import 'agent_status_hooks.dart';
 import 'bus_idle_stop_hook.dart';
 import '../../../../utils/logging/logger.dart';
 
@@ -273,6 +275,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       mixed: mixed,
       simple: simple,
       busIdle: ctx.busIdle,
+      agentStatus: ctx.agentStatus,
     );
     if (stepSw != null) {
       _logClaudeContributeLaunchStep(
@@ -649,6 +652,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required bool mixed,
     bool simple = false,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
   }) async {
     final selected = launchedMember;
     final uniqueMembers = <String, TeamMemberConfig>{};
@@ -673,6 +677,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         mixed: mixed,
         simple: simple,
         busIdle: busIdle,
+        agentStatus: agentStatus,
       );
     }
   }
@@ -687,6 +692,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required bool mixed,
     bool simple = false,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
       scope.workspaceId,
@@ -731,6 +737,9 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     );
     if (mixed && busIdle != null) {
       settings = mergeStopIdleHook(settings, member.id, busIdle);
+    }
+    if (agentStatus != null) {
+      settings = mergeAgentStatusHooks(settings, member.id, agentStatus);
     }
     settings = await delegate.maybeApplyTeamLeadHooks(
       settings,

@@ -7,7 +7,9 @@ import '../../../session/member_role_provision.dart';
 import '../capabilities/cli_effort_capability.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
+import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
+import 'agent_status_hooks.dart';
 import 'bus_idle_stop_hook.dart';
 
 final class FlashskyaiConfigProfileCapability
@@ -99,6 +101,7 @@ final class FlashskyaiConfigProfileCapability
       mixed: ctx.team?.teamMode == TeamMode.mixed,
       simple: ctx.isSimple,
       busIdle: ctx.busIdle,
+      agentStatus: ctx.agentStatus,
       effortLevel: _resolveFlashskyaiEffort(
         team: ctx.team,
         member: ctx.member,
@@ -194,6 +197,7 @@ final class FlashskyaiConfigProfileCapability
     required bool mixed,
     bool simple = false,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
     required String effortLevel,
   }) async {
     final selected = launchedMember;
@@ -209,6 +213,7 @@ final class FlashskyaiConfigProfileCapability
       mixed: mixed,
       simple: simple,
       busIdle: busIdle,
+      agentStatus: agentStatus,
       effortLevel: effortLevel,
     );
   }
@@ -263,6 +268,7 @@ final class FlashskyaiConfigProfileCapability
     required bool mixed,
     bool simple = false,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
     required String effortLevel,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
@@ -290,6 +296,9 @@ final class FlashskyaiConfigProfileCapability
     );
     if (mixed && busIdle != null) {
       settings = mergeStopIdleHook(settings, member.id, busIdle);
+    }
+    if (agentStatus != null) {
+      settings = mergeAgentStatusHooks(settings, member.id, agentStatus);
     }
     settings = await delegate.maybeApplyTeamLeadHooks(
       settings,
