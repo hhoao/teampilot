@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -363,6 +363,8 @@ class _ChatWorkspaceShell extends StatelessWidget {
                     isPersonalContext: isPersonalContext,
                     team: team,
                     workbenchSlice: view.workbenchSlice,
+                    workingDirectory: cwd,
+                    holdHandle: holdHandle,
                   ),
                 );
               },

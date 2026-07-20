@@ -172,12 +172,13 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
               // Keyed by workspace-group identity (never cwd): a same-workspace
               // cwd change keeps the panel State so the update flows through
               // didUpdateWidget instead of recreating (and stranding) sessions.
+              // Hold binds to center ShellTerminalSurface (Task 6); dock keeps
+              // chrome until Task 8 but must not steal HoldHandle.
               bottom: DeferredMountShell(
                 delayFrames: 2,
                 child: WorkspaceBottomDock(
                   workspaceId: widget.tabScopeId,
                   workingDirectory: cwd,
-                  holdHandle: _terminalHold,
                   terminalKey: ValueKey(
                     'workspace-terminal-${widget.tabScopeId}',
                   ),
