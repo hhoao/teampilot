@@ -1216,6 +1216,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t refresh conversation history.';
 
   @override
+  String get agentPermissionAttentionBanner =>
+      'This agent needs confirmation in the Terminal.';
+
+  @override
+  String get agentPermissionOpenTerminal => 'Open Terminal';
+
+  @override
   String get sessionHistoryRetry => 'Retry';
 
   @override

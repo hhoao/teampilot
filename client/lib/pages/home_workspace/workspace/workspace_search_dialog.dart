@@ -40,10 +40,11 @@ Future<void> showWorkspaceSearchDialog(
         workspace: workspace,
         sessions: sessions,
         emptyTitleFallback: fallback,
-        onOpenSession: (session) {
+        onOpenSession: (session) async {
           Navigator.of(dialogContext).pop();
           if (!context.mounted) return;
-          unawaited(openWorkspaceSessionTab(context, workspace, session));
+          // Awaited by SidebarSessionTile before a needs-you jump.
+          await openWorkspaceSessionTab(context, workspace, session);
         },
         onOpenFile: (path) {
           Navigator.of(dialogContext).pop();
@@ -74,7 +75,7 @@ class WorkspaceSearchDialog extends StatefulWidget {
   final Workspace workspace;
   final List<AppSession> sessions;
   final String emptyTitleFallback;
-  final ValueChanged<AppSession> onOpenSession;
+  final FutureOr<void> Function(AppSession session) onOpenSession;
   final ValueChanged<String> onOpenFile;
 
   @override
@@ -214,7 +215,7 @@ class _Results extends StatelessWidget {
   final String filesHeader;
   final String searchingLabel;
   final String truncatedLabel;
-  final ValueChanged<AppSession> onOpenSession;
+  final FutureOr<void> Function(AppSession session) onOpenSession;
   final ValueChanged<String> onOpenFile;
 
   @override

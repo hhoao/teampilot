@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../cubits/agent_attention_cubit.dart';
 import '../cubits/automation_cubit.dart';
 import '../cubits/automation_state.dart';
 import '../cubits/chat_cubit.dart';
@@ -32,7 +33,11 @@ class SidebarSessionTile extends StatefulWidget {
   });
 
   final AppSession session;
-  final VoidCallback onTap;
+
+  /// Activates / opens the session. May be async — when the row needs-you,
+  /// the tile awaits this before [ChatCubit.selectMember] / Terminal jump so
+  /// those land on the target tab, not the previously active one.
+  final FutureOr<void> Function() onTap;
 
   /// When set, selection highlight follows this id instead of the global
   /// [ChatState.activeSessionId] (kept-alive background workspace tabs).
@@ -264,6 +269,23 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   bool get _showSessionActions =>
       _hovered || _menuOpen || _deleteArmed || Platform.isAndroid;
 
+  /// Activates the session via [SidebarSessionTile.onTap]; when needs-you,
+  /// awaits open first so [ChatCubit.selectMember] targets the opened tab,
+  /// then switches that session to Terminal.
+  Future<void> _onSessionTap() async {
+    final sessionId = widget.session.sessionId;
+    final waitingIds = context
+        .read<AgentAttentionCubit>()
+        .state
+        .waitingMemberIds(sessionId);
+    final open = widget.onTap();
+    if (open is Future) await open;
+    if (!mounted || waitingIds.isEmpty) return;
+    final chat = context.read<ChatCubit>();
+    chat.selectMember(waitingIds.first);
+    chat.setSessionWorkbenchView(sessionId, SessionWorkbenchView.terminal);
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = widget.session;
@@ -275,14 +297,20 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final working = context.select<ChatCubit, bool>(
       (cubit) => cubit.state.workingSessionIds.contains(session.sessionId),
     );
+    final waiting = context.select<AgentAttentionCubit, bool>(
+      (cubit) => cubit.state.sessionHasWaiting(session.sessionId),
+    );
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
 
     // Leading area: shared 24×24 slot — indicator (idle) ↔ drag handle (hover).
+    // Waiting (needs-you) wins over working spinner — distinct tertiary hand icon.
     final Widget indicator = SessionWorkingIndicator(
       working: working,
+      waiting: waiting,
       size: 13,
       color: cs.primary,
+      waitingColor: cs.tertiary,
       idleColor: (selected ? cs.primary : cs.onSurfaceVariant).withValues(
         alpha: 0.5,
       ),
@@ -411,9 +439,9 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         rowHovered: _hovered || _menuOpen,
         contentLeftInset: widget.contentLeftInset,
         leading: leadingWidget,
-        onTap: throttledTap(
+        onTap: throttledAsync(
           '${widget.tapThrottleKeyPrefix}_${session.sessionId}',
-          widget.onTap,
+          _onSessionTap,
         ),
         onSecondaryTapDown: _showSessionContextMenuFromTap,
         onLongPress: Platform.isAndroid

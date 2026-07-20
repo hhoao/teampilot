@@ -12,6 +12,7 @@ import '../../../provider/codex/codex_official_provider.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/provider_catalog_access.dart';
 import '../../../provider/codex/codex_provider_settings_resolver.dart';
+import '../../../provider/codex/codex_agent_status_overlay.dart';
 import '../../../provider/codex/codex_team_bus_overlay.dart';
 import '../../../launch/work_plane_paths.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
@@ -81,17 +82,32 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
       warnings.add('codex_provider_missing');
     } else {
       final busIdle = mixed ? ctx.busIdle : null;
-      final busOverlay = busIdle != null && member != null && member.isValid
-          ? (busIdle.isRemote
-                ? CodexTeamBusOverlay.buildStopHook(
-                    memberId: member.id,
-                    idle: busIdle,
-                  )
-                : CodexTeamBusOverlay.buildLocal(
-                    memberId: member.id,
-                    idle: busIdle,
-                  ))
-          : null;
+      final overlayParts = <String>[];
+      if (busIdle != null && member != null && member.isValid) {
+        overlayParts.add(
+          busIdle.isRemote
+              ? CodexTeamBusOverlay.buildStopHook(
+                  memberId: member.id,
+                  idle: busIdle,
+                )
+              : CodexTeamBusOverlay.buildLocal(
+                  memberId: member.id,
+                  idle: busIdle,
+                ),
+        );
+      }
+      // Agent-status hooks: simple + team whenever stamped — not mixed-gated.
+      final agentStatus = ctx.agentStatus;
+      if (agentStatus != null && member != null && member.isValid) {
+        overlayParts.add(
+          CodexAgentStatusOverlay.build(
+            memberId: member.id,
+            endpoint: agentStatus,
+          ),
+        );
+      }
+      final busOverlay =
+          overlayParts.isEmpty ? null : overlayParts.join('\n\n');
       final trustedDirectories = await _trustedProjectDirectories(
         paths: paths,
         workingDirectory: ctx.workingDirectory ?? '',

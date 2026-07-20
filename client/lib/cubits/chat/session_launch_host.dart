@@ -9,6 +9,8 @@ import '../../services/team/team_config_launch_validator.dart';
 import '../../services/launch/session_connect_orchestrator.dart';
 import '../../services/launch/workspace_provision_coordinator.dart';
 import '../../services/session/session_lifecycle_service.dart';
+import '../../services/agent_status/agent_status_seat_lookup.dart';
+import '../../cubits/agent_attention_cubit.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import 'chat_session_shell_factory.dart';
@@ -97,6 +99,12 @@ abstract interface class SessionLaunchHost
 
   TeammateBusMcpGateway get teammateBusMcpGateway;
 
+  /// Seat CLI + skip-permissions map for `/agent-status` (null in tests).
+  AgentStatusSeatLookup? get agentStatusSeatLookup;
+
+  /// Permission-attention state; cleared on seat/tab dispose (null in tests).
+  AgentAttentionCubit? get agentAttentionCubit;
+
   /// Exposes workspace Phase A for team / mixed off-home paths.
   WorkspaceProvisionCoordinator get workspaceProvision;
 
@@ -111,4 +119,42 @@ abstract interface class SessionLaunchHost
   /// Terminal theme for member PTY spawn (COLORFGBG / Claude `theme: auto`).
   /// Null skips apply — tests and early bootstrap may omit it.
   TerminalTheme? resolveTerminalThemeForLaunch();
+}
+
+/// Drop attention + seat lookup for every seat in [sessionId].
+///
+/// Used on team-session restart (shells disconnect without [onProcessExited]).
+/// Does not unregister the gateway status session — reconnect re-registers seats.
+void clearAgentStatusSessionSeats({
+  AgentAttentionCubit? attention,
+  AgentStatusSeatLookup? seatLookup,
+  required String sessionId,
+}) {
+  attention?.clearSession(sessionId);
+  seatLookup?.clearSession(sessionId);
+}
+
+/// Drop attention + seat lookup for one seat (PTY exit, disconnect, reconnect).
+extension SessionLaunchHostAgentStatus on SessionLaunchHost {
+  void clearAgentStatusSeat({
+    required String sessionId,
+    required String memberId,
+  }) {
+    agentAttentionCubit?.clearSeat(
+      sessionId: sessionId,
+      memberId: memberId,
+    );
+    agentStatusSeatLookup?.unregisterSeat(
+      sessionId: sessionId,
+      memberId: memberId,
+    );
+  }
+
+  void clearAgentStatusSession(String sessionId) {
+    clearAgentStatusSessionSeats(
+      attention: agentAttentionCubit,
+      seatLookup: agentStatusSeatLookup,
+      sessionId: sessionId,
+    );
+  }
 }

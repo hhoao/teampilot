@@ -30,6 +30,10 @@ class RemoteBusBinding {
 
   String get idleUrl => 'http://127.0.0.1:$idleHttpTunnelPort/idle';
 
+  /// Same remote loopback port as [idleUrl]; path for permission-status hooks.
+  String get agentStatusUrl =>
+      'http://127.0.0.1:$idleHttpTunnelPort/agent-status';
+
   bool get isLongBlocking => mcpRelayArgv != null;
 }
 

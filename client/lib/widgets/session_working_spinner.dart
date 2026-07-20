@@ -2,27 +2,41 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../utils/ui/app_keys.dart';
+
 /// Leading status slot for a session tab / sidebar row: the animated
 /// [SessionWorkingSpinner] while the session has a member in a turn, otherwise a
 /// static muted dot as a placeholder (keeps the title left-aligned either way,
 /// and signals an open-but-idle session). Pass colors so callers can adapt to
 /// the row background (e.g. a selected sidebar tile sits on primaryContainer).
+///
+/// [waiting] (permission / needs-you) takes precedence over [working] and uses a
+/// distinct static affordance — never the working spinner animation.
 class SessionWorkingIndicator extends StatelessWidget {
   const SessionWorkingIndicator({
     super.key,
     required this.working,
+    this.waiting = false,
     this.size = 13,
     this.color,
     this.idleColor,
+    this.waitingColor,
   });
 
   final bool working;
+  final bool waiting;
   final double size;
   final Color? color;
   final Color? idleColor;
 
+  /// Attention / needs-you color; defaults to [ColorScheme.tertiary].
+  final Color? waitingColor;
+
   @override
   Widget build(BuildContext context) {
+    if (waiting) {
+      return SessionWaitingMarker(size: size, color: waitingColor);
+    }
     if (working) {
       return SessionWorkingSpinner(size: size, color: color);
     }
@@ -40,6 +54,30 @@ class SessionWorkingIndicator extends StatelessWidget {
             color: idleColor ?? cs.onSurfaceVariant.withValues(alpha: 0.45),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Static needs-you glyph for sidebar / tab leading slots (not a spinner).
+class SessionWaitingMarker extends StatelessWidget {
+  const SessionWaitingMarker({super.key, this.size = 13, this.color});
+
+  final double size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final accent = color ?? cs.tertiary;
+    return SizedBox(
+      key: AppKeys.sidebarSessionWaitingMarker,
+      width: size,
+      height: size,
+      child: Icon(
+        Icons.front_hand_rounded,
+        size: size,
+        color: accent,
       ),
     );
   }

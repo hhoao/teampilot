@@ -129,5 +129,9 @@ class _FakeHost implements SessionLaunchHost {
   }
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) {
+    if (invocation.isGetter) return null;
+    if (invocation.isSetter) return null;
+    return super.noSuchMethod(invocation);
+  }
 }

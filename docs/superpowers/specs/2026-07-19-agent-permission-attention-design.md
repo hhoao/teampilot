@@ -1,7 +1,7 @@
 # Agent permission attention (Orca-aligned)
 
 **Date:** 2026-07-19  
-**Status:** Approved for planning  
+**Status:** Implemented (unit-tested)  
 **Related:** [`2026-07-18-history-live-continue-design.md`](2026-07-18-history-live-continue-design.md), Orca `src/main/agent-hooks/` + `src/shared/agent-hook-listener.ts`
 
 ## Problem

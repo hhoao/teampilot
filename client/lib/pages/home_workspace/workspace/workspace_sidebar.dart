@@ -465,16 +465,12 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
         widget.tabScopeId,
       ),
       tapThrottleKeyPrefix: 'workspace_sidebar_session',
-      onTap: () {
-        unawaited(
-          openWorkspaceSessionTab(
-            context,
-            widget.workspace,
-            session,
-            tabScopeId: widget.tabScopeId,
-          ),
-        );
-      },
+      onTap: () => openWorkspaceSessionTab(
+        context,
+        widget.workspace,
+        session,
+        tabScopeId: widget.tabScopeId,
+      ),
     );
   }
 
@@ -520,16 +516,12 @@ class _RunningSessionsSection extends StatelessWidget {
               tabScopeId,
             ),
             tapThrottleKeyPrefix: 'workspace_running_session',
-            onTap: () {
-              unawaited(
-                openWorkspaceSessionTab(
-                  context,
-                  workspace,
-                  session,
-                  tabScopeId: tabScopeId,
-                ),
-              );
-            },
+            onTap: () => openWorkspaceSessionTab(
+              context,
+              workspace,
+              session,
+              tabScopeId: tabScopeId,
+            ),
           ),
       ],
     );

@@ -15,6 +15,7 @@ import '../cli/registry/cli_tool_registry.dart';
 import '../session/launch_command_builder.dart';
 import '../session/shell_launch_spec.dart';
 import '../ssh/ssh_member_session.dart';
+import '../../cubits/agent_attention_cubit.dart';
 import 'pending_user_message.dart';
 import 'pty_launch_environment.dart';
 import 'terminal_input_controller.dart';
@@ -427,6 +428,21 @@ class TerminalSession {
     _ptyEnvironment = null;
     _inputPipeline.clear();
     _userTurnActive = false;
+  }
+
+  /// Cursor seats only: observe live OSC titles for permission attention.
+  void bindCursorTitleAttention({
+    required String sessionId,
+    required String memberId,
+    required AgentAttentionCubit attention,
+    required bool Function() skipPermissions,
+  }) {
+    _launch.bindCursorTitleAttention(
+      sessionId: sessionId,
+      memberId: memberId,
+      attention: attention,
+      skipPermissions: skipPermissions,
+    );
   }
 
   void dispose() {

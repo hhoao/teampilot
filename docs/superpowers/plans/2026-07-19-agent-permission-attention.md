@@ -560,11 +560,11 @@ EOF
 - Modify: `sidebar_session_tile.dart`, working indicator sibling, sidebar builders
 - Extend `sidebar_session_tile_test.dart`
 
-- [ ] **Step 1: Test** — waiting marker distinct from `workingSessionIds` spinner
+- [x] **Step 1: Test** — waiting marker distinct from `workingSessionIds` spinner
 
-- [ ] **Step 2: Implement** distinct affordance; click → open session + Terminal + first waiting seat
+- [x] **Step 2: Implement** distinct affordance; click → open session + Terminal + first waiting seat
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git commit -m "$(cat <<'EOF'
@@ -585,9 +585,9 @@ EOF
 - Modify: `terminal_launch_controller.dart` (`feedPtyBytes`)
 - Do **not** map Cursor shell-before hooks to waiting
 
-- [ ] **Step 1: OSC extractor tests** (BEL + ST terminators; cmds 0/1/2)
+- [x] **Step 1: OSC extractor tests** (BEL + ST terminators; cmds 0/1/2)
 
-- [ ] **Step 2: Classifier tests**
+- [x] **Step 2: Classifier tests**
 
 ```dart
 expect(detectCursorTitleAttention('Cursor Agent'), isNull);
@@ -595,9 +595,9 @@ expect(detectCursorTitleAttention('Cursor - action required'),
     AgentSeatAttention.waiting);
 ```
 
-- [ ] **Step 3: Tap feedPtyBytes** for Cursor seats only; pass the seat’s registered `skipPermissions` into `attention.applyEvent` (YOLO Cursor must not surface waiting from title matches); clear waiting when title no longer matches after prior waiting
+- [x] **Step 3: Tap feedPtyBytes** for Cursor seats only; pass the seat’s registered `skipPermissions` into `attention.applyEvent` (YOLO Cursor must not surface waiting from title matches); clear waiting when title no longer matches after prior waiting
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git commit -m "$(cat <<'EOF'

@@ -6,6 +6,7 @@ import '../../models/extension_manifest.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
+import '../agent_status/member_agent_status_endpoint.dart';
 import '../storage/runtime_layout.dart';
 import '../extension/extension_detector.dart';
 import '../host/host_execution_environment.dart';
@@ -521,6 +522,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -563,6 +565,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           paths: this,
           catalog: catalog,
           busIdle: busIdle,
+          agentStatus: agentStatus,
         ),
       );
     } on Object catch (e) {
@@ -573,7 +576,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     }
 
     return TeamLaunchOutcome(
-      environment: contribution.environment,
+      environment: _withAgentStatusEnv(contribution.environment, agentStatus),
       warnings: [...warnings, ...contribution.warnings],
     );
   }
@@ -591,6 +594,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     List<String> additionalDirectories = const [],
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
   }) async {
     final manifestCtx = workPathContextFor(
       readDelegate: readDelegate,
@@ -626,6 +630,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       workingDirectory: workingDirectory,
       additionalDirectories: additionalDirectories,
       busIdle: busIdle,
+      agentStatus: agentStatus,
     );
     return (
       outcome: TeamLaunchOutcome(
@@ -646,6 +651,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     List<String> additionalDirectories = const [],
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
     ManifestExecutor? manifestExecutor,
   }) async {
     final staged = await stageSimpleSessionLaunch(
@@ -659,6 +665,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       additionalDirectories: additionalDirectories,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
+      agentStatus: agentStatus,
     );
     final executor = manifestExecutor ?? const ManifestExecutor();
     await executor.flush(manifest: staged.manifest, targetFs: fs, sourceFs: fs);
@@ -685,6 +692,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String? leadSessionId,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
   }) async {
     final trimmedWorkspaceId = effectiveLaunchWorkspaceId(
       workspaceId: workspaceId,
@@ -809,6 +817,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           catalog: catalog,
           leadSessionId: leadSessionId,
           busIdle: busIdle,
+          agentStatus: agentStatus,
           memberId: memberId,
         ),
       );
@@ -824,7 +833,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
     return (
       outcome: TeamLaunchOutcome(
-        environment: contribution.environment,
+        environment: _withAgentStatusEnv(contribution.environment, agentStatus),
         warnings: [...warnings, ...contribution.warnings],
       ),
       manifest: manifest,
@@ -846,6 +855,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String? leadSessionId,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
     ManifestExecutor? manifestExecutor,
   }) async {
     final staged = await stageTeamLaunch(
@@ -865,6 +875,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       leadSessionId: leadSessionId,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
+      agentStatus: agentStatus,
     );
     final executor = manifestExecutor ?? const ManifestExecutor();
     await executor.flush(manifest: staged.manifest, targetFs: fs, sourceFs: fs);
@@ -979,4 +990,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
   @override
   HostExecutionEnvironment hostEnvironmentForProvision() =>
       _infra.hostEnvironmentForProvision();
+}
+
+Map<String, String> _withAgentStatusEnv(
+  Map<String, String> environment,
+  MemberAgentStatusEndpoint? agentStatus,
+) {
+  if (agentStatus == null) return environment;
+  return {...environment, agentStatusUrlEnvKey: agentStatus.url};
 }

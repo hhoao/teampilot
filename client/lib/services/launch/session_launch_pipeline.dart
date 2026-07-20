@@ -532,9 +532,15 @@ class SessionLaunchPipeline {
     final state = _state();
     final activeId = _activeTab()?.info.id ?? state.activeSessionId ?? 'pending';
     _host.beginSessionConnect(activeId);
+    // Restart disconnect() nulls onProcessExited without calling it, so sticky
+    // waiting would survive until TTL unless seats are cleared here.
+    final restartTab = _activeTab();
+    if (restartTab != null) {
+      _host.clearAgentStatusSession(restartTab.info.id);
+    }
     if (_autoLaunchAllMembersOnConnect()) {
       final keepId = _selectedMemberIdOrDefault(team);
-      final tab = _activeTab();
+      final tab = restartTab ?? _activeTab();
       if (tab != null) {
         tab.membersPendingConnect.clear();
         for (final shell in tab.memberShells.values) {

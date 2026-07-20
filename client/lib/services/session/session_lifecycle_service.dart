@@ -16,6 +16,7 @@ import '../../utils/logging/logger.dart';
 import '../../models/workspace_topology.dart';
 import '../../models/workspace_launch_context.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
+import '../agent_status/member_agent_status_endpoint.dart';
 import '../storage/app_storage.dart';
 import '../storage/runtime_layout.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
@@ -144,6 +145,7 @@ class SessionLifecycleService {
     Workspace? workspace,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
   }) async {
     return (await _prepareLaunchPlan(
       session: session,
@@ -153,6 +155,7 @@ class SessionLifecycleService {
       workspace: workspace,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
+      agentStatus: agentStatus,
     )).plan;
   }
 
@@ -164,6 +167,7 @@ class SessionLifecycleService {
     Workspace? workspace,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
   }) async {
     final prepared = await _prepareLaunchPlan(
       session: session,
@@ -173,6 +177,7 @@ class SessionLifecycleService {
       workspace: workspace,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
+      agentStatus: agentStatus,
     );
 
     return ShellLaunchSpec(
@@ -205,6 +210,7 @@ class SessionLifecycleService {
     CliPreset? preset,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
   }) async {
     return (await _prepareLaunchPlanFromRuntimePlan(
       session: session,
@@ -215,6 +221,7 @@ class SessionLifecycleService {
       preset: preset,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
+      agentStatus: agentStatus,
     )).plan;
   }
 
@@ -228,6 +235,7 @@ class SessionLifecycleService {
     CliPreset? preset,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
   }) async {
     final prepared = await _prepareLaunchPlanFromRuntimePlan(
       session: session,
@@ -238,6 +246,7 @@ class SessionLifecycleService {
       preset: preset,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
+      agentStatus: agentStatus,
     );
     final isSimple = plan.mode == SessionRuntimeMode.simple;
     return ShellLaunchSpec(
@@ -266,6 +275,7 @@ class SessionLifecycleService {
     required Map<String, String> environment,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
   }) async {
     final prepared = await _prepareLaunchPlanFromEnvironmentPlan(
       session: session,
@@ -277,6 +287,7 @@ class SessionLifecycleService {
       environment: environment,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
+      agentStatus: agentStatus,
     );
     final isSimple = plan.mode == SessionRuntimeMode.simple;
     return ShellLaunchSpec(
@@ -459,6 +470,7 @@ class SessionLifecycleService {
     CliPreset? preset,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
   }) async {
     final sessionId = session.sessionId.trim();
     final isSimple = plan.mode == SessionRuntimeMode.simple;
@@ -542,6 +554,7 @@ class SessionLifecycleService {
       workingDirectory: memberWork.workingDirectory,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
+      agentStatus: agentStatus,
     );
 
     final memberConfigDir = _memberConfigDirFromEnv(prepared.env);
@@ -614,6 +627,7 @@ class SessionLifecycleService {
     required Map<String, String> environment,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
   }) async {
     final sessionId = session.sessionId.trim();
     final isSimple = plan.mode == SessionRuntimeMode.simple;
@@ -732,6 +746,7 @@ class SessionLifecycleService {
     required String workingDirectory,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
   }) async {
     final catalog = WorkspaceLaunchContext(
       session: session,
@@ -757,6 +772,7 @@ class SessionLifecycleService {
         additionalDirectories: memberDirs.addDirs,
         extraMcpServers: extraMcpServers,
         busIdle: busIdle,
+        agentStatus: agentStatus,
       );
       return _PreparedLaunch(
         env: outcome.environment,
@@ -794,6 +810,7 @@ class SessionLifecycleService {
       leadSessionId: leadSessionId,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
+      agentStatus: agentStatus,
     );
     return _PreparedLaunch(
       env: outcome.environment,
@@ -994,6 +1011,7 @@ class SessionLifecycleService {
     Workspace? workspace,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
+    MemberAgentStatusEndpoint? agentStatus,
   }) async {
     final teamId = team.id.trim();
     if (teamId.isEmpty) {
@@ -1065,6 +1083,7 @@ class SessionLifecycleService {
       memberBinding: memberBinding,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
+      agentStatus: agentStatus,
     );
     return (
       plan: prepared.plan,

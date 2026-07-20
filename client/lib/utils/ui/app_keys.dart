@@ -45,6 +45,15 @@ class AppKeys {
   static const sessionWorkbenchViewToggle = Key(
     'session-workbench-view-toggle',
   );
+  static const agentPermissionAttentionBanner = Key(
+    'agent-permission-attention-banner',
+  );
+  static const agentPermissionOpenTerminalButton = Key(
+    'agent-permission-open-terminal-button',
+  );
+  static const sidebarSessionWaitingMarker = Key(
+    'sidebar-session-waiting-marker',
+  );
   static const scopeSessionsToSelectedTeamSwitch = Key(
     'scope-sessions-to-selected-team-switch',
   );

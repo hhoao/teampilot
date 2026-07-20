@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:meta/meta.dart';
 
+import '../../agent_status/agent_status_http_handler.dart';
 import 'teammate_bus_mcp_config.dart';
 import 'teammate_bus_mcp_handler.dart';
 import 'teammate_bus_mcp_http_delegate.dart';
@@ -16,6 +18,10 @@ class TeammateBusMcpGateway {
 
   final _registry = TeammateBusSessionRegistry();
   final _delegates = <String, TeammateBusMcpHttpDelegate>{};
+  final _agentStatusSessions = <String>{};
+  final _agentStatusTokenToSession = <String, String>{};
+  final _agentStatusSessionToToken = <String, String>{};
+  AgentStatusHttpHandler? _agentStatusHandler;
   HttpServer? _http;
   BusRawSocketServer? _rawSocket;
 
@@ -32,9 +38,28 @@ class TeammateBusMcpGateway {
     }
   }
 
+  /// Closes HTTP + raw-socket listeners (tests / shutdown).
+  Future<void> dispose() async {
+    for (final sessionId in _delegates.keys.toList()) {
+      await unregister(sessionId);
+    }
+    for (final sessionId in _agentStatusSessions.toList()) {
+      unregisterAgentStatusSession(sessionId);
+    }
+    await _http?.close(force: true);
+    _http = null;
+    await _rawSocket?.close();
+    _rawSocket = null;
+  }
+
   Uri get mcpEndpoint => Uri.parse('http://127.0.0.1:${_http!.port}/mcp');
 
   Uri get idleEndpoint => Uri.parse('http://127.0.0.1:${_http!.port}/idle');
+
+  Uri get agentStatusEndpoint =>
+      Uri.parse('http://127.0.0.1:${_http!.port}/agent-status');
+
+  int get httpPort => _http!.port;
 
   int get rawSocketPort => _rawSocket!.port;
 
@@ -45,6 +70,43 @@ class TeammateBusMcpGateway {
   @visibleForTesting
   int activeWaitStreamCountFor(String sessionId) =>
       _delegates[sessionId]?.activeWaitStreamCount ?? 0;
+
+  void attachAgentStatusHandler(AgentStatusHttpHandler handler) {
+    _agentStatusHandler = handler;
+  }
+
+  /// Status-only session auth (no TeamBus MCP `_delegates` entry required).
+  ///
+  /// Returns the remote [X-Bus-Token] value (provided, existing, or generated).
+  /// When [token] is omitted and the session is already registered, reuses the
+  /// prior token so multi-seat status-only SSH mounts stay authenticated.
+  String registerAgentStatusSession({
+    required String sessionId,
+    String? token,
+  }) {
+    _agentStatusSessions.add(sessionId);
+    final explicit = token != null && token.isNotEmpty ? token : null;
+    if (explicit == null) {
+      final existing = _agentStatusSessionToToken[sessionId];
+      if (existing != null) return existing;
+    }
+    final previous = _agentStatusSessionToToken.remove(sessionId);
+    if (previous != null) {
+      _agentStatusTokenToSession.remove(previous);
+    }
+    final effective = explicit ?? _randomStatusToken();
+    _agentStatusTokenToSession[effective] = sessionId;
+    _agentStatusSessionToToken[sessionId] = effective;
+    return effective;
+  }
+
+  void unregisterAgentStatusSession(String sessionId) {
+    _agentStatusSessions.remove(sessionId);
+    final token = _agentStatusSessionToToken.remove(sessionId);
+    if (token != null) {
+      _agentStatusTokenToSession.remove(token);
+    }
+  }
 
   TeammateBusSessionRegistration register({
     required String sessionId,
@@ -69,6 +131,11 @@ class TeammateBusMcpGateway {
       if (sessionId == null) {
         request.response.statusCode = HttpStatus.badRequest;
         await request.response.close();
+        return;
+      }
+
+      if (request.method == 'POST' && request.uri.path == '/agent-status') {
+        await _handleAgentStatus(request, sessionId: sessionId);
         return;
       }
 
@@ -101,6 +168,30 @@ class TeammateBusMcpGateway {
     }
   }
 
+  Future<void> _handleAgentStatus(
+    HttpRequest request, {
+    required String sessionId,
+  }) async {
+    final handler = _agentStatusHandler;
+    final allowed =
+        _agentStatusSessions.contains(sessionId) ||
+        _delegates.containsKey(sessionId);
+    if (handler == null || !allowed) {
+      request.response.statusCode = HttpStatus.badRequest;
+      await request.response.close();
+      return;
+    }
+
+    final member = request.headers.value('x-member')?.trim() ?? '';
+    if (member.isEmpty) {
+      request.response.statusCode = HttpStatus.badRequest;
+      await request.response.close();
+      return;
+    }
+
+    await handler.handle(request, sessionId: sessionId, memberId: member);
+  }
+
   String? _resolveSessionId(HttpRequest request) {
     final sessionHeader = request.headers
         .value(teammateBusMcpSessionHeader.toLowerCase())
@@ -113,9 +204,16 @@ class TeammateBusMcpGateway {
         .value(teammateBusTokenHeader.toLowerCase())
         ?.trim();
     if (token != null && token.isNotEmpty) {
-      return _registry.sessionForToken(token);
+      final fromRegistry = _registry.sessionForToken(token);
+      if (fromRegistry != null) return fromRegistry;
+      return _agentStatusTokenToSession[token];
     }
 
     return null;
   }
+}
+
+String _randomStatusToken() {
+  final rng = Random.secure();
+  return List.generate(24, (_) => rng.nextInt(16).toRadixString(16)).join();
 }

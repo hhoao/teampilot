@@ -10,7 +10,10 @@ import 'app_data_bootstrap.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../cubits/app_update_cubit.dart';
 import '../cubits/automation_cubit.dart';
+import '../cubits/agent_attention_cubit.dart';
 import '../cubits/chat_cubit.dart';
+import '../services/agent_status/agent_status_http_handler.dart';
+import '../services/agent_status/agent_status_seat_lookup.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/remote/local_credential_exporter.dart';
@@ -151,6 +154,8 @@ class AppShell {
     required this.directoryPicker,
     required this.chatCubit,
     required this.memberPresenceCubit,
+    required this.agentAttentionCubit,
+    required this.agentStatusSeatLookup,
     required this.mailboxCubit,
     required this.boardCubit,
     required this.aiHistoryCubit,
@@ -217,6 +222,8 @@ class AppShell {
   final WorkspaceDirectoryPicker directoryPicker;
   final ChatCubit chatCubit;
   final MemberPresenceCubit memberPresenceCubit;
+  final AgentAttentionCubit agentAttentionCubit;
+  final AgentStatusSeatLookup agentStatusSeatLookup;
   final MailboxCubit mailboxCubit;
   final BoardCubit boardCubit;
   final AiHistoryCubit aiHistoryCubit;
@@ -805,8 +812,20 @@ Future<AppShell> buildAppShell({
   final teammateBusMcpGateway = TeammateBusMcpGateway();
   await teammateBusMcpGateway.ensureStarted();
 
+  final agentAttentionCubit = AgentAttentionCubit();
+  final agentStatusSeatLookup = AgentStatusSeatLookup();
+  teammateBusMcpGateway.attachAgentStatusHandler(
+    AgentStatusHttpHandler(
+      attention: agentAttentionCubit,
+      resolveCli: agentStatusSeatLookup.resolveCli,
+      resolveSkipPermissions: agentStatusSeatLookup.resolveSkipPermissions,
+    ),
+  );
+
   chatCubit = ChatCubit(
     teammateBusMcpGateway: teammateBusMcpGateway,
+    agentStatusSeatLookup: agentStatusSeatLookup,
+    agentAttentionCubit: agentAttentionCubit,
     sessionRepository: sessionRepo,
     lifecycleService: sessionLifecycleService,
     automationRepository: automationRepo,
@@ -1103,6 +1122,8 @@ Future<AppShell> buildAppShell({
     directoryPicker: directoryPicker,
     chatCubit: chatCubit,
     memberPresenceCubit: memberPresenceCubit,
+    agentAttentionCubit: agentAttentionCubit,
+    agentStatusSeatLookup: agentStatusSeatLookup,
     mailboxCubit: mailboxCubit,
     boardCubit: boardCubit,
     aiHistoryCubit: aiHistoryCubit,
