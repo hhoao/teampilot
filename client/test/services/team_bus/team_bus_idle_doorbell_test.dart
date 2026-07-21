@@ -145,4 +145,43 @@ void main() {
       'lead',
     );
   });
+
+  test('worker idle announce does not doorbell virgin lead at prompt', () {
+    fakeAsync((async) {
+      final launcher = FakeMemberLauncher();
+      final bus = TeamBus(
+        launcher: launcher,
+        reportsIdleViaReceiveWork: (_) => true,
+      );
+      bus
+        ..declareMember(
+          AgentNode(
+            profile: TeammateRosterProfile.minimal(
+              'lead',
+              displayName: 'Lead',
+              isTeamLead: true,
+            ),
+            lifecycle: MemberLifecycle.running,
+            activity: MemberActivity.turnDoneReady,
+          ),
+        )
+        ..declareMember(
+          AgentNode(
+            profile: TeammateRosterProfile.minimal(
+              'worker',
+              displayName: 'Worker',
+            ),
+            lifecycle: MemberLifecycle.running,
+            activity: MemberActivity.active,
+          ),
+        );
+
+      unawaited(bus.receiveWork('worker'));
+      async.flushMicrotasks();
+
+      expect(bus.memberById('lead')!.inbox.unreadCount, 1);
+      expect(launcher.woken.where((w) => w.memberId == 'lead'), isEmpty);
+      expect(bus.memberById('lead')!.hasEverBeenActive, isFalse);
+    });
+  });
 }

@@ -164,9 +164,14 @@ class TeamBus implements CoordinationView {
         memberId: node.memberId,
         hasUnread: !node.inbox.isEmpty,
         doorbelled: node.doorbelled,
+        hasEverBeenActive: node.hasEverBeenActive,
       ),
     );
     final after = t.presence;
+    if (event is TurnStarted &&
+        after.activity == MemberActivity.active) {
+      node.hasEverBeenActive = true;
+    }
     if (before.lifecycle != after.lifecycle ||
         before.activity != after.activity) {
       appLogger.d(

@@ -9,6 +9,7 @@ class PresenceContext {
     required this.memberId,
     required this.hasUnread,
     this.doorbelled = false,
+    this.hasEverBeenActive = true,
   });
   final String memberId;
   final bool hasUnread;
@@ -16,6 +17,11 @@ class PresenceContext {
   /// 本轮未读是否已经响过门铃（见 [AgentNode.doorbelled]）。为真时 [MailArrived]
   /// 不再重复注入。
   final bool doorbelled;
+
+  /// False until the member has entered [MemberActivity.active] at least once
+  /// (operator/PTY turn). Virgin leads at prompt must not be idle-doorbelled —
+  /// that would start a ghost turn before History compose.
+  final bool hasEverBeenActive;
 }
 
 /// 一次跃迁的结果:新在线态 + 待落地的效果列表。
@@ -129,6 +135,9 @@ abstract final class PresenceReducer {
     // 已响过一记「去 read_messages」、worker 尚未消费 → 不重复注入：back-to-back
     // 邮件会把同一条提示打好几遍。真没送达（回车被吞）由看门狗重敲兜底。
     if (ctx.doorbelled) return _stay(s);
+    // Virgin seat (spawned, never turned): queue mail without PTY doorbell so
+    // operator History compose — not worker idle-announce — starts the first turn.
+    if (!ctx.hasEverBeenActive) return _stay(s);
     // Doorbell = TeamPilot 判定 worker 应处理 teammate 信；presence 保持 at-prompt，
     // delivery 维度单独跟踪（mailbox-delivery spec）。
     return PresenceTransition(s, [DoorbellEffect(ctx.memberId)]);
