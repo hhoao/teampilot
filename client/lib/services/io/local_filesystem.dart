@@ -176,12 +176,34 @@ class LocalFilesystem implements Filesystem, FsWatcher {
   }
 
   @override
-  Future<List<int>?> readBytesRange(String path, int offset, int length) =>
-      throw UnimplementedError('readBytesRange');
+  Future<List<int>?> readBytesRange(
+    String path,
+    int offset,
+    int length,
+  ) async {
+    final file = File(path);
+    if (!await file.exists()) return null;
+    final raf = await file.open(mode: FileMode.read);
+    try {
+      await raf.setPosition(offset);
+      return await raf.read(length);
+    } on FileSystemException {
+      return null;
+    } finally {
+      await raf.close();
+    }
+  }
 
   @override
-  Future<void> appendBytes(String path, List<int> bytes) =>
-      throw UnimplementedError('appendBytes');
+  Future<void> appendBytes(String path, List<int> bytes) async {
+    await ensureDir(pathContext.dirname(path));
+    final raf = await File(path).open(mode: FileMode.append);
+    try {
+      await raf.writeFrom(bytes);
+    } finally {
+      await raf.close();
+    }
+  }
 
   @override
   Future<void> atomicWrite(String path, String content) async {
