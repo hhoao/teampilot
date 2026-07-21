@@ -83,8 +83,8 @@ Actors (leader / worker / simple seat) bind to an **apiKey** (or equivalent
 |------|------|
 | `Text(content)` | Visible assistant reply |
 | `ToolUse(toolRef, input, id?)` | Emit tool call via **logical** `toolRef` (not raw wire name) |
-| `AssignedTaskUpdate(...)` | Resolve task id from inbound tool_result, then update |
-| `WaitUntil(predicate)?` | Optional sync before advancing (collab) |
+| `AssignedTaskUpdate(id, toolRef, status, result?)` | Resolve task id from inbound tool_result (same behavior as today’s `AssignedTaskUpdateTurn` in `mock_anthropic`), then emit update via mapped `toolRef` |
+| `WaitUntil(predicate)?` | **Deferred in v1 recipes** — initial `*_3plus` scripts ship without it; add only when a concrete collab sync need appears |
 
 **Logical tool refs:** recipes use stable ids such as
 `teambus.send_message`, `teambus.wait_for_message`, `native.TeamCreate`.
