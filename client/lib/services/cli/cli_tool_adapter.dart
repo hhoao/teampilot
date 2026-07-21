@@ -88,19 +88,27 @@ class FlashskyaiCliToolAdapter implements CliToolAdapter {
 
   @override
   List<String> buildArguments(CliLaunchContext context) {
-    final mixed = context.team.teamMode == TeamMode.mixed;
     final args = <String>[
       ..._buildSessionPrefixArgs(context),
-      if (!mixed) ...[
+      // Personal/simple passes nativeAgentTeam:false — omit roster flags so
+      // flashskyai stays in single-agent mode (avoids multi-call team loops
+      // that burn scripted mock turns).
+      if (context.usesNativeAgentTeam) ...[
         '--team',
         context.teamName,
         '--member',
         context.memberCliId,
       ],
+      // Same Agent-tool burn as Claude personal: a follow-up subagent API call
+      // after end_turn consumes the next scripted TextTurn.
+      if (context.nativeAgentTeam == false) ...[
+        '--disallowedTools',
+        'Agent',
+      ],
     ];
 
     final loop = context.team.loop;
-    if (!mixed && loop != null) {
+    if (context.usesNativeAgentTeam && loop != null) {
       args.addAll(['--loop', loop ? 'true' : 'false']);
     }
 

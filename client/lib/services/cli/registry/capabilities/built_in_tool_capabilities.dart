@@ -119,7 +119,8 @@ final class CursorDisplay implements DisplayCapability {
 final class FlashskyaiTerminalBehavior implements TerminalBehaviorCapability {
   const FlashskyaiTerminalBehavior();
   @override
-  bool get usesFullScreenInput => false;
+  // FlashskyAI uses the same Ink fullscreen composer as Claude Code (`❯`).
+  bool get usesFullScreenInput => true;
   @override
   Duration get fullScreenPasteSettleDelay => const Duration(milliseconds: 10);
   @override
@@ -128,7 +129,7 @@ final class FlashskyaiTerminalBehavior implements TerminalBehaviorCapability {
   bool get forwardsColorSchemeReport => true;
   @override
   TerminalPathDropBehavior get pathDropBehavior =>
-      TerminalPathDropBehavior.defaultFor(usesFullScreenInput: false);
+      TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
   @override
   FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
       FullscreenCrAckStrategy.anchorCellClears;

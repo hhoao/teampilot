@@ -420,4 +420,33 @@ void main() {
     expect(args, isNot(contains('--agent-id')));
     expect(args, containsAllInOrder(['--disallowedTools', 'Agent']));
   });
+
+  test('flashskyai simple/personal omits native team/member flags', () {
+    const adapter = FlashskyaiCliToolAdapter();
+    final args = adapter.buildArguments(
+      CliLaunchContext(
+        team: const TeamProfile(
+          id: 'workspace-1',
+          name: 'session-1',
+          cli: CliTool.flashskyai,
+          teamMode: TeamMode.native,
+          loop: false,
+          members: [TeamMemberConfig(id: 'session-1', name: 'session-1')],
+        ),
+        member: const TeamMemberConfig(
+          id: 'session-1',
+          name: 'session-1',
+          provider: 'mock-simple',
+        ),
+        sessionTeam: 'session-1',
+        nativeAgentTeam: false,
+      ),
+    );
+
+    expect(args, isNot(contains('--team')));
+    expect(args, isNot(contains('--member')));
+    expect(args, isNot(contains('--loop')));
+    expect(args, containsAllInOrder(['--disallowedTools', 'Agent']));
+    expect(args, containsAllInOrder(['--provider', 'mock-simple']));
+  });
 }
