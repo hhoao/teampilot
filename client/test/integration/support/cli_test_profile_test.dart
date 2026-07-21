@@ -90,10 +90,17 @@ void main() {
     );
   });
 
-  test('codex toolName maps one teambus ref', () {
+  test('codex toolName maps teambus refs to namespaced Responses wire', () {
+    final server = teammateBusMcpServerName.replaceAll('-', '_');
     expect(
       CliTestProfiles.forTool(CliTool.codex).toolName('teambus.list_teammates'),
-      'mcp__${teammateBusMcpServerName}__list_teammates',
+      'mcp__$server::list_teammates',
+    );
+    expect(
+      CliTestProfiles.forTool(CliTool.codex).toolName(
+        'teambus.wait_for_message',
+      ),
+      'mcp__$server::wait_for_message',
     );
   });
 

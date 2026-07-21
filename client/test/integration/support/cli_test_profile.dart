@@ -9,6 +9,7 @@ import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import 'cli_test_profile_claude_boot.dart';
+import 'cli_test_profile_codex_boot.dart';
 import 'cli_test_profile_flashskyai_boot.dart';
 
 /// Wire protocol the mock gateway should speak for a CLI matrix cell.
@@ -203,11 +204,19 @@ abstract final class CliTestProfiles {
     wire: CliTestWire.openaiResponses,
     binaryName: 'codex',
     resolveBinary: () => whichOnPath('codex'),
-    // Best-effort: same mcp__ prefix used in gateway adapter fixtures.
-    toolName: mapMcpPrefixedToolRef,
+    // Codex Responses exposes MCP as namespace tools; wire names use
+    // `mcp__<server>::<tool>` so the Responses SSE encoder can emit
+    // `namespace` + short `name` (hyphens in server ids → underscores).
+    toolName: mapCodexNamespacedMcpToolRef,
     assistantVisibleMarkers: const [markA1, markA2, markA3],
-    bootToPrompt: bootToPromptStub,
-    dismissBootGates: dismissBootGatesStub,
+    bootToPrompt: (session) async {
+      if (session is! TerminalSession) return false;
+      return bootCodexToPrompt(session);
+    },
+    dismissBootGates: (session) async {
+      if (session is! TerminalSession) return;
+      await dismissCodexBootGates(session);
+    },
     fullscreenDeliverNotes:
         'Fullscreen paste; composerMovesDown CR ACK (CodexTerminalBehavior).',
     gatewayRedirectNotes:
@@ -257,6 +266,24 @@ String mapMcpPrefixedToolRef(String toolRef) {
   if (toolRef.startsWith(teambus)) {
     return 'mcp__${teammateBusMcpServerName}__'
         '${toolRef.substring(teambus.length)}';
+  }
+  const native = 'native.';
+  if (toolRef.startsWith(native)) {
+    return toolRef.substring(native.length);
+  }
+  return toolRef;
+}
+
+/// Codex Responses namespace tools: `teambus.X` → `mcp__teammate_bus::X`.
+///
+/// Codex sanitizes MCP server ids (`teammate-bus` → `teammate_bus`) and exposes
+/// tools under `type: "namespace"`. The Responses encoder splits on `::` into
+/// `namespace` + short `name` so Codex can dispatch `tools/call`.
+String mapCodexNamespacedMcpToolRef(String toolRef) {
+  const teambus = 'teambus.';
+  if (toolRef.startsWith(teambus)) {
+    final server = teammateBusMcpServerName.replaceAll('-', '_');
+    return 'mcp__$server::${toolRef.substring(teambus.length)}';
   }
   const native = 'native.';
   if (toolRef.startsWith(native)) {

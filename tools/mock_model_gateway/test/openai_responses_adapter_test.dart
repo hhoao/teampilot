@@ -23,34 +23,37 @@ void main() {
   });
 
   group('encodeResponse', () {
-    test('encodes ResolvedTextTurn as response with output_text', () {
+    test('encodes ResolvedTextTurn as SSE ending in response.completed', () {
+      expect(adapter.responseMimeType, 'text/event-stream');
+
       final body = adapter.encodeResponse(
         turn: const ResolvedTextTurn('hello from assistant'),
         messageId: 'resp_1',
         model: 'mock-model',
       );
 
-      final decoded = jsonDecode(body) as Map<String, Object?>;
-      expect(decoded['object'], 'response');
-      expect(decoded['id'], 'resp_1');
-      expect(decoded['model'], 'mock-model');
-      expect(decoded['status'], 'completed');
+      expect(body, contains('event: response.created'));
+      expect(body, contains('event: response.output_text.delta'));
+      expect(body, contains('event: response.completed'));
+      expect(body, contains('hello from assistant'));
+      expect(body, contains('"object":"response"'));
 
-      final output = decoded['output'] as List<Object?>;
+      final completed = _lastEventData(body, 'response.completed');
+      final response = completed['response'] as Map<String, Object?>;
+      expect(response['id'], 'resp_1');
+      expect(response['model'], 'mock-model');
+      expect(response['status'], 'completed');
+      final output = response['output'] as List<Object?>;
       expect(output, hasLength(1));
       final item = output.single as Map<String, Object?>;
       expect(item['type'], 'message');
-      expect(item['role'], 'assistant');
-      expect(item['status'], 'completed');
-
       final content = item['content'] as List<Object?>;
-      expect(content, hasLength(1));
       final part = content.single as Map<String, Object?>;
       expect(part['type'], 'output_text');
       expect(part['text'], 'hello from assistant');
     });
 
-    test('encodes ResolvedToolUseTurn as function_call output item', () {
+    test('encodes ResolvedToolUseTurn as function_call SSE', () {
       final body = adapter.encodeResponse(
         turn: const ResolvedToolUseTurn(
           id: 'tu1',
@@ -61,21 +64,42 @@ void main() {
         model: 'mock-model',
       );
 
-      final decoded = jsonDecode(body) as Map<String, Object?>;
-      expect(decoded['object'], 'response');
-      expect(decoded['status'], 'completed');
+      expect(body, contains('event: response.function_call_arguments.done'));
+      expect(body, contains('event: response.completed'));
+      expect(body, contains('mcp__teammate-bus__send_message'));
 
-      final output = decoded['output'] as List<Object?>;
-      expect(output, hasLength(1));
+      final completed = _lastEventData(body, 'response.completed');
+      final response = completed['response'] as Map<String, Object?>;
+      final output = response['output'] as List<Object?>;
       final item = output.single as Map<String, Object?>;
       expect(item['type'], 'function_call');
       expect(item['call_id'], 'tu1');
       expect(item['name'], 'mcp__teammate-bus__send_message');
-      expect(item['status'], 'completed');
+      expect(item.containsKey('namespace'), isFalse);
       final args =
           jsonDecode(item['arguments'] as String) as Map<String, Object?>;
       expect(args['to'], 'worker-1');
       expect(args['content'], 'ping');
+    });
+
+    test('splits Codex namespaced wire names into namespace + short name', () {
+      final body = adapter.encodeResponse(
+        turn: const ResolvedToolUseTurn(
+          id: 'tu_wait',
+          wireName: 'mcp__teammate_bus::wait_for_message',
+          input: {},
+        ),
+        messageId: 'resp_ns',
+        model: 'mock-model',
+      );
+
+      final completed = _lastEventData(body, 'response.completed');
+      final response = completed['response'] as Map<String, Object?>;
+      final output = response['output'] as List<Object?>;
+      final item = output.single as Map<String, Object?>;
+      expect(item['type'], 'function_call');
+      expect(item['name'], 'wait_for_message');
+      expect(item['namespace'], 'mcp__teammate_bus');
     });
 
     test('rejects unresolved AssignedTaskUpdateTurn', () {
@@ -128,7 +152,7 @@ void main() {
       expect(tool.input['result'], 'done');
     });
 
-    test('resolved AssignedTaskUpdate encodes as function_call JSON', () {
+    test('resolved AssignedTaskUpdate encodes as function_call SSE', () {
       const body = {
         'input': [
           {
@@ -155,8 +179,10 @@ void main() {
         model: 'mock-model',
       );
 
-      final decoded = jsonDecode(encoded) as Map<String, Object?>;
-      final output = decoded['output'] as List<Object?>;
+      expect(encoded, contains('event: response.completed'));
+      final completed = _lastEventData(encoded, 'response.completed');
+      final response = completed['response'] as Map<String, Object?>;
+      final output = response['output'] as List<Object?>;
       final item = output.single as Map<String, Object?>;
       expect(item['type'], 'function_call');
       expect(item['name'], 'mcp__teammate-bus__update_task');
@@ -189,4 +215,20 @@ void main() {
   test('implements WireAdapter', () {
     expect(adapter, isA<WireAdapter>());
   });
+}
+
+Map<String, Object?> _lastEventData(String sse, String eventType) {
+  final chunks = sse.split('\n\n');
+  Map<String, Object?>? last;
+  for (final chunk in chunks) {
+    if (!chunk.contains('event: $eventType')) continue;
+    final dataLine = chunk
+        .split('\n')
+        .firstWhere((l) => l.startsWith('data: '), orElse: () => '');
+    if (dataLine.isEmpty) continue;
+    last = jsonDecode(dataLine.substring('data: '.length))
+        as Map<String, Object?>;
+  }
+  expect(last, isNotNull, reason: 'missing event $eventType in SSE');
+  return last!;
 }

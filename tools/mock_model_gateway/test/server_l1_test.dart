@@ -255,7 +255,7 @@ void main() {
     expect(server.requestCountFor('lead'), 1);
   });
 
-  test('POST /v1/responses smoke returns JSON text turn', () async {
+  test('POST /v1/responses smoke returns SSE text turn', () async {
     final server = MockModelGatewayServer(
       engine: ScenarioEngine({
         'codex': MockScenario(turns: [TextTurn('responses-hi')]),
@@ -268,12 +268,13 @@ void main() {
     final resp = await postJson(
       uri,
       apiKey: 'codex',
-      body: {'model': 'mock-model', 'input': []},
+      body: {'model': 'mock-model', 'input': [], 'stream': true},
     );
     expect(resp.statusCode, 200);
-    expect(resp.headers.contentType?.mimeType, 'application/json');
+    expect(resp.headers.contentType?.mimeType, 'text/event-stream');
     final body = await resp.transform(utf8.decoder).join();
     expect(body, contains('responses-hi'));
+    expect(body, contains('event: response.completed'));
     expect(body, contains('"object":"response"'));
     expect(server.requestLog, hasLength(1));
     expect(server.requestLog.single.path, '/v1/responses');

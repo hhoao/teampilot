@@ -1,21 +1,21 @@
-import 'dart:convert';
-
 import '../core/turns.dart';
 import 'assigned_task_id_parser.dart';
+import 'openai_responses_sse_encoder.dart';
 import 'wire_adapter.dart';
 
 /// OpenAI Responses (`/v1/responses`) wire adapter for Codex.
 ///
 /// Codex providers set `wire_api = "responses"` and `requires_openai_auth =
 /// true`, so the CLI posts to `{base_url}/responses` with
-/// `Authorization: Bearer <OPENAI_API_KEY>`. Encodes non-streaming
-/// `object: "response"` JSON that Codex accepts.
+/// `Authorization: Bearer <OPENAI_API_KEY>` and **always** `stream: true`
+/// (`Accept: text/event-stream`). Non-streaming JSON is rejected
+/// (`stream closed before response.completed`).
 class OpenAiResponsesAdapter implements WireAdapter {
   @override
   String get wireId => 'openai_responses';
 
   @override
-  String get responseMimeType => 'application/json';
+  String get responseMimeType => 'text/event-stream';
 
   @override
   bool matchesPath(String path) {
@@ -30,55 +30,11 @@ class OpenAiResponsesAdapter implements WireAdapter {
     required String messageId,
     required String model,
   }) {
-    final List<Map<String, Object?>> output;
-
-    switch (turn) {
-      case ResolvedTextTurn(:final text):
-        output = [
-          {
-            'id': messageId,
-            'type': 'message',
-            'role': 'assistant',
-            'status': 'completed',
-            'content': [
-              {
-                'type': 'output_text',
-                'text': text,
-                'annotations': <Object?>[],
-              },
-            ],
-          },
-        ];
-      case ResolvedToolUseTurn(:final id, :final wireName, :final input):
-        output = [
-          {
-            'id': id,
-            'type': 'function_call',
-            'call_id': id,
-            'name': wireName,
-            'arguments': jsonEncode(input),
-            'status': 'completed',
-          },
-        ];
-      case ResolvedAssignedTaskUpdateTurn():
-        throw StateError(
-          'ResolvedAssignedTaskUpdateTurn must be resolved before encoding',
-        );
-    }
-
-    return jsonEncode({
-      'id': messageId,
-      'object': 'response',
-      'created_at': 0,
-      'status': 'completed',
-      'model': model,
-      'output': output,
-      'usage': {
-        'input_tokens': 1,
-        'output_tokens': 1,
-        'total_tokens': 2,
-      },
-    });
+    return OpenAiResponsesSseEncoder.encodeTurn(
+      messageId: messageId,
+      model: model,
+      turn: turn,
+    );
   }
 
   @override
