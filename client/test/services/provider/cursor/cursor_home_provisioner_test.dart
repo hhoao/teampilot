@@ -105,6 +105,58 @@ void main() {
       expect((await fs.stat(layout.mcpConfig(memberHome))).isFile, isFalse);
     });
 
+    test(
+      'provision seeds hasShownAgentCommandTip in isolated agent-cli-state',
+      () async {
+        const memberHome = '/data/tp/members/planner/cursor/home';
+
+        await provisioner.provision(
+          memberHome: memberHome,
+          providerId: null,
+          member: member,
+          busIdle: null,
+          forceTeamLeadDelegateMode: false,
+          mixed: false,
+        );
+
+        final raw = await fs.readString(layout.agentCliState(memberHome));
+        expect(raw, isNotNull);
+        final decoded = jsonDecode(raw!) as Map<String, dynamic>;
+        expect(decoded['version'], 1);
+        expect(decoded['hasShownAgentCommandTip'], isTrue);
+      },
+    );
+
+    test(
+      'provision merges hasShownAgentCommandTip into existing agent-cli-state',
+      () async {
+        const memberHome = '/data/tp/members/planner/cursor/home';
+        await fs.ensureDir(layout.cursorDir(memberHome));
+        await fs.writeString(
+          layout.agentCliState(memberHome),
+          jsonEncode({
+            'version': 1,
+            'hasClearedLegacyStatsigFields': true,
+          }),
+        );
+
+        await provisioner.provision(
+          memberHome: memberHome,
+          providerId: null,
+          member: member,
+          busIdle: null,
+          forceTeamLeadDelegateMode: false,
+          mixed: false,
+        );
+
+        final raw = await fs.readString(layout.agentCliState(memberHome));
+        expect(raw, isNotNull);
+        final decoded = jsonDecode(raw!) as Map<String, dynamic>;
+        expect(decoded['hasShownAgentCommandTip'], isTrue);
+        expect(decoded['hasClearedLegacyStatsigFields'], isTrue);
+      },
+    );
+
     test('provision writes bus files when port set (no provider)', () async {
       const memberHome = '/data/tp/members/planner/cursor/home';
 

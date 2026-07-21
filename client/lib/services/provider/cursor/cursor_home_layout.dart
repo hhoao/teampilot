@@ -17,6 +17,7 @@ final class CursorHomeLayout {
   static const idleScriptFileName = 'idle.sh';
   static const mcpFileName = 'mcp.json';
   static const cliConfigFileName = 'cli-config.json';
+  static const agentCliStateFileName = 'agent-cli-state.json';
   static const configDirName = '.config';
   static const configCursorDirName = 'cursor';
   static const authFileName = 'auth.json';
@@ -82,4 +83,7 @@ final class CursorHomeLayout {
 
   String cliConfig(String homeRoot) =>
       _pathContext.join(cursorDir(homeRoot), cliConfigFileName);
+
+  String agentCliState(String homeRoot) =>
+      _pathContext.join(cursorDir(homeRoot), agentCliStateFileName);
 }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../../models/team_config.dart';
 import '../../io/filesystem.dart';
 import '../../team_bus/member_bus_idle_endpoint.dart';
+import 'cursor_auth_artifacts.dart';
 import 'cursor_cli_config_policy.dart';
 import 'cursor_home_bus_overlay.dart';
 import 'cursor_home_layout.dart';
@@ -44,6 +45,9 @@ final class CursorHomeProvisioner {
     if (id != null && id.isNotEmpty) {
       await _credentials?.syncAuthToMemberHome(id, memberHome);
     }
+    // After auth sync: seed tip flag (sync skips existing files, so a
+    // provider copy without the tip cannot wipe this when we write last).
+    await _ensureAgentCommandTipSuppressed(memberHome);
 
     if (!member.isValid) return;
 
@@ -80,6 +84,7 @@ final class CursorHomeProvisioner {
     if (!member.isValid) return;
 
     await _ensureOverlayDirs(memberHome);
+    await _ensureAgentCommandTipSuppressed(memberHome);
     await _mergeTeamBusPermissions(
       memberHome,
       cliConfigJson: cliConfigJson,
@@ -143,6 +148,30 @@ final class CursorHomeProvisioner {
       _fs.pathContext.join(cursorDir, CursorHomeLayout.hooksDirName),
     );
     await _fs.ensureDir(_layout.configCursorDir(memberHome));
+  }
+
+  /// Suppresses cursor-agent's one-shot "`agent` alias" tip in isolated HOMEs.
+  Future<void> _ensureAgentCommandTipSuppressed(String memberHome) async {
+    final path = _layout.agentCliState(memberHome);
+    Map<String, Object?> existing = {};
+    final raw = await _fs.readString(path);
+    if (raw != null) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          existing = Map<String, Object?>.from(decoded);
+        }
+      } on Object {
+        // Corrupt state — rewrite a minimal valid tip-suppressed file.
+      }
+    }
+    if (existing[CursorAuthArtifacts.hasShownAgentCommandTipKey] == true) {
+      return;
+    }
+    existing['version'] =
+        existing['version'] ?? CursorAuthArtifacts.agentCliStateVersion;
+    existing[CursorAuthArtifacts.hasShownAgentCommandTipKey] = true;
+    await _fs.atomicWrite(path, _jsonPretty(existing));
   }
 
   Future<void> _ensureOverlayDirs(String memberHome) async {

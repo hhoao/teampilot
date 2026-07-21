@@ -75,6 +75,16 @@ void main() {
       );
     });
 
+    test('agentCliState joins agent-cli-state.json under cursor dir', () {
+      expect(
+        layout.agentCliState(homeRoot),
+        p.join(
+          layout.cursorDir(homeRoot),
+          CursorHomeLayout.agentCliStateFileName,
+        ),
+      );
+    });
+
     test('globalAuthJsonCandidates prefers APPDATA Cursor on Windows', () {
       final windows = p.Context(style: p.Style.windows);
       final layout = CursorHomeLayout(pathContext: windows);

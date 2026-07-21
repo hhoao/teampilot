@@ -15,6 +15,12 @@ abstract final class CursorAuthArtifacts {
   /// Relative to `$HOME/.cursor/`.
   static const cursorDirOptional = <String>['agent-cli-state.json'];
 
+  /// Written into isolated `$HOME/.cursor/agent-cli-state.json` so
+  /// `cursor-agent` does not re-print the "`agent` vs `cursor-agent`" tip on
+  /// every TeamPilot session (each session uses a fresh fake HOME).
+  static const agentCliStateVersion = 1;
+  static const hasShownAgentCommandTipKey = 'hasShownAgentCommandTip';
+
   /// Relative to `$HOME/.config/cursor/` (or `%APPDATA%\Cursor\` on Windows IDE).
   static const configCursorRequired = <String>['auth.json'];
 
