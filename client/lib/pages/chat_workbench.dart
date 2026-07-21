@@ -575,11 +575,22 @@ class _ChatWorkbenchBody extends StatelessWidget {
     final shellMemberId = isPersonal
         ? appSession.sessionId
         : (connectMember?.id ?? memberId);
+    HistoryContinueChannel resolveChannel() {
+      final bus = chatCubit.sessionRuntime.busForSession(appSession.sessionId);
+      return resolveHistoryContinueChannel(
+        teamBusInstalled: bus != null,
+        memberWaitingForMessage:
+            bus?.isWaitingForMessage(shellMemberId) ?? false,
+        memberInTurn: bus?.isMemberInTurn(shellMemberId) ?? false,
+      );
+    }
+
     return SessionChatView(
       session: appSession,
       selectedMemberId: historyMemberId,
       team: resolvedTeam,
       launchError: launchError,
+      peekContinueChannel: resolveChannel,
       isMailboxUnread: (mailId) {
         final bus = chatCubit.sessionRuntime.busForSession(
           appSession.sessionId,
@@ -621,17 +632,6 @@ class _ChatWorkbenchBody extends StatelessWidget {
           // Stay-on-Chat must not let connect force-switch to Terminal.
           preserveWorkbenchView: !switchToTerminal,
         );
-        HistoryContinueChannel resolveChannel() {
-          final bus = chatCubit.sessionRuntime.busForSession(
-            appSession.sessionId,
-          );
-          return resolveHistoryContinueChannel(
-            teamBusInstalled: bus != null,
-            memberWaitingForMessage:
-                bus?.isWaitingForMessage(shellMemberId) ?? false,
-            memberInTurn: bus?.isMemberInTurn(shellMemberId) ?? false,
-          );
-        }
 
         return submitSessionHistoryReviewMessage(
           sessionId: appSession.sessionId,

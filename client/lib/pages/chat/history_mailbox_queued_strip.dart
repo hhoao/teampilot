@@ -21,6 +21,7 @@ class HistoryMailboxQueuedStrip extends StatefulWidget {
     required this.submissions,
     required this.isUnread,
     this.onConsumed,
+    this.clearToken = 0,
     this.pollInterval = const Duration(seconds: 1),
     super.key,
   });
@@ -31,6 +32,10 @@ class HistoryMailboxQueuedStrip extends StatefulWidget {
   /// Called when a row leaves Queued because the member consumed the mail.
   /// Not called for manual dismiss (UI-only hide).
   final void Function(PendingUserMessage message)? onConsumed;
+
+  /// Bumped by the host on seat/session change to drop in-flight Queued rows
+  /// without treating them as consumed.
+  final int clearToken;
   final Duration pollInterval;
 
   @override
@@ -52,8 +57,11 @@ class _HistoryMailboxQueuedStripState extends State<HistoryMailboxQueuedStrip> {
   @override
   void didUpdateWidget(HistoryMailboxQueuedStrip old) {
     super.didUpdateWidget(old);
-    if (!identical(old.submissions, widget.submissions)) {
+    if (!identical(old.submissions, widget.submissions) ||
+        old.clearToken != widget.clearToken) {
       _pending.clear();
+      _ticker?.cancel();
+      _ticker = null;
       _subscribe();
     }
   }
@@ -67,6 +75,8 @@ class _HistoryMailboxQueuedStripState extends State<HistoryMailboxQueuedStrip> {
     if (_pending.any((m) => m.id == msg.id)) return;
     setState(() => _pending.add(msg));
     _ensureTicker();
+    // Consume immediately if already read — do not wait for the first poll tick.
+    _prune();
   }
 
   void _ensureTicker() {

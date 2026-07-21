@@ -60,6 +60,7 @@ class SessionChatView extends StatefulWidget {
     this.onRemapDeadTarget,
     this.isSubmitting = false,
     this.isMailboxUnread,
+    this.peekContinueChannel,
     super.key,
   });
 
@@ -76,6 +77,10 @@ class SessionChatView extends StatefulWidget {
   /// When non-null, mailbox Queued rows poll this until the member consumes mail.
   final bool Function(String mailId)? isMailboxUnread;
 
+  /// Optional pre-submit channel peek so mailbox continues skip optimistic
+  /// thread pending (confirmed again after connect inside [onSubmit]).
+  final HistoryContinueChannel Function()? peekContinueChannel;
+
   @override
   State<SessionChatView> createState() => _SessionChatViewState();
 }
@@ -89,6 +94,9 @@ class _SessionChatViewState extends State<SessionChatView> {
 
   final _submitLock = HistoryContinueSubmitLock();
   final _mailboxQueued = StreamController<PendingUserMessage>.broadcast();
+  /// mailId → seat key at queue time (guards wrong-seat sticky promote).
+  final Map<String, String> _mailboxQueuedSeats = {};
+  var _mailboxQueuedClearToken = 0;
   var _enhancing = false;
   var _voiceListening = false;
   var _voiceSoundLevel = 0.0;
@@ -178,6 +186,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         oldWidget.selectedMemberId != widget.selectedMemberId ||
         oldWidget.team?.id != widget.team?.id) {
       unawaited(_stopLiveRefreshForSeatChange());
+      _clearMailboxQueuedUi();
       // Defer: load → runtime.setLoading sync-notifies app-scoped listeners
       // while ancestors (e.g. TpDeferredForegroundMount) are still building.
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -189,6 +198,16 @@ class _SessionChatViewState extends State<SessionChatView> {
     if (oldWidget.session.workspaceId != widget.session.workspaceId) {
       unawaited(_loadWorkspaceProjectBundle());
     }
+  }
+
+  String _mailboxSeatKey() =>
+      '${widget.session.sessionId}|${widget.selectedMemberId}';
+
+  /// Drop Queued rows on seat change without promoting them as consumed.
+  void _clearMailboxQueuedUi() {
+    _mailboxQueuedSeats.clear();
+    _mailboxQueuedClearToken++;
+    if (mounted) setState(() {});
   }
 
   @override
@@ -721,9 +740,15 @@ class _SessionChatViewState extends State<SessionChatView> {
     }
 
     final cubit = context.read<AiHistoryCubit>();
-    // Optimistic PTY UX; mailbox success rolls this back into the Queued strip.
-    cubit.enqueuePendingUser(text);
-    _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
+    // Peek before connect so mailbox continues skip optimistic thread pending.
+    // onSubmit re-resolves after connect; rollback if peek was wrong.
+    final peek =
+        widget.peekContinueChannel?.call() ?? HistoryContinueChannel.pty;
+    final optimisticPty = peek == HistoryContinueChannel.pty;
+    if (optimisticPty) {
+      cubit.enqueuePendingUser(text);
+      _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
+    }
     _controller.clear();
     if (mounted) setState(() {});
 
@@ -735,7 +760,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     setState(() {});
     if (!result.ok) {
       _cancelAwaitingIdleGrace();
-      cubit.removePendingMatching(text);
+      if (optimisticPty) cubit.removePendingMatching(text);
       _controller
         ..text = text
         ..selection = TextSelection.collapsed(offset: text.length);
@@ -745,15 +770,20 @@ class _SessionChatViewState extends State<SessionChatView> {
 
     if (result.isMailbox) {
       _cancelAwaitingIdleGrace();
-      cubit.removePendingMatching(text);
-      _mailboxQueued.add(
-        PendingUserMessage(id: result.mailId!, content: text),
-      );
+      if (optimisticPty) cubit.removePendingMatching(text);
+      final mailId = result.mailId!;
+      _mailboxQueuedSeats[mailId] = _mailboxSeatKey();
+      _mailboxQueued.add(PendingUserMessage(id: mailId, content: text));
       setState(() {});
-      unawaited(_startLiveRefresh());
+      // Mailbox text is not in the CLI transcript — skip live refresh churn.
       return;
     }
 
+    if (!optimisticPty) {
+      // Peek said mailbox but post-connect path was PTY — show the bubble now.
+      cubit.enqueuePendingUser(text);
+      _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
+    }
     unawaited(_startLiveRefresh());
   }
 
@@ -961,10 +991,16 @@ class _SessionChatViewState extends State<SessionChatView> {
                       AgentPermissionAttentionBanner(session: widget.session),
                       if (widget.isMailboxUnread != null)
                         HistoryMailboxQueuedStrip(
+                          key: ValueKey(
+                            'mailbox-queued-$_mailboxQueuedClearToken',
+                          ),
                           submissions: _mailboxQueued.stream,
                           isUnread: widget.isMailboxUnread!,
+                          clearToken: _mailboxQueuedClearToken,
                           onConsumed: (msg) {
                             if (!mounted) return;
+                            final seat = _mailboxQueuedSeats.remove(msg.id);
+                            if (seat != _mailboxSeatKey()) return;
                             context.read<AiHistoryCubit>().appendStickyLocalUser(
                               id: 'mailbox:${msg.id}',
                               text: msg.content,

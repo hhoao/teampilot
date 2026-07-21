@@ -58,6 +58,52 @@ void main() {
     expect(consumed?.content, '继续');
   });
 
+  testWidgets('prunes immediately when already consumed on add', (tester) async {
+    final submissions = StreamController<PendingUserMessage>.broadcast();
+    PendingUserMessage? consumed;
+    addTearDown(submissions.close);
+
+    await tester.pumpWidget(
+      _host(
+        HistoryMailboxQueuedStrip(
+          submissions: submissions.stream,
+          isUnread: (_) => false,
+          onConsumed: (msg) => consumed = msg,
+        ),
+      ),
+    );
+
+    submissions.add(const PendingUserMessage(id: 'mail-fast', content: 'hi'));
+    await tester.pump();
+    expect(find.byKey(kSessionHistoryMailboxQueuedStripKey), findsNothing);
+    expect(consumed?.id, 'mail-fast');
+  });
+
+  testWidgets('clearToken drops rows without onConsumed', (tester) async {
+    final submissions = StreamController<PendingUserMessage>.broadcast();
+    PendingUserMessage? consumed;
+    var clearToken = 0;
+    addTearDown(submissions.close);
+
+    Widget strip() => HistoryMailboxQueuedStrip(
+      submissions: submissions.stream,
+      isUnread: (_) => true,
+      clearToken: clearToken,
+      onConsumed: (msg) => consumed = msg,
+    );
+
+    await tester.pumpWidget(_host(strip()));
+    submissions.add(const PendingUserMessage(id: 'mail-seat', content: 'x'));
+    await tester.pump();
+    expect(find.text('x'), findsOneWidget);
+
+    clearToken = 1;
+    await tester.pumpWidget(_host(strip()));
+    await tester.pump();
+    expect(find.text('x'), findsNothing);
+    expect(consumed, isNull);
+  });
+
   testWidgets('dismiss removes row without waiting for unread', (tester) async {
     final submissions = StreamController<PendingUserMessage>.broadcast();
     PendingUserMessage? consumed;

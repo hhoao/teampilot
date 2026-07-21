@@ -187,6 +187,8 @@ final class TabMemberPtyDelivery {
   /// the member prompt (compose landing, automation, first prompt).
   ///
   /// Returns the mailbox message id when routed via TeamBus; otherwise `null`.
+  /// When [directToPty] is false and no bus is installed, returns `null`
+  /// without falling back to PTY inject (caller must not treat that as success).
   Future<String?> deliverUserCommandToMember(
     String sessionId,
     String memberId,
@@ -195,10 +197,9 @@ final class TabMemberPtyDelivery {
   }) async {
     if (!directToPty) {
       final bus = busForSession(sessionId);
-      if (bus != null) {
-        final id = bus.deliverUserCommand(memberId, message);
-        return id.isEmpty ? null : id;
-      }
+      if (bus == null) return null;
+      final id = bus.deliverUserCommand(memberId, message);
+      return id.isEmpty ? null : id;
     }
     await deliverMemberStdin(
       sessionId,

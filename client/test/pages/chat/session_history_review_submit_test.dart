@@ -117,6 +117,18 @@ void main() {
       expect(titleCalls, isEmpty);
     });
 
+    test('mailbox fails when deliver returns null (no bus)', () async {
+      final result = await runSubmit(
+        'hello',
+        channel: HistoryContinueChannel.mailbox,
+        mailboxMailId: null,
+      );
+
+      expect(result.ok, isFalse);
+      expect(deliverCalls, [('sess-1', 'member-1', 'hello', false)]);
+      expect(titleCalls, isEmpty);
+    });
+
     test(
       'resolveChannel after connect can switch pty default to mailbox',
       () async {

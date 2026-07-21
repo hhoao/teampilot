@@ -65,19 +65,27 @@ Placement in `SessionHistoryReview`:
 
 Lifecycle:
 
-1. Mailbox deliver success → Queued strip row `{mailId, text}`; roll back any
-   optimistic thread pending from submit.
-2. While `isUnread(mailId)` → stay in Queued (poll ~1s).
+1. Mailbox deliver success → Queued strip row `{mailId, text}`; skip
+   optimistic thread pending when pre-submit peek is mailbox (confirmed again
+   after connect).
+2. While `isUnread(mailId)` → stay in Queued (poll ~1s; prune also runs on add).
 3. When consumed (`!isUnread`) → remove from Queued and
    `AiHistoryCubit.appendStickyLocalUser(id: mailbox:{mailId}, text)` —
    FIFO after the committed tip; survives softReload; **does not** latch
-   Running / awaitingAssistant.
+   Running / awaitingAssistant. Promote only if the seat key still matches
+   the seat that queued the mail.
 4. Manual dismiss → hide Queued row only (no sticky bubble; mail stays in inbox).
-5. Seat / session change → `clearPendings` drops stickies.
+5. Seat / session change → bump Queued `clearToken` (drop rows without
+   consume) + `clearPendings` (stickies).
 6. PTY success → existing thread pending + Running / live refresh.
+7. Mailbox success does **not** start transcript live refresh.
 
 Ordering: `visible transcript tip` → sticky mailbox users (FIFO) →
 optimistic PTY pendings → Running placeholder (thread chrome).
+
+**Declared `mailQueued` members** (activity without `wait_for_message`) still
+use the waiting/inTurn table above — History continue does not special-case
+them; extend routing later if needed.
 
 ## Failure
 
