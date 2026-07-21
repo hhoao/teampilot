@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mock_model_gateway/core/turns.dart';
@@ -42,11 +44,49 @@ const kMatrixSimpleProviderId = 'mock-simple';
 const kMatrixLeadMemberId = 'team-lead';
 const kMatrixWorkerMemberId = 'worker-1';
 
+/// Default last-N lines kept from PTY dumps in [diagnosticsBundle].
+const kMatrixPtyDumpMaxLines = 40;
+
 /// Matrix cell mode (simple / native team / mixed TeamBus).
 enum CliMatrixMode { simple, native, mixed }
 
 /// Shared gateway recipe for a matrix cell.
 enum CliMatrixRecipe { simple3Turn, nativeCollab3Plus, mixedCollab3Plus }
+
+/// Redacts common secret shapes from failure dumps (sk-* / Bearer tokens).
+String redactMatrixSecrets(String text) {
+  var out = text.replaceAllMapped(
+    RegExp(r'sk-[A-Za-z0-9_-]{8,}'),
+    (_) => 'sk-[REDACTED]',
+  );
+  out = out.replaceAllMapped(
+    RegExp(
+      r'(Bearer\s+)[A-Za-z0-9._\-+=/]{8,}',
+      caseSensitive: false,
+    ),
+    (m) => '${m[1]}[REDACTED]',
+  );
+  return out;
+}
+
+/// Keeps the last [maxLines] lines (prefix notes how many were dropped).
+String truncateMatrixDumpLastLines(
+  String text, {
+  int maxLines = kMatrixPtyDumpMaxLines,
+}) {
+  final lines = const LineSplitter().convert(text);
+  if (lines.length <= maxLines) return text;
+  final skipped = lines.length - maxLines;
+  return '… ($skipped lines truncated)\n'
+      '${lines.sublist(skipped).join('\n')}';
+}
+
+/// Truncate + redact for PTY / diagnostics dumps.
+String sanitizeMatrixPtyDump(
+  String text, {
+  int maxLines = kMatrixPtyDumpMaxLines,
+}) =>
+    truncateMatrixDumpLastLines(redactMatrixSecrets(text), maxLines: maxLines);
 
 /// Homogeneous CLI × mode harness for L2 matrix cells (Task 8+).
 ///
@@ -99,10 +139,21 @@ final class CliMessageMatrixHarness {
   PostFrameTestHarness? postFrame;
 
   /// Mirrors [SessionChatView] mailbox Queued rows for assertions without a
-  /// pumped widget tree.
+  /// pumped widget tree (removed on [promoteMailboxConsumed]).
   final List<PendingUserMessage> mailboxQueued = [];
 
+  /// Append-only Queued submissions — survives promote so
+  /// [expectMailboxQueuedThenSticky] can prove Queued → sticky.
+  final List<PendingUserMessage> mailboxQueuedSubmitted = [];
+
   HistoryContinueSubmitResult? lastSubmitResult;
+
+  /// Compose-seat assistant markers for [mode]: simple → MARK_A*;
+  /// native/mixed → [CliTestProfile.collabLeadMarkers].
+  List<String> get composeSeatAssistantMarkers => switch (mode) {
+    CliMatrixMode.simple => profile.assistantVisibleMarkers,
+    CliMatrixMode.native || CliMatrixMode.mixed => profile.collabLeadMarkers,
+  };
 
   String? _savedBusBridgeEnv;
   bool _envOverrideApplied = false;
@@ -466,9 +517,12 @@ final class CliMessageMatrixHarness {
       if (optimisticPty && hist != null) {
         hist.removePendingMatching(trimmed);
       }
-      mailboxQueued.add(
-        PendingUserMessage(id: result.mailId!, content: trimmed),
+      final queued = PendingUserMessage(
+        id: result.mailId!,
+        content: trimmed,
       );
+      mailboxQueued.add(queued);
+      mailboxQueuedSubmitted.add(queued);
       return result;
     }
 
@@ -538,12 +592,17 @@ final class CliMessageMatrixHarness {
     await shell.probe.syncDisplayGrid();
     throw StateError(
       'Timed out waiting for PTY markers $markers\n'
-      'frame:\n${shell.probe.describeProbeWindow(scanRows: scanRows)}\n'
+      'frame:\n${sanitizeMatrixPtyDump(shell.probe.describeProbeWindow(scanRows: scanRows))}\n'
       '${diagnosticsBundle()}',
     );
   }
 
   /// Waits for user + ≥3 assistant bubbles on [history] (channel-aware).
+  ///
+  /// Default markers: [composeSeatAssistantMarkers] (simple → MARK_A*,
+  /// native/mixed → collab lead markers). Mailbox channel waits for Queued →
+  /// sticky via [promoteMailboxConsumed] — does not require a user bubble on
+  /// the cubit while mail is only Queued.
   Future<void> waitForBubbles({
     required String userText,
     List<String>? assistantMarkers,
@@ -553,7 +612,7 @@ final class CliMessageMatrixHarness {
     if (hist == null) {
       throw StateError('createCubit(createHistory: true) before waitForBubbles');
     }
-    final markers = assistantMarkers ?? profile.assistantVisibleMarkers;
+    final markers = assistantMarkers ?? composeSeatAssistantMarkers;
     final channel = lastSubmitResult?.channel ?? peekContinueChannel();
     final deadline = DateTime.now().add(timeout);
 
@@ -562,18 +621,32 @@ final class CliMessageMatrixHarness {
       try {
         if (channel == HistoryContinueChannel.mailbox) {
           final mailId = lastSubmitResult?.mailId;
-          if (mailId != null &&
-              hist.runtime.messages.any((m) => m.id == 'mailbox:$mailId')) {
-            // Sticky already promoted.
-          } else if (mailId != null &&
-              mailboxQueued.any((m) => m.id == mailId)) {
-            // Still Queued — Task 9 cells call promoteMailboxConsumed when the
-            // member consumes; do not fail yet while waiting for sticky.
+          if (mailId == null || mailId.isEmpty) {
+            throw StateError(
+              'mailbox submit missing mailId\n${diagnosticsBundle()}',
+            );
           }
-          expectUserBubble(
-            hist,
-            userText,
-            matches: profile.matchesUserBubble,
+          final stickyId = 'mailbox:$mailId';
+          final stickyReady = hist.runtime.messages.any(
+            (m) => m.role == AiRole.user && m.id == stickyId,
+          );
+          if (!stickyReady) {
+            // Still Queued (or not yet promoted) — do not expectUserBubble.
+            if (!mailboxQueuedSubmitted.any((m) => m.id == mailId)) {
+              throw TestFailure(
+                'mailbox Queued snapshot missing mailId=$mailId\n'
+                '${diagnosticsBundle()}',
+              );
+            }
+            throw TestFailure(
+              'mailbox sticky not ready yet (mail still Queued or unconsumed)',
+            );
+          }
+          expectMailboxQueuedThenSticky(
+            queuedSnapshot: mailboxQueuedSubmitted,
+            history: hist,
+            text: userText,
+            mailId: mailId,
           );
         } else {
           expectUserBubble(
@@ -613,24 +686,35 @@ final class CliMessageMatrixHarness {
   /// Gateway + thread (+ optional PTY frame) for attribution on red cells.
   String diagnosticsBundle({String? memberId}) {
     final buf = StringBuffer('CliMessageMatrixHarness diagnostics\n');
-    buf.writeln('cli=${profile.tool.value} mode=${mode.name} recipe=${recipe.name}');
+    buf.writeln(
+      'cli=${profile.tool.value} mode=${mode.name} recipe=${recipe.name}',
+    );
     buf.writeln('cliPath=$cliPath');
-    buf.writeln(gateway?.dumpDiagnostics() ?? 'gateway: not started');
+    buf.writeln(
+      redactMatrixSecrets(
+        gateway?.dumpDiagnostics() ?? 'gateway: not started',
+      ),
+    );
     final hist = history;
     if (hist != null) {
-      buf.writeln(dumpThread(hist));
+      buf.writeln(redactMatrixSecrets(dumpThread(hist)));
     } else {
       buf.writeln('history: not created');
     }
     buf.writeln(
       'mailboxQueued=${mailboxQueued.map((m) => '${m.id}:${m.content}').toList()}',
     );
+    buf.writeln(
+      'mailboxQueuedSubmitted='
+      '${mailboxQueuedSubmitted.map((m) => '${m.id}:${m.content}').toList()}',
+    );
     buf.writeln('lastSubmit=$lastSubmitResult');
-    final shell = memberShell(memberId ?? (session == null ? '' : composeMemberId));
+    final mid = memberId ?? (session == null ? '' : composeMemberId);
+    final shell = mid.isEmpty ? null : memberShell(mid);
     if (shell != null) {
       try {
         buf.writeln(
-          'ptyFrame:\n${shell.probe.describeProbeWindow(scanRows: 52)}',
+          'ptyFrame:\n${sanitizeMatrixPtyDump(shell.probe.describeProbeWindow(scanRows: 52))}',
         );
       } on Object catch (e) {
         buf.writeln('ptyFrame: error $e');

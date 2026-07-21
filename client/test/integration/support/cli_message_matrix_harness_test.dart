@@ -3,8 +3,10 @@ import 'package:mock_model_gateway/scenarios/simple_3turn.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/terminal/pending_user_message.dart';
 
 import '../../support/post_frame_test_harness.dart';
+import 'chat_thread_assertions.dart';
 import 'cli_message_matrix_harness.dart';
 import 'cli_test_profile.dart';
 
@@ -73,6 +75,97 @@ void main() {
     expect(
       CliMessageMatrixHarness.defaultRecipeFor(CliMatrixMode.mixed),
       CliMatrixRecipe.mixedCollab3Plus,
+    );
+  });
+
+  test('composeSeatAssistantMarkers are mode-aware', () {
+    final profile = CliTestProfiles.forTool(CliTool.claude);
+    expect(
+      CliMessageMatrixHarness(
+        profile: profile,
+        mode: CliMatrixMode.simple,
+      ).composeSeatAssistantMarkers,
+      profile.assistantVisibleMarkers,
+    );
+    expect(
+      CliMessageMatrixHarness(
+        profile: profile,
+        mode: CliMatrixMode.simple,
+      ).composeSeatAssistantMarkers,
+      ['MARK_A1', 'MARK_A2', 'MARK_A3'],
+    );
+    for (final mode in [CliMatrixMode.native, CliMatrixMode.mixed]) {
+      final harness = CliMessageMatrixHarness(profile: profile, mode: mode);
+      expect(
+        harness.composeSeatAssistantMarkers,
+        profile.collabLeadMarkers,
+        reason: '$mode must use collab lead markers, not MARK_A*',
+      );
+      expect(
+        harness.composeSeatAssistantMarkers,
+        isNot(equals(profile.assistantVisibleMarkers)),
+      );
+    }
+  });
+
+  test('redactMatrixSecrets masks sk- and Bearer tokens', () {
+    final raw =
+        'key=sk-abcdefghijklmnopqrstuvwxyz Authorization: Bearer abcdefghijklmnop';
+    final redacted = redactMatrixSecrets(raw);
+    expect(redacted, contains('sk-[REDACTED]'));
+    expect(redacted, contains('Bearer [REDACTED]'));
+    expect(redacted, isNot(contains('sk-abcdefgh')));
+    expect(redacted, isNot(contains('abcdefghijklmnop')));
+  });
+
+  test('truncateMatrixDumpLastLines keeps only the tail', () {
+    final lines = [for (var i = 0; i < 5; i++) 'line-$i'];
+    final out = truncateMatrixDumpLastLines(lines.join('\n'), maxLines: 2);
+    expect(out, startsWith('… (3 lines truncated)'));
+    expect(out, contains('line-3'));
+    expect(out, contains('line-4'));
+    expect(out, isNot(contains('line-0')));
+  });
+
+  test('sanitizeMatrixPtyDump truncates and redacts', () {
+    final lines = [
+      for (var i = 0; i < 10; i++) 'row-$i',
+      'secret sk-abcdefghijklmnopqrstuvwxyz',
+    ];
+    final out = sanitizeMatrixPtyDump(lines.join('\n'), maxLines: 3);
+    expect(out, startsWith('… (8 lines truncated)'));
+    expect(out, contains('sk-[REDACTED]'));
+    expect(out, isNot(contains('sk-abcdefgh')));
+  });
+
+  test('mailbox Queued snapshot survives promote for sticky assert', () {
+    final harness = CliMessageMatrixHarness.forCli(
+      CliTool.claude,
+      mode: CliMatrixMode.mixed,
+    );
+    const mailId = 'mail-99';
+    const text = 'operator mailbox text';
+    harness.mailboxQueued.add(
+      const PendingUserMessage(id: mailId, content: text),
+    );
+    harness.mailboxQueuedSubmitted.add(
+      const PendingUserMessage(id: mailId, content: text),
+    );
+
+    // Minimal history cubit not needed for promote if history is null —
+    // attach via createCubit would be heavy; call append path manually.
+    final postFrame = PostFrameTestHarness();
+    harness.createCubit(postFrame: postFrame);
+    addTearDown(harness.dispose);
+
+    harness.promoteMailboxConsumed(mailId);
+    expect(harness.mailboxQueued, isEmpty);
+    expect(harness.mailboxQueuedSubmitted, hasLength(1));
+    expectMailboxQueuedThenSticky(
+      queuedSnapshot: harness.mailboxQueuedSubmitted,
+      history: harness.history!,
+      text: text,
+      mailId: mailId,
     );
   });
 }
