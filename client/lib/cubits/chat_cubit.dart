@@ -29,6 +29,8 @@ import '../services/team_bus/artifacts/artifact_registry.dart';
 import '../services/team_bus/artifacts/artifact_transfer_service.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
+import '../services/agent_status/agent_attention_state.dart';
+import '../services/agent_status/agent_status_event.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
 import 'agent_attention_cubit.dart';
 import '../services/launch/launch_factory.dart';
@@ -170,9 +172,20 @@ class ChatCubit extends Cubit<ChatState>
         globalPresets: () => _lifecycle.globalPresets,
         activeSessionId: () => state.activeSessionId,
         presence: () => _presenceCubit?.state.presence ?? const {},
-        sessionBusyFromAttention: (sessionId) =>
-            _agentAttentionCubit?.state.sessionIsAgentActive(sessionId) ??
-            false,
+        sessionBusyFromAttention: (sessionId) {
+          final attention = _agentAttentionCubit;
+          if (attention == null) return false;
+          final bus = _tabStore.openTabBySessionId(sessionId)?.teamBus;
+          // Why: WaitEntered clears hook working, but a late PreToolUse can
+          // re-stamp attention while the member is still bus-parked.
+          if (bus != null) {
+            return attention.state.sessionIsAgentActive(
+              sessionId,
+              includeMember: (id) => !bus.isWaitingForMessage(id),
+            );
+          }
+          return attention.state.sessionIsAgentActive(sessionId);
+        },
         onAfterIdleWatchTick: () => unawaited(_onIdleWatchTick()),
         onAfterTurnLatched: _onOperatorTurnLatched,
       );
@@ -192,6 +205,7 @@ class ChatCubit extends Cubit<ChatState>
     materializer: _memberMaterializer,
     globalPresets: () => _lifecycle.globalPresets,
     onAfterTurnLatched: _onOperatorTurnLatched,
+    onMemberWaitEntered: _onMemberWaitEntered,
     artifactServiceFactory: _buildArtifactService,
     launchWorkTarget: (session, {String? memberId}) =>
         _lifecycle.launchWorkTarget(
@@ -474,6 +488,20 @@ class ChatCubit extends Cubit<ChatState>
       attention.clearSeat(sessionId: sessionId, memberId: memberId);
     }
     _recomputeWorkingSessions();
+  }
+
+  /// Mixed `wait_for_message` park — drop PreToolUse working so the sidebar
+  /// spinner matches member presence (bus idle while the MCP tool blocks).
+  void _onMemberWaitEntered(String sessionId, String memberId) {
+    final attention = _agentAttentionCubit;
+    if (attention == null || memberId.trim().isEmpty) return;
+    attention.clearSeat(sessionId: sessionId, memberId: memberId);
+    attention.applyEvent(
+      sessionId: sessionId,
+      memberId: memberId,
+      event: const AgentStatusEvent(state: AgentSeatAttention.done),
+      skipPermissions: false,
+    );
   }
 
   @visibleForTesting

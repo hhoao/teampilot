@@ -59,16 +59,24 @@ class AgentAttentionState extends Equatable {
   bool sessionHasWaiting(String sessionId) =>
       waitingMemberIds(sessionId).isNotEmpty;
 
-  /// True when any fresh seat is [AgentSeatAttention.waiting] or
+  /// True when any fresh seat in [sessionId] is [AgentSeatAttention.waiting] or
   /// [AgentSeatAttention.working] — Orca-style "agent still in a turn" for
   /// sidebar / History working indicators (PTY idle-watch may have ended the
   /// latch while permission was held).
-  bool sessionIsAgentActive(String sessionId) {
+  ///
+  /// When [includeMember] is set, seats for which it returns false are ignored
+  /// (e.g. mixed members parked in `wait_for_message`).
+  bool sessionIsAgentActive(
+    String sessionId, {
+    bool Function(String memberId)? includeMember,
+  }) {
     final prefix = '${sessionId.trim()}\u0000';
     final now = _now;
     for (final e in seats.entries) {
       if (!e.key.startsWith(prefix)) continue;
       if (_isStale(e.value, now)) continue;
+      final memberId = e.key.substring(prefix.length);
+      if (includeMember != null && !includeMember(memberId)) continue;
       final a = e.value.attention;
       if (a == AgentSeatAttention.waiting || a == AgentSeatAttention.working) {
         return true;

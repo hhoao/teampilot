@@ -340,5 +340,35 @@ void main() {
       );
       expect(c.state.sessionIsAgentActive('s1'), isFalse);
     });
+
+    test('sessionIsAgentActive can ignore parked members', () {
+      final c = _cubit();
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'parked',
+        event: const AgentStatusEvent(state: AgentSeatAttention.working),
+        skipPermissions: false,
+      );
+      c.applyEvent(
+        sessionId: 's1',
+        memberId: 'busy',
+        event: const AgentStatusEvent(state: AgentSeatAttention.working),
+        skipPermissions: false,
+      );
+      expect(
+        c.state.sessionIsAgentActive(
+          's1',
+          includeMember: (id) => id != 'parked',
+        ),
+        isTrue,
+      );
+      expect(
+        c.state.sessionIsAgentActive(
+          's1',
+          includeMember: (id) => id != 'parked' && id != 'busy',
+        ),
+        isFalse,
+      );
+    });
   });
 }

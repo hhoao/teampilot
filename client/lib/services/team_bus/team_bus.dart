@@ -40,8 +40,10 @@ class TeamBus implements CoordinationView {
     TaskQueue? taskQueue,
     this.maxHop = 8,
     bool Function(String memberId)? reportsIdleViaReceiveWork,
+    void Function(String memberId)? onWaitEntered,
   }) : _env = environment ?? BusEnvironment(ids: idGenerator, clock: clock),
        _reportsIdleViaReceiveWork = reportsIdleViaReceiveWork,
+       _onWaitEntered = onWaitEntered,
        _messageLog = messageLog,
        _taskQueue = taskQueue,
        _launcher = launcher,
@@ -100,6 +102,10 @@ class TeamBus implements CoordinationView {
   /// 成员 idle 是否由 [receiveWork] 内 [_announceWorkerIdleToLead] 上报（forceWait
   /// CLI）。为真时 [onMemberIdle] 跳过协调策略 idle，避免与 receiveWork 双投递。
   final bool Function(String memberId)? _reportsIdleViaReceiveWork;
+
+  /// Fired when a member parks in `wait_for_message` ([WaitEntered]).
+  /// Used to clear CLI hook attention so the session spinner matches bus idle.
+  final void Function(String memberId)? _onWaitEntered;
   late final CoordinationPolicy _coordination;
   final int maxHop;
   final Map<String, AgentNode> _members = {};
@@ -394,6 +400,7 @@ class TeamBus implements CoordinationView {
     node.doorbelled = false; // 进 wait = 响应了门铃并开始消费 → 解闸，读完后新邮件再响。
     node.doorbelledAt = null; // 已开工，看门狗停止重敲。
     _apply(node, const WaitEntered());
+    _onWaitEntered?.call(memberId);
     var batch = const <TeamMessage>[];
     try {
       batch = await node.inbox.waitAndTake(timeout: timeout, cancel: cancel);
@@ -453,6 +460,7 @@ class TeamBus implements CoordinationView {
     node.doorbelled = false; // 进 wait = 响应了门铃并开始消费 → 解闸，读完后新邮件再响。
     node.doorbelledAt = null; // 已开工，看门狗停止重敲。
     _apply(node, const WaitEntered());
+    _onWaitEntered?.call(memberId);
     // 本次 wait 是否已向 leader 上报过「我空闲了」（每个真正阻塞的 wait 期上报一次，
     // spurious wake 后重判不重复上报）。
     var announcedIdle = false;

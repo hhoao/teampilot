@@ -6,11 +6,14 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/models/member_presence.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/agent_status/agent_attention_state.dart';
+import 'package:teampilot/services/agent_status/agent_status_event.dart';
 import 'package:teampilot/services/team_bus/team_message.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
@@ -315,6 +318,103 @@ void main() {
             );
         final batch = await waiting;
         expect(batch, hasLength(1));
+      },
+    );
+  });
+
+  group('mixed wait park clears hook attention (ChatCubit + AgentAttention)', () {
+    late Directory tmp;
+    late SessionRepository repo;
+    late ChatCubit cubit;
+    late AgentAttentionCubit attention;
+    late PostFrameTestHarness postFrame;
+
+    setUp(() async {
+      tmp = await Directory.systemTemp.createTemp('it_idle_busy_attn_');
+      repo = SessionRepository(rootDir: tmp.path);
+      postFrame = PostFrameTestHarness();
+      attention = AgentAttentionCubit(pruneInterval: null);
+      cubit = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        sessionRepository: repo,
+        postFrameScheduler: postFrame.scheduler,
+        agentAttentionCubit: attention,
+        terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) =>
+                RunningConnectedFakeShell(executable: executable),
+      );
+    });
+
+    tearDown(() async {
+      await postFrame.flush();
+      await drainPendingAsyncWork();
+      await cubit.close();
+      await attention.close();
+      await drainPendingAsyncWork();
+      await deleteTempDirBestEffort(tmp);
+    });
+
+    test(
+      'PreToolUse working does not keep spinner after wait_for_message park',
+      () async {
+        final opened = await openMixedSessionWithShells(
+          cubit: cubit,
+          repo: repo,
+          postFrame: postFrame,
+        );
+        final bus = cubit.activeTab!.teamBus!;
+
+        // Simulate Claude PreToolUse(wait_for_message) before the tool parks.
+        attention.applyEvent(
+          sessionId: opened.sessionId,
+          memberId: 'team-lead',
+          event: const AgentStatusEvent(
+            state: AgentSeatAttention.working,
+            hookEventName: 'PreToolUse',
+            toolName: 'wait_for_message',
+          ),
+          skipPermissions: false,
+        );
+        await drainPendingAsyncWork();
+        expect(
+          cubit.state.workingSessionIds,
+          contains(opened.sessionId),
+          reason: 'hook working lights sidebar before park',
+        );
+
+        final waiting = bus.receive('team-lead');
+        await Future<void>.delayed(Duration.zero);
+        cubit.debugTickIdleWatch();
+        await drainPendingAsyncWork();
+
+        expect(bus.isWaitingForMessage('team-lead'), isTrue);
+        expect(
+          cubit.state.workingSessionIds,
+          isEmpty,
+          reason:
+              'bus park must clear hook attention so sidebar matches members',
+        );
+        expect(
+          attention.state.attentionFor(
+            sessionId: opened.sessionId,
+            memberId: 'team-lead',
+          ),
+          anyOf(isNull, equals(AgentSeatAttention.done)),
+        );
+
+        bus
+            .memberById('team-lead')!
+            .inbox
+            .deliver(
+              const TeamMessage(
+                id: '1',
+                from: 'worker-1',
+                to: 'team-lead',
+                content: 'ping',
+              ),
+            );
+        await waiting;
       },
     );
   });

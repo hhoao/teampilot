@@ -37,6 +37,7 @@ class TabTeamBusCoordinator {
     memberWorkDirs,
     SshProfile? Function(String profileId)? sshProfileById,
     void Function(String sessionId, String memberId)? onAfterTurnLatched,
+    void Function(String sessionId, String memberId)? onMemberWaitEntered,
     ArtifactTransferService Function(AppSession session)?
     artifactServiceFactory,
   }) : _gateway = gateway,
@@ -47,6 +48,7 @@ class TabTeamBusCoordinator {
        _memberWorkDirs = memberWorkDirs,
        _sshProfileById = sshProfileById,
        _onAfterTurnLatched = onAfterTurnLatched,
+       _onMemberWaitEntered = onMemberWaitEntered,
        _artifactServiceFactory = artifactServiceFactory;
 
   final TeammateBusMcpGateway _gateway;
@@ -62,6 +64,9 @@ class TabTeamBusCoordinator {
   _memberWorkDirs;
   final SshProfile? Function(String profileId)? _sshProfileById;
   final void Function(String sessionId, String memberId)? _onAfterTurnLatched;
+
+  /// Mixed bus park (`wait_for_message`) — clear CLI hook attention for the seat.
+  final void Function(String sessionId, String memberId)? _onMemberWaitEntered;
 
   /// P3d: builds the per-session cross-machine artifact transfer service. Null =
   /// the three artifact MCP tools are not advertised (single-machine / tests).
@@ -114,6 +119,9 @@ class TabTeamBusCoordinator {
       taskQueue: taskQueue,
       reportsIdleViaReceiveWork: (memberId) =>
           forceWaitByMember[memberId] ?? team.forceWaitBeforeStop,
+      onWaitEntered: (memberId) {
+        _onMemberWaitEntered?.call(session.sessionId, memberId);
+      },
     );
     final cliTeamName = session.cliTeamName;
     bus.installSessionContext(
