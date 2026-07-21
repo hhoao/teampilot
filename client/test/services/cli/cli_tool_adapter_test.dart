@@ -313,7 +313,7 @@ void main() {
     expect(args, containsAllInOrder(['--cd', '/home/hhoa/git/agent']));
     expect(args, containsAllInOrder(['-m', 'sonnet']));
     expect(args, contains('--dangerously-bypass-approvals-and-sandbox'));
-    // mixed mode provisions a self-trusted Stop hook → bypass the trust prompt
+    // TeamPilot-provisioned hooks (Stop / agent-status) → bypass trust prompt
     expect(args, contains('--dangerously-bypass-hook-trust'));
     // never the flashskyai/claude roster flags
     expect(args, isNot(contains('--team')));
@@ -322,14 +322,15 @@ void main() {
     expect(args, isNot(contains('--append-system-prompt-file')));
   });
 
-  test('codex adapter omits hook-trust bypass outside mixed mode', () {
+  test('codex adapter bypasses hook-trust outside mixed mode too', () {
     const adapter = CodexCliToolAdapter();
 
     final args = adapter.buildArguments(
       CliLaunchContext(team: flashskyaiTeam, member: member),
     );
 
-    expect(args, isNot(contains('--dangerously-bypass-hook-trust')));
+    // Simple/native also stamp agent-status hooks into CODEX_HOME.
+    expect(args, contains('--dangerously-bypass-hook-trust'));
   });
 
   test('claude mixed worker gets shared disallowedTools without Agent', () {

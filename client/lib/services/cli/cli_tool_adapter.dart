@@ -218,7 +218,6 @@ class CodexCliToolAdapter implements CliToolAdapter {
   @override
   List<String> buildArguments(CliLaunchContext context) {
     final member = context.member;
-    final mixed = context.team.teamMode == TeamMode.mixed;
     final args = <String>[];
 
     // `resume <id>` must lead the argv (it is a subcommand). codex ignores any
@@ -241,11 +240,10 @@ class CodexCliToolAdapter implements CliToolAdapter {
     if (member.dangerouslySkipPermissions) {
       args.add('--dangerously-bypass-approvals-and-sandbox');
     }
-    // Mixed mode provisions a self-trusted Stop hook (idle shim) into CODEX_HOME;
-    // bypass the interactive hook-trust prompt for this invocation.
-    if (mixed) {
-      args.add('--dangerously-bypass-hook-trust');
-    }
+    // TeamPilot writes hooks into CODEX_HOME (mixed Stop→/idle, and
+    // agent-status curl hooks in simple + team). Bypass Codex's interactive
+    // "Hooks need review" prompt for this managed invocation.
+    args.add('--dangerously-bypass-hook-trust');
 
     _addExtraArgs(args, context.team.extraArgs);
     _addExtraArgs(args, member.extraArgs);

@@ -6,8 +6,8 @@ import '../../agent_status/member_agent_status_endpoint.dart';
 /// not gated on mixed mode. Mixed-only Stop→`/idle` stays in
 /// [CodexTeamBusOverlay].
 ///
-/// No trust entries: TeamPilot's existing Stop→`/idle` curl hooks also omit
-/// Codex hook-trust promotion.
+/// No trust entries in TOML: launch uses `--dangerously-bypass-hook-trust`
+/// (see [CodexCliToolAdapter]) so Codex skips the interactive trust prompt.
 abstract final class CodexAgentStatusOverlay {
   CodexAgentStatusOverlay._();
 
