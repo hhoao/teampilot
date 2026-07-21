@@ -179,7 +179,7 @@ final class CodexTerminalBehavior implements TerminalBehaviorCapability {
 final class OpencodeTerminalBehavior implements TerminalBehaviorCapability {
   const OpencodeTerminalBehavior();
   @override
-  bool get usesFullScreenInput => false;
+  bool get usesFullScreenInput => true;
   @override
   Duration get fullScreenPasteSettleDelay => const Duration(milliseconds: 10);
   @override
@@ -188,7 +188,7 @@ final class OpencodeTerminalBehavior implements TerminalBehaviorCapability {
   bool get forwardsColorSchemeReport => true;
   @override
   TerminalPathDropBehavior get pathDropBehavior =>
-      TerminalPathDropBehavior.defaultFor(usesFullScreenInput: false);
+      TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
   @override
   FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
       FullscreenCrAckStrategy.anchorCellClears;

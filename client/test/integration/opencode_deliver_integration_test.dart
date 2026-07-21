@@ -4,9 +4,7 @@ library;
 
 /// Production-shaped opencode PTY delivery with [FullscreenCrAckStrategy.anchorCellClears].
 ///
-/// opencode is not yet `usesFullScreenInput` in production (still `writeln`), but
-/// this test exercises the same [FullscreenPtyAutomation] path we will use once
-/// full-screen doorbell inject is enabled.
+/// Matches [OpencodeTerminalBehavior.usesFullScreenInput] (bracketed paste + CR ACK).
 ///
 /// Run:
 ///   LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib \
