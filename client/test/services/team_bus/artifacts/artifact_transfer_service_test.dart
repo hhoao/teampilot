@@ -9,13 +9,12 @@ import '../../../support/in_memory_filesystem.dart';
 /// Member A publishes on `local`; member B fetches on `ssh:hostB`. Two fake
 /// filesystems stand in for the two machines.
 class _Fixture {
-  _Fixture({int maxBytes = ArtifactTransferService.defaultMaxBytes}) {
+  _Fixture() {
     service = ArtifactTransferService(
       registry: ArtifactRegistry(),
       resolveFs: (targetId) async => _fsByTarget[targetId]!,
       targetForMember: (memberId) => _targetByMember[memberId]!,
       inboxDirFor: (memberId) => _inboxByMember[memberId]!,
-      maxBytes: maxBytes,
     );
   }
 
@@ -83,19 +82,7 @@ void main() {
       );
     });
 
-    test('over-cap transfer throws', () async {
-      final f = _Fixture(maxBytes: 8);
-      await f.seedSource(List<int>.filled(32, 1));
-      // publish rejects when the backend reports a known size over the cap
-      expect(
-        () => f.service.publish(
-          publisherMemberId: 'A',
-          path: '/work/out.bin',
-          name: 'big',
-        ),
-        throwsA(isA<ArtifactTooLargeException>()),
-      );
-    });
+    // TODO(Task 6): multi-chunk transfer and resume tests replace over-cap check.
 
     test(
       'dest exists without overwrite throws; with overwrite succeeds',

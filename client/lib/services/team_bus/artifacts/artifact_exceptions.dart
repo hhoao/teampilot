@@ -42,14 +42,14 @@ class ArtifactSourceNotFileException extends ArtifactException {
       'symlink). Only single files can be published.';
 }
 
-/// The artifact exceeds the configured size cap.
-class ArtifactTooLargeException extends ArtifactException {
-  ArtifactTooLargeException({required this.sizeBytes, required this.maxBytes});
-  final int sizeBytes;
-  final int maxBytes;
+/// Live source identity, size, or mtime no longer matches resume metadata.
+class ArtifactSourceChangedException extends ArtifactException {
+  ArtifactSourceChangedException({required this.detail});
+  final String detail;
   @override
   String toString() =>
-      'Artifact is $sizeBytes bytes, over the $maxBytes byte limit.';
+      'Artifact source changed during transfer ($detail). '
+      'Partial data was discarded; retry fetch_artifact from scratch.';
 }
 
 /// The fetch destination already exists and overwrite was not requested.

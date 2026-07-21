@@ -29,35 +29,27 @@ class ArtifactFetchResult {
 /// - [targetForMember] — member id → the RuntimeTarget id it runs on.
 /// - [inboxDirFor] — member id → its session inbox dir (the only place a fetch
 ///   may write; enforced by a path-escape guard).
-/// - [maxBytes] — hard size cap (bytes are buffered whole; no base64 ever rides
-///   the bus). v1 buffers the whole file — streaming is a future increment.
 class ArtifactTransferService {
   ArtifactTransferService({
     required this.registry,
     required Future<Filesystem> Function(String targetId) resolveFs,
     required String Function(String memberId) targetForMember,
     required String Function(String memberId) inboxDirFor,
-    this.maxBytes = defaultMaxBytes,
     int Function()? nowMs,
   }) : _resolveFs = resolveFs,
        _targetForMember = targetForMember,
        _inboxDirFor = inboxDirFor,
        _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
 
-  /// 256 MiB. Bytes are buffered in memory during a transfer, so this also
-  /// bounds peak memory per fetch.
-  static const int defaultMaxBytes = 256 * 1024 * 1024;
-
   final ArtifactRegistry registry;
-  final int maxBytes;
   final Future<Filesystem> Function(String targetId) _resolveFs;
   final String Function(String memberId) _targetForMember;
   final String Function(String memberId) _inboxDirFor;
   final int Function() _nowMs;
 
   /// Register a handle to [path] on [publisherMemberId]'s own machine. Validates
-  /// the source is a regular file and (when the backend reports a size) within
-  /// the cap; never moves bytes. Throws an [ArtifactException] on rejection.
+  /// the source is a regular file; never moves bytes. Throws an
+  /// [ArtifactException] on rejection.
   Future<ArtifactHandle> publish({
     required String publisherMemberId,
     required String path,
@@ -73,9 +65,6 @@ class ArtifactTransferService {
       throw ArtifactSourceNotFileException(normalized);
     }
     final size = stat.size ?? -1;
-    if (size >= 0 && size > maxBytes) {
-      throw ArtifactTooLargeException(sizeBytes: size, maxBytes: maxBytes);
-    }
     final handle = ArtifactHandle(
       name: name.trim(),
       publisherMemberId: publisherMemberId,
@@ -136,12 +125,6 @@ class ArtifactTransferService {
     final bytes = await srcFs.readBytes(handle.absolutePath);
     if (bytes == null) {
       throw ArtifactSourceUnreadableException(handle.absolutePath);
-    }
-    if (bytes.length > maxBytes) {
-      throw ArtifactTooLargeException(
-        sizeBytes: bytes.length,
-        maxBytes: maxBytes,
-      );
     }
 
     await destFs.ensureDir(ctx.dirname(resolvedDest));
