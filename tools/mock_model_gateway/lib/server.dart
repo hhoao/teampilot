@@ -94,7 +94,9 @@ class MockModelGatewayServer {
   void resetScenarios() => _engine.reset();
 
   int requestCountFor(String apiKey) =>
-      _requestLog.where((e) => e.apiKey == apiKey).length;
+      _requestLog
+          .where((e) => e.apiKey == apiKey && e.turnIndex >= 0)
+          .length;
 
   Future<void> start({InternetAddress? address}) async {
     if (_server != null) {
@@ -164,6 +166,34 @@ class MockModelGatewayServer {
     final model = bodyJson?['model'] as String? ?? 'mock-model';
 
     try {
+      // Claude Code issues a tool-less /v1/messages probe before the real
+      // tool-bearing turn. Do not consume ScenarioEngine turns for that probe.
+      if (adapter.wireId == 'anthropic' && !_requestHasTools(bodyJson)) {
+        final messageId = 'msg_probe_${DateTime.now().microsecondsSinceEpoch}';
+        final body = adapter.encodeResponse(
+          turn: const ResolvedTextTurn(''),
+          messageId: messageId,
+          model: model,
+        );
+        _requestLog.add(
+          RequestLogEntry(
+            apiKey: apiKey,
+            wire: adapter.wireId,
+            path: request.uri.path,
+            at: DateTime.now(),
+            turnIndex: -1,
+            turnLabel: 'probe(no-tools)',
+          ),
+        );
+        final mime = adapter.responseMimeType.split('/');
+        request.response
+          ..statusCode = HttpStatus.ok
+          ..headers.contentType = ContentType(mime[0], mime[1])
+          ..write(body)
+          ..close();
+        return;
+      }
+
       final turnIndex = _engine.peekTurnIndex(apiKey);
       final resolved = _engine.nextResolvedTurn(apiKey);
       // Index was peeked before advance; safe once nextResolvedTurn succeeded.
@@ -199,6 +229,11 @@ class MockModelGatewayServer {
         ..write(e.message)
         ..close();
     }
+  }
+
+  static bool _requestHasTools(Map<String, Object?>? body) {
+    final tools = body?['tools'];
+    return tools is List && tools.isNotEmpty;
   }
 
   WireAdapter? _adapterFor(String path) {

@@ -863,6 +863,9 @@ class SessionLifecycleService {
         sessionTeam: plan.cliTeamName,
         workingDirectory: personalDirs.workingDirectory,
         additionalDirectories: personalDirs.addDirs,
+        // Synthetic 1-member native profile is argv plumbing only — do not
+        // enable Claude agent-team "manual mode" (causes multi-call loops).
+        nativeAgentTeam: false,
       );
     }
 

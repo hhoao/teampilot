@@ -397,4 +397,27 @@ void main() {
     expect(args, isNot(contains('--disallowedTools')));
     expect(args, contains('--team-name'));
   });
+
+  test('claude simple/personal omits native agent-team flags', () {
+    const adapter = ClaudeCodeCliToolAdapter();
+    final args = adapter.buildArguments(
+      CliLaunchContext(
+        team: const TeamProfile(
+          id: 'workspace-1',
+          name: 'session-1',
+          cli: CliTool.claude,
+          teamMode: TeamMode.native,
+          members: [TeamMemberConfig(id: 'session-1', name: 'session-1')],
+        ),
+        member: const TeamMemberConfig(id: 'session-1', name: 'session-1'),
+        sessionTeam: 'session-1',
+        nativeAgentTeam: false,
+      ),
+    );
+
+    expect(args, isNot(contains('--team-name')));
+    expect(args, isNot(contains('--agent-name')));
+    expect(args, isNot(contains('--agent-id')));
+    expect(args, containsAllInOrder(['--disallowedTools', 'Agent']));
+  });
 }

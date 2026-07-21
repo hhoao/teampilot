@@ -126,13 +126,72 @@ void main() {
     addTearDown(server.stop);
 
     final uri = server.baseUri.replace(path: '/v1/messages');
-    final resp = await postJson(uri, apiKey: 'lead', bearer: false);
+    final resp = await postJson(
+      uri,
+      apiKey: 'lead',
+      bearer: false,
+      body: {
+        'model': 'mock-model',
+        'messages': [],
+        'tools': [
+          {'name': 'noop', 'description': 'test', 'input_schema': {}},
+        ],
+      },
+    );
     expect(resp.statusCode, 200);
     expect(resp.headers.contentType?.mimeType, 'text/event-stream');
     final body = await resp.transform(utf8.decoder).join();
     expect(body, contains('anthropic-hi'));
     expect(server.requestLog, hasLength(1));
     expect(server.requestLog.single.path, '/v1/messages');
+  });
+
+  test('Anthropic tool-less probe does not consume scenario turns', () async {
+    final server = MockModelGatewayServer(
+      engine: ScenarioEngine({
+        'lead': MockScenario(
+          turns: [TextTurn('real-1'), TextTurn('real-2')],
+        ),
+      }),
+    );
+    await server.start();
+    addTearDown(server.stop);
+
+    final uri = server.baseUri.replace(path: '/v1/messages');
+
+    final probe = await postJson(
+      uri,
+      apiKey: 'lead',
+      bearer: false,
+      body: {
+        'model': 'mock-model',
+        'messages': [
+          {'role': 'user', 'content': 'hi'},
+        ],
+      },
+    );
+    expect(probe.statusCode, 200);
+    expect(server.requestCountFor('lead'), 0);
+    expect(server.requestLog.single.turnLabel, 'probe(no-tools)');
+
+    final real = await postJson(
+      uri,
+      apiKey: 'lead',
+      bearer: false,
+      body: {
+        'model': 'mock-model',
+        'messages': [
+          {'role': 'user', 'content': 'hi'},
+        ],
+        'tools': [
+          {'name': 'noop', 'description': 'test', 'input_schema': {}},
+        ],
+      },
+    );
+    expect(real.statusCode, 200);
+    final body = await real.transform(utf8.decoder).join();
+    expect(body, contains('real-1'));
+    expect(server.requestCountFor('lead'), 1);
   });
 
   test('POST /v1/responses smoke returns JSON text turn', () async {

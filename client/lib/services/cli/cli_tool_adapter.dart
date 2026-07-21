@@ -15,6 +15,7 @@ class CliLaunchContext {
     this.settingsPath,
     this.appendSystemPromptFile,
     this.useWslPaths = false,
+    this.nativeAgentTeam,
   });
 
   final TeamProfile team;
@@ -28,11 +29,23 @@ class CliLaunchContext {
   final String? appendSystemPromptFile;
   final bool useWslPaths;
 
+  /// When set, forces Claude `--team-name` / `--agent-name` / `--agent-id`.
+  ///
+  /// Personal/simple builds a 1-member synthetic [TeamMode.native] profile for
+  /// argv plumbing; callers must pass `false` so Claude does not enter agent
+  /// "manual mode" (multi-call loops). `null` keeps legacy derive: on when
+  /// [team] is not mixed.
+  final bool? nativeAgentTeam;
+
   String get teamName => sessionTeam ?? team.name.trim();
   String get memberDisplayName => member.name.trim();
 
   /// CLI roster / `--agent-name` key ([TeamMemberConfig.id]).
   String get memberCliId => member.id.trim();
+
+  /// Whether Claude native agent-team flags should be emitted.
+  bool get usesNativeAgentTeam =>
+      nativeAgentTeam ?? team.teamMode != TeamMode.mixed;
 
   CliLaunchContext copyWith({
     TeamProfile? team,
@@ -45,6 +58,7 @@ class CliLaunchContext {
     String? settingsPath,
     String? appendSystemPromptFile,
     bool? useWslPaths,
+    bool? nativeAgentTeam,
   }) {
     return CliLaunchContext(
       team: team ?? this.team,
@@ -59,6 +73,7 @@ class CliLaunchContext {
       appendSystemPromptFile:
           appendSystemPromptFile ?? this.appendSystemPromptFile,
       useWslPaths: useWslPaths ?? this.useWslPaths,
+      nativeAgentTeam: nativeAgentTeam ?? this.nativeAgentTeam,
     );
   }
 }
@@ -123,7 +138,7 @@ class ClaudeCodeCliToolAdapter implements CliToolAdapter {
     final mixed = context.team.teamMode == TeamMode.mixed;
     final args = <String>[
       ..._buildSessionPrefixArgs(context, includeWorkingDirectory: false),
-      if (!mixed) ...[
+      if (context.usesNativeAgentTeam) ...[
         '--team-name',
         context.teamName,
         '--agent-name',
@@ -133,6 +148,12 @@ class ClaudeCodeCliToolAdapter implements CliToolAdapter {
           memberId: context.memberCliId,
           cliTeamName: context.teamName,
         ),
+      ],
+      // Personal/simple: Agent tool otherwise spawns a follow-up subagent API
+      // call after a normal end_turn (burns scripted mock turns).
+      if (context.nativeAgentTeam == false) ...[
+        '--disallowedTools',
+        'Agent',
       ],
     ];
 
