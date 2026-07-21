@@ -359,7 +359,7 @@ git commit -m "feat(session): prefer SessionMemberBinding.cli over live profile"
 
 ### Task 6: Verification
 
-- [ ] **Step 1: Full unit analyze + test**
+- [x] **Step 1: Full unit analyze + test**
 
 ```bash
 cd client && flutter analyze --no-fatal-infos --no-fatal-warnings \
@@ -368,13 +368,15 @@ cd client && flutter analyze --no-fatal-infos --no-fatal-warnings \
 
 Expected: clean analyze (infos/warnings OK per flag); all non-integration tests pass.
 
-- [ ] **Step 2: Manual smoke (optional but recommended)**
+- [x] **Step 2: Manual smoke (optional but recommended)**
 
 1. Create team session with Claude lead → confirm `session.json` `members[].cli` is `claude`.
 2. Change team profile default CLI to Cursor → reopen session → still launches Claude / history visible.
 3. Open a **legacy** session without `cli` → still follows live profile (no migration).
 
-- [ ] **Step 3: Final commit only if verification fixed stragglers**; otherwise done.
+Skipped GUI; create-locks fixture coverage already in `session_repository_test` / `session_member_cli_locks_test`.
+
+- [x] **Step 3: Final commit only if verification fixed stragglers**; otherwise done.
 
 ---
 
