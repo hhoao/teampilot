@@ -197,6 +197,24 @@ void main() {
       );
     });
 
+    test('zero-byte cross-machine fetch creates empty dest', () async {
+      final f = _Fixture(chunkSize: 4);
+      await f.seedSource(<int>[]);
+      await f.service.publish(
+        publisherMemberId: 'A',
+        path: '/work/out.bin',
+        name: 'empty',
+      );
+      final r = await f.service.fetch(
+        fetcherMemberId: 'B',
+        name: 'empty',
+        destPath: 'empty.bin',
+      );
+      expect(r.sizeBytes, 0);
+      expect(await f.fetcherFs.readBytes(r.finalPath), <int>[]);
+      expect((await f.fetcherFs.stat('${r.finalPath}.tp-partial')).exists, isFalse);
+    });
+
     test('resume continues from partial after interrupt', () async {
       final bytes = List<int>.generate(12, (i) => i);
       final publisherFs = InMemoryFilesystem();

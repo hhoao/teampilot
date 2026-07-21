@@ -363,6 +363,12 @@ class ArtifactTransferService {
     required String resolvedDest,
     required int sizeBytes,
   }) async {
+    // Zero-byte (and any rename-only path where the partial was never created)
+    // must materialize an empty partial before rename, or dest never appears.
+    final partialStat = await destFs.stat(partial);
+    if (!partialStat.exists) {
+      await destFs.writeBytes(partial, const []);
+    }
     await destFs.rename(partial, resolvedDest);
     await _deleteIfExists(destFs, metaPath);
     return ArtifactFetchResult(
