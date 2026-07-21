@@ -1252,6 +1252,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionHistoryNewMessages => 'New messages';
 
   @override
+  String get sessionHistoryStarting => 'Starting…';
+
+  @override
   String get sessionHistoryRunning => 'Running…';
 
   @override

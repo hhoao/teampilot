@@ -40,12 +40,14 @@ import '../../services/session/session_history_pagination.dart';
 import '../../services/storage/app_storage.dart';
 import '../../services/terminal/pending_user_message.dart';
 import '../../theme/app_markdown_style_sheet.dart';
+import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
 import 'agent_permission_attention_banner.dart';
 import 'history_awaiting_working_sync.dart';
 import 'history_continue_delivery.dart';
 import 'history_mailbox_queued_strip.dart';
+import 'session_history_live_chrome.dart';
 import 'session_history_review_messages.dart';
 import 'session_history_review_submit.dart';
 import 'session_review_compose_card.dart';
@@ -291,7 +293,12 @@ class _SessionChatViewState extends State<SessionChatView> {
             workingDirectory: _workspaceRoot,
           )
           .then((_) {
-            if (mounted) _maybeStartLiveRefreshForRunningPty();
+            if (!mounted) return;
+            _maybeStartLiveRefreshForRunningPty();
+            // Landing seed / continue awaiting: refresh while PTY runs offstage.
+            if (cubit.state.awaitingAssistant) {
+              unawaited(_startLiveRefresh(skipInitialRefresh: true));
+            }
           }),
     );
   }
@@ -314,24 +321,36 @@ class _SessionChatViewState extends State<SessionChatView> {
 
   Future<void> _startLiveRefresh({bool skipInitialRefresh = false}) async {
     final cubit = context.read<AiHistoryCubit>();
-    final roots = await cubit.loader.resolveSeatRuntime(
-      launchContext: _launchContext,
-      memberId: widget.selectedMemberId,
-    );
-    if (!mounted) return;
-    await _liveRefresh?.stop();
-    _liveRefresh = AiHistoryLiveRefreshController(
-      cubit: cubit,
-      fs: () => roots.filesystem,
-      resolveWatchMeta: () => cubit.loader.resolveWatchMeta(
+    try {
+      final roots = await cubit.loader.resolveSeatRuntime(
         launchContext: _launchContext,
         memberId: widget.selectedMemberId,
-        team: widget.team,
-        workingDirectory: _workspaceRoot,
-      ),
-    );
-    await _liveRefresh!.ensureStarted(skipInitialRefresh: skipInitialRefresh);
-    if (mounted) setState(() {});
+      );
+      if (!mounted) return;
+      await _liveRefresh?.stop();
+      _liveRefresh = AiHistoryLiveRefreshController(
+        cubit: cubit,
+        fs: () => roots.filesystem,
+        resolveWatchMeta: () => cubit.loader.resolveWatchMeta(
+          launchContext: _launchContext,
+          memberId: widget.selectedMemberId,
+          team: widget.team,
+          workingDirectory: _workspaceRoot,
+        ),
+      );
+      await _liveRefresh!.ensureStarted(skipInitialRefresh: skipInitialRefresh);
+      if (mounted) setState(() {});
+    } on Object catch (e, st) {
+      // Live refresh is best-effort; seat load already surfaces History errors.
+      // Avoid PlatformDispatcher noise when work-context resolve fails (e.g.
+      // stale loader after hot reload across AiHistoryLoader API changes).
+      appLogger.w(
+        '[session-chat] live refresh failed session=${widget.session.sessionId} '
+        'member=${widget.selectedMemberId}: $e',
+        error: e,
+        stackTrace: st,
+      );
+    }
   }
 
   Future<void> _stopLiveRefreshForSeatChange() async {
@@ -908,7 +927,10 @@ class _SessionChatViewState extends State<SessionChatView> {
     return BlocListener<ChatCubit, ChatState>(
       listenWhen: (previous, current) =>
           previous.workingSessionIds != current.workingSessionIds,
-      listener: (context, state) => _syncAwaitingFromWorkingSessions(state),
+      listener: (context, state) {
+        _syncAwaitingFromWorkingSessions(state);
+        _maybeStartLiveRefreshForRunningPty();
+      },
       child: ColoredBox(
         color: cs.surface,
         child: Column(
@@ -956,22 +978,43 @@ class _SessionChatViewState extends State<SessionChatView> {
                   child: BlocBuilder<AiHistoryCubit, AiHistoryState>(
                     builder: (context, state) {
                       final cubit = context.read<AiHistoryCubit>();
-                      final sessionWorking = context.select<ChatCubit, bool>(
-                        (c) => c.state.workingSessionIds.contains(
-                          widget.session.sessionId,
-                        ),
+                      final seat = context.select<
+                        ChatCubit,
+                        ({
+                          bool sessionWorking,
+                          bool sessionConnecting,
+                          bool memberRunning,
+                          int stateVersion,
+                        })
+                      >((c) {
+                        final sid = widget.session.sessionId;
+                        final connectingId = c.state.sessionConnectingId;
+                        return (
+                          sessionWorking: c.state.workingSessionIds.contains(
+                            sid,
+                          ),
+                          sessionConnecting:
+                              connectingId == sid || connectingId == 'pending',
+                          memberRunning: c.isMemberRunning(_shellMemberId),
+                          // Connect completion bumps this so PTY-up rebuilds.
+                          stateVersion: c.state.stateVersion,
+                        );
+                      });
+                      final liveChrome = SessionHistoryLiveChromeX.resolve(
+                        turnInFlight:
+                            _isSubmitting ||
+                            state.awaitingAssistant ||
+                            seat.sessionWorking,
+                        memberRunning: seat.memberRunning,
+                        sessionWorking: seat.sessionWorking,
+                        sessionConnecting: seat.sessionConnecting,
                       );
                       return SessionHistoryReviewMessages(
                         state: state,
                         runtime: cubit.runtime,
                         onRetry: () => _loadHistory(force: true),
                         onLoadOlder: cubit.loadOlder,
-                        // Keep Running for the whole seat turn — not just until
-                        // the first assistant tip lands in the transcript.
-                        liveRefreshActive:
-                            _isSubmitting ||
-                            state.awaitingAssistant ||
-                            sessionWorking,
+                        liveChrome: liveChrome,
                       );
                     },
                   ),

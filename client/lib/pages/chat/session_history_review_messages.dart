@@ -4,6 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/ai_history_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import 'session_history_live_chrome.dart';
 import 'session_history_thread.dart';
 
 /// Finder key for the soft-reload non-blocking error strip.
@@ -21,7 +22,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
     required this.runtime,
     required this.onRetry,
     required this.onLoadOlder,
-    this.liveRefreshActive = false,
+    this.liveChrome = SessionHistoryLiveChrome.none,
     super.key,
   });
 
@@ -29,12 +30,14 @@ class SessionHistoryReviewMessages extends StatelessWidget {
   final AiThreadRuntime runtime;
   final VoidCallback onRetry;
   final VoidCallback onLoadOlder;
-  final bool liveRefreshActive;
+  final SessionHistoryLiveChrome liveChrome;
 
   bool get _showThread {
     if (state.status == AiHistoryViewStatus.ready) return true;
-    if (state.status == AiHistoryViewStatus.empty &&
-        runtime.messages.isNotEmpty) {
+    // Optimistic pendings may land while status is still empty/loading.
+    if (runtime.messages.isNotEmpty &&
+        (state.status == AiHistoryViewStatus.empty ||
+            state.status == AiHistoryViewStatus.loading)) {
       return true;
     }
     return false;
@@ -54,7 +57,7 @@ class SessionHistoryReviewMessages extends StatelessWidget {
               hasOlder: state.hasOlder,
               isLoadingOlder: state.isLoadingOlder,
               onLoadOlder: onLoadOlder,
-              liveRefreshActive: liveRefreshActive,
+              liveChrome: liveChrome,
             ),
           ),
         ],

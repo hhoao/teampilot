@@ -8,6 +8,7 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../cubits/ai_history_cubit.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/expert_hub_cubit.dart';
@@ -304,6 +305,7 @@ Future<void> submitWorkspaceLandingMessage(
   if (trimmed.isEmpty) return;
 
   final chatCubit = context.read<ChatCubit>();
+  final aiHistoryCubit = context.read<AiHistoryCubit>();
   final repo = context.read<SessionRepository>();
   final l10n = context.l10n;
   final liveWorkspace = chatCubit.state.workspaces.firstWhere(
@@ -383,6 +385,19 @@ Future<void> submitWorkspaceLandingMessage(
   // Opening the session exits new-chat mode and unmounts [WorkspaceChatPane].
   // Delivery must keep going via cubits/repos captured above — not [context.mounted].
 
+  // Stay-on-Chat: seed the optimistic bubble before connect/deliver so Chat
+  // shows the user turn immediately (connect can take many seconds).
+  final historyMemberId = isPersonal
+      ? ''
+      : (_teamLead(team)?.id ?? 'team-lead');
+  if (!switchToTerminal) {
+    aiHistoryCubit.seedPendingUser(
+      sessionId: plannedSessionId,
+      memberId: historyMemberId,
+      text: trimmed,
+    );
+  }
+
   final session = await _sessionById(
     chatCubit: chatCubit,
     repo: repo,
@@ -394,6 +409,12 @@ Future<void> submitWorkspaceLandingMessage(
       'submitWorkspaceLandingMessage: session missing after open '
       'sessionId=$plannedSessionId workspace=${liveWorkspace.workspaceId}',
     );
+    if (!switchToTerminal) {
+      aiHistoryCubit.cancelSeedPendingUser(
+        sessionId: plannedSessionId,
+        text: trimmed,
+      );
+    }
     return;
   }
 
@@ -415,6 +436,12 @@ Future<void> submitWorkspaceLandingMessage(
       'submitWorkspaceLandingMessage: member not ready '
       'session=${session.sessionId} member=$memberId',
     );
+    if (!switchToTerminal) {
+      aiHistoryCubit.cancelSeedPendingUser(
+        sessionId: session.sessionId,
+        text: trimmed,
+      );
+    }
     if (context.mounted) {
       AppToast.show(
         context,
@@ -435,6 +462,12 @@ Future<void> submitWorkspaceLandingMessage(
     // Landing inject bypasses FirstUserLineCapture (keyboard path only).
     await chatCubit.applyFirstPromptTitle(session.sessionId, trimmed);
   } on Object catch (error, stackTrace) {
+    if (!switchToTerminal) {
+      aiHistoryCubit.cancelSeedPendingUser(
+        sessionId: session.sessionId,
+        text: trimmed,
+      );
+    }
     appLogger.e(
       'submitWorkspaceLandingMessage',
       error: error,

@@ -523,6 +523,7 @@
   "sessionHistoryContinueSaveFailed": "Couldn't save continue settings.",
   "sessionHistoryLoadOlderHint": "Scroll up for earlier messages",
   "sessionHistoryNewMessages": "New messages",
+  "sessionHistoryStarting": "Starting…",
   "sessionHistoryRunning": "Running…",
   "sessionHistoryMailboxQueued": "{count} Queued",
   "@sessionHistoryMailboxQueued": {

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/chat/history_scroll_cursor_lock.dart';
+import 'package:teampilot/pages/chat/session_history_live_chrome.dart';
 import 'package:teampilot/pages/chat/session_history_thread.dart';
 
 List<AiMessage> _soloUserMessages(int count) {
@@ -21,7 +22,7 @@ Widget _harness({
   required AiThreadRuntime runtime,
   bool hasOlder = false,
   bool isLoadingOlder = false,
-  bool liveRefreshActive = false,
+  SessionHistoryLiveChrome liveChrome = SessionHistoryLiveChrome.none,
   VoidCallback? onLoadOlder,
 }) {
   return MaterialApp(
@@ -37,7 +38,7 @@ Widget _harness({
           runtime: runtime,
           hasOlder: hasOlder,
           isLoadingOlder: isLoadingOlder,
-          liveRefreshActive: liveRefreshActive,
+          liveChrome: liveChrome,
           onLoadOlder: onLoadOlder,
         ),
       ),
@@ -270,19 +271,35 @@ void main() {
   );
 
   testWidgets(
-    'running footer visible when liveRefreshActive',
+    'running footer visible when liveChrome is running',
     (tester) async {
       final store = ExternalStoreAiThreadRuntime()
         ..setMessages(_soloUserMessages(5));
 
       await tester.pumpWidget(
-        _harness(runtime: store, liveRefreshActive: true),
+        _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.running),
       );
       // CircularProgressIndicator animates forever — do not pumpAndSettle.
       await tester.pump();
 
       expect(find.byKey(kSessionHistoryRunningFooterKey), findsOneWidget);
       expect(find.text('Running…'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'starting footer visible when liveChrome is starting',
+    (tester) async {
+      final store = ExternalStoreAiThreadRuntime()
+        ..setMessages(_soloUserMessages(5));
+
+      await tester.pumpWidget(
+        _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.starting),
+      );
+      await tester.pump();
+
+      expect(find.byKey(kSessionHistoryRunningFooterKey), findsOneWidget);
+      expect(find.text('Starting…'), findsOneWidget);
     },
   );
 

@@ -405,6 +405,110 @@ void main() {
     );
   });
 
+  test('seedPendingUser applies immediately when already on seat', () async {
+    locator.emitBundle = false;
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
+
+    cubit.seedPendingUser(
+      sessionId: 'sess-a',
+      memberId: '',
+      text: 'from landing',
+    );
+
+    expect(cubit.state.awaitingAssistant, isTrue);
+    expect(cubit.state.status, AiHistoryViewStatus.ready);
+    expect(
+      (cubit.runtime.messages.single.parts.single as AiTextPart).text,
+      'from landing',
+    );
+  });
+
+  test('seedPendingUser survives seat load clearPendings', () async {
+    locator.emitBundle = false;
+    await cubit.load(
+      session: simpleSession(id: 'old'),
+      memberId: '',
+      launchContext: launchCtx(simpleSession(id: 'old')),
+    );
+
+    cubit.seedPendingUser(
+      sessionId: 'sess-a',
+      memberId: '',
+      text: 'landing prompt',
+    );
+    expect(cubit.state.awaitingAssistant, isFalse);
+
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
+
+    expect(cubit.state.awaitingAssistant, isTrue);
+    expect(cubit.state.status, AiHistoryViewStatus.ready);
+    expect(
+      (cubit.runtime.messages.single.parts.single as AiTextPart).text,
+      'landing prompt',
+    );
+  });
+
+  test('enqueuePendingUser during loading promotes to ready', () async {
+    locator.emitBundle = false;
+    final loadFuture = cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
+    // Mid-load: seat already set, status still loading.
+    expect(cubit.state.status, AiHistoryViewStatus.loading);
+    expect(cubit.state.sessionId, 'sess-a');
+
+    cubit.seedPendingUser(
+      sessionId: 'sess-a',
+      memberId: '',
+      text: 'eager landing',
+    );
+
+    expect(cubit.state.status, AiHistoryViewStatus.ready);
+    expect(cubit.state.awaitingAssistant, isTrue);
+    expect(
+      (cubit.runtime.messages.single.parts.single as AiTextPart).text,
+      'eager landing',
+    );
+
+    await loadFuture;
+    expect(cubit.state.status, AiHistoryViewStatus.ready);
+    expect(cubit.state.awaitingAssistant, isTrue);
+    expect(
+      (cubit.runtime.messages.single.parts.single as AiTextPart).text,
+      'eager landing',
+    );
+  });
+
+  test('cancelSeedPendingUser drops stored seed and matching pending', () async {
+    locator.emitBundle = false;
+    cubit.seedPendingUser(
+      sessionId: 'sess-a',
+      memberId: '',
+      text: 'will fail',
+    );
+    cubit.cancelSeedPendingUser(sessionId: 'sess-a', text: 'will fail');
+
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
+
+    expect(cubit.state.awaitingAssistant, isFalse);
+    expect(cubit.state.status, AiHistoryViewStatus.empty);
+    expect(cubit.runtime.messages, isEmpty);
+  });
+
   test('softReloadOrLoad soft-reloads when already ready for same seat', () async {
     holderMessages = messages(2);
     locator.emitBundle = true;

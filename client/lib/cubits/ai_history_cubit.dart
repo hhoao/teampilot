@@ -131,6 +131,12 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
   final List<_StickyLocalUser> _stickyLocalUsers = [];
   Timer? _tipHoldTimer;
 
+  /// Landing create+send may finish before History loads the new seat.
+  /// Survives [clearPendings] on seat change; consumed when that seat loads.
+  String? _seedPendingSessionId;
+  String? _seedPendingMemberId;
+  String? _seedPendingText;
+
   AppSession? _lastSession;
   String? _lastMemberId;
   TeamProfile? _lastTeam;
@@ -287,9 +293,10 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     final pending = _PendingUser(id: 'pending:${_uuid.v4()}', text: text);
     _pendingQueue.add(pending);
     _remergePendingsOntoRuntime();
-    // Empty / pre-locate: promote to ready so History shows the pending bubble
-    // instead of the empty pane (runtime already has the tip message).
-    if (state.status == AiHistoryViewStatus.empty) {
+    // Empty / loading: promote to ready so History shows the pending bubble
+    // instead of the empty / spinner pane (runtime already has the tip message).
+    if (state.status == AiHistoryViewStatus.empty ||
+        state.status == AiHistoryViewStatus.loading) {
       emit(
         state.copyWith(
           status: AiHistoryViewStatus.ready,
@@ -299,6 +306,60 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     } else {
       emit(state.copyWith(awaitingAssistant: true));
     }
+  }
+
+  /// Optimistic first bubble for landing create+send that stays on Chat.
+  ///
+  /// If this cubit is already showing [sessionId]/[memberId], enqueues
+  /// immediately. Otherwise stores a seed that survives seat [clearPendings]
+  /// and is applied when that seat finishes loading.
+  void seedPendingUser({
+    required String sessionId,
+    required String memberId,
+    required String text,
+  }) {
+    final trimmed = text.trim();
+    if (sessionId.trim().isEmpty || trimmed.isEmpty) return;
+    if (state.sessionId == sessionId && state.memberId == memberId) {
+      enqueuePendingUser(trimmed);
+      _clearSeedPending();
+      return;
+    }
+    _seedPendingSessionId = sessionId;
+    _seedPendingMemberId = memberId;
+    _seedPendingText = trimmed;
+  }
+
+  void _clearSeedPending() {
+    _seedPendingSessionId = null;
+    _seedPendingMemberId = null;
+    _seedPendingText = null;
+  }
+
+  /// Drop a landing seed and any matching optimistic pending when send fails.
+  void cancelSeedPendingUser({
+    required String sessionId,
+    required String text,
+  }) {
+    final trimmed = text.trim();
+    final seedText = _seedPendingText;
+    if (_seedPendingSessionId == sessionId &&
+        seedText != null &&
+        normalizeAiHistoryPendingText(seedText) ==
+            normalizeAiHistoryPendingText(trimmed)) {
+      _clearSeedPending();
+    }
+    removePendingMatching(trimmed);
+  }
+
+  void _consumeSeedPendingIfMatching(String sessionId, String memberId) {
+    final seedSession = _seedPendingSessionId;
+    final seedMember = _seedPendingMemberId;
+    final seedText = _seedPendingText;
+    if (seedSession == null || seedText == null) return;
+    if (seedSession != sessionId || seedMember != memberId) return;
+    _clearSeedPending();
+    enqueuePendingUser(seedText);
   }
 
   /// Append a local user bubble that is not backed by the CLI transcript.
@@ -450,6 +511,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     _committedLength = 0;
     _pendingQueue.clear();
     _stickyLocalUsers.clear();
+    _clearSeedPending();
     _lastSession = null;
     _lastMemberId = null;
     _lastTeam = null;
@@ -472,11 +534,13 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
 
     if (_allMessages.isEmpty) {
       _emitEmptyOrPendingReady(sessionId, memberId);
+      _consumeSeedPendingIfMatching(sessionId, memberId);
       return;
     }
 
     _emitReadyWindow(sessionId, memberId);
     _remergePendingsOntoRuntime();
+    _consumeSeedPendingIfMatching(sessionId, memberId);
   }
 
   void _applySoftReloadMessages(
@@ -502,6 +566,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
       _cancelTipHoldTimer();
       _committedLength = 0;
       _emitEmptyOrPendingReady(sessionId, memberId);
+      _consumeSeedPendingIfMatching(sessionId, memberId);
       return;
     }
 
@@ -521,6 +586,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
 
     _emitReadyWindow(sessionId, memberId);
     _remergePendingsOntoRuntime();
+    _consumeSeedPendingIfMatching(sessionId, memberId);
   }
 
   /// Publish transcript through the latest user turn; leave trailing non-user

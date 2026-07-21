@@ -10,13 +10,14 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../l10n/l10n_extensions.dart';
 import 'ai_thread_selection_context_menu.dart';
 import 'history_scroll_cursor_lock.dart';
+import 'session_history_live_chrome.dart';
 
 /// Finder key for the “new messages” jump chip.
 const Key kSessionHistoryNewMessagesChipKey = ValueKey(
   'session-history-new-messages-chip',
 );
 
-/// Finder key for the in-thread “Running…” assistant placeholder.
+/// Finder key for the in-thread starting/running assistant placeholder.
 const Key kSessionHistoryRunningFooterKey = ValueKey(
   'session-history-running-footer',
 );
@@ -42,7 +43,7 @@ class SessionHistoryThread extends StatefulWidget {
     required this.hasOlder,
     required this.isLoadingOlder,
     this.onLoadOlder,
-    this.liveRefreshActive = false,
+    this.liveChrome = SessionHistoryLiveChrome.none,
     super.key,
   });
 
@@ -51,8 +52,8 @@ class SessionHistoryThread extends StatefulWidget {
   final bool isLoadingOlder;
   final VoidCallback? onLoadOlder;
 
-  /// When true, shows a slim “Running…” footer under the scroll surface.
-  final bool liveRefreshActive;
+  /// Slim starting/running footer under the scroll surface.
+  final SessionHistoryLiveChrome liveChrome;
 
   @override
   State<SessionHistoryThread> createState() => _SessionHistoryThreadState();
@@ -109,8 +110,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       _messages = widget.runtime.messages;
       _runtimeSub = widget.runtime.changes.listen((_) => _onRuntimeChanged());
       _scheduleOpenAtEnd();
-    } else if (oldWidget.liveRefreshActive != widget.liveRefreshActive) {
-      if (widget.liveRefreshActive && _stickToEnd) {
+    } else if (oldWidget.liveChrome != widget.liveChrome) {
+      if (widget.liveChrome.isActive && _stickToEnd) {
         _scheduleStickFrames();
       }
     }
@@ -406,6 +407,11 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   Widget _buildRunningInMessage(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final aiTheme = AiMessageTheme.of(context);
+    final label = switch (widget.liveChrome) {
+      SessionHistoryLiveChrome.starting => context.l10n.sessionHistoryStarting,
+      SessionHistoryLiveChrome.running ||
+      SessionHistoryLiveChrome.none => context.l10n.sessionHistoryRunning,
+    };
     // Same column chrome as messageBuilder, left-aligned like assistant text.
     // Tip message already uses a tightened messageSpacing while Running is on.
     return Align(
@@ -434,7 +440,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    context.l10n.sessionHistoryRunning,
+                    label,
                     style: TpTextStyles.of(
                       context,
                     ).smColored(scheme.onSurfaceVariant),
@@ -449,7 +455,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   }
 
   List<AiMessage> get _displayMessages {
-    if (!widget.liveRefreshActive) return _messages;
+    if (!widget.liveChrome.isActive) return _messages;
     if (_messages.any((m) => m.id == kSessionHistoryRunningPlaceholder.id)) {
       return _messages;
     }
@@ -524,7 +530,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                 }
                 // While Running is appended as the tip turn, keep the real tip's
                 // bottom gap tight so Running sits under it like in-turn chrome.
-                final tightenForRunning = widget.liveRefreshActive &&
+                final tightenForRunning = widget.liveChrome.isActive &&
                     displayMessages.length >= 2 &&
                     displayMessages.last.id ==
                         kSessionHistoryRunningPlaceholder.id &&

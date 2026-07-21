@@ -2342,6 +2342,12 @@ abstract class AppLocalizations {
   /// **'New messages'**
   String get sessionHistoryNewMessages;
 
+  /// No description provided for @sessionHistoryStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting…'**
+  String get sessionHistoryStarting;
+
   /// No description provided for @sessionHistoryRunning.
   ///
   /// In en, this message translates to:

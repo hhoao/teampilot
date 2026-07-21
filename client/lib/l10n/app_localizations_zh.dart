@@ -1190,6 +1190,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionHistoryNewMessages => '新消息';
 
   @override
+  String get sessionHistoryStarting => '启动中…';
+
+  @override
   String get sessionHistoryRunning => '运行中…';
 
   @override
