@@ -224,6 +224,7 @@ class SessionLaunchPipeline {
         member: request.member,
         repo: request.repo,
         emptyDisplayTitleFallback: request.emptyDisplayTitleFallback,
+        preserveWorkbenchView: request.preserveWorkbenchView,
         persistParams: persistParams,
       ),
       session: provisional,

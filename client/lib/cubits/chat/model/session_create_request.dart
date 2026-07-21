@@ -19,6 +19,7 @@ class SessionCreateRequest {
     this.fixedSessionId,
     this.expertKey,
     this.continueOverrides,
+    this.preserveWorkbenchView = false,
   });
 
   final Workspace workspace;
@@ -43,4 +44,7 @@ class SessionCreateRequest {
 
   /// Session-level continue overrides (e.g. landing permission chip).
   final SessionContinueOverrides? continueOverrides;
+
+  /// When true, keep the new tab on Chat instead of forcing Terminal on connect.
+  final bool preserveWorkbenchView;
 }

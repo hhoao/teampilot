@@ -34,6 +34,7 @@ import '../../../utils/workspace/landing_draft_resolver.dart';
 import '../../../utils/team/team_member_naming.dart';
 import '../../../utils/logging/logger.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';
+import '../../chat/session_history_review_submit.dart';
 
 const _uuid = Uuid();
 
@@ -219,6 +220,7 @@ Future<void> createAndOpenWorkspaceConversation(
   CliTool? cli,
   String? workingDirectory,
 }) async {
+  // Silent create always lands on Chat (preference ignored).
   final status = await _requestCreateWorkspaceConversation(
     context,
     workspace,
@@ -226,6 +228,7 @@ Future<void> createAndOpenWorkspaceConversation(
     sessionTeamId: sessionTeamId,
     cli: cli,
     workingDirectory: workingDirectory,
+    preserveWorkbenchView: true,
   );
   if (!context.mounted || status == null) return;
   _handleSessionOpenStatus(
@@ -338,6 +341,13 @@ Future<void> submitWorkspaceLandingMessage(
           expertKey: trimmedExpert,
         )
       : null;
+  final switchToTerminal = shouldSwitchToTerminalAfterChatSubmit(
+    context
+        .read<SessionPreferencesCubit>()
+        .state
+        .preferences
+        .chatSubmitSwitchesToTerminal,
+  );
   final plannedSessionId = _uuid.v4();
   final status = await _requestCreateWorkspaceConversation(
     context,
@@ -351,6 +361,8 @@ Future<void> submitWorkspaceLandingMessage(
     continueOverrides: SessionContinueOverrides(
       dangerouslySkipPermissions: launch.dangerouslySkipPermissions,
     ),
+    // Default preference keeps Chat; coordinator forces Terminal when false.
+    preserveWorkbenchView: !switchToTerminal,
   );
   if (status == null) return;
   if (status != SessionOpenStatus.opened) {
@@ -499,6 +511,7 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
   String? fixedSessionId,
   String? expertKey,
   SessionContinueOverrides? continueOverrides,
+  bool preserveWorkbenchView = false,
 }) async {
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
@@ -533,6 +546,7 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
         fixedSessionId: fixedSessionId,
         expertKey: expertKey,
         continueOverrides: continueOverrides,
+        preserveWorkbenchView: preserveWorkbenchView,
       ),
     );
   } on Object catch (error, stackTrace) {
