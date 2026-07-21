@@ -144,13 +144,19 @@ class RuntimeLayout {
       if (trimmedWorkspace.isNotEmpty)
         for (final tool in tt) workspaceConfigToolDir(trimmedWorkspace, tool),
       if (trimmedWorkspace.isNotEmpty && trimmedSession.isNotEmpty)
-        for (final tool in tt)
-          sessionRuntimeToolDir(
-            trimmedWorkspace,
-            trimmedSession,
-            tool,
-            memberId: trimmedMember.isNotEmpty ? trimmedMember : null,
-          ),
+        for (final tool in tt) ...[
+          // Mixed seats nest under runtime/<member>/<tool>. Native Claude /
+          // flashskyai agent teams share runtime/<tool> (no member segment) so
+          // History must search both when a memberId is present.
+          if (trimmedMember.isNotEmpty)
+            sessionRuntimeToolDir(
+              trimmedWorkspace,
+              trimmedSession,
+              tool,
+              memberId: trimmedMember,
+            ),
+          sessionRuntimeToolDir(trimmedWorkspace, trimmedSession, tool),
+        ],
     ];
   }
 

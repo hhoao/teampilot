@@ -68,6 +68,27 @@ void main() {
       },
     );
 
+    test(
+      'transcriptSearchRoots with memberId includes member + shared session dirs',
+      () {
+        final roots = layout.transcriptSearchRoots(
+          workspaceId: workspaceId,
+          sessionId: 'sess-1',
+          profileId: 'team-a',
+          memberId: 'team-lead',
+          tools: const ['claude'],
+        );
+        expect(roots, [
+          '/tp/cli-defaults/claude',
+          '/tp/identities-runtime/team-a/claude',
+          '/tp/workspace/workspaces/proj-1/config/claude',
+          // Mixed nested CONFIG_DIR, then native shared CONFIG_DIR.
+          '/tp/workspace/workspaces/proj-1/sessions/sess-1/runtime/team-lead/claude',
+          '/tp/workspace/workspaces/proj-1/sessions/sess-1/runtime/claude',
+        ]);
+      },
+    );
+
     test('transcriptSearchRoots omits session layer when sessionId empty', () {
       final roots = layout.transcriptSearchRoots(
         workspaceId: workspaceId,

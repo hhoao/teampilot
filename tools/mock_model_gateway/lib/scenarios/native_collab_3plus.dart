@@ -20,7 +20,11 @@ import 'mixed_collab_3plus.dart'
 ///
 /// Shape: lead dispatch → worker reply → lead close-out, with ≥3 lead texts.
 ///
-/// L2 History compose targets the **lead** seat (`lead-script`).
+/// L2 History compose targets the **lead** seat (`lead-script`). Each lead
+/// [TextTurn] is `end_turn` (native has no mixed Stop-hook chain), so the
+/// Claude native cell advances one tool→text segment per History compose:
+/// TeamCreate/TaskCreate→MARK_LEAD_1, TaskList→MARK_LEAD_2,
+/// TeamDelete→MARK_LEAD_DONE.
 Map<String, MockScenario> nativeCollab3PlusScenarios() => {
       leadScriptApiKey: MockScenario(
         turns: [

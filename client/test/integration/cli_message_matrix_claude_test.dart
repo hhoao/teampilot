@@ -202,4 +202,86 @@ void main() {
       }
     },
   );
+
+  test(
+    'claude native: History compose → collab ≥3 assistant bubbles',
+    () async {
+      IntegrationPrerequisites.skipUnlessNativePty();
+      final claudePath = IntegrationPrerequisites.requireClaudePath();
+      if (claudePath == null) return;
+
+      final harness = CliMessageMatrixHarness.forCli(
+        CliTool.claude,
+        mode: CliMatrixMode.native,
+        recipe: CliMatrixRecipe.nativeCollab3Plus,
+        cliPath: claudePath,
+      );
+      final postFrame = PostFrameTestHarness();
+      addTearDown(() async {
+        await harness.dispose();
+        await postFrame.flush();
+        await drainPendingAsyncWork();
+        await Future<void>.delayed(const Duration(seconds: 3));
+      });
+
+      try {
+        await harness.startGateway();
+        await harness.writeMockProviders();
+        harness.createCubit(postFrame: postFrame);
+        await harness.openSession();
+        await harness.bootAllMembersToPrompt();
+        await harness.loadHistory();
+
+        // native_collab_3plus interleaves tools with TextTurns. A TextTurn is
+        // end_turn (no mixed Stop-hook chain), so each History compose advances
+        // one tool→text segment: TeamCreate/TaskCreate→MARK_LEAD_1, then
+        // TaskList→MARK_LEAD_2, then TeamDelete→MARK_LEAD_DONE.
+        const prompts = [
+          'matrix native turn one please coordinate',
+          'matrix native turn two please continue',
+          'matrix native turn three please wrap up',
+        ];
+        final markers = const [markLead1, markLead2, markLeadDone];
+        for (var i = 0; i < prompts.length; i++) {
+          final before = harness.gateway!.requestCountFor(leadScriptApiKey);
+          final result = await harness.submitCompose(prompts[i]);
+          expect(
+            result.ok,
+            isTrue,
+            reason: 'submitCompose failed at turn ${i + 1}\n'
+                '${harness.diagnosticsBundle()}',
+          );
+          await harness.waitForGatewayTurns(
+            apiKey: leadScriptApiKey,
+            minTurns: before + 1,
+          );
+          await harness.waitForPtyMarkers([markers[i]]);
+          if (i < prompts.length - 1) {
+            await harness.bootComposeSeatToPrompt();
+          }
+        }
+
+        expect(
+          harness.gateway!.requestCountFor(leadScriptApiKey),
+          greaterThanOrEqualTo(3),
+          reason: harness.diagnosticsBundle(),
+        );
+        final gatewayDump = harness.gateway!.dumpDiagnostics();
+        for (final marker in harness.profile.collabLeadMarkers) {
+          expect(
+            gatewayDump,
+            contains(marker),
+            reason: harness.diagnosticsBundle(),
+          );
+        }
+
+        await harness.bootComposeSeatToPrompt();
+        await harness.waitForBubbles(userText: prompts.first);
+      } catch (e, st) {
+        // ignore: avoid_print
+        print(harness.diagnosticsBundle());
+        Error.throwWithStackTrace(e, st);
+      }
+    },
+  );
 }
