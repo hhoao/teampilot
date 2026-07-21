@@ -120,7 +120,7 @@ Future<void> openWorkspaceSessionTab(
     );
   } else {
     final existing = chatCubit.tabStore.openTabBySessionId(session.sessionId);
-    // Already live: focus + pin, keep whatever History/Terminal view the user set.
+    // Already live: focus + pin, keep whatever Chat/Terminal view the user set.
     if (existing != null && existing.isRunning) {
       workbench.ensureTab(workspace.workspaceId, tabId, preview: false);
       return;

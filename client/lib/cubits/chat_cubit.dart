@@ -1196,13 +1196,13 @@ class ChatCubit extends Cubit<ChatState>
     selectTab(ordinal - 1);
   }
 
-  /// Sets History vs Terminal center body for an open session tab.
+  /// Sets Chat vs Terminal center body for an open session tab.
   void setSessionWorkbenchView(String sessionId, SessionWorkbenchView view) {
     final tab = _tabStore.openTabBySessionId(sessionId);
     if (tab == null || tab.workbenchView == view) return;
     tab.workbenchView = view;
     emit(state.copyWith(stateVersion: state.stateVersion + 1));
-    if (view == SessionWorkbenchView.history) {
+    if (view == SessionWorkbenchView.chat) {
       onSessionHistoryStale?.call(sessionId);
     }
   }

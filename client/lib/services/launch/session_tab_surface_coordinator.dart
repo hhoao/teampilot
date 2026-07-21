@@ -111,7 +111,7 @@ class SessionTabSurfaceCoordinator {
       );
       return SessionOpenStatus.opened;
     }
-    // History continue connects the PTY while staying on History; do not
+    // Chat continue connects the PTY while staying on Chat; do not
     // force-switch the workbench (would unmount SessionHistoryReview).
     if (!request.preserveWorkbenchView) {
       existing.workbenchView = SessionWorkbenchView.terminal;

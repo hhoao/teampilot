@@ -18,14 +18,14 @@ class ChatTab {
     required this.cliTeamName,
     this.selectedMemberId = '',
     this.workspaceId = '',
-    this.workbenchView = SessionWorkbenchView.history,
+    this.workbenchView = SessionWorkbenchView.chat,
   });
 
   ChatTabInfo info;
   TerminalSession? resumeSession;
   String selectedMemberId;
 
-  /// Center body: history review vs live terminal (independent of [isRunning]).
+  /// Center body: chat vs live terminal (independent of [isRunning]).
   SessionWorkbenchView workbenchView;
 
   /// Owning workspace bucket in [ChatTabStore]. Empty for legacy/local scratch

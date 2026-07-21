@@ -98,7 +98,7 @@ void main() {
           subtitle: 'simple',
         ),
         cliTeamName: '',
-        workbenchView: SessionWorkbenchView.history,
+        workbenchView: SessionWorkbenchView.chat,
       ),
     );
 
@@ -148,7 +148,7 @@ void main() {
           subtitle: 'simple',
         ),
         cliTeamName: '',
-        workbenchView: SessionWorkbenchView.history,
+        workbenchView: SessionWorkbenchView.chat,
       ),
     );
 

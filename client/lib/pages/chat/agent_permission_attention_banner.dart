@@ -9,7 +9,7 @@ import '../../models/app_session.dart';
 import '../../services/agent_status/agent_attention_state.dart';
 import '../../utils/ui/app_keys.dart';
 
-/// Compact card shown just above History compose when the seat needs Terminal
+/// Compact card shown just above Chat compose when the seat needs Terminal
 /// confirmation. Does not auto-switch; CTA jumps to Terminal.
 class AgentPermissionAttentionBanner extends StatelessWidget {
   const AgentPermissionAttentionBanner({required this.session, super.key});
@@ -26,7 +26,7 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
     return mid.isEmpty ? session.sessionId : mid;
   }
 
-  /// Whether History compose should lock for the selected seat.
+  /// Whether Chat compose should lock for the selected seat.
   static bool isSelectedSeatWaiting({
     required AgentAttentionCubit attention,
     required AppSession session,
@@ -48,9 +48,9 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
     final sessionId = session.sessionId;
     final workbenchView = context.select<ChatCubit, SessionWorkbenchView>((c) {
       final tab = c.tabStore.openTabBySessionId(sessionId);
-      return tab?.workbenchView ?? SessionWorkbenchView.history;
+      return tab?.workbenchView ?? SessionWorkbenchView.chat;
     });
-    if (workbenchView != SessionWorkbenchView.history) {
+    if (workbenchView != SessionWorkbenchView.chat) {
       return const SizedBox.shrink();
     }
 

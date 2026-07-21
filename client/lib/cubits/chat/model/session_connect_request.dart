@@ -41,6 +41,6 @@ final class ExistingSessionConnect extends SessionConnectRequest {
   final TeamMemberConfig? member;
   final Workspace? workspace;
 
-  /// When true, connect without forcing the tab onto Terminal (History continue).
+  /// When true, connect without forcing the tab onto Terminal (Chat continue).
   final bool preserveWorkbenchView;
 }

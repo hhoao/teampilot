@@ -8,7 +8,7 @@ enum ChatWorkbenchOverlay {
   /// History review — kept mounted during continue connect.
   history,
 
-  /// Full-screen session-starting spinner (Terminal / non-History connect).
+  /// Full-screen session-starting spinner (Terminal / non-Chat connect).
   sessionStarting,
 
   /// No overlay; terminal (or empty) fills the pane.
@@ -17,8 +17,8 @@ enum ChatWorkbenchOverlay {
 
 /// Resolves the workbench center overlay.
 ///
-/// When [workbenchView] is [SessionWorkbenchView.history], History stays shown
-/// even while [sessionConnectInProgress] is true so continue-from-History does
+/// When [workbenchView] is [SessionWorkbenchView.chat], Chat stays shown
+/// even while [sessionConnectInProgress] is true so continue-from-Chat does
 /// not dispose [SessionHistoryReview] mid-submit.
 ChatWorkbenchOverlay resolveChatWorkbenchOverlay({
   required SessionWorkbenchView workbenchView,
@@ -26,7 +26,7 @@ ChatWorkbenchOverlay resolveChatWorkbenchOverlay({
   required bool showRemoteProvision,
 }) {
   if (showRemoteProvision) return ChatWorkbenchOverlay.remoteProvision;
-  if (workbenchView == SessionWorkbenchView.history) {
+  if (workbenchView == SessionWorkbenchView.chat) {
     return ChatWorkbenchOverlay.history;
   }
   if (sessionConnectInProgress) return ChatWorkbenchOverlay.sessionStarting;

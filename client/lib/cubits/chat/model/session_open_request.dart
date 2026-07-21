@@ -27,7 +27,7 @@ class SessionOpenRequest {
   final bool connectImmediately;
 
   /// When true with [connectImmediately], keep the tab's current
-  /// [SessionWorkbenchView] (e.g. History continue) instead of forcing Terminal.
+  /// [SessionWorkbenchView] (e.g. Chat continue) instead of forcing Terminal.
   final bool preserveWorkbenchView;
 
   /// When set, the session is staged in memory first; disk write runs in prepare.

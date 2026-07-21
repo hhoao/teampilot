@@ -626,15 +626,15 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
   SessionWorkbenchView _activeWorkbenchView(ChatCubit chat) {
     final sessionId = chat.state.activeSessionId;
     if (sessionId == null || sessionId.isEmpty) {
-      return SessionWorkbenchView.history;
+      return SessionWorkbenchView.chat;
     }
     final tab = chat.tabStore.openTabBySessionId(sessionId);
-    return tab?.workbenchView ?? SessionWorkbenchView.history;
+    return tab?.workbenchView ?? SessionWorkbenchView.chat;
   }
 
   void _onMemberRowTap(BuildContext context, String id) {
     final chat = context.read<ChatCubit>();
-    if (_activeWorkbenchView(chat) == SessionWorkbenchView.history) {
+    if (_activeWorkbenchView(chat) == SessionWorkbenchView.chat) {
       _switchToMember(context, id);
       return;
     }

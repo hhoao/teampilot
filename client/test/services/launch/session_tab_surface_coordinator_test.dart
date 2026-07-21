@@ -33,7 +33,7 @@ void main() {
         info: ChatTabInfo(id: 'sess-1', title: 'Review', subtitle: '/tmp'),
         cliTeamName: 'team-1',
         workspaceId: 'ws-1',
-        workbenchView: SessionWorkbenchView.history,
+        workbenchView: SessionWorkbenchView.chat,
       )..persistedSession = session;
       tabStore.append(existing);
       host = _FakeHost(
@@ -88,7 +88,7 @@ void main() {
     );
 
     test(
-      'History continue connect preserves History when preserveWorkbenchView',
+      'Chat continue connect preserves Chat when preserveWorkbenchView',
       () {
         final status = coordinator.surfaceExistingTab(
           request: SessionOpenRequest(
@@ -100,7 +100,7 @@ void main() {
         );
 
         expect(status, SessionOpenStatus.opened);
-        expect(existing.workbenchView, SessionWorkbenchView.history);
+        expect(existing.workbenchView, SessionWorkbenchView.chat);
         expect(host.beginConnectIds, ['sess-1']);
       },
     );

@@ -56,7 +56,7 @@ class WorkspaceShell extends StatelessWidget {
   final VoidCallback? onNewConversation;
   final void Function(Offset anchor)? onNewTerminal;
 
-  /// Extra controls on the right of the tab row (e.g. History/Terminal toggle).
+  /// Extra controls on the right of the tab row (e.g. Chat/Terminal toggle).
   final Widget? tabBarTrailing;
 
   @override

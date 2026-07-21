@@ -344,10 +344,10 @@ class _ChatWorkbenchBody extends StatelessWidget {
     final workbenchView = context.select<ChatCubit, SessionWorkbenchView>((c) {
       final activeId = slice.activeSessionId;
       if (activeId == null || activeId.isEmpty) {
-        return SessionWorkbenchView.history;
+        return SessionWorkbenchView.chat;
       }
       final tab = c.tabStore.openTabBySessionId(activeId);
-      return tab?.workbenchView ?? SessionWorkbenchView.history;
+      return tab?.workbenchView ?? SessionWorkbenchView.chat;
     });
 
     final memberId = slice.selectedMemberId.isNotEmpty
@@ -470,7 +470,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
 
     // Keep Alacritty mounted across title-bar workspace tab switches; hide with
     // [Offstage] so scrollback survives when the tab returns to foreground.
-    // Also keep it mounted while History is shown over a running PTY.
+    // Also keep it mounted while Chat is shown over a running PTY.
     return TpDeferredForegroundMount(
       active: terminalVisible,
       retainWhenInactive: true,
@@ -618,7 +618,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
           session: appSession,
           team: resolvedTeam,
           member: connectMember,
-          // Stay-on-History must not let connect force-switch to Terminal.
+          // Stay-on-Chat must not let connect force-switch to Terminal.
           preserveWorkbenchView: !switchToTerminal,
         );
         HistoryContinueChannel resolveChannel() {

@@ -4,10 +4,10 @@ import 'package:teampilot/pages/chat/chat_workbench_overlay.dart';
 
 void main() {
   group('resolveChatWorkbenchOverlay', () {
-    test('keeps History while connect is in progress (continue-from-History)', () {
+    test('keeps Chat while connect is in progress (continue-from-Chat)', () {
       expect(
         resolveChatWorkbenchOverlay(
-          workbenchView: SessionWorkbenchView.history,
+          workbenchView: SessionWorkbenchView.chat,
           sessionConnectInProgress: true,
           showRemoteProvision: false,
         ),
@@ -26,10 +26,10 @@ void main() {
       );
     });
 
-    test('shows History when idle on History view', () {
+    test('shows History overlay when idle on Chat view', () {
       expect(
         resolveChatWorkbenchOverlay(
-          workbenchView: SessionWorkbenchView.history,
+          workbenchView: SessionWorkbenchView.chat,
           sessionConnectInProgress: false,
           showRemoteProvision: false,
         ),
@@ -37,10 +37,10 @@ void main() {
       );
     });
 
-    test('remote provision wins over History and connect spinner', () {
+    test('remote provision wins over Chat and connect spinner', () {
       expect(
         resolveChatWorkbenchOverlay(
-          workbenchView: SessionWorkbenchView.history,
+          workbenchView: SessionWorkbenchView.chat,
           sessionConnectInProgress: true,
           showRemoteProvision: true,
         ),

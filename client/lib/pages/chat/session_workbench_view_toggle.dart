@@ -16,7 +16,7 @@ import '../../utils/ui/app_keys.dart';
 import '../../utils/team/team_member_naming.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-/// Tab-bar control to switch a session between History and Terminal.
+/// Tab-bar control to switch a session between Chat and Terminal.
 class SessionWorkbenchViewToggle extends StatelessWidget {
   const SessionWorkbenchViewToggle({
     required this.workspaceId,
@@ -40,18 +40,18 @@ class SessionWorkbenchViewToggle extends StatelessWidget {
     final sessionId = active.id;
     final view = context.select<ChatCubit, SessionWorkbenchView>((c) {
       final tab = c.tabStore.openTabBySessionId(sessionId);
-      return tab?.workbenchView ?? SessionWorkbenchView.history;
+      return tab?.workbenchView ?? SessionWorkbenchView.chat;
     });
-    final showingHistory = view == SessionWorkbenchView.history;
+    final showingChat = view == SessionWorkbenchView.chat;
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
 
     return TpIconButton(
       key: AppKeys.sessionWorkbenchViewToggle,
-      icon: showingHistory
+      icon: showingChat
           ? Icons.terminal_rounded
           : Icons.history_rounded,
-      tooltip: showingHistory
+      tooltip: showingChat
           ? l10n.sessionWorkbenchShowTerminal
           : l10n.sessionWorkbenchShowHistory,
       color: cs.onSurfaceVariant,
@@ -59,7 +59,7 @@ class SessionWorkbenchViewToggle extends StatelessWidget {
         _toggle(
           context,
           sessionId: sessionId,
-          showingHistory: showingHistory,
+          showingChat: showingChat,
         ),
       ),
     );
@@ -68,13 +68,13 @@ class SessionWorkbenchViewToggle extends StatelessWidget {
   Future<void> _toggle(
     BuildContext context, {
     required String sessionId,
-    required bool showingHistory,
+    required bool showingChat,
   }) async {
     final chat = context.read<ChatCubit>();
     final workbench = context.read<WorkbenchCubit>();
     final tabId = WorkbenchTabId.session(sessionId);
 
-    if (showingHistory) {
+    if (showingChat) {
       chat.setSessionWorkbenchView(sessionId, SessionWorkbenchView.terminal);
       workbench.pinTab(workspaceId, tabId);
       workbench.ensureTab(workspaceId, tabId, preview: false);
@@ -115,7 +115,7 @@ class SessionWorkbenchViewToggle extends StatelessWidget {
       return;
     }
 
-    chat.setSessionWorkbenchView(sessionId, SessionWorkbenchView.history);
+    chat.setSessionWorkbenchView(sessionId, SessionWorkbenchView.chat);
   }
 
   AppSession? _resolveSession(ChatCubit chat, String sessionId) {
