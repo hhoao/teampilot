@@ -1,9 +1,9 @@
 import '../core/turns.dart';
 
-/// Actor apiKey for the team lead seat (matches mock_anthropic).
+/// Actor apiKey for the team lead seat.
 const leadScriptApiKey = 'lead-script';
 
-/// Actor apiKey for the team worker seat (matches mock_anthropic).
+/// Actor apiKey for the team worker seat.
 const workerScriptApiKey = 'worker-script';
 
 /// Stable markers asserted by L2 on the compose seat (lead) and worker PTY.

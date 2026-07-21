@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import '../core/turns.dart';
 
-/// Anthropic Messages SSE event encoder (ported from mock_anthropic).
+/// Anthropic Messages SSE event encoder.
 class AnthropicSseEncoder {
   static String encodeTurn({
     required String messageId,

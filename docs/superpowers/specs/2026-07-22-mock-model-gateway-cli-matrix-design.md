@@ -268,17 +268,20 @@ semantics themselves change.
 
 ## Migration
 
-- Introduce `tools/mock_model_gateway` as the sole mock stack for matrix tests.
-- Move useful Anthropic scenarios from `mock_anthropic` into
-  `scenarios/` (rewritten against the shared DSL as needed).
-- Delete or gut `mock_anthropic` once L2 Claude paths run on the gateway — no
-  compatibility shim required.
+- `tools/mock_model_gateway` is the sole mock stack for matrix and Claude mixed
+  integration tests.
+- Useful Anthropic scenarios live under `scenarios/` (shared DSL).
+- `tools/mock_anthropic` is retired (deleted); no compatibility shim.
 
 ## Success criteria
 
 - L0–L1 green without any vendor CLI.
-- L2 matrix green for every non-N/A cell on a machine with the five CLIs +
-  Linux PTY build, using **only** the mock gateway as model backend.
+- L2 matrix green for every non-N/A, non-blocked cell on a machine with the
+  launch CLIs + Linux PTY build, using **only** the mock gateway as model
+  backend.
+- **Cursor exception:** simple + mixed L2 are **BLOCKED** — public
+  `cursor-agent` has no loopback model redirect (Cursor cloud only). Native is
+  N/A. Do not fake-green Cursor cells; re-open when a public redirect exists.
 - Each L2 cell proves: History compose submit → user bubble → ≥3 assistant
   bubbles (plus mailbox Queued→sticky when that channel is exercised).
 - A deliberate product send-path or thread-bubble break fails the matching cell

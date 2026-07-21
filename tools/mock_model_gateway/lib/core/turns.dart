@@ -26,7 +26,7 @@ final class ToolUseTurn extends MockTurn {
 /// Scripts a task-status update using a logical [toolRef].
 ///
 /// The concrete task id may be resolved from an inbound tool_result by the
-/// gateway server (same role as mock_anthropic's AssignedTaskUpdateTurn).
+/// gateway server before emitting the mapped tool_use update.
 final class AssignedTaskUpdateTurn extends MockTurn {
   const AssignedTaskUpdateTurn({
     required this.id,

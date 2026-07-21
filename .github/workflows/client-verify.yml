@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - "client/**"
-      - "tools/mock_anthropic/**"
+      - "tools/mock_model_gateway/**"
       - ".gitmodules"
       - ".github/workflows/client-verify.yml"
       - ".github/workflows/release.yml"
@@ -13,7 +13,7 @@ on:
   pull_request:
     paths:
       - "client/**"
-      - "tools/mock_anthropic/**"
+      - "tools/mock_model_gateway/**"
       - ".gitmodules"
       - ".github/workflows/client-verify.yml"
       - ".github/workflows/release.yml"

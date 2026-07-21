@@ -97,7 +97,7 @@ Declared in `client/dart_test.yaml`. Every integration test has the `integration
 | Secondary tag | Tests | Needs |
 |---------------|-------|--------|
 | `cross-platform` | L1 bus ping/pong | Nothing (HTTP loopback only) |
-| `linux-pty` | L2 local Claude PTY; L3 also carries this tag | `flutter build linux`, `libflutter_pty_new.so` on loader path, `claude` on PATH |
+| `linux-pty` | L2 CLI matrix + Claude mixed PTY; L3 also carries this tag | `flutter build linux`, `libflutter_pty_new.so` on loader path, matching CLIs on PATH |
 | `docker` | L3 mixed SSH worker; remote CLI install | Docker daemon (+ outbound network for install test) |
 
 Examples:
@@ -109,31 +109,44 @@ flutter test --tags "integration && linux-pty"        # L2 + L3 (CI)
 flutter test --tags "integration && docker"           # L3 + remote CLI install
 ```
 
-### Mixed team Claude bus integration tests
+### Mock model gateway + CLI message matrix
 
-**L0 (mock_anthropic package):**
+All mock model traffic for matrix / mixed-bus integration goes through
+`tools/mock_model_gateway` (Anthropic Messages, OpenAI Chat, Codex Responses).
+Package `dart test` covers L0 + L1 HTTP — no separate client L1 is required for
+the gateway itself.
+
+**L0 + L1 (gateway package, no vendor CLI):**
 
 ```bash
-cd tools/mock_anthropic && dart test
+cd tools/mock_model_gateway && dart test
 ```
 
-**L1 (fast, no claude):**
+**L1 (client bus / cross-platform, no PTY):**
 
 ```bash
 cd client && flutter test --tags "integration && cross-platform"
 ```
 
-**L2 (full ChatCubit + claude + PTY, Linux):**
+**L2 (CLI message matrix — real CLI + ChatCubit + PTY + gateway, Linux):**
 
 ```bash
 cd client
 flutter build linux --debug
-TEAMPILOT_BUS_BRIDGE=/dev/null/teampilot-it-no-bridge \
 LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib \
-  flutter test test/integration/mixed_team_claude_bus_integration_test.dart --tags "integration && linux-pty"
+  flutter test --tags "integration && linux-pty" \
+  test/integration/cli_message_matrix_*.dart
 ```
 
-L2 requires `claude` on PATH. TeamPilot pre-approves third-party provider API keys in `.claude.json` (`customApiKeyResponses`) so Claude Code skips the interactive "use this API key?" gate on first launch.
+Also under `linux-pty`: legacy Claude mixed TeamBus L2
+(`mixed_team_claude_bus_integration_test.dart`). L2 cells need the matching CLI
+on PATH (`claude`, `flashskyai`, `codex`, `opencode`, …). TeamPilot pre-approves
+third-party provider API keys in `.claude.json` (`customApiKeyResponses`) so
+Claude Code skips the interactive "use this API key?" gate on first launch.
+
+**Cursor L2:** blocked — public `cursor-agent` has no loopback model redirect
+(auth is Cursor cloud only). Do not expect green Cursor matrix cells until a
+public redirect exists; spike notes live on `CliTestProfile` for `CliTool.cursor`.
 
 **L3 (local lead + Docker SSH worker, full ChatCubit + remote preflight):**
 
@@ -145,12 +158,6 @@ LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib \
 ```
 
 L3 uses `Dockerfile.mixed` (`teampilot-it-ssh-mixed:latest`) with Node + `claude` baked in. Most wall time is **cold start** (Docker + two Claude PTYs + remote preflight locate); once both members are idle, bus ping/pong should complete in **seconds** (`kickoffAndWaitForPingPong` allows 30s per attempt). Bare-image install coverage remains `remote_cli_install_docker_test.dart`.
-
-**Debug mock API:**
-
-```bash
-dart run tools/mock_anthropic/bin/mock_anthropic.dart
-```
 
 Remote CLI install over Docker SSH (needs Docker daemon + outbound network):
 
