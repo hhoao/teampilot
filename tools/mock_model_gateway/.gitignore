@@ -1,0 +1,5 @@
+.dart_tool/
+pubspec.lock
+build/
+mock_model_gateway
+mock_model_gateway.exe
