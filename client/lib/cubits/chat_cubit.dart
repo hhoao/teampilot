@@ -23,6 +23,7 @@ import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
 import '../services/storage/app_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
+import '../services/session/session_member_cli_locks.dart';
 import '../services/remote/remote_cli_readiness.dart';
 import '../services/team_bus/artifacts/artifact_registry.dart';
 import '../services/team_bus/artifacts/artifact_transfer_service.dart';
@@ -782,21 +783,31 @@ class ChatCubit extends Cubit<ChatState>
     String sessionTeamId = '',
     List<TeamMemberConfig> rosterMembers = const [],
     Map<String, CliTool> memberClis = const {},
+    TeamProfile? team,
     CliTool? cli,
     String? workingDirectory,
     String? fixedSessionId,
   }) async {
+    final trimmedTeam = sessionTeamId.trim();
+    final resolvedClis = trimmedTeam.isEmpty
+        ? const <String, CliTool>{}
+        : memberClis.isNotEmpty
+        ? memberClis
+        : team != null
+        ? resolveSessionMemberCliLocks(
+            team: team,
+            rosterMembers: rosterMembers,
+            globalPresets: _lifecycle.globalPresets,
+          )
+        : throw ArgumentError(
+            'Team session create requires memberClis or team',
+          );
     final session = await _dataStore.createSession(
       workspaceId,
       repo,
       sessionTeamId: sessionTeamId,
       rosterMembers: rosterMembers,
-      memberClis: memberClis.isNotEmpty
-          ? memberClis
-          : {
-              for (final m in rosterMembers.where((m) => m.isValid))
-                m.id: m.cli ?? CliTool.claude,
-            },
+      memberClis: resolvedClis,
       cli: cli,
       workingDirectory: workingDirectory,
       fixedSessionId: fixedSessionId,
@@ -827,6 +838,8 @@ class ChatCubit extends Cubit<ChatState>
     SessionRepository repo, {
     String sessionTeamId = '',
     List<TeamMemberConfig> rosterMembers = const [],
+    Map<String, CliTool> memberClis = const {},
+    TeamProfile? team,
     String display = '',
     bool allowDuplicate = false,
     LaunchProfileRepository? identityRepository,
@@ -836,6 +849,9 @@ class ChatCubit extends Cubit<ChatState>
       repo,
       sessionTeamId: sessionTeamId,
       rosterMembers: rosterMembers,
+      memberClis: memberClis,
+      team: team,
+      globalPresets: _lifecycle.globalPresets,
       display: display,
       allowDuplicate: allowDuplicate,
       identityRepository: identityRepository,

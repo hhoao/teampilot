@@ -67,7 +67,6 @@ abstract final class DefaultWorkspaceService {
         workspace.workspaceId,
         sessionTeam: defaultTeam.id,
         rosterMembers: rosterMembers,
-        // Temporary until Task 4 threads presets.
         memberClis: resolveSessionMemberCliLocks(
           team: defaultTeam,
           rosterMembers: rosterMembers,

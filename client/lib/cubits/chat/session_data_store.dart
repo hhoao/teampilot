@@ -3,10 +3,12 @@ import 'package:equatable/equatable.dart';
 import '../../models/workspace_folder.dart';
 import '../../models/workspace.dart';
 import '../../models/app_session.dart';
+import '../../models/cli_preset.dart';
 import '../../models/workspace_icon_ref.dart';
-import '../../models/team_config.dart' show CliTool, TeamMemberConfig;
+import '../../models/team_config.dart' show CliTool, TeamMemberConfig, TeamProfile;
 import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/session_repository.dart';
+import '../../services/session/session_member_cli_locks.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 
@@ -218,6 +220,8 @@ class SessionDataStore {
     String sessionTeamId = '',
     List<TeamMemberConfig> rosterMembers = const [],
     Map<String, CliTool> memberClis = const {},
+    TeamProfile? team,
+    List<CliPreset> globalPresets = const [],
     String display = '',
     bool allowDuplicate = false,
     LaunchProfileRepository? identityRepository,
@@ -227,16 +231,25 @@ class SessionDataStore {
       display: display,
       allowDuplicate: allowDuplicate,
     );
+    final trimmedTeam = sessionTeamId.trim();
+    final resolvedClis = trimmedTeam.isEmpty
+        ? const <String, CliTool>{}
+        : memberClis.isNotEmpty
+        ? memberClis
+        : team != null
+        ? resolveSessionMemberCliLocks(
+            team: team,
+            rosterMembers: rosterMembers,
+            globalPresets: globalPresets,
+          )
+        : throw ArgumentError(
+            'Team session create requires memberClis or team',
+          );
     await repo.createSession(
       workspace.workspaceId,
       sessionTeam: sessionTeamId,
       rosterMembers: rosterMembers,
-      memberClis: memberClis.isNotEmpty
-          ? memberClis
-          : {
-              for (final m in rosterMembers.where((m) => m.isValid))
-                m.id: m.cli ?? CliTool.claude,
-            },
+      memberClis: resolvedClis,
     );
     final snapshot = await loadWorkspaceData(repo);
     return (workspaceId: workspace.workspaceId, snapshot: snapshot);

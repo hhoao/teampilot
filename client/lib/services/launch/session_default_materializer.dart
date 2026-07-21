@@ -86,10 +86,10 @@ class SessionDefaultMaterializer {
       workspace.workspaceId,
       sessionTeam: team.id,
       rosterMembers: team.members,
-      // Temporary until Task 4 threads presets; locks from live team/member cli.
       memberClis: resolveSessionMemberCliLocks(
         team: team,
         rosterMembers: team.members,
+        globalPresets: _host.lifecycle.globalPresets,
       ),
     );
     if (_host.isClosed) return;

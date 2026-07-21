@@ -194,15 +194,11 @@ class SessionLaunchService
     final teamId = params.sessionTeamId.trim();
     final memberClis = teamId.isEmpty
         ? const <String, CliTool>{}
-        : request.team != null
-        ? resolveSessionMemberCliLocks(
+        : resolveSessionMemberCliLocks(
             team: request.team!,
             rosterMembers: params.rosterMembers,
-          )
-        : {
-            for (final m in params.rosterMembers.where((m) => m.isValid))
-              m.id: m.cli ?? CliTool.claude,
-          };
+            globalPresets: _h.lifecycle.globalPresets,
+          );
 
     final persisted = await repo.createSession(
       session.workspaceId,

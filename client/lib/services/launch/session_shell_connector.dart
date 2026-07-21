@@ -6,6 +6,7 @@ import '../../cubits/chat/chat_tab_store.dart';
 import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/chat/session_launch_host.dart';
 import '../../models/app_session.dart';
+import '../../models/member_instance.dart';
 import '../../models/member_remote_provision_progress.dart';
 import '../../models/runtime_target.dart';
 import '../../models/session_member_binding.dart';
@@ -160,6 +161,7 @@ class SessionShellConnector {
     final SessionMemberBinding? binding = team != null && member != null
         ? await _resolveMemberBinding(
             session: activeSession,
+            team: team,
             member: member,
             tab: tab,
             repo: repo,
@@ -642,30 +644,53 @@ class SessionShellConnector {
 
   Future<SessionMemberBinding> _resolveMemberBinding({
     required AppSession session,
+    required TeamProfile team,
     required TeamMemberConfig member,
     required ChatTab tab,
     SessionRepository? repo,
   }) async {
+    final type = _memberTypeForCliLock(team, member);
+    final locked = memberLaunchCli(
+      team: team,
+      member: type,
+      globalPresets: _host.lifecycle.globalPresets,
+    );
     final r = repo ?? _host.sessionRepository;
     final isLocal = session.sessionId.startsWith('local-');
     if (r != null && !isLocal) {
       return r.ensureMemberBinding(
         session.sessionId,
         member.id,
-        // Temporary: Task 4 resolves via profile; prefer member.cli when set.
-        cli: member.cli ?? CliTool.claude,
+        typeId: type.id,
+        cli: locked,
       );
     }
     final existing = session.bindingFor(member.id);
     if (existing != null) return existing;
     final binding = SessionMemberBinding(
       rosterMemberId: member.id,
+      typeId: type.id,
       taskId: _uuid.v4(),
+      cli: locked,
     );
     tab.persistedSession = session.copyWith(
       members: [...session.members, binding],
     );
     return binding;
+  }
+
+  /// Resolve the roster **type** for append-time CLI lock (not a pod instance).
+  TeamMemberConfig _memberTypeForCliLock(
+    TeamProfile team,
+    TeamMemberConfig member,
+  ) {
+    for (final type in team.members) {
+      if (type.id == member.id) return type;
+    }
+    for (final inst in expandTeamRoster(team.members)) {
+      if (inst.instanceId == member.id) return inst.type;
+    }
+    return member;
   }
 
   bool _teamSessionPersistedEnough(AppSession session) {
