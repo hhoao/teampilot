@@ -464,7 +464,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
       sessionConnectInProgress: sessionConnectInProgress,
       showRemoteProvision: showRemoteProvision,
     );
-    final showHistory = overlay == ChatWorkbenchOverlay.history;
+    final showHistory = overlay == ChatWorkbenchOverlay.chat;
     final showSessionStarting =
         overlay == ChatWorkbenchOverlay.sessionStarting;
 

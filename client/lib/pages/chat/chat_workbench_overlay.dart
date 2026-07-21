@@ -5,8 +5,8 @@ enum ChatWorkbenchOverlay {
   /// Remote CLI provision progress.
   remoteProvision,
 
-  /// History review — kept mounted during continue connect.
-  history,
+  /// Chat surface — kept mounted during continue connect.
+  chat,
 
   /// Full-screen session-starting spinner (Terminal / non-Chat connect).
   sessionStarting,
@@ -27,7 +27,7 @@ ChatWorkbenchOverlay resolveChatWorkbenchOverlay({
 }) {
   if (showRemoteProvision) return ChatWorkbenchOverlay.remoteProvision;
   if (workbenchView == SessionWorkbenchView.chat) {
-    return ChatWorkbenchOverlay.history;
+    return ChatWorkbenchOverlay.chat;
   }
   if (sessionConnectInProgress) return ChatWorkbenchOverlay.sessionStarting;
   return ChatWorkbenchOverlay.none;

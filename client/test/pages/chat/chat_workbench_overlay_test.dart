@@ -11,7 +11,7 @@ void main() {
           sessionConnectInProgress: true,
           showRemoteProvision: false,
         ),
-        ChatWorkbenchOverlay.history,
+        ChatWorkbenchOverlay.chat,
       );
     });
 
@@ -26,14 +26,14 @@ void main() {
       );
     });
 
-    test('shows History overlay when idle on Chat view', () {
+    test('shows Chat overlay when idle on Chat view', () {
       expect(
         resolveChatWorkbenchOverlay(
           workbenchView: SessionWorkbenchView.chat,
           sessionConnectInProgress: false,
           showRemoteProvision: false,
         ),
-        ChatWorkbenchOverlay.history,
+        ChatWorkbenchOverlay.chat,
       );
     });
 
