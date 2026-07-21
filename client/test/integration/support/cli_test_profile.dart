@@ -11,6 +11,7 @@ import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'cli_test_profile_claude_boot.dart';
 import 'cli_test_profile_codex_boot.dart';
 import 'cli_test_profile_flashskyai_boot.dart';
+import 'cli_test_profile_opencode_boot.dart';
 
 /// Wire protocol the mock gateway should speak for a CLI matrix cell.
 enum CliTestWire {
@@ -228,16 +229,23 @@ abstract final class CliTestProfiles {
     wire: CliTestWire.openaiChat,
     binaryName: 'opencode',
     resolveBinary: () => whichOnPath('opencode'),
-    // Best-effort mcp__ mapping; revise after one-shot probe if OpenCode
-    // exposes a different MCP tool id shape.
-    toolName: mapMcpPrefixedToolRef,
+    // OpenCode registers MCP as `<server>_<tool>` (hyphens kept; see
+    // anomalyco/opencode mcp/index.ts convertMcpTool keying).
+    toolName: mapOpencodeMcpToolRef,
     assistantVisibleMarkers: const [markA1, markA2, markA3],
-    bootToPrompt: bootToPromptStub,
-    dismissBootGates: dismissBootGatesStub,
+    bootToPrompt: (session) async {
+      if (session is! TerminalSession) return false;
+      return bootOpencodeToPrompt(session);
+    },
+    dismissBootGates: (session) async {
+      if (session is! TerminalSession) return;
+      await dismissOpencodeBootGates(session);
+    },
     fullscreenDeliverNotes:
         'Fullscreen paste; anchorCellClears CR ACK (OpencodeTerminalBehavior).',
     gatewayRedirectNotes:
-        'OpenAI Chat Completions at gateway /v1/chat/completions.',
+        'Custom provider npm=@ai-sdk/openai-compatible; OpenAI Chat '
+        'Completions at gateway /v1/chat/completions (stream: true SSE).',
   );
 
   static final CliTestProfile _cursor = CliTestProfile(
@@ -284,6 +292,22 @@ String mapCodexNamespacedMcpToolRef(String toolRef) {
   if (toolRef.startsWith(teambus)) {
     final server = teammateBusMcpServerName.replaceAll('-', '_');
     return 'mcp__$server::${toolRef.substring(teambus.length)}';
+  }
+  const native = 'native.';
+  if (toolRef.startsWith(native)) {
+    return toolRef.substring(native.length);
+  }
+  return toolRef;
+}
+
+/// OpenCode Chat Completions tools: `teambus.X` → `teammate-bus_X`.
+///
+/// OpenCode keys MCP tools as `<sanitizedServer>_<sanitizedTool>` (keeps
+/// hyphens; replaces other non `[A-Za-z0-9_-]` with `_`).
+String mapOpencodeMcpToolRef(String toolRef) {
+  const teambus = 'teambus.';
+  if (toolRef.startsWith(teambus)) {
+    return '${teammateBusMcpServerName}_${toolRef.substring(teambus.length)}';
   }
   const native = 'native.';
   if (toolRef.startsWith(native)) {

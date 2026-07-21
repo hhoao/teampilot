@@ -104,10 +104,16 @@ void main() {
     );
   });
 
-  test('opencode toolName maps one teambus ref', () {
+  test('opencode toolName maps teambus refs to server_tool keys', () {
     expect(
       CliTestProfiles.forTool(CliTool.opencode).toolName('teambus.send_message'),
-      'mcp__${teammateBusMcpServerName}__send_message',
+      '${teammateBusMcpServerName}_send_message',
+    );
+    expect(
+      CliTestProfiles.forTool(CliTool.opencode).toolName(
+        'teambus.wait_for_message',
+      ),
+      '${teammateBusMcpServerName}_wait_for_message',
     );
   });
 

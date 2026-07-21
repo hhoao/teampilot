@@ -168,6 +168,8 @@ final class CliMessageMatrixHarness {
 
   String? _savedBusBridgeEnv;
   bool _envOverrideApplied = false;
+  String? _savedBusBridgeDebugOverride;
+  bool _busBridgeDebugOverrideApplied = false;
 
   String get mockBaseUrl => gateway!.baseUri.toString();
 
@@ -191,7 +193,7 @@ final class CliMessageMatrixHarness {
     Map<String, MockScenario>? scenarios,
     bool exposeToDocker = false,
   }) async {
-    _forceHttpMcp();
+    _configureBusBridge();
     final server = MockModelGatewayServer.scenarios(
       scenarios ?? scenariosForRecipe(recipe),
       toolNames: profile.toolName,
@@ -220,6 +222,10 @@ final class CliMessageMatrixHarness {
       final modelId = matrixMockModelIdFor(providerId);
       return {
         if (profile.providerType != null) 'provider_type': profile.providerType,
+        // Custom opencode ids are not in the built-in catalog — npm tells
+        // OpenCode which SDK to use (same as OpenAI Compatible preset).
+        if (profile.tool == CliTool.opencode)
+          'npm': '@ai-sdk/openai-compatible',
         // flashskyai --provider requires --model; key must exist in llm_config
         // and must be unique across providers (merge overwrites same keys).
         'models': {
@@ -1046,7 +1052,74 @@ final class CliMessageMatrixHarness {
     _restoreBusBridgeEnv();
   }
 
+  /// OpenCode remote HTTP MCP does not complete long-blocking
+  /// `wait_for_message` SSE; product launch prefers stdio via
+  /// [BusBridgeLocator]. Other CLIs force HTTP so matrix cells do not depend
+  /// on a runnable bridge binary in the test runner.
+  void _configureBusBridge() {
+    if (profile.tool == CliTool.opencode) {
+      _forceStdioBusBridge();
+    } else {
+      _forceHttpMcp();
+    }
+  }
+
+  void _forceStdioBusBridge() {
+    final bridge = _resolveMatrixBusBridge();
+    if (bridge == null) {
+      throw StateError(
+        'OpenCode mixed matrix requires teammate_bus_bridge on disk '
+        '(build linux bundle or set ${BusBridgeLocator.envOverride})',
+      );
+    }
+    // flutter test cannot mutate Platform.environment — pin via locator.
+    _savedBusBridgeDebugOverride = BusBridgeLocator.debugResolveOverride;
+    BusBridgeLocator.debugResolveOverride = bridge;
+    _busBridgeDebugOverrideApplied = true;
+    try {
+      _savedBusBridgeEnv = Platform.environment[BusBridgeLocator.envOverride];
+      Platform.environment[BusBridgeLocator.envOverride] = bridge;
+      _envOverrideApplied = true;
+    } on UnsupportedError {
+      // Env pin optional when debugResolveOverride is set.
+      _envOverrideApplied = false;
+    }
+  }
+
+  /// Bundle / CWD candidates for the stdio bus bridge used by OpenCode cells.
+  static String? _resolveMatrixBusBridge() {
+    final fromEnv = Platform.environment[BusBridgeLocator.envOverride]?.trim();
+    if (fromEnv != null &&
+        fromEnv.isNotEmpty &&
+        fromEnv != '/dev/null/teampilot-it-no-bridge' &&
+        BusBridgeLocator.isRunnableExecutable(fromEnv)) {
+      return fromEnv;
+    }
+    const candidates = [
+      'build/linux/x64/debug/bundle/teammate_bus_bridge',
+      'build/linux/x64/debug/teammate_bus_bridge',
+      '../build/linux/x64/debug/bundle/teammate_bus_bridge',
+    ];
+    for (final path in candidates) {
+      if (BusBridgeLocator.isRunnableExecutable(path)) {
+        return File(path).absolute.path;
+      }
+    }
+    return BusBridgeLocator.resolve();
+  }
+
   void _forceHttpMcp() {
+    // Clear any OpenCode stdio pin from a prior cell in the same isolate.
+    if (_busBridgeDebugOverrideApplied) {
+      BusBridgeLocator.debugResolveOverride = _savedBusBridgeDebugOverride;
+      _busBridgeDebugOverrideApplied = false;
+      _savedBusBridgeDebugOverride = null;
+    }
+    // Pin an unusable bridge so resolve() returns null → HTTP MCP fallback.
+    _savedBusBridgeDebugOverride = BusBridgeLocator.debugResolveOverride;
+    BusBridgeLocator.debugResolveOverride =
+        '/dev/null/teampilot-it-no-bridge';
+    _busBridgeDebugOverrideApplied = true;
     try {
       _savedBusBridgeEnv = Platform.environment[BusBridgeLocator.envOverride];
       Platform.environment[BusBridgeLocator.envOverride] =
@@ -1058,6 +1131,11 @@ final class CliMessageMatrixHarness {
   }
 
   void _restoreBusBridgeEnv() {
+    if (_busBridgeDebugOverrideApplied) {
+      BusBridgeLocator.debugResolveOverride = _savedBusBridgeDebugOverride;
+      _busBridgeDebugOverrideApplied = false;
+      _savedBusBridgeDebugOverride = null;
+    }
     if (!_envOverrideApplied) return;
     final saved = _savedBusBridgeEnv;
     _savedBusBridgeEnv = null;

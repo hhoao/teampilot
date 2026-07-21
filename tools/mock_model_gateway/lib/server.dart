@@ -165,6 +165,8 @@ class MockModelGatewayServer {
     final bodyJson = _tryParseJson(bodyBytes);
     final model = bodyJson?['model'] as String? ?? 'mock-model';
     final hasTools = _requestHasTools(bodyJson);
+    final streamChat = adapter is OpenAiChatAdapter &&
+        OpenAiChatAdapter.wantsStream(bodyJson);
 
     try {
       // Claude Code / flashskyai issue a tool-less probe before the real
@@ -172,10 +174,12 @@ class MockModelGatewayServer {
       if ((adapter.wireId == 'anthropic' || adapter.wireId == 'openai_chat') &&
           !hasTools) {
         final messageId = 'msg_probe_${DateTime.now().microsecondsSinceEpoch}';
-        final body = adapter.encodeResponse(
+        final body = _encodeAdapterBody(
+          adapter: adapter,
           turn: const ResolvedTextTurn(''),
           messageId: messageId,
           model: model,
+          streamChat: streamChat,
         );
         _requestLog.add(
           RequestLogEntry(
@@ -187,12 +191,7 @@ class MockModelGatewayServer {
             turnLabel: 'probe(no-tools)',
           ),
         );
-        final mime = adapter.responseMimeType.split('/');
-        request.response
-          ..statusCode = HttpStatus.ok
-          ..headers.contentType = ContentType(mime[0], mime[1])
-          ..write(body)
-          ..close();
+        _writeBody(request, adapter: adapter, body: body, streamChat: streamChat);
         return;
       }
 
@@ -202,10 +201,12 @@ class MockModelGatewayServer {
       final scripted = _engine.scenarioFor(apiKey)!.turns[turnIndex];
       final turn = adapter.resolveInboundTurn(resolved, bodyJson);
       final messageId = 'msg_${DateTime.now().microsecondsSinceEpoch}';
-      final body = adapter.encodeResponse(
+      final body = _encodeAdapterBody(
+        adapter: adapter,
         turn: turn,
         messageId: messageId,
         model: model,
+        streamChat: streamChat,
       );
 
       _requestLog.add(
@@ -219,12 +220,7 @@ class MockModelGatewayServer {
         ),
       );
 
-      final mime = adapter.responseMimeType.split('/');
-      request.response
-        ..statusCode = HttpStatus.ok
-        ..headers.contentType = ContentType(mime[0], mime[1])
-        ..write(body)
-        ..close();
+      _writeBody(request, adapter: adapter, body: body, streamChat: streamChat);
     } on StateError catch (e) {
       request.response
         ..statusCode = HttpStatus.internalServerError
@@ -236,6 +232,43 @@ class MockModelGatewayServer {
   static bool _requestHasTools(Map<String, Object?>? body) {
     final tools = body?['tools'];
     return tools is List && tools.isNotEmpty;
+  }
+
+  static String _encodeAdapterBody({
+    required WireAdapter adapter,
+    required ResolvedTurn turn,
+    required String messageId,
+    required String model,
+    required bool streamChat,
+  }) {
+    if (streamChat && adapter is OpenAiChatAdapter) {
+      return adapter.encodeStreamingResponse(
+        turn: turn,
+        messageId: messageId,
+        model: model,
+      );
+    }
+    return adapter.encodeResponse(
+      turn: turn,
+      messageId: messageId,
+      model: model,
+    );
+  }
+
+  static void _writeBody(
+    HttpRequest request, {
+    required WireAdapter adapter,
+    required String body,
+    required bool streamChat,
+  }) {
+    final mimeType =
+        streamChat ? 'text/event-stream' : adapter.responseMimeType;
+    final mime = mimeType.split('/');
+    request.response
+      ..statusCode = HttpStatus.ok
+      ..headers.contentType = ContentType(mime[0], mime[1])
+      ..write(body)
+      ..close();
   }
 
   WireAdapter? _adapterFor(String path) {

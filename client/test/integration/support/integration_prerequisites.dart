@@ -137,6 +137,37 @@ abstract final class IntegrationPrerequisites {
     return path;
   }
 
+  /// Resolves `opencode` on PATH, or null when not installed.
+  static String? resolveOpencodePath() {
+    try {
+      if (Platform.isWindows) {
+        final result = Process.runSync('where', ['opencode']);
+        if (result.exitCode != 0) return null;
+        for (final raw in result.stdout.toString().split(RegExp(r'\r?\n'))) {
+          final line = raw.trim();
+          if (line.isEmpty) continue;
+          final resolved = _resolveWindowsExecutablePath(line);
+          if (resolved != null) return resolved;
+        }
+        return null;
+      }
+      final result = Process.runSync('which', ['opencode']);
+      if (result.exitCode != 0) return null;
+      final line = result.stdout.toString().trim().split('\n').first.trim();
+      return line.isEmpty ? null : line;
+    } on ProcessException {
+      return null;
+    }
+  }
+
+  static String? requireOpencodePath() {
+    final path = resolveOpencodePath();
+    if (path == null) {
+      markTestSkipped('opencode not on PATH');
+    }
+    return path;
+  }
+
   static void skipUnlessNativePty() {
     if (!nativePtyAvailable) {
       markTestSkipped(skipWithoutNativePty);

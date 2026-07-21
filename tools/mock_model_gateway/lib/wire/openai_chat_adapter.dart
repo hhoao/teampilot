@@ -2,19 +2,24 @@ import 'dart:convert';
 
 import '../core/turns.dart';
 import 'assigned_task_id_parser.dart';
+import 'openai_chat_sse_encoder.dart';
 import 'wire_adapter.dart';
 
 /// OpenAI Chat Completions (`/v1/chat/completions`) wire adapter.
 ///
-/// Encodes non-streaming `chat.completion` JSON. Prefer this simpler shape for
-/// opencode / flashskyai `provider_type: openai`; switch to SSE `data:` chunks
-/// later only if a CLI requires `stream: true`.
+/// Default [encodeResponse] is non-streaming `chat.completion` JSON (flashskyai).
+/// When the request sets `stream: true` (OpenCode), the server uses
+/// [OpenAiChatSseEncoder] instead — see [wantsStream].
 class OpenAiChatAdapter implements WireAdapter {
   @override
   String get wireId => 'openai_chat';
 
   @override
   String get responseMimeType => 'application/json';
+
+  /// Whether [requestBody] asks for SSE (`stream: true`).
+  static bool wantsStream(Map<String, Object?>? requestBody) =>
+      requestBody?['stream'] == true;
 
   @override
   bool matchesPath(String path) {
@@ -80,6 +85,18 @@ class OpenAiChatAdapter implements WireAdapter {
       },
     });
   }
+
+  /// Encode [turn] for `stream: true` clients (OpenCode).
+  String encodeStreamingResponse({
+    required ResolvedTurn turn,
+    required String messageId,
+    required String model,
+  }) =>
+      OpenAiChatSseEncoder.encodeTurn(
+        messageId: messageId,
+        model: model,
+        turn: turn,
+      );
 
   @override
   ResolvedTurn resolveInboundTurn(

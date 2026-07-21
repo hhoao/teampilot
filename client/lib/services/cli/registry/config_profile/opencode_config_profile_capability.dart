@@ -192,6 +192,20 @@ Map<String, Object?> mergeOpencodeProvider(
     entry['npm'] = npm.trim();
   }
 
+  // Custom openai-compatible providers need an explicit models map or
+  // `--model provider/id` fails with "model not found".
+  final defaultModel = provider.defaultModel.trim();
+  if (defaultModel.isNotEmpty) {
+    final models = <String, Object?>{
+      ...((entry['models'] as Map?)?.cast<String, Object?>() ??
+          const <String, Object?>{}),
+    };
+    if (!models.containsKey(defaultModel)) {
+      models[defaultModel] = <String, Object?>{'name': defaultModel};
+      entry['models'] = models;
+    }
+  }
+
   if (options.isNotEmpty) entry['options'] = options;
   if (entry.isEmpty) return config;
 

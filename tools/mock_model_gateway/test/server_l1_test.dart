@@ -255,6 +255,41 @@ void main() {
     expect(server.requestCountFor('lead'), 1);
   });
 
+  test('OpenAI Chat stream:true returns chat.completion.chunk SSE', () async {
+    final server = MockModelGatewayServer(
+      engine: ScenarioEngine({
+        'k': MockScenario(turns: [TextTurn('stream-hi')]),
+      }),
+    );
+    await server.start();
+    addTearDown(server.stop);
+
+    final uri = server.baseUri.replace(path: '/v1/chat/completions');
+    final resp = await postJson(
+      uri,
+      apiKey: 'k',
+      body: {
+        'model': 'mock-model',
+        'stream': true,
+        'messages': [
+          {'role': 'user', 'content': 'hi'},
+        ],
+        'tools': [
+          {
+            'type': 'function',
+            'function': {'name': 'noop', 'description': 'test'},
+          },
+        ],
+      },
+    );
+    expect(resp.statusCode, 200);
+    expect(resp.headers.contentType?.mimeType, 'text/event-stream');
+    final body = await resp.transform(utf8.decoder).join();
+    expect(body, contains('chat.completion.chunk'));
+    expect(body, contains('stream-hi'));
+    expect(body, contains('data: [DONE]'));
+  });
+
   test('POST /v1/responses smoke returns SSE text turn', () async {
     final server = MockModelGatewayServer(
       engine: ScenarioEngine({

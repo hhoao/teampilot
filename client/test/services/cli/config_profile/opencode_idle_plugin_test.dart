@@ -14,10 +14,12 @@ import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 
 void main() {
-  test('parseBusPortFromIdleUrl extracts port from idle endpoint', () {
-    expect(parseBusPortFromIdleUrl('http://127.0.0.1:12345/idle'), 12345);
-    expect(parseBusPortFromIdleUrl(null), isNull);
-    expect(parseBusPortFromIdleUrl(''), isNull);
+  test('idle plugin source re-prompts on decision:block', () {
+    expect(opencodeIdlePluginSource, contains('session.idle'));
+    expect(opencodeIdlePluginSource, contains('session.next.step.ended'));
+    expect(opencodeIdlePluginSource, contains('"decision":"block"'));
+    expect(opencodeIdlePluginSource, contains('client.session.prompt'));
+    expect(opencodeIdlePluginSource, contains('wait_for_message'));
   });
 
   test(
@@ -142,6 +144,7 @@ void main() {
         name: 'My OpenAI',
         apiKey: 'sk-test',
         baseUrl: 'https://api.example.com/v1',
+        defaultModel: 'proxy-model',
         config: <String, Object?>{'npm': '@ai-sdk/openai-compatible'},
       ),
     );
@@ -152,6 +155,9 @@ void main() {
     final options = entry['options'] as Map;
     expect(options['apiKey'], 'sk-test');
     expect(options['baseURL'], 'https://api.example.com/v1');
+    final models = entry['models'] as Map;
+    expect(models['proxy-model'], isA<Map>());
+    expect((models['proxy-model'] as Map)['name'], 'proxy-model');
   });
 
   test(

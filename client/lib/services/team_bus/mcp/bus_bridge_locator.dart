@@ -17,11 +17,19 @@ class BusBridgeLocator {
 
   static const envOverride = 'TEAMPILOT_BUS_BRIDGE';
 
+  /// Test-only resolve pin (flutter test cannot mutate [Platform.environment]).
+  @visibleForTesting
+  static String? debugResolveOverride;
+
   static String get _exeName =>
       Platform.isWindows ? 'teammate_bus_bridge.exe' : 'teammate_bus_bridge';
 
   /// 返回可用的桥接 exe 绝对路径，找不到或无法在当前 CPU 执行时返回 null。
   static String? resolve() {
+    final pinned = debugResolveOverride?.trim();
+    if (pinned != null && pinned.isNotEmpty) {
+      return isRunnableExecutable(pinned) ? pinned : null;
+    }
     final override = Platform.environment[envOverride]?.trim();
     if (override != null && override.isNotEmpty) {
       return isRunnableExecutable(override) ? override : null;
