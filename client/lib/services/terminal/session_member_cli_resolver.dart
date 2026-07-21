@@ -4,8 +4,9 @@ import '../../models/team_config.dart';
 
 /// Resolves the effective [CliTool] for a session member's terminal behavior.
 ///
-/// Personal sessions (no team) use the pinned [AppSession.cli]; team sessions
-/// resolve per-member CLI overrides via [cliForMember].
+/// Personal sessions (no team) use the pinned [AppSession.cli]. Team sessions
+/// prefer [SessionMemberBinding.cli] when set, else [cliForMember] (live
+/// profile — legacy sessions without a lock).
 abstract final class SessionMemberCliResolver {
   SessionMemberCliResolver._();
 
@@ -28,6 +29,8 @@ abstract final class SessionMemberCliResolver {
       return persistedSession?.cli ?? CliTool.claude;
     }
     if (team == null) return CliTool.claude;
+    final locked = persistedSession!.bindingFor(memberId)?.cli;
+    if (locked != null) return locked;
     return cliForMember(team, memberId, globalPresets: globalPresets);
   }
 }

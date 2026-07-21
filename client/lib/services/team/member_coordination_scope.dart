@@ -14,6 +14,7 @@ final class MemberCoordinationScope {
     required this.teamMode,
     required this.globalPresets,
     this.bus,
+    this.session,
     this.claudeRosterWorking = false,
   });
 
@@ -23,6 +24,7 @@ final class MemberCoordinationScope {
   final TeamMode teamMode;
   final List<CliPreset> globalPresets;
   final TeamBus? bus;
+  final AppSession? session;
   final bool claudeRosterWorking;
 
   /// Personal sessions have no persisted team roster (`sessionTeam` empty) and

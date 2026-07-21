@@ -94,7 +94,8 @@ class TabTeamBusCoordinator {
       for (final m in runtimeMembers)
         m.id: m.effectiveForceWaitBeforeStop(
           team,
-          launchCli: memberLaunchCli(
+          launchCli: sessionMemberLaunchCli(
+            session: session,
             team: team,
             member: m,
             globalPresets: presets,

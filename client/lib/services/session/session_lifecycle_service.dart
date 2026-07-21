@@ -523,7 +523,7 @@ class SessionLifecycleService {
               activePreset?.cli ??
               CliTool.claude)
         : (team != null
-              ? _memberLaunchCli(team, memberForLaunch)
+              ? _memberLaunchCli(team, memberForLaunch, session: session)
               : (memberForLaunch.cli ?? CliTool.claude));
     final tools = [cli.value];
     final teamId = (team?.id ?? plan.teamId ?? session.sessionTeam).trim();
@@ -669,7 +669,7 @@ class SessionLifecycleService {
               activePreset?.cli ??
               CliTool.claude)
         : (team != null
-              ? _memberLaunchCli(team, memberForLaunch)
+              ? _memberLaunchCli(team, memberForLaunch, session: session)
               : (memberForLaunch.cli ?? CliTool.claude));
     final tools = [cli.value];
     final teamId = (team?.id ?? plan.teamId ?? session.sessionTeam).trim();
@@ -784,7 +784,7 @@ class SessionLifecycleService {
     if (team == null || teamId.isEmpty) {
       throw StateError('Team SessionRuntimePlan requires team');
     }
-    final launchCli = _memberLaunchCli(team, member);
+    final launchCli = _memberLaunchCli(team, member, session: session);
     final leadTaskId = memberBinding?.taskId.trim() ?? '';
     final leadSessionId =
         TeamMemberNaming.isTeamLead(member) && leadTaskId.isNotEmpty
@@ -933,7 +933,7 @@ class SessionLifecycleService {
       workspace: workspace,
     );
     final runtimeTeamId = cliTeamName.isNotEmpty ? cliTeamName : sessionId;
-    final cli = _memberLaunchCli(team, launchMember);
+    final cli = _memberLaunchCli(team, launchMember, session: session);
     final catalog = workspace != null
         ? WorkspaceLaunchContext(
             session: session,
@@ -1561,12 +1561,16 @@ class SessionLifecycleService {
 
   List<CliPreset> get _globalPresets => _loadPresets?.call() ?? const [];
 
-  CliTool _memberLaunchCli(TeamProfile team, TeamMemberConfig member) =>
-      memberLaunchCli(
-        team: team,
-        member: member,
-        globalPresets: _globalPresets,
-      );
+  CliTool _memberLaunchCli(
+    TeamProfile team,
+    TeamMemberConfig member, {
+    AppSession? session,
+  }) => sessionMemberLaunchCli(
+    session: session,
+    team: team,
+    member: member,
+    globalPresets: _globalPresets,
+  );
 
   Future<void> _removeTree(RuntimeContext roots, String path) async {
     try {

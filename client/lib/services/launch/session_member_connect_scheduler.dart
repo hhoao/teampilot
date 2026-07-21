@@ -67,7 +67,8 @@ class SessionMemberConnectScheduler {
     return _shellForLaunch(
       tab: tab,
       shellKey: member.id,
-      cli: memberLaunchCli(
+      cli: sessionMemberLaunchCli(
+        session: activeSession,
         team: team,
         member: member,
         globalPresets: _host.lifecycle.globalPresets,

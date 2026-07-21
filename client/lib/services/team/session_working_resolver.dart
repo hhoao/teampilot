@@ -65,6 +65,7 @@ final class SessionWorkingResolver {
         teamMode: teamMode,
         globalPresets: globalPresets,
         bus: bus,
+        session: session,
         isPersonalSession: isPersonal,
         claudeRosterWorking: claudeWorkingByMemberId[member.id] ?? false,
         cliToolRegistry: _cliToolRegistry,

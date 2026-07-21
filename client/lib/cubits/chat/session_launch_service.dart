@@ -289,7 +289,8 @@ class SessionLaunchService
     return (
       team: team,
       member: member,
-      cli: memberLaunchCli(
+      cli: sessionMemberLaunchCli(
+        session: session,
         team: team,
         member: member,
         globalPresets: _h.lifecycle.globalPresets,

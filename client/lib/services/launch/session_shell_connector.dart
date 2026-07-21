@@ -185,7 +185,8 @@ class SessionShellConnector {
     );
     final launchCli = isPersonal
         ? activeSession.simpleIdentity.cli
-        : memberLaunchCli(
+        : sessionMemberLaunchCli(
+            session: activeSession,
             team: team!,
             member: launchMember!,
             globalPresets: _host.lifecycle.globalPresets,
@@ -318,7 +319,8 @@ class SessionShellConnector {
                           endpoint: _host.teammateBusMcpGateway.mcpEndpoint,
                           sessionId: activeSession.sessionId,
                           memberId: launchMember.id,
-                          cli: memberLaunchCli(
+                          cli: sessionMemberLaunchCli(
+                            session: activeSession,
                             team: team,
                             member: launchMember,
                             globalPresets: _host.lifecycle.globalPresets,

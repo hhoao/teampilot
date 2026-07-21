@@ -167,7 +167,8 @@ class SessionConnectOrchestrator {
     final member = plan.member;
     final cli = isSimple
         ? (session.cli ?? member.cli ?? CliTool.claude)
-        : memberLaunchCli(
+        : sessionMemberLaunchCli(
+            session: session,
             team: team!,
             member: member,
             globalPresets: lifecycle.globalPresets,

@@ -112,7 +112,8 @@ final class MemberLifecycleConnectGate {
       }
     }
 
-    final cli = memberLaunchCli(
+    final cli = sessionMemberLaunchCli(
+      session: session,
       team: team,
       member: member,
       globalPresets: globalPresets(),
@@ -207,7 +208,8 @@ final class MemberLifecycleConnectGate {
       }
     }
 
-    final cli = memberLaunchCli(
+    final cli = sessionMemberLaunchCli(
+      session: session,
       team: team,
       member: member,
       globalPresets: globalPresets(),

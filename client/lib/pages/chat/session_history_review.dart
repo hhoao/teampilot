@@ -25,6 +25,7 @@ import '../../models/workspace.dart';
 import '../../repositories/workspace_project_config_repository.dart';
 import '../../services/ai/headless_ai_service.dart';
 import '../../services/cli/preset_resolver.dart';
+import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/compose/compose_file_attach.dart';
 import '../../services/compose/compose_landing_bundle.dart';
@@ -394,9 +395,32 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
   }) {
     if (session.isSimple) return session.cli ?? CliTool.claude;
     if (team == null) return CliTool.claude;
+    final memberId = _effectiveMemberId(team);
     final member = _selectedMember(team);
-    if (member == null) return team.cli;
-    return memberLaunchCli(team: team, member: member, globalPresets: presets);
+    return SessionMemberCliResolver.resolve(
+      persistedSession: session,
+      team: team,
+      memberId: memberId.isNotEmpty ? memberId : (member?.id ?? ''),
+      globalPresets: presets,
+      cliForMember: (t, id, {List<CliPreset> globalPresets = const []}) {
+        final m = (member != null && member.id == id)
+            ? member
+            : () {
+                for (final x in t.members) {
+                  if (x.id == id) return x;
+                }
+                return null;
+              }();
+        if (m != null) {
+          return memberLaunchCli(
+            team: t,
+            member: m,
+            globalPresets: globalPresets,
+          );
+        }
+        return t.cli;
+      },
+    );
   }
 
   bool _effectivePermission({

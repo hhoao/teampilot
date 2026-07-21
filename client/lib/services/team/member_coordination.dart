@@ -1,3 +1,4 @@
+import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/member_presence.dart';
 import '../../models/team_config.dart';
@@ -41,6 +42,7 @@ sealed class MemberCoordination {
     required TeamMode teamMode,
     required List<CliPreset> globalPresets,
     TeamBus? bus,
+    AppSession? session,
     bool? isPersonalSession,
     bool claudeRosterWorking = false,
     bool usesClaudeRoster = false,
@@ -63,6 +65,7 @@ sealed class MemberCoordination {
       teamMode: teamMode,
       globalPresets: globalPresets,
       bus: bus,
+      session: session,
       claudeRosterWorking: claudeRosterWorking,
     );
     final registry = cliToolRegistry ?? CliToolRegistry.builtIn();
@@ -224,7 +227,8 @@ final class MixedMemberCoordination extends MemberCoordination {
     if (directToPty) return true;
     final b = bus;
     if (b == null) return true;
-    final launchCli = memberLaunchCli(
+    final launchCli = sessionMemberLaunchCli(
+      session: scope.session,
       team: scope.team,
       member: member,
       globalPresets: scope.globalPresets,

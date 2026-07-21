@@ -8,10 +8,12 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/session_continue_overrides.dart';
+import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/chat/session_review_compose_card.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/cli/preset_resolver.dart';
 import 'package:teampilot/services/session/session_continue_overrides_apply.dart';
 import 'package:teampilot/widgets/compose/compose_model_preset_chip.dart';
 import 'package:teampilot/widgets/compose/compose_permission_chip.dart';
@@ -222,6 +224,52 @@ void main() {
       expect(disk.provider, 'anthropic');
       expect(disk.model, 'claude-sonnet');
     });
+
+    test(
+      '4b. Team lockedCli prefers binding.cli over live Cursor profile',
+      () {
+        final liveTeam = TeamProfile(
+          id: 't1',
+          name: 'Team',
+          cli: CliTool.cursor,
+          members: [
+            TeamMemberConfig(
+              id: 'team-lead',
+              name: 'Lead',
+              cli: CliTool.cursor,
+            ),
+          ],
+        );
+        final session = AppSession(
+          sessionId: 's1',
+          workspaceId: 'w1',
+          sessionTeam: 't1',
+          members: [
+            SessionMemberBinding(
+              rosterMemberId: 'team-lead',
+              taskId: 'task',
+              cli: CliTool.claude,
+            ),
+          ],
+          createdAt: 1,
+        );
+        final lockedCli = sessionMemberLaunchCli(
+          session: session,
+          team: liveTeam,
+          member: liveTeam.members.first,
+        );
+        expect(lockedCli, CliTool.claude);
+
+        final presets = [
+          claudePreset(id: 'claude-p'),
+          claudePreset(id: 'cursor-p').copyWith(cli: CliTool.cursor),
+        ];
+        expect(
+          presetsForCli(presets, lockedCli).map((p) => p.id),
+          ['claude-p'],
+        );
+      },
+    );
 
     test(
       '5. Landing session-level permission → unedited team member uses '

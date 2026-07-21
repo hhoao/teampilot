@@ -1,5 +1,7 @@
+import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
+import '../terminal/session_member_cli_resolver.dart';
 
 /// Team-level default launch package (preset or custom defaults).
 class TeamLaunchBundle {
@@ -187,6 +189,42 @@ CliTool memberLaunchCli({
     member: member,
     globalPresets: globalPresets,
   ).cli;
+}
+
+/// Session-aware launch CLI: prefers [SessionMemberBinding.cli] when set.
+///
+/// Use when a persisted [session] exists. Preview / create paths that only
+/// have a live profile should keep calling [memberLaunchCli].
+CliTool sessionMemberLaunchCli({
+  required AppSession? session,
+  required TeamProfile team,
+  required TeamMemberConfig member,
+  List<CliPreset> globalPresets = const [],
+}) {
+  return SessionMemberCliResolver.resolve(
+    persistedSession: session,
+    team: team,
+    memberId: member.id,
+    globalPresets: globalPresets,
+    cliForMember: (t, id, {List<CliPreset> globalPresets = const []}) {
+      final m = id == member.id
+          ? member
+          : () {
+              for (final x in t.members) {
+                if (x.id == id) return x;
+              }
+              return null;
+            }();
+      if (m != null) {
+        return memberLaunchCli(
+          team: t,
+          member: m,
+          globalPresets: globalPresets,
+        );
+      }
+      return t.cli;
+    },
+  );
 }
 
 /// Presets whose [CliPreset.cli] matches [catalogCli].

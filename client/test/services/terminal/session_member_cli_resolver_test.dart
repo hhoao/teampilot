@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/cli_preset.dart';
+import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/terminal/session_member_cli_resolver.dart';
 
@@ -98,6 +99,71 @@ void main() {
       );
 
       expect(cli, CliTool.codex);
+    });
+
+    test('team session prefers binding.cli over live profile', () {
+      final team = TeamProfile(
+        id: 't1',
+        name: 'Team',
+        cli: CliTool.cursor,
+        members: [
+          TeamMemberConfig(id: 'team-lead', name: 'Lead', cli: CliTool.cursor),
+        ],
+      );
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        sessionTeam: 't1',
+        members: [
+          SessionMemberBinding(
+            rosterMemberId: 'team-lead',
+            taskId: 'task',
+            cli: CliTool.claude,
+          ),
+        ],
+        createdAt: 1,
+      );
+
+      final cli = SessionMemberCliResolver.resolve(
+        persistedSession: session,
+        team: team,
+        memberId: 'team-lead',
+        cliForMember: cliForMember,
+      );
+
+      expect(cli, CliTool.claude);
+    });
+
+    test('team session without binding.cli uses cliForMember', () {
+      final team = TeamProfile(
+        id: 't1',
+        name: 'Team',
+        cli: CliTool.cursor,
+        members: [
+          TeamMemberConfig(id: 'worker', name: 'Worker', cli: CliTool.opencode),
+        ],
+      );
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        sessionTeam: 't1',
+        members: [
+          SessionMemberBinding(
+            rosterMemberId: 'worker',
+            taskId: 'task',
+          ),
+        ],
+        createdAt: 1,
+      );
+
+      final cli = SessionMemberCliResolver.resolve(
+        persistedSession: session,
+        team: team,
+        memberId: 'worker',
+        cliForMember: cliForMember,
+      );
+
+      expect(cli, CliTool.opencode);
     });
   });
 }

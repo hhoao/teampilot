@@ -15,16 +15,17 @@ CliTool resolveSessionTabCli({
   List<CliPreset> globalPresets = const [],
 }) {
   final session = _sessionForTab(tab, sessions);
-  final pinned = session?.cli;
-  if (pinned != null) return pinned;
 
+  // Simple / personal: pin from AppSession.cli. Team tabs must not prefer
+  // session.cli — that field is Simple-only; use binding lock via resolver.
   if (isPersonal) {
-    return personalFallbackCli ?? CliTool.claude;
+    return session?.cli ?? personalFallbackCli ?? CliTool.claude;
   }
   if (team == null) return CliTool.claude;
 
   final member = _memberForTab(tab, team);
-  return memberLaunchCli(
+  return sessionMemberLaunchCli(
+    session: session,
     team: team,
     member: member,
     globalPresets: globalPresets,
