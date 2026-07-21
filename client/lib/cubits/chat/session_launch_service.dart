@@ -27,6 +27,7 @@ import '../../services/launch/session_launch_workspace_index.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/session/session_member_cli_locks.dart';
 import '../../services/team/team_config_launch_validator.dart';
+import '../../services/terminal/session_member_cli_resolver.dart';
 import 'session_launch_host.dart';
 
 export 'session_launch_host.dart';
@@ -489,7 +490,7 @@ class SessionLaunchService
   }
 
   /// Ensures [tab] holds a [TerminalSession] whose transport matches [session]'s
-  /// launch target (local PTY vs SSH).
+  /// launch target (local PTY vs SSH) and whose executable matches [cli].
   TerminalSession _shellForLaunch({
     required ChatTab tab,
     required String shellKey,
@@ -499,19 +500,42 @@ class SessionLaunchService
   }) {
     final workTarget = _launchWorkTarget(session, memberId: rosterMemberId);
     final needsRemoteLaunch = workTarget.kind == RuntimeKind.ssh;
-    final existing = tab.memberShells[shellKey];
-    if (existing != null &&
-        !existing.isRunning &&
-        !existing.isConnecting &&
-        needsRemoteLaunch != existing.usesRemoteTransport) {
-      existing.disconnect();
-      tab.memberShells.remove(shellKey);
-      _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: shellKey);
-    }
+    _discardIdleShellIfMismatched(
+      tab: tab,
+      shellKey: shellKey,
+      cli: cli,
+      needsRemoteLaunch: needsRemoteLaunch,
+      sessionId: tab.info.id,
+    );
     return tab.memberShells.putIfAbsent(
       shellKey,
       () => _h.shellFactory.newSession(cli, workTarget: workTarget),
     );
+  }
+
+  /// Drop an idle shell when transport or CLI executable no longer matches.
+  ///
+  /// Connect launches [TerminalSession.executable]; keeping a stale shell after
+  /// a profile change would spawn the wrong CLI despite a locked binding.
+  void _discardIdleShellIfMismatched({
+    required ChatTab tab,
+    required String shellKey,
+    required CliTool cli,
+    required bool needsRemoteLaunch,
+    String? sessionId,
+  }) {
+    final existing = tab.memberShells[shellKey];
+    if (existing == null) return;
+    if (existing.isRunning || existing.isConnecting) return;
+    final expectedExecutable = _h.shellFactory.executableFor(cli);
+    final transportMismatch = needsRemoteLaunch != existing.usesRemoteTransport;
+    final cliMismatch = existing.executable != expectedExecutable;
+    if (!transportMismatch && !cliMismatch) return;
+    existing.disconnect();
+    tab.memberShells.remove(shellKey);
+    if (sessionId != null) {
+      _h.clearAgentStatusSeat(sessionId: sessionId, memberId: shellKey);
+    }
   }
 
   Future<void> openMemberTab(
@@ -593,15 +617,38 @@ class SessionLaunchService
     }
     if (tab.selectedMemberId.isNotEmpty) {
       final memberId = tab.selectedMemberId;
+      final session = tab.persistedSession;
+      final cli = session != null
+          ? SessionMemberCliResolver.resolve(
+              persistedSession: session,
+              team: team,
+              memberId: memberId,
+              globalPresets: _h.lifecycle.globalPresets,
+              cliForMember: _h.shellFactory.cliForMember,
+            )
+          : _h.shellFactory.cliForMember(
+              team,
+              memberId,
+              globalPresets: _h.lifecycle.globalPresets,
+            );
+      if (session != null) {
+        return _shellForLaunch(
+          tab: tab,
+          shellKey: memberId,
+          cli: cli,
+          session: session,
+          rosterMemberId: memberId,
+        );
+      }
+      _discardIdleShellIfMismatched(
+        tab: tab,
+        shellKey: memberId,
+        cli: cli,
+        needsRemoteLaunch: false,
+      );
       return tab.memberShells.putIfAbsent(
         memberId,
-        () => _h.shellFactory.newSession(
-          _h.shellFactory.cliForMember(
-            team,
-            memberId,
-            globalPresets: _h.lifecycle.globalPresets,
-          ),
-        ),
+        () => _h.shellFactory.newSession(cli),
       );
     }
     return tab.resumeSession ??= _h.shellFactory.newSession(team.cli);

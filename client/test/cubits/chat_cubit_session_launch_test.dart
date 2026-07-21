@@ -573,4 +573,74 @@ void main() {
       expect(captured!.lastAdditionalDirectoriesLists.last, ['/extra']);
     },
   );
+
+  test(
+    'ensureSession uses binding.cli over live profile and replaces stale shell',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('ensure_cli_lock_');
+      addTearDown(() => _deleteTempDirBestEffort(tmp));
+      final repo = SessionRepository(rootDir: tmp.path);
+      final liveTeam = TeamProfile(
+        id: 't1',
+        name: 'Team',
+        cli: CliTool.cursor,
+        teamMode: TeamMode.mixed,
+        members: const [
+          TeamMemberConfig(id: 'team-lead', name: 'Lead', cli: CliTool.cursor),
+        ],
+      );
+      final workspace = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/w'),
+      ]);
+      final session = await repo.createSession(
+        workspace.workspaceId,
+        sessionTeam: liveTeam.id,
+        rosterMembers: liveTeam.members,
+        memberClis: {'team-lead': CliTool.claude},
+      );
+      expect(session.bindingFor('team-lead')?.cli, CliTool.claude);
+
+      final postFrame = PostFrameTestHarness();
+      final cubit = ChatCubit(
+        executableResolver: () => 'fallback',
+        cliExecutableResolver: (cli) => 'bin-${cli.value}',
+        automationRepository: testAutomationRepository(),
+        sessionRepository: repo,
+        terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) =>
+                FakeTerminalSession(
+                  executable: executable,
+                  scrollbackLines: scrollbackLines,
+                ),
+        postFrameScheduler: postFrame.scheduler,
+        lifecycleService: FixedResumeLifecycleService(resume: false),
+      );
+      addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));
+      await cubit.loadWorkspaceData(repo);
+
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          team: liveTeam,
+          member: liveTeam.members.first,
+          repo: repo,
+        ),
+      );
+      await drainPendingAsyncWork();
+      await postFrame.flush();
+
+      final tab = cubit.tabStore.activeTabs.single;
+      expect(tab.selectedMemberId, 'team-lead');
+      // Simulate a stale idle shell created under the live Cursor profile.
+      tab.memberShells['team-lead']?.disconnect();
+      final stale = FakeTerminalSession(executable: 'bin-cursor');
+      tab.memberShells['team-lead'] = stale;
+
+      final ensured = cubit.ensureSession(liveTeam);
+      expect(ensured, isNotNull);
+      expect(ensured, isNot(same(stale)));
+      expect(ensured!.executable, 'bin-claude');
+      expect(tab.memberShells['team-lead']?.executable, 'bin-claude');
+    },
+  );
 }
