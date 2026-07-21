@@ -283,4 +283,7 @@ semantics themselves change.
   bubbles (plus mailbox Queued→sticky when that channel is exercised).
 - A deliberate product send-path or thread-bubble break fails the matching cell
   with logs that point at send path / thread (not flaky timeout alone).
+- **Red cells are fixed in place:** product bugs found while bringing a cell
+  green are fixed as part of this workstream, not deferred as “known issues”
+  while the test is skipped or asserted softer.
 - Documented run commands in `docs/DEVELOPMENT.md` for L0/L1/L2 filters.
