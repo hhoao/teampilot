@@ -308,6 +308,26 @@ void main() {
       expect(await store.readStored(), isNull);
     });
 
+    test('emits disconnected with message when start throws', () async {
+      final store = GithubCredentialsStore(kv: InMemorySecureKeyValueStore());
+      final auth = GithubDeviceFlowAuth(
+        clientId: 'test-client-id',
+        post: (_, {headers, body, encoding}) async {
+          throw Exception('network down');
+        },
+      );
+
+      final cubit = createCubit(store: store, deviceFlow: auth);
+      addTearDown(cubit.close);
+      await cubit.hydrate();
+
+      await cubit.connect();
+
+      expect(cubit.state.status, GithubAccountStatus.disconnected);
+      expect(cubit.state.errorMessage, 'Could not reach GitHub. Try again.');
+      expect(await store.readStored(), isNull);
+    });
+
     test('sets unavailable error when device flow is disabled', () async {
       final store = GithubCredentialsStore(kv: InMemorySecureKeyValueStore());
       final auth = controllableDeviceFlowAuth(

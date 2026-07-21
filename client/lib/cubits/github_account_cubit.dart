@@ -89,6 +89,7 @@ class GithubAccountCubit extends Cubit<GithubAccountState> {
 
   static const _authDeniedMessage = 'GitHub authorization cancelled';
   static const _authExpiredMessage = 'Authorization expired. Try again.';
+  static const _networkErrorMessage = 'Could not reach GitHub. Try again.';
   static const _deviceFlowUnavailableMessage =
       'GitHub sign-in is unavailable in this build. Use a personal access token.';
 
@@ -209,6 +210,7 @@ class GithubAccountCubit extends Cubit<GithubAccountState> {
       emit(
         state.copyWith(
           status: GithubAccountStatus.disconnected,
+          errorMessage: _networkErrorMessage,
           clearUserCode: true,
           clearVerificationUri: true,
         ),
