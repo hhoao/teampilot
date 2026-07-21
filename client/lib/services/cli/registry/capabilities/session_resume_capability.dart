@@ -37,7 +37,7 @@ class ResumeContext {
   /// Our session/member UUID — the id pinned for `clientPinned` CLIs.
   final String taskId;
 
-  /// Resolved launch environment (holds `CODEX_HOME` / `OPENCODE_DATA_DIR` /
+  /// Resolved launch environment (holds `CODEX_HOME` / `OPENCODE_DB` /
   /// `CURSOR_CONFIG_DIR`, used to locate the per-session native store).
   final Map<String, String> env;
 

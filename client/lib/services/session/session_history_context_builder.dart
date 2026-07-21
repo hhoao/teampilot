@@ -148,13 +148,14 @@ final class SessionHistoryContextBuilder {
           ),
         };
       case CliTool.opencode:
+        final toolDir = layout.sessionRuntimeToolDir(
+          workspaceId,
+          sessionId,
+          'opencode',
+          memberId: memberId,
+        );
         return {
-          'OPENCODE_DATA_DIR': layout.sessionRuntimeToolDir(
-            workspaceId,
-            sessionId,
-            'opencode',
-            memberId: memberId,
-          ),
+          'OPENCODE_DB': p.join(toolDir, 'opencode.db'),
         };
       case CliTool.cursor:
         final cursorRoot = CursorSessionConfigDir.resolve(

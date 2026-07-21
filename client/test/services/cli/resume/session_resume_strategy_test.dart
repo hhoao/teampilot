@@ -89,7 +89,7 @@ void main() {
       await File(p.join(dir, 'ses_abc123.json')).writeAsString('{}');
 
       final got = await const OpencodeResumeStrategy().detectNativeId(
-        ctx(env: {'OPENCODE_DATA_DIR': base.path}),
+        ctx(env: {'OPENCODE_DB': p.join(base.path, 'opencode.db')}),
       );
       expect(got, 'ses_abc123');
     });

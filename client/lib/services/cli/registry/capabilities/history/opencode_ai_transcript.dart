@@ -7,10 +7,11 @@ import 'package:sqlite3/sqlite3.dart';
 import '../../../../session/ai_history_watch_meta.dart';
 import '../../../../session/session_history_context.dart';
 
-/// Locate OpenCode session/message/part files under `$OPENCODE_DATA_DIR`.
+/// Locate OpenCode session/message/part files under the session data dir.
 ///
 /// Prefers the legacy JSON tree (`storage/message|part`). When that is absent
-/// (current OpenCode installs store rows in `opencode.db`), reads SQLite and
+/// (current OpenCode installs store rows in `opencode.db` with WAL), reads
+/// SQLite — copying `-wal`/`-shm` sidecars so a live writer is visible — and
 /// emits the same fragment layout so [OpencodeAiTranscriptAdapter] stays one
 /// parser.
 ///
@@ -21,7 +22,7 @@ import '../../../../session/session_history_context.dart';
 Future<AiTranscriptBundle?> locateOpencodeTranscript(
   SessionHistoryContext ctx,
 ) async {
-  final dataDir = ctx.env['OPENCODE_DATA_DIR']?.trim() ?? '';
+  final dataDir = _resolveDataDir(ctx);
   if (dataDir.isEmpty) return null;
 
   final sessionId = await _resolveSessionId(ctx, dataDir);
@@ -31,6 +32,13 @@ Future<AiTranscriptBundle?> locateOpencodeTranscript(
   if (jsonBundle != null) return jsonBundle;
 
   return _locateSqliteStorage(ctx, dataDir, sessionId);
+}
+
+/// TeamPilot history context: dirname of absolute [OPENCODE_DB].
+String _resolveDataDir(SessionHistoryContext ctx) {
+  final db = ctx.env['OPENCODE_DB']?.trim() ?? '';
+  if (db.isEmpty || db == ':memory:') return '';
+  return ctx.fs.pathContext.dirname(db);
 }
 
 Future<AiTranscriptBundle?> _locateJsonStorage(
@@ -117,16 +125,20 @@ Future<AiTranscriptBundle?> _locateSqliteStorage(
 ) async {
   final path = ctx.fs.pathContext;
   final dbPath = path.join(dataDir, 'opencode.db');
-  final bytes = await ctx.fs.readBytes(dbPath);
-  if (bytes == null || bytes.isEmpty) return null;
+  if (!await _sqliteMainExists(ctx, dbPath)) return null;
 
   Directory? tempDir;
   Database? db;
   try {
     tempDir = await Directory.systemTemp.createTemp('opencode-history-');
-    final tempFile = File(path.join(tempDir.path, 'opencode.db'));
-    await tempFile.writeAsBytes(bytes);
-    db = sqlite3.open(tempFile.path, mode: OpenMode.readOnly);
+    final tempDbPath = path.join(tempDir.path, 'opencode.db');
+    final copiedPaths = await _copySqliteSnapshot(
+      ctx: ctx,
+      dbPath: dbPath,
+      destDbPath: tempDbPath,
+    );
+    if (copiedPaths.isEmpty) return null;
+    db = sqlite3.open(tempDbPath, mode: OpenMode.readOnly);
 
     final messageRows = db.select(
       '''
@@ -200,7 +212,7 @@ ORDER BY time_created ASC, id ASC
         'cacheToken': 'opencode-sqlite|$sessionId|$totalBytes',
         ...AiHistoryWatchMeta(
           changeWatchRoot: dataDir,
-          cacheTokenPaths: [dbPath],
+          cacheTokenPaths: copiedPaths,
         ).toHints(),
       },
     );
@@ -216,6 +228,33 @@ ORDER BY time_created ASC, id ASC
       }
     }
   }
+}
+
+Future<bool> _sqliteMainExists(SessionHistoryContext ctx, String dbPath) async {
+  final bytes = await ctx.fs.readBytes(dbPath);
+  return bytes != null && bytes.isNotEmpty;
+}
+
+/// Copy `opencode.db` plus WAL sidecars. OpenCode opens with
+/// `PRAGMA journal_mode = WAL`; copying only the main file yields an empty
+/// schema while the writer is still live.
+Future<List<String>> _copySqliteSnapshot({
+  required SessionHistoryContext ctx,
+  required String dbPath,
+  required String destDbPath,
+}) async {
+  final copiedSources = <String>[];
+  for (final suffix in const ['', '-wal', '-shm']) {
+    final src = '$dbPath$suffix';
+    final bytes = await ctx.fs.readBytes(src);
+    if (bytes == null || bytes.isEmpty) {
+      if (suffix.isEmpty) return const [];
+      continue;
+    }
+    await File('$destDbPath$suffix').writeAsBytes(bytes);
+    copiedSources.add(src);
+  }
+  return copiedSources;
 }
 
 Map<String, dynamic>? _decodeDbJson(Object? raw) {
@@ -276,16 +315,20 @@ Future<String?> _resolveSessionIdFromSqlite(
 ) async {
   final path = ctx.fs.pathContext;
   final dbPath = path.join(dataDir, 'opencode.db');
-  final bytes = await ctx.fs.readBytes(dbPath);
-  if (bytes == null || bytes.isEmpty) return null;
+  if (!await _sqliteMainExists(ctx, dbPath)) return null;
 
   Directory? tempDir;
   Database? db;
   try {
     tempDir = await Directory.systemTemp.createTemp('opencode-session-');
-    final tempFile = File(path.join(tempDir.path, 'opencode.db'));
-    await tempFile.writeAsBytes(bytes);
-    db = sqlite3.open(tempFile.path, mode: OpenMode.readOnly);
+    final tempDbPath = path.join(tempDir.path, 'opencode.db');
+    final copied = await _copySqliteSnapshot(
+      ctx: ctx,
+      dbPath: dbPath,
+      destDbPath: tempDbPath,
+    );
+    if (copied.isEmpty) return null;
+    db = sqlite3.open(tempDbPath, mode: OpenMode.readOnly);
     final rows = db.select(
       '''
 SELECT id

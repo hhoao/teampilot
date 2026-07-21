@@ -155,7 +155,7 @@ void main() {
     );
   });
 
-  test('opencode sets OPENCODE_DATA_DIR to session tool dir', () {
+  test('opencode sets OPENCODE_DB to session opencode.db', () {
     final session = simpleSession(cli: CliTool.opencode);
     final ctx = builder.build(
       fs: fs,
@@ -167,10 +167,13 @@ void main() {
       workingDirectory: session.firstFolderPath,
     );
 
-    expect(
-      ctx.env['OPENCODE_DATA_DIR'],
-      layout.sessionRuntimeToolDir('ws-1', 'session-1', 'opencode'),
+    final toolDir = layout.sessionRuntimeToolDir(
+      'ws-1',
+      'session-1',
+      'opencode',
     );
+    expect(ctx.env['OPENCODE_DB'], p.join(toolDir, 'opencode.db'));
+    expect(ctx.env.containsKey('OPENCODE_DATA_DIR'), isFalse);
   });
 
   test('cursor sets CURSOR_CONFIG_DIR and HOME for isolated .cursor', () {

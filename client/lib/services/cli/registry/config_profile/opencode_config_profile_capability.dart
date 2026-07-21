@@ -260,11 +260,11 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
   /// not a path — setting it does nothing.)
   static const configDirEnv = 'OPENCODE_CONFIG_DIR';
 
-  /// opencode stores session/message JSON under `$OPENCODE_DATA_DIR/storage`
-  /// (default: the global `~/.local/share/opencode`). We pin it to the
-  /// per-session config dir so the captured `ses_*` id is unambiguous and
-  /// resume never crosses sessions. See docs/session-resume-architecture.md.
-  static const dataDirEnv = 'OPENCODE_DATA_DIR';
+  /// Absolute path to the session SQLite file. OpenCode reads this via
+  /// `Flag.OPENCODE_DB` ([anomalyco/opencode] `packages/core/src/database/database.ts`);
+  /// there is no `OPENCODE_DATA_DIR`. Default without this is
+  /// `$XDG_DATA_HOME/opencode/opencode.db`.
+  static const dbPathEnv = 'OPENCODE_DB';
   static const authContentEnv = 'OPENCODE_AUTH_CONTENT';
 
   static const _opencodeDataLayout = OpencodeDataLayout();
@@ -409,9 +409,13 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
       }
     }
 
+    final normalizedOpencodeDir = paths.normalizeWork(opencodeDir);
     final environment = <String, String>{
-      configDirEnv: paths.normalizeWork(opencodeDir),
-      dataDirEnv: paths.normalizeWork(opencodeDir),
+      configDirEnv: normalizedOpencodeDir,
+      // Absolute OPENCODE_DB → Database.Path (anomalyco/opencode).
+      dbPathEnv: paths.normalizeWork(
+        paths.pathContext.join(opencodeDir, 'opencode.db'),
+      ),
     };
     final authContent = launchProvider == null
         ? null

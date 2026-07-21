@@ -29,7 +29,7 @@ void main() {
     return SessionHistoryContext(
       fs: fs,
       taskId: 'task-1',
-      env: {'OPENCODE_DATA_DIR': dataDir},
+      env: {'OPENCODE_DB': p.join(dataDir, 'opencode.db')},
       transcriptRoots: const [],
       bucket: '',
       persistedNativeId: persistedNativeId,
@@ -282,4 +282,81 @@ VALUES (
     expect(tool.toolName, 'bash');
     expect(tool.result, '/tmp');
   });
+
+  test(
+    'locateOpencodeTranscript reads WAL sidecars (live OpenCode layout)',
+    () async {
+      // OpenCode keeps an open WAL writer; the main file alone has no tables.
+      final dbPath = p.join(base.path, 'opencode.db');
+      final db = sqlite3.open(dbPath);
+      addTearDown(db.dispose);
+      db.execute('PRAGMA journal_mode=WAL;');
+      db.execute('''
+CREATE TABLE session (
+  id TEXT PRIMARY KEY,
+  time_updated INTEGER
+);
+CREATE TABLE message (
+  id TEXT PRIMARY KEY,
+  session_id TEXT,
+  time_created INTEGER,
+  data TEXT
+);
+CREATE TABLE part (
+  id TEXT PRIMARY KEY,
+  message_id TEXT,
+  session_id TEXT,
+  time_created INTEGER,
+  data TEXT
+);
+''');
+      db.execute(
+        "INSERT INTO session(id, time_updated) VALUES ('ses_wal1', 2)",
+      );
+      db.execute(
+        '''
+INSERT INTO message(id, session_id, time_created, data)
+VALUES (
+  'msg_wal_u',
+  'ses_wal1',
+  1,
+  '{"role":"user","time":{"created":1}}'
+)
+''',
+      );
+      db.execute(
+        '''
+INSERT INTO part(id, message_id, session_id, time_created, data)
+VALUES (
+  'prt_wal_u',
+  'msg_wal_u',
+  'ses_wal1',
+  1,
+  '{"type":"text","text":"hello from wal"}'
+)
+''',
+      );
+
+      expect(
+        File('$dbPath-wal').existsSync(),
+        isTrue,
+        reason: 'WAL sidecar must exist while writer is open',
+      );
+
+      final bundle = await locateOpencodeTranscript(
+        ctx(dataDir: base.path, persistedNativeId: 'ses_wal1'),
+      );
+      expect(bundle, isNotNull);
+      final messages = await const OpencodeAiTranscriptAdapter().parse(bundle!);
+      expect(messages, hasLength(1));
+      expect(
+        (messages.single.parts.single as AiTextPart).text,
+        'hello from wal',
+      );
+      expect(
+        AiHistoryWatchMeta.fromHints(bundle.hints)!.cacheTokenPaths,
+        containsAll([dbPath, '$dbPath-wal']),
+      );
+    },
+  );
 }
