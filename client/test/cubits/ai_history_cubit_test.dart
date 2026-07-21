@@ -307,7 +307,7 @@ void main() {
   test('sticky mailbox user survives softReload and stays after tip', () async {
     holderMessages = messages(2);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
 
     cubit.appendStickyLocalUser(id: 'mailbox:mail-1', text: 'follow up');
     expect(cubit.state.awaitingAssistant, isFalse);
