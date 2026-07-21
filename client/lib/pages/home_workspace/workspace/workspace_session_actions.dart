@@ -238,7 +238,7 @@ Future<void> createAndOpenWorkspaceConversation(
   );
 }
 
-/// Opens the compose landing for [tabScopeId] without closing open session tabs.
+/// Opens the Chat pane (new chat) for [tabScopeId] without closing open session tabs.
 Future<void> showWorkspaceComposeLanding(
   BuildContext context,
   Workspace workspace, {
@@ -251,7 +251,7 @@ Future<void> showWorkspaceComposeLanding(
   chat.enterNewChat(tabScopeId);
 }
 
-/// Opens compose landing with [worktreePath] pre-selected as the session cwd.
+/// Opens Chat with [worktreePath] pre-selected as the session cwd.
 Future<void> showWorkspaceComposeLandingWithWorktree(
   BuildContext context,
   Workspace workspace, {
@@ -288,8 +288,8 @@ Future<void> showWorkspaceComposeLandingWithWorktree(
   );
 }
 
-/// Creates a conversation from the compose landing, connects like automation
-/// dispatch, and delivers [message] to the member PTY.
+/// Creates a conversation from Chat, connects like automation dispatch, and
+/// delivers [message] to the member PTY.
 ///
 /// [launch] is the sole source of launch intent (preset, team, identity, mode).
 Future<void> submitWorkspaceLandingMessage(
@@ -380,7 +380,7 @@ Future<void> submitWorkspaceLandingMessage(
     unawaited(ExpertHubRecentStore().touch(trimmedExpert));
   }
 
-  // Opening the session exits compose mode and unmounts [WorkspaceChatPane].
+  // Opening the session exits new-chat mode and unmounts [WorkspaceChatPane].
   // Delivery must keep going via cubits/repos captured above — not [context.mounted].
 
   final session = await _sessionById(

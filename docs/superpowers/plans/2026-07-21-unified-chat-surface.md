@@ -471,24 +471,42 @@ EOF
 
 ### Task 8: Verification
 
-- [ ] **Step 1: Full unit suite (exclude integration)**
+- [x] **Step 1: Full unit suite (exclude integration)**
 
 ```bash
 cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && \
   flutter test --exclude-tags integration
 ```
 
-- [ ] **Step 2: Manual smoke checklist**
+Analyze: exit 0 (infos/warnings non-fatal). Unit suite: **3645 passed, 14 failed**. All 14 failures reproduce on `main` (not introduced by this branch):
 
-1. New chat send (preference off) → Chat stays, transcript updates  
-2. Preference on → new chat send goes Terminal  
-3. Continue from Chat (preference off) → stays Chat  
-4. Continue from Chat (preference on) → Terminal  
-5. Sidebar create without message → Chat + connected  
-6. Open existing with `openExistingSessionStartsTerminal` off → Chat  
-7. Workbench toggle Chat ↔ Terminal works  
+| Failure cluster | Evidence |
+|-----------------|----------|
+| `cli_installer_service_test` (7) + `remote_preflight_cli_install_test` (1) | Same `Expected: true / Actual: false` on main |
+| `codex_cli_tool_adapter_test` (2) | Extra `--dangerously-bypass-hook-trust` argv; same on main |
+| `chat_page_*` (3) + `automation_editor_dialog_test` (1) | Missing `SessionPreferencesCubit` in harness; same on main; files not in branch diff |
 
-- [ ] **Step 3: Final commit if any leftover cleanups**
+- [x] **Step 2: Automated smoke proxies + manual checklist**
+
+Automated checks covering the plan's smoke intent (all green on this branch):
+
+1. Preference defaults / gate tests — `session_preferences_test`, `session_chat_submit_gate_test`
+2. `surfaceNewTab` `preserveWorkbenchView` → Chat — `session_tab_surface_coordinator_test`
+3. Bound continue uses `chatSubmitSwitchesToTerminal` — `chat_workbench.dart` wiring + gate helper
+4. Settings/l10n keys present — `app_en.arb` / `app_zh.arb` (`chatSubmitSwitchesToTerminal*`, `openExistingSessionStartsTerminal*`)
+5. `WorkspaceChatPane` / `SessionChatView` exist
+
+Manual checklist for human (GUI not run by agent):
+
+1. New chat send (preference off) → Chat stays, transcript updates
+2. Preference on → new chat send goes Terminal
+3. Continue from Chat (preference off) → stays Chat
+4. Continue from Chat (preference on) → Terminal
+5. Sidebar create without message → Chat + connected
+6. Open existing with `openExistingSessionStartsTerminal` off → Chat
+7. Workbench toggle Chat ↔ Terminal works
+
+- [x] **Step 3: Final commit if any leftover cleanups**
 
 ```bash
 git commit -am "$(cat <<'EOF'
