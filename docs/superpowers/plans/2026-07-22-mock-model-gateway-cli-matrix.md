@@ -555,17 +555,21 @@ git commit -m "test: opencode simple/mixed message matrix cells green"
 - Create: `client/test/integration/cli_message_matrix_cursor_test.dart`
 - Document redirect + fake creds in `CliTestProfile` comments / DEVELOPMENT.md
 
-- [ ] **Step 1: Spike (time-box ≤2h)** — how `cursor-agent` accepts custom base URL / auth so traffic hits loopback only. Record steps in profile.
-- [ ] **Step 2: Implement Cursor WireAdapter + L0/L1 tests**
-- [ ] **Step 3: simple cell → green (doorbell-aware)**
-- [ ] **Step 4: mixed cell → green (doorbell + short MCP; no long wait_for_message script)**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Spike (time-box ≤2h)** — **BLOCKED** 2026-07-22 (cursor-agent `2026.07.17-3e2a980`). Public binary cannot route model traffic to loopback without Cursor cloud. Findings recorded in `CliTestProfile` (`_cursorGatewayRedirectSpikeNotes` / `gatewayRedirectNotes`). Summary:
+  - No public `--base-url`; auth is Cursor cloud (`--api-key` / `CURSOR_API_KEY`).
+  - Hidden `agent-cli-local` (`--base-url`, `--authless`, `CURSOR_LOCAL_AGENT_BASE_URL`) is in-bundle but gated on injected `localAgentRuntime` — public entry is `P({})` → always rejected.
+  - `CURSOR_API_ENDPOINT` retargets ConnectRPC `aiserver.v1` only (not OpenAI/Anthropic).
+  - Product preset is account-only (`baseUrl: ''`).
+- [ ] **Step 2: Implement Cursor WireAdapter + L0/L1 tests** — **deferred** (blocked on spike)
+- [ ] **Step 3: simple cell → green (doorbell-aware)** — **deferred** (blocked)
+- [ ] **Step 4: mixed cell → green (doorbell + short MCP; no long wait_for_message script)** — **deferred** (blocked)
+- [ ] **Step 5: Commit** — no green commit; escalate to human (do not fake green)
 
 ```bash
 git commit -m "test: cursor simple/mixed message matrix cells green"
 ```
 
-If spike proves redirect impossible without cloud: **stop and escalate to human** with findings — do not fake a green cell.
+If spike proves redirect impossible without cloud: **stop and escalate to human** with findings — do not fake a green cell. **← triggered.**
 
 ---
 
@@ -611,7 +615,7 @@ git commit -m "chore: retire mock_anthropic; document mock gateway matrix"
 | flashskyai | | | |
 | codex | | N/A | |
 | opencode | | N/A | |
-| cursor | | N/A | |
+| cursor | **BLOCKED** (no loopback redirect; Task 15 spike) | N/A | **BLOCKED** (same) |
 
 - [ ] **Step 2: Deliberate break smoke (one cell)**
 

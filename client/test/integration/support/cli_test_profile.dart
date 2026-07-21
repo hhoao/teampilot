@@ -19,7 +19,11 @@ enum CliTestWire {
   openaiChat,
   openaiResponses,
 
-  /// Placeholder until Task 15 discovers the cursor redirect surface.
+  /// Cursor cloud ConnectRPC (`aiserver.v1`) — not OpenAI/Anthropic.
+  ///
+  /// Task 15 spike (2026-07-22, cursor-agent 2026.07.17-3e2a980): public
+  /// binary cannot route model traffic to loopback without Cursor cloud.
+  /// See [_cursor] `gatewayRedirectNotes`. L2 cells **BLOCKED**.
   cursor,
 }
 
@@ -253,19 +257,62 @@ abstract final class CliTestProfiles {
     wire: CliTestWire.cursor,
     binaryName: 'cursor-agent',
     resolveBinary: () => whichOnPath('cursor-agent'),
-    // Doorbell / short MCP: bare tool ids (no mcp__ prefix) until Task 15
-    // discovery confirms Cursor's on-wire names.
+    // Doorbell / short MCP: bare tool ids (no mcp__ prefix). On-wire MCP
+    // names remain unverified because L2 never reached a gateway turn.
     toolName: mapShortMcpToolRef,
     assistantVisibleMarkers: const [markA1, markA2, markA3],
     bootToPrompt: bootToPromptStub,
     dismissBootGates: dismissBootGatesStub,
     fullscreenDeliverNotes:
         'Fullscreen paste + grid ACK; doorbell via stdin inject + read_messages.',
-    gatewayRedirectNotes:
-        'TODO(Task 15): spike cursor-agent custom base URL / auth so traffic '
-        'hits loopback only — never Cursor cloud.',
+    gatewayRedirectNotes: _cursorGatewayRedirectSpikeNotes,
   );
 }
+
+/// Task 15 spike findings (cursor-agent 2026.07.17-3e2a980 on PATH).
+///
+/// **Verdict: BLOCKED** — cannot hit loopback mock gateway without Cursor
+/// cloud. Do not ship fake-green L2 cells or a pretend `cursor_adapter`.
+///
+/// Tried / observed:
+/// 1. Public CLI flags: only `--api-key` / `CURSOR_API_KEY` for Cursor cloud
+///    auth. No public `--base-url` / OpenAI-compatible provider pin.
+/// 2. Hidden `agent-cli-local` surface exists in the JS bundle
+///    (`--base-url`, `--authless`, `--local-agent-api-key`,
+///    `CURSOR_LOCAL_AGENT_BASE_URL` / `CURSOR_LOCAL_AGENT_API_KEY`,
+///    `ANTHROPIC_BASE_URL` / `ANTHROPIC_AUTH_TOKEN`) and would speak
+///    OpenAI Chat or Anthropic Messages to e.g. `http://127.0.0.1:11434/v1`,
+///    but is gated on an injected `localAgentRuntime`. Public entry calls
+///    `P({})` so runtime is always undefined →
+///    `Error: --base-url can only be used with agent-cli-local` (same for
+///    `--authless`). `CURSOR_AGENT_CLI_LOCAL_MODE=true` only renames help to
+///    `agent-local`; it does **not** unlock local provider routing.
+/// 3. `CURSOR_API_ENDPOINT` / `CURSOR_API_BASE_URL` retarget the Cursor
+///    backend host (defaults `https://api2.cursor.sh`), but the wire is
+///    proprietary ConnectRPC `aiserver.v1` (BidiAppend / RunSSE) — zero
+///    `chat/completions` strings in the public bundle. Mocking that is a
+///    Cursor backend reimplementation, not our OpenAI/Anthropic adapters,
+///    and still is not "loopback-only without cloud protocol".
+/// 4. Product catalog is account-only (`CursorProviderPresets.account` with
+///    empty `baseUrl`); TeamPilot does not provision a custom Cursor model
+///    endpoint for session launch.
+/// 5. IDE "Override OpenAI Base URL" is cloud-mediated (Cursor servers call
+///    the override; localhost unreachable without a public tunnel) and is
+///    not the CLI path the matrix harness launches.
+///
+/// Unblock options for a human / follow-up:
+/// - Ship or obtain a real `agent-cli-local` build that injects
+///   `localAgentRuntime`, then reuse OpenAI Chat (or Anthropic) adapters via
+///   `CURSOR_LOCAL_AGENT_BASE_URL` + `--authless`.
+/// - Or accept Cursor L2 as N/A until Cursor exposes a supported local
+///   provider redirect on the public `cursor-agent` binary.
+const String _cursorGatewayRedirectSpikeNotes =
+    'BLOCKED (Task 15 spike): public cursor-agent has no loopback model '
+    'redirect. Hidden agent-cli-local --base-url / CURSOR_LOCAL_AGENT_BASE_URL '
+    'exist in-bundle but require localAgentRuntime (not injected in public '
+    'P({}) entry). CURSOR_API_ENDPOINT only retargets ConnectRPC aiserver.v1 '
+    'cloud protocol — not OpenAI/Anthropic. Do not fake L2 green.';
+
 
 /// Claude / flashskyai (and best-effort peers): `teambus.X` →
 /// `mcp__teammate-bus__X`; `native.TeamCreate` → `TeamCreate`.

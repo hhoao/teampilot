@@ -124,6 +124,14 @@ void main() {
     );
   });
 
+  test('cursor gatewayRedirectNotes records Task 15 BLOCKED spike', () {
+    final notes = CliTestProfiles.forTool(CliTool.cursor).gatewayRedirectNotes;
+    expect(notes, contains('BLOCKED'));
+    expect(notes, contains('agent-cli-local'));
+    expect(notes, contains('localAgentRuntime'));
+    expect(notes, isNot(contains('TODO(Task 15)')));
+  });
+
   test('assistantVisibleMarkers are simple recipe MARK_A*', () {
     for (final tool in CliTool.values) {
       expect(
