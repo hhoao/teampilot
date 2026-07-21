@@ -2,6 +2,30 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/services/github/github_credentials_store.dart';
 
+class ThrowingSecureKeyValueStore implements SecureKeyValueStore {
+  ThrowingSecureKeyValueStore(
+    this.inner, {
+    required this.shouldThrowOnWrite,
+  });
+
+  final SecureKeyValueStore inner;
+  final bool Function(String key) shouldThrowOnWrite;
+
+  @override
+  Future<void> delete(String key) => inner.delete(key);
+
+  @override
+  Future<String?> read(String key) => inner.read(key);
+
+  @override
+  Future<void> write(String key, String value) async {
+    if (shouldThrowOnWrite(key)) {
+      throw StateError('write failed for $key');
+    }
+    await inner.write(key, value);
+  }
+}
+
 class InMemorySecureKeyValueStore implements SecureKeyValueStore {
   final values = <String, String>{};
 
@@ -102,6 +126,36 @@ void main() {
 
     // Second read does not re-migrate or fail.
     expect(await store.resolveToken(), 'ghp_legacy');
+  });
+
+  test('legacy migration retries after storage write failure', () async {
+    final inner = InMemorySecureKeyValueStore();
+    inner.values['teampilot.hub_publish.v1.github_token'] = 'ghp_legacy';
+    var failWrites = true;
+    final kv = ThrowingSecureKeyValueStore(
+      inner,
+      shouldThrowOnWrite: (_) => failWrites,
+    );
+    final store = GithubCredentialsStore(kv: kv);
+
+    await expectLater(
+      store.migrateLegacyHubPublishTokenIfNeeded(),
+      throwsA(isA<StateError>()),
+    );
+    expect(
+      inner.values.containsKey('teampilot.hub_publish.v1.github_token'),
+      isTrue,
+    );
+    expect(inner.values.containsKey('teampilot.github.v1.token'), isFalse);
+
+    failWrites = false;
+    await store.migrateLegacyHubPublishTokenIfNeeded();
+
+    expect(await store.resolveToken(), 'ghp_legacy');
+    expect(
+      inner.values.containsKey('teampilot.hub_publish.v1.github_token'),
+      isFalse,
+    );
   });
 
   test('migrateLegacyHubPublishTokenIfNeeded is idempotent', () async {

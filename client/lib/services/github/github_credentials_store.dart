@@ -80,16 +80,19 @@ class GithubCredentialsStore {
 
   Future<void> migrateLegacyHubPublishTokenIfNeeded() async {
     if (_legacyMigrated) return;
-    _legacyMigrated = true;
 
     final legacy = await _kv.read(_legacyTokenKey);
-    if (legacy == null || legacy.isEmpty) return;
+    if (legacy == null || legacy.isEmpty) {
+      _legacyMigrated = true;
+      return;
+    }
 
     final existing = await _kv.read(_tokenKey);
     if (existing == null || existing.isEmpty) {
       await savePat(legacy);
     }
     await _kv.delete(_legacyTokenKey);
+    _legacyMigrated = true;
   }
 
   GithubCredentialSource? _parseSource(String? raw) {
