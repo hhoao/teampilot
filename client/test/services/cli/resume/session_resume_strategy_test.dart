@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:sqlite3/sqlite3.dart';
 import 'package:teampilot/services/cli/registry/capabilities/resume/claude_resume_strategy.dart';
 import 'package:teampilot/services/cli/registry/capabilities/resume/codex_resume_strategy.dart';
 import 'package:teampilot/services/cli/registry/capabilities/resume/cursor_resume_strategy.dart';
@@ -92,6 +93,52 @@ void main() {
         ctx(env: {'OPENCODE_DB': p.join(base.path, 'opencode.db')}),
       );
       expect(got, 'ses_abc123');
+    });
+
+    test('captures ses_ id from opencode.db when JSON storage is absent', () async {
+      final dbPath = p.join(base.path, 'opencode.db');
+      final db = sqlite3.open(dbPath);
+      db.execute('''
+CREATE TABLE session (
+  id TEXT PRIMARY KEY,
+  time_updated INTEGER
+);
+''');
+      db.execute(
+        "INSERT INTO session(id, time_updated) VALUES ('ses_old', 1)",
+      );
+      db.execute(
+        "INSERT INTO session(id, time_updated) VALUES ('ses_new', 2)",
+      );
+      db.dispose();
+
+      final got = await const OpencodeResumeStrategy().detectNativeId(
+        ctx(env: {'OPENCODE_DB': dbPath}),
+      );
+      expect(got, 'ses_new');
+    });
+
+    test('persisted id wins over sqlite scan', () async {
+      final dbPath = p.join(base.path, 'opencode.db');
+      final db = sqlite3.open(dbPath);
+      db.execute('''
+CREATE TABLE session (
+  id TEXT PRIMARY KEY,
+  time_updated INTEGER
+);
+''');
+      db.execute(
+        "INSERT INTO session(id, time_updated) VALUES ('ses_db', 1)",
+      );
+      db.dispose();
+
+      final got = await const OpencodeResumeStrategy().detectNativeId(
+        ctx(
+          env: {'OPENCODE_DB': dbPath},
+          persistedNativeId: 'ses_kept',
+        ),
+      );
+      expect(got, 'ses_kept');
     });
   });
 

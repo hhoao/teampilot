@@ -1,11 +1,12 @@
 import 'dart:convert';
-import 'dart:io' show Directory, File;
+import 'dart:io' show Directory;
 
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 import '../../../../session/ai_history_watch_meta.dart';
 import '../../../../session/session_history_context.dart';
+import '../opencode_native_session_id.dart';
 
 /// Locate OpenCode session/message/part files under the session data dir.
 ///
@@ -125,15 +126,15 @@ Future<AiTranscriptBundle?> _locateSqliteStorage(
 ) async {
   final path = ctx.fs.pathContext;
   final dbPath = path.join(dataDir, 'opencode.db');
-  if (!await _sqliteMainExists(ctx, dbPath)) return null;
+  if (!await opencodeSqliteMainExists(ctx.fs, dbPath)) return null;
 
   Directory? tempDir;
   Database? db;
   try {
     tempDir = await Directory.systemTemp.createTemp('opencode-history-');
     final tempDbPath = path.join(tempDir.path, 'opencode.db');
-    final copiedPaths = await _copySqliteSnapshot(
-      ctx: ctx,
+    final copiedPaths = await copyOpencodeSqliteSnapshot(
+      fs: ctx.fs,
       dbPath: dbPath,
       destDbPath: tempDbPath,
     );
@@ -230,33 +231,6 @@ ORDER BY time_created ASC, id ASC
   }
 }
 
-Future<bool> _sqliteMainExists(SessionHistoryContext ctx, String dbPath) async {
-  final bytes = await ctx.fs.readBytes(dbPath);
-  return bytes != null && bytes.isNotEmpty;
-}
-
-/// Copy `opencode.db` plus WAL sidecars. OpenCode opens with
-/// `PRAGMA journal_mode = WAL`; copying only the main file yields an empty
-/// schema while the writer is still live.
-Future<List<String>> _copySqliteSnapshot({
-  required SessionHistoryContext ctx,
-  required String dbPath,
-  required String destDbPath,
-}) async {
-  final copiedSources = <String>[];
-  for (final suffix in const ['', '-wal', '-shm']) {
-    final src = '$dbPath$suffix';
-    final bytes = await ctx.fs.readBytes(src);
-    if (bytes == null || bytes.isEmpty) {
-      if (suffix.isEmpty) return const [];
-      continue;
-    }
-    await File('$destDbPath$suffix').writeAsBytes(bytes);
-    copiedSources.add(src);
-  }
-  return copiedSources;
-}
-
 Map<String, dynamic>? _decodeDbJson(Object? raw) {
   try {
     final decoded = switch (raw) {
@@ -275,83 +249,12 @@ Map<String, dynamic>? _decodeDbJson(Object? raw) {
 Future<String?> _resolveSessionId(
   SessionHistoryContext ctx,
   String dataDir,
-) async {
-  final persisted = ctx.persistedNativeId?.trim() ?? '';
-  if (persisted.isNotEmpty) return persisted;
-
-  final fromJson = await _resolveSessionIdFromJson(ctx, dataDir);
-  if (fromJson != null) return fromJson;
-
-  return _resolveSessionIdFromSqlite(ctx, dataDir);
-}
-
-Future<String?> _resolveSessionIdFromJson(
-  SessionHistoryContext ctx,
-  String dataDir,
-) async {
-  final path = ctx.fs.pathContext;
-  final sessionDir = path.join(dataDir, 'storage', 'session');
-
-  var bestName = '';
-  try {
-    final entries = await ctx.fs.listDirRecursive(sessionDir);
-    for (final e in entries) {
-      if (e.isDirectory) continue;
-      final name = path.basename(e.name);
-      if (!name.startsWith('ses_') || !name.endsWith('.json')) continue;
-      if (e.name.compareTo(bestName) > 0) bestName = e.name;
-    }
-  } on Object {
-    return null;
-  }
-  if (bestName.isEmpty) return null;
-  final name = path.basename(bestName);
-  return name.substring(0, name.length - '.json'.length);
-}
-
-Future<String?> _resolveSessionIdFromSqlite(
-  SessionHistoryContext ctx,
-  String dataDir,
-) async {
-  final path = ctx.fs.pathContext;
-  final dbPath = path.join(dataDir, 'opencode.db');
-  if (!await _sqliteMainExists(ctx, dbPath)) return null;
-
-  Directory? tempDir;
-  Database? db;
-  try {
-    tempDir = await Directory.systemTemp.createTemp('opencode-session-');
-    final tempDbPath = path.join(tempDir.path, 'opencode.db');
-    final copied = await _copySqliteSnapshot(
-      ctx: ctx,
-      dbPath: dbPath,
-      destDbPath: tempDbPath,
-    );
-    if (copied.isEmpty) return null;
-    db = sqlite3.open(tempDbPath, mode: OpenMode.readOnly);
-    final rows = db.select(
-      '''
-SELECT id
-FROM session
-ORDER BY time_updated DESC, id DESC
-LIMIT 1
-''',
-    );
-    if (rows.isEmpty) return null;
-    final id = '${rows.first['id']}'.trim();
-    return id.isEmpty ? null : id;
-  } on Object {
-    return null;
-  } finally {
-    db?.close();
-    if (tempDir != null) {
-      try {
-        await tempDir.delete(recursive: true);
-      } on Object {
-        // best-effort cleanup
-      }
-    }
-  }
+) {
+  return resolveOpencodeNativeSessionId(
+    fs: ctx.fs,
+    dataDir: dataDir,
+    persistedNativeId: ctx.persistedNativeId,
+  );
 }
 
 Future<String?> _findSessionFile(

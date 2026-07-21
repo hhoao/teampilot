@@ -1,3 +1,4 @@
+import '../opencode_native_session_id.dart';
 import '../session_resume_capability.dart';
 
 /// `postCaptured` strategy for opencode. opencode generates `ses_*` ids; we
@@ -12,29 +13,16 @@ final class OpencodeResumeStrategy implements SessionResumeCapability {
 
   @override
   Future<String?> detectNativeId(ResumeContext ctx) async {
-    final persisted = ctx.persistedNativeId?.trim() ?? '';
-    if (persisted.isNotEmpty) return persisted;
-
     final dataDir = _dataDirFromEnv(ctx);
-    if (dataDir.isEmpty) return null;
-    final path = ctx.fs.pathContext;
-    final sessionDir = path.join(dataDir, 'storage', 'session');
-
-    var bestName = '';
-    try {
-      final entries = await ctx.fs.listDirRecursive(sessionDir);
-      for (final e in entries) {
-        if (e.isDirectory) continue;
-        final name = path.basename(e.name);
-        if (!name.startsWith('ses_') || !name.endsWith('.json')) continue;
-        if (e.name.compareTo(bestName) > 0) bestName = e.name;
-      }
-    } on Object {
-      return null;
+    final persisted = ctx.persistedNativeId?.trim() ?? '';
+    if (dataDir.isEmpty) {
+      return persisted.isEmpty ? null : persisted;
     }
-    if (bestName.isEmpty) return null;
-    final name = path.basename(bestName);
-    return name.substring(0, name.length - '.json'.length);
+    return resolveOpencodeNativeSessionId(
+      fs: ctx.fs,
+      dataDir: dataDir,
+      persistedNativeId: ctx.persistedNativeId,
+    );
   }
 
   static String _dataDirFromEnv(ResumeContext ctx) {
