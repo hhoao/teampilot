@@ -848,7 +848,7 @@
   "autoLaunchAllMembersTitle": "连接时启动全部成员",
   "autoLaunchAllMembersDescription": "开启后，点击连接或重启会为每个有效成员启动终端；关闭则仅启动当前选中的成员。",
   "openExistingSessionStartsTerminalTitle": "打开已有会话时直接启动终端",
-  "openExistingSessionStartsTerminalDescription": "开启后，从侧边栏打开对话会立即连接终端。关闭（默认）时先显示历史回顾面板，在输入框发送后才启动终端。",
+  "openExistingSessionStartsTerminalDescription": "开启后，从侧边栏打开对话会立即连接终端。关闭（默认）时先显示聊天视图，发送消息后才启动终端。",
   "chatSubmitSwitchesToTerminalTitle": "发送后切换到终端",
   "chatSubmitSwitchesToTerminalDescription": "关闭（默认）时，在聊天页发送（新建或继续）后仍留在聊天视图，终端在后台运行。开启后，发送后切换到终端。",
   "simpleModeDefaultFullAccessTitle": "简单模式默认：完全访问",

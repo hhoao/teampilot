@@ -2115,7 +2115,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get openExistingSessionStartsTerminalDescription =>
-      '开启后，从侧边栏打开对话会立即连接终端。关闭（默认）时先显示历史回顾面板，在输入框发送后才启动终端。';
+      '开启后，从侧边栏打开对话会立即连接终端。关闭（默认）时先显示聊天视图，发送消息后才启动终端。';
 
   @override
   String get chatSubmitSwitchesToTerminalTitle => '发送后切换到终端';

@@ -918,7 +918,7 @@
   "autoLaunchAllMembersTitle": "Start all members on connect",
   "autoLaunchAllMembersDescription": "When enabled, Connect and Restart launch every valid member shell; otherwise only the selected member starts.",
   "openExistingSessionStartsTerminalTitle": "Open existing sessions in terminal",
-  "openExistingSessionStartsTerminalDescription": "When enabled, opening a conversation from the sidebar connects the terminal immediately. When off (default), open the history review panel first; submit from compose to start the terminal.",
+  "openExistingSessionStartsTerminalDescription": "When enabled, opening a conversation from the sidebar connects the terminal immediately. When off (default), open the Chat view first; send from Chat to start the terminal.",
   "chatSubmitSwitchesToTerminalTitle": "Switch to Terminal after Chat send",
   "chatSubmitSwitchesToTerminalDescription": "When off (default), sending from Chat (new conversation or continue) stays on the Chat view while the terminal runs in the background. When on, switch to the Terminal after send.",
   "simpleModeDefaultFullAccessTitle": "Simple mode default: full access",

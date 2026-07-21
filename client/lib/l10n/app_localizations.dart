@@ -4073,7 +4073,7 @@ abstract class AppLocalizations {
   /// No description provided for @openExistingSessionStartsTerminalDescription.
   ///
   /// In en, this message translates to:
-  /// **'When enabled, opening a conversation from the sidebar connects the terminal immediately. When off (default), open the history review panel first; submit from compose to start the terminal.'**
+  /// **'When enabled, opening a conversation from the sidebar connects the terminal immediately. When off (default), open the Chat view first; send from Chat to start the terminal.'**
   String get openExistingSessionStartsTerminalDescription;
 
   /// No description provided for @chatSubmitSwitchesToTerminalTitle.

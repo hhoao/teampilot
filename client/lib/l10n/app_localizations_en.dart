@@ -2209,7 +2209,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get openExistingSessionStartsTerminalDescription =>
-      'When enabled, opening a conversation from the sidebar connects the terminal immediately. When off (default), open the history review panel first; submit from compose to start the terminal.';
+      'When enabled, opening a conversation from the sidebar connects the terminal immediately. When off (default), open the Chat view first; send from Chat to start the terminal.';
 
   @override
   String get chatSubmitSwitchesToTerminalTitle =>
