@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mock_anthropic/scenario.dart';
+import 'package:mock_model_gateway/core/turns.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
-import 'package:mock_anthropic/scenarios/doorbell_dispatch_mixed_claude.dart';
-import 'package:mock_anthropic/scenarios/mail_priority_mixed_claude.dart';
-import 'package:mock_anthropic/scenarios/task_complete_mixed_claude.dart';
-import 'package:mock_anthropic/scenarios/task_dispatch_mixed_claude.dart';
+import 'package:mock_model_gateway/scenarios/doorbell_dispatch_mixed_claude.dart';
+import 'package:mock_model_gateway/scenarios/mail_priority_mixed_claude.dart';
+import 'package:mock_model_gateway/scenarios/task_complete_mixed_claude.dart';
+import 'package:mock_model_gateway/scenarios/task_dispatch_mixed_claude.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -21,7 +21,7 @@ import 'mixed_team_idle_busy_assertions.dart';
 import 'mixed_team_integration_harness.dart';
 import 'package:teampilot/models/team_config.dart';
 
-/// L2 mixed-team scenarios: real Claude PTY + mock Anthropic + bus persistence.
+/// L2 mixed-team scenarios: real Claude PTY + mock gateway + bus persistence.
 abstract final class MixedTeamTaskScenario {
   static const _ptyReleaseDelay = Duration(seconds: 3);
 
@@ -395,9 +395,9 @@ abstract final class MixedTeamTaskScenario {
         leaderKickoff: leaderKickoff,
       );
 
-  /// Shared L2 session bootstrap (real Claude PTY + mock Anthropic).
+  /// Shared L2 session bootstrap (real Claude PTY + mock model gateway).
   static Future<void> run({
-    required ScenarioRegistry scenarios,
+    required Map<String, MockScenario> scenarios,
     MixedTeamKickoff? kickoff,
     Future<void> Function(MixedTeamScenarioCtx ctx)? afterReady,
     Future<void> Function(MixedTeamScenarioCtx ctx)? verify,
@@ -479,7 +479,7 @@ abstract final class MixedTeamTaskScenario {
   }
 
   static Future<void> _run({
-    required ScenarioRegistry scenarios,
+    required Map<String, MockScenario> scenarios,
     required MixedTeamKickoff kickoff,
     required Future<void> Function(MixedTeamScenarioCtx ctx) verify,
     bool withPresence = false,

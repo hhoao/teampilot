@@ -1,9 +1,10 @@
 import 'dart:io';
 
-import 'package:mock_anthropic/scenario.dart';
-import 'package:mock_anthropic/scenarios/ping_pong_mixed_claude.dart';
-import 'package:mock_anthropic/scenarios/task_dispatch_mixed_claude.dart';
-import 'package:mock_anthropic/server.dart';
+import 'package:mock_model_gateway/core/turns.dart';
+import 'package:mock_model_gateway/scenarios/ping_pong_mixed_claude.dart';
+import 'package:mock_model_gateway/scenarios/task_dispatch_mixed_claude.dart';
+import 'package:mock_model_gateway/server.dart';
+import 'package:mock_model_gateway/wire/anthropic_messages_adapter.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/runtime_target.dart';
@@ -36,6 +37,7 @@ import '../../support/post_frame_test_harness.dart';
 import 'bus_mail_assertions.dart';
 import 'bus_roster_assertions.dart';
 import 'bus_task_assertions.dart';
+import 'cli_test_profile.dart';
 import 'docker_ssh_server.dart';
 import 'integration_prerequisites.dart';
 
@@ -63,13 +65,13 @@ const kItMixedClaudeTeam = TeamProfile(
   members: [kLeadMember, kWorkerMember],
 );
 
-/// Orchestrator for L2 ChatCubit + mock Anthropic integration tests.
+/// Orchestrator for L2 ChatCubit + mock model gateway integration tests.
 class MixedTeamIntegrationHarness {
   MixedTeamIntegrationHarness({required this.claudePath});
 
   final String claudePath;
 
-  MockAnthropicServer? _mockServer;
+  MockModelGatewayServer? _mockServer;
   ChatCubit? cubit;
 
   String? _savedBusBridgeEnv;
@@ -88,12 +90,14 @@ class MixedTeamIntegrationHarness {
       IntegrationPrerequisites.resolveClaudePath();
 
   Future<void> startMockServer({
-    ScenarioRegistry? scenarios,
+    Map<String, MockScenario>? scenarios,
     bool exposeToDocker = false,
   }) async {
     _forceHttpMcp();
-    final server = MockAnthropicServer(
-      scenarios: scenarios ?? pingPongMixedClaudeScenarios(),
+    final server = MockModelGatewayServer.scenarios(
+      scenarios ?? pingPongMixedClaudeScenarios(),
+      toolNames: CliTestProfiles.forTool(CliTool.claude).toolName,
+      adapters: [AnthropicMessagesAdapter()],
     );
     _mockServer = server;
     await server.start(
@@ -450,7 +454,7 @@ class MixedTeamIntegrationHarness {
       }
     }
     throw StateError(
-      'Mock Anthropic API received no requests after $maxAttempts kickoff attempts',
+      'Mock model gateway received no requests after $maxAttempts kickoff attempts',
     );
   }
 

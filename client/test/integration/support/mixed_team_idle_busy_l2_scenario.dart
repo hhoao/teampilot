@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mock_anthropic/scenarios/task_complete_mixed_claude.dart';
-import 'package:mock_anthropic/scenarios/task_dispatch_mixed_claude.dart';
+import 'package:mock_model_gateway/scenarios/task_complete_mixed_claude.dart';
+import 'package:mock_model_gateway/scenarios/task_dispatch_mixed_claude.dart';
 import 'package:teampilot/models/member_presence.dart';
 
 import 'mixed_team_idle_busy_assertions.dart';

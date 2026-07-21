@@ -11,7 +11,7 @@ import 'integration_prerequisites.dart';
 import 'mixed_team_integration_harness.dart';
 import 'package:teampilot/models/team_config.dart';
 
-/// Shared L2/L3 mixed-team ping/pong scenarios (ChatCubit + mock Anthropic).
+/// Shared L2/L3 mixed-team ping/pong scenarios (ChatCubit + mock model gateway).
 abstract final class MixedTeamPingPongScenario {
   static const _ptyReleaseDelay = Duration(seconds: 3);
 
