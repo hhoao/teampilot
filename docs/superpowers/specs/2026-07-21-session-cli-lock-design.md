@@ -42,7 +42,7 @@ Persisted in `session.json` `members[]` as `"cli": "claude"`. Missing key → `n
 
 Practical shape (plan may refine API names):
 
-- `createSession`: accept a per-instance map (e.g. `Map<String, CliTool> memberClis` keyed by `instanceId`) **or** pre-built bindings that already carry `cli`. Missing entry for a team instance → fail create (new team sessions must lock every included member). Simple sessions ignore the map.
+- `createSession`: accept a per-**type** map (e.g. `Map<String, CliTool> memberClis` keyed by roster **type id**, not pod instance id — replicas share one lock; avoids mismatch when create-time placement healing renumbers instances). Missing entry for an included instance’s type → fail create. Simple sessions ignore the map.
 - `ensureMemberBinding`: require `CliTool cli` when inserting a **new** binding; if the binding already exists, return it unchanged (do not rewrite `cli`).
 - Caller resolves with `memberLaunchCli` against the member **type** (`TeamMemberConfig` for `typeId` / base roster slot), not a synthetic instance-only id — same input `expandTeamRoster` already uses when building instances.
 
