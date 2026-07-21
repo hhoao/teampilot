@@ -43,6 +43,13 @@ class _FakeFilesystem implements Filesystem {
   Future<void> writeBytes(String path, List<int> bytes) async {}
 
   @override
+  Future<List<int>?> readBytesRange(String path, int offset, int length) async =>
+      [];
+
+  @override
+  Future<void> appendBytes(String path, List<int> bytes) async {}
+
+  @override
   Future<void> atomicWrite(String path, String content) async {}
 
   @override

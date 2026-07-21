@@ -49,6 +49,14 @@ class SftpFilesystem implements Filesystem {
   );
 
   @override
+  Future<List<int>?> readBytesRange(String path, int offset, int length) =>
+      throw UnimplementedError('readBytesRange');
+
+  @override
+  Future<void> appendBytes(String path, List<int> bytes) =>
+      throw UnimplementedError('appendBytes');
+
+  @override
   Future<void> atomicWrite(String path, String content) async {
     final tmp = '$path.tmp.${DateTime.now().microsecondsSinceEpoch}';
     await store.writeFile(tmp, content);

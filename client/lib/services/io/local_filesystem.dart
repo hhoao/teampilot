@@ -176,6 +176,14 @@ class LocalFilesystem implements Filesystem, FsWatcher {
   }
 
   @override
+  Future<List<int>?> readBytesRange(String path, int offset, int length) =>
+      throw UnimplementedError('readBytesRange');
+
+  @override
+  Future<void> appendBytes(String path, List<int> bytes) =>
+      throw UnimplementedError('appendBytes');
+
+  @override
   Future<void> atomicWrite(String path, String content) async {
     await _atomicWriteLocks.synchronized(path, () async {
       final maxAttempts = Platform.isWindows ? 8 : 1;

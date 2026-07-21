@@ -140,6 +140,27 @@ class InMemoryFilesystem implements Filesystem {
   }
 
   @override
+  Future<List<int>?> readBytesRange(
+    String path,
+    int offset,
+    int length,
+  ) async {
+    final all = await readBytes(path);
+    if (all == null) return null;
+    if (offset < 0) throw ArgumentError.value(offset, 'offset');
+    if (length < 0) throw ArgumentError.value(length, 'length');
+    if (offset >= all.length) return <int>[];
+    final end = (offset + length).clamp(0, all.length);
+    return all.sublist(offset, end);
+  }
+
+  @override
+  Future<void> appendBytes(String path, List<int> bytes) async {
+    final existing = await readBytes(path) ?? <int>[];
+    await writeBytes(path, [...existing, ...bytes]);
+  }
+
+  @override
   Future<void> atomicWrite(String path, String content) =>
       writeString(path, content);
 

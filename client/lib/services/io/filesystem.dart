@@ -72,6 +72,13 @@ abstract interface class Filesystem {
   Future<List<int>?> readBytes(String path);
   Future<void> writeString(String path, String content);
   Future<void> writeBytes(String path, List<int> bytes);
+
+  /// Up to [length] bytes from [offset]. Null if missing. Shorter at EOF.
+  Future<List<int>?> readBytesRange(String path, int offset, int length);
+
+  /// Create if missing; append [bytes] at end.
+  Future<void> appendBytes(String path, List<int> bytes);
+
   Future<void> atomicWrite(String path, String content);
   Future<List<FsDirEntry>> listDir(String path);
 
