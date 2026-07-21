@@ -26,6 +26,12 @@ Message-send integration coverage is incomplete and uneven:
 - On failure: emit enough gateway / PTY / bus / **thread** evidence to
   **attribute the fault** (wire, scenario, product send path, chat UI, or boot
   profile) and fix — do not skip to hide reds.
+- **Product fixes are in scope.** Several modes/CLIs have not been manually
+  exercised end-to-end; matrix runs are expected to reveal real bugs in send,
+  mailbox routing, thread bubbles, or CLI boot. When attribution points at
+  product code, **fix the product** (and keep the test red until it would
+  catch the regression). Do not weaken assertions or rewrite scenarios to paper
+  over broken behavior.
 
 ## Non-goals
 
@@ -233,6 +239,20 @@ a hand-maintained duplicate flag.
 
 **Do not skip to hide reds.** Allowed skips: missing local binary; N/A native
 cell.
+
+### Product-bug policy (explicit)
+
+Unverified flows are **assumed buggy until proven green**. Implementation /
+matrix execution must:
+
+1. Run the cell; on failure, attribute using the dump above.
+2. If fault is product (send, channel routing, bubbles, bus, boot) → **fix
+   product**, re-run the same cell until green.
+3. If fault is mock wire / recipe / profile → fix test infra only.
+4. Never mark a cell done by lowering the ≥3-bubble / compose-submit bar.
+
+A cell is complete only when it is green **and** a known send/thread break
+would turn it red again (see Success criteria).
 
 ## Extensibility
 
