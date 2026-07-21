@@ -132,6 +132,26 @@ class RemoteFileStore {
     }
   }
 
+  Future<List<int>?> readFileBytesRange(
+    String path, {
+    required int offset,
+    required int length,
+  }) async {
+    try {
+      final sftp = await _ensureConnected();
+      final resolved = await expandHome(path);
+      final file = await sftp.open(resolved, mode: SftpFileOpenMode.read);
+      try {
+        return await file.readBytes(length: length, offset: offset);
+      } finally {
+        await file.close();
+      }
+    } on SftpStatusError catch (e) {
+      if (e.code == SftpStatusCode.noSuchFile) return null;
+      rethrow;
+    }
+  }
+
   Future<void> writeFile(String path, String contents) async {
     final sftp = await _ensureConnected();
     final resolved = await expandHome(path);
@@ -177,6 +197,21 @@ class RemoteFileStore {
     );
     await file.writeBytes(bytes);
     await file.close();
+  }
+
+  Future<void> appendBytes(String path, Uint8List bytes) async {
+    final sftp = await _ensureConnected();
+    final resolved = await expandHome(path);
+    await _ensureParentDirs(resolved);
+    final file = await sftp.open(
+      resolved,
+      mode: SftpFileOpenMode.append | SftpFileOpenMode.create,
+    );
+    try {
+      await file.writeBytes(bytes);
+    } finally {
+      await file.close();
+    }
   }
 
   Future<void> ensureDirectory(String path) async {

@@ -50,11 +50,13 @@ class SftpFilesystem implements Filesystem {
 
   @override
   Future<List<int>?> readBytesRange(String path, int offset, int length) =>
-      throw UnimplementedError('readBytesRange');
+      store.readFileBytesRange(path, offset: offset, length: length);
 
   @override
-  Future<void> appendBytes(String path, List<int> bytes) =>
-      throw UnimplementedError('appendBytes');
+  Future<void> appendBytes(String path, List<int> bytes) => store.appendBytes(
+    path,
+    bytes is Uint8List ? bytes : Uint8List.fromList(bytes),
+  );
 
   @override
   Future<void> atomicWrite(String path, String content) async {
