@@ -20,9 +20,18 @@ void main() {
   Future<HttpClientResponse> postJson(
     Uri uri, {
     required String apiKey,
-    Map<String, Object?> body = const {'model': 'mock-model', 'messages': []},
+    Map<String, Object?>? body,
     bool bearer = true,
   }) async {
+    final payload = body ??
+        {
+          'model': 'mock-model',
+          'messages': <Object?>[],
+          // Real openai_chat turns always advertise tools; tool-less is a probe.
+          'tools': [
+            {'type': 'function', 'function': {'name': 'noop'}},
+          ],
+        };
     final req = await client.postUrl(uri);
     req.headers.set('content-type', 'application/json');
     if (bearer) {
@@ -30,7 +39,7 @@ void main() {
     } else {
       req.headers.set('x-api-key', apiKey);
     }
-    req.add(utf8.encode(jsonEncode(body)));
+    req.add(utf8.encode(jsonEncode(payload)));
     return req.close();
   }
 
@@ -107,6 +116,9 @@ void main() {
             'tool_call_id': 'call_1',
             'content': 'pong',
           },
+        ],
+        'tools': [
+          {'type': 'function', 'function': {'name': 'lookup'}},
         ],
       },
     );
@@ -191,6 +203,55 @@ void main() {
     expect(real.statusCode, 200);
     final body = await real.transform(utf8.decoder).join();
     expect(body, contains('real-1'));
+    expect(server.requestCountFor('lead'), 1);
+  });
+
+  test('OpenAI Chat tool-less probe does not consume scenario turns', () async {
+    final server = MockModelGatewayServer(
+      engine: ScenarioEngine({
+        'lead': MockScenario(
+          turns: [TextTurn('chat-real-1'), TextTurn('chat-real-2')],
+        ),
+      }),
+    );
+    await server.start();
+    addTearDown(server.stop);
+
+    final uri = server.baseUri.replace(path: '/v1/chat/completions');
+
+    final probe = await postJson(
+      uri,
+      apiKey: 'lead',
+      body: {
+        'model': 'mock-model',
+        'messages': [
+          {'role': 'user', 'content': 'hi'},
+        ],
+      },
+    );
+    expect(probe.statusCode, 200);
+    expect(server.requestCountFor('lead'), 0);
+    expect(server.requestLog.single.turnLabel, 'probe(no-tools)');
+
+    final real = await postJson(
+      uri,
+      apiKey: 'lead',
+      body: {
+        'model': 'mock-model',
+        'messages': [
+          {'role': 'user', 'content': 'hi'},
+        ],
+        'tools': [
+          {
+            'type': 'function',
+            'function': {'name': 'noop', 'description': 'test'},
+          },
+        ],
+      },
+    );
+    expect(real.statusCode, 200);
+    final body = await real.transform(utf8.decoder).join();
+    expect(body, contains('chat-real-1'));
     expect(server.requestCountFor('lead'), 1);
   });
 

@@ -164,11 +164,13 @@ class MockModelGatewayServer {
     );
     final bodyJson = _tryParseJson(bodyBytes);
     final model = bodyJson?['model'] as String? ?? 'mock-model';
+    final hasTools = _requestHasTools(bodyJson);
 
     try {
-      // Claude Code issues a tool-less /v1/messages probe before the real
+      // Claude Code / flashskyai issue a tool-less probe before the real
       // tool-bearing turn. Do not consume ScenarioEngine turns for that probe.
-      if (adapter.wireId == 'anthropic' && !_requestHasTools(bodyJson)) {
+      if ((adapter.wireId == 'anthropic' || adapter.wireId == 'openai_chat') &&
+          !hasTools) {
         final messageId = 'msg_probe_${DateTime.now().microsecondsSinceEpoch}';
         final body = adapter.encodeResponse(
           turn: const ResolvedTextTurn(''),
