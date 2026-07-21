@@ -645,6 +645,49 @@ void main() {
     },
   );
 
+  test(
+    'createSession missing memberClis does not persist targets or bump cliTeamName',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+
+      final repo = SessionRepository(rootDir: tmp.path);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/w'),
+      ]);
+      final before = (await repo.loadWorkspaces()).single;
+      expect(before.memberTargetsByTeam['team-a'], isNull);
+
+      await expectLater(
+        () => repo.createSession(
+          workspace.workspaceId,
+          sessionTeam: 'team-a',
+          rosterMembers: const [
+            TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+            TeamMemberConfig(id: 'builder', name: 'Builder'),
+          ],
+          memberClis: const {'team-lead': CliTool.claude},
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+
+      expect(await repo.loadSessions(), isEmpty);
+      final afterFail = (await repo.loadWorkspaces()).single;
+      expect(afterFail.memberTargetsByTeam['team-a'], isNull);
+
+      final ok = await repo.createSession(
+        workspace.workspaceId,
+        sessionTeam: 'team-a',
+        rosterMembers: const [
+          TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+        ],
+        memberClis: const {'team-lead': CliTool.claude},
+      );
+      // Failed attempt must not have consumed the team counter.
+      expect(ok.cliTeamName, 'team-a-1');
+    },
+  );
+
   test('simple createSession ignores memberClis', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));

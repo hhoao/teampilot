@@ -702,6 +702,25 @@ class SessionRepository {
         instances: instances,
         remembered: remembered,
       );
+
+      final included = [
+        for (final inst in instances)
+          if (resolved.targets.containsKey(inst.instanceId)) inst,
+      ];
+      if (!leadPlacementValid(
+            folders: workspace.folders,
+            members: healed,
+            targets: resolved.targets,
+          ) ||
+          !_includedLeadWhenRequired(healed, included)) {
+        throw StateError('lead_placement_invalid');
+      }
+      for (final inst in included) {
+        if (!memberClis.containsKey(inst.type.id)) {
+          throw ArgumentError('missing memberClis for ${inst.type.id}');
+        }
+      }
+
       if (resolved.persistTargets) {
         await updateWorkspaceMemberTargets(
           workspaceId,
@@ -718,19 +737,6 @@ class SessionRepository {
             );
       }
 
-      final included = [
-        for (final inst in instances)
-          if (resolved.targets.containsKey(inst.instanceId)) inst,
-      ];
-      if (!leadPlacementValid(
-            folders: workspace.folders,
-            members: healed,
-            targets: resolved.targets,
-          ) ||
-          !_includedLeadWhenRequired(healed, included)) {
-        throw StateError('lead_placement_invalid');
-      }
-
       final counterCtx = await _counterContext();
       final counter = SessionTeamCounter(
         fs: counterCtx.fs,
@@ -743,9 +749,7 @@ class SessionRepository {
             rosterMemberId: inst.instanceId,
             typeId: inst.type.id,
             taskId: const Uuid().v4(),
-            cli:
-                memberClis[inst.type.id] ??
-                (throw ArgumentError('missing memberClis for ${inst.type.id}')),
+            cli: memberClis[inst.type.id]!,
           ),
       ];
       sessionTargets = {
