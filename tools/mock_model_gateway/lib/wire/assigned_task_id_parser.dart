@@ -1,4 +1,4 @@
-/// Extracts a claimed task id from an inbound Anthropic `/v1/messages` body.
+/// Extracts a claimed task id from inbound chat request bodies.
 ///
 /// L2 integration tests script `update_task` after `wait_for_message` returns
 /// a claimed task; the task id is only known at runtime from the tool result.
@@ -7,6 +7,22 @@ library;
 import 'dart:convert';
 
 String? extractAssignedTaskIdFromAnthropicRequest(
+  Map<String, Object?>? body,
+) {
+  return extractAssignedTaskIdFromMessagesRequest(body);
+}
+
+/// Extracts a claimed task id from an inbound OpenAI chat-completions body.
+///
+/// OpenAI tool results also live under `messages` (role `tool`); the claimed
+/// task id scan is the same as Anthropic.
+String? extractAssignedTaskIdFromOpenAiRequest(
+  Map<String, Object?>? body,
+) {
+  return extractAssignedTaskIdFromMessagesRequest(body);
+}
+
+String? extractAssignedTaskIdFromMessagesRequest(
   Map<String, Object?>? body,
 ) {
   if (body == null) return null;
