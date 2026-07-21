@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import '../../cubits/github_account_cubit.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
@@ -43,7 +46,6 @@ class HubPublishWizard extends StatefulWidget {
 
 class _HubPublishWizardState extends State<HubPublishWizard> {
   late HubPublishWizardStep _step;
-  late final TextEditingController _token;
   late final TextEditingController _slug;
   late final TextEditingController _name;
   late final TextEditingController _description;
@@ -105,28 +107,39 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
     final seedCategory = widget.member?.category ?? '';
     final seedAuthor = widget.member?.author ?? '';
     final seedTags = widget.member?.tags.join(', ') ?? '';
-    _token = TextEditingController();
     _slug = TextEditingController(text: _suggestSlug(seedName));
     _name = TextEditingController(text: seedName);
     _description = TextEditingController(text: seedDesc);
     _category = TextEditingController(text: seedCategory);
     _author = TextEditingController(text: seedAuthor);
     _tags = TextEditingController(text: seedTags);
-    _loadToken();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initAuth());
   }
 
-  Future<void> _loadToken() async {
-    final existing = await widget.credentials.resolveToken();
-    if (!mounted) return;
-    if (existing != null && existing.isNotEmpty) {
-      _token.text = existing;
-      setState(() => _tokenReady = true);
+  Future<void> _initAuth() async {
+    try {
+      await context.read<GithubAccountCubit>().hydrate();
+    } catch (_) {
+      // Cubit may be absent in isolated tests; credentials still resolve.
     }
+    await _refreshTokenReady();
+  }
+
+  Future<void> _refreshTokenReady() async {
+    final token = await widget.credentials.resolveToken();
+    if (!mounted) return;
+    var ready = token != null && token.isNotEmpty;
+    try {
+      final status = context.read<GithubAccountCubit>().state.status;
+      ready = ready || status == GithubAccountStatus.connected;
+    } catch (_) {
+      // No ambient cubit.
+    }
+    setState(() => _tokenReady = ready);
   }
 
   @override
   void dispose() {
-    _token.dispose();
     _slug.dispose();
     _name.dispose();
     _description.dispose();
@@ -162,27 +175,20 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
     setState(() => _stepError = null);
     switch (_step) {
       case HubPublishWizardStep.auth:
-        final token = _token.text.trim();
-        if (token.isEmpty) {
+        var connected = false;
+        try {
+          connected =
+              context.read<GithubAccountCubit>().state.status ==
+              GithubAccountStatus.connected;
+        } catch (_) {
+          // No ambient cubit.
+        }
+        final token = await widget.credentials.resolveToken();
+        if (!connected && (token == null || token.isEmpty)) {
           setState(() => _stepError = context.l10n.hubPublishTokenRequired);
           return;
         }
-        setState(() => _busy = true);
-        try {
-          await widget.credentials.savePat(token);
-          if (!mounted) return;
-          setState(() {
-            _busy = false;
-            _tokenReady = true;
-            _step = HubPublishWizardStep.metadata;
-          });
-        } catch (_) {
-          if (!mounted) return;
-          setState(() {
-            _busy = false;
-            _stepError = context.l10n.hubPublishTokenSaveFailed;
-          });
-        }
+        setState(() => _step = HubPublishWizardStep.metadata);
       case HubPublishWizardStep.metadata:
         final slug = _slug.text.trim();
         if (slug.isEmpty) {
@@ -287,6 +293,21 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
       });
     } on HubPublishException catch (e) {
       if (!mounted) return;
+      if (e.code == HubPublishErrorCode.unauthorized) {
+        try {
+          await context.read<GithubAccountCubit>().onUnauthorized();
+        } catch (_) {
+          // No ambient cubit.
+        }
+        setState(() {
+          _busy = false;
+          _step = HubPublishWizardStep.auth;
+          _publishError = null;
+          _stepError = context.l10n.githubAuthExpired;
+          _tokenReady = false;
+        });
+        return;
+      }
       setState(() {
         _busy = false;
         _publishError = e.message;
@@ -300,10 +321,30 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
     }
   }
 
+  Future<void> _onSwitchAccount() async {
+    if (_busy) return;
+    try {
+      await context.read<GithubAccountCubit>().switchAccount();
+    } catch (_) {
+      // No ambient cubit.
+    }
+    if (!mounted) return;
+    setState(() {
+      _tokenReady = false;
+      _stepError = null;
+    });
+  }
+
+  bool get _nextEnabled {
+    if (_busy) return false;
+    if (_step == HubPublishWizardStep.auth && !_tokenReady) return false;
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return TpDialog(
+    final dialog = TpDialog(
       key: const Key('hub-publish-wizard'),
       scrollable: true,
       maxWidth: 560,
@@ -337,6 +378,12 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
                     onPressed: _busy ? null : _onBack,
                     child: Text(l10n.back),
                   ),
+                if (_step == HubPublishWizardStep.auth)
+                  TextButton(
+                    key: const Key('hub-publish-switch-account'),
+                    onPressed: _busy ? null : _onSwitchAccount,
+                    child: Text(l10n.githubSwitchAccount),
+                  ),
                 TextButton(
                   onPressed: _busy ? null : () => Navigator.of(context).pop(),
                   child: Text(l10n.cancel),
@@ -356,7 +403,7 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
                 else
                   FilledButton(
                     key: const Key('hub-publish-next'),
-                    onPressed: _busy ? null : _onNext,
+                    onPressed: _nextEnabled ? _onNext : null,
                     child: Text(l10n.hubPublishNext),
                   ),
               ],
@@ -374,14 +421,21 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
         ],
       ),
     );
+
+    return BlocListener<GithubAccountCubit, GithubAccountState>(
+      listener: (context, state) {
+        final ready = state.status == GithubAccountStatus.connected;
+        if (ready != _tokenReady) {
+          setState(() => _tokenReady = ready);
+        }
+      },
+      child: dialog,
+    );
   }
 
   Widget _buildStepBody() {
     return switch (_step) {
-      HubPublishWizardStep.auth => HubPublishAuthStep(
-        tokenController: _token,
-        hasStoredToken: _tokenReady,
-      ),
+      HubPublishWizardStep.auth => const HubPublishAuthStep(),
       HubPublishWizardStep.metadata => HubPublishMetadataStep(
         kind: widget.kind,
         slugController: _slug,

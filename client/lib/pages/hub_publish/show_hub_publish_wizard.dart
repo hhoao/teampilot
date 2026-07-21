@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -61,15 +63,43 @@ Future<void> showHubPublishWizard(
   return showDialog<void>(
     context: context,
     barrierDismissible: false,
-    builder: (ctx) => HubPublishWizard(
-      kind: kind,
-      member: member,
-      team: team,
-      publishApi: resolvedApi,
-      credentials: resolvedCredentials,
-      lookup: resolvedLookup,
-      remapCandidates: resolvedRemap,
-    ),
+    builder: (ctx) {
+      final wizard = HubPublishWizard(
+        kind: kind,
+        member: member,
+        team: team,
+        publishApi: resolvedApi,
+        credentials: resolvedCredentials,
+        lookup: resolvedLookup,
+        remapCandidates: resolvedRemap,
+      );
+
+      GithubAccountCubit? existing;
+      try {
+        existing = ctx.read<GithubAccountCubit>();
+      } catch (_) {
+        existing = null;
+      }
+
+      if (existing != null) {
+        return wizard;
+      }
+
+      return BlocProvider(
+        create: (_) {
+          final cubit = GithubAccountCubit(
+            store: resolvedCredentials,
+            deviceFlow: null,
+            openUrl: (_) async {},
+            fetchLogin: (_) async => '',
+            deviceFlowAvailable: false,
+          );
+          unawaited(cubit.hydrate());
+          return cubit;
+        },
+        child: wizard,
+      );
+    },
   );
 }
 

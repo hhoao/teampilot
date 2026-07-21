@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/models/discoverable_team.dart';
@@ -14,6 +15,7 @@ import 'package:teampilot/services/github/github_credentials_store.dart';
 import 'package:teampilot/services/hub_publish/hub_publish_record_store.dart';
 import 'package:teampilot/services/hub_publish/hub_publish_service.dart';
 import 'package:teampilot/services/team_hub/team_hub_source.dart';
+import 'package:teampilot/theme/app_typography_scale.dart';
 
 class _MemoryKv implements SecureKeyValueStore {
   final map = <String, String>{};
@@ -131,33 +133,43 @@ Future<void> _pumpWizard(
   BundleProvenanceLookup? lookup,
   List<DiscoverableMember> remapCandidates = const [],
 }) async {
+  final theme = ThemeData(useMaterial3: true);
   await tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(
-        body: Builder(
-          builder: (context) => Center(
-            child: TextButton(
-              key: const Key('open-wizard'),
-              onPressed: () {
-                showHubPublishWizard(
-                  context,
-                  kind: kind,
-                  member: member,
-                  team: team,
-                  publishApi: publishApi,
-                  credentials: credentials,
-                  lookup: lookup ??
-                      BundleProvenanceLookup(
-                        skills: const [],
-                        plugins: const [],
-                        mcps: const [],
-                      ),
-                  remapCandidates: remapCandidates,
-                );
-              },
-              child: const Text('Open'),
+      locale: const Locale('en'),
+      theme: theme,
+      home: TpTheme(
+        data: TpThemeData.fromColorScheme(
+          theme.colorScheme,
+          scale: 1.0,
+          controlScale: AppTypographyScale.standard.multiplier,
+        ),
+        child: Scaffold(
+          body: Builder(
+            builder: (context) => Center(
+              child: TextButton(
+                key: const Key('open-wizard'),
+                onPressed: () {
+                  showHubPublishWizard(
+                    context,
+                    kind: kind,
+                    member: member,
+                    team: team,
+                    publishApi: publishApi,
+                    credentials: credentials,
+                    lookup: lookup ??
+                        BundleProvenanceLookup(
+                          skills: const [],
+                          plugins: const [],
+                          mcps: const [],
+                        ),
+                    remapCandidates: remapCandidates,
+                  );
+                },
+                child: const Text('Open'),
+              ),
             ),
           ),
         ),
@@ -173,6 +185,14 @@ Future<void> _goNext(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _enterPatViaAdvancedPanel(WidgetTester tester, String token) async {
+  await tester.tap(find.text('Use a personal access token'));
+  await tester.pumpAndSettle();
+  await tester.enterText(find.byKey(const Key('github-pat-field')), token);
+  await tester.tap(find.text('Save'));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   late GithubCredentialsStore credentials;
   late FakeHubPublishService fakeApi;
@@ -185,7 +205,7 @@ void main() {
     fakeApi = FakeHubPublishService();
   });
 
-  testWidgets('missing token shows field and cannot finish without token', (
+  testWidgets('missing token shows auth panel and cannot finish without token', (
     tester,
   ) async {
     _largeSurface(tester);
@@ -197,19 +217,19 @@ void main() {
       credentials: credentials,
     );
 
-    expect(find.byKey(const Key('hub-publish-token')), findsOneWidget);
+    expect(find.byKey(const Key('hub-publish-auth')), findsOneWidget);
+    expect(find.byKey(const Key('github-sign-in')), findsOneWidget);
 
-    // Skip past auth without entering a token.
+    final next = tester.widget<FilledButton>(
+      find.byKey(const Key('hub-publish-next')),
+    );
+    expect(next.onPressed, isNull);
+
     await _goNext(tester);
-    expect(find.byKey(const Key('hub-publish-token')), findsOneWidget);
-    expect(find.textContaining('token', findRichText: true), findsWidgets);
+    expect(find.byKey(const Key('hub-publish-auth')), findsOneWidget);
     expect(fakeApi.publishExpertCalls, 0);
 
-    // Enter token, advance through metadata + confirm, then publish.
-    await tester.enterText(
-      find.byKey(const Key('hub-publish-token')),
-      'ghp_test',
-    );
+    await _enterPatViaAdvancedPanel(tester, 'ghp_test');
     await _goNext(tester);
 
     expect(find.byKey(const Key('hub-publish-slug')), findsOneWidget);
@@ -237,7 +257,6 @@ void main() {
       credentials: credentials,
     );
 
-    // Token already present — auth can advance.
     await _goNext(tester);
     await tester.enterText(find.byKey(const Key('hub-publish-slug')), 'arch');
     await _goNext(tester);
@@ -247,6 +266,33 @@ void main() {
     expect(fakeApi.publishExpertCalls, 1);
     expect(find.byKey(const Key('hub-publish-pr-url')), findsOneWidget);
     expect(find.text(fakeApi.prUrl), findsOneWidget);
+  });
+
+  testWidgets('401 on publish returns to auth with expired message', (tester) async {
+    _largeSurface(tester);
+    await credentials.savePat('ghp_saved');
+    fakeApi.lastError = const HubPublishException(
+      HubPublishErrorCode.unauthorized,
+      'Token expired',
+    );
+    await _pumpWizard(
+      tester,
+      kind: HubPublishKind.expert,
+      member: _localExpert(),
+      publishApi: fakeApi,
+      credentials: credentials,
+    );
+
+    await _goNext(tester);
+    await tester.enterText(find.byKey(const Key('hub-publish-slug')), 'arch');
+    await _goNext(tester);
+    await tester.tap(find.byKey(const Key('hub-publish-publish')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('hub-publish-auth')), findsOneWidget);
+    expect(find.text('GitHub sign-in expired'), findsOneWidget);
+    expect(fakeApi.publishExpertCalls, 1);
+    expect(await credentials.readStored(), isNull);
   });
 
   testWidgets(
@@ -281,7 +327,6 @@ void main() {
         findsOneWidget,
       );
 
-      // Next should stay on gates while remap unresolved.
       await _goNext(tester);
       expect(find.byKey(const Key('hub-publish-gates')), findsOneWidget);
       expect(fakeApi.publishTeamCalls, 0);
@@ -333,7 +378,6 @@ void main() {
     );
     await _goNext(tester);
 
-    // Remap local expert so only non-portable deps remain as the blocker.
     await tester.tap(find.byKey(const Key('hub-publish-remap-local/abc')));
     await tester.pumpAndSettle();
     await tester.tap(find.text(_publishedExpert().name).last);

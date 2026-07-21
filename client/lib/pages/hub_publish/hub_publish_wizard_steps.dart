@@ -3,44 +3,25 @@ import 'package:flutter/material.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
 import '../../services/hub_publish/hub_publish_record_store.dart';
+import '../../widgets/github/github_device_flow_panel.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-/// Auth step: GitHub token from store or paste.
+/// Auth step: GitHub Device Flow or advanced PAT via [GithubDeviceFlowPanel].
 class HubPublishAuthStep extends StatelessWidget {
-  const HubPublishAuthStep({
-    super.key,
-    required this.tokenController,
-    required this.hasStoredToken,
-  });
-
-  final TextEditingController tokenController;
-  final bool hasStoredToken;
+  const HubPublishAuthStep({super.key});
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return Column(
       key: const Key('hub-publish-auth'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(l10n.hubPublishAuthHint),
         const SizedBox(height: 12),
-        if (hasStoredToken) ...[
-          Text(
-            l10n.hubPublishTokenStored,
-            style: TpTextStyles.of(context).mutedSm,
-          ),
-          const SizedBox(height: 8),
-        ],
-        TextField(
-          key: const Key('hub-publish-token'),
-          controller: tokenController,
-          obscureText: true,
-          decoration: InputDecoration(
-            labelText: l10n.hubPublishTokenLabel,
-            hintText: l10n.hubPublishTokenHint,
-          ),
-          textInputAction: TextInputAction.done,
+        const GithubDeviceFlowPanel(
+          showAdvancedPat: true,
+          showDisconnect: false,
+          purposeText: null,
         ),
       ],
     );
