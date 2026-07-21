@@ -1,0 +1,29 @@
+{
+  "key": "hhoao/teampilot/member-hub/test",
+  "name": "test",
+  "description": "test",
+  "category": "test",
+  "updatedAt": 1784601991153,
+  "tags": [
+    "test"
+  ],
+  "member": {
+    "name": "test",
+    "provider": "",
+    "model": "",
+    "agent": "",
+    "responsibilities": "test",
+    "playbook": "test",
+    "extraArgs": ""
+  },
+  "skillDeps": [
+    {
+      "repoOwner": "obra",
+      "repoName": "superpowers",
+      "repoBranch": "main",
+      "directory": "using-superpowers",
+      "name": "Using Superpowers"
+    }
+  ],
+  "source": "registry"
+}
