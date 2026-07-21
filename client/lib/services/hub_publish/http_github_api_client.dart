@@ -139,7 +139,7 @@ class HttpGithubApiClient implements GithubApiClient {
     );
     if (res.statusCode != 202 && res.statusCode != 201 && res.statusCode != 200) {
       throw HubPublishException(
-        HubPublishErrorCode.apiError,
+        _errorCodeForStatus(res.statusCode),
         githubApiErrorMessage(res.statusCode, responseHeaders: res.headers),
       );
     }
@@ -246,8 +246,13 @@ class HttpGithubApiClient implements GithubApiClient {
   void _ensureOk(http.Response res, String op) {
     if (res.statusCode >= 200 && res.statusCode < 300) return;
     throw HubPublishException(
-      HubPublishErrorCode.apiError,
+      _errorCodeForStatus(res.statusCode),
       '$op failed: ${githubApiErrorMessage(res.statusCode, responseHeaders: res.headers)}',
     );
+  }
+
+  static HubPublishErrorCode _errorCodeForStatus(int statusCode) {
+    if (statusCode == 401) return HubPublishErrorCode.unauthorized;
+    return HubPublishErrorCode.apiError;
   }
 }

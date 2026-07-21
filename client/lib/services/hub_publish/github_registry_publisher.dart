@@ -19,6 +19,7 @@ class HubPublishResult {
 
 enum HubPublishErrorCode {
   missingToken,
+  unauthorized,
   slugCollision,
   publishBlocked,
   apiError,
