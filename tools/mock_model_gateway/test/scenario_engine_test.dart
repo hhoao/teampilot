@@ -13,10 +13,34 @@ void main() {
         ],
       ),
     });
-    expect(engine.nextTurn('a'), isA<TextTurn>());
-    expect(engine.nextTurn('a'), isA<TextTurn>());
-    expect(engine.nextTurn('a'), isA<TextTurn>());
+    expect((engine.nextTurn('a') as TextTurn).text, 'one');
+    expect((engine.nextTurn('a') as TextTurn).text, 'two');
+    expect((engine.nextTurn('a') as TextTurn).text, 'three');
     expect(() => engine.nextTurn('a'), throwsStateError);
+  });
+
+  test('keeps independent turn indices per actor', () {
+    final engine = ScenarioEngine({
+      'lead': MockScenario(
+        turns: [
+          TextTurn('lead-1'),
+          TextTurn('lead-2'),
+        ],
+      ),
+      'worker': MockScenario(
+        turns: [
+          TextTurn('worker-1'),
+          TextTurn('worker-2'),
+        ],
+      ),
+    });
+
+    expect((engine.nextTurn('lead') as TextTurn).text, 'lead-1');
+    expect((engine.nextTurn('worker') as TextTurn).text, 'worker-1');
+    expect((engine.nextTurn('lead') as TextTurn).text, 'lead-2');
+    expect((engine.nextTurn('worker') as TextTurn).text, 'worker-2');
+    expect(() => engine.nextTurn('lead'), throwsStateError);
+    expect(() => engine.nextTurn('worker'), throwsStateError);
   });
 
   test('resolves toolRef via ToolNameResolver', () {
@@ -41,5 +65,31 @@ void main() {
       (turn as ResolvedToolUseTurn).wireName,
       'mcp__teammate-bus__send_message',
     );
+  });
+
+  test('resolves AssignedTaskUpdateTurn toolRef via ToolNameResolver', () {
+    final engine = ScenarioEngine(
+      {
+        'a': MockScenario(
+          turns: [
+            AssignedTaskUpdateTurn(
+              id: 'task-1',
+              toolRef: 'teambus.update_task',
+              status: 'completed',
+              result: 'done',
+            ),
+          ],
+        ),
+      },
+      toolNames: (ref) =>
+          'mcp__teammate-bus__$ref'.replaceAll('teambus.', ''),
+    );
+    final turn = engine.nextResolvedTurn('a');
+    expect(turn, isA<ResolvedAssignedTaskUpdateTurn>());
+    final resolved = turn as ResolvedAssignedTaskUpdateTurn;
+    expect(resolved.wireName, 'mcp__teammate-bus__update_task');
+    expect(resolved.id, 'task-1');
+    expect(resolved.status, 'completed');
+    expect(resolved.result, 'done');
   });
 }
