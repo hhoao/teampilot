@@ -10,7 +10,7 @@ import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import 'agent_status_hooks.dart';
-import 'bus_idle_stop_hook.dart';
+import 'flashskyai_stop_idle_hook.dart';
 
 final class FlashskyaiConfigProfileCapability
     implements ConfigProfileCapability {
@@ -295,7 +295,16 @@ final class FlashskyaiConfigProfileCapability
       mixed: mixed,
     );
     if (mixed && busIdle != null) {
-      settings = mergeStopIdleHook(settings, member.id, busIdle);
+      // HookRunner ignores HTTP decision:block; command exit 2 is required.
+      final idleScriptPath = delegate.joinWork(
+        memberToolDir,
+        flashskyaiStopIdleScriptFileName,
+      );
+      await delegate.fs.writeString(
+        idleScriptPath,
+        flashskyaiStopIdleScript(memberId: member.id, idle: busIdle),
+      );
+      settings = mergeFlashskyaiStopIdleHook(settings, idleScriptPath);
     }
     if (agentStatus != null) {
       settings = mergeAgentStatusHooks(settings, member.id, agentStatus);

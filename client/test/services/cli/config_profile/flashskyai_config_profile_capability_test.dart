@@ -126,10 +126,30 @@ void main() {
     );
     final settings = jsonDecode(await File(settingsPath).readAsString()) as Map;
     final stop = (settings['hooks'] as Map)['Stop'] as List;
-    final urls = [
+    final commands = [
       for (final entry in stop)
-        for (final h in (entry as Map)['hooks'] as List) (h as Map)['url'],
+        for (final h in (entry as Map)['hooks'] as List)
+          if ((h as Map)['type'] == 'command') h['command'],
     ];
-    expect(urls, contains('http://127.0.0.1:54321/idle'));
+    expect(
+      commands.single,
+      contains('teammate-bus-stop-idle.sh'),
+      reason: 'flashskyai mixed Stop must use command exit-2 idle script',
+    );
+    final scriptPath = p.join(
+      base.path,
+      'workspace',
+      'workspaces',
+      'workspace-1',
+      'sessions',
+      'session-1',
+      'runtime',
+      'm1',
+      'flashskyai',
+      'teammate-bus-stop-idle.sh',
+    );
+    final script = await File(scriptPath).readAsString();
+    expect(script, contains('http://127.0.0.1:54321/idle'));
+    expect(script, contains('exit 2'));
   });
 }
