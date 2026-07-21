@@ -17,9 +17,11 @@ import 'workspace_chat_landing_voice_bar.dart';
 
 /// Frames to wait before mounting the landing [ComposeTriggerField].
 ///
-/// Keeps first-open LAYOUT off [RenderEditable] (test56 ~442 ms). Combined with
-/// [TpDeferredMountShell.awaitIdle] so the field does not share a busy shell
-/// frame. Tests mount immediately via [TpDeferredMountShell].
+/// Keeps first-open LAYOUT off [RenderEditable] (test56 ~442 ms). Do not use
+/// [TpDeferredMountShell.awaitIdle] here: a background agent PTY can keep the
+/// scheduler non-idle after History/Terminal unmount, leaving the placeholder
+/// forever (clicks cannot focus). Tests mount immediately via
+/// [TpDeferredMountShell].
 const kLandingComposeFieldDelayFrames = 2;
 
 /// Compose input card for [WorkspaceChatLanding].
@@ -281,12 +283,11 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Defer TextField past the workspace shell's first LAYOUT, then
-                  // mount at idle priority so RenderEditable does not share a
-                  // busy shell frame (test56/67/68). Placeholder keeps height.
+                  // Defer TextField past the workspace shell's first LAYOUT so
+                  // RenderEditable is off the open-workspace critical frame.
+                  // Placeholder keeps height. (No awaitIdle — see constant.)
                   TpDeferredMountShell(
                     delayFrames: kLandingComposeFieldDelayFrames,
-                    awaitIdle: true,
                     placeholder: _ComposeFieldMountPlaceholder(
                       hint: hint,
                       hintColor: palette.hint,
