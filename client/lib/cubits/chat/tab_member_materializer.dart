@@ -186,9 +186,16 @@ class TabMemberMaterializer implements MemberMaterializer {
 
     if (_isMemberConnectOwnedElsewhere(sessionId, memberId) ||
         tab.membersPendingConnect.contains(memberId)) {
+      final shell = tab.memberShells[memberId];
+      if (shell != null && shell.isRunning) {
+        // Reuse/connect-in-progress can set owned_elsewhere without a fresh
+        // onProcessStarted (already-running PTY). Unblock ready waiters.
+        markMemberReady(sessionId, memberId);
+      }
       appLogger.d(
         '[member-materializer] materialize await-connect '
-        'member=$memberId session=$sessionId owned_elsewhere=true',
+        'member=$memberId session=$sessionId owned_elsewhere=true '
+        'shellRunning=${shell?.isRunning}',
       );
       await ready.future;
       return;
