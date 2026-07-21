@@ -8,7 +8,7 @@ import '../../models/team_config.dart';
 import '../../services/expert_hub/local_member_template_store.dart';
 import '../../services/hub_publish/bundle_provenance_lookup.dart';
 import '../../services/hub_publish/github_registry_publisher.dart';
-import '../../services/hub_publish/hub_publish_credentials_store.dart';
+import '../../services/github/github_credentials_store.dart';
 import '../../services/hub_publish/hub_publish_record_store.dart';
 import '../../services/hub_publish/hub_publish_service.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -33,7 +33,7 @@ class HubPublishWizard extends StatefulWidget {
   final DiscoverableMember? member;
   final TeamProfile? team;
   final HubPublishApi publishApi;
-  final HubPublishCredentialsStore credentials;
+  final GithubCredentialsStore credentials;
   final BundleProvenanceLookup lookup;
   final List<DiscoverableMember> remapCandidates;
 
@@ -169,7 +169,7 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
         }
         setState(() => _busy = true);
         try {
-          await widget.credentials.saveToken(token);
+          await widget.credentials.savePat(token);
           if (!mounted) return;
           setState(() {
             _busy = false;

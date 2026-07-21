@@ -10,7 +10,7 @@ import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/services/hub_publish/bundle_provenance_lookup.dart';
 import 'package:teampilot/services/hub_publish/github_registry_publisher.dart';
-import 'package:teampilot/services/hub_publish/hub_publish_credentials_store.dart';
+import 'package:teampilot/services/github/github_credentials_store.dart';
 import 'package:teampilot/services/hub_publish/hub_publish_record_store.dart';
 import 'package:teampilot/services/hub_publish/hub_publish_service.dart';
 import 'package:teampilot/services/team_hub/team_hub_source.dart';
@@ -127,7 +127,7 @@ Future<void> _pumpWizard(
   DiscoverableMember? member,
   TeamProfile? team,
   required HubPublishApi publishApi,
-  required HubPublishCredentialsStore credentials,
+  required GithubCredentialsStore credentials,
   BundleProvenanceLookup? lookup,
   List<DiscoverableMember> remapCandidates = const [],
 }) async {
@@ -174,11 +174,11 @@ Future<void> _goNext(WidgetTester tester) async {
 }
 
 void main() {
-  late HubPublishCredentialsStore credentials;
+  late GithubCredentialsStore credentials;
   late FakeHubPublishService fakeApi;
 
   setUp(() {
-    credentials = HubPublishCredentialsStore(
+    credentials = GithubCredentialsStore(
       kv: _MemoryKv(),
       readEnvToken: () => null,
     );
@@ -221,14 +221,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(fakeApi.publishExpertCalls, 1);
-    expect(await credentials.readToken(), 'ghp_test');
+    expect((await credentials.readStored())?.token, 'ghp_test');
     expect(find.byKey(const Key('hub-publish-pr-url')), findsOneWidget);
     expect(find.textContaining(fakeApi.prUrl), findsOneWidget);
   });
 
   testWidgets('expert happy path shows PR link', (tester) async {
     _largeSurface(tester);
-    await credentials.saveToken('ghp_saved');
+    await credentials.savePat('ghp_saved');
     await _pumpWizard(
       tester,
       kind: HubPublishKind.expert,
@@ -253,7 +253,7 @@ void main() {
     'team local expert blocked until remap selected, then can proceed',
     (tester) async {
       _largeSurface(tester);
-      await credentials.saveToken('ghp_saved');
+      await credentials.savePat('ghp_saved');
       final published = _publishedExpert();
       await _pumpWizard(
         tester,
@@ -307,7 +307,7 @@ void main() {
 
   testWidgets('team non-portable skill id shows blocked list', (tester) async {
     _largeSurface(tester);
-    await credentials.saveToken('ghp_saved');
+    await credentials.savePat('ghp_saved');
     await _pumpWizard(
       tester,
       kind: HubPublishKind.team,

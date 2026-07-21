@@ -5,7 +5,7 @@ import '../team_hub/team_hub_source.dart';
 import 'bundle_provenance_lookup.dart';
 import 'expert_publish_mapper.dart';
 import 'github_registry_publisher.dart';
-import 'hub_publish_credentials_store.dart';
+import '../github/github_credentials_store.dart';
 import 'hub_publish_record_store.dart';
 import 'team_profile_publish_mapper.dart';
 
@@ -35,7 +35,7 @@ abstract interface class HubPublishApi {
 /// Thin facade: resolve token → map → publish → record badge.
 class HubPublishService implements HubPublishApi {
   HubPublishService({
-    required HubPublishCredentialsStore credentials,
+    required GithubCredentialsStore credentials,
     required HubPublishRecordStore records,
     required GithubRegistryPublisher publisher,
     required BundleProvenanceLookup lookup,
@@ -48,7 +48,7 @@ class HubPublishService implements HubPublishApi {
 
   static int _defaultNowMs() => DateTime.now().millisecondsSinceEpoch;
 
-  final HubPublishCredentialsStore _credentials;
+  final GithubCredentialsStore _credentials;
   final HubPublishRecordStore _records;
   final GithubRegistryPublisher _publisher;
   final BundleProvenanceLookup _lookup;

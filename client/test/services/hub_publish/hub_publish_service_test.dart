@@ -7,7 +7,7 @@ import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/services/hub_publish/bundle_provenance_lookup.dart';
 import 'package:teampilot/services/hub_publish/github_registry_publisher.dart';
-import 'package:teampilot/services/hub_publish/hub_publish_credentials_store.dart';
+import 'package:teampilot/services/github/github_credentials_store.dart';
 import 'package:teampilot/services/hub_publish/hub_publish_record_store.dart';
 import 'package:teampilot/services/hub_publish/hub_publish_service.dart';
 import 'package:teampilot/services/team_hub/team_hub_source.dart';
@@ -30,14 +30,14 @@ class _MemoryKv implements SecureKeyValueStore {
 
 void main() {
   late FakeGithubApi api;
-  late HubPublishCredentialsStore credentials;
+  late GithubCredentialsStore credentials;
   late HubPublishRecordStore records;
   late HubPublishService service;
   late BundleProvenanceLookup lookup;
 
   setUp(() {
     api = FakeGithubApi();
-    credentials = HubPublishCredentialsStore(
+    credentials = GithubCredentialsStore(
       kv: _MemoryKv(),
       readEnvToken: () => null,
     );
@@ -60,7 +60,7 @@ void main() {
   });
 
   test('publishExpert maps, publishes, and upserts record', () async {
-    await credentials.saveToken('tok');
+    await credentials.savePat('tok');
     final member = DiscoverableMember(
       key: 'local/abc',
       name: 'Arch',
@@ -120,7 +120,7 @@ void main() {
   });
 
   test('publishTeam maps, publishes, and upserts record', () async {
-    await credentials.saveToken('tok');
+    await credentials.savePat('tok');
     final team = TeamProfile(
       id: 'team-1',
       name: 'Platform',
@@ -158,7 +158,7 @@ void main() {
   });
 
   test('publishTeam blocked when local expert unresolved', () async {
-    await credentials.saveToken('tok');
+    await credentials.savePat('tok');
     final team = TeamProfile(
       id: 'team-1',
       name: 'Platform',
