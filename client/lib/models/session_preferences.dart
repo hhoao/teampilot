@@ -10,7 +10,7 @@ class SessionPreferences {
     this.terminalLinkClickOpensInApp = true,
     this.notifyOnSessionIdle = true,
     this.openExistingSessionStartsTerminal = false,
-    this.historySubmitSwitchesToTerminal = false,
+    this.chatSubmitSwitchesToTerminal = false,
     this.simpleModeDefaultFullAccess = true,
   }) : cliExecutablePaths = Map.unmodifiable(
          _normalizeCliExecutablePaths(cliExecutablePaths),
@@ -43,8 +43,8 @@ class SessionPreferences {
       notifyOnSessionIdle: json['notifyOnSessionIdle'] as bool? ?? true,
       openExistingSessionStartsTerminal:
           json['openExistingSessionStartsTerminal'] as bool? ?? false,
-      historySubmitSwitchesToTerminal:
-          json['historySubmitSwitchesToTerminal'] as bool? ?? false,
+      chatSubmitSwitchesToTerminal:
+          json['chatSubmitSwitchesToTerminal'] as bool? ?? false,
       simpleModeDefaultFullAccess:
           json['simpleModeDefaultFullAccess'] as bool? ?? true,
     );
@@ -92,10 +92,10 @@ class SessionPreferences {
   /// in history-review mode until the user submits from slim compose.
   final bool openExistingSessionStartsTerminal;
 
-  /// When true, submitting from history review switches to the terminal view.
-  /// When false (default), stay on history while the terminal runs in the
+  /// When true, submitting from Chat switches to the terminal view.
+  /// When false (default), stay on Chat while the terminal runs in the
   /// background.
-  final bool historySubmitSwitchesToTerminal;
+  final bool chatSubmitSwitchesToTerminal;
 
   /// When true (default), Simple-mode compose landing starts with full access
   /// unless a workspace has already persisted a different chip choice.
@@ -115,7 +115,7 @@ class SessionPreferences {
     bool? terminalLinkClickOpensInApp,
     bool? notifyOnSessionIdle,
     bool? openExistingSessionStartsTerminal,
-    bool? historySubmitSwitchesToTerminal,
+    bool? chatSubmitSwitchesToTerminal,
     bool? simpleModeDefaultFullAccess,
   }) {
     return SessionPreferences(
@@ -136,9 +136,8 @@ class SessionPreferences {
       openExistingSessionStartsTerminal:
           openExistingSessionStartsTerminal ??
           this.openExistingSessionStartsTerminal,
-      historySubmitSwitchesToTerminal:
-          historySubmitSwitchesToTerminal ??
-          this.historySubmitSwitchesToTerminal,
+      chatSubmitSwitchesToTerminal:
+          chatSubmitSwitchesToTerminal ?? this.chatSubmitSwitchesToTerminal,
       simpleModeDefaultFullAccess:
           simpleModeDefaultFullAccess ?? this.simpleModeDefaultFullAccess,
     );
@@ -156,7 +155,7 @@ class SessionPreferences {
       'terminalLinkClickOpensInApp': terminalLinkClickOpensInApp,
       'notifyOnSessionIdle': notifyOnSessionIdle,
       'openExistingSessionStartsTerminal': openExistingSessionStartsTerminal,
-      'historySubmitSwitchesToTerminal': historySubmitSwitchesToTerminal,
+      'chatSubmitSwitchesToTerminal': chatSubmitSwitchesToTerminal,
       'simpleModeDefaultFullAccess': simpleModeDefaultFullAccess,
     };
   }

@@ -4,10 +4,10 @@ import '../../cubits/chat/model/session_connect_request.dart';
 import '../../utils/logging/logger.dart';
 import 'history_continue_delivery.dart';
 
-/// Preference gate: when false (default), History continue stays on History.
-bool shouldSwitchToTerminalAfterHistorySubmit(
-  bool historySubmitSwitchesToTerminal,
-) => historySubmitSwitchesToTerminal;
+/// Preference gate: when false (default), Chat submit stays on Chat.
+bool shouldSwitchToTerminalAfterChatSubmit(
+  bool chatSubmitSwitchesToTerminal,
+) => chatSubmitSwitchesToTerminal;
 
 /// Re-entrancy lock for History continue while connect/inject is in flight.
 ///

@@ -79,8 +79,8 @@ void main() {
       expect(next.simpleModeDefaultFullAccess, false);
     });
 
-    test('historySubmitSwitchesToTerminal defaults false', () {
-      expect(SessionPreferences().historySubmitSwitchesToTerminal, isFalse);
+    test('chatSubmitSwitchesToTerminal defaults false', () {
+      expect(SessionPreferences().chatSubmitSwitchesToTerminal, isFalse);
     });
 
     test('simpleModeDefaultFullAccess defaults true', () {
@@ -98,10 +98,17 @@ void main() {
       expect(restored.simpleModeDefaultFullAccess, isTrue);
     });
 
-    test('historySubmitSwitchesToTerminal JSON round-trip', () {
-      final prefs = SessionPreferences(historySubmitSwitchesToTerminal: true);
+    test('chatSubmitSwitchesToTerminal JSON round-trip', () {
+      final prefs = SessionPreferences(chatSubmitSwitchesToTerminal: true);
       final again = SessionPreferences.fromJson(prefs.toJson());
-      expect(again.historySubmitSwitchesToTerminal, isTrue);
+      expect(again.chatSubmitSwitchesToTerminal, isTrue);
+    });
+
+    test('absent chatSubmitSwitchesToTerminal key defaults false', () {
+      expect(
+        SessionPreferences.fromJson(const {}).chatSubmitSwitchesToTerminal,
+        isFalse,
+      );
     });
 
     test('fromJson ignores non-string cli executable path entries', () {

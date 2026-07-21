@@ -267,10 +267,10 @@ class _SessionControlsState extends State<_SessionControls> {
                   title: l10n.historySubmitSwitchesToTerminalTitle,
                   subtitle: l10n.historySubmitSwitchesToTerminalDescription,
                   trailing: Switch(
-                    key: AppKeys.historySubmitSwitchesToTerminalSwitch,
-                    value: snapshot.historySubmitSwitchesToTerminal,
+                    key: AppKeys.chatSubmitSwitchesToTerminalSwitch,
+                    value: snapshot.chatSubmitSwitchesToTerminal,
                     onChanged: (value) =>
-                        cubit.setHistorySubmitSwitchesToTerminal(value),
+                        cubit.setChatSubmitSwitchesToTerminal(value),
                   ),
                   showDividerBelow: true,
                 ),
@@ -322,7 +322,7 @@ class _SessionControlsSnapshot {
     required this.terminalLinkClickOpensInApp,
     required this.autoLaunchAllMembersOnConnect,
     required this.openExistingSessionStartsTerminal,
-    required this.historySubmitSwitchesToTerminal,
+    required this.chatSubmitSwitchesToTerminal,
     required this.simpleModeDefaultFullAccess,
     required this.scopeSessionsToSelectedTeam,
     required this.notifyOnSessionIdle,
@@ -334,7 +334,7 @@ class _SessionControlsSnapshot {
   final bool terminalLinkClickOpensInApp;
   final bool autoLaunchAllMembersOnConnect;
   final bool openExistingSessionStartsTerminal;
-  final bool historySubmitSwitchesToTerminal;
+  final bool chatSubmitSwitchesToTerminal;
   final bool simpleModeDefaultFullAccess;
   final bool scopeSessionsToSelectedTeam;
   final bool notifyOnSessionIdle;
@@ -348,8 +348,7 @@ class _SessionControlsSnapshot {
       autoLaunchAllMembersOnConnect: preferences.autoLaunchAllMembersOnConnect,
       openExistingSessionStartsTerminal:
           preferences.openExistingSessionStartsTerminal,
-      historySubmitSwitchesToTerminal:
-          preferences.historySubmitSwitchesToTerminal,
+      chatSubmitSwitchesToTerminal: preferences.chatSubmitSwitchesToTerminal,
       simpleModeDefaultFullAccess: preferences.simpleModeDefaultFullAccess,
       scopeSessionsToSelectedTeam: preferences.scopeSessionsToSelectedTeam,
       notifyOnSessionIdle: preferences.notifyOnSessionIdle,
@@ -366,8 +365,7 @@ class _SessionControlsSnapshot {
         other.autoLaunchAllMembersOnConnect == autoLaunchAllMembersOnConnect &&
         other.openExistingSessionStartsTerminal ==
             openExistingSessionStartsTerminal &&
-        other.historySubmitSwitchesToTerminal ==
-            historySubmitSwitchesToTerminal &&
+        other.chatSubmitSwitchesToTerminal == chatSubmitSwitchesToTerminal &&
         other.simpleModeDefaultFullAccess == simpleModeDefaultFullAccess &&
         other.scopeSessionsToSelectedTeam == scopeSessionsToSelectedTeam &&
         other.notifyOnSessionIdle == notifyOnSessionIdle;
@@ -381,7 +379,7 @@ class _SessionControlsSnapshot {
     terminalLinkClickOpensInApp,
     autoLaunchAllMembersOnConnect,
     openExistingSessionStartsTerminal,
-    historySubmitSwitchesToTerminal,
+    chatSubmitSwitchesToTerminal,
     simpleModeDefaultFullAccess,
     scopeSessionsToSelectedTeam,
     notifyOnSessionIdle,

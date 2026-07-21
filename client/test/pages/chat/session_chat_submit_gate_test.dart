@@ -8,13 +8,12 @@ import 'package:teampilot/pages/chat/session_history_review_submit.dart';
 import 'package:teampilot/pages/chat/session_review_compose_card.dart';
 
 void main() {
-  group('shouldSwitchToTerminalAfterHistorySubmit', () {
-    test('false preference keeps History (default)', () {
-      expect(shouldSwitchToTerminalAfterHistorySubmit(false), isFalse);
+  group('shouldSwitchToTerminalAfterChatSubmit', () {
+    test('false keeps Chat', () {
+      expect(shouldSwitchToTerminalAfterChatSubmit(false), isFalse);
     });
-
-    test('true preference switches to Terminal', () {
-      expect(shouldSwitchToTerminalAfterHistorySubmit(true), isTrue);
+    test('true switches to Terminal', () {
+      expect(shouldSwitchToTerminalAfterChatSubmit(true), isTrue);
     });
   });
 

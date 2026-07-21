@@ -182,9 +182,9 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     );
   }
 
-  Future<void> setHistorySubmitSwitchesToTerminal(bool value) {
+  Future<void> setChatSubmitSwitchesToTerminal(bool value) {
     return _save(
-      state.preferences.copyWith(historySubmitSwitchesToTerminal: value),
+      state.preferences.copyWith(chatSubmitSwitchesToTerminal: value),
     );
   }
 
