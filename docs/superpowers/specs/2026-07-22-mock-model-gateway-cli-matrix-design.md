@@ -179,9 +179,14 @@ On failure, always surface:
 Attribution order:
 
 1. Wire / protocol → fix Adapter  
-2. Scenario vs real MCP tool names/args → fix recipe  
+2a. Wrong on-wire tool **name** → fix `CliTestProfile.toolName` mapping  
+2b. Wrong tool **args / turn content** → fix recipe  
 3. Send path (PTY inject / mailbox / doorbell) → fix product  
-4. CLI boot / trust screens → fix `CliTestProfile`
+4. CLI boot / trust screens → fix `CliTestProfile` boot-gate
+
+`CliTestProfile.supportsNativeTeam` should **derive** from
+`CliToolRegistry.supportsNativeTeam` (or equivalent production capability), not
+a hand-maintained duplicate flag.
 
 **Do not skip to hide reds.** Allowed skips: missing local binary; N/A native
 cell.
