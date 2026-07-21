@@ -982,8 +982,9 @@ class ChatCubit extends Cubit<ChatState>
   void closeTab(int index) {
     if (index < 0 || index >= _tabStore.activeTabCount) return;
     final tab = _tabStore.removeAt(index);
-    unawaited(_tearDownTab(tab));
     _sessionRuntime.maybeStopIdleWatch();
+    // Emit tabs before tearDown so working→idle sees the tab already gone
+    // (idle notify must not fire for user-closed sessions).
     if (_tabStore.activeTabsIsEmpty) {
       _tabStore.setComposeActive(_tabStore.activeWorkspaceId, true);
       emit(
@@ -992,6 +993,7 @@ class ChatCubit extends Cubit<ChatState>
           activeTabIndex: 0,
           clearActiveSessionId: true,
           composeActive: true,
+          workingSessionIds: _sessionRuntime.recomputeWorkingSessions(),
         ),
       );
     } else {
@@ -1006,9 +1008,11 @@ class ChatCubit extends Cubit<ChatState>
           activeSessionId: nextTab.info.id,
           selectedMemberId: nextTab.selectedMemberId,
           composeActive: false,
+          workingSessionIds: _sessionRuntime.recomputeWorkingSessions(),
         ),
       );
     }
+    unawaited(_tearDownTab(tab));
     _pushPresenceTarget();
   }
 
@@ -1022,9 +1026,6 @@ class ChatCubit extends Cubit<ChatState>
   void closeTabsForWorkspace(String workspaceId) {
     final removed = _tabStore.removeWorkspace(workspaceId);
     if (removed.isEmpty) return;
-    for (final tab in removed) {
-      unawaited(_tearDownTab(tab));
-    }
     _sessionRuntime.maybeStopIdleWatch();
     // Republish whenever the active bucket was affected: either it was the
     // named bucket for this workspace, or it is the legacy empty-string bucket
@@ -1035,14 +1036,18 @@ class ChatCubit extends Cubit<ChatState>
     if (activeIsAffected) {
       _publishActiveWorkspaceTabs(0);
     }
+    _updateWorkingSessions(_sessionRuntime.recomputeWorkingSessions());
+    for (final tab in removed) {
+      unawaited(_tearDownTab(tab));
+    }
   }
 
   void closeOtherTabs(int index) {
     if (index < 0 || index >= _tabStore.activeTabCount) return;
+    final removed = <ChatTab>[];
     for (var i = _tabStore.activeTabCount - 1; i >= 0; i--) {
       if (i == index) continue;
-      final tab = _tabStore.removeAt(i);
-      unawaited(_tearDownTab(tab));
+      removed.add(_tabStore.removeAt(i));
     }
     _sessionRuntime.maybeStopIdleWatch();
     final kept = _tabStore.activeTabs.single;
@@ -1054,16 +1059,20 @@ class ChatCubit extends Cubit<ChatState>
         activeSessionId: kept.info.id,
         selectedMemberId: kept.selectedMemberId,
         composeActive: false,
+        workingSessionIds: _sessionRuntime.recomputeWorkingSessions(),
       ),
     );
+    for (final tab in removed) {
+      unawaited(_tearDownTab(tab));
+    }
     _pushPresenceTarget();
   }
 
   void closeRightTabs(int index) {
     if (index < 0 || index >= _tabStore.activeTabCount) return;
+    final removed = <ChatTab>[];
     for (var i = _tabStore.activeTabCount - 1; i > index; i--) {
-      final tab = _tabStore.removeAt(i);
-      unawaited(_tearDownTab(tab));
+      removed.add(_tabStore.removeAt(i));
     }
     _sessionRuntime.maybeStopIdleWatch();
     final active = _activeTab;
@@ -1075,8 +1084,12 @@ class ChatCubit extends Cubit<ChatState>
         activeSessionId: active?.info.id,
         selectedMemberId: active?.selectedMemberId ?? '',
         composeActive: false,
+        workingSessionIds: _sessionRuntime.recomputeWorkingSessions(),
       ),
     );
+    for (final tab in removed) {
+      unawaited(_tearDownTab(tab));
+    }
     _pushPresenceTarget();
   }
 
@@ -1409,13 +1422,14 @@ class ChatCubit extends Cubit<ChatState>
     final sessions = state.sessions
         .where((s) => s.sessionId != sessionId)
         .toList();
+    ChatTab? removedTab;
     final idx = _tabStore.activeIndexOfSession(sessionId);
     if (idx != -1) {
-      final tab = _tabStore.removeAt(idx);
-      await _tearDownTab(tab);
+      removedTab = _tabStore.removeAt(idx);
       _sessionRuntime.maybeStopIdleWatch();
     }
     final tabs = _tabStore.activeTabs.map((t) => t.info).toList();
+    final working = _sessionRuntime.recomputeWorkingSessions();
 
     if (wasActive && !_tabStore.activeTabsIsEmpty) {
       final newIdx = idx < _tabStore.activeTabCount ? idx : _tabStore.activeTabCount - 1;
@@ -1430,6 +1444,7 @@ class ChatCubit extends Cubit<ChatState>
           activeTabIndex: newIdx,
           activeSessionId: nextTab.info.id,
           selectedMemberId: nextTab.selectedMemberId,
+          workingSessionIds: working,
         ),
       );
     } else if (_tabStore.activeTabsIsEmpty) {
@@ -1444,6 +1459,7 @@ class ChatCubit extends Cubit<ChatState>
           activeTabIndex: 0,
           clearActiveSessionId: true,
           composeActive: true,
+          workingSessionIds: working,
         ),
       );
     } else {
@@ -1452,8 +1468,12 @@ class ChatCubit extends Cubit<ChatState>
           workspaces: state.workspaces,
           sessions: sessions,
         ),
-        base: state.copyWith(tabs: tabs),
+        base: state.copyWith(tabs: tabs, workingSessionIds: working),
       );
+    }
+
+    if (removedTab != null) {
+      await _tearDownTab(removedTab);
     }
 
     _emitSnapshot(await _dataStore.deleteSessionRecord(repo, sessionId));

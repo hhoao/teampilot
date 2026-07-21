@@ -60,6 +60,7 @@ void main() {
           createdAt: 0,
         ),
       ],
+      openTabSessionIds: const {'s1'},
       emptySessionTitle: 'New Chat',
       notificationSubtitle: 'Ready for your next message',
       notificationBadge: 'Agent ready',
@@ -104,6 +105,7 @@ void main() {
         sessions: [
           AppSession(sessionId: 's1', workspaceId: 'w1', createdAt: 0),
         ],
+        openTabSessionIds: const {'s1'},
         emptySessionTitle: 'New Chat',
         notificationSubtitle: 'Ready for your next message',
         notificationBadge: 'Agent ready',
@@ -144,6 +146,7 @@ void main() {
             createdAt: 0,
           ),
         ],
+        openTabSessionIds: const {'s1'},
         emptySessionTitle: 'New Chat',
         notificationSubtitle: 'Ready for your next message',
         notificationBadge: 'Agent ready',
@@ -185,6 +188,7 @@ void main() {
             createdAt: 0,
           ),
         ],
+        openTabSessionIds: const {'s1'},
         emptySessionTitle: 'New Chat',
         notificationSubtitle: 'Ready for your next message',
         notificationBadge: 'Agent ready',
@@ -210,6 +214,7 @@ void main() {
     await service.notifySessionsBecameIdle(
       sessionIds: {'gone'},
       sessions: const [],
+      openTabSessionIds: const {'gone'},
       emptySessionTitle: 'New Chat',
       notificationSubtitle: 'Ready',
       notificationBadge: 'Agent ready',
@@ -217,4 +222,45 @@ void main() {
 
     expect(recorder.messages, isEmpty);
   });
+
+  test(
+    'notifySessionsBecameIdle skips sessions whose tab is no longer open',
+    () async {
+      final recorder = _RecordingNotifier();
+      final shown = <_Shown>[];
+      final service = SessionIdleNotificationService(
+        recorder: recorder,
+        desktopNotifier: DesktopSystemNotifier(
+          isAppFocused: () async => false,
+          show: ({required title, required body, subtitle, payload}) async =>
+              shown.add((
+                title: title,
+                body: body,
+                subtitle: subtitle,
+                payload: payload,
+              )),
+        ),
+      );
+
+      await service.notifySessionsBecameIdle(
+        sessionIds: {'s1'},
+        sessions: [
+          AppSession(
+            sessionId: 's1',
+            workspaceId: 'w1',
+            display: 'Still on disk',
+            createdAt: 0,
+          ),
+        ],
+        openTabSessionIds: const {},
+        emptySessionTitle: 'New Chat',
+        notificationSubtitle: 'Ready for your next message',
+        notificationBadge: 'Agent ready',
+        activeSessionId: 'other',
+      );
+
+      expect(recorder.messages, isEmpty);
+      expect(shown, isEmpty);
+    },
+  );
 }

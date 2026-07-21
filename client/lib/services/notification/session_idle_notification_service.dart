@@ -19,6 +19,7 @@ class SessionIdleNotificationService {
   Future<void> notifySessionsBecameIdle({
     required Iterable<String> sessionIds,
     required List<AppSession> sessions,
+    required Iterable<String> openTabSessionIds,
     required String emptySessionTitle,
     required String notificationSubtitle,
     required String notificationBadge,
@@ -31,6 +32,9 @@ class SessionIdleNotificationService {
     final focused = await _desktop.isAppFocused();
 
     for (final sessionId in ids) {
+      // Closing a working tab also leaves workingSessionIds; that is not idle.
+      if (!openTabs.contains(sessionId)) continue;
+
       AppSession? session;
       for (final candidate in sessions) {
         if (candidate.sessionId == sessionId) {
