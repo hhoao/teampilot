@@ -22,6 +22,17 @@ String? extractAssignedTaskIdFromOpenAiRequest(
   return extractAssignedTaskIdFromMessagesRequest(body);
 }
 
+/// Extracts a claimed task id from an inbound OpenAI Responses body.
+///
+/// Codex (`wire_api = responses`) posts tool results under `input` as
+/// `function_call_output` items (`output` string), not chat `messages`.
+String? extractAssignedTaskIdFromOpenAiResponsesRequest(
+  Map<String, Object?>? body,
+) {
+  if (body == null) return null;
+  return _scanValue(body['input']) ?? _scanValue(body['messages']);
+}
+
 String? extractAssignedTaskIdFromMessagesRequest(
   Map<String, Object?>? body,
 ) {
