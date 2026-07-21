@@ -11,6 +11,12 @@ import 'wire_adapter.dart';
 /// later only if a CLI requires `stream: true`.
 class OpenAiChatAdapter implements WireAdapter {
   @override
+  String get wireId => 'openai_chat';
+
+  @override
+  String get responseMimeType => 'application/json';
+
+  @override
   bool matchesPath(String path) {
     return path == '/v1/chat/completions' ||
         path == '/openai/v1/chat/completions' ||

@@ -12,6 +12,12 @@ import 'wire_adapter.dart';
 /// `object: "response"` JSON that Codex accepts.
 class OpenAiResponsesAdapter implements WireAdapter {
   @override
+  String get wireId => 'openai_responses';
+
+  @override
+  String get responseMimeType => 'application/json';
+
+  @override
   bool matchesPath(String path) {
     return path == '/v1/responses' ||
         path == '/openai/v1/responses' ||

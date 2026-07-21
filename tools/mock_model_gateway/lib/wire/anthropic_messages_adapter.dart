@@ -6,6 +6,12 @@ import 'wire_adapter.dart';
 /// Anthropic Messages (`/v1/messages`) wire adapter.
 class AnthropicMessagesAdapter implements WireAdapter {
   @override
+  String get wireId => 'anthropic';
+
+  @override
+  String get responseMimeType => 'text/event-stream';
+
+  @override
   bool matchesPath(String path) {
     return path == '/v1/messages' ||
         path == '/anthropic/v1/messages' ||

@@ -99,6 +99,8 @@ dev_dependencies:
 
   mock_anthropic:
     path: ../tools/mock_anthropic
+  mock_model_gateway:
+    path: ../tools/mock_model_gateway
   native_splash_screen_cli:
     path: packages/native_splash_screen/native_splash_screen_cli
   vm_service_protos: ^2.0.1
