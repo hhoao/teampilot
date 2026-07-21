@@ -100,12 +100,14 @@ Add a Config section (nav + hub entry alongside SSH profiles / about):
 | Not connected | Same Device Flow panel as Settings (inline) |
 | Advanced | Collapsed “Use a personal access token” → existing paste field |
 
+**Switch account:** clear **stored** credentials (not env), return to the disconnected auth panel, and **do not** auto-start Device Flow — user taps Sign in again (or uses Advanced PAT). Env-only tokens cannot be deleted from the app; saving a new OAuth/PAT token overrides them for resolve order.
+
 Copy must explain: browser authorization; after approve, the app forks the Hub registry and opens a PR on the user’s behalf. Do not lead with “repo-scoped PAT required.”
 
 ### Device Flow interaction
 
-1. User taps Sign in → request device code → **automatically** `launchUrl(verification_uri)`
-2. Show `user_code`; keep polling; offer **Reopen browser**
+1. User taps Sign in → request device code → **automatically** open the browser: prefer `verification_uri_complete` when GitHub returns it, else `verification_uri`
+2. Show `user_code`; keep polling; offer **Reopen browser** (same URI preference)
 3. If the browser fails to open: still show code + full verification URL (copyable); polling continues
 4. Success → persist + profile → connected
 5. Cancel / deny / expire → disconnected + clear error message
@@ -121,7 +123,9 @@ Copy must explain: browser authorization; after approve, the app forks the Hub r
 | `access_denied` | GitHub authorization cancelled | Stop; disconnected |
 | Network / API failure | Short retryable message | Stay disconnected; can retry |
 | Missing `client_id` | GitHub sign-in unavailable; use Advanced PAT | Disable Device Flow CTA |
-| Publish gets 401 | GitHub sign-in expired | Clear stored creds; wizard returns to auth |
+| Publish gets 401 | GitHub sign-in expired | Clear **stored** creds (not env); wizard navigates back to the **auth** step |
+
+401 handling is new relative to today’s generic `apiError` on confirm: detect unauthorized responses in the GitHub API client / `HubPublishException`, map to a dedicated signal the wizard understands, clear stored credentials, and send the user to auth (not only show an error on confirm).
 
 Disconnect: delete local credentials only.
 
@@ -137,6 +141,7 @@ Disconnect: delete local credentials only.
 | Hub publish auth step | Embeds panel; Advanced PAT |
 | `HubPublishService` | Uses new store’s `resolveToken()` |
 | Router / `ConfigSection` | `/config/github` + nav |
+| App wiring | Register cubit/store in `app_shell.dart`; share store/cubit from `show_hub_publish_wizard.dart`; add config nav in `config_workspace.dart` (and Android settings hub / chrome titles as needed) |
 
 Prefer replacing call sites of `HubPublishCredentialsStore` over a long-lived compatibility wrapper.
 
