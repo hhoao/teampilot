@@ -43,6 +43,7 @@ void main() {
     expect(script, contains('ldd --version'));
     expect(script, contains('\$base/current'));
     expect(script, contains('attempt \$attempt'));
+    expect(script, isNot(contains('npm config set prefix')));
   });
 
   test('bootstrapped local package install references teampilot node path', () {
@@ -54,9 +55,12 @@ void main() {
       runner: unixRunner,
       package: '@anthropic-ai/claude-code',
     );
+    expect(unix.commandLine, isNot(contains('npm config set prefix')));
     expect(
       unix.commandLine,
-      contains('npm install -g @anthropic-ai/claude-code'),
+      contains(
+        r'npm install -g --prefix "$HOME/.local" @anthropic-ai/claude-code',
+      ),
     );
     expect(unix.commandLine, contains('export PATH='));
     expect(unix.commandLine, contains('/current/bin:'));

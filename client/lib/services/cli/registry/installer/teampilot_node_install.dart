@@ -104,8 +104,7 @@ final class TeampilotNodeInstall {
         "& (Join-Path \$env:LOCALAPPDATA '$windowsToolchainNodeBase\\$version\\npm.cmd') install -g $package",
       HostScriptDialect.bash =>
         'export PATH="$unixToolchainNodeBase/current/bin:\$HOME/.local/bin:\$PATH"\n'
-            'npm config set prefix "\$HOME/.local"\n'
-            'npm install -g $package',
+            'npm install -g --prefix "\$HOME/.local" $package',
     };
     return runner.installerCommandForInline(body);
   }
@@ -247,7 +246,6 @@ ln -sfn "\$target" "\$base/current"
 ln -sfn "\$target/bin/node" "\$HOME/.local/bin/node"
 ln -sfn "\$target/bin/npm" "\$HOME/.local/bin/npm"
 ln -sfn "\$target/bin/npx" "\$HOME/.local/bin/npx"
-PATH="\$target/bin:\$HOME/.local/bin:\$PATH" npm config set prefix "\$HOME/.local"
 PATH="\$target/bin:\$HOME/.local/bin:\$PATH" npm --version
 ''';
   }

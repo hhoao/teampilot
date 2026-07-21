@@ -40,8 +40,8 @@ class CliInstallerCommand {
   ///
   /// Wraps in [unixShellScript] when [npmCommand] needs shell expansion.
   /// Bootstrapped npm is a Node shebang script — Node must be on PATH.
-  /// Always pins the global prefix to `~/.local` so the binary lands in
-  /// `~/.local/bin` and post-install locate can find it without a login shell.
+  /// Uses one-shot `--prefix ~/.local` so the binary lands in `~/.local/bin`
+  /// without writing `prefix` into the user's `~/.npmrc` (nvm-incompatible).
   factory CliInstallerCommand.npmGlobalInstall({
     required String npmCommand,
     required String package,
@@ -50,14 +50,12 @@ class CliInstallerCommand {
       final binDir = npmCommand.replaceAll(RegExp(r'/npm$'), '');
       return CliInstallerCommand.unixShellScript(
         'export PATH="$binDir:\$HOME/.local/bin:\$PATH"\n'
-        'npm config set prefix "\$HOME/.local"\n'
-        'npm install -g $package',
+        'npm install -g --prefix "\$HOME/.local" $package',
       );
     }
     return CliInstallerCommand.unixShellScript(
       'export PATH="\$HOME/.local/bin:\$PATH"\n'
-      'npm config set prefix "\$HOME/.local"\n'
-      '$npmCommand install -g $package',
+      '$npmCommand install -g --prefix "\$HOME/.local" $package',
     );
   }
 
