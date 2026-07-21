@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import '../../io/filesystem.dart';
 import 'artifact_exceptions.dart';
 import 'artifact_handle.dart';
+import 'artifact_partial_meta.dart';
 import 'artifact_registry.dart';
 
 /// Result of a successful `fetch_artifact`.
@@ -20,8 +23,11 @@ class ArtifactFetchResult {
 
 /// Moves single-file artifacts between members that live on different machines
 /// (see remote-execution-architecture §4.2). The bus records only a handle; the
-/// **local App** is the one process that can reach both filesystems, so it reads
-/// from the publisher's target fs and writes into the fetcher's target fs.
+/// **local App** is the one process that can reach both filesystems, so it copies
+/// from the publisher's target fs into the fetcher's inbox via fixed-size chunks
+/// (`readBytesRange` → `appendBytes`), with optional resume via
+/// `{dest}.tp-partial` / `{dest}.tp-partial.meta.json` sidecars. Same-machine
+/// fetches use [Filesystem.copyFile] and skip the chunk loop.
 ///
 /// All side-effecting dependencies are injected so this is unit-tested with fake
 /// filesystems and no real SSH:
@@ -35,13 +41,21 @@ class ArtifactTransferService {
     required Future<Filesystem> Function(String targetId) resolveFs,
     required String Function(String memberId) targetForMember,
     required String Function(String memberId) inboxDirFor,
+    this.chunkSize = defaultChunkSize,
     int Function()? nowMs,
   }) : _resolveFs = resolveFs,
        _targetForMember = targetForMember,
        _inboxDirFor = inboxDirFor,
        _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
 
+  static const defaultChunkSize = 4 * 1024 * 1024;
+
+  static String partialPath(String dest) => '$dest.tp-partial';
+
+  static String partialMetaPath(String dest) => '$dest.tp-partial.meta.json';
+
   final ArtifactRegistry registry;
+  final int chunkSize;
   final Future<Filesystem> Function(String targetId) _resolveFs;
   final String Function(String memberId) _targetForMember;
   final String Function(String memberId) _inboxDirFor;
@@ -87,9 +101,9 @@ class ArtifactTransferService {
   /// Pull artifact [name] to [destPath] on the fetching member's machine.
   ///
   /// [destPath] may be absolute or relative to the member inbox; either way the
-  /// resolved path MUST stay inside the inbox (path-escape guard). The publisher
-  /// file is read-only; the App reads its bytes from the publisher fs and writes
-  /// them into the fetcher fs. Throws an [ArtifactException] on rejection.
+  /// resolved path MUST stay inside the inbox (path-escape guard). Cross-machine
+  /// transfers use chunked ranged copy with resume sidecars; same-machine uses
+  /// [Filesystem.copyFile]. Throws an [ArtifactException] on rejection.
   Future<ArtifactFetchResult> fetch({
     required String fetcherMemberId,
     required String name,
@@ -120,21 +134,257 @@ class ArtifactTransferService {
     if (destStat.exists && !overwrite) {
       throw ArtifactDestinationExistsException(resolvedDest);
     }
+    if (overwrite && destStat.exists) {
+      await destFs.removeRecursive(resolvedDest);
+    }
+
+    final partial = partialPath(resolvedDest);
+    final metaPath = partialMetaPath(resolvedDest);
+
+    if (handle.targetId == fetcherTargetId) {
+      await _deleteIfExists(destFs, partial);
+      await _deleteIfExists(destFs, metaPath);
+      await destFs.ensureDir(ctx.dirname(resolvedDest));
+      await destFs.copyFile(handle.absolutePath, resolvedDest);
+      final copied = await destFs.stat(resolvedDest);
+      return ArtifactFetchResult(
+        name: handle.name,
+        finalPath: resolvedDest,
+        sizeBytes: copied.size ?? handle.sizeBytes,
+        publisherMemberId: handle.publisherMemberId,
+      );
+    }
 
     final srcFs = await _resolveFs(handle.targetId);
-    final bytes = await srcFs.readBytes(handle.absolutePath);
-    if (bytes == null) {
+    final srcStat = await srcFs.stat(handle.absolutePath);
+    if (!srcStat.exists || !srcStat.isFile) {
+      await _deleteIfExists(destFs, partial);
+      await _deleteIfExists(destFs, metaPath);
       throw ArtifactSourceUnreadableException(handle.absolutePath);
     }
 
-    await destFs.ensureDir(ctx.dirname(resolvedDest));
-    await destFs.writeBytes(resolvedDest, bytes);
+    final liveSize = srcStat.size;
+    final liveMtimeMs = srcStat.mtime?.millisecondsSinceEpoch;
 
+    var bytesWritten = await _resolveResumeOffset(
+      destFs: destFs,
+      handle: handle,
+      partial: partial,
+      metaPath: metaPath,
+      liveSize: liveSize,
+      liveMtimeMs: liveMtimeMs,
+    );
+
+    await destFs.ensureDir(ctx.dirname(resolvedDest));
+
+    if (liveSize != null && bytesWritten == liveSize) {
+      return _finalizeRename(
+        destFs: destFs,
+        handle: handle,
+        partial: partial,
+        metaPath: metaPath,
+        resolvedDest: resolvedDest,
+        sizeBytes: liveSize,
+      );
+    }
+
+    if (bytesWritten == 0) {
+      await _writeMeta(
+        destFs,
+        metaPath,
+        ArtifactPartialMeta(
+          artifactName: handle.name,
+          publisherMemberId: handle.publisherMemberId,
+          sourceTargetId: handle.targetId,
+          sourcePath: handle.absolutePath,
+          expectedSizeBytes: liveSize,
+          sourceMtimeMs: liveMtimeMs,
+          bytesWritten: 0,
+          chunkSize: chunkSize,
+        ),
+      );
+    }
+
+    while (true) {
+      if (liveSize != null && bytesWritten >= liveSize) {
+        if (bytesWritten > liveSize) {
+          await _deleteIfExists(destFs, partial);
+          await _deleteIfExists(destFs, metaPath);
+          throw ArtifactSourceChangedException(
+            detail: 'bytesWritten exceeded live source size',
+          );
+        }
+        break;
+      }
+
+      final chunk = await srcFs.readBytesRange(
+        handle.absolutePath,
+        bytesWritten,
+        chunkSize,
+      );
+      if (chunk == null) {
+        await _deleteIfExists(destFs, partial);
+        await _deleteIfExists(destFs, metaPath);
+        throw ArtifactSourceUnreadableException(handle.absolutePath);
+      }
+
+      if (chunk.isEmpty) {
+        if (liveSize != null && bytesWritten < liveSize) {
+          await _deleteIfExists(destFs, partial);
+          await _deleteIfExists(destFs, metaPath);
+          throw ArtifactSourceChangedException(
+            detail: 'source ended before expected size',
+          );
+        }
+        break;
+      }
+
+      await destFs.appendBytes(partial, chunk);
+      bytesWritten += chunk.length;
+
+      if (liveSize != null && bytesWritten > liveSize) {
+        await _deleteIfExists(destFs, partial);
+        await _deleteIfExists(destFs, metaPath);
+        throw ArtifactSourceChangedException(
+          detail: 'bytesWritten exceeded live source size',
+        );
+      }
+
+      await _writeMeta(
+        destFs,
+        metaPath,
+        ArtifactPartialMeta(
+          artifactName: handle.name,
+          publisherMemberId: handle.publisherMemberId,
+          sourceTargetId: handle.targetId,
+          sourcePath: handle.absolutePath,
+          expectedSizeBytes: liveSize,
+          sourceMtimeMs: liveMtimeMs,
+          bytesWritten: bytesWritten,
+          chunkSize: chunkSize,
+        ),
+      );
+
+      if (liveSize == null && chunk.length < chunkSize) {
+        break;
+      }
+      if (liveSize != null && bytesWritten == liveSize) {
+        break;
+      }
+    }
+
+    return _finalizeRename(
+      destFs: destFs,
+      handle: handle,
+      partial: partial,
+      metaPath: metaPath,
+      resolvedDest: resolvedDest,
+      sizeBytes: bytesWritten,
+    );
+  }
+
+  Future<int> _resolveResumeOffset({
+    required Filesystem destFs,
+    required ArtifactHandle handle,
+    required String partial,
+    required String metaPath,
+    required int? liveSize,
+    required int? liveMtimeMs,
+  }) async {
+    final raw = await destFs.readString(metaPath);
+    if (raw == null) {
+      await _deleteIfExists(destFs, partial);
+      return 0;
+    }
+
+    final ArtifactPartialMeta meta;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) {
+        await _deleteIfExists(destFs, partial);
+        await _deleteIfExists(destFs, metaPath);
+        return 0;
+      }
+      meta = ArtifactPartialMeta.fromJson(
+        Map<String, Object?>.from(decoded),
+      );
+    } catch (_) {
+      await _deleteIfExists(destFs, partial);
+      await _deleteIfExists(destFs, metaPath);
+      return 0;
+    }
+
+    final identityMatches =
+        meta.artifactName == handle.name &&
+        meta.publisherMemberId == handle.publisherMemberId &&
+        meta.sourceTargetId == handle.targetId &&
+        meta.sourcePath == handle.absolutePath;
+
+    if (!identityMatches) {
+      await _deleteIfExists(destFs, partial);
+      await _deleteIfExists(destFs, metaPath);
+      return 0;
+    }
+
+    if (liveSize != null && liveSize < meta.bytesWritten) {
+      await _deleteIfExists(destFs, partial);
+      await _deleteIfExists(destFs, metaPath);
+      throw ArtifactSourceChangedException(
+        detail: 'source shrunk below bytesWritten',
+      );
+    }
+
+    final partialStat = await destFs.stat(partial);
+    final partialLength =
+        partialStat.exists && partialStat.isFile ? (partialStat.size ?? 0) : 0;
+
+    if (meta.matchesLive(
+      artifactName: handle.name,
+      publisherMemberId: handle.publisherMemberId,
+      sourceTargetId: handle.targetId,
+      sourcePath: handle.absolutePath,
+      liveSizeBytes: liveSize,
+      liveMtimeMs: liveMtimeMs,
+      partialLength: partialLength,
+    )) {
+      return meta.bytesWritten;
+    }
+
+    await _deleteIfExists(destFs, partial);
+    await _deleteIfExists(destFs, metaPath);
+    return 0;
+  }
+
+  Future<ArtifactFetchResult> _finalizeRename({
+    required Filesystem destFs,
+    required ArtifactHandle handle,
+    required String partial,
+    required String metaPath,
+    required String resolvedDest,
+    required int sizeBytes,
+  }) async {
+    await destFs.rename(partial, resolvedDest);
+    await _deleteIfExists(destFs, metaPath);
     return ArtifactFetchResult(
       name: handle.name,
       finalPath: resolvedDest,
-      sizeBytes: bytes.length,
+      sizeBytes: sizeBytes,
       publisherMemberId: handle.publisherMemberId,
     );
+  }
+
+  Future<void> _writeMeta(
+    Filesystem destFs,
+    String metaPath,
+    ArtifactPartialMeta meta,
+  ) async {
+    await destFs.writeString(metaPath, jsonEncode(meta.toJson()));
+  }
+
+  Future<void> _deleteIfExists(Filesystem fs, String path) async {
+    final stat = await fs.stat(path);
+    if (stat.exists) {
+      await fs.removeRecursive(path);
+    }
   }
 }

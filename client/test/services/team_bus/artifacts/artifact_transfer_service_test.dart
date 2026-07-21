@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/team_bus/artifacts/artifact_exceptions.dart';
 import 'package:teampilot/services/team_bus/artifacts/artifact_registry.dart';
@@ -6,15 +7,108 @@ import 'package:teampilot/services/team_bus/artifacts/artifact_transfer_service.
 
 import '../../../support/in_memory_filesystem.dart';
 
+/// Delegates every [Filesystem] method to [inner], except [appendBytes] which
+/// fails after [failAfter] successful calls.
+class _FailAfterAppends implements Filesystem {
+  _FailAfterAppends(this.inner, {required this.failAfter});
+
+  final Filesystem inner;
+  final int failAfter;
+  var _appends = 0;
+
+  @override
+  p.Context get pathContext => inner.pathContext;
+
+  @override
+  Future<void> appendBytes(String path, List<int> bytes) async {
+    _appends += 1;
+    if (_appends > failAfter) throw StateError('boom');
+    await inner.appendBytes(path, bytes);
+  }
+
+  @override
+  Future<FsStat> stat(String path) => inner.stat(path);
+
+  @override
+  Future<void> ensureDir(String path) => inner.ensureDir(path);
+
+  @override
+  Future<void> removeRecursive(String path) => inner.removeRecursive(path);
+
+  @override
+  Future<void> rename(String from, String to) => inner.rename(from, to);
+
+  @override
+  Future<String?> readString(String path) => inner.readString(path);
+
+  @override
+  Future<List<int>?> readBytes(String path) => inner.readBytes(path);
+
+  @override
+  Future<void> writeString(String path, String content) =>
+      inner.writeString(path, content);
+
+  @override
+  Future<void> writeBytes(String path, List<int> bytes) =>
+      inner.writeBytes(path, bytes);
+
+  @override
+  Future<List<int>?> readBytesRange(String path, int offset, int length) =>
+      inner.readBytesRange(path, offset, length);
+
+  @override
+  Future<void> atomicWrite(String path, String content) =>
+      inner.atomicWrite(path, content);
+
+  @override
+  Future<List<FsDirEntry>> listDir(String path) => inner.listDir(path);
+
+  @override
+  Future<bool> createSymlink({
+    required String target,
+    required String linkPath,
+  }) => inner.createSymlink(target: target, linkPath: linkPath);
+
+  @override
+  Future<String?> readSymlinkTarget(String linkPath) =>
+      inner.readSymlinkTarget(linkPath);
+
+  @override
+  Future<String?> resolveSymlink(String path) => inner.resolveSymlink(path);
+
+  @override
+  Future<void> copyTree({
+    required String source,
+    required String destination,
+  }) => inner.copyTree(source: source, destination: destination);
+
+  @override
+  Future<void> copyFile(String source, String destination) =>
+      inner.copyFile(source, destination);
+
+  @override
+  Future<List<FsDirEntry>> listDirRecursive(String path) =>
+      inner.listDirRecursive(path);
+
+  @override
+  Future<String> createTempDir({String? prefix, String? parent}) =>
+      inner.createTempDir(prefix: prefix, parent: parent);
+
+  @override
+  Future<void> appendString(String path, String content) =>
+      inner.appendString(path, content);
+}
+
 /// Member A publishes on `local`; member B fetches on `ssh:hostB`. Two fake
 /// filesystems stand in for the two machines.
 class _Fixture {
-  _Fixture() {
+  _Fixture({int chunkSize = ArtifactTransferService.defaultChunkSize}) {
     service = ArtifactTransferService(
       registry: ArtifactRegistry(),
       resolveFs: (targetId) async => _fsByTarget[targetId]!,
       targetForMember: (memberId) => _targetByMember[memberId]!,
       inboxDirFor: (memberId) => _inboxByMember[memberId]!,
+      chunkSize: chunkSize,
     );
   }
 
@@ -82,7 +176,204 @@ void main() {
       );
     });
 
-    // TODO(Task 6): multi-chunk transfer and resume tests replace over-cap check.
+    test('multi-chunk fetch copies full payload', () async {
+      final f = _Fixture(chunkSize: 4);
+      final bytes = List<int>.generate(10, (i) => i);
+      await f.seedSource(bytes);
+      await f.service.publish(
+        publisherMemberId: 'A',
+        path: '/work/out.bin',
+        name: 'out',
+      );
+      final r = await f.service.fetch(
+        fetcherMemberId: 'B',
+        name: 'out',
+        destPath: 'delivered.bin',
+      );
+      expect(await f.fetcherFs.readBytes(r.finalPath), bytes);
+      expect(
+        await f.fetcherFs.stat('${r.finalPath}.tp-partial'),
+        predicate<FsStat>((s) => !s.exists),
+      );
+    });
+
+    test('resume continues from partial after interrupt', () async {
+      final bytes = List<int>.generate(12, (i) => i);
+      final publisherFs = InMemoryFilesystem();
+      final fetcherInner = InMemoryFilesystem();
+      final fetcherFs = _FailAfterAppends(fetcherInner, failAfter: 1);
+      final service = ArtifactTransferService(
+        registry: ArtifactRegistry(),
+        resolveFs: (id) async => id == 'local' ? publisherFs : fetcherFs,
+        targetForMember: (m) => m == 'A' ? 'local' : 'ssh:hostB',
+        inboxDirFor: (m) => m == 'A'
+            ? '/home/a/inbox'
+            : '/remote/sessions/s1/runtime/members/B/inbox',
+        chunkSize: 4,
+      );
+      await publisherFs.writeBytes('/work/out.bin', bytes);
+      await service.publish(
+        publisherMemberId: 'A',
+        path: '/work/out.bin',
+        name: 'out',
+      );
+
+      await expectLater(
+        () => service.fetch(
+          fetcherMemberId: 'B',
+          name: 'out',
+          destPath: 'delivered.bin',
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      final dest =
+          '/remote/sessions/s1/runtime/members/B/inbox/delivered.bin';
+      expect((await fetcherInner.stat('$dest.tp-partial')).exists, isTrue);
+
+      // Second attempt uses a clean wrapper (no fail) on the same store.
+      final service2 = ArtifactTransferService(
+        registry: service.registry,
+        resolveFs: (id) async => id == 'local' ? publisherFs : fetcherInner,
+        targetForMember: (m) => m == 'A' ? 'local' : 'ssh:hostB',
+        inboxDirFor: (m) => m == 'A'
+            ? '/home/a/inbox'
+            : '/remote/sessions/s1/runtime/members/B/inbox',
+        chunkSize: 4,
+      );
+      final r = await service2.fetch(
+        fetcherMemberId: 'B',
+        name: 'out',
+        destPath: 'delivered.bin',
+      );
+      expect(await fetcherInner.readBytes(r.finalPath), bytes);
+    });
+
+    test('mismatched meta discards partial and restarts', () async {
+      final f = _Fixture(chunkSize: 4);
+      final bytes = List<int>.generate(8, (i) => i);
+      await f.seedSource(bytes);
+      await f.service.publish(
+        publisherMemberId: 'A',
+        path: '/work/out.bin',
+        name: 'out',
+      );
+      final dest =
+          '/remote/sessions/s1/runtime/members/B/inbox/delivered.bin';
+      await f.fetcherFs.writeBytes('$dest.tp-partial', [9, 9, 9, 9]);
+      await f.fetcherFs.writeString(
+        '$dest.tp-partial.meta.json',
+        // identity that will not match (wrong sourcePath)
+        '{"artifactName":"out","publisherMemberId":"A","sourceTargetId":"local",'
+        '"sourcePath":"/work/OTHER.bin","expectedSizeBytes":8,"bytesWritten":4,'
+        '"chunkSize":4}',
+      );
+      final r = await f.service.fetch(
+        fetcherMemberId: 'B',
+        name: 'out',
+        destPath: 'delivered.bin',
+      );
+      expect(await f.fetcherFs.readBytes(r.finalPath), bytes);
+    });
+
+    test('complete partial retries rename only', () async {
+      final f = _Fixture(chunkSize: 4);
+      final bytes = List<int>.generate(8, (i) => i);
+      await f.seedSource(bytes);
+      await f.service.publish(
+        publisherMemberId: 'A',
+        path: '/work/out.bin',
+        name: 'out',
+      );
+      final dest =
+          '/remote/sessions/s1/runtime/members/B/inbox/delivered.bin';
+      await f.fetcherFs.writeBytes('$dest.tp-partial', bytes);
+      await f.fetcherFs.writeString(
+        '$dest.tp-partial.meta.json',
+        '{"artifactName":"out","publisherMemberId":"A","sourceTargetId":"local",'
+        '"sourcePath":"/work/out.bin","expectedSizeBytes":8,"bytesWritten":8,'
+        '"chunkSize":4}',
+      );
+      final r = await f.service.fetch(
+        fetcherMemberId: 'B',
+        name: 'out',
+        destPath: 'delivered.bin',
+      );
+      expect(r.finalPath, dest);
+      expect(await f.fetcherFs.readBytes(dest), bytes);
+      expect((await f.fetcherFs.stat('$dest.tp-partial')).exists, isFalse);
+    });
+
+    test('same-machine uses copyFile and clears partials', () async {
+      final shared = InMemoryFilesystem();
+      final registry = ArtifactRegistry();
+      final service = ArtifactTransferService(
+        registry: registry,
+        resolveFs: (_) async => shared,
+        targetForMember: (_) => 'local',
+        inboxDirFor: (_) => '/inbox',
+        chunkSize: 4,
+      );
+      final bytes = [1, 2, 3, 4, 5];
+      await shared.writeBytes('/work/out.bin', bytes);
+      await shared.writeBytes('/inbox/out.bin.tp-partial', [9]);
+      await shared.writeString('/inbox/out.bin.tp-partial.meta.json', '{}');
+      await service.publish(
+        publisherMemberId: 'A',
+        path: '/work/out.bin',
+        name: 'out',
+      );
+      final r = await service.fetch(
+        fetcherMemberId: 'B',
+        name: 'out',
+        destPath: 'out.bin',
+      );
+      expect(r.finalPath, '/inbox/out.bin');
+      expect(await shared.readBytes('/inbox/out.bin'), bytes);
+      expect((await shared.stat('/inbox/out.bin.tp-partial')).exists, isFalse);
+      expect(
+        (await shared.stat('/inbox/out.bin.tp-partial.meta.json')).exists,
+        isFalse,
+      );
+    });
+
+    test('source shrink mid-transfer discards partial', () async {
+      final f = _Fixture(chunkSize: 4);
+      final bytes = List<int>.generate(12, (i) => i);
+      await f.seedSource(bytes);
+      await f.service.publish(
+        publisherMemberId: 'A',
+        path: '/work/out.bin',
+        name: 'out',
+      );
+      final dest =
+          '/remote/sessions/s1/runtime/members/B/inbox/delivered.bin';
+      await f.fetcherFs.writeBytes(
+        '$dest.tp-partial',
+        bytes.sublist(0, 8),
+      );
+      await f.fetcherFs.writeString(
+        '$dest.tp-partial.meta.json',
+        '{"artifactName":"out","publisherMemberId":"A","sourceTargetId":"local",'
+        '"sourcePath":"/work/out.bin","expectedSizeBytes":12,"bytesWritten":8,'
+        '"chunkSize":4}',
+      );
+      // Shrink source below bytesWritten.
+      await f.publisherFs.writeBytes('/work/out.bin', bytes.sublist(0, 4));
+      await expectLater(
+        () => f.service.fetch(
+          fetcherMemberId: 'B',
+          name: 'out',
+          destPath: 'delivered.bin',
+        ),
+        throwsA(isA<ArtifactSourceChangedException>()),
+      );
+      expect((await f.fetcherFs.stat('$dest.tp-partial')).exists, isFalse);
+      expect(
+        (await f.fetcherFs.stat('$dest.tp-partial.meta.json')).exists,
+        isFalse,
+      );
+    });
 
     test(
       'dest exists without overwrite throws; with overwrite succeeds',
