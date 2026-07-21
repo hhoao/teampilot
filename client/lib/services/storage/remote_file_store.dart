@@ -205,7 +205,10 @@ class RemoteFileStore {
     await _ensureParentDirs(resolved);
     final file = await sftp.open(
       resolved,
-      mode: SftpFileOpenMode.append | SftpFileOpenMode.create,
+      mode:
+          SftpFileOpenMode.write |
+          SftpFileOpenMode.create |
+          SftpFileOpenMode.append,
     );
     try {
       await file.writeBytes(bytes);
