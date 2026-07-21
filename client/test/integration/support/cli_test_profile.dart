@@ -9,6 +9,7 @@ import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import 'cli_test_profile_claude_boot.dart';
+import 'cli_test_profile_flashskyai_boot.dart';
 
 /// Wire protocol the mock gateway should speak for a CLI matrix cell.
 enum CliTestWire {
@@ -110,8 +111,16 @@ final class CliTestProfile {
   /// Cheap gateway wiring hints for provider config / env injection.
   Map<String, String> gatewayCredentialHints(String gatewayBaseUrl) {
     final base = gatewayBaseUrl.replaceAll(RegExp(r'/+$'), '');
+    // OpenAI-compatible CLIs (flashskyai/opencode) treat base_url as the
+    // `/v1` root and append `/chat/completions`. Anthropic uses the host root
+    // and appends `/v1/messages` itself.
+    final effectiveBase = switch (wire) {
+      CliTestWire.openaiChat || CliTestWire.openaiResponses =>
+        base.endsWith('/v1') ? base : '$base/v1',
+      CliTestWire.anthropic || CliTestWire.cursor => base,
+    };
     final hints = <String, String>{
-      'baseUrl': base,
+      'baseUrl': effectiveBase,
       'apiKey': 'test-key',
     };
     if (providerType != null) {
@@ -174,10 +183,16 @@ abstract final class CliTestProfiles {
     // an L2 probe proves otherwise.
     toolName: mapMcpPrefixedToolRef,
     assistantVisibleMarkers: const [markA1, markA2, markA3],
-    bootToPrompt: bootToPromptStub,
-    dismissBootGates: dismissBootGatesStub,
+    bootToPrompt: (session) async {
+      if (session is! TerminalSession) return false;
+      return bootFlashskyaiToPrompt(session);
+    },
+    dismissBootGates: (session) async {
+      if (session is! TerminalSession) return;
+      await dismissFlashskyaiBootGates(session);
+    },
     fullscreenDeliverNotes:
-        'Non-fullscreen composer; grid paste ACK (FlashskyaiTerminalBehavior).',
+        'Fullscreen paste + grid ACK (FlashskyaiTerminalBehavior; Ink ❯).',
     gatewayRedirectNotes:
         'Pin provider_type=openai; OpenAI Chat Completions at gateway '
         '/v1/chat/completions.',

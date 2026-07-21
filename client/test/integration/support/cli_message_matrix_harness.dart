@@ -43,6 +43,15 @@ const kMatrixLeaderProviderId = 'mock-leader';
 const kMatrixWorkerProviderId = 'mock-worker';
 const kMatrixSimpleProviderId = 'mock-simple';
 
+/// Model id written into mock provider catalogs / session launch argv.
+///
+/// Prefer [matrixMockModelIdFor] when multiple flashskyai providers share one
+/// `llm_config.json` — duplicate keys overwrite and flashskyai rejects
+/// `--provider A --model` owned by B.
+const kMatrixMockModelId = 'mock-model';
+
+String matrixMockModelIdFor(String providerId) => '$providerId-model';
+
 const kMatrixLeadMemberId = 'team-lead';
 const kMatrixWorkerMemberId = 'worker-1';
 
@@ -205,9 +214,24 @@ final class CliMessageMatrixHarness {
         workerBaseUrl != null ? 'http://127.0.0.1:$port' : localUrl;
     final remoteWorkerUrl = workerBaseUrl ?? leaderUrl;
     final hints = profile.gatewayCredentialHints(leaderUrl);
-    final config = <String, Object?>{
-      if (profile.providerType != null) 'provider_type': profile.providerType,
-    };
+    final workerHints = profile.gatewayCredentialHints(remoteWorkerUrl);
+
+    Map<String, Object?> providerConfig(String providerId) {
+      final modelId = matrixMockModelIdFor(providerId);
+      return {
+        if (profile.providerType != null) 'provider_type': profile.providerType,
+        // flashskyai --provider requires --model; key must exist in llm_config
+        // and must be unique across providers (merge overwrites same keys).
+        'models': {
+          modelId: {
+            'name': modelId,
+            'provider': providerId,
+            'model': modelId,
+            'enabled': true,
+          },
+        },
+      };
+    }
 
     final providers = <AppProviderConfig>[];
     if (mode == CliMatrixMode.simple) {
@@ -218,8 +242,8 @@ final class CliMessageMatrixHarness {
           name: 'Mock Simple (${profile.tool.value})',
           baseUrl: hints['baseUrl'] ?? leaderUrl,
           apiKey: simpleScriptApiKey,
-          defaultModel: 'mock-model',
-          config: config,
+          defaultModel: matrixMockModelIdFor(kMatrixSimpleProviderId),
+          config: providerConfig(kMatrixSimpleProviderId),
         ),
       );
     } else {
@@ -230,17 +254,18 @@ final class CliMessageMatrixHarness {
           name: 'Mock Leader (${profile.tool.value})',
           baseUrl: hints['baseUrl'] ?? leaderUrl,
           apiKey: leadScriptApiKey,
-          defaultModel: 'mock-model',
-          config: config,
+          defaultModel: matrixMockModelIdFor(kMatrixLeaderProviderId),
+          config: providerConfig(kMatrixLeaderProviderId),
         ),
         AppProviderConfig(
           id: kMatrixWorkerProviderId,
           cli: profile.tool,
           name: 'Mock Worker (${profile.tool.value})',
-          baseUrl: remoteWorkerUrl,
+          // Wire-aware base (openai needs …/v1) — do not use raw remoteWorkerUrl.
+          baseUrl: workerHints['baseUrl'] ?? remoteWorkerUrl,
           apiKey: workerScriptApiKey,
-          defaultModel: 'mock-model',
-          config: config,
+          defaultModel: matrixMockModelIdFor(kMatrixWorkerProviderId),
+          config: providerConfig(kMatrixWorkerProviderId),
         ),
       ]);
     }
@@ -310,6 +335,7 @@ final class CliMessageMatrixHarness {
           id: kMatrixLeadMemberId,
           name: TeamMemberNaming.teamLeadName,
           provider: kMatrixLeaderProviderId,
+          model: matrixMockModelIdFor(kMatrixLeaderProviderId),
           cli: profile.tool,
           // High effort can issue multiple Anthropic calls per user message.
           effort: 'low',
@@ -318,6 +344,7 @@ final class CliMessageMatrixHarness {
           id: kMatrixWorkerMemberId,
           name: 'developer',
           provider: kMatrixWorkerProviderId,
+          model: matrixMockModelIdFor(kMatrixWorkerProviderId),
           cli: profile.tool,
           effort: 'low',
         ),
@@ -354,6 +381,8 @@ final class CliMessageMatrixHarness {
         ws.workspaceId,
         cli: profile.tool,
         provider: kMatrixSimpleProviderId,
+        // flashskyai (and peers) require --model whenever --provider is set.
+        model: matrixMockModelIdFor(kMatrixSimpleProviderId),
         // High effort can issue multiple Anthropic calls per user message
         // (adaptive thinking), burning scripted TextTurns.
         effort: 'low',
@@ -574,13 +603,14 @@ final class CliMessageMatrixHarness {
     );
 
     chat.selectMember(kMatrixWorkerMemberId);
-    final worker = chat.currentSession;
-    if (worker == null) {
-      throw StateError(
-        'worker shell missing before kickoff\n${diagnosticsBundle()}',
-      );
-    }
-    await worker.input.submitFullScreenInput(kickoff);
+    // Prefer the automation grid-ACK path (same as History compose delivery).
+    // Raw submitFullScreenInput can miss Enter on flashskyai's Ink composer.
+    await chat.sessionRuntime.deliverMemberStdin(
+      s.sessionId,
+      kMatrixWorkerMemberId,
+      kickoff,
+      automation: true,
+    );
     await drainPendingAsyncWork(rounds: 10);
     await postFrame?.flush();
 
