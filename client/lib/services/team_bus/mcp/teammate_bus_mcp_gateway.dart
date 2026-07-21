@@ -129,15 +129,19 @@ class TeammateBusMcpGateway {
 
   Future<void> _onRequest(HttpRequest request) async {
     try {
+      // Agent-status is best-effort seat reporting. Never return 4xx here —
+      // Claude / flashskyai Stop hooks re-prompt the model on HTTP errors and
+      // burn scripted mock turns (or user-visible loops).
+      if (request.method == 'POST' && request.uri.path == '/agent-status') {
+        final sessionId = _resolveSessionId(request);
+        await _handleAgentStatus(request, sessionId: sessionId);
+        return;
+      }
+
       final sessionId = _resolveSessionId(request);
       if (sessionId == null) {
         request.response.statusCode = HttpStatus.badRequest;
         await request.response.close();
-        return;
-      }
-
-      if (request.method == 'POST' && request.uri.path == '/agent-status') {
-        await _handleAgentStatus(request, sessionId: sessionId);
         return;
       }
 
@@ -175,26 +179,32 @@ class TeammateBusMcpGateway {
 
   Future<void> _handleAgentStatus(
     HttpRequest request, {
-    required String sessionId,
+    required String? sessionId,
   }) async {
     final handler = _agentStatusHandler;
-    final allowed =
-        _agentStatusSessions.contains(sessionId) ||
-        _delegates.containsKey(sessionId);
-    if (handler == null || !allowed) {
-      request.response.statusCode = HttpStatus.badRequest;
-      await request.response.close();
-      return;
-    }
-
     final member = _headerValue(request.headers, teammateBusMcpMemberHeader);
-    if (member.isEmpty) {
-      request.response.statusCode = HttpStatus.badRequest;
-      await request.response.close();
+    final allowed = sessionId != null &&
+        sessionId.isNotEmpty &&
+        (_agentStatusSessions.contains(sessionId) ||
+            _delegates.containsKey(sessionId));
+    if (handler == null || !allowed || member.isEmpty) {
+      await _writeAgentStatusOkEmpty(request);
       return;
     }
 
-    await handler.handle(request, sessionId: sessionId, memberId: member);
+    await handler.handle(request, sessionId: sessionId!, memberId: member);
+  }
+
+  Future<void> _writeAgentStatusOkEmpty(HttpRequest request) async {
+    request.response
+      ..statusCode = HttpStatus.ok
+      ..headers.contentType = ContentType(
+        'application',
+        'json',
+        charset: 'utf-8',
+      )
+      ..write('{}');
+    await request.response.close();
   }
 
   String? _resolveSessionId(HttpRequest request) {

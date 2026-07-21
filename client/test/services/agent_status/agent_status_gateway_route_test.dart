@@ -89,27 +89,39 @@ void main() {
     );
   });
 
-  test('missing X-Member → 400', () async {
+  test('missing X-Member → 200 no-op (Stop hooks must not 4xx)', () async {
     gateway.registerAgentStatusSession(sessionId: 's1');
 
     final resp = await postAgentStatus(
       sessionId: 's1',
       body: {'hook_event_name': 'PermissionRequest'},
     );
-    expect(resp.statusCode, HttpStatus.badRequest);
-    await resp.drain<void>();
+    expect(resp.statusCode, HttpStatus.ok);
+    final text = await resp.transform(utf8.decoder).join();
+    expect(jsonDecode(text), <String, Object?>{});
     expect(cubit.state.sessionHasWaiting('s1'), isFalse);
   });
 
-  test('unknown session → 400', () async {
+  test('unknown session → 200 no-op (Stop hooks must not 4xx)', () async {
     final resp = await postAgentStatus(
       sessionId: 'unknown',
       member: 'm1',
       body: {'hook_event_name': 'PermissionRequest'},
     );
-    expect(resp.statusCode, HttpStatus.badRequest);
-    await resp.drain<void>();
+    expect(resp.statusCode, HttpStatus.ok);
+    final text = await resp.transform(utf8.decoder).join();
+    expect(jsonDecode(text), <String, Object?>{});
     expect(cubit.state.sessionHasWaiting('unknown'), isFalse);
+  });
+
+  test('missing X-Session → 200 no-op (Stop hooks must not 4xx)', () async {
+    final resp = await postAgentStatus(
+      member: 'm1',
+      body: {'hook_event_name': 'Stop'},
+    );
+    expect(resp.statusCode, HttpStatus.ok);
+    final text = await resp.transform(utf8.decoder).join();
+    expect(jsonDecode(text), <String, Object?>{});
   });
 
   test('status-only register works without TeamBus handler', () async {
