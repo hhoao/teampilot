@@ -47,7 +47,7 @@ Message-send integration coverage is incomplete and uneven:
 | CLI | simple (≥3 turns) | native (collab ≥3) | mixed (TeamBus collab ≥3) |
 |-----|-------------------|--------------------|---------------------------|
 | claude | yes | yes | yes |
-| flashskyai | yes | yes | yes |
+| flashskyai (openai wire) | yes | yes | yes |
 | codex | yes | N/A | yes |
 | opencode | yes | N/A | yes |
 | cursor | yes | N/A | yes (doorbell bus path) |
@@ -55,6 +55,14 @@ Message-send integration coverage is incomplete and uneven:
 
 N/A cells: `CliTestProfile.supportsNativeTeam == false` → `markTestSkipped` with
 an explicit reason; document in the matrix, do not pretend the cell passes.
+
+**Homogeneous teams:** mixed/native matrix cells use one CLI for every roster
+member (`TeamProfile.cli` = row CLI; no cross-CLI mixed in v1). Cross-CLI mixed
+is a later matrix expansion.
+
+**flashskyai wire:** L2 cells pin `provider_type: openai` (OpenAI Chat adapter).
+Anthropic-mode flashskyai is out of v1 matrix scope (can reuse Anthropic adapter
+later as a separate row if needed).
 
 ## Architecture
 
@@ -74,9 +82,16 @@ Actors (leader / worker / simple seat) bind to an **apiKey** (or equivalent
 | Turn | Role |
 |------|------|
 | `Text(content)` | Visible assistant reply |
-| `ToolUse(name, input, id?)` | Emit tool call (TeamBus MCP, native team tools, …) |
+| `ToolUse(toolRef, input, id?)` | Emit tool call via **logical** `toolRef` (not raw wire name) |
 | `AssignedTaskUpdate(...)` | Resolve task id from inbound tool_result, then update |
 | `WaitUntil(predicate)?` | Optional sync before advancing (collab) |
+
+**Logical tool refs:** recipes use stable ids such as
+`teambus.send_message`, `teambus.wait_for_message`, `native.TeamCreate`.
+`CliTestProfile.toolName(toolRef) → String` maps to the CLI’s on-wire name
+(e.g. Claude `mcp__teammate-bus__send_message`, OpenCode/Codex equivalent MCP
+tool id). The Engine emits the mapped name through the WireAdapter. **Do not**
+fork recipes per CLI for naming differences.
 
 Rules:
 
@@ -91,11 +106,12 @@ Rules:
 
 `WireAdapter` maps Engine turns ↔ HTTP/SSE for one wire:
 
-- Anthropic Messages (`/v1/messages`) — claude; flashskyai anthropic mode
-- OpenAI Chat Completions — opencode / flashskyai openai mode; others as needed
+- Anthropic Messages (`/v1/messages`) — claude
+- OpenAI Chat Completions — opencode, flashskyai (v1 pinned openai), others as needed
 - OpenAI Responses — codex default `wire_api`
-- Cursor (or any future wire) — dedicated adapter + credential injection into
-  the same engine
+- Cursor — dedicated adapter; redirect traffic to loopback via whatever the CLI
+  accepts (custom base URL and/or auth/HOME injection). Profile must document
+  the exact redirect + fake credential steps so L2 never hits Cursor cloud.
 
 New CLI = new or reused WireAdapter + harness provider pointing `baseUrl` (or
 CLI-specific auth) at the gateway. **Do not** fork the scenario DSL per CLI.
@@ -112,7 +128,11 @@ Product-side assertions (wire-independent):
 
 1. Gateway: actor completed ≥3 turns; no exhausted / decode errors in log.
 2. Bus (mixed): mail/task assertions (reuse `bus_*_assertions`).
-3. PTY probe and/or History marker for the CLI profile.
+3. **Primary L2 observation: PTY probe** — `CliTestProfile` defines
+   `assistantVisibleMarkers` (substring / regex list) expected in the member
+   terminal grid after the recipe. History / transcript adapters are **out of
+   v1 assertion path** (optional later); do not block matrix cells on History
+   UI.
 
 ## Test layering
 
@@ -138,8 +158,11 @@ CliMessageMatrixHarness
   → startGateway / writeMockProviders / launchSession / kickoff / assert
 ```
 
-`CliTestProfile` holds: binary resolution, boot-to-prompt, fullscreen deliver
-behavior, `supportsNativeTeam`, bus style (long-wait vs doorbell).
+`CliTestProfile` holds: binary resolution, **boot-gate dismissal** (trust
+screens, API-key prompts, `customApiKeyResponses`, update modals, …),
+boot-to-prompt detection, fullscreen deliver behavior, `supportsNativeTeam`,
+bus style (long-wait vs doorbell), `toolName(toolRef)`,
+`assistantVisibleMarkers`, and gateway credential / baseUrl wiring.
 
 Migrate / replace `MixedTeamIntegrationHarness` and standalone deliver tests
 into this path — **no dual-track** mock stacks.
@@ -150,7 +173,7 @@ On failure, always surface:
 
 1. Gateway request log (actor, wire, turnIndex, turnLabel)
 2. Scenario progress (expected next turn vs exhausted / decode error)
-3. Last PTY probe frame and/or History marker
+3. Last PTY probe frame + which `assistantVisibleMarkers` were missing
 4. Bus assertion detail (mixed)
 
 Attribution order:
