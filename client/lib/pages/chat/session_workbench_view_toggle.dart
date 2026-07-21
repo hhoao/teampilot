@@ -50,7 +50,7 @@ class SessionWorkbenchViewToggle extends StatelessWidget {
       key: AppKeys.sessionWorkbenchViewToggle,
       icon: showingChat
           ? Icons.terminal_rounded
-          : Icons.history_rounded,
+          : Icons.chat_bubble_outline_rounded,
       tooltip: showingChat
           ? l10n.sessionWorkbenchShowTerminal
           : l10n.sessionWorkbenchShowChat,

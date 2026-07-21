@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
-import 'package:teampilot/pages/home_workspace/workspace/workspace_compose_landing_pane.dart';
+import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_pane.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_ide_center.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_landing_skeleton.dart';
 
@@ -17,19 +17,19 @@ void main() {
     createdAt: 1,
   );
 
-  test('compose landing picks WorkspaceComposeLandingPane', () {
+  test('new chat picks WorkspaceChatPane', () {
     final center = buildWorkspaceIdeCenter(
-      composeLanding: true,
+      newChat: true,
       workspace: workspace,
       chatPage: const Text('chat-page'),
     );
-    expect(center, isA<WorkspaceComposeLandingPane>());
+    expect(center, isA<WorkspaceChatPane>());
   });
 
   test('session workbench keeps ChatPage child', () {
     const chat = Text('chat-page');
     final center = buildWorkspaceIdeCenter(
-      composeLanding: false,
+      newChat: false,
       workspace: workspace,
       chatPage: chat,
     );
@@ -44,11 +44,11 @@ void main() {
     expect(source.contains('placeholder: const _SessionListSkeleton()'), isTrue);
   });
 
-  test('landing body defers one frame after sidebar list', () {
+  test('chat pane body defers one frame after sidebar list', () {
     final source = File(
-      'lib/pages/home_workspace/workspace/workspace_compose_landing_pane.dart',
+      'lib/pages/home_workspace/workspace/workspace_chat_pane.dart',
     ).readAsStringSync();
-    // Sidebar uses delayFrames: 1; landing uses 2 so #791-style frames split.
+    // Sidebar uses delayFrames: 1; chat pane uses 2 so #791-style frames split.
     expect(
       RegExp(r'TpDeferredMountShell\(\s*delayFrames:\s*2,').hasMatch(source),
       isTrue,
@@ -73,7 +73,7 @@ void main() {
     expect(find.byType(TextField), findsNothing);
   });
 
-  testWidgets('landing defer uses TpDeferredMountShell + skeleton placeholder', (
+  testWidgets('chat pane defer uses TpDeferredMountShell + skeleton placeholder', (
     tester,
   ) async {
     final scheme = ColorScheme.fromSeed(seedColor: Colors.blue);

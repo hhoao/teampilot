@@ -19,7 +19,7 @@ enum ChatWorkbenchOverlay {
 ///
 /// When [workbenchView] is [SessionWorkbenchView.chat], Chat stays shown
 /// even while [sessionConnectInProgress] is true so continue-from-Chat does
-/// not dispose [SessionHistoryReview] mid-submit.
+/// not dispose [SessionChatView] mid-submit.
 ChatWorkbenchOverlay resolveChatWorkbenchOverlay({
   required SessionWorkbenchView workbenchView,
   required bool sessionConnectInProgress,

@@ -38,7 +38,7 @@ import 'chat/chat_workbench_slice.dart';
 import 'chat/chat_workbench_terminal.dart';
 import '../models/member_remote_provision_progress.dart';
 import 'chat/history_continue_delivery.dart';
-import 'chat/session_history_review.dart';
+import 'chat/session_chat_view.dart';
 import 'chat/session_history_review_submit.dart';
 
 class ChatWorkbench extends StatefulWidget {
@@ -464,7 +464,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
       sessionConnectInProgress: sessionConnectInProgress,
       showRemoteProvision: showRemoteProvision,
     );
-    final showHistory = overlay == ChatWorkbenchOverlay.chat;
+    final showChat = overlay == ChatWorkbenchOverlay.chat;
     final showSessionStarting =
         overlay == ChatWorkbenchOverlay.sessionStarting;
 
@@ -485,7 +485,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
               if (mountTerminalForLayout)
                 Offstage(
                   offstage: showSessionStarting ||
-                      showHistory ||
+                      showChat ||
                       showRemoteProvision,
                   child: buildRunningTerminal(
                     session: session,
@@ -494,7 +494,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
                     isPersonal: isPersonalContext,
                     team: team,
                     autofocus: !showSessionStarting &&
-                        !showHistory &&
+                        !showChat &&
                         !showRemoteProvision &&
                         terminalVisible,
                   ),
@@ -507,8 +507,8 @@ class _ChatWorkbenchBody extends StatelessWidget {
                     memberId: remoteProvision.memberId,
                   ),
                 )
-              else if (showHistory)
-                _buildHistoryReview(
+              else if (showChat)
+                _buildSessionChatView(
                   context,
                   chatCubit: chatCubit,
                   team: team,
@@ -537,7 +537,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
     return name.isNotEmpty ? name : mid;
   }
 
-  Widget _buildHistoryReview(
+  Widget _buildSessionChatView(
     BuildContext context, {
     required ChatCubit chatCubit,
     required TeamProfile? team,
@@ -575,7 +575,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
     final shellMemberId = isPersonal
         ? appSession.sessionId
         : (connectMember?.id ?? memberId);
-    return SessionHistoryReview(
+    return SessionChatView(
       session: appSession,
       selectedMemberId: historyMemberId,
       team: resolvedTeam,

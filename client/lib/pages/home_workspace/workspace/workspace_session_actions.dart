@@ -380,7 +380,7 @@ Future<void> submitWorkspaceLandingMessage(
     unawaited(ExpertHubRecentStore().touch(trimmedExpert));
   }
 
-  // Opening the session exits compose mode and unmounts [WorkspaceComposeLandingPane].
+  // Opening the session exits compose mode and unmounts [WorkspaceChatPane].
   // Delivery must keep going via cubits/repos captured above — not [context.mounted].
 
   final session = await _sessionById(

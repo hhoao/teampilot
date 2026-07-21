@@ -49,9 +49,9 @@ import 'session_history_review_messages.dart';
 import 'session_history_review_submit.dart';
 import 'session_review_compose_card.dart';
 
-/// History list + slim compose for a non-running session body.
-class SessionHistoryReview extends StatefulWidget {
-  const SessionHistoryReview({
+/// Bound Chat view: history thread + slim compose for a session body.
+class SessionChatView extends StatefulWidget {
+  const SessionChatView({
     required this.session,
     required this.selectedMemberId,
     required this.onSubmit,
@@ -77,10 +77,10 @@ class SessionHistoryReview extends StatefulWidget {
   final bool Function(String mailId)? isMailboxUnread;
 
   @override
-  State<SessionHistoryReview> createState() => _SessionHistoryReviewState();
+  State<SessionChatView> createState() => _SessionChatViewState();
 }
 
-class _SessionHistoryReviewState extends State<SessionHistoryReview> {
+class _SessionChatViewState extends State<SessionChatView> {
   final _controller = TextEditingController();
   late final FocusNode _focusNode;
   late final ComposeVoiceInput _voiceInput;
@@ -172,7 +172,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
   }
 
   @override
-  void didUpdateWidget(covariant SessionHistoryReview oldWidget) {
+  void didUpdateWidget(covariant SessionChatView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.session.sessionId != widget.session.sessionId ||
         oldWidget.selectedMemberId != widget.selectedMemberId ||

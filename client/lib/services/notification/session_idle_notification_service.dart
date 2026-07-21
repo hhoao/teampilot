@@ -33,11 +33,7 @@ class SessionIdleNotificationService {
 
     for (final sessionId in ids) {
       // Closing a working tab also leaves workingSessionIds; that is not idle.
-<<<<<<< HEAD
-      if (!openTabs.contains(sessionId)) continue;
-=======
       if (!openTabSessionIds.contains(sessionId)) continue;
->>>>>>> a49ab7cb (refactor(chat): improve session handling and idle notification logic)
 
       AppSession? session;
       for (final candidate in sessions) {

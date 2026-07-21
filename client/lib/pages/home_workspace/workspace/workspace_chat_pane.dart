@@ -18,9 +18,9 @@ import 'workspace_chat_landing.dart';
 import 'workspace_landing_skeleton.dart';
 import 'workspace_session_actions.dart';
 
-/// Full main-pane compose landing — sibling to [ChatPage], not inside the shell.
-class WorkspaceComposeLandingPane extends StatefulWidget {
-  const WorkspaceComposeLandingPane({
+/// Unbound Chat pane for a workspace — sibling to [ChatPage], not inside the shell.
+class WorkspaceChatPane extends StatefulWidget {
+  const WorkspaceChatPane({
     required this.workspace,
     super.key,
   });
@@ -28,11 +28,11 @@ class WorkspaceComposeLandingPane extends StatefulWidget {
   final Workspace workspace;
 
   @override
-  State<WorkspaceComposeLandingPane> createState() =>
-      _WorkspaceComposeLandingPaneState();
+  State<WorkspaceChatPane> createState() =>
+      _WorkspaceChatPaneState();
 }
 
-class _WorkspaceComposeLandingPaneState extends State<WorkspaceComposeLandingPane> {
+class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
   var _submitting = false;
 
   Workspace _workspaceForSubmit(BuildContext context) {

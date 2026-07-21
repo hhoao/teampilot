@@ -151,9 +151,9 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
                 workspace: widget.workspace,
                 tabScopeId: widget.tabScopeId,
               ),
-              // Compose landing skips ChatPageShell / workbench projection.
+              // Unbound Chat pane skips ChatPageShell / workbench projection.
               center: buildWorkspaceIdeCenter(
-                composeLanding: composeLanding,
+                newChat: composeLanding,
                 workspace: widget.workspace,
                 chatPage: ChatPage(
                   cwd: cwd,

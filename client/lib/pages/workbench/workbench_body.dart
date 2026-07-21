@@ -10,7 +10,7 @@ import '../../services/workbench/workbench_body_keep_alive.dart';
 import '../../widgets/workspace_terminal_panel.dart';
 import '../chat/chat_workbench_slice.dart';
 import '../chat_workbench.dart';
-import '../home_workspace/workspace/workspace_compose_landing_pane.dart';
+import '../home_workspace/workspace/workspace_chat_pane.dart';
 import 'diff_editor_surface.dart';
 import 'file_editor_surface.dart';
 import 'run_tab_surface.dart';
@@ -64,7 +64,7 @@ class WorkbenchBody extends StatelessWidget {
 
     // Spec: if activeTabId != null, body is never compose.
     if (active == null) {
-      return WorkspaceComposeLandingPane(workspace: workspace);
+      return WorkspaceChatPane(workspace: workspace);
     }
 
     final plan = resolveWorkbenchBodyKeepAlive(
