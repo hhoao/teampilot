@@ -14,6 +14,7 @@ import '../about_page.dart';
 import '../system/log_config_workspace.dart';
 import 'ai_features_config_section.dart';
 import 'cli_config_section.dart';
+import 'github_config_section.dart';
 import 'layout_config_section.dart';
 import 'session_config_section.dart';
 import 'shortcuts_config_section.dart';
@@ -60,6 +61,13 @@ Future<void> showWorkspaceSettingsDialog(BuildContext context) {
         subtitle: (l10n) => l10n.sshProfilesPageSubtitle,
         bodyBuilder: (_) =>
             const SshProfilesConfigWorkspace(showHeading: false),
+      ),
+      SettingsDialogEntry(
+        icon: Icons.hub_outlined,
+        navLabel: (l10n) => l10n.githubSettingsTitle,
+        title: (l10n) => l10n.githubSettingsTitle,
+        subtitle: (l10n) => l10n.githubSettingsSubtitle,
+        bodyBuilder: (_) => const GithubConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.keyboard_outlined,
@@ -146,6 +154,15 @@ class ConfigSettingsHubPage extends StatelessWidget {
           }),
         ),
         WorkspaceHubEntry(
+          key: AppKeys.configGithubSectionButton,
+          title: l10n.githubSettingsTitle,
+          icon: Icons.hub_outlined,
+          onTap: throttledTap('config_hub_github', () {
+            context.read<ConfigCubit>().selectSection(ConfigSection.github);
+            context.push('/config/${ConfigSection.github.routeSegment}');
+          }),
+        ),
+        WorkspaceHubEntry(
           key: AppKeys.configShortcutsSectionButton,
           title: l10n.shortcutsSettingsTitle,
           icon: Icons.keyboard_outlined,
@@ -218,6 +235,7 @@ class ConfigWorkspace extends StatelessWidget {
         ConfigSection.sshProfiles => SshProfilesConfigWorkspace(
           showHeading: showHeading,
         ),
+        ConfigSection.github => GithubConfigWorkspace(showHeading: showHeading),
         ConfigSection.shortcuts => ShortcutsConfigWorkspace(
           showHeading: showHeading,
         ),
@@ -293,6 +311,16 @@ class ConfigNavPanel extends StatelessWidget {
           onTap: throttledTap(
             'config_nav_ssh_profiles',
             () => onSelectSection(ConfigSection.sshProfiles),
+          ),
+        ),
+        WorkspaceHubEntry(
+          key: AppKeys.configGithubSectionButton,
+          title: l10n.githubSettingsTitle,
+          icon: Icons.hub_outlined,
+          selected: section == ConfigSection.github,
+          onTap: throttledTap(
+            'config_nav_github',
+            () => onSelectSection(ConfigSection.github),
           ),
         ),
         WorkspaceHubEntry(
