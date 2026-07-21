@@ -137,12 +137,33 @@ class WslFilesystem implements Filesystem {
   }
 
   @override
-  Future<List<int>?> readBytesRange(String path, int offset, int length) =>
-      throw UnimplementedError('readBytesRange');
+  Future<List<int>?> readBytesRange(
+    String path,
+    int offset,
+    int length,
+  ) async {
+    final quoted = RemoteFileStore.shellSingleQuote(path);
+    final result = await _run([
+      'sh',
+      '-lc',
+      'dd if=$quoted bs=1 skip=$offset count=$length 2>/dev/null | '
+          'base64 -w0 || dd if=$quoted bs=1 skip=$offset count=$length 2>/dev/null | base64',
+    ]);
+    if (result.exitCode != 0) return null;
+    final encoded = (result.stdout as String).replaceAll(RegExp(r'\s+'), '');
+    if (encoded.isEmpty) return <int>[];
+    try {
+      return base64.decode(encoded);
+    } on Object {
+      return null;
+    }
+  }
 
   @override
-  Future<void> appendBytes(String path, List<int> bytes) =>
-      throw UnimplementedError('appendBytes');
+  Future<void> appendBytes(String path, List<int> bytes) async {
+    final encoded = base64.encode(bytes);
+    await _pipeBase64ToFile(path, encoded, append: true);
+  }
 
   @override
   Future<void> atomicWrite(String path, String content) async {
