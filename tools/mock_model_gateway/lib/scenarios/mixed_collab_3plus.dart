@@ -46,13 +46,9 @@ Map<String, MockScenario> mixedCollab3PlusScenarios() => {
       ),
       workerScriptApiKey: MockScenario(
         turns: [
-          // First wait: kickoff may return immediately when the bus is empty.
-          ToolUseTurn(
-            id: 'tu_wait',
-            toolRef: 'teambus.wait_for_message',
-            input: {},
-          ),
-          // Second wait: blocks until the leader's ping arrives.
+          // Single wait: kickoff parks here until the lead's ping arrives.
+          // (A prior empty+second-wait pattern races when ping lands on the
+          // first wait — worker never reaches send_message/pong.)
           ToolUseTurn(
             id: 'tu_wait_ping',
             toolRef: 'teambus.wait_for_message',

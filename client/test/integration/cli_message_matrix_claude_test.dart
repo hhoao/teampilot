@@ -3,10 +3,13 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mock_model_gateway/scenarios/mixed_collab_3plus.dart';
 import 'package:mock_model_gateway/scenarios/simple_3turn.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
 
 import '../support/post_frame_test_harness.dart';
+import 'support/bus_mail_assertions.dart';
 import 'support/cli_message_matrix_harness.dart';
 import 'support/integration_prerequisites.dart';
 import 'support/integration_test_setup.dart';
@@ -79,6 +82,119 @@ void main() {
         // Each marker was asserted when produced; alt-screen scroll drops older
         // rows from the probe window, so do not require all three at once.
         await harness.waitForBubbles(userText: prompts.first);
+      } catch (e, st) {
+        // ignore: avoid_print
+        print(harness.diagnosticsBundle());
+        Error.throwWithStackTrace(e, st);
+      }
+    },
+  );
+
+  test(
+    'claude mixed: History compose → collab ≥3 assistant bubbles + bus',
+    () async {
+      IntegrationPrerequisites.skipUnlessNativePty();
+      final claudePath = IntegrationPrerequisites.requireClaudePath();
+      if (claudePath == null) return;
+
+      final harness = CliMessageMatrixHarness.forCli(
+        CliTool.claude,
+        mode: CliMatrixMode.mixed,
+        recipe: CliMatrixRecipe.mixedCollab3Plus,
+        cliPath: claudePath,
+      );
+      final postFrame = PostFrameTestHarness();
+      addTearDown(() async {
+        await harness.dispose();
+        await postFrame.flush();
+        await drainPendingAsyncWork();
+        await Future<void>.delayed(const Duration(seconds: 3));
+      });
+
+      try {
+        await harness.startGateway();
+        await harness.writeMockProviders();
+        harness.createCubit(postFrame: postFrame);
+        await harness.openSession();
+        await harness.bootAllMembersToPrompt();
+        await harness.loadHistory();
+
+        // Park worker first (recipe order); virgin-lead idle mail is queued
+        // without PTY doorbell so History compose starts the lead turn.
+        const prompt = 'matrix mixed collab please coordinate';
+        final leadBefore =
+            harness.gateway!.requestCountFor(leadScriptApiKey);
+        final result = await harness.parkWorkerAndComposeOnLead(prompt);
+        expect(
+          result.ok,
+          isTrue,
+          reason: 'submitCompose failed on lead\n'
+              '${harness.diagnosticsBundle()}',
+        );
+
+        await harness.waitForBusPingPong();
+        await harness.waitForGatewayTurns(
+          apiKey: leadScriptApiKey,
+          minTurns: leadBefore + 3,
+        );
+        expect(
+          harness.gateway!.requestCountFor(workerScriptApiKey),
+          greaterThanOrEqualTo(2),
+          reason: harness.diagnosticsBundle(),
+        );
+        final gatewayDump = harness.gateway!.dumpDiagnostics();
+        for (final marker in harness.profile.collabLeadMarkers) {
+          expect(
+            gatewayDump,
+            contains(marker),
+            reason: harness.diagnosticsBundle(),
+          );
+        }
+
+        // Collab turns scroll the alt-screen; require the final lead marker
+        // (earlier MARK_LEAD_* may have left the probe window).
+        await harness.waitForPtyMarkers([markLeadDone]);
+
+        await harness.bootComposeSeatToPrompt();
+        await harness.waitForBubbles(userText: prompt);
+
+        // Extra bus-mail sanity (same predicates as waitForBusPingPong).
+        final s = harness.session!;
+        final root = AppStorage.paths.basePath;
+        final workerMail = await readBusMailLines(
+          teampilotRoot: root,
+          workspaceId: s.workspaceId,
+          sessionId: s.sessionId,
+          memberId: kMatrixWorkerMemberId,
+        );
+        expect(
+          workerMail.any(
+            (row) =>
+                row['from'] == kMatrixLeadMemberId && row['content'] == 'ping',
+          ),
+          isTrue,
+          reason: harness.diagnosticsBundle(),
+        );
+        final leadMail = await readBusMailLines(
+          teampilotRoot: root,
+          workspaceId: s.workspaceId,
+          sessionId: s.sessionId,
+          memberId: kMatrixLeadMemberId,
+        );
+        expect(
+          leadMail.any(
+            (row) =>
+                row['from'] == kMatrixWorkerMemberId &&
+                row['content'] == 'pong',
+          ),
+          isTrue,
+          reason: harness.diagnosticsBundle(),
+        );
+        expect(
+          harness.cubit!.hasTeamBusResources(s.sessionId),
+          isTrue,
+          reason: harness.diagnosticsBundle(),
+        );
       } catch (e, st) {
         // ignore: avoid_print
         print(harness.diagnosticsBundle());

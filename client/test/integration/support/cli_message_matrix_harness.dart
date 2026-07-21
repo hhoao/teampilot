@@ -33,6 +33,8 @@ import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
 
 import '../../support/post_frame_test_harness.dart';
+import 'bus_mail_assertions.dart';
+import 'bus_roster_assertions.dart';
 import 'chat_thread_assertions.dart';
 import 'cli_test_profile.dart';
 import 'integration_prerequisites.dart';
@@ -309,12 +311,15 @@ final class CliMessageMatrixHarness {
           name: TeamMemberNaming.teamLeadName,
           provider: kMatrixLeaderProviderId,
           cli: profile.tool,
+          // High effort can issue multiple Anthropic calls per user message.
+          effort: 'low',
         ),
         TeamMemberConfig(
           id: kMatrixWorkerMemberId,
           name: 'developer',
           provider: kMatrixWorkerProviderId,
           cli: profile.tool,
+          effort: 'low',
         ),
       ],
     );
@@ -408,14 +413,20 @@ final class CliMessageMatrixHarness {
   /// Dismisses boot gates then waits until [CliTestProfile.bootToPrompt].
   Future<void> bootComposeSeatToPrompt({
     Duration timeout = const Duration(seconds: 90),
+  }) =>
+      bootMemberToPrompt(composeMemberId, timeout: timeout);
+
+  /// Boots a specific roster / simple seat to the composer prompt.
+  Future<void> bootMemberToPrompt(
+    String memberId, {
+    Duration timeout = const Duration(seconds: 90),
   }) async {
-    final mid = composeMemberId;
     final deadline = DateTime.now().add(timeout);
     TerminalSession? shell;
     while (DateTime.now().isBefore(deadline)) {
       await postFrame?.flush();
       await drainPendingAsyncWork();
-      shell = memberShell(mid);
+      shell = memberShell(memberId);
       if (shell != null && (shell.isRunning || shell.isConnecting)) break;
       await Future<void>.delayed(const Duration(milliseconds: 200));
     }
@@ -423,21 +434,227 @@ final class CliMessageMatrixHarness {
       final chat = cubit;
       final tab = chat?.activeTab;
       throw StateError(
-        'No TerminalSession for compose seat member=$mid '
+        'No TerminalSession for member=$memberId '
         'activeSession=${chat?.state.activeSessionId} '
         'selected=${chat?.state.selectedMemberId} '
         'launchError=${chat?.state.sessionLaunchError} '
         'tabLaunchError=${tab?.info.launchError} '
         'shellKeys=${tab?.memberShells.keys.toList()} '
-        'isRunning=${chat?.isMemberRunning(mid)}\n'
-        '${diagnosticsBundle()}',
+        'isRunning=${chat?.isMemberRunning(memberId)}\n'
+        '${diagnosticsBundle(memberId: memberId)}',
       );
     }
     await profile.dismissBootGates(shell);
     final ok = await profile.bootToPrompt(shell);
     if (!ok) {
       throw StateError(
-        'bootToPrompt failed for ${profile.tool.value}\n'
+        'bootToPrompt failed for ${profile.tool.value} member=$memberId\n'
+        '${diagnosticsBundle(memberId: memberId)}',
+      );
+    }
+  }
+
+  /// Boots every roster seat (lead + workers) for mixed/native cells.
+  Future<void> bootAllMembersToPrompt({
+    Duration timeout = const Duration(seconds: 90),
+  }) async {
+    final built = team;
+    if (built == null) {
+      await bootComposeSeatToPrompt(timeout: timeout);
+      return;
+    }
+    for (final m in built.members) {
+      await bootMemberToPrompt(m.id, timeout: timeout);
+    }
+  }
+
+  /// Parks the worker, then [submitCompose] on the lead (recipe order).
+  ///
+  /// Relies on virgin-lead mail suppression: worker idle-announce queues mail
+  /// without PTY-doorbelling a lead that has never started a turn, so History
+  /// compose remains the first lead user message.
+  Future<HistoryContinueSubmitResult> parkWorkerAndComposeOnLead(
+    String prompt, {
+    String workerKickoff = 'Start idle loop.',
+    Duration timeout = const Duration(seconds: 120),
+  }) async {
+    final server = gateway;
+    if (server == null) {
+      throw StateError('startGateway before parkWorkerAndComposeOnLead');
+    }
+    if (mode == CliMatrixMode.simple) {
+      throw StateError('parkWorkerAndComposeOnLead is for mixed/native cells');
+    }
+
+    await _submitWorkerKickoffAndAwaitPark(
+      kickoff: workerKickoff,
+      timeout: timeout,
+      workerBaseline: server.requestCountFor(workerScriptApiKey),
+    );
+    await bootComposeSeatToPrompt(timeout: timeout);
+    return submitCompose(prompt);
+  }
+
+  /// History-compose on the lead, then park the worker on `wait_for_message`.
+  ///
+  /// Alternate ordering when compose must precede park; prefer
+  /// [parkWorkerAndComposeOnLead] for [mixed_collab_3plus].
+  Future<HistoryContinueSubmitResult> composeOnLeadThenParkWorker(
+    String prompt, {
+    String workerKickoff = 'Start idle loop.',
+    Duration timeout = const Duration(seconds: 120),
+  }) async {
+    final server = gateway;
+    if (server == null) {
+      throw StateError('startGateway before composeOnLeadThenParkWorker');
+    }
+    if (mode == CliMatrixMode.simple) {
+      throw StateError('composeOnLeadThenParkWorker is for mixed/native cells');
+    }
+
+    final leadBefore = server.requestCountFor(leadScriptApiKey);
+    final result = await submitCompose(prompt);
+    if (!result.ok) return result;
+
+    await waitForGatewayTurns(
+      apiKey: leadScriptApiKey,
+      minTurns: leadBefore + 1,
+      timeout: timeout,
+    );
+
+    await _submitWorkerKickoffAndAwaitPark(
+      kickoff: workerKickoff,
+      timeout: timeout,
+      workerBaseline: server.requestCountFor(workerScriptApiKey),
+    );
+    return result;
+  }
+
+  /// PTY kickoff for the worker so it parks on `wait_for_message`.
+  Future<void> kickoffWorkerParkAndWait({
+    String kickoff = 'Start idle loop.',
+    Duration timeout = const Duration(seconds: 120),
+  }) async {
+    final chat = cubit;
+    final s = session;
+    final server = gateway;
+    if (chat == null || s == null || server == null) {
+      throw StateError('openSession+startGateway before kickoffWorkerParkAndWait');
+    }
+    if (mode == CliMatrixMode.simple) {
+      throw StateError('kickoffWorkerParkAndWait is for mixed/native cells');
+    }
+    await _submitWorkerKickoffAndAwaitPark(
+      kickoff: kickoff,
+      timeout: timeout,
+      workerBaseline: server.requestCountFor(workerScriptApiKey),
+    );
+  }
+
+  Future<void> _submitWorkerKickoffAndAwaitPark({
+    required String kickoff,
+    required Duration timeout,
+    required int workerBaseline,
+  }) async {
+    final chat = cubit;
+    final s = session;
+    final server = gateway;
+    if (chat == null || s == null || server == null) {
+      throw StateError('openSession+startGateway before worker park kickoff');
+    }
+
+    final bus = chat.sessionRuntime.busForSession(s.sessionId);
+    final mcpGateway = chat.teammateBusMcpGateway;
+    final parked = waitUntilWorkerParked(
+      bus: bus,
+      gateway: mcpGateway,
+      sessionId: s.sessionId,
+      memberId: kMatrixWorkerMemberId,
+      timeout: timeout,
+    );
+
+    chat.selectMember(kMatrixWorkerMemberId);
+    final worker = chat.currentSession;
+    if (worker == null) {
+      throw StateError(
+        'worker shell missing before kickoff\n${diagnosticsBundle()}',
+      );
+    }
+    await worker.input.submitFullScreenInput(kickoff);
+    await drainPendingAsyncWork(rounds: 10);
+    await postFrame?.flush();
+
+    final deadline = DateTime.now().add(timeout);
+    var workerHit = false;
+    while (DateTime.now().isBefore(deadline)) {
+      if (server.requestCountFor(workerScriptApiKey) > workerBaseline) {
+        workerHit = true;
+        break;
+      }
+      await drainPendingAsyncWork();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    if (!workerHit) {
+      throw StateError(
+        'Worker never hit mock API after kickoff '
+        '(expected $workerScriptApiKey request)\n'
+        '${diagnosticsBundle(memberId: kMatrixWorkerMemberId)}',
+      );
+    }
+    await parked;
+    await drainPendingAsyncWork(rounds: 5);
+    await postFrame?.flush();
+  }
+
+  /// Asserts TeamBus ping (lead→worker) then pong (worker→lead).
+  Future<void> waitForBusPingPong({
+    Duration timeout = const Duration(seconds: 120),
+  }) async {
+    final s = session;
+    if (s == null) {
+      throw StateError('openSession before waitForBusPingPong');
+    }
+    final root = AppStorage.paths.basePath;
+    final workerPing = await waitForBusMail(
+      teampilotRoot: root,
+      workspaceId: s.workspaceId,
+      sessionId: s.sessionId,
+      memberId: kMatrixWorkerMemberId,
+      timeout: timeout,
+      where: (row) =>
+          row['from'] == kMatrixLeadMemberId && row['content'] == 'ping',
+    );
+    if (!workerPing) {
+      await dumpBusMailDiagnostics(
+        teampilotRoot: root,
+        workspaceId: s.workspaceId,
+        sessionId: s.sessionId,
+        memberIds: const [kMatrixLeadMemberId, kMatrixWorkerMemberId],
+      );
+      throw StateError(
+        'Timed out waiting for worker mail: ping from $kMatrixLeadMemberId\n'
+        '${diagnosticsBundle()}',
+      );
+    }
+
+    final leaderPong = await waitForBusMail(
+      teampilotRoot: root,
+      workspaceId: s.workspaceId,
+      sessionId: s.sessionId,
+      memberId: kMatrixLeadMemberId,
+      timeout: timeout,
+      where: (row) =>
+          row['from'] == kMatrixWorkerMemberId && row['content'] == 'pong',
+    );
+    if (!leaderPong) {
+      await dumpBusMailDiagnostics(
+        teampilotRoot: root,
+        workspaceId: s.workspaceId,
+        sessionId: s.sessionId,
+        memberIds: const [kMatrixLeadMemberId, kMatrixWorkerMemberId],
+      );
+      throw StateError(
+        'Timed out waiting for lead mail: pong from $kMatrixWorkerMemberId\n'
         '${diagnosticsBundle()}',
       );
     }
@@ -685,6 +902,18 @@ final class CliMessageMatrixHarness {
                 'mailbox Queued snapshot missing mailId=$mailId\n'
                 '${diagnosticsBundle()}',
               );
+            }
+            // Mirror SessionChatView strip: promote when bus marks mail read.
+            final chat = cubit;
+            final s = session;
+            final bus = (chat != null && s != null)
+                ? chat.sessionRuntime.busForSession(s.sessionId)
+                : null;
+            final stillUnread =
+                bus?.isUnread(composeMemberId, mailId) ?? true;
+            if (!stillUnread && mailboxQueued.any((m) => m.id == mailId)) {
+              promoteMailboxConsumed(mailId);
+              continue;
             }
             throw TestFailure(
               'mailbox sticky not ready yet (mail still Queued or unconsumed)',
