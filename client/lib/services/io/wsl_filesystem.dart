@@ -40,15 +40,31 @@ class WslFilesystem implements Filesystem {
 
   @override
   Future<FsStat> stat(String path) async {
-    final result = await _run(['stat', '-c', '%F', '--', path]);
+    // Pipe-delimited so file-type names with spaces parse cleanly.
+    final result = await _run(['stat', '-c', '%F|%s|%Y', '--', path]);
     if (result.exitCode != 0) return const FsStat(kind: FsEntityKind.notFound);
-    return switch ((result.stdout as String).trim()) {
-      'directory' => const FsStat(kind: FsEntityKind.directory),
-      'regular file' ||
-      'regular empty file' => const FsStat(kind: FsEntityKind.file),
-      'symbolic link' => const FsStat(kind: FsEntityKind.symlink),
-      _ => const FsStat(kind: FsEntityKind.notFound),
+    final parts = (result.stdout as String).trim().split('|');
+    if (parts.length < 3) {
+      return const FsStat(kind: FsEntityKind.notFound);
+    }
+    final kind = switch (parts[0]) {
+      'directory' => FsEntityKind.directory,
+      'regular file' || 'regular empty file' => FsEntityKind.file,
+      'symbolic link' => FsEntityKind.symlink,
+      _ => FsEntityKind.notFound,
     };
+    if (kind == FsEntityKind.notFound) {
+      return const FsStat(kind: FsEntityKind.notFound);
+    }
+    final size = int.tryParse(parts[1]);
+    final mtimeSec = int.tryParse(parts[2]);
+    return FsStat(
+      kind: kind,
+      size: size,
+      mtime: mtimeSec != null
+          ? DateTime.fromMillisecondsSinceEpoch(mtimeSec * 1000)
+          : null,
+    );
   }
 
   @override

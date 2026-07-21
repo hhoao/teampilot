@@ -57,15 +57,31 @@ class RemoteFileStore {
   }
 
   Future<FsEntityKind> statKind(String path) async {
+    return (await stat(path)).kind;
+  }
+
+  /// Full [FsStat] including size/mtime from SFTP attrs when available.
+  Future<FsStat> stat(String path) async {
     try {
       final sftp = await _ensureConnected();
       final resolved = await expandHome(path);
       final attrs = await sftp.stat(resolved);
-      if (attrs.isDirectory) return FsEntityKind.directory;
-      if (attrs.isSymbolicLink) return FsEntityKind.symlink;
-      return FsEntityKind.file;
+      final kind = attrs.isDirectory
+          ? FsEntityKind.directory
+          : attrs.isSymbolicLink
+          ? FsEntityKind.symlink
+          : FsEntityKind.file;
+      return FsStat(
+        kind: kind,
+        size: attrs.size,
+        mtime: attrs.modifyTime != null
+            ? DateTime.fromMillisecondsSinceEpoch(attrs.modifyTime! * 1000)
+            : null,
+      );
     } on SftpStatusError catch (e) {
-      if (e.code == SftpStatusCode.noSuchFile) return FsEntityKind.notFound;
+      if (e.code == SftpStatusCode.noSuchFile) {
+        return const FsStat(kind: FsEntityKind.notFound);
+      }
       rethrow;
     }
   }

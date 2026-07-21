@@ -16,8 +16,7 @@ class SftpFilesystem implements Filesystem {
   Future<FsStat> stat(String path) async {
     if (path.trim().isEmpty) return const FsStat(kind: FsEntityKind.notFound);
     try {
-      final kind = await store.statKind(path);
-      return FsStat(kind: kind);
+      return await store.stat(path);
     } on Object {
       return const FsStat(kind: FsEntityKind.notFound);
     }

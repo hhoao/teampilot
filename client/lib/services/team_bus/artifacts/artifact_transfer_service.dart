@@ -335,8 +335,17 @@ class ArtifactTransferService {
     }
 
     final partialStat = await destFs.stat(partial);
-    final partialLength =
-        partialStat.exists && partialStat.isFile ? (partialStat.size ?? 0) : 0;
+    // Prefer real size when the backend reports it. When size is unknown
+    // (legacy SFTP/WSL kind-only stat) but the partial file exists, trust
+    // meta.bytesWritten so resume is not forced into a full restart.
+    final int partialLength;
+    if (!partialStat.exists || !partialStat.isFile) {
+      partialLength = 0;
+    } else if (partialStat.size != null) {
+      partialLength = partialStat.size!;
+    } else {
+      partialLength = meta.bytesWritten;
+    }
 
     if (meta.matchesLive(
       artifactName: handle.name,
