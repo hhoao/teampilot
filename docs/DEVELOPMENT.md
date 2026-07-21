@@ -148,6 +148,10 @@ Claude Code skips the interactive "use this API key?" gate on first launch.
 (auth is Cursor cloud only). Do not expect green Cursor matrix cells until a
 public redirect exists; spike notes live on `CliTestProfile` for `CliTool.cursor`.
 
+**Completion status (2026-07-22, `feat/mock-model-gateway-cli-matrix`):** see
+[MATRIX.md](MATRIX.md) — claude/flashskyai all green; codex/opencode
+simple+mixed green (native N/A); cursor simple+mixed BLOCKED.
+
 **L3 (local lead + Docker SSH worker, full ChatCubit + remote preflight):**
 
 ```bash
