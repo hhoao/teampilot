@@ -71,31 +71,41 @@ class _MyExpertsCardState extends State<MyExpertsCard> {
               children: [
                 TeamHubCardHeader(
                   title: member.name,
-                  trailing: PopupMenuButton<MyExpertsCardAction>(
+                  trailing: TpActionMenuButton(
                     key: Key('my-experts-overflow-${member.key}'),
-                    onSelected: widget.onAction,
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: MyExpertsCardAction.edit,
-                        child: Text(l10n.myExpertsEdit),
-                      ),
-                      PopupMenuItem(
-                        value: MyExpertsCardAction.upload,
-                        child: Text(l10n.myExpertsUpload),
-                      ),
-                      PopupMenuItem(
-                        value: MyExpertsCardAction.addToTeam,
-                        child: Text(l10n.expertHubAddToTeam),
-                      ),
-                      PopupMenuItem(
-                        value: MyExpertsCardAction.delete,
-                        child: Text(l10n.myExpertsDelete),
-                      ),
-                    ],
                     icon: Icon(
                       Icons.more_vert,
                       size: context.tpIconSizes.md,
                     ),
+                    size: TpIconButton.kCompactSize,
+                    specs: [
+                      TpActionMenuSpec.item(
+                        value: MyExpertsCardAction.edit,
+                        icon: Icons.edit_outlined,
+                        label: l10n.myExpertsEdit,
+                      ),
+                      TpActionMenuSpec.item(
+                        value: MyExpertsCardAction.upload,
+                        icon: Icons.upload_outlined,
+                        label: l10n.myExpertsUpload,
+                      ),
+                      TpActionMenuSpec.item(
+                        value: MyExpertsCardAction.addToTeam,
+                        icon: Icons.group_add_outlined,
+                        label: l10n.expertHubAddToTeam,
+                      ),
+                      TpActionMenuSpec.item(
+                        value: MyExpertsCardAction.delete,
+                        icon: Icons.delete_outline,
+                        label: l10n.myExpertsDelete,
+                        destructive: true,
+                      ),
+                    ],
+                    onSelected: (value) {
+                      if (value is MyExpertsCardAction) {
+                        widget.onAction(value);
+                      }
+                    },
                   ),
                 ),
                 const SizedBox(height: 10),

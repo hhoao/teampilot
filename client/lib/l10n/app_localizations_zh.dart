@@ -3420,6 +3420,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get githubAdvancedPat => '使用个人访问令牌';
 
   @override
+  String get githubAdvancedPatSubtitle => '无法使用 GitHub 登录时，或你更想用带 repo 权限的令牌时。';
+
+  @override
   String get githubNetworkError => '无法连接 GitHub，请重试。';
 
   @override

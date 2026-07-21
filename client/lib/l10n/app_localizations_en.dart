@@ -3546,6 +3546,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get githubAdvancedPat => 'Use a personal access token';
 
   @override
+  String get githubAdvancedPatSubtitle =>
+      'When GitHub sign-in is unavailable, or you prefer a token with repo scope.';
+
+  @override
   String get githubNetworkError => 'Could not reach GitHub. Try again.';
 
   @override

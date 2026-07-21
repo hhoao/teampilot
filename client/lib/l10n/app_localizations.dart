@@ -6411,6 +6411,12 @@ abstract class AppLocalizations {
   /// **'Use a personal access token'**
   String get githubAdvancedPat;
 
+  /// No description provided for @githubAdvancedPatSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'When GitHub sign-in is unavailable, or you prefer a token with repo scope.'**
+  String get githubAdvancedPatSubtitle;
+
   /// No description provided for @githubNetworkError.
   ///
   /// In en, this message translates to:

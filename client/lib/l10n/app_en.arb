@@ -1630,6 +1630,7 @@
   "githubAuthDenied": "GitHub authorization cancelled",
   "githubAuthExpiredRetry": "Authorization expired. Try again.",
   "githubAdvancedPat": "Use a personal access token",
+  "githubAdvancedPatSubtitle": "When GitHub sign-in is unavailable, or you prefer a token with repo scope.",
   "githubNetworkError": "Could not reach GitHub. Try again.",
   "hubPublishExpertTitle": "Publish expert to Hub",
   "hubPublishTeamTitle": "Publish team to Hub",

@@ -65,28 +65,37 @@ class _GithubDeviceFlowPanelState extends State<GithubDeviceFlowPanel> {
         }
 
         if (widget.showAdvancedPat) {
+          // Same pattern as member-config “Advanced”: preference title +
+          // subtitle disclosure, then a TpPreferenceStack field (no ExpansionTile).
           children.addAll([
             const SizedBox(height: 8),
-            ExpansionTile(
-              title: Text(l10n.githubAdvancedPat),
+            TpDisclosure(
+              title: l10n.githubAdvancedPat,
+              subtitle: l10n.githubAdvancedPatSubtitle,
+              tilePadding: const EdgeInsets.symmetric(vertical: 12),
               children: [
-                TextField(
-                  key: const Key('github-pat-field'),
-                  controller: _patController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: l10n.githubAdvancedPat,
+                TpPreferenceStack(
+                  title: l10n.hubPublishTokenLabel,
+                  padding: EdgeInsets.zero,
+                  showDividerBelow: false,
+                  body: TextField(
+                    key: const Key('github-pat-field'),
+                    controller: _patController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      hintText: l10n.hubPublishTokenHint,
+                    ),
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (value) => _savePat(context, value),
                   ),
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (value) => _savePat(context, value),
-                ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TpButton(
-                    variant: TpButtonVariant.primary,
-                    onPressed: () => _savePat(context, _patController.text),
-                    child: Text(l10n.save),
+                  helper: Align(
+                    alignment: Alignment.centerLeft,
+                    child: TpButton(
+                      variant: TpButtonVariant.primary,
+                      onPressed: () =>
+                          _savePat(context, _patController.text),
+                      child: Text(l10n.save),
+                    ),
                   ),
                 ),
               ],
