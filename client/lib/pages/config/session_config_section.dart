@@ -264,8 +264,8 @@ class _SessionControlsState extends State<_SessionControls> {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
-                  title: l10n.historySubmitSwitchesToTerminalTitle,
-                  subtitle: l10n.historySubmitSwitchesToTerminalDescription,
+                  title: l10n.chatSubmitSwitchesToTerminalTitle,
+                  subtitle: l10n.chatSubmitSwitchesToTerminalDescription,
                   trailing: Switch(
                     key: AppKeys.chatSubmitSwitchesToTerminalSwitch,
                     value: snapshot.chatSubmitSwitchesToTerminal,

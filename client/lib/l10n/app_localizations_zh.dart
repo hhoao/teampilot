@@ -1239,10 +1239,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiMessageShowLess => '收起';
 
   @override
-  String get sessionWorkbenchShowTerminal => '显示终端';
+  String get sessionWorkbenchShowChat => '显示聊天';
 
   @override
-  String get sessionWorkbenchShowHistory => '显示历史';
+  String get sessionWorkbenchShowTerminal => '显示终端';
 
   @override
   String get sessionReadyTitle => '准备开始对话';
@@ -2118,11 +2118,11 @@ class AppLocalizationsZh extends AppLocalizations {
       '开启后，从侧边栏打开对话会立即连接终端。关闭（默认）时先显示历史回顾面板，在输入框发送后才启动终端。';
 
   @override
-  String get historySubmitSwitchesToTerminalTitle => '继续后切换到终端';
+  String get chatSubmitSwitchesToTerminalTitle => '发送后切换到终端';
 
   @override
-  String get historySubmitSwitchesToTerminalDescription =>
-      '关闭（默认）时，从历史回顾提交后仍留在对话视图，终端在后台运行并刷新转录。开启后，提交后切换到终端（旧行为）。';
+  String get chatSubmitSwitchesToTerminalDescription =>
+      '关闭（默认）时，在聊天页发送（新建或继续）后仍留在聊天视图，终端在后台运行。开启后，发送后切换到终端。';
 
   @override
   String get simpleModeDefaultFullAccessTitle => '简单模式默认：完全访问';

@@ -2432,17 +2432,17 @@ abstract class AppLocalizations {
   /// **'Show less'**
   String get aiMessageShowLess;
 
+  /// No description provided for @sessionWorkbenchShowChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Chat'**
+  String get sessionWorkbenchShowChat;
+
   /// No description provided for @sessionWorkbenchShowTerminal.
   ///
   /// In en, this message translates to:
-  /// **'Show terminal'**
+  /// **'Show Terminal'**
   String get sessionWorkbenchShowTerminal;
-
-  /// No description provided for @sessionWorkbenchShowHistory.
-  ///
-  /// In en, this message translates to:
-  /// **'Show history'**
-  String get sessionWorkbenchShowHistory;
 
   /// No description provided for @sessionReadyTitle.
   ///
@@ -4076,17 +4076,17 @@ abstract class AppLocalizations {
   /// **'When enabled, opening a conversation from the sidebar connects the terminal immediately. When off (default), open the history review panel first; submit from compose to start the terminal.'**
   String get openExistingSessionStartsTerminalDescription;
 
-  /// No description provided for @historySubmitSwitchesToTerminalTitle.
+  /// No description provided for @chatSubmitSwitchesToTerminalTitle.
   ///
   /// In en, this message translates to:
-  /// **'Switch to Terminal after continue'**
-  String get historySubmitSwitchesToTerminalTitle;
+  /// **'Switch to Terminal after Chat send'**
+  String get chatSubmitSwitchesToTerminalTitle;
 
-  /// No description provided for @historySubmitSwitchesToTerminalDescription.
+  /// No description provided for @chatSubmitSwitchesToTerminalDescription.
   ///
   /// In en, this message translates to:
-  /// **'When off (default), submitting from History keeps the conversation view and refreshes from the transcript while the terminal runs in the background. When on, switch to the terminal after submit (previous behavior).'**
-  String get historySubmitSwitchesToTerminalDescription;
+  /// **'When off (default), sending from Chat (new conversation or continue) stays on the Chat view while the terminal runs in the background. When on, switch to the Terminal after send.'**
+  String get chatSubmitSwitchesToTerminalDescription;
 
   /// No description provided for @simpleModeDefaultFullAccessTitle.
   ///

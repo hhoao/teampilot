@@ -53,7 +53,7 @@ class SessionWorkbenchViewToggle extends StatelessWidget {
           : Icons.history_rounded,
       tooltip: showingChat
           ? l10n.sessionWorkbenchShowTerminal
-          : l10n.sessionWorkbenchShowHistory,
+          : l10n.sessionWorkbenchShowChat,
       color: cs.onSurfaceVariant,
       onTap: () => unawaited(
         _toggle(
