@@ -6,6 +6,9 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/bus_transport_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/terminal/terminal_session.dart';
+
+import 'cli_test_profile_claude_boot.dart';
 
 /// Wire protocol the mock gateway should speak for a CLI matrix cell.
 enum CliTestWire {
@@ -146,8 +149,14 @@ abstract final class CliTestProfiles {
     resolveBinary: () => whichOnPath('claude'),
     toolName: mapMcpPrefixedToolRef,
     assistantVisibleMarkers: const [markA1, markA2, markA3],
-    bootToPrompt: bootToPromptStub,
-    dismissBootGates: dismissBootGatesStub,
+    bootToPrompt: (session) async {
+      if (session is! TerminalSession) return false;
+      return bootClaudeToPrompt(session);
+    },
+    dismissBootGates: (session) async {
+      if (session is! TerminalSession) return;
+      await dismissClaudeBootGates(session);
+    },
     fullscreenDeliverNotes:
         'Fullscreen paste + grid ACK (ClaudeTerminalBehavior).',
     gatewayRedirectNotes:

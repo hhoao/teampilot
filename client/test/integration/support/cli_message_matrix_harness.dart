@@ -349,15 +349,25 @@ final class CliMessageMatrixHarness {
         ws.workspaceId,
         cli: profile.tool,
         provider: kMatrixSimpleProviderId,
+        // High effort can issue multiple Anthropic calls per user message
+        // (adaptive thinking), burning scripted TextTurns.
+        effort: 'low',
       );
       session = created;
-      await chat.requestOpenSession(
+      final status = await chat.requestOpenSession(
         SessionOpenRequest(
           session: created,
+          workspace: ws,
           repo: repo,
           connectImmediately: connectImmediately,
         ),
       );
+      if (status != SessionOpenStatus.opened) {
+        throw StateError(
+          'requestOpenSession failed for simple cell: $status '
+          '(workspaceId=${ws.workspaceId})',
+        );
+      }
     } else {
       final builtTeam = buildHomogeneousTeam();
       // Homogeneous: every member CLI matches the matrix row.
@@ -393,6 +403,44 @@ final class CliMessageMatrixHarness {
     await drainPendingAsyncWork();
     await postFrame?.flush();
     return created;
+  }
+
+  /// Dismisses boot gates then waits until [CliTestProfile.bootToPrompt].
+  Future<void> bootComposeSeatToPrompt({
+    Duration timeout = const Duration(seconds: 90),
+  }) async {
+    final mid = composeMemberId;
+    final deadline = DateTime.now().add(timeout);
+    TerminalSession? shell;
+    while (DateTime.now().isBefore(deadline)) {
+      await postFrame?.flush();
+      await drainPendingAsyncWork();
+      shell = memberShell(mid);
+      if (shell != null && (shell.isRunning || shell.isConnecting)) break;
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    if (shell == null || (!shell.isRunning && !shell.isConnecting)) {
+      final chat = cubit;
+      final tab = chat?.activeTab;
+      throw StateError(
+        'No TerminalSession for compose seat member=$mid '
+        'activeSession=${chat?.state.activeSessionId} '
+        'selected=${chat?.state.selectedMemberId} '
+        'launchError=${chat?.state.sessionLaunchError} '
+        'tabLaunchError=${tab?.info.launchError} '
+        'shellKeys=${tab?.memberShells.keys.toList()} '
+        'isRunning=${chat?.isMemberRunning(mid)}\n'
+        '${diagnosticsBundle()}',
+      );
+    }
+    await profile.dismissBootGates(shell);
+    final ok = await profile.bootToPrompt(shell);
+    if (!ok) {
+      throw StateError(
+        'bootToPrompt failed for ${profile.tool.value}\n'
+        '${diagnosticsBundle()}',
+      );
+    }
   }
 
   /// Loads History for the compose seat (production [AiHistoryCubit.load]).
