@@ -41,7 +41,7 @@ After submit from either state, **default stays on Chat**. Terminal only if the 
 | Key | Default | Behavior |
 |-----|---------|----------|
 | `chatSubmitSwitchesToTerminal` | `false` | When `true`, Chat **submit** (unbound create+send **or** bound continue) switches workbench to Terminal. When `false`, keep Chat (`preserveWorkbenchView: true` on open/connect). Replaces the old history-only gate; unbound landing send previously always forced Terminal. Does not apply to silent create-without-message. |
-| `openExistingSessionStartsTerminal` | `false` (unchanged) | Sidebar / deep-link open of an **existing** session: connect + Terminal when on; Chat review when off. |
+| `openExistingSessionStartsTerminal` | `false` (unchanged) | Sidebar / deep-link open of an **existing** session: connect + Terminal when on; Chat when off. |
 
 Settings UI: one row for `chatSubmitSwitchesToTerminal` next to the existing open-existing terminal toggle. Do not keep a separate landing-only or history-only switch.
 
@@ -71,7 +71,7 @@ Workbench toggle: Chat ↔ Terminal (icons/tooltips updated).
 2. `preserveWorkbenchView: !chatSubmitSwitchesToTerminal`.
 3. Live transcript refresh while PTY runs offstage when staying on Chat.
 
-**Create without message** (sidebar new chat / worktree helpers that only open a session): still create+connect (PTY starts), but workbench opens on **Chat** — do not force Terminal. `chatSubmitSwitchesToTerminal` does **not** apply here (no message submit); user switches to Terminal manually if needed.
+**Create without message** (sidebar new chat / worktree helpers that only open a session): still create+connect (PTY starts), but workbench opens on **Chat** — pass `preserveWorkbenchView: true` on the create/open path (or equivalent: do not set Terminal in `SessionTabSurfaceCoordinator`). `chatSubmitSwitchesToTerminal` does **not** apply here (no message submit); user switches to Terminal manually if needed.
 
 ### Automations / internal materialize
 
