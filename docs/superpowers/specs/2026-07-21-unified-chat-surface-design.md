@@ -40,7 +40,7 @@ After submit from either state, **default stays on Chat**. Terminal only if the 
 
 | Key | Default | Behavior |
 |-----|---------|----------|
-| `chatSubmitSwitchesToTerminal` | `false` | When `true`, Chat submit (unbound create+send **or** bound continue) switches workbench to Terminal. When `false`, keep Chat (`preserveWorkbenchView: true` on open/connect). |
+| `chatSubmitSwitchesToTerminal` | `false` | When `true`, Chat **submit** (unbound create+send **or** bound continue) switches workbench to Terminal. When `false`, keep Chat (`preserveWorkbenchView: true` on open/connect). Replaces the old history-only gate; unbound landing send previously always forced Terminal. Does not apply to silent create-without-message. |
 | `openExistingSessionStartsTerminal` | `false` (unchanged) | Sidebar / deep-link open of an **existing** session: connect + Terminal when on; Chat review when off. |
 
 Settings UI: one row for `chatSubmitSwitchesToTerminal` next to the existing open-existing terminal toggle. Do not keep a separate landing-only or history-only switch.
@@ -71,7 +71,7 @@ Workbench toggle: Chat ↔ Terminal (icons/tooltips updated).
 2. `preserveWorkbenchView: !chatSubmitSwitchesToTerminal`.
 3. Live transcript refresh while PTY runs offstage when staying on Chat.
 
-**Create without message** (sidebar new chat / worktree helpers that only open a session): still create+connect as today; default workbench view is Chat unless a future plan changes that path. This spec’s submit preference applies only to **Chat submit** (message send), not silent create.
+**Create without message** (sidebar new chat / worktree helpers that only open a session): still create+connect (PTY starts), but workbench opens on **Chat** — do not force Terminal. `chatSubmitSwitchesToTerminal` does **not** apply here (no message submit); user switches to Terminal manually if needed.
 
 ### Automations / internal materialize
 
@@ -90,6 +90,7 @@ No change to automation connect semantics or headless materialize. Workbench vie
 - Unbound submit → create, deliver, stay on Chat when preference false
 - Bound continue → connect, deliver, stay on Chat when preference false
 - Preference true → both submit paths switch to Terminal
+- Create without message → create+connect, land on Chat (preference ignored)
 - Open existing session still respects `openExistingSessionStartsTerminal`
 - Rename sweep: unit tests, keys, l10n for workbench toggle and settings row
 - Overlay: Chat stays mounted during continue connect (same rule as former History overlay)
