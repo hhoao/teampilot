@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:teampilot/models/team_config.dart';
 
 @immutable
 class SessionMemberBinding {
@@ -6,6 +7,7 @@ class SessionMemberBinding {
     required this.rosterMemberId,
     required this.taskId,
     String? typeId,
+    this.cli,
     this.nativeSessionIds = const {},
   }) : typeId = typeId ?? rosterMemberId;
 
@@ -22,6 +24,7 @@ class SessionMemberBinding {
       rosterMemberId: instanceId,
       taskId: json['taskId'] as String? ?? '',
       typeId: json['typeId'] as String? ?? instanceId,
+      cli: CliTool.tryParse(json['cli'] as String?),
       nativeSessionIds: native,
     );
   }
@@ -32,6 +35,9 @@ class SessionMemberBinding {
   /// The member **type** this instance belongs to (the routing key).
   final String typeId;
   final String taskId;
+
+  /// Session-pinned CLI for this member. Null on legacy bindings.
+  final CliTool? cli;
 
   /// CLI-native resume ids keyed by [CliTool.value]. Empty for `clientPinned`
   /// CLIs (claude/flashskyai), where the native id equals [taskId]. Holds the
@@ -49,6 +55,7 @@ class SessionMemberBinding {
       rosterMemberId: rosterMemberId,
       taskId: taskId,
       typeId: typeId,
+      cli: cli,
       nativeSessionIds: {...nativeSessionIds, tool: id},
     );
   }
@@ -57,6 +64,7 @@ class SessionMemberBinding {
     'rosterMemberId': rosterMemberId,
     if (typeId != rosterMemberId) 'typeId': typeId,
     'taskId': taskId,
+    if (cli != null) 'cli': cli!.value,
     if (nativeSessionIds.isNotEmpty) 'nativeSessionIds': nativeSessionIds,
   };
 
@@ -68,6 +76,7 @@ class SessionMemberBinding {
             rosterMemberId == other.rosterMemberId &&
             typeId == other.typeId &&
             taskId == other.taskId &&
+            cli == other.cli &&
             mapEquals(nativeSessionIds, other.nativeSessionIds);
   }
 
@@ -76,6 +85,7 @@ class SessionMemberBinding {
     rosterMemberId,
     typeId,
     taskId,
+    cli,
     Object.hashAll(
       nativeSessionIds.entries.map((e) => Object.hash(e.key, e.value)),
     ),

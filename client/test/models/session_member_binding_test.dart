@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/session_member_binding.dart';
+import 'package:teampilot/models/team_config.dart';
 
 void main() {
   test('typeId round-trips; defaults to the instance id when absent', () {
@@ -19,5 +20,26 @@ void main() {
       'taskId': 't2',
     });
     expect(legacy.typeId, 'reviewer');
+  });
+
+  test('cli round-trips; absent key is null', () {
+    const withCli = SessionMemberBinding(
+      rosterMemberId: 'team-lead',
+      taskId: 't1',
+      cli: CliTool.claude,
+    );
+    final back = SessionMemberBinding.fromJson(withCli.toJson());
+    expect(back.cli, CliTool.claude);
+    expect(withCli.toJson()['cli'], 'claude');
+
+    final legacy = SessionMemberBinding.fromJson({
+      'rosterMemberId': 'team-lead',
+      'taskId': 't2',
+    });
+    expect(legacy.cli, isNull);
+
+    final kept = withCli.withNativeSessionId('cursor', 'native-1');
+    expect(kept.cli, CliTool.claude);
+    expect(kept.nativeSessionIds['cursor'], 'native-1');
   });
 }
