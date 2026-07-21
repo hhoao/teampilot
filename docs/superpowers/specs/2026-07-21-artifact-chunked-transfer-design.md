@@ -41,12 +41,23 @@ fetch_artifact
   → resolve inbox dest
   → same-machine? copyFile (discard stale partials) → done
   → else open/resume {dest}.tp-partial + meta
-  → loop: readBytesRange(src) → appendBytes(partial) → update meta
+  → if partial already complete (bytesWritten matches known size) → rename only
+  → else loop chunks until done
   → rename partial → dest; delete meta
 ```
 
 Default chunk size: **4 MiB** (configurable on the service; bounds peak memory
 only).
+
+### Chunk loop termination
+
+- If `expectedSizeBytes` / live `stat.size` is known: stop when
+  `bytesWritten == size`.
+- If size is unknown: stop when `readBytesRange` returns fewer than
+  `chunkSize` bytes (EOF), including an empty read at `offset == EOF`.
+- After the payload is complete, always finish via `rename` (see failure
+  table). A retry that finds a complete partial skips the read loop and only
+  attempts rename + meta cleanup.
 
 ## Filesystem API
 
@@ -88,7 +99,8 @@ Meta fields:
 - `expectedSizeBytes` (nullable if unknown)
 - `sourceMtimeMs` (omitted if backend has no mtime)
 - `bytesWritten`
-- `chunkSize`
+- `chunkSize` (informational only — not part of resume match; a later fetch
+  may use a different configured chunk size)
 
 Extract pure match/serialize helpers (e.g. `ArtifactPartialMeta`) so tests do
 not need a full transfer.
@@ -99,6 +111,8 @@ not need a full transfer.
 2. If both meta and live `stat.size` are known, sizes equal.
 3. If both meta and live mtime are present, mtimes equal.
 4. On-disk partial length equals `bytesWritten`.
+
+`chunkSize` in meta is not matched.
 
 ### overwrite / exists
 
@@ -113,11 +127,12 @@ not need a full transfer.
 |-------|--------|
 | Mid-chunk IO / network error | Keep partial+meta; surface error to MCP |
 | Source missing / unreadable | Delete partial+meta; `ArtifactSourceUnreadableException` |
-| Source size shrunk below `bytesWritten` or identity mismatch mid-transfer | Delete partial+meta; fail with a clear size/identity-changed error |
+| Source size shrunk below `bytesWritten`, or live identity/size/mtime no longer matches meta mid-transfer | Delete partial+meta; throw new `ArtifactSourceChangedException` |
 | Successful transfer | `rename` partial → dest; delete meta |
-| Rename fails after last chunk | Keep partial+meta so retry can finish via rename/resume path |
+| Rename fails after last chunk (partial already complete) | Keep partial+meta; retry skips read loop and attempts rename again |
 
 Remove `maxBytes`, `defaultMaxBytes`, and `ArtifactTooLargeException`.
+Add `ArtifactSourceChangedException` beside the other artifact exceptions.
 
 ## Same-machine shortcut
 
@@ -140,16 +155,21 @@ wording that implies a hard size cap, if present.
 ## Testing
 
 1. `InMemoryFilesystem` range read + append.
-2. `ArtifactPartialMeta` match / mismatch matrix.
-3. `ArtifactTransferService`:
+2. Every other `Filesystem` implementer / test fake that compiles against the
+   interface (e.g. `_FakeFilesystem` in file-tree/terminal tests,
+   `ManifestFilesystem`) must gain the two new methods.
+3. `ArtifactPartialMeta` match / mismatch matrix.
+4. `ArtifactTransferService`:
    - multi-chunk happy path (file larger than chunk size)
    - interrupt then resume to completion
+   - complete-partial rename-only retry
    - mismatched meta → full restart
-   - source shrink / vanish → cleanup + error
+   - source shrink / vanish → cleanup + `ArtifactSourceChangedException` /
+     `ArtifactSourceUnreadableException`
    - overwrite behavior
    - same-machine `copyFile` path
    - remove over-cap tests
-4. Existing teammate-bus artifact MCP tool tests remain green under the new
+5. Existing teammate-bus artifact MCP tool tests remain green under the new
    transfer path.
 
 ## Out of scope follow-ups
