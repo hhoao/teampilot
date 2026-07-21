@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/expert_hub_cubit.dart';
+import '../../cubits/github_account_cubit.dart';
 import '../../cubits/mcp_cubit.dart';
 import '../../cubits/plugin_cubit.dart';
 import '../../cubits/skill_cubit.dart';
@@ -36,6 +37,13 @@ Future<void> showHubPublishWizard(
 
   final resolvedCredentials =
       credentials ??
+      (() {
+        try {
+          return context.read<GithubAccountCubit>().store;
+        } catch (_) {
+          return null;
+        }
+      }()) ??
       GithubCredentialsStore(kv: const FlutterSecureKeyValueStore());
   final resolvedLookup = lookup ?? _lookupFromContext(context);
   final resolvedRemap =

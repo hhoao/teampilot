@@ -684,6 +684,10 @@ void main() async {
                   BlocProvider.value(value: shell.extensionCubit),
                   BlocProvider.value(value: shell.appUpdateCubit),
                   BlocProvider.value(value: shell.sshProfileCubit),
+                  BlocProvider.value(value: shell.githubAccountCubit),
+                  RepositoryProvider.value(
+                    value: shell.githubCredentialsStore,
+                  ),
                   BlocProvider.value(value: shell.cliPresetsCubit),
                   BlocProvider.value(value: shell.aiFeatureSettingsCubit),
                   BlocProvider.value(value: shell.shortcutCubit),

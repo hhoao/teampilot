@@ -94,6 +94,7 @@ class GithubAccountCubit extends Cubit<GithubAccountState> {
       'GitHub sign-in is unavailable in this build. Use a personal access token.';
 
   final GithubCredentialsStore _store;
+  GithubCredentialsStore get store => _store;
   final GithubDeviceFlowAuth? _deviceFlow;
   final Future<void> Function(Uri uri) _openUrl;
   final Future<String> Function(String token) _fetchLogin;

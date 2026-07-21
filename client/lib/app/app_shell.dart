@@ -51,6 +51,8 @@ import '../cubits/skill_cubit.dart';
 import '../repositories/mcp_repository.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
 import '../cubits/ssh_profile_cubit.dart';
+import '../cubits/github_account_cubit.dart';
+import '../config/github_oauth_config.dart';
 import '../cubits/launch_profile_cubit.dart';
 import '../cubits/team_hub_cubit.dart';
 import '../cubits/expert_hub_cubit.dart';
@@ -128,7 +130,11 @@ import '../services/skill/skill_manifest_service.dart';
 import '../services/skill/skill_repo_disk_cache_service.dart';
 import '../services/skill/skill_repo_git_service.dart';
 import '../services/skill/skill_repo_service.dart';
+import '../services/github/github_credentials_store.dart';
+import '../services/github/github_device_flow_auth.dart';
+import '../services/hub_publish/http_github_api_client.dart';
 import '../services/ssh/ssh_client_factory.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/ssh/ssh_connection_events.dart';
 import '../widgets/ssh/ssh_host_key_prompt_dialog.dart';
 import '../services/ssh/ssh_profile_connection_coordinator.dart';
@@ -200,6 +206,8 @@ class AppShell {
     required this.extensionCubit,
     required this.appUpdateCubit,
     required this.sshProfileCubit,
+    required this.githubCredentialsStore,
+    required this.githubAccountCubit,
     required this.appSettings,
     required this.aiFeatureSettingsCubit,
     required this.reinstallStorageContext,
@@ -268,6 +276,8 @@ class AppShell {
   final ExtensionCubit extensionCubit;
   final AppUpdateCubit appUpdateCubit;
   final SshProfileCubit sshProfileCubit;
+  final GithubCredentialsStore githubCredentialsStore;
+  final GithubAccountCubit githubAccountCubit;
   final AppSettingsRepository appSettings;
   final AiFeatureSettingsCubit aiFeatureSettingsCubit;
   final Future<void> Function() reinstallStorageContext;
@@ -417,6 +427,29 @@ Future<AppShell> buildAppShell({
       await reloadAllAppData();
     },
   );
+
+  final githubCredentialsStore = GithubCredentialsStore(
+    kv: const FlutterSecureKeyValueStore(),
+  );
+  final githubDeviceFlow = githubDeviceFlowAvailable
+      ? GithubDeviceFlowAuth(clientId: githubOauthClientId)
+      : null;
+  final githubAccountCubit = GithubAccountCubit(
+    store: githubCredentialsStore,
+    deviceFlow: githubDeviceFlow,
+    openUrl: (uri) async {
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok) throw StateError('Could not launch $uri');
+    },
+    fetchLogin: (token) async {
+      final user = await HttpGithubApiClient().getAuthenticatedUser(
+        token: token,
+      );
+      return user.login;
+    },
+    deviceFlowAvailable: githubDeviceFlowAvailable,
+  );
+  unawaited(githubAccountCubit.hydrate());
 
   // P1: targets.json is a pure target catalog (no default/migrate); the home
   // target authority is the device-local homeTargetStore read above. The
@@ -1168,6 +1201,8 @@ Future<AppShell> buildAppShell({
     extensionCubit: extensionCubit,
     appUpdateCubit: appUpdateCubit,
     sshProfileCubit: sshProfileCubit,
+    githubCredentialsStore: githubCredentialsStore,
+    githubAccountCubit: githubAccountCubit,
     appSettings: appSettings,
     aiFeatureSettingsCubit: aiFeatureSettingsCubit,
     reinstallStorageContext: reinstallStorageContext,
