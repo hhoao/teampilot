@@ -17,6 +17,7 @@ import '../cubits/workbench/workbench_cubit.dart';
 import '../cubits/workbench/workbench_tab.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
+import '../models/workspace.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
@@ -587,6 +588,14 @@ class _ChatWorkbenchBody extends StatelessWidget {
 
     return SessionChatView(
       session: appSession,
+      workspace: chatCubit.state.workspaces
+              .where((w) => w.workspaceId == workspaceId)
+              .firstOrNull ??
+          Workspace(
+            workspaceId: workspaceId,
+            folders: appSession.folders,
+            createdAt: 0,
+          ),
       selectedMemberId: historyMemberId,
       team: resolvedTeam,
       launchError: launchError,

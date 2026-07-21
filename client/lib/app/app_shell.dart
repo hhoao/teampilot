@@ -481,6 +481,9 @@ Future<AppShell> buildAppShell({
         Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'],
     nativeCwd: defaultWorkspaceDirectory,
   );
+  // Late holder: registry is created before AiHistoryLoader; onEvict clears
+  // history memory cache when a work-plane target is disposed.
+  AiHistoryLoader? aiHistoryLoaderRef;
   final runtimeContextRegistry = RuntimeContextRegistry(
     resolver: runtimeContextResolver,
     homeTarget: defaultTargetResolver(),
@@ -488,6 +491,8 @@ Future<AppShell> buildAppShell({
     onEvict: (targetId) async {
       final pid = sshProfileIdOfId(targetId);
       if (pid != null) sshClientFactory.disconnectProfile(pid);
+      // v1: clear all history memory cache on work-plane drop.
+      aiHistoryLoaderRef?.clearCache();
     },
   );
   boot('installing home runtime context');
@@ -986,11 +991,14 @@ Future<AppShell> buildAppShell({
 
   final aiHistoryLoader = AiHistoryLoader(
     contextBuilder: const SessionHistoryContextBuilder(),
-    fs: () => AppStorage.fs,
-    layout: () => AppStorage.context.layout,
-    appDataRoot: () => AppStorage.appDataRoot,
+    resolveWorkContext: (launchCtx, {String? memberId}) =>
+        sessionLifecycleService.launchWorkContext(
+          launchCtx,
+          memberId: memberId,
+        ),
     globalPresets: () => cliPresetsCubit.state.presets,
   );
+  aiHistoryLoaderRef = aiHistoryLoader;
   final aiHistoryCubit = AiHistoryCubit(loader: aiHistoryLoader);
   chatCubit.onSessionHistoryStale = (sessionId) {
     unawaited(aiHistoryCubit.softReloadIfSession(sessionId));

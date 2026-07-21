@@ -22,6 +22,7 @@ import '../../models/config_bundle.dart';
 import '../../models/landing_launch_context.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
+import '../../models/workspace_launch_context.dart';
 import '../../repositories/workspace_project_config_repository.dart';
 import '../../services/ai/headless_ai_service.dart';
 import '../../services/cli/preset_resolver.dart';
@@ -53,6 +54,7 @@ import 'session_review_compose_card.dart';
 class SessionChatView extends StatefulWidget {
   const SessionChatView({
     required this.session,
+    required this.workspace,
     required this.selectedMemberId,
     required this.onSubmit,
     this.team,
@@ -65,6 +67,7 @@ class SessionChatView extends StatefulWidget {
   });
 
   final AppSession session;
+  final Workspace workspace;
   final String selectedMemberId;
   final TeamProfile? team;
 
@@ -155,7 +158,6 @@ class _SessionChatViewState extends State<SessionChatView> {
     );
     unawaited(_voiceInput.initialize());
     _controller.addListener(_onComposeChanged);
-    _ensureLiveRefreshController();
     _loadHistory();
     unawaited(_loadWorkspaceProjectBundle());
   }
@@ -254,11 +256,16 @@ class _SessionChatViewState extends State<SessionChatView> {
   String get _workspaceRoot {
     final work = widget.session.workDirsForMember(
       widget.selectedMemberId,
-      folders: widget.session.folders,
+      folders: _launchContext.folderCatalog,
     );
     if (work.workingDirectory.isNotEmpty) return work.workingDirectory;
     return widget.session.firstFolderPath;
   }
+
+  WorkspaceLaunchContext get _launchContext => WorkspaceLaunchContext(
+    session: widget.session,
+    workspace: widget.workspace,
+  );
 
   void _loadHistory({bool force = false}) {
     final cubit = context.read<AiHistoryCubit>();
@@ -266,6 +273,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       cubit.load(
         session: widget.session,
         memberId: widget.selectedMemberId,
+        launchContext: _launchContext,
         team: widget.team,
         workingDirectory: _workspaceRoot,
         force: true,
@@ -278,6 +286,7 @@ class _SessionChatViewState extends State<SessionChatView> {
           .softReloadOrLoad(
             session: widget.session,
             memberId: widget.selectedMemberId,
+            launchContext: _launchContext,
             team: widget.team,
             workingDirectory: _workspaceRoot,
           )
@@ -294,24 +303,8 @@ class _SessionChatViewState extends State<SessionChatView> {
     return mid;
   }
 
-  void _ensureLiveRefreshController() {
-    if (_liveRefresh != null) return;
-    final cubit = context.read<AiHistoryCubit>();
-    _liveRefresh = AiHistoryLiveRefreshController(
-      cubit: cubit,
-      fs: () => AppStorage.fs,
-      resolveWatchMeta: () => cubit.loader.resolveWatchMeta(
-        session: widget.session,
-        memberId: widget.selectedMemberId,
-        team: widget.team,
-        workingDirectory: _workspaceRoot,
-      ),
-    );
-  }
-
   void _maybeStartLiveRefreshForRunningPty() {
     if (!mounted) return;
-    _ensureLiveRefreshController();
     final running = context.read<ChatCubit>().isMemberRunning(_shellMemberId);
     if (!running) return;
     // softReloadOrLoad already refreshed once on this load path — attach the
@@ -320,10 +313,24 @@ class _SessionChatViewState extends State<SessionChatView> {
   }
 
   Future<void> _startLiveRefresh({bool skipInitialRefresh = false}) async {
-    _ensureLiveRefreshController();
-    final live = _liveRefresh;
-    if (live == null) return;
-    await live.ensureStarted(skipInitialRefresh: skipInitialRefresh);
+    final cubit = context.read<AiHistoryCubit>();
+    final roots = await cubit.loader.resolveSeatRuntime(
+      launchContext: _launchContext,
+      memberId: widget.selectedMemberId,
+    );
+    if (!mounted) return;
+    await _liveRefresh?.stop();
+    _liveRefresh = AiHistoryLiveRefreshController(
+      cubit: cubit,
+      fs: () => roots.filesystem,
+      resolveWatchMeta: () => cubit.loader.resolveWatchMeta(
+        launchContext: _launchContext,
+        memberId: widget.selectedMemberId,
+        team: widget.team,
+        workingDirectory: _workspaceRoot,
+      ),
+    );
+    await _liveRefresh!.ensureStarted(skipInitialRefresh: skipInitialRefresh);
     if (mounted) setState(() {});
   }
 

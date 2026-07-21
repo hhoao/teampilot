@@ -4,6 +4,11 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/ai_history_cubit.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/runtime_target.dart';
+import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_launch_context.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
@@ -12,7 +17,6 @@ import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/ai_history_locator.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
 import 'package:teampilot/services/session/session_history_pagination.dart';
-import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../support/post_frame_test_harness.dart';
 
@@ -31,6 +35,16 @@ void main() {
     updatedAt: 1,
   );
 
+
+  WorkspaceLaunchContext launchCtx(AppSession s) => WorkspaceLaunchContext(
+    session: s,
+    workspace: Workspace(
+      workspaceId: s.workspaceId,
+      folders: s.folders,
+      createdAt: 0,
+    ),
+  );
+
   List<AiMessage> messages(int count) => [
     for (var i = 0; i < count; i++)
       AiMessage(
@@ -45,15 +59,16 @@ void main() {
     holderMessages = const [];
     locator = _ScriptedLocator();
     final fs = LocalFilesystem();
-    final layout = RuntimeLayout(
-      teampilotRoot: '/tmp/ai-history-cubit',
-      fs: fs,
-    );
     loader = AiHistoryLoader(
       contextBuilder: const SessionHistoryContextBuilder(),
-      fs: () => fs,
-      layout: () => layout,
-      appDataRoot: () => '/tmp/ai-history-cubit',
+      resolveWorkContext: (_, {String? memberId}) async => RuntimeContext(
+        target: RuntimeTarget.local(),
+        filesystem: fs,
+        home: '/tmp/ai-history-cubit',
+        cwd: '/tmp/ai-history-cubit',
+        appDataRoot: '/tmp/ai-history-cubit',
+        paths: AppPaths('/tmp/ai-history-cubit'),
+      ),
       locator: locator,
       adapters: {
         CliTool.claude: _HolderAdapter(() => holderMessages),
@@ -72,7 +87,7 @@ void main() {
     holderMessages = messages(2);
     locator.emitBundle = true;
 
-    final done = cubit.load(session: simpleSession(), memberId: '');
+    final done = cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
     expect(cubit.state.status, AiHistoryViewStatus.loading);
     expect(cubit.runtime.status, AiThreadStatus.loading);
     await done;
@@ -86,7 +101,7 @@ void main() {
 
   test('empty load sets runtime empty', () async {
     locator.emitBundle = false;
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
     expect(cubit.state.status, AiHistoryViewStatus.empty);
     expect(cubit.runtime.status, AiThreadStatus.empty);
     expect(cubit.runtime.messages, isEmpty);
@@ -102,10 +117,12 @@ void main() {
     final firstLoad = cubit.load(
       session: simpleSession(id: 's1'),
       memberId: '',
+      launchContext: launchCtx(simpleSession(id: 's1')),
     );
     final secondLoad = cubit.load(
       session: simpleSession(id: 's2'),
       memberId: '',
+      launchContext: launchCtx(simpleSession(id: 's2')),
     );
 
     holderMessages = [
@@ -138,7 +155,7 @@ void main() {
     holderMessages = messages(50);
     locator.emitBundle = true;
 
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
     expect(cubit.state.totalMessageCount, 50);
     expect(cubit.runtime.messages, hasLength(kSessionHistoryInitialTurns));
     expect(cubit.runtime.messages.first.id, 'm-20');
@@ -153,7 +170,7 @@ void main() {
 
   test('error sets runtime error', () async {
     locator.error = StateError('boom');
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
     expect(cubit.state.status, AiHistoryViewStatus.error);
     expect(cubit.state.errorMessage, contains('boom'));
     expect(cubit.runtime.status, AiThreadStatus.error);
@@ -163,7 +180,7 @@ void main() {
     holderMessages = messages(40);
     locator.emitBundle = true;
 
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
     expect(cubit.runtime.messages, hasLength(kSessionHistoryInitialTurns));
     expect(cubit.runtime.messages.first.id, 'm-10');
 
@@ -185,7 +202,7 @@ void main() {
   test('softReload does not emit loading when already ready', () async {
     holderMessages = messages(2);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
     expect(cubit.state.status, AiHistoryViewStatus.ready);
 
     final statuses = <AiHistoryViewStatus>[];
@@ -203,7 +220,7 @@ void main() {
   test('softReload truncate clamps visibleCount', () async {
     holderMessages = messages(40);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
     cubit.loadOlder();
     expect(cubit.runtime.messages, hasLength(40));
 
@@ -219,7 +236,7 @@ void main() {
   test('pending user merges then drops on matching tip user text', () async {
     holderMessages = messages(2);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
 
     cubit.enqueuePendingUser('hello   world');
     expect(cubit.state.awaitingAssistant, isTrue);
@@ -318,7 +335,7 @@ void main() {
   test('held assistant tip flushes immediately on idle endAwaiting', () async {
     holderMessages = messages(1);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
 
     cubit.enqueuePendingUser('hello');
     holderMessages = [
@@ -347,7 +364,7 @@ void main() {
   test('multi pending drops independently by normalized text', () async {
     holderMessages = messages(1);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
 
     cubit.enqueuePendingUser('a');
     cubit.enqueuePendingUser('b');
@@ -374,7 +391,7 @@ void main() {
 
   test('enqueuePendingUser on empty promotes to ready with pending tip', () async {
     locator.emitBundle = false;
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
     expect(cubit.state.status, AiHistoryViewStatus.empty);
 
     cubit.enqueuePendingUser('continue me');
@@ -391,7 +408,7 @@ void main() {
   test('softReloadOrLoad soft-reloads when already ready for same seat', () async {
     holderMessages = messages(2);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
     expect(cubit.state.status, AiHistoryViewStatus.ready);
 
     final statuses = <AiHistoryViewStatus>[];
@@ -401,6 +418,7 @@ void main() {
     await cubit.softReloadOrLoad(
       session: simpleSession(),
       memberId: '',
+      launchContext: launchCtx(simpleSession()),
     );
     await sub.cancel();
 
@@ -412,7 +430,7 @@ void main() {
   test('softReloadIfSession soft-reloads when ready for session', () async {
     holderMessages = messages(2);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
     expect(cubit.state.status, AiHistoryViewStatus.ready);
 
     final statuses = <AiHistoryViewStatus>[];
@@ -430,7 +448,7 @@ void main() {
   test('softReload no-ops after seat clear / generation bump', () async {
     holderMessages = messages(2);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
 
     final delayed = Completer<AiTranscriptBundle?>();
     locator.queue.add(delayed.future);

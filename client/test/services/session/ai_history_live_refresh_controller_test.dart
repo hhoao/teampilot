@@ -4,6 +4,11 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/ai_history_cubit.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/runtime_target.dart';
+import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_launch_context.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/io/filesystem.dart';
@@ -14,7 +19,6 @@ import 'package:teampilot/services/session/ai_history_locator.dart';
 import 'package:teampilot/services/session/ai_history_watch_meta.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
-import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
@@ -35,6 +39,16 @@ void main() {
     cli: CliTool.claude,
     createdAt: 1,
     updatedAt: 1,
+  );
+
+
+  WorkspaceLaunchContext launchCtx(AppSession s) => WorkspaceLaunchContext(
+    session: s,
+    workspace: Workspace(
+      workspaceId: s.workspaceId,
+      folders: s.folders,
+      createdAt: 0,
+    ),
   );
 
   List<AiMessage> messages(int count) => [
@@ -84,15 +98,16 @@ void main() {
     fs = InMemoryFilesystem();
     lastSignal = null;
     pollIntervals = [];
-    final layout = RuntimeLayout(
-      teampilotRoot: '/tmp/ai-history-live-refresh',
-      fs: LocalFilesystem(),
-    );
     loader = AiHistoryLoader(
       contextBuilder: const SessionHistoryContextBuilder(),
-      fs: () => LocalFilesystem(),
-      layout: () => layout,
-      appDataRoot: () => '/tmp/ai-history-live-refresh',
+      resolveWorkContext: (_, {String? memberId}) async => RuntimeContext(
+        target: RuntimeTarget.local(),
+        filesystem: LocalFilesystem(),
+        home: '/tmp/ai-history-live-refresh',
+        cwd: '/tmp/ai-history-live-refresh',
+        appDataRoot: '/tmp/ai-history-live-refresh',
+        paths: AppPaths('/tmp/ai-history-live-refresh'),
+      ),
       locator: locator,
       adapters: {
         CliTool.claude: _HolderAdapter(() => holderMessages),
@@ -110,7 +125,7 @@ void main() {
   test('start attaches signal and softReloads on change', () async {
     holderMessages = messages(2);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
     expect(cubit.state.totalMessageCount, 2);
 
     final controller = buildController();
@@ -135,7 +150,7 @@ void main() {
     () async {
       holderMessages = messages(2);
       locator.emitBundle = true;
-      await cubit.load(session: simpleSession(), memberId: '');
+      await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
       expect(cubit.state.totalMessageCount, 2);
 
       var softReloadPasses = 0;
@@ -166,7 +181,7 @@ void main() {
   test('second change while reload in flight coalesces to one follow-up', () async {
     holderMessages = messages(1);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
 
     final gate = Completer<void>();
     var softReloadPasses = 0;
@@ -210,7 +225,7 @@ void main() {
   test('stop cancels signal and ignores late callbacks', () async {
     holderMessages = messages(2);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
 
     final controller = buildController();
     await controller.start();
@@ -230,7 +245,7 @@ void main() {
   test('FsWatcher poll interval is 750ms', () async {
     holderMessages = messages(1);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
 
     final watchable = _WatchableFs();
     final controller = buildController(fsFn: () => watchable);
@@ -243,7 +258,7 @@ void main() {
   test('null watch meta keeps signal; later meta softReloads and rearms', () async {
     holderMessages = messages(1);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
     expect(cubit.state.totalMessageCount, 1);
 
     AiHistoryWatchMeta? meta;
@@ -285,7 +300,7 @@ void main() {
   test('resolveWatchMeta throw keeps last meta and drains coalesced queue', () async {
     holderMessages = messages(1);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '');
+    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
 
     const stableMeta = AiHistoryWatchMeta(
       changeWatchRoot: '/proj',

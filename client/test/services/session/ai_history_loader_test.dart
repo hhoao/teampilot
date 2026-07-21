@@ -4,8 +4,11 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
+import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/claude_ai_transcript.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -13,6 +16,8 @@ import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/ai_history_locator.dart';
 import 'package:teampilot/services/session/ai_history_watch_meta.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -32,15 +37,34 @@ void main() {
     updatedAt: 1,
   );
 
+  WorkspaceLaunchContext launchContextFor(AppSession session) =>
+      WorkspaceLaunchContext(
+        session: session,
+        workspace: Workspace(
+          workspaceId: session.workspaceId,
+          folders: session.folders,
+          createdAt: 1,
+        ),
+      );
+
+  RuntimeContext fixedRoots() => RuntimeContext(
+    target: RuntimeTarget.local(),
+    filesystem: fs,
+    home: base.path,
+    cwd: base.path,
+    appDataRoot: base.path,
+    paths: AppPaths(base.path),
+  );
+
   AiHistoryLoader buildLoader({
     AiHistoryLocator? locator,
     Map<CliTool, AiTranscriptAdapter>? adapters,
+    AiHistoryWorkContextResolver? resolveWorkContext,
   }) {
     return AiHistoryLoader(
       contextBuilder: const SessionHistoryContextBuilder(),
-      fs: () => fs,
-      layout: () => layout,
-      appDataRoot: () => base.path,
+      resolveWorkContext:
+          resolveWorkContext ?? ((_, {String? memberId}) async => fixedRoots()),
       locator: locator ?? AiHistoryLocator(),
       adapters: adapters,
       resolveCacheToken: (_) async => mtimeToken,
@@ -64,9 +88,11 @@ void main() {
   });
 
   test('missing transcript returns empty list', () async {
+    final session = simpleSession();
     final messages = await buildLoader().load(
-      session: simpleSession(),
+      session: session,
       memberId: '',
+      launchContext: launchContextFor(session),
     );
     expect(messages, isEmpty);
   });
@@ -82,9 +108,11 @@ void main() {
     ).readAsBytes();
     await File(p.join(projects, '$sessionId.jsonl')).writeAsBytes(fixture);
 
+    final session = simpleSession(id: sessionId);
     final messages = await buildLoader().load(
-      session: simpleSession(id: sessionId),
+      session: session,
       memberId: '',
+      launchContext: launchContextFor(session),
     );
 
     expect(messages, isNotEmpty);
@@ -96,10 +124,99 @@ void main() {
     );
   });
 
+  test('load uses work-context FS from resolver, not home FS', () async {
+    final workRoot = Directory.systemTemp.createTempSync('ai_history_work_');
+    try {
+      final workFs = LocalFilesystem(
+        pathContext: p.Context(style: p.Style.posix, current: workRoot.path),
+      );
+      final workRuntime = RuntimeContext(
+        target: RuntimeTarget.local(),
+        filesystem: workFs,
+        home: workRoot.path,
+        cwd: workRoot.path,
+        appDataRoot: workRoot.path,
+        paths: AppPaths(workRoot.path),
+      );
+      final workLayout = workRuntime.layout;
+
+      final session = simpleSession();
+      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
+        '/work/project',
+      );
+      final sessionId = session.sessionId;
+      final toolRoot = workLayout.sessionRuntimeToolDir(
+        'ws-1',
+        sessionId,
+        'claude',
+      );
+      final projects = p.join(toolRoot, 'projects', bucket);
+      await Directory(projects).create(recursive: true);
+      final fixture = await File(
+        'test/fixtures/session_history/claude/basic.jsonl',
+      ).readAsBytes();
+      await File(p.join(projects, '$sessionId.jsonl')).writeAsBytes(fixture);
+
+      SessionHistoryContext? locatedCtx;
+      final loader = buildLoader(
+        locator: _CapturingLocator(
+          onLocate: (ctx) => locatedCtx = ctx,
+        ),
+        resolveWorkContext: (_, {String? memberId}) async => workRuntime,
+      );
+
+      final messages = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: launchContextFor(session),
+      );
+
+      expect(messages, isNotEmpty);
+      expect(locatedCtx?.fs, same(workFs));
+      expect(locatedCtx?.fs, isNot(same(fs)));
+    } finally {
+      if (workRoot.existsSync()) {
+        workRoot.deleteSync(recursive: true);
+      }
+    }
+  });
+
+  test('resolve failure does not fall back to home FS', () async {
+    final bucket = RuntimeLayout.workspaceBucketForPrimaryPath('/work/project');
+    final session = simpleSession();
+    final sessionId = session.sessionId;
+    final toolRoot = layout.sessionRuntimeToolDir('ws-1', sessionId, 'claude');
+    final projects = p.join(toolRoot, 'projects', bucket);
+    await Directory(projects).create(recursive: true);
+    final fixture = await File(
+      'test/fixtures/session_history/claude/basic.jsonl',
+    ).readAsBytes();
+    await File(p.join(projects, '$sessionId.jsonl')).writeAsBytes(fixture);
+
+    final loader = buildLoader(
+      resolveWorkContext: (_, {String? memberId}) async =>
+          throw StateError('ssh down'),
+    );
+
+    await expectLater(
+      () => loader.load(
+        session: session,
+        memberId: '',
+        launchContext: launchContextFor(session),
+      ),
+      throwsA(isA<StateError>()),
+    );
+  });
+
   test('throws StateError when adapter missing for launch CLI', () async {
+    final session = simpleSession();
     final loader = buildLoader(adapters: const {});
     await expectLater(
-      () => loader.load(session: simpleSession(), memberId: ''),
+      () => loader.load(
+        session: session,
+        memberId: '',
+        launchContext: launchContextFor(session),
+      ),
       throwsA(
         isA<StateError>().having(
           (e) => e.message,
@@ -119,14 +236,53 @@ void main() {
     final loader = buildLoader(locator: locator);
 
     final session = simpleSession();
-    expect(await loader.load(session: session, memberId: ''), isEmpty);
+    final ctx = launchContextFor(session);
+    expect(
+      await loader.load(session: session, memberId: '', launchContext: ctx),
+      isEmpty,
+    );
     expect(locateCalls, 1);
 
-    expect(await loader.load(session: session, memberId: ''), isEmpty);
+    expect(
+      await loader.load(session: session, memberId: '', launchContext: ctx),
+      isEmpty,
+    );
     expect(locateCalls, 1);
 
     mtimeToken = 'mtime-2';
-    expect(await loader.load(session: session, memberId: ''), isEmpty);
+    expect(
+      await loader.load(session: session, memberId: '', launchContext: ctx),
+      isEmpty,
+    );
+    expect(locateCalls, 2);
+  });
+
+  test('clearCache drops token hits', () async {
+    var locateCalls = 0;
+    final locator = _CountingLocator(() async {
+      locateCalls++;
+      return null;
+    });
+    final loader = buildLoader(locator: locator);
+    final session = simpleSession();
+    final ctx = launchContextFor(session);
+
+    expect(
+      await loader.load(session: session, memberId: '', launchContext: ctx),
+      isEmpty,
+    );
+    expect(locateCalls, 1);
+    expect(
+      await loader.load(session: session, memberId: '', launchContext: ctx),
+      isEmpty,
+    );
+    expect(locateCalls, 1);
+
+    loader.clearCache();
+    expect(
+      await loader.load(session: session, memberId: '', launchContext: ctx),
+      isEmpty,
+    );
     expect(locateCalls, 2);
   });
 
@@ -155,8 +311,9 @@ void main() {
       adapters: const {}, // parse must not be required
     );
 
+    final session = simpleSession();
     final meta = await loader.resolveWatchMeta(
-      session: simpleSession(),
+      launchContext: launchContextFor(session),
       memberId: '',
     );
     expect(meta?.changeWatchRoot, '/proj');
@@ -168,8 +325,12 @@ void main() {
       locator: _CountingLocator(() async => null),
       adapters: const {},
     );
+    final session = simpleSession();
     expect(
-      await loader.resolveWatchMeta(session: simpleSession(), memberId: ''),
+      await loader.resolveWatchMeta(
+        launchContext: launchContextFor(session),
+        memberId: '',
+      ),
       isNull,
     );
   });
@@ -186,4 +347,19 @@ class _CountingLocator extends AiHistoryLocator {
     required CliTool cli,
   }) =>
       _onLocate();
+}
+
+class _CapturingLocator extends AiHistoryLocator {
+  _CapturingLocator({required this.onLocate});
+
+  final void Function(SessionHistoryContext ctx) onLocate;
+
+  @override
+  Future<AiTranscriptBundle?> locate({
+    required SessionHistoryContext ctx,
+    required CliTool cli,
+  }) {
+    onLocate(ctx);
+    return super.locate(ctx: ctx, cli: cli);
+  }
 }

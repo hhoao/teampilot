@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 
 import '../models/app_session.dart';
 import '../models/team_config.dart';
+import '../models/workspace_launch_context.dart';
 import '../services/session/ai_history_loader.dart';
 import '../services/session/ai_history_pending_text.dart';
 import '../services/session/session_history_pagination.dart';
@@ -134,6 +135,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
   String? _lastMemberId;
   TeamProfile? _lastTeam;
   String? _lastWorkingDirectory;
+  WorkspaceLaunchContext? _lastLaunchContext;
 
   /// True when assistant tip is loaded but not yet shown.
   bool get hasHeldAssistantTip => _committedLength < _allMessages.length;
@@ -141,6 +143,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
   Future<void> load({
     required AppSession session,
     required String memberId,
+    required WorkspaceLaunchContext launchContext,
     TeamProfile? team,
     String? workingDirectory,
     bool force = false,
@@ -155,6 +158,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     _lastMemberId = memberId;
     _lastTeam = team;
     _lastWorkingDirectory = workingDirectory;
+    _lastLaunchContext = launchContext;
 
     final gen = ++_loadGeneration;
     _cancelTipHoldTimer();
@@ -176,6 +180,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
       final messages = await _loader.load(
         session: session,
         memberId: memberId,
+        launchContext: launchContext,
         team: team,
         workingDirectory: workingDirectory,
         force: force,
@@ -209,7 +214,8 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
   Future<void> softReload() async {
     final session = _lastSession;
     final memberId = _lastMemberId;
-    if (session == null || memberId == null) return;
+    final launchContext = _lastLaunchContext;
+    if (session == null || memberId == null || launchContext == null) return;
 
     final gen = _loadGeneration;
     final sessionId = session.sessionId;
@@ -219,6 +225,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
       final messages = await _loader.load(
         session: session,
         memberId: memberId,
+        launchContext: launchContext,
         team: _lastTeam,
         workingDirectory: _lastWorkingDirectory,
         force: true,
@@ -247,6 +254,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
   Future<void> softReloadOrLoad({
     required AppSession session,
     required String memberId,
+    required WorkspaceLaunchContext launchContext,
     TeamProfile? team,
     String? workingDirectory,
   }) async {
@@ -259,6 +267,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     await load(
       session: session,
       memberId: memberId,
+      launchContext: launchContext,
       team: team,
       workingDirectory: workingDirectory,
     );
@@ -404,11 +413,13 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     _loader.invalidate(sessionId: sessionId);
     final session = _lastSession;
     final memberId = _lastMemberId;
-    if (session == null || memberId == null) return;
+    final launchContext = _lastLaunchContext;
+    if (session == null || memberId == null || launchContext == null) return;
     if (session.sessionId != sessionId) return;
     await load(
       session: session,
       memberId: memberId,
+      launchContext: launchContext,
       team: _lastTeam,
       workingDirectory: _lastWorkingDirectory,
       force: true,
@@ -443,6 +454,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     _lastMemberId = null;
     _lastTeam = null;
     _lastWorkingDirectory = null;
+    _lastLaunchContext = null;
     runtime.setEmpty();
     emit(const AiHistoryState());
   }

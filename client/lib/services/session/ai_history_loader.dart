@@ -3,17 +3,25 @@ import 'package:ai_message_core/ai_message_core.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
+import '../../models/workspace_launch_context.dart';
 import '../../utils/logging/logger.dart';
 import '../cli/preset_resolver.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
-import '../io/filesystem.dart';
-import '../storage/runtime_layout.dart';
+import '../storage/runtime_context.dart';
 import '../terminal/session_member_cli_resolver.dart';
 import 'ai_history_locator.dart';
 import 'ai_history_providers.dart';
 import 'ai_history_watch_meta.dart';
 import 'session_history_context.dart';
 import 'session_history_context_builder.dart';
+
+/// Resolves the work-plane [RuntimeContext] for a History seat (same seam as
+/// [SessionLifecycleService.launchWorkContext]).
+typedef AiHistoryWorkContextResolver =
+    Future<RuntimeContext> Function(
+      WorkspaceLaunchContext ctx, {
+      String? memberId,
+    });
 
 class _AiHistoryCacheEntry {
   const _AiHistoryCacheEntry({required this.token, required this.messages});
@@ -40,17 +48,13 @@ final class AiHistoryLoader {
   AiHistoryLoader({
     SessionHistoryContextBuilder contextBuilder =
         const SessionHistoryContextBuilder(),
-    required Filesystem Function() fs,
-    required RuntimeLayout Function() layout,
-    required String Function() appDataRoot,
+    required AiHistoryWorkContextResolver resolveWorkContext,
     AiHistoryLocator? locator,
     Map<CliTool, AiTranscriptAdapter>? adapters,
     SessionHistoryCacheTokenResolver? resolveCacheToken,
     List<CliPreset> Function()? globalPresets,
   }) : _contextBuilder = contextBuilder,
-       _fs = fs,
-       _layout = layout,
-       _appDataRoot = appDataRoot,
+       _resolveWorkContext = resolveWorkContext,
        _locator = locator ?? AiHistoryLocator(),
        _adapters = adapters ?? aiHistoryDefaultAdapters(),
        _resolveCacheToken = resolveCacheToken,
@@ -61,9 +65,7 @@ final class AiHistoryLoader {
       aiHistoryDefaultAdapters();
 
   final SessionHistoryContextBuilder _contextBuilder;
-  final Filesystem Function() _fs;
-  final RuntimeLayout Function() _layout;
-  final String Function() _appDataRoot;
+  final AiHistoryWorkContextResolver _resolveWorkContext;
   final AiHistoryLocator _locator;
   final Map<CliTool, AiTranscriptAdapter> _adapters;
   final SessionHistoryCacheTokenResolver? _resolveCacheToken;
@@ -71,15 +73,30 @@ final class AiHistoryLoader {
 
   final _cache = <String, _AiHistoryCacheEntry>{};
 
+  /// Work-plane context for the seat (live refresh binds this FS).
+  Future<RuntimeContext> resolveSeatRuntime({
+    required WorkspaceLaunchContext launchContext,
+    required String memberId,
+  }) {
+    final mid = memberId.trim();
+    return _resolveWorkContext(
+      launchContext,
+      memberId: mid.isEmpty ? null : mid,
+    );
+  }
+
+  /// Clears all seats (v1 work-plane evict).
+  void clearCache() => _cache.clear();
+
   /// Locate-only watch hints for live transcript refresh (no full parse).
   Future<AiHistoryWatchMeta?> resolveWatchMeta({
-    required AppSession session,
+    required WorkspaceLaunchContext launchContext,
     required String memberId,
     TeamProfile? team,
     String? workingDirectory,
   }) async {
-    final seat = _resolveSeat(
-      session: session,
+    final seat = await _resolveSeat(
+      launchContext: launchContext,
       memberId: memberId,
       team: team,
       workingDirectory: workingDirectory,
@@ -92,12 +109,13 @@ final class AiHistoryLoader {
   Future<List<AiMessage>> load({
     required AppSession session,
     required String memberId,
+    required WorkspaceLaunchContext launchContext,
     TeamProfile? team,
     String? workingDirectory,
     bool force = false,
   }) async {
-    final seat = _resolveSeat(
-      session: session,
+    final seat = await _resolveSeat(
+      launchContext: launchContext,
       memberId: memberId,
       team: team,
       workingDirectory: workingDirectory,
@@ -177,12 +195,13 @@ final class AiHistoryLoader {
     _cache.removeWhere((key, _) => key.startsWith(prefix));
   }
 
-  _AiHistorySeat _resolveSeat({
-    required AppSession session,
+  Future<_AiHistorySeat> _resolveSeat({
+    required WorkspaceLaunchContext launchContext,
     required String memberId,
     TeamProfile? team,
     String? workingDirectory,
-  }) {
+  }) async {
+    final session = launchContext.session;
     final sessionTeam = session.sessionTeam.trim();
     final teamId = () {
       final fromTeam = team?.id.trim() ?? '';
@@ -218,10 +237,12 @@ final class AiHistoryLoader {
       },
     );
 
+    final mid = effectiveMemberId.isEmpty ? null : effectiveMemberId;
+    final roots = await _resolveWorkContext(launchContext, memberId: mid);
     final ctx = _contextBuilder.build(
-      fs: _fs(),
-      layout: _layout(),
-      appDataRoot: _appDataRoot(),
+      fs: roots.filesystem,
+      layout: roots.layout,
+      appDataRoot: roots.appDataRoot,
       session: session,
       memberId: effectiveMemberId,
       cli: cli,
