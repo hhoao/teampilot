@@ -6321,6 +6321,102 @@ abstract class AppLocalizations {
   /// **'Upload'**
   String get myTeamsUpload;
 
+  /// No description provided for @githubSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub'**
+  String get githubSettingsTitle;
+
+  /// No description provided for @githubSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect GitHub to publish experts and teams to Hub'**
+  String get githubSettingsSubtitle;
+
+  /// No description provided for @githubSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with GitHub'**
+  String get githubSignIn;
+
+  /// No description provided for @githubConnectedAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected as @{login}'**
+  String githubConnectedAs(Object login);
+
+  /// No description provided for @githubConnectedGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected to GitHub'**
+  String get githubConnectedGeneric;
+
+  /// No description provided for @githubDisconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
+  String get githubDisconnect;
+
+  /// No description provided for @githubSwitchAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch account'**
+  String get githubSwitchAccount;
+
+  /// No description provided for @githubWaitingCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter this code on GitHub if prompted'**
+  String get githubWaitingCodeHint;
+
+  /// No description provided for @githubBrowserOpened.
+  ///
+  /// In en, this message translates to:
+  /// **'Browser opened for authorization'**
+  String get githubBrowserOpened;
+
+  /// No description provided for @githubReopenBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen browser'**
+  String get githubReopenBrowser;
+
+  /// No description provided for @githubDeviceFlowUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub sign-in is unavailable in this build. Use a personal access token.'**
+  String get githubDeviceFlowUnavailable;
+
+  /// No description provided for @githubAuthExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub sign-in expired'**
+  String get githubAuthExpired;
+
+  /// No description provided for @githubAuthDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub authorization cancelled'**
+  String get githubAuthDenied;
+
+  /// No description provided for @githubAuthExpiredRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorization expired. Try again.'**
+  String get githubAuthExpiredRetry;
+
+  /// No description provided for @githubAdvancedPat.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a personal access token'**
+  String get githubAdvancedPat;
+
+  /// No description provided for @githubNetworkError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach GitHub. Try again.'**
+  String get githubNetworkError;
+
   /// No description provided for @hubPublishExpertTitle.
   ///
   /// In en, this message translates to:
@@ -6336,7 +6432,7 @@ abstract class AppLocalizations {
   /// No description provided for @hubPublishAuthHint.
   ///
   /// In en, this message translates to:
-  /// **'A GitHub personal access token with repo scope is required to open a pull request into the Hub registry.'**
+  /// **'Sign in with GitHub to authorize a fork-based pull request into the Hub registry.'**
   String get hubPublishAuthHint;
 
   /// No description provided for @hubPublishTokenLabel.

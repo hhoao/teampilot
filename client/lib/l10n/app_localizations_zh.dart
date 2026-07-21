@@ -3373,14 +3373,63 @@ class AppLocalizationsZh extends AppLocalizations {
   String get myTeamsUpload => '上传';
 
   @override
+  String get githubSettingsTitle => 'GitHub';
+
+  @override
+  String get githubSettingsSubtitle => '连接 GitHub，以便将专家和团队发布到 Hub';
+
+  @override
+  String get githubSignIn => '使用 GitHub 登录';
+
+  @override
+  String githubConnectedAs(Object login) {
+    return '已连接为 @$login';
+  }
+
+  @override
+  String get githubConnectedGeneric => '已连接到 GitHub';
+
+  @override
+  String get githubDisconnect => '断开连接';
+
+  @override
+  String get githubSwitchAccount => '切换账号';
+
+  @override
+  String get githubWaitingCodeHint => '如有提示，请在 GitHub 上输入此验证码';
+
+  @override
+  String get githubBrowserOpened => '已打开浏览器进行授权';
+
+  @override
+  String get githubReopenBrowser => '重新打开浏览器';
+
+  @override
+  String get githubDeviceFlowUnavailable => '此构建暂不支持 GitHub 登录。请使用个人访问令牌。';
+
+  @override
+  String get githubAuthExpired => 'GitHub 登录已失效';
+
+  @override
+  String get githubAuthDenied => '已取消 GitHub 授权';
+
+  @override
+  String get githubAuthExpiredRetry => '授权已过期，请重试。';
+
+  @override
+  String get githubAdvancedPat => '使用个人访问令牌';
+
+  @override
+  String get githubNetworkError => '无法连接 GitHub，请重试。';
+
+  @override
   String get hubPublishExpertTitle => '发布专家到 Hub';
 
   @override
   String get hubPublishTeamTitle => '发布团队到 Hub';
 
   @override
-  String get hubPublishAuthHint =>
-      '需要具有 repo 权限的 GitHub 个人访问令牌，才能向 Hub 仓库发起拉取请求。';
+  String get hubPublishAuthHint => '使用 GitHub 登录并授权，以向 Hub 仓库发起基于 fork 的拉取请求。';
 
   @override
   String get hubPublishTokenLabel => 'GitHub 令牌';

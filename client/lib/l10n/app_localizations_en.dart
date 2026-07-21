@@ -3497,6 +3497,58 @@ class AppLocalizationsEn extends AppLocalizations {
   String get myTeamsUpload => 'Upload';
 
   @override
+  String get githubSettingsTitle => 'GitHub';
+
+  @override
+  String get githubSettingsSubtitle =>
+      'Connect GitHub to publish experts and teams to Hub';
+
+  @override
+  String get githubSignIn => 'Sign in with GitHub';
+
+  @override
+  String githubConnectedAs(Object login) {
+    return 'Connected as @$login';
+  }
+
+  @override
+  String get githubConnectedGeneric => 'Connected to GitHub';
+
+  @override
+  String get githubDisconnect => 'Disconnect';
+
+  @override
+  String get githubSwitchAccount => 'Switch account';
+
+  @override
+  String get githubWaitingCodeHint => 'Enter this code on GitHub if prompted';
+
+  @override
+  String get githubBrowserOpened => 'Browser opened for authorization';
+
+  @override
+  String get githubReopenBrowser => 'Reopen browser';
+
+  @override
+  String get githubDeviceFlowUnavailable =>
+      'GitHub sign-in is unavailable in this build. Use a personal access token.';
+
+  @override
+  String get githubAuthExpired => 'GitHub sign-in expired';
+
+  @override
+  String get githubAuthDenied => 'GitHub authorization cancelled';
+
+  @override
+  String get githubAuthExpiredRetry => 'Authorization expired. Try again.';
+
+  @override
+  String get githubAdvancedPat => 'Use a personal access token';
+
+  @override
+  String get githubNetworkError => 'Could not reach GitHub. Try again.';
+
+  @override
   String get hubPublishExpertTitle => 'Publish expert to Hub';
 
   @override
@@ -3504,7 +3556,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hubPublishAuthHint =>
-      'A GitHub personal access token with repo scope is required to open a pull request into the Hub registry.';
+      'Sign in with GitHub to authorize a fork-based pull request into the Hub registry.';
 
   @override
   String get hubPublishTokenLabel => 'GitHub token';
