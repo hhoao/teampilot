@@ -285,4 +285,56 @@ void main() {
       expect(find.text('Running…'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'sync runtime notify while sibling builds does not throw',
+    (tester) async {
+      // AiHistoryCubit.runtime is app-scoped; a seat reload during one tab's
+      // build must not markNeedsBuild a retained SessionHistoryThread under
+      // another branch (TpDeferredForegroundMount keep-alive).
+      final store = ExternalStoreAiThreadRuntime()
+        ..setMessages(_soloUserMessages(3));
+      var notifyDuringBuild = false;
+
+      Widget tree() {
+        return MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('en'),
+          theme: ThemeData(extensions: const [AiMessageTheme()]),
+          home: Scaffold(
+            body: Column(
+              children: [
+                SizedBox(
+                  width: 600,
+                  height: 300,
+                  child: SessionHistoryThread(
+                    runtime: store,
+                    hasOlder: false,
+                    isLoadingOlder: false,
+                    onLoadOlder: () {},
+                  ),
+                ),
+                Builder(
+                  builder: (context) {
+                    if (notifyDuringBuild) {
+                      store.setLoading();
+                    }
+                    return const SizedBox(height: 8);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(tree());
+      await tester.pumpAndSettle();
+
+      notifyDuringBuild = true;
+      await tester.pumpWidget(tree());
+      await tester.pump();
+    },
+  );
 }

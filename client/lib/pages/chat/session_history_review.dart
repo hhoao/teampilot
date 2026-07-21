@@ -168,9 +168,14 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     if (oldWidget.session.sessionId != widget.session.sessionId ||
         oldWidget.selectedMemberId != widget.selectedMemberId ||
         oldWidget.team?.id != widget.team?.id) {
-      context.read<AiHistoryCubit>().clearPendings();
       unawaited(_stopLiveRefreshForSeatChange());
-      _loadHistory();
+      // Defer: load → runtime.setLoading sync-notifies app-scoped listeners
+      // while ancestors (e.g. TpDeferredForegroundMount) are still building.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.read<AiHistoryCubit>().clearPendings();
+        _loadHistory();
+      });
     }
     if (oldWidget.session.workspaceId != widget.session.workspaceId) {
       unawaited(_loadWorkspaceProjectBundle());

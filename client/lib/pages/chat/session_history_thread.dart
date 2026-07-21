@@ -4,6 +4,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -140,6 +141,17 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   void _onRuntimeChanged() {
     if (!mounted) return;
+    // AiHistoryCubit.runtime is app-scoped and sync-notifies. A reload started
+    // during another tab's build (TpDeferredForegroundMount) must not
+    // markNeedsBuild this retained thread while that sibling is building.
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase != SchedulerPhase.idle &&
+        phase != SchedulerPhase.postFrameCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _onRuntimeChanged();
+      });
+      return;
+    }
     final next = widget.runtime.messages;
     final wasPrepend = _isPrepend(_messages, next);
     final tipGrew = _tipGrew(_messages, next, wasPrepend: wasPrepend);

@@ -117,6 +117,105 @@ void main() {
     });
 
     test(
+      'operator latch must not pin busy after PTY quiet (Cursor simple)',
+      () async {
+        final workspace = await repo.createWorkspace([
+          WorkspaceFolder(path: '/tmp'),
+        ]);
+        final session = await repo.createSession(workspace.workspaceId);
+        await cubit.loadWorkspaceData(repo);
+
+        await cubit.requestOpenSession(
+          SessionOpenRequest(
+            session: session,
+            workspace: workspace,
+            repo: repo,
+            connectImmediately: false,
+          ),
+        );
+        await drainPendingAsyncWork();
+        final shell = created.single;
+        final memberId = cubit.activeTab!.memberShells.keys.single;
+
+        // Real submit path: shell latch + operator-turn callback (attention).
+        shell.markUserTurnStarted();
+        cubit.debugNotifyOperatorTurnLatched(session.sessionId, memberId);
+        shell.activityTracker.isWorking;
+        shell.activityTracker.markActive();
+        cubit.debugTickIdleWatch();
+        await drainPendingAsyncWork();
+        expect(cubit.state.workingSessionIds, contains(session.sessionId));
+
+        shell.activityTracker.notePtyBytes(
+          const [0x64, 0x6f, 0x6e, 0x65],
+          DateTime.now().subtract(const Duration(seconds: 5)),
+        );
+        cubit.debugTickIdleWatch();
+        await drainPendingAsyncWork();
+        expect(
+          cubit.state.workingSessionIds,
+          isEmpty,
+          reason:
+              'CLIs without Stop/done must not stay busy via latch-stamped '
+              'attention.working after PTY quiet ends the turn',
+        );
+        expect(
+          attention.state.attentionFor(
+            sessionId: session.sessionId,
+            memberId: memberId,
+          ),
+          isNull,
+        );
+      },
+    );
+
+    test(
+      'operator latch clears sticky waiting so a new turn can show spinner',
+      () async {
+        final workspace = await repo.createWorkspace([
+          WorkspaceFolder(path: '/tmp'),
+        ]);
+        final session = await repo.createSession(workspace.workspaceId);
+        await cubit.loadWorkspaceData(repo);
+
+        await cubit.requestOpenSession(
+          SessionOpenRequest(
+            session: session,
+            workspace: workspace,
+            repo: repo,
+            connectImmediately: false,
+          ),
+        );
+        await drainPendingAsyncWork();
+        final memberId = cubit.activeTab!.memberShells.keys.single;
+
+        attention.applyEvent(
+          sessionId: session.sessionId,
+          memberId: memberId,
+          event: const AgentStatusEvent(state: AgentSeatAttention.waiting),
+          skipPermissions: false,
+        );
+        expect(
+          attention.state.attentionFor(
+            sessionId: session.sessionId,
+            memberId: memberId,
+          ),
+          AgentSeatAttention.waiting,
+        );
+
+        cubit.debugNotifyOperatorTurnLatched(session.sessionId, memberId);
+        expect(
+          attention.state.attentionFor(
+            sessionId: session.sessionId,
+            memberId: memberId,
+          ),
+          isNull,
+          reason: 'fresh submit clears sticky waiting without stamping working',
+        );
+      },
+    );
+
+    test(
       'personal send recomputes working even with stale team presence',
       () async {
         final workspace = await repo.createWorkspace([

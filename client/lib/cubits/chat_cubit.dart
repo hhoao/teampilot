@@ -28,8 +28,6 @@ import '../services/team_bus/artifacts/artifact_registry.dart';
 import '../services/team_bus/artifacts/artifact_transfer_service.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
-import '../services/agent_status/agent_attention_state.dart';
-import '../services/agent_status/agent_status_event.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
 import 'agent_attention_cubit.dart';
 import '../services/launch/launch_factory.dart';
@@ -467,12 +465,11 @@ class ChatCubit extends Cubit<ChatState>
   void _onOperatorTurnLatched(String sessionId, String memberId) {
     final attention = _agentAttentionCubit;
     if (attention != null && memberId.trim().isNotEmpty) {
-      attention.applyEvent(
-        sessionId: sessionId,
-        memberId: memberId,
-        event: const AgentStatusEvent(state: AgentSeatAttention.working),
-        skipPermissions: false,
-      );
+      // Why: [userTurnActive] already lights the spinner. Stamping
+      // attention.working here pins [sessionIsAgentActive] for CLIs without
+      // Stop/done (Cursor simple), so the sidebar stays busy after PTY quiet.
+      // Clear any prior waiting/working seat so a fresh submit is not locked.
+      attention.clearSeat(sessionId: sessionId, memberId: memberId);
     }
     _recomputeWorkingSessions();
   }
@@ -486,6 +483,11 @@ class ChatCubit extends Cubit<ChatState>
 
   @visibleForTesting
   void debugRecomputeWorkingSessions() => _recomputeWorkingSessions();
+
+  /// Exercises History/Terminal submit → [onAfterTurnLatched] without PTY I/O.
+  @visibleForTesting
+  void debugNotifyOperatorTurnLatched(String sessionId, String memberId) =>
+      _onOperatorTurnLatched(sessionId, memberId);
 
   void _pushPresenceTarget() {
     final cubit = _presenceCubit;
