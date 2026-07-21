@@ -47,7 +47,11 @@ void main() {
         ws.workspaceId,
         workingDirectory: '/override',
       );
-      expect(overridden.folders.map((f) => f.path), ['/override', '/main', '/x']);
+      expect(overridden.folders.map((f) => f.path), [
+        '/override',
+        '/main',
+        '/x',
+      ]);
     },
   );
 
@@ -128,6 +132,8 @@ void main() {
           rosterMembers: const [
             TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
           ],
+
+          memberClis: const {'team-lead': CliTool.claude},
         ),
         throwsA(
           isA<StateError>().having(
@@ -193,6 +199,8 @@ void main() {
       rosterMembers: const [
         TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
       ],
+
+      memberClis: const {'team-lead': CliTool.claude},
     );
     expect(session.memberTargets['team-lead'], 'local');
 
@@ -259,6 +267,8 @@ void main() {
           TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
           TeamMemberConfig(id: 'dev', name: 'Dev'),
         ],
+
+        memberClis: const {'team-lead': CliTool.claude, 'dev': CliTool.claude},
       );
       expect(session.memberTargets['team-lead'], 'local');
       expect(session.memberTargets['dev'], 'ssh:p1');
@@ -281,7 +291,11 @@ void main() {
       await repo.updateWorkspaceMemberPlacement(
         ws.workspaceId,
         'team-a',
-        targets: const {'team-lead': 'local', 'dev-0': 'local', 'dev-1': 'ssh:p1'},
+        targets: const {
+          'team-lead': 'local',
+          'dev-0': 'local',
+          'dev-1': 'ssh:p1',
+        },
       );
 
       final reloaded = (await repo.loadWorkspaces()).single;

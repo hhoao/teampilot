@@ -79,6 +79,10 @@ openMixedSessionWithShells({
     workspace.workspaceId,
     sessionTeam: kIdleBusyMixedTeam.id,
     rosterMembers: kIdleBusyMixedTeam.members,
+
+    memberClis: {
+      for (final m in kIdleBusyMixedTeam.members) m.id: CliTool.claude,
+    },
   );
 
   await cubit.requestOpenSession(

@@ -4,6 +4,7 @@ import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_folder.dart';
 import '../../repositories/session_repository.dart';
+import '../../services/session/session_member_cli_locks.dart';
 import '../../services/storage/app_storage.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 import '../expert_hub/expert_member_materializer.dart';
@@ -66,6 +67,11 @@ abstract final class DefaultWorkspaceService {
         workspace.workspaceId,
         sessionTeam: defaultTeam.id,
         rosterMembers: rosterMembers,
+        // Temporary until Task 4 threads presets.
+        memberClis: resolveSessionMemberCliLocks(
+          team: defaultTeam,
+          rosterMembers: rosterMembers,
+        ),
       );
       mutated = true;
     }
@@ -79,10 +85,7 @@ abstract final class DefaultWorkspaceService {
     required TeamProfile defaultTeam,
   }) async {
     final primaryPath = await resolvePrimaryPath();
-    await ensureDefault(
-      repository,
-      defaultTeam: defaultTeam,
-    );
+    await ensureDefault(repository, defaultTeam: defaultTeam);
     final workspaces = await repository.loadWorkspaces();
     return workspaces
         .where((w) => workspacePathsEqual(w.firstFolderPath, primaryPath))

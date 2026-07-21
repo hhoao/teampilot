@@ -431,7 +431,8 @@ class ChatCubit extends Cubit<ChatState>
     if (layout == null) return null;
     return resolveTerminalThemeFromLayout(
       preferences: layout.state.preferences,
-      platformBrightness: SchedulerBinding.instance.platformDispatcher.platformBrightness,
+      platformBrightness:
+          SchedulerBinding.instance.platformDispatcher.platformBrightness,
     );
   }
 
@@ -780,6 +781,7 @@ class ChatCubit extends Cubit<ChatState>
     SessionRepository repo, {
     String sessionTeamId = '',
     List<TeamMemberConfig> rosterMembers = const [],
+    Map<String, CliTool> memberClis = const {},
     CliTool? cli,
     String? workingDirectory,
     String? fixedSessionId,
@@ -789,6 +791,12 @@ class ChatCubit extends Cubit<ChatState>
       repo,
       sessionTeamId: sessionTeamId,
       rosterMembers: rosterMembers,
+      memberClis: memberClis.isNotEmpty
+          ? memberClis
+          : {
+              for (final m in rosterMembers.where((m) => m.isValid))
+                m.id: m.cli ?? CliTool.claude,
+            },
       cli: cli,
       workingDirectory: workingDirectory,
       fixedSessionId: fixedSessionId,
@@ -1082,7 +1090,10 @@ class ChatCubit extends Cubit<ChatState>
     emit(
       state.copyWith(
         tabs: _tabStore.activeTabInfos(),
-        activeTabIndex: state.activeTabIndex.clamp(0, _tabStore.activeTabCount - 1),
+        activeTabIndex: state.activeTabIndex.clamp(
+          0,
+          _tabStore.activeTabCount - 1,
+        ),
         activeSessionId: active?.info.id,
         selectedMemberId: active?.selectedMemberId ?? '',
         composeActive: false,
@@ -1142,10 +1153,7 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   /// Sets History vs Terminal center body for an open session tab.
-  void setSessionWorkbenchView(
-    String sessionId,
-    SessionWorkbenchView view,
-  ) {
+  void setSessionWorkbenchView(String sessionId, SessionWorkbenchView view) {
     final tab = _tabStore.openTabBySessionId(sessionId);
     if (tab == null || tab.workbenchView == view) return;
     tab.workbenchView = view;
@@ -1434,7 +1442,9 @@ class ChatCubit extends Cubit<ChatState>
     final working = _sessionRuntime.recomputeWorkingSessions();
 
     if (wasActive && !_tabStore.activeTabsIsEmpty) {
-      final newIdx = idx < _tabStore.activeTabCount ? idx : _tabStore.activeTabCount - 1;
+      final newIdx = idx < _tabStore.activeTabCount
+          ? idx
+          : _tabStore.activeTabCount - 1;
       final nextTab = _tabStore.activeTabs[newIdx];
       _emitSnapshot(
         _dataStore.deriveSnapshot(

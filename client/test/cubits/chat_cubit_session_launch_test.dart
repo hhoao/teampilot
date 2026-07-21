@@ -58,6 +58,8 @@ void main() {
       workspace.workspaceId,
       sessionTeam: team.id,
       rosterMembers: team.members,
+
+      memberClis: {for (final m in team.members) m.id: CliTool.claude},
     );
     final chatCubit = ChatCubit(
       executableResolver: _testExecutable,
@@ -220,6 +222,8 @@ void main() {
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
+
+        memberClis: {for (final m in team.members) m.id: CliTool.claude},
       );
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
@@ -271,6 +275,8 @@ void main() {
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
+
+        memberClis: {for (final m in team.members) m.id: CliTool.claude},
       );
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
@@ -378,6 +384,8 @@ void main() {
       workspace.workspaceId,
       sessionTeam: team.id,
       rosterMembers: team.members,
+
+      memberClis: {for (final m in team.members) m.id: CliTool.claude},
     );
     FakeTerminalSession? captured;
     final postFrame = PostFrameTestHarness();
@@ -426,6 +434,8 @@ void main() {
       workspace.workspaceId,
       sessionTeam: team.id,
       rosterMembers: team.members,
+
+      memberClis: {for (final m in team.members) m.id: CliTool.claude},
     );
     await repo.markSessionLaunched(session.sessionId);
 
@@ -477,6 +487,8 @@ void main() {
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
+
+        memberClis: {for (final m in team.members) m.id: CliTool.claude},
       );
       await repo.markSessionLaunched(session.sessionId);
 
@@ -530,6 +542,8 @@ void main() {
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
+
+        memberClis: {for (final m in team.members) m.id: CliTool.claude},
       );
       FakeTerminalSession? captured;
       final postFrame = PostFrameTestHarness();
@@ -559,5 +573,4 @@ void main() {
       expect(captured!.lastAdditionalDirectoriesLists.last, ['/extra']);
     },
   );
-
 }

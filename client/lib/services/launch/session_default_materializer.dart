@@ -4,6 +4,7 @@ import '../../cubits/chat/session_launch_host.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../repositories/session_repository.dart';
+import '../../services/session/session_member_cli_locks.dart';
 import '../../utils/logging/logger.dart';
 import 'session_launch_workspace_index.dart';
 
@@ -77,11 +78,19 @@ class SessionDefaultMaterializer {
       return;
     }
 
-    var session = index.firstForWorkspaceAndTeam(workspace.workspaceId, team.id);
+    var session = index.firstForWorkspaceAndTeam(
+      workspace.workspaceId,
+      team.id,
+    );
     session ??= await repo.createSession(
       workspace.workspaceId,
       sessionTeam: team.id,
       rosterMembers: team.members,
+      // Temporary until Task 4 threads presets; locks from live team/member cli.
+      memberClis: resolveSessionMemberCliLocks(
+        team: team,
+        rosterMembers: team.members,
+      ),
     );
     if (_host.isClosed) return;
     await _host.loadWorkspaceData(repo);
@@ -107,7 +116,9 @@ class SessionDefaultMaterializer {
     if (!_isTabsEmpty()) return;
 
     final index = _workspaceIndex();
-    final existingSession = index.firstForPersonalWorkspace(workspace.workspaceId);
+    final existingSession = index.firstForPersonalWorkspace(
+      workspace.workspaceId,
+    );
     if (existingSession != null) {
       await _openSession(
         SessionOpenRequest(
@@ -122,10 +133,7 @@ class SessionDefaultMaterializer {
 
     final cli = cliOverride ?? CliTool.claude;
 
-    final session = await repo.createSession(
-      workspace.workspaceId,
-      cli: cli,
-    );
+    final session = await repo.createSession(workspace.workspaceId, cli: cli);
     if (_host.isClosed) return;
     await _host.loadWorkspaceData(repo);
     if (_host.isClosed) return;

@@ -21,8 +21,7 @@ class _DenyGateLifecycle implements CliSessionLifecycleCapability {
   @override
   Future<CliSessionPersistResult> ensurePersisted(
     CliSessionPersistContext ctx,
-  ) async =>
-      const CliSessionPersistResult();
+  ) async => const CliSessionPersistResult();
 
   @override
   Future<CliSessionInitResult> initialize(
@@ -57,10 +56,7 @@ class _ToolWithExtraCapability implements CliToolDefinition {
   bool get isLaunchSupported => _inner.isLaunchSupported;
 
   @override
-  Iterable<CliCapability> get capabilities => [
-    ..._inner.capabilities,
-    _extra,
-  ];
+  Iterable<CliCapability> get capabilities => [..._inner.capabilities, _extra];
 }
 
 CliToolRegistry _registryWithLifecycle(
@@ -123,9 +119,7 @@ void main() {
       name: 'Gate Team',
       cli: CliTool.claude,
       teamMode: TeamMode.mixed,
-      members: [
-        TeamMemberConfig(id: 'team-lead', name: 'Team Lead'),
-      ],
+      members: [TeamMemberConfig(id: 'team-lead', name: 'Team Lead')],
     );
 
     setUp(() async {
@@ -170,6 +164,8 @@ void main() {
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
+
+        memberClis: {for (final m in team.members) m.id: CliTool.claude},
       );
       await cubit.loadWorkspaceData(repo);
 
@@ -193,10 +189,7 @@ void main() {
       expect(shells, isNotEmpty);
       expect(shells.first.connectCalls, 0);
       expect(cubit.state.isActiveSessionConnecting, isFalse);
-      expect(
-        cubit.tabStore.activeTabs.first.info.launchError,
-        isNotNull,
-      );
+      expect(cubit.tabStore.activeTabs.first.info.launchError, isNotNull);
     });
   });
 }

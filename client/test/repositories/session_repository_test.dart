@@ -140,6 +140,8 @@ void main() {
         rosterMembers: const [
           TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
         ],
+
+        memberClis: const {'team-lead': CliTool.claude},
       );
 
       await repo.deleteSession(session.sessionId);
@@ -164,11 +166,15 @@ void main() {
       workspace.workspaceId,
       sessionTeam: 'T',
       rosterMembers: roster,
+
+      memberClis: {for (final m in roster) m.id: CliTool.claude},
     );
     final s2 = await repo.createSession(
       workspace.workspaceId,
       sessionTeam: 'T',
       rosterMembers: roster,
+
+      memberClis: {for (final m in roster) m.id: CliTool.claude},
     );
 
     await repo.deleteWorkspace(workspace.workspaceId);
@@ -405,6 +411,8 @@ void main() {
       rosterMembers: const [
         TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
       ],
+
+      memberClis: const {'team-lead': CliTool.claude},
     );
     expect(session.sessionTeam, 'team-config-id-1');
     expect(session.cliTeamName, 'team-config-id-1-1');
@@ -428,6 +436,8 @@ void main() {
       workspace.workspaceId,
       sessionTeam: 'team-a',
       rosterMembers: roster,
+
+      memberClis: {for (final m in roster) m.id: CliTool.claude},
     );
     expect(s.cliTeamName, 'team-a-1');
     expect(s.members.length, 2);
@@ -446,10 +456,12 @@ void main() {
       rosterMembers: const [
         TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
       ],
+      memberClis: const {'team-lead': CliTool.claude},
     );
     final binding = await repo.ensureMemberBinding(
       session.sessionId,
       'new-member',
+      cli: CliTool.claude,
     );
     expect(binding.rosterMemberId, 'new-member');
     expect(binding.taskId, isNotEmpty);
@@ -498,35 +510,29 @@ void main() {
 
     final repo = SessionRepository(rootDir: tmp.path);
     final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
-    final session = await repo.createSession(
-      workspace.workspaceId,
-    );
+    final session = await repo.createSession(workspace.workspaceId);
 
     // Simple / unteamed sessions have no launch-profile identity.
     expect(session.profileId, '');
     expect((await repo.loadSessions()).single.profileId, '');
   });
 
-  test(
-    'team session keeps profileId empty',
-    () async {
-      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
-      addTearDown(() => tmp.deleteSync(recursive: true));
+  test('team session keeps profileId empty', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path);
-      final workspace = await repo.createWorkspace([
-        WorkspaceFolder(path: '/w'),
-      ]);
-      final session = await repo.createSession(
-        workspace.workspaceId,
-        sessionTeam: 'team-a',
-        rosterMembers: [const TeamMemberConfig(id: 'team-lead', name: 'Lead')],
-      );
+    final repo = SessionRepository(rootDir: tmp.path);
+    final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
+    final session = await repo.createSession(
+      workspace.workspaceId,
+      sessionTeam: 'team-a',
+      rosterMembers: [const TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+      memberClis: const {'team-lead': CliTool.claude},
+    );
 
-      expect(session.profileId, '');
-      expect((await repo.loadSessions()).single.profileId, '');
-    },
-  );
+    expect(session.profileId, '');
+    expect((await repo.loadSessions()).single.profileId, '');
+  });
 
   test(
     'loadWorkspacesIndex maintains workspaces-index.json snapshot',
@@ -570,4 +576,183 @@ void main() {
     final decoded = jsonDecode(File(indexPath).readAsStringSync());
     expect((decoded as Map)['workspaces'], isEmpty);
   });
+
+  test(
+    'createSession locks each binding CLI via member type id (replicas share)',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+
+      final repo = SessionRepository(rootDir: tmp.path);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/w'),
+      ]);
+      final session = await repo.createSession(
+        workspace.workspaceId,
+        sessionTeam: 'team-a',
+        rosterMembers: const [
+          TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+          TeamMemberConfig(id: 'builder', name: 'Builder', replicas: 2),
+        ],
+        memberClis: const {
+          'team-lead': CliTool.claude,
+          'builder': CliTool.opencode,
+        },
+      );
+
+      expect(session.members.map((b) => b.rosterMemberId), [
+        'team-lead',
+        'builder-0',
+        'builder-1',
+      ]);
+      expect(session.bindingFor('team-lead')?.cli, CliTool.claude);
+      expect(session.bindingFor('builder-0')?.cli, CliTool.opencode);
+      expect(session.bindingFor('builder-1')?.cli, CliTool.opencode);
+      final disk = (await repo.loadSessions()).single;
+      expect(disk.bindingFor('builder-0')?.cli, CliTool.opencode);
+    },
+  );
+
+  test(
+    'createSession throws ArgumentError when memberClis missing for included type',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+
+      final repo = SessionRepository(rootDir: tmp.path);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/w'),
+      ]);
+
+      await expectLater(
+        () => repo.createSession(
+          workspace.workspaceId,
+          sessionTeam: 'team-a',
+          rosterMembers: const [
+            TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+            TeamMemberConfig(id: 'builder', name: 'Builder'),
+          ],
+          memberClis: const {'team-lead': CliTool.claude},
+        ),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('missing memberClis for builder'),
+          ),
+        ),
+      );
+    },
+  );
+
+  test('simple createSession ignores memberClis', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+
+    final repo = SessionRepository(rootDir: tmp.path);
+    final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
+    final session = await repo.createSession(
+      workspace.workspaceId,
+      memberClis: const {'team-lead': CliTool.cursor},
+    );
+
+    expect(session.sessionTeam, '');
+    expect(session.members, isEmpty);
+    expect(session.cli, isNull);
+  });
+
+  test(
+    'ensureMemberBinding persists cli on insert and leaves existing unchanged',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+
+      final repo = SessionRepository(rootDir: tmp.path);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/w'),
+      ]);
+      final session = await repo.createSession(
+        workspace.workspaceId,
+        sessionTeam: 'team-a',
+        rosterMembers: const [
+          TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+        ],
+        memberClis: const {'team-lead': CliTool.claude},
+      );
+
+      final first = await repo.ensureMemberBinding(
+        session.sessionId,
+        'new-member',
+        cli: CliTool.codex,
+      );
+      expect(first.cli, CliTool.codex);
+      expect(
+        (await repo.loadSessions()).single.bindingFor('new-member')?.cli,
+        CliTool.codex,
+      );
+
+      final second = await repo.ensureMemberBinding(
+        session.sessionId,
+        'new-member',
+        cli: CliTool.cursor,
+      );
+      expect(second.cli, CliTool.codex);
+      expect(
+        (await repo.loadSessions()).single.bindingFor('new-member')?.cli,
+        CliTool.codex,
+      );
+    },
+  );
+
+  test(
+    'cloneWorkspace copies source binding cli including null legacy',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+
+      final repo = SessionRepository(rootDir: tmp.path);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/w'),
+      ]);
+      const roster = [
+        TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+        TeamMemberConfig(id: 'worker', name: 'Worker'),
+      ];
+      final source = await repo.createSession(
+        workspace.workspaceId,
+        sessionTeam: 'team-a',
+        rosterMembers: roster,
+        memberClis: const {
+          'team-lead': CliTool.cursor,
+          'worker': CliTool.opencode,
+        },
+      );
+
+      // Plant a legacy null lock on worker by rewriting session.json.
+      final sessionPath =
+          '${tmp.path}/workspace/workspaces/${workspace.workspaceId}'
+          '/sessions/${source.sessionId}/session.json';
+      final raw =
+          jsonDecode(File(sessionPath).readAsStringSync())
+              as Map<String, dynamic>;
+      final members = (raw['members'] as List).cast<Map<String, dynamic>>();
+      for (final m in members) {
+        if (m['rosterMemberId'] == 'worker') {
+          m.remove('cli');
+        }
+      }
+      File(sessionPath).writeAsStringSync(jsonEncode(raw));
+
+      final cloned = await repo.cloneWorkspace(
+        workspace.workspaceId,
+        rosterMembers: roster,
+      );
+      final clonedSession = (await repo.loadSessions()).firstWhere(
+        (s) => s.workspaceId == cloned.workspaceId,
+      );
+
+      expect(clonedSession.bindingFor('team-lead')?.cli, CliTool.cursor);
+      expect(clonedSession.bindingFor('worker')?.cli, isNull);
+    },
+  );
 }

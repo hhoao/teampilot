@@ -47,37 +47,40 @@ void main() {
       );
     }
 
-    test('setSessionContinuePreset persists same-CLI Simple identity', () async {
-      final workspace = await repo.createWorkspace([
-        WorkspaceFolder(path: '/w'),
-      ]);
-      final session = await repo.createSession(
-        workspace.workspaceId,
-        cli: CliTool.claude,
-        provider: 'anthropic',
-        model: 'claude-sonnet',
-        effort: 'high',
-        presetId: 'preset-a',
-      );
-      await cubit.loadWorkspaceData(repo);
+    test(
+      'setSessionContinuePreset persists same-CLI Simple identity',
+      () async {
+        final workspace = await repo.createWorkspace([
+          WorkspaceFolder(path: '/w'),
+        ]);
+        final session = await repo.createSession(
+          workspace.workspaceId,
+          cli: CliTool.claude,
+          provider: 'anthropic',
+          model: 'claude-sonnet',
+          effort: 'high',
+          presetId: 'preset-a',
+        );
+        await cubit.loadWorkspaceData(repo);
 
-      final ok = await cubit.setSessionContinuePreset(
-        sessionId: session.sessionId,
-        preset: claudePreset(),
-        lockedCli: CliTool.claude,
-      );
+        final ok = await cubit.setSessionContinuePreset(
+          sessionId: session.sessionId,
+          preset: claudePreset(),
+          lockedCli: CliTool.claude,
+        );
 
-      expect(ok, isTrue);
-      final memory = cubit.state.sessions.single;
-      expect(memory.presetId, 'preset-b');
-      expect(memory.provider, 'openai');
-      expect(memory.model, 'gpt-4o');
+        expect(ok, isTrue);
+        final memory = cubit.state.sessions.single;
+        expect(memory.presetId, 'preset-b');
+        expect(memory.provider, 'openai');
+        expect(memory.model, 'gpt-4o');
 
-      final disk = (await repo.loadSessions()).single;
-      expect(disk.presetId, 'preset-b');
-      expect(disk.provider, 'openai');
-      expect(disk.model, 'gpt-4o');
-    });
+        final disk = (await repo.loadSessions()).single;
+        expect(disk.presetId, 'preset-b');
+        expect(disk.provider, 'openai');
+        expect(disk.model, 'gpt-4o');
+      },
+    );
 
     test('setSessionContinuePreset rejects cross-CLI preset', () async {
       final workspace = await repo.createWorkspace([
@@ -121,6 +124,11 @@ void main() {
             ),
           },
         ),
+
+        memberClis: const {
+          'builder-0': CliTool.claude,
+          'reviewer-0': CliTool.claude,
+        },
       );
       await cubit.loadWorkspaceData(repo);
 
@@ -155,23 +163,33 @@ void main() {
 
       expect(ok, isTrue);
       expect(
-        cubit.state.sessions.single.continueOverrides.dangerouslySkipPermissions,
+        cubit
+            .state
+            .sessions
+            .single
+            .continueOverrides
+            .dangerouslySkipPermissions,
         isTrue,
       );
       expect(
-        (await repo.loadSessions()).single.continueOverrides
+        (await repo.loadSessions())
+            .single
+            .continueOverrides
             .dangerouslySkipPermissions,
         isTrue,
       );
     });
 
-    test('setSessionContinuePermission returns false when session missing', () async {
-      final ok = await cubit.setSessionContinuePermission(
-        sessionId: 'missing',
-        dangerouslySkipPermissions: true,
-      );
+    test(
+      'setSessionContinuePermission returns false when session missing',
+      () async {
+        final ok = await cubit.setSessionContinuePermission(
+          sessionId: 'missing',
+          dangerouslySkipPermissions: true,
+        );
 
-      expect(ok, isFalse);
-    });
+        expect(ok, isFalse);
+      },
+    );
   });
 }

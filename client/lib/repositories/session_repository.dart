@@ -14,6 +14,7 @@ import '../models/session_member_binding.dart';
 import '../models/team_config.dart';
 import '../services/storage/runtime_layout.dart';
 import '../services/io/filesystem.dart';
+import '../services/session/session_member_cli_locks.dart';
 import '../services/session/session_team_counter.dart';
 import '../services/storage/app_storage.dart';
 import '../models/workspace_icon_ref.dart';
@@ -384,8 +385,7 @@ class SessionRepository {
           ? defaultProfileId.trim()
           : existing.defaultProfileId,
       folders: existing.folders,
-      rootSandboxEnvOptIn:
-          rootSandboxEnvOptIn ?? existing.rootSandboxEnvOptIn,
+      rootSandboxEnvOptIn: rootSandboxEnvOptIn ?? existing.rootSandboxEnvOptIn,
       updatedAt: now,
     );
     await _writeManifest(fs, updated);
@@ -468,13 +468,12 @@ class SessionRepository {
       previousTargetIds,
       nextTargetIds,
     );
-    final nextInitialized =
-        (becameMixed || targetSetChanged)
-            ? <String, bool>{
-                for (final teamId in existing.memberTargetsByTeam.keys)
-                  if (teamId.trim().isNotEmpty) teamId.trim(): false,
-              }
-            : existing.memberPlacementInitializedByTeam;
+    final nextInitialized = (becameMixed || targetSetChanged)
+        ? <String, bool>{
+            for (final teamId in existing.memberTargetsByTeam.keys)
+              if (teamId.trim().isNotEmpty) teamId.trim(): false,
+          }
+        : existing.memberPlacementInitializedByTeam;
     final updated = existing.copyWith(
       folders: nextFolders,
       memberPlacementInitializedByTeam: nextInitialized,
@@ -651,6 +650,7 @@ class SessionRepository {
     String workspaceId, {
     String sessionTeam = '',
     List<TeamMemberConfig> rosterMembers = const [],
+    Map<String, CliTool> memberClis = const {},
     CliTool? cli,
     String? provider,
     String? model,
@@ -743,6 +743,9 @@ class SessionRepository {
             rosterMemberId: inst.instanceId,
             typeId: inst.type.id,
             taskId: const Uuid().v4(),
+            cli:
+                memberClis[inst.type.id] ??
+                (throw ArgumentError('missing memberClis for ${inst.type.id}')),
           ),
       ];
       sessionTargets = {
@@ -809,10 +812,7 @@ class SessionRepository {
       final pinned = <String, String>{};
       var filledGap = false;
       for (final inst in instances) {
-        final existing = memberTargetForInstanceId(
-          remembered,
-          inst.instanceId,
-        );
+        final existing = memberTargetForInstanceId(remembered, inst.instanceId);
         if (existing != null &&
             hostIds.contains(existing) &&
             folderPathsForTarget(folders, existing).isNotEmpty) {
@@ -822,10 +822,7 @@ class SessionRepository {
           filledGap = true;
         }
       }
-      return (
-        targets: pinned,
-        persistTargets: remembered.isEmpty || filledGap,
-      );
+      return (targets: pinned, persistTargets: remembered.isEmpty || filledGap);
     }
 
     final pinned = <String, String>{};
@@ -895,6 +892,7 @@ class SessionRepository {
   Future<SessionMemberBinding> ensureMemberBinding(
     String sessionId,
     String rosterMemberId, {
+    required CliTool cli,
     String? typeId,
   }) {
     return _withSessionFile(sessionId, () async {
@@ -919,6 +917,7 @@ class SessionRepository {
         rosterMemberId: trimmedMemberId,
         typeId: (typeId ?? trimmedMemberId).trim(),
         taskId: const Uuid().v4(),
+        cli: cli,
       );
       await _writeSession(
         fs,
@@ -1217,6 +1216,11 @@ class SessionRepository {
               rosterMemberId: inst.instanceId,
               typeId: inst.type.id,
               taskId: const Uuid().v4(),
+              cli: copyCliFromSourceBinding(
+                sourceMembers: source.members,
+                rosterMemberId: inst.instanceId,
+                typeId: inst.type.id,
+              ),
             ),
         ];
       }

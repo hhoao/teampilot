@@ -53,11 +53,8 @@ abstract interface class SessionShellConnectorDelegate {
 
 /// Attaches a member shell after launch prep, lifecycle gating, and SSH/bus setup.
 class SessionShellConnector {
-  SessionShellConnector(
-    this._host,
-    this._delegate, {
-    Uuid? uuid,
-  }) : _uuid = uuid ?? const Uuid();
+  SessionShellConnector(this._host, this._delegate, {Uuid? uuid})
+    : _uuid = uuid ?? const Uuid();
 
   final SessionLaunchHost _host;
   final SessionShellConnectorDelegate _delegate;
@@ -220,7 +217,9 @@ class SessionShellConnector {
           launchMember != null &&
           team.teamMode == TeamMode.mixed &&
           tab.teamBus != null &&
-          _host.teammateBusMcpGateway.isSessionRegistered(activeSession.sessionId);
+          _host.teammateBusMcpGateway.isSessionRegistered(
+            activeSession.sessionId,
+          );
       RemoteBusBinding? remoteBinding;
       String? remoteCliPath;
       ShellLaunchSpec shellLaunch;
@@ -311,18 +310,19 @@ class SessionShellConnector {
             additionalDirectories: memberWork.addDirs,
             extraMcpServers: mixedBus
                 ? {
-                    teammateBusMcpServerName: resolveMemberBusMcpTransportConfig(
-                      cliRegistry: _host.cliRegistry,
-                      endpoint: _host.teammateBusMcpGateway.mcpEndpoint,
-                      sessionId: activeSession.sessionId,
-                      memberId: launchMember.id,
-                      cli: memberLaunchCli(
-                        team: team,
-                        member: launchMember,
-                        globalPresets: _host.lifecycle.globalPresets,
-                      ),
-                      remoteBinding: remoteBinding,
-                    ),
+                    teammateBusMcpServerName:
+                        resolveMemberBusMcpTransportConfig(
+                          cliRegistry: _host.cliRegistry,
+                          endpoint: _host.teammateBusMcpGateway.mcpEndpoint,
+                          sessionId: activeSession.sessionId,
+                          memberId: launchMember.id,
+                          cli: memberLaunchCli(
+                            team: team,
+                            member: launchMember,
+                            globalPresets: _host.lifecycle.globalPresets,
+                          ),
+                          remoteBinding: remoteBinding,
+                        ),
                   }
                 : null,
             busIdle: mixedBus
@@ -649,7 +649,12 @@ class SessionShellConnector {
     final r = repo ?? _host.sessionRepository;
     final isLocal = session.sessionId.startsWith('local-');
     if (r != null && !isLocal) {
-      return r.ensureMemberBinding(session.sessionId, member.id);
+      return r.ensureMemberBinding(
+        session.sessionId,
+        member.id,
+        // Temporary: Task 4 resolves via profile; prefer member.cli when set.
+        cli: member.cli ?? CliTool.claude,
+      );
     }
     final existing = session.bindingFor(member.id);
     if (existing != null) return existing;

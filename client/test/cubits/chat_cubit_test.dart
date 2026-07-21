@@ -477,6 +477,8 @@ void main() {
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
+
+          memberClis: {for (final m in team.members) m.id: CliTool.claude},
         );
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
@@ -528,6 +530,8 @@ void main() {
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
+
+          memberClis: {for (final m in team.members) m.id: CliTool.claude},
         );
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
@@ -588,11 +592,15 @@ void main() {
           workspaceA.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
+
+          memberClis: {for (final m in team.members) m.id: CliTool.claude},
         );
         final sessionB = await repo.createSession(
           workspaceB.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
+
+          memberClis: {for (final m in team.members) m.id: CliTool.claude},
         );
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
@@ -657,6 +665,8 @@ void main() {
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
+
+          memberClis: {for (final m in team.members) m.id: CliTool.claude},
         );
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
@@ -719,6 +729,8 @@ void main() {
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
+
+          memberClis: {for (final m in team.members) m.id: CliTool.claude},
         );
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
@@ -838,6 +850,8 @@ void main() {
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
+
+          memberClis: {for (final m in team.members) m.id: CliTool.claude},
         );
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
@@ -895,6 +909,8 @@ void main() {
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
+
+        memberClis: {for (final m in team.members) m.id: CliTool.claude},
       );
       final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
@@ -953,6 +969,8 @@ void main() {
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
+
+          memberClis: {for (final m in team.members) m.id: CliTool.claude},
         );
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
@@ -1020,6 +1038,8 @@ void main() {
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
+
+          memberClis: {for (final m in team.members) m.id: CliTool.claude},
         );
         final cubit = ChatCubit(
           executableResolver: () => 'true',
@@ -1084,6 +1104,8 @@ void main() {
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
+
+          memberClis: {for (final m in team.members) m.id: CliTool.claude},
         );
 
         final postFrame = PostFrameTestHarness();

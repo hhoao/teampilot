@@ -72,6 +72,8 @@ void main() {
         workspaceId,
         sessionTeam: _team.id,
         rosterMembers: _team.members,
+
+        memberClis: {for (final m in _team.members) m.id: CliTool.claude},
       );
       sessionIds.add(session.sessionId);
       await cubit.requestOpenSession(
@@ -146,23 +148,26 @@ void main() {
       expect(cubit.state.activeSessionId, isNull);
     });
 
-    test('selectNextSessionTab wraps forward across open session tabs', () async {
-      await openTabs(3);
-      expect(cubit.state.tabs, hasLength(3));
-      expect(cubit.state.activeTabIndex, 2);
+    test(
+      'selectNextSessionTab wraps forward across open session tabs',
+      () async {
+        await openTabs(3);
+        expect(cubit.state.tabs, hasLength(3));
+        expect(cubit.state.activeTabIndex, 2);
 
-      cubit.selectNextSessionTab();
-      expect(cubit.state.activeTabIndex, 0);
-      expect(cubit.state.activeSessionId, sessionIds[0]);
+        cubit.selectNextSessionTab();
+        expect(cubit.state.activeTabIndex, 0);
+        expect(cubit.state.activeSessionId, sessionIds[0]);
 
-      cubit.selectNextSessionTab();
-      expect(cubit.state.activeTabIndex, 1);
-      expect(cubit.state.activeSessionId, sessionIds[1]);
+        cubit.selectNextSessionTab();
+        expect(cubit.state.activeTabIndex, 1);
+        expect(cubit.state.activeSessionId, sessionIds[1]);
 
-      cubit.selectNextSessionTab();
-      expect(cubit.state.activeTabIndex, 2);
-      expect(cubit.state.activeSessionId, sessionIds[2]);
-    });
+        cubit.selectNextSessionTab();
+        expect(cubit.state.activeTabIndex, 2);
+        expect(cubit.state.activeSessionId, sessionIds[2]);
+      },
+    );
 
     test(
       'selectPreviousSessionTab wraps backward across open session tabs',
@@ -234,27 +239,21 @@ void main() {
 
         expect(cubit.state.tabs, hasLength(1));
         expect(cubit.state.activeSessionId, sessionIds[0]);
-        expect(
-          cubit.state.tabs.any((t) => t.id == closedSessionId),
-          isFalse,
-        );
+        expect(cubit.state.tabs.any((t) => t.id == closedSessionId), isFalse);
       },
     );
 
-    test(
-      'enterComposeMode(activeWorkspaceId) is the session-new-tab command '
-      'equivalent, and keeps open tabs',
-      () async {
-        await openTabs(2);
-        expect(cubit.state.composeActive, isFalse);
+    test('enterComposeMode(activeWorkspaceId) is the session-new-tab command '
+        'equivalent, and keeps open tabs', () async {
+      await openTabs(2);
+      expect(cubit.state.composeActive, isFalse);
 
-        cubit.enterComposeMode(cubit.tabStore.activeWorkspaceId);
+      cubit.enterComposeMode(cubit.tabStore.activeWorkspaceId);
 
-        expect(cubit.state.composeActive, isTrue);
-        expect(cubit.state.tabs, hasLength(2));
-        expect(cubit.state.activeSessionId, isNull);
-      },
-    );
+      expect(cubit.state.composeActive, isTrue);
+      expect(cubit.state.tabs, hasLength(2));
+      expect(cubit.state.activeSessionId, isNull);
+    });
 
     test('selectSessionTabAt jumps to 1-based ordinal', () async {
       await openTabs(3);

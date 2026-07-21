@@ -19,6 +19,7 @@ import 'docker_ssh_server.dart';
 import 'integration_prerequisites.dart';
 import 'mixed_team_idle_busy_assertions.dart';
 import 'mixed_team_integration_harness.dart';
+import 'package:teampilot/models/team_config.dart';
 
 /// L2 mixed-team scenarios: real Claude PTY + mock Anthropic + bus persistence.
 abstract final class MixedTeamTaskScenario {
@@ -218,6 +219,10 @@ abstract final class MixedTeamTaskScenario {
         workspace.workspaceId,
         sessionTeam: kItMixedClaudeTeam.id,
         rosterMembers: kItMixedClaudeTeam.members,
+
+        memberClis: {
+          for (final m in kItMixedClaudeTeam.members) m.id: CliTool.claude,
+        },
       );
       session = (await repo.loadSessions()).firstWhere(
         (s) => s.sessionId == session!.sessionId,
@@ -320,6 +325,10 @@ abstract final class MixedTeamTaskScenario {
         workspace.workspaceId,
         sessionTeam: kItMixedClaudeTeam.id,
         rosterMembers: kItMixedClaudeTeam.members,
+
+        memberClis: {
+          for (final m in kItMixedClaudeTeam.members) m.id: CliTool.claude,
+        },
       );
       session = (await repo.loadSessions()).firstWhere(
         (s) => s.sessionId == session!.sessionId,
@@ -419,6 +428,10 @@ abstract final class MixedTeamTaskScenario {
         workspace.workspaceId,
         sessionTeam: kItMixedClaudeTeam.id,
         rosterMembers: kItMixedClaudeTeam.members,
+
+        memberClis: {
+          for (final m in kItMixedClaudeTeam.members) m.id: CliTool.claude,
+        },
       );
 
       await cubit.requestOpenSession(

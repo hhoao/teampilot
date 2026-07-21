@@ -40,11 +40,10 @@ void main() {
         TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
         TeamMemberConfig(id: 'dev', name: 'Dev'),
       ],
+
+      memberClis: const {'team-lead': CliTool.claude, 'dev': CliTool.claude},
     );
-    expect(
-      session.folders.any((f) => f.targetId == 'ssh:old'),
-      isTrue,
-    );
+    expect(session.folders.any((f) => f.targetId == 'ssh:old'), isTrue);
     expect(session.memberTargets['dev'], 'ssh:old');
 
     await repo.remapWorkspaceTarget(
@@ -55,21 +54,20 @@ void main() {
     );
 
     final reloadedWs = (await repo.loadWorkspaces()).single;
-    expect(
-      reloadedWs.folders.map((f) => f.targetId),
-      ['local', 'ssh:new'],
-    );
+    expect(reloadedWs.folders.map((f) => f.targetId), ['local', 'ssh:new']);
     expect(reloadedWs.memberTargetsByTeam['team-a']?['dev'], 'ssh:new');
     expect(reloadedWs.memberPlacementInitializedByTeam['team-a'], isTrue);
 
-    final reloadedSessions = await repo.loadSessionsForWorkspace(ws.workspaceId);
+    final reloadedSessions = await repo.loadSessionsForWorkspace(
+      ws.workspaceId,
+    );
     expect(reloadedSessions, hasLength(1));
     final reloadedSession = reloadedSessions.single;
+    expect(reloadedSession.folders.any((f) => f.targetId == 'ssh:new'), isTrue);
     expect(
-      reloadedSession.folders.any((f) => f.targetId == 'ssh:new'),
-      isTrue,
+      reloadedSession.folders.any((f) => f.targetId == 'ssh:old'),
+      isFalse,
     );
-    expect(reloadedSession.folders.any((f) => f.targetId == 'ssh:old'), isFalse);
     expect(reloadedSession.memberTargets['dev'], 'ssh:new');
   });
 
@@ -133,10 +131,7 @@ void main() {
       );
 
       final unchanged = (await repo.loadWorkspaces()).single;
-      expect(
-        unchanged.folders.map((f) => f.targetId),
-        ['local', 'ssh:old'],
-      );
+      expect(unchanged.folders.map((f) => f.targetId), ['local', 'ssh:old']);
       expect(unchanged.memberTargetsByTeam['team-a']?['team-lead'], 'ssh:old');
     },
   );

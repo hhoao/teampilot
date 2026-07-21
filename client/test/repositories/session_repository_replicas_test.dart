@@ -26,6 +26,11 @@ void main() {
           TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
           TeamMemberConfig(id: 'builder', name: 'Builder', replicas: 2),
         ],
+
+        memberClis: const {
+          'team-lead': CliTool.claude,
+          'builder': CliTool.claude,
+        },
       );
       expect(session.members.map((b) => b.rosterMemberId), [
         'team-lead',
@@ -44,7 +49,9 @@ void main() {
   test(
     'createSession heals stale replicas from remembered instance pins',
     () async {
-      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_heal_');
+      final tmp = await Directory.systemTemp.createTemp(
+        'fs_session_repo_heal_',
+      );
       addTearDown(() => tmp.deleteSync(recursive: true));
       final repo = SessionRepository(rootDir: tmp.path);
 
@@ -70,6 +77,11 @@ void main() {
           TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
           TeamMemberConfig(id: 'builder', name: 'Builder', replicas: 1),
         ],
+
+        memberClis: const {
+          'team-lead': CliTool.claude,
+          'builder': CliTool.claude,
+        },
       );
 
       expect(session.members.map((b) => b.rosterMemberId).toList(), [
@@ -127,6 +139,8 @@ void main() {
         ws.workspaceId,
         sessionTeam: 'team-a',
         rosterMembers: staleTeam.members,
+
+        memberClis: {for (final m in staleTeam.members) m.id: CliTool.claude},
       );
 
       expect(session.members.map((b) => b.rosterMemberId).toList(), [
@@ -138,13 +152,7 @@ void main() {
       ]);
       expect(
         sessionRosterMembers(session, staleTeam).map((m) => m.id).toList(),
-        [
-          'team-lead',
-          'architect',
-          'builder-0',
-          'builder-1',
-          'reviewer',
-        ],
+        ['team-lead', 'architect', 'builder-0', 'builder-1', 'reviewer'],
       );
     },
   );
@@ -152,7 +160,9 @@ void main() {
   test(
     'createSession omits mixed instances without targets when initialized',
     () async {
-      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_omit_');
+      final tmp = await Directory.systemTemp.createTemp(
+        'fs_session_repo_omit_',
+      );
       addTearDown(() => tmp.deleteSync(recursive: true));
       final repo = SessionRepository(rootDir: tmp.path);
 
@@ -173,6 +183,8 @@ void main() {
           TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
           TeamMemberConfig(id: 'dev', name: 'Dev', replicas: 2),
         ],
+
+        memberClis: const {'team-lead': CliTool.claude, 'dev': CliTool.claude},
       );
 
       expect(session.members.map((b) => b.rosterMemberId), ['team-lead']);
@@ -203,6 +215,8 @@ void main() {
           TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
           TeamMemberConfig(id: 'dev', name: 'Dev', replicas: 2),
         ],
+
+        memberClis: const {'team-lead': CliTool.claude, 'dev': CliTool.claude},
       );
 
       expect(session.memberTargets, {
@@ -236,6 +250,8 @@ void main() {
           TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
           TeamMemberConfig(id: 'dev', name: 'Dev', replicas: 2),
         ],
+
+        memberClis: const {'team-lead': CliTool.claude, 'dev': CliTool.claude},
       );
 
       expect(session.memberTargets, {
@@ -254,7 +270,9 @@ void main() {
   );
 
   test('createSession throws when mixed not initialized', () async {
-    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_uninit_');
+    final tmp = await Directory.systemTemp.createTemp(
+      'fs_session_repo_uninit_',
+    );
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(rootDir: tmp.path);
 
@@ -270,6 +288,8 @@ void main() {
         rosterMembers: const [
           TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
         ],
+
+        memberClis: const {'team-lead': CliTool.claude},
       ),
       throwsA(
         isA<StateError>().having(
@@ -284,7 +304,9 @@ void main() {
   test(
     'loadWorkspaces infers mixed placement init from valid remembered targets',
     () async {
-      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_infer_');
+      final tmp = await Directory.systemTemp.createTemp(
+        'fs_session_repo_infer_',
+      );
       addTearDown(() => tmp.deleteSync(recursive: true));
       final repo = SessionRepository(rootDir: tmp.path);
 
@@ -301,10 +323,10 @@ void main() {
 
       final before = (await repo.loadWorkspaces()).single;
       expect(before.memberPlacementInitializedByTeam['team-a'], isTrue);
-      expect(
-        before.memberTargetsByTeam['team-a'],
-        {'team-lead': 'local', 'dev-0': 'ssh:p1'},
-      );
+      expect(before.memberTargetsByTeam['team-a'], {
+        'team-lead': 'local',
+        'dev-0': 'ssh:p1',
+      });
 
       // Infer is in-memory only — disk still lacks the flag until an explicit save.
       final reloaded = SessionRepository(rootDir: tmp.path);

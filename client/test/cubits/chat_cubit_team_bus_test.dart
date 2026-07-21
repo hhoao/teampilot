@@ -94,6 +94,8 @@ void main() {
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
+
+        memberClis: {for (final m in team.members) m.id: CliTool.claude},
       );
 
       await cubit.requestOpenSession(
@@ -126,11 +128,15 @@ void main() {
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
+
+        memberClis: {for (final m in team.members) m.id: CliTool.claude},
       );
       final sessionB = await repo.createSession(
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
+
+        memberClis: {for (final m in team.members) m.id: CliTool.claude},
       );
 
       await cubit.requestOpenSession(
@@ -168,6 +174,8 @@ void main() {
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
+
+        memberClis: {for (final m in team.members) m.id: CliTool.claude},
       );
 
       await cubit.requestOpenSession(

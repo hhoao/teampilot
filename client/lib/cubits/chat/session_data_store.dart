@@ -167,6 +167,7 @@ class SessionDataStore {
     SessionRepository repo, {
     String sessionTeamId = '',
     List<TeamMemberConfig> rosterMembers = const [],
+    Map<String, CliTool> memberClis = const {},
     CliTool? cli,
     String? workingDirectory,
     String? fixedSessionId,
@@ -175,6 +176,7 @@ class SessionDataStore {
       workspaceId,
       sessionTeam: sessionTeamId,
       rosterMembers: rosterMembers,
+      memberClis: memberClis,
       cli: cli,
       workingDirectory: workingDirectory,
       fixedSessionId: fixedSessionId,
@@ -215,6 +217,7 @@ class SessionDataStore {
     SessionRepository repo, {
     String sessionTeamId = '',
     List<TeamMemberConfig> rosterMembers = const [],
+    Map<String, CliTool> memberClis = const {},
     String display = '',
     bool allowDuplicate = false,
     LaunchProfileRepository? identityRepository,
@@ -228,6 +231,12 @@ class SessionDataStore {
       workspace.workspaceId,
       sessionTeam: sessionTeamId,
       rosterMembers: rosterMembers,
+      memberClis: memberClis.isNotEmpty
+          ? memberClis
+          : {
+              for (final m in rosterMembers.where((m) => m.isValid))
+                m.id: m.cli ?? CliTool.claude,
+            },
     );
     final snapshot = await loadWorkspaceData(repo);
     return (workspaceId: workspace.workspaceId, snapshot: snapshot);

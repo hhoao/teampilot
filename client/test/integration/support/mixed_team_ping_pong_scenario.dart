@@ -9,6 +9,7 @@ import '../../support/post_frame_test_harness.dart';
 import 'docker_ssh_server.dart';
 import 'integration_prerequisites.dart';
 import 'mixed_team_integration_harness.dart';
+import 'package:teampilot/models/team_config.dart';
 
 /// Shared L2/L3 mixed-team ping/pong scenarios (ChatCubit + mock Anthropic).
 abstract final class MixedTeamPingPongScenario {
@@ -35,6 +36,10 @@ abstract final class MixedTeamPingPongScenario {
         workspace.workspaceId,
         sessionTeam: kItMixedClaudeTeam.id,
         rosterMembers: kItMixedClaudeTeam.members,
+
+        memberClis: {
+          for (final m in kItMixedClaudeTeam.members) m.id: CliTool.claude,
+        },
       );
 
       await cubit.requestOpenSession(
@@ -117,6 +122,10 @@ abstract final class MixedTeamPingPongScenario {
         workspace.workspaceId,
         sessionTeam: kItMixedClaudeTeam.id,
         rosterMembers: kItMixedClaudeTeam.members,
+
+        memberClis: {
+          for (final m in kItMixedClaudeTeam.members) m.id: CliTool.claude,
+        },
       );
       session = (await repo.loadSessions()).firstWhere(
         (s) => s.sessionId == session!.sessionId,

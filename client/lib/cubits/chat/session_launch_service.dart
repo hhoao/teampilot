@@ -25,6 +25,7 @@ import '../../services/launch/session_shell_connector.dart';
 import '../../services/launch/session_tab_connect_prep.dart';
 import '../../services/launch/session_launch_workspace_index.dart';
 import '../../services/cli/preset_resolver.dart';
+import '../../services/session/session_member_cli_locks.dart';
 import '../../services/team/team_config_launch_validator.dart';
 import 'session_launch_host.dart';
 
@@ -90,14 +91,15 @@ class SessionLaunchService
     ),
   );
   SessionLaunchPipeline get _pipeline => _launch.pipeline;
-  late final SessionSshProfileReconnect _sshReconnect = SessionSshProfileReconnect(
-    host: _h,
-    shellConnector: _shellConnector,
-    launchContextFor: launchContextFor,
-    scheduleMemberConnect: _memberConnectScheduler.schedule,
-    workspaceIndex: () => _workspaceIndex,
-    openTabs: () => _tabStore.openTabs,
-  );
+  late final SessionSshProfileReconnect _sshReconnect =
+      SessionSshProfileReconnect(
+        host: _h,
+        shellConnector: _shellConnector,
+        launchContextFor: launchContextFor,
+        scheduleMemberConnect: _memberConnectScheduler.schedule,
+        workspaceIndex: () => _workspaceIndex,
+        openTabs: () => _tabStore.openTabs,
+      );
   late final SessionLifecycleConnectCoordinator _lifecycleCoordinator =
       SessionLifecycleConnectCoordinator(
         host: _h,
@@ -106,24 +108,21 @@ class SessionLaunchService
         scheduleMemberConnect: _memberConnectScheduler.schedule,
         tabIndexOfSession: _tabStore.activeIndexOfSession,
       );
-  late final SessionPromptMetadataSync _promptMetadata = SessionPromptMetadataSync(
-    host: _h,
-    state: () => _h.state,
-  );
+  late final SessionPromptMetadataSync _promptMetadata =
+      SessionPromptMetadataSync(host: _h, state: () => _h.state);
   static const _uuid = Uuid();
   final _teamConfigValidator = TeamConfigLaunchValidator();
 
-  SessionTabConnectPrepCallbacks get _tabConnectCallbacks =>
-      (
-        persistSessionIfNeeded: _persistSessionIfNeeded,
-        ensureTeamSessionReady: _ensureTeamSessionReady,
-        onMixedPlacementNotReady: _onMixedPlacementNotReady,
-        resolveLaunchMembers: _resolveLaunchMembers,
-        installTeamRuntimeIfNeeded: _installTeamRuntimeIfNeeded,
-        updateSelectedMember: _updateSelectedMember,
-        shellForLaunch: _shellForLaunch,
-        launchStillValid: _launchStillValid,
-      );
+  SessionTabConnectPrepCallbacks get _tabConnectCallbacks => (
+    persistSessionIfNeeded: _persistSessionIfNeeded,
+    ensureTeamSessionReady: _ensureTeamSessionReady,
+    onMixedPlacementNotReady: _onMixedPlacementNotReady,
+    resolveLaunchMembers: _resolveLaunchMembers,
+    installTeamRuntimeIfNeeded: _installTeamRuntimeIfNeeded,
+    updateSelectedMember: _updateSelectedMember,
+    shellForLaunch: _shellForLaunch,
+    launchStillValid: _launchStillValid,
+  );
 
   ChatState get _state => _h.state;
   ChatTabStore get _tabStore => _h.tabStore;
@@ -165,9 +164,7 @@ class SessionLaunchService
     }
   }
 
-  Future<SessionOpenStatus> requestOpenSession(
-    SessionOpenRequest request,
-  ) =>
+  Future<SessionOpenStatus> requestOpenSession(SessionOpenRequest request) =>
       _launch.openSession(request);
 
   /// Stages a new conversation tab immediately, then persists and connects async.
@@ -194,10 +191,24 @@ class SessionLaunchService
       throw StateError('Session repository unavailable');
     }
 
+    final teamId = params.sessionTeamId.trim();
+    final memberClis = teamId.isEmpty
+        ? const <String, CliTool>{}
+        : request.team != null
+        ? resolveSessionMemberCliLocks(
+            team: request.team!,
+            rosterMembers: params.rosterMembers,
+          )
+        : {
+            for (final m in params.rosterMembers.where((m) => m.isValid))
+              m.id: m.cli ?? CliTool.claude,
+          };
+
     final persisted = await repo.createSession(
       session.workspaceId,
       sessionTeam: params.sessionTeamId,
       rosterMembers: params.rosterMembers,
+      memberClis: memberClis,
       cli: params.simpleIdentity?.cli ?? params.cli,
       provider: params.simpleIdentity?.provider,
       model: params.simpleIdentity?.model,
@@ -275,11 +286,7 @@ class SessionLaunchService
         name: session.sessionId,
         cli: cli,
       );
-      return (
-        team: null,
-        member: member,
-        cli: cli,
-      );
+      return (team: null, member: member, cli: cli);
     }
     final team = request.team!;
     final member = request.member!;
@@ -410,10 +417,11 @@ class SessionLaunchService
     ChatTab tab,
   ) {
     final session = tab.persistedSession;
-    final instances = (session == null
-            ? runtimeRosterMembers(team)
-            : sessionRosterMembers(session, team))
-        .where((m) => m.isValid);
+    final instances =
+        (session == null
+                ? runtimeRosterMembers(team)
+                : sessionRosterMembers(session, team))
+            .where((m) => m.isValid);
     for (final candidate in instances) {
       if (candidate.id == keepSelectedMemberId) continue;
       _memberConnectScheduler.schedule(team, candidate, tab);
@@ -451,14 +459,13 @@ class SessionLaunchService
     required AppSession session,
     required ChatTab tab,
     String? remoteMemberKeyForRollback,
-  }) =>
-      _lifecycleCoordinator.gateBeforeAttach(
-        team: team,
-        member: member,
-        session: session,
-        tab: tab,
-        remoteMemberKeyForRollback: remoteMemberKeyForRollback,
-      );
+  }) => _lifecycleCoordinator.gateBeforeAttach(
+    team: team,
+    member: member,
+    session: session,
+    tab: tab,
+    remoteMemberKeyForRollback: remoteMemberKeyForRollback,
+  );
 
   /// Compose-landing direct PTY inject waits past lifecycle gate, not only boot frame.
   Future<bool> isMemberDirectPtyLifecycleReady(
@@ -516,16 +523,15 @@ class SessionLaunchService
     SessionRepository? repo,
     String? workspaceCwd,
     bool scheduleTeamConfigValidation = true,
-  }) =>
-      _pipeline.run(
-        OpenMemberTabOperation(
-          team,
-          member,
-          repo: repo,
-          workspaceCwd: workspaceCwd,
-          scheduleTeamConfigValidation: scheduleTeamConfigValidation,
-        ),
-      );
+  }) => _pipeline.run(
+    OpenMemberTabOperation(
+      team,
+      member,
+      repo: repo,
+      workspaceCwd: workspaceCwd,
+      scheduleTeamConfigValidation: scheduleTeamConfigValidation,
+    ),
+  );
 
   AppSession? _sessionForMemberConnect(ChatTab tab, TeamProfile team) {
     final cached = _tabStore.sessionForTab(tab, _state.sessions);
@@ -575,10 +581,9 @@ class SessionLaunchService
     TeamProfile team, {
     SessionRepository? repo,
     String? workspaceCwd,
-  }) =>
-      _pipeline.run(
-        LaunchAllMembersOperation(team, repo: repo, workspaceCwd: workspaceCwd),
-      );
+  }) => _pipeline.run(
+    LaunchAllMembersOperation(team, repo: repo, workspaceCwd: workspaceCwd),
+  );
 
   TerminalSession? ensureSession(TeamProfile team) {
     var tab = _activeTab;
@@ -608,8 +613,7 @@ class SessionLaunchService
   Future<void> connectWorkspaceSession(
     SessionConnectRequest request, {
     SessionRepository? repo,
-  }) =>
-      _pipeline.run(ConnectWorkspaceOperation(request, repo: repo));
+  }) => _pipeline.run(ConnectWorkspaceOperation(request, repo: repo));
 
   Future<void> reconnectSshProfile(String profileId) =>
       _sshReconnect.reconnect(profileId);
@@ -629,8 +633,7 @@ class SessionLaunchService
   Future<void> restartWorkspaceSession(
     SessionConnectRequest request, {
     SessionRepository? repo,
-  }) =>
-      _pipeline.run(RestartWorkspaceOperation(request, repo: repo));
+  }) => _pipeline.run(RestartWorkspaceOperation(request, repo: repo));
 
   @override
   void Function(String line)? autoRenameOnFirstPrompt(String sessionId) =>
