@@ -829,6 +829,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  mock_model_gateway:
+    dependency: "direct dev"
+    description:
+      path: "../tools/mock_model_gateway"
+      relative: true
+    source: path
+    version: "0.1.0"
   mocktail:
     dependency: "direct main"
     description:
