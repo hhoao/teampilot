@@ -92,6 +92,13 @@ class _PendingUser {
   final String text;
 }
 
+class _StickyLocalUser {
+  const _StickyLocalUser({required this.id, required this.text});
+
+  final String id;
+  final String text;
+}
+
 class AiHistoryCubit extends Cubit<AiHistoryState> {
   AiHistoryCubit({required AiHistoryLoader loader})
     : _loader = loader,
@@ -118,6 +125,9 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
   /// stay held while [awaitingAssistant] until idle or [tipHoldAfterAssistant].
   int _committedLength = 0;
   final List<_PendingUser> _pendingQueue = [];
+  /// Mailbox (and similar) user turns that are not in the CLI transcript.
+  /// Appended after the committed tip; survive softReload; cleared on seat change.
+  final List<_StickyLocalUser> _stickyLocalUsers = [];
   Timer? _tipHoldTimer;
 
   AppSession? _lastSession;
@@ -282,6 +292,26 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     }
   }
 
+  /// Append a local user bubble that is not backed by the CLI transcript.
+  ///
+  /// Used after a TeamBus mailbox mail is consumed: stays after the tip across
+  /// soft reloads (FIFO). Does not latch [awaitingAssistant].
+  void appendStickyLocalUser({required String id, required String text}) {
+    final trimmedId = id.trim();
+    final trimmedText = text.trim();
+    if (trimmedId.isEmpty || trimmedText.isEmpty) return;
+    if (_stickyLocalUsers.any((s) => s.id == trimmedId)) return;
+    _stickyLocalUsers.add(
+      _StickyLocalUser(id: trimmedId, text: trimmedText),
+    );
+    _remergePendingsOntoRuntime();
+    if (state.status == AiHistoryViewStatus.empty) {
+      emit(state.copyWith(status: AiHistoryViewStatus.ready));
+    } else if (state.status == AiHistoryViewStatus.ready) {
+      // Remerge already published; no awaiting change.
+    }
+  }
+
   /// Rolls back an optimistic pending when connect/inject fails.
   void removePendingMatching(String text) {
     final target = normalizeAiHistoryPendingText(text);
@@ -303,11 +333,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
       _cancelTipHoldTimer();
       if (hasHeldAssistantTip) {
         _commitAll();
-        if (state.status == AiHistoryViewStatus.ready) {
-          runtime.setMessages(_visibleSlice());
-        } else {
-          _remergePendingsOntoRuntime();
-        }
+        _remergePendingsOntoRuntime();
       }
     }
     if (state.awaitingAssistant == value &&
@@ -332,9 +358,8 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
 
     if (endAwaiting) {
       if (!hadHeld && !state.awaitingAssistant) return;
-      if (state.status == AiHistoryViewStatus.ready) {
-        runtime.setMessages(_visibleSlice());
-      } else if (state.status == AiHistoryViewStatus.empty) {
+      if (state.status == AiHistoryViewStatus.ready ||
+          state.status == AiHistoryViewStatus.empty) {
         _remergePendingsOntoRuntime();
       }
       emit(
@@ -355,12 +380,15 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
 
   void clearPendings() {
     _cancelTipHoldTimer();
+    final hadSticky = _stickyLocalUsers.isNotEmpty;
     if (_pendingQueue.isEmpty &&
+        !hadSticky &&
         !state.awaitingAssistant &&
         !hasHeldAssistantTip) {
       return;
     }
     _pendingQueue.clear();
+    _stickyLocalUsers.clear();
     _commitAll();
     if (state.status == AiHistoryViewStatus.ready ||
         state.status == AiHistoryViewStatus.empty) {
@@ -410,6 +438,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     _visibleCount = 0;
     _committedLength = 0;
     _pendingQueue.clear();
+    _stickyLocalUsers.clear();
     _lastSession = null;
     _lastMemberId = null;
     _lastTeam = null;
@@ -515,9 +544,9 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     });
   }
 
-  /// Empty transcript with unmatched pendings stays on the thread path.
+  /// Empty transcript with unmatched pendings/stickies stays on the thread path.
   void _emitEmptyOrPendingReady(String sessionId, String memberId) {
-    if (_pendingQueue.isEmpty) {
+    if (_pendingQueue.isEmpty && _stickyLocalUsers.isEmpty) {
       runtime.setEmpty();
       emit(
         AiHistoryState(
@@ -584,17 +613,14 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
   }
 
   void _remergePendingsOntoRuntime() {
-    if (_pendingQueue.isEmpty) {
-      if (state.status == AiHistoryViewStatus.ready) {
-        runtime.setMessages(_visibleSlice());
-      } else if (_allMessages.isEmpty &&
-          state.status == AiHistoryViewStatus.empty) {
-        runtime.setEmpty();
-      }
-      return;
-    }
     final slice = _visibleSlice();
-    final pendingMessages = [
+    final overlay = <AiMessage>[
+      for (final s in _stickyLocalUsers)
+        AiMessage(
+          id: s.id,
+          role: AiRole.user,
+          parts: [AiTextPart(text: s.text)],
+        ),
       for (final p in _pendingQueue)
         AiMessage(
           id: p.id,
@@ -602,12 +628,21 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
           parts: [AiTextPart(text: p.text)],
         ),
     ];
-    runtime.setMessages([...slice, ...pendingMessages]);
+    if (slice.isEmpty && overlay.isEmpty) {
+      if (_allMessages.isEmpty && state.status == AiHistoryViewStatus.empty) {
+        runtime.setEmpty();
+      }
+      return;
+    }
+    if (state.status == AiHistoryViewStatus.ready ||
+        state.status == AiHistoryViewStatus.empty ||
+        overlay.isNotEmpty) {
+      runtime.setMessages([...slice, ...overlay]);
+    }
   }
 
   void _emitReadyWindow(String? sessionId, String? memberId) {
-    final slice = _visibleSlice();
-    runtime.setMessages(slice);
+    _remergePendingsOntoRuntime();
     emit(
       AiHistoryState(
         status: AiHistoryViewStatus.ready,

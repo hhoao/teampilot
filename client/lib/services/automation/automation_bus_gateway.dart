@@ -28,8 +28,8 @@ class TabTeamBusGateway implements AutomationBusGateway {
     String sessionId,
     String memberId,
     String message,
-  ) {
-    return _sessionRuntime.deliverUserCommandToMember(
+  ) async {
+    await _sessionRuntime.deliverUserCommandToMember(
       sessionId,
       memberId,
       message,

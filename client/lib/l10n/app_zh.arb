@@ -499,6 +499,15 @@
   "sessionHistoryLoadOlderHint": "上滑查看更早消息",
   "sessionHistoryNewMessages": "新消息",
   "sessionHistoryRunning": "运行中…",
+  "sessionHistoryMailboxQueued": "{count} 已排队",
+  "@sessionHistoryMailboxQueued": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionHistoryMailboxQueuedDismiss": "关闭",
   "aiMessageUsedTool": "已使用工具",
   "aiMessageCancelledTool": "已取消工具",
   "aiMessageToolsUsed": "已使用 {count} 个工具",

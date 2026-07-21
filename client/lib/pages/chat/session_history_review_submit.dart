@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../../cubits/chat/model/session_connect_request.dart';
 import '../../utils/logging/logger.dart';
+import 'history_continue_delivery.dart';
 
 /// Preference gate: when false (default), History continue stays on History.
 bool shouldSwitchToTerminalAfterHistorySubmit(
@@ -17,9 +18,11 @@ final class HistoryContinueSubmitLock {
 
   bool get isBusy => _busy;
 
-  /// Runs [action] once; overlapping calls return `false` without invoking it.
-  Future<bool> run(Future<bool> Function() action) async {
-    if (_busy) return false;
+  /// Runs [action] once; overlapping calls return a failed result.
+  Future<HistoryContinueSubmitResult> run(
+    Future<HistoryContinueSubmitResult> Function() action,
+  ) async {
+    if (_busy) return const HistoryContinueSubmitResult.failed();
     _busy = true;
     try {
       return await action();
@@ -29,17 +32,19 @@ final class HistoryContinueSubmitLock {
   }
 }
 
-/// Connects an already-open review tab, waits for the selected member, then
-/// injects [message] at the PTY prompt.
+/// Connects an already-open review tab, then delivers [message] on [channel].
 ///
 /// [connectRequest] must be [ExistingSessionConnect] for the open session tab.
 /// Must not call [ChatCubit.requestOpenSession] with `connectImmediately: true`
 /// — that path is for landing create / automation only.
 ///
-/// Returns `true` only after successful inject (caller may then clear compose).
-/// On connect/ready/inject failure returns `false` so compose text is kept;
-/// launch errors surface via existing tab `launchError`.
-Future<bool> submitSessionHistoryReviewMessage({
+/// PTY: waits for member ready, injects at the prompt, applies first-prompt
+/// title. Mailbox: skips ready-wait and returns the TeamBus mail id.
+///
+/// On connect/ready/inject failure returns [HistoryContinueSubmitResult.failed]
+/// so compose text is kept; launch errors surface via existing tab
+/// `launchError`.
+Future<HistoryContinueSubmitResult> submitSessionHistoryReviewMessage({
   required String sessionId,
   required String memberId,
   required String message,
@@ -52,7 +57,7 @@ Future<bool> submitSessionHistoryReviewMessage({
     bool directToPty,
   })
   ensureMemberInputReady,
-  required Future<void> Function(
+  required Future<String?> Function(
     String sessionId,
     String memberId,
     String text, {
@@ -61,10 +66,16 @@ Future<bool> submitSessionHistoryReviewMessage({
   deliverUserCommandToMember,
   required Future<void> Function(String sessionId, String firstPrompt)
   applyFirstPromptTitle,
+  HistoryContinueChannel channel = HistoryContinueChannel.pty,
+
+  /// When set, called after connect so a newly installed TeamBus is visible.
+  HistoryContinueChannel Function()? resolveChannel,
   Duration readyTimeout = const Duration(seconds: 120),
 }) async {
   final trimmed = message.trim();
-  if (trimmed.isEmpty) return false;
+  if (trimmed.isEmpty) {
+    return HistoryContinueSubmitResult.failed(channel: channel);
+  }
 
   try {
     await connectWorkspaceSession(connectRequest);
@@ -74,7 +85,45 @@ Future<bool> submitSessionHistoryReviewMessage({
       error: error,
       stackTrace: stackTrace,
     );
-    return false;
+    return HistoryContinueSubmitResult.failed(channel: channel);
+  }
+
+  // Prefer post-connect resolution so a freshly installed TeamBus is visible.
+  final effectiveChannel = resolveChannel?.call() ?? channel;
+
+  if (effectiveChannel == HistoryContinueChannel.mailbox) {
+    try {
+      final mailId = await deliverUserCommandToMember(
+        sessionId,
+        memberId,
+        trimmed,
+        directToPty: false,
+      );
+      final id = mailId?.trim() ?? '';
+      if (id.isEmpty) {
+        appLogger.w(
+          'submitSessionHistoryReviewMessage: mailbox deliver missing id '
+          'session=$sessionId member=$memberId',
+        );
+        return const HistoryContinueSubmitResult.failed(
+          channel: HistoryContinueChannel.mailbox,
+        );
+      }
+      return HistoryContinueSubmitResult(
+        ok: true,
+        channel: HistoryContinueChannel.mailbox,
+        mailId: id,
+      );
+    } on Object catch (error, stackTrace) {
+      appLogger.e(
+        'submitSessionHistoryReviewMessage: mailbox deliver failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return const HistoryContinueSubmitResult.failed(
+        channel: HistoryContinueChannel.mailbox,
+      );
+    }
   }
 
   try {
@@ -88,14 +137,14 @@ Future<bool> submitSessionHistoryReviewMessage({
       'submitSessionHistoryReviewMessage: member not ready '
       'session=$sessionId member=$memberId',
     );
-    return false;
+    return const HistoryContinueSubmitResult.failed();
   } on Object catch (error, stackTrace) {
     appLogger.e(
       'submitSessionHistoryReviewMessage: ready wait failed',
       error: error,
       stackTrace: stackTrace,
     );
-    return false;
+    return const HistoryContinueSubmitResult.failed();
   }
 
   try {
@@ -107,13 +156,16 @@ Future<bool> submitSessionHistoryReviewMessage({
     );
     // Review inject bypasses FirstUserLineCapture (keyboard path only).
     await applyFirstPromptTitle(sessionId, trimmed);
-    return true;
+    return const HistoryContinueSubmitResult(
+      ok: true,
+      channel: HistoryContinueChannel.pty,
+    );
   } on Object catch (error, stackTrace) {
     appLogger.e(
       'submitSessionHistoryReviewMessage',
       error: error,
       stackTrace: stackTrace,
     );
-    return false;
+    return const HistoryContinueSubmitResult.failed();
   }
 }

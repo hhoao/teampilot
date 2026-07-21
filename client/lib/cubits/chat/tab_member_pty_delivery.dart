@@ -185,7 +185,9 @@ final class TabMemberPtyDelivery {
 
   /// Default: TeamBus mailbox when a bus is installed. [directToPty] injects at
   /// the member prompt (compose landing, automation, first prompt).
-  Future<void> deliverUserCommandToMember(
+  ///
+  /// Returns the mailbox message id when routed via TeamBus; otherwise `null`.
+  Future<String?> deliverUserCommandToMember(
     String sessionId,
     String memberId,
     String message, {
@@ -194,8 +196,8 @@ final class TabMemberPtyDelivery {
     if (!directToPty) {
       final bus = busForSession(sessionId);
       if (bus != null) {
-        bus.deliverUserCommand(memberId, message);
-        return;
+        final id = bus.deliverUserCommand(memberId, message);
+        return id.isEmpty ? null : id;
       }
     }
     await deliverMemberStdin(
@@ -204,6 +206,7 @@ final class TabMemberPtyDelivery {
       message,
       automation: true,
     );
+    return null;
   }
 
   bool shouldSkipAutomationRetry(String sessionId, String memberId) {

@@ -37,11 +37,14 @@ import '../../services/session/ai_history_live_refresh_controller.dart';
 import '../../services/session/session_continue_overrides_apply.dart';
 import '../../services/session/session_history_pagination.dart';
 import '../../services/storage/app_storage.dart';
+import '../../services/terminal/pending_user_message.dart';
 import '../../theme/app_markdown_style_sheet.dart';
 import '../../utils/team/team_member_naming.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
 import 'agent_permission_attention_banner.dart';
 import 'history_awaiting_working_sync.dart';
+import 'history_continue_delivery.dart';
+import 'history_mailbox_queued_strip.dart';
 import 'session_history_review_messages.dart';
 import 'session_history_review_submit.dart';
 import 'session_review_compose_card.dart';
@@ -56,6 +59,7 @@ class SessionHistoryReview extends StatefulWidget {
     this.launchError,
     this.onRemapDeadTarget,
     this.isSubmitting = false,
+    this.isMailboxUnread,
     super.key,
   });
 
@@ -63,11 +67,14 @@ class SessionHistoryReview extends StatefulWidget {
   final String selectedMemberId;
   final TeamProfile? team;
 
-  /// Returns `true` after successful connect+inject so compose can clear.
-  final Future<bool> Function(String message) onSubmit;
+  /// Connect+deliver outcome so compose can clear and latch mailbox Queued rows.
+  final Future<HistoryContinueSubmitResult> Function(String message) onSubmit;
   final String? launchError;
   final VoidCallback? onRemapDeadTarget;
   final bool isSubmitting;
+
+  /// When non-null, mailbox Queued rows poll this until the member consumes mail.
+  final bool Function(String mailId)? isMailboxUnread;
 
   @override
   State<SessionHistoryReview> createState() => _SessionHistoryReviewState();
@@ -81,6 +88,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
   AiHistoryLiveRefreshController? _liveRefresh;
 
   final _submitLock = HistoryContinueSubmitLock();
+  final _mailboxQueued = StreamController<PendingUserMessage>.broadcast();
   var _enhancing = false;
   var _voiceListening = false;
   var _voiceSoundLevel = 0.0;
@@ -192,6 +200,7 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     final live = _liveRefresh;
     _liveRefresh = null;
     unawaited(live?.stop() ?? Future<void>.value());
+    unawaited(_mailboxQueued.close());
     _voiceInput.dispose();
     _controller.dispose();
     _focusNode.dispose();
@@ -712,22 +721,19 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
     }
 
     final cubit = context.read<AiHistoryCubit>();
-    // Optimistic UX (assistant-ui): show the user bubble + running chrome
-    // immediately — do not wait for connect/inject.
+    // Optimistic PTY UX; mailbox success rolls this back into the Queued strip.
     cubit.enqueuePendingUser(text);
-    // Latch if the seat is already working (no rising edge after this).
-    // Otherwise start grace clear so never-working turns do not stick Running.
     _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
     _controller.clear();
     if (mounted) setState(() {});
 
-    final ok = await _submitLock.run(() async {
+    final result = await _submitLock.run(() async {
       if (mounted) setState(() {});
       return widget.onSubmit(text);
     });
     if (!mounted) return;
     setState(() {});
-    if (!ok) {
+    if (!result.ok) {
       _cancelAwaitingIdleGrace();
       cubit.removePendingMatching(text);
       _controller
@@ -736,6 +742,18 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
       setState(() {});
       return;
     }
+
+    if (result.isMailbox) {
+      _cancelAwaitingIdleGrace();
+      cubit.removePendingMatching(text);
+      _mailboxQueued.add(
+        PendingUserMessage(id: result.mailId!, content: text),
+      );
+      setState(() {});
+      unawaited(_startLiveRefresh());
+      return;
+    }
+
     unawaited(_startLiveRefresh());
   }
 
@@ -941,6 +959,18 @@ class _SessionHistoryReviewState extends State<SessionHistoryReview> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       AgentPermissionAttentionBanner(session: widget.session),
+                      if (widget.isMailboxUnread != null)
+                        HistoryMailboxQueuedStrip(
+                          submissions: _mailboxQueued.stream,
+                          isUnread: widget.isMailboxUnread!,
+                          onConsumed: (msg) {
+                            if (!mounted) return;
+                            context.read<AiHistoryCubit>().appendStickyLocalUser(
+                              id: 'mailbox:${msg.id}',
+                              text: msg.content,
+                            );
+                          },
+                        ),
                       SessionReviewComposeCard(
                         floating: true,
                         controller: _controller,

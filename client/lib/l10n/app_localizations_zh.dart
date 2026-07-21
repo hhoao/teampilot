@@ -1193,6 +1193,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionHistoryRunning => '运行中…';
 
   @override
+  String sessionHistoryMailboxQueued(int count) {
+    return '$count 已排队';
+  }
+
+  @override
+  String get sessionHistoryMailboxQueuedDismiss => '关闭';
+
+  @override
   String get aiMessageUsedTool => '已使用工具';
 
   @override

@@ -2348,6 +2348,18 @@ abstract class AppLocalizations {
   /// **'Running…'**
   String get sessionHistoryRunning;
 
+  /// No description provided for @sessionHistoryMailboxQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} Queued'**
+  String sessionHistoryMailboxQueued(int count);
+
+  /// No description provided for @sessionHistoryMailboxQueuedDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get sessionHistoryMailboxQueuedDismiss;
+
   /// No description provided for @aiMessageUsedTool.
   ///
   /// In en, this message translates to:

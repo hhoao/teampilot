@@ -524,6 +524,15 @@
   "sessionHistoryLoadOlderHint": "Scroll up for earlier messages",
   "sessionHistoryNewMessages": "New messages",
   "sessionHistoryRunning": "Running…",
+  "sessionHistoryMailboxQueued": "{count} Queued",
+  "@sessionHistoryMailboxQueued": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionHistoryMailboxQueuedDismiss": "Dismiss",
   "aiMessageUsedTool": "Used tool",
   "aiMessageCancelledTool": "Cancelled tool",
   "aiMessageToolsUsed": "Used {count} tools",

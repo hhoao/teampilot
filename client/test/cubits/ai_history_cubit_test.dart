@@ -287,6 +287,34 @@ void main() {
     expect(cubit.state.awaitingAssistant, isFalse);
   });
 
+  test('sticky mailbox user survives softReload and stays after tip', () async {
+    holderMessages = messages(2);
+    locator.emitBundle = true;
+    await cubit.load(session: simpleSession(), memberId: '');
+
+    cubit.appendStickyLocalUser(id: 'mailbox:mail-1', text: 'follow up');
+    expect(cubit.state.awaitingAssistant, isFalse);
+    expect(cubit.runtime.messages, hasLength(3));
+    expect(cubit.runtime.messages.last.id, 'mailbox:mail-1');
+
+    holderMessages = [
+      ...messages(2),
+      const AiMessage(
+        id: 'a-new',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'working')],
+      ),
+    ];
+    await cubit.softReload();
+
+    expect(cubit.runtime.messages.map((m) => m.id).toList(), [
+      'm-0',
+      'm-1',
+      'a-new',
+      'mailbox:mail-1',
+    ]);
+  });
+
   test('held assistant tip flushes immediately on idle endAwaiting', () async {
     holderMessages = messages(1);
     locator.emitBundle = true;

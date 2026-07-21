@@ -1,10 +1,9 @@
 import 'dart:async';
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/config_bundle.dart';
+import 'package:teampilot/pages/chat/history_continue_delivery.dart';
 import 'package:teampilot/pages/chat/session_history_review_submit.dart';
 import 'package:teampilot/pages/chat/session_review_compose_card.dart';
 
@@ -28,19 +27,25 @@ void main() {
       final first = lock.run(() async {
         calls++;
         await gate.future;
-        return true;
+        return const HistoryContinueSubmitResult(
+          ok: true,
+          channel: HistoryContinueChannel.pty,
+        );
       });
       // Second call while first is awaiting must not run the action.
       final second = await lock.run(() async {
         calls++;
-        return true;
+        return const HistoryContinueSubmitResult(
+          ok: true,
+          channel: HistoryContinueChannel.pty,
+        );
       });
-      expect(second, isFalse);
+      expect(second.ok, isFalse);
       expect(calls, 1);
       expect(lock.isBusy, isTrue);
 
       gate.complete();
-      expect(await first, isTrue);
+      expect((await first).ok, isTrue);
       expect(lock.isBusy, isFalse);
       expect(calls, 1);
     });

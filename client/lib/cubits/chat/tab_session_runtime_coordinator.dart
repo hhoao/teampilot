@@ -136,7 +136,7 @@ class TabSessionRuntimeCoordinator {
     String notice,
   ) => _delivery.retryMemberDelivery(sessionId, memberId, notice);
 
-  Future<void> deliverUserCommandToMember(
+  Future<String?> deliverUserCommandToMember(
     String sessionId,
     String memberId,
     String message, {

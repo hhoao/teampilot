@@ -37,6 +37,7 @@ import 'chat/chat_workbench_remote_provision_view.dart';
 import 'chat/chat_workbench_slice.dart';
 import 'chat/chat_workbench_terminal.dart';
 import '../models/member_remote_provision_progress.dart';
+import 'chat/history_continue_delivery.dart';
 import 'chat/session_history_review.dart';
 import 'chat/session_history_review_submit.dart';
 
@@ -579,6 +580,13 @@ class _ChatWorkbenchBody extends StatelessWidget {
       selectedMemberId: historyMemberId,
       team: resolvedTeam,
       launchError: launchError,
+      isMailboxUnread: (mailId) {
+        final bus = chatCubit.sessionRuntime.busForSession(
+          appSession.sessionId,
+        );
+        if (bus == null) return false;
+        return bus.isUnread(shellMemberId, mailId);
+      },
       onRemapDeadTarget: deadSshTargetIdFromError(launchError) != null
           ? () => unawaited(
               onRemapDeadTargetFromLaunch(
@@ -613,11 +621,24 @@ class _ChatWorkbenchBody extends StatelessWidget {
           // Stay-on-History must not let connect force-switch to Terminal.
           preserveWorkbenchView: !switchToTerminal,
         );
+        HistoryContinueChannel resolveChannel() {
+          final bus = chatCubit.sessionRuntime.busForSession(
+            appSession.sessionId,
+          );
+          return resolveHistoryContinueChannel(
+            teamBusInstalled: bus != null,
+            memberWaitingForMessage:
+                bus?.isWaitingForMessage(shellMemberId) ?? false,
+            memberInTurn: bus?.isMemberInTurn(shellMemberId) ?? false,
+          );
+        }
+
         return submitSessionHistoryReviewMessage(
           sessionId: appSession.sessionId,
           memberId: shellMemberId,
           message: message,
           connectRequest: connectRequest,
+          resolveChannel: resolveChannel,
           connectWorkspaceSession: chatCubit.connectWorkspaceSession,
           ensureMemberInputReady:
               (sessionId, mid, {bool directToPty = false}) => chatCubit
