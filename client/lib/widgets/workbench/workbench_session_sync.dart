@@ -10,14 +10,14 @@ class WorkbenchSessionSync extends StatefulWidget {
     required this.sessionIds,
     required this.child,
     this.activeSessionId,
-    this.composeActive = false,
+    this.newChatActive = false,
     super.key,
   });
 
   final String workspaceId;
   final List<String> sessionIds;
   final String? activeSessionId;
-  final bool composeActive;
+  final bool newChatActive;
   final Widget child;
 
   @override
@@ -36,7 +36,7 @@ class _WorkbenchSessionSyncState extends State<WorkbenchSessionSync> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.workspaceId != widget.workspaceId ||
         oldWidget.activeSessionId != widget.activeSessionId ||
-        oldWidget.composeActive != widget.composeActive ||
+        oldWidget.newChatActive != widget.newChatActive ||
         !_listEquals(oldWidget.sessionIds, widget.sessionIds)) {
       _sync();
     }
@@ -47,7 +47,7 @@ class _WorkbenchSessionSyncState extends State<WorkbenchSessionSync> {
       widget.workspaceId,
       widget.sessionIds,
       preferredActiveSessionId: widget.activeSessionId,
-      composeActive: widget.composeActive,
+      newChatActive: widget.newChatActive,
     );
   }
 

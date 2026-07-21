@@ -647,7 +647,7 @@ void main() {
     );
 
     test(
-      'enterComposeMode keeps open tabs and clears active session',
+      'enterNewChat keeps open tabs and clears active session',
       () async {
         const team = TeamProfile(
           id: 'team-a',
@@ -693,25 +693,25 @@ void main() {
         await postFrame.flush();
 
         expect(cubit.state.tabs, hasLength(1));
-        expect(cubit.state.composeActive, isFalse);
+        expect(cubit.state.newChatActive, isFalse);
         expect(cubit.state.activeSessionId, session.sessionId);
 
-        cubit.enterComposeMode(workspace.workspaceId);
+        cubit.enterNewChat(workspace.workspaceId);
 
         expect(cubit.state.tabs, hasLength(1));
-        expect(cubit.state.composeActive, isTrue);
+        expect(cubit.state.newChatActive, isTrue);
         expect(cubit.state.activeSessionId, isNull);
         expect(cubit.openTabCountForWorkspace(workspace.workspaceId), 1);
 
-        cubit.exitComposeMode();
+        cubit.exitNewChat();
 
-        expect(cubit.state.composeActive, isFalse);
+        expect(cubit.state.newChatActive, isFalse);
         expect(cubit.state.activeSessionId, session.sessionId);
       },
     );
 
     test(
-      'deleteSession of the active open tab enters compose landing',
+      'deleteSession of the active open tab enters new-chat landing',
       () async {
         const team = TeamProfile(
           id: 'team-a',
@@ -758,7 +758,7 @@ void main() {
         await postFrame.flush();
 
         expect(cubit.state.tabs, hasLength(1));
-        expect(cubit.state.composeActive, isFalse);
+        expect(cubit.state.newChatActive, isFalse);
         expect(cubit.state.activeSessionId, session.sessionId);
 
         await cubit.deleteSession(repo, session.sessionId);
@@ -766,7 +766,7 @@ void main() {
         await postFrame.flush();
 
         expect(cubit.state.tabs, isEmpty);
-        expect(cubit.state.composeActive, isTrue);
+        expect(cubit.state.newChatActive, isTrue);
         expect(cubit.state.activeSessionId, isNull);
         expect(
           cubit.state.sessions.any((s) => s.sessionId == session.sessionId),

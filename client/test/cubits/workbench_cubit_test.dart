@@ -115,7 +115,7 @@ void main() {
         ws,
         ['s1', 's2'],
         preferredActiveSessionId: 's2',
-        composeActive: false,
+        newChatActive: false,
       );
       expect(cubit.tabOrder(ws), [
         WorkbenchTabId.session('s1'),
@@ -132,7 +132,7 @@ void main() {
         ws,
         ['s1'],
         preferredActiveSessionId: 's1',
-        composeActive: true,
+        newChatActive: true,
       );
       expect(cubit.tabOrder(ws), [WorkbenchTabId.session('s1')]);
       expect(cubit.activeTabId(ws), isNull);
@@ -147,7 +147,7 @@ void main() {
         ws,
         ['s1'],
         preferredActiveSessionId: 's1',
-        composeActive: false,
+        newChatActive: false,
       );
       expect(cubit.activeTabId(ws), file);
     });

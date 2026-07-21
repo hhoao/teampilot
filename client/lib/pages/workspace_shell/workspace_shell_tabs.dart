@@ -42,7 +42,7 @@ class WorkspaceShellRightToolsVisibilityToggle extends StatelessWidget {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final composeLanding = context.select<ChatCubit, bool>(
-      (c) => c.state.composeActive, // chrome is for the active workspace
+      (c) => c.state.newChatActive, // chrome is for the active workspace
     );
     return BlocBuilder<LayoutCubit, LayoutState>(
       buildWhen: (a, b) =>

@@ -319,16 +319,16 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
 
   /// Keep session tabs in [tabOrder] aligned with [sessionIds] (create/close/hydrate).
   ///
-  /// When [composeActive] is true, [activeTabId] stays null so the body shows
+  /// When [newChatActive] is true, [activeTabId] stays null so the body shows
   /// landing while session tabs may still appear in the bar.
-  /// When not composing and active is unset/invalid, activates
+  /// When not in new-chat mode and active is unset/invalid, activates
   /// [preferredActiveSessionId] (or the first session).
   /// Does not override an active file/diff tab.
   void syncSessions(
     String workspaceId,
     List<String> sessionIds, {
     String? preferredActiveSessionId,
-    bool composeActive = false,
+    bool newChatActive = false,
   }) {
     final bucket = state.bucket(workspaceId);
     final sessionSet = sessionIds.toSet();
@@ -353,13 +353,13 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     }
 
     WorkbenchTabId? active = bucket.activeTabId;
-    if (composeActive) {
+    if (newChatActive) {
       active = null;
     } else if (active != null && !order.contains(active)) {
       active = null;
     }
 
-    if (!composeActive &&
+    if (!newChatActive &&
         (active == null || active.kind == WorkbenchTabKind.session)) {
       final preferred = preferredActiveSessionId == null
           ? null

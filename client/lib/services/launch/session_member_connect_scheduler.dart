@@ -97,7 +97,7 @@ class SessionMemberConnectScheduler {
         tabs: _tabStore.activeTabInfos(),
         activeSessionId: tab.info.id,
         selectedMemberId: member.id,
-        composeActive: false,
+        newChatActive: false,
       ),
     );
     if (shell.isRunning || shell.isConnecting) {

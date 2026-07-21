@@ -54,8 +54,8 @@ abstract final class WorkbenchShellActions {
     final workbench = context.read<WorkbenchCubit>();
     final chat = context.read<ChatCubit>();
     workbench.select(workspaceId, tab);
-    if (chat.state.composeActive) {
-      chat.exitComposeMode();
+    if (chat.state.newChatActive) {
+      chat.exitNewChat();
     }
     if (workbenchSelectSyncsChatTab(tab.kind)) {
       final tabs = chat.tabStore.tabsForWorkspace(tabScopeId);

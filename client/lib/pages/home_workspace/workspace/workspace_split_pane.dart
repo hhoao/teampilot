@@ -18,7 +18,7 @@ import '../../../services/workspace/workspace_tools_scope_registry.dart';
 import '../../../services/workspace/workspace_worktree_registry.dart';
 import '../../../utils/ui/app_keys.dart';
 import '../../../utils/workspace/workspace_active_context.dart';
-import '../../../utils/workspace/workspace_compose_active.dart';
+import '../../../utils/workspace/workspace_new_chat_active.dart';
 import '../../../widgets/right_tools/right_tools_panel.dart';
 import '../../../widgets/workspace_terminal_panel.dart';
 import '../../chat_page.dart';
@@ -138,7 +138,7 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
               ? wt.currentWorktreePath
               : widget.workspace.firstFolderPath;
           final composeLanding = context.select<ChatCubit, bool>(
-            (c) => workspaceComposeActive(c, widget.tabScopeId),
+            (c) => workspaceNewChatActive(c, widget.tabScopeId),
           );
           return WorkspaceToolsScopeSync(
             workspace: widget.workspace,
@@ -205,7 +205,7 @@ class _WorkspaceRightToolsPane extends StatelessWidget {
       launchProfiles: context.read<LaunchProfileCubit>(),
       tabScopeId: tabScopeId,
     );
-    final composeLanding = workspaceComposeActive(chat, tabScopeId);
+    final composeLanding = workspaceNewChatActive(chat, tabScopeId);
     final layoutState = context.watch<LayoutCubit>().state;
     final effectiveRight = composeLanding
         ? (layoutState.landingRightToolsOverride ?? false)

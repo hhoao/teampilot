@@ -15,7 +15,7 @@ void registerSessionCommands(CommandBus bus, ChatCubit chat) {
   );
   bus.register(
     CommandIds.sessionNewTab,
-    () => chat.enterComposeMode(chat.tabStore.activeWorkspaceId),
+    () => chat.enterNewChat(chat.tabStore.activeWorkspaceId),
   );
   bus.register(
     CommandIds.sessionCloseTab,

@@ -127,7 +127,7 @@ void main() {
     await pumpPhaseTransitions(tester);
     // Session exits compose: prefs dock restored. Prefer key mount over
     // hitTestable — pane size sync can lag TpDeferredMountShell in smoke.
-    expect(chatCubit.state.composeActive, isFalse);
+    expect(chatCubit.state.newChatActive, isFalse);
     expect(
       WorkspacePanePolicy.effective(
         preferences: layoutCubit.state.preferences,

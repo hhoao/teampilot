@@ -911,7 +911,7 @@ Future<AppShell> buildAppShell({
     commandBus,
     layoutCubit,
     uiZoomBaseline: () => uiZoomBaseline.value,
-    composeLanding: () => chatCubit.state.composeActive,
+    composeLanding: () => chatCubit.state.newChatActive,
     onTogglePanel: () async {
       await workbenchShellLauncher?.focusOrCreateDefaultShell();
     },

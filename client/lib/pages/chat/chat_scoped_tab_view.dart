@@ -15,7 +15,7 @@ class ChatScopedTabView {
     required this.activeTabIndex,
     required this.workingSessionIds,
     required this.selectedMemberId,
-    required this.composeActive,
+    required this.newChatActive,
     required this.workbenchSlice,
   });
 
@@ -23,7 +23,7 @@ class ChatScopedTabView {
   final int activeTabIndex;
   final Set<String> workingSessionIds;
   final String selectedMemberId;
-  final bool composeActive;
+  final bool newChatActive;
   final ChatWorkbenchSlice workbenchSlice;
 
   static const _listEquality = ListEquality<ChatTabInfo>();
@@ -42,15 +42,15 @@ class ChatScopedTabView {
             .where(bucketIds.contains)
             .toSet(),
         selectedMemberId: state.selectedMemberId,
-        composeActive: state.composeActive,
+        newChatActive: state.newChatActive,
         workbenchSlice: ChatWorkbenchSlice.from(state),
       );
     }
 
     final bucket = store.tabsForWorkspace(workspaceTabKey);
     final index = store.savedActiveIndexFor(workspaceTabKey);
-    final composeActive = store.isComposeActive(workspaceTabKey);
-    final ChatTab? tab = bucket.isEmpty || composeActive
+    final newChatActive = store.isNewChatActive(workspaceTabKey);
+    final ChatTab? tab = bucket.isEmpty || newChatActive
         ? null
         : bucket[index.clamp(0, bucket.length - 1)];
     final bucketIds = bucket.map((t) => t.info.id).toSet();
@@ -62,14 +62,14 @@ class ChatScopedTabView {
           .where(bucketIds.contains)
           .toSet(),
       selectedMemberId: tab?.selectedMemberId ?? '',
-      composeActive: composeActive,
+      newChatActive: newChatActive,
       workbenchSlice: ChatWorkbenchSlice(
         stateVersion: state.stateVersion,
         activeSessionId: activeSessionId,
         selectedMemberId: tab?.selectedMemberId ?? '',
         activeTabIndex: index,
         tabCount: bucket.length,
-        composeActive: composeActive,
+        newChatActive: newChatActive,
         sessionConnectingId:
             activeSessionId != null &&
                 state.sessionConnectingId == activeSessionId
@@ -88,7 +88,7 @@ class ChatScopedTabView {
             activeTabIndex == other.activeTabIndex &&
             _setEquality.equals(workingSessionIds, other.workingSessionIds) &&
             selectedMemberId == other.selectedMemberId &&
-            composeActive == other.composeActive &&
+            newChatActive == other.newChatActive &&
             workbenchSlice == other.workbenchSlice;
   }
 
@@ -98,7 +98,7 @@ class ChatScopedTabView {
     activeTabIndex,
     _setEquality.hash(workingSessionIds),
     selectedMemberId,
-    composeActive,
+    newChatActive,
     workbenchSlice,
   );
 }

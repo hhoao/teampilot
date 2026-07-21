@@ -699,7 +699,7 @@ class SessionLaunchService
           activeTabIndex: _tabStore.activeTabCount - 1,
           activeSessionId: tab.info.id,
           selectedMemberId: tab.selectedMemberId,
-          composeActive: false,
+          newChatActive: false,
         ),
       );
     }

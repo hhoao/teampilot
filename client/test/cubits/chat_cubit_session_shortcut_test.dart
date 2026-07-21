@@ -128,23 +128,23 @@ void main() {
 
     test('selectNextSessionTab is a no-op with no open tabs', () {
       expect(cubit.state.tabs, isEmpty);
-      expect(cubit.state.composeActive, isTrue);
+      expect(cubit.state.newChatActive, isTrue);
 
       cubit.selectNextSessionTab();
 
       expect(cubit.state.activeTabIndex, 0);
-      expect(cubit.state.composeActive, isTrue);
+      expect(cubit.state.newChatActive, isTrue);
       expect(cubit.state.activeSessionId, isNull);
     });
 
     test('selectPreviousSessionTab is a no-op with no open tabs', () {
       expect(cubit.state.tabs, isEmpty);
-      expect(cubit.state.composeActive, isTrue);
+      expect(cubit.state.newChatActive, isTrue);
 
       cubit.selectPreviousSessionTab();
 
       expect(cubit.state.activeTabIndex, 0);
-      expect(cubit.state.composeActive, isTrue);
+      expect(cubit.state.newChatActive, isTrue);
       expect(cubit.state.activeSessionId, isNull);
     });
 
@@ -191,12 +191,12 @@ void main() {
     );
 
     test(
-      'selectNextSessionTab clears compose landing when open tabs still exist',
+      'selectNextSessionTab clears new-chat landing when open tabs still exist',
       () async {
         await openTabs(3);
         cubit.selectTab(0);
-        cubit.enterComposeMode(workspaceId);
-        expect(cubit.state.composeActive, isTrue);
+        cubit.enterNewChat(workspaceId);
+        expect(cubit.state.newChatActive, isTrue);
         expect(cubit.state.tabs, hasLength(3));
         // Compose preserves the last selected index so navigation resumes
         // from there instead of restarting at 0.
@@ -204,24 +204,24 @@ void main() {
 
         cubit.selectNextSessionTab();
 
-        expect(cubit.state.composeActive, isFalse);
+        expect(cubit.state.newChatActive, isFalse);
         expect(cubit.state.activeTabIndex, 1);
         expect(cubit.state.activeSessionId, sessionIds[1]);
       },
     );
 
     test(
-      'selectPreviousSessionTab clears compose landing when open tabs still exist',
+      'selectPreviousSessionTab clears new-chat landing when open tabs still exist',
       () async {
         await openTabs(3);
         cubit.selectTab(0);
-        cubit.enterComposeMode(workspaceId);
-        expect(cubit.state.composeActive, isTrue);
+        cubit.enterNewChat(workspaceId);
+        expect(cubit.state.newChatActive, isTrue);
         expect(cubit.state.tabs, hasLength(3));
 
         cubit.selectPreviousSessionTab();
 
-        expect(cubit.state.composeActive, isFalse);
+        expect(cubit.state.newChatActive, isFalse);
         expect(cubit.state.activeTabIndex, 2);
         expect(cubit.state.activeSessionId, sessionIds[2]);
       },
@@ -243,14 +243,14 @@ void main() {
       },
     );
 
-    test('enterComposeMode(activeWorkspaceId) is the session-new-tab command '
+    test('enterNewChat(activeWorkspaceId) is the session-new-tab command '
         'equivalent, and keeps open tabs', () async {
       await openTabs(2);
-      expect(cubit.state.composeActive, isFalse);
+      expect(cubit.state.newChatActive, isFalse);
 
-      cubit.enterComposeMode(cubit.tabStore.activeWorkspaceId);
+      cubit.enterNewChat(cubit.tabStore.activeWorkspaceId);
 
-      expect(cubit.state.composeActive, isTrue);
+      expect(cubit.state.newChatActive, isTrue);
       expect(cubit.state.tabs, hasLength(2));
       expect(cubit.state.activeSessionId, isNull);
     });
@@ -285,14 +285,14 @@ void main() {
       expect(cubit.state.activeSessionId, sessionIds[0]);
     });
 
-    test('selectSessionTabAt clears compose landing', () async {
+    test('selectSessionTabAt clears new-chat landing', () async {
       await openTabs(2);
-      cubit.enterComposeMode(workspaceId);
-      expect(cubit.state.composeActive, isTrue);
+      cubit.enterNewChat(workspaceId);
+      expect(cubit.state.newChatActive, isTrue);
 
       cubit.selectSessionTabAt(1);
 
-      expect(cubit.state.composeActive, isFalse);
+      expect(cubit.state.newChatActive, isFalse);
       expect(cubit.state.activeTabIndex, 0);
       expect(cubit.state.activeSessionId, sessionIds[0]);
     });

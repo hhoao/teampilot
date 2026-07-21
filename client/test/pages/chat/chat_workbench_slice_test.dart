@@ -12,7 +12,7 @@ void main() {
         selectedMemberId: 'agent',
         activeTabIndex: 0,
         tabCount: 1,
-        composeActive: false,
+        newChatActive: false,
         sessionConnectingId: 'session-b',
         sessionLaunchError: null,
       );
@@ -27,7 +27,7 @@ void main() {
         selectedMemberId: '',
         activeTabIndex: 0,
         tabCount: 1,
-        composeActive: false,
+        newChatActive: false,
         sessionConnectingId: 'session-a',
         sessionLaunchError: null,
       );
@@ -42,7 +42,7 @@ void main() {
         selectedMemberId: '',
         activeTabIndex: 0,
         tabCount: 1,
-        composeActive: false,
+        newChatActive: false,
         sessionConnectingId: 'pending',
         sessionLaunchError: null,
       );

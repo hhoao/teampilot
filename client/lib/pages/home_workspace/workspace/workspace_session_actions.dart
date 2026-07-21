@@ -245,7 +245,7 @@ Future<void> showWorkspaceComposeLanding(
   if (chat.tabStore.activeWorkspaceId != tabScopeId) {
     chat.setActiveWorkspace(tabScopeId);
   }
-  chat.enterComposeMode(tabScopeId);
+  chat.enterNewChat(tabScopeId);
 }
 
 /// Opens compose landing with [worktreePath] pre-selected as the session cwd.

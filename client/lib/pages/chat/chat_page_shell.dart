@@ -175,7 +175,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
     if (!routeActive) return false;
     return previous.tabs != next.tabs ||
         previous.activeTabIndex != next.activeTabIndex ||
-        previous.composeActive != next.composeActive ||
+        previous.newChatActive != next.newChatActive ||
         previous.workingSessionIds != next.workingSessionIds ||
         previous.selectedMemberId != next.selectedMemberId ||
         previous.sessionConnectingId != next.sessionConnectingId ||
@@ -209,7 +209,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
           workspaceId: workspaceId,
           sessionIds: sessionIds,
           activeSessionId: view.workbenchSlice.activeSessionId,
-          composeActive: view.composeActive,
+          newChatActive: view.newChatActive,
           child: WorkbenchShellRunSync(
             workspaceId: workspaceId,
             tabScopeId: tabScopeId,
@@ -319,7 +319,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
                           context.read<WorkbenchCubit>().clearActive(
                             workspaceId,
                           );
-                          cubit.enterComposeMode(tabScopeId);
+                          cubit.enterNewChat(tabScopeId);
                         }
                       : null,
                   onNewTerminal: routeActive
