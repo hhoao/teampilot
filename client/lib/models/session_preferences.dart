@@ -11,6 +11,7 @@ class SessionPreferences {
     this.notifyOnSessionIdle = true,
     this.openExistingSessionStartsTerminal = false,
     this.historySubmitSwitchesToTerminal = false,
+    this.simpleModeDefaultFullAccess = true,
   }) : cliExecutablePaths = Map.unmodifiable(
          _normalizeCliExecutablePaths(cliExecutablePaths),
        ),
@@ -44,6 +45,8 @@ class SessionPreferences {
           json['openExistingSessionStartsTerminal'] as bool? ?? false,
       historySubmitSwitchesToTerminal:
           json['historySubmitSwitchesToTerminal'] as bool? ?? false,
+      simpleModeDefaultFullAccess:
+          json['simpleModeDefaultFullAccess'] as bool? ?? true,
     );
   }
 
@@ -94,6 +97,10 @@ class SessionPreferences {
   /// background.
   final bool historySubmitSwitchesToTerminal;
 
+  /// When true (default), Simple-mode compose landing starts with full access
+  /// unless a workspace has already persisted a different chip choice.
+  final bool simpleModeDefaultFullAccess;
+
   String cliExecutablePathFor(String toolId) =>
       cliExecutablePaths[toolId]?.trim() ?? '';
 
@@ -109,6 +116,7 @@ class SessionPreferences {
     bool? notifyOnSessionIdle,
     bool? openExistingSessionStartsTerminal,
     bool? historySubmitSwitchesToTerminal,
+    bool? simpleModeDefaultFullAccess,
   }) {
     return SessionPreferences(
       cliExecutablePaths: cliExecutablePaths ?? this.cliExecutablePaths,
@@ -131,6 +139,8 @@ class SessionPreferences {
       historySubmitSwitchesToTerminal:
           historySubmitSwitchesToTerminal ??
           this.historySubmitSwitchesToTerminal,
+      simpleModeDefaultFullAccess:
+          simpleModeDefaultFullAccess ?? this.simpleModeDefaultFullAccess,
     );
   }
 
@@ -147,6 +157,7 @@ class SessionPreferences {
       'notifyOnSessionIdle': notifyOnSessionIdle,
       'openExistingSessionStartsTerminal': openExistingSessionStartsTerminal,
       'historySubmitSwitchesToTerminal': historySubmitSwitchesToTerminal,
+      'simpleModeDefaultFullAccess': simpleModeDefaultFullAccess,
     };
   }
 

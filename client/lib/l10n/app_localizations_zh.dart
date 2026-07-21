@@ -2117,6 +2117,13 @@ class AppLocalizationsZh extends AppLocalizations {
       '关闭（默认）时，从历史回顾提交后仍留在对话视图，终端在后台运行并刷新转录。开启后，提交后切换到终端（旧行为）。';
 
   @override
+  String get simpleModeDefaultFullAccessTitle => '简单模式默认：完全访问';
+
+  @override
+  String get simpleModeDefaultFullAccessDescription =>
+      '开启（默认）时，简单模式落地页默认使用完全访问权限。工作区里权限芯片的选择仍会覆盖并按工作区持久化。';
+
+  @override
   String get scopeSessionsToSelectedTeamTitle => '按所选团队筛选会话';
 
   @override

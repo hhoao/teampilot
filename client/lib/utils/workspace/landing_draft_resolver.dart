@@ -2,13 +2,20 @@ import '../../models/landing_launch_context.dart';
 import '../../services/home_workspace/landing_prefs_store.dart';
 
 /// Loads persisted compose-landing draft for a workspace (local to landing UI).
+///
+/// When no workspace prefs exist, [simpleModeDefaultFullAccess] seeds the
+/// permission chip (app Session setting; defaults to full access).
 Future<LandingLaunchContext> resolveLandingDraft({
   required String workspaceId,
   LandingPrefsStore? store,
+  bool simpleModeDefaultFullAccess = true,
 }) async {
   final prefs = await (store ?? LandingPrefsStore()).prefsFor(workspaceId);
   if (prefs == null) {
-    return const LandingLaunchContext(isPersonal: true);
+    return LandingLaunchContext(
+      isPersonal: true,
+      dangerouslySkipPermissions: simpleModeDefaultFullAccess,
+    );
   }
   return LandingLaunchContext(
     isPersonal: prefs.isPersonal,

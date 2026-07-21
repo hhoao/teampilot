@@ -12,6 +12,7 @@ void main() {
       expect(prefs.scopeSessionsToSelectedTeam, true);
       expect(prefs.notifyOnSessionIdle, true);
       expect(prefs.openExistingSessionStartsTerminal, false);
+      expect(prefs.simpleModeDefaultFullAccess, true);
     });
 
     test('toJson/fromJson round-trips', () {
@@ -27,6 +28,7 @@ void main() {
         scopeSessionsToSelectedTeam: true,
         notifyOnSessionIdle: false,
         openExistingSessionStartsTerminal: true,
+        simpleModeDefaultFullAccess: false,
       );
       final restored = SessionPreferences.fromJson(prefs.toJson());
       expect(restored.cliExecutablePaths, {
@@ -40,6 +42,7 @@ void main() {
       expect(restored.scopeSessionsToSelectedTeam, true);
       expect(restored.notifyOnSessionIdle, false);
       expect(restored.openExistingSessionStartsTerminal, true);
+      expect(restored.simpleModeDefaultFullAccess, false);
     });
 
     test('toJson is free of legacy runtime knobs', () {
@@ -56,6 +59,7 @@ void main() {
       expect(restored.autoLaunchAllMembersOnConnect, true);
       expect(restored.scopeSessionsToSelectedTeam, true);
       expect(restored.openExistingSessionStartsTerminal, false);
+      expect(restored.simpleModeDefaultFullAccess, true);
     });
 
     test('copyWith updates only specified fields', () {
@@ -63,6 +67,7 @@ void main() {
       final next = prefs.copyWith(
         cliExecutablePaths: const {'flashskyai': '/a/b', 'claude': '/c/d'},
         openExistingSessionStartsTerminal: true,
+        simpleModeDefaultFullAccess: false,
       );
       expect(next.cliExecutablePathFor('flashskyai'), '/a/b');
       expect(next.cliExecutablePaths, {'flashskyai': '/a/b', 'claude': '/c/d'});
@@ -71,10 +76,26 @@ void main() {
       expect(next.autoLaunchAllMembersOnConnect, true);
       expect(next.scopeSessionsToSelectedTeam, true);
       expect(next.openExistingSessionStartsTerminal, true);
+      expect(next.simpleModeDefaultFullAccess, false);
     });
 
     test('historySubmitSwitchesToTerminal defaults false', () {
       expect(SessionPreferences().historySubmitSwitchesToTerminal, isFalse);
+    });
+
+    test('simpleModeDefaultFullAccess defaults true', () {
+      expect(SessionPreferences().simpleModeDefaultFullAccess, isTrue);
+    });
+
+    test('simpleModeDefaultFullAccess JSON round-trip', () {
+      final prefs = SessionPreferences(simpleModeDefaultFullAccess: false);
+      final again = SessionPreferences.fromJson(prefs.toJson());
+      expect(again.simpleModeDefaultFullAccess, isFalse);
+    });
+
+    test('fromJson defaults simpleModeDefaultFullAccess when key missing', () {
+      final restored = SessionPreferences.fromJson(const <String, Object?>{});
+      expect(restored.simpleModeDefaultFullAccess, isTrue);
     });
 
     test('historySubmitSwitchesToTerminal JSON round-trip', () {

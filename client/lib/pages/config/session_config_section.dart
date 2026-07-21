@@ -275,6 +275,17 @@ class _SessionControlsState extends State<_SessionControls> {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
+                  title: l10n.simpleModeDefaultFullAccessTitle,
+                  subtitle: l10n.simpleModeDefaultFullAccessDescription,
+                  trailing: Switch(
+                    key: AppKeys.simpleModeDefaultFullAccessSwitch,
+                    value: snapshot.simpleModeDefaultFullAccess,
+                    onChanged: (value) =>
+                        cubit.setSimpleModeDefaultFullAccess(value),
+                  ),
+                  showDividerBelow: true,
+                ),
+                TpPreferenceRow(
                   title: l10n.scopeSessionsToSelectedTeamTitle,
                   subtitle: l10n.scopeSessionsToSelectedTeamDescription,
                   trailing: Switch(
@@ -312,6 +323,7 @@ class _SessionControlsSnapshot {
     required this.autoLaunchAllMembersOnConnect,
     required this.openExistingSessionStartsTerminal,
     required this.historySubmitSwitchesToTerminal,
+    required this.simpleModeDefaultFullAccess,
     required this.scopeSessionsToSelectedTeam,
     required this.notifyOnSessionIdle,
   });
@@ -323,6 +335,7 @@ class _SessionControlsSnapshot {
   final bool autoLaunchAllMembersOnConnect;
   final bool openExistingSessionStartsTerminal;
   final bool historySubmitSwitchesToTerminal;
+  final bool simpleModeDefaultFullAccess;
   final bool scopeSessionsToSelectedTeam;
   final bool notifyOnSessionIdle;
 
@@ -337,6 +350,7 @@ class _SessionControlsSnapshot {
           preferences.openExistingSessionStartsTerminal,
       historySubmitSwitchesToTerminal:
           preferences.historySubmitSwitchesToTerminal,
+      simpleModeDefaultFullAccess: preferences.simpleModeDefaultFullAccess,
       scopeSessionsToSelectedTeam: preferences.scopeSessionsToSelectedTeam,
       notifyOnSessionIdle: preferences.notifyOnSessionIdle,
     );
@@ -354,6 +368,7 @@ class _SessionControlsSnapshot {
             openExistingSessionStartsTerminal &&
         other.historySubmitSwitchesToTerminal ==
             historySubmitSwitchesToTerminal &&
+        other.simpleModeDefaultFullAccess == simpleModeDefaultFullAccess &&
         other.scopeSessionsToSelectedTeam == scopeSessionsToSelectedTeam &&
         other.notifyOnSessionIdle == notifyOnSessionIdle;
   }
@@ -367,6 +382,7 @@ class _SessionControlsSnapshot {
     autoLaunchAllMembersOnConnect,
     openExistingSessionStartsTerminal,
     historySubmitSwitchesToTerminal,
+    simpleModeDefaultFullAccess,
     scopeSessionsToSelectedTeam,
     notifyOnSessionIdle,
   );

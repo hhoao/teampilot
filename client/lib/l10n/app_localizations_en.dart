@@ -2212,6 +2212,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'When off (default), submitting from History keeps the conversation view and refreshes from the transcript while the terminal runs in the background. When on, switch to the terminal after submit (previous behavior).';
 
   @override
+  String get simpleModeDefaultFullAccessTitle =>
+      'Simple mode default: full access';
+
+  @override
+  String get simpleModeDefaultFullAccessDescription =>
+      'When enabled (default), new Simple-mode compose landing starts with full access permissions. Workspace chip choices still override and persist per workspace.';
+
+  @override
   String get scopeSessionsToSelectedTeamTitle =>
       'Scope sessions to selected team';
 

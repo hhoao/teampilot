@@ -42,6 +42,9 @@ class AppKeys {
   static const historySubmitSwitchesToTerminalSwitch = Key(
     'history-submit-switches-to-terminal-switch',
   );
+  static const simpleModeDefaultFullAccessSwitch = Key(
+    'simple-mode-default-full-access-switch',
+  );
   static const sessionWorkbenchViewToggle = Key(
     'session-workbench-view-toggle',
   );

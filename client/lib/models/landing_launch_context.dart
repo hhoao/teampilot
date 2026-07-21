@@ -12,7 +12,7 @@ class LandingLaunchContext {
     this.projectFolderPath,
     this.expertKey,
     this.workingDirectoryPath,
-    this.dangerouslySkipPermissions = false,
+    this.dangerouslySkipPermissions = true,
   });
 
   /// True when launching Simple (unteamed) mode — empty [sessionTeam].

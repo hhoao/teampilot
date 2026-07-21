@@ -13,6 +13,7 @@ import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/expert_hub_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/plugin_cubit.dart';
+import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/skill_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../models/config_bundle.dart';
@@ -81,7 +82,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   final _headlessAi = HeadlessAiService();
 
   var _conversationMode = _LandingConversationMode.simple;
-  var _dangerouslySkipPermissions = false;
+  var _dangerouslySkipPermissions = true;
   String? _selectedPresetId;
   String? _selectedTeamId;
   String? _selectedExpertKey;
@@ -432,6 +433,11 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   Future<void> _loadDraft() async {
     final draft = await resolveLandingDraft(
       workspaceId: widget.workspace.workspaceId,
+      simpleModeDefaultFullAccess: context
+          .read<SessionPreferencesCubit>()
+          .state
+          .preferences
+          .simpleModeDefaultFullAccess,
     );
     if (!mounted) return;
     setState(() => _applyDraft(draft));

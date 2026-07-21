@@ -138,6 +138,22 @@ void main() {
   });
 
   test(
+    'simpleModeDefaultFullAccess defaults to true and persists toggle',
+    () async {
+      final cubit = await makeCubit();
+      await cubit.load();
+      expect(cubit.state.preferences.simpleModeDefaultFullAccess, true);
+
+      await cubit.setSimpleModeDefaultFullAccess(false);
+      expect(cubit.state.preferences.simpleModeDefaultFullAccess, false);
+
+      final cubit2 = await makeCubit();
+      await cubit2.load();
+      expect(cubit2.state.preferences.simpleModeDefaultFullAccess, false);
+    },
+  );
+
+  test(
     'setDefaultSshWorkingDirectory persists the remote default cwd',
     () async {
       final cubit = await makeCubit();

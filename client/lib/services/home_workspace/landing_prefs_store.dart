@@ -12,7 +12,7 @@ class LandingPrefs {
     this.projectFolderPath,
     this.expertKey,
     this.workingDirectoryPath,
-    this.dangerouslySkipPermissions = false,
+    this.dangerouslySkipPermissions = true,
   });
 
   final bool isPersonal;
@@ -32,7 +32,7 @@ class LandingPrefs {
     if (expertKey != null && expertKey!.isNotEmpty) 'expertKey': expertKey,
     if (workingDirectoryPath != null && workingDirectoryPath!.isNotEmpty)
       'workingDirectoryPath': workingDirectoryPath,
-    if (dangerouslySkipPermissions) 'dangerouslySkipPermissions': true,
+    'dangerouslySkipPermissions': dangerouslySkipPermissions,
   };
 }
 
@@ -67,7 +67,7 @@ class LandingPrefsStore {
           expertKey: m['expertKey'] as String?,
           workingDirectoryPath: m['workingDirectoryPath'] as String?,
           dangerouslySkipPermissions:
-              m['dangerouslySkipPermissions'] as bool? ?? false,
+              m['dangerouslySkipPermissions'] as bool? ?? true,
         );
       }
       return out;

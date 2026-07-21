@@ -257,6 +257,11 @@ Future<void> showWorkspaceComposeLandingWithWorktree(
 }) async {
   final draft = await resolveLandingDraft(
     workspaceId: workspace.workspaceId,
+    simpleModeDefaultFullAccess: context
+        .read<SessionPreferencesCubit>()
+        .state
+        .preferences
+        .simpleModeDefaultFullAccess,
   );
   if (!context.mounted) return;
 

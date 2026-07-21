@@ -4076,6 +4076,18 @@ abstract class AppLocalizations {
   /// **'When off (default), submitting from History keeps the conversation view and refreshes from the transcript while the terminal runs in the background. When on, switch to the terminal after submit (previous behavior).'**
   String get historySubmitSwitchesToTerminalDescription;
 
+  /// No description provided for @simpleModeDefaultFullAccessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Simple mode default: full access'**
+  String get simpleModeDefaultFullAccessTitle;
+
+  /// No description provided for @simpleModeDefaultFullAccessDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'When enabled (default), new Simple-mode compose landing starts with full access permissions. Workspace chip choices still override and persist per workspace.'**
+  String get simpleModeDefaultFullAccessDescription;
+
   /// No description provided for @scopeSessionsToSelectedTeamTitle.
   ///
   /// In en, this message translates to:

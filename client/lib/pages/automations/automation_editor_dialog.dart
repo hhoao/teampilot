@@ -9,6 +9,7 @@ import '../../cubits/automation_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
+import '../../cubits/session_preferences_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/automation.dart';
 import '../../models/team_config.dart';
@@ -162,7 +163,14 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     final workspaceId = widget.initial?.workspaceId ?? widget.workspaceId ?? '';
     if (workspaceId.isEmpty) return;
 
-    final draft = await resolveLandingDraft(workspaceId: workspaceId);
+    final draft = await resolveLandingDraft(
+      workspaceId: workspaceId,
+      simpleModeDefaultFullAccess: context
+          .read<SessionPreferencesCubit>()
+          .state
+          .preferences
+          .simpleModeDefaultFullAccess,
+    );
     if (!mounted) return;
     setState(() {
       _isPersonal = draft.isPersonal;
