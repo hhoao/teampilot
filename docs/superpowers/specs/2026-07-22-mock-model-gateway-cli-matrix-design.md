@@ -19,17 +19,24 @@ Message-send integration coverage is incomplete and uneven:
   only to loopback — never the operator’s local or cloud API servers.
 - Cover a **CLI × mode matrix** with scripted scenarios of **≥3 model replies**,
   including **team collaboration** where the mode supports it.
-- On failure: emit enough gateway / PTY / bus evidence to **attribute the fault**
-  (wire, scenario, product send path, or boot profile) and fix — do not skip to
-  hide reds.
+- Assert the **full operator chat path**, not just PTY/backend delivery:
+  compose in the session chat UI → deliver (PTY or mailbox) → **user + assistant
+  bubbles** appear in the History / chat thread (including Queued → sticky
+  mailbox user bubbles when that channel is used).
+- On failure: emit enough gateway / PTY / bus / **thread** evidence to
+  **attribute the fault** (wire, scenario, product send path, chat UI, or boot
+  profile) and fix — do not skip to hide reds.
 
 ## Non-goals
 
 - Hitting real vendor APIs in CI or local matrix runs.
-- Pixel / UI snapshot testing.
+- Pixel / golden UI snapshot testing (assert **semantic** bubble presence via
+  widget finders / cubit state, not screenshots).
 - Making Docker SSH (L3) a required cell of the matrix in the first delivery.
 - Preserving `tools/mock_anthropic` package name or HTTP surface for
   compatibility (replace / migrate freely).
+- Landing-page first-prompt compose (matrix kickoff uses the **in-session
+  History compose** path; landing can reuse harness later).
 
 ## Decisions (locked)
 
@@ -40,6 +47,8 @@ Message-send integration coverage is incomplete and uneven:
 | CLI scope | All five: claude, flashskyai, codex, opencode, cursor |
 | Mode matrix | Full simple / native / mixed |
 | Native for non-native CLIs | **N/A** (skip) for codex, opencode, cursor — only simple + mixed |
+| Operator send surface | **Session chat History compose** (`SessionChatView` / submit path) |
+| Thread observation | User + assistant bubbles in chat thread (cubit / finders) |
 | Compat / effort | Prefer extensibility; no backward-compat constraint |
 
 ## Coverage matrix
@@ -120,19 +129,44 @@ CLI-specific auth) at the gateway. **Do not** fork the scenario DSL per CLI.
 
 | Recipe | Mode | Minimum behavior |
 |--------|------|------------------|
-| `simple_3turn` | simple | Operator send → ≥3 assistant texts |
+| `simple_3turn` | simple | History compose send → ≥3 assistant texts in thread |
 | `native_collab_3plus` | native (claude / flashskyai only) | Lead dispatch → worker reply → lead close-out; ≥3 visible replies + native team tools |
 | `mixed_collab_3plus` | mixed | Lead `send_message` → worker reply → lead confirm; TeamBus tool_use. Cursor uses **doorbell + short MCP**, not long-blocking `wait_for_message` scripts |
 
-Product-side assertions (wire-independent):
+### End-to-end operator path (required for L2)
+
+Each matrix cell drives the **real chat UI submit path**, not a harness-only
+`deliverMemberStdin` shortcut:
+
+```
+SessionChatView compose
+  → submitSessionHistoryReviewMessage / History continue
+  → PTY inject  OR  mailbox deliverUserCommand
+  → AiHistoryCubit thread:
+       PTY: optimistic/pending user bubble → assistant bubbles from live
+            transcript refresh
+       mailbox: Queued strip → sticky local user bubble after consume;
+            assistant bubbles when the seat’s transcript advances
+```
+
+Product-side assertions (wire-independent), **all required**:
 
 1. Gateway: actor completed ≥3 turns; no exhausted / decode errors in log.
 2. Bus (mixed): mail/task assertions (reuse `bus_*_assertions`).
-3. **Primary L2 observation: PTY probe** — `CliTestProfile` defines
-   `assistantVisibleMarkers` (substring / regex list) expected in the member
-   terminal grid after the recipe. History / transcript adapters are **out of
-   v1 assertion path** (optional later); do not block matrix cells on History
-   UI.
+3. **PTY probe** — `CliTestProfile.assistantVisibleMarkers` in the member
+   terminal grid (proves the CLI actually produced the scripted text).
+4. **Chat thread bubbles** — after compose submit:
+   - **User bubble** for the operator text (pending, sticky mailbox, or
+     reconciled transcript user message — whichever the channel produces).
+   - **≥3 assistant bubbles** (or equivalent thread items carrying the
+     scripted assistant texts) visible via `AiHistoryCubit` / widget finders
+     for the selected seat.
+   - Mailbox channel: Queued row appears on send; after consume, sticky user
+     bubble is present (aligns with history-mixed-mailbox-continue design).
+
+Harness may call the same submit function the UI uses with a pumped
+`SessionChatView` (preferred) or an equivalent bound to production cubits —
+but must not bypass compose → channel routing → thread update.
 
 ## Test layering
 
@@ -140,7 +174,7 @@ Product-side assertions (wire-independent):
 |-------|------|--------------|-----|
 | L0 | ScenarioEngine + WireAdapter encode/decode | none | gateway package unit tests |
 | L1 | Gateway HTTP: ≥3 turns, tool round-trips | no CLI | `integration && cross-platform` |
-| L2 | Real CLI PTY + ChatCubit + gateway matrix | CLI on PATH + native PTY | `integration && linux-pty` |
+| L2 | Real CLI PTY + ChatCubit + **pumped chat UI** + gateway matrix | CLI on PATH + native PTY | `integration && linux-pty` |
 | L3 | mixed + Docker SSH worker (optional later) | Docker | `integration && docker` |
 
 First delivery: **L0–L2**. L3 follows existing Docker patterns and is not a
@@ -155,14 +189,18 @@ CliMessageMatrixHarness
   .forCli(CliTool)
   .mode(simple | native | mixed)
   .scenario(simple_3turn | native_collab_3plus | mixed_collab_3plus)
-  → startGateway / writeMockProviders / launchSession / kickoff / assert
+  → startGateway / writeMockProviders / launchSession
+  → pump SessionChatView (History compose)
+  → submit via UI (or production submit binding)
+  → assert gateway + PTY markers + thread bubbles
 ```
 
 `CliTestProfile` holds: binary resolution, **boot-gate dismissal** (trust
 screens, API-key prompts, `customApiKeyResponses`, update modals, …),
 boot-to-prompt detection, fullscreen deliver behavior, `supportsNativeTeam`,
 bus style (long-wait vs doorbell), `toolName(toolRef)`,
-`assistantVisibleMarkers`, and gateway credential / baseUrl wiring.
+`assistantVisibleMarkers`, **thread bubble matchers** (user text + assistant
+marker texts), and gateway credential / baseUrl wiring.
 
 Migrate / replace `MixedTeamIntegrationHarness` and standalone deliver tests
 into this path — **no dual-track** mock stacks.
@@ -174,15 +212,20 @@ On failure, always surface:
 1. Gateway request log (actor, wire, turnIndex, turnLabel)
 2. Scenario progress (expected next turn vs exhausted / decode error)
 3. Last PTY probe frame + which `assistantVisibleMarkers` were missing
-4. Bus assertion detail (mixed)
+4. **Thread dump** — pending / sticky / committed user + assistant items for
+   the seat (and Queued strip state when mailbox)
+5. Bus assertion detail (mixed)
 
 Attribution order:
 
 1. Wire / protocol → fix Adapter  
 2a. Wrong on-wire tool **name** → fix `CliTestProfile.toolName` mapping  
 2b. Wrong tool **args / turn content** → fix recipe  
-3. Send path (PTY inject / mailbox / doorbell) → fix product  
-4. CLI boot / trust screens → fix `CliTestProfile` boot-gate
+3. Deliver works (gateway + PTY) but **no / wrong bubbles** → fix History
+   continue, live refresh, or mailbox Queued→sticky path  
+4. Send path never reaches CLI (PTY inject / mailbox / doorbell) → fix product
+   deliver  
+5. CLI boot / trust screens → fix `CliTestProfile` boot-gate
 
 `CliTestProfile.supportsNativeTeam` should **derive** from
 `CliToolRegistry.supportsNativeTeam` (or equivalent production capability), not
@@ -216,6 +259,8 @@ semantics themselves change.
 - L0–L1 green without any vendor CLI.
 - L2 matrix green for every non-N/A cell on a machine with the five CLIs +
   Linux PTY build, using **only** the mock gateway as model backend.
-- A deliberate product send-path break fails the matching cell with logs that
-  point at send path (not flaky timeout alone).
+- Each L2 cell proves: History compose submit → user bubble → ≥3 assistant
+  bubbles (plus mailbox Queued→sticky when that channel is exercised).
+- A deliberate product send-path or thread-bubble break fails the matching cell
+  with logs that point at send path / thread (not flaky timeout alone).
 - Documented run commands in `docs/DEVELOPMENT.md` for L0/L1/L2 filters.
