@@ -9,6 +9,7 @@ import 'package:teampilot/cubits/chat/model/chat_state.dart';
 import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/cubits/expert_hub_cubit.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
+import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/team/model/launch_profile_state.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/cli_preset.dart';
@@ -26,6 +27,7 @@ import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../support/automation_test_fixtures.dart';
+import '../../support/desktop_app_harness.dart';
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 import '../../support/stub_member_roster_service.dart';
@@ -147,6 +149,7 @@ Widget _host({
   CliPresetsCubit? cliPresetsCubit,
   ExpertHubCubit? expertHubCubit,
   ChatCubit? chatCubit,
+  SessionPreferencesCubit? sessionPreferencesCubit,
 }) {
   final resolvedChat = chatCubit ?? _chatCubitWithWorkspace();
   final providers = <BlocProvider>[
@@ -157,6 +160,13 @@ Widget _host({
       value: launchProfileCubit ?? _emptyLaunchProfileCubit(),
     ),
   ];
+  if (sessionPreferencesCubit != null) {
+    providers.add(
+      BlocProvider<SessionPreferencesCubit>.value(
+        value: sessionPreferencesCubit,
+      ),
+    );
+  }
   if (cliPresetsCubit != null) {
     providers.add(BlocProvider<CliPresetsCubit>.value(value: cliPresetsCubit));
   }
@@ -219,15 +229,19 @@ void main() {
     final setup = testAutomationSetup();
     final chatCubit = _chatCubitWithWorkspace();
     final cliPresetsCubit = _cliPresetsCubitWithPreset();
+    final sessionPreferencesCubit =
+        (await tester.runAsync(testSessionPreferencesCubit))!;
     addTearDown(setup.cubit.close);
     addTearDown(chatCubit.close);
     addTearDown(cliPresetsCubit.close);
+    addTearDown(sessionPreferencesCubit.close);
 
     await tester.pumpWidget(
       _host(
         cubit: setup.cubit,
         chatCubit: chatCubit,
         cliPresetsCubit: cliPresetsCubit,
+        sessionPreferencesCubit: sessionPreferencesCubit,
         child: const AutomationEditorDialog(workspaceId: 'ws1'),
       ),
     );

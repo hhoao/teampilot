@@ -59,7 +59,9 @@ void main() {
     final raw = leader.inbox.peekAll().single.content;
     final idle = IdleNotification.tryParse(raw);
     expect(idle.from, 'developer');
-    expect(launcher.woken.any((w) => w.memberId == 'team-lead'), isTrue);
+    // Virgin lead at prompt: mail is queued without PTY doorbell (History compose
+    // starts the first turn). Doorbell behavior is covered in team_bus_idle_doorbell_test.
+    expect(launcher.woken.where((w) => w.memberId == 'team-lead'), isEmpty);
   });
 
   test('onMemberIdle does not doorbell team-lead mid-turn', () {

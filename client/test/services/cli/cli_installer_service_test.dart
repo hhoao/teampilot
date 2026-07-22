@@ -4,7 +4,8 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_installer_service.dart';
 
 bool _isClaudeNpmInstall(String line) =>
-    line.contains('npm install -g @anthropic-ai/claude-code');
+    line.contains('npm install -g --prefix') &&
+    line.contains('@anthropic-ai/claude-code');
 
 bool _isRemoteClaudeLocate(String line) =>
     line.startsWith('sh -c') && line.contains('command -v claude');
@@ -209,9 +210,7 @@ void main() {
           );
         }
         if (command.commandLine.contains('export PATH=') &&
-            command.commandLine.contains(
-              'npm install -g @anthropic-ai/claude-code',
-            )) {
+            _isClaudeNpmInstall(command.commandLine)) {
           return const CliInstallerCommandResult(exitCode: 0);
         }
         if (command.commandLine == 'which claude') {
@@ -233,12 +232,7 @@ void main() {
     expect(result.executablePath, '/home/alice/.local/bin/claude');
     expect(commands[0], 'which npm');
     expect(commands.any((line) => line.contains('nodejs.org/dist/')), isTrue);
-    expect(
-      commands.any(
-        (line) => line.contains('npm install -g @anthropic-ai/claude-code'),
-      ),
-      isTrue,
-    );
+    expect(commands.any(_isClaudeNpmInstall), isTrue);
   });
 
   test('uses login-shell npm on Unix when bare which misses', () async {
@@ -399,12 +393,7 @@ void main() {
     expect(result.executablePath, '/home/alice/.local/bin/claude');
     expect(commands[0], 'command -v npm');
     expect(commands.any((line) => line.contains('nodejs.org/dist/')), isTrue);
-    expect(
-      commands.any(
-        (line) => line.contains('npm install -g @anthropic-ai/claude-code'),
-      ),
-      isTrue,
-    );
+    expect(commands.any(_isClaudeNpmInstall), isTrue);
   });
 
   test(

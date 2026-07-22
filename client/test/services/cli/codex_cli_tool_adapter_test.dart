@@ -20,7 +20,13 @@ void main() {
     final args = const CodexCliToolAdapter().buildArguments(
       CliLaunchContext(team: team, member: member, workingDirectory: '/work'),
     );
-    expect(args, ['--cd', '/work', '-m', 'gpt-5.2']);
+    expect(args, [
+      '--cd',
+      '/work',
+      '-m',
+      'gpt-5.2',
+      '--dangerously-bypass-hook-trust',
+    ]);
   });
 
   test('resume: leads argv with the `resume <id>` subcommand', () {
@@ -32,6 +38,14 @@ void main() {
         resumeSessionId: 'sess-42',
       ),
     );
-    expect(args, ['resume', 'sess-42', '--cd', '/work', '-m', 'gpt-5.2']);
+    expect(args, [
+      'resume',
+      'sess-42',
+      '--cd',
+      '/work',
+      '-m',
+      'gpt-5.2',
+      '--dangerously-bypass-hook-trust',
+    ]);
   });
 }

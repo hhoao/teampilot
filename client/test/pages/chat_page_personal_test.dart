@@ -35,6 +35,7 @@ import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/services/workspace/workspace_tools_scope.dart';
 
+import '../support/desktop_app_harness.dart';
 import '../support/idle_run_platform.dart';
 import '../support/in_memory_filesystem.dart';
 import '../support/post_frame_test_harness.dart';
@@ -128,6 +129,10 @@ void main() {
     );
     addTearDown(() => cliPresetsCubit.close());
 
+    final sessionPreferencesCubit =
+        (await tester.runAsync(testSessionPreferencesCubit))!;
+    addTearDown(() => sessionPreferencesCubit.close());
+
     chatCubit.ingestWorkspaceSessionSnapshot(
       workspaces: [
         Workspace(
@@ -168,6 +173,7 @@ void main() {
               BlocProvider.value(value: presenceCubit),
               BlocProvider.value(value: WorkspaceToolsCubit()),
               BlocProvider.value(value: cliPresetsCubit),
+              BlocProvider.value(value: sessionPreferencesCubit),
               BlocProvider(
                 create: (_) => WorkspaceLandingContextCubit(
                   workspaceId: 'personal-test',

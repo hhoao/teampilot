@@ -13,6 +13,7 @@ export 'src/parts/reasoning_part_view.dart';
 export 'src/parts/text_part_view.dart';
 export 'src/parts/tool_call_part_view.dart';
 export 'src/parts/tool_group_view.dart';
+export 'src/selection_dead_zone.dart';
 export 'src/strings.dart';
 export 'src/theme.dart';
 export 'src/thread_turns.dart';

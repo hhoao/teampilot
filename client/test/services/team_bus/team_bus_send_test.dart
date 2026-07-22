@@ -118,9 +118,10 @@ void main() {
     final node = AgentNode.test(
       memberId: 'leader',
       lifecycle: MemberLifecycle.running,
-      activity: MemberActivity.turnDoneReady,
+      activity: MemberActivity.active,
     );
     bus.declareMember(node);
+    bus.onMemberIdle('leader');
 
     await bus.send(TeamMessage(id: '1', from: 'w', to: 'leader', content: 'r'));
 

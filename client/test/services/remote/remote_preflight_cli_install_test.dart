@@ -35,7 +35,8 @@ void main() {
               command.contains('com.hhoa.teampilot/toolchain/node')) {
             return const SshCommandResult(exitCode: 0, stdout: '10.0.0\n');
           }
-          if (command.contains('npm install -g @anthropic-ai/claude-code')) {
+          if (command.contains('npm install -g --prefix') &&
+              command.contains('@anthropic-ai/claude-code')) {
             return const SshCommandResult(exitCode: 0, stdout: '');
           }
           if (command.startsWith('sh -c') &&
@@ -55,7 +56,9 @@ void main() {
       expect(calls.any((c) => c.startsWith('sh -c')), isTrue);
       expect(
         calls.any(
-          (c) => c.contains('npm install -g @anthropic-ai/claude-code'),
+          (c) =>
+              c.contains('npm install -g --prefix') &&
+              c.contains('@anthropic-ai/claude-code'),
         ),
         isTrue,
       );
