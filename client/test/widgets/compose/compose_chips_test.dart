@@ -42,7 +42,9 @@ void main() {
       expect(specs, hasLength(4));
       expect(specs[0].isDivider, isFalse);
       expect(specs[0].selected, isFalse);
+      expect(specs[0].iconWidget, isNotNull);
       expect(specs[1].selected, isTrue);
+      expect(specs[1].iconWidget, isNotNull);
       expect(specs[2].isDivider, isTrue);
       expect(specs[3].value, ComposeModelPresetChipAction.manage);
     });
@@ -58,6 +60,7 @@ void main() {
       final item = specs.single;
       expect(item.enabled, isFalse);
       expect(item.label, 'No presets');
+      expect(item.icon, Icons.terminal_outlined);
     });
   });
 

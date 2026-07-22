@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../models/cli_preset.dart';
+import '../../models/team_config.dart';
 import '../../pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
+import '../cli/cli_brand_icon.dart';
 import 'compose_menu_chip.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -23,7 +25,7 @@ List<TpActionMenuSpec> buildComposeModelPresetMenuSpecs({
     if (sameCliPresets.isEmpty)
       TpActionMenuSpec.item(
         value: null,
-        icon: Icons.tune,
+        icon: Icons.terminal_outlined,
         label: emptyHintLabel,
         enabled: false,
       )
@@ -31,7 +33,7 @@ List<TpActionMenuSpec> buildComposeModelPresetMenuSpecs({
       for (final preset in sameCliPresets)
         TpActionMenuSpec.item(
           value: preset.id,
-          icon: Icons.tune,
+          iconWidget: _PresetCliMenuIcon(cli: preset.cli),
           label: preset.name,
           selected: preset.id == selectedPresetId,
         ),
@@ -49,6 +51,22 @@ List<TpActionMenuSpec> buildComposeModelPresetMenuSpecs({
   return specs;
 }
 
+class _PresetCliMenuIcon extends StatelessWidget {
+  const _PresetCliMenuIcon({required this.cli});
+
+  final CliTool cli;
+
+  @override
+  Widget build(BuildContext context) {
+    return CliBrandIcon(
+      cli: cli,
+      size: TpActionMenuMetrics.iconSize(context),
+      borderRadius: 4,
+      showBorder: false,
+    );
+  }
+}
+
 /// Shared same-CLI preset menu chip for Landing and History continue chrome.
 class ComposeModelPresetChip extends StatelessWidget {
   const ComposeModelPresetChip({
@@ -60,7 +78,7 @@ class ComposeModelPresetChip extends StatelessWidget {
     required this.onPresetSelected,
     this.managePresetsLabel,
     this.onManagePresets,
-    this.icon = Icons.tune,
+    this.icon = Icons.terminal_outlined,
     super.key,
   });
 
