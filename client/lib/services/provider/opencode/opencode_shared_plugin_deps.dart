@@ -84,15 +84,20 @@ final class OpencodeSharedPluginDeps {
   }
 
   Future<String?> _defaultResolvePluginVersion() async {
-    final located = await const CliToolLocator(
-      'opencode',
-    ).locate(runner: _runner);
-    final exe = located ?? 'opencode';
-    final result = await _runner(exe, ['--version']);
-    if (result.exitCode != 0) return null;
-    final text = '${result.stdout}'.trim();
-    final match = RegExp(r'(\d+\.\d+\.\d+)').firstMatch(text);
-    return match?.group(1);
+    try {
+      final located = await const CliToolLocator(
+        'opencode',
+      ).locate(runner: _runner);
+      final exe = located ?? 'opencode';
+      final result = await _runner(exe, ['--version']);
+      if (result.exitCode != 0) return null;
+      final text = '${result.stdout}'.trim();
+      final match = RegExp(r'(\d+\.\d+\.\d+)').firstMatch(text);
+      return match?.group(1);
+    } on Object {
+      // Missing binary / PATH (CI without opencode) → treat as unavailable.
+      return null;
+    }
   }
 
   Future<int> _defaultNpmInstall(String cwd) async {

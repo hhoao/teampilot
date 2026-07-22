@@ -307,16 +307,20 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
 
     // Seed shared plugin deps on home/control plane (local npm), then inherit
     // into the work-plane session dir. Never npm-install on paths.fs (SFTP).
-    // Seed failures rethrow so ConfigProfileService can surface warnings.
-    await OpencodeSharedPluginDeps(
-      layout: ctx.catalog.layout,
-      fs: ctx.catalog.fs,
-    ).ensureSharedInstalled();
-    await paths.layout.ensureSessionInheritsOpencodePluginDeps(
-      ctx.scope.workspaceId,
-      ctx.scope.sessionId,
-      memberId: ctx.scope.memberId,
-    );
+    // Seed failures become warnings so launch env (OPENCODE_DB, …) still applies.
+    try {
+      await OpencodeSharedPluginDeps(
+        layout: ctx.catalog.layout,
+        fs: ctx.catalog.fs,
+      ).ensureSharedInstalled();
+      await paths.layout.ensureSessionInheritsOpencodePluginDeps(
+        ctx.scope.workspaceId,
+        ctx.scope.sessionId,
+        memberId: ctx.scope.memberId,
+      );
+    } on Object catch (e) {
+      warnings.add('opencode_plugin_deps: $e');
+    }
 
     final configPath = paths.joinWork(
       opencodeDir,
