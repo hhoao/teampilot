@@ -75,6 +75,8 @@ At launch, `RuntimeLayout` links each layer into the session runtime tree (PTY `
 3. **Workspace** — `workspace/workspaces/{workspaceId}/config/{tool}/`
 4. **Session** — `workspace/workspaces/{workspaceId}/sessions/{sessionId}/runtime/…`
 
+For `opencode`, `cli-defaults/opencode/{package.json,node_modules}` holds a shared `@opencode-ai/plugin` install (seeded on the home/control plane). Session `runtime/…/opencode/` inherits those two names (symlink preferred). Remote work machines receive the tree via `WorkMachineMaterializer`’s `cli-defaults` copy, then inherit in-root.
+
 Session skills/plugins/MCP ids merge as `team > expert > workspace` via `LayeredConfigBundle` / `SessionRuntimePlan` (see [2026-07-10 expert capability pack](superpowers/specs/2026-07-10-expert-capability-pack-design.md)).
 
 Persona prompt/playbook is **not** stored at layers 1–3; it is resolved from the expert catalog at connect and written into layer 4 via `MemberRoleProvision`.

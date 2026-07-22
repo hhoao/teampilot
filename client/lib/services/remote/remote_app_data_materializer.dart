@@ -1,6 +1,8 @@
 import '../../models/team_config.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
+import '../provider/opencode/opencode_shared_plugin_deps.dart';
+import '../storage/runtime_layout.dart';
 import 'materialization_manifest.dart';
 import 'remote_credential_materializer.dart';
 import 'work_machine_materializer.dart';
@@ -10,6 +12,14 @@ import 'work_machine_materializer.dart';
 /// unit-testable without touching real credential stores.
 typedef LocalCredentialsLoader =
     Future<List<CredentialFile>> Function(CliTool cli);
+
+/// Seeds home `cli-defaults/opencode` plugin deps (local npm). Injected so
+/// materialize tests can assert call order without a real `npm install`.
+typedef HomeOpencodeSharedPluginDepsSeeder =
+    Future<void> Function({
+      required Filesystem homeFs,
+      required String homeRoot,
+    });
 
 /// Links a CLI's team skills/plugins on the work machine (over its [workFs]).
 /// Injected; the real linkers are fs-injected services (run on-device against
@@ -41,11 +51,13 @@ class RemoteAppDataMaterializer {
     required this.loadLocalCredentials,
     this.linkResources,
     this.provisionRelay,
+    this.ensureOpencodeSharedPluginDeps,
   });
 
   final LocalCredentialsLoader loadLocalCredentials;
   final RemoteResourceLinker? linkResources;
   final RemoteRelayProvisioner? provisionRelay;
+  final HomeOpencodeSharedPluginDepsSeeder? ensureOpencodeSharedPluginDeps;
 
   Future<void> materialize({
     required Filesystem homeFs,
@@ -69,6 +81,26 @@ class RemoteAppDataMaterializer {
       fs: workFs,
       machineRoot: machineRoot,
     );
+
+    // Seed shared opencode plugin deps on home before reconcile copies
+    // cli-defaults onto the work machine. Never npm-install on workFs/SFTP.
+    if (cli == CliTool.opencode) {
+      step('opencode-shared-plugin-deps begin');
+      final seeder =
+          ensureOpencodeSharedPluginDeps ??
+          ({required Filesystem homeFs, required String homeRoot}) async {
+            final homeLayout = RuntimeLayout(
+              teampilotRoot: homeRoot,
+              fs: homeFs,
+            );
+            await OpencodeSharedPluginDeps(
+              layout: homeLayout,
+              fs: homeFs,
+            ).ensureSharedInstalled();
+          };
+      await seeder(homeFs: homeFs, homeRoot: homeRoot);
+      step('opencode-shared-plugin-deps done');
+    }
 
     step('reconcile begin');
     await WorkMachineMaterializer(

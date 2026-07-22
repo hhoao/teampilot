@@ -550,6 +550,150 @@ void main() {
     });
 
     test(
+      'ensureSessionInheritsOpencodePluginDeps links node_modules and package.json',
+      () async {
+        final layout = RuntimeLayout(
+          teampilotRoot: base.path,
+          fs: LocalFilesystem(),
+        );
+        await layout.ensureAppToolLayout('opencode');
+        final app = layout.appToolRoot('opencode');
+        await File(p.join(app, 'package.json')).writeAsString(
+          '{"dependencies":{"@opencode-ai/plugin":"1.0.0"}}',
+        );
+        await Directory(
+          p.join(app, 'node_modules', '@opencode-ai', 'plugin'),
+        ).create(recursive: true);
+
+        final sessionDir = layout.sessionRuntimeToolDir(
+          workspaceId,
+          'sess-oc',
+          'opencode',
+        );
+        await Directory(sessionDir).create(recursive: true);
+        await Directory(
+          p.join(sessionDir, 'node_modules', 'old'),
+        ).create(recursive: true);
+
+        await layout.ensureSessionInheritsOpencodePluginDeps(
+          workspaceId,
+          'sess-oc',
+        );
+
+        final linkedNm = _posixPath.join(sessionDir, 'node_modules');
+        final linkedPkg = _posixPath.join(sessionDir, 'package.json');
+        expect(_inheritedPathExists(linkedNm), isTrue);
+        expect(
+          await Directory(
+            p.join(linkedNm, '@opencode-ai', 'plugin'),
+          ).exists(),
+          isTrue,
+        );
+        expect(
+          await File(linkedPkg).readAsString(),
+          contains('@opencode-ai/plugin'),
+        );
+        expect(
+          Directory(p.join(linkedNm, 'old')).existsSync(),
+          isFalse,
+        );
+      },
+    );
+
+    test(
+      'ensureSessionInheritsOpencodePluginDeps with memberId uses mixed-mode path',
+      () async {
+        final layout = RuntimeLayout(
+          teampilotRoot: base.path,
+          fs: LocalFilesystem(),
+        );
+        await layout.ensureAppToolLayout('opencode');
+        final app = layout.appToolRoot('opencode');
+        await File(p.join(app, 'package.json')).writeAsString(
+          '{"dependencies":{"@opencode-ai/plugin":"1.0.0"}}',
+        );
+        await Directory(
+          p.join(app, 'node_modules', '@opencode-ai', 'plugin'),
+        ).create(recursive: true);
+
+        final sessionDir = layout.sessionRuntimeToolDir(
+          workspaceId,
+          'sess-mixed',
+          'opencode',
+          memberId: 'coder-1',
+        );
+        await Directory(sessionDir).create(recursive: true);
+
+        await layout.ensureSessionInheritsOpencodePluginDeps(
+          workspaceId,
+          'sess-mixed',
+          memberId: 'coder-1',
+        );
+
+        final linkedNm = _posixPath.join(sessionDir, 'node_modules');
+        final linkedPkg = _posixPath.join(sessionDir, 'package.json');
+        expect(_inheritedPathExists(linkedNm), isTrue);
+        expect(
+          await Directory(
+            p.join(linkedNm, '@opencode-ai', 'plugin'),
+          ).exists(),
+          isTrue,
+        );
+        expect(
+          await File(linkedPkg).readAsString(),
+          contains('@opencode-ai/plugin'),
+        );
+      },
+    );
+
+    test(
+      'concurrent ensureSessionInheritsOpencodePluginDeps for multiple sessions succeeds',
+      () async {
+        final layout = RuntimeLayout(
+          teampilotRoot: base.path,
+          fs: LocalFilesystem(),
+        );
+        await layout.ensureAppToolLayout('opencode');
+        final app = layout.appToolRoot('opencode');
+        await File(p.join(app, 'package.json')).writeAsString(
+          '{"dependencies":{"@opencode-ai/plugin":"1.0.0"}}',
+        );
+        await Directory(
+          p.join(app, 'node_modules', '@opencode-ai', 'plugin'),
+        ).create(recursive: true);
+
+        await Future.wait([
+          layout.ensureSessionInheritsOpencodePluginDeps(
+            workspaceId,
+            'sess-a',
+          ),
+          layout.ensureSessionInheritsOpencodePluginDeps(
+            workspaceId,
+            'sess-b',
+          ),
+          layout.ensureSessionInheritsOpencodePluginDeps(
+            workspaceId,
+            'sess-c',
+          ),
+        ]);
+
+        for (final sessionId in ['sess-a', 'sess-b', 'sess-c']) {
+          final sessionDir = layout.sessionRuntimeToolDir(
+            workspaceId,
+            sessionId,
+            'opencode',
+          );
+          final linkedNm = p.join(sessionDir, 'node_modules');
+          expect(_inheritedPathExists(linkedNm), isTrue);
+          expect(
+            await File(p.join(sessionDir, 'package.json')).readAsString(),
+            contains('@opencode-ai/plugin'),
+          );
+        }
+      },
+    );
+
+    test(
       'ensureSessionRuntimeInheritsWorkspace chains agents app → workspace → session',
       () async {
         final layout = RuntimeLayout(

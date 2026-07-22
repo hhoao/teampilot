@@ -316,6 +316,55 @@ class RuntimeLayout {
     );
   }
 
+  Future<void> ensureSessionInheritsOpencodePluginDeps(
+    String workspaceId,
+    String sessionId, {
+    String? memberId,
+  }) async {
+    final trimmedWorkspace = workspaceId.trim();
+    final trimmedSession = sessionId.trim();
+    if (trimmedWorkspace.isEmpty || trimmedSession.isEmpty) return;
+
+    await _workspaceInheritLocks.synchronized(
+      _workspaceInheritLockKey(trimmedWorkspace, 'opencode'),
+      () async {
+        await ensureAppToolLayout('opencode');
+        final sessionRoot = sessionRuntimeToolDir(
+          trimmedWorkspace,
+          trimmedSession,
+          'opencode',
+          memberId: memberId,
+        );
+        await _fs.ensureDir(sessionRoot);
+        final appRoot = appToolRoot('opencode');
+
+        await _ensureInheritedChild(
+          childName: 'node_modules',
+          parentToolRoot: appRoot,
+          ownToolRoot: sessionRoot,
+        );
+
+        // package.json is a file; _ensureInheritedChild ensureDir/copyTree is wrong.
+        final pkgSource = _pathContext.join(appRoot, 'package.json');
+        final pkgTarget = _pathContext.join(sessionRoot, 'package.json');
+        if (!(await _fs.stat(pkgSource)).exists) return;
+        if (await _inheritLinkCurrent(source: pkgSource, target: pkgTarget)) {
+          return;
+        }
+        if ((await _fs.stat(pkgTarget)).exists) {
+          await _fs.removeRecursive(pkgTarget);
+        }
+        final linked = await _fs.createSymlink(
+          target: pkgSource,
+          linkPath: pkgTarget,
+        );
+        if (!linked) {
+          await _fs.copyFile(pkgSource, pkgTarget);
+        }
+      },
+    );
+  }
+
   Future<String?> provisionSessionPluginsFromIdentity(
     String workspaceId,
     String sessionId,

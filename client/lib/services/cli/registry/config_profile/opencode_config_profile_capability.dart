@@ -12,6 +12,7 @@ import '../../../provider/opencode/opencode_auth_artifacts.dart';
 import '../../../provider/opencode/opencode_data_layout.dart';
 import '../../../provider/opencode/opencode_provider_settings_resolver.dart';
 import '../../../provider/opencode/opencode_effort_capability.dart';
+import '../../../provider/opencode/opencode_shared_plugin_deps.dart';
 import '../../../session/member_role_provision.dart';
 import '../../../storage/runtime_context.dart';
 import '../../../storage/app_storage.dart';
@@ -303,6 +304,19 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     final warnings = <String>[];
 
     await paths.fs.ensureDir(opencodeDir);
+
+    // Seed shared plugin deps on home/control plane (local npm), then inherit
+    // into the work-plane session dir. Never npm-install on paths.fs (SFTP).
+    // Seed failures rethrow so ConfigProfileService can surface warnings.
+    await OpencodeSharedPluginDeps(
+      layout: ctx.catalog.layout,
+      fs: ctx.catalog.fs,
+    ).ensureSharedInstalled();
+    await paths.layout.ensureSessionInheritsOpencodePluginDeps(
+      ctx.scope.workspaceId,
+      ctx.scope.sessionId,
+      memberId: ctx.scope.memberId,
+    );
 
     final configPath = paths.joinWork(
       opencodeDir,
