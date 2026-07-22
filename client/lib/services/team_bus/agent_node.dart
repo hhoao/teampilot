@@ -59,7 +59,8 @@ class AgentNode {
   int? doorbelledAt;
 
   /// Set on first [TurnStarted] while running. Virgin members (spawned, never
-  /// turned) suppress PTY mail doorbells so operator compose starts the first turn.
+  /// turned) suppress PTY doorbells only for idle-announce-only unread so
+  /// operator compose can start the first turn; ordinary teammate mail still rings.
   bool hasEverBeenActive = false;
 
   /// PTY mail-notify lifecycle; see mailbox-delivery design spec.

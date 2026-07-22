@@ -5,11 +5,12 @@ import 'presence.dart';
 
 /// reducer 的上下文:成员 id（用于产出带 id 的效果）+ 信箱是否有未读。
 class PresenceContext {
-  const PresenceContext({
+  const   PresenceContext({
     required this.memberId,
     required this.hasUnread,
     this.doorbelled = false,
     this.hasEverBeenActive = true,
+    this.unreadIsIdleOnly = false,
   });
   final String memberId;
   final bool hasUnread;
@@ -19,9 +20,14 @@ class PresenceContext {
   final bool doorbelled;
 
   /// False until the member has entered [MemberActivity.active] at least once
-  /// (operator/PTY turn). Virgin leads at prompt must not be idle-doorbelled —
-  /// that would start a ghost turn before History compose.
+  /// (operator/PTY turn). Combined with [unreadIsIdleOnly], virgin seats skip
+  /// idle-announce doorbells so History compose — not worker park — starts the
+  /// first turn. Non-idle mail (pong / tasks) still doorbells virgin seats.
   final bool hasEverBeenActive;
+
+  /// True when every unread message is an [IdleNotification]. Virgin suppression
+  /// applies only then — not to ordinary teammate mail.
+  final bool unreadIsIdleOnly;
 }
 
 /// 一次跃迁的结果:新在线态 + 待落地的效果列表。
@@ -135,9 +141,10 @@ abstract final class PresenceReducer {
     // 已响过一记「去 read_messages」、worker 尚未消费 → 不重复注入：back-to-back
     // 邮件会把同一条提示打好几遍。真没送达（回车被吞）由看门狗重敲兜底。
     if (ctx.doorbelled) return _stay(s);
-    // Virgin seat (spawned, never turned): queue mail without PTY doorbell so
-    // operator History compose — not worker idle-announce — starts the first turn.
-    if (!ctx.hasEverBeenActive) return _stay(s);
+    // Virgin seat + idle-announce only: queue without PTY doorbell so operator
+    // History compose — not worker park idle — starts the first turn. Ordinary
+    // teammate mail (pong / task updates) still rings so L3 collab works.
+    if (!ctx.hasEverBeenActive && ctx.unreadIsIdleOnly) return _stay(s);
     // Doorbell = TeamPilot 判定 worker 应处理 teammate 信；presence 保持 at-prompt，
     // delivery 维度单独跟踪（mailbox-delivery spec）。
     return PresenceTransition(s, [DoorbellEffect(ctx.memberId)]);

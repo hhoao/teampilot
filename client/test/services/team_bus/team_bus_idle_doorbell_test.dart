@@ -184,4 +184,28 @@ void main() {
       expect(bus.memberById('lead')!.hasEverBeenActive, isFalse);
     });
   });
+
+  test('non-idle mail still doorbells virgin lead at prompt', () async {
+    final launcher = FakeMemberLauncher();
+    final bus = TeamBus(launcher: launcher);
+    bus.declareMember(
+      AgentNode(
+        profile: TeammateRosterProfile.minimal(
+          'lead',
+          displayName: 'Lead',
+          isTeamLead: true,
+        ),
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.turnDoneReady,
+      ),
+    );
+
+    await bus.send(
+      TeamMessage(id: '1', from: 'worker', to: 'lead', content: 'pong'),
+    );
+
+    expect(bus.memberById('lead')!.inbox.unreadCount, 1);
+    expect(bus.memberById('lead')!.hasEverBeenActive, isFalse);
+    expect(launcher.woken.single.memberId, 'lead');
+  });
 }

@@ -165,6 +165,7 @@ class TeamBus implements CoordinationView {
         hasUnread: !node.inbox.isEmpty,
         doorbelled: node.doorbelled,
         hasEverBeenActive: node.hasEverBeenActive,
+        unreadIsIdleOnly: _unreadIsIdleOnly(node),
       ),
     );
     final after = t.presence;
@@ -657,6 +658,15 @@ class TeamBus implements CoordinationView {
   }
 
   int _hotUnreadCount(AgentNode node) => node.inbox.unreadCount;
+
+  /// True when every unread message is an idle announce (see virgin-lead rule).
+  bool _unreadIsIdleOnly(AgentNode node) {
+    final unread = node.inbox.peekAll();
+    if (unread.isEmpty) return false;
+    return unread.every(
+      (m) => IdleNotification.parseTeamMessageContent(m.content) != null,
+    );
+  }
 
   /// 纯数据投递（内存 + 日志由 inbox 自洽）；活动态 / 门铃交给 [MailArrived]，
   /// 协调上报由 [CoordinationPolicy] 记账。
