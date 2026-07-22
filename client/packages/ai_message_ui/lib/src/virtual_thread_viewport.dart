@@ -83,6 +83,9 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
   final Map<String, DateTime> _keepAliveUntil = {};
   List<String> _offstageIds = const [];
   final Map<String, GlobalKey> _turnKeys = {};
+  /// Cached message column per turn — identical [Widget] instances skip Element
+  /// rebuild when softReload only changes another turn's content.
+  final Map<String, _CachedTurnBody> _builtTurnBody = {};
   Timer? _keepAliveTimer;
   var _fillScheduled = false;
 
@@ -148,6 +151,11 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
       previous: previous,
       messages: widget.messages,
     );
+    // Host builders often close over tip/lastId chrome. Membership changes
+    // (append/prepend) can restyle neighbors without changing message content.
+    if (!identical(_turns, previous)) {
+      _builtTurnBody.clear();
+    }
     _messageById = {for (final m in widget.messages) m.id: m};
     final liveIds = <String>{};
     for (final turn in _turns) {
@@ -162,6 +170,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
     _identityByTurnId.removeWhere((id, _) => !liveIds.contains(id));
     _keepAliveUntil.removeWhere((id, _) => !liveIds.contains(id));
     _turnKeys.removeWhere((id, _) => !liveIds.contains(id));
+    _builtTurnBody.removeWhere((id, _) => !liveIds.contains(id));
   }
 
   void _onScroll() {
@@ -521,6 +530,26 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
   GlobalKey _keyFor(String turnId) =>
       _turnKeys.putIfAbsent(turnId, GlobalKey.new);
 
+  Widget _turnBody(ThreadTurn turn) {
+    final identity =
+        _identityByTurnId[turn.id] ?? turnContentIdentity(turn, widget.messages);
+    final cached = _builtTurnBody[turn.id];
+    if (cached != null && cached.identity == identity) {
+      return cached.child;
+    }
+    final child = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final id in turn.messageIds)
+          if (_messageById[id] case final message?)
+            widget.messageBuilder(context, message),
+      ],
+    );
+    _builtTurnBody[turn.id] = _CachedTurnBody(identity: identity, child: child);
+    return child;
+  }
+
   Widget _buildTurn({required ThreadTurn turn, required bool frozen}) {
     final height = _cache.isMeasured(turn.id)
         ? _cache.heightOf(turn.id)
@@ -531,15 +560,7 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
       frozenHeight: height,
       child: _MeasuredBox(
         onMeasured: frozen ? (_) {} : (h) => _onTurnMeasured(turn.id, h),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final id in turn.messageIds)
-              if (_messageById[id] case final message?)
-                widget.messageBuilder(context, message),
-          ],
-        ),
+        child: _turnBody(turn),
       ),
     );
   }
@@ -599,11 +620,17 @@ class _VirtualThreadViewportState extends State<VirtualThreadViewport> {
   }
 }
 
+class _CachedTurnBody {
+  const _CachedTurnBody({required this.identity, required this.child});
+
+  final String identity;
+  final Widget child;
+}
+
 class _MeasuredBox extends StatefulWidget {
   const _MeasuredBox({
     required this.onMeasured,
     required this.child,
-    super.key,
   });
 
   final void Function(double height) onMeasured;

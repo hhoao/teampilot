@@ -1,6 +1,6 @@
-import 'dart:convert';
-
 import 'package:ai_message_core/ai_message_core.dart';
+
+export 'package:ai_message_core/ai_message_core.dart' show messageContentIdentity;
 
 class ThreadTurn {
   const ThreadTurn({required this.id, required this.messageIds});
@@ -22,34 +22,6 @@ List<ThreadTurn> buildTurns(List<AiMessage> messages) {
     }
   }
   return turns;
-}
-
-String messageContentIdentity(AiMessage m) {
-  final buf = StringBuffer('${m.id}|${m.role.name}|${m.status.name}');
-  for (final p in m.parts) {
-    buf.write('|');
-    switch (p) {
-      case AiTextPart(:final text):
-        buf.write('t:$text');
-      case AiReasoningPart(:final text):
-        buf.write('r:$text');
-      case AiToolCallPart(
-        :final toolCallId,
-        :final toolName,
-        :final args,
-        :final argsText,
-        :final status,
-        :final isError,
-        :final result,
-      ):
-        final argsJson = args != null && args.isNotEmpty ? jsonEncode(args) : '';
-        buf.write(
-          'c:$toolCallId:$toolName:${argsText ?? ''}:$argsJson:'
-          '${status.name}:$isError:${result ?? ''}',
-        );
-    }
-  }
-  return buf.toString();
 }
 
 String turnContentIdentity(ThreadTurn turn, List<AiMessage> messages) {

@@ -539,7 +539,6 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     }
 
     _emitReadyWindow(sessionId, memberId);
-    _remergePendingsOntoRuntime();
     _consumeSeedPendingIfMatching(sessionId, memberId);
   }
 
@@ -585,7 +584,6 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     }
 
     _emitReadyWindow(sessionId, memberId);
-    _remergePendingsOntoRuntime();
     _consumeSeedPendingIfMatching(sessionId, memberId);
   }
 
@@ -707,16 +705,15 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
         ),
     ];
     if (slice.isEmpty && overlay.isEmpty) {
-      if (_allMessages.isEmpty && state.status == AiHistoryViewStatus.empty) {
+      if (_allMessages.isEmpty) {
         runtime.setEmpty();
       }
       return;
     }
-    if (state.status == AiHistoryViewStatus.ready ||
-        state.status == AiHistoryViewStatus.empty ||
-        overlay.isNotEmpty) {
-      runtime.setMessages([...slice, ...overlay]);
-    }
+    // Always publish — callers invoke this when the window should be on the
+    // runtime. [ExternalStoreAiThreadRuntime.setMessages] no-ops notify when
+    // content is unchanged, so redundant publishes are cheap.
+    runtime.setMessages([...slice, ...overlay]);
   }
 
   void _emitReadyWindow(String? sessionId, String? memberId) {

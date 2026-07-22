@@ -66,4 +66,57 @@ void main() {
     expect(store.status, AiThreadStatus.empty);
     expect(store.messages, isEmpty);
   });
+
+  test('setMessages reuses unchanged instances and skips notify', () async {
+    final store = ExternalStoreAiThreadRuntime();
+    final first = AiMessage(
+      id: 'a',
+      role: AiRole.user,
+      parts: const [AiTextPart(text: 'keep')],
+    );
+    final tip = AiMessage(
+      id: 'b',
+      role: AiRole.assistant,
+      parts: const [AiTextPart(text: 'v1')],
+    );
+    store.setMessages([first, tip]);
+
+    var notifies = 0;
+    final sub = store.changes.listen((_) => notifies++);
+
+    store.setMessages([
+      AiMessage(
+        id: 'a',
+        role: AiRole.user,
+        parts: const [AiTextPart(text: 'keep')],
+      ),
+      AiMessage(
+        id: 'b',
+        role: AiRole.assistant,
+        parts: const [AiTextPart(text: 'v1')],
+      ),
+    ]);
+    expect(notifies, 0);
+    expect(identical(store.messages[0], first), isTrue);
+    expect(identical(store.messages[1], tip), isTrue);
+
+    store.setMessages([
+      AiMessage(
+        id: 'a',
+        role: AiRole.user,
+        parts: const [AiTextPart(text: 'keep')],
+      ),
+      AiMessage(
+        id: 'b',
+        role: AiRole.assistant,
+        parts: const [AiTextPart(text: 'v2')],
+      ),
+    ]);
+    expect(notifies, 1);
+    expect(identical(store.messages[0], first), isTrue);
+    expect(identical(store.messages[1], tip), isFalse);
+    expect((store.messages[1].parts.first as AiTextPart).text, 'v2');
+
+    await sub.cancel();
+  });
 }

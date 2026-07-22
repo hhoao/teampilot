@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'message.dart';
+import 'message_content_identity.dart';
 
 enum AiThreadStatus { idle, loading, empty, error }
 
@@ -40,10 +41,22 @@ class ExternalStoreAiThreadRuntime implements AiThreadRuntime {
     _notify();
   }
 
+  /// Replaces the message list.
+  ///
+  /// Unchanged messages (same [messageContentIdentity]) keep their prior
+  /// instances. When membership, order, and content are all unchanged, skips
+  /// [changes] notification so hosts do not fan out a full-thread rebuild.
   void setMessages(List<AiMessage> messages) {
-    _messages = List.of(messages);
-    _status = messages.isEmpty ? AiThreadStatus.empty : AiThreadStatus.idle;
+    final merged = _mergeReusingUnchanged(messages);
+    final nextStatus =
+        merged.isEmpty ? AiThreadStatus.empty : AiThreadStatus.idle;
+    final contentUnchanged = _sameInstancesInOrder(_messages, merged);
+    final statusUnchanged =
+        _status == nextStatus && _errorMessage == null;
+    _messages = merged;
+    _status = nextStatus;
     _errorMessage = null;
+    if (contentUnchanged && statusUnchanged) return;
     _notify();
   }
 
@@ -63,6 +76,36 @@ class ExternalStoreAiThreadRuntime implements AiThreadRuntime {
 
   void close() {
     _changes.close();
+  }
+
+  List<AiMessage> _mergeReusingUnchanged(List<AiMessage> incoming) {
+    if (incoming.isEmpty) return const [];
+    if (_messages.isEmpty) return List<AiMessage>.of(incoming);
+
+    final previousById = <String, AiMessage>{
+      for (final m in _messages) m.id: m,
+    };
+    final previousIdentity = <String, String>{
+      for (final m in _messages) m.id: messageContentIdentity(m),
+    };
+
+    return [
+      for (final m in incoming)
+        if (previousById[m.id] case final prev?
+            when previousIdentity[m.id] == messageContentIdentity(m))
+          prev
+        else
+          m,
+    ];
+  }
+
+  static bool _sameInstancesInOrder(List<AiMessage> a, List<AiMessage> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (!identical(a[i], b[i])) return false;
+    }
+    return true;
   }
 
   void _notify() {

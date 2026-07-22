@@ -161,10 +161,7 @@ void main() {
     tester,
   ) async {
     final controller = ScrollController();
-    final messages = _soloUserMessages(20);
-    final heights = <String, double>{
-      for (final m in messages) m.id: 100,
-    };
+    var messages = _soloUserMessages(20);
     final corrections = <double>[];
 
     late void Function(void Function()) setHarnessState;
@@ -185,11 +182,15 @@ void main() {
                   overscan: 3,
                   estimateHeight: 100,
                   onMeasureScrollCorrection: corrections.add,
-                  messageBuilder: (_, m) => SizedBox(
-                    height: heights[m.id]!,
-                    width: double.infinity,
-                    child: Text(m.id, key: ValueKey('msg-${m.id}')),
-                  ),
+                  messageBuilder: (_, m) {
+                    final text = (m.parts.first as AiTextPart).text;
+                    final tall = text.endsWith('+tall');
+                    return SizedBox(
+                      height: tall ? 200 : 100,
+                      width: double.infinity,
+                      child: Text(m.id, key: ValueKey('msg-${m.id}')),
+                    );
+                  },
                 ),
               ),
             );
@@ -205,7 +206,12 @@ void main() {
     corrections.clear();
 
     setHarnessState(() {
-      heights['m0'] = 200;
+      messages = [
+        messages.first.copyWith(
+          parts: const [AiTextPart(text: 't0+tall')],
+        ),
+        ...messages.skip(1),
+      ];
     });
     await tester.pumpAndSettle();
 
@@ -217,10 +223,7 @@ void main() {
     tester,
   ) async {
     final controller = ScrollController();
-    final messages = _soloUserMessages(20);
-    final heights = <String, double>{
-      for (final m in messages) m.id: 100,
-    };
+    var messages = _soloUserMessages(20);
     final corrections = <double>[];
 
     late void Function(void Function()) setHarnessState;
@@ -240,11 +243,15 @@ void main() {
                   overscan: 1,
                   estimateHeight: 100,
                   onMeasureScrollCorrection: corrections.add,
-                  messageBuilder: (_, m) => SizedBox(
-                    height: heights[m.id]!,
-                    width: double.infinity,
-                    child: Text(m.id, key: ValueKey('msg-${m.id}')),
-                  ),
+                  messageBuilder: (_, m) {
+                    final text = (m.parts.first as AiTextPart).text;
+                    final tall = text.endsWith('+tall');
+                    return SizedBox(
+                      height: tall ? 200 : 100,
+                      width: double.infinity,
+                      child: Text(m.id, key: ValueKey('msg-${m.id}')),
+                    );
+                  },
                 ),
               ),
             );
@@ -260,7 +267,12 @@ void main() {
     corrections.clear();
 
     setHarnessState(() {
-      heights['m0'] = 200;
+      messages = [
+        messages.first.copyWith(
+          parts: const [AiTextPart(text: 't0+tall')],
+        ),
+        ...messages.skip(1),
+      ];
     });
     await tester.pumpAndSettle();
 
@@ -271,10 +283,7 @@ void main() {
     tester,
   ) async {
     final controller = ScrollController();
-    final messages = _soloUserMessages(20);
-    final heights = <String, double>{
-      for (final m in messages) m.id: 100,
-    };
+    var messages = _soloUserMessages(20);
     final corrections = <double>[];
 
     late void Function(void Function()) setHarnessState;
@@ -295,11 +304,15 @@ void main() {
                   estimateHeight: 100,
                   suppressMeasureScrollCorrection: true,
                   onMeasureScrollCorrection: corrections.add,
-                  messageBuilder: (_, m) => SizedBox(
-                    height: heights[m.id]!,
-                    width: double.infinity,
-                    child: Text(m.id, key: ValueKey('msg-${m.id}')),
-                  ),
+                  messageBuilder: (_, m) {
+                    final text = (m.parts.first as AiTextPart).text;
+                    final tall = text.endsWith('+tall');
+                    return SizedBox(
+                      height: tall ? 200 : 100,
+                      width: double.infinity,
+                      child: Text(m.id, key: ValueKey('msg-${m.id}')),
+                    );
+                  },
                 ),
               ),
             );
@@ -314,7 +327,12 @@ void main() {
     corrections.clear();
 
     setHarnessState(() {
-      heights['m0'] = 200;
+      messages = [
+        messages.first.copyWith(
+          parts: const [AiTextPart(text: 't0+tall')],
+        ),
+        ...messages.skip(1),
+      ];
     });
     await tester.pumpAndSettle();
 
@@ -555,6 +573,71 @@ void main() {
     await tester.pump();
     expect(mounts['m0'], 1, reason: 'existing turns must not remount on prepend');
   });
+
+  testWidgets(
+    'softReload-style tip edit rebuilds only the changed turn body',
+    (tester) async {
+      final builds = <String, int>{};
+      final controller = ScrollController();
+      var messages = _soloUserMessages(12);
+
+      Widget harness(List<AiMessage> msgs) => _harness(
+        messages: msgs,
+        controller: controller,
+        overscan: 1,
+        estimateHeight: 100,
+        retainMountedTurns: true,
+        fillDataWindow: true,
+        messageBuilder: (_, m) => _RebuildCountingBox(
+          id: m.id,
+          builds: builds,
+          text: (m.parts.first as AiTextPart).text,
+        ),
+      );
+
+      await tester.pumpWidget(harness(messages));
+      for (var i = 0; i < 30; i++) {
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+
+      final baseline = Map<String, int>.from(builds);
+      expect(baseline.length, 12);
+      for (final id in baseline.keys) {
+        expect(baseline[id], greaterThanOrEqualTo(1));
+      }
+
+      // Fresh AiMessage instances (loader softReload), only tip text changes.
+      messages = [
+        for (var i = 0; i < 11; i++)
+          AiMessage(
+            id: 'm$i',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 't$i')],
+          ),
+        const AiMessage(
+          id: 'm11',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 't11-updated')],
+        ),
+      ];
+      await tester.pumpWidget(harness(messages));
+      await tester.pump();
+
+      for (var i = 0; i < 11; i++) {
+        expect(
+          builds['m$i'],
+          baseline['m$i'],
+          reason: 'unchanged turn m$i must not rebuild',
+        );
+      }
+      expect(
+        builds['m11']!,
+        greaterThan(baseline['m11']!),
+        reason: 'tip turn must rebuild when content changes',
+      );
+    },
+  );
 }
 
 class _MountCountingBox extends StatefulWidget {
@@ -580,6 +663,36 @@ class _MountCountingBoxState extends State<_MountCountingBox> {
       height: 100,
       width: double.infinity,
       child: Text(widget.id, key: ValueKey('msg-${widget.id}')),
+    );
+  }
+}
+
+class _RebuildCountingBox extends StatefulWidget {
+  const _RebuildCountingBox({
+    required this.id,
+    required this.builds,
+    required this.text,
+  });
+
+  final String id;
+  final Map<String, int> builds;
+  final String text;
+
+  @override
+  State<_RebuildCountingBox> createState() => _RebuildCountingBoxState();
+}
+
+class _RebuildCountingBoxState extends State<_RebuildCountingBox> {
+  @override
+  Widget build(BuildContext context) {
+    widget.builds[widget.id] = (widget.builds[widget.id] ?? 0) + 1;
+    return SizedBox(
+      height: 100,
+      width: double.infinity,
+      child: Text(
+        widget.text,
+        key: ValueKey('msg-${widget.id}'),
+      ),
     );
   }
 }
