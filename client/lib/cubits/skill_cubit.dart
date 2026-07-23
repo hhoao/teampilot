@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/discoverable_team.dart';
 import '../models/skill.dart';
 import '../repositories/skill_repository.dart';
+import '../services/skill/skill_acquisition_engine.dart';
 import '../services/skill/skill_fetch_service.dart';
 import '../services/skill/skill_install_service.dart';
 import '../services/skill/skill_repo_disk_cache_service.dart';
@@ -124,11 +125,26 @@ class SkillState extends Equatable {
 typedef SkillUninstalledHandler = Future<void> Function(String skillId);
 
 class SkillCubit extends Cubit<SkillState> {
-  SkillCubit(this._repo, {SkillUninstalledHandler? onSkillUninstalled})
-    : _onSkillUninstalled = onSkillUninstalled,
-      super(const SkillState());
+  SkillCubit(
+    this._repo, {
+    SkillAcquisitionEngine? acquisitionEngine,
+    SkillUninstalledHandler? onSkillUninstalled,
+  }) : _acquisitionEngine =
+           acquisitionEngine ??
+           SkillAcquisitionEngine(
+             installGitDir: (d, {bool overwrite = false}) =>
+                 _repo.installFromDiscovery(d, overwrite: overwrite),
+             registerDirectory: ({required String id, required String directory}) =>
+                 _repo.install.registerInstalledDirectory(
+                   id: id,
+                   directory: directory,
+                 ),
+           ),
+       _onSkillUninstalled = onSkillUninstalled,
+       super(const SkillState());
 
   final SkillRepository _repo;
+  final SkillAcquisitionEngine _acquisitionEngine;
   final SkillUninstalledHandler? _onSkillUninstalled;
   int _discoveryGeneration = 0;
 
@@ -379,19 +395,23 @@ class SkillCubit extends Cubit<SkillState> {
     DiscoverableSkill d, {
     bool overwrite = false,
   }) async {
-    final busy = {...state.busyIds, d.key};
+    final busyId = d.key;
+    final busy = {...state.busyIds, busyId};
     emit(state.copyWith(busyIds: busy, clearError: true));
     try {
-      await _repo.installFromDiscovery(d, overwrite: overwrite);
-      await _emitInstalled();
-    } on SkillInstallException catch (e) {
-      emit(state.copyWith(errorMessage: e.message));
-    } on SkillFetchException catch (e) {
-      emit(state.copyWith(errorMessage: e.message));
+      final result = await _acquisitionEngine.installDiscoverable(
+        d,
+        overwrite: overwrite,
+      );
+      if (result.success) {
+        await _emitInstalled();
+      } else {
+        emit(state.copyWith(errorMessage: result.message));
+      }
     } catch (e) {
       emit(state.copyWith(errorMessage: '$e'));
     } finally {
-      final next = {...state.busyIds}..remove(d.key);
+      final next = {...state.busyIds}..remove(busyId);
       emit(state.copyWith(busyIds: next));
     }
   }
@@ -403,20 +423,28 @@ class SkillCubit extends Cubit<SkillState> {
     final busy = {...state.busyIds, busyId};
     emit(state.copyWith(busyIds: busy, clearError: true));
     try {
-      final skill = await _repo.installFromDiscovery(ref.toDiscoverableSkill());
-      await _emitInstalled();
-      return skill.id;
-    } on SkillInstallException catch (e) {
-      if (e.message.toLowerCase().contains('already exists')) {
+      if (state.installed.any((s) => s.id == busyId)) {
+        return busyId;
+      }
+
+      final result = await _acquisitionEngine.install(ref);
+      if (result.success) {
+        await _emitInstalled();
+        return result.skillId;
+      }
+      if (_isAlreadyExistsMessage(result.message)) {
         await _emitInstalled();
         return ref.expectedLocalId;
       }
-      appLogger.w('[team-hub] skill dep ${ref.name} failed: ${e.message}');
-      return null;
-    } on SkillFetchException catch (e) {
-      appLogger.w('[team-hub] skill dep ${ref.name} failed: ${e.message}');
+      appLogger.w(
+        '[team-hub] skill dep ${ref.name} failed: ${result.message}',
+      );
       return null;
     } catch (e) {
+      if (_isAlreadyExistsMessage('$e')) {
+        await _emitInstalled();
+        return ref.expectedLocalId;
+      }
       appLogger.w('[team-hub] skill dep ${ref.name} failed: $e');
       return null;
     } finally {
