@@ -1,3 +1,5 @@
+import 'skill_acquire_spec.dart';
+
 class Skill {
   const Skill({
     required this.id,
@@ -286,6 +288,8 @@ class DiscoverableSkill {
     required this.repoOwner,
     required this.repoName,
     required this.repoBranch,
+    this.id,
+    this.acquire,
   });
 
   final String key;
@@ -296,6 +300,10 @@ class DiscoverableSkill {
   final String repoOwner;
   final String repoName;
   final String repoBranch;
+
+  /// Optional explicit local skill id (preferred for `script` acquire).
+  final String? id;
+  final SkillAcquireSpec? acquire;
 
   String get source => '$repoOwner/$repoName';
 
@@ -308,17 +316,26 @@ class DiscoverableSkill {
     'repoOwner': repoOwner,
     'repoName': repoName,
     'repoBranch': repoBranch,
+    if (id != null && id!.isNotEmpty) 'id': id,
+    if (acquire != null) 'acquire': acquire!.toJson(),
   };
 
-  factory DiscoverableSkill.fromJson(Map<String, Object?> json) =>
-      DiscoverableSkill(
-        key: json['key'] as String,
-        name: json['name'] as String,
-        description: json['description'] as String,
-        directory: json['directory'] as String,
-        readmeUrl: json['readmeUrl'] as String?,
-        repoOwner: json['repoOwner'] as String,
-        repoName: json['repoName'] as String,
-        repoBranch: json['repoBranch'] as String,
-      );
+  factory DiscoverableSkill.fromJson(Map<String, Object?> json) {
+    final acquireRaw = json['acquire'];
+    final idRaw = (json['id'] as String?)?.trim();
+    return DiscoverableSkill(
+      key: json['key'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      directory: json['directory'] as String? ?? '',
+      readmeUrl: json['readmeUrl'] as String?,
+      repoOwner: json['repoOwner'] as String? ?? '',
+      repoName: json['repoName'] as String? ?? '',
+      repoBranch: json['repoBranch'] as String? ?? '',
+      id: idRaw == null || idRaw.isEmpty ? null : idRaw,
+      acquire: acquireRaw is Map
+          ? SkillAcquireSpec.fromJson(acquireRaw.cast<String, Object?>())
+          : null,
+    );
+  }
 }

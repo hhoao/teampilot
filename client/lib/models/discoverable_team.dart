@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../utils/team/team_member_naming.dart';
 import 'skill.dart';
+import 'skill_acquire_spec.dart';
 import 'team_config.dart';
 import 'team_roster_slot.dart';
 
@@ -15,6 +16,8 @@ class SkillDependencyRef {
     required this.repoBranch,
     required this.directory,
     required this.name,
+    this.id,
+    this.acquire,
   });
 
   final String repoOwner;
@@ -23,11 +26,27 @@ class SkillDependencyRef {
   final String directory;
   final String name;
 
-  /// Deterministic local [Skill.id] this dep resolves to once installed
-  /// (`owner/name:basename`). Lets the UI know whether it is already installed
-  /// without downloading, and keeps the installer + UI in agreement.
-  String get expectedLocalId =>
-      '$repoOwner/$repoName:${directory.split('/').last}';
+  /// Optional explicit local skill id (preferred for `script` deps).
+  final String? id;
+  final SkillAcquireSpec? acquire;
+
+  /// Missing [acquire] ≡ `git-dir` (existing repo/directory install).
+  SkillAcquireSpec get resolvedAcquire =>
+      acquire ?? const SkillAcquireSpec(kind: 'git-dir');
+
+  /// Deterministic local [Skill.id] this dep resolves to once installed.
+  ///
+  /// - `script`: prefer non-empty [id], else `script:<host>/<path-basename>`
+  ///   from [SkillAcquireSpec.package] (query/fragment stripped).
+  /// - otherwise: `owner/name:basename(directory)`.
+  String get expectedLocalId {
+    if (resolvedAcquire.kind == 'script') {
+      final explicit = id?.trim();
+      if (explicit != null && explicit.isNotEmpty) return explicit;
+      return _scriptIdFromPackageUrl(resolvedAcquire.package);
+    }
+    return '$repoOwner/$repoName:${directory.split('/').last}';
+  }
 
   /// Payload for [SkillInstallService.installFromDiscovery] during TeamHub clone.
   DiscoverableSkill toDiscoverableSkill() => DiscoverableSkill(
@@ -38,16 +57,25 @@ class SkillDependencyRef {
     repoOwner: repoOwner,
     repoName: repoName,
     repoBranch: repoBranch,
+    id: id,
+    acquire: acquire,
   );
 
-  factory SkillDependencyRef.fromJson(Map<String, Object?> json) =>
-      SkillDependencyRef(
-        repoOwner: json['repoOwner'] as String? ?? '',
-        repoName: json['repoName'] as String? ?? '',
-        repoBranch: json['repoBranch'] as String? ?? 'main',
-        directory: json['directory'] as String? ?? '',
-        name: json['name'] as String? ?? '',
-      );
+  factory SkillDependencyRef.fromJson(Map<String, Object?> json) {
+    final acquireRaw = json['acquire'];
+    final idRaw = (json['id'] as String?)?.trim();
+    return SkillDependencyRef(
+      repoOwner: json['repoOwner'] as String? ?? '',
+      repoName: json['repoName'] as String? ?? '',
+      repoBranch: json['repoBranch'] as String? ?? 'main',
+      directory: json['directory'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      id: idRaw == null || idRaw.isEmpty ? null : idRaw,
+      acquire: acquireRaw is Map
+          ? SkillAcquireSpec.fromJson(acquireRaw.cast<String, Object?>())
+          : null,
+    );
+  }
 
   Map<String, Object?> toJson() => {
     'repoOwner': repoOwner,
@@ -55,6 +83,8 @@ class SkillDependencyRef {
     'repoBranch': repoBranch,
     'directory': directory,
     'name': name,
+    if (id != null && id!.isNotEmpty) 'id': id,
+    if (acquire != null) 'acquire': acquire!.toJson(),
   };
 
   @override
@@ -64,11 +94,33 @@ class SkillDependencyRef {
       repoName == other.repoName &&
       repoBranch == other.repoBranch &&
       directory == other.directory &&
-      name == other.name;
+      name == other.name &&
+      id == other.id &&
+      acquire == other.acquire;
 
   @override
-  int get hashCode =>
-      Object.hash(repoOwner, repoName, repoBranch, directory, name);
+  int get hashCode => Object.hash(
+    repoOwner,
+    repoName,
+    repoBranch,
+    directory,
+    name,
+    id,
+    acquire,
+  );
+}
+
+String _scriptIdFromPackageUrl(String? package) {
+  if (package == null || package.trim().isEmpty) {
+    return 'script:unknown';
+  }
+  final uri = Uri.tryParse(package.trim());
+  if (uri == null || uri.host.isEmpty) {
+    return 'script:unknown';
+  }
+  final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+  final basename = segments.isEmpty ? 'unknown' : segments.last;
+  return 'script:${uri.host}/$basename';
 }
 
 /// Source descriptor for a plugin dependency (resolved at clone time).
