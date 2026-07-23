@@ -110,7 +110,7 @@ Catalog UX and user-authored experts. Persona source-of-truth for shared experts
 
 ```
 member-hub/
-  favorites.json                 # { "keys": ["teampilot/builtin/architect", ...] }
+  favorites.json                 # { "keys": ["teampilot/builtin/developer", ...] }
   recent.json                    # landing picker recents
   local-templates/{id}.json      # DiscoverableMember (user-owned experts)
   cache/{owner}-{repo}/
@@ -178,7 +178,7 @@ Simple launch with expert:
 {
   "sessionId": "...",
   "sessionTeam": "",
-  "expertKey": "teampilot/builtin/architect"
+  "expertKey": "teampilot/builtin/developer"
 }
 ```
 

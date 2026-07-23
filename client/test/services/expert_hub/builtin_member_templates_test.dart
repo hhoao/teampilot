@@ -2,6 +2,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
 
 void main() {
+  test('builtin catalog keeps default trio and Superpowers quartet only', () {
+    final keys = builtinExpertMembers().map((m) => m.key).toSet();
+    expect(
+      keys,
+      {
+        kBuiltinDefaultExpertKey,
+        'teampilot/builtin/team-lead',
+        'teampilot/builtin/developer',
+        'teampilot/builtin/reviewer',
+        'teampilot/builtin/superpowers-lead',
+        'teampilot/builtin/superpowers-architect',
+        'teampilot/builtin/superpowers-builder',
+        'teampilot/builtin/superpowers-reviewer',
+      },
+    );
+  });
+
   test('role experts ship Superpowers skillDeps matching their playbooks', () {
     final byKey = {for (final m in builtinExpertMembers()) m.key: m};
 
@@ -10,10 +27,6 @@ void main() {
       contains('Using Superpowers'),
     );
 
-    expect(
-      byKey['teampilot/builtin/architect']!.skillDeps.map((d) => d.name),
-      containsAll(['Brainstorming', 'Writing Plans']),
-    );
     expect(
       byKey['teampilot/builtin/developer']!.skillDeps.map((d) => d.name),
       containsAll(['Test-Driven Development', 'Executing Plans']),
@@ -24,10 +37,6 @@ void main() {
         'Requesting Code Review',
         'Verification Before Completion',
       ]),
-    );
-    expect(
-      byKey['teampilot/builtin/researcher']!.skillDeps.map((d) => d.name),
-      contains('Brainstorming'),
     );
 
     expect(
