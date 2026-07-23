@@ -64,3 +64,17 @@ bool _listEquals(List<String> a, List<String> b) {
   }
   return true;
 }
+
+/// Stable script skill id from package URL: `script:<host>/<path-basename>`.
+String skillScriptIdFromPackageUrl(String? package) {
+  if (package == null || package.trim().isEmpty) {
+    return 'script:unknown';
+  }
+  final uri = Uri.tryParse(package.trim());
+  if (uri == null || uri.host.isEmpty) {
+    return 'script:unknown';
+  }
+  final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+  final basename = segments.isEmpty ? 'unknown' : segments.last;
+  return 'script:${uri.host}/$basename';
+}

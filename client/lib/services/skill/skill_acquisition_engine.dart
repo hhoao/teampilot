@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
-
 import '../../models/discoverable_team.dart';
 import '../../models/skill.dart';
 import '../../models/skill_acquire_spec.dart';
@@ -37,6 +35,11 @@ class SkillAcquireResult {
 /// Installs skills via declarative [SkillAcquireSpec] (`git-dir` default, `script`).
 ///
 /// Desktop/local only for shell kinds in v1 — same host gate as Extension acquire.
+///
+/// Already-installed-by-id short-circuit lives in SkillCubit (Task 3 wiring): this
+/// engine does not skip work when [SkillDependencyRef.expectedLocalId] is already
+/// in the manifest. Callers that want idempotent install should pre-check by id
+/// before invoking [install] / [installDiscoverable].
 class SkillAcquisitionEngine {
   SkillAcquisitionEngine({
     SkillInstallRunner? runner,
@@ -97,22 +100,30 @@ class SkillAcquisitionEngine {
     return out;
   }
 
-  Future<SkillAcquireResult> install(SkillDependencyRef ref) {
+  Future<SkillAcquireResult> install(
+    SkillDependencyRef ref, {
+    bool overwrite = false,
+  }) {
     return _install(
       acquire: ref.resolvedAcquire,
       discovery: ref.toDiscoverableSkill(),
       expectedLocalId: ref.expectedLocalId,
       displayName: ref.name,
+      overwrite: overwrite,
     );
   }
 
-  Future<SkillAcquireResult> installDiscoverable(DiscoverableSkill d) {
+  Future<SkillAcquireResult> installDiscoverable(
+    DiscoverableSkill d, {
+    bool overwrite = false,
+  }) {
     final acquire = d.acquire ?? const SkillAcquireSpec(kind: 'git-dir');
     return _install(
       acquire: acquire,
       discovery: d,
-      expectedLocalId: _expectedIdForDiscoverable(d, acquire),
+      expectedLocalId: d.expectedLocalId,
       displayName: d.name,
+      overwrite: overwrite,
     );
   }
 
@@ -121,11 +132,12 @@ class SkillAcquisitionEngine {
     required DiscoverableSkill discovery,
     required String expectedLocalId,
     required String displayName,
+    required bool overwrite,
   }) async {
     switch (acquire.kind) {
       case 'git-dir':
         try {
-          final skill = await _installGitDir(discovery);
+          final skill = await _installGitDir(discovery, overwrite: overwrite);
           return SkillAcquireResult(success: true, skillId: skill.id);
         } catch (e) {
           return SkillAcquireResult(success: false, message: e.toString());
@@ -187,28 +199,38 @@ class SkillAcquisitionEngine {
 
     final after = await _listSkillDirsWithSkillMd();
     final newDirs = after.difference(before).toList()..sort();
-    if (newDirs.isEmpty) {
-      return const SkillAcquireResult(
-        success: false,
-        message:
-            'Install command succeeded but no SKILL.md was found under '
-            'skills/installed/.',
-      );
-    }
 
-    final chosen = _pickPrimaryDirectory(
-      newDirs: newDirs,
-      primaryDirectory: acquire.primaryDirectory,
-      packageUrl: acquire.package,
-    );
-    if (chosen == null) {
-      return SkillAcquireResult(
-        success: false,
-        message:
-            'Multiple new skill directories appeared '
-            '(${newDirs.join(', ')}); set primaryDirectory or ensure one '
-            'matches the script URL basename.',
+    final String? chosen;
+    if (newDirs.isEmpty) {
+      // Script may have refreshed an existing matched dir (re-register path).
+      chosen = _pickExistingMatchedDirectory(
+        existingDirs: after,
+        primaryDirectory: acquire.primaryDirectory,
+        packageUrl: acquire.package,
       );
+      if (chosen == null) {
+        return const SkillAcquireResult(
+          success: false,
+          message:
+              'Install command succeeded but no SKILL.md was found under '
+              'skills/installed/.',
+        );
+      }
+    } else {
+      chosen = _pickPrimaryDirectory(
+        newDirs: newDirs,
+        primaryDirectory: acquire.primaryDirectory,
+        packageUrl: acquire.package,
+      );
+      if (chosen == null) {
+        return SkillAcquireResult(
+          success: false,
+          message:
+              'Multiple new skill directories appeared '
+              '(${newDirs.join(', ')}); set primaryDirectory or ensure one '
+              'matches the script URL basename.',
+        );
+      }
     }
 
     try {
@@ -282,6 +304,26 @@ class SkillAcquisitionEngine {
     return null;
   }
 
+  /// When the script creates no *new* dirs, allow re-registering an existing
+  /// dir that matches [primaryDirectory] or the script URL basename.
+  static String? _pickExistingMatchedDirectory({
+    required Set<String> existingDirs,
+    required String? primaryDirectory,
+    required String? packageUrl,
+  }) {
+    final preferred = primaryDirectory?.trim();
+    if (preferred != null &&
+        preferred.isNotEmpty &&
+        existingDirs.contains(preferred)) {
+      return preferred;
+    }
+    final urlBase = _urlPathBasename(packageUrl);
+    if (urlBase != null && existingDirs.contains(urlBase)) {
+      return urlBase;
+    }
+    return null;
+  }
+
   static String? _urlPathBasename(String? packageUrl) {
     if (packageUrl == null || packageUrl.trim().isEmpty) return null;
     final uri = Uri.tryParse(packageUrl.trim());
@@ -289,36 +331,5 @@ class SkillAcquisitionEngine {
     final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
     if (segments.isEmpty) return null;
     return segments.last;
-  }
-
-  static String _expectedIdForDiscoverable(
-    DiscoverableSkill d,
-    SkillAcquireSpec acquire,
-  ) {
-    final explicit = d.id?.trim();
-    if (explicit != null && explicit.isNotEmpty) return explicit;
-    final key = d.key.trim();
-    if (key.isNotEmpty) return key;
-    if (acquire.kind == 'script') {
-      return _scriptIdFromPackageUrl(acquire.package);
-    }
-    final basename = p.basename(d.directory);
-    if (d.repoOwner.isNotEmpty && d.repoName.isNotEmpty && basename.isNotEmpty) {
-      return '${d.repoOwner}/${d.repoName}:$basename';
-    }
-    return basename.isEmpty ? 'local:unknown' : 'local:$basename';
-  }
-
-  static String _scriptIdFromPackageUrl(String? package) {
-    if (package == null || package.trim().isEmpty) {
-      return 'script:unknown';
-    }
-    final uri = Uri.tryParse(package.trim());
-    if (uri == null || uri.host.isEmpty) {
-      return 'script:unknown';
-    }
-    final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-    final basename = segments.isEmpty ? 'unknown' : segments.last;
-    return 'script:${uri.host}/$basename';
   }
 }

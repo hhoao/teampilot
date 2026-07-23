@@ -307,6 +307,26 @@ class DiscoverableSkill {
 
   String get source => '$repoOwner/$repoName';
 
+  /// Primary local [Skill.id] for install via [SkillAcquisitionEngine].
+  ///
+  /// Prefer non-empty [id], else non-empty [key], else script URL id / git-dir
+  /// `owner/name:basename` (same family as [SkillDependencyRef.expectedLocalId]).
+  String get expectedLocalId {
+    final explicit = id?.trim();
+    if (explicit != null && explicit.isNotEmpty) return explicit;
+    final k = key.trim();
+    if (k.isNotEmpty) return k;
+    final resolved = acquire ?? const SkillAcquireSpec(kind: 'git-dir');
+    if (resolved.kind == 'script') {
+      return skillScriptIdFromPackageUrl(resolved.package);
+    }
+    final basename = directory.split('/').last;
+    if (repoOwner.isNotEmpty && repoName.isNotEmpty && basename.isNotEmpty) {
+      return '$repoOwner/$repoName:$basename';
+    }
+    return basename.isEmpty ? 'local:unknown' : 'local:$basename';
+  }
+
   Map<String, Object?> toJson() => {
     'key': key,
     'name': name,

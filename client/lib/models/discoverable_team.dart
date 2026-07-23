@@ -43,7 +43,7 @@ class SkillDependencyRef {
     if (resolvedAcquire.kind == 'script') {
       final explicit = id?.trim();
       if (explicit != null && explicit.isNotEmpty) return explicit;
-      return _scriptIdFromPackageUrl(resolvedAcquire.package);
+      return skillScriptIdFromPackageUrl(resolvedAcquire.package);
     }
     return '$repoOwner/$repoName:${directory.split('/').last}';
   }
@@ -108,19 +108,6 @@ class SkillDependencyRef {
     id,
     acquire,
   );
-}
-
-String _scriptIdFromPackageUrl(String? package) {
-  if (package == null || package.trim().isEmpty) {
-    return 'script:unknown';
-  }
-  final uri = Uri.tryParse(package.trim());
-  if (uri == null || uri.host.isEmpty) {
-    return 'script:unknown';
-  }
-  final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-  final basename = segments.isEmpty ? 'unknown' : segments.last;
-  return 'script:${uri.host}/$basename';
 }
 
 /// Source descriptor for a plugin dependency (resolved at clone time).

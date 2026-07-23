@@ -59,10 +59,12 @@ void main() {
   test('git-dir calls install delegate once and returns skill id', () async {
     var calls = 0;
     DiscoverableSkill? seen;
+    var seenOverwrite = false;
     final engine = SkillAcquisitionEngine(
       installGitDir: (d, {bool overwrite = false}) async {
         calls++;
         seen = d;
+        seenOverwrite = overwrite;
         return _plantedSkill(id: 'obra/superpowers:brainstorming', directory: 'brainstorming');
       },
       runner: (_) async => const CliInstallerCommandResult(exitCode: 0),
@@ -76,13 +78,45 @@ void main() {
         directory: 'skills/brainstorming',
         name: 'Brainstorming',
       ),
+      overwrite: true,
     );
 
     expect(calls, 1);
     expect(seen?.directory, 'skills/brainstorming');
+    expect(seenOverwrite, isTrue);
     expect(result.success, isTrue);
     expect(result.skillId, 'obra/superpowers:brainstorming');
   });
+
+  test(
+    'installDiscoverable forwards overwrite to git-dir delegate',
+    () async {
+      var seenOverwrite = false;
+      final engine = SkillAcquisitionEngine(
+        installGitDir: (d, {bool overwrite = false}) async {
+          seenOverwrite = overwrite;
+          return _plantedSkill(id: d.key, directory: 'brainstorming');
+        },
+        runner: (_) async => const CliInstallerCommandResult(exitCode: 0),
+      );
+
+      final result = await engine.installDiscoverable(
+        const DiscoverableSkill(
+          key: 'obra/superpowers:brainstorming',
+          name: 'Brainstorming',
+          description: '',
+          directory: 'skills/brainstorming',
+          repoOwner: 'obra',
+          repoName: 'superpowers',
+          repoBranch: 'main',
+        ),
+        overwrite: true,
+      );
+
+      expect(seenOverwrite, isTrue);
+      expect(result.success, isTrue);
+    },
+  );
 
   test('script rejects unsafe URL before runner', () async {
     var ran = false;
@@ -247,4 +281,94 @@ void main() {
     expect(result.success, isFalse);
     expect(result.message.toLowerCase(), contains('not supported'));
   });
+
+  test(
+    'primaryDirectory picks among several new skill dirs',
+    () async {
+      final install = SkillInstallService(manifest: SkillManifestService());
+      final engine = SkillAcquisitionEngine(
+        runner: (_) async {
+          _plantSkillMd('alpha');
+          _plantSkillMd('gstack-office-hours');
+          _plantSkillMd('beta');
+          return const CliInstallerCommandResult(exitCode: 0);
+        },
+        isLocalAcquireSupported: () => true,
+        installGitDir: (_, {bool overwrite = false}) async =>
+            throw StateError('unused'),
+        registerDirectory: install.registerInstalledDirectory,
+      );
+
+      final ref = _scriptRef(
+        url: 'https://example.com/install.sh',
+        id: 'script:custom/gstack',
+        primaryDirectory: 'gstack-office-hours',
+      );
+      final result = await engine.install(ref);
+
+      expect(result.success, isTrue);
+      expect(result.skillId, 'script:custom/gstack');
+      final skills = await SkillManifestService().loadSkills();
+      expect(skills.single.directory, 'gstack-office-hours');
+      expect(skills.single.id, 'script:custom/gstack');
+    },
+  );
+
+  test(
+    'ambiguous multi-dir without primaryDirectory or URL basename match fails',
+    () async {
+      var registered = false;
+      final engine = SkillAcquisitionEngine(
+        runner: (_) async {
+          _plantSkillMd('alpha');
+          _plantSkillMd('beta');
+          return const CliInstallerCommandResult(exitCode: 0);
+        },
+        isLocalAcquireSupported: () => true,
+        installGitDir: (_, {bool overwrite = false}) async =>
+            throw StateError('unused'),
+        registerDirectory:
+            ({required String id, required String directory}) async {
+              registered = true;
+              throw StateError('should not register');
+            },
+      );
+
+      final result = await engine.install(
+        _scriptRef(url: 'https://example.com/install.sh'),
+      );
+
+      expect(registered, isFalse);
+      expect(result.success, isFalse);
+      expect(result.message.toLowerCase(), contains('multiple'));
+    },
+  );
+
+  test(
+    'script with zero new dirs re-registers existing primaryDirectory match',
+    () async {
+      _plantSkillMd('gstack-office-hours');
+      final install = SkillInstallService(manifest: SkillManifestService());
+      final engine = SkillAcquisitionEngine(
+        runner: (_) async => const CliInstallerCommandResult(exitCode: 0),
+        isLocalAcquireSupported: () => true,
+        installGitDir: (_, {bool overwrite = false}) async =>
+            throw StateError('unused'),
+        registerDirectory: install.registerInstalledDirectory,
+      );
+
+      final ref = _scriptRef(
+        url: 'https://example.com/install.sh',
+        id: 'script:custom/gstack',
+        primaryDirectory: 'gstack-office-hours',
+      );
+      final result = await engine.install(ref);
+
+      expect(result.success, isTrue);
+      expect(result.skillId, 'script:custom/gstack');
+      final skills = await SkillManifestService().loadSkills();
+      expect(skills.single.id, 'script:custom/gstack');
+      expect(skills.single.directory, 'gstack-office-hours');
+    },
+  );
 }
