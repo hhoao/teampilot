@@ -1,6 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/widgets.dart';
 
+import 'parts/chain_of_thought_view.dart';
 import 'parts/reasoning_part_view.dart';
 import 'parts/text_part_view.dart';
 import 'parts/tool_call_part_view.dart';
@@ -22,6 +23,11 @@ typedef AiReasoningGroupBuilder = Widget Function(
   List<AiReasoningPart> parts,
 );
 
+typedef AiChainOfThoughtBuilder = Widget Function(
+  BuildContext context,
+  List<AiMessagePart> parts,
+);
+
 /// Extensible part → widget map (assistant-ui ThreadComponents pattern).
 ///
 /// Hosts override specific part types or group renderers without forking
@@ -32,11 +38,13 @@ class AiPartRegistry {
     this.builders = const {},
     this.toolGroupBuilder,
     this.reasoningGroupBuilder,
+    this.chainOfThoughtBuilder,
   });
 
   final Map<Type, AiPartBuilder> builders;
   final AiToolGroupBuilder? toolGroupBuilder;
   final AiReasoningGroupBuilder? reasoningGroupBuilder;
+  final AiChainOfThoughtBuilder? chainOfThoughtBuilder;
 
   static const AiPartRegistry defaults = AiPartRegistry();
 
@@ -47,6 +55,8 @@ class AiPartRegistry {
       toolGroupBuilder: other.toolGroupBuilder ?? toolGroupBuilder,
       reasoningGroupBuilder:
           other.reasoningGroupBuilder ?? reasoningGroupBuilder,
+      chainOfThoughtBuilder:
+          other.chainOfThoughtBuilder ?? chainOfThoughtBuilder,
     );
   }
 
@@ -67,9 +77,8 @@ class AiPartRegistry {
         (toolGroupBuilder ?? _defaultToolGroup)(context, tools),
       AiRenderReasoningGroup(:final parts) =>
         (reasoningGroupBuilder ?? _defaultReasoningGroup)(context, parts),
-      AiRenderChainOfThought() => throw UnimplementedError(
-        'Cot render in Task 4',
-      ),
+      AiRenderChainOfThought(:final parts) =>
+        (chainOfThoughtBuilder ?? _defaultChainOfThought)(context, parts),
     };
   }
 }
@@ -87,4 +96,11 @@ Widget _defaultReasoningGroup(
       text: parts.map((p) => p.text.trim()).where((t) => t.isNotEmpty).join('\n\n'),
     ),
   );
+}
+
+Widget _defaultChainOfThought(
+  BuildContext context,
+  List<AiMessagePart> parts,
+) {
+  return AiChainOfThoughtView(parts: parts);
 }

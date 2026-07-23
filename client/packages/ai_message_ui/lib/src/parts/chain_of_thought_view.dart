@@ -5,25 +5,21 @@ import 'package:flutter/material.dart';
 
 import '../strings.dart';
 import '../theme.dart';
-import 'text_part_view.dart';
+import 'reasoning_part_view.dart';
+import 'tool_call_part_view.dart';
 
-/// Collapsible reasoning — assistant-ui ReasoningRoot (outline + markdown).
-class AiReasoningPartView extends StatefulWidget {
-  const AiReasoningPartView({
-    required this.part,
-    this.initiallyExpanded = false,
-    super.key,
-  });
+/// Default-collapsed chain-of-thought chrome for contiguous reasoning + tools.
+class AiChainOfThoughtView extends StatefulWidget {
+  const AiChainOfThoughtView({required this.parts, super.key});
 
-  final AiReasoningPart part;
-  final bool initiallyExpanded;
+  final List<AiMessagePart> parts;
 
   @override
-  State<AiReasoningPartView> createState() => _AiReasoningPartViewState();
+  State<AiChainOfThoughtView> createState() => _AiChainOfThoughtViewState();
 }
 
-class _AiReasoningPartViewState extends State<AiReasoningPartView> {
-  late bool _open = widget.initiallyExpanded;
+class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
+  bool _open = false;
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +28,7 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
     final aiTheme = AiMessageTheme.of(context);
     final strings = AiMessageStrings.of(context);
     final triggerColor = aiTheme.resolveToolTrigger(scheme);
+    final label = strings.formatThinkingProcessSteps(widget.parts.length);
 
     return Padding(
       padding: EdgeInsets.only(bottom: aiTheme.partSpacing + 4),
@@ -47,7 +44,7 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
               child: Semantics(
                 button: true,
                 expanded: _open,
-                label: strings.reasoning,
+                label: label,
                 child: MouseRegion(
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
@@ -68,7 +65,7 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              strings.reasoning,
+                              label,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.bodySmall?.copyWith(
@@ -100,17 +97,11 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
                 alignment: Alignment.topCenter,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 256),
-                    child: SingleChildScrollView(
-                      child: DefaultTextStyle.merge(
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          height: 1.5,
-                        ),
-                        child: AiTextPartView(text: widget.part.text),
-                      ),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final part in widget.parts) _buildInnerPart(part),
+                    ],
                   ),
                 ),
               ),
@@ -118,5 +109,19 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
         ),
       ),
     );
+  }
+
+  Widget _buildInnerPart(AiMessagePart part) {
+    return switch (part) {
+      AiReasoningPart() => AiReasoningPartView(
+        part: part,
+        initiallyExpanded: true,
+      ),
+      AiToolCallPart() => AiToolCallPartView(
+        part: part,
+        initiallyExpanded: true,
+      ),
+      _ => const SizedBox.shrink(),
+    };
   }
 }
