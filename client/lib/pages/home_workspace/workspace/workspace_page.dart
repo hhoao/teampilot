@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/expert_hub_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
+import '../../../cubits/resource_manager_cubit.dart';
 import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/workspace_landing_context_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
@@ -20,9 +21,12 @@ import '../../../pages/home_workspace/home_workspace_route.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../services/expert_hub/expert_capability_resolver.dart';
 import '../../../services/expert_hub/expert_landing_deep_link.dart';
+import '../../../services/resource_manager/process_metrics_service.dart';
+import '../../../services/resource_manager/pty_process_registry.dart';
 import '../../../theme/workspace_surface_layers.dart';
 import '../../../utils/logging/logger.dart';
 import '../../../widgets/app_toast/app_toast.dart';
+import '../../../widgets/workspace_status_bar/workspace_status_bar.dart';
 import '../../expert_hub/expert_landing_preflight_feedback.dart';
 import 'workspace_config_workspace.dart';
 import 'workspace_section.dart';
@@ -54,6 +58,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
   bool _expertSyncScheduled = false;
   String? _lastSyncedRouteSession;
   bool _sessionSyncScheduled = false;
+  late final ResourceManagerCubit _resourceManagerCubit;
 
   WorkspaceRouteActiveScope? _readScope(BuildContext context) {
     return context.getInheritedWidgetOfExactType<WorkspaceRouteActiveScope>();
@@ -63,13 +68,35 @@ class _WorkspacePageState extends State<WorkspacePage> {
       _readScope(context)?.configSection ?? WorkspaceConfigSection.settings;
 
   @override
+  void initState() {
+    super.initState();
+    // Bindings/kill wired in Task 9; stubs keep the cubit constructible now.
+    _resourceManagerCubit = ResourceManagerCubit(
+      metricsService: ProcessMetricsService(),
+      registry: PtyProcessRegistry(),
+      bindingsSource: () => const [],
+      killBinding: (_) async {},
+    )..setWorkspace(widget.workspaceId);
+  }
+
+  @override
+  void dispose() {
+    unawaited(_resourceManagerCubit.close());
+    super.dispose();
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final scope = _readScope(context);
     final active = scope?.routeActive ?? true;
     final view = scope?.view;
     if (active && !_wasRouteActive) {
+      _resourceManagerCubit.onRouteActiveChanged(true);
+      _resourceManagerCubit.setWorkspace(widget.workspaceId);
       _scheduleActivation();
+    } else if (!active && _wasRouteActive) {
+      _resourceManagerCubit.onRouteActiveChanged(false);
     }
     if (active) {
       final nextSection = _sectionFromRoute(view);
@@ -322,17 +349,20 @@ class _WorkspacePageState extends State<WorkspacePage> {
     final body = routeActive
         ? _buildAndCacheLivePage(context)
         : (_frozenPage ?? const SizedBox.shrink());
-    return BlocListener<ChatCubit, ChatState>(
-      listenWhen: (previous, next) {
-        if (previous.workspaces == next.workspaces) return false;
-        return _findWorkspace(previous.workspaces, widget.workspaceId) !=
-            _findWorkspace(next.workspaces, widget.workspaceId);
-      },
-      listener: (context, state) {
-        _invalidateFrozenPage();
-        if (routeActive && mounted) setState(() {});
-      },
-      child: body,
+    return BlocProvider<ResourceManagerCubit>.value(
+      value: _resourceManagerCubit,
+      child: BlocListener<ChatCubit, ChatState>(
+        listenWhen: (previous, next) {
+          if (previous.workspaces == next.workspaces) return false;
+          return _findWorkspace(previous.workspaces, widget.workspaceId) !=
+              _findWorkspace(next.workspaces, widget.workspaceId);
+        },
+        listener: (context, state) {
+          _invalidateFrozenPage();
+          if (routeActive && mounted) setState(() {});
+        },
+        child: body,
+      ),
     );
   }
 
@@ -360,7 +390,13 @@ class _WorkspacePageState extends State<WorkspacePage> {
     // page paints immediately once that defer reveals.
     return WorkspacePageCardShell(
       chrome: WorkspacePageChrome.workspace,
-      child: _buildCardBody(workspace: workspace),
+      child: Column(
+        children: [
+          Expanded(child: _buildCardBody(workspace: workspace)),
+          // Task 8 plugs ResourceUsageStatusItem into items.
+          const WorkspaceStatusBar(items: []),
+        ],
+      ),
     );
   }
 
