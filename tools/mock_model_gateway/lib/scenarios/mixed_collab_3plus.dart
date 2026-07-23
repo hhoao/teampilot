@@ -42,6 +42,14 @@ Map<String, MockScenario> mixedCollab3PlusScenarios() => {
           ),
           TextTurn(markLead2),
           TextTurn(markLeadDone),
+          // forceWait stop-hook requires wait_for_message after text; without
+          // this the gateway 500s on exhaustion and Claude retries forever,
+          // so post-collab bootToPrompt never settles.
+          ToolUseTurn(
+            id: 'tu_wait_after',
+            toolRef: 'teambus.wait_for_message',
+            input: {},
+          ),
         ],
       ),
       workerScriptApiKey: MockScenario(
@@ -60,6 +68,11 @@ Map<String, MockScenario> mixedCollab3PlusScenarios() => {
             input: {'to': 'team-lead', 'content': 'pong'},
           ),
           TextTurn(markWorker1),
+          ToolUseTurn(
+            id: 'tu_wait_after',
+            toolRef: 'teambus.wait_for_message',
+            input: {},
+          ),
         ],
       ),
     };

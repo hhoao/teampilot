@@ -16,6 +16,10 @@ Future<void> dismissClaudeBootGates(TerminalSession session) async {
 }
 
 /// Waits until Claude's composer (`❯`) is visible and the shell is not working.
+///
+/// Also Esc-interrupts mock-gateway exhaustion retries (`scenario exhausted` /
+/// `Retrying · attempt`) so a forceWait seat can settle back to the composer
+/// after a scripted collab finishes.
 Future<bool> bootClaudeToPrompt(TerminalSession session) async {
   final deadline = DateTime.now().add(const Duration(seconds: 90));
   var lastNudge = DateTime.fromMillisecondsSinceEpoch(0);
@@ -35,6 +39,13 @@ Future<bool> bootClaudeToPrompt(TerminalSession session) async {
       lastNudge = DateTime.now();
     }
 
+    if (_claudeApiRetryNeedsEscape(frame) &&
+        DateTime.now().difference(lastNudge).inMilliseconds > 600) {
+      // Cancel the retry loop so the composer can settle for History asserts.
+      session.input.writeToPty('\x1b');
+      lastNudge = DateTime.now();
+    }
+
     final atComposer = frame.contains(kClaudeComposerPrefix);
     final settled = !session.activityTracker.isWorking;
     if (atComposer && settled) {
@@ -44,6 +55,12 @@ Future<bool> bootClaudeToPrompt(TerminalSession session) async {
     await Future<void>.delayed(const Duration(milliseconds: 250));
   }
   return false;
+}
+
+bool _claudeApiRetryNeedsEscape(String frame) {
+  final lower = frame.toLowerCase();
+  return lower.contains('scenario exhausted') ||
+      (lower.contains('retrying') && lower.contains('attempt'));
 }
 
 bool _claudeGateNeedsEnter(String frame) {

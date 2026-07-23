@@ -23,14 +23,10 @@ Map<String, MockScenario> pingPongMixedClaudeScenarios() => {
       ),
       workerScriptApiKey: MockScenario(
         turns: [
-          // First wait: kickoff "Start idle loop." may return immediately when the
-          // bus is empty; do not script pong on that turn.
-          ToolUseTurn(
-            id: 'tu_wait',
-            toolRef: 'teambus.wait_for_message',
-            input: {},
-          ),
-          // Second wait: blocks until the leader's ping arrives (docker is slower).
+          // Single wait: kickoff parks here until the lead's ping arrives.
+          // A prior empty+second-wait pattern races when ping lands on the
+          // first wait — worker then blocks until MCP cancel (~120s) before
+          // pong, blowing the harness budget.
           ToolUseTurn(
             id: 'tu_wait_ping',
             toolRef: 'teambus.wait_for_message',

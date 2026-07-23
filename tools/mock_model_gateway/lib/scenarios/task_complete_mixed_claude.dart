@@ -39,11 +39,9 @@ Map<String, MockScenario> taskCompleteMixedClaudeScenarios() => {
       ),
       workerScriptApiKey: MockScenario(
         turns: [
-          ToolUseTurn(
-            id: 'tu_wait',
-            toolRef: 'teambus.wait_for_message',
-            input: {},
-          ),
+          // Single wait: parks until add_tasks is claimable. A cushion wait
+          // races when the task lands on the first wait — the second wait then
+          // blocks until MCP cancel and update_task never runs in time.
           ToolUseTurn(
             id: 'tu_wait_task',
             toolRef: 'teambus.wait_for_message',

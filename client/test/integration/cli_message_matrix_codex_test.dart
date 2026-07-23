@@ -160,7 +160,8 @@ void main() {
         // (earlier MARK_LEAD_* may have left the probe window).
         await harness.waitForPtyMarkers([markLeadDone]);
 
-        await harness.bootComposeSeatToPrompt();
+        // Lead parks on wait_for_message after MARK_LEAD_DONE (forceWait). Do
+        // not require an idle composer — History syncs from session JSONL.
         await harness.waitForBubbles(userText: prompt);
 
         // Extra bus-mail sanity (same predicates as waitForBusPingPong).
