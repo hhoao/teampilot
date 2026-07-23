@@ -90,8 +90,8 @@ SkillDependencyRef / DiscoverableSkill
 SkillAcquisitionEngine.install(...)
   ├─ git-dir  → SkillInstallService.installFromDiscovery
   ├─ script   → validated curl|sh via injectable runner
-  │              → scan agreed install roots for SKILL.md
-  │              → upsert Skill manifest entries
+  │              → scan skills/installed/ for SKILL.md
+  │              → upsert Skill rows (primary id = expectedLocalId)
   └─ unknown  → failure (do not pretend success)
          │
          ▼
@@ -114,19 +114,33 @@ SkillCubit.installTeamDependency / installFromDiscovery
 Today `expectedLocalId` is `owner/name:basename(directory)`. For `script` without git fields:
 
 - Prefer an optional explicit `id` on the dependency/catalog entry when present
-- Else derive a stable id from the script URL (e.g. `script:<host>/<path-basename>`) so UI “already installed?” checks stay deterministic
+- Else derive a stable id from the script URL: `script:<host>/<path-basename>` (strip query/fragment)
 
 Document the chosen rule in code next to `SkillDependencyRef`.
 
+**Dep-install contract:** `SkillCubit.installTeamDependency` / busy-id / “already installed?” must key off `ref.expectedLocalId`. After a successful `script` acquire, the engine **must** upsert at least one `Skill` whose `id == ref.expectedLocalId` (not only `local:<directory>` unmanaged ids). Unmanaged scan helpers may discover sibling dirs, but the primary return id for the dep path is always `expectedLocalId`.
+
 ### Post-`script` registration
 
-After a successful script run:
+After a successful script run (scan root: **`skills/installed/` only**):
 
-1. Scan TeamPilot’s global skills install root (`skills/installed/`) for new/changed directories containing `SKILL.md` (reuse existing local-scan helpers where possible).
+1. Discover directories under `skills/installed/` that contain `SKILL.md` (reuse local-scan helpers where possible).
 2. Upsert manifest entries for discovered skills.
-3. If the runner exits 0 but **no** `SKILL.md` appears in the scanned roots, treat as failure (clear error: script succeeded but no skills registered).
+3. Ensure the **primary** skill row uses `id = expectedLocalId` for the dep/catalog entry that triggered install:
+   - If the script created exactly one new skill dir → register that dir under `expectedLocalId`.
+   - If multiple new dirs appear → register the primary under `expectedLocalId` using an optional `primaryDirectory` on the acquire/dep when present; else the sole new dir whose basename matches the URL path basename; else fail with a clear multi-match error (do not guess).
+   - Additional sibling skills may be registered with their normal local ids as a side effect; they do not replace the primary id contract.
+4. If the runner exits 0 but **no** `SKILL.md` appears under `skills/installed/`, treat as failure (script succeeded but no skills registered).
 
 Scripts that only install into upstream paths (e.g. `~/.claude/skills/...`) are **out of v1 success criteria** unless they also place or symlink content under TeamPilot’s skills root — call that out in UI copy when we add a real script catalog entry later. v1 ships the engine + tests; first production script URL can land in a follow-up once a TeamPilot-aware installer exists (or a thin wrapper script that installs into `skills/installed/`).
+
+### `alternatives`
+
+Same semantics as `ExtensionAcquisitionEngine`: try the primary kind/package first; on failure, try each `alternatives` entry (`"kind:arg"`) **sequentially** until one succeeds or the list is exhausted.
+
+### Unsupported hosts
+
+On platforms where Extension acquire is local-only (non-desktop / SSH storage backends), `script` (and any future shell kinds) **fail fast** with a clear “not supported on this host” error — do not invoke `curl | sh`.
 
 ## UI
 
@@ -166,5 +180,6 @@ Scripts that only install into upstream paths (e.g. `~/.claude/skills/...`) are 
 
 - Existing superpowers-style deps install unchanged with no JSON migration.
 - A fixture `acquire.kind = script` can install through the engine under test and register at least one skill when files land in `skills/installed/`.
+- A script `SkillDependencyRef` installed via `installTeamDependency` yields `Skill.id == ref.expectedLocalId`.
 - Unsafe URLs never reach the runner.
 - Analyze + focused unit tests green.
