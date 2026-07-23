@@ -476,7 +476,7 @@ final class CliMessageMatrixHarness {
         'launchError=${chat?.state.sessionLaunchError} '
         'tabLaunchError=${tab?.info.launchError} '
         'shellKeys=${tab?.memberShells.keys.toList()} '
-        'isRunning=${chat?.isMemberRunning(memberId)}\n'
+        'isRunning=${chat == null || chat.state.activeSessionId == null ? null : chat.isMemberRunning(sessionId: chat.state.activeSessionId!, memberId: memberId)}\n'
         '${diagnosticsBundle(memberId: memberId)}',
       );
     }
@@ -927,9 +927,15 @@ final class CliMessageMatrixHarness {
             );
           }
           final stickyId = 'mailbox:$mailId';
-          final stickyReady = hist.runtime.messages.any(
-            (m) => m.role == AiRole.user && m.id == stickyId,
+          final stickySeat = hist.seatOf(
+            sessionId: hist.state.sessionId ?? '',
+            selectedMemberId: hist.state.memberId ?? '',
           );
+          final stickyReady =
+              stickySeat?.runtime.messages.any(
+                (m) => m.role == AiRole.user && m.id == stickyId,
+              ) ??
+              false;
           if (!stickyReady) {
             // Still Queued (or not yet promoted) — do not expectUserBubble.
             if (!mailboxQueuedSubmitted.any((m) => m.id == mailId)) {

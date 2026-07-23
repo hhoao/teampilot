@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
+import 'package:teampilot/services/terminal/terminal_session.dart';
 import '../support/post_frame_test_harness.dart';
 
 ChatCubit _cubit() => ChatCubit(
@@ -12,6 +13,13 @@ ChatTab _tab(String id) => ChatTab(
   info: ChatTabInfo(id: id, title: id, subtitle: ''),
   cliTeamName: id,
 );
+
+class _RunningShell extends TerminalSession {
+  _RunningShell() : super(executable: '/bin/true');
+
+  @override
+  bool get isRunning => true;
+}
 
 void main() {
   group('ChatCubit workspace scoping', () {
@@ -84,5 +92,45 @@ void main() {
         expect(cubit.state.tabs, isEmpty);
       },
     );
+
+    test('isMemberRunning finds shell on non-active workspace tab', () {
+      final cubit = _cubit();
+      addTearDown(cubit.close);
+
+      cubit.setActiveWorkspace('A');
+      cubit.tabStore.append(_tab('a-session'));
+      cubit.refreshActiveWorkspaceTabs();
+
+      cubit.setActiveWorkspace('B');
+      final bTab = _tab('b-session');
+      const shellId = 'b-shell';
+      bTab.memberShells[shellId] = _RunningShell();
+      cubit.tabStore.append(bTab);
+      cubit.refreshActiveWorkspaceTabs();
+
+      cubit.setActiveWorkspace('A');
+      expect(cubit.tabStore.activeWorkspaceId, 'A');
+      expect(
+        cubit.isMemberRunning(sessionId: 'b-session', memberId: shellId),
+        isTrue,
+      );
+    });
+
+    test('closeTab disposes history seats for that session', () async {
+      final cubit = _cubit();
+      addTearDown(cubit.close);
+
+      final disposed = <String>[];
+      cubit.onHistorySeatsDispose = disposed.add;
+
+      cubit.setActiveWorkspace('A');
+      cubit.tabStore.append(_tab('sess-close'));
+      cubit.refreshActiveWorkspaceTabs();
+
+      cubit.closeTab(0);
+      await drainPendingAsyncWork();
+
+      expect(disposed, ['sess-close']);
+    });
   });
 }

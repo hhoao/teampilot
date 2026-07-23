@@ -26,6 +26,12 @@ void main() {
   late AiHistoryLoader loader;
   late AiHistoryCubit cubit;
 
+  ExternalStoreAiThreadRuntime seatRuntime({
+    String sessionId = 'sess-a',
+    String memberId = '',
+  }) =>
+      cubit.ensureSeat(sessionId: sessionId, selectedMemberId: memberId).runtime;
+
   AppSession simpleSession({String id = 'sess-a'}) => AppSession(
     sessionId: id,
     workspaceId: 'ws-1',
@@ -89,22 +95,22 @@ void main() {
 
     final done = cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
     expect(cubit.state.status, AiHistoryViewStatus.loading);
-    expect(cubit.runtime.status, AiThreadStatus.loading);
+    expect(seatRuntime().status, AiThreadStatus.loading);
     await done;
 
     expect(cubit.state.status, AiHistoryViewStatus.ready);
     expect(cubit.state.totalMessageCount, 2);
     expect(cubit.state.hasOlder, isFalse);
-    expect(cubit.runtime.messages, hasLength(2));
-    expect(cubit.runtime.status, AiThreadStatus.idle);
+    expect(seatRuntime().messages, hasLength(2));
+    expect(seatRuntime().status, AiThreadStatus.idle);
   });
 
   test('empty load sets runtime empty', () async {
     locator.emitBundle = false;
     await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
     expect(cubit.state.status, AiHistoryViewStatus.empty);
-    expect(cubit.runtime.status, AiThreadStatus.empty);
-    expect(cubit.runtime.messages, isEmpty);
+    expect(seatRuntime().status, AiThreadStatus.empty);
+    expect(seatRuntime().messages, isEmpty);
   });
 
   test('ignores stale generation when a newer load finishes first', () async {
@@ -135,7 +141,7 @@ void main() {
     second.complete(_dummyBundle());
     await secondLoad;
     expect(cubit.state.sessionId, 's2');
-    expect(cubit.runtime.messages.single.id, 'second');
+    expect(seatRuntime(sessionId: 's2').messages.single.id, 'second');
 
     holderMessages = [
       const AiMessage(
@@ -147,8 +153,9 @@ void main() {
     first.complete(_dummyBundle());
     await firstLoad;
 
+    // Focused facade state stays on s2; seat s1 may finish independently.
     expect(cubit.state.sessionId, 's2');
-    expect(cubit.runtime.messages.single.id, 'second');
+    expect(seatRuntime(sessionId: 's2').messages.single.id, 'second');
   });
 
   test('windows to recent messages and loadOlder expands slice', () async {
@@ -157,13 +164,13 @@ void main() {
 
     await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
     expect(cubit.state.totalMessageCount, 50);
-    expect(cubit.runtime.messages, hasLength(kSessionHistoryInitialTurns));
-    expect(cubit.runtime.messages.first.id, 'm-20');
-    expect(cubit.runtime.messages.last.id, 'm-49');
+    expect(seatRuntime().messages, hasLength(kSessionHistoryInitialTurns));
+    expect(seatRuntime().messages.first.id, 'm-20');
+    expect(seatRuntime().messages.last.id, 'm-49');
     expect(cubit.state.hasOlder, isTrue);
 
     cubit.loadOlder();
-    expect(cubit.runtime.messages, hasLength(50));
+    expect(seatRuntime().messages, hasLength(50));
     expect(cubit.state.hasOlder, isFalse);
     expect(cubit.state.isLoadingOlder, isFalse);
   });
@@ -173,7 +180,7 @@ void main() {
     await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
     expect(cubit.state.status, AiHistoryViewStatus.error);
     expect(cubit.state.errorMessage, contains('boom'));
-    expect(cubit.runtime.status, AiThreadStatus.error);
+    expect(seatRuntime().status, AiThreadStatus.error);
   });
 
   test('softReload grows visibleCount by tip delta and preserves start', () async {
@@ -181,21 +188,21 @@ void main() {
     locator.emitBundle = true;
 
     await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
-    expect(cubit.runtime.messages, hasLength(kSessionHistoryInitialTurns));
-    expect(cubit.runtime.messages.first.id, 'm-10');
+    expect(seatRuntime().messages, hasLength(kSessionHistoryInitialTurns));
+    expect(seatRuntime().messages.first.id, 'm-10');
 
     cubit.loadOlder();
     expect(cubit.state.totalMessageCount, 40);
-    expect(cubit.runtime.messages, hasLength(40));
-    expect(cubit.runtime.messages.first.id, 'm-0');
+    expect(seatRuntime().messages, hasLength(40));
+    expect(seatRuntime().messages.first.id, 'm-0');
 
     holderMessages = messages(42);
     await cubit.softReload();
 
     expect(cubit.state.totalMessageCount, 42);
-    expect(cubit.runtime.messages, hasLength(42));
-    expect(cubit.runtime.messages.first.id, 'm-0');
-    expect(cubit.runtime.messages.last.id, 'm-41');
+    expect(seatRuntime().messages, hasLength(42));
+    expect(seatRuntime().messages.first.id, 'm-0');
+    expect(seatRuntime().messages.last.id, 'm-41');
     expect(cubit.state.hasOlder, isFalse);
   });
 
@@ -222,15 +229,15 @@ void main() {
     locator.emitBundle = true;
     await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
     cubit.loadOlder();
-    expect(cubit.runtime.messages, hasLength(40));
+    expect(seatRuntime().messages, hasLength(40));
 
     holderMessages = messages(25);
     await cubit.softReload();
 
     expect(cubit.state.totalMessageCount, 25);
-    expect(cubit.runtime.messages, hasLength(25));
-    expect(cubit.runtime.messages.first.id, 'm-0');
-    expect(cubit.runtime.messages.last.id, 'm-24');
+    expect(seatRuntime().messages, hasLength(25));
+    expect(seatRuntime().messages.first.id, 'm-0');
+    expect(seatRuntime().messages.last.id, 'm-24');
   });
 
   test('pending user merges then drops on matching tip user text', () async {
@@ -240,10 +247,10 @@ void main() {
 
     cubit.enqueuePendingUser('hello   world');
     expect(cubit.state.awaitingAssistant, isTrue);
-    expect(cubit.runtime.messages, hasLength(3));
-    expect(cubit.runtime.messages.last.id, startsWith('pending:'));
+    expect(seatRuntime().messages, hasLength(3));
+    expect(seatRuntime().messages.last.id, startsWith('pending:'));
     expect(
-      (cubit.runtime.messages.last.parts.single as AiTextPart).text,
+      (seatRuntime().messages.last.parts.single as AiTextPart).text,
       'hello   world',
     );
 
@@ -258,10 +265,10 @@ void main() {
     await cubit.softReload();
 
     expect(
-      cubit.runtime.messages.where((m) => m.id.startsWith('pending:')),
+      seatRuntime().messages.where((m) => m.id.startsWith('pending:')),
       isEmpty,
     );
-    expect(cubit.runtime.messages.last.id, 'u-hello');
+    expect(seatRuntime().messages.last.id, 'u-hello');
     // Pending flushed but tip is still user — keep awaiting until assistant tip.
     expect(cubit.state.awaitingAssistant, isTrue);
 
@@ -277,7 +284,7 @@ void main() {
     expect(cubit.state.awaitingAssistant, isTrue);
     // Assistant tip is held for idleAfter-aligned window.
     expect(cubit.hasHeldAssistantTip, isTrue);
-    expect(cubit.runtime.messages.last.id, 'u-hello');
+    expect(seatRuntime().messages.last.id, 'u-hello');
 
     holderMessages = [
       ...holderMessages,
@@ -290,7 +297,7 @@ void main() {
     await cubit.softReload();
     expect(cubit.state.awaitingAssistant, isTrue);
     expect(cubit.hasHeldAssistantTip, isTrue);
-    expect(cubit.runtime.messages.last.id, 'u-hello');
+    expect(seatRuntime().messages.last.id, 'u-hello');
 
     // Still working after hold: reveal tip, keep Running.
     await Future<void>.delayed(
@@ -298,7 +305,7 @@ void main() {
     );
     expect(cubit.state.awaitingAssistant, isTrue);
     expect(cubit.hasHeldAssistantTip, isFalse);
-    expect(cubit.runtime.messages.last.id, 'a-2');
+    expect(seatRuntime().messages.last.id, 'a-2');
 
     cubit.flushHeldTip(endAwaiting: true);
     expect(cubit.state.awaitingAssistant, isFalse);
@@ -311,8 +318,8 @@ void main() {
 
     cubit.appendStickyLocalUser(id: 'mailbox:mail-1', text: 'follow up');
     expect(cubit.state.awaitingAssistant, isFalse);
-    expect(cubit.runtime.messages, hasLength(3));
-    expect(cubit.runtime.messages.last.id, 'mailbox:mail-1');
+    expect(seatRuntime().messages, hasLength(3));
+    expect(seatRuntime().messages.last.id, 'mailbox:mail-1');
 
     holderMessages = [
       ...messages(2),
@@ -324,7 +331,7 @@ void main() {
     ];
     await cubit.softReload();
 
-    expect(cubit.runtime.messages.map((m) => m.id).toList(), [
+    expect(seatRuntime().messages.map((m) => m.id).toList(), [
       'm-0',
       'm-1',
       'a-new',
@@ -353,12 +360,12 @@ void main() {
     ];
     await cubit.softReload();
     expect(cubit.hasHeldAssistantTip, isTrue);
-    expect(cubit.runtime.messages.last.id, 'u-1');
+    expect(seatRuntime().messages.last.id, 'u-1');
 
     cubit.flushHeldTip(endAwaiting: true);
     expect(cubit.hasHeldAssistantTip, isFalse);
     expect(cubit.state.awaitingAssistant, isFalse);
-    expect(cubit.runtime.messages.last.id, 'a-1');
+    expect(seatRuntime().messages.last.id, 'a-1');
   });
 
   test('multi pending drops independently by normalized text', () async {
@@ -369,7 +376,7 @@ void main() {
     cubit.enqueuePendingUser('a');
     cubit.enqueuePendingUser('b');
     expect(
-      cubit.runtime.messages.where((m) => m.id.startsWith('pending:')),
+      seatRuntime().messages.where((m) => m.id.startsWith('pending:')),
       hasLength(2),
     );
 
@@ -382,7 +389,7 @@ void main() {
     ];
     await cubit.softReload();
 
-    final pendings = cubit.runtime.messages
+    final pendings = seatRuntime().messages
         .where((m) => m.id.startsWith('pending:'))
         .toList();
     expect(pendings, hasLength(1));
@@ -397,10 +404,10 @@ void main() {
     cubit.enqueuePendingUser('continue me');
 
     expect(cubit.state.status, AiHistoryViewStatus.ready);
-    expect(cubit.runtime.messages, hasLength(1));
-    expect(cubit.runtime.messages.single.id, startsWith('pending:'));
+    expect(seatRuntime().messages, hasLength(1));
+    expect(seatRuntime().messages.single.id, startsWith('pending:'));
     expect(
-      (cubit.runtime.messages.single.parts.single as AiTextPart).text,
+      (seatRuntime().messages.single.parts.single as AiTextPart).text,
       'continue me',
     );
   });
@@ -422,7 +429,7 @@ void main() {
     expect(cubit.state.awaitingAssistant, isTrue);
     expect(cubit.state.status, AiHistoryViewStatus.ready);
     expect(
-      (cubit.runtime.messages.single.parts.single as AiTextPart).text,
+      (seatRuntime().messages.single.parts.single as AiTextPart).text,
       'from landing',
     );
   });
@@ -451,7 +458,7 @@ void main() {
     expect(cubit.state.awaitingAssistant, isTrue);
     expect(cubit.state.status, AiHistoryViewStatus.ready);
     expect(
-      (cubit.runtime.messages.single.parts.single as AiTextPart).text,
+      (seatRuntime().messages.single.parts.single as AiTextPart).text,
       'landing prompt',
     );
   });
@@ -476,7 +483,7 @@ void main() {
     expect(cubit.state.status, AiHistoryViewStatus.ready);
     expect(cubit.state.awaitingAssistant, isTrue);
     expect(
-      (cubit.runtime.messages.single.parts.single as AiTextPart).text,
+      (seatRuntime().messages.single.parts.single as AiTextPart).text,
       'eager landing',
     );
 
@@ -484,7 +491,7 @@ void main() {
     expect(cubit.state.status, AiHistoryViewStatus.ready);
     expect(cubit.state.awaitingAssistant, isTrue);
     expect(
-      (cubit.runtime.messages.single.parts.single as AiTextPart).text,
+      (seatRuntime().messages.single.parts.single as AiTextPart).text,
       'eager landing',
     );
   });
@@ -506,7 +513,7 @@ void main() {
 
     expect(cubit.state.awaitingAssistant, isFalse);
     expect(cubit.state.status, AiHistoryViewStatus.empty);
-    expect(cubit.runtime.messages, isEmpty);
+    expect(seatRuntime().messages, isEmpty);
   });
 
   test('softReloadOrLoad soft-reloads when already ready for same seat', () async {
@@ -566,7 +573,10 @@ void main() {
     await soft;
 
     expect(cubit.state.status, AiHistoryViewStatus.empty);
-    expect(cubit.runtime.messages, isEmpty);
+    expect(
+      cubit.seatOf(sessionId: 'sess-a', selectedMemberId: ''),
+      isNull,
+    );
     expect(cubit.state.totalMessageCount, 0);
   });
 }

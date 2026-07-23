@@ -306,9 +306,10 @@ void main() {
   testWidgets(
     'sync runtime notify while sibling builds does not throw',
     (tester) async {
-      // AiHistoryCubit.runtime is app-scoped; a seat reload during one tab's
-      // build must not markNeedsBuild a retained SessionHistoryThread under
-      // another branch (TpDeferredForegroundMount keep-alive).
+      // Seat runtime is seat-scoped; sync notify may still fire during sibling
+      // deferred mount. A seat reload during one tab's build must not
+      // markNeedsBuild a retained SessionHistoryThread under another branch
+      // (TpDeferredForegroundMount keep-alive).
       final store = ExternalStoreAiThreadRuntime()
         ..setMessages(_soloUserMessages(3));
       var notifyDuringBuild = false;

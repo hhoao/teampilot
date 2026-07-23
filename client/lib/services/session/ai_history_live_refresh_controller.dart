@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../../cubits/ai_history_cubit.dart';
+import '../../cubits/ai_history_seat.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
 import 'ai_history_watch_meta.dart';
@@ -24,18 +24,18 @@ typedef AiHistoryLiveRefreshSignalFactory =
 /// Owns transcript watch/poll while History is visible; coalesces softReloads.
 class AiHistoryLiveRefreshController {
   AiHistoryLiveRefreshController({
-    required AiHistoryCubit cubit,
+    required AiHistorySeat seat,
     required Filesystem Function() fs,
     required Future<AiHistoryWatchMeta?> Function() resolveWatchMeta,
     AiHistoryLiveRefreshSignalFactory? createSignal,
     Duration? metaRetryInterval,
-  }) : _cubit = cubit,
+  }) : _seat = seat,
        _fs = fs,
        _resolveWatchMeta = resolveWatchMeta,
        _createSignal = createSignal ?? _defaultCreateSignal,
        _metaRetryIntervalOverride = metaRetryInterval;
 
-  final AiHistoryCubit _cubit;
+  final AiHistorySeat _seat;
   final Filesystem Function() _fs;
   final Future<AiHistoryWatchMeta?> Function() _resolveWatchMeta;
   final AiHistoryLiveRefreshSignalFactory _createSignal;
@@ -168,16 +168,16 @@ class AiHistoryLiveRefreshController {
             final shouldRearm =
                 _signal != null && _metaWatchChanged(previous, next);
             _meta = next;
-            await _cubit.softReload();
+            await _seat.softReload();
             if (!_started) break;
             if (shouldRearm) {
               await _attachSignal();
             }
           } else {
-            await _cubit.softReload();
+            await _seat.softReload();
           }
         } on Object catch (e, st) {
-          // Keep last [_meta]; softReload errors are already swallowed in cubit.
+          // Keep last [_meta]; softReload errors are already swallowed in seat.
           appLogger.w(
             '[ai-history-live-refresh] reload failed: $e',
             error: e,

@@ -142,9 +142,9 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   void _onRuntimeChanged() {
     if (!mounted) return;
-    // AiHistoryCubit.runtime is app-scoped and sync-notifies. A reload started
-    // during another tab's build (TpDeferredForegroundMount) must not
-    // markNeedsBuild this retained thread while that sibling is building.
+    // Seat runtime is seat-scoped; sync notify may still fire during sibling
+    // deferred mount (TpDeferredForegroundMount). A reload started during
+    // another tab's build must not markNeedsBuild this retained thread.
     final phase = SchedulerBinding.instance.schedulerPhase;
     if (phase != SchedulerPhase.idle &&
         phase != SchedulerPhase.postFrameCallbacks) {

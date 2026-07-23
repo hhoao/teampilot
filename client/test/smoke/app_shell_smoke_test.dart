@@ -123,7 +123,7 @@ void main() {
     await tester.pump();
     expect(chatCubit.state.tabs.length, 1);
     expect(chatCubit.state.tabs.single.id.startsWith('local-'), isFalse);
-    expect(chatCubit.isMemberRunning('team-lead'), isTrue);
+    expect(chatCubit.isMemberRunning(sessionId: chatCubit.state.activeSessionId!, memberId: 'team-lead'), isTrue);
     await pumpPhaseTransitions(tester);
     // Session exits compose: prefs dock restored. Prefer key mount over
     // hitTestable — pane size sync can lag TpDeferredMountShell in smoke.

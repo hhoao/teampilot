@@ -53,6 +53,7 @@ Widget _harness({
   required ChatCubit chat,
   required AgentAttentionCubit attention,
   required AppSession session,
+  String selectedMemberId = '',
 }) {
   final theme = ThemeData(useMaterial3: true);
   return MaterialApp(
@@ -72,7 +73,10 @@ Widget _harness({
           BlocProvider<AgentAttentionCubit>.value(value: attention),
         ],
         child: Scaffold(
-          body: AgentPermissionAttentionBanner(session: session),
+          body: AgentPermissionAttentionBanner(
+            session: session,
+            selectedMemberId: selectedMemberId,
+          ),
         ),
       ),
     ),

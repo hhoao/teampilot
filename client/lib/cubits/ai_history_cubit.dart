@@ -1,150 +1,89 @@
 import 'dart:async';
-import 'dart:math' as math;
 
-import 'package:ai_message_core/ai_message_core.dart';
-import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:uuid/uuid.dart';
 
 import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../models/workspace_launch_context.dart';
 import '../services/session/ai_history_loader.dart';
 import '../services/session/ai_history_pending_text.dart';
-import '../services/session/session_history_pagination.dart';
-import '../utils/logging/logger.dart';
+import '../services/session/history_seat_key.dart';
+import 'ai_history_seat.dart';
 
-/// Host-local AI history status — not session connect / "starting…".
-enum AiHistoryViewStatus { loading, ready, empty, error }
+export 'ai_history_seat.dart'
+    show AiHistorySeat, AiHistoryState, AiHistoryViewStatus;
 
-class AiHistoryState extends Equatable {
-  const AiHistoryState({
-    this.status = AiHistoryViewStatus.empty,
-    this.totalMessageCount = 0,
-    this.hasOlder = false,
-    this.isLoadingOlder = false,
-    this.errorMessage,
-    this.softReloadError,
-    this.awaitingAssistant = false,
-    this.sessionId,
-    this.memberId,
-  });
-
-  final AiHistoryViewStatus status;
-  final int totalMessageCount;
-  final bool hasOlder;
-  final bool isLoadingOlder;
-  final String? errorMessage;
-  final String? softReloadError;
-
-  /// True from continue-send until the assistant turn settles (host clears on
-  /// idle / send failure). SoftReload alone must not clear this — one turn may
-  /// flush many assistant messages.
-  final bool awaitingAssistant;
-  final String? sessionId;
-  final String? memberId;
-
-  AiHistoryState copyWith({
-    AiHistoryViewStatus? status,
-    int? totalMessageCount,
-    bool? hasOlder,
-    bool? isLoadingOlder,
-    String? errorMessage,
-    bool clearError = false,
-    String? softReloadError,
-    bool clearSoftReloadError = false,
-    bool? awaitingAssistant,
-    String? sessionId,
-    String? memberId,
-  }) {
-    return AiHistoryState(
-      status: status ?? this.status,
-      totalMessageCount: totalMessageCount ?? this.totalMessageCount,
-      hasOlder: hasOlder ?? this.hasOlder,
-      isLoadingOlder: isLoadingOlder ?? this.isLoadingOlder,
-      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-      softReloadError: clearSoftReloadError
-          ? null
-          : (softReloadError ?? this.softReloadError),
-      awaitingAssistant: awaitingAssistant ?? this.awaitingAssistant,
-      sessionId: sessionId ?? this.sessionId,
-      memberId: memberId ?? this.memberId,
-    );
-  }
-
-  @override
-  List<Object?> get props => [
-    status,
-    totalMessageCount,
-    hasOlder,
-    isLoadingOlder,
-    errorMessage,
-    softReloadError,
-    awaitingAssistant,
-    sessionId,
-    memberId,
-  ];
-}
-
-class _PendingUser {
-  const _PendingUser({required this.id, required this.text});
-
-  final String id;
-  final String text;
-}
-
-class _StickyLocalUser {
-  const _StickyLocalUser({required this.id, required this.text});
-
-  final String id;
-  final String text;
-}
-
+/// App-wide History registry: one [AiHistorySeat] per `sessionId|shellMemberId`.
+///
+/// Temporary: [state] mirrors the last-loaded / focused seat so existing
+/// BlocBuilder / unit tests keep working until SessionChatView binds seats.
 class AiHistoryCubit extends Cubit<AiHistoryState> {
   AiHistoryCubit({required AiHistoryLoader loader})
     : _loader = loader,
       super(const AiHistoryState());
 
-  static const _uuid = Uuid();
-
-  /// Aligns with [TerminalActivityTracker.idleAfter], plus a small slack so the
-  /// seat-idle falling edge usually wins the race and reveals the tip as Running
-  /// clears — avoiding a flash of final text under a still-spinning indicator.
-  static const tipHoldAfterAssistant = Duration(milliseconds: 2800);
+  /// Alias for [AiHistorySeat.tipHoldAfterAssistant] (tests / callers).
+  static const tipHoldAfterAssistant = AiHistorySeat.tipHoldAfterAssistant;
 
   final AiHistoryLoader _loader;
-  final ExternalStoreAiThreadRuntime runtime = ExternalStoreAiThreadRuntime();
+  final Map<String, AiHistorySeat> _seats = {};
+  final Map<String, StreamSubscription<AiHistoryState>> _seatSubs = {};
+
+  /// Landing create+send may finish before History loads the new seat.
+  /// Survives seat [AiHistorySeat.clearPendings]; consumed when that seat loads.
+  final Map<String, String> _seedPendingByKey = {};
+
+  String? _focusedSeatKey;
 
   /// Shared loader for live-refresh watch-meta resolve.
   AiHistoryLoader get loader => _loader;
 
-  int _loadGeneration = 0;
-  List<AiMessage> _allMessages = const [];
-  int _visibleCount = 0;
+  AiHistorySeat? get _focusedSeat {
+    final key = _focusedSeatKey;
+    if (key == null) return null;
+    return _seats[key];
+  }
 
-  /// Prefix of [_allMessages] published to the thread. Trailing assistants may
-  /// stay held while [awaitingAssistant] until idle or [tipHoldAfterAssistant].
-  int _committedLength = 0;
-  final List<_PendingUser> _pendingQueue = [];
-  /// Mailbox (and similar) user turns that are not in the CLI transcript.
-  /// Appended after the committed tip; survive softReload; cleared on seat change.
-  final List<_StickyLocalUser> _stickyLocalUsers = [];
-  Timer? _tipHoldTimer;
+  /// True when the focused seat has a held assistant tip.
+  bool get hasHeldAssistantTip =>
+      _focusedSeat?.hasHeldAssistantTip ?? false;
 
-  /// Landing create+send may finish before History loads the new seat.
-  /// Survives [clearPendings] on seat change; consumed when that seat loads.
-  String? _seedPendingSessionId;
-  String? _seedPendingMemberId;
-  String? _seedPendingText;
+  AiHistorySeat ensureSeat({
+    required String sessionId,
+    required String selectedMemberId,
+  }) {
+    final key = historySeatKey(
+      sessionId: sessionId,
+      selectedMemberId: selectedMemberId,
+    );
+    final existing = _seats[key];
+    if (existing != null) return existing;
 
-  AppSession? _lastSession;
-  String? _lastMemberId;
-  TeamProfile? _lastTeam;
-  String? _lastWorkingDirectory;
-  WorkspaceLaunchContext? _lastLaunchContext;
+    final seat = AiHistorySeat(
+      loader: _loader,
+      onTranscriptApplied: _consumeSeedPendingIfMatching,
+    );
+    _seats[key] = seat;
+    // Tip-hold timer and other async seat emits must reach facade listeners.
+    _seatSubs[key] = seat.stream.listen((_) => _mirrorSeat(key, seat));
+    return seat;
+  }
 
-  /// True when assistant tip is loaded but not yet shown.
-  bool get hasHeldAssistantTip => _committedLength < _allMessages.length;
+  AiHistorySeat? seatOf({
+    required String sessionId,
+    required String selectedMemberId,
+  }) {
+    final key = historySeatKey(
+      sessionId: sessionId,
+      selectedMemberId: selectedMemberId,
+    );
+    return _seats[key];
+  }
+
+  void _mirrorSeat(String key, AiHistorySeat seat) {
+    if (isClosed || _focusedSeatKey != key) return;
+    emit(seat.state);
+  }
 
   Future<void> load({
     required AppSession session,
@@ -154,106 +93,40 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     String? workingDirectory,
     bool force = false,
   }) async {
-    final seatChanged =
-        state.sessionId != session.sessionId || state.memberId != memberId;
-    if (seatChanged) {
-      clearPendings();
-    }
-
-    _lastSession = session;
-    _lastMemberId = memberId;
-    _lastTeam = team;
-    _lastWorkingDirectory = workingDirectory;
-    _lastLaunchContext = launchContext;
-
-    final gen = ++_loadGeneration;
-    _cancelTipHoldTimer();
-    _allMessages = const [];
-    _visibleCount = 0;
-    _committedLength = 0;
-    runtime.setLoading();
-    emit(
-      AiHistoryState(
-        status: AiHistoryViewStatus.loading,
-        // Preserve turn chrome across soft→cold remounts of the same seat.
-        awaitingAssistant: !seatChanged && state.awaitingAssistant,
-        sessionId: session.sessionId,
-        memberId: memberId,
-      ),
+    final key = historySeatKey(
+      sessionId: session.sessionId,
+      selectedMemberId: memberId,
     );
-
-    try {
-      final messages = await _loader.load(
-        session: session,
-        memberId: memberId,
-        launchContext: launchContext,
-        team: team,
-        workingDirectory: workingDirectory,
-        force: force,
-      );
-      if (gen != _loadGeneration || isClosed) return;
-      _applyMessages(messages, session.sessionId, memberId);
-    } catch (e, st) {
-      appLogger.e(
-        '[ai-history] cubit load failed session=${session.sessionId} '
-        'member=$memberId team=${team?.id ?? session.sessionTeam}: $e',
-        error: e,
-        stackTrace: st,
-      );
-      if (gen != _loadGeneration || isClosed) return;
-      _allMessages = const [];
-      _visibleCount = 0;
-      _committedLength = 0;
-      runtime.setError(e.toString());
-      emit(
-        AiHistoryState(
-          status: AiHistoryViewStatus.error,
-          errorMessage: e.toString(),
-          sessionId: session.sessionId,
-          memberId: memberId,
-        ),
-      );
-    }
+    final seat = ensureSeat(
+      sessionId: session.sessionId,
+      selectedMemberId: memberId,
+    );
+    _focusedSeatKey = key;
+    // Start seat load synchronously through its first await (emits loading),
+    // then mirror before this facade method yields — so callers that do
+    // `final f = cubit.load(...); expect(cubit.state.loading)` still work.
+    final future = seat.load(
+      session: session,
+      memberId: memberId,
+      launchContext: launchContext,
+      team: team,
+      workingDirectory: workingDirectory,
+      force: force,
+    );
+    _mirrorSeat(key, seat);
+    await future;
+    _mirrorSeat(key, seat);
   }
 
-  /// Live refresh: tip-Δ window, no loading flash when already ready.
+  /// Live refresh for the focused / last-loaded seat (Task 4 binds per-seat).
   Future<void> softReload() async {
-    final session = _lastSession;
-    final memberId = _lastMemberId;
-    final launchContext = _lastLaunchContext;
-    if (session == null || memberId == null || launchContext == null) return;
-
-    final gen = _loadGeneration;
-    final sessionId = session.sessionId;
-
-    try {
-      _loader.invalidate(sessionId: sessionId, memberId: memberId);
-      final messages = await _loader.load(
-        session: session,
-        memberId: memberId,
-        launchContext: launchContext,
-        team: _lastTeam,
-        workingDirectory: _lastWorkingDirectory,
-        force: true,
-      );
-      if (gen != _loadGeneration || isClosed) return;
-      if (session.sessionId != (_lastSession?.sessionId ?? '') ||
-          memberId != _lastMemberId) {
-        return;
-      }
-      // Pre-locate: empty parse keeps prior messages until a transcript exists.
-      if (messages.isEmpty && _allMessages.isNotEmpty) return;
-      _applySoftReloadMessages(messages, sessionId, memberId);
-    } catch (e, st) {
-      appLogger.e(
-        '[ai-history] cubit softReload failed session=$sessionId '
-        'member=$memberId: $e',
-        error: e,
-        stackTrace: st,
-      );
-      if (gen != _loadGeneration || isClosed) return;
-      emit(state.copyWith(softReloadError: e.toString()));
-    }
+    final seat = _focusedSeat;
+    final key = _focusedSeatKey;
+    if (seat == null || key == null) return;
+    final future = seat.softReload();
+    _mirrorSeat(key, seat);
+    await future;
+    _mirrorSeat(key, seat);
   }
 
   /// Review remount: soft when already ready for this seat, else cold load.
@@ -264,55 +137,59 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     TeamProfile? team,
     String? workingDirectory,
   }) async {
-    if (state.status == AiHistoryViewStatus.ready &&
-        state.sessionId == session.sessionId &&
-        state.memberId == memberId) {
-      await softReload();
-      return;
-    }
-    await load(
+    final key = historySeatKey(
+      sessionId: session.sessionId,
+      selectedMemberId: memberId,
+    );
+    final seat = ensureSeat(
+      sessionId: session.sessionId,
+      selectedMemberId: memberId,
+    );
+    _focusedSeatKey = key;
+    final future = seat.softReloadOrLoad(
       session: session,
       memberId: memberId,
       launchContext: launchContext,
       team: team,
       workingDirectory: workingDirectory,
     );
+    _mirrorSeat(key, seat);
+    await future;
+    _mirrorSeat(key, seat);
   }
 
-  /// Stale hook from ChatCubit: soft when ready for [sessionId].
+  /// Soft-reload every open seat for [sessionId] (ready → soft; else force).
   Future<void> softReloadIfSession(String sessionId) async {
-    if (state.status == AiHistoryViewStatus.ready &&
-        state.sessionId == sessionId) {
-      await softReload();
+    final seats = _seatsForSession(sessionId).toList();
+    if (seats.isEmpty) {
+      _loader.invalidate(sessionId: sessionId);
       return;
     }
-    await invalidateAndReload(sessionId);
+    _loader.invalidate(sessionId: sessionId);
+    for (final seat in seats) {
+      if (seat.state.status == AiHistoryViewStatus.ready) {
+        await seat.softReload();
+      } else {
+        await seat.invalidateAndReload(sessionId);
+      }
+    }
+    final focused = _focusedSeat;
+    final key = _focusedSeatKey;
+    if (focused != null && key != null) _mirrorSeat(key, focused);
   }
 
   void enqueuePendingUser(String text) {
-    final pending = _PendingUser(id: 'pending:${_uuid.v4()}', text: text);
-    _pendingQueue.add(pending);
-    _remergePendingsOntoRuntime();
-    // Empty / loading: promote to ready so History shows the pending bubble
-    // instead of the empty / spinner pane (runtime already has the tip message).
-    if (state.status == AiHistoryViewStatus.empty ||
-        state.status == AiHistoryViewStatus.loading) {
-      emit(
-        state.copyWith(
-          status: AiHistoryViewStatus.ready,
-          awaitingAssistant: true,
-        ),
-      );
-    } else {
-      emit(state.copyWith(awaitingAssistant: true));
-    }
+    final seat = _focusedSeat;
+    final key = _focusedSeatKey;
+    if (seat == null || key == null) return;
+    seat.enqueuePendingUser(text);
+    _mirrorSeat(key, seat);
   }
 
   /// Optimistic first bubble for landing create+send that stays on Chat.
   ///
-  /// If this cubit is already showing [sessionId]/[memberId], enqueues
-  /// immediately. Otherwise stores a seed that survives seat [clearPendings]
-  /// and is applied when that seat finishes loading.
+  /// If that seat is already showing, enqueues immediately. Otherwise stores a
+  /// seed keyed by [historySeatKey] and applies when that seat finishes loading.
   void seedPendingUser({
     required String sessionId,
     required String memberId,
@@ -320,20 +197,41 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
   }) {
     final trimmed = text.trim();
     if (sessionId.trim().isEmpty || trimmed.isEmpty) return;
-    if (state.sessionId == sessionId && state.memberId == memberId) {
-      enqueuePendingUser(trimmed);
-      _clearSeedPending();
+    final key = historySeatKey(
+      sessionId: sessionId,
+      selectedMemberId: memberId,
+    );
+    final seat = _seats[key];
+    if (seat != null && _seatMatchesKey(seat, key)) {
+      seat.enqueuePendingUser(trimmed);
+      _seedPendingByKey.remove(key);
+      if (_focusedSeatKey == key) _mirrorSeat(key, seat);
       return;
     }
-    _seedPendingSessionId = sessionId;
-    _seedPendingMemberId = memberId;
-    _seedPendingText = trimmed;
+    _seedPendingByKey[key] = trimmed;
   }
 
-  void _clearSeedPending() {
-    _seedPendingSessionId = null;
-    _seedPendingMemberId = null;
-    _seedPendingText = null;
+  void _consumeSeedPendingIfMatching(String sessionId, String memberId) {
+    final key = historySeatKey(
+      sessionId: sessionId,
+      selectedMemberId: memberId,
+    );
+    final seedText = _seedPendingByKey.remove(key);
+    if (seedText == null) return;
+    final seat = _seats[key];
+    if (seat == null) return;
+    seat.enqueuePendingUser(seedText);
+    if (_focusedSeatKey == key) _mirrorSeat(key, seat);
+  }
+
+  bool _seatMatchesKey(AiHistorySeat seat, String key) {
+    final sid = seat.state.sessionId;
+    if (sid == null || sid.isEmpty) return false;
+    return historySeatKey(
+          sessionId: sid,
+          selectedMemberId: seat.state.memberId ?? '',
+        ) ==
+        key;
   }
 
   /// Drop a landing seed and any matching optimistic pending when send fails.
@@ -342,149 +240,76 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     required String text,
   }) {
     final trimmed = text.trim();
-    final seedText = _seedPendingText;
-    if (_seedPendingSessionId == sessionId &&
-        seedText != null &&
-        normalizeAiHistoryPendingText(seedText) ==
-            normalizeAiHistoryPendingText(trimmed)) {
-      _clearSeedPending();
+    final prefix = '$sessionId|';
+    final norm = normalizeAiHistoryPendingText(trimmed);
+    for (final entryKey in _seedPendingByKey.keys.toList()) {
+      if (!entryKey.startsWith(prefix)) continue;
+      final seedText = _seedPendingByKey[entryKey];
+      if (seedText != null &&
+          normalizeAiHistoryPendingText(seedText) == norm) {
+        _seedPendingByKey.remove(entryKey);
+      }
     }
-    removePendingMatching(trimmed);
+    for (final seat in _seatsForSession(sessionId)) {
+      seat.removePendingMatching(trimmed);
+    }
+    final focused = _focusedSeat;
+    final key = _focusedSeatKey;
+    if (focused != null && key != null) {
+      focused.removePendingMatching(trimmed);
+      _mirrorSeat(key, focused);
+    }
   }
 
-  void _consumeSeedPendingIfMatching(String sessionId, String memberId) {
-    final seedSession = _seedPendingSessionId;
-    final seedMember = _seedPendingMemberId;
-    final seedText = _seedPendingText;
-    if (seedSession == null || seedText == null) return;
-    if (seedSession != sessionId || seedMember != memberId) return;
-    _clearSeedPending();
-    enqueuePendingUser(seedText);
-  }
-
-  /// Append a local user bubble that is not backed by the CLI transcript.
-  ///
-  /// Used after a TeamBus mailbox mail is consumed: stays after the tip across
-  /// soft reloads (FIFO). Does not latch [awaitingAssistant].
   void appendStickyLocalUser({required String id, required String text}) {
-    final trimmedId = id.trim();
-    final trimmedText = text.trim();
-    if (trimmedId.isEmpty || trimmedText.isEmpty) return;
-    if (_stickyLocalUsers.any((s) => s.id == trimmedId)) return;
-    _stickyLocalUsers.add(
-      _StickyLocalUser(id: trimmedId, text: trimmedText),
-    );
-    _remergePendingsOntoRuntime();
-    if (state.status == AiHistoryViewStatus.empty) {
-      emit(state.copyWith(status: AiHistoryViewStatus.ready));
-    } else if (state.status == AiHistoryViewStatus.ready) {
-      // Remerge already published; no awaiting change.
-    }
+    final seat = _focusedSeat;
+    final key = _focusedSeatKey;
+    if (seat == null || key == null) return;
+    seat.appendStickyLocalUser(id: id, text: text);
+    _mirrorSeat(key, seat);
   }
 
-  /// Rolls back an optimistic pending when connect/inject fails.
   void removePendingMatching(String text) {
-    final target = normalizeAiHistoryPendingText(text);
-    final before = _pendingQueue.length;
-    _pendingQueue.removeWhere(
-      (p) => normalizeAiHistoryPendingText(p.text) == target,
-    );
-    if (_pendingQueue.length == before && state.awaitingAssistant == false) {
-      return;
-    }
-    _cancelTipHoldTimer();
-    _commitAll();
-    _remergePendingsOntoRuntime();
-    emit(state.copyWith(awaitingAssistant: false));
+    final seat = _focusedSeat;
+    final key = _focusedSeatKey;
+    if (seat == null || key == null) return;
+    seat.removePendingMatching(text);
+    _mirrorSeat(key, seat);
   }
 
   void setAwaitingAssistant(bool value) {
-    if (!value) {
-      _cancelTipHoldTimer();
-      if (hasHeldAssistantTip) {
-        _commitAll();
-        _remergePendingsOntoRuntime();
-      }
-    }
-    if (state.awaitingAssistant == value &&
-        state.totalMessageCount == _committedLength) {
-      return;
-    }
-    emit(
-      state.copyWith(
-        awaitingAssistant: value,
-        totalMessageCount: _committedLength,
-        hasOlder: _hasOlder(),
-      ),
-    );
+    final seat = _focusedSeat;
+    final key = _focusedSeatKey;
+    if (seat == null || key == null) return;
+    seat.setAwaitingAssistant(value);
+    _mirrorSeat(key, seat);
   }
 
-  /// Publish any held assistant tip. When [endAwaiting] is true (seat idle),
-  /// also clear Running chrome so the final tip and spinner settle together.
   void flushHeldTip({bool endAwaiting = false}) {
-    _cancelTipHoldTimer();
-    final hadHeld = hasHeldAssistantTip;
-    if (hadHeld) _commitAll();
-
-    if (endAwaiting) {
-      if (!hadHeld && !state.awaitingAssistant) return;
-      if (state.status == AiHistoryViewStatus.ready ||
-          state.status == AiHistoryViewStatus.empty) {
-        _remergePendingsOntoRuntime();
-      }
-      emit(
-        state.copyWith(
-          awaitingAssistant: false,
-          totalMessageCount: _committedLength,
-          hasOlder: _hasOlder(),
-          isLoadingOlder: false,
-        ),
-      );
-      return;
-    }
-
-    if (hadHeld) {
-      _emitReadyWindow(state.sessionId, state.memberId);
-    }
+    final seat = _focusedSeat;
+    final key = _focusedSeatKey;
+    if (seat == null || key == null) return;
+    seat.flushHeldTip(endAwaiting: endAwaiting);
+    _mirrorSeat(key, seat);
   }
 
   void clearPendings() {
-    _cancelTipHoldTimer();
-    final hadSticky = _stickyLocalUsers.isNotEmpty;
-    if (_pendingQueue.isEmpty &&
-        !hadSticky &&
-        !state.awaitingAssistant &&
-        !hasHeldAssistantTip) {
-      return;
-    }
-    _pendingQueue.clear();
-    _stickyLocalUsers.clear();
-    _commitAll();
-    if (state.status == AiHistoryViewStatus.ready ||
-        state.status == AiHistoryViewStatus.empty) {
-      _remergePendingsOntoRuntime();
-    }
-    if (state.awaitingAssistant) {
-      emit(state.copyWith(awaitingAssistant: false));
-    }
+    final seat = _focusedSeat;
+    final key = _focusedSeatKey;
+    if (seat == null || key == null) return;
+    seat.clearPendings();
+    _mirrorSeat(key, seat);
   }
 
-  /// Drop cache for [sessionId] and force-reload if this cubit last loaded it.
   Future<void> invalidateAndReload(String sessionId) async {
     _loader.invalidate(sessionId: sessionId);
-    final session = _lastSession;
-    final memberId = _lastMemberId;
-    final launchContext = _lastLaunchContext;
-    if (session == null || memberId == null || launchContext == null) return;
-    if (session.sessionId != sessionId) return;
-    await load(
-      session: session,
-      memberId: memberId,
-      launchContext: launchContext,
-      team: _lastTeam,
-      workingDirectory: _lastWorkingDirectory,
-      force: true,
-    );
+    final seats = _seatsForSession(sessionId).toList();
+    for (final seat in seats) {
+      await seat.invalidateAndReload(sessionId);
+    }
+    final focused = _focusedSeat;
+    final key = _focusedSeatKey;
+    if (focused != null && key != null) _mirrorSeat(key, focused);
   }
 
   void invalidateSession(String sessionId) {
@@ -492,262 +317,62 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
   }
 
   void loadOlder() {
-    if (state.status != AiHistoryViewStatus.ready) return;
-    if (!state.hasOlder || state.isLoadingOlder) return;
+    final seat = _focusedSeat;
+    final key = _focusedSeatKey;
+    if (seat == null || key == null) return;
+    seat.loadOlder();
+    _mirrorSeat(key, seat);
+  }
 
-    emit(state.copyWith(isLoadingOlder: true));
-    _visibleCount = math.min(
-      _visibleCount + kSessionHistoryOlderPageSize,
-      _committedLength,
-    );
-    _emitReadyWindow(state.sessionId, state.memberId);
+  void disposeSeatsForSession(String sessionId) {
+    final prefix = '$sessionId|';
+    final keys = _seats.keys
+        .where((k) => k.startsWith(prefix))
+        .toList(growable: false);
+    for (final key in keys) {
+      final seat = _seats.remove(key);
+      final sub = _seatSubs.remove(key);
+      unawaited(sub?.cancel() ?? Future<void>.value());
+      unawaited(seat?.close() ?? Future<void>.value());
+    }
+    for (final key in _seedPendingByKey.keys.toList(growable: false)) {
+      if (key.startsWith(prefix)) _seedPendingByKey.remove(key);
+    }
+    if (_focusedSeatKey != null && _focusedSeatKey!.startsWith(prefix)) {
+      _focusedSeatKey = null;
+      if (!isClosed) emit(const AiHistoryState());
+    }
   }
 
   void clear() {
-    _loadGeneration++;
-    _cancelTipHoldTimer();
-    _allMessages = const [];
-    _visibleCount = 0;
-    _committedLength = 0;
-    _pendingQueue.clear();
-    _stickyLocalUsers.clear();
-    _clearSeedPending();
-    _lastSession = null;
-    _lastMemberId = null;
-    _lastTeam = null;
-    _lastWorkingDirectory = null;
-    _lastLaunchContext = null;
-    runtime.setEmpty();
-    emit(const AiHistoryState());
-  }
-
-  void _applyMessages(
-    List<AiMessage> messages,
-    String sessionId,
-    String memberId,
-  ) {
-    _cancelTipHoldTimer();
-    _allMessages = messages;
-    _committedLength = _allMessages.length;
-    _visibleCount = math.min(kSessionHistoryInitialTurns, _committedLength);
-    _dropMatchedPendings();
-
-    if (_allMessages.isEmpty) {
-      _emitEmptyOrPendingReady(sessionId, memberId);
-      _consumeSeedPendingIfMatching(sessionId, memberId);
-      return;
+    for (final key in _seats.keys.toList(growable: false)) {
+      final seat = _seats.remove(key);
+      final sub = _seatSubs.remove(key);
+      unawaited(sub?.cancel() ?? Future<void>.value());
+      unawaited(seat?.close() ?? Future<void>.value());
     }
-
-    _emitReadyWindow(sessionId, memberId);
-    _consumeSeedPendingIfMatching(sessionId, memberId);
+    _seedPendingByKey.clear();
+    _focusedSeatKey = null;
+    if (!isClosed) emit(const AiHistoryState());
   }
 
-  void _applySoftReloadMessages(
-    List<AiMessage> messages,
-    String sessionId,
-    String memberId,
-  ) {
-    final oldLength = _allMessages.length;
-    final oldVisible = _visibleCount;
-    final oldCommitted = _committedLength;
-    final newLength = messages.length;
-    _allMessages = messages;
-    final tipDelta = math.max(0, newLength - oldLength);
-    if (newLength < oldLength) {
-      _visibleCount = math.min(oldVisible, newLength);
-      _committedLength = math.min(oldCommitted, newLength);
-    } else {
-      _visibleCount = math.min(newLength, oldVisible + tipDelta);
-    }
-    _dropMatchedPendings();
-
-    if (_allMessages.isEmpty) {
-      _cancelTipHoldTimer();
-      _committedLength = 0;
-      _emitEmptyOrPendingReady(sessionId, memberId);
-      _consumeSeedPendingIfMatching(sessionId, memberId);
-      return;
-    }
-
-    if (!state.awaitingAssistant && _pendingQueue.isEmpty) {
-      _cancelTipHoldTimer();
-      _committedLength = _allMessages.length;
-    } else {
-      _committedLength = _commitThroughLatestUser(
-        math.min(oldCommitted, _allMessages.length),
-      );
-      if (hasHeldAssistantTip) {
-        _scheduleTipHoldFlush();
-      } else {
-        _cancelTipHoldTimer();
-      }
-    }
-
-    _emitReadyWindow(sessionId, memberId);
-    _consumeSeedPendingIfMatching(sessionId, memberId);
+  Iterable<AiHistorySeat> _seatsForSession(String sessionId) {
+    final prefix = '$sessionId|';
+    return _seats.entries
+        .where((e) => e.key.startsWith(prefix))
+        .map((e) => e.value);
   }
-
-  /// Publish transcript through the latest user turn; leave trailing non-user
-  /// tip held while the seat is still awaiting.
-  int _commitThroughLatestUser(int from) {
-    var committed = from.clamp(0, _allMessages.length);
-    for (var i = committed; i < _allMessages.length; i++) {
-      if (_allMessages[i].role == AiRole.user) {
-        committed = i + 1;
-      } else {
-        break;
-      }
-    }
-    return committed;
-  }
-
-  void _commitAll() {
-    _committedLength = _allMessages.length;
-  }
-
-  void _cancelTipHoldTimer() {
-    _tipHoldTimer?.cancel();
-    _tipHoldTimer = null;
-  }
-
-  void _scheduleTipHoldFlush() {
-    _cancelTipHoldTimer();
-    if (!hasHeldAssistantTip) return;
-    _tipHoldTimer = Timer(tipHoldAfterAssistant, () {
-      if (isClosed) return;
-      // Still in turn: reveal held tip but keep Running.
-      flushHeldTip(endAwaiting: false);
-    });
-  }
-
-  /// Empty transcript with unmatched pendings/stickies stays on the thread path.
-  void _emitEmptyOrPendingReady(String sessionId, String memberId) {
-    if (_pendingQueue.isEmpty && _stickyLocalUsers.isEmpty) {
-      runtime.setEmpty();
-      emit(
-        AiHistoryState(
-          status: AiHistoryViewStatus.empty,
-          sessionId: sessionId,
-          memberId: memberId,
-        ),
-      );
-      return;
-    }
-    _remergePendingsOntoRuntime();
-    emit(
-      AiHistoryState(
-        status: AiHistoryViewStatus.ready,
-        awaitingAssistant: _computeAwaitingAssistant(),
-        sessionId: sessionId,
-        memberId: memberId,
-      ),
-    );
-  }
-
-  void _dropMatchedPendings() {
-    if (_pendingQueue.isEmpty) return;
-    final n = math.max(_pendingQueue.length + 2, 5);
-    final userTurns = [
-      for (final m in _allMessages)
-        if (m.role == AiRole.user) m,
-    ];
-    final tipUsers = userTurns.length <= n
-        ? userTurns
-        : userTurns.sublist(userTurns.length - n);
-    final matched = List<bool>.filled(tipUsers.length, false);
-    final remaining = <_PendingUser>[];
-
-    for (final pending in _pendingQueue) {
-      final norm = normalizeAiHistoryPendingText(pending.text);
-      var matchIdx = -1;
-      for (var i = tipUsers.length - 1; i >= 0; i--) {
-        if (matched[i]) continue;
-        final tipNorm = normalizeAiHistoryPendingText(
-          aiHistoryUserPlainText(tipUsers[i]),
-        );
-        if (tipNorm == norm) {
-          matchIdx = i;
-          break;
-        }
-      }
-      if (matchIdx >= 0) {
-        matched[matchIdx] = true;
-      } else {
-        remaining.add(pending);
-      }
-    }
-    _pendingQueue
-      ..clear()
-      ..addAll(remaining);
-  }
-
-  /// Soft reload must not clear this — a turn may flush many assistant messages.
-  /// Host clears via [flushHeldTip] / [setAwaitingAssistant] when idle (or send fails).
-  bool _computeAwaitingAssistant() {
-    if (_pendingQueue.isNotEmpty) return true;
-    return state.awaitingAssistant;
-  }
-
-  void _remergePendingsOntoRuntime() {
-    final slice = _visibleSlice();
-    final overlay = <AiMessage>[
-      for (final s in _stickyLocalUsers)
-        AiMessage(
-          id: s.id,
-          role: AiRole.user,
-          parts: [AiTextPart(text: s.text)],
-        ),
-      for (final p in _pendingQueue)
-        AiMessage(
-          id: p.id,
-          role: AiRole.user,
-          parts: [AiTextPart(text: p.text)],
-        ),
-    ];
-    if (slice.isEmpty && overlay.isEmpty) {
-      if (_allMessages.isEmpty) {
-        runtime.setEmpty();
-      }
-      return;
-    }
-    // Always publish — callers invoke this when the window should be on the
-    // runtime. [ExternalStoreAiThreadRuntime.setMessages] no-ops notify when
-    // content is unchanged, so redundant publishes are cheap.
-    runtime.setMessages([...slice, ...overlay]);
-  }
-
-  void _emitReadyWindow(String? sessionId, String? memberId) {
-    _remergePendingsOntoRuntime();
-    emit(
-      AiHistoryState(
-        status: AiHistoryViewStatus.ready,
-        totalMessageCount: _committedLength,
-        hasOlder: _hasOlder(),
-        isLoadingOlder: false,
-        softReloadError: state.softReloadError,
-        awaitingAssistant: _computeAwaitingAssistant(),
-        sessionId: sessionId,
-        memberId: memberId,
-      ),
-    );
-  }
-
-  List<AiMessage> _visibleSlice() {
-    if (_committedLength <= 0 || _allMessages.isEmpty) return const [];
-    final committed = _committedLength >= _allMessages.length
-        ? _allMessages
-        : _allMessages.sublist(0, _committedLength);
-    final count = math.min(_visibleCount, committed.length);
-    final start = math.max(0, committed.length - count);
-    return committed.sublist(start);
-  }
-
-  bool _hasOlder() => _visibleCount < _committedLength;
 
   @override
-  Future<void> close() {
-    _cancelTipHoldTimer();
-    runtime.close();
+  Future<void> close() async {
+    for (final key in _seats.keys.toList(growable: false)) {
+      final seat = _seats.remove(key);
+      final sub = _seatSubs.remove(key);
+      await sub?.cancel();
+      await seat?.close();
+    }
+    _seedPendingByKey.clear();
+    _focusedSeatKey = null;
     return super.close();
   }
 }

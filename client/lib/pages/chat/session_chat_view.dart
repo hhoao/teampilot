@@ -35,6 +35,7 @@ import '../../services/compose/compose_text_edit.dart';
 import '../../services/compose/compose_voice_input.dart';
 import '../../services/expert_hub/expert_member_resolver.dart';
 import '../../services/session/ai_history_live_refresh_controller.dart';
+import '../../services/session/history_seat_key.dart';
 import '../../services/session/session_continue_overrides_apply.dart';
 import '../../services/session/session_history_pagination.dart';
 import '../../services/storage/app_storage.dart';
@@ -65,6 +66,7 @@ class SessionChatView extends StatefulWidget {
     this.isSubmitting = false,
     this.isMailboxUnread,
     this.peekContinueChannel,
+    this.routeActive = true,
     super.key,
   });
 
@@ -86,6 +88,10 @@ class SessionChatView extends StatefulWidget {
   /// thread pending (confirmed again after connect inside [onSubmit]).
   final HistoryContinueChannel Function()? peekContinueChannel;
 
+  /// When false and the seat member is not running, live transcript refresh stops
+  /// (warm keep-alive). Task 7 plumbs this from the workspace route scope.
+  final bool routeActive;
+
   @override
   State<SessionChatView> createState() => _SessionChatViewState();
 }
@@ -96,6 +102,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   late final ComposeVoiceInput _voiceInput;
   final _headlessAi = HeadlessAiService();
   AiHistoryLiveRefreshController? _liveRefresh;
+  AiHistorySeat? _seat;
 
   final _submitLock = HistoryContinueSubmitLock();
   final _mailboxQueued = StreamController<PendingUserMessage>.broadcast();
@@ -160,8 +167,16 @@ class _SessionChatViewState extends State<SessionChatView> {
     );
     unawaited(_voiceInput.initialize());
     _controller.addListener(_onComposeChanged);
+    _bindSeat();
     _loadHistory();
     unawaited(_loadWorkspaceProjectBundle());
+  }
+
+  void _bindSeat() {
+    _seat = context.read<AiHistoryCubit>().ensureSeat(
+      sessionId: widget.session.sessionId,
+      selectedMemberId: widget.selectedMemberId,
+    );
   }
 
   void _applyVoiceListening(bool listening) {
@@ -186,26 +201,33 @@ class _SessionChatViewState extends State<SessionChatView> {
   @override
   void didUpdateWidget(covariant SessionChatView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.session.sessionId != widget.session.sessionId ||
+    final seatChanged =
+        oldWidget.session.sessionId != widget.session.sessionId ||
         oldWidget.selectedMemberId != widget.selectedMemberId ||
-        oldWidget.team?.id != widget.team?.id) {
+        oldWidget.team?.id != widget.team?.id;
+    if (seatChanged) {
       unawaited(_stopLiveRefreshForSeatChange());
       _clearMailboxQueuedUi();
-      // Defer: load → runtime.setLoading sync-notifies app-scoped listeners
+      _bindSeat();
+      // Defer: load → runtime.setLoading sync-notifies seat listeners
       // while ancestors (e.g. TpDeferredForegroundMount) are still building.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        context.read<AiHistoryCubit>().clearPendings();
+        _seat?.clearPendings();
         _loadHistory();
       });
+    } else if (oldWidget.routeActive != widget.routeActive) {
+      _maybeStartLiveRefreshForRunningPty();
     }
     if (oldWidget.session.workspaceId != widget.session.workspaceId) {
       unawaited(_loadWorkspaceProjectBundle());
     }
   }
 
-  String _mailboxSeatKey() =>
-      '${widget.session.sessionId}|${widget.selectedMemberId}';
+  String _mailboxSeatKey() => historySeatKey(
+    sessionId: widget.session.sessionId,
+    selectedMemberId: widget.selectedMemberId,
+  );
 
   /// Drop Queued rows on seat change without promoting them as consumed.
   void _clearMailboxQueuedUi() {
@@ -270,21 +292,30 @@ class _SessionChatViewState extends State<SessionChatView> {
   );
 
   void _loadHistory({bool force = false}) {
-    final cubit = context.read<AiHistoryCubit>();
+    final seat = _seat;
+    if (seat == null) return;
     if (force) {
-      cubit.load(
-        session: widget.session,
-        memberId: widget.selectedMemberId,
-        launchContext: _launchContext,
-        team: widget.team,
-        workingDirectory: _workspaceRoot,
-        force: true,
+      unawaited(
+        seat.load(
+          session: widget.session,
+          memberId: widget.selectedMemberId,
+          launchContext: _launchContext,
+          team: widget.team,
+          workingDirectory: _workspaceRoot,
+          force: true,
+        ).then((_) {
+          if (!mounted) return;
+          _maybeStartLiveRefreshForRunningPty();
+          if (seat.state.awaitingAssistant) {
+            unawaited(_startLiveRefresh(skipInitialRefresh: true));
+          }
+        }),
       );
       return;
     }
     // Soft when already ready for this seat — no loading flash / hard reload.
     unawaited(
-      cubit
+      seat
           .softReloadOrLoad(
             session: widget.session,
             memberId: widget.selectedMemberId,
@@ -296,7 +327,7 @@ class _SessionChatViewState extends State<SessionChatView> {
             if (!mounted) return;
             _maybeStartLiveRefreshForRunningPty();
             // Landing seed / continue awaiting: refresh while PTY runs offstage.
-            if (cubit.state.awaitingAssistant) {
+            if (seat.state.awaitingAssistant) {
               unawaited(_startLiveRefresh(skipInitialRefresh: true));
             }
           }),
@@ -304,32 +335,67 @@ class _SessionChatViewState extends State<SessionChatView> {
   }
 
   /// PTY shells for Simple seats are keyed by [AppSession.sessionId].
-  String get _shellMemberId {
-    final mid = widget.selectedMemberId.trim();
-    if (mid.isEmpty) return widget.session.sessionId;
-    return mid;
-  }
+  String get _shellMemberId => shellMemberIdForHistory(
+    sessionId: widget.session.sessionId,
+    selectedMemberId: widget.selectedMemberId,
+  );
 
   void _maybeStartLiveRefreshForRunningPty() {
     if (!mounted) return;
-    final running = context.read<ChatCubit>().isMemberRunning(_shellMemberId);
-    if (!running) return;
+    final running = context.read<ChatCubit>().isMemberRunning(
+      sessionId: widget.session.sessionId,
+      memberId: _shellMemberId,
+    );
+    final hot = isHistorySeatHot(
+      routeActive: widget.routeActive,
+      isMemberRunning: running,
+    );
+    if (!hot) {
+      unawaited(_liveRefresh?.stop() ?? Future<void>.value());
+      return;
+    }
     // softReloadOrLoad already refreshed once on this load path — attach the
     // change signal without stacking ensureStarted → refreshNow softReload.
     unawaited(_startLiveRefresh(skipInitialRefresh: true));
   }
 
   Future<void> _startLiveRefresh({bool skipInitialRefresh = false}) async {
+    final seat = _seat;
+    if (seat == null) return;
+    final chat = context.read<ChatCubit>();
+    final running = chat.isMemberRunning(
+      sessionId: widget.session.sessionId,
+      memberId: _shellMemberId,
+    );
+    final hot = isHistorySeatHot(
+      routeActive: widget.routeActive,
+      isMemberRunning: running,
+    );
+    if (!hot) {
+      await _liveRefresh?.stop();
+      return;
+    }
     final cubit = context.read<AiHistoryCubit>();
     try {
       final roots = await cubit.loader.resolveSeatRuntime(
         launchContext: _launchContext,
         memberId: widget.selectedMemberId,
       );
-      if (!mounted) return;
+      if (!mounted || !identical(_seat, seat)) return;
+      final stillRunning = chat.isMemberRunning(
+        sessionId: widget.session.sessionId,
+        memberId: _shellMemberId,
+      );
+      if (!isHistorySeatHot(
+        routeActive: widget.routeActive,
+        isMemberRunning: stillRunning,
+      )) {
+        await _liveRefresh?.stop();
+        return;
+      }
       await _liveRefresh?.stop();
       _liveRefresh = AiHistoryLiveRefreshController(
-        cubit: cubit,
+        seat: seat,
         fs: () => roots.filesystem,
         resolveWatchMeta: () => cubit.loader.resolveWatchMeta(
           launchContext: _launchContext,
@@ -756,7 +822,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   Future<void> _handleSubmit() async {
     final text = _controller.text.trim();
     if (text.isEmpty || _isSubmitting) return;
-    final selectedMemberId = context.read<ChatCubit>().state.selectedMemberId;
+    final selectedMemberId = widget.selectedMemberId;
     if (AgentPermissionAttentionBanner.isSelectedSeatWaiting(
       attention: context.read<AgentAttentionCubit>(),
       session: widget.session,
@@ -765,14 +831,15 @@ class _SessionChatViewState extends State<SessionChatView> {
       return;
     }
 
-    final cubit = context.read<AiHistoryCubit>();
+    final seat = _seat;
+    if (seat == null) return;
     // Peek before connect so mailbox continues skip optimistic thread pending.
     // onSubmit re-resolves after connect; rollback if peek was wrong.
     final peek =
         widget.peekContinueChannel?.call() ?? HistoryContinueChannel.pty;
     final optimisticPty = peek == HistoryContinueChannel.pty;
     if (optimisticPty) {
-      cubit.enqueuePendingUser(text);
+      seat.enqueuePendingUser(text);
       _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
     }
     _controller.clear();
@@ -786,7 +853,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     setState(() {});
     if (!result.ok) {
       _cancelAwaitingIdleGrace();
-      if (optimisticPty) cubit.removePendingMatching(text);
+      if (optimisticPty) seat.removePendingMatching(text);
       _controller
         ..text = text
         ..selection = TextSelection.collapsed(offset: text.length);
@@ -796,7 +863,7 @@ class _SessionChatViewState extends State<SessionChatView> {
 
     if (result.isMailbox) {
       _cancelAwaitingIdleGrace();
-      if (optimisticPty) cubit.removePendingMatching(text);
+      if (optimisticPty) seat.removePendingMatching(text);
       final mailId = result.mailId!;
       _mailboxQueuedSeats[mailId] = _mailboxSeatKey();
       _mailboxQueued.add(PendingUserMessage(id: mailId, content: text));
@@ -807,7 +874,7 @@ class _SessionChatViewState extends State<SessionChatView> {
 
     if (!optimisticPty) {
       // Peek said mailbox but post-connect path was PTY — show the bubble now.
-      cubit.enqueuePendingUser(text);
+      seat.enqueuePendingUser(text);
       _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
     }
     unawaited(_startLiveRefresh());
@@ -823,8 +890,8 @@ class _SessionChatViewState extends State<SessionChatView> {
     _awaitingIdleGraceTimer = Timer(historyAwaitingIdleGrace, () {
       _awaitingIdleGraceTimer = null;
       if (!mounted) return;
-      final history = context.read<AiHistoryCubit>();
-      if (!history.state.awaitingAssistant) return;
+      final seat = _seat;
+      if (seat == null || !seat.state.awaitingAssistant) return;
       final working = context.read<ChatCubit>().state.workingSessionIds.contains(
         widget.session.sessionId,
       );
@@ -832,16 +899,17 @@ class _SessionChatViewState extends State<SessionChatView> {
         _sawSessionWorkingWhileAwaiting = true;
         return;
       }
-      history.flushHeldTip(endAwaiting: true);
+      seat.flushHeldTip(endAwaiting: true);
       _sawSessionWorkingWhileAwaiting = false;
     });
   }
 
   void _syncAwaitingFromWorkingSessions(ChatState chat) {
-    final history = context.read<AiHistoryCubit>();
+    final seat = _seat;
+    if (seat == null) return;
     final working = chat.workingSessionIds.contains(widget.session.sessionId);
     final action = resolveHistoryAwaitingWorkingAction(
-      awaitingAssistant: history.state.awaitingAssistant,
+      awaitingAssistant: seat.state.awaitingAssistant,
       sessionWorking: working,
       sawWorkingWhileAwaiting: _sawSessionWorkingWhileAwaiting,
     );
@@ -857,7 +925,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         _cancelAwaitingIdleGrace();
         return;
       case HistoryAwaitingWorkingAction.clearAwaiting:
-        history.flushHeldTip(endAwaiting: true);
+        seat.flushHeldTip(endAwaiting: true);
         _sawSessionWorkingWhileAwaiting = false;
         _cancelAwaitingIdleGrace();
         return;
@@ -878,9 +946,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     final session = _displaySession(context);
     final team = _liveTeam(context);
     final hubState = _expertHubState(context);
-    final selectedMemberId = context.select<ChatCubit, String>(
-      (c) => c.state.selectedMemberId,
-    );
+    final selectedMemberId = widget.selectedMemberId;
     final permissionWaiting = context.select<AgentAttentionCubit, bool>(
       (c) => AgentPermissionAttentionBanner.isSelectedSeatWaiting(
         attention: c,
@@ -978,9 +1044,13 @@ class _SessionChatViewState extends State<SessionChatView> {
                     formatThinkingProcessSteps: (count) =>
                         l10n.aiMessageThinkingProcessSteps(count as int),
                   ),
-                  child: BlocBuilder<AiHistoryCubit, AiHistoryState>(
+                  child: BlocBuilder<AiHistorySeat, AiHistoryState>(
+                    bloc: _seat,
                     builder: (context, state) {
-                      final cubit = context.read<AiHistoryCubit>();
+                      final historySeat = _seat;
+                      if (historySeat == null) {
+                        return const SizedBox.shrink();
+                      }
                       final seat = context.select<
                         ChatCubit,
                         ({
@@ -998,7 +1068,10 @@ class _SessionChatViewState extends State<SessionChatView> {
                           ),
                           sessionConnecting:
                               connectingId == sid || connectingId == 'pending',
-                          memberRunning: c.isMemberRunning(_shellMemberId),
+                          memberRunning: c.isMemberRunning(
+                            sessionId: sid,
+                            memberId: _shellMemberId,
+                          ),
                           // Connect completion bumps this so PTY-up rebuilds.
                           stateVersion: c.state.stateVersion,
                         );
@@ -1014,9 +1087,9 @@ class _SessionChatViewState extends State<SessionChatView> {
                       );
                       return SessionHistoryReviewMessages(
                         state: state,
-                        runtime: cubit.runtime,
+                        runtime: historySeat.runtime,
                         onRetry: () => _loadHistory(force: true),
-                        onLoadOlder: cubit.loadOlder,
+                        onLoadOlder: historySeat.loadOlder,
                         liveChrome: liveChrome,
                       );
                     },
@@ -1041,7 +1114,10 @@ class _SessionChatViewState extends State<SessionChatView> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      AgentPermissionAttentionBanner(session: widget.session),
+                      AgentPermissionAttentionBanner(
+                        session: widget.session,
+                        selectedMemberId: widget.selectedMemberId,
+                      ),
                       if (widget.isMailboxUnread != null)
                         HistoryMailboxQueuedStrip(
                           key: ValueKey(
@@ -1052,9 +1128,9 @@ class _SessionChatViewState extends State<SessionChatView> {
                           clearToken: _mailboxQueuedClearToken,
                           onConsumed: (msg) {
                             if (!mounted) return;
-                            final seat = _mailboxQueuedSeats.remove(msg.id);
-                            if (seat != _mailboxSeatKey()) return;
-                            context.read<AiHistoryCubit>().appendStickyLocalUser(
+                            final seatKey = _mailboxQueuedSeats.remove(msg.id);
+                            if (seatKey != _mailboxSeatKey()) return;
+                            _seat?.appendStickyLocalUser(
                               id: 'mailbox:${msg.id}',
                               text: msg.content,
                             );

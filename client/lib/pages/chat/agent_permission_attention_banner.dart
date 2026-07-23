@@ -12,9 +12,16 @@ import '../../utils/ui/app_keys.dart';
 /// Compact card shown just above Chat compose when the seat needs Terminal
 /// confirmation. Does not auto-switch; CTA jumps to Terminal.
 class AgentPermissionAttentionBanner extends StatelessWidget {
-  const AgentPermissionAttentionBanner({required this.session, super.key});
+  const AgentPermissionAttentionBanner({
+    required this.session,
+    required this.selectedMemberId,
+    super.key,
+  });
 
   final AppSession session;
+
+  /// Scoped member for this chat body (not foreground [ChatCubit] selection).
+  final String selectedMemberId;
 
   /// Seat id used for attention lookup (simple → [AppSession.sessionId]).
   static String attentionMemberId({
@@ -54,9 +61,6 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final selectedMemberId = context.select<ChatCubit, String>(
-      (c) => c.state.selectedMemberId,
-    );
     final seatId = attentionMemberId(
       session: session,
       selectedMemberId: selectedMemberId,

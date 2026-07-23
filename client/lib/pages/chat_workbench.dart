@@ -595,6 +595,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
           ),
       selectedMemberId: historyMemberId,
       team: resolvedTeam,
+      routeActive: routeActive,
       launchError: launchError,
       peekContinueChannel: resolveChannel,
       isMailboxUnread: (mailId) {

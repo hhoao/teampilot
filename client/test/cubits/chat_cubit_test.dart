@@ -561,8 +561,8 @@ void main() {
         await postFrame.flush();
 
         expect(cubit.state.tabs.length, 1);
-        expect(cubit.isMemberRunning('m-lead'), isTrue);
-        expect(cubit.isMemberRunning('m-dev'), isTrue);
+        expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'm-lead'), isTrue);
+        expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'm-dev'), isTrue);
         expect(cubit.state.selectedMemberId, 'm-lead');
         expect(fakeSessions, hasLength(2));
         expect(
@@ -817,8 +817,8 @@ void main() {
             .toList();
         expect(connectedMembers.where((id) => id == 'm-lead'), hasLength(1));
         expect(connectedMembers.where((id) => id == 'm-dev'), hasLength(1));
-        expect(cubit.isMemberRunning('m-lead'), isTrue);
-        expect(cubit.isMemberRunning('m-dev'), isTrue);
+        expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'm-lead'), isTrue);
+        expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'm-dev'), isTrue);
       },
     );
 
@@ -939,12 +939,12 @@ void main() {
       await postFrame.flush();
 
       expect(cubit.state.tabs.length, 1);
-      expect(cubit.isMemberRunning('team-lead'), isTrue);
+      expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'team-lead'), isTrue);
       expect(
         fakeSessions.expand((s) => s.connectedMembers),
         contains('team-lead'),
       );
-      expect(cubit.isMemberRunning('m-dev'), isFalse);
+      expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'm-dev'), isFalse);
     });
 
     test(
@@ -1000,8 +1000,8 @@ void main() {
         await postFrame.flush();
 
         expect(cubit.state.tabs.length, 1);
-        expect(cubit.isMemberRunning('team-lead'), isFalse);
-        expect(cubit.isMemberRunning('m-dev'), isFalse);
+        expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'team-lead'), isFalse);
+        expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'm-dev'), isFalse);
         expect(fakeSessions.expand((s) => s.connectedMembers), isEmpty);
 
         await cubit.connectWorkspaceSession(
@@ -1010,7 +1010,7 @@ void main() {
         );
         await postFrame.flush();
 
-        expect(cubit.isMemberRunning('m-dev'), isTrue);
+        expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'm-dev'), isTrue);
         expect(
           fakeSessions.expand((s) => s.connectedMembers),
           contains('m-dev'),

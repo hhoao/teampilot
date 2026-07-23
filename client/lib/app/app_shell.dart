@@ -1022,6 +1022,7 @@ Future<AppShell> buildAppShell({
   chatCubit.onSessionHistoryStale = (sessionId) {
     unawaited(aiHistoryCubit.softReloadIfSession(sessionId));
   };
+  chatCubit.onHistorySeatsDispose = aiHistoryCubit.disposeSeatsForSession;
 
   final notificationCubit = NotificationCubit();
   final notificationBootstrap = notificationCubit.load();

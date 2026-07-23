@@ -136,6 +136,9 @@ class ChatCubit extends Cubit<ChatState>
   /// Fired when History should drop cache / reload (disconnect or switch back).
   void Function(String sessionId)? onSessionHistoryStale;
 
+  /// Fired when a session tab is torn down so History can dispose its seats.
+  void Function(String sessionId)? onHistorySeatsDispose;
+
   final RemoteBusBindingResolver? _remoteBusResolver;
   final RemoteCliReadinessService? _remoteCliReadiness;
   final SessionConnectOrchestrator? _sessionConnect;
@@ -1023,6 +1026,7 @@ class ChatCubit extends Cubit<ChatState>
 
   Future<void> _tearDownTab(ChatTab tab) async {
     final sessionId = tab.info.id;
+    onHistorySeatsDispose?.call(sessionId);
     for (final session in tab.sessions) {
       session.dispose();
     }
@@ -1284,8 +1288,15 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   /// Whether the member's PTY is up (spawning through running).
-  bool isMemberRunning(String memberId) {
-    final shell = _activeTab?.memberShells[memberId];
+  ///
+  /// [memberId] is the shell key (`memberShells` / History `shellMemberId`),
+  /// not only the active workspace tab.
+  bool isMemberRunning({
+    required String sessionId,
+    required String memberId,
+  }) {
+    final tab = _tabStore.openTabBySessionId(sessionId);
+    final shell = tab?.memberShells[memberId];
     return shell?.isRunning ?? false;
   }
 

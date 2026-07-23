@@ -17,6 +17,7 @@ import 'package:teampilot/services/session/ai_history_live_refresh_controller.da
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/ai_history_locator.dart';
 import 'package:teampilot/services/session/ai_history_watch_meta.dart';
+import 'package:teampilot/services/session/history_seat_key.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
 
@@ -25,7 +26,7 @@ import '../../support/post_frame_test_harness.dart';
 
 void main() {
   late _ScriptedLocator locator;
-  late List<AiMessage> holderMessages;
+  late Map<String, List<AiMessage>> messagesBySession;
   late AiHistoryLoader loader;
   late AiHistoryCubit cubit;
   late InMemoryFilesystem fs;
@@ -41,7 +42,6 @@ void main() {
     updatedAt: 1,
   );
 
-
   WorkspaceLaunchContext launchCtx(AppSession s) => WorkspaceLaunchContext(
     session: s,
     workspace: Workspace(
@@ -51,22 +51,29 @@ void main() {
     ),
   );
 
-  List<AiMessage> messages(int count) => [
+  List<AiMessage> messages(int count, {String prefix = 'm'}) => [
     for (var i = 0; i < count; i++)
       AiMessage(
-        id: 'm-$i',
+        id: '$prefix-$i',
         role: AiRole.user,
-        parts: [AiTextPart(text: 'msg-$i')],
+        parts: [AiTextPart(text: 'msg-$prefix-$i')],
       ),
   ];
 
+  AiHistorySeat seatFor(AppSession session) => cubit.ensureSeat(
+    sessionId: session.sessionId,
+    selectedMemberId: '',
+  );
+
   AiHistoryLiveRefreshController buildController({
+    AiHistorySeat? seat,
     Future<AiHistoryWatchMeta?> Function()? resolveWatchMeta,
     Filesystem Function()? fsFn,
     Duration? metaRetryInterval,
   }) {
+    final session = simpleSession();
     return AiHistoryLiveRefreshController(
-      cubit: cubit,
+      seat: seat ?? seatFor(session),
       fs: fsFn ?? () => fs,
       resolveWatchMeta:
           resolveWatchMeta ??
@@ -93,7 +100,7 @@ void main() {
 
   setUp(() {
     setUpTestAppStorage();
-    holderMessages = const [];
+    messagesBySession = {};
     locator = _ScriptedLocator();
     fs = InMemoryFilesystem();
     lastSignal = null;
@@ -110,7 +117,7 @@ void main() {
       ),
       locator: locator,
       adapters: {
-        CliTool.claude: _HolderAdapter(() => holderMessages),
+        CliTool.claude: _SessionMapAdapter(() => messagesBySession),
       },
       resolveCacheToken: (_) async => 'token',
     );
@@ -122,20 +129,102 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  test('start attaches signal and softReloads on change', () async {
-    holderMessages = messages(2);
+  test('refreshNow softReloads bound seat only', () async {
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
+    final sessionA = simpleSession(id: 'sess-a');
+    final sessionB = simpleSession(id: 'sess-b');
+    messagesBySession['sess-a'] = messages(2, prefix: 'a');
+    messagesBySession['sess-b'] = messages(2, prefix: 'b');
+
+    await cubit.load(
+      session: sessionA,
+      memberId: '',
+      launchContext: launchCtx(sessionA),
+    );
+    await cubit.load(
+      session: sessionB,
+      memberId: '',
+      launchContext: launchCtx(sessionB),
+    );
+
+    final seatA = seatFor(sessionA);
+    final seatB = seatFor(sessionB);
+    expect(seatA.state.totalMessageCount, 2);
+    expect(seatB.state.totalMessageCount, 2);
+    final bIdsBefore = seatB.runtime.messages.map((m) => m.id).toList();
+
+    // B is focused (last load). Controller must still softReload only A.
+    messagesBySession['sess-a'] = [
+      ...messages(2, prefix: 'a'),
+      const AiMessage(
+        id: 'a-tip',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'extra-a-tip')],
+      ),
+    ];
+
+    final controller = buildController(seat: seatA);
+    await controller.start(skipInitialRefresh: true);
+    lastSignal!.fire();
+    await pumpEventQueue();
+
+    expect(seatA.state.totalMessageCount, 3);
+    expect(
+      seatA.runtime.messages.any((m) => m.id == 'a-tip'),
+      isTrue,
+    );
+    expect(seatB.state.totalMessageCount, 2);
+    expect(
+      seatB.runtime.messages.map((m) => m.id).toList(),
+      bIdsBefore,
+    );
+
+    await controller.stop();
+  });
+
+  test('warm seat policy stops an active live refresh controller', () async {
+    final session = simpleSession();
+    messagesBySession[session.sessionId] = messages(1);
+    locator.emitBundle = true;
+    await cubit.load(
+      session: session,
+      memberId: '',
+      launchContext: launchCtx(session),
+    );
+
+    final controller = buildController(seat: seatFor(session));
+    await controller.ensureStarted(skipInitialRefresh: true);
+    expect(controller.isActive, isTrue);
+
+    // Mirrors SessionChatView warm path: !isHistorySeatHot → stop.
+    expect(
+      isHistorySeatHot(routeActive: false, isMemberRunning: false),
+      isFalse,
+    );
+    await controller.stop();
+    expect(controller.isActive, isFalse);
+    expect(lastSignal?.stopped, isTrue);
+  });
+
+  test('start attaches signal and softReloads on change', () async {
+    final session = simpleSession();
+    messagesBySession[session.sessionId] = messages(2);
+    locator.emitBundle = true;
+    await cubit.load(
+      session: session,
+      memberId: '',
+      launchContext: launchCtx(session),
+    );
     expect(cubit.state.totalMessageCount, 2);
 
-    final controller = buildController();
+    final controller = buildController(seat: seatFor(session));
     await controller.start();
 
     expect(lastSignal, isNotNull);
     expect(lastSignal!.started, isTrue);
     expect(pollIntervals, [const Duration(milliseconds: 1200)]);
 
-    holderMessages = messages(3);
+    messagesBySession[session.sessionId] = messages(3);
     lastSignal!.fire();
     await Future<void>.delayed(Duration.zero);
     await pumpEventQueue();
@@ -148,18 +237,23 @@ void main() {
   test(
     'start(skipInitialRefresh: true) attaches signal without softReload',
     () async {
-      holderMessages = messages(2);
+      final session = simpleSession();
+      messagesBySession[session.sessionId] = messages(2);
       locator.emitBundle = true;
-      await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
+      await cubit.load(
+        session: session,
+        memberId: '',
+        launchContext: launchCtx(session),
+      );
       expect(cubit.state.totalMessageCount, 2);
 
       var softReloadPasses = 0;
       locator.onLocate = () async {
         softReloadPasses++;
-        return _dummyBundle();
+        return _dummyBundle(session.sessionId);
       };
 
-      final controller = buildController();
+      final controller = buildController(seat: seatFor(session));
       await controller.start(skipInitialRefresh: true);
 
       expect(lastSignal, isNotNull);
@@ -168,7 +262,7 @@ void main() {
       expect(softReloadPasses, 0);
       expect(cubit.state.totalMessageCount, 2);
 
-      holderMessages = messages(3);
+      messagesBySession[session.sessionId] = messages(3);
       lastSignal!.fire();
       await pumpEventQueue();
       expect(softReloadPasses, 1);
@@ -179,9 +273,14 @@ void main() {
   );
 
   test('second change while reload in flight coalesces to one follow-up', () async {
-    holderMessages = messages(1);
+    final session = simpleSession();
+    messagesBySession[session.sessionId] = messages(1);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
+    await cubit.load(
+      session: session,
+      memberId: '',
+      launchContext: launchCtx(session),
+    );
 
     final gate = Completer<void>();
     var softReloadPasses = 0;
@@ -192,21 +291,21 @@ void main() {
       if (softReloadPasses >= 2) {
         await gate.future;
       }
-      return _dummyBundle();
+      return _dummyBundle(session.sessionId);
     };
 
-    final controller = buildController();
+    final controller = buildController(seat: seatFor(session));
     await controller.start();
     // start → refreshNow → softReload (pass 1) + signal attached
     expect(softReloadPasses, 1);
     expect(lastSignal!.started, isTrue);
 
-    holderMessages = messages(2);
+    messagesBySession[session.sessionId] = messages(2);
     lastSignal!.fire();
     await pumpEventQueue();
     expect(softReloadPasses, 2); // in flight, waiting on gate
 
-    holderMessages = messages(4);
+    messagesBySession[session.sessionId] = messages(4);
     lastSignal!.fire();
     lastSignal!.fire();
     await pumpEventQueue();
@@ -223,11 +322,16 @@ void main() {
   });
 
   test('stop cancels signal and ignores late callbacks', () async {
-    holderMessages = messages(2);
+    final session = simpleSession();
+    messagesBySession[session.sessionId] = messages(2);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
+    await cubit.load(
+      session: session,
+      memberId: '',
+      launchContext: launchCtx(session),
+    );
 
-    final controller = buildController();
+    final controller = buildController(seat: seatFor(session));
     await controller.start();
     final signal = lastSignal!;
     expect(signal.started, isTrue);
@@ -235,7 +339,7 @@ void main() {
     await controller.stop();
     expect(signal.stopped, isTrue);
 
-    holderMessages = messages(9);
+    messagesBySession[session.sessionId] = messages(9);
     signal.fire();
     await pumpEventQueue();
 
@@ -243,12 +347,20 @@ void main() {
   });
 
   test('FsWatcher poll interval is 750ms', () async {
-    holderMessages = messages(1);
+    final session = simpleSession();
+    messagesBySession[session.sessionId] = messages(1);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
+    await cubit.load(
+      session: session,
+      memberId: '',
+      launchContext: launchCtx(session),
+    );
 
     final watchable = _WatchableFs();
-    final controller = buildController(fsFn: () => watchable);
+    final controller = buildController(
+      seat: seatFor(session),
+      fsFn: () => watchable,
+    );
     await controller.start();
 
     expect(pollIntervals, [const Duration(milliseconds: 750)]);
@@ -256,14 +368,20 @@ void main() {
   });
 
   test('null watch meta keeps signal; later meta softReloads and rearms', () async {
-    holderMessages = messages(1);
+    final session = simpleSession();
+    messagesBySession[session.sessionId] = messages(1);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
+    await cubit.load(
+      session: session,
+      memberId: '',
+      launchContext: launchCtx(session),
+    );
     expect(cubit.state.totalMessageCount, 1);
 
     AiHistoryWatchMeta? meta;
     var resolveCount = 0;
     final controller = buildController(
+      seat: seatFor(session),
       metaRetryInterval: const Duration(milliseconds: 20),
       resolveWatchMeta: () async {
         resolveCount++;
@@ -282,7 +400,7 @@ void main() {
       changeWatchRoot: '/proj',
       cacheTokenPaths: ['/proj/a.jsonl'],
     );
-    holderMessages = messages(3);
+    messagesBySession[session.sessionId] = messages(3);
 
     // Interval re-resolve (pre-locate) must find meta without a prior onChanged.
     await Future<void>.delayed(const Duration(milliseconds: 80));
@@ -298,9 +416,14 @@ void main() {
   });
 
   test('resolveWatchMeta throw keeps last meta and drains coalesced queue', () async {
-    holderMessages = messages(1);
+    final session = simpleSession();
+    messagesBySession[session.sessionId] = messages(1);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
+    await cubit.load(
+      session: session,
+      memberId: '',
+      launchContext: launchCtx(session),
+    );
 
     const stableMeta = AiHistoryWatchMeta(
       changeWatchRoot: '/proj',
@@ -310,6 +433,7 @@ void main() {
     var resolveCount = 0;
 
     final controller = buildController(
+      seat: seatFor(session),
       resolveWatchMeta: () async {
         resolveCount++;
         if (resolveCount == 2) {
@@ -327,7 +451,7 @@ void main() {
     await pumpEventQueue();
     expect(resolveCount, 2); // blocked before throw
 
-    holderMessages = messages(4);
+    messagesBySession[session.sessionId] = messages(4);
     lastSignal!.fire(); // coalesce while resolve #2 is in flight
     await pumpEventQueue();
     expect(resolveCount, 2);
@@ -342,24 +466,28 @@ void main() {
   });
 }
 
-AiTranscriptBundle _dummyBundle() => const AiTranscriptBundle(
-  adapterId: 'claude',
-  fragments: [
-    AiTranscriptFragment(name: 'canned.jsonl', bytes: []),
-  ],
-);
+AiTranscriptBundle _dummyBundle([String sessionId = 'sess-a']) =>
+    AiTranscriptBundle(
+      adapterId: 'claude',
+      fragments: const [
+        AiTranscriptFragment(name: 'canned.jsonl', bytes: []),
+      ],
+      hints: {'sessionId': sessionId},
+    );
 
-class _HolderAdapter implements AiTranscriptAdapter {
-  _HolderAdapter(this._messages);
+class _SessionMapAdapter implements AiTranscriptAdapter {
+  _SessionMapAdapter(this._messagesBySession);
 
-  final List<AiMessage> Function() _messages;
+  final Map<String, List<AiMessage>> Function() _messagesBySession;
 
   @override
   String get id => 'claude';
 
   @override
-  Future<List<AiMessage>> parse(AiTranscriptBundle bundle) async =>
-      List.of(_messages());
+  Future<List<AiMessage>> parse(AiTranscriptBundle bundle) async {
+    final sessionId = bundle.hints['sessionId'] ?? '';
+    return List.of(_messagesBySession()[sessionId] ?? const []);
+  }
 }
 
 class _ScriptedLocator extends AiHistoryLocator {
@@ -377,7 +505,8 @@ class _ScriptedLocator extends AiHistoryLocator {
     if (onLocate != null) return onLocate!();
     if (queue.isNotEmpty) return queue.removeAt(0);
     if (!emitBundle) return null;
-    return _dummyBundle();
+    final sessionId = ctx.sessionId?.trim() ?? '';
+    return _dummyBundle(sessionId);
   }
 }
 

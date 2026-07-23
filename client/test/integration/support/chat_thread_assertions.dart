@@ -8,16 +8,26 @@ import 'package:teampilot/services/terminal/pending_user_message.dart';
 String chatThreadMessagePlainText(AiMessage m) =>
     m.parts.whereType<AiTextPart>().map((p) => p.text).join('\n');
 
-/// User bubbles currently published on [history.runtime] (transcript tip,
+List<AiMessage> _historyRuntimeMessages(AiHistoryCubit history) {
+  final sid = history.state.sessionId;
+  if (sid == null || sid.isEmpty) return const [];
+  final seat = history.seatOf(
+    sessionId: sid,
+    selectedMemberId: history.state.memberId ?? '',
+  );
+  return seat?.runtime.messages ?? const [];
+}
+
+/// User bubbles currently published on the focused seat runtime (transcript tip,
 /// sticky mailbox locals, and optimistic PTY pendings).
 List<AiMessage> chatThreadUserMessages(AiHistoryCubit history) => [
-  for (final m in history.runtime.messages)
+  for (final m in _historyRuntimeMessages(history))
     if (m.role == AiRole.user) m,
 ];
 
-/// Assistant bubbles currently published on [history.runtime].
+/// Assistant bubbles currently published on the focused seat runtime.
 List<AiMessage> chatThreadAssistantMessages(AiHistoryCubit history) => [
-  for (final m in history.runtime.messages)
+  for (final m in _historyRuntimeMessages(history))
     if (m.role == AiRole.assistant) m,
 ];
 
@@ -31,7 +41,7 @@ String dumpThread(AiHistoryCubit history) {
     'session=${history.state.sessionId} '
     'member=${history.state.memberId}',
   );
-  final messages = history.runtime.messages;
+  final messages = _historyRuntimeMessages(history);
   if (messages.isEmpty) {
     buf.writeln('(no runtime messages)');
     return buf.toString();
@@ -124,7 +134,7 @@ void expectMailboxQueuedThenSticky({
   );
 
   final stickyId = 'mailbox:$mailId';
-  final sticky = history.runtime.messages.where(
+  final sticky = _historyRuntimeMessages(history).where(
     (m) => m.role == AiRole.user && m.id == stickyId,
   );
   expect(

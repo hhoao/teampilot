@@ -6,6 +6,7 @@ import '../cubits/launch_profile_cubit.dart';
 import '../utils/workspace/workspace_active_context.dart';
 import '../widgets/workspace_terminal_panel.dart';
 import 'chat/chat_page_shell.dart';
+import 'home_workspace/workspace/workspace_route_active_scope.dart';
 
 class ChatPage extends StatelessWidget {
   const ChatPage({
@@ -48,12 +49,14 @@ class ChatPage extends StatelessWidget {
       tabScopeId: _tabScopeId,
     );
 
+    final routeActive = WorkspaceRouteActiveScope.routeActiveOf(context);
     return ChatPageShell(
       cwd: cwd,
       additionalPaths: additionalPaths,
       sessionId: sessionId ?? active.activeSessionId,
       workspaceId: workspaceId,
       tabScopeId: _tabScopeId,
+      routeActive: routeActive,
       holdHandle: holdHandle,
     );
   }

@@ -90,7 +90,7 @@ void main() {
 
     expect(chatCubit.state.activeSessionId, session.sessionId);
     expect(chatCubit.state.selectedMemberId, 'team-lead');
-    expect(chatCubit.isMemberRunning('team-lead'), isTrue);
+    expect(chatCubit.isMemberRunning(sessionId: session.sessionId, memberId: 'team-lead'), isTrue);
   });
 
   test('chat cubit manages tabs and selection', () {
@@ -146,8 +146,8 @@ void main() {
     expect(cubit.state.tabs.length, 1);
     expect(cubit.state.tabs.single.id, 'local-test-team');
     expect(cubit.state.selectedMemberId, 'dev');
-    expect(cubit.isMemberRunning('team-lead'), isTrue);
-    expect(cubit.isMemberRunning('dev'), isTrue);
+    expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'team-lead'), isTrue);
+    expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'dev'), isTrue);
   });
 
   test(
@@ -247,8 +247,8 @@ void main() {
       await postFrame.flush();
 
       expect(cubit.state.tabs.length, 1);
-      expect(cubit.isMemberRunning('team-lead'), isTrue);
-      expect(cubit.isMemberRunning('dev'), isTrue);
+      expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'team-lead'), isTrue);
+      expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'dev'), isTrue);
       expect(cubit.state.selectedMemberId, 'team-lead');
     },
   );
@@ -299,8 +299,8 @@ void main() {
       await postFrame.flush();
 
       expect(cubit.state.tabs.length, 1);
-      expect(cubit.isMemberRunning('team-lead'), isTrue);
-      expect(cubit.isMemberRunning('dev'), isFalse);
+      expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'team-lead'), isTrue);
+      expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'dev'), isFalse);
       expect(cubit.state.selectedMemberId, 'team-lead');
     },
   );
@@ -363,8 +363,8 @@ void main() {
       expect(cubit.state.tabs.single.id, 'session-1');
       expect(cubit.state.activeSessionId, 'session-1');
       expect(cubit.state.selectedMemberId, 'dev');
-      expect(cubit.isMemberRunning('team-lead'), isTrue);
-      expect(cubit.isMemberRunning('dev'), isTrue);
+      expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'team-lead'), isTrue);
+      expect(cubit.isMemberRunning(sessionId: cubit.state.activeSessionId!, memberId: 'dev'), isTrue);
     },
   );
 
