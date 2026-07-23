@@ -370,6 +370,42 @@ class SkillInstallService {
     return added;
   }
 
+  /// Upserts a [Skill] for an on-disk dir under [skillsDir] using an explicit [id].
+  ///
+  /// Used after `script` acquire so the primary row matches `expectedLocalId`.
+  Future<Skill> registerInstalledDirectory({
+    required String id,
+    required String directory,
+  }) async {
+    final fs = AppStorage.fs;
+    final ctx = fs.pathContext;
+    final skillsDir = await manifest.resolveSkillsDir();
+    final dirPath = ctx.join(skillsDir, directory);
+    final skillMdPath = ctx.join(dirPath, 'SKILL.md');
+    final bytes = await fs.readBytes(skillMdPath);
+    if (bytes == null) {
+      throw SkillInstallException('Missing SKILL.md under $directory');
+    }
+    final text = await fs.readString(skillMdPath);
+    if (text == null) {
+      throw SkillInstallException('Could not read SKILL.md under $directory');
+    }
+    final fm = parseSkillFrontmatter(text);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final skill = Skill(
+      id: id,
+      name: fm.name,
+      description: fm.description,
+      directory: directory,
+      enabled: true,
+      installedAt: now,
+      updatedAt: now,
+      contentHash: sha256.convert(bytes).toString(),
+    );
+    await manifest.upsertSkill(skill);
+    return skill;
+  }
+
   Future<List<SkillUpdateInfo>> checkUpdates(List<Skill> installed) async {
     final updates = <SkillUpdateInfo>[];
     for (final s in installed) {
