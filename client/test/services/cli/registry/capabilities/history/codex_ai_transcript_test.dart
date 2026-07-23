@@ -64,24 +64,23 @@ void main() {
       );
 
       expect(adapter.id, 'codex');
-      expect(messages, hasLength(3));
+      expect(messages, hasLength(2));
 
       final user = messages[0];
       expect(user.role, AiRole.user);
       expect((user.parts.single as AiTextPart).text, 'list files');
       expect(user.createdAt, DateTime.parse('2026-07-10T12:00:04.000Z'));
 
-      final toolMsg = messages[1];
-      expect(toolMsg.role, AiRole.assistant);
-      final tool = toolMsg.parts.whereType<AiToolCallPart>().single;
+      final assistant = messages[1];
+      expect(assistant.role, AiRole.assistant);
+      expect(assistant.parts[0], isA<AiToolCallPart>());
+      expect(assistant.parts[1], isA<AiTextPart>());
+      final tool = assistant.parts[0] as AiToolCallPart;
       expect(tool.toolCallId, 'call_1');
       expect(tool.toolName, 'exec_command');
       expect(tool.args, {'cmd': 'ls'});
       expect(tool.result, 'a.txt\nb.txt');
-
-      final agent = messages[2];
-      expect(agent.role, AiRole.assistant);
-      expect((agent.parts.single as AiTextPart).text, 'Here are the files.');
+      expect((assistant.parts[1] as AiTextPart).text, 'Here are the files.');
 
       expect(
         messages.any(
@@ -131,5 +130,46 @@ void main() {
   test('locateCodexTranscript returns null when missing', () async {
     final bundle = await locateCodexTranscript(ctx(codexHome: base.path));
     expect(bundle, isNull);
+  });
+
+  test('parses reasoning summary and shell_command from real rollout shape',
+      () async {
+    final bytes = await File(
+      'test/fixtures/session_history/codex/reasoning_and_tools.jsonl',
+    ).readAsBytes();
+    final messages = await const CodexAiTranscriptAdapter().parse(
+      AiTranscriptBundle(
+        adapterId: 'codex',
+        fragments: [
+          AiTranscriptFragment(
+            name: 'reasoning_and_tools.jsonl',
+            bytes: bytes,
+          ),
+        ],
+      ),
+    );
+
+    expect(messages, hasLength(2));
+    expect(messages[0].role, AiRole.user);
+    expect((messages[0].parts.single as AiTextPart).text, 'create issue tracker');
+
+    final assistant = messages[1];
+    expect(assistant.role, AiRole.assistant);
+    expect(assistant.parts[0], isA<AiReasoningPart>());
+    expect(assistant.parts[1], isA<AiToolCallPart>());
+    expect(assistant.parts[2], isA<AiTextPart>());
+
+    final reasoning = assistant.parts[0] as AiReasoningPart;
+    expect(reasoning.text, contains('Issue management'));
+
+    final tool = assistant.parts[1] as AiToolCallPart;
+    expect(tool.toolName, 'shell_command');
+    expect(tool.toolCallId, 'call_demo1');
+    expect(tool.result, contains('/tmp/demo'));
+
+    expect(
+      (assistant.parts[2] as AiTextPart).text,
+      'I will inspect the plan first.',
+    );
   });
 }

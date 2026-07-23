@@ -12,18 +12,20 @@ class AiToolCallPartView extends StatefulWidget {
   const AiToolCallPartView({
     required this.part,
     this.dense = false,
+    this.initiallyExpanded = false,
     super.key,
   });
 
   final AiToolCallPart part;
   final bool dense;
+  final bool initiallyExpanded;
 
   @override
   State<AiToolCallPartView> createState() => _AiToolCallPartViewState();
 }
 
 class _AiToolCallPartViewState extends State<AiToolCallPartView> {
-  bool _open = false;
+  late bool _open = widget.initiallyExpanded;
 
   @override
   Widget build(BuildContext context) {

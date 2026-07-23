@@ -102,11 +102,32 @@ class AiMessage {
   }
 }
 
+/// Merge runs of adjacent [AiRole.assistant] messages (cut on user/system).
+/// Keeps the first message's id, createdAt, and status; concatenates parts.
+List<AiMessage> coalesceAdjacentAssistants(List<AiMessage> messages) {
+  if (messages.isEmpty) return const [];
+  final out = <AiMessage>[];
+  for (final msg in messages) {
+    if (out.isNotEmpty &&
+        out.last.role == AiRole.assistant &&
+        msg.role == AiRole.assistant) {
+      final prev = out.last;
+      out[out.length - 1] = prev.copyWith(
+        parts: [...prev.parts, ...msg.parts],
+      );
+    } else {
+      out.add(msg);
+    }
+  }
+  return out;
+}
+
 /// History finalize: unpaired tools stay incomplete; completed tools with a
 /// result keep their status. Does not invent running state for disk transcripts.
 List<AiMessage> finalizeAiMessagesForHistory(List<AiMessage> messages) {
+  final coalesced = coalesceAdjacentAssistants(messages);
   return [
-    for (final message in messages)
+    for (final message in coalesced)
       message.copyWith(
         parts: [
           for (final part in message.parts)

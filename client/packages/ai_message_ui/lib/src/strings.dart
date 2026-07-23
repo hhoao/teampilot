@@ -18,11 +18,15 @@ class AiMessageStrings {
     this.scrollToBottom = 'Scroll to bottom',
     this.showMore = 'Show more',
     this.showLess = 'Show less',
+    this.thinkingProcess = 'Thinking process',
+    this.formatThinkingProcessSteps = _defaultThinkingProcessSteps,
   });
 
   final String usedTool;
   final String cancelledTool;
   final String Function(Object count) formatToolsUsed;
+  final String thinkingProcess;
+  final String Function(Object count) formatThinkingProcessSteps;
   final String reasoning;
   final String result;
   final String copy;
@@ -38,6 +42,9 @@ class AiMessageStrings {
   String toolsUsedLabel(int count) => formatToolsUsed(count);
 
   static String _defaultToolsUsed(Object count) => 'Used $count tools';
+
+  static String _defaultThinkingProcessSteps(Object count) =>
+      'Thinking process · $count steps';
 
   static AiMessageStrings of(BuildContext context) {
     return context

@@ -1304,6 +1304,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiMessageShowLess => 'Show less';
 
   @override
+  String get aiMessageThinkingProcess => 'Thinking process';
+
+  @override
+  String aiMessageThinkingProcessSteps(int count) {
+    return 'Thinking process · $count steps';
+  }
+
+  @override
   String get sessionWorkbenchShowChat => 'Show Chat';
 
   @override

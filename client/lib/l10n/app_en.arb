@@ -546,6 +546,15 @@
   "aiMessageScrollToBottom": "Scroll to bottom",
   "aiMessageShowMore": "Show more",
   "aiMessageShowLess": "Show less",
+  "aiMessageThinkingProcess": "Thinking process",
+  "aiMessageThinkingProcessSteps": "Thinking process · {count} steps",
+  "@aiMessageThinkingProcessSteps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "sessionWorkbenchShowChat": "Show Chat",
   "sessionWorkbenchShowTerminal": "Show Terminal",
   "sessionReadyTitle": "Ready to chat",

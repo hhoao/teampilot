@@ -521,6 +521,15 @@
   "aiMessageScrollToBottom": "滚动到底部",
   "aiMessageShowMore": "显示更多",
   "aiMessageShowLess": "收起",
+  "aiMessageThinkingProcess": "思考过程",
+  "aiMessageThinkingProcessSteps": "思考过程 · {count} 步",
+  "@aiMessageThinkingProcessSteps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "sessionWorkbenchShowChat": "显示聊天",
   "sessionWorkbenchShowTerminal": "显示终端",
   "sessionReadyTitle": "准备开始对话",

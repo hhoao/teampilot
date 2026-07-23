@@ -51,7 +51,7 @@ void main() {
     );
 
     expect(adapter.id, 'claude');
-    expect(messages, hasLength(3));
+    expect(messages, hasLength(2));
 
     final user = messages[0];
     expect(user.id, 'u-1');
@@ -61,16 +61,12 @@ void main() {
     expect((user.parts.single as AiTextPart).text, 'hello');
     expect(user.createdAt, DateTime.parse('2026-07-10T10:00:00.000Z'));
 
-    final hi = messages[1];
-    expect(hi.id, 'a-1');
-    expect(hi.role, AiRole.assistant);
-    expect(hi.parts.single, isA<AiTextPart>());
-    expect((hi.parts.single as AiTextPart).text, 'hi');
-
-    final toolMsg = messages[2];
-    expect(toolMsg.id, 'a-2');
-    expect(toolMsg.role, AiRole.assistant);
-    final tool = toolMsg.parts.whereType<AiToolCallPart>().single;
+    final assistant = messages[1];
+    expect(assistant.id, 'a-1');
+    expect(assistant.role, AiRole.assistant);
+    expect(assistant.parts[0], isA<AiTextPart>());
+    expect((assistant.parts[0] as AiTextPart).text, 'hi');
+    final tool = assistant.parts.whereType<AiToolCallPart>().single;
     expect(tool.toolCallId, 'toolu_1');
     expect(tool.toolName, 'Bash');
     expect(tool.args, {'command': 'ls'});

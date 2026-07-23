@@ -23,8 +23,37 @@ final class AiRenderReasoningGroup extends AiRenderNode {
   final List<AiReasoningPart> parts;
 }
 
-/// Groups consecutive tool-call / reasoning parts the way assistant-ui does.
+final class AiRenderChainOfThought extends AiRenderNode {
+  const AiRenderChainOfThought(this.parts);
+
+  final List<AiMessagePart> parts;
+}
+
+bool _isCotPart(AiMessagePart part) =>
+    part is AiReasoningPart || part is AiToolCallPart;
+
+/// Groups reasoning/tool runs into chain-of-thought nodes; text stays outside.
 List<AiRenderNode> groupMessageParts(List<AiMessagePart> parts) {
+  final out = <AiRenderNode>[];
+  var i = 0;
+  while (i < parts.length) {
+    if (_isCotPart(parts[i])) {
+      final run = <AiMessagePart>[];
+      while (i < parts.length && _isCotPart(parts[i])) {
+        run.add(parts[i]);
+        i++;
+      }
+      out.add(AiRenderChainOfThought(run));
+      continue;
+    }
+    out.add(AiRenderPart(parts[i]));
+    i++;
+  }
+  return out;
+}
+
+/// Groups consecutive tool-call / reasoning parts the way assistant-ui does.
+List<AiRenderNode> groupConsecutiveParts(List<AiMessagePart> parts) {
   final out = <AiRenderNode>[];
   var i = 0;
   while (i < parts.length) {
