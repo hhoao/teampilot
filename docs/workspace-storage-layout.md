@@ -26,7 +26,7 @@ Typical `<teampilotRoot>` paths:
     workspaces-index.json
     workspaces/{workspaceId}/      # see below
   providers/{tool}/providers.json  # per-CLI provider catalog
-  skills/installed/              # global skill library
+  skills/installed/              # global skill library (git-dir or script acquire)
   plugins/installed/             # global plugin library
   mcp/mcp_servers.json           # global MCP catalog
   extensions/state.json
