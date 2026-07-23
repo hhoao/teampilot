@@ -13,4 +13,8 @@ void main() {
   test('null cpu formats as em dash', () {
     expect(formatResourceCpu(null), '—');
   });
+
+  test('formats cpu as percent with one decimal', () {
+    expect(formatResourceCpu(1.5), '1.5%');
+  });
 }
