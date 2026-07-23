@@ -2779,5 +2779,6 @@
   },
   "resourceManagerEmptyTree": "No terminals in this workspace.",
   "resourceManagerAppProcess": "App",
-  "resourceManagerMetricsError": "Could not refresh process metrics."
+  "resourceManagerMetricsError": "Could not refresh process metrics.",
+  "resourceManagerKillFailed": "Could not kill terminal."
 }

@@ -6211,4 +6211,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get resourceManagerMetricsError =>
       'Could not refresh process metrics.';
+
+  @override
+  String get resourceManagerKillFailed => 'Could not kill terminal.';
 }

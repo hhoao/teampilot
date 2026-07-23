@@ -11159,6 +11159,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not refresh process metrics.'**
   String get resourceManagerMetricsError;
+
+  /// No description provided for @resourceManagerKillFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not kill terminal.'**
+  String get resourceManagerKillFailed;
 }
 
 class _AppLocalizationsDelegate

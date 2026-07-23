@@ -674,6 +674,24 @@ class SessionLaunchService
     _h.updateTabRunning(tab.info.id);
   }
 
+  /// Disconnects [memberId] on [sessionId]'s open tab (any tab, not only active).
+  ///
+  /// Mirrors [disconnectSession] cleanup for one member shell without closing
+  /// the session workbench tab. Used by Resource Manager kill.
+  void disconnectMemberShell(String sessionId, String memberId) {
+    final id = sessionId.trim();
+    final mid = memberId.trim();
+    if (id.isEmpty || mid.isEmpty) return;
+    final tab = _tabStore.openTabBySessionId(id);
+    if (tab == null) return;
+    tab.membersPendingConnect.remove(mid);
+    tab.memberShells[mid]?.disconnect();
+    unawaited(tab.closeMemberRemotePlane(mid));
+    _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: mid);
+    _h.clearLaunchError(tab.info.id);
+    _h.updateTabRunning(tab.info.id);
+  }
+
   Future<void> restartWorkspaceSession(
     SessionConnectRequest request, {
     SessionRepository? repo,

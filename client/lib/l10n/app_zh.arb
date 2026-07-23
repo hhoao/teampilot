@@ -2350,5 +2350,6 @@
   },
   "resourceManagerEmptyTree": "此工作区没有终端。",
   "resourceManagerAppProcess": "应用",
-  "resourceManagerMetricsError": "无法刷新进程指标。"
+  "resourceManagerMetricsError": "无法刷新进程指标。",
+  "resourceManagerKillFailed": "无法结束终端。"
 }

@@ -5974,4 +5974,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get resourceManagerMetricsError => '无法刷新进程指标。';
+
+  @override
+  String get resourceManagerKillFailed => '无法结束终端。';
 }
