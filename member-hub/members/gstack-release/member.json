@@ -1,0 +1,27 @@
+{
+  "name": "gstack Release Engineer",
+  "description": "Release engineer: sync, test, coverage audit, push, and open the PR.",
+  "category": "Workflow",
+  "author": "gstack",
+  "updatedAt": 1784764800000,
+  "member": {
+    "name": "ship",
+    "responsibilities": "Ship safely: sync main, run tests, audit coverage, push, open PR. Document how to verify. Do not expand feature scope during release.",
+    "playbook": "Follow the gstack /ship skill methodology when available. Prefer the installed skill pack over improvising a parallel process.",
+    "capabilities": []
+  },
+  "skillDeps": [
+    {
+      "id": "garrytan/gstack:ship",
+      "packId": "garrytan/gstack",
+      "name": "Ship",
+      "repoOwner": "garrytan",
+      "repoName": "gstack",
+      "repoBranch": "main",
+      "directory": "ship",
+      "acquire": {
+        "kind": "git-pack"
+      }
+    }
+  ]
+}

@@ -77,7 +77,7 @@ void main() {
       const expectedId = 'script:example.com/install-gstack.sh';
       var engineCalls = 0;
       final engine = SkillAcquisitionEngine(
-        installGitDir: (d, {bool overwrite = false}) async =>
+        installGitDir: (d, {bool overwrite = false, String? idOverride}) async =>
             throw StateError('git-dir should not run'),
         runner: (_) async {
           engineCalls++;
@@ -131,7 +131,7 @@ void main() {
       const expectedId = 'obra/superpowers:brainstorming';
       var engineCalls = 0;
       final engine = SkillAcquisitionEngine(
-        installGitDir: (d, {bool overwrite = false}) async {
+        installGitDir: (d, {bool overwrite = false, String? idOverride}) async {
           engineCalls++;
           throw StateError('should not install');
         },

@@ -289,6 +289,7 @@ class DiscoverableSkill {
     required this.repoName,
     required this.repoBranch,
     this.id,
+    this.packId,
     this.acquire,
   });
 
@@ -301,21 +302,27 @@ class DiscoverableSkill {
   final String repoName;
   final String repoBranch;
 
-  /// Optional explicit local skill id (preferred for `script` acquire).
+  /// Optional explicit local skill id (preferred for `script` / pack acquire).
   final String? id;
+  final String? packId;
   final SkillAcquireSpec? acquire;
 
   String get source => '$repoOwner/$repoName';
 
   /// Primary local [Skill.id] for install via [SkillAcquisitionEngine].
   ///
-  /// Prefer non-empty [id], else non-empty [key], else script URL id / git-dir
-  /// `owner/name:basename` (same family as [SkillDependencyRef.expectedLocalId]).
+  /// Prefer non-empty [id], else non-empty [key], else pack / script / git-dir
+  /// rules (same family as [SkillDependencyRef.expectedLocalId]).
   String get expectedLocalId {
     final explicit = id?.trim();
     if (explicit != null && explicit.isNotEmpty) return explicit;
     final k = key.trim();
     if (k.isNotEmpty) return k;
+    final pack = packId?.trim();
+    if (pack != null && pack.isNotEmpty) {
+      final basename = directory.split('/').last;
+      return '$pack:$basename';
+    }
     final resolved = acquire ?? const SkillAcquireSpec(kind: 'git-dir');
     if (resolved.kind == 'script') {
       return skillScriptIdFromPackageUrl(resolved.package);
@@ -337,12 +344,14 @@ class DiscoverableSkill {
     'repoName': repoName,
     'repoBranch': repoBranch,
     if (id != null && id!.isNotEmpty) 'id': id,
+    if (packId != null && packId!.isNotEmpty) 'packId': packId,
     if (acquire != null) 'acquire': acquire!.toJson(),
   };
 
   factory DiscoverableSkill.fromJson(Map<String, Object?> json) {
     final acquireRaw = json['acquire'];
     final idRaw = (json['id'] as String?)?.trim();
+    final packRaw = (json['packId'] as String?)?.trim();
     return DiscoverableSkill(
       key: json['key'] as String? ?? '',
       name: json['name'] as String? ?? '',
@@ -353,6 +362,7 @@ class DiscoverableSkill {
       repoName: json['repoName'] as String? ?? '',
       repoBranch: json['repoBranch'] as String? ?? '',
       id: idRaw == null || idRaw.isEmpty ? null : idRaw,
+      packId: packRaw == null || packRaw.isEmpty ? null : packRaw,
       acquire: acquireRaw is Map
           ? SkillAcquireSpec.fromJson(acquireRaw.cast<String, Object?>())
           : null,

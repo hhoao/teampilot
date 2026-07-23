@@ -39,6 +39,21 @@ class SkillAcquireSpec {
       'primaryDirectory': primaryDirectory,
   };
 
+  SkillAcquireSpec copyWith({
+    String? kind,
+    String? package,
+    List<String>? alternatives,
+    String? primaryDirectory,
+    bool clearPrimaryDirectory = false,
+  }) => SkillAcquireSpec(
+    kind: kind ?? this.kind,
+    package: package ?? this.package,
+    alternatives: alternatives ?? this.alternatives,
+    primaryDirectory: clearPrimaryDirectory
+        ? null
+        : (primaryDirectory ?? this.primaryDirectory),
+  );
+
   @override
   bool operator ==(Object other) =>
       other is SkillAcquireSpec &&

@@ -1,0 +1,27 @@
+{
+  "name": "gstack QA",
+  "description": "QA lead: exercise the product, find bugs, fix with atomic commits, and re-verify.",
+  "category": "Development",
+  "author": "gstack",
+  "updatedAt": 1784764800000,
+  "member": {
+    "name": "qa",
+    "responsibilities": "Map acceptance criteria to scenarios, reproduce defects, fix when appropriate, and attach verification evidence. Prefer regression coverage for each fix.",
+    "playbook": "Follow the gstack /qa skill methodology when available. Prefer the installed skill pack over improvising a parallel process.",
+    "capabilities": []
+  },
+  "skillDeps": [
+    {
+      "id": "garrytan/gstack:qa",
+      "packId": "garrytan/gstack",
+      "name": "QA",
+      "repoOwner": "garrytan",
+      "repoName": "gstack",
+      "repoBranch": "main",
+      "directory": "qa",
+      "acquire": {
+        "kind": "git-pack"
+      }
+    }
+  ]
+}

@@ -58,4 +58,19 @@ void main() {
     expect(ref.expectedLocalId, 'obra/superpowers:brainstorming');
     expect(ref.resolvedAcquire.kind, 'git-dir');
   });
+
+  test('pack skill expectedLocalId uses packId and directory', () {
+    const ref = SkillDependencyRef(
+      id: 'garrytan/gstack:office-hours',
+      packId: 'garrytan/gstack',
+      name: 'Office Hours',
+      repoOwner: 'garrytan',
+      repoName: 'gstack',
+      repoBranch: 'main',
+      directory: 'office-hours',
+      acquire: SkillAcquireSpec(kind: 'git-pack'),
+    );
+    expect(ref.expectedLocalId, 'garrytan/gstack:office-hours');
+    expect(ref.resolvedAcquire.kind, 'git-pack');
+  });
 }

@@ -1,0 +1,27 @@
+{
+  "name": "Office Hours",
+  "description": "YC-style product interrogation: reframe the idea before anyone writes code.",
+  "category": "Workflow",
+  "author": "gstack",
+  "updatedAt": 1784764800000,
+  "member": {
+    "name": "office-hours",
+    "responsibilities": "Run six forcing questions (demand, status quo, desperate specificity, narrowest wedge, observation, future-fit). Push back on framing; produce a design doc that downstream plan skills can consume. Do not implement production code.",
+    "playbook": "Follow the gstack /office-hours skill methodology when available. Prefer the installed skill pack over improvising a parallel process.",
+    "capabilities": []
+  },
+  "skillDeps": [
+    {
+      "id": "garrytan/gstack:office-hours",
+      "packId": "garrytan/gstack",
+      "name": "Office Hours",
+      "repoOwner": "garrytan",
+      "repoName": "gstack",
+      "repoBranch": "main",
+      "directory": "office-hours",
+      "acquire": {
+        "kind": "git-pack"
+      }
+    }
+  ]
+}

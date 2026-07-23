@@ -578,8 +578,12 @@ Future<AppShell> buildAppShell({
     repos: SkillRepoService(),
   );
   final skillAcquisitionEngine = SkillAcquisitionEngine(
-    installGitDir: (d, {bool overwrite = false}) =>
-        skillInstallService.installFromDiscovery(d, overwrite: overwrite),
+    installGitDir: (d, {bool overwrite = false, String? idOverride}) =>
+        skillInstallService.installFromDiscovery(
+          d,
+          overwrite: overwrite,
+          idOverride: idOverride,
+        ),
     registerDirectory: ({required String id, required String directory}) =>
         skillInstallService.registerInstalledDirectory(
           id: id,

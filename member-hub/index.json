@@ -1,1 +1,13 @@
-{"members":[]}
+{
+  "members": [
+    "gstack-office-hours",
+    "gstack-ceo",
+    "gstack-eng-manager",
+    "gstack-designer",
+    "gstack-reviewer",
+    "gstack-debugger",
+    "gstack-qa",
+    "gstack-cso",
+    "gstack-release"
+  ]
+}

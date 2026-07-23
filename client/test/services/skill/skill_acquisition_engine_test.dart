@@ -9,6 +9,7 @@ import 'package:teampilot/services/cli/installer_types.dart';
 import 'package:teampilot/services/skill/skill_acquisition_engine.dart';
 import 'package:teampilot/services/skill/skill_install_service.dart';
 import 'package:teampilot/services/skill/skill_manifest_service.dart';
+import 'package:teampilot/services/skill/skill_pack_registry.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -61,7 +62,7 @@ void main() {
     DiscoverableSkill? seen;
     var seenOverwrite = false;
     final engine = SkillAcquisitionEngine(
-      installGitDir: (d, {bool overwrite = false}) async {
+      installGitDir: (d, {bool overwrite = false, String? idOverride}) async {
         calls++;
         seen = d;
         seenOverwrite = overwrite;
@@ -93,7 +94,7 @@ void main() {
     () async {
       var seenOverwrite = false;
       final engine = SkillAcquisitionEngine(
-        installGitDir: (d, {bool overwrite = false}) async {
+        installGitDir: (d, {bool overwrite = false, String? idOverride}) async {
           seenOverwrite = overwrite;
           return _plantedSkill(id: d.key, directory: 'brainstorming');
         },
@@ -126,7 +127,7 @@ void main() {
         return const CliInstallerCommandResult(exitCode: 0);
       },
       isLocalAcquireSupported: () => true,
-      installGitDir: (_, {bool overwrite = false}) async =>
+      installGitDir: (_, {bool overwrite = false, String? idOverride}) async =>
           throw StateError('unused'),
     );
 
@@ -154,7 +155,7 @@ void main() {
           return const CliInstallerCommandResult(exitCode: 0);
         },
         isLocalAcquireSupported: () => true,
-        installGitDir: (_, {bool overwrite = false}) async =>
+        installGitDir: (_, {bool overwrite = false, String? idOverride}) async =>
             throw StateError('unused'),
         registerDirectory: install.registerInstalledDirectory,
       );
@@ -188,7 +189,7 @@ void main() {
         return const CliInstallerCommandResult(exitCode: 0);
       },
       isLocalAcquireSupported: () => true,
-      installGitDir: (_, {bool overwrite = false}) async =>
+      installGitDir: (_, {bool overwrite = false, String? idOverride}) async =>
           throw StateError('unused'),
     );
 
@@ -211,7 +212,7 @@ void main() {
     final engine = SkillAcquisitionEngine(
       runner: (_) async => const CliInstallerCommandResult(exitCode: 0),
       isLocalAcquireSupported: () => true,
-      installGitDir: (_, {bool overwrite = false}) async =>
+      installGitDir: (_, {bool overwrite = false, String? idOverride}) async =>
           throw StateError('unused'),
       registerDirectory: ({required String id, required String directory}) async {
         throw StateError('should not register');
@@ -241,7 +242,7 @@ void main() {
         return const CliInstallerCommandResult(exitCode: 0);
       },
       isLocalAcquireSupported: () => true,
-      installGitDir: (_, {bool overwrite = false}) async =>
+      installGitDir: (_, {bool overwrite = false, String? idOverride}) async =>
           throw StateError('unused'),
       registerDirectory: install.registerInstalledDirectory,
     );
@@ -269,7 +270,7 @@ void main() {
         return const CliInstallerCommandResult(exitCode: 0);
       },
       isLocalAcquireSupported: () => false,
-      installGitDir: (_, {bool overwrite = false}) async =>
+      installGitDir: (_, {bool overwrite = false, String? idOverride}) async =>
           throw StateError('unused'),
     );
 
@@ -294,7 +295,7 @@ void main() {
           return const CliInstallerCommandResult(exitCode: 0);
         },
         isLocalAcquireSupported: () => true,
-        installGitDir: (_, {bool overwrite = false}) async =>
+        installGitDir: (_, {bool overwrite = false, String? idOverride}) async =>
             throw StateError('unused'),
         registerDirectory: install.registerInstalledDirectory,
       );
@@ -325,7 +326,7 @@ void main() {
           return const CliInstallerCommandResult(exitCode: 0);
         },
         isLocalAcquireSupported: () => true,
-        installGitDir: (_, {bool overwrite = false}) async =>
+        installGitDir: (_, {bool overwrite = false, String? idOverride}) async =>
             throw StateError('unused'),
         registerDirectory:
             ({required String id, required String directory}) async {
@@ -352,7 +353,7 @@ void main() {
       final engine = SkillAcquisitionEngine(
         runner: (_) async => const CliInstallerCommandResult(exitCode: 0),
         isLocalAcquireSupported: () => true,
-        installGitDir: (_, {bool overwrite = false}) async =>
+        installGitDir: (_, {bool overwrite = false, String? idOverride}) async =>
             throw StateError('unused'),
         registerDirectory: install.registerInstalledDirectory,
       );
@@ -371,4 +372,80 @@ void main() {
       expect(skills.single.directory, 'gstack-office-hours');
     },
   );
+
+  test('git-pack installs every pack skill once and returns requested id', () async {
+    final installed = <String>[];
+    final engine = SkillAcquisitionEngine(
+      packRegistry: SkillPackRegistry(),
+      installGitDir: (d, {bool overwrite = false, String? idOverride}) async {
+        final id = idOverride ?? d.expectedLocalId;
+        installed.add(id);
+        return Skill(
+          id: id,
+          name: d.name,
+          description: '',
+          directory: d.directory,
+          installedAt: 1,
+          updatedAt: 1,
+        );
+      },
+    );
+
+    final ref = SkillDependencyRef(
+      id: 'garrytan/gstack:office-hours',
+      packId: 'garrytan/gstack',
+      name: 'Office Hours',
+      repoOwner: 'garrytan',
+      repoName: 'gstack',
+      repoBranch: 'main',
+      directory: 'office-hours',
+      acquire: const SkillAcquireSpec(kind: 'git-pack'),
+    );
+    final result = await engine.install(ref);
+    expect(result.success, isTrue);
+    expect(result.skillId, 'garrytan/gstack:office-hours');
+    expect(installed, contains('garrytan/gstack:office-hours'));
+    expect(installed, contains('garrytan/gstack:ship'));
+    expect(installed.length, 9);
+  });
+
+  test('git-pack skips already-existing skills and finishes remaining', () async {
+    final installed = <String>[];
+    final engine = SkillAcquisitionEngine(
+      packRegistry: SkillPackRegistry(),
+      installGitDir: (d, {bool overwrite = false, String? idOverride}) async {
+        final id = idOverride ?? d.expectedLocalId;
+        if (id == 'garrytan/gstack:office-hours') {
+          throw Exception('A skill already exists at office-hours');
+        }
+        installed.add(id);
+        return Skill(
+          id: id,
+          name: d.name,
+          description: '',
+          directory: d.directory,
+          installedAt: 1,
+          updatedAt: 1,
+        );
+      },
+    );
+
+    final result = await engine.install(
+      SkillDependencyRef(
+        id: 'garrytan/gstack:ship',
+        packId: 'garrytan/gstack',
+        name: 'Ship',
+        repoOwner: 'garrytan',
+        repoName: 'gstack',
+        repoBranch: 'main',
+        directory: 'ship',
+        acquire: const SkillAcquireSpec(kind: 'git-pack'),
+      ),
+    );
+    expect(result.success, isTrue);
+    expect(result.skillId, 'garrytan/gstack:ship');
+    expect(installed, isNot(contains('garrytan/gstack:office-hours')));
+    expect(installed, contains('garrytan/gstack:ship'));
+    expect(installed.length, 8);
+  });
 }

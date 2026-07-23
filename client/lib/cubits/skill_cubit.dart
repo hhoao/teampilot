@@ -130,8 +130,12 @@ class SkillCubit extends Cubit<SkillState> {
   }) : _acquisitionEngine =
            acquisitionEngine ??
            SkillAcquisitionEngine(
-             installGitDir: (d, {bool overwrite = false}) =>
-                 _repo.installFromDiscovery(d, overwrite: overwrite),
+             installGitDir: (d, {bool overwrite = false, String? idOverride}) =>
+                 _repo.installFromDiscovery(
+                   d,
+                   overwrite: overwrite,
+                   idOverride: idOverride,
+                 ),
              registerDirectory: ({required String id, required String directory}) =>
                  _repo.install.registerInstalledDirectory(
                    id: id,

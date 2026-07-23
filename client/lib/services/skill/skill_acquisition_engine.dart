@@ -3,16 +3,22 @@ import 'dart:io';
 import '../../models/discoverable_team.dart';
 import '../../models/skill.dart';
 import '../../models/skill_acquire_spec.dart';
+import '../../models/skill_pack.dart';
 import '../cli/installer_types.dart';
 import '../storage/app_storage.dart';
 import 'skill_install_service.dart';
 import 'skill_manifest_service.dart';
+import 'skill_pack_registry.dart';
 
 typedef SkillInstallRunner =
     Future<CliInstallerCommandResult> Function(CliInstallerCommand command);
 
 typedef SkillGitDirInstaller =
-    Future<Skill> Function(DiscoverableSkill discovery, {bool overwrite});
+    Future<Skill> Function(
+      DiscoverableSkill discovery, {
+      bool overwrite,
+      String? idOverride,
+    });
 
 typedef SkillDirectoryRegistrar =
     Future<Skill> Function({
@@ -47,6 +53,7 @@ class SkillAcquisitionEngine {
     bool Function()? isLocalAcquireSupported,
     SkillDirectoryRegistrar? registerDirectory,
     Future<Set<String>> Function()? listSkillDirsWithSkillMd,
+    SkillPackRegistry? packRegistry,
   }) : _runner = runner ?? _defaultLocalRunner,
        _installGitDir = installGitDir,
        _isLocalAcquireSupported =
@@ -57,13 +64,15 @@ class SkillAcquisitionEngine {
              manifest: SkillManifestService(),
            ).registerInstalledDirectory,
        _listSkillDirsWithSkillMd =
-           listSkillDirsWithSkillMd ?? _defaultListSkillDirsWithSkillMd;
+           listSkillDirsWithSkillMd ?? _defaultListSkillDirsWithSkillMd,
+       _packRegistry = packRegistry ?? SkillPackRegistry();
 
   final SkillInstallRunner _runner;
   final SkillGitDirInstaller _installGitDir;
   final bool Function() _isLocalAcquireSupported;
   final SkillDirectoryRegistrar _registerDirectory;
   final Future<Set<String>> Function() _listSkillDirsWithSkillMd;
+  final SkillPackRegistry _packRegistry;
 
   static bool _defaultLocalAcquireSupported() => true;
 
@@ -104,6 +113,14 @@ class SkillAcquisitionEngine {
     SkillDependencyRef ref, {
     bool overwrite = false,
   }) {
+    final packId = ref.packId?.trim();
+    if (packId != null && packId.isNotEmpty) {
+      return _installPackSkill(
+        packId: packId,
+        expectedLocalId: ref.expectedLocalId,
+        overwrite: overwrite,
+      );
+    }
     return _install(
       acquire: ref.resolvedAcquire,
       discovery: ref.toDiscoverableSkill(),
@@ -117,6 +134,14 @@ class SkillAcquisitionEngine {
     DiscoverableSkill d, {
     bool overwrite = false,
   }) {
+    final packId = d.packId?.trim();
+    if (packId != null && packId.isNotEmpty) {
+      return _installPackSkill(
+        packId: packId,
+        expectedLocalId: d.expectedLocalId,
+        overwrite: overwrite,
+      );
+    }
     final acquire = d.acquire ?? const SkillAcquireSpec(kind: 'git-dir');
     return _install(
       acquire: acquire,
@@ -125,6 +150,123 @@ class SkillAcquisitionEngine {
       displayName: d.name,
       overwrite: overwrite,
     );
+  }
+
+  Future<SkillAcquireResult> _installPackSkill({
+    required String packId,
+    required String expectedLocalId,
+    required bool overwrite,
+  }) async {
+    final pack = _packRegistry.byId(packId);
+    if (pack == null) {
+      return SkillAcquireResult(
+        success: false,
+        message: 'Unknown skill pack: $packId',
+      );
+    }
+    if (pack.skills.isEmpty) {
+      return SkillAcquireResult(
+        success: false,
+        message: 'Skill pack $packId has no skills.',
+      );
+    }
+    final entry = pack.entryById(expectedLocalId);
+    if (entry == null) {
+      return SkillAcquireResult(
+        success: false,
+        message: 'Skill $expectedLocalId is not in pack $packId.',
+      );
+    }
+
+    switch (pack.acquire.kind) {
+      case 'git-pack':
+        return _installGitPack(
+          pack: pack,
+          expectedLocalId: expectedLocalId,
+          overwrite: overwrite,
+        );
+      case 'script':
+        // Opaque pack installer: run script once, then register every pack skill
+        // directory that exists on disk under its pack skill id.
+        final scriptResult = await _installScript(
+          acquire: pack.acquire.copyWith(primaryDirectory: entry.directory),
+          expectedLocalId: expectedLocalId,
+          displayName: pack.name,
+        );
+        if (!scriptResult.success) return scriptResult;
+        return _registerPackSkillsFromDisk(pack, expectedLocalId);
+      default:
+        return SkillAcquireResult(
+          success: false,
+          message: 'Unsupported pack acquire kind: ${pack.acquire.kind}',
+        );
+    }
+  }
+
+  Future<SkillAcquireResult> _installGitPack({
+    required SkillPack pack,
+    required String expectedLocalId,
+    required bool overwrite,
+  }) async {
+    try {
+      // One pack install registers every skill. Disk cache syncs the repo once;
+      // already-present skill dirs are skipped so partial retries stay idempotent.
+      for (final entry in pack.skills) {
+        final discovery = DiscoverableSkill(
+          key: entry.id,
+          name: entry.name,
+          description: '',
+          directory: entry.directory,
+          repoOwner: pack.repoOwner,
+          repoName: pack.repoName,
+          repoBranch: pack.repoBranch,
+          id: entry.id,
+          packId: pack.id,
+          acquire: const SkillAcquireSpec(kind: 'git-pack'),
+        );
+        try {
+          await _installGitDir(
+            discovery,
+            overwrite: overwrite,
+            idOverride: entry.id,
+          );
+        } catch (e) {
+          if (!overwrite && _isAlreadyExistsError(e)) continue;
+          rethrow;
+        }
+      }
+      return SkillAcquireResult(success: true, skillId: expectedLocalId);
+    } catch (e) {
+      return SkillAcquireResult(success: false, message: e.toString());
+    }
+  }
+
+  static bool _isAlreadyExistsError(Object e) =>
+      e.toString().toLowerCase().contains('already exists');
+
+  Future<SkillAcquireResult> _registerPackSkillsFromDisk(
+    SkillPack pack,
+    String expectedLocalId,
+  ) async {
+    try {
+      final present = await _listSkillDirsWithSkillMd();
+      for (final entry in pack.skills) {
+        if (!present.contains(entry.directory)) continue;
+        await _registerDirectory(id: entry.id, directory: entry.directory);
+      }
+      if (!present.contains(
+        pack.entryById(expectedLocalId)?.directory ?? '',
+      )) {
+        return SkillAcquireResult(
+          success: false,
+          message:
+              'Pack install finished but ${pack.entryById(expectedLocalId)?.directory} was not found under skills/installed/.',
+        );
+      }
+      return SkillAcquireResult(success: true, skillId: expectedLocalId);
+    } catch (e) {
+      return SkillAcquireResult(success: false, message: e.toString());
+    }
   }
 
   Future<SkillAcquireResult> _install({
@@ -137,11 +279,28 @@ class SkillAcquisitionEngine {
     switch (acquire.kind) {
       case 'git-dir':
         try {
-          final skill = await _installGitDir(discovery, overwrite: overwrite);
+          final skill = await _installGitDir(
+            discovery,
+            overwrite: overwrite,
+            idOverride: discovery.id,
+          );
           return SkillAcquireResult(success: true, skillId: skill.id);
         } catch (e) {
           return SkillAcquireResult(success: false, message: e.toString());
         }
+      case 'git-pack':
+        final packId = discovery.packId?.trim();
+        if (packId == null || packId.isEmpty) {
+          return const SkillAcquireResult(
+            success: false,
+            message: 'git-pack acquire requires packId.',
+          );
+        }
+        return _installPackSkill(
+          packId: packId,
+          expectedLocalId: expectedLocalId,
+          overwrite: overwrite,
+        );
       case 'script':
         return _installScript(
           acquire: acquire,

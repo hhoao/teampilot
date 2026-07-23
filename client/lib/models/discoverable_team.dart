@@ -17,6 +17,7 @@ class SkillDependencyRef {
     required this.directory,
     required this.name,
     this.id,
+    this.packId,
     this.acquire,
   });
 
@@ -26,24 +27,39 @@ class SkillDependencyRef {
   final String directory;
   final String name;
 
-  /// Optional explicit local skill id (preferred for `script` deps).
+  /// Optional explicit local skill id (preferred for `script` / pack skills).
   final String? id;
+
+  /// When set, install goes through [SkillPack] (install-once, many skills).
+  final String? packId;
   final SkillAcquireSpec? acquire;
 
-  /// Missing [acquire] ≡ `git-dir` (existing repo/directory install).
-  SkillAcquireSpec get resolvedAcquire =>
-      acquire ?? const SkillAcquireSpec(kind: 'git-dir');
+  /// Missing [acquire] ≡ `git-pack` when [packId] is set, else `git-dir`.
+  SkillAcquireSpec get resolvedAcquire {
+    if (acquire != null) return acquire!;
+    if (packId != null && packId!.trim().isNotEmpty) {
+      return const SkillAcquireSpec(kind: 'git-pack');
+    }
+    return const SkillAcquireSpec(kind: 'git-dir');
+  }
 
   /// Deterministic local [Skill.id] this dep resolves to once installed.
   ///
   /// - `script`: prefer non-empty [id], else `script:<host>/<path-basename>`
   ///   from [SkillAcquireSpec.package] (query/fragment stripped).
+  /// - pack skill: prefer non-empty [id], else `$packId:${basename(directory)}`.
   /// - otherwise: `owner/name:basename(directory)`.
   String get expectedLocalId {
+    final explicit = id?.trim();
     if (resolvedAcquire.kind == 'script') {
-      final explicit = id?.trim();
       if (explicit != null && explicit.isNotEmpty) return explicit;
       return skillScriptIdFromPackageUrl(resolvedAcquire.package);
+    }
+    final pack = packId?.trim();
+    if (pack != null && pack.isNotEmpty) {
+      if (explicit != null && explicit.isNotEmpty) return explicit;
+      final base = directory.split('/').last;
+      return '$pack:$base';
     }
     return '$repoOwner/$repoName:${directory.split('/').last}';
   }
@@ -58,12 +74,14 @@ class SkillDependencyRef {
     repoName: repoName,
     repoBranch: repoBranch,
     id: id,
+    packId: packId,
     acquire: acquire,
   );
 
   factory SkillDependencyRef.fromJson(Map<String, Object?> json) {
     final acquireRaw = json['acquire'];
     final idRaw = (json['id'] as String?)?.trim();
+    final packRaw = (json['packId'] as String?)?.trim();
     return SkillDependencyRef(
       repoOwner: json['repoOwner'] as String? ?? '',
       repoName: json['repoName'] as String? ?? '',
@@ -71,6 +89,7 @@ class SkillDependencyRef {
       directory: json['directory'] as String? ?? '',
       name: json['name'] as String? ?? '',
       id: idRaw == null || idRaw.isEmpty ? null : idRaw,
+      packId: packRaw == null || packRaw.isEmpty ? null : packRaw,
       acquire: acquireRaw is Map
           ? SkillAcquireSpec.fromJson(acquireRaw.cast<String, Object?>())
           : null,
@@ -84,6 +103,7 @@ class SkillDependencyRef {
     'directory': directory,
     'name': name,
     if (id != null && id!.isNotEmpty) 'id': id,
+    if (packId != null && packId!.isNotEmpty) 'packId': packId,
     if (acquire != null) 'acquire': acquire!.toJson(),
   };
 
@@ -96,6 +116,7 @@ class SkillDependencyRef {
       directory == other.directory &&
       name == other.name &&
       id == other.id &&
+      packId == other.packId &&
       acquire == other.acquire;
 
   @override
@@ -106,6 +127,7 @@ class SkillDependencyRef {
     directory,
     name,
     id,
+    packId,
     acquire,
   );
 }

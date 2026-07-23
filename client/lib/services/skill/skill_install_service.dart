@@ -106,16 +106,20 @@ class SkillInstallService {
     required String name,
     required String description,
     bool overwrite = false,
+    String? idOverride,
   }) async {
     await _installFiles(basename: basename, files: files, overwrite: overwrite);
 
     final hash = _hashSkillMd(files);
     final now = DateTime.now().millisecondsSinceEpoch;
-    final id = _idFor(
-      repoOwner: repoOwner,
-      repoName: repoName,
-      basename: basename,
-    );
+    final override = idOverride?.trim();
+    final id = (override != null && override.isNotEmpty)
+        ? override
+        : _idFor(
+            repoOwner: repoOwner,
+            repoName: repoName,
+            basename: basename,
+          );
     final skill = Skill(
       id: id,
       name: name,
@@ -137,6 +141,7 @@ class SkillInstallService {
   Future<Skill> installFromDiscovery(
     DiscoverableSkill d, {
     bool overwrite = false,
+    String? idOverride,
   }) async {
     final repo = SkillRepo(
       owner: d.repoOwner,
@@ -155,6 +160,7 @@ class SkillInstallService {
       name: d.name,
       description: d.description,
       overwrite: overwrite,
+      idOverride: idOverride ?? d.id,
     );
   }
 

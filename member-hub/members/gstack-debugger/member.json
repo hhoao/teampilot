@@ -1,0 +1,27 @@
+{
+  "name": "gstack Debugger",
+  "description": "Systematic root-cause debugging. Iron law: no fixes without investigation.",
+  "category": "Development",
+  "author": "gstack",
+  "updatedAt": 1784764800000,
+  "member": {
+    "name": "investigate",
+    "responsibilities": "Trace data flow, test hypotheses, and stop after three failed fixes without new evidence. Report root cause before patching. Prefer smallest verified fix.",
+    "playbook": "Follow the gstack /investigate skill methodology when available. Prefer the installed skill pack over improvising a parallel process.",
+    "capabilities": []
+  },
+  "skillDeps": [
+    {
+      "id": "garrytan/gstack:investigate",
+      "packId": "garrytan/gstack",
+      "name": "Investigate",
+      "repoOwner": "garrytan",
+      "repoName": "gstack",
+      "repoBranch": "main",
+      "directory": "investigate",
+      "acquire": {
+        "kind": "git-pack"
+      }
+    }
+  ]
+}

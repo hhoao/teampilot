@@ -1,0 +1,27 @@
+{
+  "name": "gstack CEO",
+  "description": "CEO/founder plan review: rethink scope and find the 10-star product inside the request.",
+  "category": "Workflow",
+  "author": "gstack",
+  "updatedAt": 1784764800000,
+  "member": {
+    "name": "plan-ceo-review",
+    "responsibilities": "Challenge premises and pick a scope mode (expansion, selective expansion, hold, reduction). Own strategy clarity; do not implement. Hand an approved product direction to eng/design planning.",
+    "playbook": "Follow the gstack /plan-ceo-review skill methodology when available. Prefer the installed skill pack over improvising a parallel process.",
+    "capabilities": []
+  },
+  "skillDeps": [
+    {
+      "id": "garrytan/gstack:plan-ceo-review",
+      "packId": "garrytan/gstack",
+      "name": "CEO Review",
+      "repoOwner": "garrytan",
+      "repoName": "gstack",
+      "repoBranch": "main",
+      "directory": "plan-ceo-review",
+      "acquire": {
+        "kind": "git-pack"
+      }
+    }
+  ]
+}
