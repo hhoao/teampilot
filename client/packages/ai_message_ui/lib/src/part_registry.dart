@@ -67,6 +67,9 @@ class AiPartRegistry {
         (toolGroupBuilder ?? _defaultToolGroup)(context, tools),
       AiRenderReasoningGroup(:final parts) =>
         (reasoningGroupBuilder ?? _defaultReasoningGroup)(context, parts),
+      AiRenderChainOfThought() => throw UnimplementedError(
+        'Cot render in Task 4',
+      ),
     };
   }
 }
