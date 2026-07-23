@@ -30,7 +30,6 @@ import '../services/workspace/target_liveness.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/ui/app_keys.dart';
 import '../widgets/workspace/workspace_dead_target_remap_dialog.dart';
-import '../utils/team/team_member_naming.dart';
 import 'home_workspace/workspace/workspace_route_active_scope.dart';
 import 'chat/chat_workbench_overlay.dart';
 import 'chat/chat_workbench_placeholders.dart';
@@ -39,6 +38,7 @@ import 'chat/chat_workbench_slice.dart';
 import 'chat/chat_workbench_terminal.dart';
 import '../models/member_remote_provision_progress.dart';
 import 'chat/history_continue_delivery.dart';
+import 'chat/session_chat_continue_seat.dart';
 import 'chat/session_chat_view.dart';
 import 'chat/session_history_review_submit.dart';
 
@@ -560,19 +560,16 @@ class _ChatWorkbenchBody extends StatelessWidget {
     final resolvedTeam = isPersonal
         ? null
         : (team ?? _teamProfileForSession(context, appSession));
-    TeamMemberConfig? connectMember;
-    if (!isPersonal && resolvedTeam != null) {
-      final mid = memberId.trim();
-      if (mid.isNotEmpty) {
-        connectMember = resolvedTeam.members
-            .where((m) => m.id == mid)
-            .firstOrNull;
-      }
-      connectMember ??= resolvedTeam.members
-          .where((m) => TeamMemberNaming.isTeamLead(m))
-          .firstOrNull;
-      connectMember ??= resolvedTeam.members.firstOrNull;
-    }
+    // Prefer session/runtime pods so numbered seats (developer-0) match the
+    // Members panel — looking up team.members type ids alone retargeted Chat
+    // continue to the team lead.
+    final connectMember = (!isPersonal && resolvedTeam != null)
+        ? resolveSessionChatContinueMember(
+            session: appSession,
+            team: resolvedTeam,
+            selectedMemberId: memberId,
+          )
+        : null;
     final shellMemberId = isPersonal
         ? appSession.sessionId
         : (connectMember?.id ?? memberId);

@@ -19,6 +19,7 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/pages/chat/history_continue_delivery.dart';
+import 'package:teampilot/pages/chat/session_chat_continue_seat.dart';
 import 'package:teampilot/pages/chat/session_history_review_submit.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
@@ -767,15 +768,13 @@ final class CliMessageMatrixHarness {
     }
 
     final activeTeam = team;
-    TeamMemberConfig? connectMember;
-    if (activeTeam != null) {
-      connectMember =
-          activeTeam.members.where((m) => m.id == mid).firstOrNull ??
-          activeTeam.members
-              .where((m) => TeamMemberNaming.isTeamLead(m))
-              .firstOrNull ??
-          activeTeam.members.firstOrNull;
-    }
+    final connectMember = activeTeam == null
+        ? null
+        : resolveSessionChatContinueMember(
+            session: s,
+            team: activeTeam,
+            selectedMemberId: mid,
+          );
 
     final result = await submitSessionHistoryReviewMessage(
       sessionId: s.sessionId,
