@@ -15,6 +15,11 @@ defaults:
   run:
     working-directory: client
 
+# Repository secret TEAMPILOT_GITHUB_OAUTH_CLIENT_ID → compile-time
+# GITHUB_OAUTH_CLIENT_ID (Actions forbids secrets named GITHUB_*).
+env:
+  TEAMPILOT_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.TEAMPILOT_GITHUB_OAUTH_CLIENT_ID }}
+
 jobs:
   build-linux:
     name: Build Linux (deb + AppImage)
@@ -59,8 +64,17 @@ jobs:
       - name: Generate native splash sources
         run: dart run native_splash_screen_cli gen
 
+      - name: Require GitHub OAuth client id
+        run: |
+          if [ -z "${TEAMPILOT_GITHUB_OAUTH_CLIENT_ID}" ]; then
+            echo "Missing repository secret TEAMPILOT_GITHUB_OAUTH_CLIENT_ID" >&2
+            exit 1
+          fi
+
       - name: Package
-        run: fastforge package --platform linux --targets deb,appimage
+        run: >
+          fastforge package --platform linux --targets deb,appimage
+          --build-dart-define=GITHUB_OAUTH_CLIENT_ID=${TEAMPILOT_GITHUB_OAUTH_CLIENT_ID}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -96,8 +110,17 @@ jobs:
       - name: Generate native splash sources
         run: dart run native_splash_screen_cli gen
 
+      - name: Require GitHub OAuth client id
+        run: |
+          if [ -z "${TEAMPILOT_GITHUB_OAUTH_CLIENT_ID}" ]; then
+            echo "Missing repository secret TEAMPILOT_GITHUB_OAUTH_CLIENT_ID" >&2
+            exit 1
+          fi
+
       - name: Package
-        run: fastforge package --platform macos --targets dmg
+        run: >
+          fastforge package --platform macos --targets dmg
+          --build-dart-define=GITHUB_OAUTH_CLIENT_ID=${TEAMPILOT_GITHUB_OAUTH_CLIENT_ID}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -153,11 +176,25 @@ jobs:
       - name: Generate native splash sources
         run: dart run native_splash_screen_cli gen
 
+      - name: Require GitHub OAuth client id
+        shell: bash
+        run: |
+          if [ -z "${TEAMPILOT_GITHUB_OAUTH_CLIENT_ID}" ]; then
+            echo "Missing repository secret TEAMPILOT_GITHUB_OAUTH_CLIENT_ID" >&2
+            exit 1
+          fi
+
       - name: Package Windows (ZIP + MSIX)
-        run: fastforge package --platform windows --targets zip,msix
+        shell: bash
+        run: >
+          fastforge package --platform windows --targets zip,msix
+          --build-dart-define=GITHUB_OAUTH_CLIENT_ID=${TEAMPILOT_GITHUB_OAUTH_CLIENT_ID}
 
       - name: Package Windows (EXE installer)
-        run: fastforge package --platform windows --targets exe
+        shell: bash
+        run: >
+          fastforge package --platform windows --targets exe
+          --build-dart-define=GITHUB_OAUTH_CLIENT_ID=${TEAMPILOT_GITHUB_OAUTH_CLIENT_ID}
 
       - name: Verify Windows release files
         shell: pwsh
@@ -232,12 +269,20 @@ jobs:
       - name: Sync bundled Google Fonts (Noto Sans SC)
         run: dart run tool/sync_bundled_google_fonts.dart
 
+      - name: Require GitHub OAuth client id
+        run: |
+          if [ -z "${TEAMPILOT_GITHUB_OAUTH_CLIENT_ID}" ]; then
+            echo "Missing repository secret TEAMPILOT_GITHUB_OAUTH_CLIENT_ID" >&2
+            exit 1
+          fi
+
       # fastforge 在 split-per-abi 时只会复制一个 APK 到 dist/，故直接用 flutter build 并分别归档
       - name: Build Android (split APK per ABI)
         run: |
           flutter build apk --release \
             --split-per-abi \
-            --target-platform android-arm,android-arm64
+            --target-platform android-arm,android-arm64 \
+            --dart-define=GITHUB_OAUTH_CLIENT_ID="${TEAMPILOT_GITHUB_OAUTH_CLIENT_ID}"
           version=$(grep -E '^version:' pubspec.yaml | head -1 | sed 's/version:[[:space:]]*//')
           dist_dir="dist/${version}"
           mkdir -p "$dist_dir"
