@@ -395,6 +395,7 @@ test('killLeaf invokes injector once per key', () async { … });
 test('killAll invokes injector for each leaf', () async { … });
 test('kill failure sets error and does not remove leaf until bindings refresh', () async { … });
 test('snapshot failure keeps last good snapshot and sets error', () async { … });
+test('syncRegistry drops null livePid and replaces map', () async { … });
 ```
 
 Use injectable `Duration pollInterval` default `2s` (tests use `Duration.zero` or fake async).
