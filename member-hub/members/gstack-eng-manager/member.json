@@ -1,0 +1,27 @@
+{
+  "name": "gstack Eng Manager",
+  "description": "Engineering manager planning: architecture, data flow, edge cases, and test matrix.",
+  "category": "Development",
+  "author": "gstack",
+  "updatedAt": 1784764800000,
+  "member": {
+    "name": "plan-eng-review",
+    "responsibilities": "Force hidden assumptions into the open with diagrams and failure modes. Produce an executable eng plan with acceptance criteria. Do not implement the plan yourself.",
+    "playbook": "Follow the gstack /plan-eng-review skill methodology when available. Prefer the installed skill pack over improvising a parallel process.",
+    "capabilities": []
+  },
+  "skillDeps": [
+    {
+      "id": "garrytan/gstack:plan-eng-review",
+      "packId": "garrytan/gstack",
+      "name": "Eng Manager Review",
+      "repoOwner": "garrytan",
+      "repoName": "gstack",
+      "repoBranch": "main",
+      "directory": "plan-eng-review",
+      "acquire": {
+        "kind": "git-pack"
+      }
+    }
+  ]
+}

@@ -73,7 +73,12 @@ class SkillRepository {
   Future<Skill> installFromDiscovery(
     DiscoverableSkill d, {
     bool overwrite = false,
-  }) => install.installFromDiscovery(d, overwrite: overwrite);
+    String? idOverride,
+  }) => install.installFromDiscovery(
+    d,
+    overwrite: overwrite,
+    idOverride: idOverride,
+  );
 
   Future<List<Skill>> installFromZip(File zip, {bool overwrite = false}) =>
       install.installFromZip(zip, overwrite: overwrite);

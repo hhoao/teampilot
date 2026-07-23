@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../utils/team/team_member_naming.dart';
 import 'skill.dart';
+import 'skill_acquire_spec.dart';
 import 'team_config.dart';
 import 'team_roster_slot.dart';
 
@@ -15,6 +16,9 @@ class SkillDependencyRef {
     required this.repoBranch,
     required this.directory,
     required this.name,
+    this.id,
+    this.packId,
+    this.acquire,
   });
 
   final String repoOwner;
@@ -23,11 +27,42 @@ class SkillDependencyRef {
   final String directory;
   final String name;
 
-  /// Deterministic local [Skill.id] this dep resolves to once installed
-  /// (`owner/name:basename`). Lets the UI know whether it is already installed
-  /// without downloading, and keeps the installer + UI in agreement.
-  String get expectedLocalId =>
-      '$repoOwner/$repoName:${directory.split('/').last}';
+  /// Optional explicit local skill id (preferred for `script` / pack skills).
+  final String? id;
+
+  /// When set, install goes through [SkillPack] (install-once, many skills).
+  final String? packId;
+  final SkillAcquireSpec? acquire;
+
+  /// Missing [acquire] ≡ `git-pack` when [packId] is set, else `git-dir`.
+  SkillAcquireSpec get resolvedAcquire {
+    if (acquire != null) return acquire!;
+    if (packId != null && packId!.trim().isNotEmpty) {
+      return const SkillAcquireSpec(kind: 'git-pack');
+    }
+    return const SkillAcquireSpec(kind: 'git-dir');
+  }
+
+  /// Deterministic local [Skill.id] this dep resolves to once installed.
+  ///
+  /// - `script`: prefer non-empty [id], else `script:<host>/<path-basename>`
+  ///   from [SkillAcquireSpec.package] (query/fragment stripped).
+  /// - pack skill: prefer non-empty [id], else `$packId:${basename(directory)}`.
+  /// - otherwise: `owner/name:basename(directory)`.
+  String get expectedLocalId {
+    final explicit = id?.trim();
+    if (resolvedAcquire.kind == 'script') {
+      if (explicit != null && explicit.isNotEmpty) return explicit;
+      return skillScriptIdFromPackageUrl(resolvedAcquire.package);
+    }
+    final pack = packId?.trim();
+    if (pack != null && pack.isNotEmpty) {
+      if (explicit != null && explicit.isNotEmpty) return explicit;
+      final base = directory.split('/').last;
+      return '$pack:$base';
+    }
+    return '$repoOwner/$repoName:${directory.split('/').last}';
+  }
 
   /// Payload for [SkillInstallService.installFromDiscovery] during TeamHub clone.
   DiscoverableSkill toDiscoverableSkill() => DiscoverableSkill(
@@ -38,16 +73,28 @@ class SkillDependencyRef {
     repoOwner: repoOwner,
     repoName: repoName,
     repoBranch: repoBranch,
+    id: id,
+    packId: packId,
+    acquire: acquire,
   );
 
-  factory SkillDependencyRef.fromJson(Map<String, Object?> json) =>
-      SkillDependencyRef(
-        repoOwner: json['repoOwner'] as String? ?? '',
-        repoName: json['repoName'] as String? ?? '',
-        repoBranch: json['repoBranch'] as String? ?? 'main',
-        directory: json['directory'] as String? ?? '',
-        name: json['name'] as String? ?? '',
-      );
+  factory SkillDependencyRef.fromJson(Map<String, Object?> json) {
+    final acquireRaw = json['acquire'];
+    final idRaw = (json['id'] as String?)?.trim();
+    final packRaw = (json['packId'] as String?)?.trim();
+    return SkillDependencyRef(
+      repoOwner: json['repoOwner'] as String? ?? '',
+      repoName: json['repoName'] as String? ?? '',
+      repoBranch: json['repoBranch'] as String? ?? 'main',
+      directory: json['directory'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      id: idRaw == null || idRaw.isEmpty ? null : idRaw,
+      packId: packRaw == null || packRaw.isEmpty ? null : packRaw,
+      acquire: acquireRaw is Map
+          ? SkillAcquireSpec.fromJson(acquireRaw.cast<String, Object?>())
+          : null,
+    );
+  }
 
   Map<String, Object?> toJson() => {
     'repoOwner': repoOwner,
@@ -55,6 +102,9 @@ class SkillDependencyRef {
     'repoBranch': repoBranch,
     'directory': directory,
     'name': name,
+    if (id != null && id!.isNotEmpty) 'id': id,
+    if (packId != null && packId!.isNotEmpty) 'packId': packId,
+    if (acquire != null) 'acquire': acquire!.toJson(),
   };
 
   @override
@@ -64,11 +114,22 @@ class SkillDependencyRef {
       repoName == other.repoName &&
       repoBranch == other.repoBranch &&
       directory == other.directory &&
-      name == other.name;
+      name == other.name &&
+      id == other.id &&
+      packId == other.packId &&
+      acquire == other.acquire;
 
   @override
-  int get hashCode =>
-      Object.hash(repoOwner, repoName, repoBranch, directory, name);
+  int get hashCode => Object.hash(
+    repoOwner,
+    repoName,
+    repoBranch,
+    directory,
+    name,
+    id,
+    packId,
+    acquire,
+  );
 }
 
 /// Source descriptor for a plugin dependency (resolved at clone time).

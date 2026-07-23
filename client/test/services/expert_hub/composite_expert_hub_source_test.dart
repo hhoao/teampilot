@@ -11,14 +11,14 @@ void main() {
     final source = CompositeExpertHubSource.withDefaults();
     final members = await source.fetchMembers();
 
-    expect(members.length, greaterThanOrEqualTo(12));
+    expect(members.length, greaterThanOrEqualTo(8));
     expect(
       members.any((m) => m.key == 'teampilot/builtin/developer'),
       isTrue,
     );
     expect(
       members.where((m) => m.source == ExpertMemberSource.builtin).length,
-      greaterThanOrEqualTo(12),
+      8,
     );
   });
 

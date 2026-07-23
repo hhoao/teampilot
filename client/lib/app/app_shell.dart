@@ -123,6 +123,7 @@ import '../services/storage/runtime_target_registry.dart';
 import '../services/storage/targets_repository.dart';
 import '../services/notification/notification_recorder.dart';
 import '../services/session/session_lifecycle_service.dart';
+import '../services/skill/skill_acquisition_engine.dart';
 import '../services/skill/skill_fetch_service.dart';
 import '../services/plugin/plugin_repo_disk_cache_service.dart';
 import '../services/skill/skill_install_service.dart';
@@ -130,6 +131,7 @@ import '../services/skill/skill_manifest_service.dart';
 import '../services/skill/skill_repo_disk_cache_service.dart';
 import '../services/skill/skill_repo_git_service.dart';
 import '../services/skill/skill_repo_service.dart';
+import '../services/storage/runtime_context.dart';
 import '../services/github/github_credentials_store.dart';
 import '../services/github/github_device_flow_auth.dart';
 import '../services/hub_publish/http_github_api_client.dart';
@@ -563,16 +565,32 @@ Future<AppShell> buildAppShell({
   final skillGit = SkillRepoGitService();
   final skillFetch = SkillFetchService(git: skillGit);
   final skillRepoCache = SkillRepoDiskCacheService(fetch: skillFetch);
+  final skillInstallService = SkillInstallService(
+    manifest: skillManifest,
+    fetch: skillFetch,
+    repoCache: skillRepoCache,
+  );
   final skillRepo = SkillRepository(
     manifest: skillManifest,
     fetch: skillFetch,
     repoCache: skillRepoCache,
-    install: SkillInstallService(
-      manifest: skillManifest,
-      fetch: skillFetch,
-      repoCache: skillRepoCache,
-    ),
+    install: skillInstallService,
     repos: SkillRepoService(),
+  );
+  final skillAcquisitionEngine = SkillAcquisitionEngine(
+    installGitDir: (d, {bool overwrite = false, String? idOverride}) =>
+        skillInstallService.installFromDiscovery(
+          d,
+          overwrite: overwrite,
+          idOverride: idOverride,
+        ),
+    registerDirectory: ({required String id, required String directory}) =>
+        skillInstallService.registerInstalledDirectory(
+          id: id,
+          directory: directory,
+        ),
+    isLocalAcquireSupported: () =>
+        AppStorage.context.mode == StorageBackendMode.native,
   );
 
   appProviderCubit = AppProviderCubit(
@@ -694,6 +712,7 @@ Future<AppShell> buildAppShell({
   );
   skillCubit = SkillCubit(
     skillRepo,
+    acquisitionEngine: skillAcquisitionEngine,
     onSkillUninstalled: teamCubit.removeSkillFromAllTeams,
   );
   pluginCubit = PluginCubit(

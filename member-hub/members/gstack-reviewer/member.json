@@ -1,0 +1,27 @@
+{
+  "name": "gstack Reviewer",
+  "description": "Staff-engineer review: find production bugs that pass CI; auto-fix the obvious; flag completeness gaps.",
+  "category": "Development",
+  "author": "gstack",
+  "updatedAt": 1784764800000,
+  "member": {
+    "name": "review",
+    "responsibilities": "Review for correctness and production risk. Prefer actionable file:line findings. Auto-fix trivial issues when safe; otherwise return blocking findings without expanding scope.",
+    "playbook": "Follow the gstack /review skill methodology when available. Prefer the installed skill pack over improvising a parallel process.",
+    "capabilities": []
+  },
+  "skillDeps": [
+    {
+      "id": "garrytan/gstack:review",
+      "packId": "garrytan/gstack",
+      "name": "Staff Review",
+      "repoOwner": "garrytan",
+      "repoName": "gstack",
+      "repoBranch": "main",
+      "directory": "review",
+      "acquire": {
+        "kind": "git-pack"
+      }
+    }
+  ]
+}

@@ -14,16 +14,17 @@ Make skill installation **declarative and extensible**: keep today’s git-subdi
 | Default kind | `git-dir` — existing `SkillInstallService.installFromDiscovery` path |
 | Host scope | Desktop / local only in v1 (same constraint as Extension acquire Phase 2) |
 | Compatibility | Existing `SkillDependencyRef` JSON without `acquire` keeps working |
-| Follow-ups (explicitly later) | Unified acquisition layer with Extensions; `git-bundle` / SkillPack; member-hub gstack personas |
+| Follow-ups (explicitly later) | Unified acquisition layer with Extensions; additional pack sources beyond builtin registry |
 
 ## Non-goals (v1)
 
 - SSH / remote work-machine acquire
 - Merging skills + extensions into one shared `AcquisitionEngine`
-- Implementing `git-bundle` or a first-class SkillPack product
-- Adding member-hub gstack expert cards (depends on this landing first)
 - Executing arbitrary local shell strings or non-HTTPS script URLs
 - Changing team/expert clone “soft-fail one dep” policy
+
+**Landed separately:** SkillPack + `git-pack` + member-hub gstack — see
+[2026-07-23-skillpack-gstack-design.md](./2026-07-23-skillpack-gstack-design.md).
 
 ## Protocol
 
@@ -43,7 +44,8 @@ Shape mirrors `ExtensionAcquireSpec` (independent type to avoid hard coupling in
 |--------|----------|----|
 | `git-dir` | Fetch `directory/` from `repoOwner/repoName@repoBranch` and install via existing `SkillInstallService` | **Default**; implemented |
 | `script` | If URL passes safety check, run injectable runner equivalent to `sh -c 'curl -fsSL "$url" \| sh'` | **New**; implemented |
-| `git-bundle` / others | Reserved (e.g. whole-repo layout with `bin/`) | Parse/dispatch table ready; unknown kind → **hard fail** (no silent fallback) |
+| `git-pack` | Resolve `packId` via `SkillPackRegistry`; install every pack skill once (repo cache) | **Implemented** — see SkillPack design |
+| `git-bundle` / others | Reserved | Parse/dispatch table ready; unknown kind → **hard fail** (no silent fallback) |
 
 ### URL safety (`script`)
 

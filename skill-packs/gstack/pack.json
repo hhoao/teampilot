@@ -1,0 +1,57 @@
+{
+  "id": "garrytan/gstack",
+  "name": "gstack",
+  "repoOwner": "garrytan",
+  "repoName": "gstack",
+  "repoBranch": "main",
+  "acquire": {
+    "kind": "git-pack"
+  },
+  "skills": [
+    {
+      "id": "garrytan/gstack:office-hours",
+      "directory": "office-hours",
+      "name": "Office Hours"
+    },
+    {
+      "id": "garrytan/gstack:plan-ceo-review",
+      "directory": "plan-ceo-review",
+      "name": "CEO Review"
+    },
+    {
+      "id": "garrytan/gstack:plan-eng-review",
+      "directory": "plan-eng-review",
+      "name": "Eng Manager Review"
+    },
+    {
+      "id": "garrytan/gstack:plan-design-review",
+      "directory": "plan-design-review",
+      "name": "Design Review"
+    },
+    {
+      "id": "garrytan/gstack:review",
+      "directory": "review",
+      "name": "Staff Review"
+    },
+    {
+      "id": "garrytan/gstack:investigate",
+      "directory": "investigate",
+      "name": "Investigate"
+    },
+    {
+      "id": "garrytan/gstack:qa",
+      "directory": "qa",
+      "name": "QA"
+    },
+    {
+      "id": "garrytan/gstack:cso",
+      "directory": "cso",
+      "name": "CSO"
+    },
+    {
+      "id": "garrytan/gstack:ship",
+      "directory": "ship",
+      "name": "Ship"
+    }
+  ]
+}

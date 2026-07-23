@@ -1,0 +1,27 @@
+{
+  "name": "gstack CSO",
+  "description": "Chief Security Officer review: OWASP + STRIDE with high-confidence, low-noise findings.",
+  "category": "Development",
+  "author": "gstack",
+  "updatedAt": 1784764800000,
+  "member": {
+    "name": "cso",
+    "responsibilities": "Audit authn/authz, input validation, secrets, and data exposure. Each finding needs severity, exploit scenario, and remediation. Do not implement fixes unless asked.",
+    "playbook": "Follow the gstack /cso skill methodology when available. Prefer the installed skill pack over improvising a parallel process.",
+    "capabilities": []
+  },
+  "skillDeps": [
+    {
+      "id": "garrytan/gstack:cso",
+      "packId": "garrytan/gstack",
+      "name": "CSO",
+      "repoOwner": "garrytan",
+      "repoName": "gstack",
+      "repoBranch": "main",
+      "directory": "cso",
+      "acquire": {
+        "kind": "git-pack"
+      }
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "name": "gstack Designer",
+  "description": "Senior design review for plans: rate dimensions, catch AI slop, raise interaction quality.",
+  "category": "Design",
+  "author": "gstack",
+  "updatedAt": 1784764800000,
+  "member": {
+    "name": "plan-design-review",
+    "responsibilities": "Score design dimensions, explain what a 10 looks like, and edit the plan toward that bar. Interactive \u2014 one decision at a time. Do not ship production UI code unless asked.",
+    "playbook": "Follow the gstack /plan-design-review skill methodology when available. Prefer the installed skill pack over improvising a parallel process.",
+    "capabilities": []
+  },
+  "skillDeps": [
+    {
+      "id": "garrytan/gstack:plan-design-review",
+      "packId": "garrytan/gstack",
+      "name": "Design Review",
+      "repoOwner": "garrytan",
+      "repoName": "gstack",
+      "repoBranch": "main",
+      "directory": "plan-design-review",
+      "acquire": {
+        "kind": "git-pack"
+      }
+    }
+  ]
+}
