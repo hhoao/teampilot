@@ -2313,5 +2313,42 @@
   "shortcutsRunSelected": "运行所选配置",
   "shortcutsRunStop": "停止运行",
   "shortcutsRunRestart": "重新运行",
-  "shortcutsCategoryRun": "运行"
+  "shortcutsCategoryRun": "运行",
+
+  "resourceManagerTitle": "资源管理器",
+  "resourceManagerPanelTitle": "资源管理器 - 终端",
+  "resourceManagerTooltip": "资源管理器 - {memory} - {count} 个终端",
+  "@resourceManagerTooltip": {
+    "placeholders": {
+      "memory": { "type": "String" },
+      "count": { "type": "int" }
+    }
+  },
+  "resourceManagerTooltipHint": "会话按 worktree 或会话分组。",
+  "resourceManagerColumnName": "名称",
+  "resourceManagerColumnCpu": "CPU",
+  "resourceManagerColumnMemory": "内存",
+  "resourceManagerRefresh": "刷新",
+  "resourceManagerKill": "结束",
+  "resourceManagerKillAll": "全部结束",
+  "resourceManagerKillAllConfirmTitle": "结束全部终端？",
+  "resourceManagerKillAllConfirmBody": "将断开此工作区绑定的全部终端。",
+  "resourceManagerSpace": "空间",
+  "resourceManagerSpaceBeta": "Beta",
+  "resourceManagerSpaceNotScanned": "不会扫描工作区磁盘占用。",
+  "resourceManagerSystemMemoryPercent": "系统内存 {percent}%",
+  "@resourceManagerSystemMemoryPercent": {
+    "placeholders": {
+      "percent": { "type": "String" }
+    }
+  },
+  "resourceManagerTerminalsCount": "{count} 个终端",
+  "@resourceManagerTerminalsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "resourceManagerEmptyTree": "此工作区没有终端。",
+  "resourceManagerAppProcess": "应用",
+  "resourceManagerMetricsError": "无法刷新进程指标。"
 }

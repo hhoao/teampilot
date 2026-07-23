@@ -5908,4 +5908,70 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get shortcutsCategoryRun => '运行';
+
+  @override
+  String get resourceManagerTitle => '资源管理器';
+
+  @override
+  String get resourceManagerPanelTitle => '资源管理器 - 终端';
+
+  @override
+  String resourceManagerTooltip(String memory, int count) {
+    return '资源管理器 - $memory - $count 个终端';
+  }
+
+  @override
+  String get resourceManagerTooltipHint => '会话按 worktree 或会话分组。';
+
+  @override
+  String get resourceManagerColumnName => '名称';
+
+  @override
+  String get resourceManagerColumnCpu => 'CPU';
+
+  @override
+  String get resourceManagerColumnMemory => '内存';
+
+  @override
+  String get resourceManagerRefresh => '刷新';
+
+  @override
+  String get resourceManagerKill => '结束';
+
+  @override
+  String get resourceManagerKillAll => '全部结束';
+
+  @override
+  String get resourceManagerKillAllConfirmTitle => '结束全部终端？';
+
+  @override
+  String get resourceManagerKillAllConfirmBody => '将断开此工作区绑定的全部终端。';
+
+  @override
+  String get resourceManagerSpace => '空间';
+
+  @override
+  String get resourceManagerSpaceBeta => 'Beta';
+
+  @override
+  String get resourceManagerSpaceNotScanned => '不会扫描工作区磁盘占用。';
+
+  @override
+  String resourceManagerSystemMemoryPercent(String percent) {
+    return '系统内存 $percent%';
+  }
+
+  @override
+  String resourceManagerTerminalsCount(int count) {
+    return '$count 个终端';
+  }
+
+  @override
+  String get resourceManagerEmptyTree => '此工作区没有终端。';
+
+  @override
+  String get resourceManagerAppProcess => '应用';
+
+  @override
+  String get resourceManagerMetricsError => '无法刷新进程指标。';
 }

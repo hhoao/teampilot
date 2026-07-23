@@ -11039,6 +11039,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Run'**
   String get shortcutsCategoryRun;
+
+  /// No description provided for @resourceManagerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Resource Manager'**
+  String get resourceManagerTitle;
+
+  /// No description provided for @resourceManagerPanelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Resource Manager - Terminals'**
+  String get resourceManagerPanelTitle;
+
+  /// No description provided for @resourceManagerTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Resource Manager - {memory} - {count} terminals'**
+  String resourceManagerTooltip(String memory, int count);
+
+  /// No description provided for @resourceManagerTooltipHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions are grouped by worktree or session.'**
+  String get resourceManagerTooltipHint;
+
+  /// No description provided for @resourceManagerColumnName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get resourceManagerColumnName;
+
+  /// No description provided for @resourceManagerColumnCpu.
+  ///
+  /// In en, this message translates to:
+  /// **'CPU'**
+  String get resourceManagerColumnCpu;
+
+  /// No description provided for @resourceManagerColumnMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory'**
+  String get resourceManagerColumnMemory;
+
+  /// No description provided for @resourceManagerRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get resourceManagerRefresh;
+
+  /// No description provided for @resourceManagerKill.
+  ///
+  /// In en, this message translates to:
+  /// **'Kill'**
+  String get resourceManagerKill;
+
+  /// No description provided for @resourceManagerKillAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Kill all'**
+  String get resourceManagerKillAll;
+
+  /// No description provided for @resourceManagerKillAllConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Kill all terminals?'**
+  String get resourceManagerKillAllConfirmTitle;
+
+  /// No description provided for @resourceManagerKillAllConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This disconnects every terminal bound to this workspace.'**
+  String get resourceManagerKillAllConfirmBody;
+
+  /// No description provided for @resourceManagerSpace.
+  ///
+  /// In en, this message translates to:
+  /// **'Space'**
+  String get resourceManagerSpace;
+
+  /// No description provided for @resourceManagerSpaceBeta.
+  ///
+  /// In en, this message translates to:
+  /// **'Beta'**
+  String get resourceManagerSpaceBeta;
+
+  /// No description provided for @resourceManagerSpaceNotScanned.
+  ///
+  /// In en, this message translates to:
+  /// **'Does not scan workspace disk usage.'**
+  String get resourceManagerSpaceNotScanned;
+
+  /// No description provided for @resourceManagerSystemMemoryPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% system memory'**
+  String resourceManagerSystemMemoryPercent(String percent);
+
+  /// No description provided for @resourceManagerTerminalsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} terminals'**
+  String resourceManagerTerminalsCount(int count);
+
+  /// No description provided for @resourceManagerEmptyTree.
+  ///
+  /// In en, this message translates to:
+  /// **'No terminals in this workspace.'**
+  String get resourceManagerEmptyTree;
+
+  /// No description provided for @resourceManagerAppProcess.
+  ///
+  /// In en, this message translates to:
+  /// **'App'**
+  String get resourceManagerAppProcess;
+
+  /// No description provided for @resourceManagerMetricsError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not refresh process metrics.'**
+  String get resourceManagerMetricsError;
 }
 
 class _AppLocalizationsDelegate

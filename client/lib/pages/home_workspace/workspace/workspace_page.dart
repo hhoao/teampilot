@@ -26,6 +26,7 @@ import '../../../services/resource_manager/pty_process_registry.dart';
 import '../../../theme/workspace_surface_layers.dart';
 import '../../../utils/logging/logger.dart';
 import '../../../widgets/app_toast/app_toast.dart';
+import '../../../widgets/workspace_status_bar/resource_usage_status_item.dart';
 import '../../../widgets/workspace_status_bar/workspace_status_bar.dart';
 import '../../expert_hub/expert_landing_preflight_feedback.dart';
 import 'workspace_config_workspace.dart';
@@ -393,8 +394,9 @@ class _WorkspacePageState extends State<WorkspacePage> {
       child: Column(
         children: [
           Expanded(child: _buildCardBody(workspace: workspace)),
-          // Task 8 plugs ResourceUsageStatusItem into items.
-          const WorkspaceStatusBar(items: []),
+          WorkspaceStatusBar(
+            items: [ResourceUsageStatusItem()],
+          ),
         ],
       ),
     );
