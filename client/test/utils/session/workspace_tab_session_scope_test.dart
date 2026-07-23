@@ -131,5 +131,19 @@ void main() {
         );
       },
     );
+    test('resolve is unchanged when only workingSessionIds flips', () {
+      final cubit = _cubit();
+      addTearDown(cubit.close);
+
+      cubit.setActiveWorkspace('tab-A');
+      cubit.tabStore.append(_tab('a1'));
+      cubit.refreshActiveWorkspaceTabs();
+
+      final before = ChatScopedTabView.resolve(cubit, 'tab-A');
+      cubit.updateWorkingSessionsForTest({'a1'});
+      final after = ChatScopedTabView.resolve(cubit, 'tab-A');
+
+      expect(before, equals(after));
+    });
   });
 }

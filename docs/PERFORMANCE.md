@@ -66,6 +66,7 @@ Expected open sequence after that work:
 | `WorkspaceIdeShell` / `MultiPane` | First mount of split panes + tools providers | Foreground defer + skeletons; compose fast-path without `ChatPageShell` |
 | Title-bar `AnimatedOpacity` / tab chrome | High rebuild counts on open | Prefer not animating whole tab strips on every open; keep rebuilds local |
 | `Offstage` keep-alive tabs | Still layouts inactive children | Use `TpKeepAliveLayer` instead |
+| `workingSessionIds` / session title fan-out | First message / agent turns used to rebuild whole sidebar + `ChatPageShell` → bulk `RenderParagraph` | Leaf-only selects: structure snapshots for list shells, `SessionRowContent` for row/tab text, Running host for membership; never put `workingSessionIds` or full title-bearing `sessions`/`tabs` in page-shell `buildWhen` |
 
 ## Checklist for a new heavy surface
 
@@ -75,6 +76,7 @@ Expected open sequence after that work:
 - [ ] Empty / landing path skips the full workbench or editor tree.
 - [ ] Inactive stack layers use `TpKeepAliveLayer`, not `Offstage`, when layout cost matters.
 - [ ] DevTools export + `analyze_performance_json.dart --format summary` shows the expensive work off Frame 0.
+- [ ] High-frequency session presence (`workingSessionIds`, attention waiting) is selected only in leaf widgets that render that presence. List shells select structure snapshots only; row/tab text selects row-content snapshots. Do not add `workingSessionIds` or full `sessions` / title-bearing tab snapshots to page-shell `buildWhen`.
 
 ## Measuring
 

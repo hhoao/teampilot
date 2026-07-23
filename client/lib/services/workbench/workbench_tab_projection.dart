@@ -25,7 +25,8 @@ List<TabInfo> projectWorkbenchTabs({
       switch (tab.kind) {
         WorkbenchTabKind.session => TabInfo(
           id: tab.id,
-          title: sessionTitles[tab.id] ?? tab.id,
+          sessionId: tab.id,
+          title: sessionTitles[tab.id] ?? '',
           working: sessionWorking[tab.id] ?? false,
           cli: sessionCli[tab.id],
           accentColor: sessionAccent,

@@ -133,6 +133,61 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
+  testWidgets(
+    'title Text follows ChatCubit SessionRowContent even if widget.session is stale',
+    (tester) async {
+      final chatCubit = testChatCubit(executableResolver: () => 'claude');
+      final (attention, automationCubit) = _tileCubits();
+      addTearDown(chatCubit.close);
+      addTearDown(automationCubit.close);
+      addTearDown(attention.close);
+
+      final stale = AppSession(
+        sessionId: 'sess-1',
+        workspaceId: 'ws1',
+        display: 'StaleTitle',
+        createdAt: 1,
+        updatedAt: 1,
+      );
+      chatCubit.applyState(
+        chatCubit.state.copyWith(
+          sessions: [
+            stale.copyWith(display: 'LiveTitle'),
+          ],
+        ),
+      );
+
+      await tester.pumpWidget(
+        _host(
+          chatCubit: chatCubit,
+          automationCubit: automationCubit,
+          attentionCubit: attention,
+          sessionRepository: SessionRepository(),
+          child: SidebarSessionTile(
+            session: stale,
+            onTap: () {},
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('LiveTitle'), findsOneWidget);
+      expect(find.text('StaleTitle'), findsNothing);
+
+      chatCubit.applyState(
+        chatCubit.state.copyWith(
+          sessions: [
+            stale.copyWith(display: 'RenamedTitle'),
+          ],
+          stateVersion: chatCubit.state.stateVersion + 1,
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.text('RenamedTitle'), findsOneWidget);
+      expect(find.text('LiveTitle'), findsNothing);
+    },
+  );
+
   testWidgets('pinned session shows trailing push_pin when idle', (tester) async {
     final chatCubit = testChatCubit(executableResolver: () => 'claude');
     final (attention, automationCubit) = _tileCubits();

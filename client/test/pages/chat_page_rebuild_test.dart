@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/chat/model/chat_tab.dart';
+import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
@@ -17,15 +19,19 @@ import 'package:teampilot/cubits/workspace_landing_context_cubit.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/landing_launch_context.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/chat/chat_page_shell.dart';
+import 'package:teampilot/pages/chat/chat_page_shell_probe.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/repositories/plugin_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/skill_repository.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/file_tree/workspace_file_tree_store.dart';
 import 'package:teampilot/services/git/git_repo_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -41,23 +47,41 @@ import '../support/post_frame_test_harness.dart';
 
 String _executable() => 'flashskyai';
 
-class _ShellRebuildProbe extends StatefulWidget {
-  const _ShellRebuildProbe({required this.child, super.key});
-
-  final Widget child;
-
-  @override
-  State<_ShellRebuildProbe> createState() => _ShellRebuildProbeState();
+ChatPageStructuralBodyProbeState _structuralProbe(WidgetTester tester) {
+  return tester.state<ChatPageStructuralBodyProbeState>(
+    find.byKey(ChatPageShellKeys.structuralBodyProbe),
+  );
 }
 
-class _ShellRebuildProbeState extends State<_ShellRebuildProbe> {
-  int buildCount = 0;
+Widget _chatPageShell({bool wrapCliRegistry = false}) {
+  const shell = ChatPageShell(
+    cwd: '/tmp/personal-workspace',
+    workspaceId: 'personal-test',
+    tabScopeId: 'personal-test',
+  );
+  if (!wrapCliRegistry) return shell;
+  return CliToolRegistryScope(
+    registry: CliToolRegistry.builtIn(),
+    child: shell,
+  );
+}
 
-  @override
-  Widget build(BuildContext context) {
-    buildCount++;
-    return widget.child;
+void _openSessionTab(ChatCubit chatCubit, AppSession session, String title) {
+  chatCubit.setActiveWorkspace('personal-test');
+  if (!chatCubit.state.sessions.any((s) => s.sessionId == session.sessionId)) {
+    chatCubit.ingestWorkspaceSessionSnapshot(
+      workspaces: chatCubit.state.workspaces,
+      sessions: [...chatCubit.state.sessions, session],
+    );
   }
+  chatCubit.tabStore.append(
+    ChatTab(
+      info: ChatTabInfo(id: session.sessionId, title: title, subtitle: ''),
+      cliTeamName: session.sessionId,
+    ),
+  );
+  chatCubit.tabStore.setNewChatActive('personal-test', false);
+  chatCubit.refreshActiveWorkspaceTabs();
 }
 
 void main() {
@@ -70,7 +94,7 @@ void main() {
   });
 
   testWidgets(
-    'ChatPageShell does not rebuild when only workingSessionIds changes',
+    'structural body does not rebuild when only workingSessionIds changes',
     (tester) async {
       tester.view.physicalSize = const Size(1600, 900);
       tester.view.devicePixelRatio = 1.0;
@@ -160,8 +184,6 @@ void main() {
         sessions: const [],
       );
 
-      final probeKey = GlobalKey<_ShellRebuildProbeState>();
-
       await tester.pumpWidget(
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -202,14 +224,7 @@ void main() {
               child: WorkspaceToolsScope(
                 state: const WorkspaceToolsScopeState(resolving: false),
                 child: Scaffold(
-                  body: _ShellRebuildProbe(
-                    key: probeKey,
-                    child: const ChatPageShell(
-                      cwd: '/tmp/personal-workspace',
-                      workspaceId: 'personal-test',
-                      tabScopeId: 'personal-test',
-                    ),
-                  ),
+                  body: _chatPageShell(),
                 ),
               ),
             ),
@@ -220,17 +235,17 @@ void main() {
         await tester.pump(const Duration(milliseconds: 50));
       }
 
-      final countAfterSettle = probeKey.currentState!.buildCount;
+      final countAfterSettle = _structuralProbe(tester).buildCount;
 
       chatCubit.updateWorkingSessionsForTest({'sess-1'});
       await tester.pump();
 
-      expect(probeKey.currentState!.buildCount, countAfterSettle);
+      expect(_structuralProbe(tester).buildCount, countAfterSettle);
     },
   );
 
   testWidgets(
-    'ChatPageShell does not rebuild when only lastOpenedWorkspaceId changes',
+    'structural body does not rebuild when only session display/title changes',
     (tester) async {
       tester.view.physicalSize = const Size(1600, 900);
       tester.view.devicePixelRatio = 1.0;
@@ -320,7 +335,17 @@ void main() {
         sessions: const [],
       );
 
-      final probeKey = GlobalKey<_ShellRebuildProbeState>();
+      _openSessionTab(
+        chatCubit,
+        AppSession(
+          sessionId: 'sess-1',
+          workspaceId: 'personal-test',
+          folders: const [WorkspaceFolder(path: '/tmp/personal-workspace')],
+          display: 'Old title',
+          createdAt: 1,
+        ),
+        'Old title',
+      );
 
       await tester.pumpWidget(
         MaterialApp(
@@ -362,14 +387,7 @@ void main() {
               child: WorkspaceToolsScope(
                 state: const WorkspaceToolsScopeState(resolving: false),
                 child: Scaffold(
-                  body: _ShellRebuildProbe(
-                    key: probeKey,
-                    child: const ChatPageShell(
-                      cwd: '/tmp/personal-workspace',
-                      workspaceId: 'personal-test',
-                      tabScopeId: 'personal-test',
-                    ),
-                  ),
+                  body: _chatPageShell(wrapCliRegistry: true),
                 ),
               ),
             ),
@@ -380,12 +398,343 @@ void main() {
         await tester.pump(const Duration(milliseconds: 50));
       }
 
-      final countAfterSettle = probeKey.currentState!.buildCount;
+      final countAfterSettle = _structuralProbe(tester).buildCount;
+
+      final session = chatCubit.state.sessions.first;
+      chatCubit.emit(
+        chatCubit.state.copyWith(
+          sessions: [session.copyWith(display: 'Renamed title')],
+        ),
+      );
+      await tester.pump();
+
+      expect(_structuralProbe(tester).buildCount, countAfterSettle);
+    },
+  );
+
+  testWidgets('structural body rebuilds when open tab ids change', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final appData = Directory.systemTemp.createTempSync('chat_rebuild_test_');
+    addTearDown(() {
+      if (appData.existsSync()) appData.deleteSync(recursive: true);
+    });
+
+    final teamCubit = LaunchProfileCubit(
+      repository: LaunchProfileRepository(rootDir: appData.path),
+      sessionRepository: SessionRepository(rootDir: appData.path),
+      executableResolver: _executable,
+      appDataBasePath: appData.path,
+      configProfileService: ConfigProfileService(basePath: appData.path),
+    );
+    addTearDown(() => teamCubit.close());
+
+    final sessionRepo = SessionRepository(rootDir: appData.path);
+    final chatCubit = ChatCubit(
+      executableResolver: _executable,
+      automationRepository: testAutomationRepository(),
+      sessionRepository: sessionRepo,
+    );
+    addTearDown(() => chatCubit.close());
+
+    final layoutCubit = LayoutCubit();
+    addTearDown(() => layoutCubit.close());
+
+    final editorCubit = EditorCubit(fs: LocalFilesystem());
+    addTearDown(() => editorCubit.close());
+
+    final workbenchCubit = WorkbenchCubit();
+    addTearDown(() => workbenchCubit.close());
+
+    final runCubit = RunCubit(
+      platform: IdleRunPlatform(),
+      folders: const [WorkspaceFolder(path: '/tmp/personal-workspace')],
+    );
+    addTearDown(() => runCubit.close());
+
+    final skillCubit = SkillCubit(SkillRepository());
+    addTearDown(() => skillCubit.close());
+
+    final pluginRepo = PluginRepository();
+    final pluginCubit = PluginCubit(
+      repository: pluginRepo,
+      installService: pluginRepo.install,
+      repoService: PluginRepoService(),
+    );
+    addTearDown(() => pluginCubit.close());
+
+    final worktreeCubit = WorktreeCubit();
+    addTearDown(() => worktreeCubit.close());
+
+    final presenceCubit = MemberPresenceCubit();
+    chatCubit.bindPresenceCubit(presenceCubit);
+    addTearDown(() => presenceCubit.close());
+
+    final cliPresetsCubit = CliPresetsCubit(
+      repository: CliPresetsRepository(
+        fs: InMemoryFilesystem(),
+        presetsPath: '/cli-presets.json',
+      ),
+    );
+    cliPresetsCubit.emit(
+      const CliPresetsState(status: CliPresetsLoadStatus.ready),
+    );
+    addTearDown(() => cliPresetsCubit.close());
+
+    final sessionPreferencesCubit =
+        (await tester.runAsync(testSessionPreferencesCubit))!;
+    addTearDown(() => sessionPreferencesCubit.close());
+
+    chatCubit.ingestWorkspaceSessionSnapshot(
+      workspaces: [
+        Workspace(
+          workspaceId: 'personal-test',
+          folders: [WorkspaceFolder(path: '/tmp/personal-workspace')],
+          createdAt: 1,
+        ),
+      ],
+      sessions: const [],
+    );
+
+    _openSessionTab(
+      chatCubit,
+      AppSession(
+        sessionId: 'sess-1',
+        workspaceId: 'personal-test',
+        folders: const [WorkspaceFolder(path: '/tmp/personal-workspace')],
+        display: 'Session one',
+        createdAt: 1,
+      ),
+      'Session one',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MultiRepositoryProvider(
+          providers: [
+            RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
+            RepositoryProvider<WorkspaceFileTreeStore>(
+              create: (_) => WorkspaceFileTreeStore(),
+            ),
+            RepositoryProvider<SessionRepository>.value(value: sessionRepo),
+            RepositoryProvider<WorkspaceTerminalRegistry>(
+              create: (_) => WorkspaceTerminalRegistry(),
+            ),
+          ],
+          child: MultiBlocProvider(
+            providers: [
+              BlocProvider.value(value: teamCubit),
+              BlocProvider.value(value: chatCubit),
+              BlocProvider.value(value: layoutCubit),
+              BlocProvider.value(value: editorCubit),
+              BlocProvider.value(value: workbenchCubit),
+              BlocProvider.value(value: runCubit),
+              BlocProvider.value(value: skillCubit),
+              BlocProvider.value(value: pluginCubit),
+              BlocProvider.value(value: worktreeCubit),
+              BlocProvider.value(value: presenceCubit),
+              BlocProvider.value(value: WorkspaceToolsCubit()),
+              BlocProvider.value(value: cliPresetsCubit),
+              BlocProvider.value(value: sessionPreferencesCubit),
+              BlocProvider(
+                create: (_) => WorkspaceLandingContextCubit(
+                  workspaceId: 'personal-test',
+                  initial: const LandingLaunchContext(isPersonal: true),
+                ),
+              ),
+            ],
+            child: WorkspaceToolsScope(
+              state: const WorkspaceToolsScopeState(resolving: false),
+              child: Scaffold(
+                body: _chatPageShell(wrapCliRegistry: true),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    for (var i = 0; i < 12; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    final countAfterSettle = _structuralProbe(tester).buildCount;
+
+    _openSessionTab(
+      chatCubit,
+      AppSession(
+        sessionId: 'sess-2',
+        workspaceId: 'personal-test',
+        folders: const [WorkspaceFolder(path: '/tmp/personal-workspace')],
+        display: 'Session two',
+        createdAt: 2,
+      ),
+      'Session two',
+    );
+    await tester.pump();
+
+    expect(
+      _structuralProbe(tester).buildCount,
+      greaterThan(countAfterSettle),
+    );
+  });
+
+  testWidgets(
+    'structural body does not rebuild when only lastOpenedWorkspaceId changes',
+    (tester) async {
+      tester.view.physicalSize = const Size(1600, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final appData = Directory.systemTemp.createTempSync('chat_rebuild_test_');
+      addTearDown(() {
+        if (appData.existsSync()) appData.deleteSync(recursive: true);
+      });
+
+      final teamCubit = LaunchProfileCubit(
+        repository: LaunchProfileRepository(rootDir: appData.path),
+        sessionRepository: SessionRepository(rootDir: appData.path),
+        executableResolver: _executable,
+        appDataBasePath: appData.path,
+        configProfileService: ConfigProfileService(basePath: appData.path),
+      );
+      addTearDown(() => teamCubit.close());
+
+      final sessionRepo = SessionRepository(rootDir: appData.path);
+      final chatCubit = ChatCubit(
+        executableResolver: _executable,
+        automationRepository: testAutomationRepository(),
+        sessionRepository: sessionRepo,
+      );
+      addTearDown(() => chatCubit.close());
+
+      final layoutCubit = LayoutCubit();
+      addTearDown(() => layoutCubit.close());
+
+      final editorCubit = EditorCubit(fs: LocalFilesystem());
+      addTearDown(() => editorCubit.close());
+
+      final workbenchCubit = WorkbenchCubit();
+      addTearDown(() => workbenchCubit.close());
+
+      final runCubit = RunCubit(
+        platform: IdleRunPlatform(),
+        folders: const [WorkspaceFolder(path: '/tmp/personal-workspace')],
+      );
+      addTearDown(() => runCubit.close());
+
+      final skillCubit = SkillCubit(SkillRepository());
+      addTearDown(() => skillCubit.close());
+
+      final pluginRepo = PluginRepository();
+      final pluginCubit = PluginCubit(
+        repository: pluginRepo,
+        installService: pluginRepo.install,
+        repoService: PluginRepoService(),
+      );
+      addTearDown(() => pluginCubit.close());
+
+      final worktreeCubit = WorktreeCubit();
+      addTearDown(() => worktreeCubit.close());
+
+      final presenceCubit = MemberPresenceCubit();
+      chatCubit.bindPresenceCubit(presenceCubit);
+      addTearDown(() => presenceCubit.close());
+
+      final cliPresetsCubit = CliPresetsCubit(
+        repository: CliPresetsRepository(
+          fs: InMemoryFilesystem(),
+          presetsPath: '/cli-presets.json',
+        ),
+      );
+      cliPresetsCubit.emit(
+        const CliPresetsState(status: CliPresetsLoadStatus.ready),
+      );
+      addTearDown(() => cliPresetsCubit.close());
+
+      final sessionPreferencesCubit =
+          (await tester.runAsync(testSessionPreferencesCubit))!;
+      addTearDown(() => sessionPreferencesCubit.close());
+
+      chatCubit.ingestWorkspaceSessionSnapshot(
+        workspaces: [
+          Workspace(
+            workspaceId: 'personal-test',
+            folders: [WorkspaceFolder(path: '/tmp/personal-workspace')],
+            createdAt: 1,
+          ),
+        ],
+        sessions: const [],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: MultiRepositoryProvider(
+            providers: [
+              RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
+              RepositoryProvider<WorkspaceFileTreeStore>(
+                create: (_) => WorkspaceFileTreeStore(),
+              ),
+              RepositoryProvider<SessionRepository>.value(value: sessionRepo),
+              RepositoryProvider<WorkspaceTerminalRegistry>(
+                create: (_) => WorkspaceTerminalRegistry(),
+              ),
+            ],
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider.value(value: teamCubit),
+                BlocProvider.value(value: chatCubit),
+                BlocProvider.value(value: layoutCubit),
+                BlocProvider.value(value: editorCubit),
+                BlocProvider.value(value: workbenchCubit),
+                BlocProvider.value(value: runCubit),
+                BlocProvider.value(value: skillCubit),
+                BlocProvider.value(value: pluginCubit),
+                BlocProvider.value(value: worktreeCubit),
+                BlocProvider.value(value: presenceCubit),
+                BlocProvider.value(value: WorkspaceToolsCubit()),
+                BlocProvider.value(value: cliPresetsCubit),
+                BlocProvider.value(value: sessionPreferencesCubit),
+                BlocProvider(
+                  create: (_) => WorkspaceLandingContextCubit(
+                    workspaceId: 'personal-test',
+                    initial: const LandingLaunchContext(isPersonal: true),
+                  ),
+                ),
+              ],
+              child: WorkspaceToolsScope(
+                state: const WorkspaceToolsScopeState(resolving: false),
+                child: Scaffold(
+                  body: _chatPageShell(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+
+      final countAfterSettle = _structuralProbe(tester).buildCount;
 
       await layoutCubit.setLastOpenedWorkspaceId('other-workspace');
       await tester.pump();
 
-      expect(probeKey.currentState!.buildCount, countAfterSettle);
+      expect(_structuralProbe(tester).buildCount, countAfterSettle);
     },
   );
 }

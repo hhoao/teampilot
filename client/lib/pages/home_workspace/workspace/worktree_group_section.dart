@@ -7,7 +7,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
-import '../../../models/app_session.dart';
 import '../../../models/workspace.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../services/git/git_worktree_service.dart';
@@ -23,6 +22,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'worktree_delete_dialog.dart';
 import 'workspace_session_actions.dart';
+import 'workspace_sidebar_probe.dart';
 import 'workspace_sidebar_row_metrics.dart';
 
 /// Collapse-set key for a group: worktree path, project folder path, or orphan.
@@ -114,6 +114,7 @@ class WorktreeGroupSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _WorktreeGroupHeader(
+          collapseKey: worktreeGroupCollapseKey(group),
           collapsed: collapsed,
           label: label,
           launchPath: launchPath,
@@ -132,7 +133,7 @@ class WorktreeGroupSection extends StatelessWidget {
         ),
         if (!collapsed && group.sessions.isNotEmpty)
           _GroupSessionList(
-            sessions: group.sessions,
+            sessionIds: [for (final s in group.sessions) s.sessionId],
             sessionSort: sessionSort,
             workspaceOrderedSessionIds: workspaceOrderedSessionIds,
             onSessionsReordered: onSessionsReordered,
@@ -210,6 +211,7 @@ class WorktreeGroupSection extends StatelessWidget {
 
 class _WorktreeGroupHeader extends StatefulWidget {
   const _WorktreeGroupHeader({
+    required this.collapseKey,
     required this.collapsed,
     required this.label,
     required this.launchPath,
@@ -219,6 +221,7 @@ class _WorktreeGroupHeader extends StatefulWidget {
     this.onDelete,
   });
 
+  final String collapseKey;
   final bool collapsed;
   final String label;
   final String? launchPath;
@@ -289,21 +292,24 @@ class _WorktreeGroupHeaderState extends State<_WorktreeGroupHeader> {
         ? workspaceSidebarRowHoverFill(cs)
         : Colors.transparent;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _rowHovered = true),
-        onExit: (_) => setState(() => _rowHovered = false),
-        child: Material(
-          color: rowFill,
-          borderRadius: BorderRadius.circular(8),
-          child: GestureDetector(
-            onSecondaryTapDown: (details) => unawaited(_showContextMenu(details)),
-            onTap: widget.onToggleCollapse,
-            behavior: HitTestBehavior.opaque,
-            child: Padding(
-              padding: kWorkspaceSidebarRowPadding,
-              child: Row(
+    return SidebarRebuildProbe(
+      key: ValueKey('worktree-group-header-probe-${widget.collapseKey}'),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 2),
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _rowHovered = true),
+          onExit: (_) => setState(() => _rowHovered = false),
+          child: Material(
+            color: rowFill,
+            borderRadius: BorderRadius.circular(8),
+            child: GestureDetector(
+              onSecondaryTapDown: (details) =>
+                  unawaited(_showContextMenu(details)),
+              onTap: widget.onToggleCollapse,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: kWorkspaceSidebarRowPadding,
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     _GroupCollapseLeading(
@@ -343,6 +349,7 @@ class _WorktreeGroupHeaderState extends State<_WorktreeGroupHeader> {
             ),
           ),
         ),
+      ),
     );
   }
 }
@@ -385,7 +392,7 @@ class _GroupCollapseLeading extends StatelessWidget {
 /// more / show less" toggle so a busy worktree doesn't flood the sidebar.
 class _GroupSessionList extends StatefulWidget {
   const _GroupSessionList({
-    required this.sessions,
+    required this.sessionIds,
     required this.sessionSort,
     required this.workspaceOrderedSessionIds,
     required this.onSessionsReordered,
@@ -394,7 +401,7 @@ class _GroupSessionList extends StatefulWidget {
     this.highlightSessionId,
   });
 
-  final List<AppSession> sessions;
+  final List<String> sessionIds;
   final AppSessionSort sessionSort;
   final List<String> workspaceOrderedSessionIds;
   final ValueChanged<List<String>> onSessionsReordered;
@@ -413,7 +420,15 @@ class _GroupSessionListState extends State<_GroupSessionList> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final all = sortAppSessions(widget.sessions, sort: widget.sessionSort);
+    final chatState = context.read<ChatCubit>().state;
+    final byId = {for (final s in chatState.sessions) s.sessionId: s};
+    final all = sortAppSessions(
+      [
+        for (final id in widget.sessionIds)
+          if (byId[id] case final session?) session,
+      ],
+      sort: widget.sessionSort,
+    );
     final overflow = all.length - _cap;
     final visible = (_showAll || overflow <= 0) ? all : all.take(_cap).toList();
     final visibleIds = [for (final s in visible) s.sessionId];
@@ -443,9 +458,11 @@ class _GroupSessionListState extends State<_GroupSessionList> {
             );
           },
           itemBuilder: (context, index) {
-            final session = visible[index];
+            final sessionId = visibleIds[index];
+            final session = byId[sessionId];
+            if (session == null) return SizedBox(key: ValueKey(sessionId));
             return SidebarSessionTile(
-              key: ValueKey('worktree-session-${session.sessionId}'),
+              key: ValueKey('worktree-session-$sessionId'),
               session: session,
               index: index,
               highlightSessionId: widget.highlightSessionId,

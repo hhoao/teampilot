@@ -12,6 +12,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/ui/app_keys.dart';
+import '../../utils/session/session_row_content.dart';
 import '../../widgets/tab_close_button.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/session_working_spinner.dart';
@@ -140,6 +141,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
                   for (var i = 0; i < tabs.length; i++)
                     WorkspaceShellTabChip(
                       key: ValueKey(tabs[i].id),
+                      sessionId: tabs[i].sessionId,
                       title: tabs[i].title,
                       working: tabs[i].working,
                       active: activeIndex >= 0 && i == activeIndex,
@@ -255,6 +257,7 @@ class WorkspaceShellTabChip extends StatefulWidget {
     required this.active,
     required this.onTap,
     required this.onClose,
+    this.sessionId,
     this.onCloseOthers,
     this.onCloseRight,
     this.onPin,
@@ -268,6 +271,7 @@ class WorkspaceShellTabChip extends StatefulWidget {
   });
 
   final String title;
+  final String? sessionId;
   final bool working;
   final bool active;
   final bool preview;
@@ -374,6 +378,18 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
 
   @override
   Widget build(BuildContext context) {
+    final sessionId = widget.sessionId;
+    final working = sessionId == null
+        ? widget.working
+        : context.select<ChatCubit, bool>(
+            (c) => c.state.workingSessionIds.contains(sessionId),
+          );
+    final title = sessionId == null
+        ? widget.title
+        : context.select<ChatCubit, String>(
+            (c) =>
+                SessionRowContent.fromChatState(c.state, sessionId).titleForPaint,
+          );
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
     final active = widget.active;
@@ -385,7 +401,7 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
     final Color iconColor = accent.withValues(alpha: iconAlpha);
 
     return Tooltip(
-      message: widget.title,
+      message: title,
       waitDuration: const Duration(milliseconds: 500),
       child: MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
@@ -441,7 +457,7 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
                       const SizedBox(width: 8),
                       // Working indicator always visible when working;
                       // icon fades with chrome when idle.
-                      if (widget.working)
+                      if (working)
                         SessionWorkingIndicator(
                           working: true,
                           size: context.tpIconSizes.sm,
@@ -461,7 +477,7 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
                       // Title
                       Flexible(
                         child: Text(
-                          widget.title,
+                          title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: styles.smColored(

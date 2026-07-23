@@ -15,6 +15,7 @@ import '../pages/automations/automation_editor_dialog.dart';
 import '../pages/automations/automations_dialog.dart';
 import '../pages/home_workspace/workspace/workspace_sidebar_row_metrics.dart';
 import '../repositories/session_repository.dart';
+import '../utils/session/session_row_content.dart';
 import '../utils/ui/coarse_relative_time.dart';
 import '../utils/debounce/debounce.dart';
 import 'session_working_spinner.dart';
@@ -289,19 +290,27 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   @override
   Widget build(BuildContext context) {
     final session = widget.session;
+    final sessionId = session.sessionId;
+    // Painted title/time always from live cubit — never widget.session Text source.
+    final rowContent = context.select<ChatCubit, SessionRowContent>(
+      (cubit) => SessionRowContent.fromChatState(cubit.state, sessionId),
+    );
     final selected = widget.highlightSessionId != null
-        ? widget.highlightSessionId == session.sessionId
+        ? widget.highlightSessionId == sessionId
         : context.select<ChatCubit, bool>(
-            (cubit) => cubit.state.activeSessionId == session.sessionId,
+            (cubit) => cubit.state.activeSessionId == sessionId,
           );
     final working = context.select<ChatCubit, bool>(
-      (cubit) => cubit.state.workingSessionIds.contains(session.sessionId),
+      (cubit) => cubit.state.workingSessionIds.contains(sessionId),
     );
     final waiting = context.select<AgentAttentionCubit, bool>(
-      (cubit) => cubit.state.sessionHasWaiting(session.sessionId),
+      (cubit) => cubit.state.sessionHasWaiting(sessionId),
     );
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
+    final paintedTitle = rowContent.titleForPaint.isNotEmpty
+        ? rowContent.titleForPaint
+        : l10n.defaultNewChatSessionTitle;
 
     // Leading area: shared 24×24 slot — indicator (idle) ↔ drag handle (hover).
     // Waiting (needs-you) wins over working spinner — distinct tertiary hand icon.
@@ -358,9 +367,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     }
 
     // Trailing: coarse relative time + pin mark (idle), or delete + overflow (hover).
-    final int activityMs = session.updatedAt > 0
-        ? session.updatedAt
-        : session.createdAt;
+    final int activityMs = rowContent.timestampMsForPaint;
     final Widget? trailing = _showSessionActions
         ? Row(
             mainAxisSize: MainAxisSize.min,
@@ -434,7 +441,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: _SidebarTile(
-        title: session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle),
+        title: paintedTitle,
         selected: selected,
         rowHovered: _hovered || _menuOpen,
         contentLeftInset: widget.contentLeftInset,

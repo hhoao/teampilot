@@ -25,10 +25,13 @@ import 'worktree_group_section.dart';
 import '../../../utils/ui/app_keys.dart';
 import '../../../utils/session/app_session_sort.dart';
 import '../../../utils/debounce/debounce.dart';
+import '../../../utils/session/running_session_ids.dart';
+import '../../../utils/session/session_list_structure.dart';
 import '../../../utils/session/session_reorder_merge.dart';
 import '../../../utils/session/workspace_running_sessions.dart';
-import '../../../utils/session/workspace_sidebar_sessions.dart';
+import '../../../utils/session/workspace_sessions.dart';
 import '../../../utils/session/workspace_tab_session_scope.dart';
+import 'workspace_sidebar_probe.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'workspace_automations_section.dart';
 import 'workspace_search_dialog.dart';
@@ -64,46 +67,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final sessionSnapshot = context.select<ChatCubit, WorkspaceSidebarSessions>(
-      (c) => WorkspaceSidebarSessions.forWorkspace(
-        allSessions: c.state.sessions,
-        workspace: widget.workspace,
-      ),
-    );
-    final sortedSessions = sortAppSessions(
-      sessionSnapshot.sessions,
-      sort: _sessionSort,
-    );
-    final sessionsHydrated = context.select<ChatCubit, bool>(
-      (c) => c.sessionsLoadedForWorkspace(widget.workspace.workspaceId),
-    );
-    final wtView = context.select<WorktreeCubit, WorktreeSidebarView>(
-      (c) => WorktreeSidebarView.from(c.state),
-    );
     final toolsContext = WorkspaceToolsScope.maybeOf(context)?.tools?.context;
-    // Must read c.state.sessions inside the selector so working-id updates never
-    // resolve against a stale filtered list from a prior build closure.
-    final runningSessionIds = context.select<ChatCubit, List<String>>((c) {
-      final sessions = WorkspaceSidebarSessions.forWorkspace(
-        allSessions: c.state.sessions,
-        workspace: widget.workspace,
-      ).sessions;
-      final working = c.state.workingSessionIds;
-      final runningTabIds = c.tabStore
-          .tabsForWorkspace(widget.tabScopeId)
-          .where((tab) => tab.isRunning)
-          .map((tab) => tab.info.id);
-      return workspaceRunningSessions(
-        sessions: sessions,
-        workingSessionIds: working,
-        openTabSessionIds: openTabSessionIdsForWorkspace(runningTabIds),
-      ).map((s) => s.sessionId).toList();
-    });
-    final sortedById = {for (final s in sortedSessions) s.sessionId: s};
-    final runningSessions = [
-      for (final id in runningSessionIds)
-        if (sortedById[id] case final session?) session,
-    ];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
@@ -122,14 +86,11 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
               () => _startNewConversation(context),
             ),
           ),
-          if (runningSessions.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            _RunningSessionsSection(
-              sessions: runningSessions,
-              workspace: widget.workspace,
-              tabScopeId: widget.tabScopeId,
-            ),
-          ],
+          const SizedBox(height: 14),
+          _RunningSessionsHost(
+            workspace: widget.workspace,
+            tabScopeId: widget.tabScopeId,
+          ),
           const SizedBox(height: 14),
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 0, 0, 8),
@@ -196,15 +157,11 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
             ),
           ),
           Expanded(
-            child: TpDeferredMountShell(
-              delayFrames: 1,
-              placeholder: const _SessionListSkeleton(),
-              child: _buildBody(
-                context,
-                sortedSessions,
-                wtView,
-                sessionsHydrated: sessionsHydrated,
-              ),
+            child: _ConversationListHost(
+              workspace: widget.workspace,
+              tabScopeId: widget.tabScopeId,
+              sessionSort: _sessionSort,
+              onSessionsReordered: _onSessionsReordered,
             ),
           ),
           const SizedBox(height: 8),
@@ -246,127 +203,20 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
     );
   }
 
-  /// Flat session list when the repo has only its main worktree; otherwise a
-  /// collapsible worktree-grouped list. The "+ new worktree" header action is
-  /// always available regardless of this branch.
-  Widget _buildBody(
-    BuildContext context,
-    List<AppSession> sortedSessions,
-    WorktreeSidebarView wtView, {
-    required bool sessionsHydrated,
-  }) {
-    final l10n = context.l10n;
-    // Sessions still loading from disk/SFTP: show the skeleton rather than the
-    // empty-conversations placeholder, so a cold tab switch never flashes
-    // "no conversations" before the list pops in.
-    if (!sessionsHydrated && sortedSessions.isEmpty) {
-      return const _SessionListSkeleton();
+  /// Drag always available; dropping stamps [AppSession.sortOrder] and switches
+  /// the sidebar to manual order so a time-based re-sort cannot undo the drop.
+  void _onSessionsReordered(List<String> orderedSessionIds) {
+    if (_sessionSort != AppSessionSort.manual) {
+      setState(() => _sessionSort = AppSessionSort.manual);
     }
-    if (widget.workspace.folders.length > 1) {
-      return _buildMultiProjectWorktreeGroupedList(
-        context,
-        sortedSessions,
-        wtView,
-      );
-    }
-    switch (wtView.sessionListLayout) {
-      case WorktreeSessionListLayout.indeterminate:
-        return const _SessionListSkeleton();
-      case WorktreeSessionListLayout.flat:
-        if (!wtView.loading && wtView.worktrees.isEmpty) {
-          return _buildWorktreeGroupList(
-            context,
-            [
-              WorktreeGroup(
-                worktree: null,
-                sessions: sortedSessions,
-                projectFolderPath: widget.workspace.firstFolderPath,
-                isProjectGroup: true,
-              ),
-            ],
-            wtView,
-            sortedSessions: sortedSessions,
-            emptyWhenNoSessions: true,
-          );
-        }
-        return sortedSessions.isEmpty
-            ? _EmptyConversations(label: l10n.homeWorkspaceNoConversations)
-            : _buildSessionList(context, sortedSessions);
-      case WorktreeSessionListLayout.grouped:
-        final groups = groupSessionsByWorktree(
-          worktrees: wtView.worktrees,
-          sessions: sortedSessions,
-        );
-        return _buildWorktreeGroupList(
-          context,
-          groups,
-          wtView,
-          sortedSessions: sortedSessions,
-        );
-    }
+    unawaited(context.read<ChatCubit>().reorderSessions(orderedSessionIds));
   }
 
-  Widget _buildWorktreeGroupList(
-    BuildContext context,
-    List<WorktreeGroup> groups,
-    WorktreeSidebarView wtView, {
-    bool emptyWhenNoSessions = false,
-    required List<AppSession> sortedSessions,
-  }) {
-    final l10n = context.l10n;
-    final hasAnySession = groups.any((g) => g.sessions.isNotEmpty);
-    if (emptyWhenNoSessions && !hasAnySession) {
-      return _EmptyConversations(label: l10n.homeWorkspaceNoConversations);
-    }
-    final workspaceOrderedSessionIds = sessionIdsInSortOrder(sortedSessions);
-    return ListView.builder(
-      padding: EdgeInsets.zero,
-      itemCount: groups.length,
-      itemBuilder: (context, index) {
-        final group = groups[index];
-        return WorktreeGroupSection(
-          key: ValueKey('wt-group-${worktreeGroupCollapseKey(group)}'),
-          group: group,
-          workspace: widget.workspace,
-          tabScopeId: widget.tabScopeId,
-          sessionSort: _sessionSort,
-          workspaceOrderedSessionIds: workspaceOrderedSessionIds,
-          onSessionsReordered: _onSessionsReordered,
-          highlightSessionId: scopedActiveSessionId(
-            context.read<ChatCubit>(),
-            widget.tabScopeId,
-          ),
-          collapsed: wtView.collapsed.contains(worktreeGroupCollapseKey(group)),
-        );
-      },
-    );
-  }
-
-  Widget _buildMultiProjectWorktreeGroupedList(
-    BuildContext context,
-    List<AppSession> sortedSessions,
-    WorktreeSidebarView wtView,
-  ) {
-    final l10n = context.l10n;
-    final cubit = context.read<WorktreeCubit>();
-    final worktreesByProject = <String, List<GitWorktree>>{
-      for (final folder in widget.workspace.folders)
-        folder.path: cubit.worktreesForProject(folder.path),
-    };
-    final groups = groupSessionsByWorktreeAcrossProjects(
-      folders: widget.workspace.folders,
-      worktreesByProjectPath: worktreesByProject,
-      sessions: sortedSessions,
-    );
-    final hasAnySession = groups.any((g) => g.sessions.isNotEmpty);
-    if (!hasAnySession && sortedSessions.isEmpty) {
-      return _EmptyConversations(label: l10n.homeWorkspaceNoConversations);
-    }
-    return _buildWorktreeGroupList(
+  Future<void> _startNewConversation(BuildContext context) async {
+    await showWorkspaceComposeLanding(
       context,
-      groups,
-      wtView,
-      sortedSessions: sortedSessions,
+      widget.workspace,
+      tabScopeId: widget.tabScopeId,
     );
   }
 
@@ -422,81 +272,296 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       ..removeWhere((e) => e.isEmpty);
     return parts.isEmpty ? path : parts.last;
   }
+}
 
-  /// Drag always available; dropping stamps [AppSession.sortOrder] and switches
-  /// the sidebar to manual order so a time-based re-sort cannot undo the drop.
-  void _onSessionsReordered(List<String> orderedSessionIds) {
-    if (_sessionSort != AppSessionSort.manual) {
-      setState(() => _sessionSort = AppSessionSort.manual);
-    }
-    unawaited(context.read<ChatCubit>().reorderSessions(orderedSessionIds));
+AppSession? _sessionById(ChatState state, String sessionId) {
+  for (final session in state.sessions) {
+    if (session.sessionId == sessionId) return session;
+  }
+  return null;
+}
+
+List<AppSession> _sessionsForStructure(
+  ChatState state,
+  SessionListStructure structure,
+  Workspace workspace,
+) {
+  final byId = {
+    for (final session in sessionsForWorkspace(workspace, state.sessions))
+      session.sessionId: session,
+  };
+  return [
+    for (final row in structure.rows)
+      if (byId[row.sessionId] case final session?) session,
+  ];
+}
+
+class _RunningSessionsHost extends StatelessWidget {
+  const _RunningSessionsHost({
+    required this.workspace,
+    required this.tabScopeId,
+  });
+
+  final Workspace workspace;
+  final String tabScopeId;
+
+  RunningSessionIds _runningIds(ChatState state, ChatCubit chatCubit) {
+    final runningTabIds = chatCubit.tabStore
+        .tabsForWorkspace(tabScopeId)
+        .where((tab) => tab.isRunning)
+        .map((tab) => tab.info.id);
+    return RunningSessionIds.fromWorkspace(
+      sessions: sessionsForWorkspace(workspace, state.sessions),
+      workingSessionIds: state.workingSessionIds,
+      openTabSessionIds: openTabSessionIdsForWorkspace(runningTabIds),
+    );
   }
 
-  Widget _buildSessionList(BuildContext context, List<AppSession> sessions) {
+  @override
+  Widget build(BuildContext context) {
+    final running = context.select<ChatCubit, RunningSessionIds>(
+      (c) => _runningIds(c.state, c),
+    );
+    return SidebarRebuildProbe(
+      key: const Key('workspace-sidebar-running-host-probe'),
+      child: running.isEmpty
+          ? const SizedBox.shrink()
+          : _RunningSessionsSection(
+              sessionIds: running.ids,
+              workspace: workspace,
+              tabScopeId: tabScopeId,
+            ),
+    );
+  }
+}
+
+class _ConversationListHost extends StatelessWidget {
+  const _ConversationListHost({
+    required this.workspace,
+    required this.tabScopeId,
+    required this.sessionSort,
+    required this.onSessionsReordered,
+  });
+
+  final Workspace workspace;
+  final String tabScopeId;
+  final AppSessionSort sessionSort;
+  final ValueChanged<List<String>> onSessionsReordered;
+
+  @override
+  Widget build(BuildContext context) {
+    final structure = context.select<ChatCubit, SessionListStructure>(
+      (c) => SessionListStructure.fromSessions(
+        sessionsForWorkspace(workspace, c.state.sessions),
+        sort: sessionSort,
+      ),
+    );
+    final sessionsHydrated = context.select<ChatCubit, bool>(
+      (c) => c.sessionsLoadedForWorkspace(workspace.workspaceId),
+    );
+    final wtView = context.select<WorktreeCubit, WorktreeSidebarView>(
+      (c) => WorktreeSidebarView.from(c.state),
+    );
+    final chatState = context.read<ChatCubit>().state;
+    final sortedSessions = _sessionsForStructure(chatState, structure, workspace);
+
+    return SidebarRebuildProbe(
+      key: const Key('workspace-sidebar-conversation-list-probe'),
+      child: TpDeferredMountShell(
+        delayFrames: 1,
+        placeholder: const _SessionListSkeleton(),
+        child: _buildBody(
+          context,
+          sortedSessions,
+          structure,
+          wtView,
+          sessionsHydrated: sessionsHydrated,
+        ),
+      ),
+    );
+  }
+
+  /// Flat session list when the repo has only its main worktree; otherwise a
+  /// collapsible worktree-grouped list. The "+ new worktree" header action is
+  /// always available regardless of this branch.
+  Widget _buildBody(
+    BuildContext context,
+    List<AppSession> sortedSessions,
+    SessionListStructure structure,
+    WorktreeSidebarView wtView, {
+    required bool sessionsHydrated,
+  }) {
+    final l10n = context.l10n;
+    if (!sessionsHydrated && structure.rows.isEmpty) {
+      return const _SessionListSkeleton();
+    }
+    if (workspace.folders.length > 1) {
+      return _buildMultiProjectWorktreeGroupedList(
+        context,
+        sortedSessions,
+        wtView,
+      );
+    }
+    switch (wtView.sessionListLayout) {
+      case WorktreeSessionListLayout.indeterminate:
+        return const _SessionListSkeleton();
+      case WorktreeSessionListLayout.flat:
+        if (!wtView.loading && wtView.worktrees.isEmpty) {
+          return _buildWorktreeGroupList(
+            context,
+            [
+              WorktreeGroup(
+                worktree: null,
+                sessions: sortedSessions,
+                projectFolderPath: workspace.firstFolderPath,
+                isProjectGroup: true,
+              ),
+            ],
+            wtView,
+            workspaceOrderedSessionIds: structure.sessionIds,
+            emptyWhenNoSessions: true,
+          );
+        }
+        return structure.rows.isEmpty
+            ? _EmptyConversations(label: l10n.homeWorkspaceNoConversations)
+            : _buildSessionList(context, structure.sessionIds);
+      case WorktreeSessionListLayout.grouped:
+        final groups = groupSessionsByWorktree(
+          worktrees: wtView.worktrees,
+          sessions: sortedSessions,
+        );
+        return _buildWorktreeGroupList(
+          context,
+          groups,
+          wtView,
+          workspaceOrderedSessionIds: structure.sessionIds,
+        );
+    }
+  }
+
+  Widget _buildWorktreeGroupList(
+    BuildContext context,
+    List<WorktreeGroup> groups,
+    WorktreeSidebarView wtView, {
+    bool emptyWhenNoSessions = false,
+    required List<String> workspaceOrderedSessionIds,
+  }) {
+    final l10n = context.l10n;
+    final hasAnySession = groups.any((g) => g.sessions.isNotEmpty);
+    if (emptyWhenNoSessions && !hasAnySession) {
+      return _EmptyConversations(label: l10n.homeWorkspaceNoConversations);
+    }
+    return ListView.builder(
+      padding: EdgeInsets.zero,
+      itemCount: groups.length,
+      itemBuilder: (context, index) {
+        final group = groups[index];
+        return WorktreeGroupSection(
+          key: ValueKey('wt-group-${worktreeGroupCollapseKey(group)}'),
+          group: group,
+          workspace: workspace,
+          tabScopeId: tabScopeId,
+          sessionSort: sessionSort,
+          workspaceOrderedSessionIds: workspaceOrderedSessionIds,
+          onSessionsReordered: onSessionsReordered,
+          highlightSessionId: scopedActiveSessionId(
+            context.read<ChatCubit>(),
+            tabScopeId,
+          ),
+          collapsed: wtView.collapsed.contains(worktreeGroupCollapseKey(group)),
+        );
+      },
+    );
+  }
+
+  Widget _buildMultiProjectWorktreeGroupedList(
+    BuildContext context,
+    List<AppSession> sortedSessions,
+    WorktreeSidebarView wtView,
+  ) {
+    final l10n = context.l10n;
+    final cubit = context.read<WorktreeCubit>();
+    final worktreesByProject = <String, List<GitWorktree>>{
+      for (final folder in workspace.folders)
+        folder.path: cubit.worktreesForProject(folder.path),
+    };
+    final groups = groupSessionsByWorktreeAcrossProjects(
+      folders: workspace.folders,
+      worktreesByProjectPath: worktreesByProject,
+      sessions: sortedSessions,
+    );
+    final hasAnySession = groups.any((g) => g.sessions.isNotEmpty);
+    if (!hasAnySession && sortedSessions.isEmpty) {
+      return _EmptyConversations(label: l10n.homeWorkspaceNoConversations);
+    }
+    return _buildWorktreeGroupList(
+      context,
+      groups,
+      wtView,
+      workspaceOrderedSessionIds: sessionIdsInSortOrder(sortedSessions),
+    );
+  }
+
+  Widget _buildSessionList(BuildContext context, List<String> sessionIds) {
     return ReorderableListView.builder(
       padding: EdgeInsets.zero,
       buildDefaultDragHandles: false,
-      itemCount: sessions.length,
+      itemCount: sessionIds.length,
       onReorderItem: (oldIndex, newIndex) {
         final ordered = reorderVisibleSessionIds(
-          allIds: [for (final s in sessions) s.sessionId],
-          visibleIds: [for (final s in sessions) s.sessionId],
+          allIds: sessionIds,
+          visibleIds: sessionIds,
           oldIndex: oldIndex,
           newIndex: newIndex,
         );
-        _onSessionsReordered(ordered);
+        onSessionsReordered(ordered);
       },
       itemBuilder: (context, index) =>
-          _sessionTile(context, sessions[index], index: index),
+          _sessionTile(context, sessionIds[index], index: index),
     );
   }
 
   Widget _sessionTile(
     BuildContext context,
-    AppSession session, {
+    String sessionId, {
     int index = -1,
   }) {
+    final session = _sessionById(context.read<ChatCubit>().state, sessionId);
+    if (session == null) return const SizedBox.shrink();
     return SidebarSessionTile(
-      key: ValueKey('workspace-sidebar-session-${session.sessionId}'),
+      key: ValueKey('workspace-sidebar-session-$sessionId'),
       session: session,
       index: index,
       highlightSessionId: scopedActiveSessionId(
         context.read<ChatCubit>(),
-        widget.tabScopeId,
+        tabScopeId,
       ),
       tapThrottleKeyPrefix: 'workspace_sidebar_session',
       onTap: () => openWorkspaceSessionTab(
         context,
-        widget.workspace,
+        workspace,
         session,
-        tabScopeId: widget.tabScopeId,
+        tabScopeId: tabScopeId,
       ),
-    );
-  }
-
-  Future<void> _startNewConversation(BuildContext context) async {
-    await showWorkspaceComposeLanding(
-      context,
-      widget.workspace,
-      tabScopeId: widget.tabScopeId,
     );
   }
 }
 
 class _RunningSessionsSection extends StatelessWidget {
   const _RunningSessionsSection({
-    required this.sessions,
+    required this.sessionIds,
     required this.workspace,
     required this.tabScopeId,
   });
 
-  final List<AppSession> sessions;
+  final List<String> sessionIds;
   final Workspace workspace;
   final String tabScopeId;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final chatState = context.read<ChatCubit>().state;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -507,22 +572,23 @@ class _RunningSessionsSection extends StatelessWidget {
             style: TpTextStyles.of(context).mutedSm,
           ),
         ),
-        for (final session in sessions)
-          SidebarSessionTile(
-            key: ValueKey('workspace-running-session-${session.sessionId}'),
-            session: session,
-            highlightSessionId: scopedActiveSessionId(
-              context.read<ChatCubit>(),
-              tabScopeId,
+        for (final sessionId in sessionIds)
+          if (_sessionById(chatState, sessionId) case final session?)
+            SidebarSessionTile(
+              key: ValueKey('workspace-running-session-$sessionId'),
+              session: session,
+              highlightSessionId: scopedActiveSessionId(
+                context.read<ChatCubit>(),
+                tabScopeId,
+              ),
+              tapThrottleKeyPrefix: 'workspace_running_session',
+              onTap: () => openWorkspaceSessionTab(
+                context,
+                workspace,
+                session,
+                tabScopeId: tabScopeId,
+              ),
             ),
-            tapThrottleKeyPrefix: 'workspace_running_session',
-            onTap: () => openWorkspaceSessionTab(
-              context,
-              workspace,
-              session,
-              tabScopeId: tabScopeId,
-            ),
-          ),
       ],
     );
   }

@@ -13,7 +13,6 @@ class ChatScopedTabView {
   const ChatScopedTabView({
     required this.tabs,
     required this.activeTabIndex,
-    required this.workingSessionIds,
     required this.selectedMemberId,
     required this.newChatActive,
     required this.workbenchSlice,
@@ -21,26 +20,20 @@ class ChatScopedTabView {
 
   final List<ChatTabInfo> tabs;
   final int activeTabIndex;
-  final Set<String> workingSessionIds;
   final String selectedMemberId;
   final bool newChatActive;
   final ChatWorkbenchSlice workbenchSlice;
 
   static const _listEquality = ListEquality<ChatTabInfo>();
-  static const _setEquality = SetEquality<String>();
 
   static ChatScopedTabView resolve(ChatCubit cubit, String workspaceTabKey) {
     final state = cubit.state;
     final store = cubit.tabStore;
     final isForeground = store.activeWorkspaceId == workspaceTabKey;
     if (isForeground) {
-      final bucketIds = store.activeTabs.map((t) => t.info.id).toSet();
       return ChatScopedTabView(
         tabs: state.tabs,
         activeTabIndex: state.activeTabIndex,
-        workingSessionIds: state.workingSessionIds
-            .where(bucketIds.contains)
-            .toSet(),
         selectedMemberId: state.selectedMemberId,
         newChatActive: state.newChatActive,
         workbenchSlice: ChatWorkbenchSlice.from(state),
@@ -53,14 +46,10 @@ class ChatScopedTabView {
     final ChatTab? tab = bucket.isEmpty || newChatActive
         ? null
         : bucket[index.clamp(0, bucket.length - 1)];
-    final bucketIds = bucket.map((t) => t.info.id).toSet();
     final activeSessionId = tab?.info.id;
     return ChatScopedTabView(
       tabs: bucket.map((t) => t.info).toList(),
       activeTabIndex: index,
-      workingSessionIds: state.workingSessionIds
-          .where(bucketIds.contains)
-          .toSet(),
       selectedMemberId: tab?.selectedMemberId ?? '',
       newChatActive: newChatActive,
       workbenchSlice: ChatWorkbenchSlice(
@@ -86,7 +75,6 @@ class ChatScopedTabView {
         other is ChatScopedTabView &&
             _listEquality.equals(tabs, other.tabs) &&
             activeTabIndex == other.activeTabIndex &&
-            _setEquality.equals(workingSessionIds, other.workingSessionIds) &&
             selectedMemberId == other.selectedMemberId &&
             newChatActive == other.newChatActive &&
             workbenchSlice == other.workbenchSlice;
@@ -96,7 +84,6 @@ class ChatScopedTabView {
   int get hashCode => Object.hash(
     _listEquality.hash(tabs),
     activeTabIndex,
-    _setEquality.hash(workingSessionIds),
     selectedMemberId,
     newChatActive,
     workbenchSlice,

@@ -34,6 +34,8 @@ import '../../widgets/workspace_terminal/workspace_terminal_new_session_menu.dar
 import '../../widgets/workspace_terminal_panel.dart';
 import '../workbench/workbench_body.dart';
 import '../workspace_shell/workspace_shell.dart';
+import 'chat_page_structural_signal.dart';
+import 'chat_page_shell_probe.dart';
 import 'chat_scoped_tab_view.dart';
 import 'session_tab_cli.dart';
 import 'session_workbench_view_toggle.dart';
@@ -96,17 +98,8 @@ class ChatPageShell extends StatelessWidget {
   final bool routeActive;
   final WorkspaceTerminalHoldHandle? holdHandle;
 
-  WorkspaceActiveContext _activeContext(BuildContext context) {
-    return WorkspaceActiveContext.resolve(
-      chat: context.watch<ChatCubit>(),
-      launchProfiles: context.read<LaunchProfileCubit>(),
-      tabScopeId: tabScopeId,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final active = _activeContext(context);
     // Center-only: geometry (sidebar / right tools / bottom terminal) is owned
     // by `WorkspaceIdeShell` above this widget. `ChatPageShell` now renders just
     // the center workbench column.
@@ -115,11 +108,9 @@ class ChatPageShell extends StatelessWidget {
       _ChatWorkspaceShell(
         cwd: cwd,
         sessionId: sessionId,
-        isPersonalContext: active.isPersonal,
         workspaceId: workspaceId,
         tabScopeId: tabScopeId,
         routeActive: routeActive,
-        team: active.team,
         holdHandle: holdHandle,
       ),
     );
@@ -130,30 +121,30 @@ class _ChatWorkspaceShell extends StatelessWidget {
   const _ChatWorkspaceShell({
     required this.cwd,
     required this.sessionId,
-    required this.isPersonalContext,
     required this.workspaceId,
     required this.tabScopeId,
     required this.routeActive,
-    required this.team,
     this.holdHandle,
   });
 
   final String cwd;
   final String? sessionId;
-  final bool isPersonalContext;
   final String workspaceId;
   final String tabScopeId;
   final bool routeActive;
-  final TeamProfile? team;
   final WorkspaceTerminalHoldHandle? holdHandle;
 
-  String? _profileId(BuildContext context) {
+  String? _profileId(
+    BuildContext context, {
+    required bool isPersonalContext,
+    required TeamProfile? team,
+  }) {
     try {
       final ctx = context.read<WorkspaceLandingContextCubit>().state.context;
       if (ctx.isPersonal) return kSimpleLaunchProfileId;
       return ctx.teamId;
     } on Object {
-      if (!isPersonalContext && team != null) return team!.id;
+      if (!isPersonalContext && team != null) return team.id;
       final workspace = context
           .read<ChatCubit>()
           .state
@@ -173,15 +164,17 @@ class _ChatWorkspaceShell extends StatelessWidget {
     ChatState next,
   ) {
     if (!routeActive) return false;
-    return previous.tabs != next.tabs ||
-        previous.activeTabIndex != next.activeTabIndex ||
-        previous.newChatActive != next.newChatActive ||
-        previous.workingSessionIds != next.workingSessionIds ||
-        previous.selectedMemberId != next.selectedMemberId ||
-        previous.sessionConnectingId != next.sessionConnectingId ||
-        previous.sessionLaunchError != next.sessionLaunchError ||
-        previous.sessions != next.sessions ||
-        previous.stateVersion != next.stateVersion;
+    final prevSignal = chatPageStructuralSignal(
+      state: previous,
+      tabStore: cubit.tabStore,
+      tabScopeId: tabScopeId,
+    );
+    final nextSignal = chatPageStructuralSignal(
+      state: next,
+      tabStore: cubit.tabStore,
+      tabScopeId: tabScopeId,
+    );
+    return prevSignal != nextSignal;
   }
 
   @override
@@ -191,7 +184,13 @@ class _ChatWorkspaceShell extends StatelessWidget {
       buildWhen: (previous, next) => _scopedTabBuildWhen(cubit, previous, next),
       builder: (context, state) {
         final view = ChatScopedTabView.resolve(cubit, tabScopeId);
-        final teamConfig = team;
+        final active = WorkspaceActiveContext.resolve(
+          chat: cubit,
+          launchProfiles: context.read<LaunchProfileCubit>(),
+          tabScopeId: tabScopeId,
+        );
+        final isPersonalContext = active.isPersonal;
+        final teamConfig = active.team;
         final runtimeTabs = _runtimeTabsForScope(cubit, tabScopeId);
         final tabById = {for (final t in runtimeTabs) t.info.id: t};
         final personalFallbackCli = isPersonalContext
@@ -224,12 +223,8 @@ class _ChatWorkspaceShell extends StatelessWidget {
                     );
                 final order = workbenchState.bucket(workspaceId).tabOrder;
                 final activeId = workbenchState.bucket(workspaceId).activeTabId;
-                final sessionTitles = {
-                  for (final t in view.tabs) t.id: t.title,
-                };
-                final sessionWorking = {
-                  for (final id in view.workingSessionIds) id: true,
-                };
+                const sessionTitles = <String, String>{};
+                const sessionWorking = <String, bool>{};
                 final sessionCli = <String, CliTool?>{
                   for (final t in view.tabs)
                     t.id: () {
@@ -406,18 +401,25 @@ class _ChatWorkspaceShell extends StatelessWidget {
                   actions: isPersonalContext || teamConfig == null
                       ? const []
                       : _chatActions(context, teamConfig),
-                  child: WorkbenchBody(
-                    workspaceId: workspaceId,
-                    tabScopeId: tabScopeId,
-                    workspace: workspace,
-                    profileId: _profileId(context),
-                    routeActive: routeActive,
-                    sessionId: sessionId,
-                    isPersonalContext: isPersonalContext,
-                    team: team,
-                    workbenchSlice: view.workbenchSlice,
-                    workingDirectory: cwd,
-                    holdHandle: holdHandle,
+                  child: ChatPageStructuralBodyProbe(
+                    key: chatPageStructuralBodyProbeKey,
+                    child: WorkbenchBody(
+                      workspaceId: workspaceId,
+                      tabScopeId: tabScopeId,
+                      workspace: workspace,
+                      profileId: _profileId(
+                        context,
+                        isPersonalContext: isPersonalContext,
+                        team: teamConfig,
+                      ),
+                      routeActive: routeActive,
+                      sessionId: sessionId,
+                      isPersonalContext: isPersonalContext,
+                      team: teamConfig,
+                      workbenchSlice: view.workbenchSlice,
+                      workingDirectory: cwd,
+                      holdHandle: holdHandle,
+                    ),
                   ),
                 );
               },
