@@ -164,6 +164,8 @@ void _appendFromEventMsg(
     case 'agent_message':
       final message = '${payload['message'] ?? ''}'.trim();
       if (message.isEmpty) return;
+      // commentary + final_answer can emit identical text for one turn.
+      if (_isAdjacentDuplicateAssistantText(messages, message)) return;
       messages.add(
         AiMessage(
           id: fallbackId(),
@@ -175,13 +177,11 @@ void _appendFromEventMsg(
     case 'agent_reasoning':
       final text = '${payload['text'] ?? ''}'.trim();
       if (text.isEmpty) return;
-      messages.add(
-        AiMessage(
-          id: fallbackId(),
-          role: AiRole.assistant,
-          parts: [AiReasoningPart(text: text)],
-          createdAt: timestamp,
-        ),
+      _appendAssistantReasoning(
+        messages,
+        text: text,
+        timestamp: timestamp,
+        fallbackId: fallbackId,
       );
   }
 }
@@ -254,20 +254,57 @@ void _appendFromResponseItem(
         isError: false,
       );
     case 'reasoning':
+      // Dual-written with event_msg agent_reasoning — keep the first only.
       final text = _reasoningSummaryText(payload);
       if (text == null) return;
-      messages.add(
-        AiMessage(
-          id: fallbackId(),
-          role: AiRole.assistant,
-          parts: [AiReasoningPart(text: text)],
-          createdAt: timestamp,
-        ),
+      _appendAssistantReasoning(
+        messages,
+        text: text,
+        timestamp: timestamp,
+        fallbackId: fallbackId,
       );
     case 'message':
       // Prefer event_msg for user/agent text; skip developer / duplicate noise.
       return;
   }
+}
+
+/// Codex often logs the same reasoning as both `event_msg.agent_reasoning`
+/// and `response_item.reasoning`. Keep whichever arrives first.
+void _appendAssistantReasoning(
+  List<AiMessage> messages, {
+  required String text,
+  required DateTime? timestamp,
+  required String Function() fallbackId,
+}) {
+  if (_isAdjacentDuplicateAssistantReasoning(messages, text)) return;
+  messages.add(
+    AiMessage(
+      id: fallbackId(),
+      role: AiRole.assistant,
+      parts: [AiReasoningPart(text: text)],
+      createdAt: timestamp,
+    ),
+  );
+}
+
+bool _isAdjacentDuplicateAssistantReasoning(
+  List<AiMessage> messages,
+  String text,
+) {
+  if (messages.isEmpty) return false;
+  final last = messages.last;
+  if (last.role != AiRole.assistant || last.parts.length != 1) return false;
+  final part = last.parts.single;
+  return part is AiReasoningPart && part.text == text;
+}
+
+bool _isAdjacentDuplicateAssistantText(List<AiMessage> messages, String text) {
+  if (messages.isEmpty) return false;
+  final last = messages.last;
+  if (last.role != AiRole.assistant || last.parts.length != 1) return false;
+  final part = last.parts.single;
+  return part is AiTextPart && part.text == text;
 }
 
 bool _isEnvironmentContext(String message) {

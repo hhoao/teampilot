@@ -13,6 +13,8 @@ import '../../cubits/chat/model/session_persist_params.dart';
 import '../../cubits/chat/session_launch_host.dart';
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
+import '../../models/member_instance.dart';
+import '../../models/session_member_binding.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_topology.dart';
 import '../../repositories/session_repository.dart';
@@ -192,7 +194,7 @@ class SessionLaunchPipeline {
     final sessionId = fixedId != null && fixedId.isNotEmpty
         ? fixedId
         : _uuid.v4();
-    final provisional = buildProvisionalSession(
+    var provisional = buildProvisionalSession(
       sessionId: sessionId,
       workspace: request.workspace,
       isPersonal: request.isPersonal,
@@ -202,6 +204,25 @@ class SessionLaunchPipeline {
       sessionTeamId: sessionTeamId,
       expertKey: request.expertKey,
     );
+
+    // Team sessions need provisional member bindings so history loading (which
+    // fires immediately after the UI mounts) can resolve session.requireBinding
+    // before persistence completes asynchronously.
+    if (!request.isPersonal && request.team != null) {
+      final instances = expandTeamRoster(request.team!.members);
+      final taskIdPlaceholder = sessionId;
+      provisional = provisional.copyWith(
+        members: [
+          for (final inst in instances)
+            SessionMemberBinding(
+              rosterMemberId: inst.instanceId,
+              typeId: inst.type.id,
+              taskId: taskIdPlaceholder,
+              cli: _memberProvisionalCli(request.team!, inst),
+            ),
+        ],
+      );
+    }
     _host.appendSessionSnapshot(provisional);
 
     final persistParams = SessionPersistParams(
@@ -232,6 +253,17 @@ class SessionLaunchPipeline {
     return LaunchOpened(status);
   }
 
+
+  /// Best-effort CLI for a provisional (pre-persistence) binding.
+  ///
+  /// Prefers per-member CLI presets; falls back to the team default CLI.
+  /// The exact CLI is refined during [SessionRepository.createSession].
+  CliTool? _memberProvisionalCli(TeamProfile team, MemberInstance inst) {
+    return team.members
+        .where((m) => m.id == inst.type.id)
+        .firstOrNull
+        ?.cli ?? team.cli;
+  }
   Future<LaunchOutcome> _runConnect(
     SessionConnectRequest request, {
     SessionRepository? repo,
