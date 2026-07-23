@@ -21,6 +21,7 @@ class ResourceBinding {
     this.memberId,
     this.workspaceId,
     this.shellEntryId,
+    this.livePid,
   });
 
   final String key;
@@ -33,4 +34,5 @@ class ResourceBinding {
   final String? memberId;
   final String? workspaceId;
   final String? shellEntryId;
+  final int? livePid;
 }
