@@ -8,8 +8,6 @@ import '../models/discoverable_team.dart';
 import '../models/skill.dart';
 import '../repositories/skill_repository.dart';
 import '../services/skill/skill_acquisition_engine.dart';
-import '../services/skill/skill_fetch_service.dart';
-import '../services/skill/skill_install_service.dart';
 import '../services/skill/skill_repo_disk_cache_service.dart';
 import '../utils/logging/logger.dart';
 
@@ -457,6 +455,9 @@ class SkillCubit extends Cubit<SkillState> {
     final installed = await _repo.loadInstalled();
     emit(state.copyWith(installed: installed));
   }
+
+  static bool _isAlreadyExistsMessage(String message) =>
+      message.toLowerCase().contains('already exists');
 
   Future<void> installFromZip(File zip) async {
     if (state.toolbarBusy) return;
