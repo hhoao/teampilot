@@ -44,6 +44,7 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
     required this.onConversationModeSelected,
     required this.onAutoChipSelected,
     required this.onPermissionSelected,
+    this.autoChipLeading,
     this.expertChipLabel,
     this.expertChipSpecs = const [],
     this.onExpertChipSelected,
@@ -91,6 +92,7 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
   final ValueChanged<Object?> onConversationModeSelected;
   final ValueChanged<Object?> onAutoChipSelected;
   final ValueChanged<bool> onPermissionSelected;
+  final Widget? autoChipLeading;
   final String? expertChipLabel;
   final List<TpActionMenuSpec> expertChipSpecs;
   final ValueChanged<Object?>? onExpertChipSelected;
@@ -143,6 +145,7 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
               ComposeMenuChip(
                 palette: palette,
                 icon: Icons.autorenew,
+                leading: autoChipLeading,
                 label: autoChipLabel,
                 specs: autoChipSpecs,
                 onSelected: onAutoChipSelected,

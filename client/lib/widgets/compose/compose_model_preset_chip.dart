@@ -92,11 +92,28 @@ class ComposeModelPresetChip extends StatelessWidget {
   final VoidCallback? onManagePresets;
   final IconData icon;
 
+  CliTool? get _triggerCli {
+    final selected = selectedPresetId == null
+        ? null
+        : sameCliPresets.where((p) => p.id == selectedPresetId).firstOrNull;
+    return selected?.cli ?? sameCliPresets.firstOrNull?.cli;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final icons = context.tpIconSizes;
+    final cli = _triggerCli;
     return ComposeMenuChip(
       palette: palette,
       icon: icon,
+      leading: cli == null
+          ? null
+          : CliBrandIcon(
+              cli: cli,
+              size: icons.sm,
+              borderRadius: 4,
+              showBorder: false,
+            ),
       label: label,
       specs: buildComposeModelPresetMenuSpecs(
         sameCliPresets: sameCliPresets,

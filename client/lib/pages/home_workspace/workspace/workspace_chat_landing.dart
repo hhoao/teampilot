@@ -40,6 +40,7 @@ import '../../../pages/home_workspace/home_workspace_route.dart';
 import '../../../utils/workspace/landing_draft_resolver.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';
 import '../../../services/storage/home_target_controller.dart';
+import '../../../widgets/cli/cli_brand_icon.dart';
 import '../../../widgets/compose/compose_model_preset_chip.dart';
 import '../../../services/launch/workspace_landing_launch_gate.dart';
 import '../../../repositories/workspace_project_config_repository.dart';
@@ -1020,6 +1021,25 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
         : l10n.selectTeam;
   }
 
+  Widget? _autoChipLeading(
+    BuildContext context, {
+    required List<CliPreset> presets,
+  }) {
+    if (_conversationMode != _LandingConversationMode.simple) return null;
+    final preset = presets
+            .where((p) => p.id == _selectedPresetId)
+            .firstOrNull ??
+        presets.firstOrNull;
+    if (preset == null) return null;
+    final icons = context.tpIconSizes;
+    return CliBrandIcon(
+      cli: preset.cli,
+      size: icons.sm,
+      borderRadius: 4,
+      showBorder: false,
+    );
+  }
+
   List<TpActionMenuSpec> _conversationModeSpecs(AppLocalizations l10n) {
     return [
       TpActionMenuSpec.item(
@@ -1162,6 +1182,10 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
                         l10n,
                         presets: presets,
                         teams: teams,
+                      ),
+                      autoChipLeading: _autoChipLeading(
+                        context,
+                        presets: presets,
                       ),
                       dangerouslySkipPermissions: _dangerouslySkipPermissions,
                       defaultPermissionsLabel:

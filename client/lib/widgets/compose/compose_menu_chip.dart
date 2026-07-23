@@ -10,6 +10,7 @@ class ComposeMenuChip extends StatelessWidget {
     required this.label,
     required this.specs,
     required this.onSelected,
+    this.leading,
     this.minWidth = 200,
     super.key,
   });
@@ -19,6 +20,7 @@ class ComposeMenuChip extends StatelessWidget {
   final String label;
   final List<TpActionMenuSpec> specs;
   final ValueChanged<Object?> onSelected;
+  final Widget? leading;
   final double minWidth;
 
   @override
@@ -28,6 +30,7 @@ class ComposeMenuChip extends StatelessWidget {
       triggerBuilder: (context, controller) => ComposeToolbarChip(
         palette: palette,
         icon: icon,
+        leading: leading,
         label: label,
         onTap: () {
           if (controller.isOpen) {
@@ -54,6 +57,7 @@ class ComposeToolbarChip extends StatelessWidget {
     required this.palette,
     required this.icon,
     required this.label,
+    this.leading,
     this.onTap,
     super.key,
   });
@@ -61,6 +65,7 @@ class ComposeToolbarChip extends StatelessWidget {
   final WorkspaceChatLandingPalette palette;
   final IconData icon;
   final String label;
+  final Widget? leading;
   final VoidCallback? onTap;
 
   static const double minHeight = 36;
@@ -89,7 +94,7 @@ class ComposeToolbarChip extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: icons.sm, color: palette.muted),
+                leading ?? Icon(icon, size: icons.sm, color: palette.muted),
                 SizedBox(width: spacing.xs),
                 Text(label, style: labelStyle),
                 Icon(

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
+import 'package:teampilot/widgets/cli/cli_brand_icon.dart';
 import 'package:teampilot/widgets/compose/compose_model_preset_chip.dart';
 import 'package:teampilot/widgets/compose/compose_permission_chip.dart';
 
@@ -61,6 +62,48 @@ void main() {
       expect(item.enabled, isFalse);
       expect(item.label, 'No presets');
       expect(item.icon, Icons.terminal_outlined);
+    });
+  });
+
+  group('ComposeModelPresetChip', () {
+    testWidgets('trigger shows CliBrandIcon for selected preset CLI', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                final palette = WorkspaceChatLandingPalette(
+                  Theme.of(context).colorScheme,
+                );
+                return ComposeModelPresetChip(
+                  palette: palette,
+                  sameCliPresets: [
+                    CliPreset(
+                      id: 'a',
+                      name: 'Alpha',
+                      cli: CliTool.cursor,
+                      provider: 'p',
+                      model: 'm',
+                      createdAt: 0,
+                      updatedAt: 0,
+                    ),
+                  ],
+                  selectedPresetId: 'a',
+                  label: 'Alpha',
+                  emptyHintLabel: 'No presets',
+                  onPresetSelected: (_) {},
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(CliBrandIcon), findsOneWidget);
+      final brand = tester.widget<CliBrandIcon>(find.byType(CliBrandIcon));
+      expect(brand.cli, CliTool.cursor);
     });
   });
 
