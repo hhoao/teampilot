@@ -142,6 +142,66 @@ void main() {
     expect(empty.host, isNull);
   });
 
+  test('timeout-empty table returns last-good without overwriting', () async {
+    var returnEmpty = false;
+    final svc = buildService(
+      readProcessTable: () async {
+        if (returnEmpty) return '';
+        return unixFixture;
+      },
+    );
+
+    final good = await svc.collect(
+      registeredPids: {'chat:s1:m1': 42},
+      bindingKeyToGroupKey: {'chat:s1:m1': 'main'},
+    );
+    expect(good.totalMemory, isNotNull);
+    expect(good.leafMetrics['chat:s1:m1']?.memoryBytes, isNotNull);
+
+    returnEmpty = true;
+    final afterEmpty = await svc.collect(
+      registeredPids: {'chat:s1:m1': 42},
+      bindingKeyToGroupKey: {'chat:s1:m1': 'main'},
+    );
+
+    expect(afterEmpty.totalMemory, good.totalMemory);
+    expect(
+      afterEmpty.leafMetrics['chat:s1:m1']?.memoryBytes,
+      good.leafMetrics['chat:s1:m1']?.memoryBytes,
+    );
+    expect(
+      afterEmpty.leafMetrics['chat:s1:m1']?.cpu,
+      good.leafMetrics['chat:s1:m1']?.cpu,
+    );
+  });
+
+  test('groupHistory retained when all pids in a group go missing', () async {
+    var table = unixFixture;
+    final svc = buildService(
+      readProcessTable: () async => table,
+    );
+
+    final good = await svc.collect(
+      registeredPids: {'chat:s1:m1': 42},
+      bindingKeyToGroupKey: {'chat:s1:m1': 'main'},
+    );
+    expect(good.groupHistory['main'], isNotEmpty);
+    final priorRing = List<int>.of(good.groupHistory['main']!);
+
+    // Table without pid 42/43 — binding still maps to group "main".
+    table = '''
+PID PPID %CPU RSS
+1 0 0.0 1024
+''';
+    final missing = await svc.collect(
+      registeredPids: {'chat:s1:m1': 42},
+      bindingKeyToGroupKey: {'chat:s1:m1': 'main'},
+    );
+
+    expect(missing.leafMetrics['chat:s1:m1']?.memoryBytes, isNull);
+    expect(missing.groupHistory['main'], priorRing);
+  });
+
   test('sums subtree for registered pid and includes host + app', () async {
     final svc = buildService();
     final snap = await svc.collect(

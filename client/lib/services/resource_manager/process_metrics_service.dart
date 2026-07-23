@@ -63,6 +63,14 @@ class ProcessMetricsService {
   }) async {
     try {
       final tableText = await _readProcessTable();
+      // Empty table on non-Android is a soft-fail (timeout / sweep unavailable).
+      // Android intentionally returns '' (no local process sweep).
+      if (tableText.trim().isEmpty && !Platform.isAndroid) {
+        return _returnLastGoodOrEmpty(
+          reason: 'empty process table (timeout or sweep unavailable)',
+        );
+      }
+
       final rows = _parseProcessTable(tableText);
       final host = await _safeHostMemory();
       final collectedAt = DateTime.now();
@@ -112,9 +120,13 @@ class ProcessMetricsService {
         _pushHistory(entry.key, entry.value);
       }
 
+      // Keep prior rings for active groups even when this tick had no sample
+      // (all pids missing) so sparklines do not disappear for one tick.
+      final activeGroupKeys = bindingKeyToGroupKey.values.toSet();
       final groupHistory = <String, List<int>>{
-        for (final key in groupMemory.keys)
-          key: List<int>.of(_historyByKey[key] ?? const []),
+        for (final key in activeGroupKeys)
+          if (_historyByKey.containsKey(key))
+            key: List<int>.of(_historyByKey[key]!),
       };
 
       double? totalCpu;
@@ -166,6 +178,14 @@ class ProcessMetricsService {
       return _lastGood ??
           ResourceMemorySnapshot(collectedAt: DateTime.now());
     }
+  }
+
+  ResourceMemorySnapshot _returnLastGoodOrEmpty({required String reason}) {
+    AppLogger.instance.w(
+      'ProcessMetricsService.collect soft-fail: $reason; '
+      'returning last-good/empty',
+    );
+    return _lastGood ?? ResourceMemorySnapshot(collectedAt: DateTime.now());
   }
 
   void _pushHistory(String key, int memoryBytes) {
@@ -225,6 +245,8 @@ class ProcessMetricsService {
       return result.stdout as String;
     } on TimeoutException {
       AppLogger.instance.w('ProcessMetricsService process table timed out');
+      // Soft-fail as empty so [_runCollect] returns last-good (not a null
+      // metrics “success” that overwrites the cache).
       return '';
     }
   }
