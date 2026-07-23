@@ -18,6 +18,8 @@ class _FakeTransport implements TerminalTransport {
   @override
   Future<int> get done => doneCompleter.future;
   @override
+  int? get pid => null;
+  @override
   void close() {
     if (!doneCompleter.isCompleted) doneCompleter.complete(0);
   }

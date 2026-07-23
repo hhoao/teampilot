@@ -178,6 +178,9 @@ class TerminalSession {
   bool get isConnected => _launch.isConnected;
   bool get transportReadyForIo => _launch.transportReadyForIo;
 
+  /// Local PTY process id when the session transport exposes one.
+  int? get pid => _launch.pid;
+
   void _wireLaunchCallbacks() {
     _launch.writeToDisplay = _writeDisplayNotice;
     _launch.onConfirmedRunning = () => _userTurnActive = false;

@@ -14,6 +14,12 @@ class LocalPtyTransport implements TerminalTransport {
   Future<int> get done => _pty.exitCode;
 
   @override
+  int? get pid {
+    final p = _pty.pid;
+    return p > 0 ? p : null;
+  }
+
+  @override
   void write(Uint8List data) {
     _pty.write(data);
   }

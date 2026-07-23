@@ -6141,4 +6141,77 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shortcutsCategoryRun => 'Run';
+
+  @override
+  String get resourceManagerTitle => 'Resource Manager';
+
+  @override
+  String get resourceManagerPanelTitle => 'Resource Manager - Terminals';
+
+  @override
+  String resourceManagerTooltip(String memory, int count) {
+    return 'Resource Manager - $memory - $count terminals';
+  }
+
+  @override
+  String get resourceManagerTooltipHint =>
+      'Sessions are grouped by worktree or session.';
+
+  @override
+  String get resourceManagerColumnName => 'Name';
+
+  @override
+  String get resourceManagerColumnCpu => 'CPU';
+
+  @override
+  String get resourceManagerColumnMemory => 'Memory';
+
+  @override
+  String get resourceManagerRefresh => 'Refresh';
+
+  @override
+  String get resourceManagerKill => 'Kill';
+
+  @override
+  String get resourceManagerKillAll => 'Kill all';
+
+  @override
+  String get resourceManagerKillAllConfirmTitle => 'Kill all terminals?';
+
+  @override
+  String get resourceManagerKillAllConfirmBody =>
+      'This disconnects every terminal bound to this workspace.';
+
+  @override
+  String get resourceManagerSpace => 'Space';
+
+  @override
+  String get resourceManagerSpaceBeta => 'Beta';
+
+  @override
+  String get resourceManagerSpaceNotScanned =>
+      'Does not scan workspace disk usage.';
+
+  @override
+  String resourceManagerSystemMemoryPercent(String percent) {
+    return '$percent% system memory';
+  }
+
+  @override
+  String resourceManagerTerminalsCount(int count) {
+    return '$count terminals';
+  }
+
+  @override
+  String get resourceManagerEmptyTree => 'No terminals in this workspace.';
+
+  @override
+  String get resourceManagerAppProcess => 'App';
+
+  @override
+  String get resourceManagerMetricsError =>
+      'Could not refresh process metrics.';
+
+  @override
+  String get resourceManagerKillFailed => 'Could not kill terminal.';
 }

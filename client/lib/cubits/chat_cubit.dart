@@ -1323,6 +1323,16 @@ class ChatCubit extends Cubit<ChatState>
     }
   }
 
+  /// Disconnects [memberId] for [sessionId] (any open tab). Prefer this over
+  /// [disconnectSession] when the target is not the active tab's selection
+  /// (e.g. Resource Manager kill).
+  void disconnectMemberShell(String sessionId, String memberId) {
+    _launchService.disconnectMemberShell(sessionId, memberId);
+    if (sessionId.trim().isNotEmpty) {
+      onSessionHistoryStale?.call(sessionId);
+    }
+  }
+
   Future<void> restartWorkspaceSession(
     SessionConnectRequest request, {
     SessionRepository? repo,

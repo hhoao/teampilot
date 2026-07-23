@@ -82,6 +82,9 @@ final class TerminalLaunchController {
 
   bool get isDisposed => _disposed;
 
+  /// Local PTY pid from the active transport, if any.
+  int? get pid => _transport?.pid;
+
   /// Enable live OSC title attention for a Cursor seat. No-op for other CLIs —
   /// only call when the seat launches Cursor.
   void bindCursorTitleAttention({

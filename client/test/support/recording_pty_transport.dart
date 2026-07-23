@@ -21,6 +21,9 @@ class RecordingPtyTransport implements TerminalTransport {
   Future<int> get done => doneCompleter.future;
 
   @override
+  int? get pid => null;
+
+  @override
   void close() {
     closed = true;
     if (!doneCompleter.isCompleted) {

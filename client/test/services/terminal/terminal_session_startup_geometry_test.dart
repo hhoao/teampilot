@@ -34,6 +34,9 @@ class _FakeTransport implements TerminalTransport {
   Future<int> get done => doneCompleter.future;
 
   @override
+  int? get pid => null;
+
+  @override
   void resize(int rows, int columns) => resizeCalls.add((rows, columns));
 
   @override

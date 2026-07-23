@@ -2742,5 +2742,43 @@
   "shortcutsRunSelected": "Run Selected Configuration",
   "shortcutsRunStop": "Stop Run",
   "shortcutsRunRestart": "Restart Run",
-  "shortcutsCategoryRun": "Run"
+  "shortcutsCategoryRun": "Run",
+
+  "resourceManagerTitle": "Resource Manager",
+  "resourceManagerPanelTitle": "Resource Manager - Terminals",
+  "resourceManagerTooltip": "Resource Manager - {memory} - {count} terminals",
+  "@resourceManagerTooltip": {
+    "placeholders": {
+      "memory": { "type": "String" },
+      "count": { "type": "int" }
+    }
+  },
+  "resourceManagerTooltipHint": "Sessions are grouped by worktree or session.",
+  "resourceManagerColumnName": "Name",
+  "resourceManagerColumnCpu": "CPU",
+  "resourceManagerColumnMemory": "Memory",
+  "resourceManagerRefresh": "Refresh",
+  "resourceManagerKill": "Kill",
+  "resourceManagerKillAll": "Kill all",
+  "resourceManagerKillAllConfirmTitle": "Kill all terminals?",
+  "resourceManagerKillAllConfirmBody": "This disconnects every terminal bound to this workspace.",
+  "resourceManagerSpace": "Space",
+  "resourceManagerSpaceBeta": "Beta",
+  "resourceManagerSpaceNotScanned": "Does not scan workspace disk usage.",
+  "resourceManagerSystemMemoryPercent": "{percent}% system memory",
+  "@resourceManagerSystemMemoryPercent": {
+    "placeholders": {
+      "percent": { "type": "String" }
+    }
+  },
+  "resourceManagerTerminalsCount": "{count} terminals",
+  "@resourceManagerTerminalsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "resourceManagerEmptyTree": "No terminals in this workspace.",
+  "resourceManagerAppProcess": "App",
+  "resourceManagerMetricsError": "Could not refresh process metrics.",
+  "resourceManagerKillFailed": "Could not kill terminal."
 }
