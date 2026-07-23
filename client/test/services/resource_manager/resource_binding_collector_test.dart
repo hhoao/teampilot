@@ -107,12 +107,52 @@ void main() {
     );
 
     final bySession = {for (final b in bindings) b.sessionId!: b};
-    expect(bySession['s1']!.groupKey, '/repo');
+    // Main-worktree match and unmatched orphans share one 'main' bucket.
+    expect(bySession['s1']!.groupKey, 'main');
     expect(bySession['s1']!.groupLabel, 'main');
     expect(bySession['s2']!.groupKey, '/wt/feat');
     expect(bySession['s2']!.groupLabel, 'feat/x');
     expect(bySession['s3']!.groupKey, 'main');
     expect(bySession['s3']!.groupLabel, 'main');
+  });
+
+  test('coalesces main-worktree and unmatched into one main groupKey', () {
+    final bindings = collectResourceBindings(
+      workspaceId: 'ws1',
+      chatShells: const [
+        ChatMemberShellRef(
+          workspaceId: 'ws1',
+          sessionId: 's1',
+          memberId: 'm1',
+          sessionTitle: 'Under main wt',
+          memberName: '',
+          sessionPrimaryPath: '/repo/src',
+          connected: true,
+        ),
+        ChatMemberShellRef(
+          workspaceId: 'ws1',
+          sessionId: 's2',
+          memberId: 'm1',
+          sessionTitle: 'Orphan',
+          memberName: '',
+          sessionPrimaryPath: '/elsewhere',
+          connected: true,
+        ),
+      ],
+      workspaceShells: const [
+        WorkspaceShellRef(
+          workspaceId: 'ws1',
+          entryId: 'e1',
+          titleLabel: 'Under main cwd',
+          cwd: '/repo',
+          connected: true,
+        ),
+      ],
+      worktrees: worktrees,
+    );
+
+    expect(bindings.map((b) => b.groupKey).toSet(), {'main'});
+    expect(bindings.every((b) => b.groupLabel == 'main'), isTrue);
   });
 
   test('groups workspace shells by cwd worktree match', () {
@@ -146,7 +186,7 @@ void main() {
     );
 
     final byEntry = {for (final b in bindings) b.shellEntryId!: b};
-    expect(byEntry['e1']!.groupKey, '/repo');
+    expect(byEntry['e1']!.groupKey, 'main');
     expect(byEntry['e1']!.groupLabel, 'main');
     expect(byEntry['e2']!.groupKey, '/wt/feat');
     expect(byEntry['e2']!.groupLabel, 'feat/x');

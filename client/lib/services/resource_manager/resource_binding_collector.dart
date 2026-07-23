@@ -56,6 +56,7 @@ List<ResourceBinding> collectResourceBindings({
   for (final shell in chatShells) {
     if (shell.workspaceId != workspaceId) continue;
     final matched = _matchWorktree(shell.sessionPrimaryPath, worktrees);
+    final group = _groupFor(matched, worktrees);
     final member = shell.memberName.trim();
     final title = member.isEmpty
         ? shell.sessionTitle
@@ -64,8 +65,8 @@ List<ResourceBinding> collectResourceBindings({
       ResourceBinding(
         key: 'chat:${shell.sessionId}:${shell.memberId}',
         kind: ResourceBindingKind.chatMember,
-        groupKey: matched?.path ?? 'main',
-        groupLabel: matched?.shortBranch ?? 'main',
+        groupKey: group.key,
+        groupLabel: group.label,
         title: title,
         connected: shell.connected,
         sessionId: shell.sessionId,
@@ -78,12 +79,13 @@ List<ResourceBinding> collectResourceBindings({
   for (final shell in workspaceShells) {
     if (shell.workspaceId != workspaceId) continue;
     final matched = _matchWorktree(shell.cwd, worktrees);
+    final group = _groupFor(matched, worktrees);
     bindings.add(
       ResourceBinding(
         key: 'shell:${shell.workspaceId}:${shell.entryId}',
         kind: ResourceBindingKind.workspaceShell,
-        groupKey: matched?.path ?? 'main',
-        groupLabel: matched?.shortBranch ?? 'main',
+        groupKey: group.key,
+        groupLabel: group.label,
         title: shell.titleLabel,
         connected: shell.connected,
         workspaceId: shell.workspaceId,
@@ -94,6 +96,26 @@ List<ResourceBinding> collectResourceBindings({
   }
 
   return bindings;
+}
+
+({String key, String label}) _groupFor(
+  GitWorktree? matched,
+  List<GitWorktree> worktrees,
+) {
+  // Non-main worktrees keep path identity; main + unmatched share one 'main' bucket.
+  if (matched != null && !matched.isMainWorktree) {
+    return (key: matched.path, label: matched.shortBranch);
+  }
+  var mainWt = matched;
+  if (mainWt == null) {
+    for (final w in worktrees) {
+      if (w.isMainWorktree) {
+        mainWt = w;
+        break;
+      }
+    }
+  }
+  return (key: 'main', label: mainWt?.shortBranch ?? 'main');
 }
 
 GitWorktree? _matchWorktree(String path, List<GitWorktree> worktrees) {
