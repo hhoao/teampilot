@@ -974,6 +974,9 @@ class _SessionChatViewState extends State<SessionChatView> {
                     scrollToBottom: l10n.aiMessageScrollToBottom,
                     showMore: l10n.aiMessageShowMore,
                     showLess: l10n.aiMessageShowLess,
+                    thinkingProcess: l10n.aiMessageThinkingProcess,
+                    formatThinkingProcessSteps: (count) =>
+                        l10n.aiMessageThinkingProcessSteps(count as int),
                   ),
                   child: BlocBuilder<AiHistoryCubit, AiHistoryState>(
                     builder: (context, state) {

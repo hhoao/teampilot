@@ -1242,6 +1242,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiMessageShowLess => '收起';
 
   @override
+  String get aiMessageThinkingProcess => '思考过程';
+
+  @override
+  String aiMessageThinkingProcessSteps(int count) {
+    return '思考过程 · $count 步';
+  }
+
+  @override
   String get sessionWorkbenchShowChat => '显示聊天';
 
   @override

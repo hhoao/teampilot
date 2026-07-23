@@ -2438,6 +2438,18 @@ abstract class AppLocalizations {
   /// **'Show less'**
   String get aiMessageShowLess;
 
+  /// No description provided for @aiMessageThinkingProcess.
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking process'**
+  String get aiMessageThinkingProcess;
+
+  /// No description provided for @aiMessageThinkingProcessSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking process · {count} steps'**
+  String aiMessageThinkingProcessSteps(int count);
+
   /// No description provided for @sessionWorkbenchShowChat.
   ///
   /// In en, this message translates to:
