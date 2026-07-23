@@ -39,10 +39,10 @@ Add an Orca-style **workspace bottom status bar** with an extensible item regist
 Popover anchored above the pill (Orca-like):
 
 1. **Header:** “Resource Manager - Terminals” + refresh + kill-all (current workspace scope).
-2. **Totals row:** aggregate CPU %, aggregate memory, host memory share (`{n}% system memory`) when host stats exist.
-3. **Optional App bucket (collapsed by default):** Flutter / Dart VM process RSS + CPU when collectable on desktop; omit row entirely if unavailable rather than fake zeros.
-4. **Tree table columns:** Name | CPU | Memory.
-5. **Grouping:** `worktree` (or “main” / primary folder label) → session / member shell / workspace shell rows.
+2. **Totals row:** aggregate CPU %, aggregate memory, host memory share (`{n}% system memory`) when host stats exist. Include a small memory **sparkline** from the snapshot history ring (Orca parity).
+3. **Optional App bucket (collapsed by default):** Flutter / Dart VM process RSS + CPU when collectable on desktop; omit row entirely if unavailable rather than fake zeros. App row may show its own sparkline when history exists.
+4. **Tree table columns:** Name | CPU | Memory. Group rows may show a sparkline in the Name/Memory area when history exists.
+5. **Tree depth (exactly two levels):** `worktree` group (or “main” / primary folder label) → **leaf** rows only. One leaf per chat member shell or workspace shell. No intermediate session node; session/member identity is part of the leaf label.
 6. **Leaf rows:** connection status dot (green when connected), display title, kill control, click navigates to that session / shell in the workbench.
 7. **Remote / missing metrics:** CPU and Memory cells render `—`.
 8. **Inactive / disconnected:** still listed when still bound in registries; dimmed; kill remains available where the transport can terminate.
@@ -116,12 +116,13 @@ Analogous to Orca `MemorySnapshot`, scoped to TeamPilot:
 ResourceMemorySnapshot
   host: total / free / used / percent / cpuCores / load1m (best-effort)
   app: optional Flutter process usage + short memory history ring
-  groups[]: worktreeKey, name, aggregate cpu/mem, history[], leaves[]
+  groups[]: worktreeKey, name, aggregate cpu/mem, history[] (for sparklines — **in v1 UI**), leaves[]
   leaves: bindingKey, pid?, cpu?, memoryBytes?, connected
   totalCpu / totalMemory (app + tracked leaves that have values)
   collectedAt
 ```
 
+v1 **includes** sparklines in the open panel (totals, group rows, optional app row) fed by these history rings.
 Collection:
 
 - One host-wide process table (`ps` on Linux/macOS, `wmic`/`Get-CimInstance` on Windows) with timeout + max buffer.
@@ -150,8 +151,8 @@ Kill must go through existing lifecycle APIs (`TerminalSession` / registry), not
 
 ## Placement / layout
 
-- Mount inside the workspace page card, below the existing split/IDE body, full width of the card.
-- Height: compact (~28–32 logical px), using Tp theme surfaces — not a second title bar.
+- Mount at **`WorkspacePage` card level** (sibling under the page `Column`, below the body `Stack`), so the bar stays visible for **conversations and manage** sections alike — not conversations-only.
+- Full width of the workspace card. Height: compact (~28–32 logical px), using Tp theme surfaces — not a second title bar.
 - Does not replace `WorkspaceTerminalPanel` or Run toolbar; those stay as today.
 - When the workspace route is inactive but the page stays alive in `HomeWorkspaceBodyStack`, stop metrics polling (popover should not stay open across workspace switches; close on workspace change).
 
