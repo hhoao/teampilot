@@ -24,7 +24,6 @@ import '../../../services/terminal/workspace_terminal_registry.dart';
 import '../../../services/terminal/workspace_terminal_run_service.dart';
 import '../../../services/workspace/workspace_worktree_registry.dart';
 import '../../../widgets/app_toast/app_toast.dart';
-import '../../../widgets/workspace_status_bar/resource_usage_status_item.dart';
 import 'workspace_route_active_scope.dart';
 
 /// Owns [ResourceManagerCubit], live binding collection, kill, and navigate.
@@ -283,7 +282,7 @@ class _WorkspaceResourceManagerScopeState
   Widget build(BuildContext context) {
     return BlocProvider<ResourceManagerCubit>.value(
       value: _cubit,
-      child: _ResourceManagerNavigateScope(
+      child: ResourceManagerNavigateScope(
         onNavigateLeaf: _navigateLeaf,
         child: widget.child,
       ),
@@ -291,29 +290,23 @@ class _WorkspaceResourceManagerScopeState
   }
 }
 
-/// Exposes navigate callback to the status-bar item without widening page API.
-class _ResourceManagerNavigateScope extends InheritedWidget {
-  const _ResourceManagerNavigateScope({
+/// Exposes navigate callback to descendants (status-bar item resolves at build).
+class ResourceManagerNavigateScope extends InheritedWidget {
+  const ResourceManagerNavigateScope({
     required this.onNavigateLeaf,
     required super.child,
+    super.key,
   });
 
   final void Function(ResourceTreeLeafVm leaf) onNavigateLeaf;
 
   static void Function(ResourceTreeLeafVm leaf)? maybeOf(BuildContext context) {
     return context
-        .dependOnInheritedWidgetOfExactType<_ResourceManagerNavigateScope>()
+        .dependOnInheritedWidgetOfExactType<ResourceManagerNavigateScope>()
         ?.onNavigateLeaf;
   }
 
   @override
-  bool updateShouldNotify(_ResourceManagerNavigateScope oldWidget) =>
+  bool updateShouldNotify(ResourceManagerNavigateScope oldWidget) =>
       onNavigateLeaf != oldWidget.onNavigateLeaf;
-}
-
-/// Status-bar Resource Manager pill that picks up navigate from the scope.
-ResourceUsageStatusItem workspaceResourceUsageStatusItem(BuildContext context) {
-  return ResourceUsageStatusItem(
-    onNavigateLeaf: _ResourceManagerNavigateScope.maybeOf(context),
-  );
 }

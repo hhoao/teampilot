@@ -6,6 +6,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/resource_manager_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../pages/home_workspace/workspace/workspace_resource_manager_scope.dart';
 import '../../services/resource_manager/resource_memory_format.dart';
 import '../../services/resource_manager/resource_tree_merge.dart';
 import 'resource_manager_panel.dart';
@@ -15,7 +16,9 @@ import 'workspace_status_bar.dart';
 class ResourceUsageStatusItem implements WorkspaceStatusBarItem {
   ResourceUsageStatusItem({this.onNavigateLeaf});
 
-  /// Optional navigate hook forwarded to the panel (Task 9).
+  /// Optional navigate hook. When null, [buildSegment] resolves
+  /// [ResourceManagerNavigateScope] from its build context (must be under
+  /// [WorkspaceResourceManagerScope]).
   final void Function(ResourceTreeLeafVm leaf)? onNavigateLeaf;
 
   @override
@@ -25,7 +28,8 @@ class ResourceUsageStatusItem implements WorkspaceStatusBarItem {
   Widget buildSegment(BuildContext context, {required bool compact}) {
     return _ResourceUsageStatusSegment(
       compact: compact,
-      onNavigateLeaf: onNavigateLeaf,
+      onNavigateLeaf:
+          onNavigateLeaf ?? ResourceManagerNavigateScope.maybeOf(context),
     );
   }
 }

@@ -12,6 +12,7 @@ import 'package:teampilot/services/resource_manager/resource_tree_merge.dart';
 import 'package:teampilot/widgets/workspace_status_bar/resource_manager_panel.dart';
 import 'package:teampilot/widgets/workspace_status_bar/resource_usage_status_item.dart';
 import 'package:teampilot/widgets/workspace_status_bar/workspace_status_bar.dart';
+import 'package:teampilot/pages/home_workspace/workspace/workspace_resource_manager_scope.dart';
 
 class _SeededResourceManagerCubit extends ResourceManagerCubit {
   _SeededResourceManagerCubit(ResourceManagerState initial)
@@ -132,4 +133,47 @@ void main() {
 
     expect(find.byKey(const Key('resource-manager-error')), findsOneWidget);
   });
+
+  testWidgets(
+    'status item under ResourceManagerNavigateScope wires leaf navigate',
+    (tester) async {
+      final tree = _treeWithNullLeaf();
+      final leaf = tree.groups.single.leaves.single;
+      ResourceTreeLeafVm? navigated;
+      final cubit = _SeededResourceManagerCubit(
+        ResourceManagerState(
+          isOpen: true,
+          terminalCount: tree.terminalCount,
+          tree: tree,
+        ),
+      );
+      addTearDown(cubit.close);
+
+      await tester.pumpWidget(
+        _host(
+          cubit: cubit,
+          child: ResourceManagerNavigateScope(
+            onNavigateLeaf: (l) => navigated = l,
+            child: Builder(
+              builder: (context) {
+                // Same lookup path as WorkspaceStatusBar → buildSegment under Scope.
+                final fromScope = ResourceManagerNavigateScope.maybeOf(context);
+                expect(fromScope, isNotNull);
+                // buildSegment must resolve the InheritedWidget (not null ctor arg).
+                ResourceUsageStatusItem().buildSegment(context, compact: false);
+                return ResourceManagerPanel(onNavigateLeaf: fromScope);
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text(leaf.title));
+      await tester.pump();
+
+      expect(navigated, isNotNull);
+      expect(navigated!.key, leaf.key);
+      expect(cubit.state.isOpen, isFalse);
+    },
+  );
 }

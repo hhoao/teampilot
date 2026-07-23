@@ -23,6 +23,7 @@ import '../../../services/expert_hub/expert_landing_deep_link.dart';
 import '../../../theme/workspace_surface_layers.dart';
 import '../../../utils/logging/logger.dart';
 import '../../../widgets/app_toast/app_toast.dart';
+import '../../../widgets/workspace_status_bar/resource_usage_status_item.dart';
 import '../../../widgets/workspace_status_bar/workspace_status_bar.dart';
 import '../../expert_hub/expert_landing_preflight_feedback.dart';
 import 'workspace_config_workspace.dart';
@@ -369,7 +370,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
         children: [
           Expanded(child: _buildCardBody(workspace: workspace)),
           WorkspaceStatusBar(
-            items: [workspaceResourceUsageStatusItem(context)],
+            items: [ResourceUsageStatusItem()],
           ),
         ],
       ),
