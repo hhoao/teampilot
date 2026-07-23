@@ -23,6 +23,9 @@ class _FakeTransport implements TerminalTransport {
   Stream<Uint8List> get output => const Stream.empty();
 
   @override
+  int? get pid => null;
+
+  @override
   void close() {
     if (!doneCompleter.isCompleted) {
       doneCompleter.complete(0);

@@ -17,6 +17,9 @@ class _FakeTransport implements TerminalTransport {
   Stream<Uint8List> get output => outputController.stream;
 
   @override
+  int? get pid => null;
+
+  @override
   void close() {
     closed = true;
     if (!doneCompleter.isCompleted) {

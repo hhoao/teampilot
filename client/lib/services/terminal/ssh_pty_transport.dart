@@ -19,6 +19,9 @@ class SshPtyTransport implements TerminalTransport {
   Future<int> get done => session.done.then((_) => session.exitCode ?? 0);
 
   @override
+  int? get pid => null;
+
+  @override
   void write(Uint8List data) {
     session.write(data);
   }
