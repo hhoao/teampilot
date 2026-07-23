@@ -50,7 +50,7 @@ void main() {
       );
 
       expect(adapter.id, 'flashskyai');
-      expect(messages, hasLength(3));
+      expect(messages, hasLength(2));
 
       final user = messages[0];
       expect(user.id, 'u-1');
@@ -58,15 +58,11 @@ void main() {
       expect((user.parts.single as AiTextPart).text, 'hello flashsky');
       expect(user.createdAt, DateTime.parse('2026-07-10T11:00:00.000Z'));
 
-      final hi = messages[1];
-      expect(hi.id, 'a-1');
-      expect(hi.role, AiRole.assistant);
-      expect((hi.parts.single as AiTextPart).text, 'hi from flashsky');
-
-      final toolMsg = messages[2];
-      expect(toolMsg.id, 'a-2');
-      expect(toolMsg.role, AiRole.assistant);
-      final tool = toolMsg.parts.whereType<AiToolCallPart>().single;
+      final assistant = messages[1];
+      expect(assistant.id, 'a-1');
+      expect(assistant.role, AiRole.assistant);
+      expect((assistant.parts[0] as AiTextPart).text, 'hi from flashsky');
+      final tool = assistant.parts.whereType<AiToolCallPart>().single;
       expect(tool.toolCallId, 'toolu_fs1');
       expect(tool.toolName, 'Bash');
       expect(tool.args, {'command': 'pwd'});
