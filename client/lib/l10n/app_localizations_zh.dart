@@ -5913,15 +5913,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get resourceManagerTitle => '资源管理器';
 
   @override
-  String get resourceManagerPanelTitle => '资源管理器 - 终端';
+  String get resourceManagerPanelTitle => '资源管理器 - 会话';
 
   @override
   String resourceManagerTooltip(String memory, int count) {
-    return '资源管理器 - $memory - $count 个终端';
+    return '资源管理器 - $memory - $count 个运行中会话';
   }
 
   @override
-  String get resourceManagerTooltipHint => '会话按 worktree 或会话分组。';
+  String get resourceManagerTooltipHint => '跨所有工作区的运行中会话。';
 
   @override
   String get resourceManagerColumnName => '名称';
@@ -5942,10 +5942,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get resourceManagerKillAll => '全部结束';
 
   @override
-  String get resourceManagerKillAllConfirmTitle => '结束全部终端？';
+  String get resourceManagerKillAllConfirmTitle => '结束全部运行中会话？';
 
   @override
-  String get resourceManagerKillAllConfirmBody => '将断开此工作区绑定的全部终端。';
+  String get resourceManagerKillAllConfirmBody => '将断开列表中的全部运行中会话与终端。';
 
   @override
   String get resourceManagerSpace => '空间';
@@ -5963,11 +5963,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String resourceManagerTerminalsCount(int count) {
-    return '$count 个终端';
+    return '$count 个运行中会话';
   }
 
   @override
-  String get resourceManagerEmptyTree => '此工作区没有终端。';
+  String get resourceManagerEmptyTree => '当前没有运行中的会话。';
 
   @override
   String get resourceManagerAppProcess => '应用';
@@ -5976,5 +5976,5 @@ class AppLocalizationsZh extends AppLocalizations {
   String get resourceManagerMetricsError => '无法刷新进程指标。';
 
   @override
-  String get resourceManagerKillFailed => '无法结束终端。';
+  String get resourceManagerKillFailed => '无法结束会话。';
 }

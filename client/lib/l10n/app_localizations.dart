@@ -11049,19 +11049,19 @@ abstract class AppLocalizations {
   /// No description provided for @resourceManagerPanelTitle.
   ///
   /// In en, this message translates to:
-  /// **'Resource Manager - Terminals'**
+  /// **'Resource Manager - Sessions'**
   String get resourceManagerPanelTitle;
 
   /// No description provided for @resourceManagerTooltip.
   ///
   /// In en, this message translates to:
-  /// **'Resource Manager - {memory} - {count} terminals'**
+  /// **'Resource Manager - {memory} - {count} running sessions'**
   String resourceManagerTooltip(String memory, int count);
 
   /// No description provided for @resourceManagerTooltipHint.
   ///
   /// In en, this message translates to:
-  /// **'Sessions are grouped by worktree or session.'**
+  /// **'Running sessions across all workspaces.'**
   String get resourceManagerTooltipHint;
 
   /// No description provided for @resourceManagerColumnName.
@@ -11103,13 +11103,13 @@ abstract class AppLocalizations {
   /// No description provided for @resourceManagerKillAllConfirmTitle.
   ///
   /// In en, this message translates to:
-  /// **'Kill all terminals?'**
+  /// **'Kill all running sessions?'**
   String get resourceManagerKillAllConfirmTitle;
 
   /// No description provided for @resourceManagerKillAllConfirmBody.
   ///
   /// In en, this message translates to:
-  /// **'This disconnects every terminal bound to this workspace.'**
+  /// **'This disconnects every running session and shell in the list.'**
   String get resourceManagerKillAllConfirmBody;
 
   /// No description provided for @resourceManagerSpace.
@@ -11139,13 +11139,13 @@ abstract class AppLocalizations {
   /// No description provided for @resourceManagerTerminalsCount.
   ///
   /// In en, this message translates to:
-  /// **'{count} terminals'**
+  /// **'{count} running sessions'**
   String resourceManagerTerminalsCount(int count);
 
   /// No description provided for @resourceManagerEmptyTree.
   ///
   /// In en, this message translates to:
-  /// **'No terminals in this workspace.'**
+  /// **'Nothing running right now.'**
   String get resourceManagerEmptyTree;
 
   /// No description provided for @resourceManagerAppProcess.
@@ -11163,7 +11163,7 @@ abstract class AppLocalizations {
   /// No description provided for @resourceManagerKillFailed.
   ///
   /// In en, this message translates to:
-  /// **'Could not kill terminal.'**
+  /// **'Could not kill session.'**
   String get resourceManagerKillFailed;
 }
 

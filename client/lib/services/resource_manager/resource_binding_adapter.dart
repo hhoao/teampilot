@@ -1,6 +1,7 @@
 import '../../cubits/chat/model/chat_tab.dart';
 import '../../models/git_worktree.dart';
 import '../../models/team_config.dart';
+import '../../models/workspace.dart';
 import '../terminal/workspace_terminal_registry.dart';
 import 'resource_binding.dart';
 import 'resource_binding_collector.dart';
@@ -68,6 +69,7 @@ List<ResourceBinding> collectLiveResourceBindings({
   required List<GitWorktree> worktrees,
   required String Function(ChatTab tab) sessionTitle,
   required String Function(ChatTab tab, String memberId) memberName,
+  String? workspaceGroupLabel,
 }) {
   return collectResourceBindings(
     workspaceId: workspaceId,
@@ -82,7 +84,38 @@ List<ResourceBinding> collectLiveResourceBindings({
       group: terminalGroup,
     ),
     worktrees: worktrees,
+    workspaceGroupLabel: workspaceGroupLabel,
   );
+}
+
+/// Collects live bindings across every workspace (app-global Resource Manager).
+///
+/// Groups leaves by workspace id / display name.
+List<ResourceBinding> collectLiveResourceBindingsAllWorkspaces({
+  required Iterable<Workspace> workspaces,
+  required Iterable<ChatTab> allTabs,
+  required WorkspaceTerminalRegistry terminalRegistry,
+  required String Function(ChatTab tab) sessionTitle,
+  required String Function(ChatTab tab, String memberId) memberName,
+}) {
+  final bindings = <ResourceBinding>[];
+  for (final workspace in workspaces) {
+    final id = workspace.workspaceId;
+    bindings.addAll(
+      collectLiveResourceBindings(
+        workspaceId: id,
+        tabs: allTabs,
+        terminalGroup: terminalRegistry.groupFor(id),
+        worktrees: const [],
+        sessionTitle: sessionTitle,
+        memberName: memberName,
+        workspaceGroupLabel: workspace.effectiveDisplay.isNotEmpty
+            ? workspace.effectiveDisplay
+            : id,
+      ),
+    );
+  }
+  return bindings;
 }
 
 /// Resolves a roster member display name from an optional team profile.

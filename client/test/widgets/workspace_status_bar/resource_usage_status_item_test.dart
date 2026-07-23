@@ -12,7 +12,7 @@ import 'package:teampilot/services/resource_manager/resource_tree_merge.dart';
 import 'package:teampilot/widgets/workspace_status_bar/resource_manager_panel.dart';
 import 'package:teampilot/widgets/workspace_status_bar/resource_usage_status_item.dart';
 import 'package:teampilot/widgets/workspace_status_bar/workspace_status_bar.dart';
-import 'package:teampilot/pages/home_workspace/workspace/workspace_resource_manager_scope.dart';
+import 'package:teampilot/pages/home_workspace/global_resource_manager_host.dart';
 
 class _SeededResourceManagerCubit extends ResourceManagerCubit {
   _SeededResourceManagerCubit(ResourceManagerState initial)
@@ -111,6 +111,33 @@ void main() {
     expect(
       tree.groups.single.leaves.single.memoryDisplay,
       kResourceMetricEmDash,
+    );
+  });
+
+  testWidgets('panel body is fixed 420 with scrollable middle', (tester) async {
+    final cubit = _SeededResourceManagerCubit(
+      const ResourceManagerState(isOpen: true),
+    );
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(
+      _host(
+        cubit: cubit,
+        child: const ResourceManagerPanel(),
+      ),
+    );
+
+    final body = tester.widget<SizedBox>(
+      find.byKey(const Key('resource-manager-body')),
+    );
+    expect(body.height, ResourceManagerPanel.bodyHeight);
+    expect(body.height, 420);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('resource-manager-body')),
+        matching: find.byType(SingleChildScrollView),
+      ),
+      findsOneWidget,
     );
   });
 

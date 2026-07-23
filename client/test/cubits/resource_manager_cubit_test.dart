@@ -228,6 +228,22 @@ void main() {
     expect(registry.pidFor('stale'), isNull);
   });
 
+  test('syncRegistry skips emit when bindings are unchanged', () async {
+    bindings = [
+      _binding(key: 'chat:s1:m1', title: 'A', livePid: 42),
+    ];
+    cubit.setWorkspace('ws-1');
+    final before = cubit.state;
+
+    // New list instance, same visual fields.
+    bindings = [
+      _binding(key: 'chat:s1:m1', title: 'A', livePid: 42),
+    ];
+    cubit.syncRegistryFromBindings();
+
+    expect(identical(cubit.state, before), isTrue);
+  });
+
   test('closePanel keeps last good snapshot for closed pill', () async {
     cubit.setWorkspace('ws-1');
     await cubit.openPanel();

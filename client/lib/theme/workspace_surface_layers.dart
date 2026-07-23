@@ -74,11 +74,14 @@ BoxDecoration workspaceCodeDecoration(ColorScheme cs, {double radius = 8}) {
 ///
 /// Used by [HomePage] and [WorkspacePage] so home and
 /// workspace views share the same outer chrome (padding, shadow, border).
+/// Bottom inset is omitted by default; the transparent status bar adds a
+/// small chrome breath above/below itself instead.
 class WorkspacePageCardShell extends StatelessWidget {
   const WorkspacePageCardShell({
     required this.child,
     this.chrome = WorkspacePageChrome.home,
     this.omitLeftPadding = false,
+    this.omitBottomPadding = true,
     super.key,
   });
 
@@ -88,6 +91,10 @@ class WorkspacePageCardShell extends StatelessWidget {
   /// When true, drops the left inset (legacy rail flush layout).
   final bool omitLeftPadding;
 
+  /// When true (default), drops the card bottom inset; status-bar vertical
+  /// inset provides the small gap instead. Corners stay rounded.
+  final bool omitBottomPadding;
+
   static const EdgeInsets padding = EdgeInsets.fromLTRB(16, 0, 16, 16);
   static const double radius = 16;
 
@@ -96,6 +103,10 @@ class WorkspacePageCardShell extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final borderRadius = BorderRadius.circular(radius);
+    var inset = omitLeftPadding ? padding.copyWith(left: 0) : padding;
+    if (omitBottomPadding) {
+      inset = inset.copyWith(bottom: 0);
+    }
 
     // Card fill must be [Material], not a colored [DecoratedBox]/[Container].
     // ListTile paints tileColor / ink on the nearest Material; an opaque
@@ -104,7 +115,7 @@ class WorkspacePageCardShell extends StatelessWidget {
     return ColoredBox(
       color: cs.workspacePageChrome(chrome),
       child: Padding(
-        padding: omitLeftPadding ? padding.copyWith(left: 0) : padding,
+        padding: inset,
         child: Container(
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(

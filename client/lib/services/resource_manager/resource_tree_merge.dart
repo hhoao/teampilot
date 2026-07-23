@@ -11,7 +11,7 @@ class ResourceTreeViewModel {
     this.totalMemory,
   });
 
-  /// Bound terminal leaf count (registries), not host process count.
+  /// Running session/shell leaf count (connected bindings), not host process count.
   final int terminalCount;
   final List<ResourceTreeGroupVm> groups;
   final double? totalCpu;

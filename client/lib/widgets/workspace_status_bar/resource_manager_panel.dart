@@ -12,6 +12,9 @@ import 'resource_manager_tree.dart';
 import 'resource_memory_sparkline.dart';
 
 /// Open Resource Manager popover body (header, totals, tree, Space stub).
+///
+/// Layout mirrors Orca: header + totals are intrinsic; a fixed-height body
+/// owns column headers + scrollable tree; Space sits below the body.
 class ResourceManagerPanel extends StatelessWidget {
   const ResourceManagerPanel({
     this.onNavigateLeaf,
@@ -22,7 +25,10 @@ class ResourceManagerPanel extends StatelessWidget {
   final void Function(ResourceTreeLeafVm leaf)? onNavigateLeaf;
 
   static const double panelWidth = 416;
-  static const double maxTreeHeight = 280;
+
+  /// Fixed middle body height (Orca `h-[420px]`) so the popover does not jump
+  /// as the session tree expands or collapses.
+  static const double bodyHeight = 420;
 
   @override
   Widget build(BuildContext context) {
@@ -32,8 +38,14 @@ class ResourceManagerPanel extends StatelessWidget {
         final styles = TpTextStyles.of(context);
         final cs = Theme.of(context).colorScheme;
         final cubit = context.read<ResourceManagerCubit>();
-        final tree = state.tree;
+        final tree = state.tree ??
+            const ResourceTreeViewModel(
+              terminalCount: 0,
+              groups: [],
+            );
         final snapshot = state.snapshot;
+        final showColumnHeader =
+            tree.groups.isNotEmpty || snapshot != null;
 
         return SizedBox(
           width: panelWidth,
@@ -70,22 +82,37 @@ class ResourceManagerPanel extends StatelessWidget {
                   ),
                 ),
               _TotalsRow(state: state),
-              if (snapshot?.app != null)
-                _AppRow(appCpu: snapshot!.app!.cpu, appMemory: snapshot.app!.memoryBytes, history: snapshot.app!.history),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: maxTreeHeight),
-                child: SingleChildScrollView(
-                  child: ResourceManagerTree(
-                    tree: tree ??
-                        const ResourceTreeViewModel(
-                          terminalCount: 0,
-                          groups: [],
+              SizedBox(
+                key: const Key('resource-manager-body'),
+                height: bodyHeight,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (showColumnHeader) const ResourceManagerColumnHeader(),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            ResourceManagerTree(
+                              tree: tree,
+                              includeColumnHeader: false,
+                              onActivateLeaf: (leaf) {
+                                onNavigateLeaf?.call(leaf);
+                                cubit.closePanel();
+                              },
+                            ),
+                            if (snapshot?.app != null)
+                              _AppRow(
+                                appCpu: snapshot!.app!.cpu,
+                                appMemory: snapshot.app!.memoryBytes,
+                                history: snapshot.app!.history,
+                              ),
+                          ],
                         ),
-                    onActivateLeaf: (leaf) {
-                      onNavigateLeaf?.call(leaf);
-                      cubit.closePanel();
-                    },
-                  ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const _SpaceStub(),

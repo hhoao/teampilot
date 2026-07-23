@@ -178,19 +178,49 @@ class ResourceManagerCubit extends Cubit<ResourceManagerState> {
   void syncRegistryFromBindings() {
     final bindings = _readBindings();
     _replaceRegistry(bindings);
-    if (!isClosed) {
-      final tree = mergeResourceTree(
-        bindings: bindings,
-        snapshot: state.snapshot,
-      );
-      emit(
-        state.copyWith(
-          bindings: bindings,
-          tree: tree,
-          terminalCount: tree.terminalCount,
-        ),
-      );
+    if (isClosed) return;
+    if (_bindingsVisuallyEqual(state.bindings, bindings) &&
+        state.terminalCount == bindings.length) {
+      // Same inventory: skip emit so closed pill / open panel do not rebuild.
+      return;
     }
+    final tree = mergeResourceTree(
+      bindings: bindings,
+      snapshot: state.snapshot,
+    );
+    emit(
+      state.copyWith(
+        bindings: bindings,
+        tree: tree,
+        terminalCount: tree.terminalCount,
+      ),
+    );
+  }
+
+  static bool _bindingsVisuallyEqual(
+    List<ResourceBinding> a,
+    List<ResourceBinding> b,
+  ) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      final x = a[i];
+      final y = b[i];
+      if (x.key != y.key ||
+          x.kind != y.kind ||
+          x.groupKey != y.groupKey ||
+          x.groupLabel != y.groupLabel ||
+          x.title != y.title ||
+          x.connected != y.connected ||
+          x.livePid != y.livePid ||
+          x.sessionId != y.sessionId ||
+          x.memberId != y.memberId ||
+          x.workspaceId != y.workspaceId ||
+          x.shellEntryId != y.shellEntryId) {
+        return false;
+      }
+    }
+    return true;
   }
 
   void _startPolling() {

@@ -6,7 +6,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/resource_manager_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../pages/home_workspace/workspace/workspace_resource_manager_scope.dart';
+import '../../pages/home_workspace/global_resource_manager_host.dart';
 import '../../services/resource_manager/resource_memory_format.dart';
 import '../../services/resource_manager/resource_tree_merge.dart';
 import 'resource_manager_panel.dart';
@@ -18,7 +18,7 @@ class ResourceUsageStatusItem implements WorkspaceStatusBarItem {
 
   /// Optional navigate hook. When null, [buildSegment] resolves
   /// [ResourceManagerNavigateScope] from its build context (must be under
-  /// [WorkspaceResourceManagerScope]).
+  /// [GlobalResourceManagerHost]).
   final void Function(ResourceTreeLeafVm leaf)? onNavigateLeaf;
 
   @override
@@ -93,8 +93,10 @@ class _ResourceUsageStatusSegmentState
             padding: EdgeInsets.zero,
             closeOnTapOutside: true,
             anchor: const TpAnchor(
-              childAlignment: Alignment.topRight,
-              overlayAlignment: Alignment.bottomRight,
+              // Open above the pill: attach panel bottom to pill top, 8px gap
+              // (Orca PopoverContent side="top" sideOffset={8}).
+              childAlignment: Alignment.bottomRight,
+              overlayAlignment: Alignment.topRight,
               offset: Offset(0, -8),
             ),
             onOpen: () {

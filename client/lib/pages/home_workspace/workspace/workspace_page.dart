@@ -23,11 +23,8 @@ import '../../../services/expert_hub/expert_landing_deep_link.dart';
 import '../../../theme/workspace_surface_layers.dart';
 import '../../../utils/logging/logger.dart';
 import '../../../widgets/app_toast/app_toast.dart';
-import '../../../widgets/workspace_status_bar/resource_usage_status_item.dart';
-import '../../../widgets/workspace_status_bar/workspace_status_bar.dart';
 import '../../expert_hub/expert_landing_preflight_feedback.dart';
 import 'workspace_config_workspace.dart';
-import 'workspace_resource_manager_scope.dart';
 import 'workspace_section.dart';
 import 'workspace_split_pane.dart';
 import 'workspace_config_section.dart';
@@ -325,20 +322,17 @@ class _WorkspacePageState extends State<WorkspacePage> {
     final body = routeActive
         ? _buildAndCacheLivePage(context)
         : (_frozenPage ?? const SizedBox.shrink());
-    return WorkspaceResourceManagerScope(
-      workspaceId: widget.workspaceId,
-      child: BlocListener<ChatCubit, ChatState>(
-        listenWhen: (previous, next) {
-          if (previous.workspaces == next.workspaces) return false;
-          return _findWorkspace(previous.workspaces, widget.workspaceId) !=
-              _findWorkspace(next.workspaces, widget.workspaceId);
-        },
-        listener: (context, state) {
-          _invalidateFrozenPage();
-          if (routeActive && mounted) setState(() {});
-        },
-        child: body,
-      ),
+    return BlocListener<ChatCubit, ChatState>(
+      listenWhen: (previous, next) {
+        if (previous.workspaces == next.workspaces) return false;
+        return _findWorkspace(previous.workspaces, widget.workspaceId) !=
+            _findWorkspace(next.workspaces, widget.workspaceId);
+      },
+      listener: (context, state) {
+        _invalidateFrozenPage();
+        if (routeActive && mounted) setState(() {});
+      },
+      child: body,
     );
   }
 
@@ -364,16 +358,10 @@ class _WorkspacePageState extends State<WorkspacePage> {
 
     // Heavy body mounts at the tab-slot [WorkspaceTabDeferredMount]; this
     // page paints immediately once that defer reveals.
+    // App-global status bar lives on HomeShell (GlobalResourceManagerHost).
     return WorkspacePageCardShell(
       chrome: WorkspacePageChrome.workspace,
-      child: Column(
-        children: [
-          Expanded(child: _buildCardBody(workspace: workspace)),
-          WorkspaceStatusBar(
-            items: [ResourceUsageStatusItem()],
-          ),
-        ],
-      ),
+      child: _buildCardBody(workspace: workspace),
     );
   }
 

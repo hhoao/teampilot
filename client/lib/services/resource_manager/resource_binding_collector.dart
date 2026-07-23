@@ -45,18 +45,33 @@ class WorkspaceShellRef {
 }
 
 /// Collects Resource Manager leaf bindings for [workspaceId] from plain refs.
+///
+/// Only **running** shells (`connected == true`) are included — idle /
+/// disconnected member shells and bottom terminals are omitted from both the
+/// closed pill count and the open tree.
+///
+/// When [workspaceGroupLabel] is set, rows group under that workspace
+/// ([groupKey] = [workspaceId]) instead of git worktree buckets — used by the
+/// app-global Resource Manager that spans every workspace.
 List<ResourceBinding> collectResourceBindings({
   required String workspaceId,
   required List<ChatMemberShellRef> chatShells,
   required List<WorkspaceShellRef> workspaceShells,
   required List<GitWorktree> worktrees,
+  String? workspaceGroupLabel,
 }) {
   final bindings = <ResourceBinding>[];
 
   for (final shell in chatShells) {
     if (shell.workspaceId != workspaceId) continue;
-    final matched = _matchWorktree(shell.sessionPrimaryPath, worktrees);
-    final group = _groupFor(matched, worktrees);
+    if (!shell.connected) continue;
+    final workspaceLabel = workspaceGroupLabel;
+    final group = workspaceLabel != null
+        ? (key: workspaceId, label: workspaceLabel)
+        : _groupFor(
+            _matchWorktree(shell.sessionPrimaryPath, worktrees),
+            worktrees,
+          );
     final member = shell.memberName.trim();
     final title = member.isEmpty
         ? shell.sessionTitle
@@ -71,6 +86,7 @@ List<ResourceBinding> collectResourceBindings({
         connected: shell.connected,
         sessionId: shell.sessionId,
         memberId: shell.memberId,
+        workspaceId: shell.workspaceId,
         livePid: shell.livePid,
       ),
     );
@@ -78,8 +94,11 @@ List<ResourceBinding> collectResourceBindings({
 
   for (final shell in workspaceShells) {
     if (shell.workspaceId != workspaceId) continue;
-    final matched = _matchWorktree(shell.cwd, worktrees);
-    final group = _groupFor(matched, worktrees);
+    if (!shell.connected) continue;
+    final workspaceLabel = workspaceGroupLabel;
+    final group = workspaceLabel != null
+        ? (key: workspaceId, label: workspaceLabel)
+        : _groupFor(_matchWorktree(shell.cwd, worktrees), worktrees);
     bindings.add(
       ResourceBinding(
         key: 'shell:${shell.workspaceId}:${shell.entryId}',

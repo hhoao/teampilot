@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/workspace_surface_layers.dart';
-
 /// One segment in the workspace workbench status bar.
 abstract class WorkspaceStatusBarItem {
   String get id;
@@ -9,47 +7,49 @@ abstract class WorkspaceStatusBarItem {
   Widget buildSegment(BuildContext context, {required bool compact});
 }
 
-/// Extensible bottom strip for [WorkspacePage] (right-cluster layout).
+/// Extensible bottom strip for the workspace window (right-cluster layout).
+///
+/// Sits on the page chrome under the floating card — transparent, no fill or
+/// top rule, so pills read as chrome controls rather than a second bar.
+/// Small vertical inset keeps a breath of chrome above and below the strip.
 ///
 /// Compact mode kicks in when the bar width is under 720 logical pixels so
-/// items can drop labels (Task 8 Resource Manager pill, etc.).
+/// items can drop labels (Resource Manager pill, etc.).
 class WorkspaceStatusBar extends StatelessWidget {
   const WorkspaceStatusBar({required this.items, super.key});
 
-  static const double height = 30;
+  /// Content row height (excluding [verticalInset]).
+  static const double height = 20;
+
+  /// Chrome breath above and below the content row.
+  static const double verticalInset = 4;
+
   static const double compactBreakpoint = 720;
 
   final List<WorkspaceStatusBarItem> items;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Material(
-      color: cs.workspaceSubtleSurface,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: cs.outlineVariant.withValues(alpha: 0.7),
-            ),
-          ),
+      type: MaterialType.transparency,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: verticalInset,
         ),
         child: SizedBox(
           height: height,
           child: LayoutBuilder(
             builder: (context, constraints) {
               final compact = constraints.maxWidth < compactBreakpoint;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    for (var i = 0; i < items.length; i++) ...[
-                      if (i > 0) const SizedBox(width: 4),
-                      items[i].buildSegment(context, compact: compact),
-                    ],
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  for (var i = 0; i < items.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 4),
+                    items[i].buildSegment(context, compact: compact),
                   ],
-                ),
+                ],
               );
             },
           ),

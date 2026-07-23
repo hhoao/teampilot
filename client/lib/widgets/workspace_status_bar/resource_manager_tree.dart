@@ -15,11 +15,16 @@ class ResourceManagerTree extends StatelessWidget {
   const ResourceManagerTree({
     required this.tree,
     this.onActivateLeaf,
+    this.includeColumnHeader = true,
     super.key,
   });
 
   final ResourceTreeViewModel tree;
   final void Function(ResourceTreeLeafVm leaf)? onActivateLeaf;
+
+  /// When false, the panel owns a sticky [ResourceManagerColumnHeader] above
+  /// the scroll viewport (Orca parity).
+  final bool includeColumnHeader;
 
   @override
   Widget build(BuildContext context) {
@@ -40,51 +45,65 @@ class ResourceManagerTree extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 4, 12, 2),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  l10n.resourceManagerColumnName,
-                  style: styles.xs.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: 48,
-                child: Text(
-                  l10n.resourceManagerColumnCpu,
-                  textAlign: TextAlign.right,
-                  style: styles.xs.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: 64,
-                child: Text(
-                  l10n.resourceManagerColumnMemory,
-                  textAlign: TextAlign.right,
-                  style: styles.xs.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 28),
-            ],
-          ),
-        ),
+        if (includeColumnHeader) const ResourceManagerColumnHeader(),
         for (final group in tree.groups)
           _GroupSection(
             group: group,
             onActivateLeaf: onActivateLeaf,
           ),
       ],
+    );
+  }
+}
+
+/// Sticky Name | CPU | Memory header row for the Resource Manager body.
+class ResourceManagerColumnHeader extends StatelessWidget {
+  const ResourceManagerColumnHeader({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final styles = TpTextStyles.of(context);
+    final cs = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              l10n.resourceManagerColumnName,
+              style: styles.xs.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 48,
+            child: Text(
+              l10n.resourceManagerColumnCpu,
+              textAlign: TextAlign.right,
+              style: styles.xs.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 64,
+            child: Text(
+              l10n.resourceManagerColumnMemory,
+              textAlign: TextAlign.right,
+              style: styles.xs.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 28),
+        ],
+      ),
     );
   }
 }

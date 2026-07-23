@@ -9,7 +9,7 @@ Add an Orca-style **workspace bottom status bar** with an extensible item regist
 | Topic | Choice |
 |-------|--------|
 | Parity | Align Orca Resource Manager UX (pill + tree + CPU/Mem + kill/refresh) |
-| Placement | Current **workspace workbench only** (`WorkspacePage`), not `HomeShell` globals |
+| Placement | App-global on `HomeShell` (all workspaces’ sessions); flush window bottom |
 | Status bar shape | Extensible `WorkspaceStatusBar` shell; v1 ships only `resource-usage` |
 | Remote / SSH | Rows still appear; CPU/Mem show `—`; navigate + kill still work |
 | Disk "Space" | Footer stub with Beta + “does not scan workspace disk usage”; no scanner in v1 |
@@ -17,7 +17,6 @@ Add an Orca-style **workspace bottom status bar** with an extensible item regist
 
 ## Non-goals (v1)
 
-- App-wide status bar on library / hub / settings routes
 - Additional status segments (ports, SSH, updates, pets, provider usage)
 - Real workspace disk Space scan
 - Remote SSH `ps` over the tunnel
@@ -36,17 +35,28 @@ Add an Orca-style **workspace bottom status bar** with an extensible item regist
 
 ### Open panel
 
-Popover anchored above the pill (Orca-like):
+Popover anchored above the pill (Orca-like), via `TpActionMenuAnchor`:
 
-1. **Header:** “Resource Manager - Terminals” + refresh + kill-all (current workspace scope).
-2. **Totals row:** aggregate CPU %, aggregate memory, host memory share (`{n}% system memory`) when host stats exist. Include a small memory **sparkline** from the snapshot history ring (Orca parity).
-3. **Optional App bucket (collapsed by default):** Flutter / Dart VM process RSS + CPU when collectable on desktop; omit row entirely if unavailable rather than fake zeros. App row may show its own sparkline when history exists.
-4. **Tree table columns:** Name | CPU | Memory. Group rows may show a sparkline in the Name/Memory area when history exists.
-5. **Tree depth (exactly two levels):** `worktree` group (or “main” / primary folder label) → **leaf** rows only. One leaf per chat member shell or workspace shell. No intermediate session node; session/member identity is part of the leaf label.
-6. **Leaf rows:** connection status dot (green when connected), display title, kill control, click navigates to that session / shell in the workbench.
-7. **Remote / missing metrics:** CPU and Memory cells render `—`.
-8. **Inactive / disconnected:** still listed when still bound in registries; dimmed; kill remains available where the transport can terminate.
-9. **Space stub:** bottom row with drive icon, “Space”, Beta chip, and copy that workspace disk usage is not scanned.
+**Chrome / layout (Orca `ResourceUsageStatusSegment` parity):**
+
+- **Gap:** `TpAnchor` opens upward with **8px** between pill and panel (`sideOffset={8}` equivalent).
+- **Width:** `416` (`w-[26rem]`).
+- **Structure** (top → bottom):
+  1. **Header** (intrinsic): “Resource Manager - Sessions” + refresh + kill-all.
+  2. **Totals row** (intrinsic): aggregate CPU %, memory, host memory share, sparkline.
+  3. **Optional App bucket** (intrinsic or inside scroll when present): Flutter / Dart VM process when collectable.
+  4. **Fixed body `420` logical px** (does not grow/shrink with session count — avoids popover jump):
+     - Column headers Name | CPU | Memory (fixed, outside scroll).
+     - **Scrollable** tree: workspace/worktree groups → running leaf rows only.
+     - Empty: “Nothing running…” still fills the scroll region inside the fixed body.
+  5. **Space stub** (intrinsic, **outside** the 420 body): drive icon, “Space”, Beta, no-scan copy.
+
+**Tree / leaf behavior:**
+
+- Tree depth: group → leaf only; session/member identity in the leaf label.
+- Leaf: green connected dot, title, kill, click navigates.
+- Remote / missing metrics: `—`.
+- Idle / disconnected shells omitted from inventory.
 
 ### Polling
 
@@ -106,7 +116,7 @@ For the **active workspace id**, collect:
 
 Group by worktree id when the session/shell has one; otherwise a single “main” (or primary project folder) group.
 
-**Bound terminal count** = number of leaf bindings above (connected or not), not host process count.
+**Running session count** = number of leaf bindings with a live connected shell (`isConnected` / `isRunning`), not host process count and not idle/disconnected tabs.
 
 ### Metrics snapshot (desktop)
 
@@ -138,7 +148,7 @@ Collection:
 | Refresh | Force `collect()` + rebuild tree |
 | Kill leaf | Existing session/shell disconnect/kill path for that binding |
 | Kill all | Kill every leaf binding in the current workspace tree (confirm dialog) |
-| Navigate | Focus workspace session tab / shell entry; close popover |
+| Navigate | Focus workspace session / shell; for chat members **preserve** the session’s current `SessionWorkbenchView` (chat or terminal); close popover |
 | Space stub | Non-interactive info row (or disabled expand) — no scan |
 
 Kill must go through existing lifecycle APIs (`TerminalSession` / registry), not raw `Process.kill` alone, so chat/workspace state stays consistent. Optional: after lifecycle kill, best-effort `Process.killPid` if the process remains.
@@ -151,10 +161,11 @@ Kill must go through existing lifecycle APIs (`TerminalSession` / registry), not
 
 ## Placement / layout
 
-- Mount at **`WorkspacePage` card level** (sibling under the page `Column`, below the body `Stack`), so the bar stays visible for **conversations and manage** sections alike — not conversations-only.
-- Full width of the workspace card. Height: compact (~28–32 logical px), using Tp theme surfaces — not a second title bar.
+- Mount on **`HomeShell`** as an app-global strip at the **window bottom**, via `GlobalResourceManagerHost` — visible on home library and every workspace tab.
+- Status strip is **transparent** on the page chrome (no fill / top rule); the floating card omits bottom inset, and the strip itself uses a small vertical inset (~4px) above and below so it is not flush to the card or window edge (corners stay rounded).
+- Terminal / session inventory spans **all workspaces** (tree groups by workspace display name).
+- Height: compact content row (~20 logical px) plus vertical inset — not a second title bar.
 - Does not replace `WorkspaceTerminalPanel` or Run toolbar; those stay as today.
-- When the workspace route is inactive but the page stays alive in `HomeWorkspaceBodyStack`, stop metrics polling (popover should not stay open across workspace switches; close on workspace change).
 
 ## Error handling
 
@@ -165,7 +176,7 @@ Kill must go through existing lifecycle APIs (`TerminalSession` / registry), not
 ## Testing
 
 - Pure merge: bindings + snapshot → tree groups/leaves, aggregates, `—` for null metrics.
-- Closed count ignores host processes not in bindings; includes disconnected bound shells.
+- Closed count ignores host processes not in bindings; includes only running (connected) shells.
 - Polling: open starts timer; close cancels; workspace change closes + cancels.
 - PID registry: register on local connect, clear on dispose; SSH never registers.
 - Cubit kill-all calls lifecycle for each leaf once.

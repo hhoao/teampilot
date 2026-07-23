@@ -6146,16 +6146,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resourceManagerTitle => 'Resource Manager';
 
   @override
-  String get resourceManagerPanelTitle => 'Resource Manager - Terminals';
+  String get resourceManagerPanelTitle => 'Resource Manager - Sessions';
 
   @override
   String resourceManagerTooltip(String memory, int count) {
-    return 'Resource Manager - $memory - $count terminals';
+    return 'Resource Manager - $memory - $count running sessions';
   }
 
   @override
   String get resourceManagerTooltipHint =>
-      'Sessions are grouped by worktree or session.';
+      'Running sessions across all workspaces.';
 
   @override
   String get resourceManagerColumnName => 'Name';
@@ -6176,11 +6176,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resourceManagerKillAll => 'Kill all';
 
   @override
-  String get resourceManagerKillAllConfirmTitle => 'Kill all terminals?';
+  String get resourceManagerKillAllConfirmTitle => 'Kill all running sessions?';
 
   @override
   String get resourceManagerKillAllConfirmBody =>
-      'This disconnects every terminal bound to this workspace.';
+      'This disconnects every running session and shell in the list.';
 
   @override
   String get resourceManagerSpace => 'Space';
@@ -6199,11 +6199,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String resourceManagerTerminalsCount(int count) {
-    return '$count terminals';
+    return '$count running sessions';
   }
 
   @override
-  String get resourceManagerEmptyTree => 'No terminals in this workspace.';
+  String get resourceManagerEmptyTree => 'Nothing running right now.';
 
   @override
   String get resourceManagerAppProcess => 'App';
@@ -6213,5 +6213,5 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not refresh process metrics.';
 
   @override
-  String get resourceManagerKillFailed => 'Could not kill terminal.';
+  String get resourceManagerKillFailed => 'Could not kill session.';
 }

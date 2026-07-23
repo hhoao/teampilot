@@ -2316,23 +2316,23 @@
   "shortcutsCategoryRun": "运行",
 
   "resourceManagerTitle": "资源管理器",
-  "resourceManagerPanelTitle": "资源管理器 - 终端",
-  "resourceManagerTooltip": "资源管理器 - {memory} - {count} 个终端",
+  "resourceManagerPanelTitle": "资源管理器 - 会话",
+  "resourceManagerTooltip": "资源管理器 - {memory} - {count} 个运行中会话",
   "@resourceManagerTooltip": {
     "placeholders": {
       "memory": { "type": "String" },
       "count": { "type": "int" }
     }
   },
-  "resourceManagerTooltipHint": "会话按 worktree 或会话分组。",
+  "resourceManagerTooltipHint": "跨所有工作区的运行中会话。",
   "resourceManagerColumnName": "名称",
   "resourceManagerColumnCpu": "CPU",
   "resourceManagerColumnMemory": "内存",
   "resourceManagerRefresh": "刷新",
   "resourceManagerKill": "结束",
   "resourceManagerKillAll": "全部结束",
-  "resourceManagerKillAllConfirmTitle": "结束全部终端？",
-  "resourceManagerKillAllConfirmBody": "将断开此工作区绑定的全部终端。",
+  "resourceManagerKillAllConfirmTitle": "结束全部运行中会话？",
+  "resourceManagerKillAllConfirmBody": "将断开列表中的全部运行中会话与终端。",
   "resourceManagerSpace": "空间",
   "resourceManagerSpaceBeta": "Beta",
   "resourceManagerSpaceNotScanned": "不会扫描工作区磁盘占用。",
@@ -2342,14 +2342,14 @@
       "percent": { "type": "String" }
     }
   },
-  "resourceManagerTerminalsCount": "{count} 个终端",
+  "resourceManagerTerminalsCount": "{count} 个运行中会话",
   "@resourceManagerTerminalsCount": {
     "placeholders": {
       "count": { "type": "int" }
     }
   },
-  "resourceManagerEmptyTree": "此工作区没有终端。",
+  "resourceManagerEmptyTree": "当前没有运行中的会话。",
   "resourceManagerAppProcess": "应用",
   "resourceManagerMetricsError": "无法刷新进程指标。",
-  "resourceManagerKillFailed": "无法结束终端。"
+  "resourceManagerKillFailed": "无法结束会话。"
 }

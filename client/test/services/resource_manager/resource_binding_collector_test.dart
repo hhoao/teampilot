@@ -255,7 +255,7 @@ void main() {
     expect(bindings.single.title, 'Bottom Shell');
   });
 
-  test('includes disconnected shells', () {
+  test('skips disconnected shells — only running sessions bind', () {
     final bindings = collectResourceBindings(
       workspaceId: 'ws1',
       chatShells: const [
@@ -268,6 +268,15 @@ void main() {
           sessionPrimaryPath: '/repo',
           connected: false,
         ),
+        ChatMemberShellRef(
+          workspaceId: 'ws1',
+          sessionId: 's2',
+          memberId: 'm1',
+          sessionTitle: 'Live chat',
+          memberName: 'Bob',
+          sessionPrimaryPath: '/repo',
+          connected: true,
+        ),
       ],
       workspaceShells: const [
         WorkspaceShellRef(
@@ -277,12 +286,19 @@ void main() {
           cwd: '/repo',
           connected: false,
         ),
+        WorkspaceShellRef(
+          workspaceId: 'ws1',
+          entryId: 'e2',
+          titleLabel: 'Live shell',
+          cwd: '/repo',
+          connected: true,
+        ),
       ],
       worktrees: worktrees,
     );
 
-    expect(bindings, hasLength(2));
-    expect(bindings.every((b) => !b.connected), isTrue);
+    expect(bindings.map((b) => b.key).toSet(), {'chat:s2:m1', 'shell:ws1:e2'});
+    expect(bindings.every((b) => b.connected), isTrue);
   });
 
   test('filters to requested workspaceId only', () {
@@ -362,5 +378,30 @@ void main() {
     final byKey = {for (final b in bindings) b.key: b};
     expect(byKey['chat:s1:m1']!.livePid, 42);
     expect(byKey['shell:ws1:e1']!.livePid, 99);
+  });
+
+  test('workspaceGroupLabel groups by workspace instead of worktree', () {
+    final bindings = collectResourceBindings(
+      workspaceId: 'ws1',
+      workspaceGroupLabel: 'My Project',
+      chatShells: const [
+        ChatMemberShellRef(
+          workspaceId: 'ws1',
+          sessionId: 's1',
+          memberId: 'm1',
+          sessionTitle: 'A',
+          memberName: '',
+          sessionPrimaryPath: '/wt/feat',
+          connected: true,
+        ),
+      ],
+      workspaceShells: const [],
+      worktrees: worktrees,
+    );
+
+    expect(bindings, hasLength(1));
+    expect(bindings.single.groupKey, 'ws1');
+    expect(bindings.single.groupLabel, 'My Project');
+    expect(bindings.single.workspaceId, 'ws1');
   });
 }
