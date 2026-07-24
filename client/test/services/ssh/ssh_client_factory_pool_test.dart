@@ -198,6 +198,36 @@ void main() {
       await sub.cancel();
     },
   );
+
+  test('storagePoolChanges emits when transport closes pooled client', () async {
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return _InstantAuthClient();
+      },
+    );
+
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    final client = await factory.clientForStorage(profile);
+    expect(factory.hasLiveStorageClient(profile.id), isTrue);
+
+    final events = <String>[];
+    final sub = factory.storagePoolChanges.listen(events.add);
+    client.close();
+    await client.done;
+    await Future<void>.delayed(Duration.zero);
+
+    expect(events, [profile.id]);
+    expect(factory.hasLiveStorageClient(profile.id), isFalse);
+    await sub.cancel();
+  });
 }
 
 class _InstantAuthClient extends SSHClient {

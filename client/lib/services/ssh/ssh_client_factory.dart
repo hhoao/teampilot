@@ -154,10 +154,7 @@ class SshClientFactory {
   void _evictProfile(String profileId, {required bool closePooled}) {
     _sftpByProfile.remove(profileId);
     final cached = _pool.remove(profileId);
-    final wasLive =
-        cached != null &&
-        cached.readyCompleted &&
-        !cached.client.isClosed;
+    final wasLive = cached != null && cached.readyCompleted;
     if (closePooled && cached != null && !cached.client.isClosed) {
       cached.client.close();
     }
