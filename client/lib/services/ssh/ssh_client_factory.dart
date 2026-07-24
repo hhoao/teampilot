@@ -23,6 +23,7 @@ class _PooledConnection {
   final SSHClient client;
   final String hostIdentifier;
   final Future<void> ready;
+  bool readyCompleted = false;
 }
 
 class HostKeyPromptInfo {
@@ -74,6 +75,20 @@ class SshClientFactory {
   final Map<String, _PooledConnection> _pool = {};
   final Map<String, SftpClient> _sftpByProfile = {};
   final Set<SSHClient> _watchedClients = {};
+  final _poolChanges = StreamController<String>.broadcast();
+
+  bool hasLiveStorageClient(String profileId) {
+    final cached = _pool[profileId];
+    return cached != null &&
+        !cached.client.isClosed &&
+        cached.readyCompleted;
+  }
+
+  Stream<String> get storagePoolChanges => _poolChanges.stream;
+
+  void _notifyPoolChange(String profileId) {
+    if (!_poolChanges.isClosed) _poolChanges.add(profileId);
+  }
 
   /// Pooled storage-plane client for [profile] (SFTP / file I/O only).
   ///
@@ -91,19 +106,26 @@ class SshClientFactory {
         await cached.ready;
         return cached.client;
       } else {
-        cached.client.close();
-        _pool.remove(profile.id);
+        _evictProfile(profile.id, closePooled: true);
       }
     }
 
     final client = await _connectClient(profile, timeout: timeout);
     final ready = client.authenticated;
-    _pool[profile.id] = _PooledConnection(
+    final pooled = _PooledConnection(
       client: client,
       hostIdentifier: profile.hostIdentifier,
       ready: ready,
     );
-    await ready;
+    _pool[profile.id] = pooled;
+    try {
+      await ready;
+      pooled.readyCompleted = true;
+      _notifyPoolChange(profile.id);
+    } on Object {
+      _evictProfile(profile.id, closePooled: true);
+      rethrow;
+    }
     return client;
   }
 
@@ -132,8 +154,15 @@ class SshClientFactory {
   void _evictProfile(String profileId, {required bool closePooled}) {
     _sftpByProfile.remove(profileId);
     final cached = _pool.remove(profileId);
+    final wasLive =
+        cached != null &&
+        cached.readyCompleted &&
+        !cached.client.isClosed;
     if (closePooled && cached != null && !cached.client.isClosed) {
       cached.client.close();
+    }
+    if (wasLive) {
+      _notifyPoolChange(profileId);
     }
   }
 
