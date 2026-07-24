@@ -12,32 +12,46 @@ class SessionPreferencesState extends Equatable {
   SessionPreferencesState({
     SessionPreferences? preferences,
     this.isLoading = true,
+    this.locatedExecutablesRevision = 0,
   }) : preferences = preferences ?? SessionPreferences();
 
   final SessionPreferences preferences;
   final bool isLoading;
 
+  /// Bumped when startup PATH discovery merges new CLI locations so settings
+  /// rows can hide install actions once an executable is known.
+  final int locatedExecutablesRevision;
+
   SessionPreferencesState copyWith({
     SessionPreferences? preferences,
     bool? isLoading,
+    int? locatedExecutablesRevision,
   }) {
     return SessionPreferencesState(
       preferences: preferences ?? this.preferences,
       isLoading: isLoading ?? this.isLoading,
+      locatedExecutablesRevision:
+          locatedExecutablesRevision ?? this.locatedExecutablesRevision,
     );
   }
 
   @override
-  List<Object?> get props => [preferences, isLoading];
+  List<Object?> get props => [
+    preferences,
+    isLoading,
+    locatedExecutablesRevision,
+  ];
 }
 
 class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   SessionPreferencesCubit({
     required SessionPreferencesRepository repository,
     Map<CliTool, String> locatedExecutables = const {},
+    Map<String, String> locatedToolchains = const {},
     CliToolRegistry? cliToolRegistry,
   }) : _repository = repository,
        _locatedExecutables = _normalizeLocatedExecutables(locatedExecutables),
+       _locatedToolchains = _normalizeLocatedToolchains(locatedToolchains),
        _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry,
        super(SessionPreferencesState());
 
@@ -48,20 +62,54 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
 
   final SessionPreferencesRepository _repository;
   final Map<CliTool, String> _locatedExecutables;
+  final Map<String, String> _locatedToolchains;
   final CliToolRegistry _cliToolRegistry;
 
   /// Merges startup PATH discovery; user-configured paths always win.
   void mergeLocatedExecutables(Map<CliTool, String> discovered) {
+    var changed = false;
     for (final entry in discovered.entries) {
       final path = entry.value.trim();
       if (path.isEmpty || _userExecutableFor(entry.key).isNotEmpty) continue;
+      if (_locatedExecutables[entry.key] == path) continue;
       _locatedExecutables[entry.key] = path;
+      changed = true;
+    }
+    if (changed) {
+      emit(
+        state.copyWith(
+          locatedExecutablesRevision: state.locatedExecutablesRevision + 1,
+        ),
+      );
     }
   }
 
   /// Absolute path found at startup for [cli], if any (ignores bare command names).
   String discoveredExecutablePath(CliTool cli) =>
       _locatedExecutables[cli]?.trim() ?? '';
+
+  /// Merges startup PATH discovery for toolchain tools; user paths always win.
+  void mergeLocatedToolchains(Map<String, String> discovered) {
+    var changed = false;
+    for (final entry in discovered.entries) {
+      final path = entry.value.trim();
+      if (path.isEmpty || toolchainPath(entry.key).isNotEmpty) continue;
+      if (_locatedToolchains[entry.key] == path) continue;
+      _locatedToolchains[entry.key] = path;
+      changed = true;
+    }
+    if (changed) {
+      emit(
+        state.copyWith(
+          locatedExecutablesRevision: state.locatedExecutablesRevision + 1,
+        ),
+      );
+    }
+  }
+
+  /// Absolute path found at startup for toolchain [toolId], if any.
+  String discoveredToolchainPath(String toolId) =>
+      _locatedToolchains[toolId]?.trim() ?? '';
 
   Future<void> load() async {
     emit(state.copyWith(isLoading: true));
@@ -131,11 +179,13 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
 
   /// Returns the resolved executable string for a toolchain tool.
   ///
-  /// Checks the user-configured [toolchainPath] first, then falls back to
-  /// [fallback] (typically the bare command name for PATH lookup).
+  /// Checks the user-configured [toolchainPath] first, then startup discovery,
+  /// then [fallback] (typically the bare command name for PATH lookup).
   String resolveToolchainExecutable(String toolId, String fallback) {
     final configured = toolchainPath(toolId);
     if (configured.isNotEmpty) return configured;
+    final located = _locatedToolchains[toolId];
+    if (located != null && located.isNotEmpty) return located;
     return fallback;
   }
 
@@ -225,11 +275,42 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   /// User-configured absolute path for [cli], or empty.
   String configuredExecutablePath(CliTool cli) => _userExecutableFor(cli);
 
+  /// True when [cli] has a configured or discovered absolute executable path.
+  bool hasKnownCliExecutable(CliTool cli) {
+    if (configuredExecutablePath(cli).trim().isNotEmpty) return true;
+    if (discoveredExecutablePath(cli).trim().isNotEmpty) return true;
+    return _looksLikeAbsolutePath(resolveExecutable(cli));
+  }
+
+  /// True when [toolId] has a configured or discovered executable path.
+  bool hasKnownToolchainExecutable(String toolId, String fallback) {
+    if (toolchainPath(toolId).trim().isNotEmpty) return true;
+    if (discoveredToolchainPath(toolId).trim().isNotEmpty) return true;
+    return _looksLikeAbsolutePath(
+      resolveToolchainExecutable(toolId, fallback),
+    );
+  }
+
+  static bool _looksLikeAbsolutePath(String value) {
+    return value.contains('/') || value.contains(r'\');
+  }
+
   static Map<CliTool, String> _normalizeLocatedExecutables(
     Map<CliTool, String> locatedExecutables,
   ) {
     final normalized = <CliTool, String>{};
     for (final entry in locatedExecutables.entries) {
+      final value = entry.value.trim();
+      if (value.isNotEmpty) normalized[entry.key] = value;
+    }
+    return normalized;
+  }
+
+  static Map<String, String> _normalizeLocatedToolchains(
+    Map<String, String> locatedToolchains,
+  ) {
+    final normalized = <String, String>{};
+    for (final entry in locatedToolchains.entries) {
       final value = entry.value.trim();
       if (value.isNotEmpty) normalized[entry.key] = value;
     }

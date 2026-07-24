@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
@@ -260,14 +261,34 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
 
   @override
   Widget build(BuildContext context) {
+    return BlocSelector<
+      SessionPreferencesCubit,
+      SessionPreferencesState,
+      (String, int)
+    >(
+      selector: (state) => (
+        state.preferences.toolchainPaths[widget.toolId]?.trim() ?? '',
+        state.locatedExecutablesRevision,
+      ),
+      builder: (context, selected) => _buildRow(context, selected.$1),
+    );
+  }
+
+  Widget _buildRow(BuildContext context, String stored) {
     final l10n = context.l10n;
-    final stored = _storedPath();
     _syncFromState(stored);
 
     final effective = _resolved();
     final isFallback = stored.trim().isEmpty;
     final fieldEmpty = _controller.text.trim().isEmpty;
     final hint = fieldEmpty ? '${l10n.cliExecutablePathUsing}$effective' : null;
+    final showInstallButton =
+        widget.installKey != null &&
+        fieldEmpty &&
+        !widget.cubit.hasKnownToolchainExecutable(
+          widget.toolId,
+          widget.fallbackExecutable,
+        );
 
     return TpPreferenceStack(
       title: widget.title,
@@ -294,7 +315,7 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
                 ),
               ),
               const SizedBox(width: 6),
-              if (widget.installKey != null) ...[
+              if (showInstallButton) ...[
                 OutlinedButton.icon(
                   key: widget.installKey,
                   onPressed: _isInstalling ? null : _install,

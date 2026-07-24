@@ -100,6 +100,7 @@ import '../services/expert_hub/expert_hub_favorites_store.dart';
 import '../services/expert_hub/git_registry_expert_hub_source.dart';
 import '../services/expert_hub/member_roster_service.dart';
 import '../services/cli/cli_executable_discovery.dart';
+import '../services/cli/toolchain_executable_discovery.dart';
 import '../services/commands/command_bus.dart';
 import '../services/commands/layout_command_registrar.dart';
 import '../services/commands/run_command_registrar.dart';
@@ -328,15 +329,16 @@ Future<AppShell> buildAppShell({
   );
   if (!Platform.isAndroid) {
     boot('scheduling CLI tool discovery (background)');
-    unawaited(
-      cliExecutableDiscovery.locateLocal().then((paths) {
-        sessionPreferencesCubit.mergeLocatedExecutables(paths);
-        appLogger.i(
-          '[boot] CLI tool discovery complete '
-          '(${paths.length} located, background)',
-        );
-      }),
-    );
+    unawaited(() async {
+      final cliPaths = await cliExecutableDiscovery.locateLocal();
+      final toolchainPaths = await ToolchainExecutableDiscovery().locateLocal();
+      sessionPreferencesCubit.mergeLocatedExecutables(cliPaths);
+      sessionPreferencesCubit.mergeLocatedToolchains(toolchainPaths);
+      appLogger.i(
+        '[boot] CLI/toolchain discovery complete '
+        '(${cliPaths.length} CLI, ${toolchainPaths.length} toolchain, background)',
+      );
+    }());
   }
   boot('loading session preferences and workspace directory');
   final parallel = await Future.wait<Object?>([

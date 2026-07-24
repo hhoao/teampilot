@@ -202,11 +202,13 @@ class CliExecutablePathSettingsRowState
     return BlocSelector<
       SessionPreferencesCubit,
       SessionPreferencesState,
-      String
+      (String, int)
     >(
-      selector: (state) =>
-          state.preferences.cliExecutablePathFor(widget.cli.value),
-      builder: (context, stored) => _buildRow(context, stored),
+      selector: (state) => (
+        state.preferences.cliExecutablePathFor(widget.cli.value),
+        state.locatedExecutablesRevision,
+      ),
+      builder: (context, selected) => _buildRow(context, selected.$1),
     );
   }
 
@@ -221,6 +223,10 @@ class CliExecutablePathSettingsRowState
     final isFallback = stored.trim().isEmpty;
     final fieldEmpty = _controller.text.trim().isEmpty;
     final hint = fieldEmpty ? '${l10n.cliExecutablePathUsing}$effective' : null;
+    final showInstallButton =
+        widget.installKey != null &&
+        fieldEmpty &&
+        !widget.cubit.hasKnownCliExecutable(widget.cli);
 
     return TpPreferenceStack(
       title: widget.title,
@@ -253,7 +259,7 @@ class CliExecutablePathSettingsRowState
                 ),
               ),
               const SizedBox(width: 6),
-              if (widget.installKey != null) ...[
+              if (showInstallButton) ...[
                 OutlinedButton.icon(
                   key: widget.installKey,
                   onPressed: _isInstalling ? null : _installCli,

@@ -1,4 +1,5 @@
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
+import 'package:teampilot/models/session_preferences.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,11 +12,13 @@ void main() {
 
   Future<SessionPreferencesCubit> makeCubit({
     Map<CliTool, String> locatedExecutables = const {},
+    Map<String, String> locatedToolchains = const {},
   }) async {
     final prefs = await SharedPreferences.getInstance();
     return SessionPreferencesCubit(
       repository: SessionPreferencesRepository(prefs),
       locatedExecutables: locatedExecutables,
+      locatedToolchains: locatedToolchains,
     );
   }
 
@@ -239,5 +242,64 @@ void main() {
 
     expect(cubit.state.preferences.cliExecutablePaths, isEmpty);
     expect(cubit.resolveExecutable(CliTool.claude), '/usr/local/bin/claude');
+  });
+
+  test('mergeLocatedExecutables bumps revision when paths change', () async {
+    final cubit = await makeCubit();
+    await cubit.load();
+    expect(cubit.state.locatedExecutablesRevision, 0);
+
+    cubit.mergeLocatedExecutables(const {
+      CliTool.claude: '/usr/local/bin/claude',
+    });
+    expect(cubit.state.locatedExecutablesRevision, 1);
+    expect(cubit.hasKnownCliExecutable(CliTool.claude), isTrue);
+
+    cubit.mergeLocatedExecutables(const {
+      CliTool.claude: '/usr/local/bin/claude',
+    });
+    expect(cubit.state.locatedExecutablesRevision, 1);
+  });
+
+  test('hasKnownCliExecutable is false for bare PATH fallback', () async {
+    final cubit = await makeCubit();
+    await cubit.load();
+
+    expect(cubit.hasKnownCliExecutable(CliTool.claude), isFalse);
+    expect(cubit.resolveExecutable(CliTool.claude), 'claude');
+  });
+
+  test('hasKnownCliExecutable is true for configured path', () async {
+    final cubit = await makeCubit();
+    await cubit.load();
+    await cubit.setCliExecutablePathFor(CliTool.claude, '/opt/claude');
+
+    expect(cubit.hasKnownCliExecutable(CliTool.claude), isTrue);
+  });
+
+  test('mergeLocatedToolchains bumps revision and resolves path', () async {
+    final cubit = await makeCubit();
+    await cubit.load();
+
+    cubit.mergeLocatedToolchains(const {
+      SessionPreferences.toolchainGit: '/usr/bin/git',
+      SessionPreferences.toolchainNode: '/usr/bin/node',
+    });
+
+    expect(cubit.state.locatedExecutablesRevision, 1);
+    expect(cubit.hasKnownToolchainExecutable(SessionPreferences.toolchainGit, 'git'), isTrue);
+    expect(
+      cubit.resolveToolchainExecutable(SessionPreferences.toolchainGit, 'git'),
+      '/usr/bin/git',
+    );
+  });
+
+  test('hasKnownToolchainExecutable is true for bare discovered git name', () async {
+    final cubit = await makeCubit(
+      locatedToolchains: const {SessionPreferences.toolchainGit: 'git'},
+    );
+    await cubit.load();
+
+    expect(cubit.hasKnownToolchainExecutable(SessionPreferences.toolchainGit, 'git'), isTrue);
   });
 }

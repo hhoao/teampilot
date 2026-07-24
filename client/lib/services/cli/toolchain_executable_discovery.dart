@@ -1,0 +1,40 @@
+import '../../models/session_preferences.dart';
+import 'cli_tool_locator.dart';
+import 'git_installer.dart';
+
+typedef GitDetect = Future<GitInstallResult> Function();
+
+/// Locates toolchain executables (git, node) on the local host.
+class ToolchainExecutableDiscovery {
+  ToolchainExecutableDiscovery({
+    GitInstaller? gitInstaller,
+    GitDetect? detectGit,
+    ProcessRunner? processRunner,
+  }) : _detectGit =
+           detectGit ?? (gitInstaller ?? const GitInstaller()).detectGit,
+       _processRunner = processRunner ?? cliToolDefaultProcessRun;
+
+  final GitDetect _detectGit;
+  final ProcessRunner _processRunner;
+
+  Future<Map<String, String>> locateLocal() async {
+    final located = <String, String>{};
+
+    final git = await _detectGit();
+    final gitPath = git.executablePath?.trim() ?? '';
+    if (git.success && gitPath.isNotEmpty) {
+      located[SessionPreferences.toolchainGit] = gitPath;
+    }
+
+    final node = await CliToolLocator('node').locate(
+      runner: _processRunner,
+      includeShellFallback: true,
+    );
+    final nodePath = node?.trim() ?? '';
+    if (nodePath.isNotEmpty) {
+      located[SessionPreferences.toolchainNode] = nodePath;
+    }
+
+    return located;
+  }
+}
