@@ -69,7 +69,8 @@ Add to `SshClientFactory`:
 ```dart
 bool hasLiveStorageClient(String profileId) {
   final cached = _pool[profileId];
-  return cached != null && !cached.client.isClosed;
+  // Only "live" after authenticated ready — not merely map presence.
+  return cached != null && !cached.client.isClosed && cached.readyCompleted;
 }
 
 final _poolChanges = StreamController<String>.broadcast();
@@ -80,7 +81,19 @@ void _notifyPoolChange(String profileId) {
 }
 ```
 
-Call `_notifyPoolChange` after successful pool insert in `clientForStorage` and after `_evictProfile` / `disconnectProfile`. Close controller in factory dispose if one exists; otherwise leave broadcast (app-lifetime factory).
+**Auth gating (required):** Today `clientForStorage` inserts into `_pool` before
+`await ready`. Implement so observation stays truthful:
+
+1. Track `readyCompleted` (or equivalent) on `_PooledConnection`; set only after
+   `await ready` succeeds.
+2. On auth / connect failure after insert: `_evictProfile` (no half-open entry),
+   then notify close if an open was already signaled — or **only**
+   `_notifyPoolChange` after successful `await ready` (preferred: notify open
+   only post-auth).
+3. Notify close from `_evictProfile` / `disconnectProfile` when a previously
+   live client is removed.
+
+Do **not** treat “key in `_pool`” alone as connected.
 
 - [ ] **Step 4: Tests PASS**
 
@@ -113,13 +126,13 @@ test('userConnect clears latch and opens storage pool', () async {
   expect(factory.hasLiveStorageClient(profile.id), isTrue);
 });
 
-test('external clientForStorage after userDisconnect clears latch on next userConnect path', () async {
+test('external clientForStorage after userDisconnect clears latch via pool observation', () async {
   await coordinator.userConnect(profile);
   await coordinator.userDisconnect(profile.id);
-  // external open:
-  await factory.clientForStorage(profile);
-  // latch must clear when Cubit observes — for coordinator: add clearLatchOnPoolOpen
-  // OR expose isUserDisconnectLatched + clearUserDisconnectLatch for Cubit
+  expect(coordinator.isUserDisconnectLatched(profile.id), isTrue);
+  await factory.clientForStorage(profile); // external reopen
+  await Future<void>.delayed(Duration.zero);
+  expect(coordinator.isUserDisconnectLatched(profile.id), isFalse);
 });
 ```
 
@@ -131,7 +144,6 @@ API:
 Future<void> userConnect(SshProfile profile, {Duration timeout = ...});
 Future<void> userDisconnect(String profileId);
 bool isUserDisconnectLatched(String profileId);
-void clearUserDisconnectLatch(String profileId);
 ```
 
 `userConnect`: clear latch → `factory.clientForStorage` → ensure `monitorFor` exists (do not treat monitor.initial alone as connected).
@@ -140,7 +152,9 @@ void clearUserDisconnectLatch(String profileId);
 
 `_scheduleReconnect`: if latched, return early.
 
-Also: when factory notifies pool open (Cubit will clear latch) — coordinator can optionally listen to `storagePoolChanges` and clear latch itself when a live client appears. Prefer **coordinator listens to factory.storagePoolChanges** and clears latch on open so Cubit stays thinner.
+**Latch clear:** coordinator **subscribes to `factory.storagePoolChanges`** and
+clears the latch when `hasLiveStorageClient(id)` becomes true (external or user
+open). No Cubit-owned latch API.
 
 - [ ] **Step 2: Run — FAIL**
 
@@ -219,11 +233,11 @@ Cover:
 2. Seed: pool already live → `connected`
 3. `connect` → connecting then connected; Android path: inject `onAndroidSelectProfile` callback invoked only when `selectOnConnect: true` (pass from wiring with `Platform.isAndroid`)
 4. `disconnect` → disconnected + coordinator.userDisconnect called
-5. Overall: connecting beats partial
+5. Overall: connecting beats partial; `reconnecting` host also yields overall `connecting`
 6. Observation: emit pool change after disconnect → connected again
 7. Monitor reconnecting → UI reconnecting
 8. Profile deleted → pruned; last deleted → empty
-9. Connect failure → error / authFailed
+9. Connect failure → error / authFailed; optional one soft snackbar signal (callback/stream) — not toast spam
 
 - [ ] **Step 3: Implement Cubit**
 
@@ -273,7 +287,8 @@ Reuse existing Connect / Disconnect / status Connected / Disconnected / Connecti
 
 - [ ] **Step 1: Add ARB entries both locales**
 - [ ] **Step 2: Ensure `AppLocalizations` regenerates** (`flutter gen-l10n` or next analyze)
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Run `dart run tool/gen_warmup_glyphs.dart`** (repo convention after ARB edits)
+- [ ] **Step 4: Commit**
 
 ```bash
 git commit -m "l10n: add SSH status bar remote hosts strings"
@@ -307,26 +322,18 @@ Row: status dot, title, subtitle `SSH Host · {status}`, Connect/Disconnect text
 Mirror `ResourceUsageStatusItem`:
 - `TpActionMenuAnchor` upward, 8px gap, panel width ~320 (`min(20rem,…)`)
 - Pill: icon + label + overall dot; compact → icon+dot
+  - `overallStatus == connecting` → small spinner (spec)
+  - all disconnected → server-off icon; else server
 - `buildWhen` on `connectedCount`, `overallStatus`, `isEmpty`, `isOpen` if tracked
 
-Hide segment when `state.isEmpty` (return `SizedBox.shrink` or skip in host).
+Hide segment when `state.isEmpty` (return `SizedBox.shrink()`).
 
-- [ ] **Step 4: Wire host**
+Do **not** register on `GlobalResourceManagerHost` in this task — Cubit is not
+provided until Task 6. Widget tests supply a local `BlocProvider`.
 
-```dart
-WorkspaceStatusBar(
-  items: [
-    ResourceUsageStatusItem(),
-    SshHostsStatusItem(onManage: () { /* go router */ }),
-  ],
-)
-```
+- [ ] **Step 4: Tests PASS**
 
-Manage navigation: use `GoRouter.of(context).go('/config/ssh-profiles')` (confirm path matches `app_router.dart`).
-
-- [ ] **Step 5: Tests PASS**
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git commit -m "feat(ui): add SSH hosts status bar pill and panel"
@@ -334,14 +341,15 @@ git commit -m "feat(ui): add SSH hosts status bar pill and panel"
 
 ---
 
-### Task 6: App wiring (`SshConnectionCubit` lifecycle)
+### Task 6: App wiring (`SshConnectionCubit` + status-bar registration)
 
 **Files:**
 - Modify: `client/lib/app/app_shell.dart` (construct Cubit near SSH stack)
 - Modify: `client/lib/main.dart` (provide Cubit in `MultiBlocProvider`)
+- Modify: `client/lib/pages/home_workspace/global_resource_manager_host.dart`
 - Possibly small binder widget under shell that syncs profiles
 
-- [ ] **Step 1: Construct**
+- [ ] **Step 1: Construct + provide Cubit first**
 
 ```dart
 sshConnectionCubit = SshConnectionCubit(
@@ -351,6 +359,7 @@ sshConnectionCubit = SshConnectionCubit(
       ? (id) => sshProfileCubit.selectProfile(id)
       : null,
 );
+// MultiBlocProvider must include SshConnectionCubit before status bar mounts
 ```
 
 - [ ] **Step 2: Sync profiles**
@@ -361,14 +370,29 @@ Either:
 
 Call `syncProfiles` on every profile list change; on delete of connected profile, Cubit disconnects then prunes.
 
-- [ ] **Step 3: Dispose Cubit with shell**
+- [ ] **Step 3: Register status-bar item (only after Cubit is provided)**
 
-- [ ] **Step 4: Smoke `flutter analyze` on touched files**
+```dart
+WorkspaceStatusBar(
+  items: [
+    ResourceUsageStatusItem(),
+    SshHostsStatusItem(
+      onManage: () => GoRouter.of(context).go('/config/ssh-profiles'),
+    ),
+  ],
+)
+```
 
-- [ ] **Step 5: Commit**
+Path confirmed: `/config/ssh-profiles` in `app_router.dart`.
+
+- [ ] **Step 4: Dispose Cubit with shell**
+
+- [ ] **Step 5: Smoke `flutter analyze` on touched files**
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git commit -m "feat(app): provide SshConnectionCubit in app shell"
+git commit -m "feat(app): provide SshConnectionCubit and register SSH status item"
 ```
 
 ---
