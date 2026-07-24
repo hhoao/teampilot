@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/host/host_interactive_shell.dart';
+import 'package:teampilot/services/host/host_interactive_shell_kind.dart';
 import 'package:teampilot/services/run/shell_script_command_builder.dart';
 import 'package:teampilot/services/run/shell_script_configuration.dart';
 
@@ -93,10 +94,61 @@ void main() {
       );
       expect(line, "cd '/proj' && '/bin/bash' -c 'echo '\\''hi'\\'''");
     });
+
+    test('cmd dialect uses cd /d, double quotes, and /c for scriptText', () {
+      final line = builder.buildInjectLine(
+        const ShellScriptConfiguration(
+          execute: 'scriptText',
+          scriptText: 'flutter run -d windows',
+          interpreterPath: r'C:\Windows\system32\cmd.exe',
+          cwd: r'C:\Users\haung\git\teampilot\client',
+          env: {'FOO': 'bar'},
+        ),
+      );
+      expect(
+        line,
+        r'cd /d "C:\Users\haung\git\teampilot\client" && set "FOO=bar" && '
+        r'"C:\Windows\system32\cmd.exe" /c "flutter run -d windows"',
+      );
+    });
+
+    test('cmd dialect does not duplicate /c when already in interpreterOptions',
+        () {
+      final line = builder.buildInjectLine(
+        const ShellScriptConfiguration(
+          execute: 'scriptText',
+          scriptText: 'echo hi',
+          interpreterPath: r'C:\Windows\system32\cmd.exe',
+          interpreterOptions: '/c',
+          cwd: r'C:\proj',
+        ),
+      );
+      expect(
+        line,
+        r'cd /d "C:\proj" && "C:\Windows\system32\cmd.exe" /c "echo hi"',
+      );
+    });
+
+    test('powershell dialect uses Set-Location and -Command', () {
+      final line = builder.buildInjectLine(
+        const ShellScriptConfiguration(
+          execute: 'scriptText',
+          scriptText: 'flutter run',
+          interpreterPath: r'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe',
+          cwd: r'C:\proj',
+        ),
+      );
+      expect(
+        line,
+        r"Set-Location 'C:\proj' && "
+        r"'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe' "
+        r"-Command 'flutter run'",
+      );
+    });
   });
 
   group('buildProcessInvocation', () {
-    test('non-terminal uses host shell -c with full inject line', () {
+    test('non-terminal uses host shell command flag with full inject line', () {
       final invocation = builder.buildProcessInvocation(
         const ShellScriptConfiguration(
           execute: 'scriptText',
@@ -108,8 +160,15 @@ void main() {
       );
       expect(invocation.shell, isTrue);
       expect(invocation.command, HostInteractiveShell.defaultExecutable());
+      final hostKind = HostInteractiveShell.defaultSpec().kind;
+      final flag = switch (hostKind) {
+        HostInteractiveShellKind.cmd => '/c',
+        HostInteractiveShellKind.powershell ||
+        HostInteractiveShellKind.pwsh => '-Command',
+        _ => '-c',
+      };
       expect(invocation.args, [
-        '-c',
+        flag,
         "cd '/proj' && export 'FOO'='bar' && '/bin/bash' -c 'echo hi'",
       ]);
       expect(invocation.cwd, '/proj');
