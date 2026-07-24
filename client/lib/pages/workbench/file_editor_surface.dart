@@ -277,7 +277,7 @@ class _CodeEditorPane extends StatelessWidget {
   }
 }
 
-class _MarkdownPreviewPane extends StatelessWidget {
+class _MarkdownPreviewPane extends StatefulWidget {
   const _MarkdownPreviewPane({
     required this.workspaceId,
     required this.path,
@@ -289,34 +289,69 @@ class _MarkdownPreviewPane extends StatelessWidget {
   final CodeLineEditingController controller;
 
   @override
+  State<_MarkdownPreviewPane> createState() => _MarkdownPreviewPaneState();
+}
+
+class _MarkdownPreviewPaneState extends State<_MarkdownPreviewPane> {
+  late String _data = widget.controller.text;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onControllerChanged);
+  }
+
+  @override
+  void didUpdateWidget(_MarkdownPreviewPane oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onControllerChanged);
+      _data = widget.controller.text;
+      widget.controller.addListener(_onControllerChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onControllerChanged);
+    super.dispose();
+  }
+
+  void _onControllerChanged() {
+    final next = widget.controller.text;
+    // Ignore selection-only controller notifies — rebuilding MarkdownBody /
+    // SelectionArea mid-drag jumps the scroll back toward the document head.
+    if (next == _data) return;
+    setState(() => _data = next);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final opener = context.read<WorkbenchEditorOpener>();
     final roots = WorkspaceToolsScope.maybeOf(context)?.roots ?? const [];
-    return ListenableBuilder(
-      listenable: controller,
-      builder: (context, _) {
-        return SelectionArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-            child: MarkdownBody(
-              data: controller.text,
-              styleSheet: buildAppMarkdownStyleSheet(Theme.of(context)),
-              selectable: false,
-              onTapLink: (text, href, title) {
-                unawaited(
-                  handleMarkdownPreviewLink(
-                    href: href,
-                    markdownFilePath: path,
-                    workspaceId: workspaceId,
-                    workspaceRoots: roots,
-                    opener: opener,
-                  ),
-                );
-              },
-            ),
-          ),
-        );
-      },
+    // SelectionArea must sit *inside* the scroll content. As an ancestor it
+    // enables edge auto-scroll while selecting, which yanks long previews to
+    // the top (flutter/flutter#110917).
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      child: SelectionArea(
+        child: MarkdownBody(
+          data: _data,
+          styleSheet: buildAppMarkdownStyleSheet(Theme.of(context)),
+          selectable: false,
+          onTapLink: (text, href, title) {
+            unawaited(
+              handleMarkdownPreviewLink(
+                href: href,
+                markdownFilePath: widget.path,
+                workspaceId: widget.workspaceId,
+                workspaceRoots: roots,
+                opener: opener,
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }
