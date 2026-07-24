@@ -140,6 +140,120 @@ void main() {
     expect(createCount, 1);
     await coordinator.dispose();
   });
+
+  test('userDisconnect sets latch and skips auto-reconnect after transport close', () async {
+    var createCount = 0;
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    final events = SshConnectionEvents();
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      events: events,
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        createCount += 1;
+        return _ClosableClient();
+      },
+    );
+    final coordinator = SshProfileConnectionCoordinator(
+      factory: factory,
+      events: events,
+      profileResolver: (_) => profile,
+      policy: const SshProfileReconnectPolicy(
+        disconnectCoalesce: Duration(milliseconds: 20),
+        initialDelay: Duration(milliseconds: 30),
+        maxAttempts: 3,
+      ),
+    );
+
+    await coordinator.userConnect(profile);
+    expect(createCount, 1);
+
+    await coordinator.userDisconnect(profile.id);
+    expect(coordinator.isUserDisconnectLatched(profile.id), isTrue);
+
+    events.onTransportClosed?.call(
+      profile.id,
+      StateError('SSH transport closed'),
+      StackTrace.empty,
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    expect(createCount, 1);
+    expect(coordinator.isUserDisconnectLatched(profile.id), isTrue);
+    expect(
+      coordinator.monitorFor('p1').state.status,
+      RemoteConnectionStatus.down,
+    );
+    await coordinator.dispose();
+  });
+
+  test('userConnect clears latch and opens storage pool', () async {
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    final events = SshConnectionEvents();
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      events: events,
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return _InstantAuthClient();
+      },
+    );
+    final coordinator = SshProfileConnectionCoordinator(
+      factory: factory,
+      events: events,
+      profileResolver: (_) => profile,
+    );
+
+    await coordinator.userConnect(profile);
+    expect(factory.hasLiveStorageClient(profile.id), isTrue);
+    expect(coordinator.isUserDisconnectLatched(profile.id), isFalse);
+    await coordinator.dispose();
+  });
+
+  test('external clientForStorage after userDisconnect clears latch via pool observation', () async {
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    final events = SshConnectionEvents();
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      events: events,
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return _InstantAuthClient();
+      },
+    );
+    final coordinator = SshProfileConnectionCoordinator(
+      factory: factory,
+      events: events,
+      profileResolver: (_) => profile,
+    );
+
+    await coordinator.userConnect(profile);
+    await coordinator.userDisconnect(profile.id);
+    expect(coordinator.isUserDisconnectLatched(profile.id), isTrue);
+
+    await factory.clientForStorage(profile);
+    await Future<void>.delayed(Duration.zero);
+    expect(coordinator.isUserDisconnectLatched(profile.id), isFalse);
+    await coordinator.dispose();
+  });
 }
 
 class _InstantAuthClient extends SSHClient {
