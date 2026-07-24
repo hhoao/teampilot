@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../utils/team/team_member_naming.dart';
 import 'skill.dart';
-import 'skill_acquire_spec.dart';
+import 'skill_install_recipe.dart';
 import 'team_config.dart';
 import 'team_roster_slot.dart';
 
@@ -18,7 +18,7 @@ class SkillDependencyRef {
     required this.name,
     this.id,
     this.packId,
-    this.acquire,
+    this.recipe,
   });
 
   final String repoOwner;
@@ -27,44 +27,55 @@ class SkillDependencyRef {
   final String directory;
   final String name;
 
-  /// Optional explicit local skill id (preferred for `script` / pack skills).
+  /// Optional explicit local skill id (preferred for script / pack skills).
   final String? id;
 
   /// When set, install goes through [SkillPack] (install-once, many skills).
   final String? packId;
-  final SkillAcquireSpec? acquire;
 
-  /// Missing [acquire] ≡ `git-pack` when [packId] is set, else `git-dir`.
-  SkillAcquireSpec get resolvedAcquire {
-    if (acquire != null) return acquire!;
-    if (packId != null && packId!.trim().isNotEmpty) {
-      return const SkillAcquireSpec(kind: 'git-pack');
+  /// Inline install graph when not using [packId].
+  final SkillInstallRecipe? recipe;
+
+  /// Resolved recipe for non-pack deps: explicit [recipe], else single-dir sugar
+  /// from repo fields. Pack deps return null (engine loads pack.recipe).
+  SkillInstallRecipe? get resolvedRecipe {
+    if (packId != null && packId!.trim().isNotEmpty) return null;
+    if (recipe != null && !recipe!.isEmpty) return recipe;
+    if (repoOwner.isEmpty || repoName.isEmpty || directory.isEmpty) {
+      return recipe;
     }
-    return const SkillAcquireSpec(kind: 'git-dir');
+    return SkillInstallRecipe.singleGitDir(
+      owner: repoOwner,
+      name: repoName,
+      branch: repoBranch,
+      directory: directory,
+      skillId: expectedLocalId,
+      skillName: name,
+    );
   }
 
   /// Deterministic local [Skill.id] this dep resolves to once installed.
-  ///
-  /// - `script`: prefer non-empty [id], else `script:<host>/<path-basename>`
-  ///   from [SkillAcquireSpec.package] (query/fragment stripped).
-  /// - pack skill: prefer non-empty [id], else `$packId:${basename(directory)}`.
-  /// - otherwise: `owner/name:basename(directory)`.
   String get expectedLocalId {
     final explicit = id?.trim();
-    if (resolvedAcquire.kind == 'script') {
-      if (explicit != null && explicit.isNotEmpty) return explicit;
-      return skillScriptIdFromPackageUrl(resolvedAcquire.package);
-    }
+    if (explicit != null && explicit.isNotEmpty) return explicit;
     final pack = packId?.trim();
     if (pack != null && pack.isNotEmpty) {
-      if (explicit != null && explicit.isNotEmpty) return explicit;
       final base = directory.split('/').last;
       return '$pack:$base';
+    }
+    // Script sugar: first script.run package URL in recipe.
+    final steps = recipe?.steps ?? const <SkillInstallStep>[];
+    for (final step in steps) {
+      if (step.uses != 'script.run') continue;
+      final package = (step.withArgs['package'] as String?)?.trim();
+      if (package != null && package.isNotEmpty) {
+        return skillScriptIdFromPackageUrl(package);
+      }
     }
     return '$repoOwner/$repoName:${directory.split('/').last}';
   }
 
-  /// Payload for [SkillInstallService.installFromDiscovery] during TeamHub clone.
+  /// Payload for discovery-based install paths.
   DiscoverableSkill toDiscoverableSkill() => DiscoverableSkill(
     key: expectedLocalId,
     name: name,
@@ -75,11 +86,11 @@ class SkillDependencyRef {
     repoBranch: repoBranch,
     id: id,
     packId: packId,
-    acquire: acquire,
+    recipe: recipe,
   );
 
   factory SkillDependencyRef.fromJson(Map<String, Object?> json) {
-    final acquireRaw = json['acquire'];
+    final recipeRaw = json['recipe'];
     final idRaw = (json['id'] as String?)?.trim();
     final packRaw = (json['packId'] as String?)?.trim();
     return SkillDependencyRef(
@@ -90,8 +101,8 @@ class SkillDependencyRef {
       name: json['name'] as String? ?? '',
       id: idRaw == null || idRaw.isEmpty ? null : idRaw,
       packId: packRaw == null || packRaw.isEmpty ? null : packRaw,
-      acquire: acquireRaw is Map
-          ? SkillAcquireSpec.fromJson(acquireRaw.cast<String, Object?>())
+      recipe: recipeRaw is Map
+          ? SkillInstallRecipe.fromJson(recipeRaw.cast<String, Object?>())
           : null,
     );
   }
@@ -104,7 +115,7 @@ class SkillDependencyRef {
     'name': name,
     if (id != null && id!.isNotEmpty) 'id': id,
     if (packId != null && packId!.isNotEmpty) 'packId': packId,
-    if (acquire != null) 'acquire': acquire!.toJson(),
+    if (recipe != null && !recipe!.isEmpty) 'recipe': recipe!.toJson(),
   };
 
   @override
@@ -117,7 +128,7 @@ class SkillDependencyRef {
       name == other.name &&
       id == other.id &&
       packId == other.packId &&
-      acquire == other.acquire;
+      recipe == other.recipe;
 
   @override
   int get hashCode => Object.hash(
@@ -128,9 +139,10 @@ class SkillDependencyRef {
     name,
     id,
     packId,
-    acquire,
+    recipe,
   );
 }
+
 
 /// Source descriptor for a plugin dependency (resolved at clone time).
 @immutable

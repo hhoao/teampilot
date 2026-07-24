@@ -156,6 +156,10 @@ class AppPaths {
   static String skillRepoCacheDirForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'skills/repo-cache');
 
+  /// Installed skill pack runtimes (bin links + install.json exports).
+  static String skillPacksInstallDirForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'skills/packs');
+
   /// Installed plugin bundles.
   static String pluginsDirForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'plugins/installed');
@@ -258,6 +262,9 @@ class AppPaths {
   ) => _pathUnderTeampilotRoot(teampilotRoot, 'ui/open-workspace-tabs.json');
 
   String get skillRepoCacheDir => skillRepoCacheDirForTeampilotRoot(basePath);
+
+  String get skillPacksInstallDir =>
+      skillPacksInstallDirForTeampilotRoot(basePath);
 
   String get pluginMarketplaceCacheDir =>
       pluginMarketplaceCacheDirForTeampilotRoot(basePath);

@@ -4,8 +4,67 @@
   "repoOwner": "garrytan",
   "repoName": "gstack",
   "repoBranch": "main",
-  "acquire": {
-    "kind": "git-pack"
+  "recipe": {
+    "steps": [
+      {
+        "id": "sync",
+        "uses": "git.sync",
+        "with": {
+          "owner": "garrytan",
+          "name": "gstack",
+          "branch": "main"
+        }
+      },
+      {
+        "id": "skills",
+        "uses": "skill.register-pack",
+        "needs": [
+          "sync"
+        ]
+      },
+      {
+        "id": "bins",
+        "uses": "fs.materialize",
+        "needs": [
+          "sync"
+        ],
+        "with": {
+          "from": "bin",
+          "to": "$PACK_BIN",
+          "mode": "link"
+        }
+      },
+      {
+        "id": "setup",
+        "uses": "script.run",
+        "needs": [
+          "bins"
+        ],
+        "with": {
+          "cwd": "$SYNC_ROOT",
+          "command": [
+            "./setup"
+          ]
+        },
+        "optional": true
+      }
+    ],
+    "exports": {
+      "path": [
+        "$PACK_BIN"
+      ],
+      "skills": [
+        "garrytan/gstack:office-hours",
+        "garrytan/gstack:plan-ceo-review",
+        "garrytan/gstack:plan-eng-review",
+        "garrytan/gstack:plan-design-review",
+        "garrytan/gstack:review",
+        "garrytan/gstack:investigate",
+        "garrytan/gstack:qa",
+        "garrytan/gstack:cso",
+        "garrytan/gstack:ship"
+      ]
+    }
   },
   "skills": [
     {

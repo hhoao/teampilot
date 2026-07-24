@@ -21,7 +21,9 @@ void main() {
     expect(builtin.repoOwner, disk.repoOwner);
     expect(builtin.repoName, disk.repoName);
     expect(builtin.repoBranch, disk.repoBranch);
-    expect(builtin.acquire.kind, disk.acquire.kind);
+    expect(builtin.recipe.steps.map((s) => s.uses).toList(),
+        disk.recipe.steps.map((s) => s.uses).toList());
+    expect(builtin.recipe.exports.path, disk.recipe.exports.path);
     expect(builtin.skills.length, disk.skills.length);
     for (var i = 0; i < builtin.skills.length; i++) {
       expect(builtin.skills[i].id, disk.skills[i].id);

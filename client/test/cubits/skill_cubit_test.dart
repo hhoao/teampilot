@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/models/skill.dart';
-import 'package:teampilot/models/skill_acquire_spec.dart';
+import 'package:teampilot/models/skill_install_recipe.dart';
 import 'package:teampilot/repositories/skill_repository.dart';
 import 'package:teampilot/services/cli/installer_types.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -107,9 +107,9 @@ void main() {
       final id = await cubit.installTeamDependency(
         SkillDependencyRef(
           name: 'gstack',
-          acquire: const SkillAcquireSpec(
-            kind: 'script',
-            package: 'https://example.com/install-gstack.sh',
+          recipe: SkillInstallRecipe.scriptUrl(
+            url: 'https://example.com/install-gstack.sh',
+            skillId: expectedId,
             primaryDirectory: 'gstack',
           ),
           repoOwner: '',

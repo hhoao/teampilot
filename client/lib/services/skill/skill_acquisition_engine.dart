@@ -2,13 +2,18 @@ import 'dart:io';
 
 import '../../models/discoverable_team.dart';
 import '../../models/skill.dart';
-import '../../models/skill_acquire_spec.dart';
+import '../../models/skill_install_recipe.dart';
 import '../../models/skill_pack.dart';
 import '../cli/installer_types.dart';
+import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
+import 'acquire/skill_acquire_context.dart';
+import 'acquire/skill_step_handler.dart';
 import 'skill_install_service.dart';
 import 'skill_manifest_service.dart';
+import 'skill_pack_install_store.dart';
 import 'skill_pack_registry.dart';
+import 'skill_repo_disk_cache_service.dart';
 
 typedef SkillInstallRunner =
     Future<CliInstallerCommandResult> Function(CliInstallerCommand command);
@@ -31,21 +36,16 @@ class SkillAcquireResult {
     required this.success,
     this.message = '',
     this.skillId,
+    this.pathExports = const [],
   });
 
   final bool success;
   final String message;
   final String? skillId;
+  final List<String> pathExports;
 }
 
-/// Installs skills via declarative [SkillAcquireSpec] (`git-dir` default, `script`).
-///
-/// Desktop/local only for shell kinds in v1 — same host gate as Extension acquire.
-///
-/// Already-installed-by-id short-circuit lives in SkillCubit (Task 3 wiring): this
-/// engine does not skip work when [SkillDependencyRef.expectedLocalId] is already
-/// in the manifest. Callers that want idempotent install should pre-check by id
-/// before invoking [install] / [installDiscoverable].
+/// Runs [SkillInstallRecipe] graphs via a handler registry.
 class SkillAcquisitionEngine {
   SkillAcquisitionEngine({
     SkillInstallRunner? runner,
@@ -54,6 +54,10 @@ class SkillAcquisitionEngine {
     SkillDirectoryRegistrar? registerDirectory,
     Future<Set<String>> Function()? listSkillDirsWithSkillMd,
     SkillPackRegistry? packRegistry,
+    SkillRepoDiskCacheService? repoCache,
+    SkillPackInstallStore? packInstallStore,
+    Filesystem? fs,
+    Map<String, SkillStepHandler>? handlers,
   }) : _runner = runner ?? _defaultLocalRunner,
        _installGitDir = installGitDir,
        _isLocalAcquireSupported =
@@ -65,7 +69,19 @@ class SkillAcquisitionEngine {
            ).registerInstalledDirectory,
        _listSkillDirsWithSkillMd =
            listSkillDirsWithSkillMd ?? _defaultListSkillDirsWithSkillMd,
-       _packRegistry = packRegistry ?? SkillPackRegistry();
+       _packRegistry = packRegistry ?? SkillPackRegistry(),
+       _repoCache = repoCache ?? SkillRepoDiskCacheService(),
+       _packInstallStore = packInstallStore ?? SkillPackInstallStore(),
+       _fs = fs {
+    _handlers = {
+      'git.sync': _handleGitSync,
+      'skill.install-dir': _handleSkillInstallDir,
+      'skill.register-pack': _handleSkillRegisterPack,
+      'fs.materialize': _handleFsMaterialize,
+      'script.run': _handleScriptRun,
+      ...?handlers,
+    };
+  }
 
   final SkillInstallRunner _runner;
   final SkillGitDirInstaller _installGitDir;
@@ -73,6 +89,12 @@ class SkillAcquisitionEngine {
   final SkillDirectoryRegistrar _registerDirectory;
   final Future<Set<String>> Function() _listSkillDirsWithSkillMd;
   final SkillPackRegistry _packRegistry;
+  final SkillRepoDiskCacheService _repoCache;
+  final SkillPackInstallStore _packInstallStore;
+  final Filesystem? _fs;
+  late final Map<String, SkillStepHandler> _handlers;
+
+  Filesystem get fs => _fs ?? AppStorage.fs;
 
   static bool _defaultLocalAcquireSupported() => true;
 
@@ -112,20 +134,25 @@ class SkillAcquisitionEngine {
   Future<SkillAcquireResult> install(
     SkillDependencyRef ref, {
     bool overwrite = false,
-  }) {
+  }) async {
     final packId = ref.packId?.trim();
     if (packId != null && packId.isNotEmpty) {
-      return _installPackSkill(
+      return _runPack(
         packId: packId,
-        expectedLocalId: ref.expectedLocalId,
+        expectedSkillId: ref.expectedLocalId,
         overwrite: overwrite,
       );
     }
-    return _install(
-      acquire: ref.resolvedAcquire,
-      discovery: ref.toDiscoverableSkill(),
-      expectedLocalId: ref.expectedLocalId,
-      displayName: ref.name,
+    final recipe = ref.resolvedRecipe;
+    if (recipe == null || recipe.isEmpty) {
+      return const SkillAcquireResult(
+        success: false,
+        message: 'Skill dependency has no install recipe.',
+      );
+    }
+    return _runRecipe(
+      recipe: recipe,
+      expectedSkillId: ref.expectedLocalId,
       overwrite: overwrite,
     );
   }
@@ -133,28 +160,33 @@ class SkillAcquisitionEngine {
   Future<SkillAcquireResult> installDiscoverable(
     DiscoverableSkill d, {
     bool overwrite = false,
-  }) {
+  }) async {
     final packId = d.packId?.trim();
     if (packId != null && packId.isNotEmpty) {
-      return _installPackSkill(
+      return _runPack(
         packId: packId,
-        expectedLocalId: d.expectedLocalId,
+        expectedSkillId: d.expectedLocalId,
         overwrite: overwrite,
       );
     }
-    final acquire = d.acquire ?? const SkillAcquireSpec(kind: 'git-dir');
-    return _install(
-      acquire: acquire,
-      discovery: d,
-      expectedLocalId: d.expectedLocalId,
-      displayName: d.name,
+    final recipe = d.resolvedRecipe;
+    if (recipe == null || recipe.isEmpty) {
+      return const SkillAcquireResult(
+        success: false,
+        message: 'Discoverable skill has no install recipe.',
+      );
+    }
+    return _runRecipe(
+      recipe: recipe,
+      expectedSkillId: d.expectedLocalId,
       overwrite: overwrite,
+      discovery: d,
     );
   }
 
-  Future<SkillAcquireResult> _installPackSkill({
+  Future<SkillAcquireResult> _runPack({
     required String packId,
-    required String expectedLocalId,
+    required String expectedSkillId,
     required bool overwrite,
   }) async {
     final pack = _packRegistry.byId(packId);
@@ -164,331 +196,424 @@ class SkillAcquisitionEngine {
         message: 'Unknown skill pack: $packId',
       );
     }
-    if (pack.skills.isEmpty) {
-      return SkillAcquireResult(
-        success: false,
-        message: 'Skill pack $packId has no skills.',
-      );
-    }
-    final entry = pack.entryById(expectedLocalId);
-    if (entry == null) {
-      return SkillAcquireResult(
-        success: false,
-        message: 'Skill $expectedLocalId is not in pack $packId.',
-      );
-    }
-
-    switch (pack.acquire.kind) {
-      case 'git-pack':
-        return _installGitPack(
-          pack: pack,
-          expectedLocalId: expectedLocalId,
-          overwrite: overwrite,
-        );
-      case 'script':
-        // Opaque pack installer: run script once, then register every pack skill
-        // directory that exists on disk under its pack skill id.
-        final scriptResult = await _installScript(
-          acquire: pack.acquire.copyWith(primaryDirectory: entry.directory),
-          expectedLocalId: expectedLocalId,
-          displayName: pack.name,
-        );
-        if (!scriptResult.success) return scriptResult;
-        return _registerPackSkillsFromDisk(pack, expectedLocalId);
-      default:
+    if (pack.entryById(expectedSkillId) == null &&
+        !pack.skills.any((s) => s.id == expectedSkillId)) {
+      // Allow expected id even if only listed in exports; still require catalog
+      // membership when skills[] is non-empty.
+      if (pack.skills.isNotEmpty) {
         return SkillAcquireResult(
           success: false,
-          message: 'Unsupported pack acquire kind: ${pack.acquire.kind}',
+          message: 'Skill $expectedSkillId is not in pack $packId.',
         );
+      }
     }
-  }
-
-  Future<SkillAcquireResult> _installGitPack({
-    required SkillPack pack,
-    required String expectedLocalId,
-    required bool overwrite,
-  }) async {
-    try {
-      // One pack install registers every skill. Disk cache syncs the repo once;
-      // already-present skill dirs are skipped so partial retries stay idempotent.
-      for (final entry in pack.skills) {
-        final discovery = DiscoverableSkill(
-          key: entry.id,
-          name: entry.name,
-          description: '',
-          directory: entry.directory,
-          repoOwner: pack.repoOwner,
-          repoName: pack.repoName,
-          repoBranch: pack.repoBranch,
-          id: entry.id,
+    final packRoot = _packInstallStore.packRootFor(pack.id);
+    final packBin = _packInstallStore.packBinFor(pack.id);
+    await fs.ensureDir(packRoot);
+    final result = await _runRecipe(
+      recipe: pack.recipe,
+      expectedSkillId: expectedSkillId,
+      overwrite: overwrite,
+      pack: pack,
+      packRoot: packRoot,
+      packBin: packBin,
+    );
+    if (result.success) {
+      await _packInstallStore.save(
+        SkillPackInstallRecord(
           packId: pack.id,
-          acquire: const SkillAcquireSpec(kind: 'git-pack'),
-        );
-        try {
-          await _installGitDir(
-            discovery,
-            overwrite: overwrite,
-            idOverride: entry.id,
-          );
-        } catch (e) {
-          if (!overwrite && _isAlreadyExistsError(e)) continue;
-          rethrow;
-        }
-      }
-      return SkillAcquireResult(success: true, skillId: expectedLocalId);
-    } catch (e) {
-      return SkillAcquireResult(success: false, message: e.toString());
+          skillIds: [for (final s in pack.skills) s.id],
+          pathExports: result.pathExports,
+          envExports: const {},
+          installedAt: DateTime.now().millisecondsSinceEpoch,
+          packBin: packBin,
+        ),
+      );
     }
+    return result;
   }
 
-  static bool _isAlreadyExistsError(Object e) =>
-      e.toString().toLowerCase().contains('already exists');
-
-  Future<SkillAcquireResult> _registerPackSkillsFromDisk(
-    SkillPack pack,
-    String expectedLocalId,
-  ) async {
-    try {
-      final present = await _listSkillDirsWithSkillMd();
-      for (final entry in pack.skills) {
-        if (!present.contains(entry.directory)) continue;
-        await _registerDirectory(id: entry.id, directory: entry.directory);
-      }
-      if (!present.contains(
-        pack.entryById(expectedLocalId)?.directory ?? '',
-      )) {
-        return SkillAcquireResult(
-          success: false,
-          message:
-              'Pack install finished but ${pack.entryById(expectedLocalId)?.directory} was not found under skills/installed/.',
-        );
-      }
-      return SkillAcquireResult(success: true, skillId: expectedLocalId);
-    } catch (e) {
-      return SkillAcquireResult(success: false, message: e.toString());
-    }
-  }
-
-  Future<SkillAcquireResult> _install({
-    required SkillAcquireSpec acquire,
-    required DiscoverableSkill discovery,
-    required String expectedLocalId,
-    required String displayName,
+  Future<SkillAcquireResult> _runRecipe({
+    required SkillInstallRecipe recipe,
+    required String expectedSkillId,
     required bool overwrite,
+    SkillPack? pack,
+    DiscoverableSkill? discovery,
+    String? packRoot,
+    String? packBin,
   }) async {
-    switch (acquire.kind) {
-      case 'git-dir':
-        try {
-          final skill = await _installGitDir(
-            discovery,
-            overwrite: overwrite,
-            idOverride: discovery.id,
-          );
-          return SkillAcquireResult(success: true, skillId: skill.id);
-        } catch (e) {
-          return SkillAcquireResult(success: false, message: e.toString());
-        }
-      case 'git-pack':
-        final packId = discovery.packId?.trim();
-        if (packId == null || packId.isEmpty) {
-          return const SkillAcquireResult(
-            success: false,
-            message: 'git-pack acquire requires packId.',
-          );
-        }
-        return _installPackSkill(
-          packId: packId,
-          expectedLocalId: expectedLocalId,
-          overwrite: overwrite,
-        );
-      case 'script':
-        return _installScript(
-          acquire: acquire,
-          expectedLocalId: expectedLocalId,
-          displayName: displayName,
-        );
-      default:
+    final List<SkillInstallStep> ordered;
+    try {
+      ordered = recipe.sortedSteps();
+    } catch (e) {
+      return SkillAcquireResult(success: false, message: e.toString());
+    }
+    if (ordered.isEmpty) {
+      return const SkillAcquireResult(
+        success: false,
+        message: 'Install recipe has no steps.',
+      );
+    }
+
+    final ctx = SkillAcquireContext(
+      overwrite: overwrite,
+      expectedSkillId: expectedSkillId,
+      pack: pack,
+    );
+    if (packRoot != null) ctx.packRoot = packRoot;
+    if (packBin != null) ctx.packBin = packBin;
+    if (discovery != null) {
+      ctx.vars['DISCOVERY_DIR'] = discovery.directory;
+      ctx.vars['DISCOVERY_ID'] = discovery.expectedLocalId;
+      ctx.vars['DISCOVERY_NAME'] = discovery.name;
+      ctx.vars['REPO_OWNER'] = discovery.repoOwner;
+      ctx.vars['REPO_NAME'] = discovery.repoName;
+      ctx.vars['REPO_BRANCH'] = discovery.repoBranch;
+    }
+
+    for (final step in ordered) {
+      final handler = _handlers[step.uses];
+      if (handler == null) {
+        final msg = 'Unknown skill install step: ${step.uses}';
+        if (step.optional) continue;
+        return SkillAcquireResult(success: false, message: msg);
+      }
+      final stepResult = await handler(step, ctx);
+      if (!stepResult.success) {
+        if (step.optional) continue;
         return SkillAcquireResult(
           success: false,
-          message: 'Unknown skill acquire kind: ${acquire.kind}',
+          message: stepResult.message.isEmpty
+              ? 'Step ${step.id} failed'
+              : stepResult.message,
         );
+      }
+    }
+
+    ctx.applyExports(recipe.exports);
+    if (ctx.installedSkillIds.isEmpty && expectedSkillId.isNotEmpty) {
+      ctx.installedSkillIds.add(expectedSkillId);
+    }
+    return SkillAcquireResult(
+      success: true,
+      skillId: expectedSkillId,
+      pathExports: List.unmodifiable(ctx.pathExports),
+    );
+  }
+
+  Future<SkillStepResult> _handleGitSync(
+    SkillInstallStep step,
+    SkillAcquireContext ctx,
+  ) async {
+    final owner =
+        (step.withArgs['owner'] as String?)?.trim() ??
+        ctx.pack?.repoOwner ??
+        ctx.vars['REPO_OWNER'] ??
+        '';
+    final name =
+        (step.withArgs['name'] as String?)?.trim() ??
+        ctx.pack?.repoName ??
+        ctx.vars['REPO_NAME'] ??
+        '';
+    final branch =
+        (step.withArgs['branch'] as String?)?.trim() ??
+        ctx.pack?.repoBranch ??
+        ctx.vars['REPO_BRANCH'] ??
+        'main';
+    if (owner.isEmpty || name.isEmpty) {
+      return const SkillStepResult(
+        success: false,
+        message: 'git.sync requires owner and name',
+      );
+    }
+    final repo = SkillRepo(owner: owner, name: name, branch: branch);
+    try {
+      await _repoCache.ensureSynced(repo);
+    } catch (e) {
+      return SkillStepResult(success: false, message: e.toString());
+    }
+    final syncRoot = fs.pathContext.join(
+      AppStorage.paths.skillRepoCacheDir,
+      SkillRepoDiskCacheService.repoKey(repo),
+      'files',
+    );
+    ctx.syncRoot = syncRoot;
+    return SkillStepResult.ok;
+  }
+
+  Future<SkillStepResult> _handleSkillInstallDir(
+    SkillInstallStep step,
+    SkillAcquireContext ctx,
+  ) async {
+    final directory =
+        (step.withArgs['directory'] as String?)?.trim() ??
+        ctx.vars['DISCOVERY_DIR'] ??
+        '';
+    final id =
+        (step.withArgs['id'] as String?)?.trim() ??
+        ctx.expectedSkillId;
+    final skillName =
+        (step.withArgs['name'] as String?)?.trim() ??
+        directory.split('/').last;
+    final owner =
+        ctx.pack?.repoOwner ??
+        ctx.vars['REPO_OWNER'] ??
+        (step.withArgs['owner'] as String?)?.trim() ??
+        '';
+    final repoName =
+        ctx.pack?.repoName ??
+        ctx.vars['REPO_NAME'] ??
+        (step.withArgs['repo'] as String?)?.trim() ??
+        '';
+    final branch =
+        ctx.pack?.repoBranch ??
+        ctx.vars['REPO_BRANCH'] ??
+        (step.withArgs['branch'] as String?)?.trim() ??
+        'main';
+    if (directory.isEmpty || id.isEmpty) {
+      return const SkillStepResult(
+        success: false,
+        message: 'skill.install-dir requires directory and id',
+      );
+    }
+    final discovery = DiscoverableSkill(
+      key: id,
+      name: skillName,
+      description: '',
+      directory: directory,
+      repoOwner: owner,
+      repoName: repoName,
+      repoBranch: branch,
+      id: id,
+      packId: ctx.pack?.id,
+    );
+    try {
+      await _installGitDir(
+        discovery,
+        overwrite: ctx.overwrite,
+        idOverride: id,
+      );
+      if (!ctx.installedSkillIds.contains(id)) {
+        ctx.installedSkillIds.add(id);
+      }
+      return SkillStepResult.ok;
+    } catch (e) {
+      if (!ctx.overwrite && e.toString().toLowerCase().contains('already exists')) {
+        if (!ctx.installedSkillIds.contains(id)) {
+          ctx.installedSkillIds.add(id);
+        }
+        return SkillStepResult.ok;
+      }
+      return SkillStepResult(success: false, message: e.toString());
     }
   }
 
-  Future<SkillAcquireResult> _installScript({
-    required SkillAcquireSpec acquire,
-    required String expectedLocalId,
-    required String displayName,
-  }) async {
+  Future<SkillStepResult> _handleSkillRegisterPack(
+    SkillInstallStep step,
+    SkillAcquireContext ctx,
+  ) async {
+    final pack = ctx.pack;
+    if (pack == null || pack.skills.isEmpty) {
+      return const SkillStepResult(
+        success: false,
+        message: 'skill.register-pack requires an active pack with skills',
+      );
+    }
+    for (final entry in pack.skills) {
+      final stepResult = await _handleSkillInstallDir(
+        SkillInstallStep(
+          id: 'install-${entry.id}',
+          uses: 'skill.install-dir',
+          withArgs: {
+            'directory': entry.directory,
+            'id': entry.id,
+            'name': entry.name,
+          },
+        ),
+        ctx,
+      );
+      if (!stepResult.success) return stepResult;
+    }
+    return SkillStepResult.ok;
+  }
+
+  Future<SkillStepResult> _handleFsMaterialize(
+    SkillInstallStep step,
+    SkillAcquireContext ctx,
+  ) async {
+    final fromRel = (step.withArgs['from'] as String?)?.trim() ?? '';
+    final toTemplate =
+        (step.withArgs['to'] as String?)?.trim() ?? '\$PACK_BIN';
+    final mode = (step.withArgs['mode'] as String?)?.trim() ?? 'link';
+    final syncRoot = ctx.syncRoot;
+    if (fromRel.isEmpty || syncRoot == null || syncRoot.isEmpty) {
+      return const SkillStepResult(
+        success: false,
+        message: 'fs.materialize requires sync root and from',
+      );
+    }
+    final fromPath = fs.pathContext.join(syncRoot, fromRel);
+    if (!(await fs.stat(fromPath)).isDirectory) {
+      return SkillStepResult(
+        success: false,
+        message: 'fs.materialize source missing: $fromPath',
+      );
+    }
+    final toPath = ctx.resolve(toTemplate);
+    if (toPath.isEmpty) {
+      return const SkillStepResult(
+        success: false,
+        message: 'fs.materialize to path resolved empty',
+      );
+    }
+    await fs.ensureDir(fs.pathContext.dirname(toPath));
+    await fs.removeRecursive(toPath);
+    if (mode == 'copy') {
+      await fs.copyTree(source: fromPath, destination: toPath);
+    } else {
+      final ok = await fs.createSymlink(target: fromPath, linkPath: toPath);
+      if (!ok) {
+        return SkillStepResult(
+          success: false,
+          message: 'Failed to link $fromPath → $toPath',
+        );
+      }
+    }
+    ctx.packBin ??= toPath;
+    if (!ctx.pathExports.contains(toPath)) {
+      ctx.pathExports.add(toPath);
+    }
+    return SkillStepResult.ok;
+  }
+
+  Future<SkillStepResult> _handleScriptRun(
+    SkillInstallStep step,
+    SkillAcquireContext ctx,
+  ) async {
     if (!_isLocalAcquireSupported()) {
-      return const SkillAcquireResult(
+      return const SkillStepResult(
         success: false,
         message: 'Script skill install is not supported on this host.',
       );
     }
 
-    final commands = _installCommands(acquire);
-    if (commands.isEmpty) {
-      return const SkillAcquireResult(
-        success: false,
-        message: 'No installable script target for this skill.',
-      );
+    final commandRaw = step.withArgs['command'];
+    final package = (step.withArgs['package'] as String?)?.trim();
+    final cwdTemplate = (step.withArgs['cwd'] as String?)?.trim();
+    final cwd = cwdTemplate == null || cwdTemplate.isEmpty
+        ? ctx.syncRoot
+        : ctx.resolve(cwdTemplate);
+
+    if (commandRaw is List && commandRaw.isNotEmpty) {
+      final args = commandRaw.map((e) => e.toString()).toList(growable: false);
+      final script = cwd == null || cwd.isEmpty
+          ? args.map(_shellQuote).join(' ')
+          : 'cd ${_shellQuote(cwd)} && ${args.map(_shellQuote).join(' ')}';
+      final result = await _runner(CliInstallerCommand.unixShellScript(script));
+      if (result.exitCode != 0) {
+        return SkillStepResult(
+          success: false,
+          message: result.stderr.trim().isNotEmpty
+              ? result.stderr.trim()
+              : result.stdout.trim().isNotEmpty
+              ? result.stdout.trim()
+              : 'script.run failed',
+        );
+      }
+      return SkillStepResult.ok;
     }
 
+    // HTTPS installers: curl|sh, then register primary / new skill dir.
+    if (package == null || package.isEmpty) {
+      return const SkillStepResult(
+        success: false,
+        message: 'script.run requires command or package URL',
+      );
+    }
+    if (!_isSafeScriptUrl(package)) {
+      return const SkillStepResult(
+        success: false,
+        message: 'Unsafe script URL',
+      );
+    }
+    final alternatives = step.withArgs['alternatives'];
+    final urls = <String>[
+      package,
+      if (alternatives is List)
+        for (final a in alternatives)
+          if (a.toString().contains(':'))
+            a.toString().substring(a.toString().indexOf(':') + 1)
+          else
+            a.toString(),
+    ];
     final before = await _listSkillDirsWithSkillMd();
     CliInstallerCommandResult? last;
-    var ranOk = false;
-    for (final command in commands) {
-      last = await _runner(command);
+    var ok = false;
+    for (final url in urls) {
+      if (!_isSafeScriptUrl(url)) continue;
+      last = await _runner(
+        CliInstallerCommand('sh', ['-c', 'curl -fsSL "$url" | sh']),
+      );
       if (last.exitCode == 0) {
-        ranOk = true;
+        ok = true;
         break;
       }
     }
-    if (!ranOk) {
-      return SkillAcquireResult(
+    if (!ok) {
+      return SkillStepResult(
         success: false,
         message: last?.stderr.trim().isNotEmpty == true
             ? last!.stderr.trim()
-            : (last?.stdout.trim().isNotEmpty == true
-                  ? last!.stdout.trim()
-                  : 'Installation failed.'),
+            : 'Installation failed.',
       );
     }
 
     final after = await _listSkillDirsWithSkillMd();
     final newDirs = after.difference(before).toList()..sort();
-
-    final String? chosen;
+    final primary = (step.withArgs['primaryDirectory'] as String?)?.trim();
+    final id =
+        (step.withArgs['id'] as String?)?.trim() ?? ctx.expectedSkillId;
+    String? chosen;
     if (newDirs.isEmpty) {
-      // Script may have refreshed an existing matched dir (re-register path).
-      chosen = _pickExistingMatchedDirectory(
-        existingDirs: after,
-        primaryDirectory: acquire.primaryDirectory,
-        packageUrl: acquire.package,
-      );
-      if (chosen == null) {
-        return const SkillAcquireResult(
+      if (primary != null && after.contains(primary)) {
+        chosen = primary;
+      } else {
+        return const SkillStepResult(
           success: false,
           message:
               'Install command succeeded but no SKILL.md was found under '
               'skills/installed/.',
         );
       }
+    } else if (newDirs.length == 1) {
+      chosen = newDirs.single;
+    } else if (primary != null && newDirs.contains(primary)) {
+      chosen = primary;
     } else {
-      chosen = _pickPrimaryDirectory(
-        newDirs: newDirs,
-        primaryDirectory: acquire.primaryDirectory,
-        packageUrl: acquire.package,
+      return SkillStepResult(
+        success: false,
+        message:
+            'Multiple new skill directories appeared (${newDirs.join(', ')}); '
+            'set primaryDirectory.',
       );
-      if (chosen == null) {
-        return SkillAcquireResult(
-          success: false,
-          message:
-              'Multiple new skill directories appeared '
-              '(${newDirs.join(', ')}); set primaryDirectory or ensure one '
-              'matches the script URL basename.',
-        );
-      }
     }
-
     try {
-      final skill = await _registerDirectory(
-        id: expectedLocalId,
-        directory: chosen,
-      );
-      return SkillAcquireResult(
-        success: true,
-        skillId: skill.id,
-        message: displayName.isEmpty ? 'Installed.' : 'Installed $displayName.',
-      );
+      await _registerDirectory(id: id, directory: chosen!);
+      if (!ctx.installedSkillIds.contains(id)) {
+        ctx.installedSkillIds.add(id);
+      }
+      return SkillStepResult.ok;
     } catch (e) {
-      return SkillAcquireResult(success: false, message: e.toString());
+      return SkillStepResult(success: false, message: e.toString());
     }
   }
 
-  /// Primary command for [acquire], then one per `alternatives` entry
-  /// (`"<kind>:<arg>"`).
-  List<CliInstallerCommand> _installCommands(SkillAcquireSpec acquire) {
-    final commands = <CliInstallerCommand>[];
-    final primary = _commandForKind(acquire.kind, acquire.package);
-    if (primary != null) commands.add(primary);
-    for (final alt in acquire.alternatives) {
-      final idx = alt.indexOf(':');
-      if (idx <= 0) continue;
-      final kind = alt.substring(0, idx);
-      final arg = alt.substring(idx + 1);
-      final cmd = _commandForKind(kind, arg);
-      if (cmd != null) commands.add(cmd);
-    }
-    return commands;
-  }
-
-  CliInstallerCommand? _commandForKind(String kind, String? arg) {
-    final target = arg?.trim() ?? '';
-    if (target.isEmpty) return null;
-    switch (kind) {
-      case 'script':
-        if (!_isSafeScriptUrl(target)) return null;
-        return CliInstallerCommand('sh', ['-c', 'curl -fsSL "$target" | sh']);
-      default:
-        return null;
-    }
-  }
-
-  /// Same checks as [ExtensionAcquisitionEngine] (duplicated for v1).
   static bool _isSafeScriptUrl(String url) {
-    final uri = Uri.tryParse(url);
+    final uri = Uri.tryParse(url.trim());
     if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) return false;
-    return !RegExp(r'''[\s"'`$\\;|&<>()]''').hasMatch(url);
+    const banned = r'''\s'"\$\\;`|&<>()''';
+    return !RegExp('[$banned]').hasMatch(url);
   }
 
-  static String? _pickPrimaryDirectory({
-    required List<String> newDirs,
-    required String? primaryDirectory,
-    required String? packageUrl,
-  }) {
-    final preferred = primaryDirectory?.trim();
-    if (preferred != null && preferred.isNotEmpty) {
-      if (newDirs.contains(preferred)) return preferred;
-    }
-
-    final urlBase = _urlPathBasename(packageUrl);
-    if (urlBase != null) {
-      final matches = newDirs.where((d) => d == urlBase).toList();
-      if (matches.length == 1) return matches.single;
-    }
-
-    if (newDirs.length == 1) return newDirs.single;
-    return null;
-  }
-
-  /// When the script creates no *new* dirs, allow re-registering an existing
-  /// dir that matches [primaryDirectory] or the script URL basename.
-  static String? _pickExistingMatchedDirectory({
-    required Set<String> existingDirs,
-    required String? primaryDirectory,
-    required String? packageUrl,
-  }) {
-    final preferred = primaryDirectory?.trim();
-    if (preferred != null &&
-        preferred.isNotEmpty &&
-        existingDirs.contains(preferred)) {
-      return preferred;
-    }
-    final urlBase = _urlPathBasename(packageUrl);
-    if (urlBase != null && existingDirs.contains(urlBase)) {
-      return urlBase;
-    }
-    return null;
-  }
-
-  static String? _urlPathBasename(String? packageUrl) {
-    if (packageUrl == null || packageUrl.trim().isEmpty) return null;
-    final uri = Uri.tryParse(packageUrl.trim());
-    if (uri == null) return null;
-    final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-    if (segments.isEmpty) return null;
-    return segments.last;
-  }
+  static String _shellQuote(String value) => "'${value.replaceAll("'", "'\\''")}'";
 }

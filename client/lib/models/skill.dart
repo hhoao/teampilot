@@ -1,4 +1,4 @@
-import 'skill_acquire_spec.dart';
+import 'skill_install_recipe.dart';
 
 class Skill {
   const Skill({
@@ -290,7 +290,7 @@ class DiscoverableSkill {
     required this.repoBranch,
     this.id,
     this.packId,
-    this.acquire,
+    this.recipe,
   });
 
   final String key;
@@ -302,17 +302,30 @@ class DiscoverableSkill {
   final String repoName;
   final String repoBranch;
 
-  /// Optional explicit local skill id (preferred for `script` / pack acquire).
+  /// Optional explicit local skill id (preferred for script / pack acquire).
   final String? id;
   final String? packId;
-  final SkillAcquireSpec? acquire;
+  final SkillInstallRecipe? recipe;
 
   String get source => '$repoOwner/$repoName';
 
+  SkillInstallRecipe? get resolvedRecipe {
+    if (packId != null && packId!.trim().isNotEmpty) return null;
+    if (recipe != null && !recipe!.isEmpty) return recipe;
+    if (repoOwner.isEmpty || repoName.isEmpty || directory.isEmpty) {
+      return recipe;
+    }
+    return SkillInstallRecipe.singleGitDir(
+      owner: repoOwner,
+      name: repoName,
+      branch: repoBranch.isEmpty ? 'main' : repoBranch,
+      directory: directory,
+      skillId: expectedLocalId,
+      skillName: name,
+    );
+  }
+
   /// Primary local [Skill.id] for install via [SkillAcquisitionEngine].
-  ///
-  /// Prefer non-empty [id], else non-empty [key], else pack / script / git-dir
-  /// rules (same family as [SkillDependencyRef.expectedLocalId]).
   String get expectedLocalId {
     final explicit = id?.trim();
     if (explicit != null && explicit.isNotEmpty) return explicit;
@@ -323,9 +336,13 @@ class DiscoverableSkill {
       final basename = directory.split('/').last;
       return '$pack:$basename';
     }
-    final resolved = acquire ?? const SkillAcquireSpec(kind: 'git-dir');
-    if (resolved.kind == 'script') {
-      return skillScriptIdFromPackageUrl(resolved.package);
+    final steps = recipe?.steps ?? const <SkillInstallStep>[];
+    for (final step in steps) {
+      if (step.uses != 'script.run') continue;
+      final package = (step.withArgs['package'] as String?)?.trim();
+      if (package != null && package.isNotEmpty) {
+        return skillScriptIdFromPackageUrl(package);
+      }
     }
     final basename = directory.split('/').last;
     if (repoOwner.isNotEmpty && repoName.isNotEmpty && basename.isNotEmpty) {
@@ -345,11 +362,11 @@ class DiscoverableSkill {
     'repoBranch': repoBranch,
     if (id != null && id!.isNotEmpty) 'id': id,
     if (packId != null && packId!.isNotEmpty) 'packId': packId,
-    if (acquire != null) 'acquire': acquire!.toJson(),
+    if (recipe != null && !recipe!.isEmpty) 'recipe': recipe!.toJson(),
   };
 
   factory DiscoverableSkill.fromJson(Map<String, Object?> json) {
-    final acquireRaw = json['acquire'];
+    final recipeRaw = json['recipe'];
     final idRaw = (json['id'] as String?)?.trim();
     final packRaw = (json['packId'] as String?)?.trim();
     return DiscoverableSkill(
@@ -363,8 +380,8 @@ class DiscoverableSkill {
       repoBranch: json['repoBranch'] as String? ?? '',
       id: idRaw == null || idRaw.isEmpty ? null : idRaw,
       packId: packRaw == null || packRaw.isEmpty ? null : packRaw,
-      acquire: acquireRaw is Map
-          ? SkillAcquireSpec.fromJson(acquireRaw.cast<String, Object?>())
+      recipe: recipeRaw is Map
+          ? SkillInstallRecipe.fromJson(recipeRaw.cast<String, Object?>())
           : null,
     );
   }

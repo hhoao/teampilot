@@ -1,4 +1,4 @@
-import '../../models/skill_acquire_spec.dart';
+import '../../models/skill_install_recipe.dart';
 import '../../models/skill_pack.dart';
 
 /// Built-in / in-app skill pack catalog (extensible later via git registry).
@@ -16,15 +16,9 @@ class SkillPackRegistry {
   List<SkillPack> all() => _byId.values.toList(growable: false);
 }
 
-/// Garry Tan's gstack sprint specialists as one installable pack.
-SkillPack get kGstackSkillPack => SkillPack(
-  id: 'garrytan/gstack',
-  name: 'gstack',
-  repoOwner: 'garrytan',
-  repoName: 'gstack',
-  repoBranch: 'main',
-  acquire: const SkillAcquireSpec(kind: 'git-pack'),
-  skills: const [
+/// Garry Tan's gstack sprint specialists — reference step-graph pack.
+SkillPack get kGstackSkillPack {
+  const skills = [
     SkillPackEntry(
       id: 'garrytan/gstack:office-hours',
       directory: 'office-hours',
@@ -70,7 +64,57 @@ SkillPack get kGstackSkillPack => SkillPack(
       directory: 'ship',
       name: 'Ship',
     ),
-  ],
-);
+  ];
+  return SkillPack(
+    id: 'garrytan/gstack',
+    name: 'gstack',
+    repoOwner: 'garrytan',
+    repoName: 'gstack',
+    repoBranch: 'main',
+    skills: skills,
+    recipe: SkillInstallRecipe(
+      steps: const [
+        SkillInstallStep(
+          id: 'sync',
+          uses: 'git.sync',
+          withArgs: {
+            'owner': 'garrytan',
+            'name': 'gstack',
+            'branch': 'main',
+          },
+        ),
+        SkillInstallStep(
+          id: 'skills',
+          uses: 'skill.register-pack',
+          needs: ['sync'],
+        ),
+        SkillInstallStep(
+          id: 'bins',
+          uses: 'fs.materialize',
+          needs: ['sync'],
+          withArgs: {
+            'from': 'bin',
+            'to': r'$PACK_BIN',
+            'mode': 'link',
+          },
+        ),
+        SkillInstallStep(
+          id: 'setup',
+          uses: 'script.run',
+          needs: ['bins'],
+          withArgs: {
+            'cwd': r'$SYNC_ROOT',
+            'command': ['./setup'],
+          },
+          optional: true,
+        ),
+      ],
+      exports: SkillInstallExports(
+        skills: [for (final s in skills) s.id],
+        path: const [r'$PACK_BIN'],
+      ),
+    ),
+  );
+}
 
 List<SkillPack> builtinSkillPacks() => [kGstackSkillPack];
