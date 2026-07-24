@@ -254,6 +254,64 @@ void main() {
     expect(coordinator.isUserDisconnectLatched(profile.id), isFalse);
     await coordinator.dispose();
   });
+
+  test('userDisconnect aborts in-flight reconnect without leaving pool open', () async {
+    var createCount = 0;
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    final sessionSignals = <String>[];
+    final events = SshConnectionEvents();
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      events: events,
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        createCount += 1;
+        if (createCount > 1) {
+          await Future<void>.delayed(const Duration(milliseconds: 150));
+        }
+        return _InstantAuthClient();
+      },
+    );
+    final coordinator = SshProfileConnectionCoordinator(
+      factory: factory,
+      events: events,
+      profileResolver: (_) => profile,
+      policy: const SshProfileReconnectPolicy(
+        disconnectCoalesce: Duration(milliseconds: 10),
+        initialDelay: Duration.zero,
+        maxAttempts: 3,
+      ),
+    );
+    coordinator.sessionReconnectSignals.listen(sessionSignals.add);
+
+    await coordinator.userConnect(profile);
+    final client = await factory.clientForStorage(profile);
+    client.close();
+
+    await Future<void>.delayed(const Duration(milliseconds: 25));
+    expect(
+      coordinator.monitorFor('p1').state.status,
+      RemoteConnectionStatus.reconnecting,
+    );
+
+    await coordinator.userDisconnect(profile.id);
+
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    expect(coordinator.isUserDisconnectLatched(profile.id), isTrue);
+    expect(factory.hasLiveStorageClient(profile.id), isFalse);
+    expect(sessionSignals, isEmpty);
+    expect(
+      coordinator.monitorFor('p1').state.status,
+      RemoteConnectionStatus.down,
+    );
+    await coordinator.dispose();
+  });
 }
 
 class _InstantAuthClient extends SSHClient {

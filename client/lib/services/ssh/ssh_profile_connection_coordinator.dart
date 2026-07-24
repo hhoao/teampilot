@@ -98,9 +98,14 @@ class SshProfileConnectionCoordinator {
   }
 
   void _onStoragePoolChanged(String profileId) {
-    if (_factory.hasLiveStorageClient(profileId)) {
-      _userDisconnectLatched.remove(profileId);
+    if (!_factory.hasLiveStorageClient(profileId)) return;
+    // Auto-reconnect must not clear the user-disconnect latch; only deliberate
+    // pool opens (userConnect / external clientForStorage) do.
+    if (_userDisconnectLatched.contains(profileId) &&
+        _reconnectInFlight[profileId] == true) {
+      return;
     }
+    _userDisconnectLatched.remove(profileId);
   }
 
   void _onTransportClosed(
@@ -209,6 +214,7 @@ class SshProfileConnectionCoordinator {
     if (_disposed) return;
     final profileId = profile.id;
     if (_reconnectInFlight[profileId] == true) return;
+    if (_userDisconnectLatched.contains(profileId)) return;
     if (monitorFor(profileId).state.isHealthy) return;
 
     _reconnectInFlight[profileId] = true;
@@ -223,6 +229,11 @@ class SshProfileConnectionCoordinator {
 
     try {
       await reconnectStorage(profile);
+      if (_userDisconnectLatched.contains(profileId)) {
+        _factory.disconnectProfile(profileId);
+        monitor.reconnectFailed();
+        return;
+      }
       if (!_sessionReconnectSignals.isClosed) {
         _sessionReconnectSignals.add(profileId);
       }
@@ -230,10 +241,19 @@ class SshProfileConnectionCoordinator {
       if (sessionPlane != null) {
         await sessionPlane(profileId);
       }
+      if (_userDisconnectLatched.contains(profileId)) {
+        _factory.disconnectProfile(profileId);
+        monitor.reconnectFailed();
+        return;
+      }
       monitor.reconnected();
       _reconnectAttempts.remove(profileId);
       appLogger.i('[ssh] profile $profileId reconnect succeeded');
     } on Object catch (error, stackTrace) {
+      if (_userDisconnectLatched.contains(profileId)) {
+        monitor.reconnectFailed();
+        return;
+      }
       monitor.reconnectFailed();
       appLogger.w(
         '[ssh] profile $profileId reconnect failed: $error',
