@@ -67,6 +67,31 @@ Expected open sequence after that work:
 | Title-bar `AnimatedOpacity` / tab chrome | High rebuild counts on open | Prefer not animating whole tab strips on every open; keep rebuilds local |
 | `Offstage` keep-alive tabs | Still layouts inactive children | Use `TpKeepAliveLayer` instead |
 | `workingSessionIds` / session title fan-out | First message / agent turns used to rebuild whole sidebar + `ChatPageShell` → bulk `RenderParagraph` | Leaf-only selects: structure snapshots for list shells, `SessionRowContent` for row/tab text, Running host for membership; never put `workingSessionIds` or full title-bearing `sessions`/`tabs` in page-shell `buildWhen` |
+| **Cold `TextStyle` / font family** | First paint shapes glyphs for a new family+size+weight tuple; **monospace on form fields** can cost seconds and rarely shows as a named hotspot in DevTools | Use `TpTextStyles` / warmed host styles only; never hardcode `'monospace'` or ad-hoc `TextStyle` on hot paths — see [Typography and glyph warmup](#typography-and-glyph-warmup) |
+
+## Typography and glyph warmup
+
+**Cold font shaping** can freeze a dialog for seconds while DevTools only shows
+generic `Layout` / `Build` — easy to blame field count when the real issue is
+`TextStyle`. Example: launch-config path fields on **monospace** felt broken;
+same fields on boot-warmed `TpTextStyles.of(context).md` opened instantly.
+
+At boot, [`UiInteractiveWarmup`](../client/lib/services/app/ui_interactive_warmup.dart)
+pre-shapes every style from `textStylesForThemeWarmup` (`TpTextStyles` + inputs +
+[`appMarkdownTextStyles`](../client/lib/theme/app_markdown_style_sheet.dart)).
+Hot-path paint must hit an already-warmed `(family, size, weight)` tuple;
+`copyWith(color: …)` is fine, changing family/size/weight is not.
+
+| Do | Don't |
+|----|-------|
+| `TpTextStyles` / `CompiledMarkdownStyle` for forms, chrome, chat | `textTheme.bodyMedium ?? const TextStyle()`, `fontFamily: 'monospace'` on many fields |
+| Add new sizes to warmup + keep [`app_markdown_warmup_coverage_test.dart`](../client/test/theme/app_markdown_warmup_coverage_test.dart) green | Ad-hoc `TextStyle(fontSize: …)` in product UI |
+
+**Diagnose:** A/B mono → `.md` on suspect fields; if that fixes it, typography
+was the cause — not deferral. Probe: `flutter test test/widgets/run/text_field_mount_cost_probe_test.dart --name cold_six_text_fields` (one case per process).
+
+**Exceptions:** diff line-height `TextPainter` (must match `CodeEditorStyle`),
+proportional monogram glyphs, editor/terminal (warmed separately).
 
 ## Checklist for a new heavy surface
 
@@ -77,6 +102,7 @@ Expected open sequence after that work:
 - [ ] Inactive stack layers use `TpKeepAliveLayer`, not `Offstage`, when layout cost matters.
 - [ ] DevTools export + `analyze_performance_json.dart --format summary` shows the expensive work off Frame 0.
 - [ ] High-frequency session presence (`workingSessionIds`, attention waiting) is selected only in leaf widgets that render that presence. List shells select structure snapshots only; row/tab text selects row-content snapshots. Do not add `workingSessionIds` or full `sessions` / title-bearing tab snapshots to page-shell `buildWhen`.
+- [ ] Form/dialog text uses warmed `TpTextStyles` (see above); defer only after typography is clean.
 
 ## Measuring
 
