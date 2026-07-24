@@ -35,6 +35,9 @@ class SshProfileConnectionCoordinator {
        _profileResolver = profileResolver {
     events.onTransportClosed = _onTransportClosed;
     events.onKeepAliveFailed = _onKeepAliveFailed;
+    _poolChangesSubscription = _factory.storagePoolChanges.listen(
+      _onStoragePoolChanged,
+    );
   }
 
   final SshClientFactory _factory;
@@ -53,6 +56,8 @@ class SshProfileConnectionCoordinator {
   final Map<String, bool> _reconnectInFlight = {};
   final StreamController<String> _sessionReconnectSignals =
       StreamController<String>.broadcast();
+  final Set<String> _userDisconnectLatched = {};
+  StreamSubscription<String>? _poolChangesSubscription;
 
   var _disposed = false;
 
@@ -66,6 +71,42 @@ class SshProfileConnectionCoordinator {
 
   Stream<RemoteConnectionState> changesFor(String profileId) =>
       monitorFor(profileId).changes;
+
+  bool isUserDisconnectLatched(String profileId) =>
+      _userDisconnectLatched.contains(profileId);
+
+  /// User-initiated durable connect: opens the storage pool and tracks liveness.
+  Future<void> userConnect(
+    SshProfile profile, {
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    _userDisconnectLatched.remove(profile.id);
+    await _factory.clientForStorage(profile, timeout: timeout);
+    monitorFor(profile.id);
+  }
+
+  /// User-initiated disconnect: suppress auto-reconnect until the pool is live again.
+  Future<void> userDisconnect(String profileId) async {
+    _userDisconnectLatched.add(profileId);
+    _disconnectCoalesceTimers[profileId]?.cancel();
+    _disconnectCoalesceTimers.remove(profileId);
+    _reconnectTimers[profileId]?.cancel();
+    _reconnectTimers.remove(profileId);
+    _pendingDisconnectErrors.remove(profileId);
+    _pendingDisconnectStacks.remove(profileId);
+    _factory.disconnectProfile(profileId);
+  }
+
+  void _onStoragePoolChanged(String profileId) {
+    if (!_factory.hasLiveStorageClient(profileId)) return;
+    // Auto-reconnect must not clear the user-disconnect latch; only deliberate
+    // pool opens (userConnect / external clientForStorage) do.
+    if (_userDisconnectLatched.contains(profileId) &&
+        _reconnectInFlight[profileId] == true) {
+      return;
+    }
+    _userDisconnectLatched.remove(profileId);
+  }
 
   void _onTransportClosed(
     String profileId,
@@ -147,7 +188,11 @@ class SshProfileConnectionCoordinator {
   }
 
   void _scheduleReconnect(String profileId) {
-    if (_disposed || _reconnectInFlight[profileId] == true) return;
+    if (_disposed ||
+        _reconnectInFlight[profileId] == true ||
+        _userDisconnectLatched.contains(profileId)) {
+      return;
+    }
     final profile = _profileResolver(profileId);
     if (profile == null) return;
 
@@ -169,6 +214,7 @@ class SshProfileConnectionCoordinator {
     if (_disposed) return;
     final profileId = profile.id;
     if (_reconnectInFlight[profileId] == true) return;
+    if (_userDisconnectLatched.contains(profileId)) return;
     if (monitorFor(profileId).state.isHealthy) return;
 
     _reconnectInFlight[profileId] = true;
@@ -183,6 +229,11 @@ class SshProfileConnectionCoordinator {
 
     try {
       await reconnectStorage(profile);
+      if (_userDisconnectLatched.contains(profileId)) {
+        _factory.disconnectProfile(profileId);
+        monitor.reconnectFailed();
+        return;
+      }
       if (!_sessionReconnectSignals.isClosed) {
         _sessionReconnectSignals.add(profileId);
       }
@@ -190,10 +241,19 @@ class SshProfileConnectionCoordinator {
       if (sessionPlane != null) {
         await sessionPlane(profileId);
       }
+      if (_userDisconnectLatched.contains(profileId)) {
+        _factory.disconnectProfile(profileId);
+        monitor.reconnectFailed();
+        return;
+      }
       monitor.reconnected();
       _reconnectAttempts.remove(profileId);
       appLogger.i('[ssh] profile $profileId reconnect succeeded');
     } on Object catch (error, stackTrace) {
+      if (_userDisconnectLatched.contains(profileId)) {
+        monitor.reconnectFailed();
+        return;
+      }
       monitor.reconnectFailed();
       appLogger.w(
         '[ssh] profile $profileId reconnect failed: $error',
@@ -229,6 +289,8 @@ class SshProfileConnectionCoordinator {
 
   Future<void> dispose() async {
     _disposed = true;
+    await _poolChangesSubscription?.cancel();
+    _poolChangesSubscription = null;
     for (final timer in _disconnectCoalesceTimers.values) {
       timer.cancel();
     }

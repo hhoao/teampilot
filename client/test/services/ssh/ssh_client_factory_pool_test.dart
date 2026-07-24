@@ -97,6 +97,137 @@ void main() {
     expect(second.isClosed, isFalse);
     expect(createCount, 2);
   });
+
+  test('hasLiveStorageClient is false until clientForStorage succeeds', () async {
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return _InstantAuthClient();
+      },
+    );
+
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    expect(factory.hasLiveStorageClient(profile.id), isFalse);
+    await factory.clientForStorage(profile);
+    expect(factory.hasLiveStorageClient(profile.id), isTrue);
+  });
+
+  test('hasLiveStorageClient stays false while authentication is pending', () async {
+    final authGate = Completer<void>();
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return _DelayedAuthClient(authGate.future);
+      },
+    );
+
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    expect(factory.hasLiveStorageClient(profile.id), isFalse);
+    final pending = factory.clientForStorage(profile);
+    expect(factory.hasLiveStorageClient(profile.id), isFalse);
+    authGate.complete();
+    await pending;
+    expect(factory.hasLiveStorageClient(profile.id), isTrue);
+  });
+
+  test('storagePoolChanges emits on open and disconnectProfile', () async {
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return _InstantAuthClient();
+      },
+    );
+
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    final events = <String>[];
+    final sub = factory.storagePoolChanges.listen(events.add);
+    await factory.clientForStorage(profile);
+    factory.disconnectProfile(profile.id);
+    await Future<void>.delayed(Duration.zero);
+    expect(events, [profile.id, profile.id]);
+    await sub.cancel();
+  });
+
+  test(
+    'auth failure leaves hasLiveStorageClient false and emits no open',
+    () async {
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          return _FailAuthClient();
+        },
+      );
+
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'example.com',
+        username: 'alice',
+      );
+
+      final events = <String>[];
+      final sub = factory.storagePoolChanges.listen(events.add);
+      await expectLater(
+        factory.clientForStorage(profile),
+        throwsA(isA<StateError>()),
+      );
+      expect(factory.hasLiveStorageClient(profile.id), isFalse);
+      expect(events, isEmpty);
+      await sub.cancel();
+    },
+  );
+
+  test('storagePoolChanges emits when transport closes pooled client', () async {
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return _InstantAuthClient();
+      },
+    );
+
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    final client = await factory.clientForStorage(profile);
+    expect(factory.hasLiveStorageClient(profile.id), isTrue);
+
+    final events = <String>[];
+    final sub = factory.storagePoolChanges.listen(events.add);
+    client.close();
+    await client.done;
+    await Future<void>.delayed(Duration.zero);
+
+    expect(events, [profile.id]);
+    expect(factory.hasLiveStorageClient(profile.id), isFalse);
+    await sub.cancel();
+  });
 }
 
 class _InstantAuthClient extends SSHClient {
@@ -104,6 +235,25 @@ class _InstantAuthClient extends SSHClient {
 
   @override
   Future<void> get authenticated => Future.value();
+}
+
+class _DelayedAuthClient extends SSHClient {
+  _DelayedAuthClient(Future<void> gate)
+    : _gate = gate,
+      super(_FakeSSHSocket(), username: 'test');
+
+  final Future<void> _gate;
+
+  @override
+  Future<void> get authenticated => _gate;
+}
+
+class _FailAuthClient extends SSHClient {
+  _FailAuthClient() : super(_FakeSSHSocket(), username: 'test');
+
+  @override
+  Future<void> get authenticated =>
+      Future<void>.error(StateError('authentication failed'));
 }
 
 class _FakeSSHSocket implements SSHSocket {

@@ -714,6 +714,18 @@
   "sshProfileStatusConnecting": "Connecting…",
   "sshProfileStatusConnected": "Connected",
   "sshProfileStatusError": "Error",
+  "sshProfileStatusReconnecting": "Reconnecting…",
+  "sshProfileStatusAuthFailed": "Authentication failed",
+  "sshHostsPillCount": "{count, plural, =1{1 host} other{{count} hosts}}",
+  "@sshHostsPillCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "sshHostsPillConnecting": "Connecting…",
+  "sshHostsPanelTitle": "Remote Hosts",
+  "sshHostsRowKind": "SSH Host",
+  "sshHostsManage": "Manage Remote Hosts…",
   "sshProfileTest": "Test",
   "sshProfileConnect": "Connect",
   "sshProfileDisconnect": "Disconnect",

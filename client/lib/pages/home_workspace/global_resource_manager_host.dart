@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/chat_cubit.dart';
@@ -21,6 +22,7 @@ import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../services/terminal/workspace_terminal_run_service.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/workspace_status_bar/resource_usage_status_item.dart';
+import '../../widgets/workspace_status_bar/ssh_hosts_status_item.dart';
 import '../../widgets/workspace_status_bar/workspace_status_bar.dart';
 import 'home_workspace_tab_scope.dart';
 
@@ -271,7 +273,13 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
           children: [
             Expanded(child: widget.child),
             WorkspaceStatusBar(
-              items: [ResourceUsageStatusItem()],
+              items: [
+                ResourceUsageStatusItem(),
+                SshHostsStatusItem(
+                  onManage: () =>
+                      GoRouter.of(context).go('/config/ssh-profiles'),
+                ),
+              ],
             ),
           ],
         ),

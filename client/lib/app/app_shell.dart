@@ -50,6 +50,7 @@ import '../repositories/cli_presets_repository.dart';
 import '../cubits/skill_cubit.dart';
 import '../repositories/mcp_repository.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
+import '../cubits/ssh_connection_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
 import '../cubits/github_account_cubit.dart';
 import '../config/github_oauth_config.dart';
@@ -208,6 +209,7 @@ class AppShell {
     required this.extensionCubit,
     required this.appUpdateCubit,
     required this.sshProfileCubit,
+    required this.sshConnectionCubit,
     required this.githubCredentialsStore,
     required this.githubAccountCubit,
     required this.appSettings,
@@ -278,6 +280,7 @@ class AppShell {
   final ExtensionCubit extensionCubit;
   final AppUpdateCubit appUpdateCubit;
   final SshProfileCubit sshProfileCubit;
+  final SshConnectionCubit sshConnectionCubit;
   final GithubCredentialsStore githubCredentialsStore;
   final GithubAccountCubit githubAccountCubit;
   final AppSettingsRepository appSettings;
@@ -959,6 +962,14 @@ Future<AppShell> buildAppShell({
     onReconnectSessionPlane: chatCubit.reconnectSshProfile,
   );
 
+  final sshConnectionCubit = SshConnectionCubit(
+    factory: sshClientFactory,
+    coordinator: sshProfileConnectionCoordinator,
+    selectProfileOnConnect: Platform.isAndroid
+        ? (id) => sshProfileCubit.selectProfile(id)
+        : null,
+  );
+
   final scheduleCalculator = AutomationScheduleCalculator();
   final automationDispatcher = AutomationDispatcher(
     repository: automationRepo,
@@ -1229,6 +1240,7 @@ Future<AppShell> buildAppShell({
     extensionCubit: extensionCubit,
     appUpdateCubit: appUpdateCubit,
     sshProfileCubit: sshProfileCubit,
+    sshConnectionCubit: sshConnectionCubit,
     githubCredentialsStore: githubCredentialsStore,
     githubAccountCubit: githubAccountCubit,
     appSettings: appSettings,

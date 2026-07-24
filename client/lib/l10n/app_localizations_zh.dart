@@ -1593,6 +1593,29 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sshProfileStatusError => '错误';
 
   @override
+  String get sshProfileStatusReconnecting => '重连中…';
+
+  @override
+  String get sshProfileStatusAuthFailed => '认证失败';
+
+  @override
+  String sshHostsPillCount(int count) {
+    return '$count 台主机';
+  }
+
+  @override
+  String get sshHostsPillConnecting => '连接中…';
+
+  @override
+  String get sshHostsPanelTitle => '远程主机';
+
+  @override
+  String get sshHostsRowKind => 'SSH 主机';
+
+  @override
+  String get sshHostsManage => '管理远程主机';
+
+  @override
   String get sshProfileTest => '测试';
 
   @override
