@@ -14,15 +14,23 @@ profiles config page.
 | Topic | Choice |
 |-------|--------|
 | Parity | Align Orca `SshStatusSegment` UX (pill + host rows + Connect/Disconnect + Manage) |
-| Connection semantics | Durable keep-alive per SSH profile (not one-shot probe) |
+| Connection semantics | Durable keep-alive of the **storage-pool** SSH client per profile |
+| Connect transport | `SshClientFactory.clientForStorage(profile)` (+ coordinator monitor tracking) |
+| Disconnect transport | Cancel coordinator reconnect for that id + `SshClientFactory.disconnectProfile(id)` |
+| Pill count | **Connected** host count only (Orca: `"N hosts"` / `"1 host"`) |
+| Overall aggregate | Orca priority: all-connected → any-connecting → any-connected(partial) → disconnected |
 | Empty state | Hide the entire pill when there are zero SSH profiles |
-| Architecture | New `SshConnectionCubit` as UI truth; transport via existing `SshProfileConnectionCoordinator` |
+| Architecture | New `SshConnectionCubit` as UI truth over factory + `SshProfileConnectionCoordinator` |
 | Config page | Connect / Disconnect share the same Cubit (remove ephemeral per-card status maps) |
+| Test button | Remains a separate one-shot probe (`SshProfileConnectionTester`); never updates durable status as connected |
 | Placement | New `SshHostsStatusItem` on `WorkspaceStatusBar`, rightmost (Orca hosts-at-edge) |
 | Manage link | Navigate to `/config/ssh-profiles` and close the popover |
-| Startup | Do not auto-connect all hosts; reflect already-active connections only |
+| Startup | Do not auto-connect all hosts; seed Cubit from profiles already present in the storage pool |
 | Profile edit while connected | Keep existing connection; next Connect uses new config |
-| Platform | Same UI on desktop and Android; still hide when no profiles |
+| Android + Connect | Same durable pool Connect as desktop; **also** `SshProfileCubit.selectProfile(id)` so the active storage backend follows |
+| Android + Disconnect | Tear down pool only; **do not** clear / change `selectedProfile` |
+| Desktop + Connect | Pool only; does **not** change selected / active storage backend |
+| Platform | Same status-bar UI on desktop and Android; still hide when no profiles |
 
 ## Non-goals (v1)
 
@@ -31,6 +39,7 @@ profiles config page.
 - Add-host form inside the popover (use Manage)
 - Force-kill sessions on Disconnect (reuse existing coordinator session-plane signals)
 - Auto-connect-all on app launch
+- Destructive overall-dot color on the closed pill (errors live in the open panel)
 
 ## Product UX
 
@@ -40,16 +49,20 @@ profiles config page.
   Manager (Orca hosts-at-edge).
 - Hidden when `SshProfileCubit` has no profiles.
 - Content: host icon + label + overall status dot.
-  - Label: `N hosts` / `1 host` (l10n), or connecting copy while any host is
-    connecting / reconnecting.
-  - Icon: disconnected-all → server-off; else server (optional small spinner
-    while connecting).
-  - Overall dot:
-    - emerald — all or partial connected
-    - yellow — connecting / reconnecting (and none yet connected, or in progress)
-    - muted — all disconnected
-    - destructive — error / auth-failed with no connected hosts (optional;
-      errors always detailed in the open panel)
+  - Label: **connected count** as `N hosts` / `1 host` (l10n). While
+    `overallStatus == connecting`, show connecting copy instead (Orca
+    `Connecting…`).
+  - Icon: `overallStatus == connecting` → spinner; all disconnected →
+    server-off; else server.
+  - Overall status (Orca `overallStatus` order — first match wins):
+    1. every host connected → `connected`
+    2. any host connecting **or** reconnecting → `connecting`
+    3. any host connected → `partial`
+    4. else → `disconnected`
+  - Overall dot (no destructive on closed pill):
+    - emerald — `connected` or `partial`
+    - yellow — `connecting`
+    - muted — `disconnected`
 - Compact mode (`WorkspaceStatusBar` &lt; 720): icon + dot only (same pattern as
   Resource Manager).
 
@@ -59,10 +72,13 @@ Popover anchored above the pill via existing status-bar popover pattern
 (`TpPopover` / Resource Manager style):
 
 1. **Header:** “Remote Hosts” (l10n → 远程主机).
-2. **Host rows:** connected first, then inactive / disconnected / error.
+2. **Host rows:** `connected` first; everything else (including
+   `connecting` / `reconnecting` / `error` / `auth-failed` / `disconnected`)
+   below — Orca “inactive” bucket.
    - Left: per-host status dot.
    - Middle: primary label (profile name, fallback host) + subtitle
-     `SSH Host · {status}` (l10n).
+     `SSH Host · {status}` (l10n); include short error detail when
+     `error` / `auth-failed`.
    - Right: **Connect** when reconnectable (`disconnected`, `error`,
      `auth-failed`); **Disconnect** when `connected`; no action while
      `connecting` / `reconnecting`.
@@ -70,12 +86,27 @@ Popover anchored above the pill via existing status-bar popover pattern
 
 ### Status vocabulary
 
-Align Orca-ish UI statuses (richer than today’s 4-value ephemeral enum):
+UI statuses:
 
 `disconnected | connecting | connected | reconnecting | error | auth-failed`
 
-Map from `RemoteConnectionMonitor` / coordinator signals into this vocabulary
-inside `SshConnectionCubit`.
+#### Mapping
+
+| Source | UI status |
+|--------|-----------|
+| Never opened / pool absent / after Disconnect | `disconnected` |
+| User Connect in flight | `connecting` |
+| Pool client authenticated + healthy | `connected` |
+| `RemoteConnectionMonitor` `reconnecting` | `reconnecting` |
+| `RemoteConnectionMonitor` `degraded` | still `connected` (pill stays green; detail optional later) |
+| `RemoteConnectionMonitor` `down` after drop (before user Disconnect) | `disconnected` or mid-`reconnecting` via coordinator |
+| Auth / host-key failures on Connect | `auth-failed` |
+| Other Connect / transport failures | `error` |
+
+**Important:** `RemoteConnectionMonitor.initial` is `connected`, but that must
+**not** imply a host was opened. Cubit treats a profile as connected only when
+the storage pool holds a live client for that id (or Connect just succeeded),
+not merely because a monitor exists with default state.
 
 ## Architecture
 
@@ -85,51 +116,87 @@ GlobalResourceManagerHost / status-bar host
       items: [ResourceUsageStatusItem, SshHostsStatusItem],
     )
 
-SshProfileCubit          // profile CRUD / list
+SshProfileCubit          // profile CRUD / list / selectedProfile
 SshConnectionCubit       // Map<profileId, SshHostConnectionVm> + aggregates
-  └─ SshProfileConnectionCoordinator  // keep-alive, coalesce, reconnect
+  ├─ SshClientFactory              // clientForStorage / disconnectProfile
+  └─ SshProfileConnectionCoordinator  // coalesce, reconnect, monitors
        └─ RemoteConnectionMonitor per profile
 ```
+
+### Connect / Disconnect (transport contract)
+
+`SshConnectionCubit.connect(profileId)`:
+
+1. Resolve profile; set UI `connecting`.
+2. `await factory.clientForStorage(profile)` — opens or reuses the pooled
+   storage client (durable keep-alive).
+3. Ensure coordinator `monitorFor(profileId)` is tracking this pool client
+   (extend coordinator with an explicit user-connect hook if needed; today it
+   only reconnects after drops).
+4. On success → UI `connected`. On Android only → also
+   `SshProfileCubit.selectProfile(profileId)`.
+5. On failure → UI `auth-failed` or `error` + short reason; do not leave a
+   half-open pool entry.
+
+`SshConnectionCubit.disconnect(profileId)`:
+
+1. Cancel in-flight / scheduled reconnect for that id on the coordinator.
+2. `factory.disconnectProfile(profileId)` — closes pooled client + SFTP.
+3. UI → `disconnected`.
+4. Do **not** clear `selectedProfile` (Android or desktop).
+
+Coordinator today has `reconnectStorage` / monitors but **no** user-facing
+connect API — planning must add a thin user-connect / user-disconnect surface
+(or put those steps in the Cubit calling factory + coordinator cancel APIs).
+Do not invent a second connection channel beside the storage pool.
 
 ### `SshConnectionCubit`
 
 - Subscribes to profile list; drops VMs for deleted ids; hides pill when empty.
-- `connect(profileId)` / `disconnect(profileId)` are the only UI entry points
-  for durable connection (status bar + config cards).
-- Exposes aggregates for the closed pill: `connectedCount`, `overallStatus`,
-  `isEmpty`.
+- On start: for each profile, if factory pool already has a live client → seed
+  `connected`; else `disconnected`.
+- `connect` / `disconnect` are the only UI entry points for durable connection
+  (status bar + config cards).
+- Exposes aggregates: `connectedCount`, `overallStatus`, `isEmpty`.
 - Rebuild performance: closed pill `buildWhen` on aggregates only; open panel
   rebuilds host rows.
 
 ### Config page sync
 
-- `ssh_profile_target_card` (and related) stop owning local
-  `SshProfileConnectionStatus` maps for Connect / Disconnect.
+- `ssh_profiles_section` removes `_statusById` for Connect / Disconnect.
 - Cards read status from `SshConnectionCubit` and call the same methods.
-- One-shot **Test** (if retained) stays separate from durable Connect.
+- **Test** stays on `SshProfileConnectionTester` and must not mark the durable
+  Cubit status `connected`.
+- Desktop config Connect stops being a one-shot Test alias; Android config
+  Connect stops being select-only — both call durable `SshConnectionCubit.connect`
+  (Android still selects as a side effect, per locked decisions).
 
 ### Wiring
 
 - Provide `SshConnectionCubit` at app shell / bootstrap next to
-  `SshProfileCubit`.
-- Register `SshHostsStatusItem` beside `ResourceUsageStatusItem`.
+  `SshProfileCubit`, injected with factory + coordinator.
+- Register `SshHostsStatusItem` beside `ResourceUsageStatusItem` (rightmost).
 
 ## Error handling
 
-- Connect failure → row becomes `error` or `auth-failed` with a short reason in
-  the subtitle; at most one soft snackbar (no toast spam).
+- Connect failure → row `error` or `auth-failed` with short subtitle reason; at
+  most one soft snackbar.
 - Disconnect while sessions use the profile → allowed; existing coordinator
-  session-reconnect / disconnect handlers own fallout.
-- Last profile deleted → map clears, pill unmounts.
-- Auth failures surface distinctly from generic transport errors when detectable.
+  session-plane / disconnect handlers own fallout.
+- Last profile deleted → disconnect if needed, map clears, pill unmounts.
+- Auth / host-key failures map to `auth-failed` when detectable
+  (`SSHAuthAbortError`, `SSHHostkeyError`, etc.); otherwise `error`.
 
 ## Testing
 
-- Cubit: connect / disconnect transitions; aggregate count / overall; delete last
-  profile → empty; map prune on profile removal.
-- Widget: no profiles → no segment; with profiles → pill; row actions invoke
-  Cubit; Manage navigates to `/config/ssh-profiles`.
-- Config cards: Connect status matches status-bar Cubit fixture (same source).
+- Cubit: connect opens pool path; disconnect calls disconnectProfile + cancel
+  reconnect; aggregate count / overall priority (connecting beats partial);
+  delete last profile → empty; seed from existing pool; Android connect also
+  selects profile; desktop connect does not.
+- Widget: no profiles → no segment; with profiles → pill shows **connected**
+  count; row actions invoke Cubit; Manage navigates to `/config/ssh-profiles`.
+- Config cards: Connect status matches status-bar Cubit fixture; Test does not
+  flip durable connected.
 
 ## Reference (Orca)
 
@@ -141,5 +208,7 @@ SshConnectionCubit       // Map<profileId, SshHostConnectionVm> + aggregates
 
 - `docs/superpowers/specs/2026-07-23-workspace-status-bar-resource-manager-design.md`
 - `client/lib/widgets/workspace_status_bar/`
+- `client/lib/services/ssh/ssh_client_factory.dart`
 - `client/lib/services/ssh/ssh_profile_connection_coordinator.dart`
+- `client/lib/services/remote/remote_connection_monitor.dart`
 - `client/lib/pages/ssh_profiles/`
