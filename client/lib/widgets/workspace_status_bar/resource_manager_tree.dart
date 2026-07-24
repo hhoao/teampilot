@@ -10,6 +10,11 @@ import '../../services/resource_manager/resource_memory_format.dart';
 import '../../services/resource_manager/resource_tree_merge.dart';
 import 'resource_memory_sparkline.dart';
 
+/// Metric column widths shared by header / group / leaf / app rows.
+const double kResourceManagerCpuColumnWidth = 48;
+const double kResourceManagerMemoryColumnWidth = 72;
+const double kResourceManagerTrailingGutterWidth = 28;
+
 /// Two-level Resource Manager tree: worktree groups → terminal leaves.
 class ResourceManagerTree extends StatelessWidget {
   const ResourceManagerTree({
@@ -80,10 +85,12 @@ class ResourceManagerColumnHeader extends StatelessWidget {
             ),
           ),
           SizedBox(
-            width: 48,
+            width: kResourceManagerCpuColumnWidth,
             child: Text(
               l10n.resourceManagerColumnCpu,
               textAlign: TextAlign.right,
+              softWrap: false,
+              maxLines: 1,
               style: styles.xs.copyWith(
                 color: cs.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
@@ -91,17 +98,19 @@ class ResourceManagerColumnHeader extends StatelessWidget {
             ),
           ),
           SizedBox(
-            width: 64,
+            width: kResourceManagerMemoryColumnWidth,
             child: Text(
               l10n.resourceManagerColumnMemory,
               textAlign: TextAlign.right,
+              softWrap: false,
+              maxLines: 1,
               style: styles.xs.copyWith(
                 color: cs.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          const SizedBox(width: 28),
+          const SizedBox(width: kResourceManagerTrailingGutterWidth),
         ],
       ),
     );
@@ -133,59 +142,41 @@ class _GroupSectionState extends State<_GroupSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        InkWell(
+        _ResourceManagerHoverRow(
           onTap: () => setState(() => _expanded = !_expanded),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Row(
-              children: [
-                Icon(
-                  _expanded
-                      ? Icons.expand_more
-                      : Icons.chevron_right,
-                  size: 16,
-                  color: cs.onSurfaceVariant,
-                ),
-                const SizedBox(width: 2),
-                Expanded(
-                  child: Text(
-                    group.groupLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: styles.xs.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            children: [
+              Icon(
+                _expanded ? Icons.expand_more : Icons.chevron_right,
+                size: 16,
+                color: cs.onSurfaceVariant,
+              ),
+              const SizedBox(width: 2),
+              Expanded(
+                child: Text(
+                  group.groupLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: styles.xs.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                if (group.memoryHistory.length >= 2) ...[
-                  ResourceMemorySparkline(samples: group.memoryHistory),
-                  const SizedBox(width: 6),
-                ],
-                SizedBox(
-                  width: 48,
-                  child: Text(
-                    formatResourceCpu(group.aggregateCpu),
-                    textAlign: TextAlign.right,
-                    style: styles.xs.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 64,
-                  child: Text(
-                    formatResourceMemory(group.aggregateMemoryBytes),
-                    textAlign: TextAlign.right,
-                    style: styles.xs.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 28),
+              ),
+              if (group.memoryHistory.length >= 2) ...[
+                ResourceMemorySparkline(samples: group.memoryHistory),
+                const SizedBox(width: 6),
               ],
-            ),
+              _MetricText(
+                formatResourceCpu(group.aggregateCpu),
+                width: kResourceManagerCpuColumnWidth,
+              ),
+              _MetricText(
+                formatResourceMemory(group.aggregateMemoryBytes),
+                width: kResourceManagerMemoryColumnWidth,
+              ),
+              const SizedBox(width: kResourceManagerTrailingGutterWidth),
+            ],
           ),
         ),
         if (_expanded)
@@ -215,73 +206,133 @@ class _LeafRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final dimmed = !leaf.connected;
 
-    return InkWell(
+    return _ResourceManagerHoverRow(
       onTap: onActivate == null ? null : () => onActivate!(leaf),
+      padding: const EdgeInsets.fromLTRB(28, 3, 8, 3),
       child: Opacity(
         opacity: dimmed ? 0.55 : 1,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(28, 3, 8, 3),
-          child: Row(
-            children: [
-              Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: leaf.connected
-                      ? const Color(0xFF22C55E)
-                      : cs.onSurfaceVariant.withValues(alpha: 0.45),
-                ),
+        child: Row(
+          children: [
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: leaf.connected
+                    ? const Color(0xFF22C55E)
+                    : cs.onSurfaceVariant.withValues(alpha: 0.45),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  leaf.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: styles.xs,
-                ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                leaf.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: styles.xs,
               ),
-              SizedBox(
-                width: 48,
-                child: Text(
-                  leaf.cpuDisplay,
-                  textAlign: TextAlign.right,
-                  style: styles.xs.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
+            ),
+            _MetricText(
+              leaf.cpuDisplay,
+              width: kResourceManagerCpuColumnWidth,
+            ),
+            _MetricText(
+              leaf.memoryDisplay,
+              width: kResourceManagerMemoryColumnWidth,
+            ),
+            SizedBox(
+              width: kResourceManagerTrailingGutterWidth,
+              child: TpIconButton(
+                icon: Icons.close,
+                tooltip: l10n.resourceManagerKill,
+                size: 22,
+                iconSize: 12,
+                compact: true,
+                color: cs.onSurfaceVariant,
+                onTap: () {
+                  unawaited(
+                    context.read<ResourceManagerCubit>().killLeaf(leaf.key),
+                  );
+                },
               ),
-              SizedBox(
-                width: 64,
-                child: Text(
-                  leaf.memoryDisplay,
-                  textAlign: TextAlign.right,
-                  style: styles.xs.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: 28,
-                child: TpIconButton(
-                  icon: Icons.close,
-                  tooltip: l10n.resourceManagerKill,
-                  size: 22,
-                  iconSize: 12,
-                  compact: true,
-                  color: cs.onSurfaceVariant,
-                  onTap: () {
-                    unawaited(
-                      context.read<ResourceManagerCubit>().killLeaf(leaf.key),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Right-aligned metric cell that never wraps (e.g. `295.5 MB` stays one line).
+class _MetricText extends StatelessWidget {
+  const _MetricText(this.text, {required this.width});
+
+  final String text;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final styles = TpTextStyles.of(context);
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: width,
+      child: Text(
+        text,
+        textAlign: TextAlign.right,
+        softWrap: false,
+        maxLines: 1,
+        overflow: TextOverflow.visible,
+        style: styles.xs.copyWith(
+          color: cs.onSurfaceVariant,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+      ),
+    );
+  }
+}
+
+/// Orca-like row hover: muted surface highlight under the pointer.
+class _ResourceManagerHoverRow extends StatefulWidget {
+  const _ResourceManagerHoverRow({
+    required this.child,
+    required this.padding,
+    this.onTap,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final VoidCallback? onTap;
+
+  @override
+  State<_ResourceManagerHoverRow> createState() =>
+      _ResourceManagerHoverRowState();
+}
+
+class _ResourceManagerHoverRowState extends State<_ResourceManagerHoverRow> {
+  var _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return MouseRegion(
+      opaque: true,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: widget.onTap == null
+          ? SystemMouseCursors.basic
+          : SystemMouseCursors.click,
+      child: Material(
+        color: _hovered
+            ? cs.onSurface.withValues(alpha: 0.06)
+            : Colors.transparent,
+        child: InkWell(
+          onTap: widget.onTap,
+          mouseCursor: widget.onTap == null
+              ? SystemMouseCursors.basic
+              : SystemMouseCursors.click,
+          hoverColor: Colors.transparent,
+          splashColor: cs.onSurface.withValues(alpha: 0.06),
+          child: Padding(padding: widget.padding, child: widget.child),
         ),
       ),
     );

@@ -25,6 +25,14 @@ class ProcessMetricsService {
   static const _appHistoryKey = 'app';
   static const _sweepTimeout = Duration(seconds: 5);
 
+  /// Args for the Unix process-table sweep (`ps`).
+  ///
+  /// Must be a **single** `-eo` format string (Orca: `ps -eo pid=,ppid=,pcpu=,rss=`).
+  /// Splitting `pid=` / `ppid=` / … into separate argv tokens makes Linux `ps`
+  /// treat them as a PID list and exit 1 with empty stdout — Resource Manager
+  /// then shows `—` for every CPU/Mem cell.
+  static const unixPsArgs = ['-eo', 'pid=,ppid=,pcpu=,rss='];
+
   final Future<String> Function() _readProcessTable;
   final Future<ResourceHostMemory?> Function() _readHostMemory;
   final int Function() _appPid;
@@ -79,6 +87,8 @@ class ProcessMetricsService {
 
       final leafMetrics = <String, ResourceLeafMetrics>{};
       final groupMemory = <String, int>{};
+      // Orca claim-once: overlapping PTY subtrees must not double-count RSS/CPU.
+      final claimed = <int>{};
 
       for (final entry in registeredPids.entries) {
         final bindingKey = entry.key;
@@ -87,7 +97,7 @@ class ProcessMetricsService {
           leafMetrics[bindingKey] = ResourceLeafMetrics(pid: leafPid);
           continue;
         }
-        final usage = subtreeUsage(rows, leafPid);
+        final usage = subtreeUsageClaiming(rows, leafPid, claimed);
         leafMetrics[bindingKey] = ResourceLeafMetrics(
           cpu: usage.cpuPercent,
           memoryBytes: usage.memoryBytes,
@@ -103,7 +113,9 @@ class ProcessMetricsService {
       ResourceAppMemory? app;
       final appPidValue = _appPid();
       if (knownPids.contains(appPidValue)) {
-        final usage = subtreeUsage(rows, appPidValue);
+        // Self only — full subtree would roll every spawned PTY/agent into App
+        // and then again into leaf totals (unlike Orca's Electron app metrics).
+        final usage = processSelfUsage(rows, appPidValue);
         _pushHistory(_appHistoryKey, usage.memoryBytes);
         app = ResourceAppMemory(
           cpu: usage.cpuPercent,
@@ -226,7 +238,7 @@ class ProcessMetricsService {
       }
       final result = await Process.run(
         'ps',
-        const ['-eo', 'pid=', 'ppid=', 'pcpu=', 'rss='],
+        unixPsArgs,
         environment: {
           ...Platform.environment,
           'LC_ALL': 'C',
@@ -237,7 +249,7 @@ class ProcessMetricsService {
       if (result.exitCode != 0) {
         throw ProcessException(
           'ps',
-          const ['-eo', 'pid=', 'ppid=', 'pcpu=', 'rss='],
+          unixPsArgs,
           '${result.stderr}',
           result.exitCode,
         );

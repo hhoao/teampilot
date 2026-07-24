@@ -67,8 +67,8 @@ class ResourceManagerState extends Equatable {
       ];
 }
 
-/// Owns Resource Manager panel open state, open-only metrics polling, registry
-/// sync from live PTY pids, and kill/refresh actions.
+/// Owns Resource Manager panel open state, always-on metrics polling (closed
+/// pill + open panel), registry sync from live PTY pids, and kill/refresh.
 class ResourceManagerCubit extends Cubit<ResourceManagerState> {
   ResourceManagerCubit({
     required ProcessMetricsService metricsService,
@@ -94,7 +94,6 @@ class ResourceManagerCubit extends Cubit<ResourceManagerState> {
 
   void setWorkspace(String? workspaceId) {
     if (workspaceId == state.workspaceId) return;
-    _stopPolling();
     final bindings = _readBindings();
     final tree = mergeResourceTree(
       bindings: bindings,
@@ -113,6 +112,15 @@ class ResourceManagerCubit extends Cubit<ResourceManagerState> {
     );
   }
 
+  /// Starts the always-on metrics timer (idempotent) and runs one collect now.
+  ///
+  /// Call from the host after mount so the closed pill can show live memory
+  /// without opening the panel.
+  Future<void> ensureMetricsPolling() async {
+    _startPolling();
+    await _tick();
+  }
+
   Future<void> openPanel() async {
     if (state.isOpen) {
       await _tick();
@@ -124,9 +132,8 @@ class ResourceManagerCubit extends Cubit<ResourceManagerState> {
   }
 
   void closePanel() {
-    if (!state.isOpen && _pollTimer == null) return;
-    _stopPolling();
-    // Keep snapshot (last good) for the closed pill memory badge.
+    if (!state.isOpen) return;
+    // Keep the metrics timer running for the closed pill.
     emit(state.copyWith(isOpen: false));
   }
 
@@ -139,7 +146,6 @@ class ResourceManagerCubit extends Cubit<ResourceManagerState> {
   }
 
   Future<void> refresh() async {
-    if (!state.isOpen) return;
     await _tick();
   }
 
@@ -224,7 +230,7 @@ class ResourceManagerCubit extends Cubit<ResourceManagerState> {
   }
 
   void _startPolling() {
-    _pollTimer?.cancel();
+    if (_pollTimer != null) return;
     _pollTimer = Timer.periodic(_pollInterval, (_) {
       unawaited(_tick());
     });
@@ -236,7 +242,7 @@ class ResourceManagerCubit extends Cubit<ResourceManagerState> {
   }
 
   Future<void> _tick() async {
-    if (isClosed || !state.isOpen || _collectInFlight) return;
+    if (isClosed || _collectInFlight) return;
     _collectInFlight = true;
     try {
       final bindings = _readBindings();
@@ -251,7 +257,7 @@ class ResourceManagerCubit extends Cubit<ResourceManagerState> {
           registeredPids: _registry.asMap,
           bindingKeyToGroupKey: bindingKeyToGroupKey,
         );
-        if (isClosed || !state.isOpen) return;
+        if (isClosed) return;
         final tree = mergeResourceTree(
           bindings: bindings,
           snapshot: snapshot,

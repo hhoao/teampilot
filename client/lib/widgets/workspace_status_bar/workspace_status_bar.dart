@@ -19,7 +19,7 @@ class WorkspaceStatusBar extends StatelessWidget {
   const WorkspaceStatusBar({required this.items, super.key});
 
   /// Content row height (excluding [verticalInset]).
-  static const double height = 20;
+  static const double height = 24;
 
   /// Chrome breath above and below the content row.
   static const double verticalInset = 4;
@@ -43,6 +43,7 @@ class WorkspaceStatusBar extends StatelessWidget {
             builder: (context, constraints) {
               final compact = constraints.maxWidth < compactBreakpoint;
               return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   for (var i = 0; i < items.length; i++) ...[

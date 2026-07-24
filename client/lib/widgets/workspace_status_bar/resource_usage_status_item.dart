@@ -167,10 +167,8 @@ class _PillButtonState extends State<_PillButton> {
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
-          padding: EdgeInsets.symmetric(
-            horizontal: compact ? 6 : 8,
-            vertical: 2,
-          ),
+          alignment: Alignment.center,
+          padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 8),
           decoration: BoxDecoration(
             color: widget.selected || _hovered
                 ? cs.onSurface.withValues(alpha: 0.07)
@@ -179,6 +177,7 @@ class _PillButtonState extends State<_PillButton> {
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Icon(Icons.memory, size: 13, color: widget.color),
               const SizedBox(width: 4),
@@ -186,6 +185,7 @@ class _PillButtonState extends State<_PillButton> {
                 compact ? shortMemory : widget.memoryLabel,
                 style: styles.xs.copyWith(
                   color: widget.color,
+                  height: 1.0,
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
@@ -195,6 +195,7 @@ class _PillButtonState extends State<_PillButton> {
                   '·',
                   style: styles.xs.copyWith(
                     color: widget.color.withValues(alpha: 0.5),
+                    height: 1.0,
                   ),
                 ),
               ),
@@ -204,6 +205,7 @@ class _PillButtonState extends State<_PillButton> {
                 '${widget.terminalCount}',
                 style: styles.xs.copyWith(
                   color: widget.color,
+                  height: 1.0,
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),

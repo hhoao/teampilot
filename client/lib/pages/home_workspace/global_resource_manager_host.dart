@@ -41,6 +41,7 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
   final Map<String, WorkspaceTerminalGroup> _groups = {};
   final Map<String, VoidCallback> _groupListeners = {};
   String? _lastChatBindingsSignature;
+  var _metricsPollingStarted = false;
 
   @override
   void initState() {
@@ -58,6 +59,10 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
     super.didChangeDependencies();
     _bindChatListener();
     _syncTerminalGroupListeners();
+    if (!_metricsPollingStarted) {
+      _metricsPollingStarted = true;
+      unawaited(_cubit.ensureMetricsPolling());
+    }
   }
 
   @override

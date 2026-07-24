@@ -96,6 +96,45 @@ List<ProcessTableRow> parseWindowsProcessTable(String text) {
   return rows;
 }
 
+/// Sums CPU % and RSS for a single process (no descendants).
+///
+/// Used for the Flutter/Dart app row so PTY/agent children are not rolled into
+/// “App” (Orca attributes app via Electron process list, not a full subtree).
+({double cpuPercent, int memoryBytes}) processSelfUsage(
+  List<ProcessTableRow> rows,
+  int pid,
+) {
+  for (final row in rows) {
+    if (row.pid == pid) {
+      return (cpuPercent: row.cpuPercent, memoryBytes: row.rssBytes);
+    }
+  }
+  return (cpuPercent: 0.0, memoryBytes: 0);
+}
+
+/// Collects [rootPid] and all descendant pids via [ppid] (breadth-first order).
+List<int> collectSubtreePids(List<ProcessTableRow> rows, int rootPid) {
+  final byPid = <int, ProcessTableRow>{};
+  final childrenOf = <int, List<int>>{};
+  for (final row in rows) {
+    byPid[row.pid] = row;
+    childrenOf.putIfAbsent(row.ppid, () => <int>[]).add(row.pid);
+  }
+  if (!byPid.containsKey(rootPid)) return const [];
+
+  final result = <int>[];
+  final seen = <int>{};
+  final queue = <int>[rootPid];
+  while (queue.isNotEmpty) {
+    final pid = queue.removeLast();
+    if (!seen.add(pid)) continue;
+    result.add(pid);
+    final kids = childrenOf[pid];
+    if (kids != null) queue.addAll(kids);
+  }
+  return result;
+}
+
 /// Sums CPU % and RSS bytes for [rootPid] and all descendants via [ppid].
 ///
 /// Missing [rootPid] yields `(cpuPercent: 0, memoryBytes: 0)`.
@@ -103,33 +142,35 @@ List<ProcessTableRow> parseWindowsProcessTable(String text) {
   List<ProcessTableRow> rows,
   int rootPid,
 ) {
-  final byPid = <int, ProcessTableRow>{};
-  final childrenOf = <int, List<int>>{};
-  for (final row in rows) {
-    byPid[row.pid] = row;
-    childrenOf.putIfAbsent(row.ppid, () => <int>[]).add(row.pid);
-  }
-
-  if (!byPid.containsKey(rootPid)) {
-    return (cpuPercent: 0.0, memoryBytes: 0);
-  }
-
+  final byPid = {for (final row in rows) row.pid: row};
   var cpu = 0.0;
   var memory = 0;
-  final seen = <int>{};
-  final queue = <int>[rootPid];
-  while (queue.isNotEmpty) {
-    final pid = queue.removeLast();
-    if (!seen.add(pid)) continue;
+  for (final pid in collectSubtreePids(rows, rootPid)) {
     final row = byPid[pid];
-    if (row != null) {
-      cpu += row.cpuPercent;
-      memory += row.rssBytes;
-    }
-    final kids = childrenOf[pid];
-    if (kids != null) {
-      queue.addAll(kids);
-    }
+    if (row == null) continue;
+    cpu += row.cpuPercent;
+    memory += row.rssBytes;
+  }
+  return (cpuPercent: cpu, memoryBytes: memory);
+}
+
+/// Like [subtreeUsage], but skips pids already in [claimed] and marks used ones.
+///
+/// Mirrors Orca's claim-once attribution when PTY subtrees overlap.
+({double cpuPercent, int memoryBytes}) subtreeUsageClaiming(
+  List<ProcessTableRow> rows,
+  int rootPid,
+  Set<int> claimed,
+) {
+  final byPid = {for (final row in rows) row.pid: row};
+  var cpu = 0.0;
+  var memory = 0;
+  for (final pid in collectSubtreePids(rows, rootPid)) {
+    if (!claimed.add(pid)) continue;
+    final row = byPid[pid];
+    if (row == null) continue;
+    cpu += row.cpuPercent;
+    memory += row.rssBytes;
   }
   return (cpuPercent: cpu, memoryBytes: memory);
 }

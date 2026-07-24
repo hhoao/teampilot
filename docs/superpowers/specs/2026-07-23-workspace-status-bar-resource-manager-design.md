@@ -30,8 +30,8 @@ Add an Orca-style **workspace bottom status bar** with an extensible item regist
 - Right cluster of the workspace status bar (bottom-right of the workbench card).
 - Content: memory icon + formatted total tracked memory (or `—`) · terminal icon + **bound terminal count** for this workspace.
 - Tooltip: `Resource Manager - {memory} - {n} terminals` plus one-line hint that sessions are grouped by worktree / session.
-- Closed-state terminal count comes from **in-memory registries only** (no host `ps` sweep). Memory badge uses the **last successful snapshot** when available; otherwise `—`.
-- Do **not** poll host process metrics while the popover is closed.
+- Closed-state terminal count comes from **in-memory registries only** (no host `ps` sweep for the count). Memory badge uses the **live metrics poll** (same 2s timer as the open panel), so the pill updates without opening the popover.
+- Host process metrics **do** poll while the popover is closed (always-on while `GlobalResourceManagerHost` is mounted).
 
 ### Open panel
 
@@ -60,8 +60,10 @@ Popover anchored above the pill (Orca-like), via `TpActionMenuAnchor`:
 
 ### Polling
 
-- While popover **open**: refresh snapshot every **2s**, coalesce concurrent collects onto one in-flight sweep.
-- On open: immediate snapshot + rebuild tree.
+- Metrics timer is **always on** while the Resource Manager host is mounted (closed pill + open panel share one 2s interval).
+- On host mount / `ensureMetricsPolling`: immediate snapshot so the pill is not stuck on `—`.
+- Concurrent collects coalesce onto one in-flight sweep.
+- Closing the popover does **not** stop the timer; disposing the host does.
 - After kill / kill-all: refresh tree bindings immediately; next metrics tick fills CPU/Mem.
 
 ## Architecture
@@ -135,8 +137,9 @@ ResourceMemorySnapshot
 v1 **includes** sparklines in the open panel (totals, group rows, optional app row) fed by these history rings.
 Collection:
 
-- One host-wide process table (`ps` on Linux/macOS, `wmic`/`Get-CimInstance` on Windows) with timeout + max buffer.
-- For each registered pid, sum CPU/RSS over the process **subtree** (pid + descendants via ppid).
+- One host-wide process table (`ps -eo pid=,ppid=,pcpu=,rss=` as a **single** format string on Linux/macOS — matching Orca; splitting format fields into separate argv tokens makes Linux `ps` fail). Windows: `wmic`/`Get-CimInstance`. Timeout + max buffer.
+- For each registered pid, sum CPU/RSS over the process **subtree** (pid + descendants via ppid), with **claim-once** so overlapping PTY trees do not double-count (Orca parity).
+- **App row** uses the Flutter/Dart process **self** RSS/CPU only (not the full descendant tree). Rolling PTYs/agents into App would double-count them against leaf rows; Orca avoids this via Electron `app.getAppMetrics()`.
 - Missing pid or failed parse → leaf metrics null → UI `—`.
 - Coalesce overlapping `collect()` calls.
 - Never run the sweep from UI isolates that block frames; keep async and cache last good snapshot.
@@ -164,7 +167,7 @@ Kill must go through existing lifecycle APIs (`TerminalSession` / registry), not
 - Mount on **`HomeShell`** as an app-global strip at the **window bottom**, via `GlobalResourceManagerHost` — visible on home library and every workspace tab.
 - Status strip is **transparent** on the page chrome (no fill / top rule); the floating card omits bottom inset, and the strip itself uses a small vertical inset (~4px) above and below so it is not flush to the card or window edge (corners stay rounded).
 - Terminal / session inventory spans **all workspaces** (tree groups by workspace display name).
-- Height: compact content row (~20 logical px) plus vertical inset — not a second title bar.
+- Height: compact content row (~24 logical px) plus vertical inset — not a second title bar; pill text uses `height: 1.0` and is vertically centered in the strip.
 - Does not replace `WorkspaceTerminalPanel` or Run toolbar; those stay as today.
 
 ## Error handling
@@ -177,7 +180,7 @@ Kill must go through existing lifecycle APIs (`TerminalSession` / registry), not
 
 - Pure merge: bindings + snapshot → tree groups/leaves, aggregates, `—` for null metrics.
 - Closed count ignores host processes not in bindings; includes only running (connected) shells.
-- Polling: open starts timer; close cancels; workspace change closes + cancels.
+- Polling: always-on while host mounted; close keeps timer; dispose cancels.
 - PID registry: register on local connect, clear on dispose; SSH never registers.
 - Cubit kill-all calls lifecycle for each leaf once.
 - Widget: pill shows count from fake cubit; panel columns render `—` when metrics null.
