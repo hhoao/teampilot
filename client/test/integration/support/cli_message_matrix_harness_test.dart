@@ -1,6 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mock_model_gateway/scenarios/simple_3turn.dart';
+import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_folder.dart';
+import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/terminal/pending_user_message.dart';
@@ -138,7 +142,7 @@ void main() {
     expect(out, isNot(contains('sk-abcdefgh')));
   });
 
-  test('mailbox Queued snapshot survives promote for sticky assert', () {
+  test('mailbox Queued snapshot survives promote for sticky assert', () async {
     final harness = CliMessageMatrixHarness.forCli(
       CliTool.claude,
       mode: CliMatrixMode.mixed,
@@ -157,6 +161,28 @@ void main() {
     final postFrame = PostFrameTestHarness();
     harness.createCubit(postFrame: postFrame);
     addTearDown(harness.dispose);
+
+    // Seat-isolated cubit: sticky append no-ops until a seat is focused via load.
+    final session = AppSession(
+      sessionId: 'sess-matrix-sticky',
+      workspaceId: 'ws-1',
+      folders: const [WorkspaceFolder(path: '/work')],
+      cli: CliTool.claude,
+      createdAt: 1,
+      updatedAt: 1,
+    );
+    await harness.history!.load(
+      session: session,
+      memberId: '',
+      launchContext: WorkspaceLaunchContext(
+        session: session,
+        workspace: Workspace(
+          workspaceId: session.workspaceId,
+          folders: session.folders,
+          createdAt: 0,
+        ),
+      ),
+    );
 
     harness.promoteMailboxConsumed(mailId);
     expect(harness.mailboxQueued, isEmpty);

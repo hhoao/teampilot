@@ -49,7 +49,9 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
   void initState() {
     super.initState();
     _cubit = ResourceManagerCubit(
-      metricsService: ProcessMetricsService(),
+      metricsService:
+          ProcessMetricsService.debugOverrideFactory?.call() ??
+          ProcessMetricsService(),
       registry: PtyProcessRegistry(),
       bindingsSource: _readBindings,
       killBinding: _killBinding,

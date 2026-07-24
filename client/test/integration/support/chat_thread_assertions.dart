@@ -41,6 +41,11 @@ String dumpThread(AiHistoryCubit history) {
     'session=${history.state.sessionId} '
     'member=${history.state.memberId}',
   );
+  final sid = history.state.sessionId;
+  if (sid == null || sid.isEmpty) {
+    buf.writeln('(no focused seat — load/focus before pending/sticky asserts)');
+    return buf.toString();
+  }
   final messages = _historyRuntimeMessages(history);
   if (messages.isEmpty) {
     buf.writeln('(no runtime messages)');

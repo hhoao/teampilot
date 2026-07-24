@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:teampilot/services/resource_manager/process_table_parser.dart';
 import 'package:teampilot/services/resource_manager/resource_memory_models.dart';
 import 'package:teampilot/utils/logging/logger.dart';
@@ -21,6 +22,12 @@ class ProcessMetricsService {
         _appPid = appPid ?? (() => pid),
         _parseProcessTable = parseProcessTable ?? _defaultParseProcessTable,
         _historyCapacity = historyCapacity;
+
+  /// Test seam: when set, [GlobalResourceManagerHost] uses this instead of a
+  /// real process-table sweep so widget tests never spawn `ps`/`powershell`
+  /// (and their `.timeout` timers). Mirrors [GitService.debugOverrideFactory].
+  @visibleForTesting
+  static ProcessMetricsService Function()? debugOverrideFactory;
 
   static const _appHistoryKey = 'app';
   static const _sweepTimeout = Duration(seconds: 5);

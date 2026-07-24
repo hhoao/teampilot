@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/resource_manager/process_metrics_service.dart';
+import 'package:teampilot/services/resource_manager/process_table_parser.dart';
 import 'package:teampilot/services/resource_manager/resource_memory_models.dart';
 
 void main() {
@@ -34,6 +35,8 @@ void main() {
       readProcessTable: readProcessTable ?? () async => unixFixture,
       readHostMemory: readHostMemory ?? () async => fakeHost,
       appPid: appPid ?? () => 1,
+      // Fixture is Unix `ps` text; default parser follows Platform.isWindows.
+      parseProcessTable: parseUnixProcessTable,
     );
   }
 

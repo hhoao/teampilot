@@ -70,12 +70,23 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  test('expectUserBubble finds optimistic pending user text', () {
+  test('expectUserBubble finds optimistic pending user text', () async {
+    // Seat-isolated cubit: pending/sticky APIs no-op until a seat is focused.
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
     cubit.enqueuePendingUser('hello operator');
     expectUserBubble(cubit, 'hello operator');
   });
 
-  test('expectUserBubble finds sticky mailbox user text', () {
+  test('expectUserBubble finds sticky mailbox user text', () async {
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
     cubit.appendStickyLocalUser(id: 'mailbox:mail-1', text: 'mailbox follow-up');
     expectUserBubble(cubit, 'mailbox follow-up');
   });
@@ -134,7 +145,12 @@ void main() {
     );
   });
 
-  test('expectMailboxQueuedThenSticky checks Queued snapshot and sticky id', () {
+  test('expectMailboxQueuedThenSticky checks Queued snapshot and sticky id', () async {
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
     const mailId = 'mail-42';
     const text = 'please handle this';
     final queued = [
@@ -150,7 +166,12 @@ void main() {
     );
   });
 
-  test('dumpThread includes roles and text for failure messages', () {
+  test('dumpThread includes roles and text for failure messages', () async {
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
     cubit.enqueuePendingUser('pending-line');
     cubit.appendStickyLocalUser(id: 'mailbox:m1', text: 'sticky-line');
     final dump = dumpThread(cubit);

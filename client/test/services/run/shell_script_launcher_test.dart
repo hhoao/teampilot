@@ -11,6 +11,7 @@ import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/host/host_interactive_shell.dart';
+import 'package:teampilot/services/host/host_interactive_shell_kind.dart';
 import 'package:teampilot/services/run/process_run_executor.dart';
 import 'package:teampilot/services/run/shell_script_launcher.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
@@ -353,10 +354,17 @@ void main() {
 
     expect(runService.openCalls, isEmpty);
     expect(spawned, hasLength(1));
-    expect(spawned.single['executable'], HostInteractiveShell.defaultExecutable());
+    final host = HostInteractiveShell.defaultSpec();
+    expect(spawned.single['executable'], host.executable);
     expect(spawned.single['runInShell'], isTrue);
     final args = spawned.single['arguments']! as List<String>;
-    expect(args.first, '-c');
+    final expectedFlag = switch (host.kind) {
+      HostInteractiveShellKind.cmd => '/c',
+      HostInteractiveShellKind.powershell ||
+      HostInteractiveShellKind.pwsh => '-Command',
+      _ => '-c',
+    };
+    expect(args.first, expectedFlag);
     expect(args[1], contains("./a.sh"));
     expect(intents, [
       const RunUiIntent(

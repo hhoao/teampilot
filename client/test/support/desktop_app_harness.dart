@@ -23,6 +23,7 @@ import 'package:teampilot/cubits/plugin_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
+import 'package:teampilot/cubits/ssh_connection_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 import 'package:teampilot/main.dart';
@@ -154,6 +155,11 @@ Widget buildTestApp({
     knownHostRepository: sshKnownHosts,
     events: sshEvents,
   );
+  final sshCoordinator = SshProfileConnectionCoordinator(
+    factory: sshClientFactory,
+    events: sshEvents,
+    profileResolver: (_) => null,
+  );
   final extensionRepo = ExtensionRepository(
     fs: InMemoryFilesystem(),
     stateFilePath: '/test/extensions/state.json',
@@ -205,12 +211,8 @@ Widget buildTestApp({
       RepositoryProvider<SshProfileRepository>(
         create: (_) => SshProfileRepository(),
       ),
-      RepositoryProvider<SshProfileConnectionCoordinator>(
-        create: (_) => SshProfileConnectionCoordinator(
-          factory: sshClientFactory,
-          events: sshEvents,
-          profileResolver: (_) => null,
-        ),
+      RepositoryProvider<SshProfileConnectionCoordinator>.value(
+        value: sshCoordinator,
       ),
       RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
       RepositoryProvider<WorkspaceFileTreeStore>(
@@ -298,6 +300,12 @@ Widget buildTestApp({
         ),
         BlocProvider(create: (_) => WorkspaceToolsCubit()),
         BlocProvider(create: (_) => NotificationCubit()),
+        BlocProvider(
+          create: (_) => SshConnectionCubit(
+            factory: sshClientFactory,
+            coordinator: sshCoordinator,
+          ),
+        ),
         BlocProvider(
           create: (_) => testAutomationCubit(
             sessionRepository: desktopHarnessSessionRepo,
