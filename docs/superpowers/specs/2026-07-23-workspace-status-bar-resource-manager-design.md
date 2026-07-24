@@ -17,7 +17,7 @@ Add an Orca-style **workspace bottom status bar** with an extensible item regist
 
 ## Non-goals (v1)
 
-- Additional status segments (ports, SSH, updates, pets, provider usage)
+- Additional status segments (ports, updates, pets, provider usage) — **SSH hosts segment shipped separately:** see `docs/superpowers/specs/2026-07-24-ssh-status-bar-indicator-design.md`
 - Real workspace disk Space scan
 - Remote SSH `ps` over the tunnel
 - Orphan daemon / worktree cleanup flows unique to Orca’s Electron daemon model
