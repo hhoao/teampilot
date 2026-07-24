@@ -386,9 +386,11 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
             ],
             const SizedBox(width: 8),
             const NotificationBellButton(),
-            _ActionGlyph(
+            TpIconButton(
               icon: Icons.settings_outlined,
               tooltip: l10n.settings,
+              color: cs.onSurfaceVariant,
+              backgroundColor: Colors.transparent,
               onTap: () => showWorkspaceSettingsDialog(context),
             ),
             const SizedBox(width: 10),
@@ -812,9 +814,12 @@ class _RecentlyClosedOverflowButtonState
           _pointerOnAnchor = false;
           _scheduleClose();
         },
-        child: _ActionGlyph(
+        child: TpIconButton(
           icon: Icons.more_horiz,
           tooltip: l10n.homeWorkspaceRecentlyClosed,
+          color: cs.onSurfaceVariant,
+          backgroundColor: Colors.transparent,
+          onTap: null,
         ),
       ),
     );
@@ -871,54 +876,5 @@ class _RecentlyClosedMenuItem extends StatelessWidget {
       menuController: menuController,
       onTap: () => onReopen?.call(entry.tabKey),
     );
-  }
-}
-
-class _ActionGlyph extends StatefulWidget {
-  const _ActionGlyph({required this.icon, this.onTap, this.tooltip});
-
-  final IconData icon;
-  final VoidCallback? onTap;
-  final String? tooltip;
-
-  @override
-  State<_ActionGlyph> createState() => _ActionGlyphState();
-}
-
-class _ActionGlyphState extends State<_ActionGlyph> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    Widget glyph = MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: Container(
-          width: 32,
-          height: 32,
-          margin: const EdgeInsets.symmetric(horizontal: 1),
-          decoration: BoxDecoration(
-            color: _hovered
-                ? cs.onSurface.withValues(alpha: 0.07)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            widget.icon,
-            size: context.tpIconSizes.md,
-            color: cs.onSurfaceVariant,
-          ),
-        ),
-      ),
-    );
-    final tooltip = widget.tooltip;
-    if (tooltip != null) {
-      glyph = Tooltip(message: tooltip, child: glyph);
-    }
-    return glyph;
   }
 }
