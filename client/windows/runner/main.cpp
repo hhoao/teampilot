@@ -2,11 +2,11 @@
 #include <flutter/flutter_view_controller.h>
 #include <windows.h>
 
-#include <native_splash_screen_windows/native_splash_screen_windows_plugin_c_api.h>
-
 #include "flutter_window.h"
 #include "utils.h"
 
+// The boot splash is painted as an in-window overlay (see flutter_window.cpp),
+// not the native_splash_screen plugin's separate top-level window.
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
   // Attach to console when present (e.g., 'flutter run') or create a
@@ -14,8 +14,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {
     CreateAndAttachConsole();
   }
-
-  ShowSplashScreen();
 
   // Initialize COM, so that it is available for use in the library and/or
   // plugins.

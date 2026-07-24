@@ -461,14 +461,14 @@ void main() async {
       center: false,
       title: 'TeamPilot',
       backgroundColor: const Color(0xFFFFFFFF),
-      // Frameless chrome is applied in completeBootSplashTransition() so the
-      // main window does not resize under the splash.
+      // Frameless chrome is finalized in completeBootSplashTransition(). Linux
+      // and Windows already start without a native caption for overlay splash.
     );
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
-      // Linux paints the splash as an in-window overlay over the Flutter view,
-      // so the window itself stays visible. Windows/macOS hide the main window
-      // behind the plugin's separate splash window until the reveal.
-      if (!Platform.isLinux) {
+      // Linux/Windows paint the splash as an in-window overlay, so the main
+      // window stays visible. macOS still hides behind a separate splash window
+      // until the reveal.
+      if (Platform.isMacOS) {
         await windowManager.setOpacity(0);
       }
       await ensureBootSplashOnTop();

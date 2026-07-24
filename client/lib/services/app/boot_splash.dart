@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:native_splash_screen/native_splash_screen.dart' as nss;
@@ -13,13 +14,22 @@ void preserveBootSplash(WidgetsBinding binding) {
   }
 }
 
+Future<void> _nativeSplashCall(Future<void> Function() action) async {
+  try {
+    await action();
+  } on MissingPluginException {
+    // Widget tests / incomplete runner builds must not abort boot.
+  }
+}
+
 /// Pin the splash on top while the main window maps behind it.
 ///
-/// Linux runs the splash as an in-window overlay (always above the Flutter view,
-/// nothing to restack); Windows/macOS run the plugin's separate splash window.
+/// Linux/Windows paint the splash as an in-window overlay (already above the
+/// Flutter view — nothing to restack). macOS still uses a separate splash
+/// window that must be re-raised when the main window maps.
 Future<void> ensureBootSplashOnTop() async {
-  if (Platform.isWindows || Platform.isMacOS) {
-    await nss.ensureOnTop();
+  if (Platform.isMacOS) {
+    await _nativeSplashCall(nss.ensureOnTop);
   }
 }
 
@@ -28,10 +38,12 @@ Future<void> dismissBootSplash() async {
     FlutterNativeSplash.remove();
     return;
   }
-  // Linux (overlay) and Windows/macOS (separate window) both dismiss via the
+  // Linux/Windows (overlay) and macOS (separate window) all dismiss via the
   // plugin's close() — it fades whichever splash is active.
   if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-    await nss.close(animation: nss.CloseAnimation.fade);
+    await _nativeSplashCall(
+      () => nss.close(animation: nss.CloseAnimation.fade),
+    );
   }
 }
 
