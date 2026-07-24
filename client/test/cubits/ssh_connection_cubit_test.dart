@@ -227,17 +227,44 @@ void main() {
       await cubit.connect(_p1.id);
       expect(cubit.state.hostsById.keys, {_p1.id, _p2.id});
 
-      cubit.syncProfiles(const [_p2]);
+      await cubit.syncProfiles(const [_p2]);
       expect(cubit.state.hostsById.keys, {_p2.id});
       expect(cubit.state.isEmpty, isFalse);
+      expect(harness.factory.hasLiveStorageClient(_p1.id), isFalse);
+      expect(harness.coordinator.isUserDisconnectLatched(_p1.id), isTrue);
 
-      cubit.syncProfiles(const []);
+      await cubit.syncProfiles(const []);
       expect(cubit.state.isEmpty, isTrue);
       expect(cubit.state.hostsById, isEmpty);
 
       await cubit.close();
       harness.dispose();
     });
+
+    test(
+      'syncProfiles disconnects live pool for every removed connected host',
+      () async {
+        final harness = _Harness();
+        final cubit = harness.createCubit();
+        cubit.syncProfiles(const [_p1, _p2]);
+
+        await cubit.connect(_p1.id);
+        await cubit.connect(_p2.id);
+        expect(harness.factory.hasLiveStorageClient(_p1.id), isTrue);
+        expect(harness.factory.hasLiveStorageClient(_p2.id), isTrue);
+
+        await cubit.syncProfiles(const []);
+
+        expect(cubit.state.isEmpty, isTrue);
+        expect(harness.factory.hasLiveStorageClient(_p1.id), isFalse);
+        expect(harness.factory.hasLiveStorageClient(_p2.id), isFalse);
+        expect(harness.coordinator.isUserDisconnectLatched(_p1.id), isTrue);
+        expect(harness.coordinator.isUserDisconnectLatched(_p2.id), isTrue);
+
+        await cubit.close();
+        harness.dispose();
+      },
+    );
 
     test('connect failure → error / authFailed', () async {
       final harness = _Harness(

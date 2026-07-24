@@ -128,13 +128,17 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
 
   StreamSubscription<String>? _poolSubscription;
 
-  void syncProfiles(List<SshProfile> profiles) {
+  Future<void> syncProfiles(List<SshProfile> profiles) async {
     final nextIds = profiles.map((p) => p.id).toSet();
     final removed = _profilesById.keys
         .where((id) => !nextIds.contains(id))
         .toList(growable: false);
 
     for (final id in removed) {
+      if (_factory.hasLiveStorageClient(id) ||
+          _connectingIds.contains(id)) {
+        await _coordinator.userDisconnect(id);
+      }
       _unsubscribeMonitor(id);
       _profilesById.remove(id);
       _connectingIds.remove(id);
