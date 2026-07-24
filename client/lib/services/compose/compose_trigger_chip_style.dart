@@ -17,11 +17,14 @@ double composeTokenPillWidth(double layoutWidth) =>
 List<InlineSpan> buildComposeMirrorLayoutSpans({
   required String text,
   required TextStyle baseStyle,
+  ColorScheme? colorScheme,
 }) {
   return buildTpTokenMirrorLayoutSpans(
     text: text,
     baseStyle: baseStyle,
     tokenPattern: composeInlineTokenPattern,
+    colorScheme: colorScheme,
+    resolvePalette: colorScheme == null ? null : resolveSlashAtTokenPalette,
   );
 }
 
