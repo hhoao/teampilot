@@ -165,7 +165,14 @@ jobs:
       - name: Add pub-cache to PATH (Windows)
         shell: pwsh
         run: |
-          Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Pub\Cache\bin"
+          # Prefer PUB_CACHE (set by flutter-action); fall back to LocalAppData.
+          $bin = if ($env:PUB_CACHE) {
+            Join-Path $env:PUB_CACHE 'bin'
+          } else {
+            Join-Path $env:LOCALAPPDATA 'Pub\Cache\bin'
+          }
+          Add-Content $env:GITHUB_PATH $bin
+          Write-Host "Added to PATH: $bin"
 
       - name: Resolve Flutter packages
         run: flutter pub get
@@ -177,24 +184,25 @@ jobs:
         run: dart run native_splash_screen_cli gen
 
       - name: Require GitHub OAuth client id
-        shell: bash
+        shell: pwsh
         run: |
-          if [ -z "${TEAMPILOT_GITHUB_OAUTH_CLIENT_ID}" ]; then
-            echo "Missing repository secret TEAMPILOT_GITHUB_OAUTH_CLIENT_ID" >&2
-            exit 1
-          fi
+          if ([string]::IsNullOrWhiteSpace($env:TEAMPILOT_GITHUB_OAUTH_CLIENT_ID)) {
+            throw 'Missing repository secret TEAMPILOT_GITHUB_OAUTH_CLIENT_ID'
+          }
 
+      # Use pwsh (not bash): dart pub global shims are fastforge.bat on Windows;
+      # Git Bash does not resolve .bat → "fastforge: command not found".
       - name: Package Windows (ZIP + MSIX)
-        shell: bash
+        shell: pwsh
         run: >
           fastforge package --platform windows --targets zip,msix
-          --build-dart-define=GITHUB_OAUTH_CLIENT_ID=${TEAMPILOT_GITHUB_OAUTH_CLIENT_ID}
+          --build-dart-define=GITHUB_OAUTH_CLIENT_ID=$env:TEAMPILOT_GITHUB_OAUTH_CLIENT_ID
 
       - name: Package Windows (EXE installer)
-        shell: bash
+        shell: pwsh
         run: >
           fastforge package --platform windows --targets exe
-          --build-dart-define=GITHUB_OAUTH_CLIENT_ID=${TEAMPILOT_GITHUB_OAUTH_CLIENT_ID}
+          --build-dart-define=GITHUB_OAUTH_CLIENT_ID=$env:TEAMPILOT_GITHUB_OAUTH_CLIENT_ID
 
       - name: Verify Windows release files
         shell: pwsh
