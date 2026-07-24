@@ -83,8 +83,7 @@ class AutomationEditorFormBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final bodyStyle =
-        Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
+    final bodyStyle = TpTextStyles.of(context).md;
 
     return Column(
       mainAxisSize: MainAxisSize.min,

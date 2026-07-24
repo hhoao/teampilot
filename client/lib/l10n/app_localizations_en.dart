@@ -5747,10 +5747,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shortcutsWorkspaceSearch => 'Search Workspace';
 
   @override
-  String get shortcutsSessionNextTab => 'Next Session Tab';
+  String get shortcutsStripNextTab => 'Next Tab';
 
   @override
-  String get shortcutsSessionPrevTab => 'Previous Session Tab';
+  String get shortcutsStripPrevTab => 'Previous Tab';
 
   @override
   String get shortcutsSessionNewTab => 'New Session Tab';
@@ -5759,8 +5759,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shortcutsSessionCloseTab => 'Close Session Tab';
 
   @override
-  String shortcutsSessionFocusTab(int n) {
-    return 'Go to Session Tab $n';
+  String shortcutsStripFocusTab(int n) {
+    return 'Go to Tab $n';
   }
 
   @override

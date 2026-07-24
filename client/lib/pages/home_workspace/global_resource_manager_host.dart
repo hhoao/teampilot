@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/chat_cubit.dart';
@@ -24,6 +23,7 @@ import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/workspace_status_bar/resource_usage_status_item.dart';
 import '../../widgets/workspace_status_bar/ssh_hosts_status_item.dart';
 import '../../widgets/workspace_status_bar/workspace_status_bar.dart';
+import '../config/config_workspace.dart';
 import 'home_workspace_tab_scope.dart';
 
 /// App-global Resource Manager: cubit, bindings across all workspaces, status bar.
@@ -276,8 +276,7 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
               items: [
                 ResourceUsageStatusItem(),
                 SshHostsStatusItem(
-                  onManage: () =>
-                      GoRouter.of(context).go('/config/ssh-profiles'),
+                  onManage: () => openSshProfilesManagement(context),
                 ),
               ],
             ),

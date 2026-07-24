@@ -705,9 +705,7 @@ class _CommitBox extends StatelessWidget {
             Expanded(
               child: Builder(
                 builder: (context) {
-                  final bodyStyle =
-                      Theme.of(context).textTheme.bodyMedium ??
-                      const TextStyle();
+                  final bodyStyle = TpTextStyles.of(context).md;
                   return TpTextarea(
                     controller: controller,
                     minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),

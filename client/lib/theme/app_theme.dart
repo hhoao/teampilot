@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart' hide buildTpDialogTheme;
@@ -9,6 +10,7 @@ import 'app_dialog_theme.dart';
 import 'app_list_tile_theme.dart';
 import 'app_tooltip_theme.dart';
 import 'app_fonts.dart';
+import 'app_markdown_style_sheet.dart';
 import 'app_outline_input_theme.dart';
 import 'app_typography_scale.dart';
 import 'font_catalog.dart';
@@ -214,6 +216,23 @@ ColorScheme _softenedForegroundColorScheme(ColorScheme scheme) {
 TextTheme _textThemeWithForeground(TextTheme theme, ColorScheme scheme) =>
     theme.apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
 
+List<ThemeExtension<dynamic>> _appThemeExtensions({
+  required ThemeData flexTheme,
+  required TextTheme textTheme,
+  required TpFontTheme fontTheme,
+  required AppTypographyTheme typographyTheme,
+}) {
+  final bootstrap = flexTheme.copyWith(
+    textTheme: textTheme,
+    extensions: [fontTheme, typographyTheme],
+  );
+  return [
+    fontTheme,
+    typographyTheme,
+    buildAppAiMessageTheme(bootstrap),
+  ];
+}
+
 ThemeData _withSoftenedForeground(ThemeData base) {
   final scheme = _softenedForegroundColorScheme(base.colorScheme);
   return base.copyWith(
@@ -268,10 +287,12 @@ ThemeData _applyTypography(
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       iconTheme: TpIconSizes.iconTheme(scheme, scale: resolvedIconScale.multiplier),
       textTheme: textTheme,
-      extensions: [
-        fontTheme,
-        typographyTheme,
-      ],
+      extensions: _appThemeExtensions(
+        flexTheme: flexTheme,
+        textTheme: textTheme,
+        fontTheme: fontTheme,
+        typographyTheme: typographyTheme,
+      ),
       dialogTheme: buildTpDialogTheme(
         colorScheme: scheme,
         textTheme: textTheme,
@@ -323,10 +344,12 @@ ThemeData _applyTypography(
     iconTheme: TpIconSizes.iconTheme(scheme, scale: resolvedIconScale.multiplier),
     textTheme: mergedTextTheme,
     primaryTextTheme: primaryTextTheme,
-    extensions: [
-      fontTheme,
-      typographyTheme,
-    ],
+    extensions: _appThemeExtensions(
+      flexTheme: flexTheme,
+      textTheme: mergedTextTheme,
+      fontTheme: fontTheme,
+      typographyTheme: typographyTheme,
+    ),
     dialogTheme: buildTpDialogTheme(
       colorScheme: scheme,
       textTheme: mergedTextTheme,

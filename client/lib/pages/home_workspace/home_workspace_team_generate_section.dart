@@ -47,8 +47,7 @@ class _HomeTeamGenerateSectionState extends State<HomeTeamGenerateSection> {
         const SizedBox(height: 8),
         Builder(
           builder: (context) {
-            final bodyStyle =
-                Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
+            final bodyStyle = TpTextStyles.of(context).md;
             return TpTextarea(
               key: const ValueKey('team-gen-description'),
               controller: _controller,

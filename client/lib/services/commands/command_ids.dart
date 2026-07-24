@@ -7,22 +7,22 @@ abstract final class CommandIds {
   static const String workspaceReopenClosed = 'workbench.workspace.reopenClosed';
   static const String workspaceSearch = 'workbench.workspace.search';
 
-  // Session tabs
-  static const String sessionNextTab = 'workbench.session.nextTab';
-  static const String sessionPrevTab = 'workbench.session.prevTab';
+  // Workbench strip tabs (session / file / diff / shell / run)
+  static const String stripNextTab = 'workbench.strip.nextTab';
+  static const String stripPrevTab = 'workbench.strip.prevTab';
   static const String sessionNewTab = 'workbench.session.newTab';
   static const String sessionCloseTab = 'workbench.session.closeTab';
 
-  /// 1-based ordinal → `workbench.session.focusTabN` (N = 1…10).
+  /// 1-based ordinal → `workbench.strip.focusTabN` (N = 1…10).
   /// Bound to Alt+1…9 / Alt+0 (10th tab).
-  static String sessionFocusTab(int oneBased) {
+  static String stripFocusTab(int oneBased) {
     assert(oneBased >= 1 && oneBased <= 10);
-    return 'workbench.session.focusTab$oneBased';
+    return 'workbench.strip.focusTab$oneBased';
   }
 
-  /// All [sessionFocusTab] ids in ordinal order (1…10).
-  static final List<String> sessionFocusTabs = [
-    for (var n = 1; n <= 10; n++) sessionFocusTab(n),
+  /// All [stripFocusTab] ids in ordinal order (1…10).
+  static final List<String> stripFocusTabs = [
+    for (var n = 1; n <= 10; n++) stripFocusTab(n),
   ];
 
   // View

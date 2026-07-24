@@ -10308,17 +10308,17 @@ abstract class AppLocalizations {
   /// **'Search Workspace'**
   String get shortcutsWorkspaceSearch;
 
-  /// No description provided for @shortcutsSessionNextTab.
+  /// No description provided for @shortcutsStripNextTab.
   ///
   /// In en, this message translates to:
-  /// **'Next Session Tab'**
-  String get shortcutsSessionNextTab;
+  /// **'Next Tab'**
+  String get shortcutsStripNextTab;
 
-  /// No description provided for @shortcutsSessionPrevTab.
+  /// No description provided for @shortcutsStripPrevTab.
   ///
   /// In en, this message translates to:
-  /// **'Previous Session Tab'**
-  String get shortcutsSessionPrevTab;
+  /// **'Previous Tab'**
+  String get shortcutsStripPrevTab;
 
   /// No description provided for @shortcutsSessionNewTab.
   ///
@@ -10332,11 +10332,11 @@ abstract class AppLocalizations {
   /// **'Close Session Tab'**
   String get shortcutsSessionCloseTab;
 
-  /// No description provided for @shortcutsSessionFocusTab.
+  /// No description provided for @shortcutsStripFocusTab.
   ///
   /// In en, this message translates to:
-  /// **'Go to Session Tab {n}'**
-  String shortcutsSessionFocusTab(int n);
+  /// **'Go to Tab {n}'**
+  String shortcutsStripFocusTab(int n);
 
   /// No description provided for @shortcutsToggleSidebar.
   ///

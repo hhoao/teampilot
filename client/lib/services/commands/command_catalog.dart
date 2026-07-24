@@ -70,19 +70,19 @@ abstract final class CommandCatalog {
       titleL10nKey: 'shortcutsWorkspaceSearch',
     ),
 
-    // Session tabs
+    // Workbench strip tabs
     CommandDefinition(
-      id: CommandIds.sessionNextTab,
+      id: CommandIds.stripNextTab,
       category: CommandCategory.tabs,
       defaultChords: [
         KeyChord(key: 'tab', mods: [KeyChordMod.ctrl]),
       ],
       when: ShortcutWhen.hasWorkspace,
       terminalPassthrough: true,
-      titleL10nKey: 'shortcutsSessionNextTab',
+      titleL10nKey: 'shortcutsStripNextTab',
     ),
     CommandDefinition(
-      id: CommandIds.sessionPrevTab,
+      id: CommandIds.stripPrevTab,
       category: CommandCategory.tabs,
       defaultChords: [
         KeyChord(
@@ -92,7 +92,7 @@ abstract final class CommandCatalog {
       ],
       when: ShortcutWhen.hasWorkspace,
       terminalPassthrough: true,
-      titleL10nKey: 'shortcutsSessionPrevTab',
+      titleL10nKey: 'shortcutsStripPrevTab',
     ),
     CommandDefinition(
       id: CommandIds.sessionNewTab,
@@ -114,10 +114,10 @@ abstract final class CommandCatalog {
       terminalPassthrough: true,
       titleL10nKey: 'shortcutsSessionCloseTab',
     ),
-    // Alt+1…9 → tabs 1–9; Alt+0 → tab 10.
+    // Alt+1…9 → strip tabs 1–9; Alt+0 → tab 10.
     for (var n = 1; n <= 10; n++)
       CommandDefinition(
-        id: CommandIds.sessionFocusTab(n),
+        id: CommandIds.stripFocusTab(n),
         category: CommandCategory.tabs,
         defaultChords: [
           KeyChord(
@@ -128,7 +128,7 @@ abstract final class CommandCatalog {
         when: ShortcutWhen.hasWorkspace,
         terminalPassthrough: true,
         // Resolved with ordinal in [titleForCommand].
-        titleL10nKey: 'shortcutsSessionFocusTab',
+        titleL10nKey: 'shortcutsStripFocusTab',
       ),
 
     // View

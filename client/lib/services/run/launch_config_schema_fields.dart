@@ -17,7 +17,6 @@ class LaunchConfigSchemaField {
     required this.key,
     required this.type,
     this.title,
-    this.monospace = false,
     this.enumValues,
   });
 
@@ -26,9 +25,6 @@ class LaunchConfigSchemaField {
 
   /// Optional schema `title`; when absent UI uses a title-cased [key].
   final String? title;
-
-  /// Prefer monospace for command/path-like string fields.
-  final bool monospace;
 
   /// Allowed values when [type] is [LaunchConfigSchemaFieldType.enumValue].
   final List<String>? enumValues;
@@ -67,7 +63,6 @@ List<LaunchConfigSchemaField> launchConfigSchemaFields(
         key: key,
         type: type,
         title: title,
-        monospace: _preferMonospace(key, propMap),
         enumValues: _enumValues(propMap),
       ),
     );
@@ -128,17 +123,4 @@ List<String>? _enumValues(Map<String, Object?> prop) {
   final raw = prop['enum'];
   if (raw is! List || raw.isEmpty) return null;
   return [for (final e in raw) e.toString()];
-}
-
-bool _preferMonospace(String key, Map<String, Object?> prop) {
-  if (key == 'command' ||
-      key == 'cwd' ||
-      key == 'scriptPath' ||
-      key == 'interpreterPath') {
-    return true;
-  }
-  final ui = prop['ui'];
-  if (ui is Map && ui['monospace'] == true) return true;
-  if (prop['format'] == 'path' || prop['format'] == 'uri') return true;
-  return false;
 }

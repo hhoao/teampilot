@@ -1,18 +1,19 @@
 import '../../cubits/chat_cubit.dart';
+import '../workbench/workbench_strip_navigator.dart';
 import 'command_bus.dart';
 import 'command_ids.dart';
 
-/// Wires the v1 session-tab commands onto [bus] against [chat].
+/// Wires workbench-strip + session create/close commands onto [bus].
 ///
-/// Call once during app bootstrap, after both are constructed (see
-/// `buildAppShell`); handlers stay registered for the app's lifetime, so
-/// there is no matching unregister step.
-void registerSessionCommands(CommandBus bus, ChatCubit chat) {
-  bus.register(CommandIds.sessionNextTab, () => chat.selectNextSessionTab());
-  bus.register(
-    CommandIds.sessionPrevTab,
-    () => chat.selectPreviousSessionTab(),
-  );
+/// Call once during app bootstrap after [WorkbenchStripNavigator] is built
+/// (see `buildAppShell`); handlers stay registered for the app's lifetime.
+void registerSessionCommands(
+  CommandBus bus,
+  ChatCubit chat,
+  WorkbenchStripNavigator strip,
+) {
+  bus.register(CommandIds.stripNextTab, strip.next);
+  bus.register(CommandIds.stripPrevTab, strip.previous);
   bus.register(
     CommandIds.sessionNewTab,
     () => chat.enterNewChat(chat.tabStore.activeWorkspaceId),
@@ -24,8 +25,8 @@ void registerSessionCommands(CommandBus bus, ChatCubit chat) {
   for (var n = 1; n <= 10; n++) {
     final ordinal = n;
     bus.register(
-      CommandIds.sessionFocusTab(ordinal),
-      () => chat.selectSessionTabAt(ordinal),
+      CommandIds.stripFocusTab(ordinal),
+      () => strip.focusAt(ordinal),
     );
   }
 }

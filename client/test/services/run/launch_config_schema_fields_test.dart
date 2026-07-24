@@ -3,7 +3,7 @@ import 'package:teampilot/services/run/launch_config_schema_fields.dart';
 import 'package:teampilot/services/run/shell_script_launch_schema.dart';
 
 void main() {
-  test('shellScript schema yields enum execute and monospace paths', () {
+  test('shellScript schema yields enum execute and path fields', () {
     final fields = launchConfigSchemaFields(
       ShellScriptLaunchSchema.configurationSchema,
     );
@@ -21,8 +21,8 @@ void main() {
     );
     expect(byKey['execute']!.type, LaunchConfigSchemaFieldType.enumValue);
     expect(byKey['execute']!.enumValues, ['scriptFile', 'scriptText']);
-    expect(byKey['scriptPath']!.monospace, isTrue);
-    expect(byKey['interpreterPath']!.monospace, isTrue);
+    expect(byKey['scriptPath']!.type, LaunchConfigSchemaFieldType.string);
+    expect(byKey['interpreterPath']!.type, LaunchConfigSchemaFieldType.string);
     expect(byKey['executeInTerminal']!.type, LaunchConfigSchemaFieldType.boolean);
   });
 

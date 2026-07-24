@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'ai_message_parts.dart';
+import 'markdown/compiled_markdown_chrome.dart';
 import 'message_action_bar.dart';
 import 'part_registry.dart';
 import 'strings.dart';
@@ -109,9 +110,7 @@ class _AiMessageViewState extends State<AiMessageView> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: DefaultTextStyle.merge(
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
+                  style: aiTheme.markdown.systemMessage(scheme.onSurfaceVariant),
                   child: parts,
                 ),
               ),
@@ -149,6 +148,7 @@ class _StatusBanner extends StatelessWidget {
     }
     final strings = AiMessageStrings.of(context);
     final scheme = Theme.of(context).colorScheme;
+    final markdown = AiMessageTheme.of(context).markdown;
     final label = message.status == AiMessageStatus.cancelled
         ? strings.messageCancelled
         : strings.messageIncomplete;
@@ -164,9 +164,7 @@ class _StatusBanner extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           child: Text(
             label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: scheme.onErrorContainer,
-            ),
+            style: markdown.statusBanner(scheme.onErrorContainer),
           ),
         ),
       ),
@@ -232,9 +230,8 @@ class _UserBubble extends StatelessWidget {
                       vertical: 10,
                     ),
                     child: DefaultTextStyle.merge(
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: aiTheme.resolveUserForeground(scheme),
-                        height: 1.5,
+                      style: aiTheme.markdown.userBubble(
+                        aiTheme.resolveUserForeground(scheme),
                       ),
                       child: parts,
                     ),
@@ -279,10 +276,7 @@ class _AssistantBlock extends StatelessWidget {
           children: [
             _StatusBanner(message: message),
             DefaultTextStyle.merge(
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: scheme.onSurface,
-                height: 1.625,
-              ),
+              style: aiTheme.markdown.assistantBody(scheme.onSurface),
               child: parts,
             ),
             if (showActionBar)

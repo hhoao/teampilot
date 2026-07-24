@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
+import '../markdown/compiled_markdown_chrome.dart';
 import '../strings.dart';
 import '../theme.dart';
 import 'reasoning_part_view.dart';
@@ -27,6 +28,7 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
     final scheme = theme.colorScheme;
     final aiTheme = AiMessageTheme.of(context);
     final strings = AiMessageStrings.of(context);
+    final markdown = aiTheme.markdown;
     final triggerColor = aiTheme.resolveToolTrigger(scheme);
     final label = strings.formatThinkingProcessSteps(widget.parts.length);
 
@@ -68,10 +70,7 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
                               label,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: triggerColor,
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: markdown.toolTrigger(triggerColor),
                             ),
                           ),
                           const SizedBox(width: 4),

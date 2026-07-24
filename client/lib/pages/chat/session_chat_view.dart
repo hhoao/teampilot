@@ -1008,17 +1008,21 @@ class _SessionChatViewState extends State<SessionChatView> {
               child: Theme(
                 data: Theme.of(context).copyWith(
                   extensions: [
-                    ...Theme.of(context).extensions.values,
-                    AiMessageTheme(
+                    for (final ext in Theme.of(context).extensions.values)
+                      if (ext is! AiMessageTheme) ext,
+                    AiMessageTheme.of(context).copyWith(
+                      markdown: buildAppCompiledMarkdownStyle(
+                        Theme.of(context),
+                        mutedSurface: cs.surfaceContainerHighest.withValues(
+                          alpha: 0.55,
+                        ),
+                      ),
                       userBubbleColor: cs.surfaceContainerHighest,
                       userBubbleForeground: cs.onSurface,
                       mutedSurface: cs.surfaceContainerHighest.withValues(
                         alpha: 0.55,
                       ),
                       toolTriggerColor: cs.onSurfaceVariant,
-                      markdownStyleSheet: buildAppMarkdownStyleSheet(
-                        Theme.of(context),
-                      ),
                       messageSpacing: 24,
                       threadMaxWidth: kSessionHistoryColumnMaxWidth,
                       threadHorizontalPadding: spacing.md,

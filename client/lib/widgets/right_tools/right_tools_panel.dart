@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/board_cubit.dart';
 import '../../cubits/chat_cubit.dart';
@@ -200,6 +201,7 @@ class _RightToolsResolveError extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
+    final styles = TpTextStyles.of(context);
     return Container(
       key: panelKey,
       padding: const EdgeInsets.all(16),
@@ -216,15 +218,13 @@ class _RightToolsResolveError extends StatelessWidget {
           Text(
             l10n.workspaceToolsResolveFailed,
             textAlign: TextAlign.center,
-            style: theme.textTheme.titleSmall,
+            style: styles.smSemibold,
           ),
           const SizedBox(height: 6),
           Text(
             l10n.workspaceToolsResolveFailedHint,
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: styles.smColored(theme.colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
           FilledButton.tonal(

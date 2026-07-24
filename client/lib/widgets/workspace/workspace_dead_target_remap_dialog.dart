@@ -126,7 +126,7 @@ class _WorkspaceDeadTargetRemapDialogState
           if (_showFromPicker) ...[
             Text(
               l10n.workspaceDeadTargetRemapPickFrom,
-              style: Theme.of(context).textTheme.labelMedium,
+              style: TpTextStyles.of(context).smMedium,
             ),
             const SizedBox(height: 6),
             TpSelect<String>(
@@ -145,7 +145,7 @@ class _WorkspaceDeadTargetRemapDialogState
             const SizedBox(height: 16),
             Text(
               l10n.workspaceDeadTargetRemapPickTo,
-              style: Theme.of(context).textTheme.labelMedium,
+              style: TpTextStyles.of(context).smMedium,
             ),
             const SizedBox(height: 6),
             FutureBuilder<List<RuntimeTarget>>(
@@ -168,8 +168,8 @@ class _WorkspaceDeadTargetRemapDialogState
                 if (candidates.isEmpty) {
                   return Text(
                     l10n.workspaceDeadTargetRemapNothing,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.error,
+                    style: TpTextStyles.of(context).mdColored(
+                      Theme.of(context).colorScheme.error,
                     ),
                   );
                 }

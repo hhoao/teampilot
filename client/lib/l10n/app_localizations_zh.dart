@@ -5526,10 +5526,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get shortcutsWorkspaceSearch => '搜索工作区';
 
   @override
-  String get shortcutsSessionNextTab => '下一个会话标签';
+  String get shortcutsStripNextTab => '下一个标签';
 
   @override
-  String get shortcutsSessionPrevTab => '上一个会话标签';
+  String get shortcutsStripPrevTab => '上一个标签';
 
   @override
   String get shortcutsSessionNewTab => '新建会话标签';
@@ -5538,8 +5538,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get shortcutsSessionCloseTab => '关闭会话标签';
 
   @override
-  String shortcutsSessionFocusTab(int n) {
-    return '切换到第 $n 个会话标签';
+  String shortcutsStripFocusTab(int n) {
+    return '切换到第 $n 个标签';
   }
 
   @override

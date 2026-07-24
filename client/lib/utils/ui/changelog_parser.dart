@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// A version section parsed from changelog markdown.
 class ChangelogEntry {
@@ -68,15 +69,13 @@ class ChangelogData {
   }
 
   static Widget buildChangelogItem(BuildContext context, ChangelogEntry entry) {
-    final theme = Theme.of(context);
+    final styles = TpTextStyles.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           entry.version,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+          style: styles.smSemibold,
         ),
         const SizedBox(height: 6),
         for (final item in entry.items)
@@ -85,8 +84,8 @@ class ChangelogData {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('• ', style: theme.textTheme.bodySmall),
-                Expanded(child: Text(item, style: theme.textTheme.bodySmall)),
+                Text('• ', style: styles.sm),
+                Expanded(child: Text(item, style: styles.sm)),
               ],
             ),
           ),

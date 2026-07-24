@@ -76,8 +76,7 @@ class HubPublishMetadataStep extends StatelessWidget {
         const SizedBox(height: 12),
         Builder(
           builder: (context) {
-            final bodyStyle =
-                Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
+            final bodyStyle = TpTextStyles.of(context).md;
             return TpTextarea(
               key: const Key('hub-publish-description'),
               controller: descriptionController,

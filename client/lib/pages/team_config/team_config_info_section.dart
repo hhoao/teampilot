@@ -165,9 +165,7 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                   subtitle: l10n.teamDescriptionHint,
                   body: Builder(
                     builder: (context) {
-                      final bodyStyle =
-                          Theme.of(context).textTheme.bodyMedium ??
-                          const TextStyle();
+                      final bodyStyle = TpTextStyles.of(context).md;
                       return TpTextarea(
                         controller: _descCtl,
                         focusNode: _descFocus,

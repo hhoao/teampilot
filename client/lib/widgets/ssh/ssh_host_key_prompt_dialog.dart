@@ -116,7 +116,7 @@ class _SshHostKeyPromptDialog extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             l10n.sshHostKeyKeyTypeLabel(info.keyType),
-            style: Theme.of(context).textTheme.bodySmall,
+            style: TpTextStyles.of(context).sm,
           ),
           TpDialogActions(
             children: [
@@ -152,7 +152,7 @@ class _FingerprintRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(label, style: Theme.of(context).textTheme.labelMedium),
+        Text(label, style: TpTextStyles.of(context).smMedium),
         const SizedBox(height: 6),
         Material(
           color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
@@ -165,9 +165,7 @@ class _FingerprintRow extends StatelessWidget {
                 Expanded(
                   child: SelectableText(
                     value,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontFamily: 'monospace',
-                    ),
+                    style: TpTextStyles.of(context).mono,
                   ),
                 ),
                 IconButton(

@@ -82,7 +82,7 @@ void main() {
       expect(
         anyEntryAccepts(overlay, keyDown(LogicalKeyboardKey.tab)),
         isTrue,
-        reason: 'sessionNextTab (Ctrl+Tab, terminalPassthrough: true)',
+        reason: 'stripNextTab (Ctrl+Tab, terminalPassthrough: true)',
       );
     });
 

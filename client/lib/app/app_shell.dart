@@ -31,6 +31,7 @@ import '../cubits/editor_cubit.dart';
 import '../cubits/workbench/workbench_cubit.dart';
 import '../services/workbench/workbench_editor_opener.dart';
 import '../services/workbench/workbench_shell_launcher.dart';
+import '../services/workbench/workbench_strip_navigator.dart';
 import '../services/editor/markdown_view_mode_store.dart';
 import '../services/session/ai_history_loader.dart';
 import '../services/session/session_history_context_builder.dart';
@@ -943,7 +944,6 @@ Future<AppShell> buildAppShell({
       await workbenchShellLauncher?.focusOrCreateDefaultShell();
     },
   );
-  registerSessionCommands(commandBus, chatCubit);
 
   memberPresenceCubit = MemberPresenceCubit();
   chatCubit.bindPresenceCubit(memberPresenceCubit);
@@ -1166,6 +1166,11 @@ Future<AppShell> buildAppShell({
     sessionOps: workspaceTerminalSessionOps,
   );
   workbenchShellLauncher = resolvedShellLauncher;
+  registerSessionCommands(
+    commandBus,
+    chatCubit,
+    WorkbenchStripNavigator(workbench: workbenchCubit, chat: chatCubit),
+  );
 
   // P1: switching the home target persists the id, rebinds the home context,
   // then reinstalls + reloads all remote-backed app data (same chain the old

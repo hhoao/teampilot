@@ -52,7 +52,7 @@ void main() {
             height: 600,
             child: Theme(
               data: ThemeData(
-                extensions: const [AiMessageTheme(threadMaxWidth: 400)],
+                extensions: [AiMessageTheme.test(threadMaxWidth: 400)],
               ),
               child: AiThread(
                 runtime: store,

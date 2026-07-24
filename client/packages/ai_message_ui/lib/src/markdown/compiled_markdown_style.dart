@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
-import '../theme.dart';
-
-/// Theme tokens for [CompiledTextPartView] (style-free IR + themed paint).
+/// Typography + chrome for [CompiledTextPartView].
+///
+/// Host apps build this from their design-system / glyph-warmup styles
+/// and install it on [AiMessageTheme].
+/// The package does not invent ad-hoc sizes or font families.
 @immutable
 class CompiledMarkdownStyle {
   const CompiledMarkdownStyle({
@@ -24,72 +27,45 @@ class CompiledMarkdownStyle {
     required this.mutedSurface,
     required this.borderColor,
     required this.codeBlockRadius,
-    required this.blockSpacing,
-    required this.listIndent,
+    this.blockSpacing = 12,
+    this.listIndent = 24,
   });
 
-  factory CompiledMarkdownStyle.from(
-    ThemeData theme,
-    AiMessageTheme aiTheme,
-  ) {
-    final scheme = theme.colorScheme;
-    final body = theme.textTheme.bodyMedium?.copyWith(height: 1.625) ??
-        const TextStyle(fontSize: 14, height: 1.625);
-    final muted = aiTheme.resolveMutedSurface(scheme);
-    final borderColor = scheme.outlineVariant.withValues(alpha: 0.55);
+  /// Minimal styles for package widget tests (not for product UI).
+  factory CompiledMarkdownStyle.test({
+    ColorScheme? scheme,
+    double codeBlockRadius = 12,
+  }) {
+    final colors = scheme ?? const ColorScheme.light();
+    const body = TextStyle(fontSize: 14, height: 1.4);
+    const code = TextStyle(fontSize: 12, height: 1.45);
+    final muted = colors.surfaceContainerHighest.withValues(alpha: 0.55);
     return CompiledMarkdownStyle(
       body: body,
-      h1: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-            height: 1.25,
-          ) ??
-          body.copyWith(fontSize: 22, fontWeight: FontWeight.w600),
-      h2: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            height: 1.3,
-          ) ??
-          body.copyWith(fontSize: 16, fontWeight: FontWeight.w600),
-      h3: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            height: 1.35,
-          ) ??
-          body.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
-      h4: body.copyWith(fontWeight: FontWeight.w600, height: 1.4),
-      h5: body.copyWith(fontWeight: FontWeight.w600, height: 1.4),
-      h6: body.copyWith(fontWeight: FontWeight.w600, height: 1.4),
+      h1: body.copyWith(fontSize: 22, fontWeight: FontWeight.w600),
+      h2: body.copyWith(fontSize: 16, fontWeight: FontWeight.w600),
+      h3: body.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
+      h4: body.copyWith(fontWeight: FontWeight.w600),
+      h5: body.copyWith(fontWeight: FontWeight.w600),
+      h6: body.copyWith(fontWeight: FontWeight.w600),
       link: body.copyWith(
-        color: scheme.primary,
+        color: colors.primary,
         decoration: TextDecoration.underline,
-        decorationColor: scheme.primary,
+        decorationColor: colors.primary,
       ),
-      inlineCode: body.copyWith(
-        fontFamily: 'monospace',
-        backgroundColor: muted.withValues(alpha: 0.55),
+      inlineCode: body.copyWith(backgroundColor: muted),
+      codeBlock: code.copyWith(color: colors.onSurface),
+      codeLanguage: code.copyWith(
+        color: colors.onSurfaceVariant,
+        fontWeight: FontWeight.w500,
       ),
-      codeBlock: theme.textTheme.bodySmall?.copyWith(
-            fontFamily: 'monospace',
-            height: 1.45,
-            color: scheme.onSurface,
-          ) ??
-          body.copyWith(fontFamily: 'monospace', height: 1.45),
-      codeLanguage: theme.textTheme.labelSmall?.copyWith(
-            color: scheme.onSurfaceVariant,
-            fontWeight: FontWeight.w500,
-          ) ??
-          body.copyWith(
-            fontSize: 12,
-            color: scheme.onSurfaceVariant,
-            fontWeight: FontWeight.w500,
-          ),
       listBullet: body,
-      blockquote: body.copyWith(color: scheme.onSurfaceVariant),
+      blockquote: body.copyWith(color: colors.onSurfaceVariant),
       tableHead: body.copyWith(fontWeight: FontWeight.w600),
       tableBody: body,
       mutedSurface: muted,
-      borderColor: borderColor,
-      codeBlockRadius: aiTheme.codeBlockRadius,
-      blockSpacing: 12,
-      listIndent: 24,
+      borderColor: colors.outlineVariant.withValues(alpha: 0.55),
+      codeBlockRadius: codeBlockRadius,
     );
   }
 
@@ -123,5 +99,73 @@ class CompiledMarkdownStyle {
       5 => h5,
       _ => h6,
     };
+  }
+
+  /// Text styles that should participate in host glyph warmup.
+  List<TextStyle> get textStylesForWarmup => [
+        body,
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6,
+        link,
+        inlineCode,
+        codeBlock,
+        codeLanguage,
+        listBullet,
+        blockquote,
+        tableHead,
+        tableBody,
+      ];
+
+  /// [MarkdownBody] fallback for unsupported IR slices — derived from this
+  /// single source so hosts never maintain a second stylesheet.
+  MarkdownStyleSheet toMarkdownStyleSheet() {
+    return MarkdownStyleSheet(
+      p: body,
+      h1: h1,
+      h2: h2,
+      h3: h3,
+      h4: h4,
+      h5: h5,
+      h6: h6,
+      a: link,
+      code: inlineCode,
+      em: body.copyWith(fontStyle: FontStyle.italic),
+      strong: body.copyWith(fontWeight: FontWeight.w600),
+      del: body.copyWith(decoration: TextDecoration.lineThrough),
+      listBullet: listBullet,
+      blockquote: blockquote,
+      tableHead: tableHead,
+      tableBody: tableBody,
+      checkbox: body,
+      blockSpacing: blockSpacing,
+      listIndent: listIndent,
+      h1Padding: const EdgeInsets.only(top: 8),
+      h2Padding: const EdgeInsets.only(top: 8),
+      h3Padding: const EdgeInsets.only(top: 4),
+      codeblockDecoration: BoxDecoration(
+        color: mutedSurface,
+        borderRadius: BorderRadius.circular(codeBlockRadius),
+      ),
+      codeblockPadding: EdgeInsets.zero,
+      blockquoteDecoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(color: borderColor, width: 3),
+        ),
+      ),
+      blockquotePadding: const EdgeInsets.only(left: 12),
+      tableHeadAlign: TextAlign.start,
+      tableBorder: TableBorder.all(color: borderColor, width: 1),
+      tableColumnWidth: const IntrinsicColumnWidth(),
+      tableCellsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      tableHeadCellsDecoration: BoxDecoration(
+        color: mutedSurface.withValues(alpha: 0.85),
+      ),
+      tableCellsDecoration: const BoxDecoration(),
+      tablePadding: const EdgeInsets.symmetric(vertical: 8),
+    );
   }
 }

@@ -39,19 +39,29 @@ Future<void> showSettingsDialog(
   BuildContext context, {
   required SettingsLabelBuilder navTitle,
   required List<SettingsDialogEntry> entries,
+  int initialIndex = 0,
 }) {
   assert(entries.isNotEmpty, 'showSettingsDialog needs at least one entry');
   return showDialog<void>(
     context: context,
-    builder: (_) => _SettingsDialog(navTitle: navTitle, entries: entries),
+    builder: (_) => _SettingsDialog(
+      navTitle: navTitle,
+      entries: entries,
+      initialIndex: initialIndex,
+    ),
   );
 }
 
 class _SettingsDialog extends StatefulWidget {
-  const _SettingsDialog({required this.navTitle, required this.entries});
+  const _SettingsDialog({
+    required this.navTitle,
+    required this.entries,
+    this.initialIndex = 0,
+  });
 
   final SettingsLabelBuilder navTitle;
   final List<SettingsDialogEntry> entries;
+  final int initialIndex;
 
   @override
   State<_SettingsDialog> createState() => _SettingsDialogState();
@@ -63,7 +73,8 @@ class _SettingsDialogState extends State<_SettingsDialog> {
   @override
   void initState() {
     super.initState();
-    _selected = ValueNotifier(0);
+    final maxIndex = widget.entries.length - 1;
+    _selected = ValueNotifier(widget.initialIndex.clamp(0, maxIndex));
   }
 
   @override

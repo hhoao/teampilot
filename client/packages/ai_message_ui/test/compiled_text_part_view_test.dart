@@ -19,7 +19,7 @@ void main() {
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-          extensions: const [AiMessageTheme()],
+          extensions: [AiMessageTheme.test()],
         ),
         home: Scaffold(
           body: SelectionArea(

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
+import '../markdown/compiled_markdown_chrome.dart';
 import 'tool_call_part_view.dart';
 import '../strings.dart';
 import '../theme.dart';
@@ -31,6 +32,7 @@ class _AiToolGroupViewState extends State<AiToolGroupView> {
     final scheme = theme.colorScheme;
     final aiTheme = AiMessageTheme.of(context);
     final strings = AiMessageStrings.of(context);
+    final markdown = aiTheme.markdown;
     final triggerColor = aiTheme.resolveToolTrigger(scheme);
     final hasError = tools.any((t) => t.isError);
 
@@ -64,11 +66,7 @@ class _AiToolGroupViewState extends State<AiToolGroupView> {
                         const SizedBox(width: 8),
                         Text(
                           strings.toolsUsedLabel(tools.length),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: triggerColor,
-                            fontWeight: FontWeight.w600,
-                            height: 1.2,
-                          ),
+                          style: markdown.toolTrigger(triggerColor),
                         ),
                         const SizedBox(width: 4),
                         Transform.rotate(

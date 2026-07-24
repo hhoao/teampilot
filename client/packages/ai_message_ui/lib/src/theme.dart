@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+
+import 'markdown/compiled_markdown_style.dart';
 
 /// Theme tokens aligned with assistant-ui Thread / Message / ToolFallback.
+///
+/// Hosts **must** supply [markdown] from their warmup-aligned typography
+/// (TeamPilot: [buildAppCompiledMarkdownStyle]). Package tests use
+/// [AiMessageTheme.test].
 @immutable
 class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
   const AiMessageTheme({
+    required this.markdown,
     this.userBubbleColor,
     this.userBubbleForeground,
     this.mutedSurface,
@@ -19,8 +25,48 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     // assistant-ui: --thread-max-width 44rem ≈ 704
     this.threadMaxWidth = 704,
     this.threadHorizontalPadding = 16,
-    this.markdownStyleSheet,
   });
+
+  /// Product / test fixture with [CompiledMarkdownStyle.test] typography.
+  factory AiMessageTheme.test({
+    ColorScheme? scheme,
+    Color? userBubbleColor,
+    Color? userBubbleForeground,
+    Color? mutedSurface,
+    Color? toolTriggerColor,
+    Color? toolPanelColor,
+    Color? reasoningBorderColor,
+    double messageSpacing = 24,
+    double partSpacing = 8,
+    double userBubbleRadius = 12,
+    double panelRadius = 8,
+    double codeBlockRadius = 12,
+    double threadMaxWidth = 704,
+    double threadHorizontalPadding = 16,
+  }) {
+    return AiMessageTheme(
+      markdown: CompiledMarkdownStyle.test(
+        scheme: scheme,
+        codeBlockRadius: codeBlockRadius,
+      ),
+      userBubbleColor: userBubbleColor,
+      userBubbleForeground: userBubbleForeground,
+      mutedSurface: mutedSurface,
+      toolTriggerColor: toolTriggerColor,
+      toolPanelColor: toolPanelColor,
+      reasoningBorderColor: reasoningBorderColor,
+      messageSpacing: messageSpacing,
+      partSpacing: partSpacing,
+      userBubbleRadius: userBubbleRadius,
+      panelRadius: panelRadius,
+      codeBlockRadius: codeBlockRadius,
+      threadMaxWidth: threadMaxWidth,
+      threadHorizontalPadding: threadHorizontalPadding,
+    );
+  }
+
+  /// Single source for compiled markdown + [MarkdownBody] fallback styles.
+  final CompiledMarkdownStyle markdown;
 
   final Color? userBubbleColor;
   final Color? userBubbleForeground;
@@ -36,11 +82,10 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
   final double codeBlockRadius;
   final double threadMaxWidth;
   final double threadHorizontalPadding;
-  final MarkdownStyleSheet? markdownStyleSheet;
 
   static AiMessageTheme of(BuildContext context) {
     return Theme.of(context).extension<AiMessageTheme>() ??
-        const AiMessageTheme();
+        AiMessageTheme.test();
   }
 
   Color resolveUserBubble(ColorScheme scheme) =>
@@ -63,6 +108,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
 
   @override
   AiMessageTheme copyWith({
+    CompiledMarkdownStyle? markdown,
     Color? userBubbleColor,
     Color? userBubbleForeground,
     Color? mutedSurface,
@@ -76,9 +122,9 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     double? codeBlockRadius,
     double? threadMaxWidth,
     double? threadHorizontalPadding,
-    MarkdownStyleSheet? markdownStyleSheet,
   }) {
     return AiMessageTheme(
+      markdown: markdown ?? this.markdown,
       userBubbleColor: userBubbleColor ?? this.userBubbleColor,
       userBubbleForeground: userBubbleForeground ?? this.userBubbleForeground,
       mutedSurface: mutedSurface ?? this.mutedSurface,
@@ -93,7 +139,6 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
       threadMaxWidth: threadMaxWidth ?? this.threadMaxWidth,
       threadHorizontalPadding:
           threadHorizontalPadding ?? this.threadHorizontalPadding,
-      markdownStyleSheet: markdownStyleSheet ?? this.markdownStyleSheet,
     );
   }
 
@@ -101,6 +146,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
   AiMessageTheme lerp(ThemeExtension<AiMessageTheme>? other, double t) {
     if (other is! AiMessageTheme) return this;
     return AiMessageTheme(
+      markdown: t < 0.5 ? markdown : other.markdown,
       userBubbleColor: Color.lerp(userBubbleColor, other.userBubbleColor, t),
       userBubbleForeground:
           Color.lerp(userBubbleForeground, other.userBubbleForeground, t),
@@ -121,8 +167,6 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
           threadMaxWidth + (other.threadMaxWidth - threadMaxWidth) * t,
       threadHorizontalPadding: threadHorizontalPadding +
           (other.threadHorizontalPadding - threadHorizontalPadding) * t,
-      markdownStyleSheet:
-          t < 0.5 ? markdownStyleSheet : other.markdownStyleSheet,
     );
   }
 }

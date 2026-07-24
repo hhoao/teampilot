@@ -224,9 +224,7 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
               const SizedBox(height: 12),
               Builder(
                 builder: (context) {
-                  final bodyStyle =
-                      Theme.of(context).textTheme.bodyMedium ??
-                      const TextStyle();
+                  final bodyStyle = TpTextStyles.of(context).md;
                   return TpTextarea(
                     controller: _callbackController,
                     enabled: !finishing,

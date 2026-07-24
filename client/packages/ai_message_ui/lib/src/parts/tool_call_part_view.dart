@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
+import '../markdown/compiled_markdown_chrome.dart';
 import '../strings.dart';
 import '../theme.dart';
 
@@ -33,6 +34,7 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
     final scheme = theme.colorScheme;
     final aiTheme = AiMessageTheme.of(context);
     final strings = AiMessageStrings.of(context);
+    final markdown = aiTheme.markdown;
     final triggerColor = aiTheme.resolveToolTrigger(scheme);
     final part = widget.part;
     final cancelled = part.isCancelled;
@@ -63,12 +65,9 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
                         Expanded(
                           child: Text.rich(
                             TextSpan(
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: triggerColor,
-                                decoration: cancelled
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                                height: 1.2,
+                              style: markdown.toolTrigger(
+                                triggerColor,
+                                cancelled: cancelled,
                               ),
                               children: [
                                 TextSpan(
@@ -77,8 +76,11 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
                                 ),
                                 TextSpan(
                                   text: part.toolName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
+                                  style: markdown.toolNameEmphasis(
+                                    markdown.toolTrigger(
+                                      triggerColor,
+                                      cancelled: cancelled,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -124,10 +126,7 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
                       if (_hasArgs(part)) const SizedBox(height: 8),
                       Text(
                         '${strings.result}:',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: triggerColor,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: markdown.toolTrigger(triggerColor),
                       ),
                       const SizedBox(height: 4),
                       _MutedPre(
@@ -236,10 +235,8 @@ class _MutedPre extends StatelessWidget {
         child: Text(
           text,
           softWrap: true,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            fontFamily: 'monospace',
+          style: AiMessageTheme.of(context).markdown.codeBlock.copyWith(
             color: foreground,
-            height: 1.45,
           ),
         ),
       ),

@@ -29,7 +29,7 @@ Widget _harness({
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     locale: const Locale('en'),
-    theme: ThemeData(extensions: const [AiMessageTheme()]),
+    theme: ThemeData(extensions: [AiMessageTheme.test()]),
     home: Scaffold(
       body: SizedBox(
         width: 600,
@@ -319,7 +319,7 @@ void main() {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('en'),
-          theme: ThemeData(extensions: const [AiMessageTheme()]),
+          theme: ThemeData(extensions: [AiMessageTheme.test()]),
           home: Scaffold(
             body: Column(
               children: [

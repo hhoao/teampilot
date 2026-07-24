@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../cubits/config_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../services/app/platform_utils.dart';
 import '../../utils/ui/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/settings/settings_dialog.dart';
@@ -20,11 +21,45 @@ import 'session_config_section.dart';
 import 'shortcuts_config_section.dart';
 import 'ssh_profiles_config_section.dart';
 
+int _configSectionDialogIndex(ConfigSection section) {
+  return switch (section) {
+    ConfigSection.layout => 0,
+    ConfigSection.session => 1,
+    ConfigSection.cli => 2,
+    ConfigSection.aiFeatures => 3,
+    ConfigSection.sshProfiles => 4,
+    ConfigSection.github => 5,
+    ConfigSection.shortcuts => 6,
+    ConfigSection.about => 7,
+    ConfigSection.logs => 7,
+  };
+}
+
+/// Opens SSH profile management without leaving the active workspace.
+void openSshProfilesManagement(BuildContext context) {
+  if (useAndroidHubNavigation(context)) {
+    context.read<ConfigCubit>().selectSection(ConfigSection.sshProfiles);
+    context.push('/config/${ConfigSection.sshProfiles.routeSegment}');
+    return;
+  }
+  showWorkspaceSettingsDialog(
+    context,
+    initialSection: ConfigSection.sshProfiles,
+  );
+}
+
 /// Opens the workspace quick-settings modal from anywhere (e.g. the title bar).
-Future<void> showWorkspaceSettingsDialog(BuildContext context) {
+Future<void> showWorkspaceSettingsDialog(
+  BuildContext context, {
+  ConfigSection? initialSection,
+}) {
+  final initialIndex = initialSection == null
+      ? 0
+      : _configSectionDialogIndex(initialSection);
   return showSettingsDialog(
     context,
     navTitle: (l10n) => l10n.settings,
+    initialIndex: initialIndex,
     entries: [
       SettingsDialogEntry(
         icon: Icons.dashboard_customize_outlined,

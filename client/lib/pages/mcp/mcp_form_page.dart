@@ -238,9 +238,7 @@ class _McpFormPageState extends State<McpFormPage> {
                 const SizedBox(height: 8),
                 Builder(
                   builder: (context) {
-                    final bodyStyle =
-                        Theme.of(context).textTheme.bodyMedium ??
-                        const TextStyle();
+                    final bodyStyle = TpTextStyles.of(context).md;
                     return TpTextarea(
                       controller: _descriptionCtrl,
                       minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),

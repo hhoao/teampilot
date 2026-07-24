@@ -10,7 +10,7 @@ void main() {
     expect(ids, containsAll([
       CommandIds.workspaceNextTab,
       CommandIds.workspaceSearch,
-      CommandIds.sessionNextTab,
+      CommandIds.stripNextTab,
       CommandIds.sessionCloseTab,
       CommandIds.zoomIn,
       CommandIds.composeSubmit,
@@ -31,9 +31,9 @@ void main() {
     expect(def.terminalPassthrough, isTrue);
   });
 
-  test('session next tab defaults to explicit ctrl+tab', () {
+  test('strip next tab defaults to explicit ctrl+tab', () {
     final def = CommandCatalog.v1.singleWhere(
-      (c) => c.id == CommandIds.sessionNextTab,
+      (c) => c.id == CommandIds.stripNextTab,
     );
     expect(def.defaultChords, [
       KeyChord(key: 'tab', mods: [KeyChordMod.ctrl]),
@@ -50,10 +50,10 @@ void main() {
     expect(def.when, ShortcutWhen.inCompose);
   });
 
-  test('Alt+1…9 / Alt+0 focus session tabs by ordinal', () {
+  test('Alt+1…9 / Alt+0 focus strip tabs by ordinal', () {
     for (var n = 1; n <= 10; n++) {
       final def = CommandCatalog.v1.singleWhere(
-        (c) => c.id == CommandIds.sessionFocusTab(n),
+        (c) => c.id == CommandIds.stripFocusTab(n),
       );
       expect(
         def.defaultChords,

@@ -11,10 +11,10 @@ import 'command_definition.dart';
 String titleForCommand(AppLocalizations l10n, String commandId) {
   for (final def in CommandCatalog.v1) {
     if (def.id == commandId) {
-      if (def.titleL10nKey == 'shortcutsSessionFocusTab') {
-        final ordinal = _sessionFocusTabOrdinal(commandId);
+      if (def.titleL10nKey == 'shortcutsStripFocusTab') {
+        final ordinal = _stripFocusTabOrdinal(commandId);
         if (ordinal != null) {
-          return l10n.shortcutsSessionFocusTab(ordinal);
+          return l10n.shortcutsStripFocusTab(ordinal);
         }
       }
       return _titleForKey(l10n, def.titleL10nKey) ?? commandId;
@@ -23,9 +23,9 @@ String titleForCommand(AppLocalizations l10n, String commandId) {
   return commandId;
 }
 
-/// Parses `workbench.session.focusTabN` → N, or null if not a focus-tab id.
-int? _sessionFocusTabOrdinal(String commandId) {
-  const prefix = 'workbench.session.focusTab';
+/// Parses `workbench.strip.focusTabN` → N, or null if not a focus-tab id.
+int? _stripFocusTabOrdinal(String commandId) {
+  const prefix = 'workbench.strip.focusTab';
   if (!commandId.startsWith(prefix)) return null;
   return int.tryParse(commandId.substring(prefix.length));
 }
@@ -50,8 +50,8 @@ String? _titleForKey(AppLocalizations l10n, String titleL10nKey) {
     'shortcutsWorkspaceCloseTab' => l10n.shortcutsWorkspaceCloseTab,
     'shortcutsWorkspaceReopenClosed' => l10n.shortcutsWorkspaceReopenClosed,
     'shortcutsWorkspaceSearch' => l10n.shortcutsWorkspaceSearch,
-    'shortcutsSessionNextTab' => l10n.shortcutsSessionNextTab,
-    'shortcutsSessionPrevTab' => l10n.shortcutsSessionPrevTab,
+    'shortcutsStripNextTab' => l10n.shortcutsStripNextTab,
+    'shortcutsStripPrevTab' => l10n.shortcutsStripPrevTab,
     'shortcutsSessionNewTab' => l10n.shortcutsSessionNewTab,
     'shortcutsSessionCloseTab' => l10n.shortcutsSessionCloseTab,
     'shortcutsToggleSidebar' => l10n.shortcutsToggleSidebar,

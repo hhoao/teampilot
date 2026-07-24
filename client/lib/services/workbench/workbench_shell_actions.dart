@@ -51,8 +51,23 @@ abstract final class WorkbenchShellActions {
     required String tabScopeId,
     required WorkbenchTabId tab,
   }) async {
-    final workbench = context.read<WorkbenchCubit>();
-    final chat = context.read<ChatCubit>();
+    selectResolved(
+      workbench: context.read<WorkbenchCubit>(),
+      chat: context.read<ChatCubit>(),
+      workspaceId: workspaceId,
+      tabScopeId: tabScopeId,
+      tab: tab,
+    );
+  }
+
+  /// Context-free select used by keyboard strip navigation and the tab bar.
+  static void selectResolved({
+    required WorkbenchCubit workbench,
+    required ChatCubit chat,
+    required String workspaceId,
+    required String tabScopeId,
+    required WorkbenchTabId tab,
+  }) {
     workbench.select(workspaceId, tab);
     if (chat.state.newChatActive) {
       chat.exitNewChat();

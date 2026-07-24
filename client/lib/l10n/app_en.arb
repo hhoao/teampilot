@@ -2587,12 +2587,12 @@
   "shortcutsWorkspaceCloseTab": "Close Workspace Tab",
   "shortcutsWorkspaceReopenClosed": "Reopen Closed Workspace Tab",
   "shortcutsWorkspaceSearch": "Search Workspace",
-  "shortcutsSessionNextTab": "Next Session Tab",
-  "shortcutsSessionPrevTab": "Previous Session Tab",
+  "shortcutsStripNextTab": "Next Tab",
+  "shortcutsStripPrevTab": "Previous Tab",
   "shortcutsSessionNewTab": "New Session Tab",
   "shortcutsSessionCloseTab": "Close Session Tab",
-  "shortcutsSessionFocusTab": "Go to Session Tab {n}",
-  "@shortcutsSessionFocusTab": {
+  "shortcutsStripFocusTab": "Go to Tab {n}",
+  "@shortcutsStripFocusTab": {
     "placeholders": {
       "n": { "type": "int" }
     }

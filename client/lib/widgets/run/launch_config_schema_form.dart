@@ -319,14 +319,12 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
           layoutStyle: TpFormFieldLayoutStyle.inline,
           labelWidth: kLaunchConfigFormLabelWidth,
           builder: (state) {
-            final textStyle = field.monospace ? styles.mono : styles.md;
             return TpTextarea(
               key: fieldKey,
               controller: _controllers[field.key],
               focusNode: state.focusNode,
-              style: field.monospace ? styles.mono : null,
-              minHeight: tpTextareaHeightForLines(textStyle, lines: 3),
-              maxHeight: tpTextareaHeightForLines(textStyle, lines: 8),
+              minHeight: tpTextareaHeightForLines(styles.md, lines: 3),
+              maxHeight: tpTextareaHeightForLines(styles.md, lines: 8),
               onChanged: (t) {
                 state.didChange(t);
                 _onFieldTextChanged(field, t);
@@ -347,14 +345,12 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
           labelWidth: kLaunchConfigFormLabelWidth,
           builder: (state) {
             if (field.key == 'scriptText') {
-              final textStyle = field.monospace ? styles.mono : styles.md;
               return TpTextarea(
                 key: fieldKey,
                 controller: _controllers[field.key],
                 focusNode: state.focusNode,
-                style: field.monospace ? styles.mono : null,
-                minHeight: tpTextareaHeightForLines(textStyle, lines: 3),
-                maxHeight: tpTextareaHeightForLines(textStyle, lines: 8),
+                minHeight: tpTextareaHeightForLines(styles.md, lines: 3),
+                maxHeight: tpTextareaHeightForLines(styles.md, lines: 8),
                 onChanged: (t) {
                   state.didChange(t);
                   _onFieldTextChanged(field, t);
@@ -366,7 +362,6 @@ class _LaunchConfigSchemaFormState extends State<LaunchConfigSchemaForm> {
               key: fieldKey,
               controller: _controllers[field.key],
               focusNode: state.focusNode,
-              style: field.monospace ? styles.mono : null,
               textInputAction: TextInputAction.next,
               maxLines: 1,
               onChanged: (t) {

@@ -108,7 +108,7 @@ void main() {
       );
     });
 
-    test('Ctrl+Tab matches sessionNextTab when hasWorkspace', () {
+    test('Ctrl+Tab matches stripNextTab when hasWorkspace', () {
       pressModifier(LogicalKeyboardKey.controlLeft);
       addTearDown(() => releaseModifier(LogicalKeyboardKey.controlLeft));
 
@@ -119,7 +119,7 @@ void main() {
         isMacOS: false,
       );
 
-      expect(result, CommandIds.sessionNextTab);
+      expect(result, CommandIds.stripNextTab);
     });
 
     test('ignored when `when` is unsatisfied', () {
@@ -161,7 +161,7 @@ void main() {
         isMacOS: false,
       );
 
-      expect(result, CommandIds.sessionNextTab);
+      expect(result, CommandIds.stripNextTab);
     });
 
     test('bare Enter is ignored when not inCompose', () {

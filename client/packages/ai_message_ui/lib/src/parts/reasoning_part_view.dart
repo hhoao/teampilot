@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
+import '../markdown/compiled_markdown_chrome.dart';
 import '../strings.dart';
 import '../theme.dart';
 import 'text_part_view.dart';
@@ -31,6 +32,7 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
     final scheme = theme.colorScheme;
     final aiTheme = AiMessageTheme.of(context);
     final strings = AiMessageStrings.of(context);
+    final markdown = aiTheme.markdown;
     final triggerColor = aiTheme.resolveToolTrigger(scheme);
 
     return Padding(
@@ -71,10 +73,7 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
                               strings.reasoning,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: triggerColor,
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: markdown.toolTrigger(triggerColor),
                             ),
                           ),
                           const SizedBox(width: 4),
@@ -104,10 +103,7 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
                     constraints: const BoxConstraints(maxHeight: 256),
                     child: SingleChildScrollView(
                       child: DefaultTextStyle.merge(
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          height: 1.5,
-                        ),
+                        style: markdown.reasoningBody(scheme.onSurfaceVariant),
                         child: AiTextPartView(text: widget.part.text),
                       ),
                     ),

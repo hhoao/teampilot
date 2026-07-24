@@ -400,9 +400,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                 if (_showAdvancedJson)
                   Builder(
                     builder: (context) {
-                      final bodyStyle =
-                          Theme.of(context).textTheme.bodyMedium ??
-                          const TextStyle();
+                      final bodyStyle = TpTextStyles.of(context).md;
                       return TpTextarea(
                         controller: _jsonCtl,
                         minHeight: tpTextareaHeightForLines(bodyStyle, lines: 16),
@@ -426,9 +424,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   const SizedBox(height: 12),
                   Builder(
                     builder: (context) {
-                      final bodyStyle =
-                          Theme.of(context).textTheme.bodyMedium ??
-                          const TextStyle();
+                      final bodyStyle = TpTextStyles.of(context).md;
                       return TpTextarea(
                         controller: _notesCtl,
                         minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),

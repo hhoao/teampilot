@@ -46,7 +46,7 @@ class TabbedPane extends StatelessWidget {
           color: theme.tabHeaderColor ?? Colors.grey[200],
           child: Row(
             children: [
-              for (int i = 0; i < labels.length; i++) _buildTab(i, theme),
+              for (int i = 0; i < labels.length; i++) _buildTab(context, i, theme),
               const Spacer(),
               ...?actions,
             ],
@@ -57,7 +57,7 @@ class TabbedPane extends StatelessWidget {
     );
   }
 
-  Widget _buildTab(int index, PaneThemeData theme) {
+  Widget _buildTab(BuildContext context, int index, PaneThemeData theme) {
     bool isSelected = index == selectedIndex;
 
     final bg = isSelected
@@ -87,8 +87,7 @@ class TabbedPane extends StatelessWidget {
             ],
             Text(
               labels[index],
-              style: TextStyle(
-                fontSize: 12,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
                 color: labelColor,
               ),

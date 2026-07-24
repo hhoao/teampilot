@@ -27,7 +27,7 @@ class CompiledTextPartView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final aiTheme = AiMessageTheme.of(context);
-    final resolved = style ?? CompiledMarkdownStyle.from(theme, aiTheme);
+    final resolved = style ?? aiTheme.markdown;
 
     final children = <Widget>[];
     final blocks = document.blocks;
@@ -163,8 +163,7 @@ class CompiledTextPartView extends StatelessWidget {
         ),
       UnsupportedBlock(:final rawMarkdown) => MarkdownBody(
           data: rawMarkdown,
-          styleSheet: aiTheme.markdownStyleSheet ??
-              defaultAiMarkdownSheet(theme, aiTheme),
+          styleSheet: aiTheme.markdown.toMarkdownStyleSheet(),
           onTapLink: onTapLink,
           selectable: false,
         ),

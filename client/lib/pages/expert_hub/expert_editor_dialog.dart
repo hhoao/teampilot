@@ -320,8 +320,7 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final styles = TpTextStyles.of(context);
-    final bodyStyle =
-        Theme.of(context).textTheme.bodyMedium ?? const TextStyle();
+    final bodyStyle = styles.md;
 
     return TpDialog(
       maxHeight: MediaQuery.sizeOf(context).height * 0.85,

@@ -16,7 +16,7 @@ import 'package:teampilot/services/commands/shortcut_focus.dart';
 /// [ShortcutFocus], deriving `inTerminal` / `inCompose` from
 /// [FocusManager.instance.primaryFocus] exactly the way `main.dart`'s
 /// private `_liveShortcutContext` / `_primaryShortcutFocusKind` do — proving
-/// that a `terminalPassthrough: true` command (`sessionNextTab`, Ctrl+Tab)
+/// that a `terminalPassthrough: true` command (`stripNextTab`, Ctrl+Tab)
 /// still fires while focus sits under a `ShortcutFocus.terminal` ancestor,
 /// while `compose.submit` (bare Enter, `when: inCompose`) never does, since
 /// `inTerminal` and `inCompose` are mutually exclusive by construction.
@@ -117,9 +117,9 @@ void main() {
       await pumpFocusRegions(tester);
 
       final bus = CommandBus();
-      var sessionNextTabCalls = 0;
+      var stripNextTabCalls = 0;
       var composeSubmitCalls = 0;
-      bus.register(CommandIds.sessionNextTab, () => sessionNextTabCalls++);
+      bus.register(CommandIds.stripNextTab, () => stripNextTabCalls++);
       bus.register(CommandIds.composeSubmit, () => composeSubmitCalls++);
       final dispatcher = installDispatcher(bus);
       addTearDown(dispatcher.detach);
@@ -127,7 +127,7 @@ void main() {
       terminalFocusNode.requestFocus();
       await tester.pump();
 
-      // Ctrl+Tab -> sessionNextTab (terminalPassthrough: true) fires even
+      // Ctrl+Tab -> stripNextTab (terminalPassthrough: true) fires even
       // though primary focus resolves to ShortcutFocusKind.terminal.
       HardwareKeyboard.instance.handleKeyEvent(
         keyDown(LogicalKeyboardKey.controlLeft),
@@ -137,7 +137,7 @@ void main() {
         keyUp(LogicalKeyboardKey.controlLeft),
       );
 
-      expect(sessionNextTabCalls, 1);
+      expect(stripNextTabCalls, 1);
 
       // Bare Enter (no modifiers held) -> compose.submit requires
       // `when: inCompose`; focus is in the terminal region, not compose,

@@ -257,9 +257,7 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
                     ? '必填'
                     : null,
                 builder: (field) {
-                  final bodyStyle =
-                      Theme.of(context).textTheme.bodyMedium ??
-                      const TextStyle();
+                  final bodyStyle = TpTextStyles.of(context).md;
                   final scheme = Theme.of(context).colorScheme;
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
