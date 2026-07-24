@@ -62,7 +62,6 @@ class _SshHostsStatusSegmentState extends State<_SshHostsStatusSegment> {
         return TpActionMenuAnchor(
           controller: _popover,
           fixedPanelWidth: SshHostsPanel.panelWidth,
-          padding: EdgeInsets.zero,
           closeOnTapOutside: true,
           anchor: const TpAnchor(
             // Open above the pill: attach panel bottom to pill top, 8px gap

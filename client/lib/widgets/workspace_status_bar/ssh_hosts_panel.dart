@@ -34,7 +34,7 @@ class SshHostsPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+                padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
                 child: Text(
                   l10n.sshHostsPanelTitle,
                   style: styles.xs.copyWith(
@@ -127,7 +127,7 @@ class _HostRow extends StatelessWidget {
         : '${l10n.sshHostsRowKind} · ${_statusLabel(context)}';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       child: Row(
         children: [
           Container(
@@ -257,7 +257,7 @@ class _ManageRowState extends State<_ManageRow> {
         : Colors.black.withValues(alpha: 0.05);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 0, 6, 6),
+      padding: const EdgeInsets.fromLTRB(2, 0, 2, 0),
       child: MouseRegion(
         cursor: widget.onTap == null
             ? SystemMouseCursors.basic
