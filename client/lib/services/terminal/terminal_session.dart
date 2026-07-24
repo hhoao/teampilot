@@ -204,11 +204,11 @@ class TerminalSession {
 
   void applyTerminalTheme(TerminalTheme theme) {
     _terminalTheme = theme;
-    if (_launch.isRunning || _launch.isConnecting) {
-      engine.reconfigure(
-        terminalConfigFromTheme(theme, scrollbackLines: _scrollbackLines),
-      );
-    }
+    // Always reconfigure so idle shells match the workbench card before connect
+    // and stay aligned when layout terminal theme prefs change.
+    engine.reconfigure(
+      terminalConfigFromTheme(theme, scrollbackLines: _scrollbackLines),
+    );
   }
 
   void onTerminalPtyResize(int columns, int rows) =>

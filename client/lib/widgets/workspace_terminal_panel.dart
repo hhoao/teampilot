@@ -119,6 +119,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   PtyResizeHoldTarget? _registeredHoldTarget;
   TerminalViewState? _registeredViewState;
   var _registrationScheduled = false;
+  final Map<String, int> _lastTerminalThemeFingerprintByEntry = {};
 
   List<WorkspaceFolder> get _folders =>
       WorkspaceToolsScope.maybeOf(context)?.effectiveFolders ?? const [];
@@ -319,16 +320,30 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   TerminalTheme _terminalTheme(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final mode = context
-        .read<LayoutCubit>()
-        .state
-        .preferences
-        .terminalThemeMode;
+    final mode = context.select<LayoutCubit, String>(
+      (cubit) => cubit.state.preferences.terminalThemeMode,
+    );
     return teampilotTerminalTheme(
       cs,
       isDark: isDark,
       mode: mode,
       chrome: WorkspacePageChrome.workspace,
+    );
+  }
+
+  /// Keeps shell PTY engines aligned with [ChatWorkbench] terminal theming.
+  void _syncTerminalThemes(TerminalTheme theme) {
+    final fp = terminalThemeFingerprint(theme);
+    final liveIds = <String>{};
+    for (final entry in _group.entries) {
+      liveIds.add(entry.id);
+      if (entry.session.isDisposed) continue;
+      if (_lastTerminalThemeFingerprintByEntry[entry.id] == fp) continue;
+      entry.session.applyTerminalTheme(theme);
+      _lastTerminalThemeFingerprintByEntry[entry.id] = fp;
+    }
+    _lastTerminalThemeFingerprintByEntry.removeWhere(
+      (id, _) => !liveIds.contains(id),
     );
   }
 
@@ -478,6 +493,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     final cwd = widget.workingDirectory.trim();
     final active = _activeEntry;
     final theme = _terminalTheme(context);
+    _syncTerminalThemes(theme);
     final terminalBackground = Color(0xFF000000 | theme.background);
     final terminalForeground = Color(0xFF000000 | theme.foreground);
     final bodyKind = resolveWorkspaceTerminalBodyKind(
