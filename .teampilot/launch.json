@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "configurations": [
+    {
+      "id": "flutter",
+      "name": "flutter run",
+      "type": "shellScript",
+      "cwd": "${workspaceFolder}\\client",
+      "execute": "scriptText",
+      "scriptText": "flutter run -d windows",
+      "scriptOptions": "",
+      "interpreterOptions": "",
+      "executeInTerminal": true,
+      "allowMultipleInstances": true,
+      "activateToolWindow": true,
+      "focusToolWindow": false,
+      "interpreterPath": "C:\\Windows\\system32\\cmd.exe"
+    }
+  ]
+}

@@ -31,6 +31,9 @@ class RunToolbar extends StatelessWidget {
   /// IntelliJ-like run/debug accent (works on light and dark chrome).
   static const Color _actionGreen = Color(0xFF59A869);
 
+  /// IntelliJ-like stop accent — distinct from run so stop is recognizable.
+  static const Color _actionRed = Color(0xFFDB5860);
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<RunCubit, RunState>(
@@ -218,7 +221,7 @@ class _RunOrStopGlyph extends StatelessWidget {
             keyId: const Key('run-toolbar-stop'),
             icon: Icons.stop_rounded,
             tooltip: l10n.runStop,
-            color: RunToolbar._actionGreen,
+            color: RunToolbar._actionRed,
             onTap: () {
               if (compound != null && runningIds.isNotEmpty) {
                 unawaited(cubit.stopCompound(runningIds));

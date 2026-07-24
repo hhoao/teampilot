@@ -443,6 +443,8 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     if (!mounted) return;
     setState(() => _applyDraft(draft));
     await _syncActiveProjectFromDraft();
+    // Sync may return early after dispose; do not touch context/setState.
+    if (!mounted) return;
     _scheduleTeamLaunchReadinessCheck();
   }
 
@@ -470,6 +472,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   }
 
   void _scheduleTeamLaunchReadinessCheck() {
+    if (!mounted) return;
     if (_conversationMode != _LandingConversationMode.team) {
       if (_teamConfigLaunchReady && _launchWarningBlock == null) return;
       setState(() {
@@ -483,6 +486,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   }
 
   Future<void> _refreshTeamLaunchReadiness(int generation) async {
+    if (!mounted || generation != _teamLaunchReadinessGeneration) return;
     final teams = context.read<LaunchProfileCubit>().state.teams;
     final team = _selectedTeamProfile(teams);
     if (team == null) {

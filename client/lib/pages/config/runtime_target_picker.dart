@@ -106,7 +106,6 @@ class _RuntimeTargetPickerState extends State<RuntimeTargetPicker> {
           return TpPreferenceRow(
             title: l10n.homeTargetTitle,
             subtitle: l10n.homeTargetSubtitle,
-            crossAxisAlignment: CrossAxisAlignment.start,
             trailing: const SizedBox(
               width: 20,
               height: 20,
@@ -119,7 +118,6 @@ class _RuntimeTargetPickerState extends State<RuntimeTargetPicker> {
         return TpPreferenceRow(
           title: l10n.homeTargetTitle,
           subtitle: l10n.homeTargetSubtitle,
-          crossAxisAlignment: CrossAxisAlignment.start,
           trailing: _trailing(context, options),
         );
       },
