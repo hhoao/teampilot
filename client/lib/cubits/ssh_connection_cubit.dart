@@ -135,10 +135,9 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
         .toList(growable: false);
 
     for (final id in removed) {
-      if (_factory.hasLiveStorageClient(id) ||
-          _connectingIds.contains(id)) {
-        await _coordinator.userDisconnect(id);
-      }
+      // Always disconnect: cancels reconnect timers + sets latch even when
+      // the pool is already cold or a reconnect is in flight.
+      await _coordinator.userDisconnect(id);
       _unsubscribeMonitor(id);
       _profilesById.remove(id);
       _connectingIds.remove(id);
@@ -169,13 +168,24 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
     try {
       await _coordinator.userConnect(profile);
       _connectingIds.remove(profileId);
+      if (!_profilesById.containsKey(profileId)) {
+        await _coordinator.userDisconnect(profileId);
+        return;
+      }
       final select = _selectProfileOnConnect;
       if (select != null) {
         await select(profileId);
       }
+      if (!_profilesById.containsKey(profileId)) {
+        await _coordinator.userDisconnect(profileId);
+        return;
+      }
       emit(_buildState());
     } catch (error) {
       _connectingIds.remove(profileId);
+      if (!_profilesById.containsKey(profileId)) {
+        return;
+      }
       final cause = sshConnectionFailureCause(error);
       final authFailed =
           cause is SSHAuthFailError || cause is SSHHostkeyError;

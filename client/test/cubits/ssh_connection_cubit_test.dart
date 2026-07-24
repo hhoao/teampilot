@@ -266,6 +266,86 @@ void main() {
       },
     );
 
+    test(
+      'syncProfiles always userDisconnects removed host when pool cold/reconnecting',
+      () async {
+        var createCount = 0;
+        final harness = _Harness(
+          connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+            createCount += 1;
+            if (createCount > 1) {
+              await Future<void>.delayed(const Duration(milliseconds: 200));
+            }
+            return _InstantAuthClient();
+          },
+          policy: const SshProfileReconnectPolicy(
+            disconnectCoalesce: Duration(milliseconds: 10),
+            initialDelay: Duration.zero,
+            maxAttempts: 3,
+          ),
+        );
+        final cubit = harness.createCubit();
+        cubit.syncProfiles(const [_p1]);
+
+        await cubit.connect(_p1.id);
+        final client = await harness.factory.clientForStorage(_p1);
+        client.close();
+        await Future<void>.delayed(const Duration(milliseconds: 25));
+
+        expect(harness.factory.hasLiveStorageClient(_p1.id), isFalse);
+        expect(
+          harness.coordinator.monitorFor(_p1.id).state.status,
+          RemoteConnectionStatus.reconnecting,
+        );
+        expect(harness.coordinator.isUserDisconnectLatched(_p1.id), isFalse);
+
+        await cubit.syncProfiles(const []);
+
+        expect(cubit.state.isEmpty, isTrue);
+        expect(harness.factory.hasLiveStorageClient(_p1.id), isFalse);
+        expect(harness.coordinator.isUserDisconnectLatched(_p1.id), isTrue);
+
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+        expect(harness.factory.hasLiveStorageClient(_p1.id), isFalse);
+
+        await cubit.close();
+        harness.dispose();
+      },
+    );
+
+    test('mid-connect syncProfiles removal tears down late connect', () async {
+      final gate = Completer<void>();
+      final harness = _Harness(
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          await gate.future;
+          return _InstantAuthClient();
+        },
+      );
+      final cubit = harness.createCubit();
+      cubit.syncProfiles(const [_p1]);
+
+      final connectFuture = cubit.connect(_p1.id);
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        cubit.state.hostsById[_p1.id]!.status,
+        SshHostUiStatus.connecting,
+      );
+
+      await cubit.syncProfiles(const []);
+      expect(cubit.state.isEmpty, isTrue);
+
+      gate.complete();
+      await connectFuture;
+      await Future<void>.delayed(Duration.zero);
+
+      expect(cubit.state.isEmpty, isTrue);
+      expect(harness.factory.hasLiveStorageClient(_p1.id), isFalse);
+      expect(harness.coordinator.isUserDisconnectLatched(_p1.id), isTrue);
+
+      await cubit.close();
+      harness.dispose();
+    });
+
     test('connect failure → error / authFailed', () async {
       final harness = _Harness(
         connector: (profile, {timeout = const Duration(seconds: 10)}) async {
@@ -399,9 +479,13 @@ const _p2 = SshProfile(
 );
 
 class _Harness {
-  _Harness({SshClientConnector? connector})
-    : events = SshConnectionEvents(),
-      _profiles = {_p1.id: _p1, _p2.id: _p2} {
+  _Harness({
+    SshClientConnector? connector,
+    SshProfileReconnectPolicy policy = const SshProfileReconnectPolicy(
+      maxAttempts: 0,
+    ),
+  }) : events = SshConnectionEvents(),
+       _profiles = {_p1.id: _p1, _p2.id: _p2} {
     factory = SshClientFactory(
       credentialStore: InMemorySshCredentialStore(),
       knownHostRepository: InMemorySshKnownHostRepository(),
@@ -416,7 +500,7 @@ class _Harness {
       factory: factory,
       events: events,
       profileResolver: (id) => _profiles[id],
-      policy: const SshProfileReconnectPolicy(maxAttempts: 0),
+      policy: policy,
     );
   }
 
