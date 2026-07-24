@@ -508,9 +508,7 @@ class _FileTreeListState extends State<_FileTreeList> {
     }
     return LayoutBuilder(
       builder: (context, constraints) {
-        final labelStyle = TpTextStyles.of(
-          context,
-        ).mdMedium;
+        final labelStyle = TpTextStyles.of(context).md;
         final emptyLabelStyle = TpTextStyles.of(context).xs;
         final contentWidth = math.max(
           constraints.maxWidth,

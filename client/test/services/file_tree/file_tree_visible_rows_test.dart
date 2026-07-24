@@ -185,7 +185,7 @@ void main() {
   });
 
   test('fileTreeMinContentWidth accounts for depth and label length', () {
-    const style = TextStyle(fontSize: 14, fontWeight: FontWeight.w500);
+    const style = TextStyle(fontSize: 14);
     const emptyStyle = TextStyle(fontSize: 12);
     final rows = [
       const FileTreeVisibleRow(

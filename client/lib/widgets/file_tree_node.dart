@@ -48,8 +48,7 @@ class FileTreeNode extends StatefulWidget {
   final RuntimeContext workContext;
   final bool hoverEnabled;
 
-  /// True for a workspace-folder header row in a multi-root tree (rendered with
-  /// a stronger label, like VSCode's folder headers).
+  /// True for a workspace-folder header row in a multi-root tree.
   final bool isRoot;
 
   /// True when this root row points at a directory that no longer exists.
@@ -245,17 +244,11 @@ class _FileTreeNodeState extends State<FileTreeNode> {
                       Text(
                         widget.entry.name,
                         maxLines: 1,
-                        style: widget.isRoot
-                            ? TpTextStyles.of(context).mdBoldSpreadColored(
-                                widget.rootMissing
-                                    ? cs.onSurfaceVariant.withValues(alpha: 0.5)
-                                    : labelColor,
-                              )
-                            : isActive ? TpTextStyles.of(context).mdSemiboldColored(widget.rootMissing
-                                    ? cs.onSurfaceVariant.withValues(alpha: 0.5)
-                                    : labelColor) : TpTextStyles.of(context).mdMediumColored(widget.rootMissing
-                                    ? cs.onSurfaceVariant.withValues(alpha: 0.5)
-                                    : labelColor),
+                        style: TpTextStyles.of(context).mdColored(
+                          widget.rootMissing
+                              ? cs.onSurfaceVariant.withValues(alpha: 0.5)
+                              : labelColor,
+                        ),
                       ),
                     ],
                   ),

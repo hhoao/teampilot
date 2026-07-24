@@ -103,21 +103,11 @@ double fileTreeMinContentWidth({
   for (final row in measured) {
     final label = row.isEmptyPlaceholder ? '(empty)' : row.entry.name;
     final baseStyle = row.isEmptyPlaceholder ? emptyLabelStyle : labelStyle;
-    var textWidth = _measureTextWidth(
+    final textWidth = _measureTextWidth(
       painter: painter,
       label: label,
       style: baseStyle,
     );
-    if (!row.isEmptyPlaceholder) {
-      textWidth = math.max(
-        textWidth,
-        _measureTextWidth(
-          painter: painter,
-          label: label,
-          style: baseStyle.copyWith(fontWeight: FontWeight.w600),
-        ),
-      );
-    }
     final rowWidth =
         row.depth * kFileTreeIndentWidth +
         kFileTreeNodePaddingLeft +
