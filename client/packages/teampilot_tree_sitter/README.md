@@ -14,6 +14,9 @@ download.
   `tp_ts_language_*` symbols.
 - `hook/build.dart` — native-assets build hook. Compiles the tree-sitter core
   amalgamation, the bundled grammars, and the shim into one dynamic library.
+- `src/teampilot_tree_sitter.def` — Windows module-definition exports for the
+  tree-sitter C API. Required so MSVC exports `ts_*` symbols (grammars already
+  use `__declspec(dllexport)`, which otherwise hides unmarked API symbols).
 - `ffigen.yaml` / `lib/teampilot_tree_sitter_bindings_generated.dart` — the
   generated FFI bindings (regenerate with `dart run ffigen`).
 - `lib/teampilot_tree_sitter.dart` — the Dart API (`TsParser`, `TsTree`,

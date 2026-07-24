@@ -1,3 +1,4 @@
+import 'package:code_assets/code_assets.dart';
 import 'package:hooks/hooks.dart';
 import 'package:logging/logging.dart';
 import 'package:native_toolchain_c/native_toolchain_c.dart';
@@ -5,6 +6,7 @@ import 'package:native_toolchain_c/native_toolchain_c.dart';
 void main(List<String> args) async {
   await build(args, (input, output) async {
     final packageName = input.packageName;
+    final windows = input.config.code.targetOS == OS.windows;
 
     // Everything links into a single dynamic library asset whose id matches
     // the generated bindings file, so the `@Native` externals resolve without
@@ -55,6 +57,12 @@ void main(List<String> args) async {
         'src/bundled/markdown_scanner.c',
         // Stable C ABI shim binding grammars behind `tp_`-prefixed symbols.
         'src/teampilot_ts_api.c',
+        // Windows: once any symbol uses __declspec(dllexport) (grammars +
+        // tp_* shims), MSVC exports *only* those. Tree-sitter's api.h has no
+        // Windows dllexport markup, so ts_parser_new/etc. stay hidden and
+        // Dart FFI fails with error 127. The .def re-exports the FFI surface.
+        // Clang and MSVC both forward .def files to the linker.
+        if (windows) 'src/teampilot_tree_sitter.def',
       ],
       includes: [
         'third_party/tree-sitter/lib/include',
