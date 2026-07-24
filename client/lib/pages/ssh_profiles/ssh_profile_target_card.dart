@@ -52,12 +52,12 @@ class SshProfileTargetCard extends StatelessWidget {
     return switch (status) {
       SshProfileConnectionStatus.disconnected =>
         l10n.sshProfileStatusDisconnected,
-      SshProfileConnectionStatus.connecting ||
+      SshProfileConnectionStatus.connecting => l10n.sshProfileStatusConnecting,
       SshProfileConnectionStatus.reconnecting =>
-        l10n.sshProfileStatusConnecting,
+        l10n.sshProfileStatusReconnecting,
       SshProfileConnectionStatus.connected => l10n.sshProfileStatusConnected,
-      SshProfileConnectionStatus.error ||
-      SshProfileConnectionStatus.authFailed => l10n.sshProfileStatusError,
+      SshProfileConnectionStatus.authFailed => l10n.sshProfileStatusAuthFailed,
+      SshProfileConnectionStatus.error => l10n.sshProfileStatusError,
     };
   }
 
@@ -170,7 +170,11 @@ class SshProfileTargetCard extends StatelessWidget {
                       color: cs.primary,
                     ),
                   ),
-                  label: Text(l10n.sshProfileStatusConnecting),
+                  label: Text(
+                    status == SshProfileConnectionStatus.reconnecting
+                        ? l10n.sshProfileStatusReconnecting
+                        : l10n.sshProfileStatusConnecting,
+                  ),
                 ),
               ] else ...[
                 const SizedBox(width: 4),

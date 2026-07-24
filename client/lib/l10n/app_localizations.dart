@@ -3098,6 +3098,48 @@ abstract class AppLocalizations {
   /// **'Error'**
   String get sshProfileStatusError;
 
+  /// No description provided for @sshProfileStatusReconnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting…'**
+  String get sshProfileStatusReconnecting;
+
+  /// No description provided for @sshProfileStatusAuthFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication failed'**
+  String get sshProfileStatusAuthFailed;
+
+  /// No description provided for @sshHostsPillCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 host} other{{count} hosts}}'**
+  String sshHostsPillCount(int count);
+
+  /// No description provided for @sshHostsPillConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting…'**
+  String get sshHostsPillConnecting;
+
+  /// No description provided for @sshHostsPanelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote Hosts'**
+  String get sshHostsPanelTitle;
+
+  /// No description provided for @sshHostsRowKind.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH Host'**
+  String get sshHostsRowKind;
+
+  /// No description provided for @sshHostsManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Remote Hosts…'**
+  String get sshHostsManage;
+
   /// No description provided for @sshProfileTest.
   ///
   /// In en, this message translates to:

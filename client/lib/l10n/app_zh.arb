@@ -675,6 +675,18 @@
   "sshProfileStatusConnecting": "连接中…",
   "sshProfileStatusConnected": "已连接",
   "sshProfileStatusError": "错误",
+  "sshProfileStatusReconnecting": "重连中…",
+  "sshProfileStatusAuthFailed": "认证失败",
+  "sshHostsPillCount": "{count} 台主机",
+  "@sshHostsPillCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "sshHostsPillConnecting": "连接中…",
+  "sshHostsPanelTitle": "远程主机",
+  "sshHostsRowKind": "SSH 主机",
+  "sshHostsManage": "管理远程主机",
   "sshProfileTest": "测试",
   "sshProfileConnect": "连接",
   "sshProfileDisconnect": "断开",

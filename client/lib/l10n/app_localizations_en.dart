@@ -1673,6 +1673,35 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sshProfileStatusError => 'Error';
 
   @override
+  String get sshProfileStatusReconnecting => 'Reconnecting…';
+
+  @override
+  String get sshProfileStatusAuthFailed => 'Authentication failed';
+
+  @override
+  String sshHostsPillCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hosts',
+      one: '1 host',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sshHostsPillConnecting => 'Connecting…';
+
+  @override
+  String get sshHostsPanelTitle => 'Remote Hosts';
+
+  @override
+  String get sshHostsRowKind => 'SSH Host';
+
+  @override
+  String get sshHostsManage => 'Manage Remote Hosts…';
+
+  @override
   String get sshProfileTest => 'Test';
 
   @override
