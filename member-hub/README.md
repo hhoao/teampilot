@@ -13,4 +13,9 @@ Catalog keys are stamped as `hhoao/teampilot/member-hub/<slug>`.
 
 gstack sprint personas (`gstack-*`) depend on the `garrytan/gstack` **SkillPack**
 (`skill-packs/gstack/pack.json` / in-app `SkillPackRegistry`). Installing any
-one of those experts installs the whole pack once via `acquire.kind = git-pack`.
+one of those experts installs the whole pack once via the pack **install recipe** (sync → register skills → materialize `bin/` → optional `./setup`).
+
+Optional `i18n.<lang>` overlays localize hub display fields (`name`,
+`description`, `category`, `member.responsibilities` / `playbook`). Root fields
+remain the default language; the app resolves with `DiscoverableMember.forLocale`
+(e.g. UI locale `zh` → Chinese copy).

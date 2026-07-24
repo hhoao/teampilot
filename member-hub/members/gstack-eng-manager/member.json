@@ -18,10 +18,18 @@
       "repoOwner": "garrytan",
       "repoName": "gstack",
       "repoBranch": "main",
-      "directory": "plan-eng-review",
-      "acquire": {
-        "kind": "git-pack"
+      "directory": "plan-eng-review"
+    }
+  ],
+  "i18n": {
+    "zh": {
+      "name": "gstack 工程经理",
+      "description": "工程经理规划：架构、数据流、边界情况与测试矩阵。",
+      "category": "开发",
+      "member": {
+        "responsibilities": "用图示与失败模式把隐藏假设摊开。产出带验收标准、可执行的工程计划，而不是空泛愿景。",
+        "playbook": "有 gstack /plan-eng-review skill 时优先遵循其方法；优先使用已安装的 skill pack，勿另起一套并行流程。"
       }
     }
-  ]
+  }
 }

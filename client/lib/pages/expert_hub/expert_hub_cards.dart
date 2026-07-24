@@ -68,7 +68,9 @@ class _ExpertHubCardState extends State<ExpertHubCard> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
-    final member = widget.member;
+    final member = widget.member.forLocale(
+      Localizations.localeOf(context).languageCode,
+    );
     final accent = teamAccentColor(member.key, Theme.of(context).brightness);
     final borderColor = widget.selected
         ? cs.primary.withValues(alpha: 0.65)

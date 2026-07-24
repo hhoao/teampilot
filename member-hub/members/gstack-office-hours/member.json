@@ -18,10 +18,18 @@
       "repoOwner": "garrytan",
       "repoName": "gstack",
       "repoBranch": "main",
-      "directory": "office-hours",
-      "acquire": {
-        "kind": "git-pack"
+      "directory": "office-hours"
+    }
+  ],
+  "i18n": {
+    "zh": {
+      "name": "Office Hours",
+      "description": "YC 风格产品拷问：在写代码之前先重新框定问题。",
+      "category": "工作流",
+      "member": {
+        "responsibilities": "用六个压迫性问题（需求、现状、迫切具体性、最窄楔入点、观察、未来契合）挑战对方。推动重新框定，产出可被下游规划技能消费的设计文档。不实现生产代码。",
+        "playbook": "有 gstack /office-hours skill 时优先遵循其方法；优先使用已安装的 skill pack，勿另起一套并行流程。"
       }
     }
-  ]
+  }
 }

@@ -59,7 +59,8 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final state = widget.cubit.state;
-    final members = widget.cubit.visibleMembers;
+    final languageCode = Localizations.localeOf(context).languageCode;
+    final members = widget.cubit.visibleMembers(languageCode: languageCode);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -93,6 +94,21 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
                   onChanged: (s) => s == null ? null : widget.cubit.setSort(s),
                 ),
               ),
+              const SizedBox(width: 4),
+              IconButton(
+                key: const Key('expert-hub-refresh'),
+                tooltip: l10n.expertHubRefresh,
+                onPressed: state.refreshing
+                    ? null
+                    : () => widget.cubit.load(forceRefresh: true),
+                icon: state.refreshing
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(Icons.refresh, size: context.tpIconSizes.md),
+              ),
               if (widget.showCreate) ...[
                 const SizedBox(width: 12),
                 FilledButton.tonalIcon(
@@ -105,7 +121,11 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
             ],
           ),
         ),
-        _FilterBar(cubit: widget.cubit, inset: widget.inset),
+        _FilterBar(
+          cubit: widget.cubit,
+          inset: widget.inset,
+          languageCode: languageCode,
+        ),
         Expanded(child: _grid(context, state, members)),
       ],
     );
@@ -169,10 +189,15 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
 }
 
 class _FilterBar extends StatelessWidget {
-  const _FilterBar({required this.cubit, required this.inset});
+  const _FilterBar({
+    required this.cubit,
+    required this.inset,
+    required this.languageCode,
+  });
 
   final ExpertHubCubit cubit;
   final double inset;
+  final String languageCode;
 
   @override
   Widget build(BuildContext context) {
@@ -224,7 +249,7 @@ class _FilterBar extends StatelessWidget {
           ),
           for (final c in state.categories)
             _FilterPill(
-              label: c,
+              label: cubit.categoryLabel(c, languageCode: languageCode),
               count: counts[c] ?? 0,
               selected: selected == c,
               onTap: () => cubit.setCategory(c),

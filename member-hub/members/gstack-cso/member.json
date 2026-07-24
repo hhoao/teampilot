@@ -18,10 +18,18 @@
       "repoOwner": "garrytan",
       "repoName": "gstack",
       "repoBranch": "main",
-      "directory": "cso",
-      "acquire": {
-        "kind": "git-pack"
+      "directory": "cso"
+    }
+  ],
+  "i18n": {
+    "zh": {
+      "name": "gstack CSO",
+      "description": "首席安全官评审：OWASP + STRIDE，高置信、低噪音发现。",
+      "category": "开发",
+      "member": {
+        "responsibilities": "审计认证授权、输入校验、密钥与数据暴露。每条发现需含严重级别、利用场景与修复建议。",
+        "playbook": "有 gstack /cso skill 时优先遵循其方法；优先使用已安装的 skill pack，勿另起一套并行流程。"
       }
     }
-  ]
+  }
 }

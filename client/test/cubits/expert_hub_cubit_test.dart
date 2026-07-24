@@ -70,8 +70,8 @@ void main() {
   test('favoritesOnly filter narrows to favorite keys', () async {
     await cubit.load();
     cubit.setFavoritesOnly(true);
-    expect(cubit.visibleMembers.map((m) => m.name), ['Alpha']);
+    expect(cubit.visibleMembers().map((m) => m.name), ['Alpha']);
     cubit.setFavoritesOnly(false);
-    expect(cubit.visibleMembers, hasLength(3));
+    expect(cubit.visibleMembers(), hasLength(3));
   });
 }

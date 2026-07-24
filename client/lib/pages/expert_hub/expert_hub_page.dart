@@ -55,9 +55,13 @@ class _ExpertHubPageState extends State<ExpertHubPage> {
   void initState() {
     super.initState();
     final cubit = context.read<ExpertHubCubit>();
+    // Built-ins keep the grid non-empty, so the empty-state Refresh action never
+    // appears after first load. Re-entering the page must force-refresh the
+    // git registry or newly published member-hub entries stay invisible.
     if (cubit.state.status == ExpertHubLoadStatus.idle) {
       cubit.load();
     } else {
+      cubit.load(forceRefresh: true);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _tryOpenPendingMember(cubit.state);
       });
@@ -104,8 +108,11 @@ class _ExpertHubPageState extends State<ExpertHubPage> {
     if (handler == null) return;
 
     final l10n = context.l10n;
+    final localized = member.forLocale(
+      Localizations.localeOf(context).languageCode,
+    );
     try {
-      await handler(context, cubit, member);
+      await handler(context, cubit, localized);
       if (!mounted) return;
       setState(() => _detail = null);
     } on MemberAddException {
@@ -119,7 +126,10 @@ class _ExpertHubPageState extends State<ExpertHubPage> {
   }
 
   void _handleLaunchInWorkspace(DiscoverableMember member) {
-    widget.onLaunchInWorkspace?.call(context, member);
+    final localized = member.forLocale(
+      Localizations.localeOf(context).languageCode,
+    );
+    widget.onLaunchInWorkspace?.call(context, localized);
   }
 
   Future<void> _handleCreate() async {

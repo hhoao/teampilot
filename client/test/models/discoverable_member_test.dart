@@ -106,4 +106,44 @@ void main() {
       expect(DiscoverableMember.fromJson(json).source, source);
     }
   });
+
+  test('forLocale overlays zh display fields and falls back otherwise', () {
+    const m = DiscoverableMember(
+      key: 'hhoao/teampilot/member-hub/gstack-reviewer',
+      name: 'gstack Reviewer',
+      description: 'Staff-engineer review',
+      category: 'Development',
+      source: ExpertMemberSource.registry,
+      member: DiscoverableTeamMember(
+        name: 'review',
+        responsibilities: 'Review for correctness.',
+        playbook: 'Follow /review.',
+      ),
+      i18n: {
+        'zh': DiscoverableMemberLocaleText(
+          name: 'gstack 评审官',
+          description: 'Staff 工程师评审',
+          category: '开发',
+          responsibilities: '评审正确性。',
+          playbook: '遵循 /review。',
+        ),
+      },
+    );
+
+    final zh = m.forLocale('zh-CN');
+    expect(zh.name, 'gstack 评审官');
+    expect(zh.description, 'Staff 工程师评审');
+    expect(zh.category, '开发');
+    expect(zh.member.responsibilities, '评审正确性。');
+    expect(zh.member.playbook, '遵循 /review。');
+    expect(zh.member.name, 'review');
+
+    final en = m.forLocale('en');
+    expect(en.name, m.name);
+    expect(en.member.responsibilities, m.member.responsibilities);
+
+    final roundTrip = DiscoverableMember.fromJson(m.toJson());
+    expect(roundTrip, m);
+    expect(roundTrip.forLocale('zh').name, 'gstack 评审官');
+  });
 }

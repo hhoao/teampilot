@@ -268,10 +268,18 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
 
   /// Members visible on the hub page: source + favorites + category + search +
   /// sort, all applied as inline filters on a single page (no sub-navigation).
-  List<DiscoverableMember> get visibleMembers {
-    Iterable<DiscoverableMember> base = state.selectedCategory == null
-        ? state.allMembers
-        : state.allMembers.where((m) => m.category == state.selectedCategory);
+  ///
+  /// When [languageCode] is set, display fields are localized via
+  /// [DiscoverableMember.forLocale] before filtering/search (category filter
+  /// still matches the canonical root category, then display uses localized).
+  List<DiscoverableMember> visibleMembers({String languageCode = ''}) {
+    final lang = languageCode.trim();
+    Iterable<DiscoverableMember> base = state.allMembers;
+    if (state.selectedCategory != null) {
+      // Filter on canonical (root) category so locale switches do not break
+      // an active pill selection.
+      base = base.where((m) => m.category == state.selectedCategory);
+    }
     if (state.favoritesOnly) {
       base = base.where((m) => state.favorites.contains(m.key));
     }
@@ -281,6 +289,21 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
     if (state.teamExtractOnly) {
       base = base.where((m) => m.source == ExpertMemberSource.teamExtract);
     }
+    if (lang.isNotEmpty) {
+      base = base.map((m) => m.forLocale(lang));
+    }
     return _searchAndSort(base);
+  }
+
+  /// Localized label for a canonical [category] key, if any member provides one.
+  String categoryLabel(String category, {String languageCode = ''}) {
+    final lang = languageCode.trim();
+    if (lang.isEmpty) return category;
+    for (final m in state.allMembers) {
+      if (m.category != category) continue;
+      final localized = m.forLocale(lang).category;
+      if (localized.isNotEmpty) return localized;
+    }
+    return category;
   }
 }

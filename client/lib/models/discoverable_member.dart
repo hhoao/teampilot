@@ -26,6 +26,77 @@ enum ExpertMemberSource {
   }
 }
 
+/// Optional per-locale overlay for hub display fields (default language stays
+/// on the root [DiscoverableMember] fields).
+@immutable
+class DiscoverableMemberLocaleText {
+  const DiscoverableMemberLocaleText({
+    this.name,
+    this.description,
+    this.category,
+    this.responsibilities,
+    this.playbook,
+  });
+
+  final String? name;
+  final String? description;
+  final String? category;
+  final String? responsibilities;
+  final String? playbook;
+
+  factory DiscoverableMemberLocaleText.fromJson(Map<String, Object?> json) {
+    String? pick(String key) {
+      final v = (json[key] as String?)?.trim();
+      return v == null || v.isEmpty ? null : v;
+    }
+
+    final memberRaw = json['member'];
+    final member = memberRaw is Map
+        ? memberRaw.cast<String, Object?>()
+        : const <String, Object?>{};
+    final nestedResponsibilities = (member['responsibilities'] as String?)
+        ?.trim();
+    final nestedPlaybook = (member['playbook'] as String?)?.trim();
+    return DiscoverableMemberLocaleText(
+      name: pick('name'),
+      description: pick('description'),
+      category: pick('category'),
+      responsibilities: pick('responsibilities') ??
+          (nestedResponsibilities == null || nestedResponsibilities.isEmpty
+              ? null
+              : nestedResponsibilities),
+      playbook: pick('playbook') ??
+          (nestedPlaybook == null || nestedPlaybook.isEmpty
+              ? null
+              : nestedPlaybook),
+    );
+  }
+
+  Map<String, Object?> toJson() => {
+    if (name != null) 'name': name,
+    if (description != null) 'description': description,
+    if (category != null) 'category': category,
+    if (responsibilities != null || playbook != null)
+      'member': {
+        if (responsibilities != null) 'responsibilities': responsibilities,
+        if (playbook != null) 'playbook': playbook,
+      },
+  };
+
+  @override
+  bool operator ==(Object other) =>
+      other is DiscoverableMemberLocaleText &&
+      name == other.name &&
+      description == other.description &&
+      category == other.category &&
+      responsibilities == other.responsibilities &&
+      playbook == other.playbook;
+
+  @override
+  int get hashCode =>
+      Object.hash(name, description, category, responsibilities, playbook);
+}
+
 /// A public member persona as listed in an Expert Hub registry manifest.
 @immutable
 class DiscoverableMember {
@@ -43,6 +114,7 @@ class DiscoverableMember {
     this.pluginDeps = const [],
     this.mcpDeps = const [],
     this.originTeamKey,
+    this.i18n = const {},
   });
 
   /// Unique discovery key: `owner/name/slug`, `local/{uuid}`, or `{teamKey}#{slug}`.
@@ -60,6 +132,10 @@ class DiscoverableMember {
   final ExpertMemberSource source;
   final String? originTeamKey;
 
+  /// Locale overlays keyed by language code (`zh`, `ja`, …). Root fields are
+  /// the default / fallback language (typically English).
+  final Map<String, DiscoverableMemberLocaleText> i18n;
+
   factory DiscoverableMember.fromJson(Map<String, Object?> json) {
     List<T> list<T>(Object? raw, T Function(Map<String, Object?>) f) =>
         raw is List
@@ -68,6 +144,18 @@ class DiscoverableMember {
               .map((m) => f(m.cast<String, Object?>()))
               .toList(growable: false)
         : const [];
+    final i18nRaw = json['i18n'];
+    final i18n = <String, DiscoverableMemberLocaleText>{};
+    if (i18nRaw is Map) {
+      for (final entry in i18nRaw.entries) {
+        final lang = entry.key.toString().trim().toLowerCase();
+        final value = entry.value;
+        if (lang.isEmpty || value is! Map) continue;
+        i18n[lang] = DiscoverableMemberLocaleText.fromJson(
+          value.cast<String, Object?>(),
+        );
+      }
+    }
     return DiscoverableMember(
       key: json['key'] as String? ?? '',
       name: json['name'] as String? ?? '',
@@ -87,6 +175,7 @@ class DiscoverableMember {
       mcpDeps: list(json['mcpDeps'], McpDependencyRef.fromJson),
       source: ExpertMemberSource.decode(json['source']),
       originTeamKey: json['originTeamKey'] as String?,
+      i18n: i18n,
     );
   }
 
@@ -106,7 +195,55 @@ class DiscoverableMember {
     'source': source.value,
     if (originTeamKey != null && originTeamKey!.isNotEmpty)
       'originTeamKey': originTeamKey,
+    if (i18n.isNotEmpty)
+      'i18n': {
+        for (final e in i18n.entries) e.key: e.value.toJson(),
+      },
   };
+
+  /// Returns a copy with display fields overlaid for [languageCode]
+  /// (`zh-CN` → `zh`). Missing locale falls back to root fields. The returned
+  /// member keeps [i18n] so further locale switches still work.
+  DiscoverableMember forLocale(String languageCode) {
+    final overlay = _overlayFor(languageCode);
+    if (overlay == null) return this;
+    return DiscoverableMember(
+      key: key,
+      name: overlay.name ?? name,
+      description: overlay.description ?? description,
+      category: overlay.category ?? category,
+      source: source,
+      member: DiscoverableTeamMember(
+        name: member.name,
+        provider: member.provider,
+        model: member.model,
+        agent: member.agent,
+        agentType: member.agentType,
+        capabilities: member.capabilities,
+        replicas: member.replicas,
+        responsibilities: overlay.responsibilities ?? member.responsibilities,
+        playbook: overlay.playbook ?? member.playbook,
+        extraArgs: member.extraArgs,
+      ),
+      author: author,
+      updatedAt: updatedAt,
+      tags: tags,
+      skillDeps: skillDeps,
+      pluginDeps: pluginDeps,
+      mcpDeps: mcpDeps,
+      originTeamKey: originTeamKey,
+      i18n: i18n,
+    );
+  }
+
+  DiscoverableMemberLocaleText? _overlayFor(String languageCode) {
+    final raw = languageCode.trim().toLowerCase();
+    if (raw.isEmpty || i18n.isEmpty) return null;
+    final exact = i18n[raw];
+    if (exact != null) return exact;
+    final primary = raw.split(RegExp(r'[_-]')).first;
+    return i18n[primary];
+  }
 
   TeamMemberConfig toMemberConfig({required int joinedAt, String? idOverride}) {
     final base = member.toMemberConfig(joinedAt: joinedAt);
@@ -133,7 +270,8 @@ class DiscoverableMember {
       listEquals(pluginDeps, other.pluginDeps) &&
       listEquals(mcpDeps, other.mcpDeps) &&
       source == other.source &&
-      originTeamKey == other.originTeamKey;
+      originTeamKey == other.originTeamKey &&
+      mapEquals(i18n, other.i18n);
 
   @override
   int get hashCode => Object.hash(
@@ -150,5 +288,6 @@ class DiscoverableMember {
     Object.hashAll(mcpDeps),
     source,
     originTeamKey,
+    Object.hashAll(i18n.entries.map((e) => Object.hash(e.key, e.value))),
   );
 }

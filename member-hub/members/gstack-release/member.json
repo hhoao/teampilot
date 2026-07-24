@@ -18,10 +18,18 @@
       "repoOwner": "garrytan",
       "repoName": "gstack",
       "repoBranch": "main",
-      "directory": "ship",
-      "acquire": {
-        "kind": "git-pack"
+      "directory": "ship"
+    }
+  ],
+  "i18n": {
+    "zh": {
+      "name": "gstack 发布工程师",
+      "description": "发布工程师：同步、测试、覆盖率审计、推送并开 PR。",
+      "category": "工作流",
+      "member": {
+        "responsibilities": "安全发版：同步 main、跑测试、审计覆盖率、推送、开 PR。写清如何验证。发布期间不扩大功能范围。",
+        "playbook": "有 gstack /ship skill 时优先遵循其方法；优先使用已安装的 skill pack，勿另起一套并行流程。"
       }
     }
-  ]
+  }
 }

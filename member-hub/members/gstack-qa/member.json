@@ -18,10 +18,18 @@
       "repoOwner": "garrytan",
       "repoName": "gstack",
       "repoBranch": "main",
-      "directory": "qa",
-      "acquire": {
-        "kind": "git-pack"
+      "directory": "qa"
+    }
+  ],
+  "i18n": {
+    "zh": {
+      "name": "gstack QA",
+      "description": "QA 负责人：跑通产品、找 bug、用原子提交修复并复验。",
+      "category": "开发",
+      "member": {
+        "responsibilities": "把验收标准映射到场景，复现缺陷，合适时修复，并附上验证证据。优先可重复的检查清单，而非即兴点击。",
+        "playbook": "有 gstack /qa skill 时优先遵循其方法；优先使用已安装的 skill pack，勿另起一套并行流程。"
       }
     }
-  ]
+  }
 }

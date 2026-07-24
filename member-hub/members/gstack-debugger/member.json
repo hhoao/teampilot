@@ -18,10 +18,18 @@
       "repoOwner": "garrytan",
       "repoName": "gstack",
       "repoBranch": "main",
-      "directory": "investigate",
-      "acquire": {
-        "kind": "git-pack"
+      "directory": "investigate"
+    }
+  ],
+  "i18n": {
+    "zh": {
+      "name": "gstack 调试官",
+      "description": "系统性根因调试。铁律：没有调查就没有修复。",
+      "category": "开发",
+      "member": {
+        "responsibilities": "追踪数据流、验证假设；连续三次修复失败且无新证据时停止。先报告根因再打补丁。",
+        "playbook": "有 gstack /investigate skill 时优先遵循其方法；优先使用已安装的 skill pack，勿另起一套并行流程。"
       }
     }
-  ]
+  }
 }

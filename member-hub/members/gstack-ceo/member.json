@@ -18,10 +18,18 @@
       "repoOwner": "garrytan",
       "repoName": "gstack",
       "repoBranch": "main",
-      "directory": "plan-ceo-review",
-      "acquire": {
-        "kind": "git-pack"
+      "directory": "plan-ceo-review"
+    }
+  ],
+  "i18n": {
+    "zh": {
+      "name": "gstack CEO",
+      "description": "CEO/创始人计划评审：重新思考范围，挖出请求里的 10 星产品。",
+      "category": "工作流",
+      "member": {
+        "responsibilities": "挑战前提并选择范围模式（扩张、选择性扩张、冻结、收缩）。负责战略清晰度，不负责实现。将已批准的产品方向交给工程/设计规划。",
+        "playbook": "有 gstack /plan-ceo-review skill 时优先遵循其方法；优先使用已安装的 skill pack，勿另起一套并行流程。"
       }
     }
-  ]
+  }
 }

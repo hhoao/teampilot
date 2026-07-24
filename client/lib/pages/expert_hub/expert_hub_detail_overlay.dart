@@ -51,6 +51,9 @@ class ExpertHubDetailOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final styles = TpTextStyles.of(context);
     final l10n = context.l10n;
+    final member = this.member.forLocale(
+      Localizations.localeOf(context).languageCode,
+    );
     final teamMember = member.member;
     final subtitleParts = <String>[
       if (member.author != null && member.author!.isNotEmpty) member.author!,

@@ -18,10 +18,18 @@
       "repoOwner": "garrytan",
       "repoName": "gstack",
       "repoBranch": "main",
-      "directory": "review",
-      "acquire": {
-        "kind": "git-pack"
+      "directory": "review"
+    }
+  ],
+  "i18n": {
+    "zh": {
+      "name": "gstack 评审官",
+      "description": "Staff 工程师评审：找出能通过 CI 的生产缺陷；自动修明显问题；标出完整性缺口。",
+      "category": "开发",
+      "member": {
+        "responsibilities": "评审正确性与生产风险。优先给出可操作的 file:line 发现。安全时可自动修琐碎问题；否则返回阻断项，不扩大范围。",
+        "playbook": "有 gstack /review skill 时优先遵循其方法；优先使用已安装的 skill pack，勿另起一套并行流程。"
       }
     }
-  ]
+  }
 }

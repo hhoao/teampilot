@@ -77,4 +77,38 @@ void main() {
     expect(find.byType(TpEmptyState), findsOneWidget);
     expect(find.text('No favorites yet'), findsOneWidget);
   });
+
+  testWidgets('toolbar always exposes registry refresh', (tester) async {
+    tester.view.physicalSize = const Size(1600, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final cubit = ExpertHubCubit(
+      source: _FakeSource([_member('Alpha')]),
+      loadFavorites: () async => const {},
+      saveFavoriteToggle: (_) async => true,
+      memberRosterService: stubMemberRosterService(),
+      launchProfiles: () => throw UnimplementedError('not used'),
+    );
+    await cubit.load();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: ExpertHubBody(
+            cubit: cubit,
+            onOpen: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('expert-hub-refresh')), findsOneWidget);
+  });
 }
