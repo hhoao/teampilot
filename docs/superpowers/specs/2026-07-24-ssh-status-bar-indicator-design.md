@@ -29,6 +29,8 @@ profiles config page.
 | Profile edit while connected | Keep existing connection; next Connect uses new config |
 | Android + Connect | Same durable pool Connect as desktop; **also** `SshProfileCubit.selectProfile(id)` so the active storage backend follows |
 | Android + Disconnect | Tear down pool only; **do not** clear / change `selectedProfile` |
+| User-disconnect latch | Suppresses **coordinator auto-reconnect** only; does not quarantine `clientForStorage` |
+| Status observation | Cubit always tracks live pool presence + coordinator/monitor streams (truthful) |
 | Desktop + Connect | Pool only; does **not** change selected / active storage backend |
 | Platform | Same status-bar UI on desktop and Android; still hide when no profiles |
 
@@ -99,7 +101,8 @@ UI statuses:
 | Pool client authenticated + healthy | `connected` |
 | `RemoteConnectionMonitor` `reconnecting` | `reconnecting` |
 | `RemoteConnectionMonitor` `degraded` | still `connected` (pill stays green; detail optional later) |
-| `RemoteConnectionMonitor` `down` after drop (before user Disconnect) | `disconnected` or mid-`reconnecting` via coordinator |
+| `RemoteConnectionMonitor` `down` (pool gone / given up) | `disconnected` |
+| Coordinator has scheduled or in-flight reconnect | `reconnecting` (wins over bare `down`) |
 | Auth / host-key failures on Connect | `auth-failed` |
 | Other Connect / transport failures | `error` |
 
@@ -140,10 +143,19 @@ SshConnectionCubit       // Map<profileId, SshHostConnectionVm> + aggregates
 
 `SshConnectionCubit.disconnect(profileId)`:
 
-1. Cancel in-flight / scheduled reconnect for that id on the coordinator.
-2. `factory.disconnectProfile(profileId)` — closes pooled client + SFTP.
-3. UI → `disconnected`.
-4. Do **not** clear `selectedProfile` (Android or desktop).
+1. Set **user-disconnect latch** for `profileId` (blocks coordinator
+   auto-reconnect until the next successful user Connect or external pool open).
+2. Cancel in-flight / scheduled reconnect for that id on the coordinator.
+3. `factory.disconnectProfile(profileId)` — closes pooled client + SFTP.
+4. UI → `disconnected`.
+5. Do **not** clear `selectedProfile` (Android or desktop).
+
+**Reopen rule (Android especially):** Disconnect closes the current pool client;
+it does **not** quarantine the profile. If Android (or any caller) later opens
+storage via `clientForStorage` / `sftpFor` while that profile remains selected,
+the pool becomes live again. Cubit **must observe** that and flip back to
+`connected` (and clear the latch). Disconnect is “close now + stop auto-reconnect”,
+not “forbid all future I/O”.
 
 Coordinator today has `reconnectStorage` / monitors but **no** user-facing
 connect API — planning must add a thin user-connect / user-disconnect surface
@@ -155,8 +167,13 @@ Do not invent a second connection channel beside the storage pool.
 - Subscribes to profile list; drops VMs for deleted ids; hides pill when empty.
 - On start: for each profile, if factory pool already has a live client → seed
   `connected`; else `disconnected`.
-- `connect` / `disconnect` are the only UI entry points for durable connection
-  (status bar + config cards).
+- **Live observation (required):** subscribe to coordinator /
+  `RemoteConnectionMonitor.changes` and/or factory pool presence so
+  drop → `disconnected` / `reconnecting`, successful auto-reconnect or external
+  `clientForStorage` → `connected`, without requiring another UI Connect.
+- `connect` / `disconnect` are the only **user** entry points for intentional
+  durable connect/disconnect (status bar + config cards). Other code may still
+  open the pool; Cubit stays truthful via observation.
 - Exposes aggregates: `connectedCount`, `overallStatus`, `isEmpty`.
 - Rebuild performance: closed pill `buildWhen` on aggregates only; open panel
   rebuilds host rows.
@@ -189,10 +206,13 @@ Do not invent a second connection channel beside the storage pool.
 
 ## Testing
 
-- Cubit: connect opens pool path; disconnect calls disconnectProfile + cancel
-  reconnect; aggregate count / overall priority (connecting beats partial);
-  delete last profile → empty; seed from existing pool; Android connect also
-  selects profile; desktop connect does not.
+- Cubit: connect opens pool path; disconnect calls disconnectProfile + sets
+  reconnect latch + cancel reconnect; aggregate count / overall priority
+  (connecting beats partial); delete last profile → empty; seed from existing
+  pool; Android connect also selects profile; desktop connect does not.
+- Observation: external / later `clientForStorage` after Disconnect flips status
+  back to `connected` and clears latch; coordinator reconnect updates UI without
+  another Connect.
 - Widget: no profiles → no segment; with profiles → pill shows **connected**
   count; row actions invoke Cubit; Manage navigates to `/config/ssh-profiles`.
 - Config cards: Connect status matches status-bar Cubit fixture; Test does not
@@ -207,6 +227,8 @@ Do not invent a second connection channel beside the storage pool.
 ## Related TeamPilot
 
 - `docs/superpowers/specs/2026-07-23-workspace-status-bar-resource-manager-design.md`
+  — that doc listed SSH status segments as a v1 non-goal; **this spec
+  supersedes that non-goal** for the `ssh-hosts` item only.
 - `client/lib/widgets/workspace_status_bar/`
 - `client/lib/services/ssh/ssh_client_factory.dart`
 - `client/lib/services/ssh/ssh_profile_connection_coordinator.dart`
