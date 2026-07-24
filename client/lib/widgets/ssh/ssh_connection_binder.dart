@@ -19,18 +19,43 @@ class SshConnectionBinder extends StatefulWidget {
 }
 
 class _SshConnectionBinderState extends State<SshConnectionBinder> {
+  var _syncing = false;
+  List<SshProfile>? _pending;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      unawaited(_syncProfiles(context.read<SshProfileCubit>().state.profiles));
+      _requestSync(context.read<SshProfileCubit>().state.profiles);
     });
   }
 
-  Future<void> _syncProfiles(List<SshProfile> profiles) async {
-    if (!mounted) return;
-    await context.read<SshConnectionCubit>().syncProfiles(profiles);
+  void _requestSync(List<SshProfile> profiles) {
+    _pending = profiles;
+    if (_syncing) return;
+    unawaited(_drainSync());
+  }
+
+  Future<void> _drainSync() async {
+    _syncing = true;
+    try {
+      while (true) {
+        final profiles = _pending;
+        if (profiles == null) break;
+        _pending = null;
+        if (!mounted) return;
+        final cubit = context.read<SshConnectionCubit>();
+        if (cubit.isClosed) return;
+        await cubit.syncProfiles(profiles);
+        if (!mounted || cubit.isClosed) return;
+      }
+    } finally {
+      _syncing = false;
+      if (_pending != null && mounted) {
+        unawaited(_drainSync());
+      }
+    }
   }
 
   @override
@@ -38,9 +63,7 @@ class _SshConnectionBinderState extends State<SshConnectionBinder> {
     return BlocListener<SshProfileCubit, SshProfileState>(
       listenWhen: (previous, next) =>
           !listEquals(previous.profiles, next.profiles),
-      listener: (context, state) {
-        unawaited(_syncProfiles(state.profiles));
-      },
+      listener: (context, state) => _requestSync(state.profiles),
       child: widget.child,
     );
   }
