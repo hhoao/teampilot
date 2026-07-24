@@ -18,6 +18,7 @@ import 'cubits/app_bootstrap_cubit.dart';
 import 'cubits/app_update_cubit.dart';
 import 'cubits/board_cubit.dart';
 import 'cubits/automation_cubit.dart';
+import 'cubits/ssh_connection_cubit.dart';
 import 'cubits/chat_cubit.dart';
 import 'cubits/layout_cubit.dart';
 import 'cubits/mailbox_cubit.dart';
@@ -69,6 +70,7 @@ import 'services/notification/desktop_system_notifier.dart';
 import 'services/notification/notification_recorder.dart';
 import 'services/notification/session_idle_notification_tap.dart';
 import 'widgets/notification/session_idle_notification_listener.dart';
+import 'widgets/ssh/ssh_connection_binder.dart';
 import 'repositories/layout_repository.dart';
 import 'theme/app_font_prepare.dart';
 import 'theme/app_font_resolver.dart';
@@ -224,6 +226,7 @@ class _AppShutdownScope extends StatefulWidget {
     required this.boardCubit,
     required this.aiHistoryCubit,
     required this.notificationCubit,
+    required this.sshConnectionCubit,
     required this.workspaceTerminalRegistry,
     required this.gitRepoStore,
     required this.workspaceFileTreeStore,
@@ -240,6 +243,7 @@ class _AppShutdownScope extends StatefulWidget {
   final BoardCubit boardCubit;
   final AiHistoryCubit aiHistoryCubit;
   final NotificationCubit notificationCubit;
+  final SshConnectionCubit sshConnectionCubit;
   final WorkspaceTerminalRegistry workspaceTerminalRegistry;
   final GitRepoStore gitRepoStore;
   final WorkspaceFileTreeStore workspaceFileTreeStore;
@@ -262,6 +266,7 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
     unawaited(widget.boardCubit.close());
     unawaited(widget.aiHistoryCubit.close());
     unawaited(widget.notificationCubit.close());
+    unawaited(widget.sshConnectionCubit.close());
     NotificationRecorder.install(null);
     widget.workspaceTerminalRegistry.disposeAll();
     widget.gitRepoStore.dispose();
@@ -563,6 +568,7 @@ void main() async {
             boardCubit: shell.boardCubit,
             aiHistoryCubit: shell.aiHistoryCubit,
             notificationCubit: shell.notificationCubit,
+            sshConnectionCubit: shell.sshConnectionCubit,
             workspaceTerminalRegistry: shell.workspaceTerminalRegistry,
             gitRepoStore: shell.gitRepoStore,
             workspaceFileTreeStore: shell.workspaceFileTreeStore,
@@ -684,6 +690,7 @@ void main() async {
                   BlocProvider.value(value: shell.extensionCubit),
                   BlocProvider.value(value: shell.appUpdateCubit),
                   BlocProvider.value(value: shell.sshProfileCubit),
+                  BlocProvider.value(value: shell.sshConnectionCubit),
                   BlocProvider.value(value: shell.githubAccountCubit),
                   RepositoryProvider.value(
                     value: shell.githubCredentialsStore,
@@ -694,8 +701,10 @@ void main() async {
                 ],
                 child: CliToolRegistryScope(
                   registry: shell.cliToolRegistry,
-                  child: const SessionIdleNotificationListener(
-                    child: ShortcutDispatcherHost(child: TeamPilotApp()),
+                  child: SshConnectionBinder(
+                    child: const SessionIdleNotificationListener(
+                      child: ShortcutDispatcherHost(child: TeamPilotApp()),
+                    ),
                   ),
                 ),
               ),
