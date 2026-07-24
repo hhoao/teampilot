@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'dart:io' show Platform;
+
 import '../../models/workspace.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
@@ -35,6 +37,7 @@ import '../launch/layered_config_bundle.dart';
 import '../launch/session_runtime_plan.dart';
 import '../launch/session_runtime_plan_builder.dart';
 import '../expert_hub/builtin_member_templates.dart';
+import '../skill/skill_pack_install_store.dart';
 import 'session_continue_overrides_apply.dart';
 import 'shell_launch_spec.dart';
 
@@ -556,8 +559,17 @@ class SessionLifecycleService {
       busIdle: busIdle,
       agentStatus: agentStatus,
     );
+    final packPaths = await SkillPackInstallStore().pathExportsForSkills(
+      plan.runtimeBundle.skillIds,
+    );
+    final launchEnv = SkillPackInstallStore.prependPath(
+      prepared.env,
+      packPaths,
+      platformPath: Platform.environment['PATH'],
+      isWindows: Platform.isWindows,
+    );
 
-    final memberConfigDir = _memberConfigDirFromEnv(prepared.env);
+    final memberConfigDir = _memberConfigDirFromEnv(launchEnv);
     final rootsForResume = <String>{
       ...transcriptRoots,
       if (memberConfigDir.isNotEmpty) memberConfigDir,
@@ -567,7 +579,7 @@ class SessionLifecycleService {
       roots: roots,
       cli: cli,
       taskId: taskId,
-      env: prepared.env,
+      env: launchEnv,
       transcriptRoots: rootsForResume,
       bucket: RuntimeLayout.workspaceBucketForPrimaryPath(
         memberWork.workingDirectory,
@@ -585,7 +597,7 @@ class SessionLifecycleService {
     );
 
     final launchPlan = LaunchPlan(
-      env: prepared.env,
+      env: launchEnv,
       resume: resume.resumeSessionId != null,
       taskId: taskId,
       createSessionId: resume.createSessionId,
@@ -686,7 +698,16 @@ class SessionLifecycleService {
             profileId: teamId,
             tools: tools,
           );
-    final memberConfigDir = _memberConfigDirFromEnv(environment);
+    final packPaths = await SkillPackInstallStore().pathExportsForSkills(
+      plan.runtimeBundle.skillIds,
+    );
+    final launchEnv = SkillPackInstallStore.prependPath(
+      environment,
+      packPaths,
+      platformPath: Platform.environment['PATH'],
+      isWindows: Platform.isWindows,
+    );
+    final memberConfigDir = _memberConfigDirFromEnv(launchEnv);
     final rootsForResume = <String>{
       ...transcriptRoots,
       if (memberConfigDir.isNotEmpty) memberConfigDir,
@@ -696,7 +717,7 @@ class SessionLifecycleService {
       roots: roots,
       cli: cli,
       taskId: taskId,
-      env: environment,
+      env: launchEnv,
       transcriptRoots: rootsForResume,
       bucket: RuntimeLayout.workspaceBucketForPrimaryPath(
         memberWork.workingDirectory,
@@ -714,7 +735,7 @@ class SessionLifecycleService {
     );
 
     final launchPlan = LaunchPlan(
-      env: environment,
+      env: launchEnv,
       resume: resume.resumeSessionId != null,
       taskId: taskId,
       createSessionId: resume.createSessionId,
