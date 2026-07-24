@@ -38,8 +38,10 @@ class SshProfileTargetCard extends StatelessWidget {
 
   Color _statusColor(ColorScheme cs) => switch (status) {
     SshProfileConnectionStatus.connected => const Color(0xFF10B981),
-    SshProfileConnectionStatus.connecting => Colors.amber.shade500,
-    SshProfileConnectionStatus.error => cs.error,
+    SshProfileConnectionStatus.connecting ||
+    SshProfileConnectionStatus.reconnecting => Colors.amber.shade500,
+    SshProfileConnectionStatus.error ||
+    SshProfileConnectionStatus.authFailed => cs.error,
     SshProfileConnectionStatus.disconnected => cs.onSurfaceVariant.withValues(
       alpha: 0.45,
     ),
@@ -50,9 +52,12 @@ class SshProfileTargetCard extends StatelessWidget {
     return switch (status) {
       SshProfileConnectionStatus.disconnected =>
         l10n.sshProfileStatusDisconnected,
-      SshProfileConnectionStatus.connecting => l10n.sshProfileStatusConnecting,
+      SshProfileConnectionStatus.connecting ||
+      SshProfileConnectionStatus.reconnecting =>
+        l10n.sshProfileStatusConnecting,
       SshProfileConnectionStatus.connected => l10n.sshProfileStatusConnected,
-      SshProfileConnectionStatus.error => l10n.sshProfileStatusError,
+      SshProfileConnectionStatus.error ||
+      SshProfileConnectionStatus.authFailed => l10n.sshProfileStatusError,
     };
   }
 
@@ -61,7 +66,9 @@ class SshProfileTargetCard extends StatelessWidget {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final connected = status == SshProfileConnectionStatus.connected;
-    final connecting = status == SshProfileConnectionStatus.connecting;
+    final connecting =
+        status == SshProfileConnectionStatus.connecting ||
+        status == SshProfileConnectionStatus.reconnecting;
 
     return Container(
       decoration: workspaceCardDecoration(cs, radius: 12, borderAlpha: 0.5),
