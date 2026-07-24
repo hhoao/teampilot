@@ -280,7 +280,9 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
   }
 
   Future<void> _openDiff(GitFileChange change) async {
-    final diff = await _cubit.diff(change);
+    // Match DiffViewer.initialFullContext so the first paint is full-file,
+    // without a second git diff + parse after mount.
+    final diff = await _cubit.diff(change, fullContext: true);
     if (!mounted || diff == null) return;
     final absolutePath = p.join(_cubit.state.repoRoot, change.path);
     context.read<WorkbenchEditorOpener>().openDiff(

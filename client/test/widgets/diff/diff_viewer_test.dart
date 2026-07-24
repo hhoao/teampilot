@@ -161,4 +161,66 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'fromUnifiedDiff does not reload on mount when caller already provided text',
+    (tester) async {
+      const initial = '''
+--- a/f.dart
++++ b/f.dart
+@@ -1,3 +1,3 @@
+ line1
+-line2
++line2-changed
+ line3
+''';
+      const expanded = '''
+--- a/f.dart
++++ b/f.dart
+@@ -1,4 +1,4 @@
+ line0
+ line1
+-line2
++line2-changed
+ line3
+''';
+      var reloadCalls = 0;
+      Future<String?> reload(bool ignoreWhitespace, bool fullContext) async {
+        reloadCalls++;
+        return fullContext ? expanded : initial;
+      }
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 400,
+              child: DiffViewer.fromUnifiedDiff(
+                diffText: expanded,
+                filePath: 'f.dart',
+                reloadDiff: reload,
+                initialFullContext: true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(reloadCalls, 0);
+
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      await tester.tap(find.byTooltip(l10n.diffShowAllLines));
+      await tester.pumpAndSettle();
+      expect(reloadCalls, 1);
+
+      await tester.tap(find.byTooltip(l10n.diffShowAllLines));
+      await tester.pumpAndSettle();
+      expect(reloadCalls, 2);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

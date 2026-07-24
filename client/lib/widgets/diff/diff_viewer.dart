@@ -20,8 +20,9 @@ import 'unified_diff_view.dart';
 ///
 /// Owns the diff source. Construct with [DiffViewer.fromTexts] to compare two
 /// strings (ignore-whitespace re-diffs locally), or [DiffViewer.fromUnifiedDiff]
-/// to render a git unified diff (ignore-whitespace re-fetches via `reloadDiff`,
-/// or is hidden when no reloader is given).
+/// to render a git unified diff (ignore-whitespace / full-context re-fetch via
+/// `reloadDiff`, or toggles hidden when no reloader is given). Callers that
+/// keep [initialFullContext] true must pass already-expanded diff text.
 class DiffViewer extends StatefulWidget {
   const DiffViewer._({
     required this.initialResult,
@@ -145,13 +146,11 @@ class _DiffViewerState extends State<DiffViewer> {
   @override
   void initState() {
     super.initState();
+    // Callers that default [initialFullContext] must supply matching text
+    // (e.g. git `-U1000000`). Do not auto-reload on mount — that doubled the
+    // git/parse cost when opening from source control.
     SchedulerBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      setState(() => _bodyReady = true);
-      // Initial payload may be hunk-only; expand to full file when defaulted on.
-      if (_fullContext && widget.resolve != null) {
-        unawaited(_reload());
-      }
+      if (mounted) setState(() => _bodyReady = true);
     });
   }
 
