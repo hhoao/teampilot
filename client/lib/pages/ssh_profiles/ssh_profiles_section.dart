@@ -1,10 +1,10 @@
-import 'dart:io';
 import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
+import '../../cubits/ssh_connection_cubit.dart';
 import '../../cubits/ssh_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/ssh_profile.dart';
@@ -26,28 +26,7 @@ class SshProfilesSection extends StatefulWidget {
 }
 
 class _SshProfilesSectionState extends State<SshProfilesSection> {
-  final _statusById = <String, SshProfileConnectionStatus>{};
-  final _errorById = <String, String>{};
   final _testingIds = <String>{};
-  final _busyIds = <String>{};
-
-  SshProfileConnectionStatus _statusOf(String id) =>
-      _statusById[id] ?? SshProfileConnectionStatus.disconnected;
-
-  void _setStatus(
-    String id,
-    SshProfileConnectionStatus status, {
-    String? error,
-  }) {
-    setState(() {
-      _statusById[id] = status;
-      if (error == null) {
-        _errorById.remove(id);
-      } else {
-        _errorById[id] = error;
-      }
-    });
-  }
 
   /// Returns `null` on success, otherwise the caught failure.
   Future<Object?> _runTest(SshProfile profile, {bool showToast = true}) async {
@@ -55,7 +34,6 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
       return StateError('SSH profile test already in progress');
     }
     setState(() => _testingIds.add(profile.id));
-    _setStatus(profile.id, SshProfileConnectionStatus.connecting);
     try {
       final creds = await _loadCredentials(profile);
       final tester = SshProfileConnectionTester(
@@ -70,7 +48,6 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
         privateKeyPassphrase: creds.passphrase,
       );
       if (!mounted) return StateError('Widget unmounted');
-      _setStatus(profile.id, SshProfileConnectionStatus.connected);
       if (showToast) {
         AppToast.show(
           context,
@@ -81,11 +58,6 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
       return null;
     } on Object catch (e) {
       if (!mounted) return e;
-      _setStatus(
-        profile.id,
-        SshProfileConnectionStatus.error,
-        error: sshConnectionFailureLogMessage(e),
-      );
       if (showToast) {
         AppToast.show(
           context,
@@ -100,46 +72,33 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
   }
 
   Future<void> _connect(SshProfile profile) async {
-    if (_busyIds.contains(profile.id)) return;
-    setState(() => _busyIds.add(profile.id));
-    try {
-      if (Platform.isAndroid) {
-        _setStatus(profile.id, SshProfileConnectionStatus.connecting);
-        await context.read<SshProfileCubit>().selectProfile(profile.id);
-        if (!mounted) return;
-        _setStatus(profile.id, SshProfileConnectionStatus.connected);
-      } else {
-        final failure = await _runTest(profile, showToast: false);
-        if (!mounted) return;
-        if (failure != null) {
-          AppToast.show(
-            context,
-            message: sshConnectionFailureUserMessage(failure, context.l10n),
-            variant: TpToastVariant.error,
-          );
-          return;
-        }
-      }
-      if (!mounted) return;
+    await context.read<SshConnectionCubit>().connect(profile.id);
+    if (!mounted) return;
+    final host = context
+        .read<SshConnectionCubit>()
+        .state
+        .hostsById[profile.id];
+    if (host?.status == SshHostUiStatus.connected) {
       AppToast.show(
         context,
         message: context.l10n.sshProfileConnectSuccess(profile.host),
         variant: TpToastVariant.success,
       );
-    } on Object catch (e) {
-      if (!mounted) return;
-      _setStatus(
-        profile.id,
-        SshProfileConnectionStatus.error,
-        error: e.toString(),
+    } else if (host != null &&
+        (host.status == SshHostUiStatus.error ||
+            host.status == SshHostUiStatus.authFailed) &&
+        host.errorDetail != null &&
+        host.errorDetail!.isNotEmpty) {
+      AppToast.show(
+        context,
+        message: host.errorDetail!,
+        variant: TpToastVariant.error,
       );
-    } finally {
-      if (mounted) setState(() => _busyIds.remove(profile.id));
     }
   }
 
   void _disconnect(SshProfile profile) {
-    _setStatus(profile.id, SshProfileConnectionStatus.disconnected);
+    context.read<SshConnectionCubit>().disconnect(profile.id);
   }
 
   Future<({String? password, String? privateKey, String? passphrase})>
@@ -163,6 +122,7 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final state = context.watch<SshProfileCubit>().state;
+    final connectionState = context.watch<SshConnectionCubit>().state;
     final profiles = state.profiles;
 
     return TpCard.outlined(
@@ -241,10 +201,13 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                   padding: const EdgeInsets.only(bottom: 10),
                   child: SshProfileTargetCard(
                     profile: profile,
-                    status: _statusOf(profile.id),
-                    statusError: _errorById[profile.id],
+                    status:
+                        connectionState.hostsById[profile.id]?.status ??
+                        SshProfileConnectionStatus.disconnected,
+                    statusError:
+                        connectionState.hostsById[profile.id]?.errorDetail,
                     testing: _testingIds.contains(profile.id),
-                    busy: _busyIds.contains(profile.id),
+                    busy: false,
                     onTest: () => _runTest(profile),
                     onConnect: () => _connect(profile),
                     onDisconnect: () => _disconnect(profile),
