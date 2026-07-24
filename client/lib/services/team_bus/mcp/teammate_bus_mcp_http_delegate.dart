@@ -133,7 +133,7 @@ class TeammateBusMcpHttpDelegate {
     // _activeStreams so cancelAllStreams() can end the wait deterministically.
     final cancel = CancellationToken();
     _activeStreams.add(cancel);
-    handler.waitCancels.register(rpc.id, cancel);
+    handler.waitCancels.register(rpc.id, cancel, memberId: member);
 
     final progressToken = _progressToken(rpc);
     final sw = Stopwatch()..start();
@@ -186,11 +186,19 @@ class TeammateBusMcpHttpDelegate {
             'event: message\ndata: ${delivery.response.encode()}\n\n',
           );
           await response.flush();
-          await delivery.confirm();
-          appLogger.i(
-            '[teammate-bus-mcp] stream delivered result member=$member '
-            't=${sw.elapsed.inSeconds}s pings=$pings',
-          );
+          if (cancel.isCancelled) {
+            delivery.abort();
+            appLogger.i(
+              '[teammate-bus-mcp] wait superseded/cancelled after take '
+              'member=$member t=${sw.elapsed.inSeconds}s — batch re-queued',
+            );
+          } else {
+            await delivery.confirm();
+            appLogger.i(
+              '[teammate-bus-mcp] stream delivered result member=$member '
+              't=${sw.elapsed.inSeconds}s pings=$pings',
+            );
+          }
         } catch (e) {
           delivery.abort();
           appLogger.w(
@@ -201,7 +209,7 @@ class TeammateBusMcpHttpDelegate {
         }
       }
     } finally {
-      handler.waitCancels.unregister(rpc.id);
+      handler.waitCancels.unregister(rpc.id, memberId: member, cancel: cancel);
       _activeStreams.remove(cancel);
       keepalive.cancel();
       try {

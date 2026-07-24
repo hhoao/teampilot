@@ -415,14 +415,17 @@ class TeamBus implements CoordinationView {
       }
       return batch;
     } finally {
-      _apply(
-        node,
-        WaitExited(
-          resumeActive:
-              batch.isNotEmpty ||
-              cancel?.cancelReason == WaitCancelReason.mcpCancelled,
-        ),
-      );
+      // Newer wait for this member superseded us — leave park state alone.
+      if (cancel?.cancelReason != WaitCancelReason.superseded) {
+        _apply(
+          node,
+          WaitExited(
+            resumeActive:
+                batch.isNotEmpty ||
+                cancel?.cancelReason == WaitCancelReason.mcpCancelled,
+          ),
+        );
+      }
     }
   }
 
@@ -524,10 +527,12 @@ class TeamBus implements CoordinationView {
         await wake.future;
       }
     } finally {
-      _apply(
-        node,
-        WaitExited(resumeActive: _resumeActiveAfterWait(outcome, cancel)),
-      );
+      if (cancel?.cancelReason != WaitCancelReason.superseded) {
+        _apply(
+          node,
+          WaitExited(resumeActive: _resumeActiveAfterWait(outcome, cancel)),
+        );
+      }
     }
   }
 

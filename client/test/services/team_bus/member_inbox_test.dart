@@ -87,11 +87,34 @@ void main() {
       expect(a, 0, reason: 'parked waiter must not be woken by a second park');
       expect(b, 0);
 
-      // A single delivery wakes both parked waiters exactly once.
+      // Delivery wakes only the newest waiter; the stale park stays blocked.
       box.deliver(_msg('1'));
       async.elapse(const Duration(milliseconds: 50)); // debounce window
-      expect(a, 1);
+      expect(a, 0, reason: 'older waiter must stay parked');
       expect(b, 1);
+    });
+  });
+
+  test('newest waiter takes mail; older waiter cannot steal or mark-consume', () {
+    fakeAsync((async) {
+      final box = _inbox();
+      final olderCancel = CancellationToken();
+      List<TeamMessage>? older;
+      List<TeamMessage>? newer;
+      box.waitAndTake(cancel: olderCancel).then((b) => older = b);
+      box.waitAndTake().then((b) => newer = b);
+      async.flushMicrotasks();
+
+      box.deliver(_msg('1'));
+      async.elapse(const Duration(milliseconds: 50));
+
+      expect(newer!.map((m) => m.id), ['1']);
+      expect(box.isEmpty, isTrue);
+      expect(older, isNull, reason: 'stale wait must not take the batch');
+
+      olderCancel.cancel();
+      async.flushMicrotasks();
+      expect(older, isEmpty);
     });
   });
 

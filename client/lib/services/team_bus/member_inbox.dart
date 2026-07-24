@@ -34,8 +34,9 @@ class MemberInbox {
   // 断连还没被探知的 20s 窗口内又发起了新的 wait）。单 waiter + 「新 park 完成旧
   // waiter」会让两个 receiveWork 循环互相完成对方、各自再 park —— 紧致死循环，
   // Completer / cancel.then 监听器无界堆积，内存秒涨到 GB。改为 waiter 集合，
-  // 投递/取消/超时唤醒所有 parker，互不干扰。
-  final List<Completer<void>> _waiters = [];
+  // 新 park 绝不完成旧 waiter；投递/restore 只唤醒 **最新** waiter，避免幽灵
+  // wait take+confirm 把信标成已读而活 wait 仍空转。
+  final List<_InboxParker> _waiters = [];
   Timer? _flushTimer;
 
   bool get isEmpty => _unread.isEmpty;
@@ -95,7 +96,11 @@ class MemberInbox {
     if (cancel?.isCancelled ?? false) {
       return Future.value(const <TeamMessage>[]);
     }
-    return _park(timeout: timeout, cancel: cancel).then((_) => _take());
+    return _park(timeout: timeout, cancel: cancel).then((parker) {
+      // 仅投递/restore 唤醒可 take；cancel/timeout abandon 不得抢走给新 waiter 的信。
+      if (!parker.wokenForMail) return const <TeamMessage>[];
+      return _take();
+    });
   }
 
   /// 阻塞到有未读但 **不取走**(供统一 idle 原语 race 信箱/任务队列两个信号用)。
@@ -103,25 +108,27 @@ class MemberInbox {
   Future<void> waitForArrival({Duration? timeout, CancellationToken? cancel}) {
     if (_unread.isNotEmpty) return Future.value();
     if (cancel?.isCancelled ?? false) return Future.value();
-    return _park(timeout: timeout, cancel: cancel);
+    return _park(timeout: timeout, cancel: cancel).then((_) {});
   }
 
   /// 在内存信号上挂起到下一次投递(debounce 合批)/ 取消 / 超时。不消费未读。
   /// 并发 park 各自独立入列；唤醒只完成自己，绝不替别的 parker 收尾——避免互相
   /// 完成 → 各自再 park 的死循环。
-  Future<void> _park({Duration? timeout, CancellationToken? cancel}) {
-    final completer = Completer<void>();
-    _waiters.add(completer);
+  Future<_InboxParker> _park({Duration? timeout, CancellationToken? cancel}) {
+    final parker = _InboxParker();
+    _waiters.add(parker);
 
     void abandon() {
-      if (completer.isCompleted) return;
-      _waiters.remove(completer);
-      completer.complete();
+      if (parker.completer.isCompleted) return;
+      _waiters.remove(parker);
+      parker.completer.complete();
     }
 
     final timer = timeout != null ? Timer(timeout, abandon) : null;
     cancel?.whenCancelled.then((_) => abandon());
-    return completer.future.whenComplete(() => timer?.cancel());
+    return parker.completer.future
+        .whenComplete(() => timer?.cancel())
+        .then((_) => parker);
   }
 
   /// 已读确认:对取走的批次落 read 事件(append-only)。配合 [waitAndTake] 实现
@@ -147,8 +154,8 @@ class MemberInbox {
     if (restored.isEmpty) return;
     _unread.insertAll(0, restored);
     _unread.sort((a, b) => a.seq.compareTo(b.seq));
-    // 重新入列的批次要立即唤醒仍在 park 的 parker(它不会再收到新 deliver 的门铃)。
-    _wakeAll();
+    // 重新入列的批次要立即唤醒最新 parker(它不会再收到新 deliver 的门铃)。
+    _wakeNewest();
   }
 
   /// 分页读取(read_messages 落点)。默认只读未读、不消费;[markRead] 为真时消费
@@ -200,13 +207,21 @@ class MemberInbox {
     _unread.clear();
   }
 
-  /// 完成并清空所有 parker(投递 flush / 重新入列 / dispose 共用)。
+  /// 只唤醒最新 parker（投递 / restore）。旧 wait 继续挂着直到 cancel/timeout。
+  void _wakeNewest() {
+    if (_waiters.isEmpty) return;
+    final newest = _waiters.removeLast();
+    newest.wokenForMail = true;
+    if (!newest.completer.isCompleted) newest.completer.complete();
+  }
+
+  /// 完成并清空所有 parker（dispose 专用）。
   void _wakeAll() {
     if (_waiters.isEmpty) return;
-    final waiters = List<Completer<void>>.of(_waiters);
+    final waiters = List<_InboxParker>.of(_waiters);
     _waiters.clear();
     for (final w in waiters) {
-      if (!w.isCompleted) w.complete();
+      if (!w.completer.isCompleted) w.completer.complete();
     }
   }
 
@@ -236,7 +251,7 @@ class MemberInbox {
 
   void _flush() {
     _flushTimer = null;
-    _wakeAll();
+    _wakeNewest();
   }
 
   void _persist(Future<void>? Function() op) {
@@ -269,4 +284,11 @@ class MemberInbox {
       totalUnread: totalUnread,
     );
   }
+}
+
+class _InboxParker {
+  final Completer<void> completer = Completer<void>();
+
+  /// True when completed by deliver/restore wake; false on cancel/timeout/dispose.
+  bool wokenForMail = false;
 }

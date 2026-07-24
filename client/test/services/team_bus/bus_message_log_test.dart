@@ -89,6 +89,37 @@ void main() {
     },
   );
 
+  test('superseded receiveWork leaves park for the newer wait', () async {
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    bus.declareMember(
+      AgentNode.test(
+        memberId: 'worker',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.turnDoneReady,
+      ),
+    );
+
+    final stale = CancellationToken();
+    final staleWait = bus.receiveWork('worker', cancel: stale);
+    await Future<void>.delayed(Duration.zero);
+    expect(bus.isWaitingForMessage('worker'), isTrue);
+
+    final live = CancellationToken();
+    final liveWait = bus.receiveWork('worker', cancel: live);
+    await Future<void>.delayed(Duration.zero);
+
+    stale.cancel(WaitCancelReason.superseded);
+    expect(await staleWait, isA<EmptyWork>());
+    expect(
+      bus.isWaitingForMessage('worker'),
+      isTrue,
+      reason: 'stale WaitExited must not clear the live wait park',
+    );
+
+    live.cancel();
+    expect(await liveWait, isA<EmptyWork>());
+  });
+
   test('readMessages browses unread pages without consuming', () async {
     final bus = TeamBus(
       launcher: FakeMemberLauncher(),

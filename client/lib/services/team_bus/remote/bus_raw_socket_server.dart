@@ -174,7 +174,7 @@ class _SocketSession {
   ) async {
     final cancel = CancellationToken();
     _server._activeWaits.add(cancel);
-    handler.waitCancels.register(req.id, cancel);
+    handler.waitCancels.register(req.id, cancel, memberId: _memberId);
     try {
       final delivery = await handler.beginWait(_memberId, req, cancel: cancel);
       if (cancel.isCancelled || _closed) {
@@ -183,12 +183,20 @@ class _SocketSession {
       }
       try {
         _writeLine(delivery.response.encode());
-        await delivery.confirm();
+        if (cancel.isCancelled || _closed) {
+          delivery.abort();
+        } else {
+          await delivery.confirm();
+        }
       } on Object {
         delivery.abort();
       }
     } finally {
-      handler.waitCancels.unregister(req.id);
+      handler.waitCancels.unregister(
+        req.id,
+        memberId: _memberId,
+        cancel: cancel,
+      );
       _server._activeWaits.remove(cancel);
     }
   }

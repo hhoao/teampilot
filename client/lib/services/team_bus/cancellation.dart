@@ -9,6 +9,10 @@ enum WaitCancelReason {
   /// SSE/socket disconnect, session stop, or other generic cancel →
   /// [MemberActivity.turnDoneReady].
   disconnected,
+
+  /// Same member opened a newer `wait_for_message` before this stream ended.
+  /// Stale [WaitExited] must not clear park while the newer wait is active.
+  superseded,
 }
 
 /// 一次性取消信号。用于让阻塞中的 `wait_for_message` 在客户端断连时被解除，
