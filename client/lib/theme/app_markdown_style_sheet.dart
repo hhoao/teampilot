@@ -38,11 +38,13 @@ CompiledMarkdownStyle buildAppCompiledMarkdownStyle(
 
   return CompiledMarkdownStyle(
     body: body,
-    h1: withUi(styles.lgSemiboldSnug),
-    h2: withUi(styles.lgSnug),
-    h3: withUi(styles.mdSemiboldTightSnug),
-    h4: withUi(styles.lg),
-    h5: body,
+    // Size ladder (Material text theme): display → xl → lg → md.
+    // Prefer warmup-covered TpTextStyles tokens over ad-hoc fontSize.
+    h1: withUi(styles.display),
+    h2: withUi(styles.xl),
+    h3: withUi(styles.lgSemiboldSnug),
+    h4: withUi(styles.lgSnug),
+    h5: withUi(styles.mdSemiboldTightSnug),
     h6: body,
     link: body.copyWith(
       color: scheme.primary,
