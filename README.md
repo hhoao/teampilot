@@ -232,7 +232,7 @@ Embedded terminals use **[flutter_alacritty](https://github.com/hhoao/flutter_al
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [GNU Affero General Public License v3.0](LICENSE).
 
 ## Community
 

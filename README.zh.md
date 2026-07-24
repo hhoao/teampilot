@@ -232,7 +232,7 @@ Android 版**不运行本机 PTY**，需通过 **SSH** 连接已安装目标 Age
 
 ## 许可证
 
-[MIT License](LICENSE)。
+本项目采用 [GNU Affero General Public License v3.0](LICENSE)。
 
 ## 社区
 
