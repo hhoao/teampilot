@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_provider_config.dart';
+import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/codex/codex_home_provisioner.dart';
 import 'package:teampilot/services/provider/codex/codex_proxy_launch_auth.dart';
@@ -82,7 +83,10 @@ base_url = "https://api.deepseek.com"
               'model = "m1"\nbase_url = "https://upstream.example.com"\n',
         },
       );
-      final overlay = CodexTeamBusOverlay.buildLocal(
+      final overlay = await CodexTeamBusOverlay.buildLocal(
+        fs: LocalFilesystem(),
+        runner: HostExecutionEnvironment.resolve().scriptRunner,
+        codexHome: p.join(root.path, 'codex-overlay-home'),
         memberId: 'w1',
         idle: const MemberBusIdleEndpoint(
           url: 'http://127.0.0.1:44000/idle',
@@ -123,6 +127,43 @@ base_url = "https://api.deepseek.com"
       expect(toml, contains('[projects."/home/user/Document/testmixed"]'));
       expect(toml, contains('trust_level = "trusted"'));
     });
+
+    test(
+      'copies model_catalog_json sidecar from provider dir into codex home',
+      () async {
+        const provider = AppProviderConfig(
+          id: 'deepseek',
+          cli: CliTool.codex,
+          name: 'DeepSeek',
+          config: {
+            'configToml': '''
+model = "deepseek-v4-flash"
+model_catalog_json = "cc-switch-model-catalog.json"
+''',
+          },
+        );
+
+        final providerDir = p.join(root.path, 'provider-dir');
+        await Directory(providerDir).create(recursive: true);
+        await File(
+          p.join(providerDir, 'cc-switch-model-catalog.json'),
+        ).writeAsString('{"models":[]}');
+
+        final codexHome = p.join(root.path, 'codex-sidecar');
+        await CodexHomeProvisioner(fs: LocalFilesystem()).provision(
+          codexHome: codexHome,
+          provider: provider,
+          providerDir: providerDir,
+        );
+
+        expect(
+          await File(
+            p.join(codexHome, 'cc-switch-model-catalog.json'),
+          ).exists(),
+          isTrue,
+        );
+      },
+    );
 
     test(
       'preserves plugins and catalog mcp when rewriting provider config',

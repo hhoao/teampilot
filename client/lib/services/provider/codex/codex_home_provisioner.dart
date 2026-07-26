@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../../models/app_provider_config.dart';
 import '../../io/filesystem.dart';
 import 'codex_auth_artifacts.dart';
+import 'codex_config_sidecar.dart';
 import 'codex_config_toml_composer.dart';
 import 'codex_proxy_launch_auth.dart';
 import '../../cli/registry/mcp_writers/codex_toml_merge.dart';
@@ -36,6 +37,7 @@ final class CodexHomeProvisioner {
     Iterable<String> trustedProjectDirectories = const [],
     String? storedAuthPath,
     String? reasoningEffortOverride,
+    String? providerDir,
   }) async {
     final store = _fs;
     if (store == null) {
@@ -94,6 +96,15 @@ final class CodexHomeProvisioner {
         toml,
         fs: store,
       );
+      final sidecarDir = providerDir?.trim();
+      if (sidecarDir != null && sidecarDir.isNotEmpty) {
+        await CodexConfigSidecar.copyIntoCodexHome(
+          fs: store,
+          providerDir: sidecarDir,
+          codexHome: codexHome,
+          configToml: toml,
+        );
+      }
     }
   }
 }

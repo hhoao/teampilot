@@ -1,4 +1,5 @@
 import '../../models/app_provider_config.dart';
+import '../../services/provider/codex/codex_config_sidecar.dart';
 import '../../services/provider/codex/codex_official_provider.dart';
 import '../../services/provider/codex/codex_provider_credentials_service.dart';
 import 'provider_persistence_strategy.dart';
@@ -78,6 +79,12 @@ final class CodexProviderPersistence extends ProviderPersistenceStrategy
       final tomlPath = path.join(codexDir, 'config.toml');
       if (toml.trim().isNotEmpty) {
         await ctx.generator.writeTextAtomic(tomlPath, toml, fs: ctx.fs);
+        await CodexConfigSidecar.persistFromLiveCodexHome(
+          fs: ctx.fs,
+          providerDir: codexDir,
+          configToml: toml,
+          liveCodexHome: ctx.resolveHome(),
+        );
       } else if ((await ctx.fs.stat(tomlPath)).exists) {
         await ctx.fs.removeRecursive(tomlPath);
       }

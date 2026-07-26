@@ -50,6 +50,7 @@ final class CodexHeadlessProvisionCapability
         reasoningEffortOverride: ctx.effort.trim().isNotEmpty
             ? ctx.effort.trim()
             : null,
+        providerDir: p.join(basePath, 'providers', 'codex', resolved.id),
       );
     } on CodexHomeProvisionException catch (e) {
       warnings.add('codex_config_invalid: $e');

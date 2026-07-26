@@ -1,33 +1,52 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+import 'package:teampilot/services/host/host_execution_environment.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/codex/codex_team_bus_overlay.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 
 void main() {
   group('CodexTeamBusOverlay', () {
+    late Directory root;
+    late LocalFilesystem fs;
+    late HostExecutionEnvironment host;
+
+    setUp(() async {
+      root = await Directory.systemTemp.createTemp('codex_team_bus_');
+      fs = LocalFilesystem();
+      host = HostExecutionEnvironment.resolve(isWindowsHost: Platform.isWindows);
+    });
+
+    tearDown(() async {
+      if (await root.exists()) {
+        await root.delete(recursive: true);
+      }
+    });
+
     const idle = MemberBusIdleEndpoint(
       url: 'http://127.0.0.1:54321/idle',
       sessionId: 'sess-codex',
     );
-    final toml = CodexTeamBusOverlay.buildLocal(
-      memberId: 'worker-1',
-      idle: idle,
-    );
 
-    test('registers the teammate-bus HTTP MCP server with gateway headers', () {
+    test('registers teammate-bus MCP and provisions a Stop hook script', () async {
+      final toml = await CodexTeamBusOverlay.buildLocal(
+        fs: fs,
+        runner: host.scriptRunner,
+        codexHome: root.path,
+        memberId: 'worker-1',
+        idle: idle,
+      );
+
       expect(toml, contains('[mcp_servers.teammate-bus]'));
       expect(toml, contains('url = "http://127.0.0.1:54321/mcp"'));
       expect(toml, contains('"X-Member" = "worker-1"'));
       expect(toml, contains('"X-Session" = "sess-codex"'));
-    });
-
-    test('keeps the bus tool timeout far above any real idle wait', () {
       expect(
         toml,
         contains('tool_timeout_sec = ${CodexTeamBusOverlay.busToolTimeoutSec}'),
       );
-    });
-
-    test('auto-approves all teammate-bus MCP tools without prompting', () {
       expect(
         toml,
         contains(
@@ -35,40 +54,57 @@ void main() {
           '"${CodexTeamBusOverlay.defaultToolsApprovalMode}"',
         ),
       );
-    });
+      expect(toml, contains('[[hooks.Stop]]'));
+      expect(toml, contains('type = "command"'));
+      expect(toml, contains('teampilot-team-bus-stop'));
 
-    test(
-      'wires a Stop hook that curls /idle and passes the response through',
-      () {
-        expect(toml, contains('[[hooks.Stop]]'));
-        expect(toml, contains('[[hooks.Stop.hooks]]'));
-        expect(toml, contains('type = "command"'));
-        // curl writes the /idle JSON ({"decision":"block"} | {}) to stdout, which
-        // codex reads as the Stop-hook decision — no shim file, no chmod.
-        expect(
-          toml,
-          contains(
-            'command = "curl -sS -X POST -H \\"X-Member: worker-1\\" '
-            '-H \\"X-Session: sess-codex\\" '
-            'http://127.0.0.1:54321/idle"',
-          ),
-        );
-      },
-    );
+      final scriptName = host.scriptRunner.hookFileName(
+        'teampilot-team-bus-stop',
+      );
+      final scriptPath = p.join(root.path, 'hooks', scriptName);
+      expect(await File(scriptPath).exists(), isTrue);
+      final script = await File(scriptPath).readAsString();
+      expect(script, contains('http://127.0.0.1:54321/idle'));
+    });
   });
 
   group('CodexTeamBusOverlay remote stop hook', () {
-    test('buildStopHook includes X-Bus-Token for remote idle endpoints', () {
+    late Directory root;
+    late LocalFilesystem fs;
+    late HostExecutionEnvironment host;
+
+    setUp(() async {
+      root = await Directory.systemTemp.createTemp('codex_team_bus_remote_');
+      fs = LocalFilesystem();
+      host = HostExecutionEnvironment.resolve(isWindowsHost: Platform.isWindows);
+    });
+
+    tearDown(() async {
+      if (await root.exists()) {
+        await root.delete(recursive: true);
+      }
+    });
+
+    test('provisionStopHook includes X-Bus-Token for remote idle endpoints', () async {
       const idle = MemberBusIdleEndpoint(
         url: 'http://127.0.0.1:54321/idle',
         token: 'sess-tok',
       );
-      final toml = CodexTeamBusOverlay.buildStopHook(
+      final toml = await CodexTeamBusOverlay.provisionStopHook(
+        fs: fs,
+        runner: host.scriptRunner,
+        codexHome: root.path,
         memberId: 'worker-1',
         idle: idle,
       );
-      expect(toml, contains('X-Bus-Token: sess-tok'));
-      expect(toml, contains('http://127.0.0.1:54321/idle'));
+      final scriptName = host.scriptRunner.hookFileName(
+        'teampilot-team-bus-stop',
+      );
+      final script = await File(
+        p.join(root.path, 'hooks', scriptName),
+      ).readAsString();
+      expect(script, contains('sess-tok'));
+      expect(toml, contains('teampilot-team-bus-stop'));
       expect(toml, isNot(contains('[mcp_servers.teammate-bus]')));
     });
   });
