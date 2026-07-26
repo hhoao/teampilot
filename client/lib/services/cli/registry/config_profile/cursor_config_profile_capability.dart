@@ -9,6 +9,7 @@ import '../../../provider/cursor/cursor_provider_credentials_service.dart';
 import '../../../provider/cursor/cursor_provider_settings_resolver.dart';
 import '../../../provider/provider_catalog_access.dart';
 import '../../../provider/cursor/cursor_session_config_dir.dart';
+import '../../../provider/cursor/cursor_windows_home_junction.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../launch/work_plane_paths.dart';
 import '../../../provider/cursor/cursor_workspace_trust_provisioner.dart';
@@ -56,9 +57,13 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       toolId,
       memberId: ctx.scope.memberId,
     );
-    final home = paths.joinWork(
+    final canonicalHome = paths.joinWork(
       toolDir,
       CursorSessionConfigDir.homeSegment,
+    );
+    final home = await CursorWindowsHomeJunction.ensureAgentHome(
+      fs: paths.fs,
+      canonicalHome: canonicalHome,
     );
     final layout = CursorHomeLayout(pathContext: paths.workPathContext);
     final cursorDir = layout.cursorDir(home);
@@ -161,6 +166,10 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
         teamId: teamId,
         memberId: memberId,
       );
+      final agentHome = await CursorWindowsHomeJunction.ensureAgentHome(
+        fs: paths.fs,
+        canonicalHome: memberHome,
+      );
 
       final credentials = CursorProviderCredentialsService(
         fs: paths.fs,
@@ -205,7 +214,7 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
 
       return ConfigProfileLaunchContribution(
         environment: CursorLaunchEnvironment.forMixed(
-          homeRoot: memberHome,
+          homeRoot: agentHome,
           useWslPaths: false,
         ),
         warnings: warnings,
@@ -214,9 +223,13 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
 
     // Non-mixed team fallback (cursor is not native-team-launchable, so this is
     // effectively unreachable) — still HOME-isolate for consistency.
-    final home = paths.joinWork(
+    final canonicalHome = paths.joinWork(
       cursorDir,
       CursorSessionConfigDir.homeSegment,
+    );
+    final home = await CursorWindowsHomeJunction.ensureAgentHome(
+      fs: paths.fs,
+      canonicalHome: canonicalHome,
     );
     final cursorConfigDir = CursorHomeLayout(
       pathContext: paths.workPathContext,

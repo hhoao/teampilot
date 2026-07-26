@@ -97,9 +97,10 @@ final class CursorSessionLifecycleCapability
         memberId: memberId,
         realHomeRoot: ctx.paths.home,
       );
+      final agentHome = await paths.resolvedMemberHomeRoot(memberId);
       await _provisionMemberWorkspaceTrust(
         fs: ctx.paths.fs,
-        memberHome: paths.memberHomeRoot(memberId),
+        memberHome: agentHome,
         workingDirectory: ctx.workingDirectory,
       );
     }
@@ -222,7 +223,7 @@ final class CursorSessionLifecycleCapability
     if (manifest.phase == CliSessionPhase.ready ||
         manifest.phase == CliSessionPhase.degraded) {
       final paths = _pathsForInit(ctx);
-      final memberHome = paths.memberHomeRoot(ctx.memberId);
+      final memberHome = await paths.resolvedMemberHomeRoot(ctx.memberId);
       await _syncMemberAuth(ctx: ctx, paths: paths, memberHome: memberHome);
       if (!await _memberAuthReady(ctx, memberHome)) {
         return CliSessionInitResult(
@@ -265,7 +266,7 @@ final class CursorSessionLifecycleCapability
     }
 
     final paths = _pathsForInit(ctx);
-    final memberHome = paths.memberHomeRoot(ctx.memberId);
+    final memberHome = await paths.resolvedMemberHomeRoot(ctx.memberId);
     final homeLayout = CursorHomeLayout(pathContext: ctx.paths.fs.pathContext);
 
     manifest = await _runAuthPhase(ctx, paths, manifest, memberHome);
@@ -309,7 +310,7 @@ final class CursorSessionLifecycleCapability
     );
     final chatId = await _scanLatestChatId(
       fs: ctx.paths.fs,
-      memberHome: paths.memberHomeRoot(memberId),
+      memberHome: await paths.resolvedMemberHomeRoot(memberId),
     );
     if (chatId == null) return;
 

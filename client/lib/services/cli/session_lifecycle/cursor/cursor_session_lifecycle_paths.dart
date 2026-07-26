@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import '../../../io/filesystem.dart';
 import '../../../provider/cursor/cursor_home_layout.dart';
 import '../../../provider/cursor/cursor_member_home_passthrough.dart';
+import '../../../provider/cursor/cursor_windows_home_junction.dart';
 import '../../../provider/cursor/cursor_workspace_trust.dart';
 import '../../../provider/cursor/cursor_workspace_warm_tier.dart';
 import '../../../storage/runtime_layout.dart';
@@ -85,6 +86,12 @@ final class CursorSessionLifecyclePaths {
     'home',
   );
 
+  Future<String> resolvedMemberHomeRoot(String memberId) =>
+      CursorWindowsHomeJunction.resolveAgentHome(
+        fs: _fs,
+        canonicalHome: memberHomeRoot(memberId),
+      );
+
   String memberCursorDir(String memberHome) => _homeLayout.cursorDir(memberHome);
 
   Future<void> ensureSharedDirs() async {
@@ -107,7 +114,11 @@ final class CursorSessionLifecyclePaths {
     required String memberId,
     required String realHomeRoot,
   }) async {
-    final memberHome = memberHomeRoot(memberId);
+    final canonicalHome = memberHomeRoot(memberId);
+    final memberHome = await CursorWindowsHomeJunction.ensureAgentHome(
+      fs: _fs,
+      canonicalHome: canonicalHome,
+    );
     await _fs.ensureDir(memberHome);
     final cursorDir = memberCursorDir(memberHome);
     await _fs.ensureDir(cursorDir);

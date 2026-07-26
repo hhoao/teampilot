@@ -1,9 +1,8 @@
 import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
-import 'package:path/path.dart' as p;
 
-import '../../../../provider/cursor/cursor_home_layout.dart';
+import '../../../../provider/cursor/cursor_windows_home_junction.dart';
 import '../../../../session/ai_history_cache_token.dart';
 import '../../../../session/ai_history_watch_meta.dart';
 import '../../../../session/session_history_context.dart';
@@ -42,7 +41,10 @@ Future<AiTranscriptBundle?> locateCursorTranscript(
 }
 
 Future<String?> _locateAgentTranscript(SessionHistoryContext ctx) async {
-  final configDir = _cursorConfigRoot(ctx.env, ctx.fs.pathContext);
+  final configDir = await CursorWindowsHomeJunction.resolveCursorConfigDir(
+    fs: ctx.fs,
+    env: ctx.env,
+  );
   if (configDir == null) return null;
   final path = ctx.fs.pathContext;
   final chatsRoot = path.join(configDir, 'chats');
@@ -103,14 +105,6 @@ Future<String?> _resolveChatId(
     return null;
   }
   return best;
-}
-
-String? _cursorConfigRoot(Map<String, String> env, p.Context path) {
-  final explicit = env['CURSOR_CONFIG_DIR']?.trim() ?? '';
-  if (explicit.isNotEmpty) return explicit;
-  final home = env['HOME']?.trim() ?? '';
-  if (home.isEmpty) return null;
-  return path.join(home, CursorHomeLayout.cursorDirName);
 }
 
 /// Cursor agent JSONL → [AiMessage] (role + text/tool_use/tool_result blocks).

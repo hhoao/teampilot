@@ -1,8 +1,6 @@
 import 'dart:convert';
 
-import 'package:path/path.dart' as p;
-
-import '../../../../provider/cursor/cursor_home_layout.dart';
+import '../../../../provider/cursor/cursor_windows_home_junction.dart';
 import '../../../session_lifecycle/cli_session_manifest_store.dart';
 import '../../../session_lifecycle/cursor/cursor_session_lifecycle_paths.dart';
 import '../../../../storage/runtime_layout.dart';
@@ -31,7 +29,10 @@ final class CursorResumeStrategy implements SessionResumeCapability {
     final manifestChatId = await _chatIdFromManifest(ctx);
     if (manifestChatId != null) return manifestChatId;
 
-    final configDir = _cursorConfigRoot(ctx.env, ctx.fs.pathContext);
+    final configDir = await CursorWindowsHomeJunction.resolveCursorConfigDir(
+      fs: ctx.fs,
+      env: ctx.env,
+    );
     if (configDir == null) return null;
     final path = ctx.fs.pathContext;
     final chatsRoot = path.join(configDir, 'chats');
@@ -86,14 +87,6 @@ final class CursorResumeStrategy implements SessionResumeCapability {
     final chatId = manifest?.members[memberId]?.chatId?.trim();
     if (chatId == null || chatId.isEmpty) return null;
     return chatId;
-  }
-
-  static String? _cursorConfigRoot(Map<String, String> env, p.Context path) {
-    final explicit = env['CURSOR_CONFIG_DIR']?.trim() ?? '';
-    if (explicit.isNotEmpty) return explicit;
-    final home = env['HOME']?.trim() ?? '';
-    if (home.isEmpty) return null;
-    return path.join(home, CursorHomeLayout.cursorDirName);
   }
 
   static Map<String, Object?>? _decode(String raw) {
