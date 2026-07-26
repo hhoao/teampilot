@@ -52,12 +52,13 @@ void main() {
         expect(toml, contains('teampilot-agent-status-UserPromptSubmit'));
 
         final scriptName = host.scriptRunner.hookFileName(
-          'teampilot-agent-status-UserPromptSubmit',
+          'teampilot-agent-status-UserPromptSubmit-win',
         );
         final scriptPath = p.join(root.path, 'hooks', scriptName);
         expect(await File(scriptPath).exists(), isTrue);
         final script = await File(scriptPath).readAsString();
-        expect(script, contains('/agent-status'));
+        expect(script, contains('TEAMPILOT_AGENT_STATUS_URL'));
+        expect(script, contains('curl.exe'));
         expect(script, contains('hook_event_name'));
         expect(script, contains('UserPromptSubmit'));
       },
@@ -73,13 +74,13 @@ void main() {
       );
       expect(toml, contains('teampilot-agent-status'));
       final scriptName = host.scriptRunner.hookFileName(
-        'teampilot-agent-status-PermissionRequest',
+        'teampilot-agent-status-PermissionRequest-win',
       );
       final script = await File(
         p.join(root.path, 'hooks', scriptName),
       ).readAsString();
-      expect(script, contains("'X-Bus-Token' = 'sess-tok'"));
-      expect(script, contains('http://127.0.0.1:54321/agent-status'));
+      expect(script, contains("'X-Bus-Token: sess-tok'"));
+      expect(toml, contains('command_windows'));
     });
   });
 }

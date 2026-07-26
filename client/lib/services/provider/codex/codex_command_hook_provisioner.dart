@@ -1,3 +1,4 @@
+import '../../host/host_execution_environment.dart';
 import '../../host/host_script_dialect.dart';
 import '../../host/host_script_runner.dart';
 import '../../io/filesystem.dart';
@@ -28,18 +29,58 @@ final class CodexCommandHookProvisioner {
   String hookToml({
     required String event,
     required String command,
+    String? commandWindows,
     int timeoutSec = 30,
   }) {
     final escaped = _escapeTomlBasicString(command);
+    final windowsLine = commandWindows == null
+        ? ''
+        : 'command_windows = "${_escapeTomlBasicString(commandWindows)}"\n';
     return '''
 [[hooks.$event]]
 
 [[hooks.$event.hooks]]
 type = "command"
 command = "$escaped"
-timeout = $timeoutSec
+${windowsLine}timeout = $timeoutSec
 '''
         .trim();
+  }
+
+  Future<({String command, String? commandWindows})> provisionHookCommands({
+    required String hooksDir,
+    required String baseFileName,
+    required String scriptBody,
+    required String windowsScriptBody,
+  }) async {
+    final env = _runner.environment;
+    final bashRunner = HostScriptRunner(
+      HostExecutionEnvironment(
+        dialect: HostScriptDialect.bash,
+        isWindowsHost: env.isWindowsHost,
+        storageMode: env.storageMode,
+      ),
+    );
+    final bashProvisioner = CodexCommandHookProvisioner(
+      fs: _fs,
+      runner: bashRunner,
+    );
+    final bashCommand = await bashProvisioner.provision(
+      hooksDir: hooksDir,
+      baseFileName: baseFileName,
+      scriptBody: scriptBody,
+    );
+
+    if (_runner.dialect != HostScriptDialect.powershell) {
+      return (command: bashCommand, commandWindows: null);
+    }
+
+    final windowsCommand = await provision(
+      hooksDir: hooksDir,
+      baseFileName: '$baseFileName-win',
+      scriptBody: windowsScriptBody,
+    );
+    return (command: bashCommand, commandWindows: windowsCommand);
   }
 
   static String _escapeTomlBasicString(String value) => value

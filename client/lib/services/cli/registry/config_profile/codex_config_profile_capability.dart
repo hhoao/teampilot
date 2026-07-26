@@ -13,6 +13,7 @@ import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/provider_catalog_access.dart';
 import '../../../provider/codex/codex_provider_settings_resolver.dart';
 import '../../../provider/codex/codex_agent_status_overlay.dart';
+import '../../../provider/codex/codex_managed_hook_overlay.dart';
 import '../../../provider/codex/codex_team_bus_overlay.dart';
 import '../../../launch/work_plane_paths.dart';
 import '../../../host/host_script_runner.dart';
@@ -86,6 +87,17 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
       final busIdle = mixed ? ctx.busIdle : null;
       final host = paths.hostEnvironmentForProvision();
       final overlayParts = <String>[];
+      final installsManagedHooks =
+          (busIdle != null || ctx.agentStatus != null) &&
+          member != null &&
+          member.isValid;
+      if (installsManagedHooks) {
+        overlayParts.add(
+          CodexManagedHookOverlay.build(
+            dangerouslySkipPermissions: member.dangerouslySkipPermissions,
+          ),
+        );
+      }
       if (busIdle != null && member != null && member.isValid) {
         overlayParts.add(
           await (busIdle.isRemote

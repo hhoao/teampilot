@@ -59,7 +59,7 @@ void main() {
       expect(toml, contains('teampilot-team-bus-stop'));
 
       final scriptName = host.scriptRunner.hookFileName(
-        'teampilot-team-bus-stop',
+        'teampilot-team-bus-stop-win',
       );
       final scriptPath = p.join(root.path, 'hooks', scriptName);
       expect(await File(scriptPath).exists(), isTrue);
@@ -98,7 +98,7 @@ void main() {
         idle: idle,
       );
       final scriptName = host.scriptRunner.hookFileName(
-        'teampilot-team-bus-stop',
+        'teampilot-team-bus-stop-win',
       );
       final script = await File(
         p.join(root.path, 'hooks', scriptName),

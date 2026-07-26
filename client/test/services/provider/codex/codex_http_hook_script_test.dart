@@ -4,24 +4,24 @@ import 'package:teampilot/services/provider/codex/codex_http_hook_script.dart';
 
 void main() {
   group('CodexHttpHookScript', () {
-    test('powershell agent-status script posts JSON body', () {
-      final script = CodexHttpHookScript.build(
+    test('powershell agent-status script uses curl and TEAMPILOT env URL', () {
+      final script = CodexHttpHookScript.buildAgentStatus(
         dialect: HostScriptDialect.powershell,
-        url: 'http://127.0.0.1:1/agent-status?event=UserPromptSubmit',
         headers: const {
           'X-Member': 'worker-1',
           'Content-Type': 'application/json',
         },
-        jsonBody: '{"hook_event_name":"UserPromptSubmit"}',
+        event: 'UserPromptSubmit',
       );
 
-      expect(script, contains('Invoke-WebRequest'));
-      expect(script, contains('hook_event_name'));
+      expect(script, contains('curl.exe'));
+      expect(script, contains('TEAMPILOT_AGENT_STATUS_URL'));
       expect(script, contains('UserPromptSubmit'));
-      expect(script, isNot(contains('curl -sS')));
+      expect(script, contains('exit 0'));
+      expect(script, isNot(contains('Invoke-WebRequest')));
     });
 
-    test('powershell stop hook writes response body to stdout', () {
+    test('powershell stop hook writes curl response to stdout', () {
       final script = CodexHttpHookScript.build(
         dialect: HostScriptDialect.powershell,
         url: 'http://127.0.0.1:1/idle',
@@ -29,8 +29,8 @@ void main() {
         passResponseToStdout: true,
       );
 
+      expect(script, contains('curl.exe'));
       expect(script, contains('Write-Output'));
-      expect(script, isNot(contains('-Body')));
     });
   });
 }
