@@ -506,9 +506,9 @@ final class CliMessageMatrixHarness {
 
   /// Parks the worker, then [submitCompose] on the lead (recipe order).
   ///
-  /// Relies on virgin-lead mail suppression: worker idle-announce queues mail
-  /// without PTY-doorbelling a lead that has never started a turn, so History
-  /// compose remains the first lead user message.
+  /// Worker idle-announce may PTY-doorbell a lead still at prompt (including
+  /// seats that have never turned). [bootComposeSeatToPrompt] waits until the
+  /// lead is ready for History compose afterward.
   Future<HistoryContinueSubmitResult> parkWorkerAndComposeOnLead(
     String prompt, {
     String workerKickoff = 'Start idle loop.',

@@ -128,8 +128,8 @@ void main() {
         await harness.bootAllMembersToPrompt();
         await harness.loadHistory();
 
-        // Park worker first (recipe order); virgin-lead idle mail is queued
-        // without PTY doorbell so History compose starts the lead turn.
+        // Park worker first (recipe order); idle-announce may doorbell the
+        // lead — compose runs after bootComposeSeatToPrompt.
         const prompt = 'matrix mixed collab please coordinate';
         final leadBefore =
             harness.gateway!.requestCountFor(leadScriptApiKey);
