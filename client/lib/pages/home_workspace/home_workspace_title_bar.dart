@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -387,9 +388,13 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
             const SizedBox(width: 8),
             const NotificationBellButton(),
             TpIconButton(
-              icon: Icons.settings_outlined,
+              iconWidget: SvgPicture.asset(
+                'assets/icons/settings_gear.svg',
+                width: context.tpIconSizes.md,
+                height: context.tpIconSizes.md,
+                theme: SvgTheme(currentColor: cs.onSurfaceVariant),
+              ),
               tooltip: l10n.settings,
-              color: cs.onSurfaceVariant,
               backgroundColor: Colors.transparent,
               onTap: () => showWorkspaceSettingsDialog(context),
             ),

@@ -601,6 +601,90 @@ void main() {
     );
 
     test(
+      'ensureSessionInheritsOpencodePluginDeps also inherits package-lock.json',
+      () async {
+        final layout = RuntimeLayout(
+          teampilotRoot: base.path,
+          fs: LocalFilesystem(),
+        );
+        await layout.ensureAppToolLayout('opencode');
+        final app = layout.appToolRoot('opencode');
+        await File(p.join(app, 'package.json')).writeAsString(
+          '{"dependencies":{"@opencode-ai/plugin":"1.18.5"}}',
+        );
+        await File(p.join(app, 'package-lock.json')).writeAsString(
+          '{"packages":{"":{"dependencies":{"@opencode-ai/plugin":"1.18.5"}}}}',
+        );
+        await Directory(
+          p.join(app, 'node_modules', '@opencode-ai', 'plugin'),
+        ).create(recursive: true);
+
+        final sessionDir = layout.sessionRuntimeToolDir(
+          workspaceId,
+          'sess-oc-lock',
+          'opencode',
+        );
+        await Directory(sessionDir).create(recursive: true);
+
+        await layout.ensureSessionInheritsOpencodePluginDeps(
+          workspaceId,
+          'sess-oc-lock',
+        );
+
+        final linkedLock = p.join(sessionDir, 'package-lock.json');
+        expect(await File(linkedLock).exists(), isTrue);
+        expect(
+          await File(linkedLock).readAsString(),
+          contains('@opencode-ai/plugin'),
+        );
+      },
+    );
+
+    test(
+      'ensureSessionInheritsOpencodePluginDeps inherits package-lock when package.json already linked',
+      () async {
+        final layout = RuntimeLayout(
+          teampilotRoot: base.path,
+          fs: LocalFilesystem(),
+        );
+        await layout.ensureAppToolLayout('opencode');
+        final app = layout.appToolRoot('opencode');
+        final pkgSource = p.join(app, 'package.json');
+        await File(pkgSource).writeAsString(
+          '{"dependencies":{"@opencode-ai/plugin":"1.18.5"}}',
+        );
+        await File(p.join(app, 'package-lock.json')).writeAsString(
+          '{"packages":{"":{"dependencies":{"@opencode-ai/plugin":"1.18.5"}}}}',
+        );
+        await Directory(
+          p.join(app, 'node_modules', '@opencode-ai', 'plugin'),
+        ).create(recursive: true);
+
+        final sessionDir = layout.sessionRuntimeToolDir(
+          workspaceId,
+          'sess-oc-relink',
+          'opencode',
+        );
+        await Directory(sessionDir).create(recursive: true);
+        await Link(p.join(sessionDir, 'package.json')).create(pkgSource);
+
+        await layout.ensureSessionInheritsOpencodePluginDeps(
+          workspaceId,
+          'sess-oc-relink',
+        );
+
+        expect(
+          await File(p.join(sessionDir, 'package-lock.json')).exists(),
+          isTrue,
+        );
+        expect(
+          await File(p.join(sessionDir, 'package-lock.json')).readAsString(),
+          contains('@opencode-ai/plugin'),
+        );
+      },
+    );
+
+    test(
       'ensureSessionInheritsOpencodePluginDeps with memberId uses mixed-mode path',
       () async {
         final layout = RuntimeLayout(

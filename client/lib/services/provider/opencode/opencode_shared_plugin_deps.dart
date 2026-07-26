@@ -11,8 +11,11 @@ import '../../storage/runtime_layout.dart';
 typedef OpencodePluginVersionResolver = Future<String?> Function();
 typedef OpencodeNpmInstall = Future<int> Function(String cwd);
 
-/// Seeds `<teampilotRoot>/cli-defaults/opencode/{package.json,node_modules}`
+/// Seeds `<teampilotRoot>/cli-defaults/opencode/{package.json,package-lock.json,node_modules}`
 /// for OpenCode local plugins (`@opencode-ai/plugin`).
+///
+/// Sessions inherit those three names into `OPENCODE_CONFIG_DIR` so OpenCode's
+/// `Npm.checkDirty` skips a second arborist reify on launch.
 final class OpencodeSharedPluginDeps {
   OpencodeSharedPluginDeps({
     required this.layout,

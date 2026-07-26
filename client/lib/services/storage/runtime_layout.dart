@@ -344,25 +344,44 @@ class RuntimeLayout {
           ownToolRoot: sessionRoot,
         );
 
-        // package.json is a file; _ensureInheritedChild ensureDir/copyTree is wrong.
-        final pkgSource = _pathContext.join(appRoot, 'package.json');
-        final pkgTarget = _pathContext.join(sessionRoot, 'package.json');
-        if (!(await _fs.stat(pkgSource)).exists) return;
-        if (await _inheritLinkCurrent(source: pkgSource, target: pkgTarget)) {
-          return;
-        }
-        if ((await _fs.stat(pkgTarget)).exists) {
-          await _fs.removeRecursive(pkgTarget);
-        }
-        final linked = await _fs.createSymlink(
-          target: pkgSource,
-          linkPath: pkgTarget,
+        // Files cannot use _ensureInheritedChild (ensureDir/copyTree).
+        // Also inherit package-lock.json so OpenCode's Npm.checkDirty does not
+        // reify a second ~55MB tree into the session config dir on every launch.
+        await _ensureInheritedFile(
+          fileName: 'package.json',
+          parentToolRoot: appRoot,
+          ownToolRoot: sessionRoot,
         );
-        if (!linked) {
-          await _fs.copyFile(pkgSource, pkgTarget);
-        }
+        await _ensureInheritedFile(
+          fileName: 'package-lock.json',
+          parentToolRoot: appRoot,
+          ownToolRoot: sessionRoot,
+        );
       },
     );
+  }
+
+  Future<void> _ensureInheritedFile({
+    required String fileName,
+    required String parentToolRoot,
+    required String ownToolRoot,
+  }) async {
+    final source = _pathContext.join(parentToolRoot, fileName);
+    final target = _pathContext.join(ownToolRoot, fileName);
+    if (!(await _fs.stat(source)).exists) return;
+    if (await _inheritLinkCurrent(source: source, target: target)) {
+      return;
+    }
+    if ((await _fs.stat(target)).exists) {
+      await _fs.removeRecursive(target);
+    }
+    final linked = await _fs.createSymlink(
+      target: source,
+      linkPath: target,
+    );
+    if (!linked) {
+      await _fs.copyFile(source, target);
+    }
   }
 
   Future<String?> provisionSessionPluginsFromIdentity(
