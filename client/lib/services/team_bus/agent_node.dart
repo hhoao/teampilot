@@ -12,11 +12,7 @@ class AgentNode {
     this.lifecycle = MemberLifecycle.declared,
     this.activity = MemberActivity.none,
     MemberInbox? inbox,
-  }) : inbox = inbox ?? MemberInbox(memberId: profile.memberId) {
-    if (activity == MemberActivity.active) {
-      hasEverBeenActive = true;
-    }
-  }
+  }) : inbox = inbox ?? MemberInbox(memberId: profile.memberId);
 
   factory AgentNode.test({
     required String memberId,
@@ -57,11 +53,6 @@ class AgentNode {
   /// （首个回车被全屏 TUI 输入框吞掉的竞态）时，按间隔补敲，治「永久卡在 prompt」。
   /// 真正消费（进 wait / 抽干未读）后清零。null = 本轮还没敲过。
   int? doorbelledAt;
-
-  /// Set on first [TurnStarted] while running. Virgin members (spawned, never
-  /// turned) suppress PTY doorbells only for idle-announce-only unread so
-  /// operator compose can start the first turn; ordinary teammate mail still rings.
-  bool hasEverBeenActive = false;
 
   /// PTY mail-notify lifecycle; see mailbox-delivery design spec.
   MailboxDeliveryPhase deliveryPhase = MailboxDeliveryPhase.none;

@@ -5,12 +5,10 @@ import 'presence.dart';
 
 /// reducer 的上下文:成员 id（用于产出带 id 的效果）+ 信箱是否有未读。
 class PresenceContext {
-  const   PresenceContext({
+  const PresenceContext({
     required this.memberId,
     required this.hasUnread,
     this.doorbelled = false,
-    this.hasEverBeenActive = true,
-    this.unreadIsIdleOnly = false,
   });
   final String memberId;
   final bool hasUnread;
@@ -18,16 +16,6 @@ class PresenceContext {
   /// 本轮未读是否已经响过门铃（见 [AgentNode.doorbelled]）。为真时 [MailArrived]
   /// 不再重复注入。
   final bool doorbelled;
-
-  /// False until the member has entered [MemberActivity.active] at least once
-  /// (operator/PTY turn). Combined with [unreadIsIdleOnly], virgin seats skip
-  /// idle-announce doorbells so History compose — not worker park — starts the
-  /// first turn. Non-idle mail (pong / tasks) still doorbells virgin seats.
-  final bool hasEverBeenActive;
-
-  /// True when every unread message is an [IdleNotification]. Virgin suppression
-  /// applies only then — not to ordinary teammate mail.
-  final bool unreadIsIdleOnly;
 }
 
 /// 一次跃迁的结果:新在线态 + 待落地的效果列表。

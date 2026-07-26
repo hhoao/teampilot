@@ -11,8 +11,6 @@ PresenceTransition _run(
   BusEvent e, {
   bool hasUnread = false,
   bool doorbelled = false,
-  bool hasEverBeenActive = true,
-  bool unreadIsIdleOnly = false,
 }) => PresenceReducer.reduce(
   s,
   e,
@@ -20,8 +18,6 @@ PresenceTransition _run(
     memberId: 'm',
     hasUnread: hasUnread,
     doorbelled: doorbelled,
-    hasEverBeenActive: hasEverBeenActive,
-    unreadIsIdleOnly: unreadIsIdleOnly,
   ),
 );
 
@@ -93,32 +89,8 @@ void main() {
       expect(t.effects, isEmpty);
     });
 
-    test('at-prompt → doorbell, presence stays at-prompt', () {
+    test('at-prompt + unread → doorbell, presence stays at-prompt', () {
       final t = _run(_atPrompt, const MailArrived(), hasUnread: true);
-      expect(t.presence, _atPrompt);
-      expect(t.effects.single, isA<DoorbellEffect>());
-    });
-
-    test('at-prompt + idle-only unread → doorbell', () {
-      final t = _run(
-        _atPrompt,
-        const MailArrived(),
-        hasUnread: true,
-        hasEverBeenActive: false,
-        unreadIsIdleOnly: true,
-      );
-      expect(t.presence, _atPrompt);
-      expect(t.effects.single, isA<DoorbellEffect>());
-    });
-
-    test('virgin at-prompt + non-idle unread → doorbell', () {
-      final t = _run(
-        _atPrompt,
-        const MailArrived(),
-        hasUnread: true,
-        hasEverBeenActive: false,
-        unreadIsIdleOnly: false,
-      );
       expect(t.presence, _atPrompt);
       expect(t.effects.single, isA<DoorbellEffect>());
     });

@@ -146,7 +146,7 @@ void main() {
     );
   });
 
-  test('worker idle announce does not doorbell virgin lead at prompt', () {
+  test('worker idle announce doorbells virgin lead at prompt', () {
     fakeAsync((async) {
       final launcher = FakeMemberLauncher();
       final bus = TeamBus(
@@ -180,8 +180,10 @@ void main() {
       async.flushMicrotasks();
 
       expect(bus.memberById('lead')!.inbox.unreadCount, 1);
-      expect(launcher.woken.where((w) => w.memberId == 'lead'), isEmpty);
-      expect(bus.memberById('lead')!.hasEverBeenActive, isFalse);
+      expect(
+        launcher.woken.where((w) => w.memberId == 'lead').single.notice,
+        TeamBus.doorbellNotice,
+      );
     });
   });
 
@@ -205,7 +207,6 @@ void main() {
     );
 
     expect(bus.memberById('lead')!.inbox.unreadCount, 1);
-    expect(bus.memberById('lead')!.hasEverBeenActive, isFalse);
     expect(launcher.woken.single.memberId, 'lead');
   });
 }
