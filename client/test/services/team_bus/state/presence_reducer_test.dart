@@ -99,7 +99,7 @@ void main() {
       expect(t.effects.single, isA<DoorbellEffect>());
     });
 
-    test('virgin at-prompt + idle-only unread → no doorbell', () {
+    test('at-prompt + idle-only unread → doorbell', () {
       final t = _run(
         _atPrompt,
         const MailArrived(),
@@ -108,7 +108,7 @@ void main() {
         unreadIsIdleOnly: true,
       );
       expect(t.presence, _atPrompt);
-      expect(t.effects, isEmpty);
+      expect(t.effects.single, isA<DoorbellEffect>());
     });
 
     test('virgin at-prompt + non-idle unread → doorbell', () {
