@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -15,7 +15,9 @@ import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/plugin_cubit.dart';
 import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/skill_cubit.dart';
+import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
+import '../../../utils/ui/app_keys.dart';
 import '../../../models/config_bundle.dart';
 import '../../../models/landing_launch_context.dart';
 import '../../../l10n/l10n_extensions.dart';
@@ -464,7 +466,9 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
         preferWorktreePath: _selectedWorktreePath,
       );
       if (!mounted) return;
-      final worktreePath = _worktreeResolver(cubit.state).resolveSelectedWorktreePath();
+      final worktreePath = _worktreeResolver(
+        cubit.state,
+      ).resolveSelectedWorktreePath();
       setState(() => _selectedWorktreePath = worktreePath);
     } on ProviderNotFoundException {
       // Landing rendered outside the workspace split pane.
@@ -570,7 +574,8 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     _selectedProjectPath = draft.projectFolderPath?.trim().isNotEmpty == true
         ? draft.projectFolderPath!.trim()
         : null;
-    _selectedWorktreePath = draft.workingDirectoryPath?.trim().isNotEmpty == true
+    _selectedWorktreePath =
+        draft.workingDirectoryPath?.trim().isNotEmpty == true
         ? draft.workingDirectoryPath!.trim()
         : null;
     _dangerouslySkipPermissions = draft.dangerouslySkipPermissions;
@@ -602,7 +607,9 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     );
   }
 
-  WorkspaceLandingWorktreeResolver _worktreeResolver(WorktreeState? worktreeState) {
+  WorkspaceLandingWorktreeResolver _worktreeResolver(
+    WorktreeState? worktreeState,
+  ) {
     final projectPath = _projectResolver().resolveSelectedProjectPath();
     WorktreeCubit? cubit;
     try {
@@ -627,9 +634,14 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     });
     try {
       final cubit = context.read<WorktreeCubit>();
-      await cubit.selectProject(path, preferWorktreePath: _selectedWorktreePath);
+      await cubit.selectProject(
+        path,
+        preferWorktreePath: _selectedWorktreePath,
+      );
       if (!mounted) return;
-      final worktreePath = _worktreeResolver(cubit.state).resolveSelectedWorktreePath();
+      final worktreePath = _worktreeResolver(
+        cubit.state,
+      ).resolveSelectedWorktreePath();
       setState(() => _selectedWorktreePath = worktreePath);
       cubit.setCurrentWorktree(worktreePath);
     } on ProviderNotFoundException {
@@ -924,11 +936,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       pack: pack,
     );
     if (message.isEmpty) return;
-    AppToast.show(
-      context,
-      message: message,
-      variant: TpToastVariant.warning,
-    );
+    AppToast.show(context, message: message, variant: TpToastVariant.warning);
   }
 
   Future<void> _touchRecentExpert(String expertKey) async {
@@ -981,10 +989,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   ) {
     final recent = <({String key, String name})>[];
     for (final key in _recentExpertKeys) {
-      final member = ExpertMemberResolver.resolve(
-        key: key,
-        hubState: hubState,
-      );
+      final member = ExpertMemberResolver.resolve(key: key, hubState: hubState);
       final name = member?.name.trim() ?? '';
       if (name.isEmpty) continue;
       recent.add((key: key, name: name));
@@ -1030,9 +1035,8 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     required List<CliPreset> presets,
   }) {
     if (_conversationMode != _LandingConversationMode.simple) return null;
-    final preset = presets
-            .where((p) => p.id == _selectedPresetId)
-            .firstOrNull ??
+    final preset =
+        presets.where((p) => p.id == _selectedPresetId).firstOrNull ??
         presets.firstOrNull;
     if (preset == null) return null;
     final icons = context.tpIconSizes;
@@ -1139,145 +1143,171 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
         listenWhen: (previous, current) =>
             previous.currentWorktreePath != current.currentWorktreePath,
         listener: (context, state) => _syncLaunchFromWorktree(state),
-        child: ColoredBox(
-        color: cs.surface,
-        child: SizedBox.expand(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: spacing.xl,
-                vertical: spacing.xxl,
-              ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 880),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    WorkspaceLandingHeaderRow(
-                      projectLabel: projectLabel,
-                      projectHintWhenEmpty:
-                          l10n.workspaceChatLandingSelectProject,
-                      projectMenuSpecs: projectResolver.menuSpecs(
-                        selectedProjectPath,
-                      ),
-                      onProjectSelected: (value) =>
-                          unawaited(_selectProject(value)),
-                      showWorktreeSelector:
-                          worktreeResolver.showsWorktreeSelector,
-                      worktreeLabel: worktreeLabel,
-                      worktreeHintWhenEmpty:
-                          l10n.workspaceChatLandingSelectWorktree,
-                      worktreeMenuSpecs: worktreeResolver.menuSpecs(
-                        selectedWorktreePath,
-                      ),
-                      onWorktreeSelected: _selectWorktree,
+        child: Stack(
+          children: [
+            ColoredBox(
+              color: cs.surface,
+              child: SizedBox.expand(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: spacing.xl,
+                      vertical: spacing.xxl,
                     ),
-                    SizedBox(height: spacing.sm),
-                    WorkspaceChatLandingComposeCard(
-                      controller: _controller,
-                      focusNode: _focusNode,
-                      hint: l10n.workspaceChatLandingInputHint,
-                      isSubmitting: widget.isSubmitting,
-                      canSubmit: _canSubmit,
-                      onSubmit: _submit,
-                      onChanged: (_) => setState(() {}),
-                      conversationModeLabel: _conversationModeLabel(l10n),
-                      autoChipLabel: _autoChipLabel(
-                        l10n,
-                        presets: presets,
-                        teams: teams,
-                      ),
-                      autoChipLeading: _autoChipLeading(
-                        context,
-                        presets: presets,
-                      ),
-                      dangerouslySkipPermissions: _dangerouslySkipPermissions,
-                      defaultPermissionsLabel:
-                          l10n.workspaceChatLandingDefaultPermissions,
-                      fullAccessPermissionsLabel:
-                          l10n.workspaceChatLandingFullAccessPermissions,
-                      conversationModeSpecs: _conversationModeSpecs(l10n),
-                      autoChipSpecs: _autoChipSpecs(
-                        l10n,
-                        presets: presets,
-                        teams: teams,
-                      ),
-                      onConversationModeSelected: (value) {
-                        if (value is _LandingConversationMode) {
-                          _setConversationMode(value);
-                        }
-                      },
-                      onAutoChipSelected: (value) {
-                        if (value == ComposeModelPresetChipAction.manage) {
-                          _openPresetsManageDialog();
-                          return;
-                        }
-                        if (value is! String || value.isEmpty) return;
-                        if (_conversationMode ==
-                            _LandingConversationMode.simple) {
-                          _selectPreset(value);
-                        } else {
-                          _selectTeam(value);
-                        }
-                      },
-                      onPermissionSelected: _setDangerouslySkipPermissions,
-                      expertChipLabel: isSimple
-                          ? _expertChipLabel(l10n, hubState)
-                          : null,
-                      expertChipSpecs: isSimple
-                          ? _expertChipSpecs(l10n, hubState)
-                          : const [],
-                      onExpertChipSelected:
-                          isSimple ? _onExpertChipSelected : null,
-                      attachTooltip: l10n.workspaceChatLandingAttach,
-                      enhanceTooltip: l10n.workspaceChatLandingEnhance,
-                      voiceTooltip: l10n.workspaceChatLandingVoice,
-                      voiceCancelTooltip: l10n.workspaceChatLandingVoiceCancel,
-                      voiceStopTooltip: l10n.workspaceChatLandingVoiceStop,
-                      isEnhancing: _enhancing,
-                      isVoiceListening: _voiceListening,
-                      voiceElapsed: _voiceElapsed,
-                      voiceSoundLevel: _voiceSoundLevel,
-                      onAttach: () => unawaited(_attachFiles()),
-                      onEnhance: () => unawaited(_enhancePrompt()),
-                      onVoice: () => unawaited(_toggleVoice()),
-                      onVoiceCancel: () => unawaited(_cancelVoice()),
-                      onVoiceStop: () => unawaited(_stopVoice()),
-                      dropTarget: _composeDropIngestor(),
-                      onPasteImage: _pasteComposeImage,
-                      workspaceRoot: _activeLaunchDirectory(),
-                      skills: skills,
-                      plugins: plugins,
-                      slashBundle: slashBundle,
-                      teamSettingsTooltip: selectedTeam != null
-                          ? l10n.teamSettings
-                          : null,
-                      onTeamSettings: selectedTeam != null
-                          ? () => unawaited(_openTeamSettings(teams))
-                          : null,
-                      showTeamSettingsAttention: selectedTeam != null &&
-                          landingTeamSettingsNeedsAttention(
-                            workspace: launchWorkspace,
-                            team: selectedTeam,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 880),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          WorkspaceLandingHeaderRow(
+                            projectLabel: projectLabel,
+                            projectHintWhenEmpty:
+                                l10n.workspaceChatLandingSelectProject,
+                            projectMenuSpecs: projectResolver.menuSpecs(
+                              selectedProjectPath,
+                            ),
+                            onProjectSelected: (value) =>
+                                unawaited(_selectProject(value)),
+                            showWorktreeSelector:
+                                worktreeResolver.showsWorktreeSelector,
+                            worktreeLabel: worktreeLabel,
+                            worktreeHintWhenEmpty:
+                                l10n.workspaceChatLandingSelectWorktree,
+                            worktreeMenuSpecs: worktreeResolver.menuSpecs(
+                              selectedWorktreePath,
+                            ),
+                            onWorktreeSelected: _selectWorktree,
                           ),
-                      submitBlockedTooltip:
-                          launchWarningBlock != null &&
-                              _controller.text.trim().isNotEmpty
-                          ? landingLaunchBlockMessage(
+                          SizedBox(height: spacing.sm),
+                          WorkspaceChatLandingComposeCard(
+                            controller: _controller,
+                            focusNode: _focusNode,
+                            hint: l10n.workspaceChatLandingInputHint,
+                            isSubmitting: widget.isSubmitting,
+                            canSubmit: _canSubmit,
+                            onSubmit: _submit,
+                            onChanged: (_) => setState(() {}),
+                            conversationModeLabel: _conversationModeLabel(l10n),
+                            autoChipLabel: _autoChipLabel(
                               l10n,
-                              launchWarningBlock,
-                              registry: CliToolRegistryScope.of(context),
-                            )
-                          : null,
+                              presets: presets,
+                              teams: teams,
+                            ),
+                            autoChipLeading: _autoChipLeading(
+                              context,
+                              presets: presets,
+                            ),
+                            dangerouslySkipPermissions:
+                                _dangerouslySkipPermissions,
+                            defaultPermissionsLabel:
+                                l10n.workspaceChatLandingDefaultPermissions,
+                            fullAccessPermissionsLabel:
+                                l10n.workspaceChatLandingFullAccessPermissions,
+                            conversationModeSpecs: _conversationModeSpecs(l10n),
+                            autoChipSpecs: _autoChipSpecs(
+                              l10n,
+                              presets: presets,
+                              teams: teams,
+                            ),
+                            onConversationModeSelected: (value) {
+                              if (value is _LandingConversationMode) {
+                                _setConversationMode(value);
+                              }
+                            },
+                            onAutoChipSelected: (value) {
+                              if (value ==
+                                  ComposeModelPresetChipAction.manage) {
+                                _openPresetsManageDialog();
+                                return;
+                              }
+                              if (value is! String || value.isEmpty) return;
+                              if (_conversationMode ==
+                                  _LandingConversationMode.simple) {
+                                _selectPreset(value);
+                              } else {
+                                _selectTeam(value);
+                              }
+                            },
+                            onPermissionSelected:
+                                _setDangerouslySkipPermissions,
+                            expertChipLabel: isSimple
+                                ? _expertChipLabel(l10n, hubState)
+                                : null,
+                            expertChipSpecs: isSimple
+                                ? _expertChipSpecs(l10n, hubState)
+                                : const [],
+                            onExpertChipSelected: isSimple
+                                ? _onExpertChipSelected
+                                : null,
+                            attachTooltip: l10n.workspaceChatLandingAttach,
+                            enhanceTooltip: l10n.workspaceChatLandingEnhance,
+                            voiceTooltip: l10n.workspaceChatLandingVoice,
+                            voiceCancelTooltip:
+                                l10n.workspaceChatLandingVoiceCancel,
+                            voiceStopTooltip:
+                                l10n.workspaceChatLandingVoiceStop,
+                            isEnhancing: _enhancing,
+                            isVoiceListening: _voiceListening,
+                            voiceElapsed: _voiceElapsed,
+                            voiceSoundLevel: _voiceSoundLevel,
+                            onAttach: () => unawaited(_attachFiles()),
+                            onEnhance: () => unawaited(_enhancePrompt()),
+                            onVoice: () => unawaited(_toggleVoice()),
+                            onVoiceCancel: () => unawaited(_cancelVoice()),
+                            onVoiceStop: () => unawaited(_stopVoice()),
+                            dropTarget: _composeDropIngestor(),
+                            onPasteImage: _pasteComposeImage,
+                            workspaceRoot: _activeLaunchDirectory(),
+                            skills: skills,
+                            plugins: plugins,
+                            slashBundle: slashBundle,
+                            teamSettingsTooltip: selectedTeam != null
+                                ? l10n.teamSettings
+                                : null,
+                            onTeamSettings: selectedTeam != null
+                                ? () => unawaited(_openTeamSettings(teams))
+                                : null,
+                            showTeamSettingsAttention:
+                                selectedTeam != null &&
+                                landingTeamSettingsNeedsAttention(
+                                  workspace: launchWorkspace,
+                                  team: selectedTeam,
+                                ),
+                            submitBlockedTooltip:
+                                launchWarningBlock != null &&
+                                    _controller.text.trim().isNotEmpty
+                                ? landingLaunchBlockMessage(
+                                    l10n,
+                                    launchWarningBlock,
+                                    registry: CliToolRegistryScope.of(context),
+                                  )
+                                : null,
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
+            Positioned(
+              top: spacing.md,
+              left: spacing.md,
+              child: TpIconButton(
+                key: AppKeys.workspaceChatLandingBackButton,
+                icon: Icons.arrow_back,
+                tooltip: l10n.workspaceChatLandingBackToStart,
+                backgroundColor: Colors.transparent,
+                onTap: () {
+                  final workspaceId = widget.workspace.workspaceId;
+                  context.read<ChatCubit>().dismissNewChat();
+                  context.read<WorkbenchCubit>().enterWelcome(workspaceId);
+                },
+              ),
+            ),
+          ],
         ),
       ),
-    ),
     );
   }
 }

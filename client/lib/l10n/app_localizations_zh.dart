@@ -1288,6 +1288,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceChatLandingInputHint => '今天帮你做些什么？ @ 引用对话文件，/ 调用技能与指令';
 
   @override
+  String get workspaceChatLandingBackToStart => '返回启动页';
+
+  @override
   String get workspaceChatLandingSelectWorkspace => '选择工作空间 >';
 
   @override

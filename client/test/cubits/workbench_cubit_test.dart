@@ -108,6 +108,24 @@ void main() {
       expect(unstaged, isNot(staged));
     });
 
+    test('syncSessions keeps active null while welcomeActive', () {
+      const ws = 'ws-a';
+      cubit.ensureTab(ws, WorkbenchTabId.session('s1'));
+      cubit.enterWelcome(ws);
+      cubit.syncSessions(
+        ws,
+        ['s1', 's2'],
+        preferredActiveSessionId: 's1',
+        newChatActive: false,
+      );
+      expect(cubit.tabOrder(ws), [
+        WorkbenchTabId.session('s1'),
+        WorkbenchTabId.session('s2'),
+      ]);
+      expect(cubit.activeTabId(ws), isNull);
+      expect(cubit.welcomeActive(ws), isTrue);
+    });
+
     test('syncSessions activates preferred session when not composing', () {
       const ws = 'ws-a';
       cubit.clearActive(ws);
@@ -229,21 +247,23 @@ void main() {
       expect(cubit.isPreview(ws, other), isTrue);
     });
 
-    test('ensureTab preview adopts synced permanent session into preview slot',
-        () {
-      const ws = 'ws-a';
-      final session = WorkbenchTabId.session('s1');
-      final file = WorkbenchTabId.file('/a.dart');
+    test(
+      'ensureTab preview adopts synced permanent session into preview slot',
+      () {
+        const ws = 'ws-a';
+        final session = WorkbenchTabId.session('s1');
+        final file = WorkbenchTabId.file('/a.dart');
 
-      cubit.ensureTab(ws, session, preview: false);
-      cubit.ensureTab(ws, file, preview: true);
-      expect(cubit.tabOrder(ws), [session, file]);
+        cubit.ensureTab(ws, session, preview: false);
+        cubit.ensureTab(ws, file, preview: true);
+        expect(cubit.tabOrder(ws), [session, file]);
 
-      final replaced = cubit.ensureTab(ws, session, preview: true);
-      expect(replaced, file);
-      expect(cubit.tabOrder(ws), [session]);
-      expect(cubit.isPreview(ws, session), isTrue);
-    });
+        final replaced = cubit.ensureTab(ws, session, preview: true);
+        expect(replaced, file);
+        expect(cubit.tabOrder(ws), [session]);
+        expect(cubit.isPreview(ws, session), isTrue);
+      },
+    );
 
     test('pinTab clears preview flag', () {
       const ws = 'ws-a';
@@ -263,18 +283,20 @@ void main() {
       expect(a, isNot(c));
     });
 
-    test('ensureTab shell/run ignores preview flag (never enters preview set)',
-        () {
-      const ws = 'ws';
-      final session = WorkbenchTabId.session('s1');
-      cubit.ensureTab(ws, session, preview: true);
-      expect(cubit.isPreview(ws, session), isTrue);
+    test(
+      'ensureTab shell/run ignores preview flag (never enters preview set)',
+      () {
+        const ws = 'ws';
+        final session = WorkbenchTabId.session('s1');
+        cubit.ensureTab(ws, session, preview: true);
+        expect(cubit.isPreview(ws, session), isTrue);
 
-      final shell = WorkbenchTabId.shell('e1');
-      cubit.ensureTab(ws, shell, preview: true);
-      expect(cubit.isPreview(ws, shell), isFalse);
-      expect(cubit.isPreview(ws, session), isTrue); // not displaced
-    });
+        final shell = WorkbenchTabId.shell('e1');
+        cubit.ensureTab(ws, shell, preview: true);
+        expect(cubit.isPreview(ws, shell), isFalse);
+        expect(cubit.isPreview(ws, session), isTrue); // not displaced
+      },
+    );
 
     test('syncSessions preserves shell/run tabs', () {
       const ws = 'ws';
@@ -292,20 +314,22 @@ void main() {
       expect(cubit.tabOrder(ws), contains(shell));
     });
 
-    test('select shell updates lastFocusedShellTabId; resolveMostRecentShell',
-        () {
-      const ws = 'ws';
-      final e1 = WorkbenchTabId.shell('e1');
-      final e2 = WorkbenchTabId.shell('e2');
-      cubit.ensureTab(ws, e1);
-      cubit.ensureTab(ws, e2);
-      cubit.select(ws, e1);
-      expect(cubit.lastFocusedShellTabId(ws), e1);
-      // ensure session first before selecting it
-      cubit.ensureTab(ws, WorkbenchTabId.session('s1'));
-      cubit.select(ws, WorkbenchTabId.session('s1'));
-      expect(cubit.resolveMostRecentShell(ws), e1);
-    });
+    test(
+      'select shell updates lastFocusedShellTabId; resolveMostRecentShell',
+      () {
+        const ws = 'ws';
+        final e1 = WorkbenchTabId.shell('e1');
+        final e2 = WorkbenchTabId.shell('e2');
+        cubit.ensureTab(ws, e1);
+        cubit.ensureTab(ws, e2);
+        cubit.select(ws, e1);
+        expect(cubit.lastFocusedShellTabId(ws), e1);
+        // ensure session first before selecting it
+        cubit.ensureTab(ws, WorkbenchTabId.session('s1'));
+        cubit.select(ws, WorkbenchTabId.session('s1'));
+        expect(cubit.resolveMostRecentShell(ws), e1);
+      },
+    );
 
     test('select already-active shell still sets lastFocusedShellTabId', () {
       const ws = 'ws';

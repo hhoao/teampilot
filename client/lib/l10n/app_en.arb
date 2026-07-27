@@ -574,6 +574,7 @@
   "sessionReadySubtitleGeneric": "Start a conversation in this workspace.",
   "sessionReadyHint": "Describe what you want in everyday language — no terminal commands needed.",
   "workspaceChatLandingInputHint": "What can I help you with today? @ reference files, / invoke skills",
+  "workspaceChatLandingBackToStart": "Back to start",
   "workspaceChatLandingSelectWorkspace": "Select workspace >",
   "workspaceChatLandingSelectProject": "Select project >",
   "workspaceChatLandingSelectWorktree": "Select worktree >",
