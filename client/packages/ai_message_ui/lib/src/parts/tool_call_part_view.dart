@@ -9,6 +9,7 @@ import '../markdown/compiled_markdown_style.dart';
 import '../strings.dart';
 import '../theme.dart';
 import '../tool_file_actions.dart';
+import '../tool_subagent_actions.dart';
 
 /// Collapsible tool row aligned with assistant-ui ToolFallback.
 class AiToolCallPartView extends StatefulWidget {
@@ -43,8 +44,12 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
     final part = widget.part;
     final cancelled = part.isCancelled;
     final bottom = widget.dense ? 2.0 : aiTheme.partSpacing;
-    final actions = AiToolFileActions.of(context);
-    final target = actions.resolver.resolve(part);
+    final fileActions = AiToolFileActions.of(context);
+    final subagentActions = AiToolSubagentActions.of(context);
+    final onOpenSubagent = subagentActions.onOpenSubagent;
+    final useSubagentChrome =
+        isAiSubagentToolName(part.toolName) && onOpenSubagent != null;
+    final target = useSubagentChrome ? null : fileActions.resolver.resolve(part);
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottom),
@@ -52,7 +57,18 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SelectionContainer.disabled(
-            child: target == null
+            child: useSubagentChrome
+                ? _SubagentToolTrigger(
+                    part: part,
+                    cancelled: cancelled,
+                    triggerColor: triggerColor,
+                    markdown: markdown,
+                    onOpenSubagent: onOpenSubagent,
+                    dense: widget.dense,
+                    open: _open,
+                    onToggle: _toggleExpanded,
+                  )
+                : target == null
                 ? _LegacyToolTrigger(
                     part: part,
                     cancelled: cancelled,
@@ -69,7 +85,7 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
                     cancelled: cancelled,
                     triggerColor: triggerColor,
                     markdown: markdown,
-                    actions: actions,
+                    actions: fileActions,
                     dense: widget.dense,
                     open: _open,
                     onToggle: _toggleExpanded,
@@ -189,6 +205,82 @@ class _LegacyToolTrigger extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SubagentToolTrigger extends StatelessWidget {
+  const _SubagentToolTrigger({
+    required this.part,
+    required this.cancelled,
+    required this.triggerColor,
+    required this.markdown,
+    required this.onOpenSubagent,
+    required this.dense,
+    required this.open,
+    required this.onToggle,
+  });
+
+  final AiToolCallPart part;
+  final bool cancelled;
+  final Color triggerColor;
+  final CompiledMarkdownStyle markdown;
+  final Future<void> Function(String toolCallId) onOpenSubagent;
+  final bool dense;
+  final bool open;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final triggerStyle = markdown.toolTrigger(
+      triggerColor,
+      cancelled: cancelled,
+    );
+    final title = subagentTitleFromPart(part);
+    final label = title == null || title.isEmpty
+        ? part.toolName
+        : '${part.toolName} $title';
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: dense ? 4 : 6),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: onToggle,
+            behavior: HitTestBehavior.opaque,
+            child: _StatusIcon(part: part, color: triggerColor),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Semantics(
+              button: true,
+              label: label,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () => onOpenSubagent(part.toolCallId),
+                  behavior: HitTestBehavior.opaque,
+                  child: Text(
+                    label,
+                    style: triggerStyle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Semantics(
+            button: true,
+            expanded: open,
+            child: _ExpandChevron(
+              open: open,
+              color: triggerColor,
+              onTap: onToggle,
+            ),
+          ),
+        ],
       ),
     );
   }

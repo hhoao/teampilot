@@ -17,6 +17,7 @@ export 'src/parts/tool_group_view.dart';
 export 'src/selection_dead_zone.dart';
 export 'src/strings.dart';
 export 'src/tool_file_actions.dart';
+export 'src/tool_subagent_actions.dart';
 export 'src/markdown/compiled_markdown_style.dart';
 export 'src/theme.dart';
 export 'src/thread_turns.dart';
