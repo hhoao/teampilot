@@ -4,13 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:re_editor/re_editor.dart';
+import 'package:shared_ui/shared_ui.dart';
 
+import '../../cubits/chat_cubit.dart';
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../selection_ai/selection_ai_menu_specs.dart';
+import '../selection_ai/selection_ask_ai.dart';
 import 'file_editor_ai_context.dart';
-import 'package:shared_ui/shared_ui.dart';
 
 /// Desktop/mobile context menu for [CodeEditor] (right-click / long-press).
 class FileEditorContextMenuController implements SelectionToolbarController {
@@ -41,7 +44,8 @@ class FileEditorContextMenuController implements SelectionToolbarController {
         break;
       }
     }
-    final readOnly = path != null &&
+    final readOnly =
+        path != null &&
         workspaceId != null &&
         editorCubit.isReadOnly(workspaceId, path);
 
@@ -57,21 +61,41 @@ class FileEditorContextMenuController implements SelectionToolbarController {
         label: l10n.editorCopy,
         onAction: controller.copy,
       ),
-      if (path != null)
-        TpActionMenuSpec.item(
-          icon: Icons.auto_awesome_outlined,
-          label: l10n.editorCopyAsAiContext,
-          onAction: () {
+      ...selectionAiMenuSpecs(
+        l10n: l10n,
+        enabled: path != null,
+        onCopyAsAiContext: () {
+          if (path != null) {
             Clipboard.setData(
               ClipboardData(
                 text: formatEditorAiContext(
-                  filePath: path!,
+                  filePath: path,
                   controller: controller,
                 ),
               ),
             );
-          },
-        ),
+          }
+        },
+        onAskAi: () {
+          if (path == null || workspaceId == null) return;
+          final workspace = context
+              .read<ChatCubit>()
+              .state
+              .workspaces
+              .firstWhere((candidate) => candidate.workspaceId == workspaceId);
+          unawaited(
+            SelectionAskAi.openComposeDialog(
+              context,
+              aiContext: formatEditorAiContext(
+                filePath: path,
+                controller: controller,
+              ),
+              workspace: workspace,
+              tabScopeId: workspaceId,
+            ),
+          );
+        },
+      ),
       if (!readOnly)
         TpActionMenuSpec.item(
           icon: Icons.content_paste,
