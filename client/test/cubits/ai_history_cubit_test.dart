@@ -314,12 +314,37 @@ void main() {
     expect(cubit.state.awaitingAssistant, isFalse);
   });
 
-  test('sticky mailbox user survives softReload and stays after tip', () async {
+  test('read mailbox mail merged via timeline survives softReload', () async {
     holderMessages = messages(2);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
 
-    cubit.appendStickyLocalUser(id: 'mailbox:mail-1', text: 'follow up');
+    var mailboxRecords = <LoggedMessage>[];
+    await cubit.close();
+    cubit = AiHistoryCubit(
+      loader: loader,
+      loadMailboxRecords: (sessionId, memberId) async => mailboxRecords,
+    );
+
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
+
+    mailboxRecords = [
+      LoggedMessage(
+        seq: 0,
+        message: const TeamMessage(
+          id: 'mail-1',
+          from: TeamBus.userSenderId,
+          to: 'dev',
+          content: 'follow up',
+        ),
+        createdAt: 3000,
+        read: true,
+      ),
+    ];
+    await cubit.refreshMailboxTimeline();
     expect(cubit.state.awaitingAssistant, isFalse);
     expect(seatRuntime().messages, hasLength(3));
     expect(seatRuntime().messages.last.id, 'mailbox:mail-1');
@@ -673,65 +698,6 @@ void main() {
     expect(ids, ['u-1']);
     expect(ids.any((id) => id.contains('mail-unread')), isFalse);
   });
-
-  test(
-    'mailbox: sticky local user does not duplicate mail once it merges into '
-    'the CLI timeline',
-    () async {
-      holderMessages = [
-        AiMessage(
-          id: 'u-1',
-          role: AiRole.user,
-          parts: const [AiTextPart(text: 'cli user')],
-          createdAt: DateTime.fromMillisecondsSinceEpoch(1000),
-        ),
-      ];
-      locator.emitBundle = true;
-
-      var mailboxRecords = <LoggedMessage>[];
-      await cubit.close();
-      cubit = AiHistoryCubit(
-        loader: loader,
-        loadMailboxRecords: (sessionId, memberId) async => mailboxRecords,
-      );
-
-      await cubit.load(
-        session: simpleSession(),
-        memberId: '',
-        launchContext: launchCtx(simpleSession()),
-      );
-
-      // Chat's onConsumed shows the mail immediately as a sticky bubble,
-      // before the mailbox log marks it read (Task 6 still removes this
-      // sticky path once the timeline is the single source of truth).
-      cubit.appendStickyLocalUser(id: 'mailbox:mail-1', text: 'mailbox user');
-      expect(
-        seatRuntime().messages.map((m) => m.id),
-        contains('mailbox:mail-1'),
-      );
-
-      // Mail is now read in the mailbox log — the next softReload merges it
-      // into the CLI timeline directly, so the sticky overlay must not also
-      // publish a second copy of the same id.
-      mailboxRecords = [
-        LoggedMessage(
-          seq: 0,
-          message: const TeamMessage(
-            id: 'mail-1',
-            from: TeamBus.userSenderId,
-            to: 'dev',
-            content: 'mailbox user',
-          ),
-          createdAt: 2000,
-          read: true,
-        ),
-      ];
-      await cubit.softReload();
-
-      final ids = seatRuntime().messages.map((m) => m.id).toList();
-      expect(ids.where((id) => id == 'mailbox:mail-1'), hasLength(1));
-    },
-  );
 
   test(
     'refreshMailboxTimeline merges a newly read mailbox mail after consume',

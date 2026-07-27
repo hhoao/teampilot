@@ -142,7 +142,7 @@ void main() {
     expect(out, isNot(contains('sk-abcdefgh')));
   });
 
-  test('mailbox Queued snapshot survives promote for sticky assert', () async {
+  test('mailbox Queued snapshot survives promote for timeline assert', () async {
     final harness = CliMessageMatrixHarness.forCli(
       CliTool.claude,
       mode: CliMatrixMode.mixed,
@@ -162,7 +162,7 @@ void main() {
     harness.createCubit(postFrame: postFrame);
     addTearDown(harness.dispose);
 
-    // Seat-isolated cubit: sticky append no-ops until a seat is focused via load.
+    // Seat-isolated cubit: timeline refresh no-ops until a seat is focused via load.
     final session = AppSession(
       sessionId: 'sess-matrix-sticky',
       workspaceId: 'ws-1',
@@ -184,10 +184,10 @@ void main() {
       ),
     );
 
-    harness.promoteMailboxConsumed(mailId);
+    await harness.promoteMailboxConsumed(mailId);
     expect(harness.mailboxQueued, isEmpty);
     expect(harness.mailboxQueuedSubmitted, hasLength(1));
-    expectMailboxQueuedThenSticky(
+    expectMailboxQueuedThenTimeline(
       queuedSnapshot: harness.mailboxQueuedSubmitted,
       history: harness.history!,
       text: text,

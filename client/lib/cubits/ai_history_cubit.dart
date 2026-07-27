@@ -296,14 +296,6 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     }
   }
 
-  void appendStickyLocalUser({required String id, required String text}) {
-    final seat = _focusedSeat;
-    final key = _focusedSeatKey;
-    if (seat == null || key == null) return;
-    seat.appendStickyLocalUser(id: id, text: text);
-    _mirrorSeat(key, seat);
-  }
-
   void removePendingMatching(String text) {
     final seat = _focusedSeat;
     final key = _focusedSeatKey;

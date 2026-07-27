@@ -96,13 +96,6 @@ class _PendingUser {
   final String text;
 }
 
-class _StickyLocalUser {
-  const _StickyLocalUser({required this.id, required this.text});
-
-  final String id;
-  final String text;
-}
-
 /// Per-seat History cubit: one [runtime] and tip/pending state per
 /// `sessionId|shellMemberId`.
 class AiHistorySeat extends Cubit<AiHistoryState> {
@@ -141,10 +134,6 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   /// stay held while [awaitingAssistant] until idle or [tipHoldAfterAssistant].
   int _committedLength = 0;
   final List<_PendingUser> _pendingQueue = [];
-
-  /// Mailbox (and similar) user turns that are not in the CLI transcript.
-  /// Appended after the committed tip; survive softReload; cleared on seat change.
-  final List<_StickyLocalUser> _stickyLocalUsers = [];
   Timer? _tipHoldTimer;
 
   AppSession? _lastSession;
@@ -397,27 +386,6 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     }
   }
 
-  /// Append a local user bubble that is not backed by the CLI transcript.
-  ///
-  /// Used after a TeamBus mailbox mail is consumed: stays after the tip across
-  /// soft reloads (FIFO). Does not latch [awaitingAssistant].
-  void appendStickyLocalUser({required String id, required String text}) {
-    if (isClosed) return;
-    final trimmedId = id.trim();
-    final trimmedText = text.trim();
-    if (trimmedId.isEmpty || trimmedText.isEmpty) return;
-    if (_stickyLocalUsers.any((s) => s.id == trimmedId)) return;
-    _stickyLocalUsers.add(
-      _StickyLocalUser(id: trimmedId, text: trimmedText),
-    );
-    _remergePendingsOntoRuntime();
-    if (state.status == AiHistoryViewStatus.empty) {
-      emit(state.copyWith(status: AiHistoryViewStatus.ready));
-    } else if (state.status == AiHistoryViewStatus.ready) {
-      // Remerge already published; no awaiting change.
-    }
-  }
-
   /// Rolls back an optimistic pending when connect/inject fails.
   void removePendingMatching(String text) {
     if (isClosed) return;
@@ -490,15 +458,12 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   void clearPendings() {
     if (isClosed) return;
     _cancelTipHoldTimer();
-    final hadSticky = _stickyLocalUsers.isNotEmpty;
     if (_pendingQueue.isEmpty &&
-        !hadSticky &&
         !state.awaitingAssistant &&
         !hasHeldAssistantTip) {
       return;
     }
     _pendingQueue.clear();
-    _stickyLocalUsers.clear();
     _commitAll();
     if (state.status == AiHistoryViewStatus.ready ||
         state.status == AiHistoryViewStatus.empty) {
@@ -672,9 +637,9 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     });
   }
 
-  /// Empty transcript with unmatched pendings/stickies stays on the thread path.
+  /// Empty transcript with unmatched pendings stays on the thread path.
   void _emitEmptyOrPendingReady(String sessionId, String memberId) {
-    if (_pendingQueue.isEmpty && _stickyLocalUsers.isEmpty) {
+    if (_pendingQueue.isEmpty) {
       runtime.setEmpty();
       emit(
         AiHistoryState(
@@ -742,18 +707,8 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
 
   void _remergePendingsOntoRuntime() {
     final slice = _visibleSlice();
-    // Once a mailbox mail merges into the CLI timeline (Task 5), the earlier
-    // sticky bubble for that same id (added by Chat's onConsumed) would
-    // otherwise double-publish it — skip any overlay entry already in slice.
     final sliceIds = {for (final m in slice) m.id};
     final overlay = <AiMessage>[
-      for (final s in _stickyLocalUsers)
-        if (!sliceIds.contains(s.id))
-          AiMessage(
-            id: s.id,
-            role: AiRole.user,
-            parts: [AiTextPart(text: s.text)],
-          ),
       for (final p in _pendingQueue)
         if (!sliceIds.contains(p.id))
           AiMessage(

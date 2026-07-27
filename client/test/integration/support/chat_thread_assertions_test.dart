@@ -14,6 +14,9 @@ import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
+import 'package:teampilot/services/team_bus/persistence/bus_message_log.dart';
+import 'package:teampilot/services/team_bus/team_bus.dart';
+import 'package:teampilot/services/team_bus/team_message.dart';
 import 'package:teampilot/services/terminal/pending_user_message.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -22,6 +25,7 @@ import 'chat_thread_assertions.dart';
 void main() {
   late _ScriptedLocator locator;
   late List<AiMessage> holderMessages;
+  late AiHistoryLoader loader;
   late AiHistoryCubit cubit;
 
   AppSession simpleSession({String id = 'sess-a'}) => AppSession(
@@ -47,7 +51,7 @@ void main() {
     holderMessages = const [];
     locator = _ScriptedLocator();
     final fs = LocalFilesystem();
-    final loader = AiHistoryLoader(
+    loader = AiHistoryLoader(
       contextBuilder: const SessionHistoryContextBuilder(),
       resolveWorkContext: (_, {String? memberId}) async => RuntimeContext(
         target: RuntimeTarget.local(),
@@ -71,7 +75,7 @@ void main() {
   });
 
   test('expectUserBubble finds optimistic pending user text', () async {
-    // Seat-isolated cubit: pending/sticky APIs no-op until a seat is focused.
+    // Seat-isolated cubit: pending APIs no-op until a seat is focused.
     await cubit.load(
       session: simpleSession(),
       memberId: '',
@@ -81,13 +85,33 @@ void main() {
     expectUserBubble(cubit, 'hello operator');
   });
 
-  test('expectUserBubble finds sticky mailbox user text', () async {
+  test('expectUserBubble finds merged mailbox user text', () async {
+    var mailboxRecords = <LoggedMessage>[];
+    await cubit.close();
+    cubit = AiHistoryCubit(
+      loader: loader,
+      loadMailboxRecords: (sessionId, memberId) async => mailboxRecords,
+    );
+
     await cubit.load(
       session: simpleSession(),
       memberId: '',
       launchContext: launchCtx(simpleSession()),
     );
-    cubit.appendStickyLocalUser(id: 'mailbox:mail-1', text: 'mailbox follow-up');
+    mailboxRecords = [
+      LoggedMessage(
+        seq: 0,
+        message: const TeamMessage(
+          id: 'mail-1',
+          from: TeamBus.userSenderId,
+          to: 'dev',
+          content: 'mailbox follow-up',
+        ),
+        createdAt: 2000,
+        read: true,
+      ),
+    ];
+    await cubit.refreshMailboxTimeline();
     expectUserBubble(cubit, 'mailbox follow-up');
   });
 
@@ -145,7 +169,14 @@ void main() {
     );
   });
 
-  test('expectMailboxQueuedThenSticky checks Queued snapshot and sticky id', () async {
+  test('expectMailboxQueuedThenTimeline checks Queued snapshot and merged id', () async {
+    var mailboxRecords = <LoggedMessage>[];
+    await cubit.close();
+    cubit = AiHistoryCubit(
+      loader: loader,
+      loadMailboxRecords: (sessionId, memberId) async => mailboxRecords,
+    );
+
     await cubit.load(
       session: simpleSession(),
       memberId: '',
@@ -156,9 +187,22 @@ void main() {
     final queued = [
       const PendingUserMessage(id: mailId, content: text),
     ];
-    cubit.appendStickyLocalUser(id: 'mailbox:$mailId', text: text);
+    mailboxRecords = [
+      LoggedMessage(
+        seq: 0,
+        message: TeamMessage(
+          id: mailId,
+          from: TeamBus.userSenderId,
+          to: 'dev',
+          content: text,
+        ),
+        createdAt: 2000,
+        read: true,
+      ),
+    ];
+    await cubit.refreshMailboxTimeline();
 
-    expectMailboxQueuedThenSticky(
+    expectMailboxQueuedThenTimeline(
       queuedSnapshot: queued,
       history: cubit,
       text: text,
@@ -167,16 +211,36 @@ void main() {
   });
 
   test('dumpThread includes roles and text for failure messages', () async {
+    var mailboxRecords = <LoggedMessage>[];
+    await cubit.close();
+    cubit = AiHistoryCubit(
+      loader: loader,
+      loadMailboxRecords: (sessionId, memberId) async => mailboxRecords,
+    );
+
     await cubit.load(
       session: simpleSession(),
       memberId: '',
       launchContext: launchCtx(simpleSession()),
     );
     cubit.enqueuePendingUser('pending-line');
-    cubit.appendStickyLocalUser(id: 'mailbox:m1', text: 'sticky-line');
+    mailboxRecords = [
+      LoggedMessage(
+        seq: 0,
+        message: const TeamMessage(
+          id: 'm1',
+          from: TeamBus.userSenderId,
+          to: 'dev',
+          content: 'mailbox-line',
+        ),
+        createdAt: 2000,
+        read: true,
+      ),
+    ];
+    await cubit.refreshMailboxTimeline();
     final dump = dumpThread(cubit);
     expect(dump, contains('pending-line'));
-    expect(dump, contains('sticky-line'));
+    expect(dump, contains('mailbox-line'));
     expect(dump, contains('user'));
   });
 }
