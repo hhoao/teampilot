@@ -90,7 +90,7 @@ class FullscreenPtyAutomation {
 
   bool isTextVisible(FullscreenPtyDeliveryPort port, String text) {
     final needle = PtyAutomationNeedle.forText(text);
-    return port.locateNeedle(needle, scanRows: _probeScanRows(port)) != null;
+    return _locatePasteAck(port, needle) != null;
   }
 
   /// Clear → paste → locate needle → CR until anchor clears.
@@ -230,6 +230,9 @@ class FullscreenPtyAutomation {
 
   /// Polls the mirror grid after paste — PTY echo and [syncDisplayGrid] can lag
   /// the painter (see [TerminalScreenProbeController.syncDisplayGrid]).
+  ///
+  /// When Claude Code collapses a long paste, the body needle is absent and the
+  /// composer shows `[Pasted text #N +M lines]` instead — treat that chrome as ACK.
   Future<FullscreenPromptAnchor?> _pollForNeedle(
     FullscreenPtyDeliveryPort port,
     String needle, {
@@ -240,22 +243,29 @@ class FullscreenPtyAutomation {
     }
     if (_timing.pollTimeout <= Duration.zero) {
       await port.syncDisplayGrid();
-      return port.locateNeedle(needle, scanRows: _probeScanRows(port));
+      return _locatePasteAck(port, needle);
     }
     final deadline = DateTime.now().add(_timing.pollTimeout);
     while (DateTime.now().isBefore(deadline)) {
       if (port.isAborted) return null;
       await port.syncDisplayGrid();
-      final anchor = port.locateNeedle(
-        needle,
-        scanRows: _probeScanRows(port),
-      );
+      final anchor = _locatePasteAck(port, needle);
       if (anchor != null) return anchor;
       if (_timing.pollInterval > Duration.zero) {
         await Future<void>.delayed(_timing.pollInterval);
       }
     }
     return null;
+  }
+
+  FullscreenPromptAnchor? _locatePasteAck(
+    FullscreenPtyDeliveryPort port,
+    String needle,
+  ) {
+    final scanRows = _probeScanRows(port);
+    final primary = port.locateNeedle(needle, scanRows: scanRows);
+    if (primary != null) return primary;
+    return port.locateCollapsedPasteNeedle(scanRows: scanRows);
   }
 
   void _logProbeMiss(

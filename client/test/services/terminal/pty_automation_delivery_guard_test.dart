@@ -100,6 +100,33 @@ void main() {
       );
     });
 
+    test(
+      'landing due ticks are not skipped by empty-inbox guard after dequeue',
+      () {
+        // PtyAutomationRetryQueue.due() removes the entry before onTick.
+        // Landing injects have no doorbell — TabMemberPtyDelivery must keep
+        // them alive via dueRetryText (non-doorbell → never skip).
+        final bus = TeamBus(launcher: FakeMemberLauncher());
+        bus.declareMember(
+          AgentNode.test(
+            memberId: 'team-lead',
+            lifecycle: MemberLifecycle.running,
+            activity: MemberActivity.turnDoneReady,
+          ),
+        );
+
+        expect(
+          PtyAutomationDeliveryGuard.shouldSkipRetry(
+            bus: bus,
+            memberId: 'team-lead',
+            pendingAutomationRetry: false,
+          ),
+          isTrue,
+          reason: 'guard alone would drop post-dequeue landing retries',
+        );
+      },
+    );
+
     test('skips when mail delivery failed but unread remains', () {
       final bus = TeamBus(launcher: FakeMemberLauncher());
       final node = AgentNode.test(

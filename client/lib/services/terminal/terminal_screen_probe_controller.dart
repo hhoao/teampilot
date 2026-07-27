@@ -27,6 +27,16 @@ final class TerminalScreenProbeController {
         composerPrefix: composerPrefix,
       );
 
+  probe.FullscreenPromptAnchor? locateClaudeCollapsedPasteNeedle({
+    int scanRows = 8,
+    String? composerPrefix,
+  }) =>
+      probe.locateClaudeCollapsedPasteNeedle(
+        _screenGrid,
+        scanRows: scanRows,
+        composerPrefix: composerPrefix,
+      );
+
   bool isFullscreenPromptAtAnchor(probe.FullscreenPromptAnchor anchor) =>
       probe.isFullscreenPromptAtAnchor(_screenGrid, anchor);
 

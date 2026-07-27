@@ -5,6 +5,7 @@
 /// applied on post-frame drains, so a stale mirror misses pasted CJK text even
 /// when the on-screen painter already shows it.
 import 'fullscreen_cr_ack_config.dart';
+import 'pty_automation_needle.dart';
 
 abstract interface class TerminalScreenGrid {
   int get rows;
@@ -73,6 +74,38 @@ FullscreenPromptAnchor? locateFullscreenPromptNeedle(
     final startCol = _findNeedleStartCol(grid, r, needleRunes);
     if (startCol >= 0) {
       return FullscreenPromptAnchor(row: r, startCol: startCol, needle: needle);
+    }
+  }
+  return null;
+}
+
+/// Claude Code hides long pastes behind `[Pasted text #N +M lines]` chrome.
+///
+/// Body text is absent from the grid, so [locateFullscreenPromptNeedle] on the
+/// original paste fails — treat this composer chrome as paste ACK instead.
+FullscreenPromptAnchor? locateClaudeCollapsedPasteNeedle(
+  TerminalScreenGrid grid, {
+  int scanRows = 8,
+  String? composerPrefix,
+  int composerAboveSlack = fullscreenComposerLocateAboveSlack,
+}) {
+  final rows = grid.rows;
+  if (rows == 0 || grid.columns == 0) return null;
+  final windowStart = (rows - scanRows).clamp(0, rows - 1);
+  final searchStart = _composerLocateStartRow(
+    grid,
+    windowStart: windowStart,
+    scanRows: scanRows,
+    composerPrefix: composerPrefix,
+    composerAboveSlack: composerAboveSlack,
+  );
+  for (var r = rows - 1; r >= searchStart; r--) {
+    final rowText = _logicalRowText(grid, r);
+    final marker = PtyAutomationNeedle.collapsedPasteNeedle(rowText);
+    if (marker == null) continue;
+    final startCol = _findNeedleStartCol(grid, r, marker.runes.toList());
+    if (startCol >= 0) {
+      return FullscreenPromptAnchor(row: r, startCol: startCol, needle: marker);
     }
   }
   return null;

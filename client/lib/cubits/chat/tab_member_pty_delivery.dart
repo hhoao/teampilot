@@ -210,8 +210,17 @@ final class TabMemberPtyDelivery {
     return null;
   }
 
-  bool shouldSkipAutomationRetry(String sessionId, String memberId) {
+  bool shouldSkipAutomationRetry(
+    String sessionId,
+    String memberId, {
+    String? dueRetryText,
+  }) {
     final bus = busForSession(sessionId);
+    // due() dequeues before shouldSkip. Landing injects have no doorbell
+    // obligation — without this, the guard treats them as stale and drops.
+    if (dueRetryText != null && !_isMailDoorbellText(dueRetryText)) {
+      return false;
+    }
     return PtyAutomationDeliveryGuard.shouldSkipRetry(
       bus: bus,
       memberId: memberId,
@@ -238,7 +247,11 @@ final class TabMemberPtyDelivery {
         _tabStore.openTabBySessionId(tick.sessionId)?.memberShells[tick.memberId];
     if (shell == null) return;
     if (_ptyAckAborted(shell)) return;
-    if (shouldSkipAutomationRetry(tick.sessionId, tick.memberId)) {
+    if (shouldSkipAutomationRetry(
+      tick.sessionId,
+      tick.memberId,
+      dueRetryText: tick.text,
+    )) {
       dropStaleAutomationRetry(tick.sessionId, tick.memberId, shell);
       return;
     }

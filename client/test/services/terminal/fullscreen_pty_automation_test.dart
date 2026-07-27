@@ -56,6 +56,28 @@ void main() {
       expect(outcome, FullscreenPtyDeliveryOutcome.pasteNotFound);
     });
 
+    test('submits when Claude collapses long paste into chrome', () async {
+      final port = FakeFullscreenPtyDeliveryPort(collapseAsClaudePaste: true);
+      final long = 'deploy jar\n' + ('x' * 80) + '\nxl-control.jar\n449 MB';
+
+      final outcome = await automation.deliverPasteAndSubmit(
+        port: port,
+        text: long,
+        pasteSettle: Duration.zero,
+      );
+
+      expect(
+        outcome,
+        FullscreenPtyDeliveryOutcome.submitted,
+        reason:
+            'Claude Code hides long paste bodies behind '
+            '[Pasted text #N +M lines]; automation must ACK that chrome '
+            'and still CR-submit the staged buffer',
+      );
+      expect(port.pasteCount, greaterThanOrEqualTo(1));
+      expect(port.crCount, greaterThanOrEqualTo(1));
+    });
+
     test('accepts cursor submit when transcript keeps the submitted text', () async {
       final port = _CursorTranscriptAfterSubmitPort();
 
@@ -193,6 +215,10 @@ final class _CursorTranscriptAfterSubmitPort
       needle: needle,
     );
   }
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
+      null;
 
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) {

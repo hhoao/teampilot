@@ -1,6 +1,7 @@
 import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
 import 'package:teampilot/services/terminal/fullscreen_input_screen_probe.dart';
 import 'package:teampilot/services/terminal/fullscreen_pty_delivery_port.dart';
+import 'package:teampilot/services/terminal/pty_automation_needle.dart';
 
 /// In-memory [FullscreenPtyDeliveryPort] for automation unit tests.
 final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
@@ -9,6 +10,7 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
     this.crsToClear = 1,
     this.pastesBeforeVisible = 1,
     this.visibleAfterPaste = true,
+    this.collapseAsClaudePaste = false,
     this.crAckConfig = const FullscreenCrAckConfig.productionDefault(),
   });
 
@@ -16,6 +18,7 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   int crsToClear;
   final int pastesBeforeVisible;
   final bool visibleAfterPaste;
+  final bool collapseAsClaudePaste;
   @override
   final FullscreenCrAckConfig crAckConfig;
 
@@ -46,6 +49,14 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   }
 
   @override
+  FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) {
+    if (staged == null) return null;
+    final marker = PtyAutomationNeedle.collapsedPasteNeedle(staged!);
+    if (marker == null) return null;
+    return locateNeedle(marker, scanRows: scanRows);
+  }
+
+  @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) {
     if (staged == null) return false;
     return staged!.contains(anchor.needle);
@@ -68,7 +79,9 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   Future<void> pasteText(String text) async {
     pasteCount++;
     if (visibleAfterPaste && pasteCount >= pastesBeforeVisible) {
-      staged = text;
+      staged = collapseAsClaudePaste
+          ? '❯ [Pasted text #3 +17 lines]'
+          : text;
     }
   }
 

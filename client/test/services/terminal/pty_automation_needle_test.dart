@@ -18,4 +18,23 @@ void main() {
     expect(PtyAutomationNeedle.forText(long), endsWith('UNIQUE_TAIL'));
     expect(PtyAutomationNeedle.forText(long).length, 40);
   });
+
+  test('collapsedPasteNeedle extracts Claude Code paste chrome', () {
+    const row = '❯ [Pasted text #3 +17 lines]';
+    expect(
+      PtyAutomationNeedle.collapsedPasteNeedle(row),
+      '[Pasted text #3 +17 lines]',
+    );
+  });
+
+  test('collapsedPasteNeedle accepts singular line', () {
+    expect(
+      PtyAutomationNeedle.collapsedPasteNeedle('[Pasted text #1 +1 line]'),
+      '[Pasted text #1 +1 line]',
+    );
+  });
+
+  test('collapsedPasteNeedle returns null when absent', () {
+    expect(PtyAutomationNeedle.collapsedPasteNeedle('❯ hello world'), isNull);
+  });
 }

@@ -63,6 +63,7 @@ final class TabSessionIdleWatch {
         if (!_delivery.shouldSkipAutomationRetry(
           retryTick.sessionId,
           retryTick.memberId,
+          dueRetryText: retryTick.text,
         )) {
           return false;
         }

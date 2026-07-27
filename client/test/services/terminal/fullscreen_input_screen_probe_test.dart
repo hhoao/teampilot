@@ -65,6 +65,22 @@ void main() {
     expect(anchor.row, 0);
   });
 
+  test('locateClaudeCollapsedPasteNeedle finds Claude paste chrome', () {
+    final lines = List<String>.filled(10, '');
+    lines[7] = '❯ [Pasted text #3 +17 lines]';
+    lines[9] = 'paste again to expand';
+    final grid = _FakeGrid.fromRows(lines);
+
+    final anchor = locateClaudeCollapsedPasteNeedle(
+      grid,
+      scanRows: 10,
+      composerPrefix: '❯',
+    );
+    expect(anchor, isNotNull);
+    expect(anchor!.needle, '[Pasted text #3 +17 lines]');
+    expect(anchor.row, 7);
+  });
+
   test('locateNeedle ignores stale transcript above composer slack window', () {
     final lines = List<String>.filled(24, '');
     lines[2] = '[teammate-bus] stale delivery in transcript';
