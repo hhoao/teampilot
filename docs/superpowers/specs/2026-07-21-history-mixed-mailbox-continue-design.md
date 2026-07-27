@@ -1,5 +1,9 @@
 # History mixed mailbox continue: design
 
+> **Note:** Mailbox display persistence (sticky bubbles) is superseded by
+> [2026-07-27-conversation-timeline-mailbox-design.md](./2026-07-27-conversation-timeline-mailbox-design.md);
+> routing and Queued semantics here remain valid.
+
 ## Problem
 
 History continue always injects at the member PTY (`directToPty: true`). In
