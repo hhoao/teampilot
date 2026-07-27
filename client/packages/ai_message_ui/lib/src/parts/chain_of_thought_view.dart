@@ -111,14 +111,15 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
   }
 
   Widget _buildInnerPart(AiMessagePart part) {
+    final aiTheme = AiMessageTheme.of(context);
     return switch (part) {
       AiReasoningPart() => AiReasoningPartView(
         part: part,
-        initiallyExpanded: true,
+        initiallyExpanded: aiTheme.cotExpandReasoningOnOpen,
       ),
       AiToolCallPart() => AiToolCallPartView(
         part: part,
-        initiallyExpanded: true,
+        initiallyExpanded: aiTheme.cotExpandToolsOnOpen,
       ),
       _ => const SizedBox.shrink(),
     };

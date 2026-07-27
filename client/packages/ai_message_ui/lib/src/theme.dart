@@ -25,6 +25,8 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     // assistant-ui: --thread-max-width 44rem ≈ 704
     this.threadMaxWidth = 704,
     this.threadHorizontalPadding = 16,
+    this.cotExpandReasoningOnOpen = false,
+    this.cotExpandToolsOnOpen = false,
   });
 
   /// Product / test fixture with [CompiledMarkdownStyle.test] typography.
@@ -43,6 +45,8 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     double codeBlockRadius = 12,
     double threadMaxWidth = 704,
     double threadHorizontalPadding = 16,
+    bool cotExpandReasoningOnOpen = false,
+    bool cotExpandToolsOnOpen = false,
   }) {
     return AiMessageTheme(
       markdown: CompiledMarkdownStyle.test(
@@ -62,6 +66,8 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
       codeBlockRadius: codeBlockRadius,
       threadMaxWidth: threadMaxWidth,
       threadHorizontalPadding: threadHorizontalPadding,
+      cotExpandReasoningOnOpen: cotExpandReasoningOnOpen,
+      cotExpandToolsOnOpen: cotExpandToolsOnOpen,
     );
   }
 
@@ -82,6 +88,8 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
   final double codeBlockRadius;
   final double threadMaxWidth;
   final double threadHorizontalPadding;
+  final bool cotExpandReasoningOnOpen;
+  final bool cotExpandToolsOnOpen;
 
   static AiMessageTheme of(BuildContext context) {
     return Theme.of(context).extension<AiMessageTheme>() ??
@@ -122,6 +130,8 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     double? codeBlockRadius,
     double? threadMaxWidth,
     double? threadHorizontalPadding,
+    bool? cotExpandReasoningOnOpen,
+    bool? cotExpandToolsOnOpen,
   }) {
     return AiMessageTheme(
       markdown: markdown ?? this.markdown,
@@ -139,6 +149,9 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
       threadMaxWidth: threadMaxWidth ?? this.threadMaxWidth,
       threadHorizontalPadding:
           threadHorizontalPadding ?? this.threadHorizontalPadding,
+      cotExpandReasoningOnOpen:
+          cotExpandReasoningOnOpen ?? this.cotExpandReasoningOnOpen,
+      cotExpandToolsOnOpen: cotExpandToolsOnOpen ?? this.cotExpandToolsOnOpen,
     );
   }
 
@@ -167,6 +180,11 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
           threadMaxWidth + (other.threadMaxWidth - threadMaxWidth) * t,
       threadHorizontalPadding: threadHorizontalPadding +
           (other.threadHorizontalPadding - threadHorizontalPadding) * t,
+      cotExpandReasoningOnOpen: t < 0.5
+          ? cotExpandReasoningOnOpen
+          : other.cotExpandReasoningOnOpen,
+      cotExpandToolsOnOpen:
+          t < 0.5 ? cotExpandToolsOnOpen : other.cotExpandToolsOnOpen,
     );
   }
 }
