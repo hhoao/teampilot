@@ -59,7 +59,7 @@ class AiToolFileTarget {
   const AiToolFileTarget({
     required this.path,
     this.startLine, // 1-based inclusive
-    this.endLine,   // 1-based inclusive; null → start-only / whole open
+    this.endLine,   // 1-based inclusive
   });
 
   final String path;
@@ -192,7 +192,8 @@ reimplement selection math in the chat widget.
   target; tap chevron expands args without opening; legacy row when no target.
 - Editor helper / cubit test: selectLines clamps and sets expected
   `CodeLineSelection`.
-- Optional: path resolve unit test for relative → absolute under workspace.
+- Path resolve tests (required): relative hits session cwd; falls back to
+  workspace folder; absolute as-is; missing → error path.
 
 ## Out of scope
 
