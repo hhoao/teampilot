@@ -1,7 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/services/cli/cli_tool_locator.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/skill/skill_fetch_service.dart';
 import 'package:teampilot/services/skill/skill_repo_git_service.dart';
 
 void main() {
@@ -57,6 +61,39 @@ void main() {
         expect(calls, greaterThanOrEqualTo(2));
       },
     );
+
+    test('syncCheckout surfaces fatal beyond Cloning into', () async {
+      final tmp = Directory.systemTemp.createTempSync('skill-git-');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final workDir = p.join(tmp.path, 'source');
+      final svc = SkillRepoGitService(
+        runner:
+            (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+              if (arguments.contains('clone')) {
+                return ProcessResult(
+                  1,
+                  128,
+                  '',
+                  "Cloning into '$workDir'...\nfatal: destination path already exists\n",
+                );
+              }
+              return ProcessResult(0, 0, '', '');
+            },
+        gitLocator: _FixedGitLocator('/usr/bin/git'),
+      );
+
+      try {
+        await svc.syncCheckout(
+          const SkillRepo(owner: 'acme', name: 'skills'),
+          LocalFilesystem(),
+          workDir,
+        );
+        fail('expected SkillFetchException');
+      } on SkillFetchException catch (e) {
+        expect(e.toString(), contains('fatal:'));
+        expect(e.toString().contains('Cloning into'), isFalse);
+      }
+    });
   });
 }
 

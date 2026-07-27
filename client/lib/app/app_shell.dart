@@ -597,6 +597,7 @@ Future<AppShell> buildAppShell({
         ),
     isLocalAcquireSupported: () =>
         AppStorage.context.mode == StorageBackendMode.native,
+    repoCache: skillRepoCache,
   );
 
   appProviderCubit = AppProviderCubit(
