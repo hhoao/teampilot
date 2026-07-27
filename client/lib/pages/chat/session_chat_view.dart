@@ -107,6 +107,7 @@ class _SessionChatViewState extends State<SessionChatView> {
 
   final _submitLock = HistoryContinueSubmitLock();
   final _mailboxQueued = StreamController<PendingUserMessage>.broadcast();
+
   /// mailId → seat key at queue time (guards wrong-seat sticky promote).
   final Map<String, String> _mailboxQueuedSeats = {};
   var _mailboxQueuedClearToken = 0;
@@ -297,20 +298,22 @@ class _SessionChatViewState extends State<SessionChatView> {
     if (seat == null) return;
     if (force) {
       unawaited(
-        seat.load(
-          session: widget.session,
-          memberId: widget.selectedMemberId,
-          launchContext: _launchContext,
-          team: widget.team,
-          workingDirectory: _workspaceRoot,
-          force: true,
-        ).then((_) {
-          if (!mounted) return;
-          _maybeStartLiveRefreshForRunningPty();
-          if (seat.state.awaitingAssistant) {
-            unawaited(_startLiveRefresh(skipInitialRefresh: true));
-          }
-        }),
+        seat
+            .load(
+              session: widget.session,
+              memberId: widget.selectedMemberId,
+              launchContext: _launchContext,
+              team: widget.team,
+              workingDirectory: _workspaceRoot,
+              force: true,
+            )
+            .then((_) {
+              if (!mounted) return;
+              _maybeStartLiveRefreshForRunningPty();
+              if (seat.state.awaitingAssistant) {
+                unawaited(_startLiveRefresh(skipInitialRefresh: true));
+              }
+            }),
       );
       return;
     }
@@ -893,9 +896,11 @@ class _SessionChatViewState extends State<SessionChatView> {
       if (!mounted) return;
       final seat = _seat;
       if (seat == null || !seat.state.awaitingAssistant) return;
-      final working = context.read<ChatCubit>().state.workingSessionIds.contains(
-        widget.session.sessionId,
-      );
+      final working = context
+          .read<ChatCubit>()
+          .state
+          .workingSessionIds
+          .contains(widget.session.sessionId);
       if (working) {
         _sawSessionWorkingWhileAwaiting = true;
         return;
@@ -1040,75 +1045,77 @@ class _SessionChatViewState extends State<SessionChatView> {
                       ],
                     ),
                     child: AiMessageStringsScope(
-                  strings: AiMessageStrings(
-                    usedTool: l10n.aiMessageUsedTool,
-                    cancelledTool: l10n.aiMessageCancelledTool,
-                    formatToolsUsed: l10n.aiMessageToolsUsed,
-                    reasoning: l10n.aiMessageReasoning,
-                    result: l10n.aiMessageToolResult,
-                    copy: l10n.copy,
-                    copied: l10n.aiMessageCopied,
-                    exportMarkdown: l10n.aiMessageExportMarkdown,
-                    messageIncomplete: l10n.aiMessageIncomplete,
-                    messageCancelled: l10n.aiMessageCancelled,
-                    scrollToBottom: l10n.aiMessageScrollToBottom,
-                    showMore: l10n.aiMessageShowMore,
-                    showLess: l10n.aiMessageShowLess,
-                    thinkingProcess: l10n.aiMessageThinkingProcess,
-                    formatThinkingProcessSteps: (count) =>
-                        l10n.aiMessageThinkingProcessSteps(count as int),
-                  ),
-                  child: BlocBuilder<AiHistorySeat, AiHistoryState>(
-                    bloc: _seat,
-                    builder: (context, state) {
-                      final historySeat = _seat;
-                      if (historySeat == null) {
-                        return const SizedBox.shrink();
-                      }
-                      final seat = context.select<
-                        ChatCubit,
-                        ({
-                          bool sessionWorking,
-                          bool sessionConnecting,
-                          bool memberRunning,
-                          int stateVersion,
-                        })
-                      >((c) {
-                        final sid = widget.session.sessionId;
-                        final connectingId = c.state.sessionConnectingId;
-                        return (
-                          sessionWorking: c.state.workingSessionIds.contains(
-                            sid,
-                          ),
-                          sessionConnecting:
-                              connectingId == sid || connectingId == 'pending',
-                          memberRunning: c.isMemberRunning(
-                            sessionId: sid,
-                            memberId: _shellMemberId,
-                          ),
-                          // Connect completion bumps this so PTY-up rebuilds.
-                          stateVersion: c.state.stateVersion,
-                        );
-                      });
-                      final liveChrome = SessionHistoryLiveChromeX.resolve(
-                        turnInFlight:
-                            _isSubmitting ||
-                            state.awaitingAssistant ||
-                            seat.sessionWorking,
-                        memberRunning: seat.memberRunning,
-                        sessionWorking: seat.sessionWorking,
-                        sessionConnecting: seat.sessionConnecting,
-                      );
-                      return SessionHistoryReviewMessages(
-                        state: state,
-                        runtime: historySeat.runtime,
-                        onRetry: () => _loadHistory(force: true),
-                        onLoadOlder: historySeat.loadOlder,
-                        liveChrome: liveChrome,
-                      );
-                    },
-                  ),
-                ),
+                      strings: AiMessageStrings(
+                        usedTool: l10n.aiMessageUsedTool,
+                        cancelledTool: l10n.aiMessageCancelledTool,
+                        formatToolsUsed: l10n.aiMessageToolsUsed,
+                        reasoning: l10n.aiMessageReasoning,
+                        result: l10n.aiMessageToolResult,
+                        copy: l10n.copy,
+                        copied: l10n.aiMessageCopied,
+                        exportMarkdown: l10n.aiMessageExportMarkdown,
+                        messageIncomplete: l10n.aiMessageIncomplete,
+                        messageCancelled: l10n.aiMessageCancelled,
+                        scrollToBottom: l10n.aiMessageScrollToBottom,
+                        showMore: l10n.aiMessageShowMore,
+                        showLess: l10n.aiMessageShowLess,
+                        thinkingProcess: l10n.aiMessageThinkingProcess,
+                        formatThinkingProcessSteps: (count) =>
+                            l10n.aiMessageThinkingProcessSteps(count as int),
+                      ),
+                      child: BlocBuilder<AiHistorySeat, AiHistoryState>(
+                        bloc: _seat,
+                        builder: (context, state) {
+                          final historySeat = _seat;
+                          if (historySeat == null) {
+                            return const SizedBox.shrink();
+                          }
+                          final seat = context
+                              .select<
+                                ChatCubit,
+                                ({
+                                  bool sessionWorking,
+                                  bool sessionConnecting,
+                                  bool memberRunning,
+                                  int stateVersion,
+                                })
+                              >((c) {
+                                final sid = widget.session.sessionId;
+                                final connectingId =
+                                    c.state.sessionConnectingId;
+                                return (
+                                  sessionWorking: c.state.workingSessionIds
+                                      .contains(sid),
+                                  sessionConnecting:
+                                      connectingId == sid ||
+                                      connectingId == 'pending',
+                                  memberRunning: c.isMemberRunning(
+                                    sessionId: sid,
+                                    memberId: _shellMemberId,
+                                  ),
+                                  // Connect completion bumps this so PTY-up rebuilds.
+                                  stateVersion: c.state.stateVersion,
+                                );
+                              });
+                          final liveChrome = SessionHistoryLiveChromeX.resolve(
+                            turnInFlight:
+                                _isSubmitting ||
+                                state.awaitingAssistant ||
+                                seat.sessionWorking,
+                            memberRunning: seat.memberRunning,
+                            sessionWorking: seat.sessionWorking,
+                            sessionConnecting: seat.sessionConnecting,
+                          );
+                          return SessionHistoryReviewMessages(
+                            state: state,
+                            runtime: historySeat.runtime,
+                            onRetry: () => _loadHistory(force: true),
+                            onLoadOlder: historySeat.loadOlder,
+                            liveChrome: liveChrome,
+                          );
+                        },
+                      ),
+                    ),
                   );
                 },
               ),
