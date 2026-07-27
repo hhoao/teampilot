@@ -12,6 +12,7 @@ import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/expert_hub_cubit.dart';
+import '../../cubits/layout_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/plugin_cubit.dart';
 import '../../cubits/skill_cubit.dart';
@@ -1005,31 +1006,40 @@ class _SessionChatViewState extends State<SessionChatView> {
             Expanded(
               // Full-bleed scroll surface: margins beside the text column still
               // receive wheel / drag. Message width is capped inside SessionHistoryThread.
-              child: Theme(
-                data: Theme.of(context).copyWith(
-                  extensions: [
-                    for (final ext in Theme.of(context).extensions.values)
-                      if (ext is! AiMessageTheme) ext,
-                    AiMessageTheme.of(context).copyWith(
-                      markdown: buildAppCompiledMarkdownStyle(
-                        Theme.of(context),
-                        mutedSurface: cs.surfaceContainerHighest.withValues(
-                          alpha: 0.55,
-                        ),
-                      ),
-                      userBubbleColor: cs.surfaceContainerHighest,
-                      userBubbleForeground: cs.onSurface,
-                      mutedSurface: cs.surfaceContainerHighest.withValues(
-                        alpha: 0.55,
-                      ),
-                      toolTriggerColor: cs.onSurfaceVariant,
-                      messageSpacing: 24,
-                      threadMaxWidth: kSessionHistoryColumnMaxWidth,
-                      threadHorizontalPadding: spacing.md,
-                    ),
-                  ],
+              child: BlocSelector<LayoutCubit, LayoutState, (bool, bool)>(
+                selector: (s) => (
+                  s.preferences.cotExpandReasoningOnOpen,
+                  s.preferences.cotExpandToolsOnOpen,
                 ),
-                child: AiMessageStringsScope(
+                builder: (context, cotExpand) {
+                  final (expandReasoning, expandTools) = cotExpand;
+                  return Theme(
+                    data: Theme.of(context).copyWith(
+                      extensions: [
+                        for (final ext in Theme.of(context).extensions.values)
+                          if (ext is! AiMessageTheme) ext,
+                        AiMessageTheme.of(context).copyWith(
+                          markdown: buildAppCompiledMarkdownStyle(
+                            Theme.of(context),
+                            mutedSurface: cs.surfaceContainerHighest.withValues(
+                              alpha: 0.55,
+                            ),
+                          ),
+                          userBubbleColor: cs.surfaceContainerHighest,
+                          userBubbleForeground: cs.onSurface,
+                          mutedSurface: cs.surfaceContainerHighest.withValues(
+                            alpha: 0.55,
+                          ),
+                          toolTriggerColor: cs.onSurfaceVariant,
+                          messageSpacing: 24,
+                          threadMaxWidth: kSessionHistoryColumnMaxWidth,
+                          threadHorizontalPadding: spacing.md,
+                          cotExpandReasoningOnOpen: expandReasoning,
+                          cotExpandToolsOnOpen: expandTools,
+                        ),
+                      ],
+                    ),
+                    child: AiMessageStringsScope(
                   strings: AiMessageStrings(
                     usedTool: l10n.aiMessageUsedTool,
                     cancelledTool: l10n.aiMessageCancelledTool,
@@ -1099,6 +1109,8 @@ class _SessionChatViewState extends State<SessionChatView> {
                     },
                   ),
                 ),
+                  );
+                },
               ),
             ),
             Align(
