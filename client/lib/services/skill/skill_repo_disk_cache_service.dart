@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import '../../models/skill.dart';
+import '../../utils/async_keyed_coalescer.dart';
 import '../../utils/logging/logger.dart';
+import '../../utils/repo_disk_sync_coalescer.dart';
 import '../storage/app_storage.dart';
 import '../io/filesystem.dart';
 import 'skill_fetch_service.dart';
@@ -51,10 +53,14 @@ class SkillRepoSyncResult {
 
 /// Disk-backed skill repo cache (no in-memory tarball cache).
 class SkillRepoDiskCacheService {
-  SkillRepoDiskCacheService({SkillFetchService? fetch})
-    : _fetch = fetch ?? SkillFetchService();
+  SkillRepoDiskCacheService({
+    SkillFetchService? fetch,
+    AsyncKeyedCoalescer? coalescer,
+  }) : _fetch = fetch ?? SkillFetchService(),
+       _coalescer = coalescer ?? RepoDiskSyncCoalescer.instance;
 
   final SkillFetchService _fetch;
+  final AsyncKeyedCoalescer _coalescer;
 
   Filesystem get _fs => AppStorage.fs;
 
@@ -180,23 +186,63 @@ class SkillRepoDiskCacheService {
     return skillsStat.isFile && filesStat.isDirectory;
   }
 
+  Future<bool> _isTrustedSnapshot({
+    required String dirPath,
+    required SkillRepoCacheMeta meta,
+    required String configuredBranch,
+    List<String> requiredRelativePaths = const [],
+  }) async {
+    if (meta.configuredBranch != configuredBranch) return false;
+    if (meta.commitSha.trim().isEmpty) return false;
+    if (!await _hasSnapshot(dirPath)) return false;
+    for (final rel in requiredRelativePaths) {
+      final trimmed = rel.trim();
+      if (trimmed.isEmpty) continue;
+      final path = _fs.pathContext.join(dirPath, 'files', trimmed);
+      if (!(await _fs.stat(path)).exists) return false;
+    }
+    return true;
+  }
+
   /// Loads disk cache when fresh; otherwise downloads, writes files + skills, returns result.
   Future<SkillRepoSyncResult> ensureSynced(
     SkillRepo repo, {
     bool force = false,
+    List<String> requiredRelativePaths = const [],
+  }) {
+    final key = RepoDiskSyncCoalescer.syncKey(_cacheRoot, repoKey(repo));
+    return _coalescer.run(
+      key,
+      () => _ensureSyncedOnce(
+        repo,
+        force: force,
+        requiredRelativePaths: requiredRelativePaths,
+      ),
+    );
+  }
+
+  Future<SkillRepoSyncResult> _ensureSyncedOnce(
+    SkillRepo repo, {
+    required bool force,
+    required List<String> requiredRelativePaths,
   }) async {
     final key = repoKey(repo);
     final dirPath = _repoDirPath(repo);
     final meta = await readMeta(repo);
-
-    if (!force &&
+    final trusted =
         meta != null &&
-        meta.configuredBranch == repo.branch &&
-        await _hasSnapshot(dirPath)) {
+        await _isTrustedSnapshot(
+          dirPath: dirPath,
+          meta: meta,
+          configuredBranch: repo.branch,
+          requiredRelativePaths: requiredRelativePaths,
+        );
+
+    if (!force && trusted) {
       final remoteSha = await _fetch.fetchBranchCommitSha(
         repo.owner,
         repo.name,
-        meta.resolvedBranch,
+        meta!.resolvedBranch,
       );
       if (remoteSha != null && remoteSha == meta.commitSha) {
         return SkillRepoSyncResult(
@@ -225,6 +271,11 @@ class SkillRepoDiskCacheService {
         persistentGitPath: AppStorage.usesPosixPaths ? null : sourceDirPath,
       );
       final commitSha = downloaded.commitSha;
+      if (commitSha.trim().isEmpty) {
+        appLogger.w(
+          '[SkillRepoCache] synced ${repo.fullName} with empty commitSha',
+        );
+      }
       final skills = discoverSkillsInTarballEntries(
         entries: downloaded.entries,
         repo: repo,
@@ -242,7 +293,16 @@ class SkillRepoDiskCacheService {
       return SkillRepoSyncResult(skills: skills, updated: true, repoKey: key);
     } catch (e) {
       appLogger.w('[SkillRepoCache] sync failed for ${repo.fullName}: $e');
-      if (await _hasSnapshot(dirPath)) {
+      final fallbackMeta = meta ?? await readMeta(repo);
+      final canReuse =
+          fallbackMeta != null &&
+          await _isTrustedSnapshot(
+            dirPath: dirPath,
+            meta: fallbackMeta,
+            configuredBranch: repo.branch,
+            requiredRelativePaths: requiredRelativePaths,
+          );
+      if (canReuse) {
         return SkillRepoSyncResult(
           skills: await readSkillsFromDisk(repo),
           updated: false,
