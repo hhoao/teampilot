@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 
 import '../../cubits/chat_cubit.dart';
@@ -9,7 +10,11 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
+import '../../models/workspace.dart';
 import '../../repositories/session_repository.dart';
+import '../../services/selection_ai/selection_ai_context.dart';
+import '../../services/selection_ai/selection_ask_ai.dart';
+import '../../services/selection_ai/selection_ask_ai_fab_host.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../services/terminal/terminal_uri_opener.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
@@ -24,7 +29,7 @@ import '../../widgets/workspace_dnd/workspace_file_drop_region.dart';
 import '../home_workspace/workspace/workspace_session_actions.dart';
 import 'chat_workbench_context_menu.dart';
 
-class ChatWorkbenchRunningTerminal extends StatelessWidget {
+class ChatWorkbenchRunningTerminal extends StatefulWidget {
   const ChatWorkbenchRunningTerminal({
     required this.session,
     required this.terminalTheme,
@@ -50,12 +55,27 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
   final Future<void> Function() onRestart;
   final bool autofocus;
 
+  @override
+  State<ChatWorkbenchRunningTerminal> createState() =>
+      _ChatWorkbenchRunningTerminalState();
+}
+
+class _ChatWorkbenchRunningTerminalState
+    extends State<ChatWorkbenchRunningTerminal> {
+  final ValueNotifier<bool> _menuOpen = ValueNotifier(false);
+
+  @override
+  void dispose() {
+    _menuOpen.dispose();
+    super.dispose();
+  }
+
   /// Fresh per-build ingestor for a drop region — stateless, captures the
   /// session's current namespace + CLI paste behavior.
   TerminalDropIngestor _dropIngestor() => TerminalDropIngestor(
-    sink: session.input,
-    target: session.runtimeTarget,
-    behavior: session.pathDropBehavior,
+    sink: widget.session.input,
+    target: widget.session.runtimeTarget,
+    behavior: widget.session.pathDropBehavior,
   );
 
   void _showDropOutcome(BuildContext context, DropOutcome outcome) {
@@ -66,98 +86,206 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
     }
   }
 
+  ({String surfaceLabel, Workspace? workspace, String tabScopeId})
+  _selectionAiTarget(BuildContext context) {
+    final chat = context.read<ChatCubit>();
+    final sessionId = chat.state.activeSessionId?.trim() ?? '';
+    AppSession? appSession;
+    for (final candidate in chat.state.sessions) {
+      if (candidate.sessionId == sessionId) {
+        appSession = candidate;
+        break;
+      }
+    }
+
+    final memberId = chat.state.selectedMemberId.trim();
+    String taskId = '';
+    if (appSession != null) {
+      for (final binding in appSession.members) {
+        if (binding.rosterMemberId == memberId) {
+          taskId = binding.taskId.trim();
+          break;
+        }
+      }
+    }
+
+    String memberName = '';
+    final teamId = appSession?.sessionTeam.trim() ?? '';
+    if (appSession != null && teamId.isNotEmpty) {
+      final profile = context.read<LaunchProfileCubit>().byId(teamId);
+      if (profile is TeamProfile) {
+        for (final member in sessionRosterMembers(appSession, profile)) {
+          if (member.id == memberId) {
+            memberName = member.name.trim();
+            break;
+          }
+        }
+      }
+    }
+
+    final effectiveSessionId = appSession?.sessionId.trim().isNotEmpty == true
+        ? appSession!.sessionId.trim()
+        : sessionId;
+    final memberLabel = memberName.isNotEmpty
+        ? memberName
+        : taskId.isNotEmpty
+        ? taskId
+        : memberId.isNotEmpty
+        ? memberId
+        : effectiveSessionId;
+    final workspaceId = appSession?.workspaceId.trim().isNotEmpty == true
+        ? appSession!.workspaceId.trim()
+        : chat.tabStore.activeWorkspaceId.trim();
+    Workspace? workspace;
+    for (final candidate in chat.state.workspaces) {
+      if (candidate.workspaceId == workspaceId) {
+        workspace = candidate;
+        break;
+      }
+    }
+    return (
+      surfaceLabel: 'session/$effectiveSessionId/$memberLabel',
+      workspace: workspace,
+      tabScopeId: workspaceId,
+    );
+  }
+
+  Future<void> _openAskAi(BuildContext context, String aiContext) {
+    final target = _selectionAiTarget(context);
+    final workspace = target.workspace;
+    if (workspace == null || aiContext.trim().isEmpty || !mounted) {
+      return Future.value();
+    }
+    return SelectionAskAi.openComposeDialog(
+      context,
+      aiContext: aiContext,
+      workspace: workspace,
+      tabScopeId: target.tabScopeId,
+    );
+  }
+
+  Future<void> _showContextMenu(
+    BuildContext context,
+    TapDownDetails details,
+    CellOffset? offset,
+  ) async {
+    final target = _selectionAiTarget(context);
+    _menuOpen.value = true;
+    try {
+      await showChatWorkbenchTerminalContextMenu(
+        context: context,
+        menuContext: context,
+        terminalController: widget.terminalController,
+        globalPosition: details.globalPosition,
+        engine: widget.session.engine,
+        cellOffset: offset,
+        sessionRunning: widget.session.isRunning,
+        onFindRequested: () => widget.onFindVisibleChanged(true),
+        onOpenLink: widget.onOpenLink,
+        onExportScrollback: () => exportChatWorkbenchTerminalScrollback(
+          context,
+          widget.session.engine,
+        ),
+        onDisconnect: widget.onDisconnect,
+        onRestart: widget.onRestart,
+        aiSurfaceLabel: target.surfaceLabel,
+        workspace: target.workspace,
+        tabScopeId: target.tabScopeId,
+      );
+    } finally {
+      if (mounted) _menuOpen.value = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return TerminalFindShortcuts(
-      findVisible: findVisible,
-      onToggleFind: () => onFindVisibleChanged(true),
+      findVisible: widget.findVisible,
+      onToggleFind: () => widget.onFindVisibleChanged(true),
       onFindNext: () {
-        terminalController.searchNext();
-        onControllerSearchChanged();
+        widget.terminalController.searchNext();
+        widget.onControllerSearchChanged();
       },
       onFindPrevious: () {
-        terminalController.searchPrev();
-        onControllerSearchChanged();
+        widget.terminalController.searchPrev();
+        widget.onControllerSearchChanged();
       },
       onCloseFind: () {
-        terminalController.searchClear();
-        onFindVisibleChanged(false);
+        widget.terminalController.searchClear();
+        widget.onFindVisibleChanged(false);
       },
-      child: Stack(
-        children: [
-          ExternalFileDropRegion(
-            target: _dropIngestor(),
-            onOutcome: (outcome) => _showDropOutcome(context, outcome),
-            child: WorkspaceFileDropRegion(
+      child: ValueListenableBuilder<bool>(
+        valueListenable: _menuOpen,
+        child: Stack(
+          children: [
+            ExternalFileDropRegion(
               target: _dropIngestor(),
               onOutcome: (outcome) => _showDropOutcome(context, outcome),
-              child: TeampilotAlacrittyTerminal(
-                engine: session.engine,
-                controller: terminalController,
-                theme: terminalTheme,
-                // Chat workbench keeps the wider inset (dock shell uses 8).
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 36,
-                  vertical: 16,
+              child: WorkspaceFileDropRegion(
+                target: _dropIngestor(),
+                onOutcome: (outcome) => _showDropOutcome(context, outcome),
+                child: TeampilotAlacrittyTerminal(
+                  engine: widget.session.engine,
+                  controller: widget.terminalController,
+                  theme: widget.terminalTheme,
+                  // Chat workbench keeps the wider inset (dock shell uses 8).
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 36,
+                    vertical: 16,
+                  ),
+                  autofocus: widget.autofocus && !widget.findVisible,
+                  linkProviders: widget.session.linkProviders,
+                  onPtyResize: widget.session.onTerminalPtyResize,
+                  onTapDown: (_, offset) {
+                    if (!HardwareKeyboard.instance.isControlPressed &&
+                        !HardwareKeyboard.instance.isMetaPressed) {
+                      widget.terminalController.clearSelection();
+                    }
+                  },
+                  onLinkActivate: (uri) {
+                    unawaited(widget.onOpenLink(uri));
+                  },
+                  onSecondaryTapDown: (details, offset) {
+                    unawaited(_showContextMenu(context, details, offset));
+                  },
                 ),
-                autofocus: autofocus && !findVisible,
-                linkProviders: session.linkProviders,
-                onPtyResize: session.onTerminalPtyResize,
-                onTapDown: (_, offset) {
-                  if (!HardwareKeyboard.instance.isControlPressed &&
-                      !HardwareKeyboard.instance.isMetaPressed) {
-                    terminalController.clearSelection();
-                  }
-                },
-                onLinkActivate: (uri) {
-                  unawaited(onOpenLink(uri));
-                },
-                onSecondaryTapDown: (details, offset) {
-                  unawaited(
-                    showChatWorkbenchTerminalContextMenu(
-                      context: context,
-                      menuContext: context,
-                      terminalController: terminalController,
-                      globalPosition: details.globalPosition,
-                      engine: session.engine,
-                      cellOffset: offset,
-                      sessionRunning: session.isRunning,
-                      onFindRequested: () => onFindVisibleChanged(true),
-                      onOpenLink: onOpenLink,
-                      onExportScrollback: () =>
-                          exportChatWorkbenchTerminalScrollback(
-                            context,
-                            session.engine,
-                          ),
-                      onDisconnect: onDisconnect,
-                      onRestart: onRestart,
-                    ),
-                  );
-                },
               ),
             ),
-          ),
-          if (findVisible)
-            Positioned(
-              left: 8,
-              right: 8,
-              top: 8,
-              child: TerminalFindBar(
-                engine: session.engine,
-                controller: terminalController,
-                searchLabel: context.l10n.terminalFind,
-                noResultsLabel: context.l10n.terminalFindNoResults,
-                onClose: () {
-                  terminalController.searchClear();
-                  onFindVisibleChanged(false);
-                },
+            if (widget.findVisible)
+              Positioned(
+                left: 8,
+                right: 8,
+                top: 8,
+                child: TerminalFindBar(
+                  engine: widget.session.engine,
+                  controller: widget.terminalController,
+                  searchLabel: context.l10n.terminalFind,
+                  noResultsLabel: context.l10n.terminalFindNoResults,
+                  onClose: () {
+                    widget.terminalController.searchClear();
+                    widget.onFindVisibleChanged(false);
+                  },
+                ),
               ),
+            ParkedSendOverlay(
+              submissions: widget.session.parkedUserSubmissions,
+              isUnread: widget.session.isUnreadParkedMessage,
             ),
-          ParkedSendOverlay(
-            submissions: session.parkedUserSubmissions,
-            isUnread: session.isUnreadParkedMessage,
-          ),
-        ],
+          ],
+        ),
+        builder: (context, menuOpen, child) {
+          return SelectionAskAiFabHost(
+            listenable: widget.terminalController,
+            selectionActive: () => widget.terminalController.selectionActive,
+            readAiContext: () => buildTerminalAiContextClipboardText(
+              surfaceLabel: _selectionAiTarget(context).surfaceLabel,
+              text: widget.terminalController.readSelectionText() ?? '',
+            ),
+            onAskAi: (aiContext) => _openAskAi(context, aiContext),
+            menuOpen: menuOpen,
+            child: child!,
+          );
+        },
       ),
     );
   }
