@@ -1329,6 +1329,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String aiToolFileNotFound(String path) {
+    return 'Could not find file: $path';
+  }
+
+  @override
   String get sessionWorkbenchShowChat => 'Show Chat';
 
   @override

@@ -10,6 +10,7 @@ import '../../cubits/ai_history_cubit.dart';
 import '../../cubits/agent_attention_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/editor_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/expert_hub_cubit.dart';
 import '../../cubits/layout_cubit.dart';
@@ -40,6 +41,9 @@ import '../../services/session/history_seat_key.dart';
 import '../../services/session/session_continue_overrides_apply.dart';
 import '../../services/session/session_history_pagination.dart';
 import '../../services/storage/app_storage.dart';
+import '../../services/workbench/ai_tool_file_open_coordinator.dart';
+import '../../services/workbench/workbench_editor_opener.dart';
+import '../../services/workspace/workspace_tools_scope.dart';
 import '../../services/terminal/pending_user_message.dart';
 import '../../theme/app_markdown_style_sheet.dart';
 import '../../utils/logging/logger.dart';
@@ -1044,26 +1048,58 @@ class _SessionChatViewState extends State<SessionChatView> {
                         ),
                       ],
                     ),
-                    child: AiMessageStringsScope(
-                      strings: AiMessageStrings(
-                        usedTool: l10n.aiMessageUsedTool,
-                        cancelledTool: l10n.aiMessageCancelledTool,
-                        formatToolsUsed: l10n.aiMessageToolsUsed,
-                        reasoning: l10n.aiMessageReasoning,
-                        result: l10n.aiMessageToolResult,
-                        copy: l10n.copy,
-                        copied: l10n.aiMessageCopied,
-                        exportMarkdown: l10n.aiMessageExportMarkdown,
-                        messageIncomplete: l10n.aiMessageIncomplete,
-                        messageCancelled: l10n.aiMessageCancelled,
-                        scrollToBottom: l10n.aiMessageScrollToBottom,
-                        showMore: l10n.aiMessageShowMore,
-                        showLess: l10n.aiMessageShowLess,
-                        thinkingProcess: l10n.aiMessageThinkingProcess,
-                        formatThinkingProcessSteps: (count) =>
-                            l10n.aiMessageThinkingProcessSteps(count as int),
+                    child: AiToolFileActionsScope(
+                      actions: AiToolFileActions(
+                        onOpenFile: (target) async {
+                          final fs = WorkspaceToolsScope.maybeOf(
+                            context,
+                          )?.tools?.context.filesystem;
+                          if (fs == null) return;
+                          final coordinator = AiToolFileOpenCoordinator(
+                            opener: context.read<WorkbenchEditorOpener>(),
+                            editor: context.read<EditorCubit>(),
+                          );
+                          final result = await coordinator.openToolFile(
+                            workspaceId: widget.session.workspaceId,
+                            target: target,
+                            sessionWorkingDirectory: _workspaceRoot.isEmpty
+                                ? null
+                                : _workspaceRoot,
+                            workspaceFolderPaths: _launchContext.folderCatalog
+                                .map((f) => f.path)
+                                .toList(),
+                            fs: fs,
+                          );
+                          if (!context.mounted) return;
+                          if (result.isMissing) {
+                            AppToast.show(
+                              context,
+                              message: l10n.aiToolFileNotFound(target.path),
+                              variant: TpToastVariant.warning,
+                            );
+                          }
+                        },
                       ),
-                      child: BlocBuilder<AiHistorySeat, AiHistoryState>(
+                      child: AiMessageStringsScope(
+                        strings: AiMessageStrings(
+                          usedTool: l10n.aiMessageUsedTool,
+                          cancelledTool: l10n.aiMessageCancelledTool,
+                          formatToolsUsed: l10n.aiMessageToolsUsed,
+                          reasoning: l10n.aiMessageReasoning,
+                          result: l10n.aiMessageToolResult,
+                          copy: l10n.copy,
+                          copied: l10n.aiMessageCopied,
+                          exportMarkdown: l10n.aiMessageExportMarkdown,
+                          messageIncomplete: l10n.aiMessageIncomplete,
+                          messageCancelled: l10n.aiMessageCancelled,
+                          scrollToBottom: l10n.aiMessageScrollToBottom,
+                          showMore: l10n.aiMessageShowMore,
+                          showLess: l10n.aiMessageShowLess,
+                          thinkingProcess: l10n.aiMessageThinkingProcess,
+                          formatThinkingProcessSteps: (count) =>
+                              l10n.aiMessageThinkingProcessSteps(count as int),
+                        ),
+                        child: BlocBuilder<AiHistorySeat, AiHistoryState>(
                         bloc: _seat,
                         builder: (context, state) {
                           final historySeat = _seat;
@@ -1115,6 +1151,7 @@ class _SessionChatViewState extends State<SessionChatView> {
                           );
                         },
                       ),
+                    ),
                     ),
                   );
                 },

@@ -1265,6 +1265,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String aiToolFileNotFound(String path) {
+    return '找不到文件：$path';
+  }
+
+  @override
   String get sessionWorkbenchShowChat => '显示聊天';
 
   @override

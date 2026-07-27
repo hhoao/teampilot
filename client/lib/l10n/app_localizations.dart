@@ -2480,6 +2480,12 @@ abstract class AppLocalizations {
   /// **'Thinking process · {count} steps'**
   String aiMessageThinkingProcessSteps(int count);
 
+  /// No description provided for @aiToolFileNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not find file: {path}'**
+  String aiToolFileNotFound(String path);
+
   /// No description provided for @sessionWorkbenchShowChat.
   ///
   /// In en, this message translates to:

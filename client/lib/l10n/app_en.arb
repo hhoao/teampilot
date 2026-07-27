@@ -560,6 +560,14 @@
       }
     }
   },
+  "aiToolFileNotFound": "Could not find file: {path}",
+  "@aiToolFileNotFound": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "sessionWorkbenchShowChat": "Show Chat",
   "sessionWorkbenchShowTerminal": "Show Terminal",
   "sessionReadyTitle": "Ready to chat",

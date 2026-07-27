@@ -535,6 +535,14 @@
       }
     }
   },
+  "aiToolFileNotFound": "找不到文件：{path}",
+  "@aiToolFileNotFound": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "sessionWorkbenchShowChat": "显示聊天",
   "sessionWorkbenchShowTerminal": "显示终端",
   "sessionReadyTitle": "准备开始对话",
