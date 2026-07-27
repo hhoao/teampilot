@@ -385,13 +385,13 @@ EOF
 "cotExpandToolsOnOpenDescription": "展开「思考过程」时，自动展开内部工具调用详情。"
 ```
 
-- [ ] **Step 2: Regenerate l10n if the project requires it**
+- [ ] **Step 2: Regenerate l10n + warmup glyphs**
 
 ```bash
-cd client && flutter gen-l10n
+cd client && flutter gen-l10n && dart run tool/gen_warmup_glyphs.dart
 ```
 
-(If codegen is checked in and CI regenerates differently, follow existing CONTRIBUTING / DEVELOPMENT habit — usually `flutter gen-l10n` or build_runner is enough.)
+Commit regenerated `app_localizations*.dart` and `warmup_glyphs.g.dart` if they change.
 
 - [ ] **Step 3: Appearance section UI**
 
