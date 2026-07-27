@@ -136,6 +136,11 @@ void main() {
           apiKey: leadScriptApiKey,
           minTurns: leadScenarioTurns,
         );
+        await harness.waitForGatewayTurns(
+          apiKey: workerScriptApiKey,
+          minTurns:
+              mixedCollab3PlusScenarios()[workerScriptApiKey]!.turns.length,
+        );
         await harness.waitForBusPingPong();
         expect(
           harness.gateway!.requestCountFor(workerScriptApiKey),
