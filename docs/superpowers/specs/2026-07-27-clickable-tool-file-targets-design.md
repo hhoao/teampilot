@@ -65,6 +65,10 @@ class AiToolFileTarget {
   final String path;
   final int? startLine;
   final int? endLine;
+  // Selection when opening:
+  // - both null → open file only (no selection)
+  // - start only → select that single line
+  // - start+end → select inclusive line range
 }
 
 abstract class AiToolFileTargetResolver {
