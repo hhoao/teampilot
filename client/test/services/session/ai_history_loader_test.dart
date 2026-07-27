@@ -89,12 +89,13 @@ void main() {
 
   test('missing transcript returns empty list', () async {
     final session = simpleSession();
-    final messages = await buildLoader().load(
+    final result = await buildLoader().load(
       session: session,
       memberId: '',
       launchContext: launchContextFor(session),
     );
-    expect(messages, isEmpty);
+    expect(result.messages, isEmpty);
+    expect(result.subagentAttachments, isEmpty);
   });
 
   test('parses Claude fixture bytes via locate + adapter', () async {
@@ -109,11 +110,12 @@ void main() {
     await File(p.join(projects, '$sessionId.jsonl')).writeAsBytes(fixture);
 
     final session = simpleSession(id: sessionId);
-    final messages = await buildLoader().load(
+    final result = await buildLoader().load(
       session: session,
       memberId: '',
       launchContext: launchContextFor(session),
     );
+    final messages = result.messages;
 
     expect(messages, isNotEmpty);
     expect(messages.first.id, 'u-1');
@@ -165,13 +167,13 @@ void main() {
         resolveWorkContext: (_, {String? memberId}) async => workRuntime,
       );
 
-      final messages = await loader.load(
+      final result = await loader.load(
         session: session,
         memberId: '',
         launchContext: launchContextFor(session),
       );
 
-      expect(messages, isNotEmpty);
+      expect(result.messages, isNotEmpty);
       expect(locatedCtx?.fs, same(workFs));
       expect(locatedCtx?.fs, isNot(same(fs)));
     } finally {
@@ -238,20 +240,23 @@ void main() {
     final session = simpleSession();
     final ctx = launchContextFor(session);
     expect(
-      await loader.load(session: session, memberId: '', launchContext: ctx),
+      (await loader.load(session: session, memberId: '', launchContext: ctx))
+          .messages,
       isEmpty,
     );
     expect(locateCalls, 1);
 
     expect(
-      await loader.load(session: session, memberId: '', launchContext: ctx),
+      (await loader.load(session: session, memberId: '', launchContext: ctx))
+          .messages,
       isEmpty,
     );
     expect(locateCalls, 1);
 
     mtimeToken = 'mtime-2';
     expect(
-      await loader.load(session: session, memberId: '', launchContext: ctx),
+      (await loader.load(session: session, memberId: '', launchContext: ctx))
+          .messages,
       isEmpty,
     );
     expect(locateCalls, 2);
@@ -268,19 +273,22 @@ void main() {
     final ctx = launchContextFor(session);
 
     expect(
-      await loader.load(session: session, memberId: '', launchContext: ctx),
+      (await loader.load(session: session, memberId: '', launchContext: ctx))
+          .messages,
       isEmpty,
     );
     expect(locateCalls, 1);
     expect(
-      await loader.load(session: session, memberId: '', launchContext: ctx),
+      (await loader.load(session: session, memberId: '', launchContext: ctx))
+          .messages,
       isEmpty,
     );
     expect(locateCalls, 1);
 
     loader.clearCache();
     expect(
-      await loader.load(session: session, memberId: '', launchContext: ctx),
+      (await loader.load(session: session, memberId: '', launchContext: ctx))
+          .messages,
       isEmpty,
     );
     expect(locateCalls, 2);

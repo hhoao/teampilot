@@ -31,6 +31,7 @@ class AiHistoryState extends Equatable {
     this.awaitingAssistant = false,
     this.sessionId,
     this.memberId,
+    this.subagentAttachmentEpoch = 0,
   });
 
   final AiHistoryViewStatus status;
@@ -47,6 +48,10 @@ class AiHistoryState extends Equatable {
   final String? sessionId;
   final String? memberId;
 
+  /// Bumped whenever [_subagentAttachments] is replaced so BlocBuilder rebuilds
+  /// even when message count is unchanged.
+  final int subagentAttachmentEpoch;
+
   AiHistoryState copyWith({
     AiHistoryViewStatus? status,
     int? totalMessageCount,
@@ -59,6 +64,7 @@ class AiHistoryState extends Equatable {
     bool? awaitingAssistant,
     String? sessionId,
     String? memberId,
+    int? subagentAttachmentEpoch,
   }) {
     return AiHistoryState(
       status: status ?? this.status,
@@ -72,6 +78,8 @@ class AiHistoryState extends Equatable {
       awaitingAssistant: awaitingAssistant ?? this.awaitingAssistant,
       sessionId: sessionId ?? this.sessionId,
       memberId: memberId ?? this.memberId,
+      subagentAttachmentEpoch:
+          subagentAttachmentEpoch ?? this.subagentAttachmentEpoch,
     );
   }
 
@@ -86,6 +94,7 @@ class AiHistoryState extends Equatable {
     awaitingAssistant,
     sessionId,
     memberId,
+    subagentAttachmentEpoch,
   ];
 }
 
@@ -130,6 +139,13 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   List<AiMessage> _allMessages = const [];
   int _visibleCount = 0;
 
+  Map<String, AiSubagentAttachment> _subagentAttachments = {};
+  int _subagentAttachmentEpoch = 0;
+
+  /// Inflated Agent/Task toolCallId → attachment index for the last load.
+  Map<String, AiSubagentAttachment> get subagentAttachments =>
+      Map.unmodifiable(_subagentAttachments);
+
   /// Prefix of [_allMessages] published to the thread. Trailing assistants may
   /// stay held while [awaitingAssistant] until idle or [tipHoldAfterAssistant].
   int _committedLength = 0;
@@ -171,6 +187,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     _allMessages = const [];
     _visibleCount = 0;
     _committedLength = 0;
+    _clearSubagentAttachments();
     runtime.setLoading();
     emit(
       AiHistoryState(
@@ -179,11 +196,12 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         awaitingAssistant: !seatChanged && state.awaitingAssistant,
         sessionId: session.sessionId,
         memberId: memberId,
+        subagentAttachmentEpoch: _subagentAttachmentEpoch,
       ),
     );
 
     try {
-      final messages = await _loader.load(
+      final result = await _loader.load(
         session: session,
         memberId: memberId,
         launchContext: launchContext,
@@ -192,9 +210,10 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         force: force,
       );
       if (gen != _loadGeneration || isClosed) return;
-      _cliMessages = messages;
+      _cliMessages = result.messages;
+      _setSubagentAttachments(result.subagentAttachments);
       final merged = await _mergeWithMailbox(
-        messages,
+        result.messages,
         session.sessionId,
         memberId,
       );
@@ -212,6 +231,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       _allMessages = const [];
       _visibleCount = 0;
       _committedLength = 0;
+      _clearSubagentAttachments();
       runtime.setError(e.toString());
       emit(
         AiHistoryState(
@@ -219,6 +239,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
           errorMessage: e.toString(),
           sessionId: session.sessionId,
           memberId: memberId,
+          subagentAttachmentEpoch: _subagentAttachmentEpoch,
         ),
       );
     }
@@ -236,7 +257,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
 
     try {
       _loader.invalidate(sessionId: sessionId, memberId: memberId);
-      final messages = await _loader.load(
+      final result = await _loader.load(
         session: session,
         memberId: memberId,
         launchContext: launchContext,
@@ -250,6 +271,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         return;
       }
 
+      final messages = result.messages;
       final mailboxRecords = await _safeLoadMailboxRecords(
         sessionId,
         memberId,
@@ -265,7 +287,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       // keep the prior view entirely (old empty-CLI protection). If it does,
       // merge that new mail onto the **prior** CLI transcript ([_cliMessages])
       // instead of the empty parse — an empty parse is never treated as
-      // "CLI cleared".
+      // "CLI cleared". Keep prior [_subagentAttachments] / epoch in both cases.
       if (messages.isEmpty && _cliMessages.isNotEmpty) {
         final mailboxEvents = partitionMailboxUserRecords(
           mailboxRecords,
@@ -285,6 +307,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       }
 
       _cliMessages = messages;
+      _setSubagentAttachments(result.subagentAttachments);
       final merged = buildConversationTimeline(
         cliMessages: messages,
         mailboxRecords: mailboxRecords,
@@ -646,6 +669,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
           status: AiHistoryViewStatus.empty,
           sessionId: sessionId,
           memberId: memberId,
+          subagentAttachmentEpoch: _subagentAttachmentEpoch,
         ),
       );
       return;
@@ -657,6 +681,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         awaitingAssistant: _computeAwaitingAssistant(),
         sessionId: sessionId,
         memberId: memberId,
+        subagentAttachmentEpoch: _subagentAttachmentEpoch,
       ),
     );
   }
@@ -741,8 +766,19 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         awaitingAssistant: _computeAwaitingAssistant(),
         sessionId: sessionId,
         memberId: memberId,
+        subagentAttachmentEpoch: _subagentAttachmentEpoch,
       ),
     );
+  }
+
+  void _setSubagentAttachments(Map<String, AiSubagentAttachment> next) {
+    _subagentAttachments = Map<String, AiSubagentAttachment>.of(next);
+    _subagentAttachmentEpoch++;
+  }
+
+  void _clearSubagentAttachments() {
+    _subagentAttachments = {};
+    _subagentAttachmentEpoch++;
   }
 
   List<AiMessage> _visibleSlice() {

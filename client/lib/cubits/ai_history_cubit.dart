@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/app_session.dart';
@@ -54,6 +55,10 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
   /// True when the focused seat has a held assistant tip.
   bool get hasHeldAssistantTip =>
       _focusedSeat?.hasHeldAssistantTip ?? false;
+
+  /// Subagent attachment index for the focused seat (empty when none).
+  Map<String, AiSubagentAttachment> get subagentAttachments =>
+      _focusedSeat?.subagentAttachments ?? const {};
 
   AiHistorySeat ensureSeat({
     required String sessionId,

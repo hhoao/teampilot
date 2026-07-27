@@ -9,11 +9,13 @@ import '../cli/preset_resolver.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
 import '../storage/runtime_context.dart';
 import '../terminal/session_member_cli_resolver.dart';
+import 'ai_history_load_result.dart';
 import 'ai_history_locator.dart';
 import 'ai_history_providers.dart';
 import 'ai_history_watch_meta.dart';
 import 'session_history_context.dart';
 import 'session_history_context_builder.dart';
+import 'subagent_attachment_inflater.dart';
 
 /// Resolves the work-plane [RuntimeContext] for a History seat (same seam as
 /// [SessionLifecycleService.launchWorkContext]).
@@ -24,10 +26,15 @@ typedef AiHistoryWorkContextResolver =
     });
 
 class _AiHistoryCacheEntry {
-  const _AiHistoryCacheEntry({required this.token, required this.messages});
+  const _AiHistoryCacheEntry({
+    required this.token,
+    required this.messages,
+    this.subagentAttachments = const {},
+  });
 
   final String token;
   final List<AiMessage> messages;
+  final Map<String, AiSubagentAttachment> subagentAttachments;
 }
 
 class _AiHistorySeat {
@@ -106,7 +113,7 @@ final class AiHistoryLoader {
     return AiHistoryWatchMeta.fromHints(bundle.hints);
   }
 
-  Future<List<AiMessage>> load({
+  Future<AiHistoryLoadResult> load({
     required AppSession session,
     required String memberId,
     required WorkspaceLaunchContext launchContext,
@@ -140,7 +147,10 @@ final class AiHistoryLoader {
     if (!force && preliminaryToken != null) {
       final hit = _cache[cacheKey];
       if (hit != null && hit.token == preliminaryToken) {
-        return hit.messages;
+        return AiHistoryLoadResult(
+          messages: hit.messages,
+          subagentAttachments: hit.subagentAttachments,
+        );
       }
     }
 
@@ -157,7 +167,10 @@ final class AiHistoryLoader {
       if (!force && token != null) {
         final hit = _cache[cacheKey];
         if (hit != null && hit.token == token) {
-          return hit.messages;
+          return AiHistoryLoadResult(
+            messages: hit.messages,
+            subagentAttachments: hit.subagentAttachments,
+          );
         }
       }
 
@@ -165,16 +178,38 @@ final class AiHistoryLoader {
           ? const <AiMessage>[]
           : await adapter.parse(bundle);
 
+      final watch = bundle == null
+          ? null
+          : AiHistoryWatchMeta.fromHints(bundle.hints);
+      final parentPath = () {
+        final paths = watch?.cacheTokenPaths ?? const <String>[];
+        for (final p in paths) {
+          final t = p.trim();
+          if (t.isNotEmpty) return t;
+        }
+        return null; // degrade-only; never invent a path from fragment basename
+      }();
+
+      final attachments = await const SubagentAttachmentInflater().inflate(
+        messages: messages,
+        fs: ctx.fs,
+        parentTranscriptPath: parentPath,
+      );
+
       // Null token is uncacheable — never treat null==null as a forever hit.
       if (token != null) {
         _cache[cacheKey] = _AiHistoryCacheEntry(
           token: token,
           messages: messages,
+          subagentAttachments: attachments,
         );
       } else {
         _cache.remove(cacheKey);
       }
-      return messages;
+      return AiHistoryLoadResult(
+        messages: messages,
+        subagentAttachments: attachments,
+      );
     } on Object catch (e, st) {
       appLogger.e(
         '[ai-history] load failed session=${session.sessionId} '
