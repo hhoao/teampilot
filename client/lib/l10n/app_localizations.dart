@@ -3662,6 +3662,12 @@ abstract class AppLocalizations {
   /// **'Copy as AI context'**
   String get editorCopyAsAiContext;
 
+  /// No description provided for @selectionAskAi.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask AI…'**
+  String get selectionAskAi;
+
   /// No description provided for @editorPaste.
   ///
   /// In en, this message translates to:

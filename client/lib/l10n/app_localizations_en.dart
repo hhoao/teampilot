@@ -1996,6 +1996,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorCopyAsAiContext => 'Copy as AI context';
 
   @override
+  String get selectionAskAi => 'Ask AI…';
+
+  @override
   String get editorPaste => 'Paste';
 
   @override
