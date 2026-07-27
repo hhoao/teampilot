@@ -1,8 +1,15 @@
 import 'dart:io';
-import 'package:teampilot/models/plugin.dart';
-import 'package:teampilot/services/plugin/plugin_repo_disk_cache_service.dart';
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:teampilot/models/plugin.dart';
+import 'package:teampilot/services/io/filesystem.dart';
+import 'package:teampilot/services/plugin/plugin_repo_disk_cache_service.dart';
+import 'package:teampilot/services/plugin/plugin_repo_git_service.dart';
+import 'package:teampilot/utils/async_keyed_coalescer.dart';
+
+import '../../support/post_frame_test_harness.dart';
 
 void main() {
   late Directory tmp;
@@ -134,4 +141,63 @@ void main() {
       'a/b@main',
     );
   });
+
+  group('coalesced syncMarketplace', () {
+    setUp(setUpTestAppStorage);
+    tearDown(tearDownTestAppStorage);
+
+    test('parallel calls on separate instances sync once', () async {
+      final git = _CountingPluginGit();
+      final coalescer = AsyncKeyedCoalescer();
+      const market = PluginMarketplace(owner: 'acme', name: 'mkt');
+      final a = PluginRepoDiskCacheService(
+        gitService: git,
+        coalescer: coalescer,
+      );
+      final b = PluginRepoDiskCacheService(
+        gitService: git,
+        coalescer: coalescer,
+      );
+
+      await Future.wait([
+        a.syncMarketplace(market),
+        b.syncMarketplace(market),
+      ]);
+
+      expect(git.syncCheckouts, 1);
+    });
+  });
+}
+
+class _CountingPluginGit extends PluginRepoGitService {
+  int syncCheckouts = 0;
+
+  @override
+  Future<({Map<String, Uint8List> entries, String branch, String commitSha})>
+  syncCheckout(
+    PluginMarketplace marketplace,
+    Filesystem fs,
+    String workDirPath,
+  ) async {
+    syncCheckouts++;
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    await fs.ensureDir(workDirPath);
+    await fs.ensureDir(fs.pathContext.join(workDirPath, '.claude-plugin'));
+    await fs.writeString(
+      fs.pathContext.join(workDirPath, '.claude-plugin', 'marketplace.json'),
+      '{"name":"m","plugins":[]}',
+    );
+    return (
+      entries: const <String, Uint8List>{},
+      branch: marketplace.branch,
+      commitSha: 'abc123',
+    );
+  }
+
+  @override
+  Future<({String sha, String branch})?> resolveRemoteShaWithFallback(
+    String owner,
+    String name,
+    String configuredBranch,
+  ) async => null;
 }

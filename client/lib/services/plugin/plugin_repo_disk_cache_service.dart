@@ -4,7 +4,9 @@ import 'package:path/path.dart' as p;
 
 import '../../models/plugin.dart';
 import '../../models/plugin_external_source.dart';
+import '../../utils/async_keyed_coalescer.dart';
 import '../../utils/logging/logger.dart';
+import '../../utils/repo_disk_sync_coalescer.dart';
 import '../storage/app_storage.dart';
 import '../io/filesystem.dart';
 import 'plugin_exceptions.dart';
@@ -20,15 +22,16 @@ class PluginRepoDiskCacheService {
   PluginRepoDiskCacheService({
     PluginRepoGitService? gitService,
     Filesystem? filesystem,
+    AsyncKeyedCoalescer? coalescer,
   }) : _git = gitService ?? PluginRepoGitService(),
-       _fsOverride = filesystem;
+       _fsOverride = filesystem,
+       _coalescer = coalescer ?? RepoDiskSyncCoalescer.instance;
 
   final PluginRepoGitService _git;
   final Filesystem? _fsOverride;
+  final AsyncKeyedCoalescer _coalescer;
 
   Filesystem get _fs => _fsOverride ?? AppStorage.fs;
-
-  static final Map<String, Future<String>> _syncInflight = {};
 
   static const _metaFileName = '.teampilot-plugin-cache-meta.json';
 
@@ -52,19 +55,9 @@ class PluginRepoDiskCacheService {
     PluginMarketplace m, {
     bool force = false,
   }) async {
-    final key = repoKey(m);
-    final existing = _syncInflight[key];
-    if (existing != null) return existing;
-
-    final future = _syncMarketplaceOnce(m, force: force);
-    _syncInflight[key] = future;
-    try {
-      return await future;
-    } finally {
-      if (identical(_syncInflight[key], future)) {
-        _syncInflight.remove(key);
-      }
-    }
+    final root = await _cacheRoot();
+    final key = RepoDiskSyncCoalescer.syncKey(root, repoKey(m));
+    return _coalescer.run(key, () => _syncMarketplaceOnce(m, force: force));
   }
 
   Future<String> _syncMarketplaceOnce(
