@@ -106,7 +106,7 @@ class _SessionChatViewState extends State<SessionChatView> {
 
   final _submitLock = HistoryContinueSubmitLock();
   final _mailboxQueued = StreamController<PendingUserMessage>.broadcast();
-  /// mailId → seat key at queue time (guards wrong-seat sticky promote).
+  /// mailId → seat key at queue time (guards wrong-seat timeline refresh).
   final Map<String, String> _mailboxQueuedSeats = {};
   var _mailboxQueuedClearToken = 0;
   var _enhancing = false;
@@ -1135,8 +1135,8 @@ class _SessionChatViewState extends State<SessionChatView> {
                             final seatKey = _mailboxQueuedSeats.remove(msg.id);
                             if (seatKey != _mailboxSeatKey()) return;
                             // Mail is read in the bus log now — refresh the
-                            // timeline merge instead of a sticky bubble so
-                            // the promoted message survives as real history.
+                            // merged timeline so the message appears as real
+                            // history.
                             unawaited(_seat?.refreshMailboxTimeline());
                           },
                         ),

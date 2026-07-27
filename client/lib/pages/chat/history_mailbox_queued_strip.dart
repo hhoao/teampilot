@@ -14,8 +14,8 @@ const Key kSessionHistoryMailboxQueuedStripKey = ValueKey(
 /// Compose-adjacent list of TeamBus user mails waiting to be consumed.
 ///
 /// Mirrors Terminal [ParkedSendOverlay] lifecycle: poll [isUnread], drop when
-/// the member reads the mail or the user dismisses the UI row (mail stays in
-/// the inbox).
+/// the member reads the mail. Dismiss hides the UI row only; consumption still
+/// fires [onConsumed] so the host can promote the timeline bubble.
 class HistoryMailboxQueuedStrip extends StatefulWidget {
   const HistoryMailboxQueuedStrip({
     required this.submissions,
@@ -29,8 +29,7 @@ class HistoryMailboxQueuedStrip extends StatefulWidget {
   final Stream<PendingUserMessage> submissions;
   final bool Function(String id) isUnread;
 
-  /// Called when a row leaves Queued because the member consumed the mail.
-  /// Not called for manual dismiss (UI-only hide).
+  /// Called when the member consumed the mail (visible or UI-dismissed row).
   final void Function(PendingUserMessage message)? onConsumed;
 
   /// Bumped by the host on seat/session change to drop in-flight Queued rows
@@ -45,6 +44,7 @@ class HistoryMailboxQueuedStrip extends StatefulWidget {
 
 class _HistoryMailboxQueuedStripState extends State<HistoryMailboxQueuedStrip> {
   final List<PendingUserMessage> _pending = [];
+  final List<PendingUserMessage> _hiddenWatching = [];
   StreamSubscription<PendingUserMessage>? _sub;
   Timer? _ticker;
 
@@ -60,6 +60,7 @@ class _HistoryMailboxQueuedStripState extends State<HistoryMailboxQueuedStrip> {
     if (!identical(old.submissions, widget.submissions) ||
         old.clearToken != widget.clearToken) {
       _pending.clear();
+      _hiddenWatching.clear();
       _ticker?.cancel();
       _ticker = null;
       _subscribe();
@@ -72,7 +73,10 @@ class _HistoryMailboxQueuedStripState extends State<HistoryMailboxQueuedStrip> {
   }
 
   void _onSubmission(PendingUserMessage msg) {
-    if (_pending.any((m) => m.id == msg.id)) return;
+    if (_pending.any((m) => m.id == msg.id) ||
+        _hiddenWatching.any((m) => m.id == msg.id)) {
+      return;
+    }
     setState(() => _pending.add(msg));
     _ensureTicker();
     // Consume immediately if already read — do not wait for the first poll tick.
@@ -86,15 +90,17 @@ class _HistoryMailboxQueuedStripState extends State<HistoryMailboxQueuedStrip> {
   void _prune() {
     final before = _pending.length;
     final consumed = <PendingUserMessage>[];
-    _pending.removeWhere((m) {
-      if (widget.isUnread(m.id)) return false;
-      consumed.add(m);
-      return true;
-    });
+    for (final list in [_pending, _hiddenWatching]) {
+      list.removeWhere((m) {
+        if (widget.isUnread(m.id)) return false;
+        consumed.add(m);
+        return true;
+      });
+    }
     for (final msg in consumed) {
       widget.onConsumed?.call(msg);
     }
-    if (_pending.isEmpty) {
+    if (_pending.isEmpty && _hiddenWatching.isEmpty) {
       _ticker?.cancel();
       _ticker = null;
     }
@@ -102,11 +108,13 @@ class _HistoryMailboxQueuedStripState extends State<HistoryMailboxQueuedStrip> {
   }
 
   void _dismiss(PendingUserMessage msg) {
-    setState(() => _pending.removeWhere((m) => m.id == msg.id));
-    if (_pending.isEmpty) {
-      _ticker?.cancel();
-      _ticker = null;
-    }
+    setState(() {
+      _pending.removeWhere((m) => m.id == msg.id);
+      if (!_hiddenWatching.any((m) => m.id == msg.id)) {
+        _hiddenWatching.add(msg);
+      }
+    });
+    _ensureTicker();
   }
 
   @override
