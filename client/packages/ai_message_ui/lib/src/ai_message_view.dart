@@ -233,7 +233,25 @@ class _UserBubble extends StatelessWidget {
                       style: aiTheme.markdown.userBubble(
                         aiTheme.resolveUserForeground(scheme),
                       ),
-                      child: parts,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (message.deliveryChannel == 'mailbox')
+                            Padding(
+                              padding: const EdgeInsets.only(right: 6, top: 2),
+                              child: Icon(
+                                Icons.mail_outline,
+                                key: const ValueKey(
+                                  'ai-user-bubble-mailbox-marker',
+                                ),
+                                size: 13,
+                                color: aiTheme.resolveUserForeground(scheme),
+                              ),
+                            ),
+                          Flexible(child: parts),
+                        ],
+                      ),
                     ),
                   ),
                 ),
