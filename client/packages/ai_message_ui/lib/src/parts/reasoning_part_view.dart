@@ -85,14 +85,19 @@ class _AiReasoningPartViewState extends State<AiReasoningPartView> {
             ),
           ),
           if (_open)
-            Padding(
-              padding: const EdgeInsets.only(left: 24, top: 4, bottom: 8),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 256),
-                child: SingleChildScrollView(
-                  child: DefaultTextStyle.merge(
-                    style: markdown.reasoningBody(scheme.onSurfaceVariant),
-                    child: AiTextPartView(text: widget.part.text),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 24, top: 4, bottom: 8),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 256),
+                  child: SingleChildScrollView(
+                    child: DefaultTextStyle.merge(
+                      style: markdown.reasoningBody(scheme.onSurfaceVariant),
+                      child: AiTextPartView(text: widget.part.text),
+                    ),
                   ),
                 ),
               ),
