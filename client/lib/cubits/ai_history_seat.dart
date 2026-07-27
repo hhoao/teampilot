@@ -9,9 +9,12 @@ import 'package:uuid/uuid.dart';
 import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../models/workspace_launch_context.dart';
+import '../services/conversation_timeline/conversation_timeline.dart';
+import '../services/conversation_timeline/mailbox_user_source.dart';
 import '../services/session/ai_history_loader.dart';
 import '../services/session/ai_history_pending_text.dart';
 import '../services/session/session_history_pagination.dart';
+import '../services/team_bus/persistence/bus_message_log.dart';
 import '../utils/logging/logger.dart';
 
 /// Host-local AI history status — not session connect / "starting…".
@@ -106,8 +109,11 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   AiHistorySeat({
     required AiHistoryLoader loader,
     void Function(String sessionId, String memberId)? onTranscriptApplied,
+    Future<List<LoggedMessage>> Function(String sessionId, String memberId)?
+    loadMailboxRecords,
   }) : _loader = loader,
        _onTranscriptApplied = onTranscriptApplied,
+       _loadMailboxRecords = loadMailboxRecords,
        super(const AiHistoryState());
 
   static const _uuid = Uuid();
@@ -119,9 +125,15 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
 
   final AiHistoryLoader _loader;
   final void Function(String sessionId, String memberId)? _onTranscriptApplied;
+  final Future<List<LoggedMessage>> Function(String sessionId, String memberId)?
+  _loadMailboxRecords;
   final ExternalStoreAiThreadRuntime runtime = ExternalStoreAiThreadRuntime();
 
   int _loadGeneration = 0;
+
+  /// Raw CLI transcript from [_loader.load], before merging mailbox mail.
+  /// Drives the soft-reload empty-CLI guard independent of mailbox content.
+  List<AiMessage> _cliMessages = const [];
   List<AiMessage> _allMessages = const [];
   int _visibleCount = 0;
 
@@ -166,6 +178,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
 
     final gen = ++_loadGeneration;
     _cancelTipHoldTimer();
+    _cliMessages = const [];
     _allMessages = const [];
     _visibleCount = 0;
     _committedLength = 0;
@@ -190,7 +203,14 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         force: force,
       );
       if (gen != _loadGeneration || isClosed) return;
-      _applyMessages(messages, session.sessionId, memberId);
+      _cliMessages = messages;
+      final merged = await _mergeWithMailbox(
+        messages,
+        session.sessionId,
+        memberId,
+      );
+      if (gen != _loadGeneration || isClosed) return;
+      _applyMessages(merged, session.sessionId, memberId);
     } catch (e, st) {
       appLogger.e(
         '[ai-history] seat load failed session=${session.sessionId} '
@@ -199,6 +219,7 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         stackTrace: st,
       );
       if (gen != _loadGeneration || isClosed) return;
+      _cliMessages = const [];
       _allMessages = const [];
       _visibleCount = 0;
       _committedLength = 0;
@@ -239,9 +260,32 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
           memberId != _lastMemberId) {
         return;
       }
-      // Pre-locate: empty parse keeps prior messages until a transcript exists.
-      if (messages.isEmpty && _allMessages.isNotEmpty) return;
-      _applySoftReloadMessages(messages, sessionId, memberId);
+
+      final mailboxRecords = await _safeLoadMailboxRecords(
+        sessionId,
+        memberId,
+      );
+      if (gen != _loadGeneration || isClosed) return;
+      if (session.sessionId != (_lastSession?.sessionId ?? '') ||
+          memberId != _lastMemberId) {
+        return;
+      }
+
+      // Pre-locate: empty CLI parse keeps prior messages until a transcript
+      // exists — unless the mailbox now has read user mail to merge in, in
+      // which case applying keeps the timeline from going stale.
+      if (messages.isEmpty && _cliMessages.isNotEmpty) {
+        final hasReadMailboxUsers =
+            partitionMailboxUserRecords(mailboxRecords).events.isNotEmpty;
+        if (!hasReadMailboxUsers) return;
+      }
+
+      _cliMessages = messages;
+      final merged = buildConversationTimeline(
+        cliMessages: messages,
+        mailboxRecords: mailboxRecords,
+      ).messages;
+      _applySoftReloadMessages(merged, sessionId, memberId);
     } catch (e, st) {
       appLogger.e(
         '[ai-history] seat softReload failed session=$sessionId '
@@ -437,6 +481,40 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
       _committedLength,
     );
     _emitReadyWindow(state.sessionId, state.memberId);
+  }
+
+  /// Merges [cliMessages] with read mailbox user mail for [sessionId] /
+  /// [memberId]. Mailbox load failures degrade to CLI-only (logged, not thrown)
+  /// so a mailbox hiccup never blocks history from loading.
+  Future<List<AiMessage>> _mergeWithMailbox(
+    List<AiMessage> cliMessages,
+    String sessionId,
+    String memberId,
+  ) async {
+    final mailboxRecords = await _safeLoadMailboxRecords(sessionId, memberId);
+    return buildConversationTimeline(
+      cliMessages: cliMessages,
+      mailboxRecords: mailboxRecords,
+    ).messages;
+  }
+
+  Future<List<LoggedMessage>> _safeLoadMailboxRecords(
+    String sessionId,
+    String memberId,
+  ) async {
+    final loadMailboxRecords = _loadMailboxRecords;
+    if (loadMailboxRecords == null) return const [];
+    try {
+      return await loadMailboxRecords(sessionId, memberId);
+    } catch (e, st) {
+      appLogger.w(
+        '[ai-history] mailbox load failed session=$sessionId '
+        'member=$memberId: $e',
+        error: e,
+        stackTrace: st,
+      );
+      return const [];
+    }
   }
 
   void _applyMessages(

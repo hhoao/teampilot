@@ -17,6 +17,9 @@ import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/ai_history_locator.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
 import 'package:teampilot/services/session/session_history_pagination.dart';
+import 'package:teampilot/services/team_bus/persistence/bus_message_log.dart';
+import 'package:teampilot/services/team_bus/team_bus.dart';
+import 'package:teampilot/services/team_bus/team_message.dart';
 
 import '../support/post_frame_test_harness.dart';
 
@@ -578,6 +581,97 @@ void main() {
       isNull,
     );
     expect(cubit.state.totalMessageCount, 0);
+  });
+
+  test(
+    'mailbox: read user mail merges between CLI messages by createdAt',
+    () async {
+      holderMessages = [
+        AiMessage(
+          id: 'u-1',
+          role: AiRole.user,
+          parts: const [AiTextPart(text: 'cli user')],
+          createdAt: DateTime.fromMillisecondsSinceEpoch(1000),
+        ),
+        AiMessage(
+          id: 'a-1',
+          role: AiRole.assistant,
+          parts: const [AiTextPart(text: 'cli assistant')],
+          createdAt: DateTime.fromMillisecondsSinceEpoch(3000),
+        ),
+      ];
+      locator.emitBundle = true;
+
+      await cubit.close();
+      cubit = AiHistoryCubit(
+        loader: loader,
+        loadMailboxRecords: (sessionId, memberId) async => [
+          LoggedMessage(
+            seq: 0,
+            message: const TeamMessage(
+              id: 'mail-1',
+              from: TeamBus.userSenderId,
+              to: 'dev',
+              content: 'mailbox user',
+            ),
+            createdAt: 2000,
+            read: true,
+          ),
+        ],
+      );
+
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+
+      final ids = seatRuntime().messages.map((m) => m.id).toList();
+      expect(ids, ['u-1', 'mailbox:mail-1', 'a-1']);
+      final mailboxMsg = seatRuntime().messages[1];
+      expect(mailboxMsg.id, startsWith('mailbox:'));
+      expect(mailboxMsg.deliveryChannel, 'mailbox');
+    },
+  );
+
+  test('mailbox: unread mail does not appear in runtime messages', () async {
+    holderMessages = [
+      AiMessage(
+        id: 'u-1',
+        role: AiRole.user,
+        parts: const [AiTextPart(text: 'cli user')],
+        createdAt: DateTime.fromMillisecondsSinceEpoch(1000),
+      ),
+    ];
+    locator.emitBundle = true;
+
+    await cubit.close();
+    cubit = AiHistoryCubit(
+      loader: loader,
+      loadMailboxRecords: (sessionId, memberId) async => [
+        LoggedMessage(
+          seq: 0,
+          message: const TeamMessage(
+            id: 'mail-unread',
+            from: TeamBus.userSenderId,
+            to: 'dev',
+            content: 'queued text',
+          ),
+          createdAt: 2000,
+          read: false,
+        ),
+      ],
+    );
+
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
+
+    final ids = seatRuntime().messages.map((m) => m.id).toList();
+    expect(ids, ['u-1']);
+    expect(ids.any((id) => id.contains('mail-unread')), isFalse);
   });
 }
 

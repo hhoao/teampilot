@@ -8,6 +8,7 @@ import '../models/workspace_launch_context.dart';
 import '../services/session/ai_history_loader.dart';
 import '../services/session/ai_history_pending_text.dart';
 import '../services/session/history_seat_key.dart';
+import '../services/team_bus/persistence/bus_message_log.dart';
 import 'ai_history_seat.dart';
 
 export 'ai_history_seat.dart'
@@ -18,14 +19,20 @@ export 'ai_history_seat.dart'
 /// Temporary: [state] mirrors the last-loaded / focused seat so existing
 /// BlocBuilder / unit tests keep working until SessionChatView binds seats.
 class AiHistoryCubit extends Cubit<AiHistoryState> {
-  AiHistoryCubit({required AiHistoryLoader loader})
-    : _loader = loader,
-      super(const AiHistoryState());
+  AiHistoryCubit({
+    required AiHistoryLoader loader,
+    Future<List<LoggedMessage>> Function(String sessionId, String memberId)?
+    loadMailboxRecords,
+  }) : _loader = loader,
+       _loadMailboxRecords = loadMailboxRecords,
+       super(const AiHistoryState());
 
   /// Alias for [AiHistorySeat.tipHoldAfterAssistant] (tests / callers).
   static const tipHoldAfterAssistant = AiHistorySeat.tipHoldAfterAssistant;
 
   final AiHistoryLoader _loader;
+  final Future<List<LoggedMessage>> Function(String sessionId, String memberId)?
+  _loadMailboxRecords;
   final Map<String, AiHistorySeat> _seats = {};
   final Map<String, StreamSubscription<AiHistoryState>> _seatSubs = {};
 
@@ -62,6 +69,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     final seat = AiHistorySeat(
       loader: _loader,
       onTranscriptApplied: _consumeSeedPendingIfMatching,
+      loadMailboxRecords: _loadMailboxRecords,
     );
     _seats[key] = seat;
     // Tip-hold timer and other async seat emits must reach facade listeners.
