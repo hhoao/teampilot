@@ -673,6 +673,139 @@ void main() {
     expect(ids, ['u-1']);
     expect(ids.any((id) => id.contains('mail-unread')), isFalse);
   });
+
+  test(
+    'mailbox: sticky local user does not duplicate mail once it merges into '
+    'the CLI timeline',
+    () async {
+      holderMessages = [
+        AiMessage(
+          id: 'u-1',
+          role: AiRole.user,
+          parts: const [AiTextPart(text: 'cli user')],
+          createdAt: DateTime.fromMillisecondsSinceEpoch(1000),
+        ),
+      ];
+      locator.emitBundle = true;
+
+      var mailboxRecords = <LoggedMessage>[];
+      await cubit.close();
+      cubit = AiHistoryCubit(
+        loader: loader,
+        loadMailboxRecords: (sessionId, memberId) async => mailboxRecords,
+      );
+
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+
+      // Chat's onConsumed shows the mail immediately as a sticky bubble,
+      // before the mailbox log marks it read (Task 6 still removes this
+      // sticky path once the timeline is the single source of truth).
+      cubit.appendStickyLocalUser(id: 'mailbox:mail-1', text: 'mailbox user');
+      expect(
+        seatRuntime().messages.map((m) => m.id),
+        contains('mailbox:mail-1'),
+      );
+
+      // Mail is now read in the mailbox log — the next softReload merges it
+      // into the CLI timeline directly, so the sticky overlay must not also
+      // publish a second copy of the same id.
+      mailboxRecords = [
+        LoggedMessage(
+          seq: 0,
+          message: const TeamMessage(
+            id: 'mail-1',
+            from: TeamBus.userSenderId,
+            to: 'dev',
+            content: 'mailbox user',
+          ),
+          createdAt: 2000,
+          read: true,
+        ),
+      ];
+      await cubit.softReload();
+
+      final ids = seatRuntime().messages.map((m) => m.id).toList();
+      expect(ids.where((id) => id == 'mailbox:mail-1'), hasLength(1));
+    },
+  );
+
+  test(
+    'softReload with a transient empty CLI parse keeps prior CLI history '
+    'and still merges a new read mailbox message (no wipe)',
+    () async {
+      holderMessages = messages(5);
+      locator.emitBundle = true;
+
+      var mailboxRecords = <LoggedMessage>[];
+      await cubit.close();
+      cubit = AiHistoryCubit(
+        loader: loader,
+        loadMailboxRecords: (sessionId, memberId) async => mailboxRecords,
+      );
+
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+      expect(seatRuntime().messages, hasLength(5));
+
+      // Transient empty CLI parse (e.g. locate() briefly finds no bundle)
+      // while the mailbox now has a NEW read message not yet in the timeline.
+      holderMessages = const [];
+      locator.emitBundle = false;
+      mailboxRecords = [
+        LoggedMessage(
+          seq: 0,
+          message: const TeamMessage(
+            id: 'mail-1',
+            from: TeamBus.userSenderId,
+            to: 'dev',
+            content: 'mailbox user',
+          ),
+          createdAt: 6000,
+          read: true,
+        ),
+      ];
+
+      await cubit.softReload();
+
+      final ids = seatRuntime().messages.map((m) => m.id).toList();
+      expect(ids, containsAll(['m-0', 'm-1', 'm-2', 'm-3', 'm-4']));
+      expect(ids, contains('mailbox:mail-1'));
+    },
+  );
+
+  test(
+    'mailbox: loader throwing degrades to CLI-only history',
+    () async {
+      holderMessages = messages(2);
+      locator.emitBundle = true;
+
+      await cubit.close();
+      cubit = AiHistoryCubit(
+        loader: loader,
+        loadMailboxRecords: (sessionId, memberId) async =>
+            throw StateError('mailbox boom'),
+      );
+
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+
+      expect(cubit.state.status, AiHistoryViewStatus.ready);
+      expect(seatRuntime().messages.map((m) => m.id).toList(), [
+        'm-0',
+        'm-1',
+      ]);
+    },
+  );
 }
 
 AiTranscriptBundle _dummyBundle() => const AiTranscriptBundle(

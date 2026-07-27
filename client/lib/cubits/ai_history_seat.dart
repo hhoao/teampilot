@@ -271,13 +271,28 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         return;
       }
 
-      // Pre-locate: empty CLI parse keeps prior messages until a transcript
-      // exists — unless the mailbox now has read user mail to merge in, in
-      // which case applying keeps the timeline from going stale.
+      // Pre-locate: a transient empty CLI parse must never wipe an already
+      // -loaded transcript. If the mailbox has no *new* read user mail either,
+      // keep the prior view entirely (old empty-CLI protection). If it does,
+      // merge that new mail onto the **prior** CLI transcript ([_cliMessages])
+      // instead of the empty parse — an empty parse is never treated as
+      // "CLI cleared".
       if (messages.isEmpty && _cliMessages.isNotEmpty) {
-        final hasReadMailboxUsers =
-            partitionMailboxUserRecords(mailboxRecords).events.isNotEmpty;
-        if (!hasReadMailboxUsers) return;
+        final mailboxEvents = partitionMailboxUserRecords(
+          mailboxRecords,
+        ).events;
+        final existingIds = {for (final m in _allMessages) m.id};
+        final hasNewReadMailboxUsers = mailboxEvents.any(
+          (e) => !existingIds.contains(e.id),
+        );
+        if (!hasNewReadMailboxUsers) return;
+
+        final merged = buildConversationTimeline(
+          cliMessages: _cliMessages,
+          mailboxRecords: mailboxRecords,
+        ).messages;
+        _applySoftReloadMessages(merged, sessionId, memberId);
+        return;
       }
 
       _cliMessages = messages;
@@ -686,19 +701,25 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
 
   void _remergePendingsOntoRuntime() {
     final slice = _visibleSlice();
+    // Once a mailbox mail merges into the CLI timeline (Task 5), the earlier
+    // sticky bubble for that same id (added by Chat's onConsumed) would
+    // otherwise double-publish it — skip any overlay entry already in slice.
+    final sliceIds = {for (final m in slice) m.id};
     final overlay = <AiMessage>[
       for (final s in _stickyLocalUsers)
-        AiMessage(
-          id: s.id,
-          role: AiRole.user,
-          parts: [AiTextPart(text: s.text)],
-        ),
+        if (!sliceIds.contains(s.id))
+          AiMessage(
+            id: s.id,
+            role: AiRole.user,
+            parts: [AiTextPart(text: s.text)],
+          ),
       for (final p in _pendingQueue)
-        AiMessage(
-          id: p.id,
-          role: AiRole.user,
-          parts: [AiTextPart(text: p.text)],
-        ),
+        if (!sliceIds.contains(p.id))
+          AiMessage(
+            id: p.id,
+            role: AiRole.user,
+            parts: [AiTextPart(text: p.text)],
+          ),
     ];
     if (slice.isEmpty && overlay.isEmpty) {
       if (_allMessages.isEmpty) {
