@@ -78,7 +78,8 @@ Future<void> showChatWorkbenchTerminalContextMenu({
     ),
     ...selectionAiMenuSpecs(
       l10n: menuContext.l10n,
-      enabled: hasAi,
+      copyEnabled: hasAi,
+      askAiEnabled: hasAi && workspace != null,
       onCopyAsAiContext: () {
         unawaited(Clipboard.setData(ClipboardData(text: aiContext)));
       },

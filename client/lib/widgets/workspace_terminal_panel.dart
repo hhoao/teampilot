@@ -427,7 +427,8 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       ),
       ...selectionAiMenuSpecs(
         l10n: menuContext.l10n,
-        enabled: hasAi,
+        copyEnabled: hasAi,
+        askAiEnabled: hasAi,
         onCopyAsAiContext: () {
           unawaited(Clipboard.setData(ClipboardData(text: aiContext)));
         },

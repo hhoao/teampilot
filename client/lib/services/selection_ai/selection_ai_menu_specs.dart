@@ -5,7 +5,8 @@ import '../../l10n/app_localizations.dart';
 
 List<TpActionMenuSpec> selectionAiMenuSpecs({
   required AppLocalizations l10n,
-  required bool enabled,
+  required bool copyEnabled,
+  required bool askAiEnabled,
   required VoidCallback onCopyAsAiContext,
   required VoidCallback onAskAi,
 }) {
@@ -13,13 +14,13 @@ List<TpActionMenuSpec> selectionAiMenuSpecs({
     TpActionMenuSpec.item(
       icon: Icons.auto_awesome_outlined,
       label: l10n.editorCopyAsAiContext,
-      enabled: enabled,
+      enabled: copyEnabled,
       onAction: onCopyAsAiContext,
     ),
     TpActionMenuSpec.item(
       icon: Icons.chat_outlined,
       label: l10n.selectionAskAi,
-      enabled: enabled,
+      enabled: askAiEnabled,
       onAction: onAskAi,
     ),
   ];

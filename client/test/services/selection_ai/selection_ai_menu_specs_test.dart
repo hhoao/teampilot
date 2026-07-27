@@ -12,7 +12,8 @@ void main() {
 
     final specs = selectionAiMenuSpecs(
       l10n: l10n,
-      enabled: false,
+      copyEnabled: false,
+      askAiEnabled: false,
       onCopyAsAiContext: () => copied = true,
       onAskAi: () => asked = true,
     );
@@ -29,5 +30,18 @@ void main() {
     specs[1].onAction!();
     expect(copied, isTrue);
     expect(asked, isTrue);
+  });
+
+  test('can enable copy while disabling Ask AI', () {
+    final specs = selectionAiMenuSpecs(
+      l10n: l10n,
+      copyEnabled: true,
+      askAiEnabled: false,
+      onCopyAsAiContext: () {},
+      onAskAi: () {},
+    );
+
+    expect(specs[0].enabled, isTrue);
+    expect(specs[1].enabled, isFalse);
   });
 }

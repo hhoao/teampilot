@@ -65,7 +65,8 @@ class FileEditorContextMenuController implements SelectionToolbarController {
       ),
       ...selectionAiMenuSpecs(
         l10n: l10n,
-        enabled: path != null,
+        copyEnabled: path != null,
+        askAiEnabled: path != null && workspaceId != null,
         onCopyAsAiContext: () {
           if (path != null) {
             Clipboard.setData(
