@@ -152,6 +152,30 @@ void main() {
       expect(cubit.activeTabId(ws), file);
     });
 
+    // Landing compose unmounts ChatPage while a Run tab may stay active;
+    // syncSessions alone must not focus the new session (callers ensureTab).
+    test('syncSessions does not steal focus from run tab', () {
+      const ws = 'ws-a';
+      final run = WorkbenchTabId.run('r1');
+      cubit.ensureTab(ws, run);
+      cubit.syncSessions(
+        ws,
+        ['s-new'],
+        preferredActiveSessionId: 's-new',
+        newChatActive: false,
+      );
+      expect(cubit.activeTabId(ws), run);
+      expect(cubit.tabOrder(ws), contains(WorkbenchTabId.session('s-new')));
+    });
+
+    test('ensureTab selects session over active run tab', () {
+      const ws = 'ws-a';
+      final run = WorkbenchTabId.run('r1');
+      cubit.ensureTab(ws, run);
+      cubit.ensureTab(ws, WorkbenchTabId.session('s-new'));
+      expect(cubit.activeTabId(ws), WorkbenchTabId.session('s-new'));
+    });
+
     test('preview open replaces existing preview; permanent pins', () {
       const ws = 'ws-a';
       final a = WorkbenchTabId.file('/a.dart');

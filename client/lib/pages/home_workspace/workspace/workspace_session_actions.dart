@@ -237,6 +237,15 @@ Future<void> createAndOpenWorkspaceConversation(
     status,
     blockedMixedMessage: context.l10n.mixedWorkspaceCreateSessionBlocked,
   );
+  if (status != SessionOpenStatus.opened) return;
+  // syncSessions will not override an active run/shell/file tab.
+  final sessionId = context.read<ChatCubit>().state.activeSessionId?.trim() ?? '';
+  if (sessionId.isNotEmpty) {
+    context.read<WorkbenchCubit>().ensureTab(
+      workspace.workspaceId,
+      WorkbenchTabId.session(sessionId),
+    );
+  }
 }
 
 /// Opens the Chat pane (new chat) for [tabScopeId] without closing open session tabs.
@@ -376,6 +385,15 @@ Future<void> submitWorkspaceLandingMessage(
       );
     }
     return;
+  }
+
+  // Landing unmounts ChatPage while a Run tab (启动配置) may still be active;
+  // syncSessions does not steal focus from run/shell/file — select explicitly.
+  if (context.mounted) {
+    context.read<WorkbenchCubit>().ensureTab(
+      liveWorkspace.workspaceId,
+      WorkbenchTabId.session(plannedSessionId),
+    );
   }
 
   if (trimmedExpert.isNotEmpty) {

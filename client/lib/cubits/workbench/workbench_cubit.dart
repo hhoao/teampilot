@@ -323,7 +323,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   /// landing while session tabs may still appear in the bar.
   /// When not in new-chat mode and active is unset/invalid, activates
   /// [preferredActiveSessionId] (or the first session).
-  /// Does not override an active file/diff tab.
+  /// Does not override an active file/diff/shell/run tab.
   void syncSessions(
     String workspaceId,
     List<String> sessionIds, {
