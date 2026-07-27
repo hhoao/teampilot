@@ -76,10 +76,7 @@ class MembersPanel extends StatelessWidget {
     final l10n = context.l10n;
     final registry = CliToolRegistryScope.maybeOf(context);
     final groups = groupByMachine
-        ? groupMembersByMachine(
-            members: members,
-            memberTargets: memberTargets,
-          )
+        ? groupMembersByMachine(members: members, memberTargets: memberTargets)
         : const <MembersMachineGroup>[];
     final useSections = groups.length >= 2;
 
@@ -171,8 +168,7 @@ class MembersPanel extends StatelessWidget {
       launch.provider,
     );
     final brandLabel =
-        memberProvider?.name ??
-        _cliDisplayLabel(registry, memberCli, l10n);
+        memberProvider?.name ?? _cliDisplayLabel(registry, memberCli, l10n);
     final meta = [
       brandLabel,
       launch.model,
@@ -207,11 +203,7 @@ class MembersPanel extends StatelessWidget {
                     size: 28,
                     borderRadius: 7,
                   )
-                : CliBrandIcon(
-                    cli: memberCli,
-                    size: 28,
-                    borderRadius: 7,
-                  ),
+                : CliBrandIcon(cli: memberCli, size: 28, borderRadius: 7),
             title: MemberTitleRow(
               member: member,
               fallbackName: l10n.memberName,
@@ -221,10 +213,7 @@ class MembersPanel extends StatelessWidget {
             ),
             textColor: titleColor,
             iconColor: titleColor,
-            subtitle: Text(
-              subtitle,
-              style: styles.mdColored(subtitleColor),
-            ),
+            subtitle: Text(subtitle, style: styles.smColored(subtitleColor)),
             trailing: MemberPresenceIndicator(presence: presence),
             onTap: () => onSelected(member.id),
           ),
@@ -329,13 +318,7 @@ class _MachineSectionHeader extends StatelessWidget {
   }
 }
 
-enum _MemberMenuAction {
-  viewDetail,
-  switchTo,
-  open,
-  openConfigDir,
-  launchAll,
-}
+enum _MemberMenuAction { viewDetail, switchTo, open, openConfigDir, launchAll }
 
 CliTool _catalogCli(CliToolRegistry? registry, CliTool memberCli) {
   if (registry != null &&
