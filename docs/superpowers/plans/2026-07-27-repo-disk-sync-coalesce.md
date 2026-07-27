@@ -476,6 +476,7 @@ cd client && flutter test \
 
 ```bash
 cd client && flutter analyze --no-fatal-infos --no-fatal-warnings
+cd client && flutter test --exclude-tags integration
 ```
 
 - [ ] **Step 3:** Manually note: existing corrupt `garrytan__gstack` with empty SHA will re-download on next expert select (no manual wipe required for that class)
