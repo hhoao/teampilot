@@ -132,4 +132,86 @@ void main() {
     expect(find.textContaining('Used tool:'), findsOneWidget);
     expect(find.textContaining('Agent'), findsOneWidget);
   });
+
+  testWidgets('SubagentPreviewScaffold: empty shows label; no compose', (
+    tester,
+  ) async {
+    var backCount = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SubagentPreviewScaffold(
+            title: 'Explore auth',
+            messages: const [],
+            onBack: () => backCount++,
+            emptyLabel: '暂无子会话内容',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Explore auth'), findsOneWidget);
+    expect(find.text('暂无子会话内容'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+    expect(backCount, 1);
+  });
+
+  testWidgets('SubagentPreviewScaffold: Read file open still works', (
+    tester,
+  ) async {
+    AiToolFileTarget? openedFile;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiToolFileActionsScope(
+            actions: AiToolFileActions(
+              onOpenFile: (t) async => openedFile = t,
+            ),
+            child: AiToolSubagentActionsScope(
+              actions: AiToolSubagentActions(
+                onOpenSubagent: (_) async {},
+              ),
+              child: SubagentPreviewScaffold(
+                title: 'Nested',
+                messages: const [
+                  AiMessage(
+                    id: 'm1',
+                    role: AiRole.assistant,
+                    parts: [
+                      AiToolCallPart(
+                        toolCallId: 'read-1',
+                        toolName: 'Read',
+                        args: {
+                          'file_path': 'lib/ai_history_seat.dart',
+                          'offset': 110,
+                          'limit': 80,
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+                onBack: () {},
+                emptyLabel: 'empty',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(TextField), findsNothing);
+
+    // AiMessageView groups lone tools into collapsed chain-of-thought.
+    await tester.tap(find.textContaining('Thinking process'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('ai_history_seat.dart'), findsOneWidget);
+
+    await tester.tap(find.textContaining('ai_history_seat.dart'));
+    await tester.pumpAndSettle();
+    expect(openedFile?.path, 'lib/ai_history_seat.dart');
+  });
 }

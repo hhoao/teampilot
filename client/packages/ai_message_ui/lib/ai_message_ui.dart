@@ -12,6 +12,7 @@ export 'src/part_registry.dart';
 export 'src/parts/chain_of_thought_view.dart';
 export 'src/parts/reasoning_part_view.dart';
 export 'src/parts/text_part_view.dart';
+export 'src/parts/subagent_preview_scaffold.dart';
 export 'src/parts/tool_call_part_view.dart';
 export 'src/parts/tool_group_view.dart';
 export 'src/selection_dead_zone.dart';
