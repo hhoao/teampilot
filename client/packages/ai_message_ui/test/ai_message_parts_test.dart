@@ -148,6 +148,13 @@ void main() {
 
     expect(find.textContaining('Used tool:'), findsOneWidget);
     expect(find.textContaining('ReadFile'), findsOneWidget);
+    expect(find.textContaining('/tmp/x'), findsNothing);
+    expect(find.text('Result:'), findsNothing);
+    expect(find.textContaining('file contents'), findsNothing);
+
+    await tester.tap(find.textContaining('ReadFile'));
+    await tester.pumpAndSettle();
+
     expect(find.textContaining('/tmp/x'), findsOneWidget);
     expect(find.text('Result:'), findsOneWidget);
     expect(find.textContaining('file contents'), findsOneWidget);
@@ -238,6 +245,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('调用工具:'), findsOneWidget);
+    expect(find.text('输出:'), findsNothing);
+
+    await tester.tap(find.textContaining('Bash'));
+    await tester.pumpAndSettle();
+
     expect(find.text('输出:'), findsOneWidget);
   });
 
