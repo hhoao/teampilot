@@ -203,6 +203,29 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   ),
                   showDividerBelow: true,
                 ),
+                TpSectionHeader(title: l10n.thinkingProcessSectionTitle),
+                TpPreferenceRow(
+                  title: l10n.cotExpandReasoningOnOpenTitle,
+                  subtitle: l10n.cotExpandReasoningOnOpenDescription,
+                  trailing: Switch(
+                    value: context.select<LayoutCubit, bool>(
+                      (c) => c.state.preferences.cotExpandReasoningOnOpen,
+                    ),
+                    onChanged: controller.setCotExpandReasoningOnOpen,
+                  ),
+                  showDividerBelow: true,
+                ),
+                TpPreferenceRow(
+                  title: l10n.cotExpandToolsOnOpenTitle,
+                  subtitle: l10n.cotExpandToolsOnOpenDescription,
+                  trailing: Switch(
+                    value: context.select<LayoutCubit, bool>(
+                      (c) => c.state.preferences.cotExpandToolsOnOpen,
+                    ),
+                    onChanged: controller.setCotExpandToolsOnOpen,
+                  ),
+                  showDividerBelow: true,
+                ),
                 TpPreferenceRow(
                   title: '终端主题',
                   subtitle: '跟随主题色或使用固定风格',

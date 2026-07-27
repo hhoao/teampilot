@@ -680,6 +680,36 @@ abstract class AppLocalizations {
   /// **'Remember last'**
   String get markdownOpenModeRemember;
 
+  /// No description provided for @thinkingProcessSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking process'**
+  String get thinkingProcessSectionTitle;
+
+  /// No description provided for @cotExpandReasoningOnOpenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand reasoning when opening'**
+  String get cotExpandReasoningOnOpenTitle;
+
+  /// No description provided for @cotExpandReasoningOnOpenDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'When you open a thinking-process block, expand nested reasoning steps automatically.'**
+  String get cotExpandReasoningOnOpenDescription;
+
+  /// No description provided for @cotExpandToolsOnOpenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand tools when opening'**
+  String get cotExpandToolsOnOpenTitle;
+
+  /// No description provided for @cotExpandToolsOnOpenDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'When you open a thinking-process block, expand nested tool call details automatically.'**
+  String get cotExpandToolsOnOpenDescription;
+
   /// No description provided for @markdownViewToggleSource.
   ///
   /// In en, this message translates to:
