@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/claude_compatible_jsonl.dart';
+import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/session/subagent_attachment_inflater.dart';
 import 'package:teampilot/services/session/subagent_side_transcript_path.dart';
 
@@ -153,6 +154,118 @@ void main() {
     expect(attachment, isNotNull);
     expect(attachment!.source, AiSubagentAttachmentSource.toolResult);
     expect(attachment.messages, isEmpty);
+  });
+
+  test('null parentTranscriptPath is degrade-only without side FS', () async {
+    final fs = _CountingListDirFilesystem();
+    await fs.writeString(
+      claudeSubagentMetaPath(subagentsDir: subagentsDir, agentId: 'abc'),
+      jsonEncode({'toolUseId': 'toolu_null_parent'}),
+    );
+    await fs.writeString(
+      claudeSubagentTranscriptPath(subagentsDir: subagentsDir, agentId: 'abc'),
+      _userAssistantJsonl(user: 'side', assistant: 'should not load'),
+    );
+
+    final index = await const SubagentAttachmentInflater().inflate(
+      messages: [
+        AiMessage(
+          id: 'a1',
+          role: AiRole.assistant,
+          parts: [
+            const AiToolCallPart(
+              toolCallId: 'toolu_null_parent',
+              toolName: 'Agent',
+              args: {'agentId': 'abc'},
+              result: 'degraded',
+            ),
+          ],
+        ),
+      ],
+      fs: fs,
+      parentTranscriptPath: null,
+    );
+
+    final attachment = index['toolu_null_parent'];
+    expect(attachment, isNotNull);
+    expect(attachment!.source, AiSubagentAttachmentSource.toolResult);
+    expect(attachment.sidePath, isNull);
+    expect(
+      (attachment.messages.single.parts.single as AiTextPart).text,
+      'degraded',
+    );
+    expect(fs.listDirCount, 0);
+  });
+
+  test('blank parentTranscriptPath is degrade-only without side FS', () async {
+    final fs = _CountingListDirFilesystem();
+    // Files that blank-path stem join would otherwise discover.
+    await fs.writeString(
+      'subagents/agent-abc.meta.json',
+      jsonEncode({'toolUseId': 'toolu_blank_parent'}),
+    );
+    await fs.writeString(
+      'subagents/agent-abc.jsonl',
+      _userAssistantJsonl(user: 'side', assistant: 'should not load'),
+    );
+
+    final index = await const SubagentAttachmentInflater().inflate(
+      messages: [
+        AiMessage(
+          id: 'a1',
+          role: AiRole.assistant,
+          parts: [
+            const AiToolCallPart(
+              toolCallId: 'toolu_blank_parent',
+              toolName: 'Agent',
+              args: {'agentId': 'abc'},
+              result: 'degraded',
+            ),
+          ],
+        ),
+      ],
+      fs: fs,
+      parentTranscriptPath: '',
+    );
+
+    final attachment = index['toolu_blank_parent'];
+    expect(attachment, isNotNull);
+    expect(attachment!.source, AiSubagentAttachmentSource.toolResult);
+    expect(attachment.sidePath, isNull);
+    expect(
+      (attachment.messages.single.parts.single as AiTextPart).text,
+      'degraded',
+    );
+    expect(fs.listDirCount, 0);
+  });
+
+  test('whitespace parentTranscriptPath is degrade-only without side FS',
+      () async {
+    final fs = _CountingListDirFilesystem();
+
+    final index = await const SubagentAttachmentInflater().inflate(
+      messages: [
+        AiMessage(
+          id: 'a1',
+          role: AiRole.assistant,
+          parts: [
+            const AiToolCallPart(
+              toolCallId: 'toolu_ws_parent',
+              toolName: 'Task',
+              args: {'agentId': 'abc'},
+              result: 'degraded',
+            ),
+          ],
+        ),
+      ],
+      fs: fs,
+      parentTranscriptPath: '   ',
+    );
+
+    final attachment = index['toolu_ws_parent'];
+    expect(attachment, isNotNull);
+    expect(attachment!.source, AiSubagentAttachmentSource.toolResult);
+    expect(fs.listDirCount, 0);
   });
 
   test('nested side transcript meta under child stem', () async {
@@ -377,4 +490,14 @@ String _agentToolJsonl({
     );
   }
   return lines.join('\n');
+}
+
+class _CountingListDirFilesystem extends InMemoryFilesystem {
+  int listDirCount = 0;
+
+  @override
+  Future<List<FsDirEntry>> listDir(String path) async {
+    listDirCount++;
+    return super.listDir(path);
+  }
 }

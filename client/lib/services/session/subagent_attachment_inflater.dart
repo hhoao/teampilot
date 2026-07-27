@@ -35,9 +35,10 @@ class SubagentAttachmentInflater {
     required int depth,
     required Map<String, AiSubagentAttachment> out,
   }) async {
-    final metaByToolUseId = parentTranscriptPath == null
-        ? const <String, String>{}
-        : await _loadMetaMap(fs, parentTranscriptPath);
+    final usableParent = _isUsableParentPath(parentTranscriptPath);
+    final metaByToolUseId = usableParent
+        ? await _loadMetaMap(fs, parentTranscriptPath!.trim())
+        : const <String, String>{};
 
     for (final message in messages) {
       for (final part in message.parts) {
@@ -49,7 +50,7 @@ class SubagentAttachmentInflater {
         final attachment = await _attachOne(
           part: part,
           fs: fs,
-          parentTranscriptPath: parentTranscriptPath,
+          parentTranscriptPath: usableParent ? parentTranscriptPath!.trim() : null,
           metaByToolUseId: metaByToolUseId,
           depth: depth,
         );
@@ -85,9 +86,9 @@ class SubagentAttachmentInflater {
         metaByToolUseId[part.toolCallId] ?? subagentAgentIdFromPart(part);
     if (agentId != null &&
         agentId.isNotEmpty &&
-        parentTranscriptPath != null &&
-        parentTranscriptPath.trim().isNotEmpty) {
-      final subagentsDir = claudeSubagentsDirFor(parentTranscriptPath);
+        _isUsableParentPath(parentTranscriptPath)) {
+      final parentPath = parentTranscriptPath!.trim();
+      final subagentsDir = claudeSubagentsDirFor(parentPath);
       final sidePath = claudeSubagentTranscriptPath(
         subagentsDir: subagentsDir,
         agentId: agentId,
@@ -110,6 +111,10 @@ class SubagentAttachmentInflater {
 
     return _degrade(part, title);
   }
+
+  /// Blank / whitespace paths skip side FS (same as null).
+  static bool _isUsableParentPath(String? path) =>
+      path != null && path.trim().isNotEmpty;
 
   AiSubagentAttachment _degrade(AiToolCallPart part, String? title) {
     return AiSubagentAttachment(
