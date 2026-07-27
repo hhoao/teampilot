@@ -57,6 +57,7 @@ import 'session_history_live_chrome.dart';
 import 'session_history_review_messages.dart';
 import 'session_history_review_submit.dart';
 import 'session_review_compose_card.dart';
+import 'subagent_preview_controller.dart';
 
 /// Bound Chat view: history thread + slim compose for a session body.
 class SessionChatView extends StatefulWidget {
@@ -106,6 +107,7 @@ class _SessionChatViewState extends State<SessionChatView> {
   late final FocusNode _focusNode;
   late final ComposeVoiceInput _voiceInput;
   final _headlessAi = HeadlessAiService();
+  final _subagentPreview = SubagentPreviewController();
   AiHistoryLiveRefreshController? _liveRefresh;
   AiHistorySeat? _seat;
 
@@ -214,6 +216,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     if (seatChanged) {
       unawaited(_stopLiveRefreshForSeatChange());
       _clearMailboxQueuedUi();
+      _subagentPreview.clear();
       _bindSeat();
       // Defer: load → runtime.setLoading sync-notifies seat listeners
       // while ancestors (e.g. TpDeferredForegroundMount) are still building.
@@ -253,6 +256,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     unawaited(live?.stop() ?? Future<void>.value());
     unawaited(_mailboxQueued.close());
     _voiceInput.dispose();
+    _subagentPreview.dispose();
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -1009,266 +1013,374 @@ class _SessionChatViewState extends State<SessionChatView> {
       },
       child: ColoredBox(
         color: cs.surface,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              // Full-bleed scroll surface: margins beside the text column still
-              // receive wheel / drag. Message width is capped inside SessionHistoryThread.
-              child: BlocSelector<LayoutCubit, LayoutState, (bool, bool)>(
-                selector: (s) => (
-                  s.preferences.cotExpandReasoningOnOpen,
-                  s.preferences.cotExpandToolsOnOpen,
-                ),
-                builder: (context, cotExpand) {
-                  final (expandReasoning, expandTools) = cotExpand;
-                  return Theme(
-                    data: Theme.of(context).copyWith(
-                      extensions: [
-                        for (final ext in Theme.of(context).extensions.values)
-                          if (ext is! AiMessageTheme) ext,
-                        AiMessageTheme.of(context).copyWith(
-                          markdown: buildAppCompiledMarkdownStyle(
-                            Theme.of(context),
-                            mutedSurface: cs.surfaceContainerHighest.withValues(
-                              alpha: 0.55,
+        child: BlocBuilder<AiHistorySeat, AiHistoryState>(
+          bloc: _seat,
+          // AiHistoryState.props includes subagentAttachmentEpoch so soft
+          // reload that replaces attachments rebuilds the overlay body.
+          builder: (context, state) {
+            final historySeat = _seat;
+            if (historySeat == null) {
+              return const SizedBox.shrink();
+            }
+            return ListenableBuilder(
+              listenable: _subagentPreview,
+              builder: (context, _) {
+                _subagentPreview.pruneToAvailable(
+                  historySeat.subagentAttachments.keys.toSet(),
+                );
+                final stack = _subagentPreview.stack;
+                final top = stack.isEmpty
+                    ? null
+                    : historySeat.subagentAttachments[stack.last];
+                final topTitle = top?.title?.trim();
+                final previewTitle = l10n.subagentPreviewTitleAgent(
+                  (topTitle != null && topTitle.isNotEmpty)
+                      ? topTitle
+                      : 'Agent',
+                );
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      // Full-bleed scroll surface: margins beside the text
+                      // column still receive wheel / drag. Message width is
+                      // capped inside SessionHistoryThread.
+                      child: BlocSelector<LayoutCubit, LayoutState, (bool, bool)>(
+                        selector: (s) => (
+                          s.preferences.cotExpandReasoningOnOpen,
+                          s.preferences.cotExpandToolsOnOpen,
+                        ),
+                        builder: (context, cotExpand) {
+                          final (expandReasoning, expandTools) = cotExpand;
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              extensions: [
+                                for (final ext
+                                    in Theme.of(context).extensions.values)
+                                  if (ext is! AiMessageTheme) ext,
+                                AiMessageTheme.of(context).copyWith(
+                                  markdown: buildAppCompiledMarkdownStyle(
+                                    Theme.of(context),
+                                    mutedSurface: cs.surfaceContainerHighest
+                                        .withValues(alpha: 0.55),
+                                  ),
+                                  userBubbleColor: cs.surfaceContainerHighest,
+                                  userBubbleForeground: cs.onSurface,
+                                  mutedSurface: cs.surfaceContainerHighest
+                                      .withValues(alpha: 0.55),
+                                  toolTriggerColor: cs.onSurfaceVariant,
+                                  messageSpacing: 24,
+                                  threadMaxWidth: kSessionHistoryColumnMaxWidth,
+                                  threadHorizontalPadding: spacing.md,
+                                  cotExpandReasoningOnOpen: expandReasoning,
+                                  cotExpandToolsOnOpen: expandTools,
+                                ),
+                              ],
+                            ),
+                            child: AiToolFileActionsScope(
+                              actions: AiToolFileActions(
+                                onOpenFile: (target) async {
+                                  final fs = WorkspaceToolsScope.maybeOf(
+                                    context,
+                                  )?.tools?.context.filesystem;
+                                  if (fs == null) return;
+                                  final coordinator = AiToolFileOpenCoordinator(
+                                    opener: context
+                                        .read<WorkbenchEditorOpener>(),
+                                    editor: context.read<EditorCubit>(),
+                                  );
+                                  final result = await coordinator.openToolFile(
+                                    workspaceId: widget.session.workspaceId,
+                                    target: target,
+                                    sessionWorkingDirectory:
+                                        _workspaceRoot.isEmpty
+                                        ? null
+                                        : _workspaceRoot,
+                                    workspaceFolderPaths: _launchContext
+                                        .folderCatalog
+                                        .map((f) => f.path)
+                                        .toList(),
+                                    fs: fs,
+                                  );
+                                  if (!context.mounted) return;
+                                  if (result.isMissing) {
+                                    AppToast.show(
+                                      context,
+                                      message: l10n.aiToolFileNotFound(
+                                        target.path,
+                                      ),
+                                      variant: TpToastVariant.warning,
+                                    );
+                                  }
+                                },
+                              ),
+                              child: AiToolSubagentActionsScope(
+                                actions: AiToolSubagentActions(
+                                  onOpenSubagent: (id) async {
+                                    final attachments =
+                                        _seat?.subagentAttachments ?? const {};
+                                    if (!attachments.containsKey(id)) {
+                                      if (!context.mounted) return;
+                                      AppToast.show(
+                                        context,
+                                        message:
+                                            l10n.subagentPreviewUnavailable,
+                                        variant: TpToastVariant.warning,
+                                      );
+                                      return;
+                                    }
+                                    _subagentPreview.push(id);
+                                  },
+                                ),
+                                child: AiMessageStringsScope(
+                                  strings: AiMessageStrings(
+                                    usedTool: l10n.aiMessageUsedTool,
+                                    cancelledTool: l10n.aiMessageCancelledTool,
+                                    formatToolsUsed: l10n.aiMessageToolsUsed,
+                                    reasoning: l10n.aiMessageReasoning,
+                                    result: l10n.aiMessageToolResult,
+                                    copy: l10n.copy,
+                                    copied: l10n.aiMessageCopied,
+                                    exportMarkdown:
+                                        l10n.aiMessageExportMarkdown,
+                                    messageIncomplete:
+                                        l10n.aiMessageIncomplete,
+                                    messageCancelled:
+                                        l10n.aiMessageCancelled,
+                                    scrollToBottom:
+                                        l10n.aiMessageScrollToBottom,
+                                    showMore: l10n.aiMessageShowMore,
+                                    showLess: l10n.aiMessageShowLess,
+                                    thinkingProcess:
+                                        l10n.aiMessageThinkingProcess,
+                                    formatThinkingProcessSteps: (count) => l10n
+                                        .aiMessageThinkingProcessSteps(
+                                          count as int,
+                                        ),
+                                  ),
+                                  child: Stack(
+                                    children: [
+                                      Builder(
+                                        builder: (context) {
+                                          final seat =
+                                              context.select<
+                                                ChatCubit,
+                                                ({
+                                                  bool sessionWorking,
+                                                  bool sessionConnecting,
+                                                  bool memberRunning,
+                                                  int stateVersion,
+                                                })
+                                              >((c) {
+                                                final sid =
+                                                    widget.session.sessionId;
+                                                final connectingId = c
+                                                    .state
+                                                    .sessionConnectingId;
+                                                return (
+                                                  sessionWorking: c
+                                                      .state
+                                                      .workingSessionIds
+                                                      .contains(sid),
+                                                  sessionConnecting:
+                                                      connectingId == sid ||
+                                                      connectingId ==
+                                                          'pending',
+                                                  memberRunning: c
+                                                      .isMemberRunning(
+                                                        sessionId: sid,
+                                                        memberId:
+                                                            _shellMemberId,
+                                                      ),
+                                                  // Connect completion bumps
+                                                  // this so PTY-up rebuilds.
+                                                  stateVersion:
+                                                      c.state.stateVersion,
+                                                );
+                                              });
+                                          final liveChrome =
+                                              SessionHistoryLiveChromeX.resolve(
+                                                turnInFlight:
+                                                    _isSubmitting ||
+                                                    state.awaitingAssistant ||
+                                                    seat.sessionWorking,
+                                                memberRunning:
+                                                    seat.memberRunning,
+                                                sessionWorking:
+                                                    seat.sessionWorking,
+                                                sessionConnecting:
+                                                    seat.sessionConnecting,
+                                              );
+                                          return SessionHistoryReviewMessages(
+                                            state: state,
+                                            runtime: historySeat.runtime,
+                                            onRetry: () =>
+                                                _loadHistory(force: true),
+                                            onLoadOlder: historySeat.loadOlder,
+                                            liveChrome: liveChrome,
+                                          );
+                                        },
+                                      ),
+                                      if (top != null)
+                                        Positioned.fill(
+                                          child: Material(
+                                            color: cs.surface,
+                                            child: SubagentPreviewScaffold(
+                                              title: previewTitle,
+                                              messages: top.messages,
+                                              emptyLabel:
+                                                  l10n.subagentPreviewEmpty,
+                                              backTooltip:
+                                                  l10n.subagentPreviewBack,
+                                              onBack: _subagentPreview.pop,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    if (top == null)
+                      Align(
+                        alignment: Alignment.topCenter,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxWidth: kSessionHistoryColumnMaxWidth,
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(
+                              spacing.md,
+                              0,
+                              spacing.md,
+                              spacing.lg,
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                AgentPermissionAttentionBanner(
+                                  session: widget.session,
+                                  selectedMemberId: widget.selectedMemberId,
+                                ),
+                                if (widget.isMailboxUnread != null)
+                                  HistoryMailboxQueuedStrip(
+                                    key: ValueKey(
+                                      'mailbox-queued-$_mailboxQueuedClearToken',
+                                    ),
+                                    submissions: _mailboxQueued.stream,
+                                    isUnread: widget.isMailboxUnread!,
+                                    clearToken: _mailboxQueuedClearToken,
+                                    onConsumed: (msg) {
+                                      if (!mounted) return;
+                                      final seatKey = _mailboxQueuedSeats
+                                          .remove(msg.id);
+                                      if (seatKey != _mailboxSeatKey()) {
+                                        return;
+                                      }
+                                      // Mail is read in the bus log now —
+                                      // refresh the merged timeline so the
+                                      // message appears as real history.
+                                      unawaited(
+                                        _seat?.refreshMailboxTimeline(),
+                                      );
+                                    },
+                                  ),
+                                SessionReviewComposeCard(
+                                  floating: true,
+                                  controller: _controller,
+                                  focusNode: _focusNode,
+                                  hint: l10n.sessionHistoryComposeHint,
+                                  canSubmit: canSubmit,
+                                  isSubmitting: _isSubmitting,
+                                  composeEnabled: !permissionWaiting,
+                                  onSubmit: () => unawaited(_handleSubmit()),
+                                  onChanged: (_) => setState(() {}),
+                                  attachTooltip:
+                                      l10n.workspaceChatLandingAttach,
+                                  enhanceTooltip:
+                                      l10n.workspaceChatLandingEnhance,
+                                  voiceTooltip:
+                                      l10n.workspaceChatLandingVoice,
+                                  voiceCancelTooltip:
+                                      l10n.workspaceChatLandingVoiceCancel,
+                                  voiceStopTooltip:
+                                      l10n.workspaceChatLandingVoiceStop,
+                                  isEnhancing: _enhancing,
+                                  isVoiceListening: _voiceListening,
+                                  voiceElapsed: _voiceElapsed,
+                                  voiceSoundLevel: _voiceSoundLevel,
+                                  onAttach: () => unawaited(_attachFiles()),
+                                  onEnhance: () => unawaited(_enhancePrompt()),
+                                  onVoice: () => unawaited(_toggleVoice()),
+                                  onVoiceCancel: () =>
+                                      unawaited(_cancelVoice()),
+                                  onVoiceStop: () => unawaited(_stopVoice()),
+                                  workspaceRoot: _workspaceRoot,
+                                  skills: skills,
+                                  plugins: plugins,
+                                  slashBundle: _slashBundle(context),
+                                  launchError: widget.launchError,
+                                  onRemapDeadTarget: widget.onRemapDeadTarget,
+                                  onPasteImage: _pasteComposeImage,
+                                  identityLabel: identityLabel,
+                                  identityIcon: session.isSimple
+                                      ? Icons.psychology_outlined
+                                      : Icons.groups_outlined,
+                                  sameCliPresets: sameCliPresets,
+                                  selectedPresetId: selectedPresetId,
+                                  modelPresetLabel: modelLabel,
+                                  emptyPresetHintLabel:
+                                      l10n.workspaceCliPresetsEmptyHint,
+                                  onPresetSelected: (presetId) => unawaited(
+                                    _onPresetSelected(
+                                      presetId: presetId,
+                                      team: team,
+                                      sameCliPresets: sameCliPresets,
+                                      lockedCli: lockedCli,
+                                    ),
+                                  ),
+                                  dangerouslySkipPermissions:
+                                      _effectivePermission(
+                                        session: session,
+                                        team: team,
+                                      ),
+                                  defaultPermissionsLabel: l10n
+                                      .workspaceChatLandingDefaultPermissions,
+                                  fullAccessPermissionsLabel: l10n
+                                      .workspaceChatLandingFullAccessPermissions,
+                                  onPermissionSelected: (value) => unawaited(
+                                    _onPermissionSelected(
+                                      value: value,
+                                      team: team,
+                                    ),
+                                  ),
+                                  teamSettingsTooltip: showTeamSettings
+                                      ? l10n.teamSettings
+                                      : null,
+                                  onTeamSettings: showTeamSettings
+                                      ? () => unawaited(
+                                          _openTeamSettings(team),
+                                        )
+                                      : null,
+                                  showTeamSettingsAttention:
+                                      teamSettingsAttention,
+                                ),
+                              ],
                             ),
                           ),
-                          userBubbleColor: cs.surfaceContainerHighest,
-                          userBubbleForeground: cs.onSurface,
-                          mutedSurface: cs.surfaceContainerHighest.withValues(
-                            alpha: 0.55,
-                          ),
-                          toolTriggerColor: cs.onSurfaceVariant,
-                          messageSpacing: 24,
-                          threadMaxWidth: kSessionHistoryColumnMaxWidth,
-                          threadHorizontalPadding: spacing.md,
-                          cotExpandReasoningOnOpen: expandReasoning,
-                          cotExpandToolsOnOpen: expandTools,
                         ),
-                      ],
-                    ),
-                    child: AiToolFileActionsScope(
-                      actions: AiToolFileActions(
-                        onOpenFile: (target) async {
-                          final fs = WorkspaceToolsScope.maybeOf(
-                            context,
-                          )?.tools?.context.filesystem;
-                          if (fs == null) return;
-                          final coordinator = AiToolFileOpenCoordinator(
-                            opener: context.read<WorkbenchEditorOpener>(),
-                            editor: context.read<EditorCubit>(),
-                          );
-                          final result = await coordinator.openToolFile(
-                            workspaceId: widget.session.workspaceId,
-                            target: target,
-                            sessionWorkingDirectory: _workspaceRoot.isEmpty
-                                ? null
-                                : _workspaceRoot,
-                            workspaceFolderPaths: _launchContext.folderCatalog
-                                .map((f) => f.path)
-                                .toList(),
-                            fs: fs,
-                          );
-                          if (!context.mounted) return;
-                          if (result.isMissing) {
-                            AppToast.show(
-                              context,
-                              message: l10n.aiToolFileNotFound(target.path),
-                              variant: TpToastVariant.warning,
-                            );
-                          }
-                        },
                       ),
-                      child: AiMessageStringsScope(
-                        strings: AiMessageStrings(
-                          usedTool: l10n.aiMessageUsedTool,
-                          cancelledTool: l10n.aiMessageCancelledTool,
-                          formatToolsUsed: l10n.aiMessageToolsUsed,
-                          reasoning: l10n.aiMessageReasoning,
-                          result: l10n.aiMessageToolResult,
-                          copy: l10n.copy,
-                          copied: l10n.aiMessageCopied,
-                          exportMarkdown: l10n.aiMessageExportMarkdown,
-                          messageIncomplete: l10n.aiMessageIncomplete,
-                          messageCancelled: l10n.aiMessageCancelled,
-                          scrollToBottom: l10n.aiMessageScrollToBottom,
-                          showMore: l10n.aiMessageShowMore,
-                          showLess: l10n.aiMessageShowLess,
-                          thinkingProcess: l10n.aiMessageThinkingProcess,
-                          formatThinkingProcessSteps: (count) =>
-                              l10n.aiMessageThinkingProcessSteps(count as int),
-                        ),
-                        child: BlocBuilder<AiHistorySeat, AiHistoryState>(
-                        bloc: _seat,
-                        builder: (context, state) {
-                          final historySeat = _seat;
-                          if (historySeat == null) {
-                            return const SizedBox.shrink();
-                          }
-                          final seat = context
-                              .select<
-                                ChatCubit,
-                                ({
-                                  bool sessionWorking,
-                                  bool sessionConnecting,
-                                  bool memberRunning,
-                                  int stateVersion,
-                                })
-                              >((c) {
-                                final sid = widget.session.sessionId;
-                                final connectingId =
-                                    c.state.sessionConnectingId;
-                                return (
-                                  sessionWorking: c.state.workingSessionIds
-                                      .contains(sid),
-                                  sessionConnecting:
-                                      connectingId == sid ||
-                                      connectingId == 'pending',
-                                  memberRunning: c.isMemberRunning(
-                                    sessionId: sid,
-                                    memberId: _shellMemberId,
-                                  ),
-                                  // Connect completion bumps this so PTY-up rebuilds.
-                                  stateVersion: c.state.stateVersion,
-                                );
-                              });
-                          final liveChrome = SessionHistoryLiveChromeX.resolve(
-                            turnInFlight:
-                                _isSubmitting ||
-                                state.awaitingAssistant ||
-                                seat.sessionWorking,
-                            memberRunning: seat.memberRunning,
-                            sessionWorking: seat.sessionWorking,
-                            sessionConnecting: seat.sessionConnecting,
-                          );
-                          return SessionHistoryReviewMessages(
-                            state: state,
-                            runtime: historySeat.runtime,
-                            onRetry: () => _loadHistory(force: true),
-                            onLoadOlder: historySeat.loadOlder,
-                            liveChrome: liveChrome,
-                          );
-                        },
-                      ),
-                    ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: kSessionHistoryColumnMaxWidth,
-                ),
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    spacing.md,
-                    0,
-                    spacing.md,
-                    spacing.lg,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      AgentPermissionAttentionBanner(
-                        session: widget.session,
-                        selectedMemberId: widget.selectedMemberId,
-                      ),
-                      if (widget.isMailboxUnread != null)
-                        HistoryMailboxQueuedStrip(
-                          key: ValueKey(
-                            'mailbox-queued-$_mailboxQueuedClearToken',
-                          ),
-                          submissions: _mailboxQueued.stream,
-                          isUnread: widget.isMailboxUnread!,
-                          clearToken: _mailboxQueuedClearToken,
-                          onConsumed: (msg) {
-                            if (!mounted) return;
-                            final seatKey = _mailboxQueuedSeats.remove(msg.id);
-                            if (seatKey != _mailboxSeatKey()) return;
-                            // Mail is read in the bus log now — refresh the
-                            // merged timeline so the message appears as real
-                            // history.
-                            unawaited(_seat?.refreshMailboxTimeline());
-                          },
-                        ),
-                      SessionReviewComposeCard(
-                        floating: true,
-                        controller: _controller,
-                        focusNode: _focusNode,
-                        hint: l10n.sessionHistoryComposeHint,
-                        canSubmit: canSubmit,
-                        isSubmitting: _isSubmitting,
-                        composeEnabled: !permissionWaiting,
-                        onSubmit: () => unawaited(_handleSubmit()),
-                        onChanged: (_) => setState(() {}),
-                        attachTooltip: l10n.workspaceChatLandingAttach,
-                        enhanceTooltip: l10n.workspaceChatLandingEnhance,
-                        voiceTooltip: l10n.workspaceChatLandingVoice,
-                        voiceCancelTooltip:
-                            l10n.workspaceChatLandingVoiceCancel,
-                        voiceStopTooltip: l10n.workspaceChatLandingVoiceStop,
-                        isEnhancing: _enhancing,
-                        isVoiceListening: _voiceListening,
-                        voiceElapsed: _voiceElapsed,
-                        voiceSoundLevel: _voiceSoundLevel,
-                        onAttach: () => unawaited(_attachFiles()),
-                        onEnhance: () => unawaited(_enhancePrompt()),
-                        onVoice: () => unawaited(_toggleVoice()),
-                        onVoiceCancel: () => unawaited(_cancelVoice()),
-                        onVoiceStop: () => unawaited(_stopVoice()),
-                        workspaceRoot: _workspaceRoot,
-                        skills: skills,
-                        plugins: plugins,
-                        slashBundle: _slashBundle(context),
-                        launchError: widget.launchError,
-                        onRemapDeadTarget: widget.onRemapDeadTarget,
-                        onPasteImage: _pasteComposeImage,
-                        identityLabel: identityLabel,
-                        identityIcon: session.isSimple
-                            ? Icons.psychology_outlined
-                            : Icons.groups_outlined,
-                        sameCliPresets: sameCliPresets,
-                        selectedPresetId: selectedPresetId,
-                        modelPresetLabel: modelLabel,
-                        emptyPresetHintLabel: l10n.workspaceCliPresetsEmptyHint,
-                        onPresetSelected: (presetId) => unawaited(
-                          _onPresetSelected(
-                            presetId: presetId,
-                            team: team,
-                            sameCliPresets: sameCliPresets,
-                            lockedCli: lockedCli,
-                          ),
-                        ),
-                        dangerouslySkipPermissions: _effectivePermission(
-                          session: session,
-                          team: team,
-                        ),
-                        defaultPermissionsLabel:
-                            l10n.workspaceChatLandingDefaultPermissions,
-                        fullAccessPermissionsLabel:
-                            l10n.workspaceChatLandingFullAccessPermissions,
-                        onPermissionSelected: (value) => unawaited(
-                          _onPermissionSelected(value: value, team: team),
-                        ),
-                        teamSettingsTooltip: showTeamSettings
-                            ? l10n.teamSettings
-                            : null,
-                        onTeamSettings: showTeamSettings
-                            ? () => unawaited(_openTeamSettings(team))
-                            : null,
-                        showTeamSettingsAttention: teamSettingsAttention,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
+                  ],
+                );
+              },
+            );
+          },
         ),
       ),
     );

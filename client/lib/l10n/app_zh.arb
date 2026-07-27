@@ -543,6 +543,17 @@
       }
     }
   },
+  "subagentPreviewUnavailable": "无法打开该子会话预览",
+  "subagentPreviewBack": "返回",
+  "subagentPreviewEmpty": "暂无子会话内容",
+  "subagentPreviewTitleAgent": "{title}",
+  "@subagentPreviewTitleAgent": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "sessionWorkbenchShowChat": "显示聊天",
   "sessionWorkbenchShowTerminal": "显示终端",
   "sessionReadyTitle": "准备开始对话",

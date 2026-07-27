@@ -1334,6 +1334,21 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get subagentPreviewUnavailable =>
+      'Subagent preview is unavailable for this tool call.';
+
+  @override
+  String get subagentPreviewBack => 'Back';
+
+  @override
+  String get subagentPreviewEmpty => 'No subagent content yet';
+
+  @override
+  String subagentPreviewTitleAgent(String title) {
+    return '$title';
+  }
+
+  @override
   String get sessionWorkbenchShowChat => 'Show Chat';
 
   @override

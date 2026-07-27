@@ -2486,6 +2486,30 @@ abstract class AppLocalizations {
   /// **'Could not find file: {path}'**
   String aiToolFileNotFound(String path);
 
+  /// No description provided for @subagentPreviewUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Subagent preview is unavailable for this tool call.'**
+  String get subagentPreviewUnavailable;
+
+  /// No description provided for @subagentPreviewBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get subagentPreviewBack;
+
+  /// No description provided for @subagentPreviewEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No subagent content yet'**
+  String get subagentPreviewEmpty;
+
+  /// No description provided for @subagentPreviewTitleAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'{title}'**
+  String subagentPreviewTitleAgent(String title);
+
   /// No description provided for @sessionWorkbenchShowChat.
   ///
   /// In en, this message translates to:

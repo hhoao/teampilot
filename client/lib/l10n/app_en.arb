@@ -568,6 +568,17 @@
       }
     }
   },
+  "subagentPreviewUnavailable": "Subagent preview is unavailable for this tool call.",
+  "subagentPreviewBack": "Back",
+  "subagentPreviewEmpty": "No subagent content yet",
+  "subagentPreviewTitleAgent": "{title}",
+  "@subagentPreviewTitleAgent": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "sessionWorkbenchShowChat": "Show Chat",
   "sessionWorkbenchShowTerminal": "Show Terminal",
   "sessionReadyTitle": "Ready to chat",

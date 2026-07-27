@@ -14,6 +14,7 @@ class SubagentPreviewScaffold extends StatelessWidget {
     required this.messages,
     required this.onBack,
     required this.emptyLabel,
+    this.backTooltip = 'Back',
     this.threadBuilder,
     super.key,
   });
@@ -22,6 +23,7 @@ class SubagentPreviewScaffold extends StatelessWidget {
   final List<AiMessage> messages;
   final VoidCallback onBack;
   final String emptyLabel;
+  final String backTooltip;
 
   /// Optional custom thread body. Defaults to a list of [AiMessageView].
   final Widget Function(BuildContext context, List<AiMessage> messages)?
@@ -42,7 +44,7 @@ class SubagentPreviewScaffold extends StatelessWidget {
             child: Row(
               children: [
                 IconButton(
-                  tooltip: 'Back',
+                  tooltip: backTooltip,
                   onPressed: onBack,
                   icon: const Icon(Icons.arrow_back),
                 ),

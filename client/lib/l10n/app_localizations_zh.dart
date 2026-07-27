@@ -1270,6 +1270,20 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get subagentPreviewUnavailable => '无法打开该子会话预览';
+
+  @override
+  String get subagentPreviewBack => '返回';
+
+  @override
+  String get subagentPreviewEmpty => '暂无子会话内容';
+
+  @override
+  String subagentPreviewTitleAgent(String title) {
+    return '$title';
+  }
+
+  @override
   String get sessionWorkbenchShowChat => '显示聊天';
 
   @override
