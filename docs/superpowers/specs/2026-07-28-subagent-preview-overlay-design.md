@@ -122,10 +122,12 @@ Prefer Orca-aligned layout:
 
 ```
 {parentTranscriptDir}/{parentStem}/subagents/agent-{id}.jsonl
+{parentTranscriptDir}/{parentStem}/subagents/agent-{id}.meta.json
 ```
 
-Resolve `id` from tool args / result (`agent_id`, `agentId`, or equivalent).
-Parse with the existing Claude-compatible JSONL parser when bytes are available.
+Primary link: list meta files, match `toolUseId` to the tool row’s `toolCallId`, then
+read the sibling JSONL. Secondary: `agent_id` / `agentId` from tool args.
+Parse JSONL with the existing Claude-compatible parser when bytes are available.
 
 Other CLIs may supply an optional side-path hook on their history capability; if
 absent or file missing → tool-result degrade.
@@ -140,21 +142,19 @@ absent or file missing → tool-result degrade.
 | Stack top id disappears after reload | Silent prune to last id still in index, else clear overlay |
 | Inflate depth limit (8) | Create degrade attachments at max depth; do not recurse further |
 | Remote / SSH | Same workspace `Filesystem` as parent history |
-| Claude side match | Prefer `agent-*.meta.json` `toolUseId` → `toolCallId`; else args `agentId` |
 | Soft reload rebuild | Seat state includes attachment epoch so open overlay refreshes with parent reload |
 
-## Side transcript resolution (Claude / compatible)
+## Testing
 
-Prefer Orca-aligned layout:
+- Unit: tool-name gate; Claude path join; meta `toolUseId` match; hit vs miss degrade; recursion cap; stack push/pop/prune on index shrink.
+- Widget: Agent row opens overlay; no compose; back pops; nested push; file open still works inside preview.
+- Host: seat reload bumps epoch and open preview content updates.
+- Fixtures over live Agent matrix for v1; optional one Claude fixture smoke later.
 
-```
-{parentTranscriptDir}/{parentStem}/subagents/agent-{id}.jsonl
-{parentTranscriptDir}/{parentStem}/subagents/agent-{id}.meta.json
-```
+## Out of scope
 
-Primary link: list meta files, match `toolUseId` to the tool row’s `toolCallId`, then
-read the sibling JSONL. Secondary: `agent_id` / `agentId` from tool args.
-Parse JSONL with the existing Claude-compatible parser when bytes are available.
-
-Other CLIs may supply an optional side-path hook on their history capability; if
-absent or file missing → tool-result degrade.
+- Dedicated watch on `subagents/` independent of parent transcript mtime
+- Writing / continuing inside the subagent preview
+- Listing all subagents in a side panel
+- Enabling `Agent` in personal launches (still controlled by CLI disallow lists)
+- Changing TeamBus / multi-member roster semantics
