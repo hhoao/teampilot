@@ -198,9 +198,11 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   }
 
   void _reloadDraftIfRouteExpertChanged() {
-    // Widget tests may mount landing under MaterialApp without a GoRouter.
-    if (GoRouter.maybeOf(context) == null) return;
-    final location = GoRouterState.of(context).uri.toString();
+    // GoRouterState.of walks up to the enclosing GoRoute page and throws when
+    // there is none: widget tests mount landing under a plain MaterialApp, and
+    // Selection → Ask AI mounts it inside a showDialog route.
+    final location = GoRouter.maybeOf(context)?.state.uri.toString();
+    if (location == null) return;
     final routeExpert = HomeWorkspaceRoute.expert(location);
     if (routeExpert == _lastRouteExpert) return;
     _lastRouteExpert = routeExpert;

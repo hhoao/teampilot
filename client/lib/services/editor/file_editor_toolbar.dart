@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -17,9 +18,18 @@ import 'file_editor_ai_context.dart';
 
 /// Desktop/mobile context menu for [CodeEditor] (right-click / long-press).
 class FileEditorContextMenuController implements SelectionToolbarController {
-  const FileEditorContextMenuController({required this.onMenuOpenChanged});
+  const FileEditorContextMenuController({
+    required this.onMenuOpenChanged,
+    this.workspaceId,
+    this.filePath,
+  });
 
   final ValueChanged<bool> onMenuOpenChanged;
+
+  /// Owning editor pane, when known. Falls back to the active workbench file
+  /// tab for editors mounted outside a workspace pane.
+  final String? workspaceId;
+  final String? filePath;
 
   @override
   void hide(BuildContext context) {}
@@ -35,15 +45,17 @@ class FileEditorContextMenuController implements SelectionToolbarController {
   }) {
     final l10n = context.l10n;
     final editorCubit = context.read<EditorCubit>();
-    final workbench = context.read<WorkbenchCubit>();
-    String? path;
-    String? workspaceId;
-    for (final entry in workbench.state.byWorkspace.entries) {
-      final active = entry.value.activeTabId;
-      if (active?.kind == WorkbenchTabKind.file) {
-        path = active!.id;
-        workspaceId = entry.key;
-        break;
+    String? path = filePath;
+    String? workspaceId = this.workspaceId;
+    if (path == null || workspaceId == null) {
+      final workbench = context.read<WorkbenchCubit>();
+      for (final entry in workbench.state.byWorkspace.entries) {
+        final active = entry.value.activeTabId;
+        if (active?.kind == WorkbenchTabKind.file) {
+          path = active!.id;
+          workspaceId = entry.key;
+          break;
+        }
       }
     }
     final readOnly =
@@ -85,7 +97,10 @@ class FileEditorContextMenuController implements SelectionToolbarController {
               .read<ChatCubit>()
               .state
               .workspaces
-              .firstWhere((candidate) => candidate.workspaceId == workspaceId);
+              .firstWhereOrNull(
+                (candidate) => candidate.workspaceId == workspaceId,
+              );
+          if (workspace == null) return;
           unawaited(
             SelectionAskAi.openComposeDialog(
               context,

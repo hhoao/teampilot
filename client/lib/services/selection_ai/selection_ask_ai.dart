@@ -114,8 +114,8 @@ class _SelectionAskAiDialogState extends State<_SelectionAskAiDialog> {
       await persistLandingDraft(workspace.workspaceId, draft);
 
       if (!mounted) return;
-      final chat = context.read<ChatCubit>();
-      final activeSessionBefore = chat.state.activeSessionId;
+      // Delivery (connect + inject) keeps running on captured cubits after the
+      // dialog closes, exactly like the Chat landing pane which unmounts here.
       await submitWorkspaceLandingMessage(
         context,
         workspace,
@@ -123,13 +123,10 @@ class _SelectionAskAiDialogState extends State<_SelectionAskAiDialog> {
         message: message,
         workingDirectory: workingDirectory,
         expertKey: draft.expertKey,
+        onSessionOpened: (_) {
+          if (mounted) Navigator.of(context).pop();
+        },
       );
-      if (!mounted) return;
-      final activeSessionAfter = chat.state.activeSessionId;
-      if (activeSessionAfter != null &&
-          activeSessionAfter != activeSessionBefore) {
-        Navigator.of(context).pop();
-      }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

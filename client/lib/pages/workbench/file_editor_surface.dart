@@ -282,6 +282,8 @@ class _CodeEditorPaneState extends State<_CodeEditorPane> {
       readOnly: widget.readOnly,
       toolbarController: FileEditorContextMenuController(
         onMenuOpenChanged: _setMenuOpen,
+        workspaceId: widget.workspaceId,
+        filePath: widget.path,
       ),
       style: codeEditorStyleFor(
         context,
