@@ -8,6 +8,11 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/codex/codex_agent_status_overlay.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 
+String _bashHookFileName(String baseName) =>
+    HostExecutionEnvironment.resolve(isWindowsHost: false)
+        .scriptRunner
+        .hookFileName(baseName);
+
 void main() {
   group('CodexAgentStatusOverlay', () {
     late Directory root;
@@ -51,19 +56,28 @@ void main() {
         expect(toml, contains('type = "command"'));
         expect(toml, contains('teampilot-agent-status-UserPromptSubmit'));
 
-        final scriptName = host.scriptRunner.hookFileName(
-          'teampilot-agent-status-UserPromptSubmit',
+        final scriptPath = p.join(
+          root.path,
+          'hooks',
+          _bashHookFileName('teampilot-agent-status-UserPromptSubmit'),
         );
-        final scriptPath = p.join(root.path, 'hooks', scriptName);
         expect(await File(scriptPath).exists(), isTrue);
         final script = await File(scriptPath).readAsString();
         expect(script, contains('TEAMPILOT_AGENT_STATUS_URL'));
-        expect(
-          script,
-          contains(Platform.isWindows ? 'curl.exe' : 'curl -sS'),
-        );
+        expect(script, contains('curl -sS'));
         expect(script, contains('hook_event_name'));
         expect(script, contains('UserPromptSubmit'));
+        if (Platform.isWindows) {
+          final winScript = p.join(
+            root.path,
+            'hooks',
+            host.scriptRunner.hookFileName(
+              'teampilot-agent-status-UserPromptSubmit-win',
+            ),
+          );
+          expect(await File(winScript).exists(), isTrue);
+          expect(await File(winScript).readAsString(), contains('curl.exe'));
+        }
       },
     );
 
@@ -76,11 +90,12 @@ void main() {
         endpoint: remoteEndpoint,
       );
       expect(toml, contains('teampilot-agent-status'));
-      final scriptName = host.scriptRunner.hookFileName(
-        'teampilot-agent-status-PermissionRequest',
-      );
       final script = await File(
-        p.join(root.path, 'hooks', scriptName),
+        p.join(
+          root.path,
+          'hooks',
+          _bashHookFileName('teampilot-agent-status-PermissionRequest'),
+        ),
       ).readAsString();
       expect(script, contains("'X-Bus-Token: sess-tok'"));
       if (Platform.isWindows) {

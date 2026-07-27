@@ -123,8 +123,8 @@ void main() {
         // Park worker first (recipe order); idle-announce may doorbell the
         // lead — compose runs after bootComposeSeatToPrompt.
         const prompt = 'matrix mixed collab please coordinate';
-        final leadBefore =
-            harness.gateway!.requestCountFor(leadScriptApiKey);
+        final leadScenarioTurns =
+            mixedCollab3PlusScenarios()[leadScriptApiKey]!.turns.length;
         final result = await harness.parkWorkerAndComposeOnLead(prompt);
         expect(
           result.ok,
@@ -136,7 +136,7 @@ void main() {
         await harness.waitForBusPingPong();
         await harness.waitForGatewayTurns(
           apiKey: leadScriptApiKey,
-          minTurns: leadBefore + 3,
+          minTurns: leadScenarioTurns,
         );
         expect(
           harness.gateway!.requestCountFor(workerScriptApiKey),

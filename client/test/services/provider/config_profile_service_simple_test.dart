@@ -9,6 +9,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/provider/cursor/cursor_workspace_trust.dart';
+import 'package:teampilot/services/provider/cursor/cursor_windows_home_junction.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
@@ -32,12 +33,13 @@ String _simpleSessionClaudeDir(
 
 void main() {
   late Directory base;
+  late LocalFilesystem fs;
   late ConfigProfileService service;
 
   setUp(() async {
     setUpTestAppStorage();
     base = Directory(AppStorage.paths.basePath);
-    final fs = LocalFilesystem();
+    fs = LocalFilesystem();
     service = ConfigProfileService(
       basePath: base.path,
       home: p.join(base.path, 'user-home'),
@@ -159,7 +161,11 @@ void main() {
         'runtime',
         'cursor',
       );
-      final home = p.join(cursorDir, 'home');
+      final canonicalHome = p.join(cursorDir, 'home');
+      final home = await CursorWindowsHomeJunction.ensureAgentHome(
+        fs: fs,
+        canonicalHome: canonicalHome,
+      );
       expect(await Directory(cursorDir).exists(), isTrue);
       expect(outcome.environment['HOME'], home);
       expect(outcome.environment['CURSOR_CONFIG_DIR'], p.join(home, '.cursor'));

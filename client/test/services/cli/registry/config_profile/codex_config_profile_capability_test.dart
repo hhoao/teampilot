@@ -7,6 +7,11 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/codex/codex_team_bus_overlay.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 
+String _bashHookFileName(String baseName) =>
+    HostExecutionEnvironment.resolve(isWindowsHost: false)
+        .scriptRunner
+        .hookFileName(baseName);
+
 void main() {
   group('CodexTeamBusOverlay', () {
     late Directory root;
@@ -58,10 +63,11 @@ void main() {
       expect(toml, contains('type = "command"'));
       expect(toml, contains('teampilot-team-bus-stop'));
 
-      final scriptName = host.scriptRunner.hookFileName(
-        'teampilot-team-bus-stop',
+      final scriptPath = p.join(
+        root.path,
+        'hooks',
+        _bashHookFileName('teampilot-team-bus-stop'),
       );
-      final scriptPath = p.join(root.path, 'hooks', scriptName);
       expect(await File(scriptPath).exists(), isTrue);
       final script = await File(scriptPath).readAsString();
       expect(script, contains('http://127.0.0.1:54321/idle'));
@@ -105,11 +111,8 @@ void main() {
         memberId: 'worker-1',
         idle: idle,
       );
-      final scriptName = host.scriptRunner.hookFileName(
-        'teampilot-team-bus-stop',
-      );
       final script = await File(
-        p.join(root.path, 'hooks', scriptName),
+        p.join(root.path, 'hooks', _bashHookFileName('teampilot-team-bus-stop')),
       ).readAsString();
       expect(script, contains('sess-tok'));
       expect(toml, contains('teampilot-team-bus-stop'));

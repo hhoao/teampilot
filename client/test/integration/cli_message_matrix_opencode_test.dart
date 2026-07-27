@@ -131,8 +131,8 @@ void main() {
         // Park worker first (recipe order); idle-announce may doorbell the
         // lead — compose runs after bootComposeSeatToPrompt.
         const prompt = 'matrix mixed collab please coordinate';
-        final leadBefore =
-            harness.gateway!.requestCountFor(leadScriptApiKey);
+        final leadScenarioTurns =
+            mixedCollab3PlusScenarios()[leadScriptApiKey]!.turns.length;
         final result = await harness.parkWorkerAndComposeOnLead(prompt);
         expect(
           result.ok,
@@ -142,11 +142,9 @@ void main() {
         );
 
         await harness.waitForBusPingPong();
-        // Lead script is 6 turns (list/send/MARK_LEAD_1/wait/MARK_LEAD_2/DONE).
-        // OpenCode may finish wait+final markers after ping/pong settles.
         await harness.waitForGatewayTurns(
           apiKey: leadScriptApiKey,
-          minTurns: leadBefore + 6,
+          minTurns: leadScenarioTurns,
         );
         expect(
           harness.gateway!.requestCountFor(workerScriptApiKey),

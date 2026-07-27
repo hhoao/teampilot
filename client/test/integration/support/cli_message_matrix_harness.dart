@@ -528,6 +528,9 @@ final class CliMessageMatrixHarness {
       workerBaseline: server.requestCountFor(workerScriptApiKey),
     );
     await bootComposeSeatToPrompt(timeout: timeout);
+    // Worker idle-announce may doorbell the lead and consume scripted gateway
+    // turns before History compose; reset so collab replays from turn 0.
+    server.resetScenarios();
     return submitCompose(prompt);
   }
 
