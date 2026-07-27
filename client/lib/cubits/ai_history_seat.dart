@@ -313,6 +313,47 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     }
   }
 
+  /// Re-merges [_cliMessages] with freshly loaded mailbox records — used
+  /// after a Queued mail is consumed. Unlike [softReload], the CLI transcript
+  /// itself is never re-parsed here; only the mailbox side of the merge is
+  /// refreshed, so a newly-read mail can be promoted without waiting for (or
+  /// forcing) a CLI reload.
+  Future<void> refreshMailboxTimeline() async {
+    final session = _lastSession;
+    final memberId = _lastMemberId;
+    if (session == null || memberId == null) return;
+
+    final gen = _loadGeneration;
+    final sessionId = session.sessionId;
+
+    try {
+      final mailboxRecords = await _safeLoadMailboxRecords(
+        sessionId,
+        memberId,
+      );
+      if (gen != _loadGeneration || isClosed) return;
+      if (session.sessionId != (_lastSession?.sessionId ?? '') ||
+          memberId != _lastMemberId) {
+        return;
+      }
+
+      final merged = buildConversationTimeline(
+        cliMessages: _cliMessages,
+        mailboxRecords: mailboxRecords,
+      ).messages;
+      _applySoftReloadMessages(merged, sessionId, memberId);
+    } catch (e, st) {
+      appLogger.e(
+        '[ai-history] seat refreshMailboxTimeline failed session=$sessionId '
+        'member=$memberId: $e',
+        error: e,
+        stackTrace: st,
+      );
+      if (gen != _loadGeneration || isClosed) return;
+      emit(state.copyWith(softReloadError: e.toString()));
+    }
+  }
+
   /// Review remount: soft when already ready for this seat, else cold load.
   Future<void> softReloadOrLoad({
     required AppSession session,

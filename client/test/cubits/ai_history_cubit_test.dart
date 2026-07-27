@@ -734,6 +734,92 @@ void main() {
   );
 
   test(
+    'refreshMailboxTimeline merges a newly read mailbox mail after consume',
+    () async {
+      holderMessages = [
+        AiMessage(
+          id: 'u-1',
+          role: AiRole.user,
+          parts: const [AiTextPart(text: 'cli user')],
+          createdAt: DateTime.fromMillisecondsSinceEpoch(1000),
+        ),
+      ];
+      locator.emitBundle = true;
+
+      var mailboxRecords = <LoggedMessage>[];
+      await cubit.close();
+      cubit = AiHistoryCubit(
+        loader: loader,
+        loadMailboxRecords: (sessionId, memberId) async => mailboxRecords,
+      );
+
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+      expect(seatRuntime().messages.map((m) => m.id).toList(), ['u-1']);
+
+      // Simulate SessionChatView's onConsumed: the Queued strip observed the
+      // mail is no longer unread and asks History to refresh the merge —
+      // no CLI reload involved.
+      mailboxRecords = [
+        LoggedMessage(
+          seq: 0,
+          message: const TeamMessage(
+            id: 'mail-1',
+            from: TeamBus.userSenderId,
+            to: 'dev',
+            content: 'mailbox user',
+          ),
+          createdAt: 2000,
+          read: true,
+        ),
+      ];
+
+      await cubit.refreshMailboxTimeline();
+
+      final ids = seatRuntime().messages.map((m) => m.id).toList();
+      expect(ids, ['u-1', 'mailbox:mail-1']);
+      final mailboxMsg = seatRuntime().messages.last;
+      expect(mailboxMsg.deliveryChannel, 'mailbox');
+    },
+  );
+
+  test(
+    'refreshMailboxTimeline degrades to CLI-only when the mailbox loader '
+    'throws',
+    () async {
+      holderMessages = messages(2);
+      locator.emitBundle = true;
+
+      await cubit.close();
+      cubit = AiHistoryCubit(
+        loader: loader,
+        loadMailboxRecords: (sessionId, memberId) async =>
+            throw StateError('mailbox boom'),
+      );
+
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+      expect(seatRuntime().messages.map((m) => m.id).toList(), [
+        'm-0',
+        'm-1',
+      ]);
+
+      await cubit.refreshMailboxTimeline();
+
+      expect(seatRuntime().messages.map((m) => m.id).toList(), [
+        'm-0',
+        'm-1',
+      ]);
+    },
+  );
+
+  test(
     'softReload with a transient empty CLI parse keeps prior CLI history '
     'and still merges a new read mailbox message (no wipe)',
     () async {

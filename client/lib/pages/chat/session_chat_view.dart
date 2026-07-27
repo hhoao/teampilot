@@ -1134,10 +1134,10 @@ class _SessionChatViewState extends State<SessionChatView> {
                             if (!mounted) return;
                             final seatKey = _mailboxQueuedSeats.remove(msg.id);
                             if (seatKey != _mailboxSeatKey()) return;
-                            _seat?.appendStickyLocalUser(
-                              id: 'mailbox:${msg.id}',
-                              text: msg.content,
-                            );
+                            // Mail is read in the bus log now — refresh the
+                            // timeline merge instead of a sticky bubble so
+                            // the promoted message survives as real history.
+                            unawaited(_seat?.refreshMailboxTimeline());
                           },
                         ),
                       SessionReviewComposeCard(
