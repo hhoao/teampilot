@@ -12,12 +12,14 @@ existing “Used tool: …” chrome.
 | Topic | Choice |
 |-------|--------|
 | Row chrome | Agent summary: `{tool} {basename} [Lstart–Lend?]` |
-| Tool scope (v1) | Read/write/edit family only |
-| Click filename | Open in workbench editor + select line range |
+| Tool scope (v1) | Explicit name set below (read / write / edit family) |
+| Click basename **or** line-range text | Same `onOpenFile` — open editor + select line range |
 | Click rest of row | Toggle expand args/result |
+| Path resolve | Prefer session working directory, then active workspace folder roots; absolute paths as-is |
 | Architecture | Pluggable resolver → structured target → host open handler |
 | Transcript adapters | Unchanged — extract from existing `args` / `argsText` |
 | Non-file tools | Keep current “Used tool: {name}” row |
+| No `onOpenFile` | Render summary; basename uses default cursor and is non-interactive (not a fake button) |
 
 ## Problem
 
@@ -72,18 +74,35 @@ abstract class AiToolFileTargetResolver {
 
 Built-in `DefaultAiToolFileTargetResolver`:
 
-- Match tool names case-insensitively against a rule table (v1: read / write /
-  edit family).
-- Path keys (first non-empty string wins): `file_path`, `path`, `file`,
-  `target_file` (and rule-specific aliases).
+**v1 tool names** (case-insensitive exact match):
+
+- Read family: `Read`, `ReadFile`, `read_file`
+- Write family: `Write`, `WriteFile`, `write_file`, `Create`, `create_file`
+- Edit family: `Edit`, `StrReplace`, `ApplyPatch`, `EditNotebook`, `NotebookEdit`
+
+**`AiToolFileTargetRule` shape:**
+
+```dart
+class AiToolFileTargetRule {
+  const AiToolFileTargetRule({
+    required this.toolNames,   // lowercased match set
+    this.pathKeys = const ['file_path', 'path', 'file', 'target_file'],
+    this.startLineKeys = const ['start_line', 'startLine'],
+    this.endLineKeys = const ['end_line', 'endLine'],
+    this.useOffsetLimit = false, // Read: offset+limit → line range
+  });
+}
+```
+
+- Path keys (first non-empty string wins) per rule.
 - Line extraction (best-effort):
-  - `start_line` / `end_line` (or `startLine` / `endLine`)
-  - Claude-style `offset` + `limit` → `start = offset`, `end = offset+limit-1`
-    when both look like line numbers
+  - `start_line` / `end_line` (or camelCase variants) from args
+  - When `useOffsetLimit`: Claude-style `offset` + `limit` →
+    `start = offset`, `end = offset+limit-1` when both parse as ints ≥ 1
   - Fallback parse from `argsText` patterns like `L110-189` / `L110`
 - Empty / unparseable path → `null` (legacy chrome).
 
-Rules are data-driven (`AiToolFileTargetRule`) so hosts can compose
+Hosts may compose
 `CompositeAiToolFileTargetResolver([custom, Default…])` without forking the
 widget.
 
@@ -93,10 +112,10 @@ widget.
 
 - Leading status icon (unchanged).
 - Body: tool short name + space + **tappable basename** (link styling) + optional
-  muted `L{start}` or `L{start}–{end}`.
+  muted `L{start}` or `L{start}–{end}` (same tap target as basename).
 - Trailing chevron for expand.
 - Hit testing:
-  - Basename (and its line-range text treated as same action) → `onOpenFile`
+  - Basename **or** line-range text → `onOpenFile`
   - Remaining row / chevron → toggle expand
 - Do **not** prefix with “Used tool:” on summary rows.
 
@@ -117,8 +136,8 @@ class AiToolFileActions {
 ```
 
 Provided via InheritedWidget / Theme-adjacent scope from the chat host. If
-`onOpenFile` is null, still render summary text but basename is not interactive
-(or no-op with disabled cursor).
+`onOpenFile` is null, still render summary text; basename is plain text
+(non-interactive, default cursor) — do not wrap in a no-op button.
 
 Nested CoT tool rows and standalone tool rows share the same `AiToolCallPartView`
 path — one chrome implementation.
@@ -137,17 +156,19 @@ Future<void> openToolFile({
 
 Behavior:
 
-1. Normalize `target.path` (expand relative to active workspace folder / session
-   working directory using existing path helpers).
-2. If file cannot be resolved / does not exist → user-visible error (snackbar /
-   l10n); do not throw into the gesture handler.
-3. `WorkbenchEditorOpener.openFile(workspaceId, absolutePath)`.
-4. After content is ready, apply selection:
+1. Normalize `target.path`:
+   - Absolute → use as-is (still subject to workspace fs existence checks).
+   - Relative → try resolve against **session working directory first**, then
+     each **active workspace folder root**; first existing file wins.
+   - If none exist → user-visible error (snackbar / l10n); do not throw into
+     the gesture handler.
+2. `WorkbenchEditorOpener.openFile(workspaceId, absolutePath)`.
+3. After content is ready, apply selection:
    - Lines are 1-based in the target; convert to 0-based `CodeLineSelection`
      spanning start line offset 0 through end line end-of-line (clamp to
      document).
    - Reveal selection in viewport.
-5. SSH / WSL: use the workspace’s bound filesystem — same as file-tree open.
+4. SSH / WSL: use the workspace’s bound filesystem — same as file-tree open.
 
 Wire `AiToolFileActions` in `session_chat_view` Theme / strings scope so History
 and live chat inherit one handler.
