@@ -154,24 +154,27 @@ path — one chrome implementation.
 Future<void> openToolFile({
   required String workspaceId,
   required AiToolFileTarget target,
-  Filesystem? fs,
+  required Filesystem fs,
 });
 ```
+
+Host must pass the workspace-bound `Filesystem` (same instance for resolve + open).
 
 Behavior:
 
 1. Normalize `target.path`:
    - Absolute → use as-is (still subject to workspace fs existence checks).
    - Relative → try resolve against **session working directory first**, then
-     each **active workspace folder root**; first existing file wins.
-   - If none exist → user-visible error (snackbar / l10n); do not throw into
+     each **active workspace folder root**; first existing **file** wins
+     (`(await fs.stat(p)).isFile`).
+   - If none exist → user-visible error (`AppToast` / l10n); do not throw into
      the gesture handler.
-2. `WorkbenchEditorOpener.openFile(workspaceId, absolutePath)`.
+2. `WorkbenchEditorOpener.openFile(workspaceId, absolutePath, fs: fs)`.
 3. After content is ready, apply selection:
    - Lines are 1-based in the target; convert to 0-based `CodeLineSelection`
      spanning start line offset 0 through end line end-of-line (clamp to
      document).
-   - Reveal selection in viewport.
+   - Reveal selection in viewport when feasible; v1 may be selection-only.
 4. SSH / WSL: use the workspace’s bound filesystem — same as file-tree open.
 
 Wire `AiToolFileActions` in `session_chat_view` Theme / strings scope so History
