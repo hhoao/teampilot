@@ -82,4 +82,25 @@ void main() {
     );
     expect(bus.deliverUserCommand('leader', '   '), isEmpty);
   });
+
+  test('memberMailRecords contains unread user mail after deliverUserCommand', () async {
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    bus.declareMember(
+      AgentNode.test(
+        memberId: 'leader',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      ),
+    );
+
+    final id = bus.deliverUserCommand('leader', 'hello');
+    expect(id, isNotEmpty);
+
+    final records = await bus.memberMailRecords('leader');
+    expect(records, hasLength(1));
+    expect(records.single.message.id, id);
+    expect(records.single.message.from, TeamBus.userSenderId);
+    expect(records.single.message.content, 'hello');
+    expect(records.single.read, isFalse);
+  });
 }
