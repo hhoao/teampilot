@@ -17,7 +17,7 @@ snapshot because remote commit SHA lookup returned HTTP 403.
 |-------|--------|
 | Scope | Shared coalesce primitive for skill + plugin; skill cache trust policy; git stderr diagnostics |
 | Concurrency | **Inflight coalesce by key** (share one `Future`), not merely serialize with `LockPool` |
-| Coalesce scope | **Process-wide**, keyed by `$cacheRoot\|$repoKey[|force]` — not per service instance |
+| Coalesce scope | **Process-wide**, keyed by `$cacheRoot\|$repoKey` — not per service instance |
 | Force | **Same coalesce key** as non-force (aligned with today’s plugin map). First caller’s `force` flag defines the in-flight work; a later `force=true` that joins a non-force run accepts that result (caller may invoke force again). Distinct `\|force` keys are **rejected** — they would allow parallel writers on one disk tree |
 | Skill trust | Reuse disk only when snapshot is **trusted** (non-empty `commitSha` + layout checks + optional required paths) |
 | Plugin trust | Keep existing “checkout exists → use on remote miss” behavior this round; migrate only coalesce |
@@ -43,9 +43,9 @@ snapshot because remote commit SHA lookup returned HTTP 403.
 ## Architecture
 
 ```
-AsyncKeyedCoalescer
-  ├─ SkillRepoDiskCacheService.ensureSynced(repoKey[+|force])
-  └─ PluginRepoDiskCacheService.syncMarketplace(repoKey[+|force])
+AsyncKeyedCoalescer (process-wide)
+  ├─ SkillRepoDiskCacheService.ensureSynced($cacheRoot|$repoKey)
+  └─ PluginRepoDiskCacheService.syncMarketplace($cacheRoot|$repoKey)
 
 SkillRepoDiskCacheService
   ├─ isTrustedSnapshot(meta, dir, requiredRelativePaths?)
@@ -133,8 +133,8 @@ Shared behavior for `SkillRepoGitService` and `PluginRepoGitService`
 ### Plugin migration
 
 Replace `static final Map<String, Future<String>> _syncInflight` with the
-**process-wide** repo-disk coalescer (same key shape: cache root + marketplace
-repo key + optional `|force`). Do not change remote-miss trust rules in this PR.
+**process-wide** repo-disk coalescer (key: `$cacheRoot|$repoKey`, same for
+force and non-force). Do not change remote-miss trust rules in this PR.
 
 ## Data flow (skill)
 
@@ -178,8 +178,9 @@ ensureSynced(repo, force?, requiredRelativePaths?)
 | `client/test/utils/async_keyed_coalescer_test.dart` | New |
 | `client/lib/services/skill/skill_repo_disk_cache_service.dart` | Coalesce + trust |
 | `client/test/services/skill/skill_repo_disk_cache_service_test.dart` | New |
-| `client/lib/services/skill/skill_repo_git_service.dart` | stderr snippet |
-| `client/lib/services/plugin/plugin_repo_git_service.dart` | stderr snippet (same policy) |
+| `client/lib/utils/git_process_stderr.dart` (or equiv.) | Shared stderr snippet helper |
+| `client/lib/services/skill/skill_repo_git_service.dart` | Use shared stderr helper |
+| `client/lib/services/plugin/plugin_repo_git_service.dart` | Use shared stderr helper |
 | `client/lib/services/plugin/plugin_repo_disk_cache_service.dart` | Use process-wide coalescer |
 | `client/lib/app/app_shell.dart` | Inject `repoCache: skillRepoCache` into acquisition engine |
 | `client/lib/services/skill/skill_acquisition_engine.dart` / cubit | Accept/pass shared cache where constructed |
