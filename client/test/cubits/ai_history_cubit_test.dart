@@ -17,6 +17,9 @@ import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/ai_history_locator.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
 import 'package:teampilot/services/session/session_history_pagination.dart';
+import 'package:teampilot/services/team_bus/persistence/bus_message_log.dart';
+import 'package:teampilot/services/team_bus/team_bus.dart';
+import 'package:teampilot/services/team_bus/team_message.dart';
 
 import '../support/post_frame_test_harness.dart';
 
@@ -311,12 +314,37 @@ void main() {
     expect(cubit.state.awaitingAssistant, isFalse);
   });
 
-  test('sticky mailbox user survives softReload and stays after tip', () async {
+  test('read mailbox mail merged via timeline survives softReload', () async {
     holderMessages = messages(2);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
 
-    cubit.appendStickyLocalUser(id: 'mailbox:mail-1', text: 'follow up');
+    var mailboxRecords = <LoggedMessage>[];
+    await cubit.close();
+    cubit = AiHistoryCubit(
+      loader: loader,
+      loadMailboxRecords: (sessionId, memberId) async => mailboxRecords,
+    );
+
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
+
+    mailboxRecords = [
+      LoggedMessage(
+        seq: 0,
+        message: const TeamMessage(
+          id: 'mail-1',
+          from: TeamBus.userSenderId,
+          to: 'dev',
+          content: 'follow up',
+        ),
+        createdAt: 3000,
+        read: true,
+      ),
+    ];
+    await cubit.refreshMailboxTimeline();
     expect(cubit.state.awaitingAssistant, isFalse);
     expect(seatRuntime().messages, hasLength(3));
     expect(seatRuntime().messages.last.id, 'mailbox:mail-1');
@@ -579,6 +607,333 @@ void main() {
     );
     expect(cubit.state.totalMessageCount, 0);
   });
+
+  test(
+    'mailbox: read user mail merges between CLI messages by createdAt',
+    () async {
+      holderMessages = [
+        AiMessage(
+          id: 'u-1',
+          role: AiRole.user,
+          parts: const [AiTextPart(text: 'cli user')],
+          createdAt: DateTime.fromMillisecondsSinceEpoch(1000),
+        ),
+        AiMessage(
+          id: 'a-1',
+          role: AiRole.assistant,
+          parts: const [AiTextPart(text: 'cli assistant')],
+          createdAt: DateTime.fromMillisecondsSinceEpoch(3000),
+        ),
+      ];
+      locator.emitBundle = true;
+
+      await cubit.close();
+      cubit = AiHistoryCubit(
+        loader: loader,
+        loadMailboxRecords: (sessionId, memberId) async => [
+          LoggedMessage(
+            seq: 0,
+            message: const TeamMessage(
+              id: 'mail-1',
+              from: TeamBus.userSenderId,
+              to: 'dev',
+              content: 'mailbox user',
+            ),
+            createdAt: 2000,
+            read: true,
+          ),
+        ],
+      );
+
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+
+      final ids = seatRuntime().messages.map((m) => m.id).toList();
+      expect(ids, ['u-1', 'mailbox:mail-1', 'a-1']);
+      final mailboxMsg = seatRuntime().messages[1];
+      expect(mailboxMsg.id, startsWith('mailbox:'));
+      expect(mailboxMsg.deliveryChannel, 'mailbox');
+    },
+  );
+
+  test('mailbox: unread mail does not appear in runtime messages', () async {
+    holderMessages = [
+      AiMessage(
+        id: 'u-1',
+        role: AiRole.user,
+        parts: const [AiTextPart(text: 'cli user')],
+        createdAt: DateTime.fromMillisecondsSinceEpoch(1000),
+      ),
+    ];
+    locator.emitBundle = true;
+
+    await cubit.close();
+    cubit = AiHistoryCubit(
+      loader: loader,
+      loadMailboxRecords: (sessionId, memberId) async => [
+        LoggedMessage(
+          seq: 0,
+          message: const TeamMessage(
+            id: 'mail-unread',
+            from: TeamBus.userSenderId,
+            to: 'dev',
+            content: 'queued text',
+          ),
+          createdAt: 2000,
+          read: false,
+        ),
+      ],
+    );
+
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
+
+    final ids = seatRuntime().messages.map((m) => m.id).toList();
+    expect(ids, ['u-1']);
+    expect(ids.any((id) => id.contains('mail-unread')), isFalse);
+  });
+
+  test(
+    'refreshMailboxTimeline merges a newly read mailbox mail after consume',
+    () async {
+      holderMessages = [
+        AiMessage(
+          id: 'u-1',
+          role: AiRole.user,
+          parts: const [AiTextPart(text: 'cli user')],
+          createdAt: DateTime.fromMillisecondsSinceEpoch(1000),
+        ),
+      ];
+      locator.emitBundle = true;
+
+      var mailboxRecords = <LoggedMessage>[];
+      await cubit.close();
+      cubit = AiHistoryCubit(
+        loader: loader,
+        loadMailboxRecords: (sessionId, memberId) async => mailboxRecords,
+      );
+
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+      expect(seatRuntime().messages.map((m) => m.id).toList(), ['u-1']);
+
+      // Simulate SessionChatView's onConsumed: the Queued strip observed the
+      // mail is no longer unread and asks History to refresh the merge —
+      // no CLI reload involved.
+      mailboxRecords = [
+        LoggedMessage(
+          seq: 0,
+          message: const TeamMessage(
+            id: 'mail-1',
+            from: TeamBus.userSenderId,
+            to: 'dev',
+            content: 'mailbox user',
+          ),
+          createdAt: 2000,
+          read: true,
+        ),
+      ];
+
+      await cubit.refreshMailboxTimeline();
+
+      final ids = seatRuntime().messages.map((m) => m.id).toList();
+      expect(ids, ['u-1', 'mailbox:mail-1']);
+      final mailboxMsg = seatRuntime().messages.last;
+      expect(mailboxMsg.deliveryChannel, 'mailbox');
+    },
+  );
+
+  test(
+    'refreshMailboxTimeline degrades to CLI-only when the mailbox loader '
+    'throws',
+    () async {
+      holderMessages = messages(2);
+      locator.emitBundle = true;
+
+      await cubit.close();
+      cubit = AiHistoryCubit(
+        loader: loader,
+        loadMailboxRecords: (sessionId, memberId) async =>
+            throw StateError('mailbox boom'),
+      );
+
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+      expect(seatRuntime().messages.map((m) => m.id).toList(), [
+        'm-0',
+        'm-1',
+      ]);
+
+      await cubit.refreshMailboxTimeline();
+
+      expect(seatRuntime().messages.map((m) => m.id).toList(), [
+        'm-0',
+        'm-1',
+      ]);
+    },
+  );
+
+  test(
+    'softReload with a transient empty CLI parse keeps prior CLI history '
+    'and still merges a new read mailbox message (no wipe)',
+    () async {
+      holderMessages = messages(5);
+      locator.emitBundle = true;
+
+      var mailboxRecords = <LoggedMessage>[];
+      await cubit.close();
+      cubit = AiHistoryCubit(
+        loader: loader,
+        loadMailboxRecords: (sessionId, memberId) async => mailboxRecords,
+      );
+
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+      expect(seatRuntime().messages, hasLength(5));
+
+      // Transient empty CLI parse (e.g. locate() briefly finds no bundle)
+      // while the mailbox now has a NEW read message not yet in the timeline.
+      holderMessages = const [];
+      locator.emitBundle = false;
+      mailboxRecords = [
+        LoggedMessage(
+          seq: 0,
+          message: const TeamMessage(
+            id: 'mail-1',
+            from: TeamBus.userSenderId,
+            to: 'dev',
+            content: 'mailbox user',
+          ),
+          createdAt: 6000,
+          read: true,
+        ),
+      ];
+
+      await cubit.softReload();
+
+      final ids = seatRuntime().messages.map((m) => m.id).toList();
+      expect(ids, containsAll(['m-0', 'm-1', 'm-2', 'm-3', 'm-4']));
+      expect(ids, contains('mailbox:mail-1'));
+    },
+  );
+
+  test(
+    'mailbox bubble survives seat reopen from mailbox loader',
+    () async {
+      holderMessages = messages(2);
+      locator.emitBundle = true;
+
+      var mailboxRecords = <LoggedMessage>[];
+      await cubit.close();
+      cubit = AiHistoryCubit(
+        loader: loader,
+        loadMailboxRecords: (sessionId, memberId) async => mailboxRecords,
+      );
+
+      final session = simpleSession();
+      await cubit.load(
+        session: session,
+        memberId: '',
+        launchContext: launchCtx(session),
+      );
+      expect(seatRuntime().messages.map((m) => m.id).toList(), [
+        'm-0',
+        'm-1',
+      ]);
+
+      mailboxRecords = [
+        LoggedMessage(
+          seq: 0,
+          message: const TeamMessage(
+            id: 'mail-1',
+            from: TeamBus.userSenderId,
+            to: 'dev',
+            content: 'mailbox follow-up',
+          ),
+          createdAt: 3000,
+          read: true,
+        ),
+      ];
+      await cubit.refreshMailboxTimeline();
+      expect(seatRuntime().messages.last.id, 'mailbox:mail-1');
+      expect(seatRuntime().messages.last.deliveryChannel, 'mailbox');
+
+      cubit.clearPendings();
+      await cubit.load(
+        session: session,
+        memberId: '',
+        launchContext: launchCtx(session),
+      );
+
+      final mailboxMsg = seatRuntime().messages.firstWhere(
+        (m) => m.id == 'mailbox:mail-1',
+      );
+      expect(mailboxMsg.deliveryChannel, 'mailbox');
+      expect(
+        (mailboxMsg.parts.single as AiTextPart).text,
+        'mailbox follow-up',
+      );
+
+      // Switch away then reopen same seat — rebuilds from log, not sticky.
+      await cubit.load(
+        session: simpleSession(id: 'other'),
+        memberId: '',
+        launchContext: launchCtx(simpleSession(id: 'other')),
+      );
+      await cubit.load(
+        session: session,
+        memberId: '',
+        launchContext: launchCtx(session),
+      );
+
+      final reopened = seatRuntime().messages.firstWhere(
+        (m) => m.id == 'mailbox:mail-1',
+      );
+      expect(reopened.deliveryChannel, 'mailbox');
+    },
+  );
+
+  test(
+    'mailbox: loader throwing degrades to CLI-only history',
+    () async {
+      holderMessages = messages(2);
+      locator.emitBundle = true;
+
+      await cubit.close();
+      cubit = AiHistoryCubit(
+        loader: loader,
+        loadMailboxRecords: (sessionId, memberId) async =>
+            throw StateError('mailbox boom'),
+      );
+
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+
+      expect(cubit.state.status, AiHistoryViewStatus.ready);
+      expect(seatRuntime().messages.map((m) => m.id).toList(), [
+        'm-0',
+        'm-1',
+      ]);
+    },
+  );
 }
 
 AiTranscriptBundle _dummyBundle() => const AiTranscriptBundle(

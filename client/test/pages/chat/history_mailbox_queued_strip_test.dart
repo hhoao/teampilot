@@ -128,4 +128,36 @@ void main() {
     expect(find.text('hello'), findsNothing);
     expect(consumed, isNull);
   });
+
+  testWidgets('dismiss then consume calls onConsumed', (tester) async {
+    final submissions = StreamController<PendingUserMessage>.broadcast();
+    final unread = <String>{'mail-3'};
+    PendingUserMessage? consumed;
+    addTearDown(submissions.close);
+
+    await tester.pumpWidget(
+      _host(
+        HistoryMailboxQueuedStrip(
+          submissions: submissions.stream,
+          isUnread: unread.contains,
+          onConsumed: (msg) => consumed = msg,
+          pollInterval: const Duration(milliseconds: 20),
+        ),
+      ),
+    );
+
+    submissions.add(const PendingUserMessage(id: 'mail-3', content: 'later'));
+    await tester.pump();
+    expect(find.text('later'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.close));
+    await tester.pump();
+    expect(find.text('later'), findsNothing);
+    expect(consumed, isNull);
+
+    unread.remove('mail-3');
+    await tester.pump(const Duration(milliseconds: 25));
+    expect(consumed?.id, 'mail-3');
+    expect(consumed?.content, 'later');
+  });
 }

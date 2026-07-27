@@ -8,6 +8,7 @@ import '../models/workspace_launch_context.dart';
 import '../services/session/ai_history_loader.dart';
 import '../services/session/ai_history_pending_text.dart';
 import '../services/session/history_seat_key.dart';
+import '../services/team_bus/persistence/bus_message_log.dart';
 import 'ai_history_seat.dart';
 
 export 'ai_history_seat.dart'
@@ -18,14 +19,20 @@ export 'ai_history_seat.dart'
 /// Temporary: [state] mirrors the last-loaded / focused seat so existing
 /// BlocBuilder / unit tests keep working until SessionChatView binds seats.
 class AiHistoryCubit extends Cubit<AiHistoryState> {
-  AiHistoryCubit({required AiHistoryLoader loader})
-    : _loader = loader,
-      super(const AiHistoryState());
+  AiHistoryCubit({
+    required AiHistoryLoader loader,
+    Future<List<LoggedMessage>> Function(String sessionId, String memberId)?
+    loadMailboxRecords,
+  }) : _loader = loader,
+       _loadMailboxRecords = loadMailboxRecords,
+       super(const AiHistoryState());
 
   /// Alias for [AiHistorySeat.tipHoldAfterAssistant] (tests / callers).
   static const tipHoldAfterAssistant = AiHistorySeat.tipHoldAfterAssistant;
 
   final AiHistoryLoader _loader;
+  final Future<List<LoggedMessage>> Function(String sessionId, String memberId)?
+  _loadMailboxRecords;
   final Map<String, AiHistorySeat> _seats = {};
   final Map<String, StreamSubscription<AiHistoryState>> _seatSubs = {};
 
@@ -62,6 +69,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     final seat = AiHistorySeat(
       loader: _loader,
       onTranscriptApplied: _consumeSeedPendingIfMatching,
+      loadMailboxRecords: _loadMailboxRecords,
     );
     _seats[key] = seat;
     // Tip-hold timer and other async seat emits must reach facade listeners.
@@ -127,6 +135,33 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     _mirrorSeat(key, seat);
     await future;
     _mirrorSeat(key, seat);
+  }
+
+  /// Remerge read mailbox mail into a seat's timeline without a CLI reload.
+  ///
+  /// Hosts pass [sessionId] / [selectedMemberId] to target a specific seat;
+  /// omit both to refresh the focused / last-loaded seat.
+  Future<void> refreshMailboxTimeline({
+    String? sessionId,
+    String? selectedMemberId,
+  }) async {
+    final AiHistorySeat? seat;
+    final String? key;
+    if (sessionId != null && selectedMemberId != null) {
+      key = historySeatKey(
+        sessionId: sessionId,
+        selectedMemberId: selectedMemberId,
+      );
+      seat = _seats[key];
+    } else {
+      key = _focusedSeatKey;
+      seat = _focusedSeat;
+    }
+    if (seat == null || key == null) return;
+    final future = seat.refreshMailboxTimeline();
+    if (_focusedSeatKey == key) _mirrorSeat(key, seat);
+    await future;
+    if (_focusedSeatKey == key) _mirrorSeat(key, seat);
   }
 
   /// Review remount: soft when already ready for this seat, else cold load.
@@ -259,14 +294,6 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
       focused.removePendingMatching(trimmed);
       _mirrorSeat(key, focused);
     }
-  }
-
-  void appendStickyLocalUser({required String id, required String text}) {
-    final seat = _focusedSeat;
-    final key = _focusedSeatKey;
-    if (seat == null || key == null) return;
-    seat.appendStickyLocalUser(id: id, text: text);
-    _mirrorSeat(key, seat);
   }
 
   void removePendingMatching(String text) {

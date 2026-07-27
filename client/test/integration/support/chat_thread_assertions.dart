@@ -19,7 +19,7 @@ List<AiMessage> _historyRuntimeMessages(AiHistoryCubit history) {
 }
 
 /// User bubbles currently published on the focused seat runtime (transcript tip,
-/// sticky mailbox locals, and optimistic PTY pendings).
+/// merged mailbox mail, and optimistic PTY pendings).
 List<AiMessage> chatThreadUserMessages(AiHistoryCubit history) => [
   for (final m in _historyRuntimeMessages(history))
     if (m.role == AiRole.user) m,
@@ -43,7 +43,7 @@ String dumpThread(AiHistoryCubit history) {
   );
   final sid = history.state.sessionId;
   if (sid == null || sid.isEmpty) {
-    buf.writeln('(no focused seat — load/focus before pending/sticky asserts)');
+    buf.writeln('(no focused seat — load/focus before pending asserts)');
     return buf.toString();
   }
   final messages = _historyRuntimeMessages(history);
@@ -59,7 +59,7 @@ String dumpThread(AiHistoryCubit history) {
   return buf.toString();
 }
 
-/// Asserts a user bubble (pending, sticky, or transcript) contains [text].
+/// Asserts a user bubble (pending, merged mailbox, or transcript) contains [text].
 void expectUserBubble(
   AiHistoryCubit history,
   String text, {
@@ -112,12 +112,12 @@ void expectAssistantMarkers(
 }
 
 /// Asserts the mailbox compose path: [text] was Queued under [mailId], and
-/// [history] now shows the sticky local user bubble (`mailbox:$mailId`).
+/// [history] now shows the merged timeline user bubble (`mailbox:$mailId`).
 ///
 /// [queuedSnapshot] is the Queued strip state **before or at** consume time
-/// (harness mirrors [SessionChatView]'s Queued list). Sticky id matches
+/// (harness mirrors [SessionChatView]'s Queued list). Timeline id matches
 /// production: `mailbox:${mailId}`.
-void expectMailboxQueuedThenSticky({
+void expectMailboxQueuedThenTimeline({
   required Iterable<PendingUserMessage> queuedSnapshot,
   required AiHistoryCubit history,
   required String text,
@@ -138,27 +138,33 @@ void expectMailboxQueuedThenSticky({
         '${dumpThread(history)}',
   );
 
-  final stickyId = 'mailbox:$mailId';
-  final sticky = _historyRuntimeMessages(history).where(
-    (m) => m.role == AiRole.user && m.id == stickyId,
+  final timelineId = 'mailbox:$mailId';
+  final merged = _historyRuntimeMessages(history).where(
+    (m) => m.role == AiRole.user && m.id == timelineId,
   );
   expect(
-    sticky,
+    merged,
     isNotEmpty,
     reason:
-        'Expected sticky user bubble id=$stickyId\n'
+        'Expected merged mailbox user bubble id=$timelineId\n'
         '${dumpThread(history)}',
   );
   expect(
     normalizeAiHistoryPendingText(
-      chatThreadMessagePlainText(sticky.first),
+      chatThreadMessagePlainText(merged.first),
     ),
     target,
     reason:
-        'Sticky bubble text mismatch for $stickyId\n'
+        'Merged mailbox bubble text mismatch for $timelineId\n'
+        '${dumpThread(history)}',
+  );
+  expect(
+    merged.first.deliveryChannel,
+    'mailbox',
+    reason:
+        'Expected deliveryChannel=mailbox for $timelineId\n'
         '${dumpThread(history)}',
   );
 }
-
 /// Tiny quote helper so failure reasons stay readable without `dart:convert`.
 String jsonQuote(String s) => '"${s.replaceAll('"', r'\"')}"';

@@ -1032,7 +1032,14 @@ Future<AppShell> buildAppShell({
     globalPresets: () => cliPresetsCubit.state.presets,
   );
   aiHistoryLoaderRef = aiHistoryLoader;
-  final aiHistoryCubit = AiHistoryCubit(loader: aiHistoryLoader);
+  final aiHistoryCubit = AiHistoryCubit(
+    loader: aiHistoryLoader,
+    loadMailboxRecords: (sessionId, memberId) async {
+      final bus = chatCubit.tabStore.openTabBySessionId(sessionId)?.teamBus;
+      if (bus == null) return const [];
+      return bus.memberMailRecords(memberId);
+    },
+  );
   chatCubit.onSessionHistoryStale = (sessionId) {
     unawaited(aiHistoryCubit.softReloadIfSession(sessionId));
   };

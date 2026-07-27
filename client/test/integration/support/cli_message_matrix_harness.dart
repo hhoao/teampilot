@@ -28,6 +28,9 @@ import 'package:teampilot/services/session/session_history_context_builder.dart'
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/team_bus/mcp/bus_bridge_locator.dart';
+import 'package:teampilot/services/team_bus/persistence/bus_message_log.dart';
+import 'package:teampilot/services/team_bus/team_bus.dart';
+import 'package:teampilot/services/team_bus/team_message.dart';
 import 'package:teampilot/services/terminal/pending_user_message.dart';
 import 'package:teampilot/services/terminal/terminal_export.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
@@ -155,8 +158,11 @@ final class CliMessageMatrixHarness {
   final List<PendingUserMessage> mailboxQueued = [];
 
   /// Append-only Queued submissions — survives promote so
-  /// [expectMailboxQueuedThenSticky] can prove Queued → sticky.
+  /// [expectMailboxQueuedThenTimeline] can prove Queued → merged timeline.
   final List<PendingUserMessage> mailboxQueuedSubmitted = [];
+
+  /// Fallback mailbox records when no TeamBus is attached (unit harness tests).
+  final List<LoggedMessage> mailboxConsumedRecords = [];
 
   HistoryContinueSubmitResult? lastSubmitResult;
 
@@ -309,6 +315,13 @@ final class CliMessageMatrixHarness {
           resolveWorkContext: (launchCtx, {String? memberId}) =>
               life.launchWorkContext(launchCtx, memberId: memberId),
         ),
+        loadMailboxRecords: (sessionId, memberId) async {
+          final bus = created.sessionRuntime.busForSession(sessionId);
+          if (bus != null) {
+            return bus.memberMailRecords(memberId);
+          }
+          return List<LoggedMessage>.of(mailboxConsumedRecords);
+        },
       );
       history = hist;
       created.onSessionHistoryStale = (sessionId) {
@@ -835,15 +848,35 @@ final class CliMessageMatrixHarness {
     return result;
   }
 
-  /// Promote a Queued mailbox row to sticky (SessionChatView onConsumed).
-  void promoteMailboxConsumed(String mailId) {
+  /// Promote a Queued mailbox row via timeline refresh (SessionChatView onConsumed).
+  Future<void> promoteMailboxConsumed(String mailId) async {
     final idx = mailboxQueued.indexWhere((m) => m.id == mailId);
     if (idx < 0) return;
     final msg = mailboxQueued.removeAt(idx);
-    history?.appendStickyLocalUser(
-      id: 'mailbox:${msg.id}',
-      text: msg.content,
-    );
+
+    final chat = cubit;
+    final s = session;
+    final bus = (chat != null && s != null)
+        ? chat.sessionRuntime.busForSession(s.sessionId)
+        : null;
+    final memberId = s != null ? composeMemberId : '';
+    if (bus == null) {
+      mailboxConsumedRecords.add(
+        LoggedMessage(
+          seq: mailboxConsumedRecords.length,
+          message: TeamMessage(
+            id: msg.id,
+            from: TeamBus.userSenderId,
+            to: memberId,
+            content: msg.content,
+          ),
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+          read: true,
+        ),
+      );
+    }
+
+    await history?.refreshMailboxTimeline();
   }
 
   Future<void> waitForGatewayTurns({
@@ -904,8 +937,8 @@ final class CliMessageMatrixHarness {
   ///
   /// Default markers: [composeSeatAssistantMarkers] (simple → MARK_A*,
   /// native/mixed → collab lead markers). Mailbox channel waits for Queued →
-  /// sticky via [promoteMailboxConsumed] — does not require a user bubble on
-  /// the cubit while mail is only Queued.
+  /// merged timeline via [promoteMailboxConsumed] — does not require a user
+  /// bubble on the cubit while mail is only Queued.
   Future<void> waitForBubbles({
     required String userText,
     List<String>? assistantMarkers,
@@ -929,17 +962,17 @@ final class CliMessageMatrixHarness {
               'mailbox submit missing mailId\n${diagnosticsBundle()}',
             );
           }
-          final stickyId = 'mailbox:$mailId';
-          final stickySeat = hist.seatOf(
+          final timelineId = 'mailbox:$mailId';
+          final timelineSeat = hist.seatOf(
             sessionId: hist.state.sessionId ?? '',
             selectedMemberId: hist.state.memberId ?? '',
           );
-          final stickyReady =
-              stickySeat?.runtime.messages.any(
-                (m) => m.role == AiRole.user && m.id == stickyId,
+          final timelineReady =
+              timelineSeat?.runtime.messages.any(
+                (m) => m.role == AiRole.user && m.id == timelineId,
               ) ??
               false;
-          if (!stickyReady) {
+          if (!timelineReady) {
             // Still Queued (or not yet promoted) — do not expectUserBubble.
             if (!mailboxQueuedSubmitted.any((m) => m.id == mailId)) {
               throw TestFailure(
@@ -956,14 +989,14 @@ final class CliMessageMatrixHarness {
             final stillUnread =
                 bus?.isUnread(composeMemberId, mailId) ?? true;
             if (!stillUnread && mailboxQueued.any((m) => m.id == mailId)) {
-              promoteMailboxConsumed(mailId);
+              await promoteMailboxConsumed(mailId);
               continue;
             }
             throw TestFailure(
-              'mailbox sticky not ready yet (mail still Queued or unconsumed)',
+              'mailbox timeline not ready yet (mail still Queued or unconsumed)',
             );
           }
-          expectMailboxQueuedThenSticky(
+          expectMailboxQueuedThenTimeline(
             queuedSnapshot: mailboxQueuedSubmitted,
             history: hist,
             text: userText,

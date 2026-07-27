@@ -707,6 +707,13 @@ class TeamBus implements CoordinationView {
   bool isUnread(String memberId, String id) =>
       _members[memberId]?.inbox.containsUnread(id) ?? false;
 
+  /// Read-only snapshot of all mailbox records for [memberId] (read + unread).
+  Future<List<LoggedMessage>> memberMailRecords(String memberId) async {
+    final node = _members[memberId];
+    if (node == null) return const [];
+    return node.inbox.snapshotRecords();
+  }
+
   /// Resolves [address] to a registered [memberId].
   ///
   /// Accepts roster member id (`developer`) or CLI

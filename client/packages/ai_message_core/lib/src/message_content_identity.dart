@@ -7,7 +7,9 @@ import 'message.dart';
 /// Includes id, role, status, and part payloads. Two messages with the same
 /// identity may safely share one instance across softReload snapshots.
 String messageContentIdentity(AiMessage m) {
-  final buf = StringBuffer('${m.id}|${m.role.name}|${m.status.name}');
+  final buf = StringBuffer(
+    '${m.id}|${m.role.name}|${m.status.name}|${m.deliveryChannel ?? ''}',
+  );
   for (final p in m.parts) {
     buf.write('|');
     switch (p) {

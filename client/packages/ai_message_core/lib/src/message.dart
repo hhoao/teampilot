@@ -76,6 +76,7 @@ class AiMessage {
     required this.parts,
     this.createdAt,
     this.status = AiMessageStatus.complete,
+    this.deliveryChannel,
   });
 
   final String id;
@@ -84,6 +85,11 @@ class AiMessage {
   final DateTime? createdAt;
   final AiMessageStatus status;
 
+  /// null | 'mailbox' | future channels
+  final String? deliveryChannel;
+
+  static const _unset = Object();
+
   AiMessage copyWith({
     String? id,
     AiRole? role,
@@ -91,13 +97,21 @@ class AiMessage {
     DateTime? createdAt,
     bool clearCreatedAt = false,
     AiMessageStatus? status,
+    Object? deliveryChannel = _unset,
+    bool clearDeliveryChannel = false,
   }) {
+    final String? nextChannel = clearDeliveryChannel
+        ? null
+        : identical(deliveryChannel, _unset)
+            ? this.deliveryChannel
+            : deliveryChannel as String?;
     return AiMessage(
       id: id ?? this.id,
       role: role ?? this.role,
       parts: parts ?? this.parts,
       createdAt: clearCreatedAt ? null : (createdAt ?? this.createdAt),
       status: status ?? this.status,
+      deliveryChannel: nextChannel,
     );
   }
 }
