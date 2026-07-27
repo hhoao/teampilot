@@ -332,6 +332,48 @@ void main() {
     expect(index['toolu_child']!.sidePath, endsWith('agent-child.jsonl'));
   });
 
+  test('side read throw degrades to toolResult without rethrow', () async {
+    final fs = _ThrowingSideReadFilesystem();
+    await fs.writeString(
+      claudeSubagentMetaPath(subagentsDir: subagentsDir, agentId: 'abc'),
+      jsonEncode({'toolUseId': 'toolu_throw'}),
+    );
+    await fs.writeString(
+      claudeSubagentTranscriptPath(subagentsDir: subagentsDir, agentId: 'abc'),
+      _userAssistantJsonl(user: 'side', assistant: 'unreachable'),
+    );
+
+    final messages = [
+      AiMessage(
+        id: 'a1',
+        role: AiRole.assistant,
+        parts: [
+          const AiToolCallPart(
+            toolCallId: 'toolu_throw',
+            toolName: 'Agent',
+            args: {'description': 'read throws'},
+            result: 'fallback from throw',
+          ),
+        ],
+      ),
+    ];
+
+    final index = await const SubagentAttachmentInflater().inflate(
+      messages: messages,
+      fs: fs,
+      parentTranscriptPath: parentPath,
+    );
+
+    final attachment = index['toolu_throw'];
+    expect(attachment, isNotNull);
+    expect(attachment!.source, AiSubagentAttachmentSource.toolResult);
+    expect(attachment.sidePath, isNull);
+    expect(
+      (attachment.messages.single.parts.single as AiTextPart).text,
+      'fallback from throw',
+    );
+  });
+
   test('depth cap still degrade-attaches deepest Agent without past-cap recurse',
       () async {
     final fs = InMemoryFilesystem();
@@ -499,5 +541,15 @@ class _CountingListDirFilesystem extends InMemoryFilesystem {
   Future<List<FsDirEntry>> listDir(String path) async {
     listDirCount++;
     return super.listDir(path);
+  }
+}
+
+class _ThrowingSideReadFilesystem extends InMemoryFilesystem {
+  @override
+  Future<String?> readString(String path) async {
+    if (path.endsWith('.jsonl')) {
+      throw StateError('simulated side read failure');
+    }
+    return super.readString(path);
   }
 }

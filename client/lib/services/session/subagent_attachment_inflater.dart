@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:path/path.dart' as p;
 
+import '../../utils/logging/logger.dart';
 import '../cli/registry/capabilities/history/claude_compatible_jsonl.dart';
 import '../io/filesystem.dart';
 import 'subagent_side_transcript_path.dart';
@@ -93,18 +94,27 @@ class SubagentAttachmentInflater {
         subagentsDir: subagentsDir,
         agentId: agentId,
       );
-      final content = await fs.readString(sidePath);
-      if (content != null) {
-        final sideMessages = parseClaudeCompatibleJsonl(
-          content,
-          fallbackId: () => 'subagent-$agentId-${part.toolCallId}',
-        );
-        return AiSubagentAttachment(
-          toolCallId: part.toolCallId,
-          messages: sideMessages,
-          source: AiSubagentAttachmentSource.sideTranscript,
-          title: title,
-          sidePath: sidePath,
+      try {
+        final content = await fs.readString(sidePath);
+        if (content != null) {
+          final sideMessages = parseClaudeCompatibleJsonl(
+            content,
+            fallbackId: () => 'subagent-$agentId-${part.toolCallId}',
+          );
+          return AiSubagentAttachment(
+            toolCallId: part.toolCallId,
+            messages: sideMessages,
+            source: AiSubagentAttachmentSource.sideTranscript,
+            title: title,
+            sidePath: sidePath,
+          );
+        }
+      } catch (e, st) {
+        appLogger.w(
+          '[subagent-inflate] side transcript failed '
+          'toolCallId=${part.toolCallId} path=$sidePath: $e',
+          error: e,
+          stackTrace: st,
         );
       }
     }
@@ -154,7 +164,17 @@ class SubagentAttachmentInflater {
       if (agentId.isEmpty) continue;
 
       final metaPath = p.join(subagentsDir, name);
-      final raw = await fs.readString(metaPath);
+      String? raw;
+      try {
+        raw = await fs.readString(metaPath);
+      } catch (e, st) {
+        appLogger.w(
+          '[subagent-inflate] meta read failed path=$metaPath: $e',
+          error: e,
+          stackTrace: st,
+        );
+        continue;
+      }
       if (raw == null) continue;
       try {
         final decoded = jsonDecode(raw);
@@ -164,9 +184,12 @@ class SubagentAttachmentInflater {
         final trimmed = toolUseId.trim();
         if (trimmed.isEmpty) continue;
         map[trimmed] = agentId;
-      } on FormatException {
-        continue;
-      } catch (_) {
+      } catch (e, st) {
+        appLogger.w(
+          '[subagent-inflate] meta parse failed path=$metaPath: $e',
+          error: e,
+          stackTrace: st,
+        );
         continue;
       }
     }
