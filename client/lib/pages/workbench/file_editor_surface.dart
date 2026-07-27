@@ -1,22 +1,27 @@
 import 'dart:async';
-import 'package:shared_ui/shared_ui.dart';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
+import 'package:shared_ui/shared_ui.dart';
 
+import '../../cubits/chat_cubit.dart';
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../services/editor/file_editor_ai_context.dart';
 import '../../services/editor/file_editor_theme.dart';
 import '../../services/editor/file_editor_toolbar.dart';
 import '../../services/editor/markdown_preview_link_handler.dart';
 import '../../services/editor/markdown_view_mode_store.dart';
 import '../../services/editor_platform/document_session.dart';
 import '../../services/editor_platform/editor_viewport_token_binder.dart';
+import '../../services/selection_ai/selection_ask_ai.dart';
+import '../../services/selection_ai/selection_ask_ai_fab_host.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
 import '../../theme/app_markdown_style_sheet.dart';
@@ -101,9 +106,7 @@ class _FileEditorToolbar extends StatelessWidget {
             Expanded(
               child: Text(
                 dirty ? '$name •' : name,
-                style: TpTextStyles.of(
-                  context,
-                ).mdSemibold,
+                style: TpTextStyles.of(context).mdSemibold,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -254,25 +257,47 @@ class _CodeEditorPane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final editor = context.read<EditorCubit>();
-    return CodeEditor(
-      key: editor.editorKeyFor(workspaceId, path) ?? ValueKey(path),
-      controller: controller,
-      readOnly: readOnly,
-      toolbarController: const FileEditorContextMenuController(),
-      style: codeEditorStyleFor(
-        context,
-        path,
-        tokenProvider: editor.tokenProviderFor(workspaceId, path),
-      ),
-      wordWrap: false,
-      indicatorBuilder:
-          (context, editingController, chunkController, notifier) {
-            return _LineNumberWithViewportBinder(
-              controller: editingController,
-              notifier: notifier,
-              session: editor.documentSessionFor(workspaceId, path),
+    return SelectionAskAiFabHost(
+      listenable: controller,
+      selectionActive: () => !controller.selection.isCollapsed,
+      readAiContext: () =>
+          formatEditorAiContext(filePath: path, controller: controller),
+      onAskAi: (aiContext) async {
+        final workspace = context
+            .read<ChatCubit>()
+            .state
+            .workspaces
+            .firstWhereOrNull(
+              (candidate) => candidate.workspaceId == workspaceId,
             );
-          },
+        if (workspace == null) return;
+        await SelectionAskAi.openComposeDialog(
+          context,
+          aiContext: aiContext,
+          workspace: workspace,
+          tabScopeId: workspaceId,
+        );
+      },
+      child: CodeEditor(
+        key: editor.editorKeyFor(workspaceId, path) ?? ValueKey(path),
+        controller: controller,
+        readOnly: readOnly,
+        toolbarController: const FileEditorContextMenuController(),
+        style: codeEditorStyleFor(
+          context,
+          path,
+          tokenProvider: editor.tokenProviderFor(workspaceId, path),
+        ),
+        wordWrap: false,
+        indicatorBuilder:
+            (context, editingController, chunkController, notifier) {
+              return _LineNumberWithViewportBinder(
+                controller: editingController,
+                notifier: notifier,
+                session: editor.documentSessionFor(workspaceId, path),
+              );
+            },
+      ),
     );
   }
 }
