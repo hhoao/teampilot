@@ -141,11 +141,11 @@ void main() {
               '${harness.diagnosticsBundle()}',
         );
 
-        await harness.waitForBusPingPong();
         await harness.waitForGatewayTurns(
           apiKey: leadScriptApiKey,
           minTurns: leadScenarioTurns,
         );
+        await harness.waitForBusPingPong();
         expect(
           harness.gateway!.requestCountFor(workerScriptApiKey),
           greaterThanOrEqualTo(2),
