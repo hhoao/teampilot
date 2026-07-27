@@ -62,6 +62,18 @@ ConversationTimeline.resolve(seat)
 | `AiHistorySeat` | Consume timeline snapshots (not sticky-as-truth); keep PTY optimistic pending on the CLI path |
 | UI | Thread renders `messages`; Queued/Parked subscribe to `unreadUserMails` |
 
+**AiHistorySeat integration (planning anchor)**
+
+- Timeline `messages[]` replace the committed transcript window input (what
+  today is `_allMessages` after CLI load), including already-read mailbox
+  users interleaved by time.
+- Tip-hold / `_committedLength` / `loadOlder` pagination continue to apply to
+  that merged list (mailbox events in-range participate like transcript rows).
+- PTY optimistic pending remains a tip overlay after the merged committed
+  window (unchanged mentally: pending is not a timeline source in v1).
+- Soft reload re-resolves the timeline, then re-applies tip-hold / pending
+  overlay rules — do not reintroduce sticky persistence.
+
 ### Module placement
 
 | Location | Contents |
@@ -96,12 +108,17 @@ class TimelineSnapshot {
 
 **MailboxUserSource**
 
-- Input: `BusMessageLog.load(memberId)` (and/or live inbox unread for freshness).
+- **Truth:** `BusMessageLog.load(memberId)` alone partitions read vs unread.
+  Live `MemberInbox` may emit `changes` for low-latency refresh, but must not
+  become a second unread truth source.
 - Filter: `message.from == TeamBus.userSenderId`.
 - `read == true` → `TimelineEvent` with `id: mailbox:{mailId}`,
   `deliveryChannel: mailbox`, `createdAt` from log.
 - `read == false` → `UnreadUserMail` only (Queued / Parked); **not** in
   `messages`.
+- Field mapping: `UnreadUserMail` mirrors today's `PendingUserMessage`
+  (`id` / `content`); `TimelineSeat` mirrors History seat key
+  (`sessionId` + shell `memberId`).
 
 **CliTranscriptSource**
 
