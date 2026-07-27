@@ -134,26 +134,27 @@ absent or file missing → tool-result degrade.
 
 | Case | Behavior |
 |------|----------|
-| Side file missing / read fail | Degrade to synthetic tool-result message; log only |
-| Empty result and no side file | Synthetic “暂无子会话内容” (l10n) still openable |
+| Side file missing / read fail | Degrade to tool-result attachment; log only |
+| Empty result and no side file | Attachment with `messages: []`; scaffold shows l10n empty label; still openable |
 | Open unknown `toolCallId` | AppToast; do not push |
-| Stack top id disappears after reload | Pop to last id still in index, else clear overlay |
-| Inflate depth limit (e.g. 8) | Stop recursion; deeper Agent rows degrade or are non-openable |
+| Stack top id disappears after reload | Silent prune to last id still in index, else clear overlay |
+| Inflate depth limit (8) | Create degrade attachments at max depth; do not recurse further |
 | Remote / SSH | Same workspace `Filesystem` as parent history |
+| Claude side match | Prefer `agent-*.meta.json` `toolUseId` → `toolCallId`; else args `agentId` |
+| Soft reload rebuild | Seat state includes attachment epoch so open overlay refreshes with parent reload |
 
-## Testing
+## Side transcript resolution (Claude / compatible)
 
-- Unit: tool-name gate; Claude path join; hit vs miss degrade; recursion cap;
-  stack push/pop/prune on index shrink.
-- Widget: Agent row opens overlay; no compose; back pops; nested push; file open
-  still works inside preview.
-- Host: seat reload updates index and open preview content.
-- Fixtures over live Agent matrix for v1; optional one Claude fixture smoke later.
+Prefer Orca-aligned layout:
 
-## Out of scope
+```
+{parentTranscriptDir}/{parentStem}/subagents/agent-{id}.jsonl
+{parentTranscriptDir}/{parentStem}/subagents/agent-{id}.meta.json
+```
 
-- Dedicated watch on `subagents/` independent of parent transcript mtime
-- Writing / continuing inside the subagent preview
-- Listing all subagents in a side panel
-- Enabling `Agent` in personal launches (still controlled by CLI disallow lists)
-- Changing TeamBus / multi-member roster semantics
+Primary link: list meta files, match `toolUseId` to the tool row’s `toolCallId`, then
+read the sibling JSONL. Secondary: `agent_id` / `agentId` from tool args.
+Parse JSONL with the existing Claude-compatible parser when bytes are available.
+
+Other CLIs may supply an optional side-path hook on their history capability; if
+absent or file missing → tool-result degrade.
