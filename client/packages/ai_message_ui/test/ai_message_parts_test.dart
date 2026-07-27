@@ -146,9 +146,9 @@ void main() {
     await tester.tap(find.textContaining('Thinking process'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Used tool:'), findsOneWidget);
+    expect(find.textContaining('Used tool:'), findsNothing);
     expect(find.textContaining('ReadFile'), findsOneWidget);
-    expect(find.textContaining('/tmp/x'), findsNothing);
+    expect(find.textContaining('x'), findsOneWidget);
     expect(find.text('Result:'), findsNothing);
     expect(find.textContaining('file contents'), findsNothing);
 

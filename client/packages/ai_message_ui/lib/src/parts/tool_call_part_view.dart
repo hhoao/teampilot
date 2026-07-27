@@ -5,8 +5,10 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
 import '../markdown/compiled_markdown_chrome.dart';
+import '../markdown/compiled_markdown_style.dart';
 import '../strings.dart';
 import '../theme.dart';
+import '../tool_file_actions.dart';
 
 /// Collapsible tool row aligned with assistant-ui ToolFallback.
 class AiToolCallPartView extends StatefulWidget {
@@ -28,6 +30,8 @@ class AiToolCallPartView extends StatefulWidget {
 class _AiToolCallPartViewState extends State<AiToolCallPartView> {
   late bool _open = widget.initiallyExpanded;
 
+  void _toggleExpanded() => setState(() => _open = !_open);
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -39,6 +43,8 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
     final part = widget.part;
     final cancelled = part.isCancelled;
     final bottom = widget.dense ? 2.0 : aiTheme.partSpacing;
+    final actions = AiToolFileActions.of(context);
+    final target = actions.resolver.resolve(part);
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottom),
@@ -46,64 +52,28 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SelectionContainer.disabled(
-            child: Semantics(
-              button: true,
-              expanded: _open,
-              label: cancelled ? strings.cancelledTool : strings.usedTool,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () => setState(() => _open = !_open),
-                  behavior: HitTestBehavior.opaque,
-                  child: Padding(
-                    padding:
-                        EdgeInsets.symmetric(vertical: widget.dense ? 4 : 6),
-                    child: Row(
-                      children: [
-                        _StatusIcon(part: part, color: triggerColor),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text.rich(
-                            TextSpan(
-                              style: markdown.toolTrigger(
-                                triggerColor,
-                                cancelled: cancelled,
-                              ),
-                              children: [
-                                TextSpan(
-                                  text:
-                                      '${cancelled ? strings.cancelledTool : strings.usedTool}: ',
-                                ),
-                                TextSpan(
-                                  text: part.toolName,
-                                  style: markdown.toolNameEmphasis(
-                                    markdown.toolTrigger(
-                                      triggerColor,
-                                      cancelled: cancelled,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Transform.rotate(
-                          angle: _open ? 0 : -math.pi / 2,
-                          child: Icon(
-                            Icons.expand_more,
-                            size: 16,
-                            color: triggerColor,
-                          ),
-                        ),
-                      ],
-                    ),
+            child: target == null
+                ? _LegacyToolTrigger(
+                    part: part,
+                    cancelled: cancelled,
+                    triggerColor: triggerColor,
+                    markdown: markdown,
+                    strings: strings,
+                    dense: widget.dense,
+                    open: _open,
+                    onToggle: _toggleExpanded,
+                  )
+                : _SummaryToolTrigger(
+                    part: part,
+                    target: target,
+                    cancelled: cancelled,
+                    triggerColor: triggerColor,
+                    markdown: markdown,
+                    actions: actions,
+                    dense: widget.dense,
+                    open: _open,
+                    onToggle: _toggleExpanded,
                   ),
-                ),
-              ),
-            ),
           ),
           if (_open)
             AnimatedSize(
@@ -148,6 +118,212 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
   }
 }
 
+class _LegacyToolTrigger extends StatelessWidget {
+  const _LegacyToolTrigger({
+    required this.part,
+    required this.cancelled,
+    required this.triggerColor,
+    required this.markdown,
+    required this.strings,
+    required this.dense,
+    required this.open,
+    required this.onToggle,
+  });
+
+  final AiToolCallPart part;
+  final bool cancelled;
+  final Color triggerColor;
+  final CompiledMarkdownStyle markdown;
+  final AiMessageStrings strings;
+  final bool dense;
+  final bool open;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      expanded: open,
+      label: cancelled ? strings.cancelledTool : strings.usedTool,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: onToggle,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: dense ? 4 : 6),
+            child: Row(
+              children: [
+                _StatusIcon(part: part, color: triggerColor),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(
+                      style: markdown.toolTrigger(
+                        triggerColor,
+                        cancelled: cancelled,
+                      ),
+                      children: [
+                        TextSpan(
+                          text:
+                              '${cancelled ? strings.cancelledTool : strings.usedTool}: ',
+                        ),
+                        TextSpan(
+                          text: part.toolName,
+                          style: markdown.toolNameEmphasis(
+                            markdown.toolTrigger(
+                              triggerColor,
+                              cancelled: cancelled,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                _ExpandChevron(open: open, color: triggerColor, onTap: onToggle),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryToolTrigger extends StatelessWidget {
+  const _SummaryToolTrigger({
+    required this.part,
+    required this.target,
+    required this.cancelled,
+    required this.triggerColor,
+    required this.markdown,
+    required this.actions,
+    required this.dense,
+    required this.open,
+    required this.onToggle,
+  });
+
+  final AiToolCallPart part;
+  final AiToolFileTarget target;
+  final bool cancelled;
+  final Color triggerColor;
+  final CompiledMarkdownStyle markdown;
+  final AiToolFileActions actions;
+  final bool dense;
+  final bool open;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final triggerStyle = markdown.toolTrigger(
+      triggerColor,
+      cancelled: cancelled,
+    );
+    final basename = _pathBasename(target.path);
+    final lineLabel = _lineLabel(target);
+    final onOpenFile = actions.onOpenFile;
+    final fileLabel = lineLabel == null ? basename : '$basename $lineLabel';
+    final semanticsLabel = '${part.toolName} $fileLabel';
+
+    return Semantics(
+      button: true,
+      expanded: open,
+      label: semanticsLabel,
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: dense ? 4 : 6),
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: onToggle,
+              behavior: HitTestBehavior.opaque,
+              child: _StatusIcon(part: part, color: triggerColor),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(
+                    child: GestureDetector(
+                      onTap: onToggle,
+                      behavior: HitTestBehavior.opaque,
+                      child: Text(
+                        '${part.toolName} ',
+                        style: triggerStyle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  Flexible(
+                    child: onOpenFile != null
+                        ? MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              onTap: () => onOpenFile(target),
+                              child: Text(
+                                fileLabel,
+                                style: markdown.link.copyWith(
+                                  color: scheme.primary,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
+                        : Text(
+                            fileLabel,
+                            style: triggerStyle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                  ),
+                ],
+              ),
+            ),
+            _ExpandChevron(open: open, color: triggerColor, onTap: onToggle),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ExpandChevron extends StatelessWidget {
+  const _ExpandChevron({
+    required this.open,
+    required this.color,
+    required this.onTap,
+  });
+
+  final bool open;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 4),
+        child: Transform.rotate(
+          angle: open ? 0 : -math.pi / 2,
+          child: Icon(
+            Icons.expand_more,
+            size: 16,
+            color: color,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _StatusIcon extends StatelessWidget {
   const _StatusIcon({required this.part, required this.color});
 
@@ -186,6 +362,22 @@ class _StatusIcon extends StatelessWidget {
       ),
     };
   }
+}
+
+String _pathBasename(String path) {
+  final slash = path.lastIndexOf('/');
+  final backslash = path.lastIndexOf(r'\');
+  final last = slash > backslash ? slash : backslash;
+  if (last >= 0) return path.substring(last + 1);
+  return path;
+}
+
+String? _lineLabel(AiToolFileTarget target) {
+  final start = target.startLine;
+  if (start == null) return null;
+  final end = target.endLine;
+  if (end == null || end == start) return 'L$start';
+  return 'L$start-$end';
 }
 
 bool _hasArgs(AiToolCallPart part) {
