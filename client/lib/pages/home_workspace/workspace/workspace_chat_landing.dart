@@ -64,6 +64,7 @@ class WorkspaceChatLanding extends StatefulWidget {
     required this.onSubmit,
     this.isSubmitting = false,
     this.disabled = false,
+    this.initialText,
     super.key,
   });
 
@@ -71,6 +72,7 @@ class WorkspaceChatLanding extends StatefulWidget {
   final LandingComposeSubmit onSubmit;
   final bool isSubmitting;
   final bool disabled;
+  final String? initialText;
 
   @override
   State<WorkspaceChatLanding> createState() => _WorkspaceChatLandingState();
@@ -151,6 +153,13 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     );
     // Speech init is deferred to first mic tap (_toggleVoice) so workspace
     // open does not block on speech_to_text platform channels.
+    final seed = widget.initialText;
+    if (seed != null && seed.isNotEmpty) {
+      _controller.value = TextEditingValue(
+        text: seed,
+        selection: TextSelection.collapsed(offset: seed.length),
+      );
+    }
     unawaited(_loadDraft());
     unawaited(_loadWorkspaceProjectBundle());
     unawaited(_loadRecentExperts());
