@@ -61,12 +61,11 @@ void main() {
     expect(received, 'latest');
   });
 
-  testWidgets('FAB stays hidden for empty context or an open menu', (
+  testWidgets('FAB hides while menu is open and returns after dismiss', (
     tester,
   ) async {
     final notifier = ValueNotifier(0);
     addTearDown(notifier.dispose);
-    var aiContext = '   ';
 
     Widget buildHost({required bool menuOpen}) {
       return MaterialApp(
@@ -74,7 +73,7 @@ void main() {
           body: SelectionAskAiFabHost(
             listenable: notifier,
             selectionActive: () => true,
-            readAiContext: () => aiContext,
+            readAiContext: () => 'ctx',
             onAskAi: (_) async {},
             menuOpen: menuOpen,
             child: const SizedBox.expand(),
@@ -86,12 +85,14 @@ void main() {
     await tester.pumpWidget(buildHost(menuOpen: false));
     await tester.pump();
     await tester.pump();
+    expect(find.byIcon(Icons.chat_outlined), findsOneWidget);
+
+    await tester.pumpWidget(buildHost(menuOpen: true));
     expect(find.byIcon(Icons.chat_outlined), findsNothing);
 
-    aiContext = 'ctx';
-    await tester.pumpWidget(buildHost(menuOpen: true));
+    await tester.pumpWidget(buildHost(menuOpen: false));
     await tester.pump();
     await tester.pump();
-    expect(find.byIcon(Icons.chat_outlined), findsNothing);
+    expect(find.byIcon(Icons.chat_outlined), findsOneWidget);
   });
 }

@@ -17,7 +17,9 @@ import 'file_editor_ai_context.dart';
 
 /// Desktop/mobile context menu for [CodeEditor] (right-click / long-press).
 class FileEditorContextMenuController implements SelectionToolbarController {
-  const FileEditorContextMenuController();
+  const FileEditorContextMenuController({required this.onMenuOpenChanged});
+
+  final ValueChanged<bool> onMenuOpenChanged;
 
   @override
   void hide(BuildContext context) {}
@@ -122,12 +124,23 @@ class FileEditorContextMenuController implements SelectionToolbarController {
         ),
     ];
 
-    unawaited(
-      showTpActionMenuFromSpecs<void>(
+    unawaited(_showMenu(context, anchors.primaryAnchor, specs));
+  }
+
+  Future<void> _showMenu(
+    BuildContext context,
+    Offset globalPosition,
+    List<TpActionMenuSpec> specs,
+  ) async {
+    onMenuOpenChanged(true);
+    try {
+      await showTpActionMenuFromSpecs<void>(
         context: context,
-        globalPosition: anchors.primaryAnchor,
+        globalPosition: globalPosition,
         specs: specs,
-      ),
-    );
+      );
+    } finally {
+      onMenuOpenChanged(false);
+    }
   }
 }

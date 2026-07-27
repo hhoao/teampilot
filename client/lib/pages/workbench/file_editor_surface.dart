@@ -241,7 +241,7 @@ class _FileEditorBody extends StatelessWidget {
   }
 }
 
-class _CodeEditorPane extends StatelessWidget {
+class _CodeEditorPane extends StatefulWidget {
   const _CodeEditorPane({
     required this.workspaceId,
     required this.path,
@@ -255,49 +255,83 @@ class _CodeEditorPane extends StatelessWidget {
   final bool readOnly;
 
   @override
+  State<_CodeEditorPane> createState() => _CodeEditorPaneState();
+}
+
+class _CodeEditorPaneState extends State<_CodeEditorPane> {
+  final _menuOpen = ValueNotifier(false);
+
+  void _setMenuOpen(bool value) {
+    if (mounted) _menuOpen.value = value;
+  }
+
+  @override
+  void dispose() {
+    _menuOpen.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final editor = context.read<EditorCubit>();
-    return SelectionAskAiFabHost(
-      listenable: controller,
-      selectionActive: () => !controller.selection.isCollapsed,
-      readAiContext: () =>
-          formatEditorAiContext(filePath: path, controller: controller),
-      onAskAi: (aiContext) async {
-        final workspace = context
-            .read<ChatCubit>()
-            .state
-            .workspaces
-            .firstWhereOrNull(
-              (candidate) => candidate.workspaceId == workspaceId,
+    final codeEditor = CodeEditor(
+      key:
+          editor.editorKeyFor(widget.workspaceId, widget.path) ??
+          ValueKey(widget.path),
+      controller: widget.controller,
+      readOnly: widget.readOnly,
+      toolbarController: FileEditorContextMenuController(
+        onMenuOpenChanged: _setMenuOpen,
+      ),
+      style: codeEditorStyleFor(
+        context,
+        widget.path,
+        tokenProvider: editor.tokenProviderFor(widget.workspaceId, widget.path),
+      ),
+      wordWrap: false,
+      indicatorBuilder:
+          (context, editingController, chunkController, notifier) {
+            return _LineNumberWithViewportBinder(
+              controller: editingController,
+              notifier: notifier,
+              session: editor.documentSessionFor(
+                widget.workspaceId,
+                widget.path,
+              ),
             );
-        if (workspace == null) return;
-        await SelectionAskAi.openComposeDialog(
-          context,
-          aiContext: aiContext,
-          workspace: workspace,
-          tabScopeId: workspaceId,
+          },
+    );
+    return ListenableBuilder(
+      listenable: _menuOpen,
+      child: codeEditor,
+      builder: (context, child) {
+        return SelectionAskAiFabHost(
+          listenable: widget.controller,
+          selectionActive: () => !widget.controller.selection.isCollapsed,
+          readAiContext: () => formatEditorAiContext(
+            filePath: widget.path,
+            controller: widget.controller,
+          ),
+          onAskAi: (aiContext) async {
+            final workspace = context
+                .read<ChatCubit>()
+                .state
+                .workspaces
+                .firstWhereOrNull(
+                  (candidate) => candidate.workspaceId == widget.workspaceId,
+                );
+            if (workspace == null) return;
+            await SelectionAskAi.openComposeDialog(
+              context,
+              aiContext: aiContext,
+              workspace: workspace,
+              tabScopeId: widget.workspaceId,
+            );
+          },
+          menuOpen: _menuOpen.value,
+          child: child!,
         );
       },
-      child: CodeEditor(
-        key: editor.editorKeyFor(workspaceId, path) ?? ValueKey(path),
-        controller: controller,
-        readOnly: readOnly,
-        toolbarController: const FileEditorContextMenuController(),
-        style: codeEditorStyleFor(
-          context,
-          path,
-          tokenProvider: editor.tokenProviderFor(workspaceId, path),
-        ),
-        wordWrap: false,
-        indicatorBuilder:
-            (context, editingController, chunkController, notifier) {
-              return _LineNumberWithViewportBinder(
-                controller: editingController,
-                notifier: notifier,
-                session: editor.documentSessionFor(workspaceId, path),
-              );
-            },
-      ),
     );
   }
 }
