@@ -1,20 +1,35 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:re_editor/re_editor.dart';
+import 'package:shared_ui/shared_ui.dart';
 
+import '../../cubits/chat_cubit.dart';
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../selection_ai/selection_ai_menu_specs.dart';
+import '../selection_ai/selection_ask_ai.dart';
 import 'file_editor_ai_context.dart';
-import 'package:shared_ui/shared_ui.dart';
 
 /// Desktop/mobile context menu for [CodeEditor] (right-click / long-press).
 class FileEditorContextMenuController implements SelectionToolbarController {
-  const FileEditorContextMenuController();
+  const FileEditorContextMenuController({
+    required this.onMenuOpenChanged,
+    this.workspaceId,
+    this.filePath,
+  });
+
+  final ValueChanged<bool> onMenuOpenChanged;
+
+  /// Owning editor pane, when known. Falls back to the active workbench file
+  /// tab for editors mounted outside a workspace pane.
+  final String? workspaceId;
+  final String? filePath;
 
   @override
   void hide(BuildContext context) {}
@@ -30,18 +45,21 @@ class FileEditorContextMenuController implements SelectionToolbarController {
   }) {
     final l10n = context.l10n;
     final editorCubit = context.read<EditorCubit>();
-    final workbench = context.read<WorkbenchCubit>();
-    String? path;
-    String? workspaceId;
-    for (final entry in workbench.state.byWorkspace.entries) {
-      final active = entry.value.activeTabId;
-      if (active?.kind == WorkbenchTabKind.file) {
-        path = active!.id;
-        workspaceId = entry.key;
-        break;
+    String? path = filePath;
+    String? workspaceId = this.workspaceId;
+    if (path == null || workspaceId == null) {
+      final workbench = context.read<WorkbenchCubit>();
+      for (final entry in workbench.state.byWorkspace.entries) {
+        final active = entry.value.activeTabId;
+        if (active?.kind == WorkbenchTabKind.file) {
+          path = active!.id;
+          workspaceId = entry.key;
+          break;
+        }
       }
     }
-    final readOnly = path != null &&
+    final readOnly =
+        path != null &&
         workspaceId != null &&
         editorCubit.isReadOnly(workspaceId, path);
 
@@ -57,21 +75,45 @@ class FileEditorContextMenuController implements SelectionToolbarController {
         label: l10n.editorCopy,
         onAction: controller.copy,
       ),
-      if (path != null)
-        TpActionMenuSpec.item(
-          icon: Icons.auto_awesome_outlined,
-          label: l10n.editorCopyAsAiContext,
-          onAction: () {
+      ...selectionAiMenuSpecs(
+        l10n: l10n,
+        copyEnabled: path != null,
+        askAiEnabled: path != null && workspaceId != null,
+        onCopyAsAiContext: () {
+          if (path != null) {
             Clipboard.setData(
               ClipboardData(
                 text: formatEditorAiContext(
-                  filePath: path!,
+                  filePath: path,
                   controller: controller,
                 ),
               ),
             );
-          },
-        ),
+          }
+        },
+        onAskAi: () {
+          if (path == null || workspaceId == null) return;
+          final workspace = context
+              .read<ChatCubit>()
+              .state
+              .workspaces
+              .firstWhereOrNull(
+                (candidate) => candidate.workspaceId == workspaceId,
+              );
+          if (workspace == null) return;
+          unawaited(
+            SelectionAskAi.openComposeDialog(
+              context,
+              aiContext: formatEditorAiContext(
+                filePath: path,
+                controller: controller,
+              ),
+              workspace: workspace,
+              tabScopeId: workspaceId,
+            ),
+          );
+        },
+      ),
       if (!readOnly)
         TpActionMenuSpec.item(
           icon: Icons.content_paste,
@@ -98,12 +140,23 @@ class FileEditorContextMenuController implements SelectionToolbarController {
         ),
     ];
 
-    unawaited(
-      showTpActionMenuFromSpecs<void>(
+    unawaited(_showMenu(context, anchors.primaryAnchor, specs));
+  }
+
+  Future<void> _showMenu(
+    BuildContext context,
+    Offset globalPosition,
+    List<TpActionMenuSpec> specs,
+  ) async {
+    onMenuOpenChanged(true);
+    try {
+      await showTpActionMenuFromSpecs<void>(
         context: context,
-        globalPosition: anchors.primaryAnchor,
+        globalPosition: globalPosition,
         specs: specs,
-      ),
-    );
+      );
+    } finally {
+      onMenuOpenChanged(false);
+    }
   }
 }

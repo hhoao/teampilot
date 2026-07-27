@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -6,10 +7,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_alacritty/input/paste.dart' as alacritty_paste;
 import 'package:flutter_alacritty/input/term_mode.dart' show anyMouse;
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
+import '../../models/workspace.dart';
+import '../../services/selection_ai/selection_ai_context.dart';
+import '../../services/selection_ai/selection_ai_menu_specs.dart';
+import '../../services/selection_ai/selection_ask_ai.dart';
 import '../../services/terminal/terminal_export.dart';
-import 'package:shared_ui/shared_ui.dart';
+
 /// Right-click menu for the chat workbench terminal surface.
 Future<void> showChatWorkbenchTerminalContextMenu({
   required BuildContext context,
@@ -24,9 +30,17 @@ Future<void> showChatWorkbenchTerminalContextMenu({
   required Future<void> Function() onExportScrollback,
   required VoidCallback onDisconnect,
   required Future<void> Function() onRestart,
+  required String aiSurfaceLabel,
+  required Workspace? workspace,
+  required String tabScopeId,
 }) async {
   final mloc = MaterialLocalizations.of(menuContext);
   final hasSelection = terminalController.selectionActive;
+  final aiContext = buildTerminalAiContextClipboardText(
+    surfaceLabel: aiSurfaceLabel,
+    text: terminalController.readSelectionText() ?? '',
+  );
+  final hasAi = aiContext.isNotEmpty;
   final mouseReporting = anyMouse(engine.grid.modeFlags);
   final linkUri = cellOffset != null
       ? engine.hyperlinkAt(cellOffset.row, cellOffset.column)
@@ -61,6 +75,25 @@ Future<void> showChatWorkbenchTerminalContextMenu({
           ? menuContext.l10n.terminalCopySelectHint
           : mloc.copyButtonLabel,
       enabled: hasSelection,
+    ),
+    ...selectionAiMenuSpecs(
+      l10n: menuContext.l10n,
+      copyEnabled: hasAi,
+      askAiEnabled: hasAi && workspace != null,
+      onCopyAsAiContext: () {
+        unawaited(Clipboard.setData(ClipboardData(text: aiContext)));
+      },
+      onAskAi: () {
+        if (workspace == null) return;
+        unawaited(
+          SelectionAskAi.openComposeDialog(
+            context,
+            aiContext: aiContext,
+            workspace: workspace,
+            tabScopeId: tabScopeId,
+          ),
+        );
+      },
     ),
     TpActionMenuSpec.item(
       value: 'selectAll',

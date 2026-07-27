@@ -302,6 +302,10 @@ Future<void> showWorkspaceComposeLandingWithWorktree(
 /// delivers [message] to the member PTY.
 ///
 /// [launch] is the sole source of launch intent (preset, team, identity, mode).
+///
+/// [onSessionOpened] fires once the session tab is staged, before the (possibly
+/// minutes-long) connect + deliver phase, so hosts such as the Selection →
+/// Ask AI dialog can dismiss themselves without waiting for delivery.
 Future<void> submitWorkspaceLandingMessage(
   BuildContext context,
   Workspace workspace, {
@@ -309,6 +313,7 @@ Future<void> submitWorkspaceLandingMessage(
   required String message,
   String? workingDirectory,
   String? expertKey,
+  void Function(String sessionId)? onSessionOpened,
 }) async {
   final trimmed = message.trim();
   if (trimmed.isEmpty) return;
@@ -399,6 +404,8 @@ Future<void> submitWorkspaceLandingMessage(
   if (trimmedExpert.isNotEmpty) {
     unawaited(ExpertHubRecentStore().touch(trimmedExpert));
   }
+
+  onSessionOpened?.call(plannedSessionId);
 
   // Opening the session exits new-chat mode and unmounts [WorkspaceChatPane].
   // Delivery must keep going via cubits/repos captured above — not [context.mounted].

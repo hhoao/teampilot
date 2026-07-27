@@ -1910,6 +1910,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorCopyAsAiContext => '复制为 AI 上下文';
 
   @override
+  String get selectionAskAi => '用 AI 提问…';
+
+  @override
   String get editorPaste => '粘贴';
 
   @override

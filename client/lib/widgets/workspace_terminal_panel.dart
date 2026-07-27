@@ -8,11 +8,16 @@ import 'package:flutter_alacritty/input/paste.dart' as alacritty_paste;
 import 'package:flutter_alacritty/input/term_mode.dart' show anyMouse;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../cubits/chat_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/runtime_target.dart';
 import '../models/workspace_folder.dart';
 import '../models/workspace_terminal_session_spec.dart';
+import '../services/selection_ai/selection_ai_context.dart';
+import '../services/selection_ai/selection_ai_menu_specs.dart';
+import '../services/selection_ai/selection_ask_ai.dart';
+import '../services/selection_ai/selection_ask_ai_fab_host.dart';
 import '../services/ssh/ssh_profile_connection_coordinator.dart';
 import '../services/terminal/terminal_layout_coordinator.dart';
 import '../services/terminal/terminal_theme_mapper.dart';
@@ -120,6 +125,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   TerminalViewState? _registeredViewState;
   var _registrationScheduled = false;
   final Map<String, int> _lastTerminalThemeFingerprintByEntry = {};
+  final _menuOpen = ValueNotifier(false);
 
   List<WorkspaceFolder> get _folders =>
       WorkspaceToolsScope.maybeOf(context)?.effectiveFolders ?? const [];
@@ -179,6 +185,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       _coordinator?.unregister(_registeredHoldTarget!);
     }
     _coordinator?.dispose();
+    _menuOpen.dispose();
     super.dispose();
   }
 
@@ -387,6 +394,12 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   ) async {
     final mloc = MaterialLocalizations.of(menuContext);
     final hasSelection = entry.controller.selectionActive;
+    final selectionText = entry.controller.readSelectionText() ?? '';
+    final aiContext = buildTerminalAiContextClipboardText(
+      surfaceLabel: 'workspace-shell',
+      text: selectionText,
+    );
+    final hasAi = aiContext.isNotEmpty;
     final mouseReporting = anyMouse(entry.session.engine.grid.modeFlags);
     final linkUri = cellOffset != null
         ? entry.session.engine.hyperlinkAt(cellOffset.row, cellOffset.column)
@@ -412,6 +425,17 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
             : mloc.copyButtonLabel,
         enabled: hasSelection,
       ),
+      ...selectionAiMenuSpecs(
+        l10n: menuContext.l10n,
+        copyEnabled: hasAi,
+        askAiEnabled: hasAi,
+        onCopyAsAiContext: () {
+          unawaited(Clipboard.setData(ClipboardData(text: aiContext)));
+        },
+        onAskAi: () {
+          unawaited(_openAskAi(aiContext));
+        },
+      ),
       TpActionMenuSpec.item(
         value: 'selectAll',
         icon: Icons.select_all,
@@ -419,12 +443,18 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       ),
     ];
 
-    final selected = await showTpActionMenuFromSpecs<String>(
-      context: menuContext,
-      globalPosition: globalPosition,
-      popUpAnimationStyle: const AnimationStyle(duration: Duration.zero),
-      specs: specs,
-    );
+    String? selected;
+    _menuOpen.value = true;
+    try {
+      selected = await showTpActionMenuFromSpecs<String>(
+        context: menuContext,
+        globalPosition: globalPosition,
+        popUpAnimationStyle: const AnimationStyle(duration: Duration.zero),
+        specs: specs,
+      );
+    } finally {
+      if (mounted) _menuOpen.value = false;
+    }
     if (!menuContext.mounted) return;
     _refocusTerminal();
     switch (selected) {
@@ -463,6 +493,20 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       default:
         break;
     }
+  }
+
+  Future<void> _openAskAi(String aiContext) {
+    if (aiContext.trim().isEmpty || !mounted) return Future.value();
+    for (final workspace in context.read<ChatCubit>().state.workspaces) {
+      if (workspace.workspaceId != widget.workspaceId) continue;
+      return SelectionAskAi.openComposeDialog(
+        context,
+        aiContext: aiContext,
+        workspace: workspace,
+        tabScopeId: widget.workspaceId,
+      );
+    }
+    return Future.value();
   }
 
   void _startDefaultTerminal() {
@@ -518,7 +562,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
           onNewTerminal: _onEmptyNewTerminal,
         );
       case WorkspaceTerminalBodyKind.activeSession:
-        terminalBody = WorkspaceTerminalView(
+        final terminalView = WorkspaceTerminalView(
           entry: active!,
           theme: theme,
           terminalViewKey: _terminalViewKey,
@@ -526,6 +570,23 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
           workspaceId: widget.workspaceId,
           onContextMenu: (position, cell) =>
               _showContextMenu(context, active, position, cell),
+        );
+        terminalBody = ValueListenableBuilder<bool>(
+          valueListenable: _menuOpen,
+          child: terminalView,
+          builder: (context, menuOpen, child) {
+            return SelectionAskAiFabHost(
+              listenable: active.controller,
+              selectionActive: () => active.controller.selectionActive,
+              readAiContext: () => buildTerminalAiContextClipboardText(
+                surfaceLabel: 'workspace-shell',
+                text: active.controller.readSelectionText() ?? '',
+              ),
+              onAskAi: _openAskAi,
+              menuOpen: menuOpen,
+              child: child!,
+            );
+          },
         );
     }
 
