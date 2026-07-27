@@ -1338,6 +1338,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'What can I help you with today? @ reference files, / invoke skills';
 
   @override
+  String get workspaceChatLandingBackToStart => 'Back to start';
+
+  @override
   String get workspaceChatLandingSelectWorkspace => 'Select workspace >';
 
   @override

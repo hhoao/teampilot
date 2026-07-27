@@ -29,6 +29,8 @@ class AppKeys {
   static const workbenchWelcomePage = Key('workbench-welcome-page');
   static Key workbenchWelcomeCommandRow(String commandId) =>
       Key('workbench-welcome-command-$commandId');
+  static const workspaceChatLandingBackButton =
+      Key('workspace-chat-landing-back-button');
   static const appRailVisibilitySwitch = Key('app-rail-visibility-switch');
   static const contextSidebarVisibilitySwitch = Key(
     'context-sidebar-visibility-switch',

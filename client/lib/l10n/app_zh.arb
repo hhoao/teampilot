@@ -544,6 +544,7 @@
   "sessionReadySubtitleGeneric": "在此工作区中开始新对话",
   "sessionReadyHint": "用日常语言描述你想做的事即可，无需输入命令。",
   "workspaceChatLandingInputHint": "今天帮你做些什么？ @ 引用对话文件，/ 调用技能与指令",
+  "workspaceChatLandingBackToStart": "返回启动页",
   "workspaceChatLandingSelectWorkspace": "选择工作空间 >",
   "workspaceChatLandingSelectProject": "选择项目 >",
   "workspaceChatLandingSelectWorktree": "选择 worktree >",

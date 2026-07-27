@@ -15,7 +15,9 @@ import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/plugin_cubit.dart';
 import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/skill_cubit.dart';
+import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
+import '../../../utils/ui/app_keys.dart';
 import '../../../models/config_bundle.dart';
 import '../../../models/landing_launch_context.dart';
 import '../../../l10n/l10n_extensions.dart';
@@ -1139,21 +1141,23 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
         listenWhen: (previous, current) =>
             previous.currentWorktreePath != current.currentWorktreePath,
         listener: (context, state) => _syncLaunchFromWorktree(state),
-        child: ColoredBox(
-        color: cs.surface,
-        child: SizedBox.expand(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: spacing.xl,
-                vertical: spacing.xxl,
-              ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 880),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    WorkspaceLandingHeaderRow(
+        child: Stack(
+          children: [
+            ColoredBox(
+              color: cs.surface,
+              child: SizedBox.expand(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: spacing.xl,
+                      vertical: spacing.xxl,
+                    ),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 880),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          WorkspaceLandingHeaderRow(
                       projectLabel: projectLabel,
                       projectHintWhenEmpty:
                           l10n.workspaceChatLandingSelectProject,
@@ -1276,8 +1280,25 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
             ),
           ),
         ),
+            ),
+            Positioned(
+              top: spacing.md,
+              left: spacing.md,
+              child: TpIconButton(
+                key: AppKeys.workspaceChatLandingBackButton,
+                icon: Icons.arrow_back,
+                tooltip: l10n.workspaceChatLandingBackToStart,
+                backgroundColor: Colors.transparent,
+                onTap: () {
+                  final workspaceId = widget.workspace.workspaceId;
+                  context.read<ChatCubit>().dismissNewChat();
+                  context.read<WorkbenchCubit>().clearActive(workspaceId);
+                },
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
     );
   }
 }

@@ -2492,6 +2492,12 @@ abstract class AppLocalizations {
   /// **'What can I help you with today? @ reference files, / invoke skills'**
   String get workspaceChatLandingInputHint;
 
+  /// No description provided for @workspaceChatLandingBackToStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to start'**
+  String get workspaceChatLandingBackToStart;
+
   /// No description provided for @workspaceChatLandingSelectWorkspace.
   ///
   /// In en, this message translates to:
