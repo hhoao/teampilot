@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/chat_cubit.dart';
@@ -13,6 +12,7 @@ import '../../models/landing_launch_context.dart';
 import '../../models/workspace.dart';
 import '../../pages/home_workspace/workspace/workspace_chat_landing.dart';
 import '../../pages/home_workspace/workspace/workspace_session_actions.dart';
+import '../../utils/logging/logger_utils.dart';
 import '../../utils/workspace/landing_draft_resolver.dart';
 import 'selection_ai_context.dart';
 
@@ -26,6 +26,20 @@ abstract final class SelectionAskAi {
     final prefill = selectionAskAiPrefillText(aiContext);
     if (prefill.isEmpty) return;
 
+    WorktreeCubit worktreeCubit;
+    try {
+      // The dialog route is above WorkspaceSplitPane's provider scope, so
+      // capture the workspace-scoped cubit before crossing the route boundary.
+      worktreeCubit = context.read<WorktreeCubit>();
+    } on ProviderNotFoundException catch (error, stackTrace) {
+      AppLogger.instance.w(
+        'Selection Ask AI requires a workspace WorktreeCubit; dialog not opened',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return;
+    }
+
     final chat = context.read<ChatCubit>();
     if (chat.tabStore.activeWorkspaceId != tabScopeId) {
       chat.setActiveWorkspace(tabScopeId);
@@ -33,8 +47,13 @@ abstract final class SelectionAskAi {
 
     await showDialog<void>(
       context: context,
-      builder: (_) =>
-          _SelectionAskAiDialog(workspace: workspace, initialText: prefill),
+      builder: (_) => BlocProvider<WorktreeCubit>.value(
+        value: worktreeCubit,
+        child: _SelectionAskAiDialog(
+          workspace: workspace,
+          initialText: prefill,
+        ),
+      ),
     );
   }
 }
