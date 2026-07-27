@@ -224,70 +224,89 @@ class _SummaryToolTrigger extends StatelessWidget {
       triggerColor,
       cancelled: cancelled,
     );
+    final mutedStyle = markdown.toolTrigger(
+      scheme.onSurfaceVariant,
+      cancelled: cancelled,
+    );
     final basename = _pathBasename(target.path);
     final lineLabel = _lineLabel(target);
     final onOpenFile = actions.onOpenFile;
-    final fileLabel = lineLabel == null ? basename : '$basename $lineLabel';
-    final semanticsLabel = '${part.toolName} $fileLabel';
+    final fileSemanticsLabel = lineLabel == null
+        ? basename
+        : '$basename $lineLabel';
 
-    return Semantics(
-      button: true,
-      expanded: open,
-      label: semanticsLabel,
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: dense ? 4 : 6),
-        child: Row(
-          children: [
-            GestureDetector(
-              onTap: onToggle,
-              behavior: HitTestBehavior.opaque,
-              child: _StatusIcon(part: part, color: triggerColor),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Row(
-                children: [
-                  Flexible(
-                    child: GestureDetector(
-                      onTap: onToggle,
-                      behavior: HitTestBehavior.opaque,
-                      child: Text(
-                        '${part.toolName} ',
-                        style: triggerStyle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+    final fileLabelSpans = <InlineSpan>[
+      if (onOpenFile != null)
+        TextSpan(
+          text: basename,
+          style: markdown.link.copyWith(color: scheme.primary),
+        )
+      else
+        TextSpan(text: basename, style: triggerStyle),
+      if (lineLabel != null)
+        TextSpan(text: ' $lineLabel', style: mutedStyle),
+    ];
+
+    Widget fileLabelWidget = Text.rich(
+      TextSpan(children: fileLabelSpans),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+    );
+
+    if (onOpenFile != null) {
+      fileLabelWidget = Semantics(
+        link: true,
+        label: fileSemanticsLabel,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () => onOpenFile(target),
+            behavior: HitTestBehavior.opaque,
+            child: fileLabelWidget,
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: dense ? 4 : 6),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: onToggle,
+            behavior: HitTestBehavior.opaque,
+            child: _StatusIcon(part: part, color: triggerColor),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Row(
+              children: [
+                Flexible(
+                  child: GestureDetector(
+                    onTap: onToggle,
+                    behavior: HitTestBehavior.opaque,
+                    child: Text(
+                      '${part.toolName} ',
+                      style: triggerStyle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  Flexible(
-                    child: onOpenFile != null
-                        ? MouseRegion(
-                            cursor: SystemMouseCursors.click,
-                            child: GestureDetector(
-                              onTap: () => onOpenFile(target),
-                              child: Text(
-                                fileLabel,
-                                style: markdown.link.copyWith(
-                                  color: scheme.primary,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          )
-                        : Text(
-                            fileLabel,
-                            style: triggerStyle,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                  ),
-                ],
-              ),
+                ),
+                Flexible(child: fileLabelWidget),
+              ],
             ),
-            _ExpandChevron(open: open, color: triggerColor, onTap: onToggle),
-          ],
-        ),
+          ),
+          Semantics(
+            button: true,
+            expanded: open,
+            child: _ExpandChevron(
+              open: open,
+              color: triggerColor,
+              onTap: onToggle,
+            ),
+          ),
+        ],
       ),
     );
   }
