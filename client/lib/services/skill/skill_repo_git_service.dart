@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:path/path.dart' as p;
 
 import '../../models/skill.dart';
+import '../../utils/git_process_stderr.dart';
 import '../../utils/logging/logger.dart';
 import '../cli/cli_tool_locator.dart';
 import '../io/filesystem.dart';
@@ -216,10 +217,5 @@ class SkillRepoGitService {
     return text.split('\n').first.trim();
   }
 
-  String _stderrSnippet(ProcessResult result) {
-    final err = result.stderr?.toString().trim() ?? '';
-    if (err.isEmpty) return 'exit ${result.exitCode}';
-    final line = err.split('\n').first;
-    return line.length > 200 ? '${line.substring(0, 200)}…' : line;
-  }
+  String _stderrSnippet(ProcessResult result) => gitProcessStderrSnippet(result);
 }
