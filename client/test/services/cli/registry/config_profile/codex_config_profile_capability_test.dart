@@ -59,12 +59,20 @@ void main() {
       expect(toml, contains('teampilot-team-bus-stop'));
 
       final scriptName = host.scriptRunner.hookFileName(
-        'teampilot-team-bus-stop-win',
+        'teampilot-team-bus-stop',
       );
       final scriptPath = p.join(root.path, 'hooks', scriptName);
       expect(await File(scriptPath).exists(), isTrue);
       final script = await File(scriptPath).readAsString();
       expect(script, contains('http://127.0.0.1:54321/idle'));
+      if (Platform.isWindows) {
+        final winScript = p.join(
+          root.path,
+          'hooks',
+          host.scriptRunner.hookFileName('teampilot-team-bus-stop-win'),
+        );
+        expect(await File(winScript).exists(), isTrue);
+      }
     });
   });
 
@@ -98,7 +106,7 @@ void main() {
         idle: idle,
       );
       final scriptName = host.scriptRunner.hookFileName(
-        'teampilot-team-bus-stop-win',
+        'teampilot-team-bus-stop',
       );
       final script = await File(
         p.join(root.path, 'hooks', scriptName),

@@ -48,10 +48,20 @@ void main() {
     });
 
     test('marker path sits next to canonical home junction', () {
-      final canonical = r'C:\tp\sessions\s1\runtime\cursor\home';
+      final canonical = Platform.isWindows
+          ? r'C:\tp\sessions\s1\runtime\cursor\home'
+          : p.join(
+              p.separator,
+              'tp',
+              'sessions',
+              's1',
+              'runtime',
+              'cursor',
+              'home',
+            );
       expect(
         CursorWindowsHomeJunction.markerPathForCanonicalHome(canonical),
-        r'C:\tp\sessions\s1\runtime\cursor\runtime-home',
+        p.join(p.dirname(canonical), 'runtime-home'),
       );
     });
   });
