@@ -131,6 +131,21 @@ void main() {
     expect(roundTrip.homeSidebarWidth, 500);
   });
 
+  test('cot expand prefs default false and round-trip', () {
+    expect(const LayoutPreferences().cotExpandReasoningOnOpen, isFalse);
+    expect(const LayoutPreferences().cotExpandToolsOnOpen, isFalse);
+    expect(LayoutPreferences.fromJson(const {}).cotExpandReasoningOnOpen, isFalse);
+
+    final parsed = LayoutPreferences.fromJson(const {
+      'cotExpandReasoningOnOpen': true,
+      'cotExpandToolsOnOpen': true,
+    });
+    expect(parsed.cotExpandReasoningOnOpen, isTrue);
+    expect(parsed.cotExpandToolsOnOpen, isTrue);
+    expect(parsed.toJson()['cotExpandReasoningOnOpen'], isTrue);
+    expect(parsed.toJson()['cotExpandToolsOnOpen'], isTrue);
+  });
+
   test('markdownOpenMode defaults to preview and round-trips', () {
     expect(
       const LayoutPreferences().markdownOpenMode,

@@ -218,4 +218,10 @@ class LayoutCubit extends Cubit<LayoutState> {
 
   Future<void> setMarkdownOpenMode(MarkdownOpenMode mode) =>
       _save(state.preferences.copyWith(markdownOpenMode: mode));
+
+  Future<void> setCotExpandReasoningOnOpen(bool value) =>
+      _save(state.preferences.copyWith(cotExpandReasoningOnOpen: value));
+
+  Future<void> setCotExpandToolsOnOpen(bool value) =>
+      _save(state.preferences.copyWith(cotExpandToolsOnOpen: value));
 }

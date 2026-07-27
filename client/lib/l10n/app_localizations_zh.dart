@@ -313,6 +313,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get markdownOpenModeRemember => '记住上次';
 
   @override
+  String get thinkingProcessSectionTitle => '思考过程';
+
+  @override
+  String get cotExpandReasoningOnOpenTitle => '打开时展开推理';
+
+  @override
+  String get cotExpandReasoningOnOpenDescription => '展开「思考过程」时，自动展开内部推理步骤。';
+
+  @override
+  String get cotExpandToolsOnOpenTitle => '打开时展开工具';
+
+  @override
+  String get cotExpandToolsOnOpenDescription => '展开「思考过程」时，自动展开内部工具调用详情。';
+
+  @override
   String get markdownViewToggleSource => '源码';
 
   @override

@@ -33,92 +33,76 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
     final label = strings.formatThinkingProcessSteps(widget.parts.length);
 
     return Padding(
-      padding: EdgeInsets.only(bottom: aiTheme.partSpacing + 4),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(aiTheme.panelRadius + 2),
-          border: Border.all(color: aiTheme.resolveReasoningBorder(scheme)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SelectionContainer.disabled(
-              child: Semantics(
-                button: true,
-                expanded: _open,
-                label: label,
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: () => setState(() => _open = !_open),
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.psychology_outlined,
+      padding: EdgeInsets.only(bottom: aiTheme.partSpacing),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SelectionContainer.disabled(
+            child: Semantics(
+              button: true,
+              expanded: _open,
+              label: label,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () => setState(() => _open = !_open),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.psychology_outlined,
+                          size: 16,
+                          color: triggerColor,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          label,
+                          style: markdown.toolTrigger(triggerColor),
+                        ),
+                        const SizedBox(width: 4),
+                        Transform.rotate(
+                          angle: _open ? 0 : -math.pi / 2,
+                          child: Icon(
+                            Icons.expand_more,
                             size: 16,
                             color: triggerColor,
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: markdown.toolTrigger(triggerColor),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Transform.rotate(
-                            angle: _open ? 0 : -math.pi / 2,
-                            child: Icon(
-                              Icons.expand_more,
-                              size: 16,
-                              color: triggerColor,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
             ),
-            if (_open)
-              AnimatedSize(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeInOut,
-                alignment: Alignment.topCenter,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (final part in widget.parts) _buildInnerPart(part),
-                    ],
-                  ),
-                ),
+          ),
+          if (_open)
+            Padding(
+              padding: const EdgeInsets.only(left: 8, top: 2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final part in widget.parts) _buildInnerPart(part),
+                ],
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
 
   Widget _buildInnerPart(AiMessagePart part) {
+    final aiTheme = AiMessageTheme.of(context);
     return switch (part) {
       AiReasoningPart() => AiReasoningPartView(
         part: part,
-        initiallyExpanded: true,
+        initiallyExpanded: aiTheme.cotExpandReasoningOnOpen,
       ),
       AiToolCallPart() => AiToolCallPartView(
         part: part,
-        initiallyExpanded: true,
+        initiallyExpanded: aiTheme.cotExpandToolsOnOpen,
       ),
       _ => const SizedBox.shrink(),
     };

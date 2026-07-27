@@ -329,6 +329,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get markdownOpenModeRemember => 'Remember last';
 
   @override
+  String get thinkingProcessSectionTitle => 'Thinking process';
+
+  @override
+  String get cotExpandReasoningOnOpenTitle => 'Expand reasoning when opening';
+
+  @override
+  String get cotExpandReasoningOnOpenDescription =>
+      'When you open a thinking-process block, expand nested reasoning steps automatically.';
+
+  @override
+  String get cotExpandToolsOnOpenTitle => 'Expand tools when opening';
+
+  @override
+  String get cotExpandToolsOnOpenDescription =>
+      'When you open a thinking-process block, expand nested tool call details automatically.';
+
+  @override
   String get markdownViewToggleSource => 'Source';
 
   @override
