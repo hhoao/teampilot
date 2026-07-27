@@ -156,8 +156,7 @@ void main() {
       const PendingUserMessage(id: mailId, content: text),
     );
 
-    // Minimal history cubit not needed for promote if history is null —
-    // attach via createCubit would be heavy; call append path manually.
+    // Seat load + promoteMailboxConsumed exercises timeline refresh (no sticky).
     final postFrame = PostFrameTestHarness();
     harness.createCubit(postFrame: postFrame);
     addTearDown(harness.dispose);

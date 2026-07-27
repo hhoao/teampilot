@@ -833,6 +833,82 @@ void main() {
   );
 
   test(
+    'mailbox bubble survives seat reopen from mailbox loader',
+    () async {
+      holderMessages = messages(2);
+      locator.emitBundle = true;
+
+      var mailboxRecords = <LoggedMessage>[];
+      await cubit.close();
+      cubit = AiHistoryCubit(
+        loader: loader,
+        loadMailboxRecords: (sessionId, memberId) async => mailboxRecords,
+      );
+
+      final session = simpleSession();
+      await cubit.load(
+        session: session,
+        memberId: '',
+        launchContext: launchCtx(session),
+      );
+      expect(seatRuntime().messages.map((m) => m.id).toList(), [
+        'm-0',
+        'm-1',
+      ]);
+
+      mailboxRecords = [
+        LoggedMessage(
+          seq: 0,
+          message: const TeamMessage(
+            id: 'mail-1',
+            from: TeamBus.userSenderId,
+            to: 'dev',
+            content: 'mailbox follow-up',
+          ),
+          createdAt: 3000,
+          read: true,
+        ),
+      ];
+      await cubit.refreshMailboxTimeline();
+      expect(seatRuntime().messages.last.id, 'mailbox:mail-1');
+      expect(seatRuntime().messages.last.deliveryChannel, 'mailbox');
+
+      cubit.clearPendings();
+      await cubit.load(
+        session: session,
+        memberId: '',
+        launchContext: launchCtx(session),
+      );
+
+      final mailboxMsg = seatRuntime().messages.firstWhere(
+        (m) => m.id == 'mailbox:mail-1',
+      );
+      expect(mailboxMsg.deliveryChannel, 'mailbox');
+      expect(
+        (mailboxMsg.parts.single as AiTextPart).text,
+        'mailbox follow-up',
+      );
+
+      // Switch away then reopen same seat — rebuilds from log, not sticky.
+      await cubit.load(
+        session: simpleSession(id: 'other'),
+        memberId: '',
+        launchContext: launchCtx(simpleSession(id: 'other')),
+      );
+      await cubit.load(
+        session: session,
+        memberId: '',
+        launchContext: launchCtx(session),
+      );
+
+      final reopened = seatRuntime().messages.firstWhere(
+        (m) => m.id == 'mailbox:mail-1',
+      );
+      expect(reopened.deliveryChannel, 'mailbox');
+    },
+  );
+
+  test(
     'mailbox: loader throwing degrades to CLI-only history',
     () async {
       holderMessages = messages(2);
