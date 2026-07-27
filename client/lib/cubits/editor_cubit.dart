@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
 
+import '../services/editor/code_line_selection_for_lines.dart';
 import '../services/editor/editor_messages.dart';
 import '../services/editor/file_editor_theme.dart';
 import '../services/editor_platform/document_session.dart';
@@ -257,6 +258,30 @@ class EditorCubit extends Cubit<EditorState> {
 
   CodeLineEditingController? controllerFor(String workspaceId, String path) =>
       _handles[_handleKey(workspaceId, path)]?.controller;
+
+  /// Selects an inclusive 1-based line range in an open file.
+  ///
+  /// v1 sets [CodeLineEditingController.selection] only; scroll-into-view is not
+  /// guaranteed.
+  void selectLines(
+    String workspaceId,
+    String path, {
+    required int startLine,
+    int? endLine,
+  }) {
+    final controller = controllerFor(workspaceId, path);
+    if (controller == null) return;
+
+    final lines = controller.codeLines;
+    final lineCount = lines.length;
+    final lineLengths = List<int>.generate(lineCount, (i) => lines[i].length);
+    controller.selection = codeLineSelectionForLines(
+      lineCount: lineCount,
+      lineLengths: lineLengths,
+      startLine: startLine,
+      endLine: endLine,
+    );
+  }
 
   GlobalKey? editorKeyFor(String workspaceId, String path) =>
       _handles[_handleKey(workspaceId, path)]?.editorKey;
