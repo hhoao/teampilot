@@ -126,6 +126,7 @@ String? _firstNonEmptyString(Map<String, Object?>? args, List<String> keys) {
     final start = _firstPositiveInt(args, rule.startLineKeys);
     final end = _firstPositiveInt(args, rule.endLineKeys);
     if (start != null || end != null) {
+      if (start == null && end != null) return (end, end);
       return (start, end);
     }
   }
@@ -162,7 +163,7 @@ final _lineRangePattern = RegExp(r'L(\d+)(?:-(\d+))?');
   if (start == null || start < 1) return (null, null);
 
   final endGroup = match.group(2);
-  if (endGroup == null) return (start, null);
+  if (endGroup == null) return (start, start);
 
   final end = int.tryParse(endGroup);
   if (end == null || end < 1) return (start, null);
