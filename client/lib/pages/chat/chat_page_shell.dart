@@ -290,7 +290,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
                   sessionAccent: Theme.of(context).colorScheme.primary,
                 );
                 final activeTabIndex = activeId == null
-                    ? 0
+                    ? -1
                     : order
                           .indexOf(activeId)
                           .clamp(0, tabs.isEmpty ? 0 : tabs.length - 1);

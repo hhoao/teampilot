@@ -7,6 +7,7 @@ import '../../cubits/workbench/workbench_tab.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../services/workbench/workbench_body_keep_alive.dart';
+import '../../services/workbench/workbench_center_mode.dart';
 import '../../widgets/workspace_terminal_panel.dart';
 import '../chat/chat_workbench_slice.dart';
 import '../chat_workbench.dart';
@@ -62,14 +63,19 @@ class WorkbenchBody extends StatelessWidget {
       (c) => c.state.sessions.map((s) => s.id).toList(growable: false),
     );
 
-    // Null active → welcome (compose mounts only via newChatActive IDE path).
-    if (active == null) {
+    // Compose mounts only via newChatActive IDE path; here we are never compose.
+    final centerMode = resolveWorkbenchCenterMode(
+      newChatActive: false,
+      activeTabId: active,
+    );
+    if (centerMode == WorkbenchCenterMode.welcome) {
       return const WorkbenchWelcomePage();
     }
+    final selected = active!;
 
     final plan = resolveWorkbenchBodyKeepAlive(
       tabOrder: tabOrder,
-      active: active,
+      active: selected,
       liveRunSessionIds: liveRunIds,
     );
     final cwd = workingDirectory;
@@ -78,7 +84,7 @@ class WorkbenchBody extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         // Primary kinds: mount only while selected (same as pre-shell/run).
-        if (active.kind == WorkbenchTabKind.session)
+        if (selected.kind == WorkbenchTabKind.session)
           ChatWorkbench(
             workspaceId: workspaceId,
             tabScopeId: tabScopeId,
@@ -89,17 +95,17 @@ class WorkbenchBody extends StatelessWidget {
             team: team,
             workbenchSlice: workbenchSlice,
           )
-        else if (active.kind == WorkbenchTabKind.file)
+        else if (selected.kind == WorkbenchTabKind.file)
           FileEditorSurface(
-            key: ValueKey(active.id),
+            key: ValueKey(selected.id),
             workspaceId: workspaceId,
-            path: active.id,
+            path: selected.id,
           )
-        else if (active.kind == WorkbenchTabKind.diff)
+        else if (selected.kind == WorkbenchTabKind.diff)
           DiffEditorSurface(
-            key: ValueKey(active.id),
+            key: ValueKey(selected.id),
             workspaceId: workspaceId,
-            diffKey: active.id,
+            diffKey: selected.id,
           ),
         // One shell panel for all shell tabs (HoldHandle binds once).
         if (plan.mountShell && cwd != null)

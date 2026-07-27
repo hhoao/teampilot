@@ -66,14 +66,28 @@ void main() {
     expect(invoked, CommandIds.togglePanel);
   });
 
-  testWidgets('unbound command shows shortcutsNotSet', (tester) async {
+  testWidgets('unbound command shows shortcutsNotSet and still invokes', (
+    tester,
+  ) async {
     final bus = CommandBus();
     final cubit = ShortcutCubit();
     addTearDown(cubit.close);
+    var invoked = '';
+    bus.register(
+      CommandIds.showCheatsheet,
+      () => invoked = CommandIds.showCheatsheet,
+    );
     await tester.runAsync(() => cubit.unbind(CommandIds.showCheatsheet));
 
     await pumpWelcomePage(tester, bus: bus, cubit: cubit);
 
     expect(find.text('Not set'), findsOneWidget);
+    await tester.tap(
+      find.byKey(
+        AppKeys.workbenchWelcomeCommandRow(CommandIds.showCheatsheet),
+      ),
+    );
+    await tester.pump();
+    expect(invoked, CommandIds.showCheatsheet);
   });
 }

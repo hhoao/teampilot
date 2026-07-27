@@ -8,8 +8,8 @@ import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
 import 'package:teampilot/services/session/shell_launch_spec.dart';
+import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/workbench/workbench_center_mode.dart';
 
@@ -51,141 +51,159 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
-  test('dismissNewChat + clearActive yields welcome and keeps tabOrder', () async {
-    const team = TeamProfile(
-      id: 'team-a',
-      name: 'A',
-      members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
-    );
-    final tmp = await Directory.systemTemp.createTemp('landing_back_tabs_');
-    addTearDown(() async {
-      try {
-        if (await tmp.exists()) await tmp.delete(recursive: true);
-      } on FileSystemException {
-        // ignore
-      }
-    });
+  test(
+    'dismissNewChat + clearActive yields welcome and keeps tabOrder',
+    () async {
+      const team = TeamProfile(
+        id: 'team-a',
+        name: 'A',
+        members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
+      );
+      final tmp = await Directory.systemTemp.createTemp('landing_back_tabs_');
+      addTearDown(() async {
+        try {
+          if (await tmp.exists()) await tmp.delete(recursive: true);
+        } on FileSystemException {
+          // ignore
+        }
+      });
 
-    final repo = SessionRepository(rootDir: tmp.path);
-    final workspace = await repo.createWorkspace([
-      WorkspaceFolder(path: '/a'),
-    ]);
-    final session = await repo.createSession(
-      workspace.workspaceId,
-      sessionTeam: team.id,
-      rosterMembers: team.members,
-      memberClis: {for (final m in team.members) m.id: CliTool.claude},
-    );
+      final repo = SessionRepository(rootDir: tmp.path);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/a'),
+      ]);
+      final session = await repo.createSession(
+        workspace.workspaceId,
+        sessionTeam: team.id,
+        rosterMembers: team.members,
+        memberClis: {for (final m in team.members) m.id: CliTool.claude},
+      );
 
-    final postFrame = PostFrameTestHarness();
-    final chat = ChatCubit(
-      executableResolver: () => 'true',
-      automationRepository: testAutomationRepository(),
-      sessionRepository: repo,
-      terminalSessionFactory:
-          ({required String executable, int scrollbackLines = 10000}) =>
-              _FakeTerminalSession(executable: executable),
-      postFrameScheduler: postFrame.scheduler,
-    );
-    addTearDown(() async {
-      await postFrame.flush();
+      final postFrame = PostFrameTestHarness();
+      final chat = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        sessionRepository: repo,
+        terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) =>
+                _FakeTerminalSession(executable: executable),
+        postFrameScheduler: postFrame.scheduler,
+      );
+      addTearDown(() async {
+        await postFrame.flush();
+        await drainPendingAsyncWork();
+        await chat.close();
+      });
+
+      chat.setActiveWorkspace(workspace.workspaceId);
+      await chat.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          team: team,
+          member: team.members.first,
+          repo: repo,
+        ),
+      );
       await drainPendingAsyncWork();
-      await chat.close();
-    });
-
-    chat.setActiveWorkspace(workspace.workspaceId);
-    await chat.requestOpenSession(
-      SessionOpenRequest(
-        session: session,
-        team: team,
-        member: team.members.first,
-        repo: repo,
-      ),
-    );
-    await drainPendingAsyncWork();
-    await postFrame.flush();
-
-    final workbench = WorkbenchCubit();
-    addTearDown(workbench.close);
-    final sessionTab = WorkbenchTabId.session(session.sessionId);
-    workbench.ensureTab(workspace.workspaceId, sessionTab);
-    expect(workbench.activeTabId(workspace.workspaceId), sessionTab);
-
-    chat.enterNewChat(workspace.workspaceId);
-    expect(chat.state.newChatActive, isTrue);
-
-    final orderBefore = List.of(workbench.tabOrder(workspace.workspaceId));
-    chat.dismissNewChat();
-    workbench.clearActive(workspace.workspaceId);
-
-    expect(chat.state.newChatActive, isFalse);
-    expect(workbench.activeTabId(workspace.workspaceId), isNull);
-    expect(workbench.tabOrder(workspace.workspaceId), orderBefore);
-    expect(
-      resolveWorkbenchCenterMode(
-        newChatActive: chat.state.newChatActive,
-        activeTabId: workbench.activeTabId(workspace.workspaceId),
-      ),
-      WorkbenchCenterMode.welcome,
-    );
-  });
-
-  test('empty tabs: dismiss + clearActive stays welcome not forced compose', () async {
-    final tmp = await Directory.systemTemp.createTemp('landing_back_empty_');
-    addTearDown(() async {
-      try {
-        if (await tmp.exists()) await tmp.delete(recursive: true);
-      } on FileSystemException {
-        // ignore
-      }
-    });
-
-    final repo = SessionRepository(rootDir: tmp.path);
-    final workspace = await repo.createWorkspace([
-      WorkspaceFolder(path: '/a'),
-    ]);
-
-    final postFrame = PostFrameTestHarness();
-    final chat = ChatCubit(
-      executableResolver: () => 'true',
-      automationRepository: testAutomationRepository(),
-      sessionRepository: repo,
-      terminalSessionFactory:
-          ({required String executable, int scrollbackLines = 10000}) =>
-              _FakeTerminalSession(executable: executable),
-      postFrameScheduler: postFrame.scheduler,
-    );
-    addTearDown(() async {
       await postFrame.flush();
-      await drainPendingAsyncWork();
-      await chat.close();
-    });
 
-    await chat.loadWorkspaceData(repo);
-    chat.setActiveWorkspace(workspace.workspaceId);
-    chat.enterNewChat(workspace.workspaceId);
-    expect(chat.state.newChatActive, isTrue);
-    expect(chat.state.tabs, isEmpty);
+      final workbench = WorkbenchCubit();
+      addTearDown(workbench.close);
+      final sessionTab = WorkbenchTabId.session(session.sessionId);
+      workbench.ensureTab(workspace.workspaceId, sessionTab);
+      expect(workbench.activeTabId(workspace.workspaceId), sessionTab);
 
-    final workbench = WorkbenchCubit();
-    addTearDown(workbench.close);
+      chat.enterNewChat(workspace.workspaceId);
+      expect(chat.state.newChatActive, isTrue);
 
-    chat.dismissNewChat();
-    workbench.clearActive(workspace.workspaceId);
+      final orderBefore = List.of(workbench.tabOrder(workspace.workspaceId));
+      chat.dismissNewChat();
+      workbench.enterWelcome(workspace.workspaceId);
 
-    expect(chat.state.newChatActive, isFalse);
-    expect(workbench.activeTabId(workspace.workspaceId), isNull);
-    expect(
-      resolveWorkbenchCenterMode(
-        newChatActive: chat.state.newChatActive,
-        activeTabId: workbench.activeTabId(workspace.workspaceId),
-      ),
-      WorkbenchCenterMode.welcome,
-    );
+      expect(chat.state.newChatActive, isFalse);
+      expect(workbench.activeTabId(workspace.workspaceId), isNull);
+      expect(workbench.welcomeActive(workspace.workspaceId), isTrue);
+      expect(workbench.tabOrder(workspace.workspaceId), orderBefore);
 
-    // Contrast: exitNewChat with empty tabs re-enters compose.
-    chat.enterNewChat(workspace.workspaceId);
-    chat.exitNewChat();
-    expect(chat.state.newChatActive, isTrue);
-  });
+      // Runtime path: WorkbenchSessionSync calls syncSessions after compose ends.
+      workbench.syncSessions(
+        workspace.workspaceId,
+        [session.sessionId],
+        preferredActiveSessionId: session.sessionId,
+        newChatActive: false,
+      );
+      expect(workbench.activeTabId(workspace.workspaceId), isNull);
+      expect(workbench.welcomeActive(workspace.workspaceId), isTrue);
+      expect(
+        resolveWorkbenchCenterMode(
+          newChatActive: chat.state.newChatActive,
+          activeTabId: workbench.activeTabId(workspace.workspaceId),
+        ),
+        WorkbenchCenterMode.welcome,
+      );
+    },
+  );
+
+  test(
+    'empty tabs: dismiss + clearActive stays welcome not forced compose',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('landing_back_empty_');
+      addTearDown(() async {
+        try {
+          if (await tmp.exists()) await tmp.delete(recursive: true);
+        } on FileSystemException {
+          // ignore
+        }
+      });
+
+      final repo = SessionRepository(rootDir: tmp.path);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/a'),
+      ]);
+
+      final postFrame = PostFrameTestHarness();
+      final chat = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        sessionRepository: repo,
+        terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) =>
+                _FakeTerminalSession(executable: executable),
+        postFrameScheduler: postFrame.scheduler,
+      );
+      addTearDown(() async {
+        await postFrame.flush();
+        await drainPendingAsyncWork();
+        await chat.close();
+      });
+
+      await chat.loadWorkspaceData(repo);
+      chat.setActiveWorkspace(workspace.workspaceId);
+      chat.enterNewChat(workspace.workspaceId);
+      expect(chat.state.newChatActive, isTrue);
+      expect(chat.state.tabs, isEmpty);
+
+      final workbench = WorkbenchCubit();
+      addTearDown(workbench.close);
+
+      chat.dismissNewChat();
+      workbench.enterWelcome(workspace.workspaceId);
+
+      expect(chat.state.newChatActive, isFalse);
+      expect(workbench.activeTabId(workspace.workspaceId), isNull);
+      expect(workbench.welcomeActive(workspace.workspaceId), isTrue);
+      expect(
+        resolveWorkbenchCenterMode(
+          newChatActive: chat.state.newChatActive,
+          activeTabId: workbench.activeTabId(workspace.workspaceId),
+        ),
+        WorkbenchCenterMode.welcome,
+      );
+
+      // Contrast: exitNewChat with empty tabs re-enters compose.
+      chat.enterNewChat(workspace.workspaceId);
+      chat.exitNewChat();
+      expect(chat.state.newChatActive, isTrue);
+    },
+  );
 }

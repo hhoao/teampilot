@@ -29,8 +29,9 @@ class AppKeys {
   static const workbenchWelcomePage = Key('workbench-welcome-page');
   static Key workbenchWelcomeCommandRow(String commandId) =>
       Key('workbench-welcome-command-$commandId');
-  static const workspaceChatLandingBackButton =
-      Key('workspace-chat-landing-back-button');
+  static const workspaceChatLandingBackButton = Key(
+    'workspace-chat-landing-back-button',
+  );
   static const appRailVisibilitySwitch = Key('app-rail-visibility-switch');
   static const contextSidebarVisibilitySwitch = Key(
     'context-sidebar-visibility-switch',
@@ -86,9 +87,7 @@ class AppKeys {
   static const configSshProfilesSectionButton = Key(
     'config-ssh-profiles-section-button',
   );
-  static const configGithubSectionButton = Key(
-    'config-github-section-button',
-  );
+  static const configGithubSectionButton = Key('config-github-section-button');
   static const configShortcutsSectionButton = Key(
     'config-shortcuts-section-button',
   );

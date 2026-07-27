@@ -68,10 +68,7 @@ class WorkbenchWelcomePage extends StatelessWidget {
 }
 
 class _WelcomeShortcutRow extends StatelessWidget {
-  const _WelcomeShortcutRow({
-    required this.commandId,
-    required this.chords,
-  });
+  const _WelcomeShortcutRow({required this.commandId, required this.chords});
 
   final String commandId;
   final List<KeyChord> chords;

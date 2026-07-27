@@ -9,6 +9,7 @@ class WorkbenchWorkspaceState extends Equatable {
     this.activeTabId,
     this.previewTabIds = const {},
     this.lastFocusedShellTabId,
+    this.welcomeActive = false,
   });
 
   final List<WorkbenchTabId> tabOrder;
@@ -22,6 +23,10 @@ class WorkbenchWorkspaceState extends Equatable {
   /// Last shell tab the user focused in this workspace (for re-open).
   final WorkbenchTabId? lastFocusedShellTabId;
 
+  /// User explicitly entered the welcome/start empty center (e.g. landing ←).
+  /// While true, [WorkbenchCubit.syncSessions] must not auto-select a session.
+  final bool welcomeActive;
+
   bool isPreview(WorkbenchTabId tab) => previewTabIds.contains(tab);
 
   WorkbenchWorkspaceState copyWith({
@@ -29,6 +34,7 @@ class WorkbenchWorkspaceState extends Equatable {
     WorkbenchTabId? activeTabId,
     Set<WorkbenchTabId>? previewTabIds,
     WorkbenchTabId? lastFocusedShellTabId,
+    bool? welcomeActive,
     bool clearActive = false,
   }) {
     return WorkbenchWorkspaceState(
@@ -37,12 +43,18 @@ class WorkbenchWorkspaceState extends Equatable {
       previewTabIds: previewTabIds ?? this.previewTabIds,
       lastFocusedShellTabId:
           lastFocusedShellTabId ?? this.lastFocusedShellTabId,
+      welcomeActive: welcomeActive ?? this.welcomeActive,
     );
   }
 
   @override
-  List<Object?> get props =>
-      [tabOrder, activeTabId, previewTabIds, lastFocusedShellTabId];
+  List<Object?> get props => [
+    tabOrder,
+    activeTabId,
+    previewTabIds,
+    lastFocusedShellTabId,
+    welcomeActive,
+  ];
 }
 
 class WorkbenchState extends Equatable {
@@ -53,10 +65,11 @@ class WorkbenchState extends Equatable {
   WorkbenchWorkspaceState bucket(String workspaceId) =>
       byWorkspace[workspaceId] ?? const WorkbenchWorkspaceState();
 
-  WorkbenchState withBucket(String workspaceId, WorkbenchWorkspaceState bucket) {
-    return WorkbenchState(
-      byWorkspace: {...byWorkspace, workspaceId: bucket},
-    );
+  WorkbenchState withBucket(
+    String workspaceId,
+    WorkbenchWorkspaceState bucket,
+  ) {
+    return WorkbenchState(byWorkspace: {...byWorkspace, workspaceId: bucket});
   }
 
   @override
@@ -72,6 +85,9 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
 
   WorkbenchTabId? activeTabId(String workspaceId) =>
       state.bucket(workspaceId).activeTabId;
+
+  bool welcomeActive(String workspaceId) =>
+      state.bucket(workspaceId).welcomeActive;
 
   bool isPreview(String workspaceId, WorkbenchTabId tab) =>
       state.bucket(workspaceId).isPreview(tab);
@@ -130,6 +146,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
               tabOrder: order,
               activeTabId: tab,
               previewTabIds: previews,
+              welcomeActive: false,
             ),
           ),
         );
@@ -143,6 +160,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
               tabOrder: order,
               activeTabId: tab,
               previewTabIds: previews,
+              welcomeActive: false,
             ),
           ),
         );
@@ -179,6 +197,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
           tabOrder: order,
           activeTabId: tab,
           previewTabIds: previews,
+          welcomeActive: false,
         ),
       ),
     );
@@ -188,12 +207,10 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   void pinTab(String workspaceId, WorkbenchTabId tab) {
     final bucket = state.bucket(workspaceId);
     if (!bucket.previewTabIds.contains(tab)) return;
-    final previews = Set<WorkbenchTabId>.from(bucket.previewTabIds)..remove(tab);
+    final previews = Set<WorkbenchTabId>.from(bucket.previewTabIds)
+      ..remove(tab);
     emit(
-      state.withBucket(
-        workspaceId,
-        bucket.copyWith(previewTabIds: previews),
-      ),
+      state.withBucket(workspaceId, bucket.copyWith(previewTabIds: previews)),
     );
   }
 
@@ -201,7 +218,8 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     final bucket = state.bucket(workspaceId);
     if (!bucket.tabOrder.contains(tab)) return;
     final alreadyActive = bucket.activeTabId == tab;
-    final needsShellFocus = tab.kind == WorkbenchTabKind.shell &&
+    final needsShellFocus =
+        tab.kind == WorkbenchTabKind.shell &&
         bucket.lastFocusedShellTabId != tab;
     if (alreadyActive && !needsShellFocus) return;
 
@@ -220,8 +238,12 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
       state.withBucket(
         workspaceId,
         tab.kind == WorkbenchTabKind.shell
-            ? bucket.copyWith(activeTabId: tab, lastFocusedShellTabId: tab)
-            : bucket.copyWith(activeTabId: tab),
+            ? bucket.copyWith(
+                activeTabId: tab,
+                lastFocusedShellTabId: tab,
+                welcomeActive: false,
+              )
+            : bucket.copyWith(activeTabId: tab, welcomeActive: false),
       ),
     );
   }
@@ -232,7 +254,8 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     final index = order.indexOf(tab);
     if (index < 0) return;
     order.removeAt(index);
-    final previews = Set<WorkbenchTabId>.from(bucket.previewTabIds)..remove(tab);
+    final previews = Set<WorkbenchTabId>.from(bucket.previewTabIds)
+      ..remove(tab);
 
     WorkbenchTabId? nextActive = bucket.activeTabId;
     if (bucket.activeTabId == tab) {
@@ -253,6 +276,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
           activeTabId: nextActive,
           previewTabIds: previews,
           lastFocusedShellTabId: bucket.lastFocusedShellTabId,
+          welcomeActive: nextActive == null ? bucket.welcomeActive : false,
         ),
       ),
     );
@@ -262,11 +286,10 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   List<WorkbenchTabId> closeOthers(String workspaceId, WorkbenchTabId keep) {
     final bucket = state.bucket(workspaceId);
     if (!bucket.tabOrder.contains(keep)) return const [];
-    final removed =
-        bucket.tabOrder.where((t) => t != keep).toList(growable: false);
-    final previews = {
-      if (bucket.previewTabIds.contains(keep)) keep,
-    };
+    final removed = bucket.tabOrder
+        .where((t) => t != keep)
+        .toList(growable: false);
+    final previews = {if (bucket.previewTabIds.contains(keep)) keep};
     emit(
       state.withBucket(
         workspaceId,
@@ -275,6 +298,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
           activeTabId: keep,
           previewTabIds: previews,
           lastFocusedShellTabId: bucket.lastFocusedShellTabId,
+          welcomeActive: false,
         ),
       ),
     );
@@ -291,11 +315,10 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     final kept = bucket.tabOrder.sublist(0, index + 1);
     final removed = bucket.tabOrder.sublist(index + 1);
     final active = bucket.activeTabId;
-    final nextActive =
-        active != null && removed.contains(active) ? anchor : active;
-    final previews = bucket.previewTabIds
-        .where(kept.contains)
-        .toSet();
+    final nextActive = active != null && removed.contains(active)
+        ? anchor
+        : active;
+    final previews = bucket.previewTabIds.where(kept.contains).toSet();
     emit(
       state.withBucket(
         workspaceId,
@@ -304,6 +327,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
           activeTabId: nextActive,
           previewTabIds: previews,
           lastFocusedShellTabId: bucket.lastFocusedShellTabId,
+          welcomeActive: nextActive == null ? bucket.welcomeActive : false,
         ),
       ),
     );
@@ -321,7 +345,9 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   ///
   /// When [newChatActive] is true, [activeTabId] stays null so the body shows
   /// landing while session tabs may still appear in the bar.
-  /// When not in new-chat mode and active is unset/invalid, activates
+  /// When [WorkbenchWorkspaceState.welcomeActive] is true, [activeTabId] stays
+  /// null so the welcome page is not replaced by an auto-selected session.
+  /// When not in new-chat / welcome mode and active is unset/invalid, activates
   /// [preferredActiveSessionId] (or the first session).
   /// Does not override an active file/diff/shell/run tab.
   void syncSessions(
@@ -352,14 +378,19 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
       }
     }
 
+    var welcomeActive = bucket.welcomeActive;
     WorkbenchTabId? active = bucket.activeTabId;
     if (newChatActive) {
+      active = null;
+      welcomeActive = false;
+    } else if (welcomeActive) {
       active = null;
     } else if (active != null && !order.contains(active)) {
       active = null;
     }
 
     if (!newChatActive &&
+        !welcomeActive &&
         (active == null || active.kind == WorkbenchTabKind.session)) {
       final preferred = preferredActiveSessionId == null
           ? null
@@ -378,7 +409,9 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
       }
     }
 
-    if (_listEquals(order, bucket.tabOrder) && active == bucket.activeTabId) {
+    if (_listEquals(order, bucket.tabOrder) &&
+        active == bucket.activeTabId &&
+        welcomeActive == bucket.welcomeActive) {
       return;
     }
 
@@ -391,6 +424,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
           activeTabId: active,
           previewTabIds: previews,
           lastFocusedShellTabId: bucket.lastFocusedShellTabId,
+          welcomeActive: welcomeActive,
         ),
       ),
     );
@@ -399,10 +433,20 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   void clearActive(String workspaceId) {
     final bucket = state.bucket(workspaceId);
     if (bucket.activeTabId == null) return;
+    emit(state.withBucket(workspaceId, bucket.copyWith(clearActive: true)));
+  }
+
+  /// Leave compose / clear selection and hold the welcome empty center.
+  ///
+  /// Unlike [clearActive], this works when active is already null (compose
+  /// path) and blocks [syncSessions] from auto-selecting a session tab.
+  void enterWelcome(String workspaceId) {
+    final bucket = state.bucket(workspaceId);
+    if (bucket.activeTabId == null && bucket.welcomeActive) return;
     emit(
       state.withBucket(
         workspaceId,
-        bucket.copyWith(clearActive: true),
+        bucket.copyWith(clearActive: true, welcomeActive: true),
       ),
     );
   }
