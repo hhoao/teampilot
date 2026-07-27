@@ -831,6 +831,7 @@
   "editorCut": "Cut",
   "editorCopy": "Copy",
   "editorCopyAsAiContext": "Copy as AI context",
+  "selectionAskAi": "Ask AI…",
   "editorPaste": "Paste",
   "editorSelectAll": "Select all",
   "editorUndoEdit": "Undo",
