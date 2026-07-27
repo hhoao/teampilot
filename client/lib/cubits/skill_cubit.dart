@@ -141,6 +141,7 @@ class SkillCubit extends Cubit<SkillState> {
                    id: id,
                    directory: directory,
                  ),
+             repoCache: _repo.repoCache,
            ),
        _onSkillUninstalled = onSkillUninstalled,
        super(const SkillState());
