@@ -2,6 +2,7 @@ import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
 
 import '../editor_platform/language_registry.dart';
+import '../selection_ai/selection_ai_context.dart';
 import '../storage/app_storage.dart';
 
 /// Builds clipboard text: `relPath:start-end` + fenced code block.
@@ -12,7 +13,13 @@ String buildEditorAiContextClipboardText({
   required String language,
   required String code,
 }) {
-  return '$relPath:$startLine-$endLine\n```$language\n$code\n```';
+  return buildFileAiContextClipboardText(
+    relPath: relPath,
+    startLine: startLine,
+    endLine: endLine,
+    language: language,
+    code: code,
+  );
 }
 
 /// Path relative to [AppStorage.cwd], forward slashes, or basename fallback.
