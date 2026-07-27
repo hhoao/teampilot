@@ -10,11 +10,11 @@ import '../../services/workbench/workbench_body_keep_alive.dart';
 import '../../widgets/workspace_terminal_panel.dart';
 import '../chat/chat_workbench_slice.dart';
 import '../chat_workbench.dart';
-import '../home_workspace/workspace/workspace_chat_pane.dart';
 import 'diff_editor_surface.dart';
 import 'file_editor_surface.dart';
 import 'run_tab_surface.dart';
 import 'shell_terminal_surface.dart';
+import 'workbench_welcome_page.dart';
 
 /// Center workbench body: session / file / diff / shell / run, with keep-alive
 /// for shell + run so PTY scrollback and Run output survive tab switches.
@@ -62,9 +62,9 @@ class WorkbenchBody extends StatelessWidget {
       (c) => c.state.sessions.map((s) => s.id).toList(growable: false),
     );
 
-    // Spec: if activeTabId != null, body is never compose.
+    // Null active → welcome (compose mounts only via newChatActive IDE path).
     if (active == null) {
-      return WorkspaceChatPane(workspace: workspace);
+      return const WorkbenchWelcomePage();
     }
 
     final plan = resolveWorkbenchBodyKeepAlive(
