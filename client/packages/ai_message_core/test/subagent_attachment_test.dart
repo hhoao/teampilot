@@ -9,6 +9,31 @@ void main() {
     expect(isAiSubagentToolName('Read'), isFalse);
   });
 
+  test('isAiSubagentToolName accepts spawn_agent', () {
+    expect(isAiSubagentToolName('spawn_agent'), isTrue);
+    expect(isAiSubagentToolName('Spawn_Agent'), isTrue);
+  });
+
+  test('AiSubagentAttachment stores typed handle', () {
+    const file = SubagentFileHandle('/tmp/a.jsonl');
+    const att = AiSubagentAttachment(
+      toolCallId: '1',
+      messages: [],
+      source: AiSubagentAttachmentSource.sideTranscript,
+      handle: file,
+    );
+    expect(att.handle, same(file));
+    expect(att.sidePath, '/tmp/a.jsonl');
+
+    const session = AiSubagentAttachment(
+      toolCallId: '2',
+      messages: [],
+      source: AiSubagentAttachmentSource.sideTranscript,
+      handle: SubagentSessionHandle('ses_x'),
+    );
+    expect(session.sidePath, isNull);
+  });
+
   test('subagentTitleFromPart prefers description then prompt', () {
     expect(
       subagentTitleFromPart(const AiToolCallPart(

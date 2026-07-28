@@ -2,23 +2,44 @@ import 'message.dart';
 
 enum AiSubagentAttachmentSource { sideTranscript, toolResult }
 
+sealed class SubagentSideHandle {
+  const SubagentSideHandle();
+}
+
+final class SubagentFileHandle extends SubagentSideHandle {
+  const SubagentFileHandle(this.path);
+  final String path;
+}
+
+final class SubagentSessionHandle extends SubagentSideHandle {
+  const SubagentSessionHandle(this.sessionId);
+  final String sessionId;
+}
+
 class AiSubagentAttachment {
   const AiSubagentAttachment({
     required this.toolCallId,
     required this.messages,
     required this.source,
     this.title,
-    this.sidePath,
+    this.handle,
   });
 
   final String toolCallId;
   final List<AiMessage> messages;
   final AiSubagentAttachmentSource source;
   final String? title;
-  final String? sidePath;
+  final SubagentSideHandle? handle;
+
+  /// File-handle path for debug/compat; null for session handles.
+  String? get sidePath {
+    final h = handle;
+    if (h is SubagentFileHandle) return h.path;
+    return null;
+  }
 }
 
-const kAiSubagentToolNames = {'agent', 'task'};
+const kAiSubagentToolNames = {'agent', 'task', 'spawn_agent'};
 
 bool isAiSubagentToolName(String toolName) =>
     kAiSubagentToolNames.contains(toolName.trim().toLowerCase());

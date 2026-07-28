@@ -106,7 +106,7 @@ class SubagentAttachmentInflater {
             messages: sideMessages,
             source: AiSubagentAttachmentSource.sideTranscript,
             title: title,
-            sidePath: sidePath,
+            handle: SubagentFileHandle(sidePath),
           );
         }
       } catch (e, st) {
