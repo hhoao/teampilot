@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/config_bundle.dart';
-import 'package:teampilot/pages/chat/session_review_compose_card.dart';
+import 'package:teampilot/services/compose/compose_file_drop_ingestor.dart';
+import 'package:teampilot/widgets/compose/compose_chrome.dart';
+import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
 
 void main() {
   Future<void> pumpCompose({
@@ -20,13 +22,26 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
-          body: SessionReviewComposeCard(
+          body: WorkspaceComposeCard(
             controller: textController,
             focusNode: focusNode,
             hint: 'Continue',
             canSubmit: true,
             onSubmit: () {},
             onChanged: (_) {},
+            chrome: BoundComposeChrome(
+              identityLabel: 'Team',
+              identityIcon: Icons.groups_outlined,
+              modelPresetLabel: 'Model',
+              emptyPresetHintLabel: 'No presets',
+              onPresetSelected: (_) {},
+              showStop: showStop,
+              onStop: onStop,
+            ),
+            dropTarget: ComposeFileDropIngestor(
+              workspaceRoot: '/tmp',
+              onInsertReferences: (_) {},
+            ),
             attachTooltip: 'Attach',
             enhanceTooltip: 'Enhance',
             voiceTooltip: 'Voice',
@@ -45,8 +60,6 @@ void main() {
             skills: const [],
             plugins: const [],
             slashBundle: const ConfigBundle(),
-            showStop: showStop,
-            onStop: onStop,
           ),
         ),
       ),
