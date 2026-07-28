@@ -3778,6 +3778,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamHubMcpLabel => 'MCP';
 
   @override
+  String get teamHubBrowseAll => '浏览全部团队';
+
+  @override
+  String get teamHubConfirmSelection => '确认';
+
+  @override
+  String get teamHubAlreadyAdded => '已添加';
+
+  @override
+  String get teamHubNotFound => '未找到该团队。';
+
+  @override
   String get expertHubNav => '专家中心';
 
   @override

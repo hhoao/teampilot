@@ -58,6 +58,7 @@ void main() {
             required mcpServerIds,
             required description,
             required extraArgs,
+            String? hubSourceKey,
           }) async {
             createdName = name;
             createdSkillIds = skillIds;
@@ -93,6 +94,7 @@ void main() {
             required mcpServerIds,
             required description,
             required extraArgs,
+            String? hubSourceKey,
           }) async {
             expect(skillIds, isEmpty, reason: 'failed skill is dropped');
             return 'squad';
@@ -121,6 +123,7 @@ void main() {
             required mcpServerIds,
             required description,
             required extraArgs,
+            String? hubSourceKey,
           }) async => null,
     );
     expect(() => service.clone(team()), throwsA(isA<CloneException>()));

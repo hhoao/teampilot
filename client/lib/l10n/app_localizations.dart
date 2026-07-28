@@ -7077,6 +7077,30 @@ abstract class AppLocalizations {
   /// **'MCP'**
   String get teamHubMcpLabel;
 
+  /// No description provided for @teamHubBrowseAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse all teams'**
+  String get teamHubBrowseAll;
+
+  /// No description provided for @teamHubConfirmSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get teamHubConfirmSelection;
+
+  /// No description provided for @teamHubAlreadyAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Already added'**
+  String get teamHubAlreadyAdded;
+
+  /// No description provided for @teamHubNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Team not found.'**
+  String get teamHubNotFound;
+
   /// No description provided for @expertHubNav.
   ///
   /// In en, this message translates to:

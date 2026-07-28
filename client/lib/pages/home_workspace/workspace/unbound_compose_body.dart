@@ -40,6 +40,7 @@ import '../../../pages/home_workspace/home_workspace_route.dart';
 import '../../../utils/workspace/landing_draft_resolver.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';
 import '../../../services/storage/home_target_controller.dart';
+import '../../../services/team/team_landing_recent_store.dart';
 import '../../../widgets/cli/cli_brand_icon.dart';
 import '../../../widgets/compose/compose_chrome.dart';
 import '../../../widgets/compose/compose_model_preset_chip.dart';
@@ -49,6 +50,8 @@ import '../../../repositories/workspace_project_config_repository.dart';
 import '../../expert_hub/expert_landing_chip_menu.dart';
 import '../../expert_hub/expert_landing_picker_sheet.dart';
 import '../../expert_hub/expert_landing_preflight_feedback.dart';
+import '../../team_hub/team_landing_chip_menu.dart';
+import '../../team_hub/team_landing_picker_sheet.dart';
 import 'config/cli_presets_manage_dialog.dart';
 import 'workspace_landing_launch_feedback.dart';
 import 'workspace_landing_selectors.dart';
@@ -122,6 +125,8 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   String? _lastRouteExpert;
   final _expertRecentStore = ExpertHubRecentStore();
   List<String> _recentExpertKeys = const [];
+  final _teamRecentStore = TeamLandingRecentStore();
+  List<String> _recentTeamIds = const [];
 
   @override
   void initState() {
@@ -176,12 +181,19 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     unawaited(_loadDraft());
     unawaited(_loadWorkspaceProjectBundle());
     unawaited(_loadRecentExperts());
+    unawaited(_loadRecentTeams());
   }
 
   Future<void> _loadRecentExperts() async {
     final keys = await _expertRecentStore.loadOrderedKeys();
     if (!mounted) return;
     setState(() => _recentExpertKeys = keys);
+  }
+
+  Future<void> _loadRecentTeams() async {
+    final ids = await _teamRecentStore.loadOrderedKeys();
+    if (!mounted) return;
+    setState(() => _recentTeamIds = ids);
   }
 
   void _applyVoiceListening(bool listening) {
@@ -886,6 +898,33 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     _scheduleTeamLaunchReadinessCheck();
   }
 
+  Future<void> _touchRecentTeam(String teamId) async {
+    await _teamRecentStore.touch(teamId);
+    await _loadRecentTeams();
+  }
+
+  Future<void> _openTeamPicker() async {
+    final id = await showTeamLandingPickerSheet(
+      context,
+      selectedTeamId: _selectedTeamId,
+      touchRecent: _teamRecentStore.touch,
+    );
+    if (!mounted || id == null) return;
+    _selectTeam(id);
+    unawaited(_touchRecentTeam(id));
+  }
+
+  void _onTeamChipSelected(Object? value) {
+    if (value == TeamLandingChipAction.browseAll) {
+      unawaited(_openTeamPicker());
+      return;
+    }
+    if (value is String && value.isNotEmpty) {
+      _selectTeam(value);
+      unawaited(_touchRecentTeam(value));
+    }
+  }
+
   TeamProfile? _selectedTeamProfile(List<TeamProfile> teams) {
     final id = _selectedTeamId?.trim() ?? '';
     if (id.isEmpty) return null;
@@ -1101,25 +1140,19 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       );
     }
 
-    if (teams.isEmpty) {
-      return [
-        TpActionMenuSpec.item(
-          value: null,
-          icon: Icons.groups_outlined,
-          label: l10n.selectTeam,
-          enabled: false,
-        ),
-      ];
+    final recent = <({String id, String name})>[];
+    for (final id in _recentTeamIds) {
+      final team = teams.where((t) => t.id == id).firstOrNull;
+      final name = team?.name.trim() ?? '';
+      if (name.isEmpty) continue;
+      recent.add((id: id, name: name));
+      if (recent.length >= kTeamLandingChipRecentLimit) break;
     }
-    return [
-      for (final team in teams)
-        TpActionMenuSpec.item(
-          value: team.id,
-          icon: Icons.groups_outlined,
-          label: team.name,
-          selected: team.id == _selectedTeamId,
-        ),
-    ];
+    return buildTeamLandingChipMenuSpecs(
+      browseAllLabel: l10n.teamHubBrowseAll,
+      selectedTeamId: _selectedTeamId,
+      recentTeams: recent,
+    );
   }
 
   @override
@@ -1190,12 +1223,12 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
             _openPresetsManageDialog();
             return;
           }
-          if (value is! String || value.isEmpty) return;
-          if (_conversationMode == _LandingConversationMode.simple) {
-            _selectPreset(value);
-          } else {
-            _selectTeam(value);
+          if (_conversationMode == _LandingConversationMode.team) {
+            _onTeamChipSelected(value);
+            return;
           }
+          if (value is! String || value.isEmpty) return;
+          _selectPreset(value);
         },
         onPermissionSelected: _setDangerouslySkipPermissions,
         expertChipLabel: isSimple ? _expertChipLabel(l10n, hubState) : null,

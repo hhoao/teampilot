@@ -375,6 +375,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     List<String> mcpServerIds = const [],
     String description = '',
     String extraArgs = '',
+    String? hubSourceKey,
   }) async {
     final base = name.trim().isEmpty ? 'Team' : name.trim();
     if (!_teamCliAllowed(cli: cli, teamMode: teamMode)) {
@@ -412,6 +413,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
         skillIds: skillIds,
         pluginIds: pluginIds,
         mcpServerIds: mcpServerIds,
+        hubSourceKey: hubSourceKey,
       ),
     );
     final materialized = await _materializeTeam(normalized);

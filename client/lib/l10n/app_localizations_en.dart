@@ -3928,6 +3928,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teamHubMcpLabel => 'MCP';
 
   @override
+  String get teamHubBrowseAll => 'Browse all teams';
+
+  @override
+  String get teamHubConfirmSelection => 'Confirm';
+
+  @override
+  String get teamHubAlreadyAdded => 'Already added';
+
+  @override
+  String get teamHubNotFound => 'Team not found.';
+
+  @override
   String get expertHubNav => 'Expert Hub';
 
   @override

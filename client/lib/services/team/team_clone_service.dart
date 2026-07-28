@@ -25,6 +25,7 @@ typedef ClonedTeamCreator =
       required List<String> mcpServerIds,
       required String description,
       required String extraArgs,
+      String? hubSourceKey,
     });
 
 enum DependencyKind { skill, plugin, mcp }
@@ -177,6 +178,7 @@ class TeamCloneService {
       mcpServerIds: mcpIds,
       description: team.description,
       extraArgs: team.extraArgs,
+      hubSourceKey: team.key,
     );
     if (teamId == null) {
       throw CloneException('team creation failed for "${team.name}"');
