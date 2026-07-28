@@ -19,6 +19,7 @@ final class ClaudeCompatibleSideResolver implements SubagentSideResolver {
     required SessionHistoryContext ctx,
     required SubagentSideHandle? parentHandle,
     required String? rootTranscriptPath,
+    DateTime? toolCallAt,
   }) async {
     final parentTranscriptPath = _parentTranscriptPath(
       parentHandle,

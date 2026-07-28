@@ -47,6 +47,7 @@ class SubagentAttachmentInflater {
 
         final attachment = await _attachOne(
           part: part,
+          toolCallAt: message.createdAt,
           ctx: ctx,
           capability: capability,
           rootTranscriptPath: rootTranscriptPath,
@@ -72,6 +73,7 @@ class SubagentAttachmentInflater {
 
   Future<AiSubagentAttachment> _attachOne({
     required AiToolCallPart part,
+    required DateTime? toolCallAt,
     required SessionHistoryContext ctx,
     required AiHistoryCapability capability,
     required String? rootTranscriptPath,
@@ -90,6 +92,7 @@ class SubagentAttachmentInflater {
         ctx: ctx,
         parentHandle: parentHandle,
         rootTranscriptPath: rootTranscriptPath,
+        toolCallAt: toolCallAt,
       );
       if (resolved != null) {
         return AiSubagentAttachment(

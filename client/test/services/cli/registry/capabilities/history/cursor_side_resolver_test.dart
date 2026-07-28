@@ -26,12 +26,14 @@ Future<SubagentSideResolveResult?> _resolve({
   required AiToolCallPart part,
   String? rootTranscriptPath,
   SubagentSideHandle? parentHandle,
+  DateTime? toolCallAt,
 }) {
   return const CursorSideResolver().resolve(
     part: part,
     ctx: _ctx(fs),
     parentHandle: parentHandle,
     rootTranscriptPath: rootTranscriptPath,
+    toolCallAt: toolCallAt,
   );
 }
 
@@ -309,6 +311,112 @@ void main() {
     );
     expect(miss, isNull);
     expect(fs.subagentsReadAttempts, 0);
+  });
+
+  test('missing resume UUID does not fall back to prompt heuristic', () async {
+    final fs = _MtimeFilesystem();
+    const childId = 'child-prompt-match';
+    const prompt = 'would match if heuristic ran';
+    final reference = DateTime.utc(2026, 7, 28, 12, 0);
+
+    await fs.writeString(
+      _parentPath,
+      _cursorTranscript(firstUserText: 'parent'),
+    );
+    fs.setMtime(_parentPath, reference);
+    await fs.writeString(
+      '$_root/$childId/$childId.jsonl',
+      _cursorTranscript(firstUserText: prompt, assistant: 'sibling'),
+    );
+    fs.setMtime(
+      '$_root/$childId/$childId.jsonl',
+      reference.add(const Duration(minutes: 1)),
+    );
+
+    expect(
+      await _resolve(
+        fs: fs,
+        rootTranscriptPath: _parentPath,
+        part: const AiToolCallPart(
+          toolCallId: 'tool-resume-miss',
+          toolName: 'Task',
+          args: {
+            'resume': 'missing-child-uuid',
+            'prompt': prompt,
+          },
+        ),
+      ),
+      isNull,
+    );
+  });
+
+  test('toolCallAt disambiguates prompt matches over parent mtime', () async {
+    final fs = _MtimeFilesystem();
+    const nearParentId = 'child-near-parent';
+    const nearToolCallId = 'child-near-tool-call';
+    const prompt = 'shared task prompt';
+
+    final parentMtime = DateTime.utc(2026, 7, 28, 12, 0);
+    final toolCallAt = parentMtime.add(const Duration(hours: 1, minutes: 50));
+
+    await fs.writeString(
+      _parentPath,
+      _cursorTranscript(firstUserText: 'parent'),
+    );
+    fs.setMtime(_parentPath, parentMtime);
+
+    final nearParentPath = '$_root/$nearParentId/$nearParentId.jsonl';
+    final nearToolCallPath =
+        '$_root/$nearToolCallId/$nearToolCallId.jsonl';
+
+    await fs.writeString(
+      nearParentPath,
+      _cursorTranscript(firstUserText: prompt, assistant: 'near parent'),
+    );
+    fs.setMtime(
+      nearParentPath,
+      parentMtime.add(const Duration(minutes: 5)),
+    );
+
+    await fs.writeString(
+      nearToolCallPath,
+      _cursorTranscript(firstUserText: prompt, assistant: 'near tool call'),
+    );
+    fs.setMtime(
+      nearToolCallPath,
+      parentMtime.add(const Duration(hours: 1, minutes: 55)),
+    );
+
+    final byParentClock = await _resolve(
+      fs: fs,
+      rootTranscriptPath: _parentPath,
+      part: const AiToolCallPart(
+        toolCallId: 'tool-clock-parent',
+        toolName: 'Task',
+        args: {'prompt': prompt},
+      ),
+    );
+    expect(byParentClock, isNotNull);
+    expect(
+      (byParentClock!.handle as SubagentFileHandle).path,
+      nearParentPath,
+    );
+
+    final byToolCallClock = await _resolve(
+      fs: fs,
+      rootTranscriptPath: _parentPath,
+      toolCallAt: toolCallAt,
+      part: const AiToolCallPart(
+        toolCallId: 'tool-clock-call',
+        toolName: 'Task',
+        args: {'prompt': prompt},
+      ),
+    );
+    expect(byToolCallClock, isNotNull);
+    expect(
+      (byToolCallClock!.handle as SubagentFileHandle).path,
+      nearToolCallPath,
+    );
   });
 
   test('miss returns null for unknown resume and unmatched prompt', () async {

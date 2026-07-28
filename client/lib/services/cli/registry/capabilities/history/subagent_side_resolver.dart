@@ -17,6 +17,7 @@ abstract interface class SubagentSideResolver {
     required SessionHistoryContext ctx,
     required SubagentSideHandle? parentHandle,
     required String? rootTranscriptPath,
+    DateTime? toolCallAt,
   });
 }
 
@@ -29,5 +30,6 @@ final class NullSubagentSideResolver implements SubagentSideResolver {
     required SessionHistoryContext ctx,
     required SubagentSideHandle? parentHandle,
     required String? rootTranscriptPath,
+    DateTime? toolCallAt,
   }) async => null;
 }

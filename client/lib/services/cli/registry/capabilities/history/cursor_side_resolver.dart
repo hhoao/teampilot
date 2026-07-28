@@ -18,6 +18,7 @@ final class CursorSideResolver implements SubagentSideResolver {
     required SessionHistoryContext ctx,
     required SubagentSideHandle? parentHandle,
     required String? rootTranscriptPath,
+    DateTime? toolCallAt,
   }) async {
     final parentTranscriptPath = _parentTranscriptPath(
       parentHandle,
@@ -30,12 +31,11 @@ final class CursorSideResolver implements SubagentSideResolver {
 
     final resumeUuid = _resumeUuidFromPart(part);
     if (resumeUuid != null) {
-      final byUuid = await _resolveByUuid(
+      return _resolveByUuid(
         ctx: ctx,
         transcriptsRoot: transcriptsRoot,
         uuid: resumeUuid,
       );
-      if (byUuid != null) return byUuid;
     }
 
     return _resolveByPromptHeuristic(
@@ -43,6 +43,7 @@ final class CursorSideResolver implements SubagentSideResolver {
       part: part,
       transcriptsRoot: transcriptsRoot,
       parentTranscriptPath: parentTranscriptPath,
+      toolCallAt: toolCallAt,
     );
   }
 
@@ -113,6 +114,7 @@ Future<SubagentSideResolveResult?> _resolveByPromptHeuristic({
   required AiToolCallPart part,
   required String transcriptsRoot,
   required String parentTranscriptPath,
+  DateTime? toolCallAt,
 }) async {
   final prompt = _taskPromptFromPart(part);
   if (prompt == null) return null;
@@ -121,15 +123,16 @@ Future<SubagentSideResolveResult?> _resolveByPromptHeuristic({
   if (normalizedPrompt == null) return null;
 
   final parentStem = p.basenameWithoutExtension(parentTranscriptPath);
-  final referenceMtime = (await ctx.fs.stat(parentTranscriptPath)).mtime;
-  if (referenceMtime == null) return null;
+  final parentMtime = (await ctx.fs.stat(parentTranscriptPath)).mtime;
+  final referenceAt = toolCallAt ?? parentMtime;
+  if (referenceAt == null) return null;
 
   final candidates = await _collectPromptMatches(
     ctx: ctx,
     transcriptsRoot: transcriptsRoot,
     normalizedPrompt: normalizedPrompt,
     excludeStem: parentStem,
-    referenceMtime: referenceMtime,
+    referenceAt: referenceAt,
   );
   if (candidates.isEmpty) return null;
 
@@ -162,7 +165,7 @@ Future<List<_PromptMatchCandidate>> _collectPromptMatches({
   required String transcriptsRoot,
   required String normalizedPrompt,
   required String excludeStem,
-  required DateTime referenceMtime,
+  required DateTime referenceAt,
 }) async {
   final path = ctx.fs.pathContext;
   final matches = <_PromptMatchCandidate>[];
@@ -206,7 +209,7 @@ Future<List<_PromptMatchCandidate>> _collectPromptMatches({
       matches.add(
         _PromptMatchCandidate(
           path: candidatePath,
-          distance: mtime.difference(referenceMtime),
+          distance: mtime.difference(referenceAt),
         ),
       );
     }
