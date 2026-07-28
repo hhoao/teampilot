@@ -10,6 +10,7 @@ import 'opencode_ai_transcript.dart';
 import 'claude_compatible_side_resolver.dart';
 import 'codex_side_resolver.dart';
 import 'cursor_side_resolver.dart';
+import 'opencode_side_resolver.dart';
 import 'subagent_side_resolver.dart';
 
 final class ClaudeAiHistoryCapability implements AiHistoryCapability {
@@ -71,7 +72,7 @@ final class CodexAiHistoryCapability implements AiHistoryCapability {
 
 final class OpencodeAiHistoryCapability implements AiHistoryCapability {
   const OpencodeAiHistoryCapability({
-    this.subagentSideResolver = const NullSubagentSideResolver(),
+    this.subagentSideResolver = const OpencodeSideResolver(),
   });
 
   @override

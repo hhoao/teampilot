@@ -29,10 +29,25 @@ Future<AiTranscriptBundle?> locateOpencodeTranscript(
   final sessionId = await _resolveSessionId(ctx, dataDir);
   if (sessionId == null) return null;
 
-  final jsonBundle = await _locateJsonStorage(ctx, dataDir, sessionId);
+  return locateOpencodeTranscriptForSession(ctx, sessionId);
+}
+
+/// Same [dataDir] resolution as [locateOpencodeTranscript], but loads an
+/// explicit OpenCode native session id (child task sessions, nested inflate).
+Future<AiTranscriptBundle?> locateOpencodeTranscriptForSession(
+  SessionHistoryContext ctx,
+  String sessionId,
+) async {
+  final dataDir = _resolveDataDir(ctx);
+  if (dataDir.isEmpty) return null;
+
+  final trimmed = sessionId.trim();
+  if (trimmed.isEmpty) return null;
+
+  final jsonBundle = await _locateJsonStorage(ctx, dataDir, trimmed);
   if (jsonBundle != null) return jsonBundle;
 
-  return _locateSqliteStorage(ctx, dataDir, sessionId);
+  return _locateSqliteStorage(ctx, dataDir, trimmed);
 }
 
 /// TeamPilot history context: dirname of absolute [OPENCODE_DB].
