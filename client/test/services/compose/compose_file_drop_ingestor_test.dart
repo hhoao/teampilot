@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/compose/compose_landing_drop_ingestor.dart';
+import 'package:teampilot/services/compose/compose_file_drop_ingestor.dart';
 import 'package:teampilot/services/workspace_dnd/path_namespace.dart';
 import 'package:teampilot/services/workspace_dnd/workspace_file_ref.dart';
 
@@ -10,10 +10,10 @@ class _RecordingSink {
 }
 
 void main() {
-  group('ComposeLandingDropIngestor', () {
+  group('ComposeFileDropIngestor', () {
     test('imports external image drops and inserts @ references', () async {
       final sink = _RecordingSink();
-      final ingestor = ComposeLandingDropIngestor(
+      final ingestor = ComposeFileDropIngestor(
         workspaceRoot: '/repo',
         onInsertReferences: sink.insertReferences,
       );
@@ -37,7 +37,7 @@ void main() {
 
     test('inserts @ references for non-image files', () async {
       final sink = _RecordingSink();
-      final ingestor = ComposeLandingDropIngestor(
+      final ingestor = ComposeFileDropIngestor(
         workspaceRoot: '/repo',
         onInsertReferences: sink.insertReferences,
       );
@@ -66,7 +66,7 @@ void main() {
 
     test('skips directories', () async {
       final sink = _RecordingSink();
-      final ingestor = ComposeLandingDropIngestor(
+      final ingestor = ComposeFileDropIngestor(
         workspaceRoot: '/repo',
         onInsertReferences: sink.insertReferences,
       );

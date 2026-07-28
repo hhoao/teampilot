@@ -2,9 +2,9 @@ import '../workspace_dnd/workspace_drop_target.dart';
 import '../workspace_dnd/workspace_file_ref.dart';
 import 'compose_file_attach.dart';
 
-/// Landing compose drop target: inserts `@` path references (any file type).
-class ComposeLandingDropIngestor implements WorkspaceDropTarget {
-  ComposeLandingDropIngestor({
+/// Compose drop target: inserts `@` path references (any file type).
+class ComposeFileDropIngestor implements WorkspaceDropTarget {
+  ComposeFileDropIngestor({
     required this.workspaceRoot,
     required this.onInsertReferences,
   });

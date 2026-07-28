@@ -27,7 +27,7 @@ import '../../../models/workspace.dart';
 import '../../../models/runtime_target.dart';
 import '../../../services/ai/headless_ai_service.dart';
 import '../../../services/compose/compose_file_attach.dart';
-import '../../../services/compose/compose_landing_drop_ingestor.dart';
+import '../../../services/compose/compose_file_drop_ingestor.dart';
 import '../../../services/storage/app_storage.dart';
 import '../../../services/compose/compose_landing_bundle.dart';
 import '../../../services/compose/compose_prompt_enhance.dart';
@@ -293,8 +293,8 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     _focusNode.requestFocus();
   }
 
-  ComposeLandingDropIngestor _composeDropIngestor() {
-    return ComposeLandingDropIngestor(
+  ComposeFileDropIngestor _composeDropIngestor() {
+    return ComposeFileDropIngestor(
       workspaceRoot: _activeLaunchDirectory(),
       onInsertReferences: _insertComposeReferences,
     );
