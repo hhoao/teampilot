@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -16,6 +17,7 @@ import '../../models/team_config.dart';
 import '../../pages/chat/agent_permission_attention_banner.dart';
 import '../../pages/chat/compose_stop_visibility.dart';
 import '../../pages/chat/session_follow_up_compose_submit.dart';
+import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/turn_interrupt_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -23,6 +25,7 @@ import '../../services/follow_up/follow_up_queue.dart';
 import '../../services/session/history_seat_key.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../utils/debounce/debounce.dart';
+import '../../utils/team/team_member_naming.dart';
 import 'follow_up_queue_strip.dart';
 
 /// Finder key for the terminal follow-up compose bar.
@@ -251,18 +254,54 @@ class TerminalFollowUpComposeHost extends StatelessWidget {
   final String selectedMemberId;
   final TeamProfile? team;
 
+  String _effectiveMemberId(TeamProfile? teamProfile) {
+    if (session.isSimple || teamProfile == null) return '';
+    final mid = selectedMemberId.trim();
+    if (mid.isNotEmpty) return mid;
+    return teamProfile.members
+            .where(TeamMemberNaming.isTeamLead)
+            .firstOrNull
+            ?.id ??
+        teamProfile.members.firstOrNull?.id ??
+        '';
+  }
+
+  TeamMemberConfig? _selectedMember(TeamProfile? teamProfile) {
+    if (teamProfile == null) return null;
+    final mid = _effectiveMemberId(teamProfile);
+    if (mid.isEmpty) return null;
+    return teamProfile.members.where((m) => m.id == mid).firstOrNull;
+  }
+
   CliTool _lockedCli(List<CliPreset> presets) {
     if (session.isSimple) return session.cli ?? CliTool.claude;
     final teamProfile = team;
     if (teamProfile == null) return CliTool.claude;
-    final memberId = selectedMemberId.trim();
+    final memberId = _effectiveMemberId(teamProfile);
+    final member = _selectedMember(teamProfile);
     return SessionMemberCliResolver.resolve(
       persistedSession: session,
       team: teamProfile,
-      memberId: memberId.isNotEmpty ? memberId : teamProfile.members.first.id,
+      memberId: memberId.isNotEmpty ? memberId : (member?.id ?? ''),
       globalPresets: presets,
-      cliForMember: (_, __, {List<CliPreset> globalPresets = const []}) =>
-          CliTool.claude,
+      cliForMember: (t, id, {List<CliPreset> globalPresets = const []}) {
+        final m = (member != null && member.id == id)
+            ? member
+            : () {
+                for (final x in t.members) {
+                  if (x.id == id) return x;
+                }
+                return null;
+              }();
+        if (m != null) {
+          return memberLaunchCli(
+            team: t,
+            member: m,
+            globalPresets: globalPresets,
+          );
+        }
+        return t.cli;
+      },
     );
   }
 
