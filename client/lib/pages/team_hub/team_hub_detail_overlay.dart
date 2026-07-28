@@ -20,11 +20,14 @@ class TeamHubDetailOverlay extends StatelessWidget {
     required this.onClone,
     this.pickerMode = false,
     this.onConfirm,
+    this.confirming = false,
     this.alreadyAdded = false,
     this.inset = 28,
   });
 
   final DiscoverableTeam team;
+
+  /// True only while a hub clone is actually in flight (spinner + Cloning…).
   final bool cloning;
 
   /// Local ids already installed (skills/plugins/MCP) — drives the per-dep
@@ -37,6 +40,10 @@ class TeamHubDetailOverlay extends StatelessWidget {
   /// the default (`false`).
   final bool pickerMode;
   final VoidCallback? onConfirm;
+
+  /// Picker confirm in progress (reuse / non-clone). Disables Confirm without
+  /// showing [teamHubCloning].
+  final bool confirming;
 
   /// Shows an 「Already added」 chip when a local clone of this hub team exists.
   final bool alreadyAdded;
@@ -140,7 +147,7 @@ class TeamHubDetailOverlay extends StatelessWidget {
                       const SizedBox(width: 12),
                       if (pickerMode)
                         FilledButton(
-                          onPressed: cloning ? null : onConfirm,
+                          onPressed: (cloning || confirming) ? null : onConfirm,
                           child: cloning
                               ? Row(
                                   mainAxisSize: MainAxisSize.min,

@@ -7095,6 +7095,12 @@ abstract class AppLocalizations {
   /// **'Already added'**
   String get teamHubAlreadyAdded;
 
+  /// No description provided for @teamHubNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Team not found.'**
+  String get teamHubNotFound;
+
   /// No description provided for @expertHubNav.
   ///
   /// In en, this message translates to:

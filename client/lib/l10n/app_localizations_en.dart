@@ -3937,6 +3937,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teamHubAlreadyAdded => 'Already added';
 
   @override
+  String get teamHubNotFound => 'Team not found.';
+
+  @override
   String get expertHubNav => 'Expert Hub';
 
   @override
