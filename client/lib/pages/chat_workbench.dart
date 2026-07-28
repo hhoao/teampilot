@@ -514,6 +514,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
                   chatCubit: chatCubit,
                   team: team,
                   launchError: launchError,
+                  sessionConnectInProgress: sessionConnectInProgress,
                 )
               else if (showSessionStarting)
                 ChatWorkbenchSessionLoadingView(
@@ -543,6 +544,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
     required ChatCubit chatCubit,
     required TeamProfile? team,
     required String? launchError,
+    required bool sessionConnectInProgress,
   }) {
     final appSession = _resolveAppSession(chatCubit: chatCubit, slice: slice);
     if (appSession == null) {
@@ -597,6 +599,10 @@ class _ChatWorkbenchBody extends StatelessWidget {
       team: resolvedTeam,
       routeActive: routeActive,
       launchError: launchError,
+      sessionConnectInProgress: sessionConnectInProgress,
+      onRetry: () => unawaited(
+        chatCubit.retrySessionLaunch(appSession.sessionId),
+      ),
       peekContinueChannel: resolveChannel,
       isMailboxUnread: (mailId) {
         final bus = chatCubit.sessionRuntime.busForSession(
