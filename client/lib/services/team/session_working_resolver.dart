@@ -39,11 +39,6 @@ final class SessionWorkingResolver {
   }) {
     if (tab.memberShells.isEmpty) return false;
 
-    final resolvedTeam = team ?? _fallbackTeam(tab);
-    final teamMode = resolvedTeam.teamMode;
-    final bus = tab.teamBus;
-    final isPersonal = isPersonalTab(tab);
-
     final session = tab.persistedSession;
     final members = team != null
         ? (session != null && session.members.isNotEmpty
@@ -55,27 +50,71 @@ final class SessionWorkingResolver {
           );
 
     for (final member in members) {
-      final shell = tab.memberShells[member.id];
-      if (shell == null || !shell.isConnected) continue;
-
-      final coordination = MemberCoordination.resolve(
-        shell: shell,
-        member: member,
-        team: resolvedTeam,
-        teamMode: teamMode,
+      if (isMemberWorking(
+        tab: tab,
+        memberId: member.id,
+        team: team,
         globalPresets: globalPresets,
-        bus: bus,
-        session: session,
-        isPersonalSession: isPersonal,
-        claudeRosterWorking: claudeWorkingByMemberId[member.id] ?? false,
-        cliToolRegistry: _cliToolRegistry,
-      );
-      if (coordination.availability() == MemberAvailability.working) {
+        claudeWorkingByMemberId: claudeWorkingByMemberId,
+      )) {
         return true;
       }
-      if (coordination.countsAsSessionWorkingWhileBooting()) return true;
     }
     return false;
+  }
+
+  bool isMemberWorking({
+    required ChatTab tab,
+    required String memberId,
+    required TeamProfile? team,
+    required List<CliPreset> globalPresets,
+    Map<String, MemberPresence> presence = const {},
+    bool usePresenceSnapshot = false,
+    Map<String, bool> claudeWorkingByMemberId = const {},
+  }) {
+    if (usePresenceSnapshot) {
+      return presence[memberId]?.isWorking ?? false;
+    }
+
+    final shell = tab.memberShells[memberId];
+    if (shell == null || !shell.isConnected) return false;
+
+    final resolvedTeam = team ?? _fallbackTeam(tab);
+    final teamMode = resolvedTeam.teamMode;
+    final bus = tab.teamBus;
+    final isPersonal = isPersonalTab(tab);
+    final session = tab.persistedSession;
+
+    final TeamMemberConfig member;
+    if (team != null) {
+      final roster = session != null && session.members.isNotEmpty
+          ? sessionRosterMembers(session, team)
+          : runtimeRosterMembers(team);
+      member = roster.firstWhere(
+        (m) => m.id == memberId,
+        orElse: () => const TeamMemberConfig(id: '', name: ''),
+      );
+      if (!member.isValid) return false;
+    } else {
+      member = TeamMemberConfig(id: memberId, name: memberId);
+    }
+
+    final coordination = MemberCoordination.resolve(
+      shell: shell,
+      member: member,
+      team: resolvedTeam,
+      teamMode: teamMode,
+      globalPresets: globalPresets,
+      bus: bus,
+      session: session,
+      isPersonalSession: isPersonal,
+      claudeRosterWorking: claudeWorkingByMemberId[memberId] ?? false,
+      cliToolRegistry: _cliToolRegistry,
+    );
+    if (coordination.availability() == MemberAvailability.working) {
+      return true;
+    }
+    return coordination.countsAsSessionWorkingWhileBooting();
   }
 
   TeamProfile _fallbackTeam(ChatTab tab) {
