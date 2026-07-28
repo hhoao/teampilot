@@ -18,6 +18,9 @@ class TeamHubDetailOverlay extends StatelessWidget {
     required this.installedDepIds,
     required this.onBack,
     required this.onClone,
+    this.pickerMode = false,
+    this.onConfirm,
+    this.alreadyAdded = false,
     this.inset = 28,
   });
 
@@ -29,6 +32,14 @@ class TeamHubDetailOverlay extends StatelessWidget {
   final Set<String> installedDepIds;
   final VoidCallback onBack;
   final VoidCallback onClone;
+
+  /// When true, primary CTA is Confirm (not Clone). Sidebar Team Hub keeps
+  /// the default (`false`).
+  final bool pickerMode;
+  final VoidCallback? onConfirm;
+
+  /// Shows an 「Already added」 chip when a local clone of this hub team exists.
+  final bool alreadyAdded;
 
   /// Horizontal page inset (tighter on Android).
   final double inset;
@@ -93,6 +104,11 @@ class TeamHubDetailOverlay extends StatelessWidget {
                               spacing: 8,
                               runSpacing: 6,
                               children: [
+                                if (pickerMode && alreadyAdded)
+                                  TeamStatChip(
+                                    icon: Icons.check_rounded,
+                                    label: l10n.teamHubAlreadyAdded,
+                                  ),
                                 TeamStatChip(
                                   icon: Icons.people_alt_outlined,
                                   label:
@@ -122,7 +138,28 @@ class TeamHubDetailOverlay extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      _CloneButton(cloning: cloning, onPressed: onClone),
+                      if (pickerMode)
+                        FilledButton(
+                          onPressed: cloning ? null : onConfirm,
+                          child: cloning
+                              ? Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(l10n.teamHubCloning),
+                                  ],
+                                )
+                              : Text(l10n.teamHubConfirmSelection),
+                        )
+                      else
+                        _CloneButton(cloning: cloning, onPressed: onClone),
                     ],
                   ),
                   if (team.description.isNotEmpty) ...[
