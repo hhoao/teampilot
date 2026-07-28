@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-07-28-subagent-preview-overlay-design.md`
 
+> **Superseded (tool names):** The v1 `Agent`/`Task` lock below is replaced by per-CLI `AiHistoryCapability.subagentToolNames` and host-injected `isSubagentTool` — see `2026-07-28-multi-cli-subagent-side-resolvers` plan.
+
 ### Plan locks (from spec review)
 
 | Topic | Lock |

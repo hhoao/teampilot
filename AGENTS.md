@@ -98,6 +98,8 @@ Embedded terminals render with **flutter_alacritty** (Alacritty-based Rust engin
 
 Each CLI is a `CliToolDefinition` in `client/lib/services/cli/registry/tools/`, composed from **capabilities** under `registry/capabilities/`. The registry is built by `CliToolRegistry.builtIn()` and provisioned via `CliBootstrap`. **To add or change a CLI, add/extend a tool definition + capabilities here** — do not special-case CLIs across the app.
 
+**History:** Seat transcript locate/parse, subagent side resolve, and subagent tool names come from `AiHistoryCapability` on each tool definition (`registry.capability<AiHistoryCapability>(cli)`).
+
 Provider catalogs: `providers/{tool}/providers.json` per CLI (`AppProviderRepository`).
 
 ### Team modes and TeamBus
