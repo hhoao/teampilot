@@ -54,6 +54,16 @@ final class TerminalScreenProbeController {
         scanRows: scanRows,
       );
 
+  bool isComposerChromeEmpty({
+    required String composerPrefix,
+    int scanRows = 24,
+  }) =>
+      probe.isComposerChromeEmpty(
+        _screenGrid,
+        composerPrefix: composerPrefix,
+        scanRows: scanRows,
+      );
+
   String describeProbeWindow({int scanRows = 8}) =>
       probe.describeProbeWindow(_screenGrid, scanRows: scanRows);
 

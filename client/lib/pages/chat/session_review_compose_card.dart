@@ -6,6 +6,7 @@ import '../../models/cli_preset.dart';
 import '../../models/config_bundle.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/compose/compose_focus_shell.dart';
 import '../../widgets/compose/compose_model_preset_chip.dart';

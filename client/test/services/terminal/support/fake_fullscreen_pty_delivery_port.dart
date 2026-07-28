@@ -12,6 +12,7 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
     this.visibleAfterPaste = true,
     this.collapseAsClaudePaste = false,
     this.crAckConfig = const FullscreenCrAckConfig.productionDefault(),
+    this.composerChromeEmptyOverride,
   });
 
   bool aborted;
@@ -21,6 +22,9 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   final bool collapseAsClaudePaste;
   @override
   final FullscreenCrAckConfig crAckConfig;
+
+  /// When set, [isComposerChromeEmpty] returns this value instead of inferring.
+  final bool? composerChromeEmptyOverride;
 
   String? staged;
   int pasteCount = 0;
@@ -67,6 +71,24 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
     if (crCount < crsToClear) return false;
     if (staged == null) return true;
     return !staged!.contains(anchor.needle);
+  }
+
+  @override
+  bool isComposerChromeEmpty({int scanRows = 24}) {
+    if (composerChromeEmptyOverride != null) {
+      return composerChromeEmptyOverride!;
+    }
+    final prefix = crAckConfig.composerPrefix?.trim();
+    if (prefix == null || prefix.isEmpty) {
+      return staged == null || staged!.trim().isEmpty;
+    }
+    if (staged == null) return true;
+    final trimmed = staged!.trimLeft();
+    if (!trimmed.startsWith(prefix)) {
+      // Staged body without prefix chrome — treat as non-empty composer body.
+      return staged!.trim().isEmpty;
+    }
+    return trimmed.substring(prefix.length).trim().isEmpty;
   }
 
   @override

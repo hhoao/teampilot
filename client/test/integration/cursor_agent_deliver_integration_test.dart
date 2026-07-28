@@ -15,6 +15,8 @@ library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/cli/registry/capabilities/built_in_tool_capabilities.dart';
+import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
 import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';
 import 'package:teampilot/services/terminal/terminal_fullscreen_pty_port.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
@@ -143,5 +145,70 @@ void main() {
         },
       );
     }
+
+    test('deliverPasteAndSubmit short A twice at 80x52', () async {
+      IntegrationPrerequisites.skipUnlessNativePty();
+      final cursorAgent = _resolveCursorAgentPath();
+      if (cursorAgent == null) {
+        markTestSkipped('cursor-agent not on PATH');
+        return;
+      }
+
+      final tmpWork =
+          await Directory.systemTemp.createTemp('cursor_deliver_short_');
+      addTearDown(() async {
+        try {
+          await tmpWork.delete(recursive: true);
+        } catch (_) {}
+      });
+
+      const cols = 80;
+      const rows = 52;
+      final session = await LocalPtyProbeHarness.connectShell(
+        executable: cursorAgent,
+        arguments: ['--workspace', tmpWork.path],
+        confirmFallback: const Duration(seconds: 3),
+        workingDirectory: tmpWork.path,
+        viewportColumns: cols,
+        viewportRows: rows,
+      );
+      addTearDown(session.dispose);
+
+      await _bootCursorPrompt(session, scanRows: rows);
+
+      final automation = FullscreenPtyAutomation();
+      final port = TerminalFullscreenPtyPort(
+        input: session.input,
+        probe: session.probe,
+        aborted: () => false,
+        crAckConfig: FullscreenCrAckConfig(
+          strategy: const CursorTerminalBehavior().fullscreenCrAckStrategy,
+          composerPrefix:
+              const CursorTerminalBehavior().fullscreenComposerPrefix,
+        ),
+      );
+
+      for (var i = 0; i < 2; i++) {
+        final outcome = await automation.deliverPasteAndSubmit(
+          port: port,
+          text: 'A',
+          pasteSettle: const Duration(milliseconds: 150),
+        );
+        await session.probe.syncDisplayGrid();
+        // ignore: avoid_print
+        print('--- short A deliver #$i outcome=$outcome ---\n'
+            '${session.probe.describeProbeWindow(scanRows: rows)}');
+        expect(
+          outcome,
+          FullscreenPtyDeliveryOutcome.submitted,
+          reason:
+              'short needle deliver #$i must submit without hanging/crStuck. '
+              'Grid:\n${session.probe.describeProbeWindow(scanRows: rows)}',
+        );
+        // Let Cursor paint a fresh empty composer before the next paste.
+        await Future<void>.delayed(const Duration(seconds: 2));
+        await session.probe.syncDisplayGrid();
+      }
+    });
   });
 }

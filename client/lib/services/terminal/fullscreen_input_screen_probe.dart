@@ -128,6 +128,24 @@ int? bottomComposerChromeRow(
   return null;
 }
 
+/// True when the bottommost composer chrome row is prefix-only (no staged body).
+///
+/// Returns false when [composerPrefix] is empty or no composer row is found —
+/// callers must not treat "unknown" as empty.
+bool isComposerChromeEmpty(
+  TerminalScreenGrid grid, {
+  required String composerPrefix,
+  int scanRows = 24,
+}) {
+  final prefix = composerPrefix.trim();
+  if (prefix.isEmpty) return false;
+  final row = bottomComposerChromeRow(grid, prefix, scanRows: scanRows);
+  if (row == null) return false;
+  final text = _logicalRowText(grid, row).trimLeft();
+  if (!text.startsWith(prefix)) return false;
+  return text.substring(prefix.length).trim().isEmpty;
+}
+
 int _composerLocateStartRow(
   TerminalScreenGrid grid, {
   required int windowStart,

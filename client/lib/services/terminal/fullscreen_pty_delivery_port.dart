@@ -21,6 +21,9 @@ abstract interface class FullscreenPtyDeliveryPort {
 
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24});
 
+  /// Whether the bottommost composer chrome row is prefix-only (no staged body).
+  bool isComposerChromeEmpty({int scanRows = 24});
+
   Future<void> clearStagedInput();
 
   Future<void> pasteText(String text);

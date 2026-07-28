@@ -169,6 +169,41 @@ void main() {
     );
   });
 
+  test('isComposerChromeEmpty true for prefix-only cursor row', () {
+    final grid = _FakeGrid.fromRows([
+      'A',
+      '→ ',
+    ]);
+    expect(
+      isComposerChromeEmpty(grid, composerPrefix: '→', scanRows: 8),
+      isTrue,
+    );
+  });
+
+  test('isComposerChromeEmpty false when body follows prefix', () {
+    final grid = _FakeGrid.fromRows(['→ A']);
+    expect(
+      isComposerChromeEmpty(grid, composerPrefix: '→', scanRows: 8),
+      isFalse,
+    );
+  });
+
+  test('isComposerChromeEmpty false when no composer row', () {
+    final grid = _FakeGrid.fromRows(['just history']);
+    expect(
+      isComposerChromeEmpty(grid, composerPrefix: '→', scanRows: 8),
+      isFalse,
+    );
+  });
+
+  test('isComposerChromeEmpty true for codex prefix with trailing spaces', () {
+    final grid = _FakeGrid.fromRows(['›     ']);
+    expect(
+      isComposerChromeEmpty(grid, composerPrefix: '\u203a', scanRows: 8),
+      isTrue,
+    );
+  });
+
   test('locateNeedle finds soft-wrapped CJK tail across two rows', () {
     // Logical paste (no prefix in needle). Composer prefix only on first row.
     const line0 =

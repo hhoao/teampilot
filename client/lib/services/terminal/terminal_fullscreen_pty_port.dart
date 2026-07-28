@@ -62,6 +62,16 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
       );
 
   @override
+  bool isComposerChromeEmpty({int scanRows = 24}) {
+    final prefix = _crAckConfig.composerPrefix?.trim();
+    if (prefix == null || prefix.isEmpty) return false;
+    return _probe.isComposerChromeEmpty(
+      composerPrefix: prefix,
+      scanRows: scanRows,
+    );
+  }
+
+  @override
   Future<void> clearStagedInput() => _input.clearStagedInput();
 
   @override

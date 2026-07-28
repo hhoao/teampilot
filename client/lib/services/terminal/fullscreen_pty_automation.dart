@@ -1,6 +1,7 @@
 import 'fullscreen_cr_ack_config.dart';
 import 'fullscreen_input_screen_probe.dart';
 import 'fullscreen_pty_delivery_port.dart';
+import 'fullscreen_reinject_guard.dart';
 import 'pty_automation_needle.dart';
 import 'pty_inject_ack_retry.dart';
 import '../../utils/logging/logger.dart';
@@ -137,6 +138,9 @@ class FullscreenPtyAutomation {
         case FullscreenPtyDeliveryOutcome.aborted:
           return FullscreenPtyDeliveryOutcome.aborted;
         case FullscreenPtyDeliveryOutcome.crStuck:
+          if (await _shouldSkipReinject(port, needle, text)) {
+            return FullscreenPtyDeliveryOutcome.submitted;
+          }
           if (reinject < maxReinject) continue;
           return FullscreenPtyDeliveryOutcome.crStuck;
         case FullscreenPtyDeliveryOutcome.pasteNotFound:
@@ -144,6 +148,29 @@ class FullscreenPtyAutomation {
       }
     }
     return FullscreenPtyDeliveryOutcome.crStuck;
+  }
+
+  /// Cursor/Codex: first CR often already committed while grid ACK still fails.
+  /// Empty composer + residual needle ⇒ skip clear→paste (avoids duplicate user turns).
+  Future<bool> _shouldSkipReinject(
+    FullscreenPtyDeliveryPort port,
+    String needle,
+    String text,
+  ) async {
+    await port.syncDisplayGrid();
+    final scanRows = _probeScanRows(port);
+    final skip = shouldSkipReinjectAfterCrStuck(
+      strategy: port.crAckConfig.strategy,
+      composerChromeEmpty: port.isComposerChromeEmpty(scanRows: scanRows),
+      needleStillVisible: port.locateNeedle(needle, scanRows: scanRows) != null,
+    );
+    if (skip) {
+      appLogger.i(
+        '[pty] skip-reinject composerMovesDown empty+needle '
+        'textChars=${text.length}',
+      );
+    }
+    return skip;
   }
 
   /// CR-only pass when [text] is already visible on the grid.
