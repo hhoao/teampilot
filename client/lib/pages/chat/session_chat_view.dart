@@ -1050,6 +1050,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     final showComposeStop = shouldShowComposeStop(
       memberWorking: memberWorking,
       supportsTurnInterrupt: supportsTurnInterrupt,
+      composeTextEmpty: true,
     );
     final historyCap = registry.capability<AiHistoryCapability>(lockedCli);
 
