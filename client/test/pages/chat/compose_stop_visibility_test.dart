@@ -7,6 +7,7 @@ void main() {
       shouldShowComposeStop(
         memberWorking: true,
         supportsTurnInterrupt: true,
+        composeTextEmpty: true,
       ),
       isTrue,
     );
@@ -14,6 +15,7 @@ void main() {
       shouldShowComposeStop(
         memberWorking: false,
         supportsTurnInterrupt: true,
+        composeTextEmpty: true,
       ),
       isFalse,
     );
@@ -21,8 +23,28 @@ void main() {
       shouldShowComposeStop(
         memberWorking: true,
         supportsTurnInterrupt: false,
+        composeTextEmpty: true,
       ),
       isFalse,
+    );
+  });
+
+  test('shouldShowComposeStop requires empty text', () {
+    expect(
+      shouldShowComposeStop(
+        memberWorking: true,
+        supportsTurnInterrupt: true,
+        composeTextEmpty: false,
+      ),
+      isFalse,
+    );
+    expect(
+      shouldShowComposeStop(
+        memberWorking: true,
+        supportsTurnInterrupt: true,
+        composeTextEmpty: true,
+      ),
+      isTrue,
     );
   });
 }

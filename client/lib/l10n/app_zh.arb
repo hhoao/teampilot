@@ -515,6 +515,19 @@
     }
   },
   "sessionHistoryMailboxQueuedDismiss": "关闭",
+  "sessionFollowUpQueued": "{count} 排队中",
+  "@sessionFollowUpQueued": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionFollowUpAddPlaceholder": "添加跟进消息",
+  "sessionFollowUpResume": "继续队列",
+  "sessionFollowUpEdit": "编辑",
+  "sessionFollowUpMoveUp": "上移",
+  "sessionFollowUpDelete": "删除",
   "aiMessageUsedTool": "已使用工具",
   "aiMessageCancelledTool": "已取消工具",
   "aiMessageToolsUsed": "已使用 {count} 个工具",

@@ -1222,6 +1222,26 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionHistoryMailboxQueuedDismiss => '关闭';
 
   @override
+  String sessionFollowUpQueued(int count) {
+    return '$count 排队中';
+  }
+
+  @override
+  String get sessionFollowUpAddPlaceholder => '添加跟进消息';
+
+  @override
+  String get sessionFollowUpResume => '继续队列';
+
+  @override
+  String get sessionFollowUpEdit => '编辑';
+
+  @override
+  String get sessionFollowUpMoveUp => '上移';
+
+  @override
+  String get sessionFollowUpDelete => '删除';
+
+  @override
   String get aiMessageUsedTool => '已使用工具';
 
   @override

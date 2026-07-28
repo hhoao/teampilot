@@ -2,5 +2,6 @@
 bool shouldShowComposeStop({
   required bool memberWorking,
   required bool supportsTurnInterrupt,
+  required bool composeTextEmpty,
 }) =>
-    memberWorking && supportsTurnInterrupt;
+    memberWorking && supportsTurnInterrupt && composeTextEmpty;

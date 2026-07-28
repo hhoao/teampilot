@@ -540,6 +540,19 @@
     }
   },
   "sessionHistoryMailboxQueuedDismiss": "Dismiss",
+  "sessionFollowUpQueued": "{count} Queued",
+  "@sessionFollowUpQueued": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionFollowUpAddPlaceholder": "Add a follow-up",
+  "sessionFollowUpResume": "Resume",
+  "sessionFollowUpEdit": "Edit",
+  "sessionFollowUpMoveUp": "Move up",
+  "sessionFollowUpDelete": "Delete",
   "aiMessageUsedTool": "Used tool",
   "aiMessageCancelledTool": "Cancelled tool",
   "aiMessageToolsUsed": "Used {count} tools",

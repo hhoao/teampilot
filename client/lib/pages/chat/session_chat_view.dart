@@ -42,6 +42,7 @@ import '../../services/compose/compose_prompt_enhance.dart';
 import '../../services/compose/compose_text_edit.dart';
 import '../../services/compose/compose_voice_input.dart';
 import '../../services/expert_hub/expert_member_resolver.dart';
+import '../../services/follow_up/follow_up_queue.dart';
 import '../../services/session/ai_history_live_refresh_controller.dart';
 import '../../services/session/history_seat_key.dart';
 import '../../services/session/session_continue_overrides_apply.dart';
@@ -56,9 +57,11 @@ import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
 import '../../widgets/compose/compose_chrome.dart';
 import '../../widgets/compose/workspace_compose_card.dart';
+import '../../widgets/follow_up/follow_up_queue_strip.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
 import 'agent_permission_attention_banner.dart';
 import 'compose_stop_visibility.dart';
+import 'session_follow_up_compose_submit.dart';
 import 'history_awaiting_working_sync.dart';
 import 'history_continue_delivery.dart';
 import 'history_mailbox_queued_strip.dart';
@@ -363,6 +366,17 @@ class _SessionChatViewState extends State<SessionChatView> {
     sessionId: widget.session.sessionId,
     selectedMemberId: widget.selectedMemberId,
   );
+
+  String get _followUpSeatKey =>
+      followUpSeatKey(widget.session.sessionId, _shellMemberId);
+
+  void _notifyFollowUpMemberWorking(ChatCubit chat) {
+    chat.notifyFollowUpMemberWorking(
+      widget.session.sessionId,
+      _shellMemberId,
+      working: chat.isMemberWorking(widget.session.sessionId, _shellMemberId),
+    );
+  }
 
   void _maybeStartLiveRefreshForRunningPty() {
     if (!mounted) return;
@@ -855,9 +869,66 @@ class _SessionChatViewState extends State<SessionChatView> {
     await _voiceInput.endSession(discard: false);
   }
 
+  Future<void> _handleComposeStop(ChatCubit chat) async {
+    await chat.interruptSelectedMemberTurn(
+      sessionId: widget.session.sessionId,
+      memberId: _shellMemberId,
+    );
+    chat.pauseFollowUpQueue(widget.session.sessionId, _shellMemberId);
+  }
+
   Future<void> _handleSubmit() async {
+    if (_isSubmitting) return;
     final text = _controller.text.trim();
-    if (text.isEmpty || _isSubmitting) return;
+    final selectedMemberId = widget.selectedMemberId;
+    final chat = context.read<ChatCubit>();
+    final permissionWaiting = AgentPermissionAttentionBanner.isSelectedSeatWaiting(
+      attention: context.read<AgentAttentionCubit>(),
+      session: widget.session,
+      selectedMemberId: selectedMemberId,
+    );
+    final memberWorking = chat.isMemberWorking(
+      widget.session.sessionId,
+      _shellMemberId,
+    );
+    final registry =
+        CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
+    final lockedCli = _lockedCli(
+      session: _displaySession(context),
+      team: _liveTeam(context),
+      presets: context.read<CliPresetsCubit>().state.presets,
+    );
+    final supportsTurnInterrupt =
+        registry
+            .capability<TurnInterruptCapability>(lockedCli)
+            ?.supportsTurnInterrupt ??
+        false;
+    final action = resolveHistoryComposeSubmitAction(
+      permissionWaiting: permissionWaiting,
+      memberWorking: memberWorking,
+      trimmedText: text,
+      supportsTurnInterrupt: supportsTurnInterrupt,
+    );
+
+    var delivered = false;
+    dispatchHistoryComposeSubmit(
+      action: action,
+      text: text,
+      onEnqueue: (queued) {
+        chat.followUpQueue.enqueue(_followUpSeatKey, queued);
+        _controller.clear();
+        _notifyFollowUpMemberWorking(chat);
+        if (mounted) setState(() {});
+      },
+      onDeliver: (_) => delivered = true,
+    );
+    if (!delivered) return;
+
+    await _deliverComposeMessage(text);
+  }
+
+  Future<void> _deliverComposeMessage(String text) async {
+    if (text.isEmpty) return;
     final selectedMemberId = widget.selectedMemberId;
     if (AgentPermissionAttentionBanner.isSelectedSeatWaiting(
       attention: context.read<AgentAttentionCubit>(),
@@ -1038,8 +1109,9 @@ class _SessionChatViewState extends State<SessionChatView> {
     final chat = context.read<ChatCubit>();
     final memberWorking = chat.isMemberWorking(
       widget.session.sessionId,
-      selectedMemberId,
+      _shellMemberId,
     );
+    final composeTextEmpty = _controller.text.trim().isEmpty;
     final registry =
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
     final supportsTurnInterrupt =
@@ -1050,16 +1122,29 @@ class _SessionChatViewState extends State<SessionChatView> {
     final showComposeStop = shouldShowComposeStop(
       memberWorking: memberWorking,
       supportsTurnInterrupt: supportsTurnInterrupt,
+      composeTextEmpty: composeTextEmpty,
     );
     final historyCap = registry.capability<AiHistoryCapability>(lockedCli);
 
-    return BlocListener<ChatCubit, ChatState>(
-      listenWhen: (previous, current) =>
-          previous.workingSessionIds != current.workingSessionIds,
-      listener: (context, state) {
-        _syncAwaitingFromWorkingSessions(state);
-        _maybeStartLiveRefreshForRunningPty();
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<ChatCubit, ChatState>(
+          listenWhen: (previous, current) =>
+              previous.workingSessionIds != current.workingSessionIds,
+          listener: (context, state) {
+            _syncAwaitingFromWorkingSessions(state);
+            _maybeStartLiveRefreshForRunningPty();
+            _notifyFollowUpMemberWorking(context.read<ChatCubit>());
+          },
+        ),
+        BlocListener<MemberPresenceCubit, MemberPresenceState>(
+          listenWhen: (previous, current) =>
+              previous.presence != current.presence,
+          listener: (context, _) {
+            _notifyFollowUpMemberWorking(context.read<ChatCubit>());
+          },
+        ),
+      ],
       child: ColoredBox(
         color: cs.surface,
         child: BlocBuilder<AiHistorySeat, AiHistoryState>(
@@ -1321,6 +1406,39 @@ class _SessionChatViewState extends State<SessionChatView> {
                                   session: widget.session,
                                   selectedMemberId: widget.selectedMemberId,
                                 ),
+                                StreamBuilder<FollowUpQueue>(
+                                  stream: chat.followUpQueue.watch(_followUpSeatKey),
+                                  initialData: chat.followUpQueue.queueFor(
+                                    _followUpSeatKey,
+                                  ),
+                                  builder: (context, snapshot) {
+                                    final queue =
+                                        snapshot.data ?? const FollowUpQueue();
+                                    return FollowUpQueueStrip(
+                                      queue: queue,
+                                      onDelete: (id) => chat.followUpQueue.remove(
+                                        _followUpSeatKey,
+                                        id,
+                                      ),
+                                      onEdit: (id, content) =>
+                                          chat.followUpQueue.edit(
+                                            _followUpSeatKey,
+                                            id,
+                                            content,
+                                          ),
+                                      onMoveUp: (id) => chat.followUpQueue.moveUp(
+                                        _followUpSeatKey,
+                                        id,
+                                      ),
+                                      onResume: () => unawaited(
+                                        chat.resumeFollowUpQueue(
+                                          widget.session.sessionId,
+                                          _shellMemberId,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
                                 if (widget.isMailboxUnread != null)
                                   HistoryMailboxQueuedStrip(
                                     key: ValueKey(
@@ -1347,7 +1465,9 @@ class _SessionChatViewState extends State<SessionChatView> {
                                 WorkspaceComposeCard(
                                   controller: _controller,
                                   focusNode: _focusNode,
-                                  hint: l10n.sessionHistoryComposeHint,
+                                  hint: memberWorking
+                                      ? l10n.sessionFollowUpAddPlaceholder
+                                      : l10n.sessionHistoryComposeHint,
                                   canSubmit: canSubmit,
                                   isSubmitting: _isSubmitting,
                                   onSubmit: () => unawaited(_handleSubmit()),
@@ -1406,11 +1526,7 @@ class _SessionChatViewState extends State<SessionChatView> {
                                     showStop: showComposeStop,
                                     onStop: showComposeStop
                                         ? () => unawaited(
-                                            chat.interruptSelectedMemberTurn(
-                                              sessionId:
-                                                  widget.session.sessionId,
-                                              memberId: selectedMemberId,
-                                            ),
+                                            _handleComposeStop(chat),
                                           )
                                         : null,
                                   ),
