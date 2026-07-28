@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/registry/capabilities/history/opencode_side_resolver.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
+import 'package:teampilot/utils/logging/logger_utils.dart';
 
 void main() {
   late Directory base;
@@ -16,6 +17,48 @@ void main() {
   const parentSessionId = 'ses_parent001';
   const childSessionId = 'ses_child001';
   const nestedChildSessionId = 'ses_child002';
+  const mismatchedParentId = 'ses_wrong_parent';
+
+  Future<String> _readLogWhenContains(String path, String needle) async {
+    final file = File(path);
+    for (var attempt = 0; attempt < 40; attempt++) {
+      if (await file.exists()) {
+        final contents = await file.readAsString();
+        if (contents.contains(needle)) return contents;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    if (!await file.exists()) return '';
+    return file.readAsString();
+  }
+
+  Future<void> _ensureFileLogging(Directory logRoot) async {
+    if (!AppLogger.instance.getFileLoggerInitialized()) {
+      await AppLogger.instance.initFileLogging(logRoot.path);
+    }
+  }
+
+  Future<void> expectParentIdMismatchLogged({
+    required String childId,
+    required String expectedParent,
+    required String actualParent,
+  }) async {
+    await AppLogger.instance.flushFileLogging();
+    final logPath = AppLogger.instance.currentLogFilePath;
+    if (logPath == null) return;
+
+    final contents = await _readLogWhenContains(
+      logPath,
+      '[subagent-inflate] OpenCode child session parent_id mismatch',
+    );
+    expect(
+      contents,
+      contains('[subagent-inflate] OpenCode child session parent_id mismatch'),
+    );
+    expect(contents, contains('child=$childId'));
+    expect(contents, contains('expectedParent=$expectedParent'));
+    expect(contents, contains('actualParent=$actualParent'));
+  }
 
   setUp(() async {
     base = await Directory.systemTemp.createTemp('opencode_side_resolver_');
@@ -227,6 +270,77 @@ void main() {
       'nested hello',
     );
   });
+
+  test(
+    'logs parent_id mismatch via appLogger.w but still resolves',
+    () async {
+      final logRoot = await Directory.systemTemp.createTemp(
+        'opencode_side_resolver_log_',
+      );
+      addTearDown(() async {
+        if (await logRoot.exists()) await logRoot.delete(recursive: true);
+      });
+      await _ensureFileLogging(logRoot);
+
+      await writeChildSession(
+        sessionId: childSessionId,
+        parentId: mismatchedParentId,
+      );
+
+      final fromPersisted = await resolver.resolve(
+        part: taskPart(result: {'sessionId': childSessionId}),
+        ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
+        parentHandle: null,
+        rootTranscriptPath: null,
+      );
+
+      expect(fromPersisted, isNotNull);
+      expect(
+        (fromPersisted!.handle as SubagentSessionHandle).sessionId,
+        childSessionId,
+      );
+      expect(fromPersisted.messages, hasLength(1));
+      expect(
+        (fromPersisted.messages.first.parts.single as AiTextPart).text,
+        'child hello',
+      );
+
+      await expectParentIdMismatchLogged(
+        childId: childSessionId,
+        expectedParent: parentSessionId,
+        actualParent: mismatchedParentId,
+      );
+
+      await writeChildSession(
+        sessionId: nestedChildSessionId,
+        parentId: mismatchedParentId,
+        userText: 'nested mismatch',
+      );
+
+      final fromHandle = await resolver.resolve(
+        part: taskPart(result: {'sessionId': nestedChildSessionId}),
+        ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
+        parentHandle: SubagentSessionHandle(childSessionId),
+        rootTranscriptPath: null,
+      );
+
+      expect(fromHandle, isNotNull);
+      expect(
+        (fromHandle!.handle as SubagentSessionHandle).sessionId,
+        nestedChildSessionId,
+      );
+      expect(
+        (fromHandle.messages.first.parts.single as AiTextPart).text,
+        'nested mismatch',
+      );
+
+      await expectParentIdMismatchLogged(
+        childId: nestedChildSessionId,
+        expectedParent: childSessionId,
+        actualParent: mismatchedParentId,
+      );
+    },
+  );
 
   test('returns null when child session storage is missing', () async {
     await writeParentWithTaskResult(
