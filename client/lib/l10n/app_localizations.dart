@@ -2402,6 +2402,42 @@ abstract class AppLocalizations {
   /// **'Dismiss'**
   String get sessionHistoryMailboxQueuedDismiss;
 
+  /// No description provided for @sessionFollowUpQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} Queued'**
+  String sessionFollowUpQueued(int count);
+
+  /// No description provided for @sessionFollowUpAddPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a follow-up'**
+  String get sessionFollowUpAddPlaceholder;
+
+  /// No description provided for @sessionFollowUpResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get sessionFollowUpResume;
+
+  /// No description provided for @sessionFollowUpEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get sessionFollowUpEdit;
+
+  /// No description provided for @sessionFollowUpMoveUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Move up'**
+  String get sessionFollowUpMoveUp;
+
+  /// No description provided for @sessionFollowUpDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get sessionFollowUpDelete;
+
   /// No description provided for @aiMessageUsedTool.
   ///
   /// In en, this message translates to:
