@@ -7,7 +7,6 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/worktree_cubit.dart';
-import '../../l10n/l10n_extensions.dart';
 import '../../models/landing_launch_context.dart';
 import '../../models/workspace.dart';
 import '../../pages/home_workspace/workspace/workspace_chat_landing.dart';
@@ -134,21 +133,30 @@ class _SelectionAskAiDialogState extends State<_SelectionAskAiDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final spacing = context.tpSpacing;
     return TpDialog(
-      maxWidth: 720,
-      maxHeight: 720,
+      maxWidth: 880,
       scrollable: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      contentPadding: EdgeInsets.all(spacing.md),
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          TpDialogHeader(title: context.l10n.selectionAskAi),
-          SizedBox(
-            height: 600,
-            child: WorkspaceChatLanding(
-              workspace: widget.workspace,
-              initialText: widget.initialText,
-              isSubmitting: _submitting,
-              onSubmit: (message, draft) => unawaited(_submit(message, draft)),
+          WorkspaceChatLanding(
+            workspace: widget.workspace,
+            initialText: widget.initialText,
+            isSubmitting: _submitting,
+            showLandingChrome: false,
+            onSubmit: (message, draft) => unawaited(_submit(message, draft)),
+          ),
+          Positioned(
+            top: 0,
+            right: 0,
+            child: TpIconButton(
+              key: const Key('selection-ask-ai-dismiss'),
+              icon: Icons.close_rounded,
+              tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+              backgroundColor: Colors.transparent,
+              onTap: () => Navigator.of(context).pop(),
             ),
           ),
         ],
