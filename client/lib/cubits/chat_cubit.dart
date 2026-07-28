@@ -42,6 +42,11 @@ import '../services/terminal/member_turn_interrupt_service.dart';
 import '../services/terminal/session_member_cli_resolver.dart';
 import '../services/terminal/terminal_theme_for_launch.dart';
 import '../services/terminal/terminal_transport_factory.dart';
+import '../services/follow_up/follow_up_queue.dart';
+import '../services/follow_up/follow_up_queue_drainer.dart';
+import '../pages/chat/history_continue_delivery.dart';
+import '../pages/chat/session_chat_continue_seat.dart';
+import '../pages/chat/session_history_review_submit.dart';
 import '../utils/session/workspace_sessions.dart';
 import '../../widgets/workspace_icon_picker_dialog.dart';
 import '../utils/logging/logger_utils.dart';
@@ -98,6 +103,8 @@ class ChatCubit extends Cubit<ChatState>
     TeammateBusMcpGateway? teammateBusMcpGateway,
     AgentStatusSeatLookup? agentStatusSeatLookup,
     AgentAttentionCubit? agentAttentionCubit,
+    InMemoryFollowUpQueueStore? followUpQueueStore,
+    FollowUpQueueDrainer? followUpQueueDrainer,
     Future<TeamProfile?> Function(String teamId)? teamById,
     required AutomationRepository automationRepository,
     LayoutCubit? layoutCubit,
@@ -128,7 +135,14 @@ class ChatCubit extends Cubit<ChatState>
        _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
        _lifecycle = lifecycleService ?? SessionLifecycleService(),
        _sessionRepository = sessionRepository,
+       _followUpQueue = followUpQueueStore ?? InMemoryFollowUpQueueStore(),
        super(const ChatState()) {
+    _followUpDrainer =
+        followUpQueueDrainer ??
+        FollowUpQueueDrainer(
+          store: _followUpQueue,
+          deliver: (seat, content) => _deliverFollowUpAtSeat(seat, content),
+        );
     final attention = _agentAttentionCubit;
     if (attention != null) {
       _agentAttentionSub = attention.stream.listen((_) {
@@ -156,8 +170,12 @@ class ChatCubit extends Cubit<ChatState>
   StreamSubscription<AgentAttentionState>? _agentAttentionSub;
   final AutomationRepository _automationRepository;
   final LayoutCubit? _layoutCubit;
+  final InMemoryFollowUpQueueStore _followUpQueue;
+  late final FollowUpQueueDrainer _followUpDrainer;
   VoidCallback? _onAutomationsChanged;
   SessionConnectOrchestrator? _defaultSessionConnect;
+
+  InMemoryFollowUpQueueStore get followUpQueue => _followUpQueue;
 
   void bindAutomationsChangeNotifier(VoidCallback listener) {
     _onAutomationsChanged = listener;
@@ -486,6 +504,140 @@ class ChatCubit extends Cubit<ChatState>
 
   void _recomputeWorkingSessions() {
     _updateWorkingSessions(_sessionRuntime.recomputeWorkingSessions());
+    _syncFollowUpQueuesWithWorking();
+  }
+
+  void _syncFollowUpQueuesWithWorking() {
+    if (isClosed) return;
+    final seen = <String>{};
+    void notifySeat(String sessionId, String memberId) {
+      final seat = followUpSeatKey(sessionId, memberId);
+      if (!seen.add(seat)) return;
+      final q = _followUpQueue.queueFor(seat);
+      if (q.items.isEmpty && q.drain == FollowUpDrainMode.armed) return;
+      notifyFollowUpMemberWorking(
+        sessionId,
+        memberId,
+        working: isMemberWorking(sessionId, memberId),
+      );
+    }
+
+    for (final tab in _tabStore.activeTabs) {
+      final mid = tab.selectedMemberId.trim();
+      if (mid.isNotEmpty) notifySeat(tab.info.id, mid);
+    }
+    for (final seat in _followUpQueue.seats) {
+      final parsed = parseFollowUpSeatKey(seat);
+      if (parsed == null) continue;
+      notifySeat(parsed.$1, parsed.$2);
+    }
+  }
+
+  void pauseFollowUpQueue(String sessionId, String memberId) {
+    _followUpQueue.pause(followUpSeatKey(sessionId, memberId));
+  }
+
+  Future<void> resumeFollowUpQueue(String sessionId, String memberId) =>
+      _followUpDrainer.resumeAndMaybeDrain(
+        followUpSeatKey(sessionId, memberId),
+      );
+
+  void notifyFollowUpMemberWorking(
+    String sessionId,
+    String memberId, {
+    required bool working,
+  }) {
+    unawaited(
+      _followUpDrainer.onMemberWorkingChanged(
+        followUpSeatKey(sessionId, memberId),
+        working: working,
+      ),
+    );
+  }
+
+  /// History continue, follow-up drain, and Terminal deliver share this path.
+  Future<HistoryContinueSubmitResult> submitSessionOperatorMessage({
+    required String sessionId,
+    required String memberId,
+    required String message,
+    bool preserveWorkbenchView = true,
+  }) async {
+    final tab = _tabStore.openTabBySessionId(sessionId);
+    final session = tab?.persistedSession;
+    if (session == null) {
+      return const HistoryContinueSubmitResult.failed();
+    }
+
+    final isPersonal = session.sessionTeam.trim().isEmpty;
+    TeamProfile? team;
+    if (!isPersonal) {
+      team = await teamProfileById(session.sessionTeam);
+    }
+
+    TeamMemberConfig? connectMember;
+    if (!isPersonal && team != null) {
+      connectMember = resolveSessionChatContinueMember(
+        session: session,
+        team: team,
+        selectedMemberId: memberId,
+      );
+    }
+    final shellMemberId = isPersonal
+        ? session.sessionId
+        : (connectMember?.id ?? memberId);
+
+    HistoryContinueChannel resolveChannel() {
+      final bus = _sessionRuntime.busForSession(sessionId);
+      return resolveHistoryContinueChannel(
+        teamBusInstalled: bus != null,
+        memberWaitingForMessage:
+            bus?.isWaitingForMessage(shellMemberId) ?? false,
+        memberInTurn: bus?.isMemberInTurn(shellMemberId) ?? false,
+      );
+    }
+
+    return submitSessionHistoryReviewMessage(
+      sessionId: sessionId,
+      memberId: shellMemberId,
+      message: message,
+      connectRequest: ExistingSessionConnect(
+        session: session,
+        team: team,
+        member: connectMember,
+        preserveWorkbenchView: preserveWorkbenchView,
+      ),
+      resolveChannel: resolveChannel,
+      connectWorkspaceSession: connectWorkspaceSession,
+      ensureMemberInputReady:
+          (sid, mid, {bool directToPty = false}) =>
+              _memberMaterializer.ensureMemberInputReady(
+                sid,
+                mid,
+                directToPty: directToPty,
+              ),
+      deliverUserCommandToMember:
+          (sid, mid, text, {bool directToPty = false}) =>
+              _sessionRuntime.deliverUserCommandToMember(
+                sid,
+                mid,
+                text,
+                directToPty: directToPty,
+              ),
+      applyFirstPromptTitle: applyFirstPromptTitle,
+    );
+  }
+
+  Future<HistoryContinueSubmitResult> _deliverFollowUpAtSeat(
+    String seat,
+    String content,
+  ) async {
+    final parsed = parseFollowUpSeatKey(seat);
+    if (parsed == null) return const HistoryContinueSubmitResult.failed();
+    return submitSessionOperatorMessage(
+      sessionId: parsed.$1,
+      memberId: parsed.$2,
+      message: content,
+    );
   }
 
   /// History / Terminal operator submit latched a seat turn — refresh session
@@ -1099,6 +1251,7 @@ class ChatCubit extends Cubit<ChatState>
       session.dispose();
     }
     _agentAttentionCubit?.clearSession(sessionId);
+    _followUpQueue.clearSession(sessionId);
     _agentStatusSeatLookup?.clearSession(sessionId);
     _teammateBusMcpGateway.unregisterAgentStatusSession(sessionId);
     await _teamBus.disposeSessionBus(sessionId);

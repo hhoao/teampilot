@@ -5,6 +5,12 @@ import 'package:uuid/uuid.dart';
 String followUpSeatKey(String sessionId, String memberId) =>
     '${sessionId.trim()}:${memberId.trim()}';
 
+(String sessionId, String memberId)? parseFollowUpSeatKey(String seat) {
+  final i = seat.indexOf(':');
+  if (i <= 0 || i >= seat.length - 1) return null;
+  return (seat.substring(0, i), seat.substring(i + 1));
+}
+
 final class FollowUpQueuedMessage {
   const FollowUpQueuedMessage({required this.id, required this.content});
   final String id;
@@ -34,6 +40,8 @@ final class InMemoryFollowUpQueueStore {
   final _queues = <String, FollowUpQueue>{};
   final _controllers = <String, StreamController<FollowUpQueue>>{};
   final _uuid = const Uuid();
+
+  Iterable<String> get seats => _queues.keys;
 
   FollowUpQueue queueFor(String seat) =>
       _queues[seat] ?? const FollowUpQueue();
