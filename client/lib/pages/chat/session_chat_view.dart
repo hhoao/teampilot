@@ -15,12 +15,14 @@ import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/expert_hub_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
+import '../../cubits/member_presence_cubit.dart';
 import '../../cubits/plugin_cubit.dart';
 import '../../cubits/skill_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/config_bundle.dart';
+import '../../models/member_presence.dart';
 import '../../models/landing_launch_context.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
@@ -28,6 +30,8 @@ import '../../models/workspace_launch_context.dart';
 import '../../repositories/workspace_project_config_repository.dart';
 import '../../services/ai/headless_ai_service.dart';
 import '../../services/cli/preset_resolver.dart';
+import '../../services/cli/registry/capabilities/turn_interrupt_capability.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/compose/compose_file_attach.dart';
@@ -50,6 +54,7 @@ import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
 import 'agent_permission_attention_banner.dart';
+import 'compose_stop_visibility.dart';
 import 'history_awaiting_working_sync.dart';
 import 'history_continue_delivery.dart';
 import 'history_mailbox_queued_strip.dart';
@@ -1004,6 +1009,30 @@ class _SessionChatViewState extends State<SessionChatView> {
         workspace != null &&
         landingTeamSettingsNeedsAttention(workspace: workspace, team: team);
 
+    // Rebuild when session working or bus presence changes (seat-level stop).
+    context.select<ChatCubit, (String?, Set<String>)>(
+      (c) => (c.state.activeSessionId, c.state.workingSessionIds),
+    );
+    context.select<MemberPresenceCubit, Map<String, MemberPresence>>(
+      (c) => c.state.presence,
+    );
+    final chat = context.read<ChatCubit>();
+    final memberWorking = chat.isMemberWorking(
+      widget.session.sessionId,
+      selectedMemberId,
+    );
+    final registry =
+        CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
+    final supportsTurnInterrupt =
+        registry
+            .capability<TurnInterruptCapability>(lockedCli)
+            ?.supportsTurnInterrupt ??
+        false;
+    final showComposeStop = shouldShowComposeStop(
+      memberWorking: memberWorking,
+      supportsTurnInterrupt: supportsTurnInterrupt,
+    );
+
     return BlocListener<ChatCubit, ChatState>(
       listenWhen: (previous, current) =>
           previous.workingSessionIds != current.workingSessionIds,
@@ -1370,6 +1399,15 @@ class _SessionChatViewState extends State<SessionChatView> {
                                       : null,
                                   showTeamSettingsAttention:
                                       teamSettingsAttention,
+                                  showStop: showComposeStop,
+                                  onStop: showComposeStop
+                                      ? () => unawaited(
+                                          chat.interruptSelectedMemberTurn(
+                                            sessionId: widget.session.sessionId,
+                                            memberId: selectedMemberId,
+                                          ),
+                                        )
+                                      : null,
                                 ),
                               ],
                             ),

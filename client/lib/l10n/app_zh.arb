@@ -500,6 +500,7 @@
   "sessionHistoryRoleAssistant": "助手",
   "sessionHistoryRoleSystem": "系统",
   "sessionHistoryComposeHint": "继续对话… @ 引用文件，/ 调用技能与指令",
+  "sessionHistoryComposeStop": "停止生成",
   "sessionHistoryContinueSaveFailed": "无法保存继续会话设置。",
   "sessionHistoryLoadOlderHint": "上滑查看更早消息",
   "sessionHistoryNewMessages": "新消息",

@@ -1259,6 +1259,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Continue this conversation… @ reference files, / invoke skills';
 
   @override
+  String get sessionHistoryComposeStop => 'Stop generating';
+
+  @override
   String get sessionHistoryContinueSaveFailed =>
       'Couldn\'t save continue settings.';
 
