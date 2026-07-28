@@ -11,6 +11,7 @@ import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/cubits/plugin_cubit.dart';
 import 'package:teampilot/cubits/run_cubit.dart';
+import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/cubits/workspace_landing_context_cubit.dart';
@@ -174,6 +175,7 @@ void main() {
               BlocProvider.value(value: WorkspaceToolsCubit()),
               BlocProvider.value(value: cliPresetsCubit),
               BlocProvider.value(value: sessionPreferencesCubit),
+              BlocProvider(create: (_) => ShortcutCubit()),
               BlocProvider(
                 create: (_) => WorkspaceLandingContextCubit(
                   workspaceId: 'personal-test',

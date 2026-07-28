@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
-import 'package:path/path.dart' as p;
 
 import '../../../../../utils/logging/logger.dart';
 import '../../../../io/filesystem.dart';
@@ -32,10 +31,14 @@ final class ClaudeCompatibleSideResolver implements SubagentSideResolver {
         metaByToolUseId[part.toolCallId] ?? subagentAgentIdFromPart(part);
     if (agentId == null || agentId.isEmpty) return null;
 
-    final subagentsDir = claudeSubagentsDirFor(parentTranscriptPath);
+    final subagentsDir = claudeSubagentsDirFor(
+      parentTranscriptPath,
+      pathContext: ctx.fs.pathContext,
+    );
     final sidePath = claudeSubagentTranscriptPath(
       subagentsDir: subagentsDir,
       agentId: agentId,
+      pathContext: ctx.fs.pathContext,
     );
     try {
       final content = await ctx.fs.readString(sidePath);
@@ -76,7 +79,10 @@ final class ClaudeCompatibleSideResolver implements SubagentSideResolver {
     SessionHistoryContext ctx,
     String parentTranscriptPath,
   ) async {
-    final subagentsDir = claudeSubagentsDirFor(parentTranscriptPath);
+    final subagentsDir = claudeSubagentsDirFor(
+      parentTranscriptPath,
+      pathContext: ctx.fs.pathContext,
+    );
     final map = <String, String>{};
     List<FsDirEntry> entries;
     try {
@@ -97,7 +103,7 @@ final class ClaudeCompatibleSideResolver implements SubagentSideResolver {
       );
       if (agentId.isEmpty) continue;
 
-      final metaPath = p.join(subagentsDir, name);
+      final metaPath = ctx.fs.pathContext.join(subagentsDir, name);
       String? raw;
       try {
         raw = await ctx.fs.readString(metaPath);

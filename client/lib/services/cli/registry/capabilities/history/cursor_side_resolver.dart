@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import '../../../../../utils/logging/logger.dart';
 import '../../../../io/filesystem.dart';
 import '../../../../session/session_history_context.dart';
+import '../../../../session/subagent_side_transcript_path.dart';
 import 'cursor_ai_transcript.dart';
 import 'subagent_side_resolver.dart';
 
@@ -26,7 +27,10 @@ final class CursorSideResolver implements SubagentSideResolver {
     );
     if (parentTranscriptPath == null) return null;
 
-    final transcriptsRoot = cursorAgentTranscriptsRootFor(parentTranscriptPath);
+    final transcriptsRoot = cursorAgentTranscriptsRootFor(
+      parentTranscriptPath,
+      pathContext: ctx.fs.pathContext,
+    );
     if (transcriptsRoot == null) return null;
 
     final resumeUuid = _resumeUuidFromPart(part);
@@ -63,16 +67,20 @@ final class CursorSideResolver implements SubagentSideResolver {
 
 /// Cursor layout: parent `…/agent-transcripts/{stem}/{stem}.jsonl` or flat
 /// `…/agent-transcripts/{id}.jsonl` → root `…/agent-transcripts`.
-String? cursorAgentTranscriptsRootFor(String parentTranscriptPath) {
-  final path = p.normalize(parentTranscriptPath);
-  final parentDir = p.dirname(path);
-  final stem = p.basenameWithoutExtension(path);
+String? cursorAgentTranscriptsRootFor(
+  String parentTranscriptPath, {
+  p.Context? pathContext,
+}) {
+  final path = pathContext ?? pathContextForTranscript(parentTranscriptPath);
+  final normalized = path.normalize(parentTranscriptPath);
+  final parentDir = path.dirname(normalized);
+  final stem = path.basenameWithoutExtension(normalized);
   if (stem.isEmpty) return null;
 
-  if (p.basename(parentDir) == stem) {
-    return p.dirname(parentDir);
+  if (path.basename(parentDir) == stem) {
+    return path.dirname(parentDir);
   }
-  if (p.basename(parentDir) == 'agent-transcripts') {
+  if (path.basename(parentDir) == 'agent-transcripts') {
     return parentDir;
   }
   return null;
@@ -122,7 +130,8 @@ Future<SubagentSideResolveResult?> _resolveByPromptHeuristic({
   final normalizedPrompt = normalizeCursorTaskPrompt(prompt);
   if (normalizedPrompt == null) return null;
 
-  final parentStem = p.basenameWithoutExtension(parentTranscriptPath);
+  final parentStem =
+      ctx.fs.pathContext.basenameWithoutExtension(parentTranscriptPath);
   final parentMtime = (await ctx.fs.stat(parentTranscriptPath)).mtime;
   final referenceAt = toolCallAt ?? parentMtime;
   if (referenceAt == null) return null;
@@ -191,7 +200,9 @@ Future<List<_PromptMatchCandidate>> _collectPromptMatches({
     }
 
     for (final candidatePath in candidatePaths) {
-      if (p.basenameWithoutExtension(candidatePath) == excludeStem) continue;
+      if (path.basenameWithoutExtension(candidatePath) == excludeStem) {
+        continue;
+      }
       if ((await ctx.fs.stat(candidatePath)).kind != FsEntityKind.file) {
         continue;
       }
