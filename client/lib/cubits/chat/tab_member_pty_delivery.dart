@@ -368,6 +368,9 @@ final class TabMemberPtyDelivery {
     if (sessionId != null &&
         memberId != null &&
         _ptyInject.isAbortRequested(sessionId, memberId)) {
+      if (!_ptyInject.isBusy(sessionId, memberId)) {
+        _ptyInject.clearAbort(sessionId, memberId);
+      }
       return true;
     }
     return false;

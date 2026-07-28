@@ -153,6 +153,10 @@ final class MemberPtyInjectService {
   }) async {
     final key = PtyAutomationSessionLock.key(sessionId, memberId);
     if (!_lock.tryAcquire(sessionId, memberId)) {
+      if (isAbortRequested(sessionId, memberId)) {
+        _retryQueue.clear(key);
+        return FullscreenPtyDeliveryOutcome.aborted;
+      }
       appLogger.d(
         '[team-bus] pty-automation deferred ack-in-progress '
         'member=$memberId session=$sessionId',
@@ -167,12 +171,19 @@ final class MemberPtyInjectService {
         probe: probe,
         aborted: () {
           final requested = isAbortRequested(sessionId, memberId);
-          if (requested) abortObserved = true;
-          return requested || aborted();
+          final wasAborted = requested || aborted();
+          if (wasAborted) abortObserved = true;
+          return wasAborted;
         },
         crAckConfig: crAckConfig,
       );
-      final outcome = await run(port);
+      final runOutcome = await run(port);
+      if (isAbortRequested(sessionId, memberId)) {
+        abortObserved = true;
+      }
+      final outcome = abortObserved
+          ? FullscreenPtyDeliveryOutcome.aborted
+          : runOutcome;
       _handleOutcome(key, sessionId, memberId, text, outcome);
       return outcome;
     } finally {
@@ -192,7 +203,7 @@ final class MemberPtyInjectService {
       case FullscreenPtyDeliveryOutcome.submitted:
         _retryQueue.clear(key);
       case FullscreenPtyDeliveryOutcome.aborted:
-        break;
+        _retryQueue.clear(key);
       case FullscreenPtyDeliveryOutcome.pasteNotFound:
       case FullscreenPtyDeliveryOutcome.crStuck:
         appLogger.w(
