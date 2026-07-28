@@ -52,6 +52,10 @@ hard-coding gstack-only top-level fields (`bin`, `setup`).
 }
 ```
 
+Worked examples (whitelist/exclude, `COPY`, `SHELL`/`WORKDIR`/`ENV`,
+`packId` member deps, repo/`scriptUrl` sugar) live in
+[`skill-packs/README.md`](../../../skill-packs/README.md).
+
 ### Top-level fields
 
 | Field | Required | Meaning |
