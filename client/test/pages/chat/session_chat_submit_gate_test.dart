@@ -5,7 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/pages/chat/history_continue_delivery.dart';
 import 'package:teampilot/pages/chat/session_history_review_submit.dart';
-import 'package:teampilot/pages/chat/session_review_compose_card.dart';
+import 'package:teampilot/services/compose/compose_file_drop_ingestor.dart';
+import 'package:teampilot/widgets/compose/compose_chrome.dart';
+import 'package:teampilot/widgets/compose/compose_file_drop_region.dart';
+import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
 
 void main() {
   group('shouldSwitchToTerminalAfterChatSubmit', () {
@@ -59,7 +62,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: SessionReviewComposeCard(
+            body: WorkspaceComposeCard(
               controller: textController,
               focusNode: focusNode,
               hint: 'Continue',
@@ -67,6 +70,20 @@ void main() {
               isSubmitting: true,
               onSubmit: () => submits++,
               onChanged: (_) {},
+              chrome: const BoundComposeChrome(
+                identityLabel: 'Simple',
+                modelPresetLabel: 'Model',
+                emptyPresetHintLabel: 'No presets',
+                onPresetSelected: _noopString,
+                dangerouslySkipPermissions: false,
+                defaultPermissionsLabel: 'Default',
+                fullAccessPermissionsLabel: 'Full access',
+                onPermissionSelected: _noopBool,
+              ),
+              dropTarget: ComposeFileDropIngestor(
+                workspaceRoot: '/tmp',
+                onInsertReferences: (_) {},
+              ),
               attachTooltip: 'Attach',
               enhanceTooltip: 'Enhance',
               voiceTooltip: 'Voice',
@@ -85,20 +102,13 @@ void main() {
               skills: const [],
               plugins: const [],
               slashBundle: const ConfigBundle(),
-              identityLabel: 'Simple',
-              sameCliPresets: const [],
-              selectedPresetId: null,
-              modelPresetLabel: 'Model',
-              emptyPresetHintLabel: 'No presets',
-              onPresetSelected: (_) {},
-              dangerouslySkipPermissions: false,
-              defaultPermissionsLabel: 'Default',
-              fullAccessPermissionsLabel: 'Full access',
-              onPermissionSelected: (_) {},
+              deferFieldMount: false,
             ),
           ),
         ),
       );
+
+      expect(find.byType(ComposeFileDropRegion), findsOneWidget);
 
       await tester.tap(find.byType(CircularProgressIndicator));
       await tester.pump();
@@ -107,3 +117,6 @@ void main() {
     });
   });
 }
+
+void _noopString(String _) {}
+void _noopBool(bool _) {}

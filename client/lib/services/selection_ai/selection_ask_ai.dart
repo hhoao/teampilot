@@ -9,7 +9,7 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/worktree_cubit.dart';
 import '../../models/landing_launch_context.dart';
 import '../../models/workspace.dart';
-import '../../pages/home_workspace/workspace/workspace_chat_landing.dart';
+import '../../pages/home_workspace/workspace/unbound_compose_body.dart';
 import '../../pages/home_workspace/workspace/workspace_session_actions.dart';
 import '../../utils/logging/logger_utils.dart';
 import '../../utils/workspace/landing_draft_resolver.dart';
@@ -141,11 +141,11 @@ class _SelectionAskAiDialogState extends State<_SelectionAskAiDialog> {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          WorkspaceChatLanding(
+          UnboundComposeBody(
             workspace: widget.workspace,
             initialText: widget.initialText,
             isSubmitting: _submitting,
-            showLandingChrome: false,
+            deferFieldMount: false,
             onSubmit: (message, draft) => unawaited(_submit(message, draft)),
           ),
           Positioned(

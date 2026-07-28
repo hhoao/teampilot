@@ -2,31 +2,45 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../models/cli_preset.dart';
 import '../../models/config_bundle.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
-import '../../l10n/l10n_extensions.dart';
+import '../../pages/chat/session_launch_error_banner.dart';
+import '../../pages/chat/session_launch_error_visibility.dart';
+import '../../pages/chat/session_launch_failure_presenter.dart';
+import '../../pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
+import '../../pages/home_workspace/workspace/workspace_chat_landing_voice_bar.dart';
+import '../../services/workspace_dnd/workspace_drop_target.dart';
 import '../../utils/debounce/debounce.dart';
-import '../../widgets/compose/compose_focus_shell.dart';
-import '../../widgets/compose/compose_model_preset_chip.dart';
-import '../../widgets/compose/compose_permission_chip.dart';
-import '../../widgets/compose/compose_trigger_field.dart';
-import '../home_workspace/workspace/workspace_chat_landing_palette.dart';
-import '../home_workspace/workspace/workspace_chat_landing_voice_bar.dart';
-import 'session_launch_error_banner.dart';
-import 'session_launch_error_visibility.dart';
-import 'session_launch_failure_presenter.dart';
+import 'compose_chrome.dart';
+import 'compose_file_drop_region.dart';
+import 'compose_focus_shell.dart';
+import 'compose_menu_chip.dart';
+import 'compose_model_preset_chip.dart';
+import 'compose_permission_chip.dart';
+import 'compose_trigger_field.dart';
 
-/// Slim continue-compose for session history review (no landing chrome).
-class SessionReviewComposeCard extends StatelessWidget {
-  const SessionReviewComposeCard({
+/// Frames to wait before mounting the [ComposeTriggerField].
+///
+/// Keeps first-open LAYOUT off [RenderEditable] (test56 ~442 ms). Do not use
+/// [TpDeferredMountShell.awaitIdle] here: a background agent PTY can keep the
+/// scheduler non-idle after History/Terminal unmount, leaving the placeholder
+/// forever (clicks cannot focus). Tests mount immediately via
+/// [TpDeferredMountShell].
+const kWorkspaceComposeFieldDelayFrames = 2;
+
+/// Unified compose card for both landing (unbound) and session-continue
+/// (bound) chrome. See [ComposeChrome] for the toolbar sealed variants.
+class WorkspaceComposeCard extends StatelessWidget {
+  const WorkspaceComposeCard({
     required this.controller,
     required this.focusNode,
     required this.hint,
     required this.canSubmit,
     required this.onSubmit,
     required this.onChanged,
+    required this.chrome,
+    required this.dropTarget,
     required this.attachTooltip,
     required this.enhanceTooltip,
     required this.voiceTooltip,
@@ -46,29 +60,9 @@ class SessionReviewComposeCard extends StatelessWidget {
     required this.plugins,
     required this.slashBundle,
     this.isSubmitting = false,
-    this.composeEnabled = true,
-    this.launchError,
-    this.onRemapDeadTarget,
-    this.onRetry,
-    this.sessionConnectInProgress = false,
     this.onPasteImage,
-    this.floating = false,
-    this.identityLabel,
-    this.identityIcon,
-    this.sameCliPresets = const [],
-    this.selectedPresetId,
-    this.modelPresetLabel,
-    this.emptyPresetHintLabel,
-    this.onPresetSelected,
-    this.dangerouslySkipPermissions = false,
-    this.defaultPermissionsLabel,
-    this.fullAccessPermissionsLabel,
-    this.onPermissionSelected,
-    this.teamSettingsTooltip,
-    this.onTeamSettings,
-    this.showTeamSettingsAttention = false,
-    this.showStop = false,
-    this.onStop,
+    this.submitBlockedTooltip,
+    this.deferFieldMount = false,
     super.key,
   });
 
@@ -78,6 +72,8 @@ class SessionReviewComposeCard extends StatelessWidget {
   final bool canSubmit;
   final VoidCallback onSubmit;
   final ValueChanged<String> onChanged;
+  final ComposeChrome chrome;
+  final WorkspaceDropTarget dropTarget;
   final String attachTooltip;
   final String enhanceTooltip;
   final String voiceTooltip;
@@ -97,98 +93,83 @@ class SessionReviewComposeCard extends StatelessWidget {
   final List<Plugin> plugins;
   final ConfigBundle slashBundle;
   final bool isSubmitting;
-
-  /// When false, field and toolbar actions are locked (e.g. permission wait).
-  final bool composeEnabled;
-  final String? launchError;
-  final VoidCallback? onRemapDeadTarget;
-  final VoidCallback? onRetry;
-  final bool sessionConnectInProgress;
   final Future<bool> Function()? onPasteImage;
-  final bool floating;
+  final String? submitBlockedTooltip;
+  final bool deferFieldMount;
 
-  /// Read-only expert / team identity (no menu).
-  final String? identityLabel;
-  final IconData? identityIcon;
+  bool get _composeEnabled => switch (chrome) {
+    BoundComposeChrome(:final composeEnabled) => composeEnabled,
+    UnboundComposeChrome() => true,
+  };
 
-  final List<CliPreset> sameCliPresets;
-  final String? selectedPresetId;
-  final String? modelPresetLabel;
-  final String? emptyPresetHintLabel;
-  final ValueChanged<String>? onPresetSelected;
-
-  final bool dangerouslySkipPermissions;
-  final String? defaultPermissionsLabel;
-  final String? fullAccessPermissionsLabel;
-  final ValueChanged<bool>? onPermissionSelected;
-
-  final String? teamSettingsTooltip;
-  final VoidCallback? onTeamSettings;
-  final bool showTeamSettingsAttention;
-
-  /// When true, the send button is replaced with a stop-generating control.
-  final bool showStop;
-  final VoidCallback? onStop;
+  bool get _floating => switch (chrome) {
+    BoundComposeChrome(:final floating) => floating,
+    UnboundComposeChrome() => false,
+  };
 
   bool get _composeActionsEnabled =>
-      composeEnabled && !isSubmitting && !isEnhancing;
+      _composeEnabled && !isSubmitting && !isEnhancing;
 
-  bool get _showContinueToolbar =>
-      identityLabel != null ||
-      onPresetSelected != null ||
-      onPermissionSelected != null ||
-      onTeamSettings != null;
+  bool get _effectiveCanSubmit => _composeEnabled && canSubmit;
+
+  String get _sendThrottleKey => switch (chrome) {
+    UnboundComposeChrome() => 'workspace_chat_landing_send',
+    BoundComposeChrome() => 'session_review_compose_send',
+  };
 
   @override
   Widget build(BuildContext context) {
     final palette = WorkspaceChatLandingPalette(Theme.of(context).colorScheme);
     final spacing = context.tpSpacing;
-    final failure = presentSessionLaunchFailure(launchError);
+    final chrome = this.chrome;
 
-    return ComposeFocusShell(
+    Widget field = ComposeTriggerField(
+      controller: controller,
       focusNode: focusNode,
-      floating: floating,
+      hint: hint,
+      enabled: _composeEnabled && !isSubmitting,
+      onChanged: onChanged,
+      onSubmit: onSubmit,
+      canSubmit: () => _effectiveCanSubmit,
+      workspaceRoot: workspaceRoot,
+      skills: skills,
+      plugins: plugins,
+      slashBundle: slashBundle,
+      mutedColor: palette.muted,
+      hintColor: palette.hint,
+      onPasteImage: onPasteImage,
+    );
+
+    if (deferFieldMount) {
+      field = TpDeferredMountShell(
+        delayFrames: kWorkspaceComposeFieldDelayFrames,
+        placeholder: _ComposeFieldMountPlaceholder(
+          hint: hint,
+          hintColor: palette.hint,
+          mutedColor: palette.muted,
+        ),
+        child: field,
+      );
+    }
+
+    final shell = ComposeFocusShell(
+      focusNode: focusNode,
+      floating: _floating,
       color: palette.elevated,
       borderColor: palette.border,
       child: Padding(
         padding: EdgeInsets.fromLTRB(
           spacing.lg,
-          spacing.lg,
+          chrome is UnboundComposeChrome ? spacing.lg + spacing.xs : spacing.lg,
           spacing.lg,
           spacing.md,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (shouldShowSessionLaunchErrorBanner(
-                  launchError: launchError,
-                  sessionConnectInProgress: sessionConnectInProgress,
-                ) &&
-                failure != null) ...[
-              SessionLaunchErrorBanner(
-                view: failure,
-                onRetry: onRetry,
-                onRemapDeadTarget: onRemapDeadTarget,
-                isRetrying: sessionConnectInProgress,
-              ),
-              SizedBox(height: spacing.md),
-            ],
-            ComposeTriggerField(
-              controller: controller,
-              focusNode: focusNode,
-              hint: hint,
-              enabled: composeEnabled && !isSubmitting,
-              onChanged: onChanged,
-              onSubmit: onSubmit,
-              canSubmit: () => composeEnabled && canSubmit,
-              workspaceRoot: workspaceRoot,
-              skills: skills,
-              plugins: plugins,
-              slashBundle: slashBundle,
-              mutedColor: palette.muted,
-              hintColor: palette.hint,
-              onPasteImage: onPasteImage,
-            ),
+            if (chrome is BoundComposeChrome)
+              ..._launchErrorBanner(context, chrome, spacing),
+            field,
             SizedBox(height: spacing.md),
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -199,7 +180,8 @@ class SessionReviewComposeCard extends StatelessWidget {
                       spacing: spacing,
                     )
                   : _idleActions(
-                      context: context,
+                      context,
+                      chrome: chrome,
                       palette: palette,
                       spacing: spacing,
                     ),
@@ -208,70 +190,222 @@ class SessionReviewComposeCard extends StatelessWidget {
         ),
       ),
     );
+
+    final content = chrome is UnboundComposeChrome
+        ? Stack(
+            clipBehavior: Clip.none,
+            children: [
+              shell,
+              Positioned(
+                top: -20,
+                right: 28,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: palette.chipFill,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: palette.border),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(spacing.sm),
+                    child: Icon(
+                      Icons.smart_toy_rounded,
+                      color: palette.muted,
+                      size: context.tpIconSizes.lg,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          )
+        : shell;
+
+    return ComposeFileDropRegion(target: dropTarget, child: content);
   }
 
-  List<Widget> _idleActions({
+  List<Widget> _launchErrorBanner(
+    BuildContext context,
+    BoundComposeChrome chrome,
+    TpSpacing spacing,
+  ) {
+    final failure = presentSessionLaunchFailure(chrome.launchError);
+    if (!shouldShowSessionLaunchErrorBanner(
+          launchError: chrome.launchError,
+          sessionConnectInProgress: chrome.sessionConnectInProgress,
+        ) ||
+        failure == null) {
+      return const [];
+    }
+
+    return [
+      SessionLaunchErrorBanner(
+        view: failure,
+        onRetry: chrome.onRetry,
+        onRemapDeadTarget: chrome.onRemapDeadTarget,
+        isRetrying: chrome.sessionConnectInProgress,
+      ),
+      SizedBox(height: spacing.md),
+    ];
+  }
+
+  Widget _composePrimaryAction({
     required BuildContext context,
+    required WorkspaceChatLandingPalette palette,
+  }) {
+    final chrome = this.chrome;
+    if (chrome is BoundComposeChrome &&
+        chrome.showStop &&
+        chrome.onStop != null) {
+      return _StopButton(
+        palette: palette,
+        tooltip: context.l10n.sessionHistoryComposeStop,
+        onStop: chrome.onStop!,
+      );
+    }
+    return _SendButton(
+      palette: palette,
+      canSubmit: _effectiveCanSubmit,
+      isSubmitting: isSubmitting,
+      onSubmit: onSubmit,
+      throttleKey: _sendThrottleKey,
+      blockedTooltip: submitBlockedTooltip,
+    );
+  }
+
+  List<Widget> _unboundLeadingChips(
+    UnboundComposeChrome chrome,
+    WorkspaceChatLandingPalette palette,
+    TpSpacing spacing,
+  ) {
+    return [
+      ComposeMenuChip(
+        palette: palette,
+        icon: Icons.groups_outlined,
+        label: chrome.conversationModeLabel,
+        specs: chrome.conversationModeSpecs,
+        onSelected: chrome.onConversationModeSelected,
+      ),
+      SizedBox(width: spacing.sm),
+      ComposeMenuChip(
+        palette: palette,
+        icon: Icons.autorenew,
+        leading: chrome.autoChipLeading,
+        label: chrome.autoChipLabel,
+        specs: chrome.autoChipSpecs,
+        onSelected: chrome.onAutoChipSelected,
+      ),
+      if (chrome.onTeamSettings != null) ...[
+        SizedBox(width: spacing.xs),
+        _TeamSettingsButton(
+          palette: palette,
+          tooltip: chrome.teamSettingsTooltip ?? '',
+          showAttention: chrome.showTeamSettingsAttention,
+          enabled: _composeActionsEnabled,
+          onTap: chrome.onTeamSettings!,
+        ),
+      ],
+      if (chrome.expertChipLabel != null &&
+          chrome.onExpertChipSelected != null) ...[
+        SizedBox(width: spacing.sm),
+        ComposeMenuChip(
+          palette: palette,
+          icon: Icons.psychology_outlined,
+          label: chrome.expertChipLabel!,
+          specs: chrome.expertChipSpecs,
+          onSelected: chrome.onExpertChipSelected!,
+        ),
+      ],
+      SizedBox(width: spacing.sm),
+      ComposePermissionChip(
+        palette: palette,
+        dangerouslySkipPermissions: chrome.dangerouslySkipPermissions,
+        defaultLabel: chrome.defaultPermissionsLabel,
+        fullAccessLabel: chrome.fullAccessPermissionsLabel,
+        onSelected: chrome.onPermissionSelected,
+      ),
+      SizedBox(width: spacing.sm),
+    ];
+  }
+
+  List<Widget> _boundLeadingChips(
+    BoundComposeChrome chrome,
+    WorkspaceChatLandingPalette palette,
+    TpSpacing spacing,
+  ) {
+    return [
+      if (chrome.identityLabel != null) ...[
+        _ContinueIdentityChip(
+          palette: palette,
+          icon: chrome.identityIcon ?? Icons.psychology_outlined,
+          label: chrome.identityLabel!,
+        ),
+        SizedBox(width: spacing.sm),
+      ],
+      if (chrome.onPresetSelected != null &&
+          chrome.modelPresetLabel != null &&
+          chrome.emptyPresetHintLabel != null) ...[
+        ComposeModelPresetChip(
+          palette: palette,
+          sameCliPresets: chrome.sameCliPresets,
+          selectedPresetId: chrome.selectedPresetId,
+          label: chrome.modelPresetLabel!,
+          emptyHintLabel: chrome.emptyPresetHintLabel!,
+          onPresetSelected: chrome.onPresetSelected!,
+        ),
+        SizedBox(width: spacing.sm),
+      ],
+      if (chrome.onPermissionSelected != null &&
+          chrome.defaultPermissionsLabel != null &&
+          chrome.fullAccessPermissionsLabel != null) ...[
+        ComposePermissionChip(
+          palette: palette,
+          dangerouslySkipPermissions: chrome.dangerouslySkipPermissions,
+          defaultLabel: chrome.defaultPermissionsLabel!,
+          fullAccessLabel: chrome.fullAccessPermissionsLabel!,
+          onSelected: chrome.onPermissionSelected!,
+        ),
+        SizedBox(width: spacing.sm),
+      ],
+      if (chrome.onTeamSettings != null) ...[
+        SizedBox(width: spacing.xs),
+        _TeamSettingsButton(
+          palette: palette,
+          tooltip: chrome.teamSettingsTooltip ?? '',
+          showAttention: chrome.showTeamSettingsAttention,
+          enabled: _composeActionsEnabled,
+          onTap: chrome.onTeamSettings!,
+        ),
+      ],
+    ];
+  }
+
+  List<Widget> _idleActions(
+    BuildContext context, {
+    required ComposeChrome chrome,
     required WorkspaceChatLandingPalette palette,
     required TpSpacing spacing,
   }) {
+    final leading = switch (chrome) {
+      UnboundComposeChrome c => _unboundLeadingChips(c, palette, spacing),
+      BoundComposeChrome c when _hasBoundToolbar(c) => _boundLeadingChips(
+        c,
+        palette,
+        spacing,
+      ),
+      BoundComposeChrome() => const <Widget>[],
+    };
+    final hasLeading = leading.isNotEmpty;
+
     return [
-      if (_showContinueToolbar)
+      if (hasLeading)
         Expanded(
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                if (identityLabel != null) ...[
-                  _ContinueIdentityChip(
-                    palette: palette,
-                    icon: identityIcon ?? Icons.psychology_outlined,
-                    label: identityLabel!,
-                  ),
-                  SizedBox(width: spacing.sm),
-                ],
-                if (onPresetSelected != null &&
-                    modelPresetLabel != null &&
-                    emptyPresetHintLabel != null) ...[
-                  ComposeModelPresetChip(
-                    palette: palette,
-                    sameCliPresets: sameCliPresets,
-                    selectedPresetId: selectedPresetId,
-                    label: modelPresetLabel!,
-                    emptyHintLabel: emptyPresetHintLabel!,
-                    onPresetSelected: onPresetSelected!,
-                  ),
-                  SizedBox(width: spacing.sm),
-                ],
-                if (onPermissionSelected != null &&
-                    defaultPermissionsLabel != null &&
-                    fullAccessPermissionsLabel != null) ...[
-                  ComposePermissionChip(
-                    palette: palette,
-                    dangerouslySkipPermissions: dangerouslySkipPermissions,
-                    defaultLabel: defaultPermissionsLabel!,
-                    fullAccessLabel: fullAccessPermissionsLabel!,
-                    onSelected: onPermissionSelected!,
-                  ),
-                  SizedBox(width: spacing.sm),
-                ],
-                if (onTeamSettings != null) ...[
-                  SizedBox(width: spacing.xs),
-                  _TeamSettingsButton(
-                    palette: palette,
-                    tooltip: teamSettingsTooltip ?? '',
-                    showAttention: showTeamSettingsAttention,
-                    enabled: _composeActionsEnabled,
-                    onTap: onTeamSettings!,
-                  ),
-                ],
-              ],
-            ),
+            child: Row(children: leading),
           ),
         )
       else
         const Spacer(),
-      if (_showContinueToolbar) SizedBox(width: spacing.sm),
+      if (hasLeading) SizedBox(width: spacing.sm),
       _ComposeActionIcon(
         palette: palette,
         tooltip: attachTooltip,
@@ -298,6 +432,12 @@ class SessionReviewComposeCard extends StatelessWidget {
       _composePrimaryAction(context: context, palette: palette),
     ];
   }
+
+  bool _hasBoundToolbar(BoundComposeChrome chrome) =>
+      chrome.identityLabel != null ||
+      chrome.onPresetSelected != null ||
+      chrome.onPermissionSelected != null ||
+      chrome.onTeamSettings != null;
 
   List<Widget> _voiceRecordingActions({
     required BuildContext context,
@@ -338,23 +478,39 @@ class SessionReviewComposeCard extends StatelessWidget {
       _composePrimaryAction(context: context, palette: palette),
     ];
   }
+}
 
-  Widget _composePrimaryAction({
-    required BuildContext context,
-    required WorkspaceChatLandingPalette palette,
-  }) {
-    if (showStop && onStop != null) {
-      return _StopButton(
-        palette: palette,
-        tooltip: context.l10n.sessionHistoryComposeStop,
-        onStop: onStop!,
-      );
-    }
-    return _SendButton(
-      palette: palette,
-      canSubmit: composeEnabled && canSubmit,
-      isSubmitting: isSubmitting,
-      onSubmit: onSubmit,
+/// Reserves the same min height as [ComposeTriggerField]'s textarea shell.
+class _ComposeFieldMountPlaceholder extends StatelessWidget {
+  const _ComposeFieldMountPlaceholder({
+    required this.hint,
+    required this.hintColor,
+    required this.mutedColor,
+  });
+
+  final String hint;
+  final Color hintColor;
+  final Color mutedColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final styles = TpTextStyles.of(context);
+    final textStyle = styles.mdColored(mutedColor);
+    final lineHeight = (textStyle.fontSize ?? 14) * (textStyle.height ?? 1.35);
+    final minH = lineHeight * 3;
+
+    return SizedBox(
+      height: minH,
+      width: double.infinity,
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: Text(
+          hint,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: styles.mdColored(hintColor),
+        ),
+      ),
     );
   }
 }
@@ -518,12 +674,16 @@ class _SendButton extends StatelessWidget {
     required this.canSubmit,
     required this.isSubmitting,
     required this.onSubmit,
+    required this.throttleKey,
+    this.blockedTooltip,
   });
 
   final WorkspaceChatLandingPalette palette;
   final bool canSubmit;
   final bool isSubmitting;
   final VoidCallback onSubmit;
+  final String throttleKey;
+  final String? blockedTooltip;
 
   static const double _size = 36;
 
@@ -531,14 +691,17 @@ class _SendButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final icons = context.tpIconSizes;
     final active = canSubmit && !isSubmitting;
+    final tooltip = blockedTooltip?.trim();
 
-    return Material(
+    final button = Material(
       color: active ? palette.sendActive : palette.sendIdle,
       shape: const CircleBorder(),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: active
-            ? throttledOnPressed('session_review_compose_send', onSubmit)
+            ? throttledOnPressed(throttleKey, onSubmit)
+            : tooltip != null && tooltip.isNotEmpty
+            ? () {}
             : null,
         customBorder: const CircleBorder(),
         child: SizedBox(
@@ -563,6 +726,10 @@ class _SendButton extends StatelessWidget {
         ),
       ),
     );
+
+    if (tooltip == null || tooltip.isEmpty || active) return button;
+
+    return Tooltip(message: tooltip, child: button);
   }
 }
 
