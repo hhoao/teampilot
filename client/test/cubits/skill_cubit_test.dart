@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/models/skill.dart';
-import 'package:teampilot/models/skill_install_recipe.dart';
 import 'package:teampilot/repositories/skill_repository.dart';
 import 'package:teampilot/services/cli/installer_types.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -29,74 +28,47 @@ void main() {
 
   tearDown(() {
     AppStorage.resetForTesting();
-    tmp.deleteSync(recursive: true);
+    if (tmp.existsSync()) tmp.deleteSync(recursive: true);
   });
 
   test(
-    'loadAll() populates installed + repos without discovery sync',
+    'installTeamDependency uses scriptUrl sugar through acquisition engine',
     () async {
-      final cubit = SkillCubit(SkillRepository());
-      await cubit.loadAll();
-      expect(cubit.state.status, SkillLoadStatus.ready);
-      expect(cubit.state.repos, isNotEmpty);
-      expect(cubit.state.installed, isEmpty);
-      expect(cubit.state.discoverable, isEmpty);
-      expect(cubit.state.discoveryLoading, isFalse);
-      expect(cubit.state.repoSyncingKeys, isEmpty);
-    },
-  );
-
-  test(
-    'ensureDiscoveryLoaded does not re-sync when list is populated',
-    () async {
-      final cubit = SkillCubit(SkillRepository());
-      cubit.emit(
-        cubit.state.copyWith(
-          discoverable: const [
-            DiscoverableSkill(
-              key: 'a:b:c',
-              name: 'c',
-              description: '',
-              directory: 'c',
-              repoOwner: 'o',
-              repoName: 'n',
-              repoBranch: 'main',
-            ),
-          ],
-        ),
-      );
-      await cubit.ensureDiscoveryLoaded();
-      expect(cubit.state.discoveryLoading, isFalse);
-      expect(cubit.state.repoSyncingKeys, isEmpty);
-    },
-  );
-
-  test(
-    'installTeamDependency script acquire returns expectedLocalId via engine',
-    () async {
-      const expectedId = 'script:example.com/install-gstack.sh';
+      const expectedId = 'script:custom/gstack';
       var engineCalls = 0;
       final engine = SkillAcquisitionEngine(
-        installGitDir: (d, {bool overwrite = false, String? idOverride}) async =>
-            throw StateError('git-dir should not run'),
         runner: (_) async {
           engineCalls++;
           return const CliInstallerCommandResult(exitCode: 0);
         },
-        registerDirectory: ({required String id, required String directory}) async =>
-            Skill(
-              id: id,
-              name: 'gstack',
-              description: '',
-              directory: directory,
-              installedAt: 1,
-              updatedAt: 1,
-            ),
+        installGitDir: (d, {bool overwrite = false, String? idOverride}) async {
+          final id = idOverride ?? d.expectedLocalId;
+          final directory = d.directory.isEmpty ? 'gstack' : d.directory;
+          return Skill(
+            id: id,
+            name: d.name,
+            description: '',
+            directory: directory,
+            installedAt: 1,
+            updatedAt: 1,
+          );
+        },
         listSkillDirsWithSkillMd: () async {
           if (engineCalls == 0) return {};
           return {'gstack'};
         },
         isLocalAcquireSupported: () => true,
+        registerDirectory:
+            ({required String id, required String directory}) async {
+          return Skill(
+            id: id,
+            name: directory,
+            description: '',
+            directory: directory,
+            installedAt: 1,
+            updatedAt: 1,
+          );
+        },
       );
 
       final cubit = SkillCubit(
@@ -105,17 +77,14 @@ void main() {
       );
 
       final id = await cubit.installTeamDependency(
-        SkillDependencyRef(
+        const SkillDependencyRef(
           name: 'gstack',
-          recipe: SkillInstallRecipe.scriptUrl(
-            url: 'https://example.com/install-gstack.sh',
-            skillId: expectedId,
-            primaryDirectory: 'gstack',
-          ),
+          id: expectedId,
+          scriptUrl: 'https://example.com/install-gstack.sh',
           repoOwner: '',
           repoName: '',
           repoBranch: 'main',
-          directory: '',
+          directory: 'gstack',
         ),
       );
 

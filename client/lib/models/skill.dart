@@ -1,4 +1,4 @@
-import 'skill_install_recipe.dart';
+import 'skill_pack_instruction.dart';
 
 class Skill {
   const Skill({
@@ -290,7 +290,8 @@ class DiscoverableSkill {
     required this.repoBranch,
     this.id,
     this.packId,
-    this.recipe,
+    this.install,
+    this.scriptUrl,
   });
 
   final String key;
@@ -305,24 +306,38 @@ class DiscoverableSkill {
   /// Optional explicit local skill id (preferred for script / pack acquire).
   final String? id;
   final String? packId;
-  final SkillInstallRecipe? recipe;
+
+  /// Inline Dockerfile-like install when not using [packId].
+  final List<SkillPackInstruction>? install;
+
+  /// HTTPS installer URL sugar (synthesizes a [ScriptInstruction]).
+  final String? scriptUrl;
 
   String get source => '$repoOwner/$repoName';
 
-  SkillInstallRecipe? get resolvedRecipe {
+  /// Resolved install AST for non-pack skills. Pack skills return null
+  /// (engine loads the pack's `install`).
+  List<SkillPackInstruction>? get resolvedInstall {
     if (packId != null && packId!.trim().isNotEmpty) return null;
-    if (recipe != null && !recipe!.isEmpty) return recipe;
-    if (repoOwner.isEmpty || repoName.isEmpty || directory.isEmpty) {
-      return recipe;
+    if (install != null && install!.isNotEmpty) return install;
+    if (repoOwner.isNotEmpty && repoName.isNotEmpty && directory.isNotEmpty) {
+      final branch = repoBranch.isEmpty ? 'main' : repoBranch;
+      return [
+        FromInstruction.parseRef('$repoOwner/$repoName@$branch'),
+        SkillsInstruction(includeAll: false, include: [directory]),
+      ];
     }
-    return SkillInstallRecipe.singleGitDir(
-      owner: repoOwner,
-      name: repoName,
-      branch: repoBranch.isEmpty ? 'main' : repoBranch,
-      directory: directory,
-      skillId: expectedLocalId,
-      skillName: name,
-    );
+    final script = scriptUrl?.trim();
+    if (script != null && script.isNotEmpty) {
+      return [
+        ScriptInstruction(
+          url: script,
+          id: expectedLocalId,
+          primaryDirectory: directory.isEmpty ? null : directory,
+        ),
+      ];
+    }
+    return null;
   }
 
   /// Primary local [Skill.id] for install via [SkillAcquisitionEngine].
@@ -336,13 +351,9 @@ class DiscoverableSkill {
       final basename = directory.split('/').last;
       return '$pack:$basename';
     }
-    final steps = recipe?.steps ?? const <SkillInstallStep>[];
-    for (final step in steps) {
-      if (step.uses != 'script.run') continue;
-      final package = (step.withArgs['package'] as String?)?.trim();
-      if (package != null && package.isNotEmpty) {
-        return skillScriptIdFromPackageUrl(package);
-      }
+    final script = scriptUrl?.trim();
+    if (script != null && script.isNotEmpty) {
+      return skillScriptIdFromPackageUrl(script);
     }
     final basename = directory.split('/').last;
     if (repoOwner.isNotEmpty && repoName.isNotEmpty && basename.isNotEmpty) {
@@ -362,13 +373,23 @@ class DiscoverableSkill {
     'repoBranch': repoBranch,
     if (id != null && id!.isNotEmpty) 'id': id,
     if (packId != null && packId!.isNotEmpty) 'packId': packId,
-    if (recipe != null && !recipe!.isEmpty) 'recipe': recipe!.toJson(),
+    if (scriptUrl != null && scriptUrl!.isNotEmpty) 'scriptUrl': scriptUrl,
+    if (install != null && install!.isNotEmpty)
+      'install': [
+        for (final step in install!) _discoverableInstallToJson(step),
+      ],
   };
 
   factory DiscoverableSkill.fromJson(Map<String, Object?> json) {
-    final recipeRaw = json['recipe'];
+    if (json.containsKey('recipe')) {
+      throw const FormatException(
+        'DiscoverableSkill.recipe is no longer supported; use install/scriptUrl',
+      );
+    }
     final idRaw = (json['id'] as String?)?.trim();
     final packRaw = (json['packId'] as String?)?.trim();
+    final scriptRaw = (json['scriptUrl'] as String?)?.trim();
+    final installRaw = json['install'];
     return DiscoverableSkill(
       key: json['key'] as String? ?? '',
       name: json['name'] as String? ?? '',
@@ -380,9 +401,57 @@ class DiscoverableSkill {
       repoBranch: json['repoBranch'] as String? ?? '',
       id: idRaw == null || idRaw.isEmpty ? null : idRaw,
       packId: packRaw == null || packRaw.isEmpty ? null : packRaw,
-      recipe: recipeRaw is Map
-          ? SkillInstallRecipe.fromJson(recipeRaw.cast<String, Object?>())
-          : null,
+      scriptUrl: scriptRaw == null || scriptRaw.isEmpty ? null : scriptRaw,
+      install: installRaw is List ? parseSkillPackInstall(installRaw) : null,
     );
   }
+}
+
+Map<String, Object?> _discoverableInstallToJson(SkillPackInstruction step) {
+  // Reuse pack serialization via a throwaway SkillPack field helper is heavy;
+  // encode the common cases used in deps.
+  return switch (step) {
+    FromInstruction(:final owner, :final name, :final branch) => {
+      'FROM': '$owner/$name@$branch',
+    },
+    ScriptInstruction(
+      :final url,
+      :final id,
+      :final primaryDirectory,
+      :final alternatives,
+      :final optional,
+    ) =>
+      {
+        'SCRIPT': {
+          'url': url,
+          if (id != null && id.isNotEmpty) 'id': id,
+          if (primaryDirectory != null && primaryDirectory.isNotEmpty)
+            'primaryDirectory': primaryDirectory,
+          if (alternatives.isNotEmpty) 'alternatives': alternatives,
+        },
+        if (optional) 'optional': true,
+      },
+    SkillsInstruction(:final includeAll, :final include, :final exclude) => {
+      'SKILLS': includeAll && exclude.isEmpty
+          ? '*'
+          : {
+              if (includeAll) 'include': '*',
+              if (!includeAll) 'include': include,
+              if (exclude.isNotEmpty) 'exclude': exclude,
+            },
+    },
+    PathInstruction(:final entries) => {
+      'PATH': entries.length == 1 ? entries.single : entries,
+    },
+    EnvInstruction(:final entries) => {'ENV': entries},
+    RunInstruction(:final shell, :final exec, :final optional) => {
+      'RUN': shell ?? exec,
+      if (optional) 'optional': true,
+    },
+    ShellInstruction(:final wrapper) => {'SHELL': wrapper},
+    WorkdirInstruction(:final path) => {'WORKDIR': path},
+    CopyInstruction(:final from, :final to) => {
+      'COPY': [from, to],
+    },
+  };
 }

@@ -1,5 +1,11 @@
 # Skill Acquire Step Graph
 
+> **Superseded (author protocol):** Pack and skill install authoring now uses the
+> Dockerfile-like `install[]` instruction AST. See
+> [`2026-07-28-skill-pack-dockerfile-install-design.md`](./2026-07-28-skill-pack-dockerfile-install-design.md).
+> This document remains historical context for the former `recipe` / `uses`
+> step-graph IR (no longer the public protocol).
+
 ## Goal
 
 Replace kind-based skill acquire (`git-dir` / `git-pack` / `script`) with a

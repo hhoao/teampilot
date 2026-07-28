@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../utils/team/team_member_naming.dart';
 import 'skill.dart';
-import 'skill_install_recipe.dart';
+import 'skill_pack_instruction.dart';
 import 'team_config.dart';
 import 'team_roster_slot.dart';
 
@@ -18,7 +18,8 @@ class SkillDependencyRef {
     required this.name,
     this.id,
     this.packId,
-    this.recipe,
+    this.install,
+    this.scriptUrl,
   });
 
   final String repoOwner;
@@ -33,25 +34,35 @@ class SkillDependencyRef {
   /// When set, install goes through [SkillPack] (install-once, many skills).
   final String? packId;
 
-  /// Inline install graph when not using [packId].
-  final SkillInstallRecipe? recipe;
+  /// Inline Dockerfile-like install when not using [packId].
+  final List<SkillPackInstruction>? install;
 
-  /// Resolved recipe for non-pack deps: explicit [recipe], else single-dir sugar
-  /// from repo fields. Pack deps return null (engine loads pack.recipe).
-  SkillInstallRecipe? get resolvedRecipe {
+  /// HTTPS installer URL sugar (synthesizes a [ScriptInstruction]).
+  final String? scriptUrl;
+
+  /// Resolved install AST for non-pack deps. Pack deps return null
+  /// (engine loads pack.install).
+  List<SkillPackInstruction>? get resolvedInstall {
     if (packId != null && packId!.trim().isNotEmpty) return null;
-    if (recipe != null && !recipe!.isEmpty) return recipe;
-    if (repoOwner.isEmpty || repoName.isEmpty || directory.isEmpty) {
-      return recipe;
+    if (install != null && install!.isNotEmpty) return install;
+    if (repoOwner.isNotEmpty && repoName.isNotEmpty && directory.isNotEmpty) {
+      final branch = repoBranch.isEmpty ? 'main' : repoBranch;
+      return [
+        FromInstruction.parseRef('$repoOwner/$repoName@$branch'),
+        SkillsInstruction(includeAll: false, include: [directory]),
+      ];
     }
-    return SkillInstallRecipe.singleGitDir(
-      owner: repoOwner,
-      name: repoName,
-      branch: repoBranch,
-      directory: directory,
-      skillId: expectedLocalId,
-      skillName: name,
-    );
+    final script = scriptUrl?.trim();
+    if (script != null && script.isNotEmpty) {
+      return [
+        ScriptInstruction(
+          url: script,
+          id: expectedLocalId,
+          primaryDirectory: directory.isEmpty ? null : directory,
+        ),
+      ];
+    }
+    return null;
   }
 
   /// Deterministic local [Skill.id] this dep resolves to once installed.
@@ -63,16 +74,15 @@ class SkillDependencyRef {
       final base = directory.split('/').last;
       return '$pack:$base';
     }
-    // Script sugar: first script.run package URL in recipe.
-    final steps = recipe?.steps ?? const <SkillInstallStep>[];
-    for (final step in steps) {
-      if (step.uses != 'script.run') continue;
-      final package = (step.withArgs['package'] as String?)?.trim();
-      if (package != null && package.isNotEmpty) {
-        return skillScriptIdFromPackageUrl(package);
-      }
+    final script = scriptUrl?.trim();
+    if (script != null && script.isNotEmpty) {
+      return skillScriptIdFromPackageUrl(script);
     }
-    return '$repoOwner/$repoName:${directory.split('/').last}';
+    final base = directory.split('/').last;
+    if (repoOwner.isNotEmpty && repoName.isNotEmpty && base.isNotEmpty) {
+      return '$repoOwner/$repoName:$base';
+    }
+    return base.isEmpty ? 'local:unknown' : 'local:$base';
   }
 
   /// Payload for discovery-based install paths.
@@ -86,13 +96,20 @@ class SkillDependencyRef {
     repoBranch: repoBranch,
     id: id,
     packId: packId,
-    recipe: recipe,
+    install: install,
+    scriptUrl: scriptUrl,
   );
 
   factory SkillDependencyRef.fromJson(Map<String, Object?> json) {
-    final recipeRaw = json['recipe'];
+    if (json.containsKey('recipe')) {
+      throw const FormatException(
+        'SkillDependencyRef.recipe is no longer supported; use install/scriptUrl',
+      );
+    }
     final idRaw = (json['id'] as String?)?.trim();
     final packRaw = (json['packId'] as String?)?.trim();
+    final scriptRaw = (json['scriptUrl'] as String?)?.trim();
+    final installRaw = json['install'];
     return SkillDependencyRef(
       repoOwner: json['repoOwner'] as String? ?? '',
       repoName: json['repoName'] as String? ?? '',
@@ -101,9 +118,8 @@ class SkillDependencyRef {
       name: json['name'] as String? ?? '',
       id: idRaw == null || idRaw.isEmpty ? null : idRaw,
       packId: packRaw == null || packRaw.isEmpty ? null : packRaw,
-      recipe: recipeRaw is Map
-          ? SkillInstallRecipe.fromJson(recipeRaw.cast<String, Object?>())
-          : null,
+      scriptUrl: scriptRaw == null || scriptRaw.isEmpty ? null : scriptRaw,
+      install: installRaw is List ? parseSkillPackInstall(installRaw) : null,
     );
   }
 
@@ -115,7 +131,11 @@ class SkillDependencyRef {
     'name': name,
     if (id != null && id!.isNotEmpty) 'id': id,
     if (packId != null && packId!.isNotEmpty) 'packId': packId,
-    if (recipe != null && !recipe!.isEmpty) 'recipe': recipe!.toJson(),
+    if (scriptUrl != null && scriptUrl!.isNotEmpty) 'scriptUrl': scriptUrl,
+    if (install != null && install!.isNotEmpty)
+      'install': [
+        for (final step in install!) _depInstallToJson(step),
+      ],
   };
 
   @override
@@ -128,7 +148,8 @@ class SkillDependencyRef {
       name == other.name &&
       id == other.id &&
       packId == other.packId &&
-      recipe == other.recipe;
+      scriptUrl == other.scriptUrl &&
+      listEquals(install, other.install);
 
   @override
   int get hashCode => Object.hash(
@@ -139,8 +160,56 @@ class SkillDependencyRef {
     name,
     id,
     packId,
-    recipe,
+    scriptUrl,
+    install == null ? null : Object.hashAll(install!),
   );
+}
+
+Map<String, Object?> _depInstallToJson(SkillPackInstruction step) {
+  return switch (step) {
+    FromInstruction(:final owner, :final name, :final branch) => {
+      'FROM': '$owner/$name@$branch',
+    },
+    ScriptInstruction(
+      :final url,
+      :final id,
+      :final primaryDirectory,
+      :final alternatives,
+      :final optional,
+    ) =>
+      {
+        'SCRIPT': {
+          'url': url,
+          if (id != null && id.isNotEmpty) 'id': id,
+          if (primaryDirectory != null && primaryDirectory.isNotEmpty)
+            'primaryDirectory': primaryDirectory,
+          if (alternatives.isNotEmpty) 'alternatives': alternatives,
+        },
+        if (optional) 'optional': true,
+      },
+    SkillsInstruction(:final includeAll, :final include, :final exclude) => {
+      'SKILLS': includeAll && exclude.isEmpty
+          ? '*'
+          : {
+              if (includeAll) 'include': '*',
+              if (!includeAll) 'include': include,
+              if (exclude.isNotEmpty) 'exclude': exclude,
+            },
+    },
+    PathInstruction(:final entries) => {
+      'PATH': entries.length == 1 ? entries.single : entries,
+    },
+    EnvInstruction(:final entries) => {'ENV': entries},
+    RunInstruction(:final shell, :final exec, :final optional) => {
+      'RUN': shell ?? exec,
+      if (optional) 'optional': true,
+    },
+    ShellInstruction(:final wrapper) => {'SHELL': wrapper},
+    WorkdirInstruction(:final path) => {'WORKDIR': path},
+    CopyInstruction(:final from, :final to) => {
+      'COPY': [from, to],
+    },
+  };
 }
 
 

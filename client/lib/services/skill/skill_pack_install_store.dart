@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import '../../models/skill_install_recipe.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 
@@ -12,7 +11,7 @@ class SkillPackInstallRecord {
     required this.pathExports,
     required this.envExports,
     required this.installedAt,
-    this.packBin,
+    this.syncRoot,
   });
 
   final String packId;
@@ -20,7 +19,7 @@ class SkillPackInstallRecord {
   final List<String> pathExports;
   final Map<String, String> envExports;
   final int installedAt;
-  final String? packBin;
+  final String? syncRoot;
 
   Map<String, Object?> toJson() => {
     'packId': packId,
@@ -28,7 +27,7 @@ class SkillPackInstallRecord {
     'pathExports': pathExports,
     'envExports': envExports,
     'installedAt': installedAt,
-    if (packBin != null && packBin!.isNotEmpty) 'packBin': packBin,
+    if (syncRoot != null && syncRoot!.isNotEmpty) 'syncRoot': syncRoot,
   };
 
   factory SkillPackInstallRecord.fromJson(Map<String, Object?> json) {
@@ -52,7 +51,7 @@ class SkillPackInstallRecord {
             }
           : const {},
       installedAt: (json['installedAt'] as num?)?.toInt() ?? 0,
-      packBin: (json['packBin'] as String?)?.trim(),
+      syncRoot: (json['syncRoot'] as String?)?.trim(),
     );
   }
 }
@@ -81,11 +80,6 @@ class SkillPackInstallStore {
   String packRootFor(String packId) {
     final ctx = _fs.pathContext;
     return ctx.join(_root, safePackId(packId));
-  }
-
-  String packBinFor(String packId) {
-    final ctx = _fs.pathContext;
-    return ctx.join(packRootFor(packId), 'bin');
   }
 
   Future<void> save(SkillPackInstallRecord record) async {
@@ -140,6 +134,42 @@ class SkillPackInstallStore {
       }
     }
     return out;
+  }
+
+  /// ENV exports for packs that own any of [skillIds].
+  ///
+  /// On key collision across packs, **first-wins** (earlier `loadAll` record
+  /// keeps its value). Empty values are omitted.
+  Future<Map<String, String>> envExportsForSkills(
+    Iterable<String> skillIds,
+  ) async {
+    final wanted = skillIds.toSet();
+    if (wanted.isEmpty) return const {};
+    final out = <String, String>{};
+    for (final record in await loadAll()) {
+      final owns = record.skillIds.any(wanted.contains);
+      if (!owns) continue;
+      for (final e in record.envExports.entries) {
+        final key = e.key.trim();
+        final value = e.value;
+        if (key.isEmpty || value.isEmpty) continue;
+        out.putIfAbsent(key, () => value);
+      }
+    }
+    return out;
+  }
+
+  /// Merges non-empty [exports] into [env] without wiping unrelated keys.
+  static Map<String, String> mergeEnvExports(
+    Map<String, String> env,
+    Map<String, String> exports,
+  ) {
+    if (exports.isEmpty) return env;
+    return {
+      ...env,
+      for (final e in exports.entries)
+        if (e.value.isNotEmpty) e.key: e.value,
+    };
   }
 
   /// Prepends [pathExports] onto [env]'s `PATH` (platform separator).
