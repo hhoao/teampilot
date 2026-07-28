@@ -8,6 +8,7 @@ import 'cursor_ai_transcript.dart';
 import 'flashskyai_ai_transcript.dart';
 import 'opencode_ai_transcript.dart';
 import 'claude_compatible_side_resolver.dart';
+import 'cursor_side_resolver.dart';
 import 'subagent_side_resolver.dart';
 
 final class ClaudeAiHistoryCapability implements AiHistoryCapability {
@@ -88,7 +89,7 @@ final class OpencodeAiHistoryCapability implements AiHistoryCapability {
 
 final class CursorAiHistoryCapability implements AiHistoryCapability {
   const CursorAiHistoryCapability({
-    this.subagentSideResolver = const NullSubagentSideResolver(),
+    this.subagentSideResolver = const CursorSideResolver(),
   });
 
   @override
