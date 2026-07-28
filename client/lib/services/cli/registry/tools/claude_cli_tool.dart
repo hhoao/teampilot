@@ -20,6 +20,7 @@ import '../capabilities/headless_provision_capability.dart';
 import '../capabilities/provider_credential_capability.dart';
 import '../capabilities/provider_model_capability.dart';
 import '../capabilities/session_resume_capability.dart';
+import '../capabilities/history/builtin_ai_history_capabilities.dart';
 import '../capabilities/resume/claude_resume_strategy.dart';
 import '../config_profile/claude_config_profile_capability.dart';
 import '../headless/claude_headless_run_capability.dart';
@@ -62,6 +63,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.resource = const DefaultResourceCapability(),
     this.mcpConfigWriter = const ClaudeMcpConfigWriter(),
     this.turnInterrupt = const CtrlCTurnInterrupt(),
+    this.aiHistory = const ClaudeAiHistoryCapability(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? ClaudeProviderCredentialCapability();
@@ -90,6 +92,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final BusTransportCapability busTransport;
   final RemoteCliLocatorCapability remoteCliLocator;
   final TurnInterruptCapability turnInterrupt;
+  final ClaudeAiHistoryCapability aiHistory;
 
   @override
   CliTool get id => CliTool.claude;
@@ -126,5 +129,6 @@ final class ClaudeCliTool implements CliToolDefinition {
     resource,
     mcpConfigWriter,
     turnInterrupt,
+    aiHistory,
   ];
 }

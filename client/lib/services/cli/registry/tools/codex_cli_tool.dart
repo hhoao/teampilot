@@ -18,6 +18,7 @@ import '../capabilities/headless_run_capability.dart';
 import '../capabilities/provider_credential_capability.dart';
 import '../capabilities/provider_model_capability.dart';
 import '../capabilities/session_resume_capability.dart';
+import '../capabilities/history/builtin_ai_history_capabilities.dart';
 import '../capabilities/resume/codex_resume_strategy.dart';
 import '../capabilities/headless_provision_capability.dart';
 import '../config_profile/codex_config_profile_capability.dart';
@@ -59,6 +60,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.resource = const DefaultResourceCapability(),
     this.mcpConfigWriter = const CodexMcpConfigWriter(),
     this.turnInterrupt = const CtrlCTurnInterrupt(),
+    this.aiHistory = const CodexAiHistoryCapability(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? CodexProviderCredentialCapability();
@@ -87,6 +89,7 @@ final class CodexCliTool implements CliToolDefinition {
   final BusTransportCapability busTransport;
   final RemoteCliLocatorCapability remoteCliLocator;
   final TurnInterruptCapability turnInterrupt;
+  final CodexAiHistoryCapability aiHistory;
 
   @override
   CliTool get id => CliTool.codex;
@@ -118,5 +121,6 @@ final class CodexCliTool implements CliToolDefinition {
     resource,
     mcpConfigWriter,
     turnInterrupt,
+    aiHistory,
   ];
 }
