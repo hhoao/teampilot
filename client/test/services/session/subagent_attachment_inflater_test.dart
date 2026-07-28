@@ -2,12 +2,55 @@ import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/history/claude_ai_transcript.dart';
+import 'package:teampilot/services/cli/registry/capabilities/history/claude_compatible_side_resolver.dart';
+import 'package:teampilot/services/cli/registry/capabilities/history/subagent_side_resolver.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/claude_compatible_jsonl.dart';
 import 'package:teampilot/services/io/filesystem.dart';
+import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/session/subagent_attachment_inflater.dart';
 import 'package:teampilot/services/session/subagent_side_transcript_path.dart';
 
 import '../../support/in_memory_filesystem.dart';
+
+SessionHistoryContext _testCtx(Filesystem fs) => SessionHistoryContext(
+  fs: fs,
+  taskId: 'task-1',
+  env: const {},
+  transcriptRoots: const [],
+  bucket: 'bucket',
+);
+
+class _Cap implements AiHistoryCapability {
+  _Cap(this.subagentSideResolver);
+
+  @override
+  Future<AiTranscriptBundle?> locate(SessionHistoryContext ctx) async => null;
+
+  @override
+  AiTranscriptAdapter get adapter => const ClaudeAiTranscriptAdapter();
+
+  @override
+  Set<String> get subagentToolNames => const {'agent', 'task'};
+
+  @override
+  final SubagentSideResolver subagentSideResolver;
+}
+
+Future<Map<String, AiSubagentAttachment>> _inflate({
+  required List<AiMessage> messages,
+  required Filesystem fs,
+  required String? rootTranscriptPath,
+  int maxDepth = 8,
+}) {
+  return SubagentAttachmentInflater(maxDepth: maxDepth).inflate(
+    messages: messages,
+    ctx: _testCtx(fs),
+    capability: _Cap(const ClaudeCompatibleSideResolver()),
+    rootTranscriptPath: rootTranscriptPath,
+  );
+}
 
 void main() {
   const parentPath = '/projects/enc/uuid.jsonl';
@@ -39,10 +82,10 @@ void main() {
       ),
     ];
 
-    final index = await const SubagentAttachmentInflater().inflate(
+    final index = await _inflate(
       messages: messages,
       fs: fs,
-      parentTranscriptPath: parentPath,
+      rootTranscriptPath: parentPath,
     );
 
     final attachment = index['toolu_1'];
@@ -82,10 +125,10 @@ void main() {
       ),
     ];
 
-    final index = await const SubagentAttachmentInflater().inflate(
+    final index = await _inflate(
       messages: messages,
       fs: fs,
-      parentTranscriptPath: parentPath,
+      rootTranscriptPath: parentPath,
     );
 
     final attachment = index['toolu_args'];
@@ -111,10 +154,10 @@ void main() {
       ),
     ];
 
-    final index = await const SubagentAttachmentInflater().inflate(
+    final index = await _inflate(
       messages: messages,
       fs: fs,
-      parentTranscriptPath: parentPath,
+      rootTranscriptPath: parentPath,
     );
 
     final attachment = index['toolu_miss'];
@@ -144,10 +187,10 @@ void main() {
       ),
     ];
 
-    final index = await const SubagentAttachmentInflater().inflate(
+    final index = await _inflate(
       messages: messages,
       fs: fs,
-      parentTranscriptPath: parentPath,
+      rootTranscriptPath: parentPath,
     );
 
     final attachment = index['toolu_blank'];
@@ -167,7 +210,7 @@ void main() {
       _userAssistantJsonl(user: 'side', assistant: 'should not load'),
     );
 
-    final index = await const SubagentAttachmentInflater().inflate(
+    final index = await _inflate(
       messages: [
         AiMessage(
           id: 'a1',
@@ -183,7 +226,7 @@ void main() {
         ),
       ],
       fs: fs,
-      parentTranscriptPath: null,
+      rootTranscriptPath: null,
     );
 
     final attachment = index['toolu_null_parent'];
@@ -209,7 +252,7 @@ void main() {
       _userAssistantJsonl(user: 'side', assistant: 'should not load'),
     );
 
-    final index = await const SubagentAttachmentInflater().inflate(
+    final index = await _inflate(
       messages: [
         AiMessage(
           id: 'a1',
@@ -225,7 +268,7 @@ void main() {
         ),
       ],
       fs: fs,
-      parentTranscriptPath: '',
+      rootTranscriptPath: '',
     );
 
     final attachment = index['toolu_blank_parent'];
@@ -243,7 +286,7 @@ void main() {
       () async {
     final fs = _CountingListDirFilesystem();
 
-    final index = await const SubagentAttachmentInflater().inflate(
+    final index = await _inflate(
       messages: [
         AiMessage(
           id: 'a1',
@@ -259,7 +302,7 @@ void main() {
         ),
       ],
       fs: fs,
-      parentTranscriptPath: '   ',
+      rootTranscriptPath: '   ',
     );
 
     final attachment = index['toolu_ws_parent'];
@@ -314,10 +357,10 @@ void main() {
       ),
     ];
 
-    final index = await const SubagentAttachmentInflater().inflate(
+    final index = await _inflate(
       messages: messages,
       fs: fs,
-      parentTranscriptPath: parentPath,
+      rootTranscriptPath: parentPath,
     );
 
     expect(index.keys, containsAll(['toolu_parent', 'toolu_child']));
@@ -358,10 +401,10 @@ void main() {
       ),
     ];
 
-    final index = await const SubagentAttachmentInflater().inflate(
+    final index = await _inflate(
       messages: messages,
       fs: fs,
-      parentTranscriptPath: parentPath,
+      rootTranscriptPath: parentPath,
     );
 
     final attachment = index['toolu_throw'];
@@ -434,11 +477,11 @@ void main() {
       ),
     ];
 
-    final index = await const SubagentAttachmentInflater(maxDepth: maxDepth)
-        .inflate(
+    final index = await _inflate(
       messages: rootMessages,
       fs: fs,
-      parentTranscriptPath: parentPath,
+      rootTranscriptPath: parentPath,
+      maxDepth: maxDepth,
     );
 
     for (var depth = 0; depth < maxDepth; depth++) {

@@ -7,11 +7,12 @@ import 'codex_ai_transcript.dart';
 import 'cursor_ai_transcript.dart';
 import 'flashskyai_ai_transcript.dart';
 import 'opencode_ai_transcript.dart';
+import 'claude_compatible_side_resolver.dart';
 import 'subagent_side_resolver.dart';
 
 final class ClaudeAiHistoryCapability implements AiHistoryCapability {
   const ClaudeAiHistoryCapability({
-    this.subagentSideResolver = const NullSubagentSideResolver(),
+    this.subagentSideResolver = const ClaudeCompatibleSideResolver(),
   });
 
   @override
@@ -30,7 +31,7 @@ final class ClaudeAiHistoryCapability implements AiHistoryCapability {
 
 final class FlashskyaiAiHistoryCapability implements AiHistoryCapability {
   const FlashskyaiAiHistoryCapability({
-    this.subagentSideResolver = const NullSubagentSideResolver(),
+    this.subagentSideResolver = const ClaudeCompatibleSideResolver(),
   });
 
   @override

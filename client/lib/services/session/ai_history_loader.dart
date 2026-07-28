@@ -191,8 +191,9 @@ final class AiHistoryLoader {
 
       final attachments = await const SubagentAttachmentInflater().inflate(
         messages: messages,
-        fs: ctx.fs,
-        parentTranscriptPath: parentPath,
+        ctx: ctx,
+        capability: cap,
+        rootTranscriptPath: parentPath,
       );
 
       // Null token is uncacheable — never treat null==null as a forever hit.

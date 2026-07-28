@@ -1,12 +1,8 @@
-import 'dart:convert';
-
 import 'package:ai_message_core/ai_message_core.dart';
-import 'package:path/path.dart' as p;
 
 import '../../utils/logging/logger.dart';
-import '../cli/registry/capabilities/history/claude_compatible_jsonl.dart';
-import '../io/filesystem.dart';
-import 'subagent_side_transcript_path.dart';
+import '../cli/registry/capabilities/ai_history_capability.dart';
+import 'session_history_context.dart';
 
 class SubagentAttachmentInflater {
   const SubagentAttachmentInflater({this.maxDepth = 8});
@@ -15,14 +11,17 @@ class SubagentAttachmentInflater {
 
   Future<Map<String, AiSubagentAttachment>> inflate({
     required List<AiMessage> messages,
-    required Filesystem fs,
-    required String? parentTranscriptPath,
+    required SessionHistoryContext ctx,
+    required AiHistoryCapability capability,
+    required String? rootTranscriptPath,
   }) async {
     final out = <String, AiSubagentAttachment>{};
     await _walk(
       messages: messages,
-      fs: fs,
-      parentTranscriptPath: parentTranscriptPath,
+      ctx: ctx,
+      capability: capability,
+      rootTranscriptPath: rootTranscriptPath,
+      parentHandle: null,
       depth: 0,
       out: out,
     );
@@ -31,28 +30,27 @@ class SubagentAttachmentInflater {
 
   Future<void> _walk({
     required List<AiMessage> messages,
-    required Filesystem fs,
-    required String? parentTranscriptPath,
+    required SessionHistoryContext ctx,
+    required AiHistoryCapability capability,
+    required String? rootTranscriptPath,
+    required SubagentSideHandle? parentHandle,
     required int depth,
     required Map<String, AiSubagentAttachment> out,
   }) async {
-    final usableParent = _isUsableParentPath(parentTranscriptPath);
-    final metaByToolUseId = usableParent
-        ? await _loadMetaMap(fs, parentTranscriptPath!.trim())
-        : const <String, String>{};
-
     for (final message in messages) {
       for (final part in message.parts) {
         if (part is! AiToolCallPart) continue;
-        if (!isAiSubagentToolName(part.toolName)) continue;
+        final name = part.toolName.trim().toLowerCase();
+        if (!capability.subagentToolNames.contains(name)) continue;
         if (part.toolCallId.trim().isEmpty) continue;
         if (out.containsKey(part.toolCallId)) continue;
 
         final attachment = await _attachOne(
           part: part,
-          fs: fs,
-          parentTranscriptPath: usableParent ? parentTranscriptPath!.trim() : null,
-          metaByToolUseId: metaByToolUseId,
+          ctx: ctx,
+          capability: capability,
+          rootTranscriptPath: rootTranscriptPath,
+          parentHandle: parentHandle,
           depth: depth,
         );
         out[part.toolCallId] = attachment;
@@ -60,8 +58,10 @@ class SubagentAttachmentInflater {
         if (depth < maxDepth) {
           await _walk(
             messages: attachment.messages,
-            fs: fs,
-            parentTranscriptPath: attachment.sidePath,
+            ctx: ctx,
+            capability: capability,
+            rootTranscriptPath: rootTranscriptPath,
+            parentHandle: attachment.handle,
             depth: depth + 1,
             out: out,
           );
@@ -72,9 +72,10 @@ class SubagentAttachmentInflater {
 
   Future<AiSubagentAttachment> _attachOne({
     required AiToolCallPart part,
-    required Filesystem fs,
-    required String? parentTranscriptPath,
-    required Map<String, String> metaByToolUseId,
+    required SessionHistoryContext ctx,
+    required AiHistoryCapability capability,
+    required String? rootTranscriptPath,
+    required SubagentSideHandle? parentHandle,
     required int depth,
   }) async {
     final title = subagentTitleFromPart(part);
@@ -83,48 +84,32 @@ class SubagentAttachmentInflater {
       return _degrade(part, title);
     }
 
-    final agentId =
-        metaByToolUseId[part.toolCallId] ?? subagentAgentIdFromPart(part);
-    if (agentId != null &&
-        agentId.isNotEmpty &&
-        _isUsableParentPath(parentTranscriptPath)) {
-      final parentPath = parentTranscriptPath!.trim();
-      final subagentsDir = claudeSubagentsDirFor(parentPath);
-      final sidePath = claudeSubagentTranscriptPath(
-        subagentsDir: subagentsDir,
-        agentId: agentId,
+    try {
+      final resolved = await capability.subagentSideResolver.resolve(
+        part: part,
+        ctx: ctx,
+        parentHandle: parentHandle,
+        rootTranscriptPath: rootTranscriptPath,
       );
-      try {
-        final content = await fs.readString(sidePath);
-        if (content != null) {
-          final sideMessages = parseClaudeCompatibleJsonl(
-            content,
-            fallbackId: () => 'subagent-$agentId-${part.toolCallId}',
-          );
-          return AiSubagentAttachment(
-            toolCallId: part.toolCallId,
-            messages: sideMessages,
-            source: AiSubagentAttachmentSource.sideTranscript,
-            title: title,
-            handle: SubagentFileHandle(sidePath),
-          );
-        }
-      } catch (e, st) {
-        appLogger.w(
-          '[subagent-inflate] side transcript failed '
-          'toolCallId=${part.toolCallId} path=$sidePath: $e',
-          error: e,
-          stackTrace: st,
+      if (resolved != null) {
+        return AiSubagentAttachment(
+          toolCallId: part.toolCallId,
+          messages: resolved.messages,
+          source: AiSubagentAttachmentSource.sideTranscript,
+          title: title,
+          handle: resolved.handle,
         );
       }
+    } catch (e, st) {
+      appLogger.w(
+        '[subagent-inflate] resolve failed toolCallId=${part.toolCallId}: $e',
+        error: e,
+        stackTrace: st,
+      );
     }
 
     return _degrade(part, title);
   }
-
-  /// Blank / whitespace paths skip side FS (same as null).
-  static bool _isUsableParentPath(String? path) =>
-      path != null && path.trim().isNotEmpty;
 
   AiSubagentAttachment _degrade(AiToolCallPart part, String? title) {
     return AiSubagentAttachment(
@@ -136,63 +121,5 @@ class SubagentAttachmentInflater {
       source: AiSubagentAttachmentSource.toolResult,
       title: title,
     );
-  }
-
-  Future<Map<String, String>> _loadMetaMap(
-    Filesystem fs,
-    String parentTranscriptPath,
-  ) async {
-    final subagentsDir = claudeSubagentsDirFor(parentTranscriptPath);
-    final map = <String, String>{};
-    List<FsDirEntry> entries;
-    try {
-      entries = await fs.listDir(subagentsDir);
-    } catch (_) {
-      return map;
-    }
-
-    for (final entry in entries) {
-      if (entry.isDirectory) continue;
-      final name = entry.name;
-      if (!name.startsWith('agent-') || !name.endsWith('.meta.json')) {
-        continue;
-      }
-      final agentId = name.substring(
-        'agent-'.length,
-        name.length - '.meta.json'.length,
-      );
-      if (agentId.isEmpty) continue;
-
-      final metaPath = p.join(subagentsDir, name);
-      String? raw;
-      try {
-        raw = await fs.readString(metaPath);
-      } catch (e, st) {
-        appLogger.w(
-          '[subagent-inflate] meta read failed path=$metaPath: $e',
-          error: e,
-          stackTrace: st,
-        );
-        continue;
-      }
-      if (raw == null) continue;
-      try {
-        final decoded = jsonDecode(raw);
-        if (decoded is! Map) continue;
-        final toolUseId = decoded['toolUseId'];
-        if (toolUseId is! String) continue;
-        final trimmed = toolUseId.trim();
-        if (trimmed.isEmpty) continue;
-        map[trimmed] = agentId;
-      } catch (e, st) {
-        appLogger.w(
-          '[subagent-inflate] meta parse failed path=$metaPath: $e',
-          error: e,
-          stackTrace: st,
-        );
-        continue;
-      }
-    }
-    return map;
   }
 }
