@@ -118,7 +118,6 @@ class AiSubagentAttachment {
     required this.source,
     this.title,
     this.handle,
-    @Deprecated('Use handle') this.sidePath,
   });
 
   final String toolCallId;
@@ -138,7 +137,11 @@ class AiSubagentAttachment {
 const kAiSubagentToolNames = {'agent', 'task', 'spawn_agent'};
 ```
 
-Keep constructor backward-compat during migration: if callers still pass `sidePath:`, map to `SubagentFileHandle` in a factory or temporary dual field — prefer updating call sites in later tasks in the same PR wave. Simplest: replace `sidePath` field with getter; update all `sidePath:` constructions to `handle: SubagentFileHandle(...)`.
+Keep constructor backward-compat during migration: **replace** the `sidePath`
+field with a getter derived from `handle` (do **not** keep both a deprecated
+`sidePath` constructor parameter and a `sidePath` getter). Update all
+`sidePath:` constructions to `handle: SubagentFileHandle(...)` in the same
+change set / follow-up tasks as call sites break.
 
 - [ ] **Step 4: Run tests — PASS**
 
@@ -168,7 +171,8 @@ EOF
 ```dart
 // ai_history_capability.dart
 import 'package:ai_message_core/ai_message_core.dart';
-import '../../session/session_history_context.dart';
+
+import '../../../session/session_history_context.dart';
 import '../cli_capability.dart';
 import 'history/subagent_side_resolver.dart';
 
@@ -184,6 +188,7 @@ abstract interface class AiHistoryCapability implements CliCapability {
 ```dart
 // subagent_side_resolver.dart
 import 'package:ai_message_core/ai_message_core.dart';
+
 import '../../../../session/session_history_context.dart';
 
 class SubagentSideResolveResult {
@@ -204,7 +209,7 @@ abstract interface class SubagentSideResolver {
   });
 }
 
-/// Always miss — temporary binder until Task 4–7.
+/// Always miss — temporary binder until Task 5–8.
 final class NullSubagentSideResolver implements SubagentSideResolver {
   const NullSubagentSideResolver();
   @override
@@ -305,14 +310,21 @@ EOF
 
 ---
 
-### Task 4: Migrate locator + loader off `kAiHistoryProviders`
+### Task 4: Migrate locator + loader **locate/parse** onto capability
 
 **Files:**
 - Modify: `client/lib/services/session/ai_history_locator.dart`
 - Modify: `client/lib/services/session/ai_history_loader.dart`
-- Modify: `client/lib/app/app_shell.dart` (if loader ctor changes)
+- Modify: `client/lib/app/app_shell.dart` — pass the existing `cliToolRegistry` into `AiHistoryLoader` / locator when ctors gain `registry:`
 - Modify: `client/test/services/session/ai_history_loader_test.dart`
-- Modify: any test that injects `adapters:` / `providers:`
+- Modify tests that inject `adapters:` / `providers:` (grep): e.g.
+  `ai_history_cubit_test.dart`, `ai_history_seat_isolation_test.dart`,
+  `ai_history_live_refresh_controller_test.dart`,
+  `session_history_registration_test.dart` (partial — full map removal in Task 11)
+
+**Order note:** Do **not** change `SubagentAttachmentInflater.inflate` signature in
+this task. Keep calling the **current** API
+(`messages` / `fs` / `parentTranscriptPath`) so Task 4 compiles before Task 5.
 
 - [ ] **Step 1: Locator uses registry**
 
@@ -336,23 +348,30 @@ class AiHistoryLocator {
 }
 ```
 
-- [ ] **Step 2: Loader uses capability adapter + inflate with capability**
-
-Replace `_adapters[cli]` with:
+- [ ] **Step 2: Loader uses capability adapter; inflate stays old API**
 
 ```dart
 final cap = _registry.capability<AiHistoryCapability>(cli);
-if (cap == null) throw StateError('AiHistoryCapability missing for launch CLI $cli');
-final messages = bundle == null ? const <AiMessage>[] : await cap.adapter.parse(bundle);
-final attachments = await SubagentAttachmentInflater().inflate(
+if (cap == null) {
+  throw StateError('AiHistoryCapability missing for launch CLI $cli');
+}
+final messages = bundle == null
+    ? const <AiMessage>[]
+    : await cap.adapter.parse(bundle);
+
+// UNCHANGED inflater API until Task 5:
+final attachments = await const SubagentAttachmentInflater().inflate(
   messages: messages,
-  ctx: ctx,
-  capability: cap,
-  rootTranscriptPath: parentPath,
+  fs: ctx.fs,
+  parentTranscriptPath: parentPath,
 );
 ```
 
-Keep optional test injection: `AiHistoryLoader({CliToolRegistry? registry, ...})` or allow overriding capability map in tests. Update tests that passed custom `adapters:`.
+Remove `_adapters` map from loader ctor (or keep only as deprecated test path
+that builds a tiny registry). Prefer tests registering a fake
+`AiHistoryCapability` on `CliToolRegistry()`.
+
+Wire `app_shell.dart` `AiHistoryLoader(...)` with `registry: cliToolRegistry`.
 
 - [ ] **Step 3: Run loader + related tests**
 
@@ -375,9 +394,10 @@ EOF
 **Files:**
 - Create: `client/lib/services/cli/registry/capabilities/history/claude_compatible_side_resolver.dart`
 - Modify: `client/lib/services/session/subagent_attachment_inflater.dart`
+- Modify: `client/lib/services/session/ai_history_loader.dart` — switch inflate call to new signature **in this task**
 - Modify: `client/test/services/session/subagent_attachment_inflater_test.dart`
 - Modify: Claude + flashskyai history capabilities to use shared resolver
-- Keep: `subagent_side_transcript_path.dart` (moved use into resolver)
+- Keep: `subagent_side_transcript_path.dart` (used by resolver)
 
 - [ ] **Step 1: Update inflater tests to pass a capability stub**
 
@@ -457,13 +477,26 @@ final attachment = resolved == null
 
 Name gate uses **capability set**, not only `isAiSubagentToolName`.
 
-- [ ] **Step 5: Point Claude + flashskyai capabilities at `const ClaudeCompatibleSideResolver()`**
+- [ ] **Step 5: Update loader inflate call to the new signature**
 
-- [ ] **Step 6: Tests PASS**
+```dart
+final attachments = await SubagentAttachmentInflater().inflate(
+  messages: messages,
+  ctx: ctx,
+  capability: cap,
+  rootTranscriptPath: parentPath,
+);
+```
 
-Run: `cd client && flutter test test/services/session/subagent_attachment_inflater_test.dart`
+Re-run `ai_history_loader_test.dart` after this step.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Point Claude + flashskyai capabilities at `const ClaudeCompatibleSideResolver()`**
+
+- [ ] **Step 7: Tests PASS**
+
+Run: `cd client && flutter test test/services/session/subagent_attachment_inflater_test.dart test/services/session/ai_history_loader_test.dart`
+
+- [ ] **Step 8: Commit**
 
 ```bash
 git commit -m "$(cat <<'EOF'
@@ -563,6 +596,10 @@ Ensure child load uses same dataDir resolution as parent `locateOpencodeTranscri
 
 For unit tests, prefer JSON storage fixtures under a temp dataDir if sqlite harness is heavy; mirror fragment layout `message/` + `part/` that `OpencodeAiTranscriptAdapter` already parses.
 
+When `session.parent_id` is available and mismatches the parent session id from
+`ctx` / `parentHandle`, log a diagnostic (`appLogger.w`) but still prefer the
+explicit tool `sessionId`.
+
 - [ ] **Step 3: Implement link extract**
 
 ```dart
@@ -637,8 +674,12 @@ EOF
 
 - [ ] **Step 1: In `AiToolSubagentActions` construction**
 
+Use existing `lockedCli` (or equivalent seat CLI already resolved in
+`session_chat_view.dart` ~L990–L1029) — do not invent a parallel `seatCli`
+alias.
+
 ```dart
-final historyCap = registry.capability<AiHistoryCapability>(seatCli);
+final historyCap = registry.capability<AiHistoryCapability>(lockedCli);
 AiToolSubagentActions(
   isSubagentTool: historyCap == null
       ? null
@@ -647,8 +688,6 @@ AiToolSubagentActions(
   onOpenSubagent: (id) async { … },
 )
 ```
-
-Resolve `seatCli` the same way the history seat already resolves member CLI (reuse existing seat/member CLI helper in the view).
 
 - [ ] **Step 2: `flutter analyze` on touched paths; fix attachment `sidePath` references (controller prune unaffected — still keyed by toolCallId)
 
@@ -673,6 +712,10 @@ EOF
 - Update: `docs/superpowers/plans/2026-07-28-subagent-preview-overlay.md` plan-lock note — tool names superseded (optional short comment at top)
 
 - [ ] **Step 1: Remove map; fix imports**
+
+Explicitly update `session_history_registration_test.dart` (and any remaining
+`kAiHistoryProviders` assertions) to assert
+`registry.capability<AiHistoryCapability>(cli)` instead of the old map.
 
 - [ ] **Step 2: Full verification**
 
