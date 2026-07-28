@@ -18,7 +18,7 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing.dart';
-import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing_compose_card.dart';
+import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_landing_selectors.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
@@ -35,7 +35,7 @@ void _expectComposeOnlyAskAiDialog() {
   expect(find.text('Ask AI…'), findsNothing);
   expect(find.byType(TpDialogHeader), findsNothing);
   expect(find.byType(WorkspaceChatLanding), findsOneWidget);
-  expect(find.byType(WorkspaceChatLandingComposeCard), findsOneWidget);
+  expect(find.byType(WorkspaceComposeCard), findsOneWidget);
   expect(find.byKey(AppKeys.workspaceChatLandingBackButton), findsNothing);
   expect(find.byType(WorkspaceLandingHeaderRow), findsNothing);
 }
