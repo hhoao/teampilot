@@ -38,6 +38,8 @@ import '../services/launch/session_connect_orchestrator.dart';
 import '../services/launch/workspace_provision_coordinator.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/terminal/terminal_session.dart';
+import '../services/terminal/member_turn_interrupt_service.dart';
+import '../services/terminal/session_member_cli_resolver.dart';
 import '../services/terminal/terminal_theme_for_launch.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../utils/session/workspace_sessions.dart';
@@ -193,6 +195,11 @@ class ChatCubit extends Cubit<ChatState>
         },
         onAfterIdleWatchTick: () => unawaited(_onIdleWatchTick()),
         onAfterTurnLatched: _onOperatorTurnLatched,
+      );
+  late final MemberTurnInterruptService _turnInterrupt =
+      MemberTurnInterruptService(
+        cliToolRegistry: CliToolRegistry.builtIn(),
+        abortMemberInject: _sessionRuntime.abortMemberInject,
       );
   late final TabMemberMaterializer _memberMaterializer = TabMemberMaterializer(
     runtime: _sessionRuntime,
@@ -518,6 +525,65 @@ class ChatCubit extends Cubit<ChatState>
 
   @visibleForTesting
   void debugRecomputeWorkingSessions() => _recomputeWorkingSessions();
+
+  /// Seat-level working for compose stop button (mirrors members panel rules).
+  bool isMemberWorking(String sessionId, String memberId) {
+    final tab = _tabStore.openTabBySessionId(sessionId);
+    if (tab == null) return false;
+
+    final presence = _presenceCubit?.state.presence ?? const {};
+    final sessionWorking = _sessionRuntime.sessionWorking;
+    final usesPresenceSnapshot = sessionWorking.usesPresenceSnapshotForTab(
+      tab: tab,
+      activeSessionId: state.activeSessionId,
+      presenceNonEmpty: presence.isNotEmpty,
+    );
+
+    return sessionWorking.isMemberWorking(
+      tab: tab,
+      memberId: memberId,
+      team: _teamForSessionTab(tab),
+      globalPresets: _lifecycle.globalPresets,
+      presence: presence,
+      usePresenceSnapshot: usesPresenceSnapshot,
+    );
+  }
+
+  /// Cancels in-flight PTY inject and sends CLI turn-interrupt bytes to the seat.
+  Future<void> interruptSelectedMemberTurn({
+    String? sessionId,
+    String? memberId,
+  }) async {
+    final sid = sessionId ?? state.activeSessionId;
+    if (sid == null) return;
+    final tab = _tabStore.openTabBySessionId(sid);
+    if (tab == null) return;
+    final mid = (memberId ?? tab.selectedMemberId).trim();
+    if (mid.isEmpty) return;
+
+    final cli = SessionMemberCliResolver.resolve(
+      persistedSession: tab.persistedSession,
+      team: _teamForSessionTab(tab),
+      memberId: mid,
+      cliForMember: _shellFactory.cliForMember,
+      globalPresets: _lifecycle.globalPresets,
+    );
+
+    await _turnInterrupt.interrupt(
+      sessionId: sid,
+      memberId: mid,
+      shell: tab.memberShells[mid],
+      cli: cli,
+    );
+  }
+
+  TeamProfile? _teamForSessionTab(ChatTab tab) {
+    final session = tab.persistedSession;
+    if (session == null || session.sessionTeam.trim().isEmpty) return null;
+    final teamId = session.sessionTeam.trim();
+    if (_activeTeam?.id == teamId) return _activeTeam;
+    return null;
+  }
 
   /// Exercises History/Terminal submit → [onAfterTurnLatched] without PTY I/O.
   @visibleForTesting

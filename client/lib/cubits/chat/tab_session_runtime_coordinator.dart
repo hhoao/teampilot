@@ -99,6 +99,12 @@ class TabSessionRuntimeCoordinator {
   final TabSessionIdleWatch _idleWatch;
   final TabWorkingAggregator _workingAggregator;
 
+  SessionWorkingResolver get sessionWorking =>
+      _coordinationFactory.sessionWorking;
+
+  void abortMemberInject(String sessionId, String memberId) =>
+      _delivery.abortMemberInject(sessionId, memberId);
+
   TeamBus? busForSession(String sessionId) => _delivery.busForSession(sessionId);
 
   bool isMemberReadyForAutomationInput(

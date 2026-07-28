@@ -29,6 +29,7 @@ final class MemberPtyInjectService {
   final FullscreenPtyAutomation _automation;
   final PtyAutomationSessionLock _lock;
   final PtyAutomationRetryQueue _retryQueue;
+  final Set<String> _abortRequested = <String>{};
   final void Function(
     String sessionId,
     String memberId,
@@ -44,6 +45,19 @@ final class MemberPtyInjectService {
 
   void clearPending(String sessionId, String memberId) {
     _retryQueue.clear(PtyAutomationSessionLock.key(sessionId, memberId));
+  }
+
+  void requestAbort(String sessionId, String memberId) {
+    _abortRequested.add(PtyAutomationSessionLock.key(sessionId, memberId));
+    clearPending(sessionId, memberId);
+  }
+
+  bool isAbortRequested(String sessionId, String memberId) => _abortRequested
+      .contains(PtyAutomationSessionLock.key(sessionId, memberId));
+
+  /// Clears an abort only when a locked run observed it during an abort poll.
+  void clearAbort(String sessionId, String memberId) {
+    _abortRequested.remove(PtyAutomationSessionLock.key(sessionId, memberId));
   }
 
   /// First delivery: clear → paste → grid ACK → CR.
@@ -139,6 +153,10 @@ final class MemberPtyInjectService {
   }) async {
     final key = PtyAutomationSessionLock.key(sessionId, memberId);
     if (!_lock.tryAcquire(sessionId, memberId)) {
+      if (isAbortRequested(sessionId, memberId)) {
+        _retryQueue.clear(key);
+        return FullscreenPtyDeliveryOutcome.aborted;
+      }
       appLogger.d(
         '[team-bus] pty-automation deferred ack-in-progress '
         'member=$memberId session=$sessionId',
@@ -146,17 +164,30 @@ final class MemberPtyInjectService {
       _scheduleRetry(key, sessionId, memberId, text, FullscreenPtyDeliveryOutcome.crStuck);
       return FullscreenPtyDeliveryOutcome.crStuck;
     }
+    var abortObserved = false;
     try {
       final port = TerminalFullscreenPtyPort(
         input: input,
         probe: probe,
-        aborted: aborted,
+        aborted: () {
+          final requested = isAbortRequested(sessionId, memberId);
+          final wasAborted = requested || aborted();
+          if (wasAborted) abortObserved = true;
+          return wasAborted;
+        },
         crAckConfig: crAckConfig,
       );
-      final outcome = await run(port);
+      final runOutcome = await run(port);
+      if (isAbortRequested(sessionId, memberId)) {
+        abortObserved = true;
+      }
+      final outcome = abortObserved
+          ? FullscreenPtyDeliveryOutcome.aborted
+          : runOutcome;
       _handleOutcome(key, sessionId, memberId, text, outcome);
       return outcome;
     } finally {
+      if (abortObserved) clearAbort(sessionId, memberId);
       _lock.release(sessionId, memberId);
     }
   }
@@ -172,7 +203,7 @@ final class MemberPtyInjectService {
       case FullscreenPtyDeliveryOutcome.submitted:
         _retryQueue.clear(key);
       case FullscreenPtyDeliveryOutcome.aborted:
-        break;
+        _retryQueue.clear(key);
       case FullscreenPtyDeliveryOutcome.pasteNotFound:
       case FullscreenPtyDeliveryOutcome.crStuck:
         appLogger.w(

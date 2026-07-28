@@ -65,6 +65,13 @@ final class TabMemberPtyDelivery {
   void clearPending(String sessionId, String memberId) =>
       _ptyInject.clearPending(sessionId, memberId);
 
+  void abortMemberInject(String sessionId, String memberId) {
+    _ptyInject.requestAbort(sessionId, memberId);
+    if (!_ptyInject.isBusy(sessionId, memberId)) {
+      _ptyInject.clearAbort(sessionId, memberId);
+    }
+  }
+
   void tickRetries({
     required bool Function(PtyAutomationRetryTick tick) shouldSkip,
     required void Function(PtyAutomationRetryTick tick) onTick,
@@ -133,7 +140,7 @@ final class TabMemberPtyDelivery {
       );
       return;
     }
-    if (_ptyAckAborted(shell)) return;
+    if (_ptyAckAborted(shell, sessionId: sessionId, memberId: memberId)) return;
     if (shouldSkipAutomationRetry(sessionId, memberId)) {
       dropStaleAutomationRetry(sessionId, memberId, shell);
       return;
@@ -175,7 +182,8 @@ final class TabMemberPtyDelivery {
       memberId: memberId,
       text: trimmed,
       pasteSettle: settle,
-      aborted: () => _ptyAckAborted(shell),
+      aborted: () =>
+          _ptyAckAborted(shell, sessionId: sessionId, memberId: memberId),
       crAckConfig: _crAckForMember(sessionId, memberId),
     );
     if (isMailDoorbell) {
@@ -246,7 +254,13 @@ final class TabMemberPtyDelivery {
     final shell =
         _tabStore.openTabBySessionId(tick.sessionId)?.memberShells[tick.memberId];
     if (shell == null) return;
-    if (_ptyAckAborted(shell)) return;
+    if (_ptyAckAborted(
+      shell,
+      sessionId: tick.sessionId,
+      memberId: tick.memberId,
+    )) {
+      return;
+    }
     if (shouldSkipAutomationRetry(
       tick.sessionId,
       tick.memberId,
@@ -280,7 +294,11 @@ final class TabMemberPtyDelivery {
       memberId: tick.memberId,
       text: tick.text,
       pasteSettle: settle,
-      aborted: () => _ptyAckAborted(shell),
+      aborted: () => _ptyAckAborted(
+        shell,
+        sessionId: tick.sessionId,
+        memberId: tick.memberId,
+      ),
       crAckConfig: _crAckForMember(tick.sessionId, tick.memberId),
     );
     if (_isMailDoorbellText(tick.text)) {
@@ -313,7 +331,8 @@ final class TabMemberPtyDelivery {
         memberId: memberId,
         text: text,
         pasteSettle: settle,
-        aborted: () => _ptyAckAborted(shell),
+        aborted: () =>
+            _ptyAckAborted(shell, sessionId: sessionId, memberId: memberId),
         crAckConfig: _crAckForMember(sessionId, memberId),
       );
       if (isMailDoorbell) {
@@ -343,8 +362,22 @@ final class TabMemberPtyDelivery {
         MailboxDeliveryPhase.failed;
   }
 
-  bool _ptyAckAborted(TerminalSession shell) =>
-      _isClosed() || !shell.isConnected;
+  bool _ptyAckAborted(
+    TerminalSession shell, {
+    String? sessionId,
+    String? memberId,
+  }) {
+    if (_isClosed() || !shell.isConnected) return true;
+    if (sessionId != null &&
+        memberId != null &&
+        _ptyInject.isAbortRequested(sessionId, memberId)) {
+      if (!_ptyInject.isBusy(sessionId, memberId)) {
+        _ptyInject.clearAbort(sessionId, memberId);
+      }
+      return true;
+    }
+    return false;
+  }
 
   CliTool _memberCli(String sessionId, String memberId) {
     final tab = _tabStore.openTabBySessionId(sessionId);

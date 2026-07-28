@@ -65,6 +65,8 @@ class SessionReviewComposeCard extends StatelessWidget {
     this.teamSettingsTooltip,
     this.onTeamSettings,
     this.showTeamSettingsAttention = false,
+    this.showStop = false,
+    this.onStop,
     super.key,
   });
 
@@ -121,6 +123,10 @@ class SessionReviewComposeCard extends StatelessWidget {
   final String? teamSettingsTooltip;
   final VoidCallback? onTeamSettings;
   final bool showTeamSettingsAttention;
+
+  /// When true, the send button is replaced with a stop-generating control.
+  final bool showStop;
+  final VoidCallback? onStop;
 
   bool get _composeActionsEnabled =>
       composeEnabled && !isSubmitting && !isEnhancing;
@@ -185,8 +191,16 @@ class SessionReviewComposeCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: isVoiceListening
-                  ? _voiceRecordingActions(palette: palette, spacing: spacing)
-                  : _idleActions(palette: palette, spacing: spacing),
+                  ? _voiceRecordingActions(
+                      context: context,
+                      palette: palette,
+                      spacing: spacing,
+                    )
+                  : _idleActions(
+                      context: context,
+                      palette: palette,
+                      spacing: spacing,
+                    ),
             ),
           ],
         ),
@@ -195,6 +209,7 @@ class SessionReviewComposeCard extends StatelessWidget {
   }
 
   List<Widget> _idleActions({
+    required BuildContext context,
     required WorkspaceChatLandingPalette palette,
     required TpSpacing spacing,
   }) {
@@ -278,16 +293,12 @@ class SessionReviewComposeCard extends StatelessWidget {
         onTap: onVoice,
       ),
       SizedBox(width: spacing.xs),
-      _SendButton(
-        palette: palette,
-        canSubmit: composeEnabled && canSubmit,
-        isSubmitting: isSubmitting,
-        onSubmit: onSubmit,
-      ),
+      _composePrimaryAction(context: context, palette: palette),
     ];
   }
 
   List<Widget> _voiceRecordingActions({
+    required BuildContext context,
     required WorkspaceChatLandingPalette palette,
     required TpSpacing spacing,
   }) {
@@ -322,13 +333,27 @@ class SessionReviewComposeCard extends StatelessWidget {
         ),
       ),
       SizedBox(width: spacing.xs),
-      _SendButton(
-        palette: palette,
-        canSubmit: composeEnabled && canSubmit,
-        isSubmitting: isSubmitting,
-        onSubmit: onSubmit,
-      ),
+      _composePrimaryAction(context: context, palette: palette),
     ];
+  }
+
+  Widget _composePrimaryAction({
+    required BuildContext context,
+    required WorkspaceChatLandingPalette palette,
+  }) {
+    if (showStop && onStop != null) {
+      return _StopButton(
+        palette: palette,
+        tooltip: context.l10n.sessionHistoryComposeStop,
+        onStop: onStop!,
+      );
+    }
+    return _SendButton(
+      palette: palette,
+      canSubmit: composeEnabled && canSubmit,
+      isSubmitting: isSubmitting,
+      onSubmit: onSubmit,
+    );
   }
 }
 
@@ -430,6 +455,53 @@ class _TeamSettingsButton extends StatelessWidget {
                     ),
                   ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StopButton extends StatelessWidget {
+  const _StopButton({
+    required this.palette,
+    required this.tooltip,
+    required this.onStop,
+  });
+
+  final WorkspaceChatLandingPalette palette;
+  final String tooltip;
+  final VoidCallback onStop;
+
+  static const double _size = 36;
+
+  @override
+  Widget build(BuildContext context) {
+    final icons = context.tpIconSizes;
+
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        button: true,
+        label: tooltip,
+        child: Material(
+          color: palette.sendActive,
+          shape: const CircleBorder(),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: throttledOnPressed('session_review_compose_stop', onStop),
+            customBorder: const CircleBorder(),
+            child: SizedBox(
+              width: _size,
+              height: _size,
+              child: Center(
+                child: Icon(
+                  Icons.stop_rounded,
+                  color: palette.sendIcon,
+                  size: icons.md,
+                ),
+              ),
             ),
           ),
         ),

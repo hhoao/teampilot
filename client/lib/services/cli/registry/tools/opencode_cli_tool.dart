@@ -29,6 +29,7 @@ import '../../../provider/opencode/opencode_provider_form_capability.dart';
 import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
+import '../capabilities/turn_interrupt_capability.dart';
 import '../mcp_writers/opencode_mcp_config_writer.dart';
 import '../plugin_provisioners/opencode_plugin_provisioner.dart';
 import '../resources/opencode_resource_capability.dart';
@@ -57,6 +58,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.providerForm = const OpencodeProviderFormCapability(),
     this.resource = const OpencodeResourceCapability(),
     this.mcpConfigWriter = const OpencodeMcpConfigWriter(),
+    this.turnInterrupt = const CtrlCTurnInterrupt(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? OpencodeProviderCredentialCapability();
@@ -84,6 +86,7 @@ final class OpencodeCliTool implements CliToolDefinition {
 
   final BusTransportCapability busTransport;
   final RemoteCliLocatorCapability remoteCliLocator;
+  final TurnInterruptCapability turnInterrupt;
 
   @override
   CliTool get id => CliTool.opencode;
@@ -114,5 +117,6 @@ final class OpencodeCliTool implements CliToolDefinition {
     headlessProvision,
     resource,
     mcpConfigWriter,
+    turnInterrupt,
   ];
 }

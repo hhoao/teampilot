@@ -29,6 +29,7 @@ import '../../../provider/cursor/cursor_provider_form_capability.dart';
 import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
+import '../capabilities/turn_interrupt_capability.dart';
 import '../mcp_writers/cursor_mcp_config_writer.dart';
 import '../plugin_provisioners/cursor_plugin_provisioner.dart';
 import '../resources/cursor_resource_capability.dart';
@@ -59,6 +60,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.resource = const CursorResourceCapability(),
     this.configLayout = const CursorCliConfigLayout(),
     this.mcpConfigWriter = const CursorMcpConfigWriter(),
+    this.turnInterrupt = const CtrlCTurnInterrupt(),
     ProviderCredentialCapability? providerCredential,
   }) : providerModel = providerModel ?? CursorProviderModelCapability(),
        providerCredential =
@@ -87,6 +89,7 @@ final class CursorCliTool implements CliToolDefinition {
 
   final BusTransportCapability busTransport;
   final RemoteCliLocatorCapability remoteCliLocator;
+  final TurnInterruptCapability turnInterrupt;
 
   @override
   CliTool get id => CliTool.cursor;
@@ -117,5 +120,6 @@ final class CursorCliTool implements CliToolDefinition {
     resource,
     configLayout,
     mcpConfigWriter,
+    turnInterrupt,
   ];
 }

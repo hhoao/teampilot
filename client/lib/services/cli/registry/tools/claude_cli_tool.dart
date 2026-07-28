@@ -32,6 +32,7 @@ import '../../../provider/claude/claude_provider_model_capability.dart';
 import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
+import '../capabilities/turn_interrupt_capability.dart';
 import '../mcp_writers/claude_mcp_config_writer.dart';
 import '../plugin_provisioners/claude_plugin_provisioner.dart';
 import '../resources/default_resource_capability.dart';
@@ -60,6 +61,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.providerForm = const ClaudeProviderFormCapability(),
     this.resource = const DefaultResourceCapability(),
     this.mcpConfigWriter = const ClaudeMcpConfigWriter(),
+    this.turnInterrupt = const CtrlCTurnInterrupt(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? ClaudeProviderCredentialCapability();
@@ -87,6 +89,7 @@ final class ClaudeCliTool implements CliToolDefinition {
 
   final BusTransportCapability busTransport;
   final RemoteCliLocatorCapability remoteCliLocator;
+  final TurnInterruptCapability turnInterrupt;
 
   @override
   CliTool get id => CliTool.claude;
@@ -122,5 +125,6 @@ final class ClaudeCliTool implements CliToolDefinition {
     headlessProvision,
     resource,
     mcpConfigWriter,
+    turnInterrupt,
   ];
 }

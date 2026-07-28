@@ -2354,6 +2354,12 @@ abstract class AppLocalizations {
   /// **'Continue this conversation… @ reference files, / invoke skills'**
   String get sessionHistoryComposeHint;
 
+  /// No description provided for @sessionHistoryComposeStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop generating'**
+  String get sessionHistoryComposeStop;
+
   /// No description provided for @sessionHistoryContinueSaveFailed.
   ///
   /// In en, this message translates to:
