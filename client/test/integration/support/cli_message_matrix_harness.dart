@@ -23,6 +23,7 @@ import 'package:teampilot/pages/chat/session_chat_continue_seat.dart';
 import 'package:teampilot/pages/chat/session_history_review_submit.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
@@ -314,6 +315,7 @@ final class CliMessageMatrixHarness {
           contextBuilder: const SessionHistoryContextBuilder(),
           resolveWorkContext: (launchCtx, {String? memberId}) =>
               life.launchWorkContext(launchCtx, memberId: memberId),
+          registry: CliToolRegistry.builtIn(),
         ),
         loadMailboxRecords: (sessionId, memberId) async {
           final bus = created.sessionRuntime.busForSession(sessionId);

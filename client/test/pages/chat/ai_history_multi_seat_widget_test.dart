@@ -19,6 +19,7 @@ import 'package:teampilot/services/session/session_history_context_builder.dart'
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 
+import '../../support/fake_ai_history_registry.dart';
 import '../../support/post_frame_test_harness.dart';
 
 void main() {
@@ -71,9 +72,10 @@ void main() {
         paths: AppPaths('/tmp/ai-history-multi-seat-widget'),
       ),
       locator: locator,
-      adapters: {
-        CliTool.claude: _SessionMapAdapter(() => messagesBySession),
-      },
+      registry: fakeAiHistoryRegistry(
+        cli: CliTool.claude,
+        adapter: _SessionMapAdapter(() => messagesBySession),
+      ),
       resolveCacheToken: (_) async => 'token',
     );
     cubit = AiHistoryCubit(loader: loader);

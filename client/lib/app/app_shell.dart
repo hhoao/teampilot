@@ -1029,6 +1029,7 @@ Future<AppShell> buildAppShell({
           launchCtx,
           memberId: memberId,
         ),
+    registry: cliToolRegistry,
     globalPresets: () => cliPresetsCubit.state.presets,
   );
   aiHistoryLoaderRef = aiHistoryLoader;

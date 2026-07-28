@@ -19,6 +19,7 @@ import 'package:teampilot/services/team_bus/team_bus.dart';
 import 'package:teampilot/services/team_bus/team_message.dart';
 import 'package:teampilot/services/terminal/pending_user_message.dart';
 
+import '../../support/fake_ai_history_registry.dart';
 import '../../support/post_frame_test_harness.dart';
 import 'chat_thread_assertions.dart';
 
@@ -62,9 +63,10 @@ void main() {
         paths: AppPaths('/tmp/chat-thread-assertions'),
       ),
       locator: locator,
-      adapters: {
-        CliTool.claude: _HolderAdapter(() => holderMessages),
-      },
+      registry: fakeAiHistoryRegistry(
+        cli: CliTool.claude,
+        adapter: _HolderAdapter(() => holderMessages),
+      ),
     );
     cubit = AiHistoryCubit(loader: loader);
   });

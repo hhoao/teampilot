@@ -6,12 +6,13 @@ import '../../models/team_config.dart';
 import '../../models/workspace_launch_context.dart';
 import '../../utils/logging/logger.dart';
 import '../cli/preset_resolver.dart';
+import '../cli/registry/capabilities/ai_history_capability.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
+import '../cli/registry/cli_tool_registry.dart';
 import '../storage/runtime_context.dart';
 import '../terminal/session_member_cli_resolver.dart';
 import 'ai_history_load_result.dart';
 import 'ai_history_locator.dart';
-import 'ai_history_providers.dart';
 import 'ai_history_watch_meta.dart';
 import 'session_history_context.dart';
 import 'session_history_context_builder.dart';
@@ -56,25 +57,23 @@ final class AiHistoryLoader {
     SessionHistoryContextBuilder contextBuilder =
         const SessionHistoryContextBuilder(),
     required AiHistoryWorkContextResolver resolveWorkContext,
+    CliToolRegistry? registry,
     AiHistoryLocator? locator,
-    Map<CliTool, AiTranscriptAdapter>? adapters,
     SessionHistoryCacheTokenResolver? resolveCacheToken,
     List<CliPreset> Function()? globalPresets,
   }) : _contextBuilder = contextBuilder,
        _resolveWorkContext = resolveWorkContext,
-       _locator = locator ?? AiHistoryLocator(),
-       _adapters = adapters ?? aiHistoryDefaultAdapters(),
+       _registry = registry ?? CliToolRegistry.builtIn(),
+       _locator =
+           locator ??
+           AiHistoryLocator(registry: registry ?? CliToolRegistry.builtIn()),
        _resolveCacheToken = resolveCacheToken,
        _globalPresets = globalPresets;
 
-  /// Prefer [aiHistoryDefaultAdapters] / [kAiHistoryProviders] — kept for tests.
-  static Map<CliTool, AiTranscriptAdapter> get defaultAdapters =>
-      aiHistoryDefaultAdapters();
-
   final SessionHistoryContextBuilder _contextBuilder;
   final AiHistoryWorkContextResolver _resolveWorkContext;
+  final CliToolRegistry _registry;
   final AiHistoryLocator _locator;
-  final Map<CliTool, AiTranscriptAdapter> _adapters;
   final SessionHistoryCacheTokenResolver? _resolveCacheToken;
   final List<CliPreset> Function()? _globalPresets;
 
@@ -131,13 +130,13 @@ final class AiHistoryLoader {
     final effectiveMemberId = seat.effectiveMemberId;
     final ctx = seat.ctx;
 
-    final adapter = _adapters[cli];
-    if (adapter == null) {
+    final cap = _registry.capability<AiHistoryCapability>(cli);
+    if (cap == null) {
       appLogger.e(
-        '[ai-history] AiTranscriptAdapter missing for CLI $cli '
+        '[ai-history] AiHistoryCapability missing for CLI $cli '
         'session=${session.sessionId}',
       );
-      throw StateError('AiTranscriptAdapter missing for launch CLI $cli');
+      throw StateError('AiHistoryCapability missing for launch CLI $cli');
     }
 
     final cacheKey = _cacheKey(session.sessionId, effectiveMemberId);
@@ -176,7 +175,7 @@ final class AiHistoryLoader {
 
       final messages = bundle == null
           ? const <AiMessage>[]
-          : await adapter.parse(bundle);
+          : await cap.adapter.parse(bundle);
 
       final watch = bundle == null
           ? null

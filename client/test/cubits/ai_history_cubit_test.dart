@@ -21,6 +21,7 @@ import 'package:teampilot/services/team_bus/persistence/bus_message_log.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
 import 'package:teampilot/services/team_bus/team_message.dart';
 
+import '../support/fake_ai_history_registry.dart';
 import '../support/post_frame_test_harness.dart';
 
 void main() {
@@ -79,9 +80,10 @@ void main() {
         paths: AppPaths('/tmp/ai-history-cubit'),
       ),
       locator: locator,
-      adapters: {
-        CliTool.claude: _HolderAdapter(() => holderMessages),
-      },
+      registry: fakeAiHistoryRegistry(
+        cli: CliTool.claude,
+        adapter: _HolderAdapter(() => holderMessages),
+      ),
       resolveCacheToken: (_) async => 'token',
     );
     cubit = AiHistoryCubit(loader: loader);

@@ -9,7 +9,9 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
+import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/claude_ai_transcript.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
@@ -58,15 +60,16 @@ void main() {
 
   AiHistoryLoader buildLoader({
     AiHistoryLocator? locator,
-    Map<CliTool, AiTranscriptAdapter>? adapters,
+    CliToolRegistry? registry,
     AiHistoryWorkContextResolver? resolveWorkContext,
   }) {
+    final resolvedRegistry = registry ?? CliToolRegistry.builtIn();
     return AiHistoryLoader(
       contextBuilder: const SessionHistoryContextBuilder(),
       resolveWorkContext:
           resolveWorkContext ?? ((_, {String? memberId}) async => fixedRoots()),
-      locator: locator ?? AiHistoryLocator(),
-      adapters: adapters,
+      registry: resolvedRegistry,
+      locator: locator ?? AiHistoryLocator(registry: resolvedRegistry),
       resolveCacheToken: (_) async => mtimeToken,
     );
   }
@@ -210,9 +213,9 @@ void main() {
     );
   });
 
-  test('throws StateError when adapter missing for launch CLI', () async {
+  test('throws StateError when capability missing for launch CLI', () async {
     final session = simpleSession();
-    final loader = buildLoader(adapters: const {});
+    final loader = buildLoader(registry: CliToolRegistry());
     await expectLater(
       () => loader.load(
         session: session,
@@ -223,7 +226,7 @@ void main() {
         isA<StateError>().having(
           (e) => e.message,
           'message',
-          contains('AiTranscriptAdapter missing'),
+          contains('AiHistoryCapability missing'),
         ),
       ),
     );
@@ -294,11 +297,12 @@ void main() {
     expect(locateCalls, 2);
   });
 
-  test('default adapters include Claude', () {
-    expect(
-      AiHistoryLoader.defaultAdapters[CliTool.claude],
-      isA<ClaudeAiTranscriptAdapter>(),
+  test('built-in registry exposes Claude AiHistoryCapability', () {
+    final cap = CliToolRegistry.builtIn().capability<AiHistoryCapability>(
+      CliTool.claude,
     );
+    expect(cap, isNotNull);
+    expect(cap!.adapter, isA<ClaudeAiTranscriptAdapter>());
   });
 
   test('resolveWatchMeta returns hints from locate without parsing', () async {
@@ -314,10 +318,7 @@ void main() {
         ).toHints(),
       );
     });
-    final loader = buildLoader(
-      locator: locator,
-      adapters: const {}, // parse must not be required
-    );
+    final loader = buildLoader(locator: locator);
 
     final session = simpleSession();
     final meta = await loader.resolveWatchMeta(
@@ -331,7 +332,6 @@ void main() {
   test('resolveWatchMeta returns null when locate misses', () async {
     final loader = buildLoader(
       locator: _CountingLocator(() async => null),
-      adapters: const {},
     );
     final session = simpleSession();
     expect(
@@ -358,7 +358,10 @@ class _CountingLocator extends AiHistoryLocator {
 }
 
 class _CapturingLocator extends AiHistoryLocator {
-  _CapturingLocator({required this.onLocate});
+  _CapturingLocator({
+    required this.onLocate,
+    CliToolRegistry? registry,
+  }) : super(registry: registry ?? CliToolRegistry.builtIn());
 
   final void Function(SessionHistoryContext ctx) onLocate;
 
