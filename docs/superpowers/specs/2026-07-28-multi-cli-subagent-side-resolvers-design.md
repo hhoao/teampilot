@@ -66,6 +66,17 @@ AiHistorySeat attachment index  (unchanged consumers)
 Host-facing interface (name illustrative):
 
 ```dart
+class SubagentSideResolveResult {
+  const SubagentSideResolveResult({
+    required this.messages,
+    this.sidePath,
+  });
+
+  final List<AiMessage> messages;
+  /// Filesystem path for JSONL CLIs, or OpenCode child session id / logical key.
+  final String? sidePath;
+}
+
 abstract class SubagentSideResolver {
   /// Returns side messages + optional sidePath / side key, or null to degrade.
   Future<SubagentSideResolveResult?> resolve({
@@ -76,6 +87,9 @@ abstract class SubagentSideResolver {
 }
 ```
 
+Inflater maps a successful result onto `AiSubagentAttachment` (`source:
+sideTranscript`, title from existing helpers).
+
 | CLI | Resolver | Notes |
 |-----|----------|-------|
 | Claude | `ClaudeCompatibleSideResolver` | Existing meta + JSONL logic moved out of inflater |
@@ -84,10 +98,11 @@ abstract class SubagentSideResolver {
 | Codex | `CodexSideResolver` | Strict; sibling rollout via `agent_id` |
 | OpenCode | `OpencodeSideResolver` | Strict; child session in same dataDir / DB |
 
-Resolvers live next to existing history capabilities under
-`client/lib/services/cli/registry/capabilities/history/`. Wire via
-`CliToolRegistry` (or the history capability surface) so inflate receives the
-resolver for the **session CLI**, not a global chain.
+Resolvers live next to existing `locate*Transcript` helpers under
+`client/lib/services/cli/registry/capabilities/history/`. Expose one
+`SubagentSideResolver` (or factory) on each CLI’s **history capability** so
+inflate receives the resolver for the **session CLI**, not a global chain and
+not a separate registry map invented only for this feature.
 
 `SubagentAttachmentInflater` becomes orchestration only: tool-name gate, depth,
 degrade, recurse. It must not embed Claude path joins.
@@ -119,17 +134,21 @@ Non-matching tools never enter inflate.
    `{agent-transcriptsRoot}/{uuid}/{uuid}.jsonl`.
 2. Else heuristic: normalize Task prompt (strip timestamp / `user_query`
    wrappers) and match sibling transcripts’ first user message; exclude parent
-   stem; if multiple candidates, pick nearest by time; if zero or ambiguous
-   beyond that rule → null (degrade).
+   stem. If multiple text matches remain, pick the candidate whose transcript
+   file mtime (via `Filesystem.stat`) is nearest to the parent tool-call
+   message time when available, else nearest to parent transcript mtime. If
+   still tied (same mtime) or zero matches → null (degrade).
 3. Parse with existing Cursor history adapter / JSONL parser.
 4. Nested Agent/Task rows re-resolve against the same transcripts root using the
    child path as parent context.
 
 #### Codex (`CodexSideResolver`)
 
-1. From `spawn_agent` args/result, take `agent_id`.
-2. Map to sibling rollout path using the same layout the Codex history locator
-   already understands.
+1. From `spawn_agent` args/result, take `agent_id` (UUID).
+2. Under the same `$CODEX_HOME/sessions/**` tree the parent rollout used, find
+   `rollout-*-{agent_id}.jsonl` (reuse the existing `_rolloutId` / locate
+   pattern in `codex_ai_transcript.dart`). Prefer a file whose id suffix equals
+   `agent_id`; do not invent a second layout.
 3. No Claude `subagents/` probe.
 4. Parse with Codex transcript adapter.
 
@@ -193,3 +212,7 @@ This spec **extends** data resolution only. The overlay design’s UI, navigatio
 read-only rules, nesting stack, and approach-2 refresh lag remain normative.
 When both docs conflict on side-path resolution, **this** document wins for
 multi-CLI linking; the overlay doc wins for Chat chrome.
+
+The v1 overlay **implementation plan** may still list only `Agent` / `Task` in
+its alias lock table. This spec **supersedes** that plan lock for tool-name
+aliases: implementation must include at least `spawn_agent` as above.
