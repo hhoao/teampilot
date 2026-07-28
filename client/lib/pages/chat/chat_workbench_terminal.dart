@@ -21,6 +21,7 @@ import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workspace_dnd/terminal_drop_ingestor.dart';
 import '../../services/workspace_dnd/workspace_drop_target.dart';
 import '../../utils/team/team_member_naming.dart';
+import '../../widgets/follow_up/terminal_follow_up_compose.dart';
 import '../../widgets/terminal/parked_send_overlay.dart';
 import '../../widgets/terminal/teampilot_alacritty_terminal.dart';
 import '../../widgets/terminal_find_bar.dart';
@@ -40,6 +41,9 @@ class ChatWorkbenchRunningTerminal extends StatefulWidget {
     required this.onOpenLink,
     required this.onDisconnect,
     required this.onRestart,
+    this.appSession,
+    this.historyMemberId = '',
+    this.team,
     this.autofocus = true,
     super.key,
   });
@@ -53,6 +57,9 @@ class ChatWorkbenchRunningTerminal extends StatefulWidget {
   final Future<void> Function(String uri) onOpenLink;
   final VoidCallback onDisconnect;
   final Future<void> Function() onRestart;
+  final AppSession? appSession;
+  final String historyMemberId;
+  final TeamProfile? team;
   final bool autofocus;
 
   @override
@@ -271,6 +278,17 @@ class _ChatWorkbenchRunningTerminalState
               submissions: widget.session.parkedUserSubmissions,
               isUnread: widget.session.isUnreadParkedMessage,
             ),
+            if (widget.appSession != null)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: TerminalFollowUpComposeHost(
+                  session: widget.appSession!,
+                  selectedMemberId: widget.historyMemberId,
+                  team: widget.team,
+                ),
+              ),
           ],
         ),
         builder: (context, menuOpen, child) {

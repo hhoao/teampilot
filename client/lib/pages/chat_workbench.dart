@@ -216,6 +216,8 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     required ChatCubit chatCubit,
     required bool isPersonal,
     required TeamProfile? team,
+    AppSession? appSession,
+    String historyMemberId = '',
     required bool autofocus,
   }) {
     _terminalController = bindChatWorkbenchTerminalController(
@@ -228,6 +230,9 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       terminalController: _terminalController,
       findVisible: _findVisible,
       autofocus: autofocus,
+      appSession: appSession,
+      historyMemberId: historyMemberId,
+      team: team,
       onFindVisibleChanged: (visible) => setState(() => _findVisible = visible),
       onControllerSearchChanged: () => setState(() {}),
       onOpenLink: _openTerminalLink,
@@ -295,6 +300,8 @@ class _ChatWorkbenchBody extends StatelessWidget {
     required ChatCubit chatCubit,
     required bool isPersonal,
     required TeamProfile? team,
+    AppSession? appSession,
+    String historyMemberId,
     required bool autofocus,
   })
   buildRunningTerminal;
@@ -477,6 +484,17 @@ class _ChatWorkbenchBody extends StatelessWidget {
       launchError: launchError,
       sessionConnectInProgress: sessionConnectInProgress,
     );
+    final appSession = _resolveAppSession(chatCubit: chatCubit, slice: slice);
+    final memberId = slice.selectedMemberId.isNotEmpty
+        ? slice.selectedMemberId
+        : _tabSelectedMemberId(chatCubit);
+    final isPersonal = appSession?.sessionTeam.trim().isEmpty ?? isPersonalContext;
+    final historyMemberId = isPersonal ? '' : memberId;
+    final resolvedTeam = isPersonal
+        ? null
+        : (team ?? (appSession != null
+              ? _teamProfileForSession(context, appSession)
+              : null));
 
     // Keep Alacritty mounted across title-bar workspace tab switches; hide with
     // [Offstage] so scrollback survives when the tab returns to foreground.
@@ -502,7 +520,9 @@ class _ChatWorkbenchBody extends StatelessWidget {
                     terminalTheme: terminalTheme,
                     chatCubit: chatCubit,
                     isPersonal: isPersonalContext,
-                    team: team,
+                    team: resolvedTeam,
+                    appSession: appSession,
+                    historyMemberId: historyMemberId,
                     autofocus: !showSessionStarting &&
                         !showChat &&
                         !showRemoteProvision &&
