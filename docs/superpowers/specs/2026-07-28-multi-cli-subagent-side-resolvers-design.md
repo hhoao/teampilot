@@ -69,6 +69,7 @@ SubagentAttachmentInflater.inflate(
   messages,
   ctx,
   capability,                 // tool names + resolver
+  rootTranscriptPath,         // seat parent JSONL; null-ok for OpenCode-only
   parentHandle?,              // typed; null at root
 )
   · for each toolCall where name ∈ capability.subagentToolNames:
@@ -128,13 +129,21 @@ final class SubagentSessionHandle extends SubagentSideHandle {
 }
 ```
 
-`AiSubagentAttachment.sidePath` (v1 string) becomes either:
-
-- a derived display/debug field from `SubagentFileHandle.path`, or
-- generalized to store `SubagentSideHandle?` (preferred for OpenCode recurse).
+`AiSubagentAttachment` **stores `SubagentSideHandle? handle`** (required for
+OpenCode nested recurse). Keep an optional derived `sidePath` getter/field only
+for file handles (debug / logging); do not use a string path as the recurse
+parent for session handles.
 
 Inflater recurse **must** pass the typed handle into the next
 `resolve(..., parentHandle: …)` so OpenCode does not invent fake JSONL paths.
+
+**Root transcript path:** at the seat root, `parentHandle` is null, but file-based
+resolvers still need the main transcript location. Loader always passes an
+explicit `rootTranscriptPath` (same source as today’s history watch/cache path
+hints — first usable parent JSONL path) into `inflate`. Resolvers that need a
+parent file derive a synthetic `SubagentFileHandle(rootTranscriptPath)` only
+when `parentHandle == null`; OpenCode ignores it and uses `ctx` session /
+dataDir instead.
 
 ### Resolver pipeline (per CLI, shared stages)
 
@@ -180,10 +189,10 @@ path joins.
 ### Tool-name gate (UI + inflate)
 
 - **Inflate:** `capability.subagentToolNames.contains(normalizedName)`.
-- **Chat chrome:** `AiToolSubagentActionsScope` (or seat host) supplies
-  `bool isSubagentTool(String name)` from the **active seat CLI** capability so
-  Codex `spawn_agent` and OpenCode `task` light up without a global hard-coded
-  set driving product behavior.
+- **Chat chrome:** extend `AiToolSubagentActions` / scope with an optional
+  `bool Function(String toolName) isSubagentTool` supplied by the seat host from
+  the **active seat CLI** capability (fallback: core union). Codex `spawn_agent`
+  and OpenCode `task` must not depend on a host-global hard-coded set.
 - **`ai_message_core`:** keep a documented **union fallback**
   (`agent` / `task` / `spawn_agent`, case-insensitive) for unit tests and
   headless widgets without a scope; host production path must prefer the
