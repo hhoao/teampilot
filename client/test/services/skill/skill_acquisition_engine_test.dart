@@ -283,7 +283,7 @@ void main() {
       ),
     );
     expect(out.success, isTrue);
-    expect(out.pathExports.single, endsWith('${p.separator}bin'));
+    expect(out.pathExports.single, endsWith('/bin'));
     expect(seen?.executable, isNot(equals('')));
   });
 
@@ -379,7 +379,7 @@ void main() {
       ),
     );
     expect(out.success, isTrue);
-    expect(out.pathExports.single, endsWith('${p.separator}bin'));
+    expect(out.pathExports.single, endsWith('/bin'));
   });
 
   test('COPY then file exists at workdir destination', () async {
