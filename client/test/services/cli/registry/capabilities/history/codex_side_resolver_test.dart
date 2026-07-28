@@ -176,4 +176,68 @@ void main() {
       isNull,
     );
   });
+
+  test(
+    'scopes rollout search to parent session dir when parent path is known',
+    () async {
+      const parentId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+      final parentDir = p.join('2026', '07', '10');
+      final otherDir = p.join('2026', '07', '11');
+
+      final parentPath = await writeRollout(
+        relativeDir: parentDir,
+        rolloutName: 'rollout-2026-07-10T11-00-00-$parentId.jsonl',
+      );
+      final scopedChildPath = await writeRollout(
+        relativeDir: parentDir,
+        rolloutName: 'rollout-2026-07-10T12-00-00-$agentId.jsonl',
+      );
+      await writeRollout(
+        relativeDir: otherDir,
+        rolloutName: 'rollout-2026-07-11T23-59-59-$agentId.jsonl',
+      );
+
+      final result = await resolver.resolve(
+        part: spawnAgentPart(args: {'agent_id': agentId}),
+        ctx: ctx(codexHome: base.path),
+        parentHandle: SubagentFileHandle(parentPath),
+        rootTranscriptPath: null,
+      );
+
+      expect(result, isNotNull);
+      expect((result!.handle as SubagentFileHandle).path, scopedChildPath);
+    },
+  );
+
+  test(
+    'uses rootTranscriptPath to scope rollout search when parentHandle is null',
+    () async {
+      const parentId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+      final parentDir = p.join('2026', '07', '12');
+      final otherDir = p.join('2026', '07', '13');
+
+      final parentPath = await writeRollout(
+        relativeDir: parentDir,
+        rolloutName: 'rollout-2026-07-12T09-00-00-$parentId.jsonl',
+      );
+      final scopedChildPath = await writeRollout(
+        relativeDir: parentDir,
+        rolloutName: 'rollout-2026-07-12T10-00-00-$agentId.jsonl',
+      );
+      await writeRollout(
+        relativeDir: otherDir,
+        rolloutName: 'rollout-2026-07-13T23-59-59-$agentId.jsonl',
+      );
+
+      final result = await resolver.resolve(
+        part: spawnAgentPart(args: {'agent_id': agentId}),
+        ctx: ctx(codexHome: base.path),
+        parentHandle: null,
+        rootTranscriptPath: parentPath,
+      );
+
+      expect(result, isNotNull);
+      expect((result!.handle as SubagentFileHandle).path, scopedChildPath);
+    },
+  );
 }
