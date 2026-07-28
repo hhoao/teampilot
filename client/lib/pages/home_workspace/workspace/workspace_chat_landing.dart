@@ -43,14 +43,15 @@ import '../../../utils/workspace/landing_draft_resolver.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';
 import '../../../services/storage/home_target_controller.dart';
 import '../../../widgets/cli/cli_brand_icon.dart';
+import '../../../widgets/compose/compose_chrome.dart';
 import '../../../widgets/compose/compose_model_preset_chip.dart';
+import '../../../widgets/compose/workspace_compose_card.dart';
 import '../../../services/launch/workspace_landing_launch_gate.dart';
 import '../../../repositories/workspace_project_config_repository.dart';
 import '../../expert_hub/expert_landing_chip_menu.dart';
 import '../../expert_hub/expert_landing_picker_sheet.dart';
 import '../../expert_hub/expert_landing_preflight_feedback.dart';
 import 'config/cli_presets_manage_dialog.dart';
-import 'workspace_chat_landing_compose_card.dart';
 import 'workspace_landing_launch_feedback.dart';
 import 'workspace_landing_selectors.dart';
 import 'workspace_landing_team_settings_dialog.dart';
@@ -1146,7 +1147,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
         : null;
     final launchWarningBlock = _resolveLaunchWarningBlock(selectedTeam);
 
-    final composeCard = WorkspaceChatLandingComposeCard(
+    final composeCard = WorkspaceComposeCard(
       controller: _controller,
       focusNode: _focusNode,
       hint: l10n.workspaceChatLandingInputHint,
@@ -1154,48 +1155,62 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       canSubmit: _canSubmit,
       onSubmit: _submit,
       onChanged: (_) => setState(() {}),
-      conversationModeLabel: _conversationModeLabel(l10n),
-      autoChipLabel: _autoChipLabel(
-        l10n,
-        presets: presets,
-        teams: teams,
+      chrome: UnboundComposeChrome(
+        conversationModeLabel: _conversationModeLabel(l10n),
+        autoChipLabel: _autoChipLabel(
+          l10n,
+          presets: presets,
+          teams: teams,
+        ),
+        autoChipLeading: _autoChipLeading(
+          context,
+          presets: presets,
+        ),
+        dangerouslySkipPermissions: _dangerouslySkipPermissions,
+        defaultPermissionsLabel: l10n.workspaceChatLandingDefaultPermissions,
+        fullAccessPermissionsLabel:
+            l10n.workspaceChatLandingFullAccessPermissions,
+        conversationModeSpecs: _conversationModeSpecs(l10n),
+        autoChipSpecs: _autoChipSpecs(
+          l10n,
+          presets: presets,
+          teams: teams,
+        ),
+        onConversationModeSelected: (value) {
+          if (value is _LandingConversationMode) {
+            _setConversationMode(value);
+          }
+        },
+        onAutoChipSelected: (value) {
+          if (value == ComposeModelPresetChipAction.manage) {
+            _openPresetsManageDialog();
+            return;
+          }
+          if (value is! String || value.isEmpty) return;
+          if (_conversationMode == _LandingConversationMode.simple) {
+            _selectPreset(value);
+          } else {
+            _selectTeam(value);
+          }
+        },
+        onPermissionSelected: _setDangerouslySkipPermissions,
+        expertChipLabel: isSimple ? _expertChipLabel(l10n, hubState) : null,
+        expertChipSpecs: isSimple
+            ? _expertChipSpecs(l10n, hubState)
+            : const [],
+        onExpertChipSelected: isSimple ? _onExpertChipSelected : null,
+        teamSettingsTooltip: selectedTeam != null ? l10n.teamSettings : null,
+        onTeamSettings: selectedTeam != null
+            ? () => unawaited(_openTeamSettings(teams))
+            : null,
+        showTeamSettingsAttention:
+            selectedTeam != null &&
+            landingTeamSettingsNeedsAttention(
+              workspace: launchWorkspace,
+              team: selectedTeam,
+            ),
       ),
-      autoChipLeading: _autoChipLeading(
-        context,
-        presets: presets,
-      ),
-      dangerouslySkipPermissions: _dangerouslySkipPermissions,
-      defaultPermissionsLabel: l10n.workspaceChatLandingDefaultPermissions,
-      fullAccessPermissionsLabel: l10n.workspaceChatLandingFullAccessPermissions,
-      conversationModeSpecs: _conversationModeSpecs(l10n),
-      autoChipSpecs: _autoChipSpecs(
-        l10n,
-        presets: presets,
-        teams: teams,
-      ),
-      onConversationModeSelected: (value) {
-        if (value is _LandingConversationMode) {
-          _setConversationMode(value);
-        }
-      },
-      onAutoChipSelected: (value) {
-        if (value == ComposeModelPresetChipAction.manage) {
-          _openPresetsManageDialog();
-          return;
-        }
-        if (value is! String || value.isEmpty) return;
-        if (_conversationMode == _LandingConversationMode.simple) {
-          _selectPreset(value);
-        } else {
-          _selectTeam(value);
-        }
-      },
-      onPermissionSelected: _setDangerouslySkipPermissions,
-      expertChipLabel: isSimple ? _expertChipLabel(l10n, hubState) : null,
-      expertChipSpecs: isSimple
-          ? _expertChipSpecs(l10n, hubState)
-          : const [],
-      onExpertChipSelected: isSimple ? _onExpertChipSelected : null,
+      dropTarget: _composeDropIngestor(),
       attachTooltip: l10n.workspaceChatLandingAttach,
       enhanceTooltip: l10n.workspaceChatLandingEnhance,
       voiceTooltip: l10n.workspaceChatLandingVoice,
@@ -1210,22 +1225,12 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       onVoice: () => unawaited(_toggleVoice()),
       onVoiceCancel: () => unawaited(_cancelVoice()),
       onVoiceStop: () => unawaited(_stopVoice()),
-      dropTarget: _composeDropIngestor(),
       onPasteImage: _pasteComposeImage,
       workspaceRoot: _activeLaunchDirectory(),
       skills: skills,
       plugins: plugins,
       slashBundle: slashBundle,
-      teamSettingsTooltip: selectedTeam != null ? l10n.teamSettings : null,
-      onTeamSettings: selectedTeam != null
-          ? () => unawaited(_openTeamSettings(teams))
-          : null,
-      showTeamSettingsAttention:
-          selectedTeam != null &&
-          landingTeamSettingsNeedsAttention(
-            workspace: launchWorkspace,
-            team: selectedTeam,
-          ),
+      deferFieldMount: widget.showLandingChrome,
       submitBlockedTooltip:
           launchWarningBlock != null && _controller.text.trim().isNotEmpty
           ? landingLaunchBlockMessage(

@@ -3,13 +3,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/config_bundle.dart';
-import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing_compose_card.dart';
+import 'package:teampilot/services/compose/compose_file_drop_ingestor.dart';
+import 'package:teampilot/widgets/compose/compose_chrome.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
+import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
 
 void main() {
   Widget pumpComposeCard({
     required String? expertChipLabel,
     ValueChanged<Object?>? onExpertChipSelected,
+    bool deferFieldMount = true,
   }) {
     final controller = TextEditingController();
     addTearDown(controller.dispose);
@@ -20,7 +23,7 @@ void main() {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
-        body: WorkspaceChatLandingComposeCard(
+        body: WorkspaceComposeCard(
           controller: controller,
           focusNode: focusNode,
           hint: 'Ask anything',
@@ -28,26 +31,32 @@ void main() {
           canSubmit: false,
           onSubmit: () {},
           onChanged: (_) {},
-          conversationModeLabel: 'Simple',
-          autoChipLabel: 'Preset',
-          dangerouslySkipPermissions: false,
-          defaultPermissionsLabel: 'Default permissions',
-          fullAccessPermissionsLabel: 'Full access',
-          conversationModeSpecs: const [],
-          autoChipSpecs: const [],
-          onConversationModeSelected: (_) {},
-          onAutoChipSelected: (_) {},
-          onPermissionSelected: (_) {},
-          expertChipLabel: expertChipLabel,
-          expertChipSpecs: expertChipLabel == null
-              ? const []
-              : const [
-                  TpActionMenuSpec.item(
-                    icon: Icons.person_off_outlined,
-                    label: 'No expert',
-                  ),
-                ],
-          onExpertChipSelected: onExpertChipSelected,
+          chrome: UnboundComposeChrome(
+            conversationModeLabel: 'Simple',
+            autoChipLabel: 'Preset',
+            dangerouslySkipPermissions: false,
+            defaultPermissionsLabel: 'Default permissions',
+            fullAccessPermissionsLabel: 'Full access',
+            conversationModeSpecs: const [],
+            autoChipSpecs: const [],
+            onConversationModeSelected: (_) {},
+            onAutoChipSelected: (_) {},
+            onPermissionSelected: (_) {},
+            expertChipLabel: expertChipLabel,
+            expertChipSpecs: expertChipLabel == null
+                ? const []
+                : const [
+                    TpActionMenuSpec.item(
+                      icon: Icons.person_off_outlined,
+                      label: 'No expert',
+                    ),
+                  ],
+            onExpertChipSelected: onExpertChipSelected,
+          ),
+          dropTarget: ComposeFileDropIngestor(
+            workspaceRoot: '/tmp',
+            onInsertReferences: (_) {},
+          ),
           attachTooltip: 'Attach',
           enhanceTooltip: 'Enhance',
           voiceTooltip: 'Voice',
@@ -66,6 +75,7 @@ void main() {
           skills: const [],
           plugins: const [],
           slashBundle: const ConfigBundle(),
+          deferFieldMount: deferFieldMount,
         ),
       ),
     );

@@ -13,13 +13,13 @@ import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing.dart';
-import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing_compose_card.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_landing_selectors.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
+import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
 
 import '../../../support/post_frame_test_harness.dart';
 
@@ -118,7 +118,7 @@ void main() {
     await pumpLanding(tester, showLandingChrome: true);
     expect(find.byKey(AppKeys.workspaceChatLandingBackButton), findsOneWidget);
     expect(find.byType(WorkspaceLandingHeaderRow), findsOneWidget);
-    expect(find.byType(WorkspaceChatLandingComposeCard), findsOneWidget);
+    expect(find.byType(WorkspaceComposeCard), findsOneWidget);
   });
 
   testWidgets('compose-only hides back + header row, keeps compose', (
@@ -127,6 +127,6 @@ void main() {
     await pumpLanding(tester, showLandingChrome: false);
     expect(find.byKey(AppKeys.workspaceChatLandingBackButton), findsNothing);
     expect(find.byType(WorkspaceLandingHeaderRow), findsNothing);
-    expect(find.byType(WorkspaceChatLandingComposeCard), findsOneWidget);
+    expect(find.byType(WorkspaceComposeCard), findsOneWidget);
   });
 }
