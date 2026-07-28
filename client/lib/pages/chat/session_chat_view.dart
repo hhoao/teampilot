@@ -30,6 +30,7 @@ import '../../models/workspace_launch_context.dart';
 import '../../repositories/workspace_project_config_repository.dart';
 import '../../services/ai/headless_ai_service.dart';
 import '../../services/cli/preset_resolver.dart';
+import '../../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../../services/cli/registry/capabilities/turn_interrupt_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
@@ -1036,6 +1037,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       memberWorking: memberWorking,
       supportsTurnInterrupt: supportsTurnInterrupt,
     );
+    final historyCap = registry.capability<AiHistoryCapability>(lockedCli);
 
     return BlocListener<ChatCubit, ChatState>(
       listenWhen: (previous, current) =>
@@ -1150,6 +1152,10 @@ class _SessionChatViewState extends State<SessionChatView> {
                               ),
                               child: AiToolSubagentActionsScope(
                                 actions: AiToolSubagentActions(
+                                  isSubagentTool: historyCap == null
+                                      ? null
+                                      : (name) => historyCap.subagentToolNames
+                                          .contains(name.trim().toLowerCase()),
                                   onOpenSubagent: (id) async {
                                     final attachments =
                                         _seat?.subagentAttachments ?? const {};
