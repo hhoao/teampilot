@@ -11,12 +11,15 @@ import 'package:teampilot/models/session_continue_overrides.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
-import 'package:teampilot/pages/chat/session_review_compose_card.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/cli/preset_resolver.dart';
+import 'package:teampilot/services/compose/compose_file_drop_ingestor.dart';
 import 'package:teampilot/services/session/session_continue_overrides_apply.dart';
+import 'package:teampilot/widgets/compose/compose_chrome.dart';
+import 'package:teampilot/widgets/compose/compose_file_drop_region.dart';
 import 'package:teampilot/widgets/compose/compose_model_preset_chip.dart';
 import 'package:teampilot/widgets/compose/compose_permission_chip.dart';
+import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
@@ -447,7 +450,7 @@ void main() {
 
   group('acceptance: continue chrome widgets', () {
     testWidgets(
-      'SessionReviewComposeCard shows continue chips; no project/mode chrome',
+      'WorkspaceComposeCard bound chrome shows continue chips + drop; no project/mode chrome',
       (tester) async {
         final textController = TextEditingController();
         final focusNode = FocusNode();
@@ -457,13 +460,29 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: SessionReviewComposeCard(
+              body: WorkspaceComposeCard(
                 controller: textController,
                 focusNode: focusNode,
                 hint: 'Continue',
                 canSubmit: false,
                 onSubmit: () {},
                 onChanged: (_) {},
+                chrome: BoundComposeChrome(
+                  identityLabel: 'My Team',
+                  sameCliPresets: [claudePreset()],
+                  selectedPresetId: 'preset-b',
+                  modelPresetLabel: 'Beta',
+                  emptyPresetHintLabel: 'No presets',
+                  onPresetSelected: (_) {},
+                  dangerouslySkipPermissions: false,
+                  defaultPermissionsLabel: 'Default',
+                  fullAccessPermissionsLabel: 'Full access',
+                  onPermissionSelected: (_) {},
+                ),
+                dropTarget: ComposeFileDropIngestor(
+                  workspaceRoot: '/tmp',
+                  onInsertReferences: (_) {},
+                ),
                 attachTooltip: 'Attach',
                 enhanceTooltip: 'Enhance',
                 voiceTooltip: 'Voice',
@@ -482,21 +501,14 @@ void main() {
                 skills: const [],
                 plugins: const [],
                 slashBundle: const ConfigBundle(),
-                identityLabel: 'My Team',
-                sameCliPresets: [claudePreset()],
-                selectedPresetId: 'preset-b',
-                modelPresetLabel: 'Beta',
-                emptyPresetHintLabel: 'No presets',
-                onPresetSelected: (_) {},
-                dangerouslySkipPermissions: false,
-                defaultPermissionsLabel: 'Default',
-                fullAccessPermissionsLabel: 'Full access',
-                onPermissionSelected: (_) {},
+                deferFieldMount: false,
               ),
             ),
           ),
         );
 
+        expect(find.byType(WorkspaceComposeCard), findsOneWidget);
+        expect(find.byType(ComposeFileDropRegion), findsOneWidget);
         expect(find.byType(ComposeModelPresetChip), findsOneWidget);
         expect(find.byType(ComposePermissionChip), findsOneWidget);
         expect(find.text('My Team'), findsOneWidget);

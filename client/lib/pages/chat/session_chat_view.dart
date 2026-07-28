@@ -31,6 +31,7 @@ import '../../services/cli/preset_resolver.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/compose/compose_file_attach.dart';
+import '../../services/compose/compose_file_drop_ingestor.dart';
 import '../../services/compose/compose_landing_bundle.dart';
 import '../../services/compose/compose_prompt_enhance.dart';
 import '../../services/compose/compose_text_edit.dart';
@@ -48,6 +49,8 @@ import '../../services/terminal/pending_user_message.dart';
 import '../../theme/app_markdown_style_sheet.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
+import '../../widgets/compose/compose_chrome.dart';
+import '../../widgets/compose/workspace_compose_card.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
 import 'agent_permission_attention_banner.dart';
 import 'history_awaiting_working_sync.dart';
@@ -56,7 +59,6 @@ import 'history_mailbox_queued_strip.dart';
 import 'session_history_live_chrome.dart';
 import 'session_history_review_messages.dart';
 import 'session_history_review_submit.dart';
-import 'session_review_compose_card.dart';
 import 'subagent_preview_controller.dart';
 
 /// Bound Chat view: history thread + slim compose for a session body.
@@ -723,6 +725,18 @@ class _SessionChatViewState extends State<SessionChatView> {
     _focusNode.requestFocus();
   }
 
+  void _insertComposeReferences(List<String> references) {
+    insertComposeReferences(_controller, references);
+    if (!mounted) return;
+    setState(() {});
+    _focusNode.requestFocus();
+  }
+
+  ComposeFileDropIngestor _composeDropIngestor() => ComposeFileDropIngestor(
+    workspaceRoot: _workspaceRoot,
+    onInsertReferences: _insertComposeReferences,
+  );
+
   Future<bool> _pasteComposeImage() async {
     if (_isSubmitting || _enhancing) return false;
     final pasted = await pasteComposeImageAttachment(
@@ -1291,16 +1305,65 @@ class _SessionChatViewState extends State<SessionChatView> {
                                       );
                                     },
                                   ),
-                                SessionReviewComposeCard(
-                                  floating: true,
+                                WorkspaceComposeCard(
                                   controller: _controller,
                                   focusNode: _focusNode,
                                   hint: l10n.sessionHistoryComposeHint,
                                   canSubmit: canSubmit,
                                   isSubmitting: _isSubmitting,
-                                  composeEnabled: !permissionWaiting,
                                   onSubmit: () => unawaited(_handleSubmit()),
                                   onChanged: (_) => setState(() {}),
+                                  chrome: BoundComposeChrome(
+                                    composeEnabled: !permissionWaiting,
+                                    launchError: widget.launchError,
+                                    onRemapDeadTarget: widget.onRemapDeadTarget,
+                                    floating: true,
+                                    identityLabel: identityLabel,
+                                    identityIcon: session.isSimple
+                                        ? Icons.psychology_outlined
+                                        : Icons.groups_outlined,
+                                    sameCliPresets: sameCliPresets,
+                                    selectedPresetId: selectedPresetId,
+                                    modelPresetLabel: modelLabel,
+                                    emptyPresetHintLabel:
+                                        l10n.workspaceCliPresetsEmptyHint,
+                                    onPresetSelected: (presetId) => unawaited(
+                                      _onPresetSelected(
+                                        presetId: presetId,
+                                        team: team,
+                                        sameCliPresets: sameCliPresets,
+                                        lockedCli: lockedCli,
+                                      ),
+                                    ),
+                                    dangerouslySkipPermissions:
+                                        _effectivePermission(
+                                          session: session,
+                                          team: team,
+                                        ),
+                                    defaultPermissionsLabel: l10n
+                                        .workspaceChatLandingDefaultPermissions,
+                                    fullAccessPermissionsLabel: l10n
+                                        .workspaceChatLandingFullAccessPermissions,
+                                    onPermissionSelected: (value) =>
+                                        unawaited(
+                                          _onPermissionSelected(
+                                            value: value,
+                                            team: team,
+                                          ),
+                                        ),
+                                    teamSettingsTooltip: showTeamSettings
+                                        ? l10n.teamSettings
+                                        : null,
+                                    onTeamSettings: showTeamSettings
+                                        ? () => unawaited(
+                                            _openTeamSettings(team),
+                                          )
+                                        : null,
+                                    showTeamSettingsAttention:
+                                        teamSettingsAttention,
+                                  ),
+                                  dropTarget: _composeDropIngestor(),
+                                  deferFieldMount: false,
                                   attachTooltip:
                                       l10n.workspaceChatLandingAttach,
                                   enhanceTooltip:
@@ -1321,55 +1384,11 @@ class _SessionChatViewState extends State<SessionChatView> {
                                   onVoiceCancel: () =>
                                       unawaited(_cancelVoice()),
                                   onVoiceStop: () => unawaited(_stopVoice()),
+                                  onPasteImage: _pasteComposeImage,
                                   workspaceRoot: _workspaceRoot,
                                   skills: skills,
                                   plugins: plugins,
                                   slashBundle: _slashBundle(context),
-                                  launchError: widget.launchError,
-                                  onRemapDeadTarget: widget.onRemapDeadTarget,
-                                  onPasteImage: _pasteComposeImage,
-                                  identityLabel: identityLabel,
-                                  identityIcon: session.isSimple
-                                      ? Icons.psychology_outlined
-                                      : Icons.groups_outlined,
-                                  sameCliPresets: sameCliPresets,
-                                  selectedPresetId: selectedPresetId,
-                                  modelPresetLabel: modelLabel,
-                                  emptyPresetHintLabel:
-                                      l10n.workspaceCliPresetsEmptyHint,
-                                  onPresetSelected: (presetId) => unawaited(
-                                    _onPresetSelected(
-                                      presetId: presetId,
-                                      team: team,
-                                      sameCliPresets: sameCliPresets,
-                                      lockedCli: lockedCli,
-                                    ),
-                                  ),
-                                  dangerouslySkipPermissions:
-                                      _effectivePermission(
-                                        session: session,
-                                        team: team,
-                                      ),
-                                  defaultPermissionsLabel: l10n
-                                      .workspaceChatLandingDefaultPermissions,
-                                  fullAccessPermissionsLabel: l10n
-                                      .workspaceChatLandingFullAccessPermissions,
-                                  onPermissionSelected: (value) => unawaited(
-                                    _onPermissionSelected(
-                                      value: value,
-                                      team: team,
-                                    ),
-                                  ),
-                                  teamSettingsTooltip: showTeamSettings
-                                      ? l10n.teamSettings
-                                      : null,
-                                  onTeamSettings: showTeamSettings
-                                      ? () => unawaited(
-                                          _openTeamSettings(team),
-                                        )
-                                      : null,
-                                  showTeamSettingsAttention:
-                                      teamSettingsAttention,
                                 ),
                               ],
                             ),
