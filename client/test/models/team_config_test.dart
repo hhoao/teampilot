@@ -255,6 +255,20 @@ void main() {
     expect(legacy.teamMode, TeamMode.native);
   });
 
+  test('round trips hubSourceKey and defaults missing to null', () {
+    const team = TeamProfile(
+      id: 'team-1',
+      name: 'hello',
+      hubSourceKey: 'owner/repo/slug',
+    );
+    final decoded = TeamProfile.fromJson(team.toJson());
+    expect(decoded.hubSourceKey, 'owner/repo/slug');
+    expect(decoded, team);
+
+    final legacy = TeamProfile.fromJson({'id': 't', 'name': 'T'});
+    expect(legacy.hubSourceKey, isNull);
+  });
+
   test('member.cli is stored for mixed custom overrides', () {
     const m = TeamMemberConfig(id: 'm', name: 'a', cli: CliTool.flashskyai);
     const inherit = TeamMemberConfig(

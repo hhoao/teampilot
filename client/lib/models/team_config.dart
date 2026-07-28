@@ -359,6 +359,7 @@ class TeamProfile implements LaunchProfile {
     this.forceTeamLeadDelegateMode = true,
     this.forceWaitBeforeStop = true,
     this.activePresetId,
+    this.hubSourceKey,
   });
 
   static bool decodeForceTeamLeadDelegateMode(Object? raw) =>
@@ -453,6 +454,11 @@ class TeamProfile implements LaunchProfile {
         json['forceWaitBeforeStop'],
       ),
       activePresetId: json['activePresetId'] as String?,
+      hubSourceKey: () {
+        final raw = json['hubSourceKey'] as String?;
+        final trimmed = raw?.trim() ?? '';
+        return trimmed.isEmpty ? null : trimmed;
+      }(),
     );
   }
 
@@ -585,6 +591,9 @@ class TeamProfile implements LaunchProfile {
   /// Active preset id for this team. `null` means no preset is active.
   final String? activePresetId;
 
+  /// Hub catalog source key when cloned from Team Hub (e.g. `owner/repo/slug`).
+  final String? hubSourceKey;
+
   @override
   LaunchProfileKind get kind => LaunchProfileKind.team;
 
@@ -631,6 +640,8 @@ class TeamProfile implements LaunchProfile {
     bool updateForceWaitBeforeStop = false,
     String? activePresetId,
     bool updateActivePresetId = false,
+    String? hubSourceKey,
+    bool updateHubSourceKey = false,
   }) {
     return TeamProfile(
       id: id ?? this.id,
@@ -663,6 +674,7 @@ class TeamProfile implements LaunchProfile {
       activePresetId: updateActivePresetId
           ? activePresetId
           : this.activePresetId,
+      hubSourceKey: updateHubSourceKey ? hubSourceKey : this.hubSourceKey,
     );
   }
 
@@ -693,6 +705,8 @@ class TeamProfile implements LaunchProfile {
         'forceTeamLeadDelegateMode': forceTeamLeadDelegateMode,
       if (!forceWaitBeforeStop) 'forceWaitBeforeStop': forceWaitBeforeStop,
       if (activePresetId != null) 'activePresetId': activePresetId,
+      if (hubSourceKey != null && hubSourceKey!.isNotEmpty)
+        'hubSourceKey': hubSourceKey,
     };
   }
 
@@ -722,7 +736,8 @@ class TeamProfile implements LaunchProfile {
             autoLaunchMembers == other.autoLaunchMembers &&
             forceTeamLeadDelegateMode == other.forceTeamLeadDelegateMode &&
             forceWaitBeforeStop == other.forceWaitBeforeStop &&
-            activePresetId == other.activePresetId;
+            activePresetId == other.activePresetId &&
+            hubSourceKey == other.hubSourceKey;
   }
 
   @override
@@ -752,6 +767,7 @@ class TeamProfile implements LaunchProfile {
       forceTeamLeadDelegateMode,
       forceWaitBeforeStop,
       activePresetId,
+      hubSourceKey,
     ),
   );
 }
