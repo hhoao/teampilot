@@ -559,14 +559,21 @@ class SessionLifecycleService {
       busIdle: busIdle,
       agentStatus: agentStatus,
     );
-    final packPaths = await SkillPackInstallStore().pathExportsForSkills(
+    final packStore = SkillPackInstallStore();
+    final packPaths = await packStore.pathExportsForSkills(
       plan.runtimeBundle.skillIds,
     );
-    final launchEnv = SkillPackInstallStore.prependPath(
-      prepared.env,
-      packPaths,
-      platformPath: Platform.environment['PATH'],
-      isWindows: Platform.isWindows,
+    final packEnv = await packStore.envExportsForSkills(
+      plan.runtimeBundle.skillIds,
+    );
+    final launchEnv = SkillPackInstallStore.mergeEnvExports(
+      SkillPackInstallStore.prependPath(
+        prepared.env,
+        packPaths,
+        platformPath: Platform.environment['PATH'],
+        isWindows: Platform.isWindows,
+      ),
+      packEnv,
     );
 
     final memberConfigDir = _memberConfigDirFromEnv(launchEnv);
@@ -698,14 +705,21 @@ class SessionLifecycleService {
             profileId: teamId,
             tools: tools,
           );
-    final packPaths = await SkillPackInstallStore().pathExportsForSkills(
+    final packStore = SkillPackInstallStore();
+    final packPaths = await packStore.pathExportsForSkills(
       plan.runtimeBundle.skillIds,
     );
-    final launchEnv = SkillPackInstallStore.prependPath(
-      environment,
-      packPaths,
-      platformPath: Platform.environment['PATH'],
-      isWindows: Platform.isWindows,
+    final packEnv = await packStore.envExportsForSkills(
+      plan.runtimeBundle.skillIds,
+    );
+    final launchEnv = SkillPackInstallStore.mergeEnvExports(
+      SkillPackInstallStore.prependPath(
+        environment,
+        packPaths,
+        platformPath: Platform.environment['PATH'],
+        isWindows: Platform.isWindows,
+      ),
+      packEnv,
     );
     final memberConfigDir = _memberConfigDirFromEnv(launchEnv);
     final rootsForResume = <String>{

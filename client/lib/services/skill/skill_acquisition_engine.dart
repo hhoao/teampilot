@@ -1,14 +1,16 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
 import '../../models/discoverable_team.dart';
 import '../../models/skill.dart';
-import '../../models/skill_install_recipe.dart';
 import '../../models/skill_pack.dart';
+import '../../models/skill_pack_instruction.dart';
+import '../../utils/logging/logger.dart';
 import '../cli/installer_types.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 import 'acquire/skill_acquire_context.dart';
-import 'acquire/skill_step_handler.dart';
 import 'skill_install_service.dart';
 import 'skill_manifest_service.dart';
 import 'skill_pack_install_store.dart';
@@ -31,21 +33,39 @@ typedef SkillDirectoryRegistrar =
       required String directory,
     });
 
+typedef SkillRepoEnsureSynced =
+    Future<SkillRepoSyncResult> Function(SkillRepo repo);
+
 class SkillAcquireResult {
   const SkillAcquireResult({
     required this.success,
     this.message = '',
     this.skillId,
     this.pathExports = const [],
+    this.envExports = const {},
+    this.installedSkillIds = const [],
+    this.syncRoot,
   });
 
   final bool success;
   final String message;
   final String? skillId;
   final List<String> pathExports;
+  final Map<String, String> envExports;
+  final List<String> installedSkillIds;
+  final String? syncRoot;
 }
 
-/// Runs [SkillInstallRecipe] graphs via a handler registry.
+class _InstrResult {
+  const _InstrResult({required this.success, this.message = ''});
+
+  final bool success;
+  final String message;
+
+  static const ok = _InstrResult(success: true);
+}
+
+/// Runs Dockerfile-like [SkillPackInstruction] lists via type dispatch.
 class SkillAcquisitionEngine {
   SkillAcquisitionEngine({
     SkillInstallRunner? runner,
@@ -55,10 +75,11 @@ class SkillAcquisitionEngine {
     Future<Set<String>> Function()? listSkillDirsWithSkillMd,
     SkillPackRegistry? packRegistry,
     SkillRepoDiskCacheService? repoCache,
+    SkillRepoEnsureSynced? ensureSynced,
     SkillPackInstallStore? packInstallStore,
     Filesystem? fs,
-    Map<String, SkillStepHandler>? handlers,
   }) : _runner = runner ?? _defaultLocalRunner,
+       _usesDefaultRunner = runner == null,
        _installGitDir = installGitDir,
        _isLocalAcquireSupported =
            isLocalAcquireSupported ?? _defaultLocalAcquireSupported,
@@ -71,28 +92,21 @@ class SkillAcquisitionEngine {
            listSkillDirsWithSkillMd ?? _defaultListSkillDirsWithSkillMd,
        _packRegistry = packRegistry ?? SkillPackRegistry(),
        _repoCache = repoCache ?? SkillRepoDiskCacheService(),
+       _ensureSynced = ensureSynced,
        _packInstallStore = packInstallStore ?? SkillPackInstallStore(),
-       _fs = fs {
-    _handlers = {
-      'git.sync': _handleGitSync,
-      'skill.install-dir': _handleSkillInstallDir,
-      'skill.register-pack': _handleSkillRegisterPack,
-      'fs.materialize': _handleFsMaterialize,
-      'script.run': _handleScriptRun,
-      ...?handlers,
-    };
-  }
+       _fs = fs;
 
   final SkillInstallRunner _runner;
+  final bool _usesDefaultRunner;
   final SkillGitDirInstaller _installGitDir;
   final bool Function() _isLocalAcquireSupported;
   final SkillDirectoryRegistrar _registerDirectory;
   final Future<Set<String>> Function() _listSkillDirsWithSkillMd;
   final SkillPackRegistry _packRegistry;
   final SkillRepoDiskCacheService _repoCache;
+  final SkillRepoEnsureSynced? _ensureSynced;
   final SkillPackInstallStore _packInstallStore;
   final Filesystem? _fs;
-  late final Map<String, SkillStepHandler> _handlers;
 
   Filesystem get fs => _fs ?? AppStorage.fs;
 
@@ -143,15 +157,15 @@ class SkillAcquisitionEngine {
         overwrite: overwrite,
       );
     }
-    final recipe = ref.resolvedRecipe;
-    if (recipe == null || recipe.isEmpty) {
+    final install = ref.resolvedInstall;
+    if (install == null || install.isEmpty) {
       return const SkillAcquireResult(
         success: false,
-        message: 'Skill dependency has no install recipe.',
+        message: 'Skill dependency has no install instructions.',
       );
     }
-    return _runRecipe(
-      recipe: recipe,
+    return _runInstall(
+      install: install,
       expectedSkillId: ref.expectedLocalId,
       overwrite: overwrite,
     );
@@ -169,18 +183,17 @@ class SkillAcquisitionEngine {
         overwrite: overwrite,
       );
     }
-    final recipe = d.resolvedRecipe;
-    if (recipe == null || recipe.isEmpty) {
+    final install = d.resolvedInstall;
+    if (install == null || install.isEmpty) {
       return const SkillAcquireResult(
         success: false,
-        message: 'Discoverable skill has no install recipe.',
+        message: 'Discoverable skill has no install instructions.',
       );
     }
-    return _runRecipe(
-      recipe: recipe,
+    return _runInstall(
+      install: install,
       expectedSkillId: d.expectedLocalId,
       overwrite: overwrite,
-      discovery: d,
     );
   }
 
@@ -196,62 +209,49 @@ class SkillAcquisitionEngine {
         message: 'Unknown skill pack: $packId',
       );
     }
-    if (pack.entryById(expectedSkillId) == null &&
-        !pack.skills.any((s) => s.id == expectedSkillId)) {
-      // Allow expected id even if only listed in exports; still require catalog
-      // membership when skills[] is non-empty.
-      if (pack.skills.isNotEmpty) {
-        return SkillAcquireResult(
-          success: false,
-          message: 'Skill $expectedSkillId is not in pack $packId.',
-        );
-      }
+    if (pack.install.isEmpty) {
+      return SkillAcquireResult(
+        success: false,
+        message: 'Skill pack $packId has empty install.',
+      );
     }
-    final packRoot = _packInstallStore.packRootFor(pack.id);
-    final packBin = _packInstallStore.packBinFor(pack.id);
-    await fs.ensureDir(packRoot);
-    final result = await _runRecipe(
-      recipe: pack.recipe,
+    final result = await _runInstall(
+      install: pack.install,
       expectedSkillId: expectedSkillId,
       overwrite: overwrite,
       pack: pack,
-      packRoot: packRoot,
-      packBin: packBin,
     );
-    if (result.success) {
-      await _packInstallStore.save(
-        SkillPackInstallRecord(
-          packId: pack.id,
-          skillIds: [for (final s in pack.skills) s.id],
-          pathExports: result.pathExports,
-          envExports: const {},
-          installedAt: DateTime.now().millisecondsSinceEpoch,
-          packBin: packBin,
-        ),
+    if (!result.success) return result;
+    if (expectedSkillId.isNotEmpty &&
+        !result.installedSkillIds.contains(expectedSkillId)) {
+      return SkillAcquireResult(
+        success: false,
+        message: 'Skill $expectedSkillId was not registered by pack $packId.',
       );
     }
+    await _packInstallStore.save(
+      SkillPackInstallRecord(
+        packId: pack.id,
+        skillIds: List.unmodifiable(result.installedSkillIds),
+        pathExports: result.pathExports,
+        envExports: result.envExports,
+        installedAt: DateTime.now().millisecondsSinceEpoch,
+        syncRoot: result.syncRoot,
+      ),
+    );
     return result;
   }
 
-  Future<SkillAcquireResult> _runRecipe({
-    required SkillInstallRecipe recipe,
+  Future<SkillAcquireResult> _runInstall({
+    required List<SkillPackInstruction> install,
     required String expectedSkillId,
     required bool overwrite,
     SkillPack? pack,
-    DiscoverableSkill? discovery,
-    String? packRoot,
-    String? packBin,
   }) async {
-    final List<SkillInstallStep> ordered;
-    try {
-      ordered = recipe.sortedSteps();
-    } catch (e) {
-      return SkillAcquireResult(success: false, message: e.toString());
-    }
-    if (ordered.isEmpty) {
+    if (install.isEmpty) {
       return const SkillAcquireResult(
         success: false,
-        message: 'Install recipe has no steps.',
+        message: 'Install has no instructions.',
       );
     }
 
@@ -260,77 +260,74 @@ class SkillAcquisitionEngine {
       expectedSkillId: expectedSkillId,
       pack: pack,
     );
-    if (packRoot != null) ctx.packRoot = packRoot;
-    if (packBin != null) ctx.packBin = packBin;
-    if (discovery != null) {
-      ctx.vars['DISCOVERY_DIR'] = discovery.directory;
-      ctx.vars['DISCOVERY_ID'] = discovery.expectedLocalId;
-      ctx.vars['DISCOVERY_NAME'] = discovery.name;
-      ctx.vars['REPO_OWNER'] = discovery.repoOwner;
-      ctx.vars['REPO_NAME'] = discovery.repoName;
-      ctx.vars['REPO_BRANCH'] = discovery.repoBranch;
-    }
 
-    for (final step in ordered) {
-      final handler = _handlers[step.uses];
-      if (handler == null) {
-        final msg = 'Unknown skill install step: ${step.uses}';
-        if (step.optional) continue;
-        return SkillAcquireResult(success: false, message: msg);
-      }
-      final stepResult = await handler(step, ctx);
+    for (var i = 0; i < install.length; i++) {
+      final step = install[i];
+      final stepResult = await _dispatch(step, ctx, index: i);
       if (!stepResult.success) {
-        if (step.optional) continue;
+        final optional = (step is RunInstruction && step.optional) ||
+            (step is ScriptInstruction && step.optional);
+        if (optional) {
+          appLogger.w(
+            '[skills] optional install[$i] failed: ${stepResult.message}',
+          );
+          continue;
+        }
         return SkillAcquireResult(
           success: false,
           message: stepResult.message.isEmpty
-              ? 'Step ${step.id} failed'
+              ? 'install[$i] failed'
               : stepResult.message,
         );
       }
     }
 
-    ctx.applyExports(recipe.exports);
-    if (ctx.installedSkillIds.isEmpty && expectedSkillId.isNotEmpty) {
-      ctx.installedSkillIds.add(expectedSkillId);
-    }
     return SkillAcquireResult(
       success: true,
       skillId: expectedSkillId,
       pathExports: List.unmodifiable(ctx.pathExports),
+      envExports: Map.unmodifiable(ctx.envExports),
+      installedSkillIds: List.unmodifiable(ctx.installedSkillIds),
+      syncRoot: ctx.syncRoot,
     );
   }
 
-  Future<SkillStepResult> _handleGitSync(
-    SkillInstallStep step,
-    SkillAcquireContext ctx,
-  ) async {
-    final owner =
-        (step.withArgs['owner'] as String?)?.trim() ??
-        ctx.pack?.repoOwner ??
-        ctx.vars['REPO_OWNER'] ??
-        '';
-    final name =
-        (step.withArgs['name'] as String?)?.trim() ??
-        ctx.pack?.repoName ??
-        ctx.vars['REPO_NAME'] ??
-        '';
-    final branch =
-        (step.withArgs['branch'] as String?)?.trim() ??
-        ctx.pack?.repoBranch ??
-        ctx.vars['REPO_BRANCH'] ??
-        'main';
-    if (owner.isEmpty || name.isEmpty) {
-      return const SkillStepResult(
-        success: false,
-        message: 'git.sync requires owner and name',
-      );
-    }
-    final repo = SkillRepo(owner: owner, name: name, branch: branch);
+  Future<_InstrResult> _dispatch(
+    SkillPackInstruction step,
+    SkillAcquireContext ctx, {
+    required int index,
+  }) {
+    return switch (step) {
+      FromInstruction() => _onFrom(step, ctx, index: index),
+      ScriptInstruction() => _onScript(step, ctx, index: index),
+      CopyInstruction() => _onCopy(step, ctx, index: index),
+      SkillsInstruction() => _onSkills(step, ctx, index: index),
+      ShellInstruction() => _onShell(step, ctx),
+      RunInstruction() => _onRun(step, ctx, index: index),
+      WorkdirInstruction() => _onWorkdir(step, ctx, index: index),
+      PathInstruction() => _onPath(step, ctx, index: index),
+      EnvInstruction() => _onEnv(step, ctx, index: index),
+    };
+  }
+
+  Future<_InstrResult> _onFrom(
+    FromInstruction step,
+    SkillAcquireContext ctx, {
+    required int index,
+  }) async {
+    final repo = SkillRepo(
+      owner: step.owner,
+      name: step.name,
+      branch: step.branch,
+    );
     try {
-      await _repoCache.ensureSynced(repo);
+      final sync = _ensureSynced ?? _repoCache.ensureSynced;
+      await sync(repo);
     } catch (e) {
-      return SkillStepResult(success: false, message: e.toString());
+      return _InstrResult(
+        success: false,
+        message: 'install[$index] FROM: $e',
+      );
     }
     final syncRoot = fs.pathContext.join(
       AppStorage.paths.skillRepoCacheDir,
@@ -338,214 +335,34 @@ class SkillAcquisitionEngine {
       'files',
     );
     ctx.syncRoot = syncRoot;
-    return SkillStepResult.ok;
+    ctx.syncOwner = step.owner;
+    ctx.syncName = step.name;
+    ctx.syncBranch = step.branch;
+    ctx.workdir = '';
+    return _InstrResult.ok;
   }
 
-  Future<SkillStepResult> _handleSkillInstallDir(
-    SkillInstallStep step,
-    SkillAcquireContext ctx,
-  ) async {
-    final directory =
-        (step.withArgs['directory'] as String?)?.trim() ??
-        ctx.vars['DISCOVERY_DIR'] ??
-        '';
-    final id =
-        (step.withArgs['id'] as String?)?.trim() ??
-        ctx.expectedSkillId;
-    final skillName =
-        (step.withArgs['name'] as String?)?.trim() ??
-        directory.split('/').last;
-    final owner =
-        ctx.pack?.repoOwner ??
-        ctx.vars['REPO_OWNER'] ??
-        (step.withArgs['owner'] as String?)?.trim() ??
-        '';
-    final repoName =
-        ctx.pack?.repoName ??
-        ctx.vars['REPO_NAME'] ??
-        (step.withArgs['repo'] as String?)?.trim() ??
-        '';
-    final branch =
-        ctx.pack?.repoBranch ??
-        ctx.vars['REPO_BRANCH'] ??
-        (step.withArgs['branch'] as String?)?.trim() ??
-        'main';
-    if (directory.isEmpty || id.isEmpty) {
-      return const SkillStepResult(
-        success: false,
-        message: 'skill.install-dir requires directory and id',
-      );
-    }
-    final discovery = DiscoverableSkill(
-      key: id,
-      name: skillName,
-      description: '',
-      directory: directory,
-      repoOwner: owner,
-      repoName: repoName,
-      repoBranch: branch,
-      id: id,
-      packId: ctx.pack?.id,
-    );
-    try {
-      await _installGitDir(
-        discovery,
-        overwrite: ctx.overwrite,
-        idOverride: id,
-      );
-      if (!ctx.installedSkillIds.contains(id)) {
-        ctx.installedSkillIds.add(id);
-      }
-      return SkillStepResult.ok;
-    } catch (e) {
-      if (!ctx.overwrite && e.toString().toLowerCase().contains('already exists')) {
-        if (!ctx.installedSkillIds.contains(id)) {
-          ctx.installedSkillIds.add(id);
-        }
-        return SkillStepResult.ok;
-      }
-      return SkillStepResult(success: false, message: e.toString());
-    }
-  }
-
-  Future<SkillStepResult> _handleSkillRegisterPack(
-    SkillInstallStep step,
-    SkillAcquireContext ctx,
-  ) async {
-    final pack = ctx.pack;
-    if (pack == null || pack.skills.isEmpty) {
-      return const SkillStepResult(
-        success: false,
-        message: 'skill.register-pack requires an active pack with skills',
-      );
-    }
-    for (final entry in pack.skills) {
-      final stepResult = await _handleSkillInstallDir(
-        SkillInstallStep(
-          id: 'install-${entry.id}',
-          uses: 'skill.install-dir',
-          withArgs: {
-            'directory': entry.directory,
-            'id': entry.id,
-            'name': entry.name,
-          },
-        ),
-        ctx,
-      );
-      if (!stepResult.success) return stepResult;
-    }
-    return SkillStepResult.ok;
-  }
-
-  Future<SkillStepResult> _handleFsMaterialize(
-    SkillInstallStep step,
-    SkillAcquireContext ctx,
-  ) async {
-    final fromRel = (step.withArgs['from'] as String?)?.trim() ?? '';
-    final toTemplate =
-        (step.withArgs['to'] as String?)?.trim() ?? '\$PACK_BIN';
-    final mode = (step.withArgs['mode'] as String?)?.trim() ?? 'link';
-    final syncRoot = ctx.syncRoot;
-    if (fromRel.isEmpty || syncRoot == null || syncRoot.isEmpty) {
-      return const SkillStepResult(
-        success: false,
-        message: 'fs.materialize requires sync root and from',
-      );
-    }
-    final fromPath = fs.pathContext.join(syncRoot, fromRel);
-    if (!(await fs.stat(fromPath)).isDirectory) {
-      return SkillStepResult(
-        success: false,
-        message: 'fs.materialize source missing: $fromPath',
-      );
-    }
-    final toPath = ctx.resolve(toTemplate);
-    if (toPath.isEmpty) {
-      return const SkillStepResult(
-        success: false,
-        message: 'fs.materialize to path resolved empty',
-      );
-    }
-    await fs.ensureDir(fs.pathContext.dirname(toPath));
-    await fs.removeRecursive(toPath);
-    if (mode == 'copy') {
-      await fs.copyTree(source: fromPath, destination: toPath);
-    } else {
-      final ok = await fs.createSymlink(target: fromPath, linkPath: toPath);
-      if (!ok) {
-        return SkillStepResult(
-          success: false,
-          message: 'Failed to link $fromPath → $toPath',
-        );
-      }
-    }
-    ctx.packBin ??= toPath;
-    if (!ctx.pathExports.contains(toPath)) {
-      ctx.pathExports.add(toPath);
-    }
-    return SkillStepResult.ok;
-  }
-
-  Future<SkillStepResult> _handleScriptRun(
-    SkillInstallStep step,
-    SkillAcquireContext ctx,
-  ) async {
+  Future<_InstrResult> _onScript(
+    ScriptInstruction step,
+    SkillAcquireContext ctx, {
+    required int index,
+  }) async {
     if (!_isLocalAcquireSupported()) {
-      return const SkillStepResult(
+      return _InstrResult(
         success: false,
-        message: 'Script skill install is not supported on this host.',
+        message: 'install[$index] SCRIPT: not supported on this host',
       );
     }
-
-    final commandRaw = step.withArgs['command'];
-    final package = (step.withArgs['package'] as String?)?.trim();
-    final cwdTemplate = (step.withArgs['cwd'] as String?)?.trim();
-    final cwd = cwdTemplate == null || cwdTemplate.isEmpty
-        ? ctx.syncRoot
-        : ctx.resolve(cwdTemplate);
-
-    if (commandRaw is List && commandRaw.isNotEmpty) {
-      final args = commandRaw.map((e) => e.toString()).toList(growable: false);
-      final script = cwd == null || cwd.isEmpty
-          ? args.map(_shellQuote).join(' ')
-          : 'cd ${_shellQuote(cwd)} && ${args.map(_shellQuote).join(' ')}';
-      final result = await _runner(CliInstallerCommand.unixShellScript(script));
-      if (result.exitCode != 0) {
-        return SkillStepResult(
-          success: false,
-          message: result.stderr.trim().isNotEmpty
-              ? result.stderr.trim()
-              : result.stdout.trim().isNotEmpty
-              ? result.stdout.trim()
-              : 'script.run failed',
-        );
-      }
-      return SkillStepResult.ok;
-    }
-
-    // HTTPS installers: curl|sh, then register primary / new skill dir.
-    if (package == null || package.isEmpty) {
-      return const SkillStepResult(
-        success: false,
-        message: 'script.run requires command or package URL',
-      );
-    }
-    if (!_isSafeScriptUrl(package)) {
-      return const SkillStepResult(
-        success: false,
-        message: 'Unsafe script URL',
-      );
-    }
-    final alternatives = step.withArgs['alternatives'];
     final urls = <String>[
-      package,
-      if (alternatives is List)
-        for (final a in alternatives)
-          if (a.toString().contains(':'))
-            a.toString().substring(a.toString().indexOf(':') + 1)
-          else
-            a.toString(),
+      step.url,
+      ...step.alternatives,
     ];
+    if (!_isSafeScriptUrl(step.url)) {
+      return _InstrResult(
+        success: false,
+        message: 'install[$index] SCRIPT: unsafe script URL',
+      );
+    }
     final before = await _listSkillDirsWithSkillMd();
     CliInstallerCommandResult? last;
     var ok = false;
@@ -560,29 +377,30 @@ class SkillAcquisitionEngine {
       }
     }
     if (!ok) {
-      return SkillStepResult(
+      return _InstrResult(
         success: false,
         message: last?.stderr.trim().isNotEmpty == true
             ? last!.stderr.trim()
-            : 'Installation failed.',
+            : 'install[$index] SCRIPT: installation failed',
       );
     }
 
     final after = await _listSkillDirsWithSkillMd();
     final newDirs = after.difference(before).toList()..sort();
-    final primary = (step.withArgs['primaryDirectory'] as String?)?.trim();
-    final id =
-        (step.withArgs['id'] as String?)?.trim() ?? ctx.expectedSkillId;
-    String? chosen;
+    final primary = step.primaryDirectory?.trim();
+    final id = (step.id?.trim().isNotEmpty == true)
+        ? step.id!.trim()
+        : ctx.expectedSkillId;
+    final String chosen;
     if (newDirs.isEmpty) {
       if (primary != null && after.contains(primary)) {
         chosen = primary;
       } else {
-        return const SkillStepResult(
+        return _InstrResult(
           success: false,
           message:
-              'Install command succeeded but no SKILL.md was found under '
-              'skills/installed/.',
+              'install[$index] SCRIPT: succeeded but no SKILL.md under '
+              'skills/installed/',
         );
       }
     } else if (newDirs.length == 1) {
@@ -590,22 +408,319 @@ class SkillAcquisitionEngine {
     } else if (primary != null && newDirs.contains(primary)) {
       chosen = primary;
     } else {
-      return SkillStepResult(
+      return _InstrResult(
         success: false,
         message:
-            'Multiple new skill directories appeared (${newDirs.join(', ')}); '
-            'set primaryDirectory.',
+            'install[$index] SCRIPT: multiple new skill dirs '
+            '(${newDirs.join(', ')}); set primaryDirectory',
       );
     }
     try {
-      await _registerDirectory(id: id, directory: chosen!);
+      await _registerDirectory(id: id, directory: chosen);
       if (!ctx.installedSkillIds.contains(id)) {
         ctx.installedSkillIds.add(id);
       }
-      return SkillStepResult.ok;
+      // SCRIPT establishes a workspace root at the registered skill dir parent.
+      if (!ctx.hasWorkspace) {
+        final skillsDir = AppPaths.skillsDirForTeampilotRoot(
+          AppStorage.paths.basePath,
+        );
+        ctx.syncRoot = fs.pathContext.join(skillsDir, chosen);
+        ctx.workdir = '';
+      }
+      return _InstrResult.ok;
     } catch (e) {
-      return SkillStepResult(success: false, message: e.toString());
+      return _InstrResult(success: false, message: e.toString());
     }
+  }
+
+  Future<_InstrResult> _onCopy(
+    CopyInstruction step,
+    SkillAcquireContext ctx, {
+    required int index,
+  }) async {
+    if (!ctx.hasWorkspace) {
+      return _InstrResult(
+        success: false,
+        message: 'install[$index] COPY: requires prior FROM or SCRIPT',
+      );
+    }
+    final String fromPath;
+    final String toPath;
+    try {
+      fromPath = ctx.resolveRelative(step.from);
+      toPath = ctx.resolveWorkdirRelative(step.to);
+    } on StateError catch (e) {
+      return _InstrResult(
+        success: false,
+        message: 'install[$index] COPY: ${e.message}',
+      );
+    }
+    final fromStat = await fs.stat(fromPath);
+    if (!fromStat.exists) {
+      return _InstrResult(
+        success: false,
+        message: 'install[$index] COPY: source missing: $fromPath',
+      );
+    }
+    await fs.ensureDir(fs.pathContext.dirname(toPath));
+    if (fromStat.isDirectory) {
+      await fs.copyTree(source: fromPath, destination: toPath);
+    } else {
+      await fs.copyFile(fromPath, toPath);
+    }
+    return _InstrResult.ok;
+  }
+
+  Future<_InstrResult> _onSkills(
+    SkillsInstruction step,
+    SkillAcquireContext ctx, {
+    required int index,
+  }) async {
+    if (!ctx.hasWorkspace) {
+      return _InstrResult(
+        success: false,
+        message: 'install[$index] SKILLS: requires prior FROM or SCRIPT',
+      );
+    }
+    final dirs = await _resolveSkillDirs(step, ctx.syncRoot!);
+    final pack = ctx.pack;
+    // Spec: only use expectedSkillId when pack==null and exactly one dir.
+    final useExpectedId = pack == null &&
+        ctx.expectedSkillId.isNotEmpty &&
+        dirs.length == 1;
+
+    for (final dir in dirs) {
+      final basename = p.basename(dir);
+      final id = useExpectedId
+          ? ctx.expectedSkillId
+          : pack != null
+          ? '${pack.id}:$basename'
+          : basename;
+      final discovery = DiscoverableSkill(
+        key: id,
+        name: basename,
+        description: '',
+        directory: dir,
+        repoOwner: ctx.syncOwner ?? '',
+        repoName: ctx.syncName ?? '',
+        repoBranch: ctx.syncBranch ?? 'main',
+        id: id,
+        packId: pack?.id,
+      );
+      try {
+        await _installGitDir(
+          discovery,
+          overwrite: ctx.overwrite,
+          idOverride: id,
+        );
+        if (!ctx.installedSkillIds.contains(id)) {
+          ctx.installedSkillIds.add(id);
+        }
+      } catch (e) {
+        if (!ctx.overwrite &&
+            e.toString().toLowerCase().contains('already exists')) {
+          if (!ctx.installedSkillIds.contains(id)) {
+            ctx.installedSkillIds.add(id);
+          }
+          continue;
+        }
+        return _InstrResult(
+          success: false,
+          message: 'install[$index] SKILLS: $e',
+        );
+      }
+    }
+    return _InstrResult.ok;
+  }
+
+  Future<_InstrResult> _onShell(
+    ShellInstruction step,
+    SkillAcquireContext ctx,
+  ) async {
+    ctx.shell = List<String>.from(step.wrapper);
+    return _InstrResult.ok;
+  }
+
+  Future<_InstrResult> _onRun(
+    RunInstruction step,
+    SkillAcquireContext ctx, {
+    required int index,
+  }) async {
+    if (!ctx.hasWorkspace) {
+      return _InstrResult(
+        success: false,
+        message: 'install[$index] RUN: requires prior FROM or SCRIPT',
+      );
+    }
+    if (!_isLocalAcquireSupported()) {
+      return _InstrResult(
+        success: false,
+        message: 'install[$index] RUN: not supported on this host',
+      );
+    }
+    final cwd = ctx.effectiveWorkdir;
+    final CliInstallerCommand command;
+    if (step.exec != null) {
+      final exec = step.exec!;
+      command = CliInstallerCommand(exec.first, exec.skip(1).toList());
+    } else {
+      final shell = ctx.shell;
+      if (shell.isEmpty) {
+        return _InstrResult(
+          success: false,
+          message: 'install[$index] RUN: empty SHELL',
+        );
+      }
+      command = CliInstallerCommand(
+        shell.first,
+        [...shell.skip(1), step.shell!],
+      );
+    }
+    try {
+      final CliInstallerCommandResult result;
+      if (_usesDefaultRunner) {
+        final ran = await Process.run(
+          command.executable,
+          command.arguments,
+          workingDirectory: cwd,
+        );
+        result = CliInstallerCommandResult(
+          exitCode: ran.exitCode,
+          stdout: ran.stdout?.toString() ?? '',
+          stderr: ran.stderr?.toString() ?? '',
+        );
+      } else {
+        result = await _runner(command);
+      }
+      if (result.exitCode != 0) {
+        return _InstrResult(
+          success: false,
+          message: result.stderr.trim().isNotEmpty
+              ? result.stderr.trim()
+              : result.stdout.trim().isNotEmpty
+              ? result.stdout.trim()
+              : 'install[$index] RUN: failed',
+        );
+      }
+      return _InstrResult.ok;
+    } catch (e) {
+      return _InstrResult(success: false, message: e.toString());
+    }
+  }
+
+  Future<_InstrResult> _onWorkdir(
+    WorkdirInstruction step,
+    SkillAcquireContext ctx, {
+    required int index,
+  }) async {
+    if (!ctx.hasWorkspace) {
+      return _InstrResult(
+        success: false,
+        message: 'install[$index] WORKDIR: requires prior FROM or SCRIPT',
+      );
+    }
+    try {
+      // Validate path stays under sync root.
+      ctx.resolveRelative(step.path);
+      ctx.workdir = step.path;
+      return _InstrResult.ok;
+    } on StateError catch (e) {
+      return _InstrResult(
+        success: false,
+        message: 'install[$index] WORKDIR: ${e.message}',
+      );
+    }
+  }
+
+  Future<_InstrResult> _onPath(
+    PathInstruction step,
+    SkillAcquireContext ctx, {
+    required int index,
+  }) async {
+    if (!ctx.hasWorkspace) {
+      return _InstrResult(
+        success: false,
+        message: 'install[$index] PATH: requires prior FROM or SCRIPT',
+      );
+    }
+    try {
+      final abs = [
+        for (final entry in step.entries) ctx.resolveRelative(entry),
+      ];
+      ctx.appendPathExports(abs);
+      return _InstrResult.ok;
+    } on StateError catch (e) {
+      return _InstrResult(
+        success: false,
+        message: 'install[$index] PATH: ${e.message}',
+      );
+    }
+  }
+
+  Future<_InstrResult> _onEnv(
+    EnvInstruction step,
+    SkillAcquireContext ctx, {
+    required int index,
+  }) async {
+    final resolved = <String, String>{};
+    for (final e in step.entries.entries) {
+      var value = e.value;
+      if (ctx.hasWorkspace &&
+          value.isNotEmpty &&
+          !_isAbsolutePath(value) &&
+          !value.contains(r'$') &&
+          (value.contains('/') || value.contains(r'\'))) {
+        try {
+          value = ctx.resolveRelative(value);
+        } on StateError {
+          // Keep literal when not a resolvable relative path.
+        }
+      }
+      resolved[e.key] = value;
+    }
+    ctx.mergeEnv(resolved);
+    return _InstrResult.ok;
+  }
+
+  Future<List<String>> _resolveSkillDirs(
+    SkillsInstruction step,
+    String syncRoot,
+  ) async {
+    final discovered = await _discoverDirectSkillDirs(syncRoot);
+    final selected = <String>{};
+    if (step.includeAll) {
+      selected.addAll(discovered);
+    } else {
+      for (final name in step.include) {
+        if (discovered.contains(name)) {
+          selected.add(name);
+          continue;
+        }
+        final skillMd = fs.pathContext.join(syncRoot, name, 'SKILL.md');
+        if ((await fs.stat(skillMd)).isFile) {
+          selected.add(name);
+        }
+      }
+    }
+    for (final ex in step.exclude) {
+      selected.remove(ex);
+    }
+    final out = selected.toList()..sort();
+    return out;
+  }
+
+  Future<List<String>> _discoverDirectSkillDirs(String syncRoot) async {
+    if (!(await fs.stat(syncRoot)).isDirectory) return const [];
+    final out = <String>[];
+    for (final entry in await fs.listDir(syncRoot)) {
+      if (!entry.isDirectory) continue;
+      final skillMd = fs.pathContext.join(syncRoot, entry.name, 'SKILL.md');
+      if ((await fs.stat(skillMd)).isFile) {
+        out.add(entry.name);
+      }
+    }
+    return out;
   }
 
   static bool _isSafeScriptUrl(String url) {
@@ -615,5 +730,8 @@ class SkillAcquisitionEngine {
     return !RegExp('[$banned]').hasMatch(url);
   }
 
-  static String _shellQuote(String value) => "'${value.replaceAll("'", "'\\''")}'";
+  static bool _isAbsolutePath(String path) {
+    if (path.startsWith('/') || path.startsWith(r'\')) return true;
+    return path.length >= 2 && path[1] == ':';
+  }
 }
