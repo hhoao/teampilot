@@ -47,8 +47,11 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
     final fileActions = AiToolFileActions.of(context);
     final subagentActions = AiToolSubagentActions.of(context);
     final onOpenSubagent = subagentActions.onOpenSubagent;
-    final useSubagentChrome =
-        isAiSubagentToolName(part.toolName) && onOpenSubagent != null;
+    final isSub =
+        (subagentActions.isSubagentTool?.call(part.toolName) ??
+            isAiSubagentToolName(part.toolName)) &&
+        onOpenSubagent != null;
+    final useSubagentChrome = isSub;
     final target = useSubagentChrome ? null : fileActions.resolver.resolve(part);
 
     return Padding(

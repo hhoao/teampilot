@@ -48,6 +48,89 @@ void main() {
     expect(find.textContaining('subagent done'), findsOneWidget);
   });
 
+  testWidgets('isSubagentTool predicate gates subagent chrome', (tester) async {
+    String? openedId;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AiToolSubagentActionsScope(
+          actions: AiToolSubagentActions(
+            isSubagentTool: (n) => n == 'spawn_agent',
+            onOpenSubagent: (id) async => openedId = id,
+          ),
+          child: const Scaffold(
+            body: AiToolCallPartView(
+              part: AiToolCallPart(
+                toolCallId: 'spawn-1',
+                toolName: 'spawn_agent',
+                args: {'prompt': 'Do work'},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('Used tool:'), findsNothing);
+    expect(find.textContaining('spawn_agent'), findsOneWidget);
+
+    await tester.tap(find.textContaining('Do work'));
+    await tester.pumpAndSettle();
+    expect(openedId, 'spawn-1');
+  });
+
+  testWidgets('isSubagentTool excludes non-matching tools', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AiToolSubagentActionsScope(
+          actions: AiToolSubagentActions(
+            isSubagentTool: (n) => n == 'spawn_agent',
+            onOpenSubagent: (_) async {},
+          ),
+          child: const Scaffold(
+            body: AiToolCallPartView(
+              part: AiToolCallPart(
+                toolCallId: 'agent-1',
+                toolName: 'Agent',
+                args: {'description': 'Explore auth'},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('Used tool:'), findsOneWidget);
+  });
+
+  testWidgets('spawn_agent uses core union fallback without predicate', (
+    tester,
+  ) async {
+    String? openedId;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AiToolSubagentActionsScope(
+          actions: AiToolSubagentActions(
+            onOpenSubagent: (id) async => openedId = id,
+          ),
+          child: const Scaffold(
+            body: AiToolCallPartView(
+              part: AiToolCallPart(
+                toolCallId: 'spawn-2',
+                toolName: 'spawn_agent',
+                args: {'prompt': 'Nested task'},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('Used tool:'), findsNothing);
+    await tester.tap(find.textContaining('Nested task'));
+    await tester.pumpAndSettle();
+    expect(openedId, 'spawn-2');
+  });
+
   testWidgets('Bash keeps legacy Used tool chrome', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

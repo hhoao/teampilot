@@ -3,9 +3,13 @@ import 'package:flutter/material.dart';
 /// Host-injected open handler for Agent/Task tool-call rows.
 @immutable
 class AiToolSubagentActions {
-  const AiToolSubagentActions({this.onOpenSubagent});
+  const AiToolSubagentActions({
+    this.onOpenSubagent,
+    this.isSubagentTool,
+  });
 
   final Future<void> Function(String toolCallId)? onOpenSubagent;
+  final bool Function(String toolName)? isSubagentTool;
 
   static AiToolSubagentActions of(BuildContext context) {
     return context
