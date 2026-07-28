@@ -17,6 +17,7 @@ import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
+import 'package:teampilot/pages/home_workspace/workspace/unbound_compose_body.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing.dart';
 import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_landing_selectors.dart';
@@ -34,7 +35,8 @@ const _dismissKey = Key('selection-ask-ai-dismiss');
 void _expectComposeOnlyAskAiDialog() {
   expect(find.text('Ask AI…'), findsNothing);
   expect(find.byType(TpDialogHeader), findsNothing);
-  expect(find.byType(WorkspaceChatLanding), findsOneWidget);
+  expect(find.byType(WorkspaceChatLanding), findsNothing);
+  expect(find.byType(UnboundComposeBody), findsOneWidget);
   expect(find.byType(WorkspaceComposeCard), findsOneWidget);
   expect(find.byKey(AppKeys.workspaceChatLandingBackButton), findsNothing);
   expect(find.byType(WorkspaceLandingHeaderRow), findsNothing);
@@ -243,12 +245,12 @@ void main() {
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(WorkspaceChatLanding), findsOneWidget);
+    expect(find.byType(UnboundComposeBody), findsOneWidget);
 
     await tester.tap(find.byKey(_dismissKey));
     await tester.pumpAndSettle();
 
-    expect(find.byType(WorkspaceChatLanding), findsNothing);
+    expect(find.byType(UnboundComposeBody), findsNothing);
   });
 
   testWidgets('dialog builds under MaterialApp.router without route lookup '

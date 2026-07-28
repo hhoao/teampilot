@@ -47,10 +47,7 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
-  Future<void> pumpLanding(
-    WidgetTester tester, {
-    required bool showLandingChrome,
-  }) async {
+  Future<void> pumpLanding(WidgetTester tester) async {
     final workspace = Workspace(workspaceId: 'workspace-1', createdAt: 1);
     final chatCubit = _MockChatCubit();
     final cliPresetsCubit = _MockCliPresetsCubit();
@@ -98,7 +95,6 @@ void main() {
                 child: Scaffold(
                   body: WorkspaceChatLanding(
                     workspace: workspace,
-                    showLandingChrome: showLandingChrome,
                     onSubmit: (_, _) {},
                   ),
                 ),
@@ -112,21 +108,12 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('default chrome shows back + header row + compose', (
+  testWidgets('Landing page chrome shows back + header row + compose', (
     tester,
   ) async {
-    await pumpLanding(tester, showLandingChrome: true);
+    await pumpLanding(tester);
     expect(find.byKey(AppKeys.workspaceChatLandingBackButton), findsOneWidget);
     expect(find.byType(WorkspaceLandingHeaderRow), findsOneWidget);
-    expect(find.byType(WorkspaceComposeCard), findsOneWidget);
-  });
-
-  testWidgets('compose-only hides back + header row, keeps compose', (
-    tester,
-  ) async {
-    await pumpLanding(tester, showLandingChrome: false);
-    expect(find.byKey(AppKeys.workspaceChatLandingBackButton), findsNothing);
-    expect(find.byType(WorkspaceLandingHeaderRow), findsNothing);
     expect(find.byType(WorkspaceComposeCard), findsOneWidget);
   });
 }
