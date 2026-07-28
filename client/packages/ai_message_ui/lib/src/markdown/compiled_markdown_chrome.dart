@@ -13,9 +13,18 @@ extension CompiledMarkdownChrome on CompiledMarkdownStyle {
       color: color,
       fontWeight: FontWeight.w600,
       height: height,
+      leadingDistribution: TextLeadingDistribution.even,
       decoration: cancelled ? TextDecoration.lineThrough : null,
     );
   }
+
+  /// Open-target label metrics aligned with [toolTrigger]. Keeps the same
+  /// muted chrome as Agent titles (no primary/blue link styling).
+  TextStyle toolFileLink(TextStyle trigger, Color color) => trigger.copyWith(
+    color: color,
+    decoration: trigger.decoration,
+    decorationColor: color,
+  );
 
   TextStyle toolNameEmphasis(TextStyle base) =>
       base.copyWith(fontWeight: FontWeight.w700);
@@ -32,6 +41,5 @@ extension CompiledMarkdownChrome on CompiledMarkdownStyle {
   TextStyle userBubble(Color foreground) =>
       body.copyWith(color: foreground, height: 1.5);
 
-  TextStyle assistantBody(Color onSurface) =>
-      body.copyWith(color: onSurface);
+  TextStyle assistantBody(Color onSurface) => body.copyWith(color: onSurface);
 }

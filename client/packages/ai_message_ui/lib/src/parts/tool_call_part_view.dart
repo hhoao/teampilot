@@ -172,6 +172,7 @@ class _LegacyToolTrigger extends StatelessWidget {
           child: Padding(
             padding: EdgeInsets.symmetric(vertical: dense ? 4 : 6),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 _StatusIcon(part: part, color: triggerColor),
                 const SizedBox(width: 8),
@@ -241,13 +242,33 @@ class _SubagentToolTrigger extends StatelessWidget {
       cancelled: cancelled,
     );
     final title = subagentTitleFromPart(part);
+    final strut = StrutStyle(
+      fontSize: triggerStyle.fontSize,
+      height: triggerStyle.height,
+      fontWeight: triggerStyle.fontWeight,
+      forceStrutHeight: true,
+      leadingDistribution: TextLeadingDistribution.even,
+    );
     final label = title == null || title.isEmpty
         ? part.toolName
         : '${part.toolName} $title';
+    final labelSpan = title == null || title.isEmpty
+        ? TextSpan(text: part.toolName, style: triggerStyle)
+        : TextSpan(
+            style: triggerStyle,
+            children: [
+              TextSpan(
+                text: part.toolName,
+                style: markdown.toolNameEmphasis(triggerStyle),
+              ),
+              TextSpan(text: ' $title'),
+            ],
+          );
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: dense ? 4 : 6),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           GestureDetector(
             onTap: onToggle,
@@ -256,21 +277,37 @@ class _SubagentToolTrigger extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Semantics(
-              button: true,
-              label: label,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () => onOpenSubagent(part.toolCallId),
-                  behavior: HitTestBehavior.opaque,
-                  child: Text(
-                    label,
-                    style: triggerStyle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+            // Blank trailing space expands; label itself opens the preview.
+            child: GestureDetector(
+              onTap: onToggle,
+              behavior: HitTestBehavior.opaque,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: Semantics(
+                      button: true,
+                      label: label,
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: () => onOpenSubagent(part.toolCallId),
+                          behavior: HitTestBehavior.opaque,
+                          child: Text.rich(
+                            labelSpan,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            strutStyle: strut,
+                            textHeightBehavior: const TextHeightBehavior(
+                              applyHeightToFirstAscent: false,
+                              applyHeightToLastDescent: false,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
@@ -323,6 +360,15 @@ class _SummaryToolTrigger extends StatelessWidget {
       scheme.onSurfaceVariant,
       cancelled: cancelled,
     );
+    // Same muted chrome as Agent titles — not primary/blue link color.
+    final openTargetStyle = markdown.toolFileLink(triggerStyle, triggerColor);
+    final strut = StrutStyle(
+      fontSize: triggerStyle.fontSize,
+      height: triggerStyle.height,
+      fontWeight: triggerStyle.fontWeight,
+      forceStrutHeight: true,
+      leadingDistribution: TextLeadingDistribution.even,
+    );
     final basename = _pathBasename(target.path);
     final lineLabel = _lineLabel(target);
     final onOpenFile = actions.onOpenFile;
@@ -331,21 +377,23 @@ class _SummaryToolTrigger extends StatelessWidget {
         : '$basename $lineLabel';
 
     final fileLabelSpans = <InlineSpan>[
-      if (onOpenFile != null)
-        TextSpan(
-          text: basename,
-          style: markdown.link.copyWith(color: scheme.primary),
-        )
-      else
-        TextSpan(text: basename, style: triggerStyle),
+      TextSpan(
+        text: basename,
+        style: onOpenFile != null ? openTargetStyle : triggerStyle,
+      ),
       if (lineLabel != null)
         TextSpan(text: ' $lineLabel', style: mutedStyle),
     ];
 
     Widget fileLabelWidget = Text.rich(
-      TextSpan(children: fileLabelSpans),
+      TextSpan(style: triggerStyle, children: fileLabelSpans),
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
+      strutStyle: strut,
+      textHeightBehavior: const TextHeightBehavior(
+        applyHeightToFirstAscent: false,
+        applyHeightToLastDescent: false,
+      ),
     );
 
     if (onOpenFile != null) {
@@ -366,6 +414,7 @@ class _SummaryToolTrigger extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: dense ? 4 : 6),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           GestureDetector(
             onTap: onToggle,
@@ -374,22 +423,27 @@ class _SummaryToolTrigger extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Row(
-              children: [
-                Flexible(
-                  child: GestureDetector(
-                    onTap: onToggle,
-                    behavior: HitTestBehavior.opaque,
-                    child: Text(
-                      '${part.toolName} ',
-                      style: triggerStyle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+            // Trailing blank expands; basename opens the file when wired.
+            child: GestureDetector(
+              onTap: onToggle,
+              behavior: HitTestBehavior.opaque,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    '${part.toolName} ',
+                    style: triggerStyle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    strutStyle: strut,
+                    textHeightBehavior: const TextHeightBehavior(
+                      applyHeightToFirstAscent: false,
+                      applyHeightToLastDescent: false,
                     ),
                   ),
-                ),
-                Flexible(child: fileLabelWidget),
-              ],
+                  Flexible(child: fileLabelWidget),
+                ],
+              ),
             ),
           ),
           Semantics(

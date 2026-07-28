@@ -122,6 +122,15 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   void _setStickToEnd(bool value) {
     if (_stickToEnd == value) return;
     if (!mounted) return;
+    // Scroll notifications (incl. jumpTo) can arrive during layout/paint.
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase != SchedulerPhase.idle &&
+        phase != SchedulerPhase.postFrameCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _setStickToEnd(value);
+      });
+      return;
+    }
     setState(() {
       _stickToEnd = value;
       if (value) _showNewMessagesChip = false;
@@ -262,6 +271,18 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   void _setHoverEnabled(bool enabled) {
     if (_hoverEffectsEnabled.value == enabled) return;
+    // jumpTo / measure correction dispatch ScrollStart during layout; a sync
+    // ValueNotifier write would ValueListenableBuilder→setState mid-frame
+    // ("Build scheduled during frame").
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase != SchedulerPhase.idle &&
+        phase != SchedulerPhase.postFrameCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _setHoverEnabled(enabled);
+      });
+      return;
+    }
     _hoverEffectsEnabled.value = enabled;
   }
 

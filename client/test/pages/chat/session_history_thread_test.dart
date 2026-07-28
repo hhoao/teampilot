@@ -355,4 +355,72 @@ void main() {
       await tester.pump();
     },
   );
+
+  testWidgets(
+    'jumpTo during layout does not schedule build mid-frame',
+    (tester) async {
+      // Measure/stick jumps and Scrollable.jumpTo dispatch ScrollStart during
+      // layout. Hover suppress must not ValueNotifier→setState mid-frame
+      // ("Build scheduled during frame").
+      final store = ExternalStoreAiThreadRuntime()
+        ..setMessages(_soloUserMessages(20));
+      var jumpDuringLayout = false;
+
+      Widget tree() {
+        return MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('en'),
+          theme: ThemeData(extensions: [AiMessageTheme.test()]),
+          home: Scaffold(
+            body: Column(
+              children: [
+                SizedBox(
+                  width: 600,
+                  height: 300,
+                  child: SessionHistoryThread(
+                    runtime: store,
+                    hasOlder: false,
+                    isLoadingOlder: false,
+                    onLoadOlder: () {},
+                  ),
+                ),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (jumpDuringLayout) {
+                      final state = tester.state<ScrollableState>(
+                        find.byType(Scrollable).first,
+                      );
+                      final pos = state.position;
+                      final target = (pos.pixels - 40).clamp(
+                        0.0,
+                        pos.maxScrollExtent,
+                      );
+                      if ((pos.pixels - target).abs() > 0.5) {
+                        pos.jumpTo(target);
+                      }
+                    }
+                    return const SizedBox(height: 8);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(tree());
+      await tester.pumpAndSettle();
+
+      // Break stick + let hover resume so suppress path mutates notifier.
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, 120));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 160));
+      await tester.pump();
+
+      jumpDuringLayout = true;
+      await tester.pumpWidget(tree());
+      await tester.pump();
+    },
+  );
 }
