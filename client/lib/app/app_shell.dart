@@ -755,6 +755,7 @@ Future<AppShell> buildAppShell({
           required mcpServerIds,
           required description,
           required extraArgs,
+          hubSourceKey,
         }) => teamCubit.addClonedTeam(
           name: name,
           cli: cli,
@@ -765,6 +766,7 @@ Future<AppShell> buildAppShell({
           mcpServerIds: mcpServerIds,
           description: description,
           extraArgs: extraArgs,
+          hubSourceKey: hubSourceKey,
         ),
   );
   teamHubCubit = TeamHubCubit(
