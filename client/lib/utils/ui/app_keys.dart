@@ -216,6 +216,10 @@ class AppKeys {
     'member-config-command-preview',
   );
   static const chatInput = Key('chat-input');
+  static const sessionLaunchErrorBanner = Key('session-launch-error-banner');
+  static const sessionLaunchErrorRetryButton = Key(
+    'session-launch-error-retry-button',
+  );
   static const sendPromptButton = Key('send-prompt-button');
   static const copyPromptButton = Key('copy-prompt-button');
   static const openTeamLeadButton = Key('open-team-lead-button');

@@ -69,6 +69,8 @@ class SessionChatView extends StatefulWidget {
     this.team,
     this.launchError,
     this.onRemapDeadTarget,
+    this.onRetry,
+    this.sessionConnectInProgress = false,
     this.isSubmitting = false,
     this.isMailboxUnread,
     this.peekContinueChannel,
@@ -85,6 +87,8 @@ class SessionChatView extends StatefulWidget {
   final Future<HistoryContinueSubmitResult> Function(String message) onSubmit;
   final String? launchError;
   final VoidCallback? onRemapDeadTarget;
+  final VoidCallback? onRetry;
+  final bool sessionConnectInProgress;
   final bool isSubmitting;
 
   /// When non-null, mailbox Queued rows poll this until the member consumes mail.
@@ -1327,6 +1331,9 @@ class _SessionChatViewState extends State<SessionChatView> {
                                   slashBundle: _slashBundle(context),
                                   launchError: widget.launchError,
                                   onRemapDeadTarget: widget.onRemapDeadTarget,
+                                  onRetry: widget.onRetry,
+                                  sessionConnectInProgress:
+                                      widget.sessionConnectInProgress,
                                   onPasteImage: _pasteComposeImage,
                                   identityLabel: identityLabel,
                                   identityIcon: session.isSimple

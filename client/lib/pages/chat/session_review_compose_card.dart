@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../../l10n/l10n_extensions.dart';
 import '../../models/cli_preset.dart';
-import '../../services/workspace/dead_ssh_target_error.dart';
 import '../../models/config_bundle.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
@@ -14,6 +12,9 @@ import '../../widgets/compose/compose_permission_chip.dart';
 import '../../widgets/compose/compose_trigger_field.dart';
 import '../home_workspace/workspace/workspace_chat_landing_palette.dart';
 import '../home_workspace/workspace/workspace_chat_landing_voice_bar.dart';
+import 'session_launch_error_banner.dart';
+import 'session_launch_error_visibility.dart';
+import 'session_launch_failure_presenter.dart';
 
 /// Slim continue-compose for session history review (no landing chrome).
 class SessionReviewComposeCard extends StatelessWidget {
@@ -46,6 +47,8 @@ class SessionReviewComposeCard extends StatelessWidget {
     this.composeEnabled = true,
     this.launchError,
     this.onRemapDeadTarget,
+    this.onRetry,
+    this.sessionConnectInProgress = false,
     this.onPasteImage,
     this.floating = false,
     this.identityLabel,
@@ -95,6 +98,8 @@ class SessionReviewComposeCard extends StatelessWidget {
   final bool composeEnabled;
   final String? launchError;
   final VoidCallback? onRemapDeadTarget;
+  final VoidCallback? onRetry;
+  final bool sessionConnectInProgress;
   final Future<bool> Function()? onPasteImage;
   final bool floating;
 
@@ -130,13 +135,7 @@ class SessionReviewComposeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = WorkspaceChatLandingPalette(Theme.of(context).colorScheme);
     final spacing = context.tpSpacing;
-    final error = launchError?.trim();
-    final deadTargetId = deadSshTargetIdFromError(launchError);
-    final showRemap =
-        error != null &&
-        error.isNotEmpty &&
-        deadTargetId != null &&
-        onRemapDeadTarget != null;
+    final failure = presentSessionLaunchFailure(launchError);
 
     return ComposeFocusShell(
       focusNode: focusNode,
@@ -153,48 +152,16 @@ class SessionReviewComposeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (error != null && error.isNotEmpty) ...[
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.errorContainer.withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.error.withValues(alpha: 0.35),
-                  ),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: spacing.md,
-                    vertical: spacing.sm,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        error,
-                        style: TpTextStyles.of(context).smRelaxedColored(
-                          Theme.of(context).colorScheme.onErrorContainer,
-                        ),
-                      ),
-                      if (showRemap) ...[
-                        SizedBox(height: spacing.xs),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton(
-                            onPressed: onRemapDeadTarget,
-                            child: Text(
-                              context.l10n.workspaceDeadTargetRemapFromLaunch,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
+            if (shouldShowSessionLaunchErrorBanner(
+                  launchError: launchError,
+                  sessionConnectInProgress: sessionConnectInProgress,
+                ) &&
+                failure != null) ...[
+              SessionLaunchErrorBanner(
+                view: failure,
+                onRetry: onRetry,
+                onRemapDeadTarget: onRemapDeadTarget,
+                isRetrying: sessionConnectInProgress,
               ),
               SizedBox(height: spacing.md),
             ],

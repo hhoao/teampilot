@@ -42,6 +42,8 @@ import '../services/terminal/terminal_theme_for_launch.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../utils/session/workspace_sessions.dart';
 import '../../widgets/workspace_icon_picker_dialog.dart';
+import '../utils/logging/logger_utils.dart';
+import 'chat/session_launch_retry.dart';
 import 'chat/chat_connect_state_mixin.dart';
 import 'chat/session_data_store.dart';
 import 'chat/chat_session_shell_factory.dart';
@@ -1260,10 +1262,7 @@ class ChatCubit extends Cubit<ChatState>
   ///
   /// [memberId] is the shell key (`memberShells` / History `shellMemberId`),
   /// not only the active workspace tab.
-  bool isMemberRunning({
-    required String sessionId,
-    required String memberId,
-  }) {
+  bool isMemberRunning({required String sessionId, required String memberId}) {
     final tab = _tabStore.openTabBySessionId(sessionId);
     final shell = tab?.memberShells[memberId];
     return shell?.isRunning ?? false;
@@ -1293,6 +1292,43 @@ class ChatCubit extends Cubit<ChatState>
     SessionConnectRequest request, {
     SessionRepository? repo,
   }) => _launchService.connectWorkspaceSession(request, repo: repo);
+
+  /// Rebuilds and replays the connect request for a failed/disconnected
+  /// session — used by the launch-failure banner's Retry action.
+  Future<void> retrySessionLaunch(String sessionId) async {
+    final id = sessionId.trim();
+    if (id.isEmpty) return;
+    final tab = _tabStore.openTabBySessionId(id);
+    AppSession? session;
+    for (final s in state.sessions) {
+      if (s.sessionId == id) {
+        session = s;
+        break;
+      }
+    }
+    session ??= tab?.persistedSession;
+    if (session == null) return;
+
+    TeamProfile? team;
+    final teamId = session.sessionTeam.trim();
+    if (teamId.isNotEmpty) {
+      team = await teamProfileById(teamId);
+    }
+
+    final request = buildRetryExistingSessionConnect(
+      session: session,
+      selectedMemberId: tab?.selectedMemberId ?? state.selectedMemberId,
+      team: team,
+    );
+    if (request == null) {
+      AppLogger.instance.w(
+        'retrySessionLaunch: no team profile for team session $id '
+        '(teamId=${teamId.isEmpty ? "?" : teamId})',
+      );
+      return;
+    }
+    await connectWorkspaceSession(request);
+  }
 
   void disconnectSession() {
     final tab = activeTab;

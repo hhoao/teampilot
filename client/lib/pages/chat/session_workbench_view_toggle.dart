@@ -2,10 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:collection/collection.dart';
 
 import '../../cubits/chat_cubit.dart';
-import '../../cubits/chat/model/session_connect_request.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
@@ -13,7 +11,8 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
 import '../../utils/ui/app_keys.dart';
-import '../../utils/team/team_member_naming.dart';
+import '../../cubits/chat/session_launch_retry.dart';
+import '../../utils/logging/logger_utils.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 /// Tab-bar control to switch a session between Chat and Terminal.
@@ -56,11 +55,7 @@ class SessionWorkbenchViewToggle extends StatelessWidget {
           : l10n.sessionWorkbenchShowChat,
       color: cs.onSurfaceVariant,
       onTap: () => unawaited(
-        _toggle(
-          context,
-          sessionId: sessionId,
-          showingChat: showingChat,
-        ),
+        _toggle(context, sessionId: sessionId, showingChat: showingChat),
       ),
     );
   }
@@ -87,31 +82,24 @@ class SessionWorkbenchViewToggle extends StatelessWidget {
       if (session == null) return;
 
       final isPersonal = session.sessionTeam.trim().isEmpty;
-      TeamProfile? resolvedTeam = team;
-      TeamMemberConfig? member;
-      if (!isPersonal) {
-        resolvedTeam ??= _teamForSession(context, session);
-        if (resolvedTeam != null) {
-          final mid = tab.selectedMemberId.trim();
-          if (mid.isNotEmpty) {
-            member = resolvedTeam.members
-                .where((m) => m.id == mid)
-                .firstOrNull;
-          }
-          member ??= resolvedTeam.members
-              .where(TeamMemberNaming.isTeamLead)
-              .firstOrNull;
-          member ??= resolvedTeam.members.firstOrNull;
-        }
-      }
+      final resolvedTeam = isPersonal
+          ? null
+          : (team ?? _teamForSession(context, session));
 
-      await chat.connectWorkspaceSession(
-        ExistingSessionConnect(
-          session: session,
-          team: isPersonal ? null : resolvedTeam,
-          member: isPersonal ? null : member,
-        ),
+      final request = buildRetryExistingSessionConnect(
+        session: session,
+        selectedMemberId: tab.selectedMemberId,
+        team: resolvedTeam,
+        preserveWorkbenchView: false,
       );
+      if (request == null) {
+        AppLogger.instance.w(
+          'SessionWorkbenchViewToggle: no team profile for team session '
+          '${session.sessionId}',
+        );
+        return;
+      }
+      await chat.connectWorkspaceSession(request);
       return;
     }
 

@@ -41,6 +41,9 @@ import 'chat/history_continue_delivery.dart';
 import 'chat/session_chat_continue_seat.dart';
 import 'chat/session_chat_view.dart';
 import 'chat/session_history_review_submit.dart';
+import 'chat/session_launch_error_banner.dart';
+import 'chat/session_launch_error_visibility.dart';
+import 'chat/session_launch_failure_presenter.dart';
 
 class ChatWorkbench extends StatefulWidget {
   const ChatWorkbench({
@@ -468,6 +471,12 @@ class _ChatWorkbenchBody extends StatelessWidget {
     final showChat = overlay == ChatWorkbenchOverlay.chat;
     final showSessionStarting =
         overlay == ChatWorkbenchOverlay.sessionStarting;
+    final failure = presentSessionLaunchFailure(launchError);
+    final showTerminalLaunchError = shouldShowTerminalSessionLaunchErrorBanner(
+      overlay: overlay,
+      launchError: launchError,
+      sessionConnectInProgress: sessionConnectInProgress,
+    );
 
     // Keep Alacritty mounted across title-bar workspace tab switches; hide with
     // [Offstage] so scrollback survives when the tab returns to foreground.
@@ -514,10 +523,44 @@ class _ChatWorkbenchBody extends StatelessWidget {
                   chatCubit: chatCubit,
                   team: team,
                   launchError: launchError,
+                  sessionConnectInProgress: sessionConnectInProgress,
                 )
               else if (showSessionStarting)
                 ChatWorkbenchSessionLoadingView(
                   message: context.l10n.sessionStarting,
+                ),
+              if (showTerminalLaunchError && failure != null)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Padding(
+                      padding: EdgeInsets.all(context.tpSpacing.md),
+                      child: SessionLaunchErrorBanner(
+                        view: failure,
+                        isRetrying: sessionConnectInProgress,
+                        onRetry: () {
+                          final id = slice.activeSessionId;
+                          if (id == null || id.isEmpty) return;
+                          unawaited(chatCubit.retrySessionLaunch(id));
+                        },
+                        onRemapDeadTarget: deadSshTargetIdFromError(launchError) != null
+                            ? () {
+                                final id = slice.activeSessionId;
+                                if (id == null || id.isEmpty) return;
+                                unawaited(
+                                  onRemapDeadTargetFromLaunch(
+                                    launchError: launchError!,
+                                    sessionId: id,
+                                  ),
+                                );
+                              }
+                            : null,
+                      ),
+                    ),
+                  ),
                 ),
             ],
           ),
@@ -543,6 +586,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
     required ChatCubit chatCubit,
     required TeamProfile? team,
     required String? launchError,
+    required bool sessionConnectInProgress,
   }) {
     final appSession = _resolveAppSession(chatCubit: chatCubit, slice: slice);
     if (appSession == null) {
@@ -597,6 +641,10 @@ class _ChatWorkbenchBody extends StatelessWidget {
       team: resolvedTeam,
       routeActive: routeActive,
       launchError: launchError,
+      sessionConnectInProgress: sessionConnectInProgress,
+      onRetry: () => unawaited(
+        chatCubit.retrySessionLaunch(appSession.sessionId),
+      ),
       peekContinueChannel: resolveChannel,
       isMailboxUnread: (mailId) {
         final bus = chatCubit.sessionRuntime.busForSession(
