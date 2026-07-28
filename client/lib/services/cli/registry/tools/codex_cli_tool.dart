@@ -29,6 +29,7 @@ import '../../../provider/codex/codex_provider_form_capability.dart';
 import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
+import '../capabilities/turn_interrupt_capability.dart';
 import '../mcp_writers/codex_mcp_config_writer.dart';
 import '../plugin_provisioners/codex_plugin_provisioner.dart';
 import '../resources/default_resource_capability.dart';
@@ -57,6 +58,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.providerForm = const CodexProviderFormCapability(),
     this.resource = const DefaultResourceCapability(),
     this.mcpConfigWriter = const CodexMcpConfigWriter(),
+    this.turnInterrupt = const CtrlCTurnInterrupt(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? CodexProviderCredentialCapability();
@@ -84,6 +86,7 @@ final class CodexCliTool implements CliToolDefinition {
 
   final BusTransportCapability busTransport;
   final RemoteCliLocatorCapability remoteCliLocator;
+  final TurnInterruptCapability turnInterrupt;
 
   @override
   CliTool get id => CliTool.codex;
@@ -114,5 +117,6 @@ final class CodexCliTool implements CliToolDefinition {
     headlessProvision,
     resource,
     mcpConfigWriter,
+    turnInterrupt,
   ];
 }

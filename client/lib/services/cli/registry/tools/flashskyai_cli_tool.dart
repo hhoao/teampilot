@@ -29,6 +29,7 @@ import '../../../provider/flashskyai/flashskyai_provider_form_capability.dart';
 import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
+import '../capabilities/turn_interrupt_capability.dart';
 import '../mcp_writers/claude_mcp_config_writer.dart';
 import '../plugin_provisioners/flashskyai_plugin_provisioner.dart';
 import '../resources/default_resource_capability.dart';
@@ -57,6 +58,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.providerForm = const FlashskyaiProviderFormCapability(),
     this.resource = const DefaultResourceCapability(),
     this.mcpConfigWriter = const FlashskyaiMcpConfigWriter(),
+    this.turnInterrupt = const CtrlCTurnInterrupt(),
   });
 
   final LaunchArgsCapability launchArgs;
@@ -80,6 +82,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
 
   final BusTransportCapability busTransport;
   final RemoteCliLocatorCapability remoteCliLocator;
+  final TurnInterruptCapability turnInterrupt;
 
   @override
   CliTool get id => CliTool.flashskyai;
@@ -114,5 +117,6 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     headlessProvision,
     resource,
     mcpConfigWriter,
+    turnInterrupt,
   ];
 }
