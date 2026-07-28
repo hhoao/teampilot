@@ -145,6 +145,9 @@ change set / follow-up tasks as call sites break.
 
 - [ ] **Step 4: Run tests — PASS**
 
+Run only package tests here (`ai_message_core`). Client `flutter analyze` may
+fail until Task 5 updates inflater/`sidePath` call sites — that is expected.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -520,8 +523,9 @@ EOF
 Cover:
 1. `args.resume` / UUID → `{root}/{uuid}/{uuid}.jsonl` hit
 2. Prompt heuristic: sibling first user matches normalized prompt; excludes parent stem
-3. Never reads `…/subagents/…` even if present next to parent
-4. Miss → null
+3. Multiple text matches → pick nearest file mtime to parent tool-call `createdAt` (else parent transcript mtime); same mtime tie → null
+4. Never reads `…/subagents/…` even if present next to parent
+5. Miss → null
 
 Normalize helper: strip leading timestamp lines / unwrap `user_query` if present (match real Cursor Task shapes from research).
 
@@ -530,8 +534,7 @@ Derive `agent-transcripts` root from parent file handle:
 
 - [ ] **Step 2: Implement resolver** — parse with `CursorAiTranscriptAdapter` on a one-fragment bundle (or shared JSONL parse path Cursor already uses)
 
-- [ ] **Step 3: Wire into Cursor capability; tests PASS
-
+- [ ] **Step 3: Wire into Cursor capability; tests PASS**
 - [ ] **Step 4: Commit**
 
 ```bash
