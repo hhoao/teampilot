@@ -214,6 +214,9 @@ class AppPaths {
   static String teamHubFavoritesJsonForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'team-hub/favorites.json');
 
+  static String teamHubRecentJsonForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'team-hub/recent.json');
+
   static String memberHubDirForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'member-hub');
 
@@ -298,6 +301,8 @@ class AppPaths {
       teamHubRegistriesJsonForTeampilotRoot(basePath);
   String get teamHubFavoritesJson =>
       teamHubFavoritesJsonForTeampilotRoot(basePath);
+  String get teamHubRecentJson =>
+      teamHubRecentJsonForTeampilotRoot(basePath);
 
   String get memberHubDir => memberHubDirForTeampilotRoot(basePath);
   String get memberHubFavoritesJson =>
