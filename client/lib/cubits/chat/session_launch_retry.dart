@@ -1,9 +1,9 @@
 import 'package:collection/collection.dart';
 
-import '../../cubits/chat/model/session_connect_request.dart';
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
 import '../../utils/team/team_member_naming.dart';
+import 'model/session_connect_request.dart';
 
 /// Rebuilds an [ExistingSessionConnect] for [session], resolving the member
 /// (for team sessions) the same way [SessionWorkbenchViewToggle] does:

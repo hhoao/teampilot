@@ -1,10 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
+import 'package:teampilot/cubits/chat/session_launch_retry.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
-import 'package:teampilot/pages/chat/session_launch_retry.dart';
-import 'package:teampilot/utils/team/team_member_naming.dart';
 
 AppSession _simpleSession() => AppSession(
   sessionId: 's1',
@@ -31,8 +30,17 @@ TeamProfile _team() => const TeamProfile(
   id: 'team-1',
   name: 'Team',
   members: [
-    TeamMemberConfig(id: TeamMemberNaming.teamLeadName, name: 'team-lead'),
+    TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
     TeamMemberConfig(id: 'developer', name: 'Developer'),
+  ],
+);
+
+TeamProfile _teamWithoutLead() => const TeamProfile(
+  id: 'team-1',
+  name: 'Team',
+  members: [
+    TeamMemberConfig(id: 'developer', name: 'Developer'),
+    TeamMemberConfig(id: 'reviewer', name: 'Reviewer'),
   ],
 );
 
@@ -65,7 +73,16 @@ void main() {
       selectedMemberId: '',
       team: _team(),
     )!;
-    expect(req.member?.id, TeamMemberNaming.teamLeadName);
+    expect(req.member?.id, 'team-lead');
+  });
+
+  test('team without lead falls back to first member when selection empty', () {
+    final req = buildRetryExistingSessionConnect(
+      session: _teamSession(),
+      selectedMemberId: '',
+      team: _teamWithoutLead(),
+    )!;
+    expect(req.member?.id, 'developer');
   });
 
   test('toggle path can force preserveWorkbenchView false', () {

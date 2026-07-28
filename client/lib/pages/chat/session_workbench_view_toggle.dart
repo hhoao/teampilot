@@ -11,7 +11,8 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
 import '../../utils/ui/app_keys.dart';
-import 'session_launch_retry.dart';
+import '../../cubits/chat/session_launch_retry.dart';
+import '../../utils/logging/logger_utils.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 /// Tab-bar control to switch a session between Chat and Terminal.
@@ -91,7 +92,13 @@ class SessionWorkbenchViewToggle extends StatelessWidget {
         team: resolvedTeam,
         preserveWorkbenchView: false,
       );
-      if (request == null) return;
+      if (request == null) {
+        AppLogger.instance.w(
+          'SessionWorkbenchViewToggle: no team profile for team session '
+          '${session.sessionId}',
+        );
+        return;
+      }
       await chat.connectWorkspaceSession(request);
       return;
     }

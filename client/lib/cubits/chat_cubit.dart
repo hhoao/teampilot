@@ -42,7 +42,8 @@ import '../services/terminal/terminal_theme_for_launch.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../utils/session/workspace_sessions.dart';
 import '../../widgets/workspace_icon_picker_dialog.dart';
-import '../pages/chat/session_launch_retry.dart';
+import '../utils/logging/logger_utils.dart';
+import 'chat/session_launch_retry.dart';
 import 'chat/chat_connect_state_mixin.dart';
 import 'chat/session_data_store.dart';
 import 'chat/chat_session_shell_factory.dart';
@@ -1319,7 +1320,13 @@ class ChatCubit extends Cubit<ChatState>
       selectedMemberId: tab?.selectedMemberId ?? state.selectedMemberId,
       team: team,
     );
-    if (request == null) return;
+    if (request == null) {
+      AppLogger.instance.w(
+        'retrySessionLaunch: no team profile for team session $id '
+        '(teamId=${teamId.isEmpty ? "?" : teamId})',
+      );
+      return;
+    }
     await connectWorkspaceSession(request);
   }
 
