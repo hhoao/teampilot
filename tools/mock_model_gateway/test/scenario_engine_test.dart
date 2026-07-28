@@ -67,6 +67,41 @@ void main() {
     );
   });
 
+  test('resetActor rewinds one seat without touching others', () {
+    final engine = ScenarioEngine({
+      'lead': MockScenario(
+        turns: [
+          TextTurn('lead-1'),
+          TextTurn('lead-2'),
+        ],
+      ),
+      'worker': MockScenario(
+        turns: [
+          TextTurn('worker-1'),
+          TextTurn('worker-2'),
+        ],
+      ),
+    });
+
+    expect((engine.nextTurn('lead') as TextTurn).text, 'lead-1');
+    expect((engine.nextTurn('worker') as TextTurn).text, 'worker-1');
+    expect(engine.peekTurnIndex('lead'), 1);
+    expect(engine.peekTurnIndex('worker'), 1);
+
+    engine.resetActor('lead');
+    expect(engine.peekTurnIndex('lead'), 0);
+    expect(engine.peekTurnIndex('worker'), 1);
+    expect((engine.nextTurn('lead') as TextTurn).text, 'lead-1');
+    expect((engine.nextTurn('worker') as TextTurn).text, 'worker-2');
+  });
+
+  test('resetActor rejects unknown actors', () {
+    final engine = ScenarioEngine({
+      'lead': MockScenario(turns: [TextTurn('lead-1')]),
+    });
+    expect(() => engine.resetActor('missing'), throwsStateError);
+  });
+
   test('resolves AssignedTaskUpdateTurn toolRef via ToolNameResolver', () {
     final engine = ScenarioEngine(
       {

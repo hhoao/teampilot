@@ -93,6 +93,13 @@ class MockModelGatewayServer {
   /// Clears scripted turn indices so the next API call replays from turn 0.
   void resetScenarios() => _engine.reset();
 
+  /// Rewinds one actor's scenario index (see [ScenarioEngine.resetActor]).
+  void resetScenario(String apiKey) => _engine.resetActor(apiKey);
+
+  /// Number of scripted turns already consumed for [apiKey] (survives resets
+  /// of other actors; resets of this actor rewind the index to 0).
+  int turnIndexFor(String apiKey) => _engine.peekTurnIndex(apiKey);
+
   int requestCountFor(String apiKey) =>
       _requestLog
           .where((e) => e.apiKey == apiKey && e.turnIndex >= 0)

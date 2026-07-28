@@ -544,8 +544,10 @@ final class CliMessageMatrixHarness {
     );
     await bootComposeSeatToPrompt(timeout: timeout);
     // Worker idle-announce may doorbell the lead and consume scripted gateway
-    // turns before History compose; reset so collab replays from turn 0.
-    server.resetScenarios();
+    // turns before History compose. Rewind only the lead — a full
+    // [resetScenarios] also rewinds the parked worker to turn 0, so its next
+    // model call re-serves wait_for_message instead of pong (~120s flake).
+    server.resetScenario(leadScriptApiKey);
     return submitCompose(prompt);
   }
 
@@ -881,24 +883,39 @@ final class CliMessageMatrixHarness {
     await history?.refreshMailboxTimeline();
   }
 
+  /// Waits until the mock gateway has advanced far enough for [apiKey].
+  ///
+  /// When [byScenarioIndex] is true (mixed collab completion gates), progress
+  /// is [MockModelGatewayServer.turnIndexFor] — the live script cursor — so a
+  /// lead-only [MockModelGatewayServer.resetScenario] does not let stale
+  /// pre-reset [requestCountFor] entries satisfy the wait early.
+  ///
+  /// Simple/native incremental gates keep the default request-log counter.
   Future<void> waitForGatewayTurns({
     required String apiKey,
     required int minTurns,
+    bool byScenarioIndex = false,
     Duration timeout = const Duration(seconds: 120),
   }) async {
     final server = gateway;
     if (server == null) {
       throw StateError('startGateway before waitForGatewayTurns');
     }
+    int progress() => byScenarioIndex
+        ? server.turnIndexFor(apiKey)
+        : server.requestCountFor(apiKey);
     final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
-      if (server.requestCountFor(apiKey) >= minTurns) return;
+      if (progress() >= minTurns) return;
       await drainPendingAsyncWork();
       await Future<void>.delayed(const Duration(milliseconds: 200));
     }
     throw StateError(
       'Timed out waiting for ≥$minTurns gateway turns for apiKey=$apiKey '
-      '(have ${server.requestCountFor(apiKey)})\n'
+      '(have ${progress()}'
+      '${byScenarioIndex ? ' scenarioIndex' : ' requestCount'}; '
+      'requestCount=${server.requestCountFor(apiKey)}, '
+      'scenarioIndex=${server.turnIndexFor(apiKey)})\n'
       '${diagnosticsBundle()}',
     );
   }

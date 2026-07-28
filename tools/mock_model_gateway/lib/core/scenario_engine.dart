@@ -77,4 +77,17 @@ class ScenarioEngine {
       _indices[k] = 0;
     }
   }
+
+  /// Resets one actor's turn index without touching other seats.
+  ///
+  /// Mixed-matrix park+compose must rewind the lead after idle-announce
+  /// doorbell traffic without also rewinding a worker already parked on
+  /// `wait_for_message` — a full [reset] would re-serve turn 0 and strand
+  /// the worker on a second wait until MCP cancel (~120s).
+  void resetActor(String actorId) {
+    if (!_scenarios.containsKey(actorId)) {
+      throw StateError('unknown actor: $actorId');
+    }
+    _indices[actorId] = 0;
+  }
 }
