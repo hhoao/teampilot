@@ -561,7 +561,7 @@ class ChatCubit extends Cubit<ChatState>
 
     final cli = SessionMemberCliResolver.resolve(
       persistedSession: tab.persistedSession,
-      team: _activeTeam,
+      team: _teamForSessionTab(tab),
       memberId: mid,
       cliForMember: _shellFactory.cliForMember,
       globalPresets: _lifecycle.globalPresets,

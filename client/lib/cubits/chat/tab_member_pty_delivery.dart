@@ -67,6 +67,9 @@ final class TabMemberPtyDelivery {
 
   void abortMemberInject(String sessionId, String memberId) {
     _ptyInject.requestAbort(sessionId, memberId);
+    if (!_ptyInject.isBusy(sessionId, memberId)) {
+      _ptyInject.clearAbort(sessionId, memberId);
+    }
   }
 
   void tickRetries({
