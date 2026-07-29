@@ -22,6 +22,8 @@
 | `client/packages/ai_message_ui/lib/src/parts/tool_call_part_view.dart` | Shell branch, `_ShellToolTrigger`, terminal expand panel |
 | `client/packages/ai_message_ui/test/tool_call_shell_target_test.dart` | Widget tests for shell chrome |
 | `client/packages/ai_message_ui/test/tool_call_file_target_test.dart` | Update/remove obsolete `Bash keeps legacy` assertion |
+| `client/packages/ai_message_ui/test/tool_call_subagent_preview_test.dart` | May also assert Bash legacy — update in Task 3 if needed |
+| `client/packages/ai_message_ui/test/ai_message_parts_test.dart` | Bash+command localized assertions may need shell summary |
 
 ---
 
