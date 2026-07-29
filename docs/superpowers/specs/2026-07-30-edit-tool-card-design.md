@@ -16,7 +16,7 @@ non-edit file tools keep today’s summary chrome.
 |-------|--------|
 | Tool scope | Edit-class only: Write / StrReplace / ApplyPatch / Edit / Create / … |
 | Visual target | Always-visible card: basename + badges + ~3–5 line mini-diff |
-| Syntax highlight | Yes; port-based highlighter with plain fallback |
+| Syntax highlight | Yes via host-injected highlighter; package default is plain |
 | Diff data | Args-first hunk codecs; optional disk context enricher |
 | Interaction | Tap filename → `onOpenFile`; chevron → expand full hunk |
 | CoT grouping | Unchanged — edit cards stay inside CoT |
@@ -52,12 +52,18 @@ When edit chrome is used:
 
 - **Collapsed (default):** always shows header **and** mini-diff preview
   (not header-only like shell).
-- **Expanded:** full hunk replaces any shared args JSON / `Result:` block
-  (same “dedicated body only” rule as shell).
+- **Expanded:** the **same** diff region grows from the truncated preview to
+  the full `hunk.lines` list (one widget, not mini-diff stacked above a second
+  full hunk). No shared args JSON / `Result:` block (same “dedicated body
+  only” rule as shell).
+
+`DefaultAiEditToolTargetResolver` is constructed as `const` inside the view
+(same pattern as shell), unless host injection of custom codecs is needed
+later.
 
 CoT (`groupMessageParts` / `AiChainOfThoughtView`), `initiallyExpanded`, and
 `cotExpandToolsOnOpen` stay as today. `initiallyExpanded` expands the **full
-hunk** body; the mini-diff remains visible either way.
+hunk** body; the header + badges stay visible either way.
 
 ### Layering (extensibility-first)
 
@@ -157,6 +163,12 @@ Encode rules:
 - Require non-empty path **or** (for unified diff only) a parseable `---`/`+++`
   path header.
 - Require at least one `add` or `remove` line after encode.
+- **StrReplace / Edit line mapping:** split `old_string` / `new_string` on
+  `\n` (retain empty trailing semantics consistently). Emit one `remove` line
+  per old line and one `add` line per new line (no Myers/LCS unify in v1).
+  Badge counts = those remove/add line counts. Optional identical prefix/suffix
+  lines may stay as paired remove+add (do not invent context lines from args
+  alone).
 - Optional `start_line` / `startLine` on StrReplace → set `hunk.startLine`
   and number consecutive lines when disk enricher has not run yet.
 - Very large Write contents: codec may cap **encoded** `lines` for memory
@@ -209,7 +221,11 @@ Export from `ai_message_core.dart` alongside shell/file targets.
 
 - Tap basename (and optional line-number gutter) calls
   `AiToolFileActions.onOpenFile` with
-  `AiToolFileTarget(path: hunk.path, startLine: hunk.startLine ?? first numbered line, endLine: …)`
+  `AiToolFileTarget(
+     path: hunk.path,
+     startLine: hunk.startLine ?? first numbered line,
+     endLine: last numbered line in hunk (or null if none),
+   )`
 - If `onOpenFile` is null, title is non-interactive (same as file summary)
 
 ### Highlighter port
@@ -225,14 +241,16 @@ abstract class AiEditLineHighlighter {
 }
 ```
 
-- Default: `ReHighlightEditLineHighlighter` (reuse editor `re_highlight` /
-  `EditorSyntaxTheme` palettes by extension → language).
-- Fallback: `PlainEditLineHighlighter` (base style only).
-- Per-line try/catch → plain for that line; never fail the card.
+**Package boundary:** `ai_message_ui` must not depend on app-layer
+`client/lib/services/editor_platform/` or pull `re_highlight` solely for this
+card unless the package already owns that dependency. v1 default **inside**
+`ai_message_ui` is `PlainEditLineHighlighter`. The History host injects a
+`ReHighlightEditLineHighlighter` (or equivalent) through `AiToolFileActions`
+so syntax colors match the editor without breaking package layering.
 
-Host may override via `AiToolFileActions` (or a dedicated
-`AiEditCardActions` scope if file actions grow too wide — prefer extending
-`AiToolFileActions` first for one InheritedWidget).
+- Host override via `AiToolFileActions.lineHighlighter` (preferred) or a
+  dedicated `AiEditCardActions` scope if file actions grow too wide.
+- Per-line try/catch → plain for that line; never fail the card.
 
 ### Context enricher port
 
