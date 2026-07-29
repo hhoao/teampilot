@@ -337,6 +337,12 @@ class _SessionChatViewState extends State<SessionChatView> {
               if (!mounted) return;
               _maybeStartLiveRefreshForRunningPty();
               if (seat.state.awaitingAssistant) {
+                // Remount latch was reset — clear Running if already idle.
+                _reconcileAwaitingAfterHistoryLoad(
+                  context.read<ChatCubit>().state,
+                );
+              }
+              if (seat.state.awaitingAssistant) {
                 unawaited(_startLiveRefresh(skipInitialRefresh: true));
               }
             }),
@@ -357,6 +363,12 @@ class _SessionChatViewState extends State<SessionChatView> {
             if (!mounted) return;
             _maybeStartLiveRefreshForRunningPty();
             // Landing seed / continue awaiting: refresh while PTY runs offstage.
+            // Remount latch was reset — clear Running if already idle.
+            if (seat.state.awaitingAssistant) {
+              _reconcileAwaitingAfterHistoryLoad(
+                context.read<ChatCubit>().state,
+              );
+            }
             if (seat.state.awaitingAssistant) {
               unawaited(_startLiveRefresh(skipInitialRefresh: true));
             }
@@ -1085,6 +1097,27 @@ class _SessionChatViewState extends State<SessionChatView> {
         _scheduleAwaitingIdleGrace();
         return;
     }
+  }
+
+  /// Post-load remount path: [_sawSessionWorkingWhileAwaiting] was reset with
+  /// the State, so edge-based sync alone may leave Running for a grace window.
+  void _reconcileAwaitingAfterHistoryLoad(ChatState chat) {
+    final seat = _seat;
+    if (seat == null) return;
+    final working = chat.workingSessionIds.contains(widget.session.sessionId);
+    if (!shouldClearAwaitingOnHistoryRemount(
+      awaitingAssistant: seat.state.awaitingAssistant,
+      sessionWorking: working,
+    )) {
+      if (working && seat.state.awaitingAssistant) {
+        _sawSessionWorkingWhileAwaiting = true;
+        _cancelAwaitingIdleGrace();
+      }
+      return;
+    }
+    seat.flushHeldTip(endAwaiting: true);
+    _sawSessionWorkingWhileAwaiting = false;
+    _cancelAwaitingIdleGrace();
   }
 
   @override

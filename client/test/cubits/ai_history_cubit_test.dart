@@ -316,6 +316,39 @@ void main() {
     expect(cubit.state.awaitingAssistant, isFalse);
   });
 
+  test(
+    'softReload after idle clear does not revive awaiting via leftover pending',
+    () async {
+      // Turn ended (sidebar working cleared) while optimistic pending is still
+      // unmatched — softReload must not force Running chrome back on.
+      holderMessages = messages(2);
+      locator.emitBundle = true;
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+
+      cubit.enqueuePendingUser('stop me');
+      expect(cubit.state.awaitingAssistant, isTrue);
+
+      cubit.flushHeldTip(endAwaiting: true);
+      expect(cubit.state.awaitingAssistant, isFalse);
+      expect(
+        seatRuntime().messages.where((m) => m.id.startsWith('pending:')),
+        isNotEmpty,
+      );
+
+      await cubit.softReload();
+
+      expect(cubit.state.awaitingAssistant, isFalse);
+      expect(
+        seatRuntime().messages.where((m) => m.id.startsWith('pending:')),
+        isNotEmpty,
+      );
+    },
+  );
+
   test('read mailbox mail merged via timeline survives softReload', () async {
     holderMessages = messages(2);
     locator.emitBundle = true;
@@ -545,6 +578,35 @@ void main() {
     expect(cubit.state.status, AiHistoryViewStatus.empty);
     expect(seatRuntime().messages, isEmpty);
   });
+
+  test(
+    'softReloadOrLoad keeps pending-only first bubble when transcript still missing',
+    () async {
+      locator.emitBundle = false;
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+      cubit.enqueuePendingUser('能不能做个番茄钟');
+      expect(cubit.state.status, AiHistoryViewStatus.ready);
+      expect(cubit.state.awaitingAssistant, isTrue);
+
+      // Remount / switch-back path — transcript still not locatable.
+      await cubit.softReloadOrLoad(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+
+      expect(cubit.state.status, AiHistoryViewStatus.ready);
+      expect(cubit.state.awaitingAssistant, isTrue);
+      expect(
+        (seatRuntime().messages.single.parts.single as AiTextPart).text,
+        '能不能做个番茄钟',
+      );
+    },
+  );
 
   test('softReloadOrLoad soft-reloads when already ready for same seat', () async {
     holderMessages = messages(2);

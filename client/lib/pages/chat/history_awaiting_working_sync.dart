@@ -38,6 +38,16 @@ HistoryAwaitingWorkingAction resolveHistoryAwaitingWorkingAction({
   return HistoryAwaitingWorkingAction.scheduleGraceClear;
 }
 
+/// After History remount/load: clear Running when already idle.
+///
+/// Widget latch [_sawSessionWorkingWhileAwaiting] resets on remount, so the
+/// normal falling-edge sync may only schedule a grace clear. Remount while
+/// `workingSessionIds` is empty means the turn is not running — clear now.
+bool shouldClearAwaitingOnHistoryRemount({
+  required bool awaitingAssistant,
+  required bool sessionWorking,
+}) => awaitingAssistant && !sessionWorking;
+
 /// Grace before clearing awaiting when the seat never enters workingSessionIds
 /// (permission-only pause, missed latch). Long enough that submit→working lag
 /// does not drop Running chrome.

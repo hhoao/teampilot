@@ -725,10 +725,11 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
 
   /// Soft reload must not clear this — a turn may flush many assistant messages.
   /// Host clears via [flushHeldTip] / [setAwaitingAssistant] when idle (or send fails).
-  bool _computeAwaitingAssistant() {
-    if (_pendingQueue.isNotEmpty) return true;
-    return state.awaitingAssistant;
-  }
+  ///
+  /// Do **not** force `true` from leftover optimistic pendings: after the seat
+  /// goes idle (sidebar working cleared), unmatched pendings may linger until
+  /// the transcript catches up; softReload must not revive Running chrome.
+  bool _computeAwaitingAssistant() => state.awaitingAssistant;
 
   void _remergePendingsOntoRuntime() {
     final slice = _visibleSlice();
