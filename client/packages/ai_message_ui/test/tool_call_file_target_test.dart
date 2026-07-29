@@ -49,15 +49,15 @@ void main() {
     expect(find.textContaining('ok'), findsOneWidget);
   });
 
-  testWidgets('Bash keeps legacy Used tool chrome', (tester) async {
+  testWidgets('Grep still shows Used tool chrome', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
           body: AiToolCallPartView(
             part: AiToolCallPart(
               toolCallId: '1',
-              toolName: 'Bash',
-              args: {'command': 'ls'},
+              toolName: 'Grep',
+              args: {'pattern': 'foo'},
             ),
           ),
         ),
