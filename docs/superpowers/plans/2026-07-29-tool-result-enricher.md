@@ -265,9 +265,22 @@ messages = await cap.toolResultEnricher.enrich(
 
 Apply in cold load and any live-refresh parse path in this file.
 
-- [ ] **Step 3: Cursor locate watch**
+- [ ] **Step 3: Cursor locate watch + cache token fingerprint**
 
-Raise `changeWatchRoot` to `projects/{slug}/`. Include `terminals/` in watch/cache strategy so new `*.txt` invalidate History (prefer project root watch; add `terminalsDir` to `cacheTokenPaths` only if token helper accepts directories).
+Raise `changeWatchRoot` to `projects/{slug}/` so file watches see both
+`agent-transcripts/` and `terminals/`.
+
+**Required (not optional):** fold a `terminals/` fingerprint into the
+`hints['cacheToken']` string (or equivalent token input) so that creating /
+updating `*.txt` changes the token. Today `aiHistoryPathCacheToken` / live
+refresh often only stats the transcript **file** — directory-only
+`cacheTokenPaths` may not invalidate. Prefer e.g. concatenate transcript
+token with a hash/mtime summary of `terminals/*.txt` (empty dir → stable
+sentinel). Without this, softReload can hit stale cache and skip re-enrich.
+
+Add a failing/unit assertion in `cursor_ai_transcript_test.dart` that
+`changeWatchRoot` is the project root and that the cache token changes when
+a terminal file is added (temp CURSOR_CONFIG_DIR tree).
 
 - [ ] **Step 4: PASS**
 
