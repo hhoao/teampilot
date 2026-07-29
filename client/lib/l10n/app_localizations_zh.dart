@@ -5786,7 +5786,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get runMoreActions => '更多运行操作';
 
   @override
-  String get runSelectConfiguration => '选择配置';
+  String get runSelectConfiguration => '启动';
+
+  @override
+  String get runEditorSelectConfiguration => '选择配置';
 
   @override
   String runCompoundConfiguration(String name) {

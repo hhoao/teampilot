@@ -2271,7 +2271,8 @@
   "runBuild": "构建",
   "runBuildUnavailable": "构建功能尚未提供",
   "runMoreActions": "更多运行操作",
-  "runSelectConfiguration": "选择配置",
+  "runSelectConfiguration": "启动",
+  "runEditorSelectConfiguration": "选择配置",
   "runCompoundConfiguration": "{name}（组合）",
   "@runCompoundConfiguration": {
     "placeholders": {

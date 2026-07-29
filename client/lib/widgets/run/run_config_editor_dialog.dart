@@ -350,7 +350,7 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
     final draft = _draft;
 
     if (draft == null) {
-      return Text(l10n.runSelectConfiguration, style: styles.sm);
+      return Text(l10n.runEditorSelectConfiguration, style: styles.sm);
     }
 
     final type = draft.configuration.type;

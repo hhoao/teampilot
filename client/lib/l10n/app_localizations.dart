@@ -10803,8 +10803,14 @@ abstract class AppLocalizations {
   /// No description provided for @runSelectConfiguration.
   ///
   /// In en, this message translates to:
-  /// **'Select configuration'**
+  /// **'Launch'**
   String get runSelectConfiguration;
+
+  /// No description provided for @runEditorSelectConfiguration.
+  ///
+  /// In en, this message translates to:
+  /// **'Select configuration'**
+  String get runEditorSelectConfiguration;
 
   /// No description provided for @runCompoundConfiguration.
   ///
