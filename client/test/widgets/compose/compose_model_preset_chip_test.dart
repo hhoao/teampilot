@@ -1,34 +1,26 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/widgets/compose/compose_model_preset_chip.dart';
 
 void main() {
-  final preset = CliPreset(
-    id: 'a',
-    name: 'Alpha',
-    cli: CliTool.claude,
-    provider: 'p',
-    model: 'm',
-    createdAt: 0,
-    updatedAt: 0,
-  );
-
   group('buildComposeModelPresetMenuSpecs', () {
-    test('inserts custom action before manage when customLabel set', () {
+    test('includes custom action before manage when customLabel set', () {
       final specs = buildComposeModelPresetMenuSpecs(
-        sameCliPresets: [preset],
+        sameCliPresets: const [],
         selectedPresetId: null,
         emptyHintLabel: 'No presets',
         customLabel: 'Custom…',
         customSelected: true,
-        managePresetsLabel: 'Add preset',
+        managePresetsLabel: 'Manage',
       );
 
+      final values = specs.map((s) => s.value).toList();
+      expect(values, contains(ComposeModelPresetChipAction.custom));
+      expect(values, contains(ComposeModelPresetChipAction.manage));
       expect(
-        specs.any((s) => s.value == ComposeModelPresetChipAction.custom),
-        isTrue,
+        values.indexOf(ComposeModelPresetChipAction.custom),
+        lessThan(values.indexOf(ComposeModelPresetChipAction.manage)),
       );
       expect(
         specs
@@ -37,22 +29,25 @@ void main() {
             .selected,
         isTrue,
       );
-
-      final customIndex = specs.indexWhere(
-        (s) => s.value == ComposeModelPresetChipAction.custom,
-      );
-      final manageIndex = specs.indexWhere(
-        (s) => s.value == ComposeModelPresetChipAction.manage,
-      );
-      expect(customIndex, lessThan(manageIndex));
     });
 
     test('omits custom row when customLabel is null', () {
       final specs = buildComposeModelPresetMenuSpecs(
-        sameCliPresets: [preset],
-        selectedPresetId: null,
+        sameCliPresets: [
+          CliPreset(
+            id: 'p1',
+            name: 'Alpha',
+            cli: CliTool.claude,
+            provider: 'anthropic',
+            model: 'sonnet',
+            effort: 'high',
+            createdAt: 0,
+            updatedAt: 0,
+          ),
+        ],
+        selectedPresetId: 'p1',
         emptyHintLabel: 'No presets',
-        managePresetsLabel: 'Add preset',
+        managePresetsLabel: 'Manage',
       );
 
       expect(
@@ -75,7 +70,6 @@ void main() {
           provider: null,
           model: null,
           emptyLabel: 'Use preset',
-          cliLabel: (_) => 'Claude',
         ),
         'Use preset',
       );
@@ -89,13 +83,12 @@ void main() {
           provider: 'claude-official',
           model: 'opus',
           emptyLabel: 'Use preset',
-          cliLabel: (_) => 'Claude',
         ),
         'Work',
       );
     });
 
-    test('cli and model summary', () {
+    test('custom shows model only (CLI via leading icon)', () {
       expect(
         simpleLaunchChipLabel(
           presetName: null,
@@ -103,13 +96,12 @@ void main() {
           provider: 'claude-official',
           model: 'opus',
           emptyLabel: 'Use preset',
-          cliLabel: (_) => 'Claude',
         ),
-        'Claude · opus',
+        'opus',
       );
     });
 
-    test('cli and provider when model empty', () {
+    test('custom falls back to provider when model empty', () {
       expect(
         simpleLaunchChipLabel(
           presetName: null,
@@ -117,13 +109,12 @@ void main() {
           provider: 'claude-official',
           model: null,
           emptyLabel: 'Use preset',
-          cliLabel: (_) => 'Claude',
         ),
-        'Claude · claude-official',
+        'claude-official',
       );
     });
 
-    test('cli only when model and provider empty', () {
+    test('custom with no model or provider returns emptyLabel', () {
       expect(
         simpleLaunchChipLabel(
           presetName: null,
@@ -131,9 +122,8 @@ void main() {
           provider: null,
           model: null,
           emptyLabel: 'Use preset',
-          cliLabel: (_) => 'Claude',
         ),
-        'Claude',
+        'Use preset',
       );
     });
   });

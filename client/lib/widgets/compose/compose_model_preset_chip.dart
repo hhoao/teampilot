@@ -14,26 +14,27 @@ enum ComposeModelPresetChipAction {
 }
 
 /// Summary label for Simple launch model chips (preset or custom four-tuple).
+///
+/// Custom mode omits CLI text — the chip leading [CliBrandIcon] already
+/// identifies the tool (same visual pattern as presets that show only a name).
 String simpleLaunchChipLabel({
   required String? presetName,
   required CliTool? cli,
   required String? provider,
   required String? model,
   required String emptyLabel,
-  required String Function(CliTool cli) cliLabel,
 }) {
   final trimmedPreset = presetName?.trim() ?? '';
   if (trimmedPreset.isNotEmpty) return trimmedPreset;
   if (cli == null) return emptyLabel;
 
-  final cliName = cliLabel(cli);
   final trimmedModel = model?.trim() ?? '';
-  if (trimmedModel.isNotEmpty) return '$cliName · $trimmedModel';
+  if (trimmedModel.isNotEmpty) return trimmedModel;
 
   final trimmedProvider = provider?.trim() ?? '';
-  if (trimmedProvider.isNotEmpty) return '$cliName · $trimmedProvider';
+  if (trimmedProvider.isNotEmpty) return trimmedProvider;
 
-  return cliName;
+  return emptyLabel;
 }
 
 /// Builds preset menu specs for same-CLI preset pickers.

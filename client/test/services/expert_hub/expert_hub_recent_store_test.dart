@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_recent_store.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 
@@ -38,5 +41,25 @@ void main() {
     expect(keys.last, 'key-2');
     expect(keys, isNot(contains('key-0')));
     expect(keys, isNot(contains('key-1')));
+  });
+
+  test('touch ignores builtin default expert key', () async {
+    await store.touch('a/b/x');
+    await store.touch(kBuiltinDefaultExpertKey);
+
+    expect(await store.loadOrderedKeys(), ['a/b/x']);
+  });
+
+  test('loadOrderedKeys omits builtin default left in legacy files', () async {
+    final paths = AppPaths('/tp');
+    await fs.ensureDir(paths.memberHubDir);
+    await fs.atomicWrite(
+      paths.memberHubRecentJson,
+      jsonEncode({
+        'keys': [kBuiltinDefaultExpertKey, 'a/b/x'],
+      }),
+    );
+
+    expect(await store.loadOrderedKeys(), ['a/b/x']);
   });
 }

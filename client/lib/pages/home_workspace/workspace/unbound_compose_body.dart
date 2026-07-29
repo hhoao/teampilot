@@ -23,7 +23,6 @@ import '../../../models/cli_preset.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../models/runtime_target.dart';
-import '../../../pages/team_config/team_config_helpers.dart';
 import '../../../services/ai/headless_ai_service.dart';
 import '../../../services/compose/compose_file_attach.dart';
 import '../../../services/compose/compose_file_drop_ingestor.dart';
@@ -483,7 +482,32 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           .simpleModeDefaultFullAccess,
     );
     if (!mounted) return;
-    setState(() => _applyDraft(draft));
+
+    // Drop stale prefs keys so the chip cannot show "none selected" while
+    // still holding a dead expertKey.
+    var expertKey = draft.expertKey;
+    final rawExpert = expertKey?.trim() ?? '';
+    if (rawExpert.isNotEmpty) {
+      ExpertHubCubit? hubCubit;
+      try {
+        hubCubit = context.read<ExpertHubCubit>();
+      } on ProviderNotFoundException {
+        hubCubit = null;
+      }
+      final resolved = await ExpertMemberResolver.resolveMember(
+        key: rawExpert,
+        hubState: hubCubit?.state,
+        cubit: hubCubit,
+      );
+      if (!mounted) return;
+      if (resolved == null) expertKey = null;
+    }
+
+    final cleaned = identical(expertKey, draft.expertKey)
+        ? draft
+        : draft.copyWith(expertKey: expertKey);
+    setState(() => _applyDraft(cleaned));
+    if (!identical(cleaned, draft)) _persistDraft();
     await _syncActiveProjectFromDraft();
     // Sync may return early after dispose; do not touch context/setState.
     if (!mounted) return;
@@ -1000,10 +1024,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       return;
     }
 
-    // Keep selection even when some deps fail (soft fail policy).
-    _selectExpert(trimmed);
-    unawaited(_touchRecentExpert(trimmed));
-
     ExpertCapabilityResolver? resolver;
     try {
       resolver = context.read<ExpertCapabilityResolver>();
@@ -1017,23 +1037,26 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     );
     if (!mounted) return;
 
-    final preflight = result.preflight;
-    if (preflight == null) return;
-
-    final l10n = context.l10n;
-    if (preflight.notFound) {
-      AppToast.show(
-        context,
-        message: l10n.expertHubNotFound,
-        variant: TpToastVariant.warning,
-      );
+    if (result.cleared) {
+      _selectExpert(null);
+      if (result.preflight?.notFound == true) {
+        AppToast.show(
+          context,
+          message: context.l10n.expertHubNotFound,
+          variant: TpToastVariant.warning,
+        );
+      }
       return;
     }
 
-    final pack = preflight.pack;
+    // Keep selection even when some deps fail (soft fail policy).
+    _selectExpert(result.selectedKey);
+    unawaited(_touchRecentExpert(trimmed));
+
+    final pack = result.preflight?.pack;
     if (pack == null || !pack.hasFailures) return;
     final message = expertLandingPreflightToastMessage(
-      l10n,
+      context.l10n,
       expertName: pack.member.name,
       pack: pack,
     );
@@ -1128,7 +1151,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         provider: _selectedProvider,
         model: _selectedModel,
         emptyLabel: l10n.workspaceChatLandingUsePreset,
-        cliLabel: (cli) => teamCliDisplayLabel(context, l10n, cli),
       );
     }
 

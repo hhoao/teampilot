@@ -2,8 +2,12 @@ import 'dart:convert';
 
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
+import 'builtin_member_templates.dart';
 
 /// Persists recently touched member-hub keys at `member-hub/recent.json`.
+///
+/// Builtin Default is excluded: empty Landing selection already launches that
+/// pack, so listing it under "recent" duplicates 「未选择专家」.
 class ExpertHubRecentStore {
   ExpertHubRecentStore({Filesystem? fs, String? pathOverride})
     : _fsOverride = fs,
@@ -24,7 +28,12 @@ class ExpertHubRecentStore {
       final root = (jsonDecode(text) as Map).cast<String, Object?>();
       final keysRaw = root['keys'];
       if (keysRaw is! List) return [];
-      return keysRaw.map((e) => e.toString()).toList();
+      return [
+        for (final e in keysRaw)
+          if (e.toString().trim().isNotEmpty &&
+              e.toString().trim() != kBuiltinDefaultExpertKey)
+            e.toString().trim(),
+      ];
     } catch (_) {
       return [];
     }
@@ -38,12 +47,13 @@ class ExpertHubRecentStore {
 
   /// Prepends [key] to recents, deduping and capping at [maxEntries].
   Future<void> touch(String key) async {
-    if (key.trim().isEmpty) return;
+    final trimmed = key.trim();
+    if (trimmed.isEmpty || trimmed == kBuiltinDefaultExpertKey) return;
     final existing = await loadOrderedKeys();
     final next = [
-      key,
+      trimmed,
       for (final entry in existing)
-        if (entry != key) entry,
+        if (entry != trimmed) entry,
     ].take(maxEntries).toList();
     await _save(next);
   }

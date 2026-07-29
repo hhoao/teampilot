@@ -100,7 +100,7 @@ Preset Continue path stays `setSessionContinuePreset` (same-CLI only).
 | Surface | Rule |
 |---------|------|
 | Landing Preset | preset name |
-| Landing Custom | `{cli brand/short} · {model or provider}`; if both model and provider empty → CLI only |
+| Landing Custom | `{model}` (fallback `{provider}`); CLI identified by chip leading brand icon only — same pattern as presets showing a name |
 | Landing Empty | `workspaceChatLandingUsePreset` |
 | Continue + non-empty `presetId` | preset name |
 | Continue + empty `presetId` | **session four-tuple summary** (resolved identity is never “Landing empty”) — use custom summary rule, not `workspaceChatLandingUsePreset` |

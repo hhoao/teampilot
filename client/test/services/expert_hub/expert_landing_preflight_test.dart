@@ -122,6 +122,19 @@ void main() {
       expect(result.preflight, isNull);
       expect(preflightCalled, isFalse);
     });
+
+    test('clears selection when expert is not found', () async {
+      final resolver = _RecordingResolver(onPreflight: (_) async => null);
+
+      final result = await selectLandingExpert(
+        resolver: resolver,
+        expertKey: 'missing/expert',
+      );
+
+      expect(result.cleared, isTrue);
+      expect(result.selectedKey, isNull);
+      expect(result.preflight?.notFound, isTrue);
+    });
   });
 }
 

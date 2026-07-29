@@ -46,6 +46,9 @@ class LandingExpertSelectResult {
 }
 
 /// Chip-select / picker path — same [preflightLandingExpert] as deep link.
+///
+/// Unknown experts clear the selection: a dead key must never be committed to
+/// the Landing draft (chip fallback would then look like "none selected").
 Future<LandingExpertSelectResult> selectLandingExpert({
   required ExpertCapabilityResolver resolver,
   required String expertKey,
@@ -59,6 +62,9 @@ Future<LandingExpertSelectResult> selectLandingExpert({
     resolver: resolver,
     expertKey: trimmed,
   );
+  if (preflight.notFound) {
+    return LandingExpertSelectResult(cleared: true, preflight: preflight);
+  }
 
   return LandingExpertSelectResult(
     selectedKey: trimmed,
