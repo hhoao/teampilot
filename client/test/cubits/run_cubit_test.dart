@@ -306,7 +306,6 @@ void main() {
     );
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     await cubit.load();
-    await cubit.select(platform.configurations.single.selectionKey);
     expect(cubit.state.options, isNotEmpty);
     expect(platform.provideOptionsCalls, 1);
     cubit.setOption('device', 'chrome');

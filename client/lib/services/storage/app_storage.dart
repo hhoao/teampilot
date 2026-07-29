@@ -340,6 +340,11 @@ class AppPaths {
   String get worktreeUiPrefsJson =>
       worktreeUiPrefsJsonForTeampilotRoot(basePath);
 
+  static String runUiPrefsJsonForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'ui/run-ui-prefs.json');
+
+  String get runUiPrefsJson => runUiPrefsJsonForTeampilotRoot(basePath);
+
   /// Application-level unified provider catalog (`providers/providers.json`).
   String get providerConfigDir => _ctx.join(basePath, 'providers');
 

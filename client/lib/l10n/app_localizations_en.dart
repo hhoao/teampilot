@@ -6014,7 +6014,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runMoreActions => 'More run actions';
 
   @override
-  String get runSelectConfiguration => 'Select configuration';
+  String get runSelectConfiguration => 'Launch';
+
+  @override
+  String get runEditorSelectConfiguration => 'Select configuration';
 
   @override
   String runCompoundConfiguration(String name) {

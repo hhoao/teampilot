@@ -2700,7 +2700,8 @@
   "runBuild": "Build",
   "runBuildUnavailable": "Build is not available yet",
   "runMoreActions": "More run actions",
-  "runSelectConfiguration": "Select configuration",
+  "runSelectConfiguration": "Launch",
+  "runEditorSelectConfiguration": "Select configuration",
   "runCompoundConfiguration": "{name} (compound)",
   "@runCompoundConfiguration": {
     "placeholders": {
