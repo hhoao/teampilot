@@ -39,6 +39,7 @@ class HomeSidebar extends StatelessWidget {
     final onAllWorkspaces = onSelectAllWorkspaces;
     final onGlobal = onSelectGlobalView;
     final onLibrary = onSelectLibraryView;
+    final isMobileDrawer = TpSidebarScope.maybeOf(context)?.isMobile ?? false;
 
     return Container(
       decoration: BoxDecoration(
@@ -47,7 +48,9 @@ class HomeSidebar extends StatelessWidget {
           right: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.6)),
         ),
       ),
-      padding: const EdgeInsets.fromLTRB(32, 48, 24, 12),
+      padding: isMobileDrawer
+          ? const EdgeInsets.fromLTRB(16, 24, 16, 12)
+          : const EdgeInsets.fromLTRB(32, 48, 24, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -245,11 +248,15 @@ class _ShortcutRowState extends State<_ShortcutRow> {
                   color: active ? cs.primary : cs.onSurfaceVariant,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  widget.label,
-                  style: active
-                      ? styles.lgSemiboldColored(fg)
-                      : styles.lgColored(fg),
+                Flexible(
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: active
+                        ? styles.lgSemiboldColored(fg)
+                        : styles.lgColored(fg),
+                  ),
                 ),
               ],
             ),

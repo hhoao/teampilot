@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/layout_cubit.dart';
@@ -100,69 +101,95 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void _closeMobileDrawer(BuildContext context) {
+    TpSidebarScope.maybeOf(context)?.setOpenMobile(false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final globalView = _globalView;
     final libraryView = _libraryView;
+    final isMobile = TpSidebarScope.maybeOf(context)?.isMobile ?? false;
+
+    final sidebar = HomeSidebar(
+      activeGlobalView: globalView,
+      activeLibraryView: libraryView,
+      allWorkspacesActive:
+          _allWorkspacesActive && globalView == null && libraryView == null,
+      onSelectAllWorkspaces: () {
+        setState(() {
+          _allWorkspacesActive = true;
+          _globalView = null;
+          _libraryView = null;
+          _selectedIdentityId = null;
+        });
+        _closeMobileDrawer(context);
+      },
+      onSelectGlobalView: (view) {
+        setState(() {
+          _allWorkspacesActive = false;
+          _globalView = view;
+          _libraryView = null;
+        });
+        _closeMobileDrawer(context);
+      },
+      onSelectLibraryView: (view) {
+        setState(() {
+          _allWorkspacesActive = false;
+          _libraryView = view;
+          _globalView = null;
+        });
+        _closeMobileDrawer(context);
+      },
+    );
+
+    final rightPane = Padding(
+      padding: const EdgeInsets.fromLTRB(44, 48, 42, 18),
+      child: _HomeRightPane(
+        globalView: globalView,
+        libraryView: libraryView,
+        allWorkspacesActive: _allWorkspacesActive,
+        selectedIdentityId: _selectedIdentityId,
+        initialSection: widget.initialSection,
+        initialMemberId: widget.initialMemberId,
+        onSelectGlobalView: (view) => setState(() {
+          _allWorkspacesActive = false;
+          _globalView = view;
+          _libraryView = null;
+        }),
+        onOpenTeam: _selectIdentity,
+      ),
+    );
 
     return WorkspacePageCardShell(
-      child: BlocBuilder<LayoutCubit, LayoutState>(
-        buildWhen: (a, b) =>
-            a.preferences.homeSidebarWidth != b.preferences.homeSidebarWidth,
-        builder: (context, layoutState) {
-          return TwoPaneSplitView(
-            axis: Axis.horizontal,
-            first: HomeSidebar(
-              activeGlobalView: globalView,
-              activeLibraryView: libraryView,
-              allWorkspacesActive:
-                  _allWorkspacesActive &&
-                  globalView == null &&
-                  libraryView == null,
-              onSelectAllWorkspaces: () => setState(() {
-                _allWorkspacesActive = true;
-                _globalView = null;
-                _libraryView = null;
-                _selectedIdentityId = null;
-              }),
-              onSelectGlobalView: (view) => setState(() {
-                _allWorkspacesActive = false;
-                _globalView = view;
-                _libraryView = null;
-              }),
-              onSelectLibraryView: (view) => setState(() {
-                _allWorkspacesActive = false;
-                _libraryView = view;
-                _globalView = null;
-              }),
+      child: isMobile
+          ? Row(
+              children: [
+                TpSidebar(
+                  collapsible: TpSidebarCollapsible.offcanvas,
+                  child: sidebar,
+                ),
+                Expanded(child: rightPane),
+              ],
+            )
+          : BlocBuilder<LayoutCubit, LayoutState>(
+              buildWhen: (a, b) =>
+                  a.preferences.homeSidebarWidth != b.preferences.homeSidebarWidth,
+              builder: (context, layoutState) {
+                return TwoPaneSplitView(
+                  axis: Axis.horizontal,
+                  first: sidebar,
+                  second: rightPane,
+                  initialSize: layoutState.preferences.homeSidebarWidth,
+                  minSize: LayoutPreferences.minHomeSidebarWidth,
+                  maxSize: double.infinity,
+                  minSecondarySize: LayoutPreferences.minWorkspaceHubContentWidth,
+                  onSizeChanged: (width) {
+                    context.read<LayoutCubit>().setHomeSidebarWidth(width);
+                  },
+                );
+              },
             ),
-            second: Padding(
-              padding: const EdgeInsets.fromLTRB(44, 48, 42, 18),
-              child: _HomeRightPane(
-                globalView: globalView,
-                libraryView: libraryView,
-                allWorkspacesActive: _allWorkspacesActive,
-                selectedIdentityId: _selectedIdentityId,
-                initialSection: widget.initialSection,
-                initialMemberId: widget.initialMemberId,
-                onSelectGlobalView: (view) => setState(() {
-                  _allWorkspacesActive = false;
-                  _globalView = view;
-                  _libraryView = null;
-                }),
-                onOpenTeam: _selectIdentity,
-              ),
-            ),
-            initialSize: layoutState.preferences.homeSidebarWidth,
-            minSize: LayoutPreferences.minHomeSidebarWidth,
-            maxSize: double.infinity,
-            minSecondarySize: LayoutPreferences.minWorkspaceHubContentWidth,
-            onSizeChanged: (width) {
-              context.read<LayoutCubit>().setHomeSidebarWidth(width);
-            },
-          );
-        },
-      ),
     );
   }
 }

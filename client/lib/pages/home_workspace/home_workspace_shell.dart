@@ -30,6 +30,7 @@ import '../../services/run/launch_adapter_protocol.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../services/workspace/workspace_run_registry.dart';
 import '../../services/workspace/workspace_tools_scope_registry.dart';
+import '../../services/workspace/workspace_pane_policy.dart';
 import '../../services/workspace/workspace_worktree_registry.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/workspace/workspace_display_name.dart';
@@ -436,29 +437,31 @@ class _HomeShellState extends State<HomeShell> {
         listenWhen: (previous, next) =>
             previous.selectedTeam?.id != next.selectedTeam?.id,
         listener: (context, _) => _syncTeamSessionScope(context),
-        child: Scaffold(
-          backgroundColor: Theme.of(context).colorScheme.workspacePageChrome(
-            WorkspaceTabRef.fromLocation(widget.location) == null
-                ? WorkspacePageChrome.home
-                : WorkspacePageChrome.workspace,
-          ),
-          body: Column(
-            children: [
-              _HomeShellTitleBar(
-                location: widget.location,
-                openTabs: _openTabs,
-                recentlyClosed: _recentlyClosed,
-                onHomeTap: _goHome,
-                onSelectTab: (tabKey) {
-                  final tab = _openTabs
-                      .where((t) => t.tabKey == tabKey)
-                      .firstOrNull;
-                  if (tab != null) _selectTab(tab);
-                },
-                onCloseTab: (tabKey) => unawaited(_closeTab(tabKey)),
-                onReopenClosedTab: (tabKey) =>
-                    unawaited(_reopenClosedTab(tabKey)),
-              ),
+        child: TpSidebarProvider(
+          mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+          child: Scaffold(
+            backgroundColor: Theme.of(context).colorScheme.workspacePageChrome(
+              WorkspaceTabRef.fromLocation(widget.location) == null
+                  ? WorkspacePageChrome.home
+                  : WorkspacePageChrome.workspace,
+            ),
+            body: Column(
+              children: [
+                _HomeShellTitleBar(
+                  location: widget.location,
+                  openTabs: _openTabs,
+                  recentlyClosed: _recentlyClosed,
+                  onHomeTap: _goHome,
+                  onSelectTab: (tabKey) {
+                    final tab = _openTabs
+                        .where((t) => t.tabKey == tabKey)
+                        .firstOrNull;
+                    if (tab != null) _selectTab(tab);
+                  },
+                  onCloseTab: (tabKey) => unawaited(_closeTab(tabKey)),
+                  onReopenClosedTab: (tabKey) =>
+                      unawaited(_reopenClosedTab(tabKey)),
+                ),
               Expanded(
                 child: SafeArea(
                   top: false,
@@ -477,6 +480,7 @@ class _HomeShellState extends State<HomeShell> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

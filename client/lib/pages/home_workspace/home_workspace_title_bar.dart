@@ -23,6 +23,15 @@ import '../../widgets/window_drag_area.dart';
 import '../config/config_workspace.dart';
 import '../workspace_shell/workspace_shell_tabs.dart';
 
+/// Whether the mobile drawer trigger should appear in [HomeTitleBar].
+@visibleForTesting
+bool homeSidebarTriggerVisible({
+  required bool isMobile,
+  required String? activeTabKey,
+}) {
+  return isMobile && activeTabKey == null;
+}
+
 /// Height of the Apifox-style workspace title bar.
 const double kHomeTitleBarHeight = 58;
 
@@ -269,6 +278,12 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
     final cs = theme.colorScheme;
     final l10n = context.l10n;
     final showWindowControls = useCustomDesktopWindowTitleBar;
+    final sidebarScope = TpSidebarScope.maybeOf(context);
+    final showSidebarTrigger = homeSidebarTriggerVisible(
+      isMobile: sidebarScope?.isMobile ?? false,
+      activeTabKey: widget.activeTabKey,
+    );
+    final compactChrome = showSidebarTrigger;
 
     return Material(
       color: cs.workspacePageChrome(widget.pageChrome),
@@ -279,11 +294,18 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
             SizedBox(width: 8),
             if (showWindowControls && useMacWindowChromeStyle)
               _buildWindowControls(),
-            SizedBox(width: useMacWindowChromeStyle ? 8 : 20),
-            const _BrandMark(),
-            const SizedBox(width: 24),
+            if (!compactChrome)
+              SizedBox(width: useMacWindowChromeStyle ? 8 : 20),
+            if (showSidebarTrigger) ...[
+              const TpSidebarTrigger(),
+              const SizedBox(width: 8),
+            ],
+            if (!compactChrome) ...[
+              const _BrandMark(),
+              const SizedBox(width: 24),
+            ],
             _HomePill(
-              label: l10n.homeWorkspaceMainWindow,
+              label: compactChrome ? '' : l10n.homeWorkspaceMainWindow,
               active: widget.activeTabKey == null,
               onTap: widget.onHomeTap,
             ),
@@ -454,8 +476,10 @@ class _HomePill extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.home_filled, size: context.tpIconSizes.md, color: fg),
-              const SizedBox(width: 6),
-              Text(label, style: styles.smColored(fg)),
+              if (label.isNotEmpty) ...[
+                const SizedBox(width: 6),
+                Text(label, style: styles.smColored(fg)),
+              ],
             ],
           ),
         ),
