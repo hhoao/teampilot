@@ -172,6 +172,30 @@ void main() {
     expect(editedContent, 'new text');
   });
 
+  testWidgets('edit cancel restores original content', (tester) async {
+    var edited = false;
+    await tester.pumpWidget(
+      _host(
+        _strip(
+          queue: const FollowUpQueue(
+            items: [FollowUpQueuedMessage(id: 'edit-1', content: 'keep me')],
+          ),
+          onEdit: (_, __) => edited = true,
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'changed');
+    await tester.tap(find.byTooltip('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(edited, isFalse);
+    expect(find.text('keep me'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+  });
+
   testWidgets('collapse hides item rows', (tester) async {
     await tester.pumpWidget(
       _host(

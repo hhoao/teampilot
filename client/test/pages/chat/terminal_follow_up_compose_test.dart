@@ -8,30 +8,17 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/services/follow_up/follow_up_queue.dart';
 import 'package:teampilot/services/session/history_seat_key.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
+import 'package:teampilot/widgets/follow_up/follow_up_queue_strip.dart';
 import 'package:teampilot/widgets/follow_up/terminal_follow_up_compose.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
 void main() {
-  test('shouldShowTerminalFollowUpCompose hides when idle and empty', () {
+  test('shouldShowTerminalFollowUpStrip only when queue has items', () {
+    expect(shouldShowTerminalFollowUpStrip(const FollowUpQueue()), isFalse);
     expect(
-      shouldShowTerminalFollowUpCompose(
-        memberWorking: false,
-        queue: const FollowUpQueue(),
-      ),
-      isFalse,
-    );
-    expect(
-      shouldShowTerminalFollowUpCompose(
-        memberWorking: true,
-        queue: const FollowUpQueue(),
-      ),
-      isTrue,
-    );
-    expect(
-      shouldShowTerminalFollowUpCompose(
-        memberWorking: false,
-        queue: const FollowUpQueue(
+      shouldShowTerminalFollowUpStrip(
+        const FollowUpQueue(
           items: [FollowUpQueuedMessage(id: '1', content: 'queued')],
         ),
       ),
@@ -39,7 +26,7 @@ void main() {
     );
   });
 
-  testWidgets('working submit enqueues into shared History seat key', (
+  testWidgets('shows strip for shared History seat queue without TextField', (
     tester,
   ) async {
     final store = InMemoryFollowUpQueueStore();
@@ -51,14 +38,8 @@ void main() {
     addTearDown(chatCubit.close);
 
     const sessionId = 'sess-1';
-    const shellMemberId = sessionId;
-    final seatKey = followUpSeatKey(sessionId, shellMemberId);
-    final session = AppSession(
-      sessionId: sessionId,
-      workspaceId: 'ws-1',
-      folders: const [],
-      createdAt: 0,
-    );
+    final seatKey = followUpSeatKey(sessionId, sessionId);
+    store.enqueue(seatKey, 'from history');
 
     await tester.pumpWidget(
       MaterialApp(
@@ -74,11 +55,13 @@ void main() {
             value: chatCubit,
             child: Scaffold(
               body: TerminalFollowUpCompose(
-                session: session,
+                session: AppSession(
+                  sessionId: sessionId,
+                  workspaceId: 'ws-1',
+                  folders: const [],
+                  createdAt: 0,
+                ),
                 selectedMemberId: '',
-                memberWorking: true,
-                supportsTurnInterrupt: true,
-                permissionWaiting: false,
               ),
             ),
           ),
@@ -88,21 +71,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(kTerminalFollowUpComposeKey), findsOneWidget);
-    await tester.enterText(find.byType(TextField), 'terminal follow up');
-    await tester.pump();
-    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
-    await tester.pump();
-
-    final queue = store.queueFor(seatKey);
-    expect(queue.items, hasLength(1));
-    expect(queue.items.single.content, 'terminal follow up');
-    expect(
-      tester.widget<TextField>(find.byType(TextField)).controller!.text,
-      isEmpty,
-    );
+    expect(find.byKey(kSessionFollowUpQueueStripKey), findsOneWidget);
+    expect(find.text('from history'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
   });
 
-  testWidgets('hides compose bar when idle and queue empty', (tester) async {
+  testWidgets('hides when queue empty even if member would be working', (
+    tester,
+  ) async {
     final chatCubit = testChatCubit(executableResolver: () => 'claude');
     addTearDown(chatCubit.close);
 
@@ -120,9 +96,6 @@ void main() {
               createdAt: 0,
             ),
             selectedMemberId: '',
-            memberWorking: false,
-            supportsTurnInterrupt: true,
-            permissionWaiting: false,
           ),
         ),
       ),

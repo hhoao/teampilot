@@ -55,7 +55,6 @@ import '../../services/terminal/pending_user_message.dart';
 import '../../theme/app_markdown_style_sheet.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
-import '../../pages/team_config/team_config_helpers.dart';
 import '../../widgets/compose/compose_chrome.dart';
 import '../../widgets/compose/compose_model_preset_chip.dart';
 import '../../widgets/compose/simple_custom_launch_dialog.dart';
@@ -238,9 +237,12 @@ class _SessionChatViewState extends State<SessionChatView> {
       _bindSeat();
       // Defer: load → runtime.setLoading sync-notifies seat listeners
       // while ancestors (e.g. TpDeferredForegroundMount) are still building.
+      // Do not clearPendings here: re-entering a seat (tab switch, team prop
+      // resolve flicker) before the CLI transcript is locatable would wipe the
+      // optimistic first bubble and show sessionHistoryEmpty. Seat.load()
+      // already clears pendings when sessionId/memberId actually change.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        _seat?.clearPendings();
         _loadHistory();
       });
     } else if (oldWidget.routeActive != widget.routeActive) {
@@ -540,19 +542,34 @@ class _SessionChatViewState extends State<SessionChatView> {
   AppSession? _readCubitSession(BuildContext context) =>
       _sessionFromCubit(context.read<ChatCubit>());
 
-  /// Display-only fallback when the cubit snapshot is not loaded yet.
-  AppSession _displaySession(BuildContext context) =>
+  /// Build-only display session (`context.select`). Do not call from handlers.
+  AppSession _watchDisplaySession(BuildContext context) =>
       _watchCubitSession(context) ?? widget.session;
 
-  TeamProfile? _liveTeam(BuildContext context) {
-    final session = _displaySession(context);
+  /// Event-handler display session (`context.read`).
+  AppSession _readDisplaySession(BuildContext context) =>
+      _readCubitSession(context) ?? widget.session;
+
+  TeamProfile? _liveTeamFor(AppSession session, LaunchProfileCubit cubit) {
     if (session.isSimple) return null;
     final teamId = session.sessionTeam.trim();
     if (teamId.isEmpty) return null;
-    final profile = context.watch<LaunchProfileCubit>().byId(teamId);
+    final profile = cubit.byId(teamId);
     if (profile is TeamProfile) return profile;
     return widget.team;
   }
+
+  /// Build-only live team (`context.watch`). Do not call from handlers.
+  TeamProfile? _watchLiveTeam(BuildContext context) => _liveTeamFor(
+    _watchDisplaySession(context),
+    context.watch<LaunchProfileCubit>(),
+  );
+
+  /// Event-handler live team (`context.read`).
+  TeamProfile? _readLiveTeam(BuildContext context) => _liveTeamFor(
+    _readDisplaySession(context),
+    context.read<LaunchProfileCubit>(),
+  );
 
   String _effectiveMemberId(TeamProfile? team) {
     if (widget.session.isSimple || team == null) return '';
@@ -949,8 +966,8 @@ class _SessionChatViewState extends State<SessionChatView> {
     final registry =
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
     final lockedCli = _lockedCli(
-      session: _displaySession(context),
-      team: _liveTeam(context),
+      session: _readDisplaySession(context),
+      team: _readLiveTeam(context),
       presets: context.read<CliPresetsCubit>().state.presets,
     );
     final supportsTurnInterrupt =
@@ -1128,8 +1145,8 @@ class _SessionChatViewState extends State<SessionChatView> {
     final skills = context.watch<SkillCubit>().state.installed;
     final plugins = context.watch<PluginCubit>().state.installed;
     final presets = context.watch<CliPresetsCubit>().state.presets;
-    final session = _displaySession(context);
-    final team = _liveTeam(context);
+    final session = _watchDisplaySession(context);
+    final team = _watchLiveTeam(context);
     final hubState = _expertHubState(context);
     final selectedMemberId = widget.selectedMemberId;
     final permissionWaiting = context.select<AgentAttentionCubit, bool>(
@@ -1166,7 +1183,6 @@ class _SessionChatViewState extends State<SessionChatView> {
             provider: session.provider,
             model: session.model,
             emptyLabel: l10n.workspaceChatLandingUsePreset,
-            cliLabel: (cli) => teamCliDisplayLabel(context, l10n, cli),
           )
         : (selectedPreset?.name.trim().isNotEmpty == true
               ? selectedPreset!.name.trim()
