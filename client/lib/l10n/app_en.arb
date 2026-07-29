@@ -817,6 +817,7 @@
   "sshProfileFormPasswordHintEdit": "Leave empty to keep saved password",
   "sshProfileFormPasswordHelper": "Optional if an identity file is provided.",
   "sshProfileFormCredentialRequired": "Provide an identity file or password.",
+  "sshProfileFormCredentialSaveFailed": "Target saved, but credentials could not be stored. Unlock the system keyring and edit the target to re-enter them.",
   "sshProfileFormFieldRequired": "Required",
   "sshProfileSelectorTooltip": "Switch SSH server",
   "sshProfileSelectorManage": "Manage SSH servers…",

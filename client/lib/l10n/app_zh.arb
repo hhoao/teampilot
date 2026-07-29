@@ -778,6 +778,7 @@
   "sshProfileFormPasswordHintEdit": "留空则保留已保存密码",
   "sshProfileFormPasswordHelper": "若已提供身份文件则可不填。",
   "sshProfileFormCredentialRequired": "请提供身份文件或密码。",
+  "sshProfileFormCredentialSaveFailed": "目标已保存，但无法写入凭据。请解锁系统钥匙环后编辑该目标并重新填写。",
   "sshProfileFormFieldRequired": "必填",
   "sshProfileSelectorTooltip": "切换 SSH 服务器",
   "sshProfileSelectorManage": "管理 SSH 服务器…",

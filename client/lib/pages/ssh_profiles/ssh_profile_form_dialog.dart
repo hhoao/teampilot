@@ -158,10 +158,23 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       return null;
     }
     await context.read<SshProfileRepository>().save(profile);
-    await _persistCredentials(profile);
-    if (notify && mounted) {
+    var credentialsSaved = true;
+    try {
+      await _persistCredentials(profile);
+    } on Object {
+      credentialsSaved = false;
+    }
+    if (!mounted) return profile;
+    if (!credentialsSaved) {
+      AppToast.show(
+        context,
+        message: context.l10n.sshProfileFormCredentialSaveFailed,
+        variant: TpToastVariant.warning,
+      );
+    }
+    if (notify) {
       await context.read<SshProfileCubit>().load();
-      Navigator.of(context).pop();
+      if (mounted) Navigator.of(context).pop();
     }
     return profile;
   }
@@ -221,6 +234,13 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     setState(() => _saving = true);
     try {
       await _save(notify: true);
+    } on Object catch (error) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: error.toString(),
+        variant: TpToastVariant.error,
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }

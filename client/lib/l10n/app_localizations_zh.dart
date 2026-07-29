@@ -1826,6 +1826,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sshProfileFormCredentialRequired => '请提供身份文件或密码。';
 
   @override
+  String get sshProfileFormCredentialSaveFailed =>
+      '目标已保存，但无法写入凭据。请解锁系统钥匙环后编辑该目标并重新填写。';
+
+  @override
   String get sshProfileFormFieldRequired => '必填';
 
   @override

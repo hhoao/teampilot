@@ -3524,6 +3524,12 @@ abstract class AppLocalizations {
   /// **'Provide an identity file or password.'**
   String get sshProfileFormCredentialRequired;
 
+  /// No description provided for @sshProfileFormCredentialSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Target saved, but credentials could not be stored. Unlock the system keyring and edit the target to re-enter them.'**
+  String get sshProfileFormCredentialSaveFailed;
+
   /// No description provided for @sshProfileFormFieldRequired.
   ///
   /// In en, this message translates to:

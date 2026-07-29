@@ -130,7 +130,17 @@ class SshProfileCubit extends Cubit<SshProfileState> {
 
   Future<void> deleteProfile(String profileId) async {
     _invalidateProfileConnection?.call(profileId);
-    await _credentialStore.deleteAll(profileId);
+    try {
+      await _credentialStore.deleteAll(profileId);
+    } on Object catch (error, stackTrace) {
+      // Profile metadata must still be removed when the OS keyring is locked
+      // (e.g. Linux KeyringLocked) so the targets list can refresh.
+      Logger().w(
+        'Failed to delete SSH credentials for $profileId',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
     await _profileRepository.delete(profileId);
     await load();
   }

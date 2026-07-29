@@ -1919,6 +1919,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Provide an identity file or password.';
 
   @override
+  String get sshProfileFormCredentialSaveFailed =>
+      'Target saved, but credentials could not be stored. Unlock the system keyring and edit the target to re-enter them.';
+
+  @override
   String get sshProfileFormFieldRequired => 'Required';
 
   @override

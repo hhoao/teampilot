@@ -96,6 +96,40 @@ void main() {
   });
 
   test(
+    'deleteProfile removes profile even when credential cleanup fails',
+    () async {
+      final temp = await Directory.systemTemp.createTemp(
+        'ssh_profile_cubit_delete_creds_',
+      );
+      addTearDown(() => temp.delete(recursive: true));
+
+      final repository = SshProfileRepository(rootDir: temp.path);
+      await repository.save(
+        const SshProfile(
+          id: 'p1',
+          name: 'one',
+          host: 'one.example.com',
+          username: 'alice',
+        ),
+      );
+
+      final cubit = SshProfileCubit(
+        profileRepository: repository,
+        credentialStore: _ThrowingCredentialStore(),
+      );
+      addTearDown(cubit.close);
+
+      await cubit.load(notifyActiveProfileChanged: false);
+      expect(cubit.state.profiles, hasLength(1));
+
+      await cubit.deleteProfile('p1');
+
+      expect(cubit.state.profiles, isEmpty);
+      expect(await repository.loadAll(), isEmpty);
+    },
+  );
+
+  test(
     'load follows AppStorage home when repository root is dynamic',
     () async {
       final rootA = await Directory.systemTemp.createTemp('ssh_cubit_a_');
@@ -133,4 +167,32 @@ void main() {
       expect(cubit.state.profiles, isEmpty);
     },
   );
+}
+
+class _ThrowingCredentialStore implements SshCredentialStore {
+  @override
+  Future<void> deleteAll(String profileId) async {
+    throw StateError('KeyringLocked');
+  }
+
+  @override
+  Future<String?> loadPassword(String profileId) async => null;
+
+  @override
+  Future<String?> loadPrivateKey(String profileId) async => null;
+
+  @override
+  Future<String?> loadPrivateKeyPassphrase(String profileId) async => null;
+
+  @override
+  Future<void> savePassword(String profileId, String password) async {}
+
+  @override
+  Future<void> savePrivateKey(String profileId, String privateKey) async {}
+
+  @override
+  Future<void> savePrivateKeyPassphrase(
+    String profileId,
+    String passphrase,
+  ) async {}
 }
