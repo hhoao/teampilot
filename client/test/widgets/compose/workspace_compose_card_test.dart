@@ -4,6 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/services/compose/compose_file_drop_ingestor.dart';
+import 'package:teampilot/widgets/compose/compose_at_file_chip_row.dart';
 import 'package:teampilot/widgets/compose/compose_chrome.dart';
 import 'package:teampilot/widgets/compose/compose_file_drop_region.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
@@ -15,6 +16,7 @@ void main() {
     bool deferFieldMount = false,
     TextEditingController? controller,
     FocusNode? focusNode,
+    ValueChanged<String>? onOpenAtFile,
   }) {
     final resolvedController = controller ?? TextEditingController();
     if (controller == null) addTearDown(resolvedController.dispose);
@@ -57,6 +59,7 @@ void main() {
           plugins: const [],
           slashBundle: const ConfigBundle(),
           deferFieldMount: deferFieldMount,
+          onOpenAtFile: onOpenAtFile,
         ),
       ),
     );
@@ -124,6 +127,33 @@ void main() {
 
     expect(find.byType(TpDeferredMountShell), findsNothing);
     expect(find.byType(ComposeTriggerField), findsOneWidget);
+  });
+
+  testWidgets('shows at-file chip row when controller has @ refs', (
+    tester,
+  ) async {
+    final controller = TextEditingController(text: '@src/main.dart hello');
+    addTearDown(controller.dispose);
+    final opened = <String>[];
+
+    await tester.pumpWidget(
+      pumpCard(
+        chrome: unboundChrome,
+        controller: controller,
+        onOpenAtFile: opened.add,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ComposeAtFileChipRow), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(ComposeAtFileChipRow),
+        matching: find.text('main.dart'),
+      ),
+    );
+    expect(opened.single, '/tmp/src/main.dart');
   });
 
   testWidgets('bound chrome shows launch error banner', (tester) async {

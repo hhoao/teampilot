@@ -35,6 +35,7 @@ import '../../services/cli/registry/capabilities/turn_interrupt_capability.dart'
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../services/compose/compose_at_file_refs.dart';
 import '../../services/compose/compose_file_attach.dart';
 import '../../services/compose/compose_file_drop_ingestor.dart';
 import '../../services/compose/compose_landing_bundle.dart';
@@ -1671,6 +1672,20 @@ class _SessionChatViewState extends State<SessionChatView> {
                                   skills: skills,
                                   plugins: plugins,
                                   slashBundle: _slashBundle(context),
+                                  onOpenAtFile: (path) {
+                                    unawaited(
+                                      context
+                                          .read<WorkbenchEditorOpener>()
+                                          .openFile(
+                                            widget.session.workspaceId,
+                                            path,
+                                            preview: true,
+                                            fs: filesystemForComposeAtFileOpen(
+                                              path,
+                                            ),
+                                          ),
+                                    );
+                                  },
                                 ),
                               ],
                             ),

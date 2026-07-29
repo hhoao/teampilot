@@ -11,7 +11,9 @@ import '../../pages/chat/session_launch_failure_presenter.dart';
 import '../../pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
 import '../../pages/home_workspace/workspace/workspace_chat_landing_voice_bar.dart';
 import '../../services/workspace_dnd/workspace_drop_target.dart';
+import '../../services/compose/compose_at_file_refs.dart';
 import '../../utils/debounce/debounce.dart';
+import 'compose_at_file_chip_row.dart';
 import 'compose_chrome.dart';
 import 'compose_file_drop_region.dart';
 import 'compose_focus_shell.dart';
@@ -63,6 +65,7 @@ class WorkspaceComposeCard extends StatelessWidget {
     this.onPasteImage,
     this.submitBlockedTooltip,
     this.deferFieldMount = false,
+    this.onOpenAtFile,
     super.key,
   });
 
@@ -96,6 +99,7 @@ class WorkspaceComposeCard extends StatelessWidget {
   final Future<bool> Function()? onPasteImage;
   final String? submitBlockedTooltip;
   final bool deferFieldMount;
+  final ValueChanged<String>? onOpenAtFile;
 
   bool get _composeEnabled => switch (chrome) {
     BoundComposeChrome(:final composeEnabled) => composeEnabled,
@@ -169,6 +173,23 @@ class WorkspaceComposeCard extends StatelessWidget {
           children: [
             if (chrome is BoundComposeChrome)
               ..._launchErrorBanner(context, chrome, spacing),
+            ListenableBuilder(
+              listenable: controller,
+              builder: (context, _) {
+                final refs = parseComposeAtFileRefs(
+                  controller.text,
+                  workspaceRoot: workspaceRoot,
+                );
+                if (refs.isEmpty) return const SizedBox.shrink();
+                return Padding(
+                  padding: EdgeInsets.only(bottom: spacing.md),
+                  child: ComposeAtFileChipRow(
+                    refs: refs,
+                    onOpen: onOpenAtFile ?? (_) {},
+                  ),
+                );
+              },
+            ),
             field,
             SizedBox(height: spacing.md),
             Row(
