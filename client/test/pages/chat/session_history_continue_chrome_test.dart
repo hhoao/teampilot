@@ -446,6 +446,67 @@ void main() {
         expect(merged.dangerouslySkipPermissions, isTrue);
       },
     );
+
+    test(
+      'ChatCubit Simple custom launch round-trip clears preset and feeds merge',
+      () async {
+        final tmp = await Directory.systemTemp.createTemp(
+          'continue_chrome_custom_',
+        );
+        addTearDown(() async => deleteTempDirBestEffort(tmp));
+        final repo = SessionRepository(rootDir: tmp.path);
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
+          sessionRepository: repo,
+        );
+        addTearDown(cubit.close);
+
+        final workspace = await repo.createWorkspace([
+          const WorkspaceFolder(path: '/w'),
+        ]);
+        final session = await repo.createSession(
+          workspace.workspaceId,
+          cli: CliTool.claude,
+          provider: 'anthropic',
+          model: 'claude-sonnet',
+          effort: 'high',
+          presetId: 'preset-a',
+        );
+        await cubit.loadWorkspaceData(repo);
+
+        expect(
+          await cubit.setSessionContinueCustom(
+            sessionId: session.sessionId,
+            provider: 'openai',
+            model: 'gpt-4o',
+            effort: 'medium',
+          ),
+          isTrue,
+        );
+
+        final live = cubit.state.sessions.single;
+        expect(live.presetId, isEmpty);
+        expect(live.provider, 'openai');
+        expect(live.model, 'gpt-4o');
+        expect(live.effort, 'medium');
+
+        const packMember = TeamMemberConfig(
+          id: 'x',
+          name: 'Simple',
+          cli: CliTool.claude,
+        );
+        final merged = applySessionContinueOverrides(
+          baseMember: live.simpleIdentity.applyToMember(packMember),
+          session: live,
+          memberId: live.sessionId,
+          isSimple: true,
+        );
+        expect(merged.provider, 'openai');
+        expect(merged.model, 'gpt-4o');
+        expect(merged.effort, 'medium');
+      },
+    );
   });
 
   group('acceptance: continue chrome widgets', () {
@@ -521,6 +582,72 @@ void main() {
         expect(find.text('Simple'), findsNothing);
         expect(find.text('Team'), findsNothing);
         expect(find.textContaining('Mode'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'BoundComposeChrome Simple custom row appears when customLabel set',
+      (tester) async {
+        final textController = TextEditingController();
+        final focusNode = FocusNode();
+        addTearDown(textController.dispose);
+        addTearDown(focusNode.dispose);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: WorkspaceComposeCard(
+                controller: textController,
+                focusNode: focusNode,
+                hint: 'Continue',
+                canSubmit: false,
+                onSubmit: () {},
+                onChanged: (_) {},
+                chrome: BoundComposeChrome(
+                  sameCliPresets: [claudePreset()],
+                  selectedPresetId: null,
+                  modelPresetLabel: 'Claude · gpt-4o',
+                  emptyPresetHintLabel: 'No presets',
+                  onPresetSelected: (_) {},
+                  customLabel: 'Custom…',
+                  customSelected: true,
+                  onCustom: () {},
+                  dangerouslySkipPermissions: false,
+                  defaultPermissionsLabel: 'Default',
+                  fullAccessPermissionsLabel: 'Full access',
+                  onPermissionSelected: (_) {},
+                ),
+                dropTarget: ComposeFileDropIngestor(
+                  workspaceRoot: '/tmp',
+                  onInsertReferences: (_) {},
+                ),
+                attachTooltip: 'Attach',
+                enhanceTooltip: 'Enhance',
+                voiceTooltip: 'Voice',
+                voiceCancelTooltip: 'Cancel',
+                voiceStopTooltip: 'Stop',
+                isEnhancing: false,
+                isVoiceListening: false,
+                voiceElapsed: Duration.zero,
+                voiceSoundLevel: 0,
+                onAttach: () {},
+                onEnhance: () {},
+                onVoice: () {},
+                onVoiceCancel: () {},
+                onVoiceStop: () {},
+                workspaceRoot: '/tmp',
+                skills: const [],
+                plugins: const [],
+                slashBundle: const ConfigBundle(),
+                deferFieldMount: false,
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.byType(ComposeModelPresetChip));
+        await tester.pumpAndSettle();
+        expect(find.text('Custom…'), findsOneWidget);
       },
     );
   });

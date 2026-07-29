@@ -21,8 +21,19 @@ void main() {
           defaultModel: 'sonnet',
         ),
       ],
+      CliTool.cursor: [
+        AppProviderConfig(
+          id: 'cursor-account',
+          cli: CliTool.cursor,
+          name: 'Cursor Account',
+          defaultModel: 'gpt',
+        ),
+      ],
     },
-    selectedProviderIdByCli: {CliTool.claude: 'claude-official'},
+    selectedProviderIdByCli: {
+      CliTool.claude: 'claude-official',
+      CliTool.cursor: 'cursor-account',
+    },
   );
 
   const presets = [
@@ -80,6 +91,44 @@ void main() {
         isPersonal: true,
         presetId: 'preset-a',
       ),
+      presets: presets,
+      teams: const [],
+      appProviders: providers,
+      registry: registry,
+    );
+
+    expect(setting, isNotNull);
+    expect(setting!.cli, CliTool.claude);
+    expect(setting.providerId, 'claude-official');
+    expect(setting.model, 'sonnet');
+  });
+
+  test('resolveLandingEnhanceSetting uses custom cli/provider when presetId empty',
+      () {
+    final setting = resolveLandingEnhanceSetting(
+      draft: const LandingLaunchContext(
+        isPersonal: true,
+        cli: CliTool.cursor,
+        provider: 'cursor-account',
+        model: 'gpt',
+      ),
+      presets: const [],
+      teams: const [],
+      appProviders: providers,
+      registry: registry,
+    );
+
+    expect(setting, isNotNull);
+    expect(setting!.cli, CliTool.cursor);
+    expect(setting.providerId, 'cursor-account');
+    expect(setting.model, 'gpt');
+  });
+
+  test(
+      'resolveLandingEnhanceSetting empty personal still falls back to first preset',
+      () {
+    final setting = resolveLandingEnhanceSetting(
+      draft: const LandingLaunchContext(isPersonal: true),
       presets: presets,
       teams: const [],
       appProviders: providers,

@@ -1422,6 +1422,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceChatLandingUsePreset => 'Use preset';
 
   @override
+  String get workspaceChatLandingCustomLaunch => 'Custom…';
+
+  @override
+  String get workspaceChatLandingCustomLaunchTitle => 'Custom launch';
+
+  @override
   String get workspaceChatLandingFullAccessPermissions =>
       'Full access permissions';
 

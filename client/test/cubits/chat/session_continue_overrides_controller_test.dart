@@ -116,7 +116,8 @@ void main() {
       expect(patched, isNull);
     });
 
-    test('team member preset expands override without touching other members', () {
+    test('team member preset expands override without touching other members',
+        () {
       final session = _simpleSession().copyWith(
         sessionTeam: 'team-1',
         continueOverrides: const SessionContinueOverrides(
@@ -147,6 +148,37 @@ void main() {
         patched.continueOverrides.memberOverrides['reviewer-0']?.presetId,
         'keep-me',
       );
+    });
+  });
+
+  group('patchCustom', () {
+    test('clears presetId and updates provider/model/effort for Simple', () {
+      final patched = controller.patchCustom(
+        session: _simpleSession(),
+        provider: 'openai',
+        model: 'gpt-4o',
+        effort: 'low',
+      );
+
+      expect(patched, isNotNull);
+      expect(patched!.presetId, '');
+      expect(patched.provider, 'openai');
+      expect(patched.model, 'gpt-4o');
+      expect(patched.effort, 'low');
+      expect(patched.cli, CliTool.claude);
+    });
+
+    test('returns null for team sessions', () {
+      final session = _simpleSession().copyWith(sessionTeam: 'team-1');
+
+      final patched = controller.patchCustom(
+        session: session,
+        provider: 'openai',
+        model: 'gpt-4o',
+        effort: 'low',
+      );
+
+      expect(patched, isNull);
     });
   });
 }

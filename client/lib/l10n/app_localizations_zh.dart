@@ -1354,6 +1354,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceChatLandingUsePreset => '使用预设';
 
   @override
+  String get workspaceChatLandingCustomLaunch => '自定义…';
+
+  @override
+  String get workspaceChatLandingCustomLaunchTitle => '自定义启动';
+
+  @override
   String get workspaceChatLandingFullAccessPermissions => '完成访问权限';
 
   @override

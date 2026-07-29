@@ -2,6 +2,7 @@ import '../../cubits/app_provider_cubit.dart';
 import '../../models/ai_feature_setting.dart';
 import '../../models/cli_preset.dart';
 import '../../models/landing_launch_context.dart';
+import '../../models/simple_launch_identity.dart';
 import '../../models/team_config.dart';
 import '../ai/ai_feature_setting_resolver.dart';
 import '../ai/commit_message_prompt.dart';
@@ -37,10 +38,40 @@ AiFeatureSetting? resolveLandingEnhanceSetting({
 }) {
   if (draft.isPersonal) {
     final presetId = draft.presetId?.trim() ?? '';
-    final preset = presetId.isEmpty
-        ? null
-        : presets.where((p) => p.id == presetId).firstOrNull;
-    final selected = preset ?? presets.firstOrNull;
+    if (presetId.isNotEmpty) {
+      final preset = presets.where((p) => p.id == presetId).firstOrNull;
+      final selected = preset ?? presets.firstOrNull;
+      if (selected == null || selected.provider.trim().isEmpty) return null;
+      return resolveAiFeatureSetting(
+        stored: AiFeatureSetting(
+          cli: selected.cli,
+          providerId: selected.provider,
+          model: selected.model,
+          effort: selected.effort,
+        ),
+        appProviders: appProviders,
+        registry: registry,
+        globalPresets: presets,
+      );
+    }
+    if (draft.cli != null) {
+      final providerId = draft.provider?.trim().isNotEmpty == true
+          ? draft.provider!.trim()
+          : (SimpleLaunchIdentity.officialProviderIdFor(draft.cli!) ?? '');
+      if (providerId.isEmpty) return null;
+      return resolveAiFeatureSetting(
+        stored: AiFeatureSetting(
+          cli: draft.cli!,
+          providerId: providerId,
+          model: draft.model ?? '',
+          effort: draft.effort ?? '',
+        ),
+        appProviders: appProviders,
+        registry: registry,
+        globalPresets: presets,
+      );
+    }
+    final selected = presets.firstOrNull;
     if (selected == null || selected.provider.trim().isEmpty) return null;
     return resolveAiFeatureSetting(
       stored: AiFeatureSetting(

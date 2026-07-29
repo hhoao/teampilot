@@ -64,6 +64,9 @@ final class BoundComposeChrome extends ComposeChrome {
     this.modelPresetLabel,
     this.emptyPresetHintLabel,
     this.onPresetSelected,
+    this.customLabel,
+    this.customSelected = false,
+    this.onCustom,
     this.dangerouslySkipPermissions = false,
     this.defaultPermissionsLabel,
     this.fullAccessPermissionsLabel,
@@ -92,6 +95,9 @@ final class BoundComposeChrome extends ComposeChrome {
   final String? modelPresetLabel;
   final String? emptyPresetHintLabel;
   final ValueChanged<String>? onPresetSelected;
+  final String? customLabel;
+  final bool customSelected;
+  final VoidCallback? onCustom;
 
   final bool dangerouslySkipPermissions;
   final String? defaultPermissionsLabel;

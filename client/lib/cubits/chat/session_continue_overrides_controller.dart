@@ -81,6 +81,22 @@ class SessionContinueOverridesController {
     );
   }
 
+  /// Returns null when [session] is not Simple.
+  AppSession? patchCustom({
+    required AppSession session,
+    required String provider,
+    required String model,
+    required String effort,
+  }) {
+    if (!session.isSimple) return null;
+    return session.copyWith(
+      presetId: '',
+      provider: provider,
+      model: model,
+      effort: effort,
+    );
+  }
+
   Future<void> persistPermission({
     required SessionRepository repo,
     required AppSession patched,
@@ -109,6 +125,19 @@ class SessionContinueOverridesController {
     return repo.updateContinueOverrides(
       patched.sessionId,
       patched.continueOverrides,
+    );
+  }
+
+  Future<void> persistCustom({
+    required SessionRepository repo,
+    required AppSession patched,
+  }) {
+    return repo.updateSimpleLaunchIdentity(
+      patched.sessionId,
+      presetId: '',
+      provider: patched.provider,
+      model: patched.model,
+      effort: patched.effort,
     );
   }
 }

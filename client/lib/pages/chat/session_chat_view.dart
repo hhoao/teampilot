@@ -55,7 +55,10 @@ import '../../services/terminal/pending_user_message.dart';
 import '../../theme/app_markdown_style_sheet.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/team/team_member_naming.dart';
+import '../../pages/team_config/team_config_helpers.dart';
 import '../../widgets/compose/compose_chrome.dart';
+import '../../widgets/compose/compose_model_preset_chip.dart';
+import '../../widgets/compose/simple_custom_launch_dialog.dart';
 import '../../widgets/compose/workspace_compose_card.dart';
 import '../../widgets/follow_up/follow_up_queue_strip.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
@@ -478,21 +481,30 @@ class _SessionChatViewState extends State<SessionChatView> {
     }
   }
 
-  LandingLaunchContext _enhanceDraft() {
-    final isPersonal = widget.session.sessionTeam.trim().isEmpty;
+  LandingLaunchContext _enhanceDraft([AppSession? live]) {
+    final session = live ?? widget.session;
+    final isPersonal = session.sessionTeam.trim().isEmpty;
     return LandingLaunchContext(
       isPersonal: isPersonal,
-      teamId: isPersonal ? null : widget.session.sessionTeam,
-      expertKey: widget.session.expertKey.trim().isEmpty
+      presetId: isPersonal
+          ? (session.presetId.trim().isEmpty ? null : session.presetId)
+          : null,
+      teamId: isPersonal ? null : session.sessionTeam,
+      expertKey: session.expertKey.trim().isEmpty
           ? null
-          : widget.session.expertKey,
+          : session.expertKey,
       workingDirectoryPath: _workspaceRoot,
+      cli: isPersonal ? session.cli : null,
+      provider: isPersonal ? session.provider : null,
+      model: isPersonal ? session.model : null,
+      effort: isPersonal ? session.effort : null,
     );
   }
 
   ConfigBundle _slashBundle(BuildContext context) {
+    final live = _readCubitSession(context) ?? widget.session;
     return slashBundleForLanding(
-      draft: _enhanceDraft(),
+      draft: _enhanceDraft(live),
       team: widget.team,
       workspace: _workspaceProjectBundle,
       hubState: _expertHubState(context),
@@ -737,6 +749,36 @@ class _SessionChatViewState extends State<SessionChatView> {
     }
   }
 
+  Future<void> _openContinueCustomLaunchDialog({
+    required AppSession session,
+  }) async {
+    final result = await showSimpleCustomLaunchDialog(
+      context,
+      lockCli: true,
+      initialCli: session.cli ?? CliTool.claude,
+      initialProvider: session.provider,
+      initialModel: session.model,
+      initialEffort: session.effort,
+    );
+    if (!mounted || result == null) return;
+    final live = _readCubitSession(context);
+    if (live == null) {
+      if (mounted) _toastContinueSaveFailed();
+      return;
+    }
+    try {
+      final ok = await context.read<ChatCubit>().setSessionContinueCustom(
+        sessionId: live.sessionId,
+        provider: result.provider,
+        model: result.model,
+        effort: result.effort,
+      );
+      if (!ok && mounted) _toastContinueSaveFailed();
+    } on Object {
+      if (mounted) _toastContinueSaveFailed();
+    }
+  }
+
   Future<void> _attachFiles() async {
     if (_isSubmitting || _enhancing) return;
     await pickAndInsertComposeFileReferences(
@@ -775,8 +817,9 @@ class _SessionChatViewState extends State<SessionChatView> {
     final draft = _controller.text.trim();
     if (draft.isEmpty || _isSubmitting || _enhancing) return;
 
+    final live = _readCubitSession(context) ?? widget.session;
     final setting = resolveLandingEnhanceSetting(
-      draft: _enhanceDraft(),
+      draft: _enhanceDraft(live),
       presets: context.read<CliPresetsCubit>().state.presets,
       teams: context.read<LaunchProfileCubit>().state.teams,
       appProviders: context.read<AppProviderCubit>().state,
@@ -1083,9 +1126,18 @@ class _SessionChatViewState extends State<SessionChatView> {
     final selectedPreset = selectedPresetId == null
         ? null
         : sameCliPresets.where((p) => p.id == selectedPresetId).firstOrNull;
-    final modelLabel = selectedPreset?.name.trim().isNotEmpty == true
-        ? selectedPreset!.name.trim()
-        : l10n.workspaceChatLandingUsePreset;
+    final modelLabel = session.isSimple
+        ? simpleLaunchChipLabel(
+            presetName: selectedPreset?.name,
+            cli: lockedCli,
+            provider: session.provider,
+            model: session.model,
+            emptyLabel: l10n.workspaceChatLandingUsePreset,
+            cliLabel: (cli) => teamCliDisplayLabel(context, l10n, cli),
+          )
+        : (selectedPreset?.name.trim().isNotEmpty == true
+              ? selectedPreset!.name.trim()
+              : l10n.workspaceChatLandingUsePreset);
     final identityLabel = _identityLabel(
       session: session,
       team: team,
@@ -1497,6 +1549,19 @@ class _SessionChatViewState extends State<SessionChatView> {
                                         lockedCli: lockedCli,
                                       ),
                                     ),
+                                    customLabel: session.isSimple
+                                        ? l10n.workspaceChatLandingCustomLaunch
+                                        : null,
+                                    customSelected:
+                                        session.isSimple &&
+                                        session.presetId.trim().isEmpty,
+                                    onCustom: session.isSimple
+                                        ? () => unawaited(
+                                            _openContinueCustomLaunchDialog(
+                                              session: session,
+                                            ),
+                                          )
+                                        : null,
                                     dangerouslySkipPermissions:
                                         _effectivePermission(
                                           session: session,

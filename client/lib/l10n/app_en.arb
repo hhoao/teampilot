@@ -615,6 +615,8 @@
   "workspaceChatLandingModeTeam": "Team",
   "workspaceChatLandingModeSimple": "Simple chat",
   "workspaceChatLandingUsePreset": "Use preset",
+  "workspaceChatLandingCustomLaunch": "Custom…",
+  "workspaceChatLandingCustomLaunchTitle": "Custom launch",
   "workspaceChatLandingFullAccessPermissions": "Full access permissions",
   "workspaceChatLandingSkills": "Skills",
   "workspaceChatLandingConnectApps": "Connect apps",

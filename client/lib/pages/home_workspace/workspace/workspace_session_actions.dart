@@ -18,7 +18,6 @@ import '../../../cubits/workbench/workbench_cubit.dart';
 import '../../../cubits/workbench/workbench_tab.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
-import '../../../models/cli_preset.dart';
 import '../../../models/landing_launch_context.dart';
 import '../../../models/simple_launch_identity.dart';
 import '../../../models/workspace.dart';
@@ -26,7 +25,6 @@ import '../../../models/app_session.dart';
 import '../../../models/session_continue_overrides.dart';
 import '../../../models/team_config.dart';
 import '../../../repositories/session_repository.dart';
-import '../../../services/cli/preset_resolver.dart';
 import '../../../services/expert_hub/expert_hub_recent_store.dart';
 import '../../../services/expert_hub/expert_landing_preflight.dart';
 import '../../../services/expert_hub/expert_member_resolver.dart';
@@ -354,6 +352,10 @@ Future<void> submitWorkspaceLandingMessage(
       ? _resolveSimpleLaunchIdentity(
           context,
           presetId: launch.presetId,
+          cli: launch.cli,
+          provider: launch.provider,
+          model: launch.model,
+          effort: launch.effort,
           expertKey: trimmedExpert,
         )
       : null;
@@ -646,20 +648,18 @@ SimpleLaunchIdentity _resolveSimpleLaunchIdentity(
   BuildContext context, {
   String? presetId,
   CliTool? cli,
+  String? provider,
+  String? model,
+  String? effort,
   String? expertKey,
 }) {
-  final presets = context.read<CliPresetsCubit>().state.presets;
-  final preset = _presetById(presetId, presets);
-  return SimpleLaunchIdentity.resolve(
-    cli: cli,
-    preset: preset,
+  return resolveLandingSimpleLaunchIdentity(
+    presets: context.read<CliPresetsCubit>().state.presets,
     presetId: presetId,
+    cli: cli,
+    provider: provider,
+    model: model,
+    effort: effort,
     expertKey: expertKey,
   );
-}
-
-CliPreset? _presetById(String? id, List<CliPreset> presets) {
-  final trimmed = id?.trim() ?? '';
-  if (trimmed.isEmpty) return null;
-  return presetById(trimmed, presets);
 }

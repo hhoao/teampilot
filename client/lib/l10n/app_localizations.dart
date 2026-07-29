@@ -2642,6 +2642,18 @@ abstract class AppLocalizations {
   /// **'Use preset'**
   String get workspaceChatLandingUsePreset;
 
+  /// No description provided for @workspaceChatLandingCustomLaunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom…'**
+  String get workspaceChatLandingCustomLaunch;
+
+  /// No description provided for @workspaceChatLandingCustomLaunchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom launch'**
+  String get workspaceChatLandingCustomLaunchTitle;
+
   /// No description provided for @workspaceChatLandingFullAccessPermissions.
   ///
   /// In en, this message translates to:

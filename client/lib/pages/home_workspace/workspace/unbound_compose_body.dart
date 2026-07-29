@@ -23,6 +23,7 @@ import '../../../models/cli_preset.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../models/runtime_target.dart';
+import '../../../pages/team_config/team_config_helpers.dart';
 import '../../../services/ai/headless_ai_service.dart';
 import '../../../services/compose/compose_file_attach.dart';
 import '../../../services/compose/compose_file_drop_ingestor.dart';
@@ -44,6 +45,7 @@ import '../../../services/team/team_landing_recent_store.dart';
 import '../../../widgets/cli/cli_brand_icon.dart';
 import '../../../widgets/compose/compose_chrome.dart';
 import '../../../widgets/compose/compose_model_preset_chip.dart';
+import '../../../widgets/compose/simple_custom_launch_dialog.dart';
 import '../../../widgets/compose/workspace_compose_card.dart';
 import '../../../services/launch/workspace_landing_launch_gate.dart';
 import '../../../repositories/workspace_project_config_repository.dart';
@@ -103,6 +105,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   var _conversationMode = _LandingConversationMode.simple;
   var _dangerouslySkipPermissions = true;
   String? _selectedPresetId;
+  CliTool? _selectedCli;
+  String? _selectedProvider;
+  String? _selectedModel;
+  String? _selectedEffort;
   String? _selectedTeamId;
   String? _selectedExpertKey;
   var _enhancing = false;
@@ -602,6 +608,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         : _LandingConversationMode.team;
     _selectedTeamId = draft.teamId;
     _selectedPresetId = draft.presetId;
+    _selectedCli = draft.cli;
+    _selectedProvider = draft.provider;
+    _selectedModel = draft.model;
+    _selectedEffort = draft.effort;
     _selectedExpertKey = draft.expertKey?.trim().isNotEmpty == true
         ? draft.expertKey!.trim()
         : null;
@@ -750,6 +760,11 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           ? null
           : selectedWorktreePath,
       dangerouslySkipPermissions: _dangerouslySkipPermissions,
+      // Keep custom four-tuple across Simple↔Team switches (ignored on Team submit).
+      cli: _selectedCli,
+      provider: _selectedProvider,
+      model: _selectedModel,
+      effort: _selectedEffort,
     );
   }
 
@@ -881,7 +896,33 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   }
 
   void _selectPreset(String presetId) {
-    setState(() => _selectedPresetId = presetId);
+    setState(
+      () => _applyDraft(landingDraftSelectingPreset(_currentDraft(), presetId)),
+    );
+    _persistDraft();
+  }
+
+  Future<void> _openCustomLaunchDialog() async {
+    final result = await showSimpleCustomLaunchDialog(
+      context,
+      lockCli: false,
+      initialCli: _selectedCli,
+      initialProvider: _selectedProvider ?? '',
+      initialModel: _selectedModel ?? '',
+      initialEffort: _selectedEffort ?? '',
+    );
+    if (!mounted || result == null) return;
+    setState(
+      () => _applyDraft(
+        landingDraftSelectingCustom(
+          _currentDraft(),
+          cli: result.cli,
+          provider: result.provider,
+          model: result.model,
+          effort: result.effort,
+        ),
+      ),
+    );
     _persistDraft();
   }
 
@@ -1072,6 +1113,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   }
 
   String _autoChipLabel(
+    BuildContext context,
     AppLocalizations l10n, {
     required List<CliPreset> presets,
     required List<TeamProfile> teams,
@@ -1080,9 +1122,14 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       final preset = presets
           .where((p) => p.id == _selectedPresetId)
           .firstOrNull;
-      return preset?.name.trim().isNotEmpty == true
-          ? preset!.name.trim()
-          : l10n.workspaceChatLandingUsePreset;
+      return simpleLaunchChipLabel(
+        presetName: preset?.name,
+        cli: _selectedCli,
+        provider: _selectedProvider,
+        model: _selectedModel,
+        emptyLabel: l10n.workspaceChatLandingUsePreset,
+        cliLabel: (cli) => teamCliDisplayLabel(context, l10n, cli),
+      );
     }
 
     final team = teams.where((t) => t.id == _selectedTeamId).firstOrNull;
@@ -1096,13 +1143,17 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     required List<CliPreset> presets,
   }) {
     if (_conversationMode != _LandingConversationMode.simple) return null;
-    final preset =
-        presets.where((p) => p.id == _selectedPresetId).firstOrNull ??
-        presets.firstOrNull;
-    if (preset == null) return null;
+    final preset = presets.where((p) => p.id == _selectedPresetId).firstOrNull;
+    final CliTool? cli =
+        preset?.cli ??
+        _selectedCli ??
+        (_selectedPresetId?.trim().isNotEmpty == true
+            ? null
+            : presets.firstOrNull?.cli);
+    if (cli == null) return null;
     final icons = context.tpIconSizes;
     return CliBrandIcon(
-      cli: preset.cli,
+      cli: cli,
       size: icons.sm,
       borderRadius: 4,
       showBorder: false,
@@ -1132,10 +1183,13 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     required List<TeamProfile> teams,
   }) {
     if (_conversationMode == _LandingConversationMode.simple) {
+      final presetEmpty = _selectedPresetId?.trim().isEmpty ?? true;
       return buildComposeModelPresetMenuSpecs(
         sameCliPresets: presets,
         selectedPresetId: _selectedPresetId,
         emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
+        customLabel: l10n.workspaceChatLandingCustomLaunch,
+        customSelected: _selectedCli != null && presetEmpty,
         managePresetsLabel: l10n.workspaceCliAddPresetTitle,
       );
     }
@@ -1195,6 +1249,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       chrome: UnboundComposeChrome(
         conversationModeLabel: _conversationModeLabel(l10n),
         autoChipLabel: _autoChipLabel(
+          context,
           l10n,
           presets: presets,
           teams: teams,
@@ -1221,6 +1276,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         onAutoChipSelected: (value) {
           if (value == ComposeModelPresetChipAction.manage) {
             _openPresetsManageDialog();
+            return;
+          }
+          if (value == ComposeModelPresetChipAction.custom) {
+            unawaited(_openCustomLaunchDialog());
             return;
           }
           if (_conversationMode == _LandingConversationMode.team) {

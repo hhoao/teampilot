@@ -1677,6 +1677,37 @@ class ChatCubit extends Cubit<ChatState>
     return true;
   }
 
+  /// Persists manual provider/model/effort for Simple identity (clears preset).
+  ///
+  /// Returns false when the session is not Simple or missing.
+  Future<bool> setSessionContinueCustom({
+    required String sessionId,
+    required String provider,
+    required String model,
+    required String effort,
+  }) async {
+    final repo = _sessionRepository;
+    if (repo == null) return false;
+    final session = _continueOverridesController.sessionIn(
+      state.sessions,
+      sessionId,
+    );
+    if (session == null) return false;
+    final patched = _continueOverridesController.patchCustom(
+      session: session,
+      provider: provider,
+      model: model,
+      effort: effort,
+    );
+    if (patched == null) return false;
+    await _continueOverridesController.persistCustom(
+      repo: repo,
+      patched: patched,
+    );
+    replaceSessionSnapshot(patched);
+    return true;
+  }
+
   /// Persists a manual session arrangement. [orderedSessionIds] is the new
   /// top-to-bottom order (used by [AppSessionSort.manual]).
   Future<void> reorderSessions(List<String> orderedSessionIds) async {

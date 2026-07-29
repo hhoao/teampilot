@@ -7,9 +7,33 @@ import '../cli/cli_brand_icon.dart';
 import 'compose_menu_chip.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-/// Sentinel for the optional "manage presets" menu row.
-abstract final class ComposeModelPresetChipAction {
-  static const manage = Object();
+/// Sentinel values for optional model chip menu rows.
+enum ComposeModelPresetChipAction {
+  custom,
+  manage,
+}
+
+/// Summary label for Simple launch model chips (preset or custom four-tuple).
+String simpleLaunchChipLabel({
+  required String? presetName,
+  required CliTool? cli,
+  required String? provider,
+  required String? model,
+  required String emptyLabel,
+  required String Function(CliTool cli) cliLabel,
+}) {
+  final trimmedPreset = presetName?.trim() ?? '';
+  if (trimmedPreset.isNotEmpty) return trimmedPreset;
+  if (cli == null) return emptyLabel;
+
+  final cliName = cliLabel(cli);
+  final trimmedModel = model?.trim() ?? '';
+  if (trimmedModel.isNotEmpty) return '$cliName · $trimmedModel';
+
+  final trimmedProvider = provider?.trim() ?? '';
+  if (trimmedProvider.isNotEmpty) return '$cliName · $trimmedProvider';
+
+  return cliName;
 }
 
 /// Builds preset menu specs for same-CLI preset pickers.
@@ -19,6 +43,8 @@ List<TpActionMenuSpec> buildComposeModelPresetMenuSpecs({
   required List<CliPreset> sameCliPresets,
   required String? selectedPresetId,
   required String emptyHintLabel,
+  String? customLabel,
+  bool customSelected = false,
   String? managePresetsLabel,
 }) {
   final specs = <TpActionMenuSpec>[
@@ -38,15 +64,27 @@ List<TpActionMenuSpec> buildComposeModelPresetMenuSpecs({
           selected: preset.id == selectedPresetId,
         ),
   ];
-  if (managePresetsLabel != null) {
+  if (customLabel != null || managePresetsLabel != null) {
     specs.add(const TpActionMenuSpec.divider());
-    specs.add(
-      TpActionMenuSpec.item(
-        value: ComposeModelPresetChipAction.manage,
-        icon: Icons.add,
-        label: managePresetsLabel,
-      ),
-    );
+    if (customLabel != null) {
+      specs.add(
+        TpActionMenuSpec.item(
+          value: ComposeModelPresetChipAction.custom,
+          icon: Icons.tune_outlined,
+          label: customLabel,
+          selected: customSelected,
+        ),
+      );
+    }
+    if (managePresetsLabel != null) {
+      specs.add(
+        TpActionMenuSpec.item(
+          value: ComposeModelPresetChipAction.manage,
+          icon: Icons.add,
+          label: managePresetsLabel,
+        ),
+      );
+    }
   }
   return specs;
 }
@@ -76,6 +114,9 @@ class ComposeModelPresetChip extends StatelessWidget {
     required this.label,
     required this.emptyHintLabel,
     required this.onPresetSelected,
+    this.customLabel,
+    this.customSelected = false,
+    this.onCustom,
     this.managePresetsLabel,
     this.onManagePresets,
     this.icon = Icons.terminal_outlined,
@@ -88,6 +129,9 @@ class ComposeModelPresetChip extends StatelessWidget {
   final String label;
   final String emptyHintLabel;
   final ValueChanged<String> onPresetSelected;
+  final String? customLabel;
+  final bool customSelected;
+  final VoidCallback? onCustom;
   final String? managePresetsLabel;
   final VoidCallback? onManagePresets;
   final IconData icon;
@@ -119,9 +163,15 @@ class ComposeModelPresetChip extends StatelessWidget {
         sameCliPresets: sameCliPresets,
         selectedPresetId: selectedPresetId,
         emptyHintLabel: emptyHintLabel,
+        customLabel: customLabel,
+        customSelected: customSelected,
         managePresetsLabel: managePresetsLabel,
       ),
       onSelected: (value) {
+        if (value == ComposeModelPresetChipAction.custom) {
+          onCustom?.call();
+          return;
+        }
         if (value == ComposeModelPresetChipAction.manage) {
           onManagePresets?.call();
           return;

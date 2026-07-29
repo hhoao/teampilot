@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../../models/team_config.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 
@@ -13,6 +14,10 @@ class LandingPrefs {
     this.expertKey,
     this.workingDirectoryPath,
     this.dangerouslySkipPermissions = true,
+    this.cli,
+    this.provider,
+    this.model,
+    this.effort,
   });
 
   final bool isPersonal;
@@ -22,6 +27,10 @@ class LandingPrefs {
   final String? expertKey;
   final String? workingDirectoryPath;
   final bool dangerouslySkipPermissions;
+  final CliTool? cli;
+  final String? provider;
+  final String? model;
+  final String? effort;
 
   Map<String, Object?> toJson() => {
     'isPersonal': isPersonal,
@@ -33,6 +42,10 @@ class LandingPrefs {
     if (workingDirectoryPath != null && workingDirectoryPath!.isNotEmpty)
       'workingDirectoryPath': workingDirectoryPath,
     'dangerouslySkipPermissions': dangerouslySkipPermissions,
+    if (cli != null) 'cli': cli!.value,
+    if (provider != null && provider!.isNotEmpty) 'provider': provider,
+    if (model != null && model!.isNotEmpty) 'model': model,
+    if (effort != null && effort!.isNotEmpty) 'effort': effort,
   };
 }
 
@@ -68,6 +81,10 @@ class LandingPrefsStore {
           workingDirectoryPath: m['workingDirectoryPath'] as String?,
           dangerouslySkipPermissions:
               m['dangerouslySkipPermissions'] as bool? ?? true,
+          cli: m['cli'] != null ? CliTool.parse(m['cli']) : null,
+          provider: m['provider'] as String?,
+          model: m['model'] as String?,
+          effort: m['effort'] as String?,
         );
       }
       return out;
