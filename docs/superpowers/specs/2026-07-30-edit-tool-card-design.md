@@ -320,9 +320,12 @@ numbers. If the file no longer matches, return the input hunk unchanged.
 **`ai_message_ui`:**
 
 - StrReplace uses edit card (not `Used tool:` / not Read-style summary alone)
-- Always-visible mini-diff; expand shows full hunk without `Result:`
-- Badges `+N`/`−N`; tap basename invokes `onOpenFile`
-- Highlighter failure still paints plain lines
+- Always-visible mini-diff; expand grows the **same** region to full hunk
+  without `Result:` and without stacking a second diff
+- Badges `+N`/`−N`; tap basename invokes `onOpenFile` with
+  `endLine` = last numbered line (or null)
+- Highlighter failure still paints plain lines; host-injected highlighter
+  colors when provided
 - Enricher success updates line numbers; enricher throw leaves args hunk
 - Read / Shell / Subagent / Legacy regressions
 
@@ -333,8 +336,8 @@ numbers. If the file no longer matches, return the input hunk unchanged.
 | Hunk model + codecs + resolver | `client/packages/ai_message_core/lib/src/tool_edit_target.dart` (split files if large) |
 | Barrel export | `client/packages/ai_message_core/lib/ai_message_core.dart` |
 | Card + branch | `client/packages/ai_message_ui/lib/src/parts/tool_call_part_view.dart` (+ extract widgets if needed) |
-| Highlighter | `client/packages/ai_message_ui/lib/src/edit/…` |
-| File actions enrich hook | `client/packages/ai_message_ui/lib/src/tool_file_actions.dart` |
-| Host enricher | History / workspace seat wiring under `client/lib/…` |
+| Plain highlighter + ports | `client/packages/ai_message_ui/lib/src/edit/…` |
+| File actions enrich / highlighter hooks | `client/packages/ai_message_ui/lib/src/tool_file_actions.dart` |
+| Host enricher + `ReHighlight` injection | History / workspace seat wiring under `client/lib/…` |
 | Core tests | `client/packages/ai_message_core/test/tool_edit_*.dart` |
 | UI tests | `client/packages/ai_message_ui/test/tool_call_edit_target_test.dart` |
