@@ -188,6 +188,7 @@ class RunCubit extends Cubit<RunState> {
           clearSelectedKey: true,
           options: const [],
           optionValues: const {},
+          clearError: true,
         ),
       );
       await _clearPersistedSelection();
@@ -405,20 +406,12 @@ class RunCubit extends Cubit<RunState> {
       );
       final acceptedKey = recommendation.selectionKey;
       await load();
-      if (!isClosed) {
-        final persisted = state.configurations
-            .where((item) => item.selectionKey == acceptedKey)
-            .firstOrNull;
-        if (persisted != null) {
-          emit(
-            state.copyWith(
-              selectedKey: persisted.selectionKey,
-              options: const [],
-              optionValues: const {},
-              clearError: true,
-            ),
-          );
-        }
+      if (isClosed) return;
+      final persisted = state.configurations
+          .where((item) => item.selectionKey == acceptedKey)
+          .firstOrNull;
+      if (persisted != null) {
+        await select(persisted.selectionKey);
       }
     } catch (error) {
       if (!isClosed) {
@@ -586,6 +579,13 @@ class RunCubit extends Cubit<RunState> {
           configuration: configuration,
         );
         await load();
+        if (isClosed) return;
+        final selectionKey = _selectionKeyAfterPersist(
+          OwnedLaunchConfiguration(owner: owner, configuration: configuration),
+        );
+        if (selectionKey != null) {
+          await select(selectionKey);
+        }
       }
     } catch (error) {
       emit(state.copyWith(errorMessage: error.toString()));

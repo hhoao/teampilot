@@ -73,6 +73,40 @@ class _MutableFakeRunPlatform extends FakeRunPlatform {
   }
 }
 
+/// [FakeRunPlatform] that exposes a discover recommendation and appends on persist.
+class _RecommendationAcceptPlatform extends FakeRunPlatform {
+  _RecommendationAcceptPlatform({
+    required super.configurations,
+    required this.recommendation,
+  });
+
+  final OwnedLaunchConfiguration recommendation;
+
+  @override
+  Future<List<OwnedLaunchConfiguration>> discoverRecommendations(
+    List<WorkspaceFolder> folders, {
+    List<OwnedLaunchConfiguration> existing = const [],
+  }) async {
+    final alreadyPresent = configurations.any(
+      (config) => config.selectionKey == recommendation.selectionKey,
+    );
+    return alreadyPresent ? const [] : [recommendation];
+  }
+
+  @override
+  Future<void> persistConfiguration({
+    required WorkspaceFolder folder,
+    required LaunchConfiguration configuration,
+  }) async {
+    persistConfigurationCalls++;
+    lastPersistedConfiguration = configuration;
+    configurations = [
+      ...configurations,
+      OwnedLaunchConfiguration(owner: folder, configuration: configuration),
+    ];
+  }
+}
+
 void main() {
   test('load with no prefs selects first configuration and writes prefs', () async {
     final fs = InMemoryFilesystem();
@@ -194,6 +228,33 @@ void main() {
       expect(cubit.state.configurations.map((c) => c.configId), ['b']);
       expect(cubit.state.selectedKey, second.selectionKey);
       expect(await prefs.selectedKeyFor(_workspaceId), second.selectionKey);
+      await cubit.close();
+    },
+  );
+
+  test(
+    'acceptRecommendation selects accepted config and persists prefs',
+    () async {
+      final fs = InMemoryFilesystem();
+      final prefs = _prefsStore(fs);
+      final a = _shellScriptConfig(id: 'a', name: 'a');
+      final b = _shellScriptConfig(id: 'b', name: 'b');
+      final platform = _RecommendationAcceptPlatform(
+        configurations: [a],
+        recommendation: b,
+      );
+      final cubit = _cubit(platform: platform, prefsStore: prefs);
+      await cubit.load();
+
+      expect(cubit.state.selectedKey, a.selectionKey);
+      expect(await prefs.selectedKeyFor(_workspaceId), a.selectionKey);
+      expect(cubit.state.recommendations, hasLength(1));
+
+      await cubit.acceptRecommendation(cubit.state.recommendations.single);
+
+      expect(cubit.state.configurations.map((c) => c.configId), ['a', 'b']);
+      expect(cubit.state.selectedKey, b.selectionKey);
+      expect(await prefs.selectedKeyFor(_workspaceId), b.selectionKey);
       await cubit.close();
     },
   );
