@@ -1,7 +1,7 @@
 # Tool Result Enricher (shell stdout side channels)
 
 **Date:** 2026-07-29  
-**Status:** Draft
+**Status:** Approved
 
 ## Goal
 
@@ -19,7 +19,9 @@ special-casing per CLI.
 | Product scope | All five launch CLIs bind an enricher; Codex / OpenCode use NoOp |
 | Cursor source | `projects/{slug}/terminals/*.txt` (not `store.db`) |
 | Claude / flashskyai | Shared enricher: truncated `tool_result` → event-level `toolUseResult` |
-| Overwrite policy | Only when `result == null` or truncation sentinel; never clobber full results |
+| Overwrite policy | Only when result is missing/blank (`null`, empty, or whitespace-only) or truncation sentinel; never clobber full results |
+| Cursor bind order | Walk shell tool parts in message order; each terminal file binds at most once |
+| Capability wiring | Every history capability **explicitly** returns an enricher (Codex/OpenCode → NoOp); no interface default |
 | UI / shell card | Unchanged (`2026-07-29-shell-tool-card-design.md`) |
 | Path / IO | `SessionHistoryContext.fs` only (SSH-safe) |
 | Live updates | Fold `terminals/` into existing History watch / cache paths (Cursor) |
@@ -79,9 +81,12 @@ abstract interface class AiHistoryCapability implements CliCapability {
   AiTranscriptAdapter get adapter;
   Set<String> get subagentToolNames;
   SubagentSideResolver get subagentSideResolver;
-  ToolResultEnricher get toolResultEnricher; // default NoOp where unset
+  ToolResultEnricher get toolResultEnricher;
 }
 ```
+
+Each CLI history capability constructs its enricher explicitly (NoOp for
+Codex/OpenCode).
 
 ### Loader seam
 
@@ -144,17 +149,20 @@ optional trailing fence; tolerate missing trailer.
 
 ### Matching
 
-Candidates: shell-class `AiToolCallPart` with empty `result`.
+Candidates: shell-class `AiToolCallPart` whose `result` is missing or blank
+(`null`, `''`, or whitespace-only after stringify).
 
-Priority:
+Walk candidates in **message / part order**. For each candidate, pick the best
+unbound terminal file:
 
 1. `title == description` **and** normalized `command == args.command`
-2. Normalized `command` only (when description absent)
-3. Multiple matches: prefer nearest `started_at` to tool/message timestamp if
-   available; else latest `ended_at` / `started_at`
+2. Else normalized `command` only (when description absent)
+3. If several files still tie: prefer nearest `started_at` to tool/message
+   timestamp if available; else latest `ended_at` / `started_at`
 
-Each terminal file binds at most one tool call. Normalization: trim; unify
-line endings; optional unescape of YAML double-quoted `command`.
+Each terminal file binds at most once (remove from pool after use).
+Normalization: trim; unify line endings; unescape YAML double-quoted
+`command` when needed.
 
 ### Write-back
 
@@ -165,8 +173,10 @@ line endings; optional unescape of YAML double-quoted `command`.
 ### Watch / cache
 
 Extend Cursor `locate` / `AiHistoryWatchMeta` so `terminals/` participates in
-change detection and cache invalidation (directory or glob of `*.txt`). Exact
-hint shape follows existing watch helpers.
+change detection and cache invalidation. Prefer raising `changeWatchRoot` to
+`projects/{slug}/` (covers both `agent-transcripts/` and `terminals/`) and/or
+adding terminal paths to `cacheTokenPaths` / token inputs so new `*.txt` files
+invalidate History cache. Exact hint shape follows existing watch helpers.
 
 ## Claude-compatible enricher
 
