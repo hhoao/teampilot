@@ -143,6 +143,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/ssh/ssh_connection_events.dart';
 import '../widgets/ssh/ssh_host_key_prompt_dialog.dart';
 import '../services/ssh/ssh_profile_connection_coordinator.dart';
+import '../services/ssh/android_ssh_connect_home.dart';
 import '../services/plugin/profile_plugin_linker_service.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../services/file_tree/workspace_file_tree_store.dart';
@@ -420,6 +421,7 @@ Future<AppShell> buildAppShell({
   late final Future<void> Function() reloadAllAppData;
 
   late final SshProfileCubit sshProfileCubit;
+  late final HomeTargetController homeTargetController;
   final homeWorkspaceUiCache = HomeWorkspaceUiCache();
   sshProfileCubit = SshProfileCubit(
     profileRepository: sshProfileRepo,
@@ -971,7 +973,11 @@ Future<AppShell> buildAppShell({
     factory: sshClientFactory,
     coordinator: sshProfileConnectionCoordinator,
     selectProfileOnConnect: Platform.isAndroid
-        ? (id) => sshProfileCubit.selectProfile(id)
+        ? (id) => applyAndroidSshConnectHome(
+            profileId: id,
+            selectHome: homeTargetController.select,
+            selectProfile: sshProfileCubit.selectProfile,
+          )
         : null,
   );
 
@@ -1193,7 +1199,7 @@ Future<AppShell> buildAppShell({
     await reloadAllAppData();
   }
 
-  final homeTargetController = HomeTargetController(
+  homeTargetController = HomeTargetController(
     registry: runtimeTargetRegistry,
     current: defaultTargetResolver,
     switchTo: switchHomeTarget,
