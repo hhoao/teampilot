@@ -11,7 +11,9 @@ import '../models/workspace_folder.dart';
 import '../services/run/launch_adapter_protocol.dart';
 import '../services/run/launch_config_store.dart';
 import '../services/run/launch_type_normalize.dart';
+import '../services/run/run_default_selection.dart';
 import '../services/run/run_platform.dart';
+import '../services/run/run_ui_prefs_store.dart';
 import '../services/run/shell_script_configuration.dart';
 import '../services/run/shell_script_launch_schema.dart';
 
@@ -112,12 +114,18 @@ class RunCubit extends Cubit<RunState> {
   RunCubit({
     required RunPlatformApi platform,
     required List<WorkspaceFolder> folders,
+    String workspaceId = '',
+    RunUiPrefsStore? prefsStore,
   }) : _platform = platform,
        _folders = List<WorkspaceFolder>.unmodifiable(folders),
+       _workspaceId = workspaceId,
+       _prefsStore = prefsStore,
        super(const RunState());
 
   final RunPlatformApi _platform;
   final List<WorkspaceFolder> _folders;
+  final String _workspaceId;
+  final RunUiPrefsStore? _prefsStore;
   final StreamController<RunUiIntent> _uiIntentController =
       StreamController<RunUiIntent>.broadcast();
 
@@ -151,7 +159,42 @@ class RunCubit extends Cubit<RunState> {
     );
 
     _ensureSubscriptions();
+    await _applyDefaultSelection();
     await refreshDiscover();
+  }
+
+  Future<void> _applyDefaultSelection() async {
+    String? persistedKey;
+    final store = _prefsStore;
+    if (store != null && _workspaceId.isNotEmpty) {
+      try {
+        persistedKey = await store.selectedKeyFor(_workspaceId);
+      } catch (_) {
+        persistedKey = null;
+      }
+    }
+
+    final resolved = resolveRunDefaultSelection(
+      persistedKey: persistedKey,
+      configurations: state.configurations,
+      compounds: state.compounds,
+    );
+
+    if (resolved == null) {
+      await _optionsSub?.cancel();
+      _optionsSub = null;
+      emit(
+        state.copyWith(
+          clearSelectedKey: true,
+          options: const [],
+          optionValues: const {},
+        ),
+      );
+      await _clearPersistedSelection();
+      return;
+    }
+
+    await select(resolved);
   }
 
   void _ensureSubscriptions() {
@@ -176,6 +219,7 @@ class RunCubit extends Cubit<RunState> {
           clearError: true,
         ),
       );
+      await _persistSelection(selectionKey);
       return;
     }
 
@@ -191,6 +235,7 @@ class RunCubit extends Cubit<RunState> {
           optionValues: const {},
         ),
       );
+      await _clearPersistedSelection();
       return;
     }
 
@@ -202,6 +247,7 @@ class RunCubit extends Cubit<RunState> {
         clearError: true,
       ),
     );
+    await _persistSelection(selectionKey);
 
     if (isBuiltInShellType(owned.configuration.type)) {
       return;
@@ -413,7 +459,7 @@ class RunCubit extends Cubit<RunState> {
   /// Removes [owned] from its folder's `launch.json` (no UI confirm).
   ///
   /// Stops a running session for this config first, then deletes and reloads.
-  /// Clears selection when the deleted config was selected.
+  /// [load] re-applies default selection from prefs / first remaining entry.
   Future<void> deleteConfiguration(OwnedLaunchConfiguration owned) async {
     final deletedKey = owned.selectionKey;
     final running = runningSessionFor(deletedKey);
@@ -426,21 +472,7 @@ class RunCubit extends Cubit<RunState> {
         folder: owned.owner,
         id: owned.configId,
       );
-      final wasSelected = state.selectedKey == deletedKey;
       await load();
-      if (isClosed) return;
-      if (wasSelected) {
-        await _optionsSub?.cancel();
-        _optionsSub = null;
-        emit(
-          state.copyWith(
-            clearSelectedKey: true,
-            options: const [],
-            optionValues: const {},
-            clearError: true,
-          ),
-        );
-      }
     } catch (error) {
       if (!isClosed) {
         emit(state.copyWith(errorMessage: error.toString()));
@@ -658,6 +690,22 @@ class RunCubit extends Cubit<RunState> {
       if (compound.selectionKey == selectionKey) return compound;
     }
     return null;
+  }
+
+  Future<void> _persistSelection(String selectionKey) async {
+    final store = _prefsStore;
+    if (store == null || _workspaceId.isEmpty) return;
+    try {
+      await store.saveSelectedKey(_workspaceId, selectionKey);
+    } catch (_) {}
+  }
+
+  Future<void> _clearPersistedSelection() async {
+    final store = _prefsStore;
+    if (store == null || _workspaceId.isEmpty) return;
+    try {
+      await store.clearSelectedKey(_workspaceId);
+    } catch (_) {}
   }
 
   OwnedLaunchConfiguration _applyOptionValues(OwnedLaunchConfiguration owned) {
