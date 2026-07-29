@@ -54,9 +54,9 @@ TextEditingController.text
 
 | Unit | Role |
 |------|------|
-| `compose_at_file_refs.dart` | Pure parse: find `@\S+` file refs (same token shape as compose tokens; exclude `/…`); resolve relative → absolute against `workspaceRoot`; dedupe by path key; basename for display |
+| `compose_at_file_refs.dart` | Pure parse: reuse the same boundary-aware token pattern as the textarea (`(?<!\S)(?:@\S+|/\S+)` / `defaultInlineTokenPattern`), keep only `@…` matches; resolve relative → absolute against `workspaceRoot`; dedupe with the same path-key semantics as `compose_file_attach` (Windows case-insensitive); basename for display |
 | `ComposeAtFileChipRow` | Horizontal scroll of chips; image → small `Image.file` thumbnail when `isImagePreviewPath`; else file icon; tap → `onOpen` |
-| `WorkspaceComposeCard` | Insert chip row above the field when refs non-empty; wire `workspaceId` + open callback (or `context.read<WorkbenchEditorOpener>()`) |
+| `WorkspaceComposeCard` | Insert chip row above the field when refs non-empty; wire `workspaceId` + open callback (or `context.read<WorkbenchEditorOpener>()`). When opening, pass the workspace `Filesystem` into `openFile(..., fs:)` where hosts already have it (native / WSL / SSH), same as file-tree open paths |
 
 ### Data flow (unchanged)
 
