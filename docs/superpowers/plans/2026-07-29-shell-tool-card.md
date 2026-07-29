@@ -467,7 +467,15 @@ useSubagentChrome
   : _SummaryToolTrigger(...),
 ```
 
-**Expanded body:** if `shellTarget != null`, render only `_ShellTerminalPanel` (command + optional output). Else keep existing args/`Result:` block. Do not stack both.
+**Expanded body:** inside the existing `if (_open) AnimatedSize` child, replace the shared `Column` with:
+
+```dart
+shellTarget != null
+  ? _ShellTerminalPanel(...)
+  : Column( /* existing args + Result: + result */ ),
+```
+
+Shell path renders **only** `_ShellTerminalPanel` (command + optional output). Do not stack args/`Result:` on top.
 
 Add `_ShellToolTrigger`:
 
