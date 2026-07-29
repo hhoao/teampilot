@@ -154,6 +154,11 @@ Built-in codecs (v1):
 | `WriteEditHunkCodec` | `write`, `writefile`, `write_file`, `create`, `create_file` | path + `contents`/`content` (all lines as `add`) |
 | `UnifiedDiffEditHunkCodec` | `applypatch`, `apply_patch` | path (if present) + patch/diff text (`patch`, `diff`, `input`, …) |
 
+Unified diff parse (v1): treat lines starting with `+` / `-` / space (or missing
+prefix as context) after stripping a single leading character; ignore `---` /
+`+++` / `@@` headers for line body (use them for path / optional startLine when
+args path missing). Badge counts = number of `+` / `-` body lines.
+
 Path key order mirrors `DefaultAiToolFileTargetResolver`:
 `file_path`, `path`, `file`, `target_file`. Also accept JSON parsed from
 `argsText` when `args` is empty.
