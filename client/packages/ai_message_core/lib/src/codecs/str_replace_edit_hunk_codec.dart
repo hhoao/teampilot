@@ -24,14 +24,15 @@ class StrReplaceEditHunkCodec implements AiEditHunkCodec {
     final path = editFirstNonEmptyString(args, editPathKeys);
     if (path == null) return null;
 
-    final oldString = editFirstNonEmptyString(args, editOldStringKeys);
+    final oldString = editOptionalString(args, editOldStringKeys);
     if (oldString == null) return null;
 
-    final newString = editFirstNonEmptyString(args, editNewStringKeys);
+    final newString = editOptionalString(args, editNewStringKeys);
     if (newString == null) return null;
 
     final oldLines = splitEditLines(oldString);
     final newLines = splitEditLines(newString);
+    if (oldLines.isEmpty && newLines.isEmpty) return null;
 
     final startLine = editFirstPositiveInt(args, editStartLineKeys);
     final lines = <AiEditLine>[];

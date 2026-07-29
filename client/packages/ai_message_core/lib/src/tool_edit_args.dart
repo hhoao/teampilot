@@ -31,6 +31,18 @@ String? editFirstNonEmptyString(Map<String, Object?>? args, List<String> keys) {
   return null;
 }
 
+/// Returns the string when [keys] is present with a String value (including
+/// empty). Null when no key is present or the value is not a String.
+String? editOptionalString(Map<String, Object?>? args, List<String> keys) {
+  if (args == null) return null;
+  for (final key in keys) {
+    if (!args.containsKey(key)) continue;
+    final value = args[key];
+    return value is String ? value : null;
+  }
+  return null;
+}
+
 int? editFirstPositiveInt(Map<String, Object?>? args, List<String> keys) {
   if (args == null) return null;
   for (final key in keys) {
@@ -50,4 +62,7 @@ int? editParsePositiveInt(Object? value) {
   return null;
 }
 
-List<String> splitEditLines(String text) => text.split('\n');
+List<String> splitEditLines(String text) {
+  if (text.isEmpty) return const [];
+  return text.split('\n');
+}

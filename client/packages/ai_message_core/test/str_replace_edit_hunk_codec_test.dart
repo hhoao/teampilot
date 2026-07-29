@@ -59,4 +59,59 @@ void main() {
       isNull,
     );
   });
+
+  test('empty new_string → remove-only hunk', () {
+    final hunk = codec.encode(
+      const AiToolCallPart(
+        toolCallId: '1',
+        toolName: 'StrReplace',
+        args: {
+          'file_path': 'a.dart',
+          'old_string': 'delete me',
+          'new_string': '',
+        },
+      ),
+    );
+    expect(hunk, isNotNull);
+    expect(hunk!.removedCount, 1);
+    expect(hunk.addedCount, 0);
+    expect(hunk.lines.map((l) => l.kind).toList(), [AiEditLineKind.remove]);
+    expect(hunk.lines.single.text, 'delete me');
+  });
+
+  test('empty old_string → add-only hunk', () {
+    final hunk = codec.encode(
+      const AiToolCallPart(
+        toolCallId: '1',
+        toolName: 'StrReplace',
+        args: {
+          'file_path': 'a.dart',
+          'old_string': '',
+          'new_string': 'insert me',
+        },
+      ),
+    );
+    expect(hunk, isNotNull);
+    expect(hunk!.removedCount, 0);
+    expect(hunk.addedCount, 1);
+    expect(hunk.lines.map((l) => l.kind).toList(), [AiEditLineKind.add]);
+    expect(hunk.lines.single.text, 'insert me');
+  });
+
+  test('both old and new empty → null', () {
+    expect(
+      codec.encode(
+        const AiToolCallPart(
+          toolCallId: '1',
+          toolName: 'StrReplace',
+          args: {
+            'file_path': 'a.dart',
+            'old_string': '',
+            'new_string': '',
+          },
+        ),
+      ),
+      isNull,
+    );
+  });
 }
