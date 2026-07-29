@@ -162,4 +162,4 @@ CoT nesting still wraps consecutive tools.
 | Barrel export | `client/packages/ai_message_core/lib/ai_message_core.dart` |
 | UI branch + panel | `client/packages/ai_message_ui/lib/src/parts/tool_call_part_view.dart` |
 | Resolver tests | `client/packages/ai_message_core/test/tool_shell_target_resolver_test.dart` |
-| UI tests | `client/packages/ai_message_ui/test/` (extend tool-call chrome tests) |
+| UI tests | `client/packages/ai_message_ui/test/tool_call_shell_target_test.dart` |
