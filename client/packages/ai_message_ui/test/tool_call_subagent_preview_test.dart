@@ -131,7 +131,7 @@ void main() {
     expect(openedId, 'spawn-2');
   });
 
-  testWidgets('Bash keeps legacy Used tool chrome', (tester) async {
+  testWidgets('Bash with command uses shell chrome', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: AiToolSubagentActionsScope(
@@ -150,7 +150,8 @@ void main() {
         ),
       ),
     );
-    expect(find.textContaining('Used tool:'), findsOneWidget);
+    expect(find.textContaining('Used tool:'), findsNothing);
+    expect(find.textContaining('ls'), findsOneWidget);
   });
 
   testWidgets('Read still prefers file chrome when resolver hits', (
