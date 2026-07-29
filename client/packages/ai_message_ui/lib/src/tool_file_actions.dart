@@ -1,16 +1,22 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
+import 'edit/edit_line_highlighter.dart';
+
 /// Host-injected resolver + open handler for tool-call file targets.
 @immutable
 class AiToolFileActions {
   const AiToolFileActions({
     this.resolver = const DefaultAiToolFileTargetResolver(),
     this.onOpenFile,
+    this.enrichEditContext,
+    this.lineHighlighter = const PlainEditLineHighlighter(),
   });
 
   final AiToolFileTargetResolver resolver;
   final Future<void> Function(AiToolFileTarget target)? onOpenFile;
+  final Future<AiEditHunk> Function(AiEditHunk hunk)? enrichEditContext;
+  final AiEditLineHighlighter lineHighlighter;
 
   static AiToolFileActions of(BuildContext context) {
     return context

@@ -17,6 +17,7 @@ export 'src/parts/tool_call_part_view.dart';
 export 'src/parts/tool_group_view.dart';
 export 'src/selection_dead_zone.dart';
 export 'src/strings.dart';
+export 'src/edit/edit_line_highlighter.dart';
 export 'src/tool_file_actions.dart';
 export 'src/tool_subagent_actions.dart';
 export 'src/markdown/compiled_markdown_style.dart';
