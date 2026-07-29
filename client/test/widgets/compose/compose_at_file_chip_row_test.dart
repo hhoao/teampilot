@@ -28,6 +28,11 @@ void main() {
 
     expect(find.text('a.dart'), findsOneWidget);
     expect(find.text('photo.png'), findsOneWidget);
+    expect(find.byType(Image), findsOneWidget);
+    expect(
+      find.byIcon(Icons.insert_drive_file_outlined),
+      findsOneWidget,
+    );
 
     await tester.tap(find.text('a.dart'));
     expect(opened, ['/repo/src/a.dart']);
