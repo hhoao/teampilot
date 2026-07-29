@@ -350,6 +350,25 @@ Widget _host({required RunCubit cubit, RunActionPicker? pickActionResult}) {
 }
 
 void main() {
+  testWidgets('dropdown trigger shows selected config name after load', (
+    tester,
+  ) async {
+    final platform = _RecordingPlatform(
+      configurations: [_shellScriptConfig()],
+    );
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    addTearDown(cubit.close);
+    addTearDown(platform._actionsController.close);
+
+    await cubit.load();
+    await tester.pumpWidget(_host(cubit: cubit));
+    await tester.pump();
+
+    expect(cubit.state.selectedKey, platform.configurations.single.selectionKey);
+    expect(find.text('Launch'), findsNothing);
+    expect(find.text('API'), findsOneWidget);
+  });
+
   testWidgets('dropdown lists configs and isAction items', (tester) async {
     final platform = _RecordingPlatform(
       configurations: [_shellScriptConfig()],
@@ -643,7 +662,6 @@ void main() {
     addTearDown(platform._actionsController.close);
 
     await cubit.load();
-    await cubit.select(platform.configurations.single.selectionKey);
     await tester.pumpWidget(_host(cubit: cubit));
     await tester.pump();
 
@@ -686,7 +704,6 @@ void main() {
     addTearDown(platform._actionsController.close);
 
     await cubit.load();
-    await cubit.select(platform.configurations.single.selectionKey);
     await tester.pumpWidget(_host(cubit: cubit));
     await tester.pump();
 
@@ -713,7 +730,6 @@ void main() {
     addTearDown(platform._actionsController.close);
 
     await cubit.load();
-    await cubit.select(platform.configurations.single.selectionKey);
     await tester.pumpWidget(_host(cubit: cubit));
     await tester.pump();
 
@@ -750,7 +766,6 @@ void main() {
       addTearDown(platform._actionsController.close);
 
       await cubit.load();
-      await cubit.select(invalid.selectionKey);
       await tester.pumpWidget(_host(cubit: cubit));
       await tester.pump();
 
@@ -790,7 +805,6 @@ void main() {
     addTearDown(platform._actionsController.close);
 
     await cubit.load();
-    await cubit.select(platform.configurations.single.selectionKey);
     await tester.pumpWidget(_host(cubit: cubit));
     await tester.pump();
 
@@ -856,7 +870,6 @@ void main() {
       addTearDown(platform._actionsController.close);
 
       await cubit.load();
-      await cubit.select(config.selectionKey);
       await cubit.runSelected();
       await tester.pumpWidget(_host(cubit: cubit));
       await tester.pump();
@@ -888,7 +901,6 @@ void main() {
       addTearDown(platform._actionsController.close);
 
       await cubit.load();
-      await cubit.select(config.selectionKey);
       await cubit.runSelected();
       await tester.pumpWidget(_host(cubit: cubit));
       await tester.pump();
@@ -923,7 +935,6 @@ void main() {
       addTearDown(platform._actionsController.close);
 
       await cubit.load();
-      await cubit.select(config.selectionKey);
       expect(cubit.selectionAllowsMultipleInstances, isTrue);
       await cubit.runSelected();
       await tester.pumpWidget(_host(cubit: cubit));
@@ -950,7 +961,6 @@ void main() {
     addTearDown(platform._actionsController.close);
 
     await cubit.load();
-    await cubit.select(config.selectionKey);
     await cubit.runSelected();
     await tester.pumpWidget(_host(cubit: cubit));
     await tester.pump();
