@@ -240,17 +240,21 @@ void main() {
 
     expect(find.textContaining('Thinking process'), findsOneWidget);
     expect(find.textContaining('调用工具:'), findsNothing);
+    expect(find.textContaining('ls'), findsNothing);
 
     await tester.tap(find.textContaining('Thinking process'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('调用工具:'), findsOneWidget);
+    expect(find.textContaining('调用工具:'), findsNothing);
+    expect(find.textContaining('ls'), findsOneWidget);
     expect(find.text('输出:'), findsNothing);
 
-    await tester.tap(find.textContaining('Bash'));
+    await tester.tap(find.textContaining('ls'));
     await tester.pumpAndSettle();
 
-    expect(find.text('输出:'), findsOneWidget);
+    expect(find.textContaining(r'$'), findsWidgets);
+    expect(find.textContaining('ok'), findsOneWidget);
+    expect(find.text('输出:'), findsNothing);
   });
 
   testWidgets('tool expand uses AnimatedSize; long args soft-wrap', (

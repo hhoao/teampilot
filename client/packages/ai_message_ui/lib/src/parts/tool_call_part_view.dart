@@ -52,7 +52,12 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
             isAiSubagentToolName(part.toolName)) &&
         onOpenSubagent != null;
     final useSubagentChrome = isSub;
-    final target = useSubagentChrome ? null : fileActions.resolver.resolve(part);
+    const shellResolver = DefaultAiShellToolTargetResolver();
+    final shellTarget =
+        useSubagentChrome ? null : shellResolver.resolve(part);
+    final target = useSubagentChrome || shellTarget != null
+        ? null
+        : fileActions.resolver.resolve(part);
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottom),
@@ -67,6 +72,17 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
                     triggerColor: triggerColor,
                     markdown: markdown,
                     onOpenSubagent: onOpenSubagent,
+                    dense: widget.dense,
+                    open: _open,
+                    onToggle: _toggleExpanded,
+                  )
+                : shellTarget != null
+                ? _ShellToolTrigger(
+                    part: part,
+                    shell: shellTarget,
+                    cancelled: cancelled,
+                    triggerColor: triggerColor,
+                    markdown: markdown,
                     dense: widget.dense,
                     open: _open,
                     onToggle: _toggleExpanded,
@@ -101,34 +117,43 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
               alignment: Alignment.topLeft,
               child: Padding(
                 padding: const EdgeInsets.only(left: 24, top: 4, bottom: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (_hasArgs(part))
-                      _MutedPre(
-                        text: _argsText(part),
-                        color: aiTheme.resolveToolPanel(scheme),
+                child: shellTarget != null
+                    ? _ShellTerminalPanel(
+                        part: part,
+                        command: shellTarget.command,
+                        panelColor: aiTheme.resolveToolPanel(scheme),
                         radius: aiTheme.panelRadius,
-                        foreground: scheme.onSurface.withValues(alpha: 0.9),
+                        markdown: markdown,
+                        accentColor: triggerColor,
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (_hasArgs(part))
+                            _MutedPre(
+                              text: _argsText(part),
+                              color: aiTheme.resolveToolPanel(scheme),
+                              radius: aiTheme.panelRadius,
+                              foreground: scheme.onSurface.withValues(alpha: 0.9),
+                            ),
+                          if (part.result != null) ...[
+                            if (_hasArgs(part)) const SizedBox(height: 8),
+                            Text(
+                              '${strings.result}:',
+                              style: markdown.toolTrigger(triggerColor),
+                            ),
+                            const SizedBox(height: 4),
+                            _MutedPre(
+                              text: _stringify(part.result),
+                              color: aiTheme.resolveToolPanel(scheme),
+                              radius: aiTheme.panelRadius,
+                              foreground: part.isError
+                                  ? scheme.error
+                                  : scheme.onSurface.withValues(alpha: 0.9),
+                            ),
+                          ],
+                        ],
                       ),
-                    if (part.result != null) ...[
-                      if (_hasArgs(part)) const SizedBox(height: 8),
-                      Text(
-                        '${strings.result}:',
-                        style: markdown.toolTrigger(triggerColor),
-                      ),
-                      const SizedBox(height: 4),
-                      _MutedPre(
-                        text: _stringify(part.result),
-                        color: aiTheme.resolveToolPanel(scheme),
-                        radius: aiTheme.panelRadius,
-                        foreground: part.isError
-                            ? scheme.error
-                            : scheme.onSurface.withValues(alpha: 0.9),
-                      ),
-                    ],
-                  ],
-                ),
               ),
             ),
         ],
@@ -208,6 +233,137 @@ class _LegacyToolTrigger extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ShellToolTrigger extends StatelessWidget {
+  const _ShellToolTrigger({
+    required this.part,
+    required this.shell,
+    required this.cancelled,
+    required this.triggerColor,
+    required this.markdown,
+    required this.dense,
+    required this.open,
+    required this.onToggle,
+  });
+
+  final AiToolCallPart part;
+  final AiShellToolTarget shell;
+  final bool cancelled;
+  final Color triggerColor;
+  final CompiledMarkdownStyle markdown;
+  final bool dense;
+  final bool open;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final triggerStyle = markdown.toolTrigger(
+      triggerColor,
+      cancelled: cancelled,
+    );
+
+    return Semantics(
+      button: true,
+      expanded: open,
+      label: shell.summary,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: onToggle,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: dense ? 4 : 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _StatusIcon(part: part, color: triggerColor),
+                const SizedBox(width: 8),
+                Icon(Icons.terminal, size: 15, color: triggerColor),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    shell.summary,
+                    style: triggerStyle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                _ExpandChevron(open: open, color: triggerColor, onTap: onToggle),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ShellTerminalPanel extends StatelessWidget {
+  const _ShellTerminalPanel({
+    required this.part,
+    required this.command,
+    required this.panelColor,
+    required this.radius,
+    required this.markdown,
+    required this.accentColor,
+  });
+
+  final AiToolCallPart part;
+  final String command;
+  final Color panelColor;
+  final double radius;
+  final CompiledMarkdownStyle markdown;
+  final Color accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final mono = markdown.codeBlock;
+    final output = part.result == null ? null : _stringify(part.result);
+    final outputColor = part.isError
+        ? scheme.error
+        : scheme.onSurface.withValues(alpha: 0.65);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: panelColor,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: r'$ ',
+                    style: mono.copyWith(color: accentColor),
+                  ),
+                  TextSpan(
+                    text: command,
+                    style: mono.copyWith(
+                      color: scheme.onSurface.withValues(alpha: 0.9),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (output != null && output.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                output,
+                style: mono.copyWith(color: outputColor),
+              ),
+            ],
+          ],
         ),
       ),
     );

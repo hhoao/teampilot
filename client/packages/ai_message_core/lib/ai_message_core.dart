@@ -4,6 +4,7 @@ library ai_message_core;
 export 'src/message.dart';
 export 'src/subagent_attachment.dart';
 export 'src/tool_file_target.dart';
+export 'src/tool_shell_target.dart';
 export 'src/message_content_identity.dart';
 export 'src/message_export.dart';
 export 'src/runtime.dart';
