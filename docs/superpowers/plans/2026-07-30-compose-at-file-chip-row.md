@@ -337,9 +337,11 @@ Run: `cd client && flutter test test/widgets/compose/workspace_compose_card_test
 In `WorkspaceComposeCard`:
 
 1. Add `final ValueChanged<String>? onOpenAtFile;`
-2. In the `Column` children (inside `ComposeFocusShell` padding), **above** `field`:
+2. In the `Column` children (inside `ComposeFocusShell` padding), insert the chip row **after** any `_launchErrorBanner` children and **above** `field` (do not replace the banner branch):
 
 ```dart
+if (chrome is BoundComposeChrome)
+  ..._launchErrorBanner(context, chrome, spacing),
 ListenableBuilder(
   listenable: controller,
   builder: (context, _) {
