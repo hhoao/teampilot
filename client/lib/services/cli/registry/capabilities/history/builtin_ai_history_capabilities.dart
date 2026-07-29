@@ -10,6 +10,7 @@ import 'opencode_ai_transcript.dart';
 import 'claude_compatible_side_resolver.dart';
 import 'codex_side_resolver.dart';
 import 'cursor_side_resolver.dart';
+import 'claude_compatible_tool_result_enricher.dart';
 import 'cursor_terminal_tool_result_enricher.dart';
 import 'opencode_side_resolver.dart';
 import 'subagent_side_resolver.dart';
@@ -18,7 +19,7 @@ import 'tool_result_enricher.dart';
 final class ClaudeAiHistoryCapability implements AiHistoryCapability {
   const ClaudeAiHistoryCapability({
     this.subagentSideResolver = const ClaudeCompatibleSideResolver(),
-    this.toolResultEnricher = const NoOpToolResultEnricher(),
+    this.toolResultEnricher = const ClaudeCompatibleToolResultEnricher(),
   });
 
   @override
@@ -41,7 +42,7 @@ final class ClaudeAiHistoryCapability implements AiHistoryCapability {
 final class FlashskyaiAiHistoryCapability implements AiHistoryCapability {
   const FlashskyaiAiHistoryCapability({
     this.subagentSideResolver = const ClaudeCompatibleSideResolver(),
-    this.toolResultEnricher = const NoOpToolResultEnricher(),
+    this.toolResultEnricher = const ClaudeCompatibleToolResultEnricher(),
   });
 
   @override

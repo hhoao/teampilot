@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/builtin_ai_history_capabilities.dart';
+import 'package:teampilot/services/cli/registry/capabilities/history/claude_compatible_tool_result_enricher.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/cursor_terminal_tool_result_enricher.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/tool_result_enricher.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -17,6 +18,14 @@ void main() {
     ]) {
       expect(cap.toolResultEnricher, isNotNull);
     }
+    expect(
+      const ClaudeAiHistoryCapability().toolResultEnricher,
+      isA<ClaudeCompatibleToolResultEnricher>(),
+    );
+    expect(
+      const FlashskyaiAiHistoryCapability().toolResultEnricher,
+      isA<ClaudeCompatibleToolResultEnricher>(),
+    );
     expect(
       const CursorAiHistoryCapability().toolResultEnricher,
       isA<CursorTerminalToolResultEnricher>(),
