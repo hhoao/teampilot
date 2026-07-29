@@ -11,6 +11,7 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/claude_ai_transcript.dart';
+import 'package:teampilot/services/cli/registry/capabilities/history/tool_result_enricher.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -22,6 +23,7 @@ import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
+import '../../support/fake_ai_history_registry.dart';
 import '../../support/post_frame_test_harness.dart';
 
 void main() {
@@ -342,6 +344,37 @@ void main() {
       isNull,
     );
   });
+
+  test('load calls toolResultEnricher once between parse and inflate', () async {
+    final enricher = _RecordingEnricher();
+    final registry = fakeAiHistoryRegistry(
+      cli: CliTool.claude,
+      adapter: _EchoAdapter(),
+      toolResultEnricher: enricher,
+      locate: (_) async => AiTranscriptBundle(
+        adapterId: 'claude',
+        fragments: const [
+          AiTranscriptFragment(name: 't.jsonl', bytes: [1, 2, 3]),
+        ],
+        hints: const AiHistoryWatchMeta(
+          changeWatchRoot: '/proj',
+          cacheTokenPaths: ['/proj/t.jsonl'],
+        ).toHints(),
+      ),
+    );
+    final loader = buildLoader(registry: registry);
+    final session = simpleSession();
+
+    final result = await loader.load(
+      session: session,
+      memberId: '',
+      launchContext: launchContextFor(session),
+    );
+
+    expect(enricher.calls, 1);
+    expect(result.messages, hasLength(1));
+    expect(result.messages.single.id, 'enriched');
+  });
 }
 
 class _CountingLocator extends AiHistoryLocator {
@@ -372,5 +405,42 @@ class _CapturingLocator extends AiHistoryLocator {
   }) {
     onLocate(ctx);
     return super.locate(ctx: ctx, cli: cli);
+  }
+}
+
+class _RecordingEnricher implements ToolResultEnricher {
+  var calls = 0;
+
+  @override
+  Future<List<AiMessage>> enrich({
+    required List<AiMessage> messages,
+    required SessionHistoryContext ctx,
+    required String? rootTranscriptPath,
+    required AiTranscriptBundle? bundle,
+  }) async {
+    calls++;
+    return [
+      AiMessage(
+        id: 'enriched',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'enriched')],
+      ),
+    ];
+  }
+}
+
+class _EchoAdapter implements AiTranscriptAdapter {
+  @override
+  String get id => 'echo';
+
+  @override
+  Future<List<AiMessage>> parse(AiTranscriptBundle bundle) async {
+    return [
+      AiMessage(
+        id: 'parsed',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'parsed')],
+      ),
+    ];
   }
 }

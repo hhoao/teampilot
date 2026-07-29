@@ -1,0 +1,13 @@
+---
+pid: 12345
+command: "pwd"
+title: "pwd"
+status: succeeded
+started_at: 2026-07-29T10:00:00.000Z
+---
+/home/hhoa/proj
+---
+exit_code: 0
+elapsed_ms: 50
+ended_at: 2026-07-29T10:00:00.050Z
+---

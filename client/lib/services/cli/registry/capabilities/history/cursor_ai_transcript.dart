@@ -11,17 +11,25 @@ import '../../../../session/session_history_context.dart';
 Future<AiTranscriptBundle?> locateCursorTranscript(
   SessionHistoryContext ctx,
 ) async {
-  final transcriptPath = await _locateAgentTranscript(ctx);
-  if (transcriptPath == null) return null;
+  final hit = await _locateAgentTranscript(ctx);
+  if (hit == null) return null;
 
+  final transcriptPath = hit.transcriptPath;
+  final projectRoot = hit.projectRoot;
   final bytes = await ctx.fs.readBytes(transcriptPath);
   if (bytes == null) return null;
 
-  final cacheToken = await aiHistoryPathCacheToken(
+  final transcriptToken = await aiHistoryPathCacheToken(
     fs: ctx.fs,
     path: transcriptPath,
     byteLength: bytes.length,
   );
+  final terminalsDir = ctx.fs.pathContext.join(projectRoot, 'terminals');
+  final terminalsFingerprint = await aiHistoryTxtDirCacheFingerprint(
+    fs: ctx.fs,
+    dir: terminalsDir,
+  );
+  final cacheToken = '$transcriptToken|$terminalsFingerprint';
   return AiTranscriptBundle(
     adapterId: 'cursor',
     fragments: [
@@ -33,14 +41,26 @@ Future<AiTranscriptBundle?> locateCursorTranscript(
     hints: {
       'cacheToken': cacheToken,
       ...AiHistoryWatchMeta(
-        changeWatchRoot: ctx.fs.pathContext.dirname(transcriptPath),
+        changeWatchRoot: projectRoot,
         cacheTokenPaths: [transcriptPath],
       ).toHints(),
     },
   );
 }
 
-Future<String?> _locateAgentTranscript(SessionHistoryContext ctx) async {
+class _CursorTranscriptHit {
+  const _CursorTranscriptHit({
+    required this.transcriptPath,
+    required this.projectRoot,
+  });
+
+  final String transcriptPath;
+  final String projectRoot;
+}
+
+Future<_CursorTranscriptHit?> _locateAgentTranscript(
+  SessionHistoryContext ctx,
+) async {
   final configDir = await CursorWindowsHomeJunction.resolveCursorConfigDir(
     fs: ctx.fs,
     env: ctx.env,
@@ -61,10 +81,21 @@ Future<String?> _locateAgentTranscript(SessionHistoryContext ctx) async {
         project.name,
         'agent-transcripts',
       );
+      final projectRoot = path.join(projectsRoot, project.name);
       final nested = path.join(transcriptsRoot, chatId, '$chatId.jsonl');
-      if ((await ctx.fs.stat(nested)).isFile) return nested;
+      if ((await ctx.fs.stat(nested)).isFile) {
+        return _CursorTranscriptHit(
+          transcriptPath: nested,
+          projectRoot: projectRoot,
+        );
+      }
       final flat = path.join(transcriptsRoot, '$chatId.jsonl');
-      if ((await ctx.fs.stat(flat)).isFile) return flat;
+      if ((await ctx.fs.stat(flat)).isFile) {
+        return _CursorTranscriptHit(
+          transcriptPath: flat,
+          projectRoot: projectRoot,
+        );
+      }
     }
   } on Object {
     return null;

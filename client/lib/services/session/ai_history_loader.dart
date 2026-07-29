@@ -189,8 +189,15 @@ final class AiHistoryLoader {
         return null; // degrade-only; never invent a path from fragment basename
       }();
 
-      final attachments = await const SubagentAttachmentInflater().inflate(
+      final enrichedMessages = await cap.toolResultEnricher.enrich(
         messages: messages,
+        ctx: ctx,
+        rootTranscriptPath: parentPath,
+        bundle: bundle,
+      );
+
+      final attachments = await const SubagentAttachmentInflater().inflate(
+        messages: enrichedMessages,
         ctx: ctx,
         capability: cap,
         rootTranscriptPath: parentPath,
@@ -200,14 +207,14 @@ final class AiHistoryLoader {
       if (token != null) {
         _cache[cacheKey] = _AiHistoryCacheEntry(
           token: token,
-          messages: messages,
+          messages: enrichedMessages,
           subagentAttachments: attachments,
         );
       } else {
         _cache.remove(cacheKey);
       }
       return AiHistoryLoadResult(
-        messages: messages,
+        messages: enrichedMessages,
         subagentAttachments: attachments,
       );
     } on Object catch (e, st) {

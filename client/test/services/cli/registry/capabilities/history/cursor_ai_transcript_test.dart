@@ -5,6 +5,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/registry/capabilities/history/cursor_ai_transcript.dart';
+import 'package:teampilot/services/session/ai_history_watch_meta.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
@@ -194,6 +195,46 @@ void main() {
     expect(bundle.fragments, hasLength(1));
     expect(bundle.fragments.single.name, 'chat-aaaa-bbbb-cccc-dddd.jsonl');
     expect(bundle.fragments.single.bytes, fixture);
+
+    final watchMeta = AiHistoryWatchMeta.fromHints(bundle.hints);
+    expect(
+      watchMeta?.changeWatchRoot,
+      p.join(base.path, 'projects', 'home-me-proj'),
+    );
+    expect(bundle.hints['cacheToken'], contains('shell-pwd.txt'));
+    expect(bundle.hints['cacheToken'], isNot(contains('terminals:empty')));
+  });
+
+  test('locateCursorTranscript cacheToken changes when terminal file added',
+      () async {
+    await copyFixtureTree();
+    final context = ctx(
+      configDir: base.path,
+      persistedNativeId: 'chat-aaaa-bbbb-cccc-dddd',
+    );
+
+    final before = await locateCursorTranscript(context);
+    expect(before, isNotNull);
+    final tokenBefore = before!.hints['cacheToken'];
+
+    final terminalsDir = p.join(base.path, 'projects', 'home-me-proj', 'terminals');
+    await Directory(terminalsDir).create(recursive: true);
+    await File(p.join(terminalsDir, '1.txt')).writeAsString('''
+---
+pid: 1
+command: "echo hi"
+started_at: 2026-07-29T10:00:00.000Z
+---
+hello
+''');
+
+    final after = await locateCursorTranscript(context);
+    expect(after, isNotNull);
+    final tokenAfter = after!.hints['cacheToken'];
+
+    expect(tokenAfter, isNot(equals(tokenBefore)));
+    expect(tokenAfter, contains('terminals'));
+    expect(tokenAfter, isNot(contains('terminals:empty')));
   });
 
   test('locateCursorTranscript returns null when missing', () async {

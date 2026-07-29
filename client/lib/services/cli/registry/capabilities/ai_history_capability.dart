@@ -3,6 +3,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import '../../../session/session_history_context.dart';
 import '../cli_capability.dart';
 import 'history/subagent_side_resolver.dart';
+import 'history/tool_result_enricher.dart';
 
 abstract interface class AiHistoryCapability implements CliCapability {
   Future<AiTranscriptBundle?> locate(SessionHistoryContext ctx);
@@ -10,4 +11,5 @@ abstract interface class AiHistoryCapability implements CliCapability {
   /// Lower-case names.
   Set<String> get subagentToolNames;
   SubagentSideResolver get subagentSideResolver;
+  ToolResultEnricher get toolResultEnricher;
 }

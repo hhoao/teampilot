@@ -6,6 +6,7 @@ import 'package:teampilot/services/cli/registry/capabilities/ai_history_capabili
 import 'package:teampilot/services/cli/registry/capabilities/history/claude_ai_transcript.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/claude_compatible_side_resolver.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/subagent_side_resolver.dart';
+import 'package:teampilot/services/cli/registry/capabilities/history/tool_result_enricher.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/claude_compatible_jsonl.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
@@ -36,6 +37,9 @@ class _Cap implements AiHistoryCapability {
 
   @override
   final SubagentSideResolver subagentSideResolver;
+
+  @override
+  ToolResultEnricher get toolResultEnricher => const NoOpToolResultEnricher();
 }
 
 Future<Map<String, AiSubagentAttachment>> _inflate({

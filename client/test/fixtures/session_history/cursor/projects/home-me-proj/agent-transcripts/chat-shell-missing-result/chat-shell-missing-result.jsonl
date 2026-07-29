@@ -1,0 +1,2 @@
+{"role":"user","message":{"content":[{"type":"text","text":"run pwd"}]}}
+{"role":"assistant","message":{"content":[{"type":"tool_use","id":"toolu_shell","name":"Shell","input":{"command":"pwd","description":"pwd"}}]}}
