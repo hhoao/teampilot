@@ -7,6 +7,7 @@ import '../../cubits/layout_cubit.dart';
 import '../../models/layout_preferences.dart';
 import '../../services/workspace/workspace_pane_policy.dart';
 import '../../widgets/workspace_terminal_panel.dart';
+import '../home_workspace/workspace/workspace_route_active_scope.dart';
 import 'pane_overlay_host.dart';
 import 'workspace_ide_pane_chrome.dart';
 import 'workspace_ide_pane_sync.dart';
@@ -671,6 +672,7 @@ class _WorkspaceMobileSidebarHostState extends State<_WorkspaceMobileSidebarHost
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TpSidebar(
+            overlayActive: WorkspaceRouteActiveScope.routeActiveOf(context),
             collapsible: TpSidebarCollapsible.offcanvas,
             child: widget.left,
           ),

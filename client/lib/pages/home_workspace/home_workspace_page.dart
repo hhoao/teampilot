@@ -12,6 +12,7 @@ import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/split_layout.dart';
 import '../team_config/team_config_section.dart';
 import 'home_all_workspaces_pane.dart';
+import 'home_route_active_scope.dart';
 import 'home_workspace_content.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_library_section.dart';
@@ -166,6 +167,7 @@ class _HomePageState extends State<HomePage> {
           ? Row(
               children: [
                 TpSidebar(
+                  overlayActive: HomeRouteActiveScope.routeActiveOf(context),
                   collapsible: TpSidebarCollapsible.offcanvas,
                   child: sidebar,
                 ),
