@@ -19,6 +19,23 @@ void main() {
     expect(PtyAutomationNeedle.forText(long).length, 40);
   });
 
+  test('forText flattens newlines so multiline paste tails can grid-ACK', () {
+    // Long JSON tails are mostly closing braces + newlines. Grid cells never
+    // contain CR/LF, so a raw tail needle can never match the mirror.
+    const jsonTail = '''
+         }
+        }
+      }
+    }
+  ]
+}''';
+    final needle = PtyAutomationNeedle.forText('prefix$jsonTail');
+    expect(needle.contains('\n'), isFalse);
+    expect(needle.contains('\r'), isFalse);
+    expect(needle, contains('}'));
+    expect(needle.length, lessThanOrEqualTo(PtyAutomationNeedle.maxNeedleChars));
+  });
+
   test('collapsedPasteNeedle extracts Claude Code paste chrome', () {
     const row = '❯ [Pasted text #3 +17 lines]';
     expect(

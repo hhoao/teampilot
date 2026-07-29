@@ -15,6 +15,19 @@ void main() {
     expect(writes, ['\x1B[200~hello team\x1B[201~', '\r']);
   });
 
+  test('pasteText chunks large bracketed paste payloads', () async {
+    final writes = <String>[];
+    final channel = TerminalFullscreenInputChannel(writeToPty: writes.add);
+    final body = 'x' * (TerminalFullscreenInputChannel.ptyWriteChunkChars + 50);
+
+    await channel.pasteText(body);
+
+    expect(writes.length, greaterThan(1));
+    expect(writes.first, startsWith('\x1B[200~'));
+    expect(writes.last, endsWith('\x1B[201~'));
+    expect(writes.join(), '\x1B[200~$body\x1B[201~');
+  });
+
   test('writeln writes text and CR as a single chunk', () {
     final writes = <String>[];
     final channel = TerminalFullscreenInputChannel(writeToPty: writes.add);

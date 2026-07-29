@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import '../../utils/logging/logger.dart';
@@ -17,11 +18,26 @@ final class TerminalFullscreenInputChannel {
   /// full-screen TUI CLIs, matching Claude Code's own ~10ms child-PTY delay.
   static const fullScreenSubmitDelay = Duration(milliseconds: 10);
 
+  /// Keep each PTY write under typical pipe atomicity so a single short write
+  /// cannot truncate the bracketed-paste terminator on large payloads.
+  static const ptyWriteChunkChars = 1024;
+
   Future<void> _ptySubmitChain = Future<void>.value();
+
+  void _writeChunked(String text) {
+    if (text.length <= ptyWriteChunkChars) {
+      _writeToPty(text);
+      return;
+    }
+    for (var i = 0; i < text.length; i += ptyWriteChunkChars) {
+      final end = math.min(i + ptyWriteChunkChars, text.length);
+      _writeToPty(text.substring(i, end));
+    }
+  }
 
   Future<void> pasteText(String text) {
     final next = _ptySubmitChain.then((_) async {
-      _writeToPty('\x1B[200~$text\x1B[201~');
+      _writeChunked('\x1B[200~$text\x1B[201~');
     });
     _ptySubmitChain = next.catchError((_) {});
     return next;
@@ -61,7 +77,7 @@ final class TerminalFullscreenInputChannel {
       'settleMs=${delay.inMilliseconds}',
     );
     final next = _ptySubmitChain.then((_) async {
-      _writeToPty('\x1B[200~$text\x1B[201~');
+      _writeChunked('\x1B[200~$text\x1B[201~');
       await Future<void>.delayed(delay);
       appLogger.d('[terminal] fullscreen-inject cr');
       _writeToPty('\r');

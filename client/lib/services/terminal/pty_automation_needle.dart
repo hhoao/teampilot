@@ -13,15 +13,19 @@ abstract final class PtyAutomationNeedle {
 
   /// Doorbell lines use a stable prefix; short landing text (e.g. CJK) fits whole;
   /// long free-form text falls back to the tail where the cursor usually sits.
+  ///
+  /// CR/LF are flattened: the mirror grid never stores newlines as cells, so a
+  /// raw multiline tail (common for long JSON pastes) can never ACK.
   static String forText(String text) {
     final trimmed = text.trim();
-    if (trimmed.startsWith(busTag)) {
-      return trimmed.length <= maxNeedleChars
-          ? trimmed
-          : trimmed.substring(0, maxNeedleChars);
+    final flat = trimmed.replaceAll(RegExp(r'[\r\n]+'), ' ');
+    if (flat.startsWith(busTag)) {
+      return flat.length <= maxNeedleChars
+          ? flat
+          : flat.substring(0, maxNeedleChars);
     }
-    if (trimmed.length <= maxNeedleChars) return trimmed;
-    return trimmed.substring(trimmed.length - maxNeedleChars);
+    if (flat.length <= maxNeedleChars) return flat;
+    return flat.substring(flat.length - maxNeedleChars);
   }
 
   /// Returns the Claude collapsed-paste chrome substring, or null.

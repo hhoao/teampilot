@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
 import 'package:teampilot/services/terminal/fullscreen_input_screen_probe.dart';
+import 'package:teampilot/services/terminal/pty_automation_needle.dart';
 
 void main() {
   test('locateNeedle finds bottommost row match', () {
@@ -252,22 +253,33 @@ void main() {
     expect(anchor!.row, 0);
   });
 
-  test('locateNeedle finds soft-wrapped needle when continuation is indented', () {
-    // Claude Code wraps long composer lines and indents the continuation past
-    // the prompt prefix. describeProbeWindow trims leading spaces, so the miss
-    // log looks contiguous while col=0 matching fails on spaces.
+  test('locateNeedle matches flattened JSON closing braces across hard lines', () {
+    // Cursor/Claude render hard newlines in pasted JSON as separate rows. The
+    // automation needle flattens CR/LF to spaces; soft-wrap space collapse must
+    // still locate the tail across those rows.
     final grid = _FakeGrid.fromRows([
-      '❯ 这个仓库怎么样https://github.com/hhoao/flutter',
-      '  _alacritty',
+      '→          }',
+      '         }',
+      '       }',
+      '     }',
+      '   ]',
+      ' }',
     ]);
-    const needle = 'tps://github.com/hhoao/flutter_alacritty';
+    final needle = PtyAutomationNeedle.forText('''
+prefix
+         }
+        }
+      }
+    }
+  ]
+}''');
+    expect(needle.contains('\n'), isFalse);
     final anchor = locateFullscreenPromptNeedle(grid, needle, scanRows: 8);
     expect(
       anchor,
       isNotNull,
-      reason: 'indented soft-wrap continuation must still match',
+      reason: 'flattened multiline JSON tail must ACK across hard line breaks',
     );
-    expect(isFullscreenPromptAtAnchor(grid, anchor!), isTrue);
   });
 
   test('locateNeedle collapses needle spaces across indented soft wrap', () {

@@ -122,7 +122,8 @@ class FullscreenPtyAutomation {
       final anchor = await _pollForNeedle(
         port,
         needle,
-        minSettle: pasteSettle + _timing.afterPaste,
+        minSettle: pasteSettle + _timing.afterPaste + _extraSettleForLength(text),
+        pollTimeout: _pastePollBudget(text),
       );
 
       if (anchor == null) {
@@ -264,15 +265,17 @@ class FullscreenPtyAutomation {
     FullscreenPtyDeliveryPort port,
     String needle, {
     required Duration minSettle,
+    Duration? pollTimeout,
   }) async {
     if (minSettle > Duration.zero) {
       await Future<void>.delayed(minSettle);
     }
-    if (_timing.pollTimeout <= Duration.zero) {
+    final timeout = pollTimeout ?? _timing.pollTimeout;
+    if (timeout <= Duration.zero) {
       await port.syncDisplayGrid();
       return _locatePasteAck(port, needle);
     }
-    final deadline = DateTime.now().add(_timing.pollTimeout);
+    final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
       if (port.isAborted) return null;
       await port.syncDisplayGrid();
@@ -283,6 +286,23 @@ class FullscreenPtyAutomation {
       }
     }
     return null;
+  }
+
+  /// Ink TUIs need longer to stage multi-kilobyte pastes before the grid ACK.
+  Duration _extraSettleForLength(String text) {
+    final over = text.length - 2000;
+    if (over <= 0) return Duration.zero;
+    // ~0.05ms/char beyond 2k, capped at 2s.
+    final ms = (over * 0.05).round().clamp(0, 2000);
+    return Duration(milliseconds: ms);
+  }
+
+  Duration _pastePollBudget(String text) {
+    final over = text.length - 2000;
+    if (over <= 0) return _timing.pollTimeout;
+    // ~0.5ms/char beyond 2k, capped at 15s total extra.
+    final extraMs = (over * 0.5).round().clamp(0, 15000);
+    return _timing.pollTimeout + Duration(milliseconds: extraMs);
   }
 
   FullscreenPromptAnchor? _locatePasteAck(
