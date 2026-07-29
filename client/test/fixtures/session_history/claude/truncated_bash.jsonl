@@ -1,0 +1,3 @@
+{"type":"user","message":{"role":"user","content":"list files"},"uuid":"u-1","timestamp":"2026-07-29T10:00:00.000Z"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"call_trunc","name":"Bash","input":{"command":"ls -la","description":"List working directory contents"}}]},"uuid":"a-1","timestamp":"2026-07-29T10:00:01.000Z"}
+{"type":"user","message":{"role":"user","content":[{"tool_use_id":"call_trunc","type":"tool_result","content":"tool output truncated","is_error":false}]},"uuid":"u-2","timestamp":"2026-07-29T10:00:02.000Z","toolUseResult":{"stdout":"manpath: can't set the locale; make sure $LC_* and $LANG are correct\nONBOARDING.md\ndemo-cli\nflashskyai","stderr":"","exitCode":0,"isTruncated":true}}

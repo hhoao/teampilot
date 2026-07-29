@@ -201,7 +201,8 @@ void main() {
       watchMeta?.changeWatchRoot,
       p.join(base.path, 'projects', 'home-me-proj'),
     );
-    expect(bundle.hints['cacheToken'], contains('terminals:empty'));
+    expect(bundle.hints['cacheToken'], contains('shell-pwd.txt'));
+    expect(bundle.hints['cacheToken'], isNot(contains('terminals:empty')));
   });
 
   test('locateCursorTranscript cacheToken changes when terminal file added',
