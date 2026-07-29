@@ -12,6 +12,33 @@ import 'edit_line_highlighter.dart';
 const _previewCap = 5;
 const _expandedMaxHeight = 320.0;
 
+/// Picks up to [cap] lines for collapsed preview, preferring add/remove rows.
+List<AiEditLine> previewEditHunkLines(
+  List<AiEditLine> lines, {
+  int cap = _previewCap,
+}) {
+  if (lines.length <= cap) return lines;
+
+  bool isChange(AiEditLine line) =>
+      line.kind == AiEditLineKind.add || line.kind == AiEditLineKind.remove;
+
+  final head = lines.take(cap);
+  if (head.any(isChange)) {
+    return head.toList(growable: false);
+  }
+
+  final changeIndex = lines.indexWhere(isChange);
+  if (changeIndex < 0) {
+    return head.toList(growable: false);
+  }
+
+  var start = math.max(0, changeIndex - 1);
+  if (start + cap > lines.length) {
+    start = math.max(0, lines.length - cap);
+  }
+  return lines.sublist(start, start + cap);
+}
+
 /// Cursor-style edit tool card: header + inline mini/full diff.
 class EditToolCard extends StatelessWidget {
   const EditToolCard({
@@ -45,9 +72,7 @@ class EditToolCard extends StatelessWidget {
     final onOpenFile = actions.onOpenFile;
     final triggerStyle = markdown.toolTrigger(triggerColor);
     final openTargetStyle = markdown.toolFileLink(triggerStyle, triggerColor);
-    final visibleLines = open
-        ? hunk.lines
-        : hunk.lines.take(_previewCap).toList(growable: false);
+    final visibleLines = open ? hunk.lines : previewEditHunkLines(hunk.lines);
 
     final titleWidget = Text(
       basename,
