@@ -1,7 +1,7 @@
 # Run toolbar default launch selection + placeholder label
 
 **Date:** 2026-07-30  
-**Status:** Draft  
+**Status:** Approved (spec review)  
 **Product:** TeamPilot (`client/`)  
 **Scope:** Run toolbar config dropdown (`RunToolbarConfigDropdown` / `RunCubit`)
 
@@ -34,8 +34,8 @@ After loading workspace launch configs, the Run toolbar dropdown leaves `selecte
 | Persistence | App-data `ui/run-ui-prefs.json` keyed by `workspaceId` (mirror `WorktreeUiPrefsStore`) | Cross-restart; does not pollute committed `launch.json` |
 | Fallback | Config first, else compound; never auto-pick recommendations | Owner choice 3; recommendations are drafts/suggestions |
 | Remember recommendations | Yes, if the user **manually** selects one | Same `select()` write path |
-| Placeholder copy | `runSelectConfiguration` →「启动」/「Launch」 | Owner request; Run action already uses「Run」 |
-| Apply timing | After `RunCubit.load()` has configurations + compounds (before or independent of `refreshDiscover`) | Defaults must not wait on / fight recommendation discovery |
+| Placeholder copy | Toolbar empty trigger: `runSelectConfiguration` →「启动」/「Launch」. Editor `_draft == null` keeps「选择配置」via a **separate** key (e.g. leave old wording on a new `runEditorSelectConfiguration`, or keep editor on a dedicated string) | Owner request for toolbar only; `run_config_editor_dialog` currently shares the same key and must not show「启动」 |
+| Apply timing | After every `load()` that refreshes config/compound lists, resolve from **prefs `selectedKey`** (not “only when memory `selectedKey` is null”), then `select` if non-null | Ensures delete / save reload paths re-fall back when the remembered key is stale |
 
 ## Architecture
 
@@ -58,7 +58,7 @@ WorkspaceRunRegistry.cubitFor(workspaceId, …)
 | `RunUiPrefsStore` | Read/write `{ workspaceId: { selectedKey: string } }` at `ui/run-ui-prefs.json` via `AppStorage.paths` (new path getter, same family as `worktreeUiPrefsJson`) |
 | `RunCubit` | Accept `workspaceId` + optional prefs store (injectable for tests); after load, apply default selection; on successful `select`, persist; after delete of current selection, re-apply default resolution and persist |
 | `WorkspaceRunRegistry` | Pass `workspaceId` (already known) into `RunCubit` construction |
-| l10n | Update `runSelectConfiguration` in `app_zh.arb` / `app_en.arb` only (generated locals follow) |
+| l10n | Toolbar: `runSelectConfiguration` →「启动」/「Launch」. Editor empty draft: new key retaining「选择配置」/「Select configuration」, switch `run_config_editor_dialog` to it |
 
 ### Default resolution (pure helper, unit-testable)
 
@@ -75,8 +75,10 @@ Recommendations are **not** inputs to this helper. If `persistedKey` only matche
 
 ### Delete / reload behavior
 
-- `deleteConfiguration` today clears selection when the deleted key was selected. Change: after reload, run the same default resolver (prefs may still hold the deleted key → miss → first config/compound) and `select` + persist the result (or clear prefs when null).
+- Any path that calls `load()` (initial open, `deleteConfiguration`, `saveConfiguration`, etc.) re-runs default resolution from prefs + fresh lists. Stale prefs key → first config/compound (or null).
+- `deleteConfiguration` today clears selection when the deleted key was selected. Change: after reload, resolve + `select` (or clear prefs when null) instead of leaving empty while other configs remain.
 - Creating/saving a new config that becomes selected already calls `select` — persistence rides that path.
+- v1: a manually selected recommendation is written to prefs, but the next `load()` that only sees configs/compounds will **not** restore that recommendation key (same as discover-after-load limitation).
 
 ### Wiring
 
