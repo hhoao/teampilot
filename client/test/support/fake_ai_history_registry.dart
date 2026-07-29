@@ -58,6 +58,7 @@ CliToolRegistry fakeAiHistoryRegistry({
   required AiTranscriptAdapter adapter,
   Future<AiTranscriptBundle?> Function(SessionHistoryContext ctx)? locate,
   SubagentSideResolver subagentSideResolver = const NullSubagentSideResolver(),
+  ToolResultEnricher toolResultEnricher = const NoOpToolResultEnricher(),
 }) {
   final registry = CliToolRegistry();
   registry.register(
@@ -67,6 +68,7 @@ CliToolRegistry fakeAiHistoryRegistry({
         adapter: adapter,
         locateFn: locate,
         subagentSideResolver: subagentSideResolver,
+        toolResultEnricher: toolResultEnricher,
       ),
     ),
   );
