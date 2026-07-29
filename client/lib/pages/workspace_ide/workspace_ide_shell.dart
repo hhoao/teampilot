@@ -71,10 +71,10 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
 
   bool _rowResizing = false;
 
-  /// When narrow, the side regions render as overlays (see [PaneOverlayHost]),
-  /// so the docked panes render nothing for left/right to avoid double-mounting
-  /// the sidebar / right-tools panel. Set each build before the pane builders
-  /// run (during layout of the root `MultiPane`).
+  /// When narrow, left is a [TpSidebar] drawer and right uses [PaneOverlayHost],
+  /// so docked MultiPane left/right panes render nothing to avoid double-mount.
+  /// Set each build before the pane builders run (during layout of the root
+  /// `MultiPane`).
   bool _narrow = false;
 
   /// Effective dock flags from the latest viewport measure. Chrome uses
