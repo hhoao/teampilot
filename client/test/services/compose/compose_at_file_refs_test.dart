@@ -1,5 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/compose/compose_at_file_refs.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+
+import '../../support/post_frame_test_harness.dart';
 
 void main() {
   group('parseComposeAtFileRefs', () {
@@ -39,6 +43,23 @@ void main() {
         parseComposeAtFileRefs('/commit /review', workspaceRoot: '/repo'),
         isEmpty,
       );
+    });
+  });
+
+  group('filesystemForComposeAtFileOpen', () {
+    test('Attachments path uses LocalFilesystem', () {
+      final fs = filesystemForComposeAtFileOpen(
+        '/home/user/Documents/TeamPilot/Attachments/paste.png',
+      );
+      expect(fs, isA<LocalFilesystem>());
+    });
+
+    test('workspace path uses AppStorage.fs', () {
+      setUpTestAppStorage();
+      addTearDown(tearDownTestAppStorage);
+
+      final fs = filesystemForComposeAtFileOpen('/repo/src/a.dart');
+      expect(fs, same(AppStorage.fs));
     });
   });
 }

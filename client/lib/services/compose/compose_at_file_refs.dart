@@ -3,6 +3,9 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../inline_token/inline_token_palette.dart';
+import '../io/filesystem.dart';
+import '../io/local_filesystem.dart';
+import '../storage/app_storage.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 
 class ComposeAtFileRef {
@@ -72,4 +75,16 @@ List<ComposeAtFileRef> parseComposeAtFileRefs(
     );
   }
   return out;
+}
+
+/// Filesystem for opening a compose `@` absolute path in the workbench.
+///
+/// Paste-imported images live under local `…/TeamPilot/Attachments` via
+/// [LocalFilesystem]; other paths use [AppStorage.fs] (workspace backend).
+Filesystem filesystemForComposeAtFileOpen(String absolutePath) {
+  final normalized = absolutePath.replaceAll(r'\', '/').toLowerCase();
+  if (normalized.contains('/teampilot/attachments/')) {
+    return LocalFilesystem();
+  }
+  return AppStorage.fs;
 }

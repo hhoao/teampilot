@@ -24,6 +24,7 @@ import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../models/runtime_target.dart';
 import '../../../services/ai/headless_ai_service.dart';
+import '../../../services/compose/compose_at_file_refs.dart';
 import '../../../services/compose/compose_file_attach.dart';
 import '../../../services/compose/compose_file_drop_ingestor.dart';
 import '../../../services/storage/app_storage.dart';
@@ -1355,6 +1356,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
             widget.workspace.workspaceId,
             path,
             preview: true,
+            fs: filesystemForComposeAtFileOpen(path),
           ),
         );
       },
