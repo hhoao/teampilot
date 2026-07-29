@@ -38,8 +38,10 @@ class SshProfilesPage extends StatelessWidget {
 Future<void> openSshProfileEditor(
   BuildContext context, {
   SshProfile? profile,
+  bool? useFullPageEditor,
 }) async {
-  if (Platform.isAndroid) {
+  final fullPage = useFullPageEditor ?? Platform.isAndroid;
+  if (fullPage) {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => SshProfileSetupPage(
@@ -52,8 +54,8 @@ Future<void> openSshProfileEditor(
                 .sshClientFactory,
           ),
           onProfileSaved: () {
-            context.read<SshProfileCubit>().load();
             Navigator.of(context).maybePop();
+            context.read<SshProfileCubit>().load();
           },
         ),
       ),
