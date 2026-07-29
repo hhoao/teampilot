@@ -301,9 +301,7 @@ void main() {
     expect(find.text(l10n.sshProfilesEmpty), findsOneWidget);
   });
 
-  testWidgets('save does not clear gate (still list, not APP_CHILD)', (
-    tester,
-  ) async {
+  testWidgets('save does not clear gate', (tester) async {
     tester.view.physicalSize = const Size(800, 2000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -329,18 +327,20 @@ void main() {
     expect(find.text('APP_CHILD'), findsNothing);
     expect(find.text(l10n.sshProfilesEmpty), findsOneWidget);
 
-    // Editing skips credential validators so save can complete without filling
-    // the private-key FormField / TpTextarea pair.
     final ctx = tester.element(find.byType(SshProfilesPage));
     // ignore: unawaited_futures — completes when setup route pops
-    openSshProfileEditor(
-      ctx,
-      profile: _profile,
-      useFullPageEditor: true,
-    );
+    openSshProfileEditor(ctx, useFullPageEditor: true);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
-    expect(find.text('编辑 SSH Profile'), findsOneWidget);
+    expect(find.text('新增 SSH Profile'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextFormField).at(0), 'My Box');
+    await tester.enterText(find.byType(TextFormField).at(1), 'example.com');
+    await tester.enterText(find.byType(TextFormField).at(3), 'alice');
+    await tester.enterText(
+      find.byType(TpTextarea),
+      '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----',
+    );
 
     await tester.scrollUntilVisible(
       find.widgetWithText(ElevatedButton, '保存 Profile'),
@@ -357,6 +357,7 @@ void main() {
 
     expect(find.text('APP_CHILD'), findsNothing);
     expect(profileCubit.state.hasProfiles, isTrue);
+    expect(find.byType(SshProfilesPage), findsOneWidget);
   });
 
   testWidgets('after home becomes ssh:*, rebuilding gate shows child', (
