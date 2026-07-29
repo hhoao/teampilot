@@ -264,6 +264,7 @@ class _EditDiffPanel extends StatelessWidget {
             mono: mono,
             scheme: scheme,
             highlighter: highlighter,
+            allowWrap: open,
             onOpenFile: onOpenFile,
           ),
       ],
@@ -296,6 +297,7 @@ class _EditDiffLine extends StatelessWidget {
     required this.mono,
     required this.scheme,
     required this.highlighter,
+    required this.allowWrap,
     this.onOpenFile,
   });
 
@@ -304,6 +306,7 @@ class _EditDiffLine extends StatelessWidget {
   final TextStyle mono;
   final ColorScheme scheme;
   final AiEditLineHighlighter highlighter;
+  final bool allowWrap;
   final VoidCallback? onOpenFile;
 
   @override
@@ -376,8 +379,9 @@ class _EditDiffLine extends StatelessWidget {
             Expanded(
               child: Text.rich(
                 content,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                maxLines: allowWrap ? null : 1,
+                overflow: allowWrap ? null : TextOverflow.ellipsis,
+                softWrap: allowWrap,
                 style: baseStyle,
               ),
             ),

@@ -64,6 +64,32 @@ void main() {
     expect(find.textContaining('old_string'), findsNothing);
   });
 
+  testWidgets('expanded long single-line add shows full text', (tester) async {
+    const marker = 'UNIQUE_EXPAND_MARKER_TAIL';
+    final longLine = '${'x' * 80}$marker';
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiToolCallPartView(
+            initiallyExpanded: true,
+            part: AiToolCallPart(
+              toolCallId: '1',
+              toolName: 'StrReplace',
+              args: {
+                'file_path': 'lib/a.dart',
+                'old_string': 'short',
+                'new_string': longLine,
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining(marker), findsOneWidget);
+  });
+
   testWidgets('tap basename opens file with endLine', (tester) async {
     AiToolFileTarget? opened;
     await tester.pumpWidget(
