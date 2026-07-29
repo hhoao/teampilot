@@ -1,7 +1,7 @@
 # Compose `@` file chip row (above input)
 
 **Date:** 2026-07-30  
-**Status:** Draft  
+**Status:** Approved (spec review)  
 **Product:** TeamPilot (`client/`)  
 **Scope:** Chat / landing compose card (`WorkspaceComposeCard`)
 
