@@ -47,6 +47,7 @@ import '../../../widgets/compose/compose_model_preset_chip.dart';
 import '../../../widgets/compose/simple_custom_launch_dialog.dart';
 import '../../../widgets/compose/workspace_compose_card.dart';
 import '../../../services/launch/workspace_landing_launch_gate.dart';
+import '../../../services/workbench/workbench_editor_opener.dart';
 import '../../../repositories/workspace_project_config_repository.dart';
 import '../../expert_hub/expert_landing_chip_menu.dart';
 import '../../expert_hub/expert_landing_picker_sheet.dart';
@@ -1348,6 +1349,15 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       skills: skills,
       plugins: plugins,
       slashBundle: slashBundle,
+      onOpenAtFile: (path) {
+        unawaited(
+          context.read<WorkbenchEditorOpener>().openFile(
+            widget.workspace.workspaceId,
+            path,
+            preview: true,
+          ),
+        );
+      },
       deferFieldMount: widget.deferFieldMount,
       submitBlockedTooltip:
           launchWarningBlock != null && _controller.text.trim().isNotEmpty

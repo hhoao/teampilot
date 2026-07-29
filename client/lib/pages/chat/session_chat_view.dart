@@ -1671,6 +1671,17 @@ class _SessionChatViewState extends State<SessionChatView> {
                                   skills: skills,
                                   plugins: plugins,
                                   slashBundle: _slashBundle(context),
+                                  onOpenAtFile: (path) {
+                                    unawaited(
+                                      context
+                                          .read<WorkbenchEditorOpener>()
+                                          .openFile(
+                                            widget.session.workspaceId,
+                                            path,
+                                            preview: true,
+                                          ),
+                                    );
+                                  },
                                 ),
                               ],
                             ),
