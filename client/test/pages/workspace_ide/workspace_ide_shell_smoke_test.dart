@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/models/layout_preferences.dart';
 import 'package:teampilot/pages/workspace_ide/workspace_ide_shell.dart';
+import 'package:teampilot/services/workspace/workspace_pane_policy.dart';
 
 void main() {
   const centerKey = ValueKey('center-smoke');
@@ -15,22 +17,29 @@ void main() {
   }) async {
     final layout = LayoutCubit();
     // Default wide viewport so the policy docks all intent-visible panes;
-    // callers pass a narrow size to exercise the overlay path.
+    // callers pass a narrow size to exercise the mobile drawer path.
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(layout.close);
 
+    final scheme = ColorScheme.fromSeed(seedColor: Colors.blue);
     await tester.pumpWidget(
-      MaterialApp(
-        home: BlocProvider<LayoutCubit>.value(
-          value: layout,
-          child: const Scaffold(
-            body: WorkspaceIdeShell(
-              left: SizedBox(child: Text('left')),
-              center: ColoredBox(key: centerKey, color: Colors.transparent),
-              right: ColoredBox(key: rightKey, color: Colors.transparent),
+      TpTheme(
+        data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
+        child: MaterialApp(
+          home: BlocProvider<LayoutCubit>.value(
+            value: layout,
+            child: TpSidebarProvider(
+              mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+              child: const Scaffold(
+                body: WorkspaceIdeShell(
+                  left: SizedBox(child: Text('left')),
+                  center: ColoredBox(key: centerKey, color: Colors.transparent),
+                  right: ColoredBox(key: rightKey, color: Colors.transparent),
+                ),
+              ),
             ),
           ),
         ),
@@ -39,6 +48,9 @@ void main() {
     await tester.pumpAndSettle();
     return layout;
   }
+
+  TpSidebarScope sidebarScope(WidgetTester tester) =>
+      TpSidebarScope.of(tester.element(find.byType(WorkspaceIdeShell)));
 
   testWidgets('three builders mount under the IDE shell', (tester) async {
     await pumpShell(tester);
@@ -66,28 +78,35 @@ void main() {
     );
   });
 
-  testWidgets('narrow viewport presents left as an overlay, not docked', (
-    tester,
-  ) async {
-    // Narrow width (< WorkspacePanePolicy.narrowBreakpointWidth) forces the
-    // side regions into overlays; sidebar intent defaults to visible.
-    await pumpShell(tester, size: const Size(600, 900));
+  testWidgets(
+    'narrow first paint keeps left drawer closed when prefs sidebarVisible',
+    (tester) async {
+      final layout = await pumpShell(tester, size: const Size(600, 900));
+      expect(layout.state.preferences.sidebarVisible, isTrue);
+      expect(find.text('left'), findsNothing);
+      expect(find.byKey(centerKey), findsOneWidget);
+    },
+  );
 
-    // The single mounted `left` is the overlay copy (docked pane renders
-    // nothing for the sides on narrow), and center still mounts.
-    expect(find.text('left'), findsOneWidget);
-    expect(find.byKey(centerKey), findsOneWidget);
-  });
-
-  testWidgets('dismissing the narrow left overlay clears sidebar intent', (
+  testWidgets('opening narrow left drawer writes sidebarVisible true', (
     tester,
   ) async {
     final layout = await pumpShell(tester, size: const Size(600, 900));
-    // Isolate the left overlay so the scrim tap can only dismiss the sidebar
-    // (default sidebarWidth 260 → scrim covers the right side of the viewport).
-    await layout.setRightToolsVisible(false);
+    expect(find.text('left'), findsNothing);
+
+    sidebarScope(tester).setOpenMobile(true);
     await tester.pumpAndSettle();
+
+    expect(find.text('left'), findsOneWidget);
     expect(layout.state.preferences.sidebarVisible, isTrue);
+  });
+
+  testWidgets('dismissing narrow left drawer clears sidebar intent', (
+    tester,
+  ) async {
+    final layout = await pumpShell(tester, size: const Size(600, 900));
+    sidebarScope(tester).setOpenMobile(true);
+    await tester.pumpAndSettle();
     expect(find.text('left'), findsOneWidget);
 
     await tester.tapAt(const Offset(500, 450));
@@ -97,21 +116,37 @@ void main() {
     expect(find.text('left'), findsNothing);
   });
 
-  testWidgets('narrow overlay toggle keeps the center workbench identity', (
+  testWidgets('narrow right overlay still works independently of left drawer', (
     tester,
   ) async {
-    final layout = await pumpShell(tester, size: const Size(600, 900));
-    final centerBefore = tester.element(find.byKey(centerKey));
+    await pumpShell(tester, size: const Size(600, 900));
+    expect(find.text('left'), findsNothing);
 
-    await layout.setSidebarVisible(false);
+    final layout = tester.element(find.byType(WorkspaceIdeShell));
+    final cubit = BlocProvider.of<LayoutCubit>(layout);
+    await cubit.setRightToolsVisible(true);
     await tester.pumpAndSettle();
-    await layout.setSidebarVisible(true);
+
+    expect(find.byKey(rightKey), findsOneWidget);
+    expect(find.text('left'), findsNothing);
+  });
+
+  testWidgets('narrow drawer toggle keeps the center workbench identity', (
+    tester,
+  ) async {
+    await pumpShell(tester, size: const Size(600, 900));
+    final centerBefore = tester.element(find.byKey(centerKey));
+    final scope = sidebarScope(tester);
+
+    scope.setOpenMobile(true);
+    await tester.pumpAndSettle();
+    scope.setOpenMobile(false);
     await tester.pumpAndSettle();
 
     expect(
       identical(tester.element(find.byKey(centerKey)), centerBefore),
       isTrue,
-      reason: 'center was reparented when overlay toggled on narrow',
+      reason: 'center was reparented when mobile drawer toggled',
     );
   });
 

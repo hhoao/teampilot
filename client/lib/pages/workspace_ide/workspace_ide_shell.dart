@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:panes/panes.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/layout_cubit.dart';
 import '../../models/layout_preferences.dart';
@@ -538,29 +539,10 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
             onSize: _onViewportSize,
             child: PaneTheme(
               data: workspaceIdePaneTheme(cs),
-              child: PaneOverlayHost(
-                showLeft: effective.overlayLeft,
-                showRight: effective.overlayRight,
-                leftWidth: prefs.sidebarWidth,
-                rightWidth: prefs.rightToolsWidth,
-                left: WorkspaceIdePaneChrome(child: widget.left),
-                right: WorkspaceIdePaneChrome(child: widget.right),
-                onDismissLeft: () =>
-                    context.read<LayoutCubit>().setSidebarVisible(false),
-                onDismissRight: () {
-                  final layout = context.read<LayoutCubit>();
-                  if (widget.composeLanding) {
-                    layout.setLandingRightToolsOverride(false);
-                  } else {
-                    layout.setRightToolsVisible(false);
-                  }
-                },
-                child: MultiPane(
-                  direction: Axis.horizontal,
-                  controller: _rowController,
-                  animationDuration: _paneAnimationDuration,
-                  paneBuilder: _rowPaneBuilder,
-                ),
+              child: _buildPaneHost(
+                effective: effective,
+                prefs: prefs,
+                composeLanding: widget.composeLanding,
               ),
             ),
           );
@@ -574,5 +556,127 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
         a.rightToolsVisible != b.rightToolsVisible ||
         a.sidebarWidth != b.sidebarWidth ||
         a.rightToolsWidth != b.rightToolsWidth;
+  }
+
+  Widget _buildPaneHost({
+    required WorkspacePaneEffective effective,
+    required LayoutPreferences prefs,
+    required bool composeLanding,
+  }) {
+    final overlayHost = PaneOverlayHost(
+      showLeft: false,
+      showRight: effective.overlayRight,
+      leftWidth: prefs.sidebarWidth,
+      rightWidth: prefs.rightToolsWidth,
+      onDismissLeft: () {},
+      onDismissRight: () {
+        final layout = context.read<LayoutCubit>();
+        if (composeLanding) {
+          layout.setLandingRightToolsOverride(false);
+        } else {
+          layout.setRightToolsVisible(false);
+        }
+      },
+      right: WorkspaceIdePaneChrome(child: widget.right),
+      child: MultiPane(
+        direction: Axis.horizontal,
+        controller: _rowController,
+        animationDuration: _paneAnimationDuration,
+        paneBuilder: _rowPaneBuilder,
+      ),
+    );
+
+    if (!effective.isNarrow) {
+      return overlayHost;
+    }
+
+    return _WorkspaceMobileSidebarHost(
+      left: WorkspaceIdePaneChrome(child: widget.left),
+      child: overlayHost,
+    );
+  }
+}
+
+/// Narrow workspace left rail: [TpSidebar] drawer on the outer [HomeShell]
+/// provider; syncs `openMobile` ↔ [LayoutPreferences.sidebarVisible].
+class _WorkspaceMobileSidebarHost extends StatefulWidget {
+  const _WorkspaceMobileSidebarHost({
+    required this.left,
+    required this.child,
+  });
+
+  final Widget left;
+  final Widget child;
+
+  @override
+  State<_WorkspaceMobileSidebarHost> createState() =>
+      _WorkspaceMobileSidebarHostState();
+}
+
+class _WorkspaceMobileSidebarHostState extends State<_WorkspaceMobileSidebarHost> {
+  bool? _lastOpenMobile;
+  var _forcedClosedOnEntry = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final scope = TpSidebarScope.maybeOf(context);
+    if (scope?.isMobile == true && !_forcedClosedOnEntry) {
+      _forcedClosedOnEntry = true;
+      if (scope!.openMobile) {
+        scope.setOpenMobile(false);
+      }
+    } else if (scope?.isMobile != true) {
+      _forcedClosedOnEntry = false;
+    }
+  }
+
+  void _maybeSyncOpenMobileToPrefs(TpSidebarScope scope) {
+    final open = scope.openMobile;
+    if (_lastOpenMobile == null) {
+      _lastOpenMobile = open;
+      return;
+    }
+    if (_lastOpenMobile == open) return;
+    _lastOpenMobile = open;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final cubit = context.read<LayoutCubit>();
+      if (cubit.state.preferences.sidebarVisible != open) {
+        cubit.setSidebarVisible(open);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = TpSidebarScope.maybeOf(context);
+    if (scope == null || !scope.isMobile) {
+      return widget.child;
+    }
+
+    _maybeSyncOpenMobileToPrefs(scope);
+
+    return BlocListener<LayoutCubit, LayoutState>(
+      listenWhen: (a, b) =>
+          a.preferences.sidebarVisible != b.preferences.sidebarVisible,
+      listener: (context, state) {
+        final current = TpSidebarScope.maybeOf(context);
+        if (current == null || !current.isMobile) return;
+        if (!state.preferences.sidebarVisible && current.openMobile) {
+          current.setOpenMobile(false);
+        }
+      },
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TpSidebar(
+            collapsible: TpSidebarCollapsible.offcanvas,
+            child: widget.left,
+          ),
+          Expanded(child: widget.child),
+        ],
+      ),
+    );
   }
 }
