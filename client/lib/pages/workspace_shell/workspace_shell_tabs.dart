@@ -86,7 +86,14 @@ class WorkspaceShellSidebarVisibilityToggle extends StatelessWidget {
           tooltip: visible ? l10n.sidebarPanelHidden : l10n.sidebarPanelVisible,
           color: visible ? cs.primary : cs.onSurfaceVariant,
           backgroundColor: Colors.transparent,
-          onTap: () => context.read<LayoutCubit>().setSidebarVisible(!visible),
+          onTap: () {
+            final scope = TpSidebarScope.maybeOf(context);
+            if (scope?.isMobile ?? false) {
+              scope!.toggleSidebar();
+              return;
+            }
+            context.read<LayoutCubit>().setSidebarVisible(!visible);
+          },
         );
       },
     );

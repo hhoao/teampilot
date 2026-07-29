@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_ui/shared_ui.dart';
+
 import '../../models/connection_mode.dart';
 
 ConnectionMode defaultConnectionMode() {
@@ -23,16 +25,15 @@ bool get requiresSshProfile => Platform.isAndroid;
 /// Hub landing + pushed section pages instead of a side-by-side workspace shell.
 bool useAndroidHubNavigation(BuildContext context) => Platform.isAndroid;
 
-/// Closes the root [Scaffold] drawer after a sidebar navigation action.
+/// Closes the mobile [TpSidebar] overlay after a sidebar navigation action.
 void closeAndroidDrawerIfOpen(BuildContext context) {
-  if (!Platform.isAndroid) return;
-  final scaffold = Scaffold.maybeOf(context);
-  if (scaffold != null && scaffold.isDrawerOpen) {
-    scaffold.closeDrawer();
+  final scope = TpSidebarScope.maybeOf(context);
+  if (scope != null && scope.openMobile) {
+    scope.setOpenMobile(false);
   }
 }
 
-/// [GoRouter.go] from the navigation drawer and dismiss it on Android.
+/// [GoRouter.go] from the navigation sidebar and dismiss the mobile drawer.
 void goFromSidebar(BuildContext context, String path) {
   closeAndroidDrawerIfOpen(context);
   context.go(path);

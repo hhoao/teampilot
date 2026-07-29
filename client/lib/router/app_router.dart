@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../cubits/config_cubit.dart';
 import '../models/app_provider_config.dart';
@@ -18,7 +19,9 @@ import '../pages/startup_gate.dart';
 import '../pages/team_config/team_config_page.dart';
 import '../widgets/android_ssh_profile_selector.dart';
 import 'android_shell_chrome.dart';
+import 'settings_chrome_home_sidebar.dart';
 import '../models/layout_preferences.dart';
+import '../services/workspace/workspace_pane_policy.dart';
 import '../widgets/desktop_window_title_bar.dart';
 import '../widgets/splash_deferred_shell.dart';
 
@@ -460,21 +463,37 @@ Widget _settingsChromeShell(
   GoRouterState state,
   Widget child,
 ) {
-  if (Platform.isAndroid) {
-    final path = state.uri.path;
-    final detail = AndroidShellChrome.isHubDetailPath(path);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AndroidShellChrome.title(context, path)),
-        leading: detail
-            ? IconButton(
-                icon: Icon(Icons.arrow_back),
-                onPressed: () => AndroidShellChrome.pop(context, path),
-              )
-            : null,
-        actions: const [AndroidSshProfileSelector()],
+  final path = state.uri.path;
+  final width = MediaQuery.sizeOf(context).width;
+  final useMobileDrawer =
+      Platform.isAndroid ||
+      width < WorkspacePanePolicy.narrowBreakpointWidth;
+
+  if (useMobileDrawer) {
+    final hideDrawer = AndroidShellChrome.shouldHideDrawer(path);
+    return TpSidebarProvider(
+      mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+      edgeOpenEnabled: !hideDrawer,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(AndroidShellChrome.title(context, path)),
+          leading: hideDrawer
+              ? BackButton(
+                  onPressed: () => AndroidShellChrome.pop(context, path),
+                )
+              : const TpSidebarTrigger(),
+          actions: const [AndroidSshProfileSelector()],
+        ),
+        body: Row(
+          children: [
+            TpSidebar(
+              collapsible: TpSidebarCollapsible.offcanvas,
+              child: SettingsChromeHomeSidebar(path: path),
+            ),
+            Expanded(child: child),
+          ],
+        ),
       ),
-      body: child,
     );
   }
 

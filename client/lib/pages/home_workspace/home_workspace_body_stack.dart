@@ -6,6 +6,7 @@ import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/workspace_landing_context_cubit.dart';
 import '../../../models/workspace.dart';
 import '../../../models/workspace_tab_ref.dart';
+import 'home_route_active_scope.dart';
 import 'home_workspace_route.dart';
 import 'home_workspace_page.dart';
 import 'workspace/workspace_page.dart';
@@ -83,13 +84,16 @@ class _HomeBodyLayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TpKeepAliveLayer(
-      active: active,
-      child: ExcludeSemantics(
-        excluding: !active,
-        child: TickerMode(
-          enabled: active,
-          child: IgnorePointer(ignoring: !active, child: child),
+    return HomeRouteActiveScope(
+      routeActive: active,
+      child: TpKeepAliveLayer(
+        active: active,
+        child: ExcludeSemantics(
+          excluding: !active,
+          child: TickerMode(
+            enabled: active,
+            child: IgnorePointer(ignoring: !active, child: child),
+          ),
         ),
       ),
     );

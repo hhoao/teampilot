@@ -20,7 +20,7 @@ void main() {
     expect(e.overlayRight, isFalse);
   });
 
-  test('narrow undocks sides; intent keeps overlay eligibility', () {
+  test('narrow undocks sides; left uses TpSidebar, right keeps overlay', () {
     final e = WorkspacePanePolicy.effective(
       preferences: prefs,
       viewportWidth: 700,
@@ -28,7 +28,7 @@ void main() {
     expect(e.isNarrow, isTrue);
     expect(e.dockLeft, isFalse);
     expect(e.dockRight, isFalse);
-    expect(e.overlayLeft, isTrue);
+    expect(e.overlayLeft, isFalse);
     expect(e.overlayRight, isTrue);
   });
 
