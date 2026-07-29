@@ -1,4 +1,6 @@
 import 'codecs/str_replace_edit_hunk_codec.dart';
+import 'codecs/unified_diff_edit_hunk_codec.dart';
+import 'codecs/write_edit_hunk_codec.dart';
 import 'message.dart';
 import 'tool_edit_hunk.dart';
 import 'tool_edit_hunk_codec.dart';
@@ -14,6 +16,8 @@ class DefaultAiEditToolTargetResolver implements AiEditToolTargetResolver {
 
   static const defaultCodecs = <AiEditHunkCodec>[
     StrReplaceEditHunkCodec(),
+    WriteEditHunkCodec(),
+    UnifiedDiffEditHunkCodec(),
   ];
 
   @override

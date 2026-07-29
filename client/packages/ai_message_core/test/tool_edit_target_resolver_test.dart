@@ -41,4 +41,39 @@ void main() {
     );
     expect(t?.hunk.path, 'b.dart');
   });
+
+  test('resolver routes Write and ApplyPatch', () {
+    expect(
+      resolver
+          .resolve(
+            const AiToolCallPart(
+              toolCallId: '1',
+              toolName: 'Write',
+              args: {
+                'file_path': 'a.dart',
+                'contents': 'hello',
+              },
+            ),
+          )
+          ?.hunk
+          .addedCount,
+      1,
+    );
+    expect(
+      resolver
+          .resolve(
+            const AiToolCallPart(
+              toolCallId: '1',
+              toolName: 'ApplyPatch',
+              args: {
+                'path': 'b.dart',
+                'patch': '-old\n+new',
+              },
+            ),
+          )
+          ?.hunk
+          .path,
+      'b.dart',
+    );
+  });
 }

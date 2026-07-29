@@ -4,6 +4,8 @@ library ai_message_core;
 export 'src/message.dart';
 export 'src/subagent_attachment.dart';
 export 'src/codecs/str_replace_edit_hunk_codec.dart';
+export 'src/codecs/unified_diff_edit_hunk_codec.dart';
+export 'src/codecs/write_edit_hunk_codec.dart';
 export 'src/tool_edit_hunk.dart';
 export 'src/tool_edit_hunk_codec.dart';
 export 'src/tool_edit_target_resolver.dart';
