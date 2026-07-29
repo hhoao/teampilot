@@ -8,6 +8,7 @@ import '../../models/workspace_folder.dart';
 import '../run/launch_adapter_protocol.dart';
 import '../run/launch_config_store.dart';
 import '../run/run_platform.dart';
+import '../run/run_ui_prefs_store.dart';
 import '../run/run_session_manager.dart';
 import '../run/workspace_run_platform_factory.dart';
 import '../terminal/workspace_terminal_run_service.dart';
@@ -19,9 +20,12 @@ import '../terminal/workspace_terminal_run_service.dart';
 class WorkspaceRunRegistry {
   WorkspaceRunRegistry({
     required WorkspaceRunPlatformFactory platformFactory,
-  }) : _platformFactory = platformFactory;
+    RunUiPrefsStore? prefsStore,
+  }) : _platformFactory = platformFactory,
+       _prefsStore = prefsStore ?? RunUiPrefsStore();
 
   final WorkspaceRunPlatformFactory _platformFactory;
+  final RunUiPrefsStore _prefsStore;
   final Map<String, RunCubit> _cubits = <String, RunCubit>{};
   final Map<String, Future<void>> _loadFutures = <String, Future<void>>{};
   final Map<String, void Function(String entryId)> _entryClosedListeners =
@@ -52,7 +56,12 @@ class WorkspaceRunRegistry {
     if (existing != null && !existing.isClosed) return existing;
 
     final proxy = _DeferredRunPlatform();
-    final cubit = RunCubit(platform: proxy, folders: folders);
+    final cubit = RunCubit(
+      platform: proxy,
+      folders: folders,
+      workspaceId: workspaceId,
+      prefsStore: _prefsStore,
+    );
     _cubits[key] = cubit;
 
     _loadFutures[key] = () async {
