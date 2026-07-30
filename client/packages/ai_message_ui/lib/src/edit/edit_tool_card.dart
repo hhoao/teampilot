@@ -5,17 +5,15 @@ import 'package:flutter/material.dart';
 
 import '../markdown/compiled_markdown_chrome.dart';
 import '../markdown/compiled_markdown_style.dart';
+import '../parts/expandable_tool_card.dart';
 import '../theme.dart';
 import '../tool_file_actions.dart';
 import 'edit_line_highlighter.dart';
 
-const _previewCap = 5;
-const _expandedMaxHeight = 320.0;
-
 /// Picks up to [cap] lines for collapsed preview, preferring add/remove rows.
 List<AiEditLine> previewEditHunkLines(
   List<AiEditLine> lines, {
-  int cap = _previewCap,
+  int cap = kAiToolCardPreviewLines,
 }) {
   if (lines.length <= cap) return lines;
 
@@ -49,7 +47,6 @@ class EditToolCard extends StatelessWidget {
     required this.markdown,
     required this.dense,
     required this.open,
-    required this.onToggle,
     super.key,
   });
 
@@ -60,7 +57,6 @@ class EditToolCard extends StatelessWidget {
   final CompiledMarkdownStyle markdown;
   final bool dense;
   final bool open;
-  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -111,11 +107,7 @@ class EditToolCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              GestureDetector(
-                onTap: onToggle,
-                behavior: HitTestBehavior.opaque,
-                child: _EditStatusIcon(part: part, color: triggerColor),
-              ),
+              _EditStatusIcon(part: part, color: triggerColor),
               const SizedBox(width: 6),
               Icon(
                 _fileTypeIcon(hunk.path),
@@ -126,14 +118,9 @@ class EditToolCard extends StatelessWidget {
               Expanded(child: title),
               ...badges,
               const SizedBox(width: 4),
-              Semantics(
-                button: true,
-                expanded: open,
-                child: _EditExpandChevron(
-                  open: open,
-                  color: triggerColor,
-                  onTap: onToggle,
-                ),
+              _EditExpandChevron(
+                open: open,
+                color: triggerColor,
               ),
             ],
           ),
@@ -215,15 +202,17 @@ class _EditToolCardHostState extends State<EditToolCardHost> {
 
   @override
   Widget build(BuildContext context) {
-    return EditToolCard(
-      part: widget.part,
-      hunk: _hunk,
-      actions: widget.actions,
-      triggerColor: widget.triggerColor,
-      markdown: widget.markdown,
-      dense: widget.dense,
-      open: widget.open,
+    return AiExpandableToolCard(
       onToggle: widget.onToggle,
+      child: EditToolCard(
+        part: widget.part,
+        hunk: _hunk,
+        actions: widget.actions,
+        triggerColor: widget.triggerColor,
+        markdown: widget.markdown,
+        dense: widget.dense,
+        open: widget.open,
+      ),
     );
   }
 }
@@ -270,9 +259,9 @@ class _EditDiffPanel extends StatelessWidget {
       ],
     );
 
-    if (open && hunk.lines.length > _previewCap) {
+    if (open && hunk.lines.length > kAiToolCardPreviewLines) {
       lineList = ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: _expandedMaxHeight),
+        constraints: const BoxConstraints(maxHeight: kAiToolCardExpandedMaxHeight),
         child: SingleChildScrollView(child: lineList),
       );
     }
@@ -429,24 +418,18 @@ class _EditExpandChevron extends StatelessWidget {
   const _EditExpandChevron({
     required this.open,
     required this.color,
-    required this.onTap,
   });
 
   final bool open;
   final Color color;
-  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.only(left: 4),
-        child: Transform.rotate(
-          angle: open ? 0 : -math.pi / 2,
-          child: Icon(Icons.expand_more, size: 16, color: color),
-        ),
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Transform.rotate(
+        angle: open ? 0 : -math.pi / 2,
+        child: Icon(Icons.expand_more, size: 16, color: color),
       ),
     );
   }

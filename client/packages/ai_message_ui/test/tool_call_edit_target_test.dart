@@ -35,6 +35,94 @@ void main() {
     expect(find.textContaining('ok'), findsNothing);
   });
 
+  testWidgets('tap diff panel toggles expand', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: AiToolCallPartView(
+            part: AiToolCallPart(
+              toolCallId: '1',
+              toolName: 'StrReplace',
+              args: {
+                'file_path': 'lib/a.dart',
+                'old_string': 'l1\nl2\nl3\nl4\nl5\nl6',
+                'new_string': 'l1\nl2\nl3\nl4\nl5\nCHANGED',
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.textContaining('CHANGED'), findsNothing);
+    await tester.tap(find.textContaining('l3'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('CHANGED'), findsOneWidget);
+  });
+
+  testWidgets('tap basename opens file and does not toggle expand', (
+    tester,
+  ) async {
+    AiToolFileTarget? opened;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AiToolFileActionsScope(
+          actions: AiToolFileActions(onOpenFile: (t) async => opened = t),
+          child: const Scaffold(
+            body: AiToolCallPartView(
+              part: AiToolCallPart(
+                toolCallId: '1',
+                toolName: 'StrReplace',
+                args: {
+                  'file_path': 'lib/a.dart',
+                  'old_string': 'l1\nl2\nl3\nl4\nl5\nl6',
+                  'new_string': 'l1\nl2\nl3\nl4\nl5\nCHANGED',
+                  'start_line': 1,
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.textContaining('CHANGED'), findsNothing);
+    await tester.tap(find.textContaining('a.dart'));
+    await tester.pumpAndSettle();
+    expect(opened?.path, 'lib/a.dart');
+    expect(find.textContaining('CHANGED'), findsNothing);
+  });
+
+  testWidgets('tap line gutter opens file and does not toggle expand', (
+    tester,
+  ) async {
+    AiToolFileTarget? opened;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AiToolFileActionsScope(
+          actions: AiToolFileActions(onOpenFile: (t) async => opened = t),
+          child: const Scaffold(
+            body: AiToolCallPartView(
+              part: AiToolCallPart(
+                toolCallId: '1',
+                toolName: 'StrReplace',
+                args: {
+                  'file_path': 'lib/a.dart',
+                  'old_string': 'l1\nl2\nl3\nl4\nl5\nl6',
+                  'new_string': 'l1\nl2\nl3\nl4\nl5\nCHANGED',
+                  'start_line': 1,
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.textContaining('CHANGED'), findsNothing);
+    await tester.tap(find.text('3'));
+    await tester.pumpAndSettle();
+    expect(opened, isNotNull);
+    expect(find.textContaining('CHANGED'), findsNothing);
+  });
+
   testWidgets('expand grows same region; no Result: label or args JSON', (
     tester,
   ) async {
