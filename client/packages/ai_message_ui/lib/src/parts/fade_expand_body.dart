@@ -303,39 +303,42 @@ class _FadeChevronHit extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: SizedBox(
-        height: kAiFadeExpandHitStripHeight,
-        width: double.infinity,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            if (showFade)
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      fadeColor.withValues(alpha: 0),
-                      fadeColor,
-                    ],
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: SizedBox(
+          height: kAiFadeExpandHitStripHeight,
+          width: double.infinity,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              if (showFade)
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        fadeColor.withValues(alpha: 0),
+                        fadeColor,
+                      ],
+                    ),
                   ),
+                  child: const SizedBox.expand(),
                 ),
-                child: const SizedBox.expand(),
+              Icon(
+                icon,
+                key: const ValueKey('ai-fade-expand-chevron'),
+                size: 18,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.55),
               ),
-            Icon(
-              icon,
-              key: const ValueKey('ai-fade-expand-chevron'),
-              size: 18,
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withValues(alpha: 0.55),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
