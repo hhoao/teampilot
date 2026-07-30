@@ -696,10 +696,11 @@ class SessionRepository {
           );
         }
         resolvedMembers = List<SessionMemberBinding>.unmodifiable(members);
-        final stagedTargets = memberTargets;
-        if (stagedTargets != null &&
-            setEquals(stagedTargets.keys.toSet(), planIds)) {
-          sessionTargets = Map<String, String>.unmodifiable(stagedTargets);
+        // Prefer staged targets only when keys match plan inclusion; otherwise
+        // fall back to plan (unlike member id mismatch, which is a hard error).
+        if (memberTargets != null &&
+            setEquals(memberTargets.keys.toSet(), planIds)) {
+          sessionTargets = Map<String, String>.unmodifiable(memberTargets);
         } else {
           sessionTargets = plan.memberTargets;
         }

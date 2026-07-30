@@ -57,6 +57,10 @@ void main() {
       'fixed-lead-task',
       'fixed-builder-task',
     });
+    expect(session.memberTargets, {
+      'team-lead': WorkspaceFolder.localTargetId,
+      'builder': WorkspaceFolder.localTargetId,
+    });
   });
 
   test('staged members whose ids disagree with placement throw', () async {
