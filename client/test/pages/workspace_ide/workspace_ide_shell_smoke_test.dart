@@ -51,9 +51,6 @@ void main() {
     return layout;
   }
 
-  TpSidebarScope sidebarScope(WidgetTester tester) =>
-      TpSidebarScope.of(tester.element(find.byType(WorkspaceIdeShell)));
-
   testWidgets('three builders mount under the IDE shell', (tester) async {
     await pumpShell(tester);
     expect(find.text('left'), findsOneWidget);
@@ -81,33 +78,89 @@ void main() {
   });
 
   testWidgets(
-    'narrow first paint keeps left drawer closed when prefs sidebarVisible',
+    'narrow first paint suppresses left without clearing prefs',
     (tester) async {
       final layout = await pumpShell(tester, size: const Size(600, 900));
-      expect(layout.state.preferences.sidebarVisible, isTrue);
       expect(find.text('left'), findsNothing);
+      expect(layout.state.preferences.sidebarVisible, isTrue);
+      expect(layout.state.narrowLeftSuppressed, isTrue);
       expect(find.byKey(centerKey), findsOneWidget);
     },
   );
 
-  testWidgets('opening narrow left drawer writes sidebarVisible true', (
-    tester,
-  ) async {
+  testWidgets(
+    'narrow first frame never docks left before settle',
+    (tester) async {
+      final layout = LayoutCubit();
+      tester.view.physicalSize = const Size(600, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(layout.close);
+
+      final scheme = ColorScheme.fromSeed(seedColor: Colors.blue);
+      await tester.pumpWidget(
+        TpTheme(
+          data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
+          child: MaterialApp(
+            home: BlocProvider<LayoutCubit>.value(
+              value: layout,
+              child: TpSidebarProvider(
+                mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+                child: const Scaffold(
+                  body: WorkspaceIdeShell(
+                    left: SizedBox(child: Text('left')),
+                    center: ColoredBox(
+                      key: centerKey,
+                      color: Colors.transparent,
+                    ),
+                    right: ColoredBox(
+                      key: rightKey,
+                      color: Colors.transparent,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      // Single frame only — must not dock left while waiting for PaneSizeReporter.
+      expect(find.text('left'), findsNothing);
+      expect(layout.state.narrowLeftSuppressed, isTrue);
+      expect(layout.state.preferences.sidebarVisible, isTrue);
+      expect(find.byKey(centerKey), findsOneWidget);
+    },
+  );
+
+  testWidgets('narrow left opens after clear suppress', (tester) async {
     final layout = await pumpShell(tester, size: const Size(600, 900));
     expect(find.text('left'), findsNothing);
 
-    sidebarScope(tester).setOpenMobile(true);
+    layout.clearNarrowLeftSuppressed();
+    await layout.setSidebarVisible(true);
     await tester.pumpAndSettle();
 
     expect(find.text('left'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(PaneOverlayHost),
+        matching: find.text('left'),
+      ),
+      findsOneWidget,
+    );
     expect(layout.state.preferences.sidebarVisible, isTrue);
+    expect(layout.state.narrowLeftSuppressed, isFalse);
   });
 
-  testWidgets('dismissing narrow left drawer clears sidebar intent', (
+  testWidgets('dismissing narrow left overlay clears sidebar intent', (
     tester,
   ) async {
     final layout = await pumpShell(tester, size: const Size(600, 900));
-    sidebarScope(tester).setOpenMobile(true);
+    // Hide right so the scrim is tappable beside the left drawer.
+    await layout.setRightToolsVisible(false);
+    layout.clearNarrowLeftSuppressed();
+    await layout.setSidebarVisible(true);
     await tester.pumpAndSettle();
     expect(find.text('left'), findsOneWidget);
 
@@ -115,6 +168,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(layout.state.preferences.sidebarVisible, isFalse);
+    expect(layout.state.narrowLeftSuppressed, isFalse);
     expect(find.text('left'), findsNothing);
   });
 
@@ -155,37 +209,86 @@ void main() {
     expect(find.byType(PaneOverlayHost), findsOneWidget);
   });
 
-  testWidgets('narrow right overlay still works independently of left drawer', (
+  testWidgets(
+    'narrow right overlay still works while left is suppressed',
+    (tester) async {
+      final layout = await pumpShell(tester, size: const Size(600, 900));
+      expect(find.text('left'), findsNothing);
+      expect(layout.state.narrowLeftSuppressed, isTrue);
+
+      final rightBefore = layout.state.preferences.rightToolsVisible;
+      await layout.setRightToolsVisible(true);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(rightKey), findsOneWidget);
+      expect(find.text('left'), findsNothing);
+      expect(layout.state.narrowLeftSuppressed, isTrue);
+      expect(layout.state.preferences.rightToolsVisible, isTrue);
+      expect(rightBefore, isTrue);
+    },
+  );
+
+  testWidgets(
+    'wide to narrow to wide with sidebarVisible docks left again',
+    (tester) async {
+      final layout = await pumpShell(tester, size: const Size(1400, 900));
+      expect(layout.state.preferences.sidebarVisible, isTrue);
+      expect(find.text('left'), findsOneWidget);
+
+      tester.view.physicalSize = const Size(600, 900);
+      await tester.pumpAndSettle();
+      expect(find.text('left'), findsNothing);
+      expect(layout.state.preferences.sidebarVisible, isTrue);
+      expect(layout.state.narrowLeftSuppressed, isTrue);
+
+      tester.view.physicalSize = const Size(1400, 900);
+      await tester.pumpAndSettle();
+      expect(find.text('left'), findsOneWidget);
+      expect(layout.state.preferences.sidebarVisible, isTrue);
+      expect(layout.state.narrowLeftSuppressed, isFalse);
+    },
+  );
+
+  testWidgets('leave narrow and re-enter suppresses left again', (
     tester,
   ) async {
-    await pumpShell(tester, size: const Size(600, 900));
+    final layout = await pumpShell(tester, size: const Size(600, 900));
+    expect(layout.state.narrowLeftSuppressed, isTrue);
     expect(find.text('left'), findsNothing);
 
-    final layout = tester.element(find.byType(WorkspaceIdeShell));
-    final cubit = BlocProvider.of<LayoutCubit>(layout);
-    await cubit.setRightToolsVisible(true);
+    layout.clearNarrowLeftSuppressed();
+    await layout.setSidebarVisible(true);
     await tester.pumpAndSettle();
+    expect(find.text('left'), findsOneWidget);
 
-    expect(find.byKey(rightKey), findsOneWidget);
+    tester.view.physicalSize = const Size(1400, 900);
+    await tester.pumpAndSettle();
+    expect(layout.state.narrowLeftSuppressed, isFalse);
+    expect(find.text('left'), findsOneWidget);
+
+    tester.view.physicalSize = const Size(600, 900);
+    await tester.pumpAndSettle();
     expect(find.text('left'), findsNothing);
+    expect(layout.state.narrowLeftSuppressed, isTrue);
+    expect(layout.state.preferences.sidebarVisible, isTrue);
   });
 
-  testWidgets('narrow drawer toggle keeps the center workbench identity', (
+  testWidgets('narrow overlay toggle keeps the center workbench identity', (
     tester,
   ) async {
-    await pumpShell(tester, size: const Size(600, 900));
+    final layout = await pumpShell(tester, size: const Size(600, 900));
     final centerBefore = tester.element(find.byKey(centerKey));
-    final scope = sidebarScope(tester);
 
-    scope.setOpenMobile(true);
+    layout.clearNarrowLeftSuppressed();
+    await layout.setSidebarVisible(true);
     await tester.pumpAndSettle();
-    scope.setOpenMobile(false);
+    await layout.setSidebarVisible(false);
     await tester.pumpAndSettle();
 
     expect(
       identical(tester.element(find.byKey(centerKey)), centerBefore),
       isTrue,
-      reason: 'center was reparented when mobile drawer toggled',
+      reason: 'center was reparented when left overlay toggled',
     );
   });
 

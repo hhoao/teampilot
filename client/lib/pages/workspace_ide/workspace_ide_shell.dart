@@ -73,8 +73,8 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
 
   bool _rowResizing = false;
 
-  /// When narrow, left is a [TpSidebar] drawer and right uses [PaneOverlayHost],
-  /// so docked MultiPane left/right panes render nothing to avoid double-mount.
+  /// When narrow, left/right use [PaneOverlayHost], so docked MultiPane
+  /// left/right panes render nothing to avoid double-mount.
   /// Set each build before the pane builders run (during layout of the root
   /// `MultiPane`).
   bool _narrow = false;
@@ -145,6 +145,14 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Seed from MediaQuery before first paint so narrow pumps never dock left
+    // for one frame while waiting on PaneSizeReporter.
+    _syncViewportSize(MediaQuery.sizeOf(context), notifyRebuild: false);
+  }
+
+  @override
   void dispose() {
     _rowController.removeListener(_onRowChanged);
     _rowController.dispose();
@@ -205,11 +213,20 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
   }
 
   void _onViewportSize(Size size) {
+    _syncViewportSize(size, notifyRebuild: true);
+  }
+
+  /// Applies viewport width/height, enter/leave-narrow suppress, and pane sync.
+  ///
+  /// [notifyRebuild] is true for [PaneSizeReporter] (layout-time size) and
+  /// false for [didChangeDependencies] (MediaQuery already marks dirty).
+  void _syncViewportSize(Size size, {required bool notifyRebuild}) {
     if (!mounted) return;
     if (size.width == _viewportWidth && size.height == _viewportHeight) {
       return;
     }
-    final layoutState = context.read<LayoutCubit>().state;
+    final layout = context.read<LayoutCubit>();
+    final layoutState = layout.state;
     final was = WorkspacePanePolicy.effective(
       preferences: layoutState.preferences,
       viewportWidth: _viewportWidth,
@@ -224,6 +241,13 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
       composeLanding: widget.composeLanding,
       landingRightToolsOverride: layoutState.landingRightToolsOverride,
     );
+    // Enter/leave narrow: suppress left overlay before any rebuild that would
+    // show left from prefs-alone eligibility.
+    if (!was.isNarrow && now.isNarrow) {
+      layout.setNarrowLeftSuppressed(true);
+    } else if (was.isNarrow && !now.isNarrow) {
+      layout.clearNarrowLeftSuppressed();
+    }
     final snapshot = WorkspaceIdePaneSnapshot.from(
       preferences: layoutState.preferences,
       effective: now,
@@ -238,7 +262,7 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
         was.dockRight != now.dockRight ||
         was.overlayLeft != now.overlayLeft ||
         was.overlayRight != now.overlayRight;
-    if (policyChanged) {
+    if (notifyRebuild && policyChanged) {
       setState(() {});
     }
   }
@@ -516,7 +540,8 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
       child: BlocBuilder<LayoutCubit, LayoutState>(
         buildWhen: (a, b) =>
             _relevantPrefsChanged(a.preferences, b.preferences) ||
-            a.landingRightToolsOverride != b.landingRightToolsOverride,
+            a.landingRightToolsOverride != b.landingRightToolsOverride ||
+            a.narrowLeftSuppressed != b.narrowLeftSuppressed,
         builder: (context, layoutState) {
           // Depend so tab foreground switches re-publish maximize insets.
           final routeActive =
@@ -553,6 +578,7 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
               child: _buildPaneHost(
                 effective: effective,
                 prefs: prefs,
+                layoutState: layoutState,
                 composeLanding: widget.composeLanding,
               ),
             ),
@@ -594,16 +620,24 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
   Widget _buildPaneHost({
     required WorkspacePaneEffective effective,
     required LayoutPreferences prefs,
+    required LayoutState layoutState,
     required bool composeLanding,
   }) {
     final fractionWidth = TpTheme.of(context).sidebarTheme
         .resolveMobileDrawerWidth(MediaQuery.sizeOf(context).width);
-    final overlayHost = PaneOverlayHost(
-      showLeft: false,
+    final showLeft = effective.isNarrow &&
+        effective.overlayLeft &&
+        !layoutState.narrowLeftSuppressed;
+    return PaneOverlayHost(
+      showLeft: showLeft,
       showRight: effective.overlayRight,
-      leftWidth: prefs.sidebarWidth,
+      leftWidth: effective.isNarrow ? fractionWidth : prefs.sidebarWidth,
       rightWidth: effective.isNarrow ? fractionWidth : prefs.rightToolsWidth,
-      onDismissLeft: () {},
+      onDismissLeft: () {
+        final layout = context.read<LayoutCubit>();
+        layout.setSidebarVisible(false);
+        layout.clearNarrowLeftSuppressed();
+      },
       onDismissRight: () {
         final layout = context.read<LayoutCubit>();
         if (composeLanding) {
@@ -612,106 +646,15 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
           layout.setRightToolsVisible(false);
         }
       },
+      left: effective.isNarrow
+          ? WorkspaceIdePaneChrome(child: widget.left)
+          : null,
       right: WorkspaceIdePaneChrome(child: widget.right),
       child: MultiPane(
         direction: Axis.horizontal,
         controller: _rowController,
         animationDuration: _paneAnimationDuration,
         paneBuilder: _rowPaneBuilder,
-      ),
-    );
-
-    if (!effective.isNarrow) {
-      return overlayHost;
-    }
-
-    return _WorkspaceMobileSidebarHost(
-      left: WorkspaceIdePaneChrome(child: widget.left),
-      child: overlayHost,
-    );
-  }
-}
-
-/// Narrow workspace left rail: [TpSidebar] drawer on the outer [HomeShell]
-/// provider; syncs `openMobile` ↔ [LayoutPreferences.sidebarVisible].
-class _WorkspaceMobileSidebarHost extends StatefulWidget {
-  const _WorkspaceMobileSidebarHost({
-    required this.left,
-    required this.child,
-  });
-
-  final Widget left;
-  final Widget child;
-
-  @override
-  State<_WorkspaceMobileSidebarHost> createState() =>
-      _WorkspaceMobileSidebarHostState();
-}
-
-class _WorkspaceMobileSidebarHostState extends State<_WorkspaceMobileSidebarHost> {
-  bool? _lastOpenMobile;
-  var _forcedClosedOnEntry = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final scope = TpSidebarScope.maybeOf(context);
-    if (scope?.isMobile == true && !_forcedClosedOnEntry) {
-      _forcedClosedOnEntry = true;
-      if (scope!.openMobile) {
-        scope.setOpenMobile(false);
-      }
-    } else if (scope?.isMobile != true) {
-      _forcedClosedOnEntry = false;
-    }
-  }
-
-  void _maybeSyncOpenMobileToPrefs(TpSidebarScope scope) {
-    final open = scope.openMobile;
-    if (_lastOpenMobile == null) {
-      _lastOpenMobile = open;
-      return;
-    }
-    if (_lastOpenMobile == open) return;
-    _lastOpenMobile = open;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final cubit = context.read<LayoutCubit>();
-      if (cubit.state.preferences.sidebarVisible != open) {
-        cubit.setSidebarVisible(open);
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final scope = TpSidebarScope.maybeOf(context);
-    if (scope == null || !scope.isMobile) {
-      return widget.child;
-    }
-
-    _maybeSyncOpenMobileToPrefs(scope);
-
-    return BlocListener<LayoutCubit, LayoutState>(
-      listenWhen: (a, b) =>
-          a.preferences.sidebarVisible != b.preferences.sidebarVisible,
-      listener: (context, state) {
-        final current = TpSidebarScope.maybeOf(context);
-        if (current == null || !current.isMobile) return;
-        if (!state.preferences.sidebarVisible && current.openMobile) {
-          current.setOpenMobile(false);
-        }
-      },
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TpSidebar(
-            overlayActive: WorkspaceRouteActiveScope.routeActiveOf(context),
-            collapsible: TpSidebarCollapsible.offcanvas,
-            child: widget.left,
-          ),
-          Expanded(child: widget.child),
-        ],
       ),
     );
   }

@@ -43,7 +43,7 @@ abstract final class WorkspacePanePolicy {
       isNarrow: true,
       dockLeft: false,
       dockRight: false,
-      overlayLeft: false,
+      overlayLeft: preferences.sidebarVisible,
       overlayRight: rightIntent,
     );
   }

@@ -11,6 +11,7 @@ class LayoutState extends Equatable {
     this.preferences = const LayoutPreferences(),
     this.isLoading = true,
     this.landingRightToolsOverride,
+    this.narrowLeftSuppressed = false,
   });
 
   final LayoutPreferences preferences;
@@ -19,11 +20,15 @@ class LayoutState extends Equatable {
   /// Compose-only temporary right-tools visibility; never persisted.
   final bool? landingRightToolsOverride;
 
+  /// Narrow-layout overlay suppress; never persisted.
+  final bool narrowLeftSuppressed;
+
   LayoutState copyWith({
     LayoutPreferences? preferences,
     bool? isLoading,
     bool? landingRightToolsOverride,
     bool clearLandingRightToolsOverride = false,
+    bool? narrowLeftSuppressed,
   }) {
     return LayoutState(
       preferences: preferences ?? this.preferences,
@@ -31,12 +36,17 @@ class LayoutState extends Equatable {
       landingRightToolsOverride: clearLandingRightToolsOverride
           ? null
           : (landingRightToolsOverride ?? this.landingRightToolsOverride),
+      narrowLeftSuppressed: narrowLeftSuppressed ?? this.narrowLeftSuppressed,
     );
   }
 
   @override
-  List<Object?> get props =>
-      [preferences, isLoading, landingRightToolsOverride];
+  List<Object?> get props => [
+    preferences,
+    isLoading,
+    landingRightToolsOverride,
+    narrowLeftSuppressed,
+  ];
 }
 
 class LayoutCubit extends Cubit<LayoutState> {
@@ -185,6 +195,13 @@ class LayoutCubit extends Cubit<LayoutState> {
   void clearLandingRightToolsOverride() {
     emit(state.copyWith(clearLandingRightToolsOverride: true));
   }
+
+  void setNarrowLeftSuppressed(bool value) {
+    if (state.narrowLeftSuppressed == value) return;
+    emit(state.copyWith(narrowLeftSuppressed: value));
+  }
+
+  void clearNarrowLeftSuppressed() => setNarrowLeftSuppressed(false);
 
   Future<void> toggleRightTools({bool composeLanding = false}) {
     if (composeLanding) {

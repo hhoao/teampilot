@@ -21,6 +21,7 @@ void main() {
     );
     expect(snapshot.dockLeft, isFalse);
     expect(snapshot.intentSidebarVisible, isTrue);
+    expect(snapshot.overlayLeft, isTrue);
     expect(snapshot.sidebarWidth, 260);
   });
 

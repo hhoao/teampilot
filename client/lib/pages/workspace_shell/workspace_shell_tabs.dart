@@ -78,21 +78,29 @@ class WorkspaceShellSidebarVisibilityToggle extends StatelessWidget {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     return BlocBuilder<LayoutCubit, LayoutState>(
+      buildWhen: (a, b) =>
+          a.preferences.sidebarVisible != b.preferences.sidebarVisible ||
+          a.narrowLeftSuppressed != b.narrowLeftSuppressed,
       builder: (context, state) {
-        final visible = state.preferences.sidebarVisible;
+        final effectiveOpen =
+            state.preferences.sidebarVisible && !state.narrowLeftSuppressed;
         return TpIconButton(
           key: AppKeys.sidebarVisibilityButton,
           icon: Icons.view_sidebar_outlined,
-          tooltip: visible ? l10n.sidebarPanelHidden : l10n.sidebarPanelVisible,
-          color: visible ? cs.primary : cs.onSurfaceVariant,
+          tooltip: effectiveOpen
+              ? l10n.sidebarPanelHidden
+              : l10n.sidebarPanelVisible,
+          color: effectiveOpen ? cs.primary : cs.onSurfaceVariant,
           backgroundColor: Colors.transparent,
           onTap: () {
-            final scope = TpSidebarScope.maybeOf(context);
-            if (scope?.isMobile ?? false) {
-              scope!.toggleSidebar();
-              return;
+            final layout = context.read<LayoutCubit>();
+            if (effectiveOpen) {
+              layout.setSidebarVisible(false);
+              layout.clearNarrowLeftSuppressed();
+            } else {
+              layout.clearNarrowLeftSuppressed();
+              layout.setSidebarVisible(true);
             }
-            context.read<LayoutCubit>().setSidebarVisible(!visible);
           },
         );
       },
