@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/run_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
@@ -105,21 +106,42 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
 
   void _onUiIntent(RunUiIntent intent) {
     if (!mounted) return;
-    final workbench = context.read<WorkbenchCubit>();
-    final sessions = context.read<RunCubit>().state.sessions;
-    final runPanelSessions = sessions
-        .where(sessionUsesRunPanel)
-        .toList(growable: false);
-    final latestRunId = runPanelSessions.isEmpty
-        ? null
-        : runPanelSessions.last.id;
-    final tab = resolveWorkbenchTabForRunIntent(
-      intent,
-      latestRunSessionId: latestRunId,
-    );
-    if (tab != null) {
-      workbench.ensureTab(widget.workspaceId, tab);
-      workbench.select(widget.workspaceId, tab);
+
+    if (intent.surface == RunToolSurface.run) {
+      final workbench = context.read<WorkbenchCubit>();
+      final sessions = context.read<RunCubit>().state.sessions;
+      final runPanelSessions = sessions
+          .where(sessionUsesRunPanel)
+          .toList(growable: false);
+      final latestRunId = runPanelSessions.isEmpty
+          ? null
+          : runPanelSessions.last.id;
+      final tab = resolveWorkbenchTabForRunIntent(
+        intent,
+        latestRunSessionId: latestRunId,
+      );
+      if (tab != null) {
+        workbench.ensureTab(widget.workspaceId, tab);
+        workbench.select(widget.workspaceId, tab);
+      }
+    } else if (intent.surface == RunToolSurface.terminal) {
+      final group = _group ??
+          context.read<WorkspaceTerminalRegistry>().groupFor(widget.tabScopeId);
+      final entryId = intent.terminalEntryId?.trim() ?? '';
+      final entryTitle = entryId.isEmpty
+          ? ''
+          : (group.entryById(entryId)?.titleLabel ?? '');
+      final floatingTab = resolveFloatingTabForTerminalRunIntent(
+        intent,
+        entryTitle: entryTitle,
+      );
+      if (floatingTab != null) {
+        final floating = context.read<FloatingWorkspaceCubit>();
+        floating.ensureOpen();
+        floating.setActiveWorkspace(widget.workspaceId);
+        floating.ensureTab(floatingTab);
+        floating.selectTab(floatingTab.id);
+      }
     }
 
     final entryId = intent.terminalEntryId?.trim();
