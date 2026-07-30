@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
@@ -21,23 +22,29 @@ import '../../../widgets/cli_install_progress_panel.dart';
 /// Per-SSH-host CLI locate status and user-driven install for Machines placement.
 class RemoteCliMachineReadinessPanel extends StatefulWidget {
   const RemoteCliMachineReadinessPanel({
-    required this.workspace,
-    required this.team,
-    required this.placement,
-    required this.selectedTargetId,
-    required this.globalPresets,
-    required this.selectableTargets,
     required this.readiness,
+    this.workspace,
+    this.team,
+    this.placement,
+    this.selectedTargetId,
+    this.globalPresets = const [],
+    this.selectableTargets = const [],
+    this.fixedRequirements,
+    this.onReadinessChanged,
     super.key,
   });
 
-  final Workspace workspace;
-  final TeamProfile team;
-  final MemberPlacementByTarget placement;
-  final String selectedTargetId;
+  final Workspace? workspace;
+  final TeamProfile? team;
+  final MemberPlacementByTarget? placement;
+  final String? selectedTargetId;
   final List<CliPreset> globalPresets;
   final List<RuntimeTarget> selectableTargets;
   final RemoteCliReadinessService readiness;
+
+  /// When set, skips placement-derived requirements (e.g. compose landing).
+  final List<RemoteCliRequirement>? fixedRequirements;
+  final VoidCallback? onReadinessChanged;
 
   @override
   State<RemoteCliMachineReadinessPanel> createState() =>
@@ -60,7 +67,8 @@ class _RemoteCliMachineReadinessPanelState
   @override
   void didUpdateWidget(covariant RemoteCliMachineReadinessPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedTargetId != widget.selectedTargetId ||
+    if (!listEquals(oldWidget.fixedRequirements, widget.fixedRequirements) ||
+        oldWidget.selectedTargetId != widget.selectedTargetId ||
         oldWidget.placement != widget.placement ||
         oldWidget.team != widget.team) {
       _scheduleProbe();
@@ -68,19 +76,31 @@ class _RemoteCliMachineReadinessPanelState
   }
 
   RuntimeTarget? get _selectedTarget {
+    final targetId = widget.selectedTargetId;
+    if (targetId == null) return null;
     for (final target in widget.selectableTargets) {
-      if (target.id == widget.selectedTargetId) return target;
+      if (target.id == targetId) return target;
     }
     return null;
   }
 
   List<RemoteCliRequirement> get _requirementsForHost {
+    final fixed = widget.fixedRequirements;
+    if (fixed != null) return fixed;
+
+    final workspace = widget.workspace;
+    final team = widget.team;
+    final placement = widget.placement;
+    if (workspace == null || team == null || placement == null) {
+      return const [];
+    }
+
     final target = _selectedTarget;
     if (target == null || target.kind != RuntimeKind.ssh) return const [];
     final all = remoteCliRequirementsForPlacement(
-      workspace: widget.workspace,
-      team: widget.team,
-      placement: widget.placement,
+      workspace: workspace,
+      team: team,
+      placement: placement,
       globalPresets: widget.globalPresets,
       selectableTargets: widget.selectableTargets,
     );
@@ -141,6 +161,7 @@ class _RemoteCliMachineReadinessPanelState
       );
       if (!mounted) return;
       setState(() => _readinessByKey[requirement.cacheKey] = result);
+      widget.onReadinessChanged?.call();
     } finally {
       if (mounted) {
         setState(() {

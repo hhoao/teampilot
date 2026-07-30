@@ -167,6 +167,57 @@ void main() {
       expect(missing.single.cli, CliTool.codex);
     });
   });
+
+  group('WorkspaceLandingLaunchGate.asyncRemoteCliBlockForSimple', () {
+    const sshTarget = RuntimeTarget(
+      id: 'ssh:host-a',
+      label: 'Remote',
+      kind: RuntimeKind.ssh,
+      sshProfileId: 'host-a',
+    );
+
+    test('blocks when remote CLI is missing on SSH project folder', () async {
+      final workspace = Workspace(
+        workspaceId: 'ws-1',
+        folders: [
+          const WorkspaceFolder(path: '/remote', targetId: 'ssh:host-a'),
+        ],
+        createdAt: 1,
+      );
+
+      final block = await gate.asyncRemoteCliBlockForSimple(
+        workspace: workspace,
+        draft: const LandingLaunchContext(isPersonal: true),
+        projectFolderPath: '/remote',
+        globalPresets: const [],
+        selectableTargets: const [sshTarget],
+        readiness: _FakeRemoteCliReadiness(alwaysReady: false),
+      );
+
+      expect(block, isA<RemoteCliMissingLaunchBlock>());
+    });
+
+    test('allows when remote CLI is ready', () async {
+      final workspace = Workspace(
+        workspaceId: 'ws-1',
+        folders: [
+          const WorkspaceFolder(path: '/remote', targetId: 'ssh:host-a'),
+        ],
+        createdAt: 1,
+      );
+
+      final block = await gate.asyncRemoteCliBlockForSimple(
+        workspace: workspace,
+        draft: const LandingLaunchContext(isPersonal: true),
+        projectFolderPath: '/remote',
+        globalPresets: const [],
+        selectableTargets: const [sshTarget],
+        readiness: _FakeRemoteCliReadiness(alwaysReady: true),
+      );
+
+      expect(block, isNull);
+    });
+  });
 }
 
 Workspace _mixedWorkspace() {

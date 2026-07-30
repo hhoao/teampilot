@@ -4,7 +4,9 @@ import '../../models/cli_preset.dart';
 import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
+import '../../models/workspace_folder.dart';
 import '../../models/workspace_topology.dart';
+import '../../utils/workspace/workspace_path_utils.dart';
 import '../cli/preset_resolver.dart';
 
 /// One required remote CLI for an SSH machine used by the current placement.
@@ -63,4 +65,53 @@ List<RemoteCliRequirement> remoteCliRequirementsForPlacement({
     }
   }
   return out.values.toList();
+}
+
+/// SSH target for [projectFolderPath] when that folder is on a remote machine.
+RuntimeTarget? sshTargetForProjectFolder({
+  required Workspace workspace,
+  required String projectFolderPath,
+  required List<RuntimeTarget> selectableTargets,
+}) {
+  final normalized = normalizeWorkspacePath(projectFolderPath);
+  WorkspaceFolder? folder;
+  for (final candidate in workspace.folders) {
+    if (workspacePathsEqual(candidate.path, normalized)) {
+      folder = candidate;
+      break;
+    }
+  }
+  folder ??= workspace.folders.firstOrNull;
+  if (folder == null) return null;
+
+  final targetId = folder.targetId.trim();
+  if (targetId.isEmpty || targetId == WorkspaceFolder.localTargetId) {
+    return null;
+  }
+  return selectableTargets
+      .where((t) => t.id == targetId && t.kind == RuntimeKind.ssh)
+      .firstOrNull;
+}
+
+/// Required remote CLI for Simple (personal) launch on an SSH project folder.
+List<RemoteCliRequirement> remoteCliRequirementsForSimpleLaunch({
+  required Workspace workspace,
+  required String projectFolderPath,
+  required CliTool cli,
+  required List<RuntimeTarget> selectableTargets,
+}) {
+  final target = sshTargetForProjectFolder(
+    workspace: workspace,
+    projectFolderPath: projectFolderPath,
+    selectableTargets: selectableTargets,
+  );
+  if (target == null) return const [];
+
+  return [
+    RemoteCliRequirement(
+      target: target,
+      cli: cli,
+      hostLabel: target.label.trim().isNotEmpty ? target.label : target.id,
+    ),
+  ];
 }

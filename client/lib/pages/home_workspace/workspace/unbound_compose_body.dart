@@ -59,6 +59,7 @@ import 'config/cli_presets_manage_dialog.dart';
 import 'workspace_landing_launch_feedback.dart';
 import 'workspace_landing_selectors.dart';
 import 'workspace_landing_team_settings_dialog.dart';
+import 'remote_cli_machine_readiness_panel.dart';
 
 enum _LandingConversationMode { team, simple }
 
@@ -273,6 +274,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           .listSelectable();
       if (!mounted) return;
       setState(() => _runtimeTargets = targets);
+      _scheduleTeamLaunchReadinessCheck();
     } on Object {
       // HomeTargetController unavailable outside the app shell.
     }
@@ -547,20 +549,38 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
 
   void _scheduleTeamLaunchReadinessCheck() {
     if (!mounted) return;
-    if (_conversationMode != _LandingConversationMode.team) {
-      if (_teamConfigLaunchReady && _launchWarningBlock == null) return;
+    final generation = ++_teamLaunchReadinessGeneration;
+    unawaited(_refreshLaunchReadiness(generation));
+  }
+
+  Future<void> _refreshLaunchReadiness(int generation) async {
+    if (!mounted || generation != _teamLaunchReadinessGeneration) return;
+    final workspace = _workspaceForLaunch();
+    final draft = _currentDraft();
+    final presets = context.read<CliPresetsCubit>().state.presets;
+    final readiness = context.read<ChatCubit>().remoteCliReadiness;
+
+    if (_conversationMode == _LandingConversationMode.simple) {
+      WorkspaceLandingLaunchBlock? remoteBlock;
+      if (readiness != null && _runtimeTargets.isNotEmpty) {
+        final projectPath = _projectResolver().resolveSelectedProjectPath();
+        remoteBlock = await _launchGate.asyncRemoteCliBlockForSimple(
+          workspace: workspace,
+          draft: draft,
+          projectFolderPath: projectPath,
+          globalPresets: presets,
+          selectableTargets: _runtimeTargets,
+          readiness: readiness,
+        );
+      }
+      if (!mounted || generation != _teamLaunchReadinessGeneration) return;
       setState(() {
-        _teamConfigLaunchReady = true;
-        _launchWarningBlock = null;
+        _teamConfigLaunchReady = remoteBlock == null;
+        _launchWarningBlock = remoteBlock;
       });
       return;
     }
-    final generation = ++_teamLaunchReadinessGeneration;
-    unawaited(_refreshTeamLaunchReadiness(generation));
-  }
 
-  Future<void> _refreshTeamLaunchReadiness(int generation) async {
-    if (!mounted || generation != _teamLaunchReadinessGeneration) return;
     final teams = context.read<LaunchProfileCubit>().state.teams;
     final team = _selectedTeamProfile(teams);
     if (team == null) {
@@ -572,8 +592,8 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       return;
     }
     final sync = _launchGate.syncBlock(
-      workspace: _workspaceForLaunch(),
-      draft: _currentDraft(),
+      workspace: workspace,
+      draft: draft,
       team: team,
     );
     if (sync != null) {
@@ -584,7 +604,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       });
       return;
     }
-    final presets = context.read<CliPresetsCubit>().state.presets;
     final configBlock = await _launchGate.asyncBlock(
       team: team,
       globalPresets: presets,
@@ -598,11 +617,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       return;
     }
 
-    final readiness = context.read<ChatCubit>().remoteCliReadiness;
     final remoteBlock = readiness == null
         ? null
         : await _launchGate.asyncRemoteCliBlock(
-            workspace: _workspaceForLaunch(),
+            workspace: workspace,
             team: team,
             globalPresets: presets,
             selectableTargets: _runtimeTargets,
@@ -616,6 +634,9 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   }
 
   WorkspaceLandingLaunchBlock? _resolveLaunchWarningBlock(TeamProfile? team) {
+    if (_launchWarningBlock is RemoteCliMissingLaunchBlock) {
+      return _launchWarningBlock;
+    }
     if (_conversationMode != _LandingConversationMode.team) return null;
     final sync = _launchGate.syncBlock(
       workspace: _workspaceForLaunch(),
@@ -624,9 +645,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     );
     if (sync != null) return sync;
     if (_launchWarningBlock is TeamConfigIncompleteLaunchBlock) {
-      return _launchWarningBlock;
-    }
-    if (_launchWarningBlock is RemoteCliMissingLaunchBlock) {
       return _launchWarningBlock;
     }
     return null;
@@ -722,6 +740,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       // Landing rendered outside the workspace split pane.
     }
     _persistDraft();
+    _scheduleTeamLaunchReadinessCheck();
   }
 
   void _selectWorktree(Object? value) {
@@ -807,6 +826,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   bool get _canSubmit {
     if (widget.disabled || widget.isSubmitting) return false;
     if (_controller.text.trim().isEmpty) return false;
+    if (_launchWarningBlock is RemoteCliMissingLaunchBlock) return false;
     if (_conversationMode == _LandingConversationMode.team) {
       final teams = context.read<LaunchProfileCubit>().state.teams;
       final team = _selectedTeamProfile(teams);
@@ -819,9 +839,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         return false;
       }
       if (_launchWarningBlock is TeamConfigIncompleteLaunchBlock) {
-        return false;
-      }
-      if (_launchWarningBlock is RemoteCliMissingLaunchBlock) {
         return false;
       }
     }
@@ -907,6 +924,33 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           _launchWarningBlock = null;
         });
       }
+    } else {
+      final readiness = context.read<ChatCubit>().remoteCliReadiness;
+      if (readiness != null && _runtimeTargets.isNotEmpty) {
+        final presets = context.read<CliPresetsCubit>().state.presets;
+        final projectPath = _projectResolver().resolveSelectedProjectPath();
+        final remoteBlock = await _launchGate.asyncRemoteCliBlockForSimple(
+          workspace: _workspaceForLaunch(),
+          draft: _currentDraft(),
+          projectFolderPath: projectPath,
+          globalPresets: presets,
+          selectableTargets: _runtimeTargets,
+          readiness: readiness,
+        );
+        if (!mounted) return;
+        if (remoteBlock != null) {
+          setState(() {
+            _teamConfigLaunchReady = false;
+            _launchWarningBlock = remoteBlock;
+          });
+          showWorkspaceLandingLaunchBlock(context, remoteBlock);
+          return;
+        }
+      }
+      setState(() {
+        _teamConfigLaunchReady = true;
+        _launchWarningBlock = null;
+      });
     }
 
     widget.onSubmit(text, _currentDraft());
@@ -946,6 +990,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       () => _applyDraft(landingDraftSelectingPreset(_currentDraft(), presetId)),
     );
     _persistDraft();
+    _scheduleTeamLaunchReadinessCheck();
   }
 
   Future<void> _openCustomLaunchDialog() async {
@@ -970,6 +1015,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       ),
     );
     _persistDraft();
+    _scheduleTeamLaunchReadinessCheck();
   }
 
   void _openPresetsManageDialog() {
@@ -1281,6 +1327,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         ? _selectedTeamProfile(teams)
         : null;
     final launchWarningBlock = _resolveLaunchWarningBlock(selectedTeam);
+    final remoteCliReadiness = context.read<ChatCubit>().remoteCliReadiness;
+    final remoteCliMissing = launchWarningBlock is RemoteCliMissingLaunchBlock
+        ? launchWarningBlock.missing
+        : null;
 
     final composeCard = WorkspaceComposeCard(
       controller: _controller,
@@ -1391,6 +1441,25 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           : null,
     );
 
+    Widget composeSection = composeCard;
+    if (remoteCliMissing != null &&
+        remoteCliMissing.isNotEmpty &&
+        remoteCliReadiness != null) {
+      composeSection = Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          composeCard,
+          RemoteCliMachineReadinessPanel(
+            fixedRequirements: remoteCliMissing,
+            selectableTargets: _runtimeTargets,
+            readiness: remoteCliReadiness,
+            onReadinessChanged: _scheduleTeamLaunchReadinessCheck,
+          ),
+        ],
+      );
+    }
+
     final body = widget.showLocationHeader
         ? Column(
             mainAxisSize: MainAxisSize.min,
@@ -1411,10 +1480,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
                 onWorktreeSelected: _selectWorktree,
               ),
               SizedBox(height: spacing.sm),
-              composeCard,
+              composeSection,
             ],
           )
-        : composeCard;
+        : composeSection;
 
     return BlocListener<LaunchProfileCubit, LaunchProfileState>(
       listenWhen: (previous, current) {

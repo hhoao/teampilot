@@ -75,4 +75,30 @@ void main() {
 
     expect(requirements, hasLength(1));
   });
+
+  group('remoteCliRequirementsForSimpleLaunch', () {
+    test('returns requirement for SSH project folder', () {
+      final requirements = remoteCliRequirementsForSimpleLaunch(
+        workspace: workspace,
+        projectFolderPath: '/remote',
+        cli: CliTool.codex,
+        selectableTargets: [localTarget, sshTarget],
+      );
+
+      expect(requirements, hasLength(1));
+      expect(requirements.single.target.id, 'ssh:host-a');
+      expect(requirements.single.cli, CliTool.codex);
+    });
+
+    test('returns empty for local project folder', () {
+      final requirements = remoteCliRequirementsForSimpleLaunch(
+        workspace: workspace,
+        projectFolderPath: '/local',
+        cli: CliTool.codex,
+        selectableTargets: [localTarget, sshTarget],
+      );
+
+      expect(requirements, isEmpty);
+    });
+  });
 }

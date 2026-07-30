@@ -4,6 +4,7 @@ import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_topology.dart';
+import '../../utils/workspace/landing_draft_resolver.dart';
 import '../remote/remote_cli_readiness.dart';
 import '../remote/remote_cli_requirements.dart';
 import '../team/team_config_launch_validator.dart';
@@ -146,6 +147,40 @@ class WorkspaceLandingLaunchGate {
       globalPresets: globalPresets,
       selectableTargets: selectableTargets,
     );
+    return _probeRemoteCliRequirements(requirements, readiness);
+  }
+
+  /// Probes the SSH host for a Simple launch on a remote project folder.
+  Future<WorkspaceLandingLaunchBlock?> asyncRemoteCliBlockForSimple({
+    required Workspace workspace,
+    required LandingLaunchContext draft,
+    required String projectFolderPath,
+    required List<CliPreset> globalPresets,
+    required List<RuntimeTarget> selectableTargets,
+    required RemoteCliReadinessService readiness,
+  }) async {
+    if (!draft.isPersonal) return null;
+    final identity = resolveLandingSimpleLaunchIdentity(
+      presets: globalPresets,
+      presetId: draft.presetId,
+      cli: draft.cli,
+      provider: draft.provider,
+      model: draft.model,
+      effort: draft.effort,
+    );
+    final requirements = remoteCliRequirementsForSimpleLaunch(
+      workspace: workspace,
+      projectFolderPath: projectFolderPath,
+      cli: identity.cli,
+      selectableTargets: selectableTargets,
+    );
+    return _probeRemoteCliRequirements(requirements, readiness);
+  }
+
+  Future<WorkspaceLandingLaunchBlock?> _probeRemoteCliRequirements(
+    List<RemoteCliRequirement> requirements,
+    RemoteCliReadinessService readiness,
+  ) async {
     if (requirements.isEmpty) return null;
 
     final missing = <RemoteCliRequirement>[];
