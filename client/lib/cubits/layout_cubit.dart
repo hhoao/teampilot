@@ -224,4 +224,24 @@ class LayoutCubit extends Cubit<LayoutState> {
 
   Future<void> setCotExpandToolsOnOpen(bool value) =>
       _save(state.preferences.copyWith(cotExpandToolsOnOpen: value));
+
+  Future<void> setFloatingWorkspaceGeometry({
+    double? panelLeft,
+    double? panelTop,
+    double? panelWidth,
+    double? panelHeight,
+    double? toggleDx,
+    double? toggleDy,
+    bool? maximized,
+  }) => _save(
+    state.preferences.copyWith(
+      floatingPanelLeft: panelLeft,
+      floatingPanelTop: panelTop,
+      floatingPanelWidth: panelWidth,
+      floatingPanelHeight: panelHeight,
+      floatingToggleDx: toggleDx,
+      floatingToggleDy: toggleDy,
+      floatingMaximized: maximized,
+    ),
+  );
 }

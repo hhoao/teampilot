@@ -67,6 +67,13 @@ class LayoutPreferences {
     this.markdownOpenMode = MarkdownOpenMode.preview,
     this.cotExpandReasoningOnOpen = false,
     this.cotExpandToolsOnOpen = false,
+    this.floatingPanelLeft,
+    this.floatingPanelTop,
+    this.floatingPanelWidth,
+    this.floatingPanelHeight,
+    this.floatingToggleDx,
+    this.floatingToggleDy,
+    this.floatingMaximized = false,
   });
 
   factory LayoutPreferences.fromJson(Map<String, Object?> json) {
@@ -138,6 +145,13 @@ class LayoutPreferences {
       cotExpandReasoningOnOpen:
           json['cotExpandReasoningOnOpen'] as bool? ?? false,
       cotExpandToolsOnOpen: json['cotExpandToolsOnOpen'] as bool? ?? false,
+      floatingPanelLeft: _optionalDouble(json['floatingPanelLeft']),
+      floatingPanelTop: _optionalDouble(json['floatingPanelTop']),
+      floatingPanelWidth: _optionalDouble(json['floatingPanelWidth']),
+      floatingPanelHeight: _optionalDouble(json['floatingPanelHeight']),
+      floatingToggleDx: _optionalDouble(json['floatingToggleDx']),
+      floatingToggleDy: _optionalDouble(json['floatingToggleDy']),
+      floatingMaximized: json['floatingMaximized'] as bool? ?? false,
     ).withAtLeastOneToolVisible();
   }
 
@@ -200,6 +214,13 @@ class LayoutPreferences {
   final MarkdownOpenMode markdownOpenMode;
   final bool cotExpandReasoningOnOpen;
   final bool cotExpandToolsOnOpen;
+  final double? floatingPanelLeft;
+  final double? floatingPanelTop;
+  final double? floatingPanelWidth;
+  final double? floatingPanelHeight;
+  final double? floatingToggleDx;
+  final double? floatingToggleDy;
+  final bool floatingMaximized;
 
   LayoutPreferences copyWith({
     LayoutPreset? preset,
@@ -231,6 +252,13 @@ class LayoutPreferences {
     MarkdownOpenMode? markdownOpenMode,
     bool? cotExpandReasoningOnOpen,
     bool? cotExpandToolsOnOpen,
+    double? floatingPanelLeft,
+    double? floatingPanelTop,
+    double? floatingPanelWidth,
+    double? floatingPanelHeight,
+    double? floatingToggleDx,
+    double? floatingToggleDy,
+    bool? floatingMaximized,
   }) {
     return LayoutPreferences(
       preset: preset ?? this.preset,
@@ -293,6 +321,13 @@ class LayoutPreferences {
       cotExpandReasoningOnOpen:
           cotExpandReasoningOnOpen ?? this.cotExpandReasoningOnOpen,
       cotExpandToolsOnOpen: cotExpandToolsOnOpen ?? this.cotExpandToolsOnOpen,
+      floatingPanelLeft: floatingPanelLeft ?? this.floatingPanelLeft,
+      floatingPanelTop: floatingPanelTop ?? this.floatingPanelTop,
+      floatingPanelWidth: floatingPanelWidth ?? this.floatingPanelWidth,
+      floatingPanelHeight: floatingPanelHeight ?? this.floatingPanelHeight,
+      floatingToggleDx: floatingToggleDx ?? this.floatingToggleDx,
+      floatingToggleDy: floatingToggleDy ?? this.floatingToggleDy,
+      floatingMaximized: floatingMaximized ?? this.floatingMaximized,
     ).withAtLeastOneToolVisible();
   }
 
@@ -330,6 +365,13 @@ class LayoutPreferences {
       markdownOpenMode: markdownOpenMode,
       cotExpandReasoningOnOpen: cotExpandReasoningOnOpen,
       cotExpandToolsOnOpen: cotExpandToolsOnOpen,
+      floatingPanelLeft: floatingPanelLeft,
+      floatingPanelTop: floatingPanelTop,
+      floatingPanelWidth: floatingPanelWidth,
+      floatingPanelHeight: floatingPanelHeight,
+      floatingToggleDx: floatingToggleDx,
+      floatingToggleDy: floatingToggleDy,
+      floatingMaximized: floatingMaximized,
     );
   }
 
@@ -364,6 +406,13 @@ class LayoutPreferences {
       'markdownOpenMode': markdownOpenMode.name,
       'cotExpandReasoningOnOpen': cotExpandReasoningOnOpen,
       'cotExpandToolsOnOpen': cotExpandToolsOnOpen,
+      'floatingPanelLeft': floatingPanelLeft,
+      'floatingPanelTop': floatingPanelTop,
+      'floatingPanelWidth': floatingPanelWidth,
+      'floatingPanelHeight': floatingPanelHeight,
+      'floatingToggleDx': floatingToggleDx,
+      'floatingToggleDy': floatingToggleDy,
+      'floatingMaximized': floatingMaximized,
     };
   }
 }
@@ -385,6 +434,13 @@ double _doubleValue(Object? raw, {double fallback = 320.0}) {
     return raw.toDouble();
   }
   return fallback;
+}
+
+double? _optionalDouble(Object? raw) {
+  if (raw is num) {
+    return raw.toDouble();
+  }
+  return null;
 }
 
 String _terminalThemeModeValue(String? raw) {
