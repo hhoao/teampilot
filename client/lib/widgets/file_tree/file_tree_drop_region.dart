@@ -4,16 +4,18 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/file_tree_cubit.dart';
+import 'package:teampilot/cubits/progress_activity_cubit.dart';
 import 'package:teampilot/l10n/l10n_extensions.dart';
 import 'package:teampilot/services/file_tree/file_tree_visible_rows.dart';
 import 'package:teampilot/services/file_tree_import/file_tree_drop_hit_test.dart';
 import 'package:teampilot/services/file_tree_import/file_tree_drop_ingestor.dart';
 import 'package:teampilot/services/file_tree_import/import_models.dart';
-import 'package:teampilot/services/file_tree_import/import_progress_gate.dart';
 import 'package:teampilot/services/file_tree_import/workspace_import_service.dart';
+import 'package:teampilot/services/progress_activity/file_tree_import_activity_adapter.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/workspace_dnd/workspace_drop_target.dart';
@@ -21,6 +23,7 @@ import 'package:teampilot/services/workspace_dnd/workspace_file_ref.dart';
 import 'package:teampilot/utils/logging/logger_utils.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:teampilot/widgets/file_tree/file_tree_import_dialogs.dart';
+import 'package:teampilot/widgets/progress_activity/progress_activity_detail_dialog.dart';
 import 'package:teampilot/widgets/workspace_dnd/external_file_drop_region.dart';
 
 /// Copy-modifier for in-tree drops: ⌥ on macOS, Ctrl elsewhere.
@@ -249,6 +252,7 @@ class FileTreeDropRegion extends StatefulWidget {
   const FileTreeDropRegion({
     required this.cubit,
     required this.listScrollController,
+    required this.workspaceId,
     required this.child,
     this.importService,
     this.hostLocalFs,
@@ -257,6 +261,7 @@ class FileTreeDropRegion extends StatefulWidget {
 
   final FileTreeCubit cubit;
   final ScrollController listScrollController;
+  final String workspaceId;
   final Widget child;
   final WorkspaceImportService? importService;
   final Filesystem? hostLocalFs;
@@ -478,29 +483,34 @@ class _FileTreeDropRegionState extends State<FileTreeDropRegion> {
       );
       if (!mounted) return;
 
-      late final ImportSummary summary;
-      if (shouldShowImportProgress(
-        flattenedFileCount: plan.flattenedFileCount,
-        maxFileBytes: plan.maxFileBytes,
-        destIsLocal: plan.destIsLocal,
-      )) {
-        final cancelRequested = ValueNotifier(false);
-        try {
-          summary = await showFileTreeImportProgressDialog<ImportSummary>(
-            context: context,
-            progress: _importService.progress,
-            cancelRequested: cancelRequested,
-            task: _ingestor.runPrepared(
-              plan,
-              isCancelled: () => cancelRequested.value,
+      final l10n = context.l10n;
+      final progressCubit = context.read<ProgressActivityCubit>();
+      final adapter = FileTreeImportActivityAdapter(
+        cubit: progressCubit,
+        importService: _importService,
+      );
+      final summary = await adapter.runTracked(
+        plan: plan,
+        title: l10n.fileTreeImportProgressTitle,
+        workspaceId: widget.workspaceId,
+        historyMessageFor: (result) => l10n.fileTreeImportSummary(
+          result.succeeded,
+          result.skipped,
+          result.failed,
+        ),
+        onActivityStarted: (activityId) {
+          if (!mounted) return;
+          progressCubit.setDetailOpen(activityId, true);
+          unawaited(
+            showProgressActivityDetailDialog(
+              context,
+              activityId: activityId,
             ),
           );
-        } finally {
-          cancelRequested.dispose();
-        }
-      } else {
-        summary = await _ingestor.runPrepared(plan, isCancelled: () => false);
-      }
+        },
+        runImport: ({required isCancelled}) =>
+            _ingestor.runPrepared(plan, isCancelled: isCancelled),
+      );
 
       if (mounted) {
         showFileTreeImportSummaryIfNeeded(context, summary);

@@ -131,6 +131,10 @@ action when **any** of:
 - total planned entries ≥ **10**, or
 - destination `Filesystem` is **non-local** (SFTP / WSL)
 
+Progress is reported through `ProgressActivityCubit` (notification center,
+workspace status bar, and an optional dismissible detail dialog). Closing the
+detail dialog does not cancel the import.
+
 **Entry count:** Walk sources **before** transfer and count the flattened file
 list (every file under dropped folders, plus top-level files). Do not use only
 the top-level drop payload size, or a large folder can bypass the progress UI
@@ -187,7 +191,7 @@ After success: refresh affected file-tree roots / expanded folders via
 | `DraggableFileRow` | Already drag-out; ensure in-tree drops accepted by tree targets (not only compose/terminal) |
 | `FileTreeDropIngestor` | Bound to the **resolved `destDir`** for the active drop (per-hit or dest passed into `consume`), not a single panel-global dest |
 | `file_tree_cubit.dart` | Optional thin wrappers calling import service + refresh |
-| New widgets | Conflict dialog; import progress dialog/banner |
+| New widgets | Conflict dialog; progress via `ProgressActivityCubit` (notification center, status bar, optional detail dialog) |
 | l10n | Conflict / progress / summary / reject strings (`app_en.arb` / `app_zh.arb`) |
 
 ## Testing

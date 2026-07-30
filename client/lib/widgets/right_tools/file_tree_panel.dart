@@ -283,6 +283,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
                       child: FileTreeDropRegion(
                         cubit: _cubit,
                         listScrollController: _listScrollController,
+                        workspaceId: widget.workspaceId,
                         child:
                             BlocSelector<
                               FileTreeCubit,
