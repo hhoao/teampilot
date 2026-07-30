@@ -26,14 +26,14 @@ Match Cursor’s long-content chrome for History **user bubbles**: collapsed max
 | Architecture | Shared `AiFadeExpandBody` in `ai_message_ui`; user bubble first consumer in wiring order, same PR also migrates edit/shell bodies |
 | Collapsed chrome | Bottom gradient fade + centered `expand_more`; tap fade strip / chevron toggles |
 | Expanded chrome | `maxHeight` **320** + `SingleChildScrollView`; centered `expand_less` (or equivalent) to collapse |
-| Collapsed height | Align with tool-card preview depth (~**5** lines, or equivalent fixed logical px) |
-| Expanded height | Shared **320** logical px (same as `kAiToolCardExpandedMaxHeight`) |
+| Collapsed height | Shared fixed **`kAiFadeExpandCollapsedMaxHeight = 120.0`** logical px (approx. former 5-line tool preview; v1 callers do not override) |
+| Expanded height | Shared **`kAiFadeExpandExpandedMaxHeight = 320.0`** (= `kAiToolCardExpandedMaxHeight`); **`AiFadeExpandBody` exclusively owns** the expanded scroll viewport |
 | User bubble hit testing | **No** whole-bubble `GestureDetector`; only fade/chevron toggles (preserve text selection / copy) |
-| Tool card hit testing | Keep `AiExpandableToolCard` whole-card tap; fade chevron calls the **same** `onToggle` |
-| Tool card body content | Target: pass **full** body into `AiFadeExpandBody` (clip + fade); avoid double truncation via `previewEditHunkLines` / `previewToolCardText` |
-| User bubble selection | Collapsed and expanded body remain selectable; fade hit strip ~28–36px tall |
+| Tool card hit testing | Keep `AiExpandableToolCard` whole-card tap; fade/chevron uses an **opaque child `GestureDetector`** (same pattern as basename/gutter) so the tap is absorbed once and calls the same `onToggle` — no double toggle |
+| Tool card body content | Pass **full** body into `AiFadeExpandBody` (clip + fade); stop using `previewEditHunkLines` / `previewToolCardText` on this path |
+| User bubble selection | Collapsed and expanded body remain selectable; fade hit strip **32** logical px tall |
 | Tool selection | Unchanged: collapsed preview non-selectable; **expanded** body selectable |
-| Short content | No fade, no chevron, no toggle affordance |
+| Short content | After layout, if child height ≤ active max (`collapsed` or `expanded`) → no fade, no chevron, no toggle |
 | Animation | No required outer `AnimatedSize`; natural height change like current tool cards |
 | Out of scope | Composer max-height; assistant message blocks; History markdown IR “Show more”; CoT / reasoning chrome redo |
 
@@ -48,19 +48,22 @@ Match Cursor’s long-content chrome for History **user bubbles**: collapsed max
 ```
 AiFadeExpandBody (new, ai_message_ui)
   open / onToggle
-  collapsedMaxHeight / expandedMaxHeight
+  collapsedMaxHeight = kAiFadeExpandCollapsedMaxHeight (120)
+  expandedMaxHeight  = kAiFadeExpandExpandedMaxHeight (320)
   fadeColor
-  child: full content (caller does not IR-truncate for this path)
+  child: full content (caller does not line-truncate or IR-truncate for this path)
 
-  if child intrinsic height <= active max:
+  after layout, compare child height to active max:
+  if child height <= active max:
     render child only
   else if !open:
     Clip + maxHeight(collapsed)
     Stack: child (top-aligned) + bottom gradient + centered expand_more
-    fade strip / chevron → onToggle
+    opaque GestureDetector on fade strip / chevron → onToggle
   else:
     ConstrainedBox(maxHeight: expanded) + SingleChildScrollView(child)
-    collapse chevron → onToggle
+    // AiFadeExpandBody OWNS this viewport — edit/shell must NOT wrap another maxHeight 320
+    opaque GestureDetector on collapse chevron → onToggle
 
 User bubble:
   _UserBubble (local StatefulHost for _open; reset on message text change)
@@ -74,9 +77,27 @@ Edit / shell:
               └─ full diff lines / full command+output
 ```
 
-**Constants:** prefer reusing or co-locating with `kAiToolCardPreviewLines` / `kAiToolCardExpandedMaxHeight` so bubble and cards stay aligned.
+**Constants** (define next to or replace usage of the old tool-card height helpers):
 
-**Relationship to `AiExpandableToolCard`:** that widget remains the whole-card tap wrapper only. `AiFadeExpandBody` owns clip, scroll, fade, and chevron chrome. Both are controlled (`open` + `onToggle`).
+| Name | Value | Role |
+|------|-------|------|
+| `kAiFadeExpandCollapsedMaxHeight` | `120.0` | Collapsed clip for bubble + edit/shell body |
+| `kAiFadeExpandExpandedMaxHeight` | `320.0` | Expanded scroll viewport (alias / equal to `kAiToolCardExpandedMaxHeight`) |
+| Fade hit strip height | `32.0` | Bottom tap target over the gradient |
+
+**Relationship to `AiExpandableToolCard`:** that widget remains the whole-card tap wrapper only. `AiFadeExpandBody` exclusively owns clip, expanded scroll, fade, and chevron chrome. Both are controlled (`open` + `onToggle`). On tool cards, the fade/chevron detector must be opaque so the gesture does not also fire the parent card tap (one `onToggle` per tap).
+
+## Implementation touchpoints
+
+| Area | Path / symbol |
+|------|----------------|
+| Shared shell | `client/packages/ai_message_ui/lib/src/parts/fade_expand_body.dart` (`AiFadeExpandBody` + height constants) |
+| Barrel export | `client/packages/ai_message_ui/lib/ai_message_ui.dart` |
+| User bubble | `client/packages/ai_message_ui/lib/src/ai_message_view.dart` (`_UserBubble` + thin stateful host) |
+| Edit body | `client/packages/ai_message_ui/lib/src/edit/edit_tool_card.dart` (`_EditDiffPanel` — remove line-preview mount + local 320 box) |
+| Shell body | `client/packages/ai_message_ui/lib/src/shell/shell_tool_card.dart` (same migration) |
+| Preview helpers | Stop calling `previewEditHunkLines` / `previewToolCardText` from fade-expand body path (helpers may remain for tests until unused) |
+| Tests | New `fade_expand_body_test.dart`; extend user-bubble / edit / shell widget tests |
 
 ## User bubble changes
 
@@ -88,28 +109,30 @@ Edit / shell:
 ## Edit / shell body changes
 
 - Body panel children go through `AiFadeExpandBody` with the same `open` / `onToggle` as the card.
-- Collapsed: mount full body content; shell clips to collapsed max and paints fade + chevron (replace “only first 5 lines mounted” as the primary preview mechanism).
-- Expanded: shell provides the 320 scroll viewport (may replace the ad-hoc `ConstrainedBox` currently inside edit/shell panels).
+- Collapsed: mount **full** body content; `AiFadeExpandBody` clips to 120 and paints fade + chevron (replaces “only first 5 lines mounted”).
+- Expanded: **`AiFadeExpandBody` alone** provides the 320 scroll viewport; remove the ad-hoc `ConstrainedBox(maxHeight: 320)` / `SingleChildScrollView` from edit/shell panels when migrating (no nested double viewport).
 - Basename / line gutter `onOpenFile` and whole-card tap remain.
-- Header chevron may stay as a visual affordance; redundant if desired, but not required to remove in this spec.
+- Header chevron may stay as a visual affordance; not required to remove in this spec.
 
 ## Interaction details
 
 - Fade gradient: transparent → `fadeColor` (bubble fill or tool panel fill).
 - Chevron: low-contrast, horizontally centered on the fade band (Cursor-like).
 - User bubble: text drag-select must not toggle expand; only the fade/chevron hit target toggles.
-- Tool cards: exclusive child gestures (basename, gutter) still win over whole-card tap; fade chevron is an additional toggle affordance.
+- Tool cards: basename, gutter, and fade/chevron each use opaque child detectors so they win over (and do not double-fire with) whole-card tap; fade/chevron remains an additional toggle affordance.
 
 ## Testing
 
 Package: `client/packages/ai_message_ui`.
 
 1. Short user message → no fade, no chevron.
-2. Long user message → collapsed shows fade + down chevron; tap expands to height ≤ 320 and scrolls; tap again collapses.
-3. Long user message → body text remains selectable outside the fade hit strip.
-4. Edit/shell → fade chevron and whole-card tap both toggle; basename/gutter still open file.
-5. Edit/shell → collapsed body non-selectable; expanded body selectable (regression).
-6. User message text update → bubble returns to collapsed.
+2. Content height exactly ≤ collapsed max → no fade, no chevron.
+3. Long user message → collapsed shows fade + down chevron; tap expands to height ≤ 320 and scrolls; tap again collapses.
+4. Long user message → body text remains selectable outside the fade hit strip.
+5. Edit/shell → fade chevron toggles once (no double toggle); whole-card tap still toggles; basename/gutter still open file.
+6. Edit/shell → collapsed body non-selectable; expanded body selectable (regression).
+7. User message text update → bubble returns to collapsed.
+8. Unit/widget: `AiFadeExpandBody` alone — overflow collapsed paints chevron; expanded scrolls; short child bypasses chrome.
 
 ## Out of scope
 
