@@ -78,10 +78,16 @@ for OS→tree or cross-mount tree copies; it always materializes bytes via
 
 Multi-root trees: dest is resolved against the hovered mount; `FileTreeCubit.fsFor(destDir)` selects the destination `Filesystem`.
 
+**Same-FS vs cross-FS (authoritative):** Do **not** infer mount from a single
+global `PathNamespace.ofCurrentStorage()` on every row. For in-tree drags,
+compare `FileTreeCubit.fsFor(sourcePath)` / `workContextFor(sourcePath)` with
+`fsFor(destDir)` (or the mount’s namespace). Mode (move vs copy-only) and IO
+strategy (`rename` vs chunked pipe) both key off that pair.
+
 ## Operation modes
 
-| Source | Same namespace | Cross-namespace |
-|--------|----------------|-----------------|
+| Source | Same FS / mount | Cross FS / mount |
+|--------|-----------------|------------------|
 | External OS paths | Always **copy** into dest FS | Always **copy/upload** (OS is always host-local) |
 | In-tree drag | Default **move** (`rename` / same-FS move); modifier → **copy** | Force **copy** (do not delete source); modifier ignored for “move” |
 
@@ -119,6 +125,11 @@ action when **any** of:
 - any single file ≥ **5 MiB**, or
 - total planned entries ≥ **10**, or
 - destination `Filesystem` is **non-local** (SFTP / WSL)
+
+**Entry count:** Walk sources **before** transfer and count the flattened file
+list (every file under dropped folders, plus top-level files). Do not use only
+the top-level drop payload size, or a large folder can bypass the progress UI
+on a local target.
 
 Otherwise complete silently (toast/snack only on partial failure summary).
 
@@ -169,6 +180,7 @@ After success: refresh affected file-tree roots / expanded folders via
 |----------|--------|
 | `file_tree_panel.dart` / node rows | Wrap with drop regions; row highlight for valid dest |
 | `DraggableFileRow` | Already drag-out; ensure in-tree drops accepted by tree targets (not only compose/terminal) |
+| `FileTreeDropIngestor` | Bound to the **resolved `destDir`** for the active drop (per-hit or dest passed into `consume`), not a single panel-global dest |
 | `file_tree_cubit.dart` | Optional thin wrappers calling import service + refresh |
 | New widgets | Conflict dialog; import progress dialog/banner |
 | l10n | Conflict / progress / summary / reject strings (`app_en.arb` / `app_zh.arb`) |
