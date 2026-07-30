@@ -946,6 +946,66 @@
   "fileTreeSourceMissing": "The copied item no longer exists",
   "fileTreeInvalidPasteTarget": "Cannot paste here",
   "fileTreeOpenInTerminalFailed": "Could not open a terminal",
+  "fileTreeImportConflictTitle": "Item already exists",
+  "fileTreeImportConflictBody": "\"{name}\" already exists at the destination.",
+  "@fileTreeImportConflictBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "fileTreeImportConflictRemaining": "{count, plural, =0{No further conflicts.} one{1 more conflict after this.} other{{count} more conflicts after this.}}",
+  "@fileTreeImportConflictRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "fileTreeImportConflictTypeMismatch": "A file and a folder cannot replace each other.",
+  "fileTreeImportOverwrite": "Overwrite",
+  "fileTreeImportSkip": "Skip",
+  "fileTreeImportCancelAll": "Cancel all",
+  "fileTreeImportApplyRemaining": "Apply to remaining conflicts",
+  "fileTreeImportProgressTitle": "Importing…",
+  "fileTreeImportProgressCancel": "Cancel",
+  "fileTreeImportProgressCurrent": "{name}",
+  "@fileTreeImportProgressCurrent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "fileTreeImportProgressItems": "{completed} / {total}",
+  "@fileTreeImportProgressItems": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "fileTreeImportSummary": "{succeeded} succeeded, {skipped} skipped, {failed} failed",
+  "@fileTreeImportSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "fileTreeImportRejectSelf": "Cannot move or copy an item into itself or its children.",
+  "fileTreeImportDropCopy": "Copy",
+  "fileTreeImportDropMove": "Move",
   "terminalOpenLink": "Open link",
   "terminalExportScrollback": "Export scrollback…",
   "terminalCopySelectHint": "Shift+drag to copy",

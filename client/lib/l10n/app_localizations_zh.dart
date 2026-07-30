@@ -2115,6 +2115,70 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fileTreeOpenInTerminalFailed => '无法打开终端';
 
   @override
+  String get fileTreeImportConflictTitle => '项目已存在';
+
+  @override
+  String fileTreeImportConflictBody(String name) {
+    return '目标位置已存在「$name」。';
+  }
+
+  @override
+  String fileTreeImportConflictRemaining(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '之后还有 $count 个冲突。',
+      zero: '没有更多冲突。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get fileTreeImportConflictTypeMismatch => '文件和文件夹不能互相替换。';
+
+  @override
+  String get fileTreeImportOverwrite => '覆盖';
+
+  @override
+  String get fileTreeImportSkip => '跳过';
+
+  @override
+  String get fileTreeImportCancelAll => '全部取消';
+
+  @override
+  String get fileTreeImportApplyRemaining => '应用于剩余冲突';
+
+  @override
+  String get fileTreeImportProgressTitle => '正在导入…';
+
+  @override
+  String get fileTreeImportProgressCancel => '取消';
+
+  @override
+  String fileTreeImportProgressCurrent(String name) {
+    return '$name';
+  }
+
+  @override
+  String fileTreeImportProgressItems(int completed, int total) {
+    return '$completed / $total';
+  }
+
+  @override
+  String fileTreeImportSummary(int succeeded, int skipped, int failed) {
+    return '成功 $succeeded，跳过 $skipped，失败 $failed';
+  }
+
+  @override
+  String get fileTreeImportRejectSelf => '无法将项目移动到自身或其子目录中。';
+
+  @override
+  String get fileTreeImportDropCopy => '复制';
+
+  @override
+  String get fileTreeImportDropMove => '移动';
+
+  @override
   String get terminalOpenLink => '打开链接';
 
   @override

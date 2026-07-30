@@ -876,6 +876,66 @@
   "fileTreeSourceMissing": "源文件不存在",
   "fileTreeInvalidPasteTarget": "无法粘贴到此处",
   "fileTreeOpenInTerminalFailed": "无法打开终端",
+  "fileTreeImportConflictTitle": "项目已存在",
+  "fileTreeImportConflictBody": "目标位置已存在「{name}」。",
+  "@fileTreeImportConflictBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "fileTreeImportConflictRemaining": "{count, plural, =0{没有更多冲突。} other{之后还有 {count} 个冲突。}}",
+  "@fileTreeImportConflictRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "fileTreeImportConflictTypeMismatch": "文件和文件夹不能互相替换。",
+  "fileTreeImportOverwrite": "覆盖",
+  "fileTreeImportSkip": "跳过",
+  "fileTreeImportCancelAll": "全部取消",
+  "fileTreeImportApplyRemaining": "应用于剩余冲突",
+  "fileTreeImportProgressTitle": "正在导入…",
+  "fileTreeImportProgressCancel": "取消",
+  "fileTreeImportProgressCurrent": "{name}",
+  "@fileTreeImportProgressCurrent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "fileTreeImportProgressItems": "{completed} / {total}",
+  "@fileTreeImportProgressItems": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "fileTreeImportSummary": "成功 {succeeded}，跳过 {skipped}，失败 {failed}",
+  "@fileTreeImportSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "fileTreeImportRejectSelf": "无法将项目移动到自身或其子目录中。",
+  "fileTreeImportDropCopy": "复制",
+  "fileTreeImportDropMove": "移动",
   "terminalOpenLink": "打开链接",
   "terminalExportScrollback": "导出滚动缓冲…",
   "terminalCopySelectHint": "按住 Shift 选择复制",

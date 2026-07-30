@@ -2213,6 +2213,73 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fileTreeOpenInTerminalFailed => 'Could not open a terminal';
 
   @override
+  String get fileTreeImportConflictTitle => 'Item already exists';
+
+  @override
+  String fileTreeImportConflictBody(String name) {
+    return '\"$name\" already exists at the destination.';
+  }
+
+  @override
+  String fileTreeImportConflictRemaining(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count more conflicts after this.',
+      one: '1 more conflict after this.',
+      zero: 'No further conflicts.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get fileTreeImportConflictTypeMismatch =>
+      'A file and a folder cannot replace each other.';
+
+  @override
+  String get fileTreeImportOverwrite => 'Overwrite';
+
+  @override
+  String get fileTreeImportSkip => 'Skip';
+
+  @override
+  String get fileTreeImportCancelAll => 'Cancel all';
+
+  @override
+  String get fileTreeImportApplyRemaining => 'Apply to remaining conflicts';
+
+  @override
+  String get fileTreeImportProgressTitle => 'Importing…';
+
+  @override
+  String get fileTreeImportProgressCancel => 'Cancel';
+
+  @override
+  String fileTreeImportProgressCurrent(String name) {
+    return '$name';
+  }
+
+  @override
+  String fileTreeImportProgressItems(int completed, int total) {
+    return '$completed / $total';
+  }
+
+  @override
+  String fileTreeImportSummary(int succeeded, int skipped, int failed) {
+    return '$succeeded succeeded, $skipped skipped, $failed failed';
+  }
+
+  @override
+  String get fileTreeImportRejectSelf =>
+      'Cannot move or copy an item into itself or its children.';
+
+  @override
+  String get fileTreeImportDropCopy => 'Copy';
+
+  @override
+  String get fileTreeImportDropMove => 'Move';
+
+  @override
   String get terminalOpenLink => 'Open link';
 
   @override

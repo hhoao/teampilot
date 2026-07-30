@@ -4058,6 +4058,102 @@ abstract class AppLocalizations {
   /// **'Could not open a terminal'**
   String get fileTreeOpenInTerminalFailed;
 
+  /// No description provided for @fileTreeImportConflictTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Item already exists'**
+  String get fileTreeImportConflictTitle;
+
+  /// No description provided for @fileTreeImportConflictBody.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{name}\" already exists at the destination.'**
+  String fileTreeImportConflictBody(String name);
+
+  /// No description provided for @fileTreeImportConflictRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No further conflicts.} one{1 more conflict after this.} other{{count} more conflicts after this.}}'**
+  String fileTreeImportConflictRemaining(int count);
+
+  /// No description provided for @fileTreeImportConflictTypeMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'A file and a folder cannot replace each other.'**
+  String get fileTreeImportConflictTypeMismatch;
+
+  /// No description provided for @fileTreeImportOverwrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Overwrite'**
+  String get fileTreeImportOverwrite;
+
+  /// No description provided for @fileTreeImportSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get fileTreeImportSkip;
+
+  /// No description provided for @fileTreeImportCancelAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel all'**
+  String get fileTreeImportCancelAll;
+
+  /// No description provided for @fileTreeImportApplyRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply to remaining conflicts'**
+  String get fileTreeImportApplyRemaining;
+
+  /// No description provided for @fileTreeImportProgressTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Importing…'**
+  String get fileTreeImportProgressTitle;
+
+  /// No description provided for @fileTreeImportProgressCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get fileTreeImportProgressCancel;
+
+  /// No description provided for @fileTreeImportProgressCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}'**
+  String fileTreeImportProgressCurrent(String name);
+
+  /// No description provided for @fileTreeImportProgressItems.
+  ///
+  /// In en, this message translates to:
+  /// **'{completed} / {total}'**
+  String fileTreeImportProgressItems(int completed, int total);
+
+  /// No description provided for @fileTreeImportSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{succeeded} succeeded, {skipped} skipped, {failed} failed'**
+  String fileTreeImportSummary(int succeeded, int skipped, int failed);
+
+  /// No description provided for @fileTreeImportRejectSelf.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot move or copy an item into itself or its children.'**
+  String get fileTreeImportRejectSelf;
+
+  /// No description provided for @fileTreeImportDropCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get fileTreeImportDropCopy;
+
+  /// No description provided for @fileTreeImportDropMove.
+  ///
+  /// In en, this message translates to:
+  /// **'Move'**
+  String get fileTreeImportDropMove;
+
   /// No description provided for @terminalOpenLink.
   ///
   /// In en, this message translates to:
