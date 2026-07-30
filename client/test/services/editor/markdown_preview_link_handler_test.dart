@@ -3,6 +3,7 @@ import 'package:teampilot/services/editor/file_editor_theme.dart';
 import 'package:teampilot/services/editor/markdown_preview_link_handler.dart';
 import 'package:teampilot/services/editor/markdown_view_mode_store.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
+import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/models/layout_preferences.dart';
 import 'package:teampilot/services/workbench/workbench_editor_opener.dart';
@@ -16,12 +17,15 @@ void main() {
       ..files['/repo/docs/b.md'] = '# b\n';
     final editor = EditorCubit(fs: fs);
     final workbench = WorkbenchCubit();
+    final floating = FloatingWorkspaceCubit();
     final modes = MarkdownViewModeStore();
     addTearDown(editor.close);
     addTearDown(workbench.close);
+    addTearDown(floating.close);
     final opener = WorkbenchEditorOpener(
       editor: editor,
       workbench: workbench,
+      floating: floating,
       markdownViewModes: modes,
       readMarkdownOpenMode: () => MarkdownOpenMode.preview,
     );
@@ -35,7 +39,13 @@ void main() {
     );
 
     // Must stay POSIX even on Windows hosts (SSH / in-memory roots).
-    expect(workbench.activeTabId('ws')?.filePath, '/repo/docs/b.md');
+    expect(
+      floating.state.activeBucket.tabs.any(
+        (t) => t.payload == '/repo/docs/b.md',
+      ),
+      isTrue,
+    );
+    expect(editor.state.bucket('ws').openFilePaths, contains('/repo/docs/b.md'));
   });
 
   test('http links are ignored by path resolution helper path check', () {

@@ -2,28 +2,36 @@ import 'package:path/path.dart' as p;
 
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/editor_cubit.dart';
+import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
+import '../../models/floating_workspace_tab.dart';
 import '../../models/layout_preferences.dart';
 import '../editor/file_editor_theme.dart';
 import '../editor/markdown_view_mode_store.dart';
 import '../io/filesystem.dart';
 
 /// Single entry for opening file/diff center tabs (editor bucket + workbench).
+///
+/// File opens go to the floating file-preview surface; diffs stay on the
+/// center workbench strip.
 class WorkbenchEditorOpener {
   WorkbenchEditorOpener({
     required EditorCubit editor,
     required WorkbenchCubit workbench,
+    required FloatingWorkspaceCubit floating,
     required this.markdownViewModes,
     required MarkdownOpenMode Function() readMarkdownOpenMode,
     ChatCubit? chat,
   }) : _editor = editor,
        _workbench = workbench,
+       _floating = floating,
        _readMarkdownOpenMode = readMarkdownOpenMode,
        _chat = chat;
 
   final EditorCubit _editor;
   final WorkbenchCubit _workbench;
+  final FloatingWorkspaceCubit _floating;
   final ChatCubit? _chat;
   final MarkdownViewModeStore markdownViewModes;
   final MarkdownOpenMode Function() _readMarkdownOpenMode;
@@ -32,6 +40,7 @@ class WorkbenchEditorOpener {
     String workspaceId,
     String path, {
     Filesystem? fs,
+    // Ignored: floating file tabs are always multi-tab (never auto-replaced).
     bool preview = true,
   }) async {
     final normalized = path.trim();
@@ -40,17 +49,19 @@ class WorkbenchEditorOpener {
     if (!isWorkbenchOpenableFilePath(normalized)) {
       await _editor.openFile(workspaceId, normalized, fs: fs);
       return;
-    }
-    if (isMarkdownEditorPath(normalized)) {
+    }    if (isMarkdownEditorPath(normalized)) {
       markdownViewModes.seedOnOpen(normalized, _readMarkdownOpenMode());
     }
-    final tab = WorkbenchTabId.file(normalized);
-    final replaced = _workbench.ensureTab(
-      workspaceId,
-      tab,
-      preview: preview,
+    _floating.ensureOpen();
+    _floating.setActiveWorkspace(workspaceId);
+    _floating.ensureTab(
+      FloatingTab(
+        id: 'file:$normalized',
+        surfaceId: 'filePreview',
+        title: p.basename(normalized),
+        payload: normalized,
+      ),
     );
-    _closeReplaced(workspaceId, replaced);
     _chat?.dismissNewChat();
     await _editor.openFile(workspaceId, normalized, fs: fs);
   }

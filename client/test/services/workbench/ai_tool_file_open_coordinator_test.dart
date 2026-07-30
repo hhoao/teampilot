@@ -2,6 +2,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:re_editor/re_editor.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
+import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/models/layout_preferences.dart';
 import 'package:teampilot/services/editor/markdown_view_mode_store.dart';
@@ -15,15 +16,20 @@ void main() {
 
   late InMemoryFilesystem fs;
   late EditorCubit editor;
+  late WorkbenchCubit workbench;
+  late FloatingWorkspaceCubit floating;
   late WorkbenchEditorOpener opener;
   late AiToolFileOpenCoordinator coordinator;
 
   setUp(() {
     fs = InMemoryFilesystem();
     editor = EditorCubit(fs: fs);
+    workbench = WorkbenchCubit();
+    floating = FloatingWorkspaceCubit();
     opener = WorkbenchEditorOpener(
       editor: editor,
-      workbench: WorkbenchCubit(),
+      workbench: workbench,
+      floating: floating,
       markdownViewModes: MarkdownViewModeStore(),
       readMarkdownOpenMode: () => MarkdownOpenMode.preview,
     );
@@ -35,6 +41,8 @@ void main() {
 
   tearDown(() {
     editor.close();
+    workbench.close();
+    floating.close();
   });
 
   test('relative path resolves against session working directory first', () async {

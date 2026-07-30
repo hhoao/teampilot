@@ -1198,6 +1198,7 @@ Future<AppShell> buildAppShell({
   final workbenchEditorOpener = WorkbenchEditorOpener(
     editor: editorCubit,
     workbench: workbenchCubit,
+    floating: floatingWorkspaceCubit,
     chat: chatCubit,
     markdownViewModes: markdownViewModes,
     readMarkdownOpenMode: () =>

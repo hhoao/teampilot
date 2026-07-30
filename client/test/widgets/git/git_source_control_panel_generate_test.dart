@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
+import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/git_status.dart';
@@ -90,8 +91,10 @@ void main() {
   Widget wrap(AiFeatureSettingsCubit aiSettingsCubit, Widget child) {
     final editor = EditorCubit();
     final workbench = WorkbenchCubit();
+    final floating = FloatingWorkspaceCubit()..setActiveWorkspace('ws-test');
     addTearDown(editor.close);
     addTearDown(workbench.close);
+    addTearDown(floating.close);
     return MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -102,6 +105,7 @@ void main() {
             value: WorkbenchEditorOpener(
               editor: editor,
               workbench: workbench,
+              floating: floating,
               markdownViewModes: MarkdownViewModeStore(),
               readMarkdownOpenMode: () => MarkdownOpenMode.preview,
             ),
