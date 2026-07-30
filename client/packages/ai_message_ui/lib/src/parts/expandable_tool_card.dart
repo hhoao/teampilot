@@ -6,20 +6,26 @@ const kAiToolCardExpandedMaxHeight = 320.0;
 /// Whole-card tap target for edit/shell tool cards; exclusive child gestures win.
 class AiExpandableToolCard extends StatelessWidget {
   const AiExpandableToolCard({
+    required this.open,
     required this.onToggle,
     required this.child,
     super.key,
   });
 
+  final bool open;
   final VoidCallback onToggle;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onToggle,
-      child: child,
+    return Semantics(
+      button: true,
+      expanded: open,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onToggle,
+        child: child,
+      ),
     );
   }
 }

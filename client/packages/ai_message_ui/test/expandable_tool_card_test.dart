@@ -10,6 +10,7 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: AiExpandableToolCard(
+            open: false,
             onToggle: () => toggles++,
             child: Column(
               children: [

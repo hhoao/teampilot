@@ -203,6 +203,7 @@ class _EditToolCardHostState extends State<EditToolCardHost> {
   @override
   Widget build(BuildContext context) {
     return AiExpandableToolCard(
+      open: widget.open,
       onToggle: widget.onToggle,
       child: EditToolCard(
         part: widget.part,
