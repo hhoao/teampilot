@@ -77,4 +77,22 @@ void main() {
     );
     expect(button.onPressed, isNull);
   });
+
+  testWidgets('compact shows short title, not raw error', (tester) async {
+    final view = presentSessionLaunchFailure(
+      'process exited with code 1\n/lib64/libstdc++.so.6: version not found',
+    )!;
+    await tester.pumpWidget(
+      _wrap(
+        SessionLaunchErrorBanner(
+          view: view,
+          compact: true,
+          onRetry: () {},
+        ),
+      ),
+    );
+    expect(find.text("Couldn't start session"), findsOneWidget);
+    expect(find.textContaining('libstdc++'), findsNothing);
+    expect(find.byKey(AppKeys.sessionLaunchErrorRetryButton), findsOneWidget);
+  });
 }

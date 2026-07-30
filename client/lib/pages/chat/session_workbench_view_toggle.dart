@@ -75,7 +75,14 @@ class SessionWorkbenchViewToggle extends StatelessWidget {
       workbench.ensureTab(workspaceId, tabId, preview: false);
 
       final tab = chat.tabStore.openTabBySessionId(sessionId);
-      if (tab == null || tab.isRunning) return;
+      if (tab == null) return;
+      // Stopped + launchError: keep scrollback / banner; Retry is explicit.
+      if (!shouldConnectStoppedSessionOnTerminalReveal(
+        isRunning: tab.isRunning,
+        launchError: tab.info.launchError,
+      )) {
+        return;
+      }
       if (!context.mounted) return;
 
       final session = _resolveSession(chat, sessionId);

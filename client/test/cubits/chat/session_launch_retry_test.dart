@@ -45,6 +45,45 @@ TeamProfile _teamWithoutLead() => const TeamProfile(
 );
 
 void main() {
+  group('shouldConnectStoppedSessionOnTerminalReveal', () {
+    test('skips when already running', () {
+      expect(
+        shouldConnectStoppedSessionOnTerminalReveal(
+          isRunning: true,
+          launchError: null,
+        ),
+        isFalse,
+      );
+    });
+
+    test('skips when launchError is set (inspect failure, do not restart)', () {
+      expect(
+        shouldConnectStoppedSessionOnTerminalReveal(
+          isRunning: false,
+          launchError: 'process exited with code 1',
+        ),
+        isFalse,
+      );
+    });
+
+    test('connects stopped session with no error (wake on Terminal reveal)', () {
+      expect(
+        shouldConnectStoppedSessionOnTerminalReveal(
+          isRunning: false,
+          launchError: null,
+        ),
+        isTrue,
+      );
+      expect(
+        shouldConnectStoppedSessionOnTerminalReveal(
+          isRunning: false,
+          launchError: '  ',
+        ),
+        isTrue,
+      );
+    });
+  });
+
   test('simple session has no team/member and preserves workbench', () {
     final req = buildRetryExistingSessionConnect(
       session: _simpleSession(),

@@ -32,3 +32,20 @@ ChatWorkbenchOverlay resolveChatWorkbenchOverlay({
   if (sessionConnectInProgress) return ChatWorkbenchOverlay.sessionStarting;
   return ChatWorkbenchOverlay.none;
 }
+
+/// Whether the live terminal surface should stay in the workbench tree.
+///
+/// After a non-zero CLI exit, [sessionRunning] is false but [hasLaunchError]
+/// keeps the Alacritty widget mounted so scrollback remains visible under the
+/// error banner.
+bool shouldMountWorkbenchTerminal({
+  required bool sessionConnectInProgress,
+  required bool sessionRunning,
+  required bool showRemoteProvision,
+  required bool hasLaunchError,
+}) {
+  return sessionConnectInProgress ||
+      sessionRunning ||
+      showRemoteProvision ||
+      hasLaunchError;
+}

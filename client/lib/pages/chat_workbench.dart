@@ -468,8 +468,16 @@ class _ChatWorkbenchBody extends StatelessWidget {
 
     final showRemoteProvision =
         remoteProvision != null && !session.isRunning;
-    final mountTerminalForLayout =
-        sessionConnectInProgress || session.isRunning || showRemoteProvision;
+    // Keep the Alacritty surface mounted after a non-zero CLI exit so scrollback
+    // (and the "[process exited …]" line) stays inspectable under the error
+    // banner. Previously isRunning=false unmounted the terminal → empty pane.
+    final hasLaunchError = (launchError ?? '').trim().isNotEmpty;
+    final mountTerminalForLayout = shouldMountWorkbenchTerminal(
+      sessionConnectInProgress: sessionConnectInProgress,
+      sessionRunning: session.isRunning,
+      showRemoteProvision: showRemoteProvision,
+      hasLaunchError: hasLaunchError,
+    );
     final overlay = resolveChatWorkbenchOverlay(
       workbenchView: workbenchView,
       sessionConnectInProgress: sessionConnectInProgress,
@@ -552,32 +560,36 @@ class _ChatWorkbenchBody extends StatelessWidget {
               if (showTerminalLaunchError && failure != null)
                 Positioned(
                   top: 0,
-                  left: 0,
                   right: 0,
                   child: Material(
                     type: MaterialType.transparency,
                     child: Padding(
                       padding: EdgeInsets.all(context.tpSpacing.md),
-                      child: SessionLaunchErrorBanner(
-                        view: failure,
-                        isRetrying: sessionConnectInProgress,
-                        onRetry: () {
-                          final id = slice.activeSessionId;
-                          if (id == null || id.isEmpty) return;
-                          unawaited(chatCubit.retrySessionLaunch(id));
-                        },
-                        onRemapDeadTarget: deadSshTargetIdFromError(launchError) != null
-                            ? () {
-                                final id = slice.activeSessionId;
-                                if (id == null || id.isEmpty) return;
-                                unawaited(
-                                  onRemapDeadTargetFromLaunch(
-                                    launchError: launchError!,
-                                    sessionId: id,
-                                  ),
-                                );
-                              }
-                            : null,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 260),
+                        child: SessionLaunchErrorBanner(
+                          view: failure,
+                          compact: true,
+                          isRetrying: sessionConnectInProgress,
+                          onRetry: () {
+                            final id = slice.activeSessionId;
+                            if (id == null || id.isEmpty) return;
+                            unawaited(chatCubit.retrySessionLaunch(id));
+                          },
+                          onRemapDeadTarget:
+                              deadSshTargetIdFromError(launchError) != null
+                              ? () {
+                                  final id = slice.activeSessionId;
+                                  if (id == null || id.isEmpty) return;
+                                  unawaited(
+                                    onRemapDeadTargetFromLaunch(
+                                      launchError: launchError!,
+                                      sessionId: id,
+                                    ),
+                                  );
+                                }
+                              : null,
+                        ),
                       ),
                     ),
                   ),

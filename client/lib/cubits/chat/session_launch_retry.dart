@@ -5,6 +5,19 @@ import '../../models/team_config.dart';
 import '../../utils/team/team_member_naming.dart';
 import 'model/session_connect_request.dart';
 
+/// Whether Chat→Terminal should auto-connect a stopped session.
+///
+/// After a launch / process failure, [launchError] is set and Retry is
+/// explicit — revealing Terminal must only show scrollback + the banner,
+/// not restart the session.
+bool shouldConnectStoppedSessionOnTerminalReveal({
+  required bool isRunning,
+  required String? launchError,
+}) {
+  if (isRunning) return false;
+  return (launchError ?? '').trim().isEmpty;
+}
+
 /// Rebuilds an [ExistingSessionConnect] for [session], resolving the member
 /// (for team sessions) the same way [SessionWorkbenchViewToggle] does:
 /// selected member id, else team-lead, else first roster member.

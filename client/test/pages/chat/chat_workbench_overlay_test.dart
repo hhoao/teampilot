@@ -59,4 +59,51 @@ void main() {
       );
     });
   });
+
+  group('shouldMountWorkbenchTerminal', () {
+    test('mounts while running or connecting', () {
+      expect(
+        shouldMountWorkbenchTerminal(
+          sessionConnectInProgress: true,
+          sessionRunning: false,
+          showRemoteProvision: false,
+          hasLaunchError: false,
+        ),
+        isTrue,
+      );
+      expect(
+        shouldMountWorkbenchTerminal(
+          sessionConnectInProgress: false,
+          sessionRunning: true,
+          showRemoteProvision: false,
+          hasLaunchError: false,
+        ),
+        isTrue,
+      );
+    });
+
+    test('keeps terminal mounted after exit when launchError is set', () {
+      expect(
+        shouldMountWorkbenchTerminal(
+          sessionConnectInProgress: false,
+          sessionRunning: false,
+          showRemoteProvision: false,
+          hasLaunchError: true,
+        ),
+        isTrue,
+      );
+    });
+
+    test('does not mount when idle with no error', () {
+      expect(
+        shouldMountWorkbenchTerminal(
+          sessionConnectInProgress: false,
+          sessionRunning: false,
+          showRemoteProvision: false,
+          hasLaunchError: false,
+        ),
+        isFalse,
+      );
+    });
+  });
 }
