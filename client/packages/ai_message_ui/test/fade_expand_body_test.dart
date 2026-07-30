@@ -16,6 +16,23 @@ void main() {
     expect(find.byIcon(Icons.expand_more), findsNothing);
   });
 
+  testWidgets('clip-until-measured short child is not forced to collapsed max', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_wrap(
+      AiFadeExpandBody(
+        open: false,
+        onToggle: () {},
+        fadeColor: Colors.grey,
+        child: const SizedBox(height: 40, child: Text('short')),
+      ),
+    ));
+    final box = tester.renderObject<RenderBox>(find.byType(AiFadeExpandBody));
+    expect(box.size.height, lessThan(kAiFadeExpandCollapsedMaxHeight));
+    await tester.pump();
+    expect(box.size.height, lessThan(kAiFadeExpandCollapsedMaxHeight));
+  });
+
   testWidgets('overflow collapsed: expand_more; tap toggles once', (tester) async {
     var toggles = 0;
     await tester.pumpWidget(_wrap(

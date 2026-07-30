@@ -70,9 +70,9 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
             clipBehavior: Clip.hardEdge,
             children: [
               probe(maxW),
-              SizedBox(
-                height: widget.collapsedMaxHeight,
-                width: double.infinity,
+              ConstrainedBox(
+                constraints:
+                    BoxConstraints(maxHeight: widget.collapsedMaxHeight),
                 child: ClipRect(
                   child: _collapsedClipChild(maxW, child),
                 ),
@@ -154,6 +154,7 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
 Widget _collapsedClipChild(double maxWidth, Widget child) {
   return OverflowBox(
     alignment: Alignment.topLeft,
+    fit: OverflowBoxFit.deferToChild,
     minWidth: maxWidth,
     maxWidth: maxWidth,
     minHeight: 0,
