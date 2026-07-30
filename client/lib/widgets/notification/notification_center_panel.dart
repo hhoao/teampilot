@@ -11,6 +11,7 @@ import '../../router/app_router.dart';
 import '../../services/notification/notification_center_open.dart';
 import 'notification_list_tile.dart';
 import 'progress_activity_tile.dart';
+import '../progress_activity/progress_activity_detail_dialog.dart';
 
 const notificationCenterPanelWidth = 560.0;
 const notificationCenterPanelListMaxHeight = 360.0;
@@ -89,10 +90,16 @@ class NotificationCenterPanel extends StatelessWidget {
                           ),
                         ProgressActivityTile(
                           activity: ongoing[i],
-                          onTap: () => progressCubit.setDetailOpen(
-                            ongoing[i].id,
-                            true,
-                          ),
+                          onTap: () {
+                            final id = ongoing[i].id;
+                            progressCubit.setDetailOpen(id, true);
+                            unawaited(
+                              showProgressActivityDetailDialog(
+                                context,
+                                activityId: id,
+                              ),
+                            );
+                          },
                           onCancel: () =>
                               progressCubit.requestCancel(ongoing[i].id),
                         ),
