@@ -543,11 +543,7 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
           // root pane's layout, which is after this synchronous assignment.
           _narrow = effective.isNarrow;
           final prefs = layoutState.preferences;
-          _publishMaximizeInsets(
-            effective,
-            prefs,
-            routeActive: routeActive,
-          );
+          _publishMaximizeInsets(routeActive: routeActive);
           // Measure via PaneSizeReporter so center/sidebar BUILD stays in the
           // normal build phase — not nested under LayoutBuilder layout.
           return PaneSizeReporter(
@@ -573,16 +569,12 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
         a.rightToolsWidth != b.rightToolsWidth;
   }
 
-  /// Publish maximize safe area: card-padded left sidebar + center content.
+  /// Publish maximize safe area: card padding + status bar.
   ///
   /// Insets are relative to [FloatingWorkspaceHost], which wraps the page card
-  /// **and** the status bar. Uses [FloatingMaximizeInsets.cardSafeArea] and
-  /// excludes a docked right-tools pane.
-  void _publishMaximizeInsets(
-    WorkspacePaneEffective effective,
-    LayoutPreferences prefs, {
-    required bool routeActive,
-  }) {
+  /// **and** the status bar. Maximized panel covers the center content **and**
+  /// a docked right-tools pane (same horizontal span as the workspace card).
+  void _publishMaximizeInsets({required bool routeActive}) {
     if (!routeActive) return;
     FloatingMaximizeInsets insets;
     try {
@@ -590,10 +582,8 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
     } catch (_) {
       return;
     }
-    final rightTools = (!effective.isNarrow && effective.dockRight)
-        ? prefs.rightToolsWidth
-        : 0.0;
-    final next = FloatingMaximizeInsets.cardSafeArea(extraRight: rightTools);
+    final isMobile = TpSidebarScope.maybeOf(context)?.isMobile ?? false;
+    final next = FloatingMaximizeInsets.cardSafeArea(isMobile: isMobile);
     if (insets.value == next) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;

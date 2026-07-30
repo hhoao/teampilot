@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/floating_workspace/floating_panel_visibility.dart';
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
@@ -167,7 +168,10 @@ class _FloatingWorkspacePanelBodyState
           builder: (context, constraints) {
             final hostSize = Size(constraints.maxWidth, constraints.maxHeight);
             _lastHostSize = hostSize;
-            final safe = insets ?? FloatingMaximizeInsets.cardSafeArea();
+            final safe = insets ??
+                FloatingMaximizeInsets.cardSafeArea(
+                  isMobile: TpSidebarScope.maybeOf(context)?.isMobile ?? false,
+                );
 
             final Rect positioned;
             if (state.isMaximized &&
@@ -313,7 +317,9 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final bucket = widget.state.activeBucket;
     final tabs = bucket.tabs;
     final activeId = bucket.activeTabId;
@@ -322,88 +328,105 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
     final surface =
         activeTab == null ? null : widget.registry[activeTab.surfaceId];
 
-    return Material(
-      elevation: 8,
-      color: cs.workspaceCard,
-      shape: RoundedRectangleBorder(
+    return DecoratedBox(
+      decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.7)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _TitleBar(
-                onPanStart: widget.allowDragResize ? _onDragStart : null,
-                onPanUpdate: widget.allowDragResize ? _onDragUpdate : null,
-                onPanEnd: widget.allowDragResize ? _onDragEnd : null,
-                tabBar: FloatingWorkspaceTabBar(
-                  tabs: tabs,
-                  activeTabId: activeId,
-                  onSelect: (id) {
-                    context.read<FloatingWorkspaceCubit>().selectTab(id);
-                    final tab = tabs.firstWhereOrNull((t) => t.id == id);
-                    if (tab == null) return;
-                    final s = widget.registry[tab.surfaceId];
-                    if (s != null) unawaited(s.activate(tab));
-                  },
-                  onClose: (tab) {
-                    unawaited(
-                      closeFloatingTab(
-                        cubit: context.read<FloatingWorkspaceCubit>(),
-                        registry: widget.registry,
-                        tab: tab,
-                        context: context,
-                      ),
-                    );
-                  },
-                  onCloseOthers: (tab) {
-                    unawaited(
-                      closeOtherFloatingTabs(
-                        cubit: context.read<FloatingWorkspaceCubit>(),
-                        registry: widget.registry,
-                        keepTabId: tab.id,
-                        context: context,
-                      ),
-                    );
-                  },
-                  onCloseRight: (tab) {
-                    unawaited(
-                      closeFloatingTabsToTheRight(
-                        cubit: context.read<FloatingWorkspaceCubit>(),
-                        registry: widget.registry,
-                        fromTabId: tab.id,
-                        context: context,
-                      ),
-                    );
-                  },
-                  onOpenFile: () {
-                    context.read<CommandBus>().invoke(
-                      CommandIds.floatingOpenFile,
-                    );
-                  },
-                ),
-              ),
-              Expanded(
-                child: tabs.isEmpty
-                    ? FloatingWorkspaceEmpty(
-                        autofocus: true,
-                        rows: _emptyRows(context),
-                        onActivate: (id) => _onEmptyActivate(context, id),
-                      )
-                    : (surface == null || activeTab == null)
-                    ? const SizedBox.shrink()
-                    : KeyedSubtree(
-                        key: ValueKey(activeTab.id),
-                        child: surface.build(context, activeTab),
-                      ),
-              ),
-            ],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.48 : 0.16),
+            blurRadius: isDark ? 28 : 22,
+            offset: Offset(0, isDark ? 12 : 8),
           ),
-          if (widget.allowDragResize) ..._resizeHandles(),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.08),
+            blurRadius: isDark ? 10 : 8,
+            offset: const Offset(0, 2),
+          ),
         ],
+      ),
+      child: Material(
+        elevation: 0,
+        color: cs.workspaceCard,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.7)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _TitleBar(
+                  onPanStart: widget.allowDragResize ? _onDragStart : null,
+                  onPanUpdate: widget.allowDragResize ? _onDragUpdate : null,
+                  onPanEnd: widget.allowDragResize ? _onDragEnd : null,
+                  tabBar: FloatingWorkspaceTabBar(
+                    tabs: tabs,
+                    activeTabId: activeId,
+                    onSelect: (id) {
+                      context.read<FloatingWorkspaceCubit>().selectTab(id);
+                      final tab = tabs.firstWhereOrNull((t) => t.id == id);
+                      if (tab == null) return;
+                      final s = widget.registry[tab.surfaceId];
+                      if (s != null) unawaited(s.activate(tab));
+                    },
+                    onClose: (tab) {
+                      unawaited(
+                        closeFloatingTab(
+                          cubit: context.read<FloatingWorkspaceCubit>(),
+                          registry: widget.registry,
+                          tab: tab,
+                          context: context,
+                        ),
+                      );
+                    },
+                    onCloseOthers: (tab) {
+                      unawaited(
+                        closeOtherFloatingTabs(
+                          cubit: context.read<FloatingWorkspaceCubit>(),
+                          registry: widget.registry,
+                          keepTabId: tab.id,
+                          context: context,
+                        ),
+                      );
+                    },
+                    onCloseRight: (tab) {
+                      unawaited(
+                        closeFloatingTabsToTheRight(
+                          cubit: context.read<FloatingWorkspaceCubit>(),
+                          registry: widget.registry,
+                          fromTabId: tab.id,
+                          context: context,
+                        ),
+                      );
+                    },
+                    onOpenFile: () {
+                      context.read<CommandBus>().invoke(
+                        CommandIds.floatingOpenFile,
+                      );
+                    },
+                  ),
+                ),
+                Expanded(
+                  child: tabs.isEmpty
+                      ? FloatingWorkspaceEmpty(
+                          autofocus: true,
+                          rows: _emptyRows(context),
+                          onActivate: (id) => _onEmptyActivate(context, id),
+                        )
+                      : (surface == null || activeTab == null)
+                      ? const SizedBox.shrink()
+                      : KeyedSubtree(
+                          key: ValueKey(activeTab.id),
+                          child: surface.build(context, activeTab),
+                        ),
+                ),
+              ],
+            ),
+            if (widget.allowDragResize) ..._resizeHandles(),
+          ],
+        ),
       ),
     );
   }

@@ -7,7 +7,12 @@ class FloatingSurfaceRegistry {
   factory FloatingSurfaceRegistry.withDefaults({
     required FloatingSurface file,
     required FloatingSurface terminal,
-  }) => FloatingSurfaceRegistry([terminal, file]);
+    FloatingSurface? diff,
+  }) => FloatingSurfaceRegistry([
+    terminal,
+    file,
+    if (diff != null) diff,
+  ]);
 
   final Map<String, FloatingSurface> _byId;
 

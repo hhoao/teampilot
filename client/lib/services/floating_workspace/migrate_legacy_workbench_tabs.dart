@@ -4,20 +4,15 @@ import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/floating_workspace/floating_workspace_state.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
-import '../../models/floating_workspace_tab.dart';
 import '../../models/layout_preferences.dart';
 import '../workbench/workbench_shell_launcher.dart';
+import 'surfaces/diff_preview_floating_surface.dart';
 
-/// One-shot migration of leftover center-strip `file` / `shell` tabs into the
-/// floating workspace bucket.
-///
-/// **Why this exists:** Task 7 rejects *new* shell tabs via
-/// [WorkbenchCubit.ensureTab], and [WorkbenchCubit.syncSessions] already drops
-/// shell leftovers on the next session sync. This helper covers in-memory
-/// buckets that still hold shell (and optionally file) before sync runs.
+/// One-shot migration of leftover center-strip `file` / `diff` / `shell` tabs
+/// into the floating workspace bucket.
 ///
 /// When [migrateFiles] is false (center file-preview preference), only shell
-/// tabs move; file tabs stay on the center strip.
+/// tabs move; file and diff tabs stay on the center strip.
 ///
 /// Returns the number of tabs moved. Safe to call multiple times (idempotent
 /// once the strip is clean). Does not open the floating panel.
@@ -36,7 +31,9 @@ int migrateLegacyWorkbenchTabsToFloating({
           .where(
             (t) =>
                 t.kind == WorkbenchTabKind.shell ||
-                (migrateFiles && t.kind == WorkbenchTabKind.file),
+                (migrateFiles &&
+                    (t.kind == WorkbenchTabKind.file ||
+                        t.kind == WorkbenchTabKind.diff)),
           )
           .toList(growable: false);
       if (leftovers.isEmpty) continue;
@@ -54,6 +51,19 @@ int migrateLegacyWorkbenchTabsToFloating({
                 payload: path,
               ),
             );
+          case WorkbenchTabKind.diff:
+            final path = tab.diffAbsolutePath ?? tab.id;
+            final source = tab.diffSource ?? WorkbenchDiffSource.changes;
+            final stagedSuffix =
+                source == WorkbenchDiffSource.staged ? ' (staged)' : '';
+            floating.ensureTab(
+              FloatingTab(
+                id: floatingDiffTabId(tab.id),
+                surfaceId: 'diffPreview',
+                title: '${p.basename(path)}$stagedSuffix',
+                payload: tab.id,
+              ),
+            );
           case WorkbenchTabKind.shell:
             final entryId = tab.id;
             floating.ensureTab(
@@ -65,7 +75,6 @@ int migrateLegacyWorkbenchTabsToFloating({
               ),
             );
           case WorkbenchTabKind.session:
-          case WorkbenchTabKind.diff:
           case WorkbenchTabKind.run:
             continue;
         }
@@ -82,10 +91,11 @@ int migrateLegacyWorkbenchTabsToFloating({
   return moved;
 }
 
-/// Moves open floating `filePreview` tabs onto the center workbench strip.
+/// Moves open floating `filePreview` / `diffPreview` tabs onto the center
+/// workbench strip.
 ///
-/// Does **not** call surface [onTabClosed] — the editor session stays open and
-/// is only re-hosted. Shell tabs remain floating.
+/// Does **not** call surface [onTabClosed] — editor/diff sessions stay open and
+/// are only re-hosted. Shell tabs remain floating.
 int migrateFloatingFileTabsToWorkbench({
   required WorkbenchCubit workbench,
   required FloatingWorkspaceCubit floating,
@@ -99,26 +109,40 @@ int migrateFloatingFileTabsToWorkbench({
     );
     for (final entry in snapshot.entries) {
       final workspaceId = entry.key;
-      final fileTabs = entry.value.tabs
-          .where((t) => t.surfaceId == 'filePreview')
+      final previewTabs = entry.value.tabs
+          .where(
+            (t) => t.surfaceId == 'filePreview' || t.surfaceId == 'diffPreview',
+          )
           .toList(growable: false);
-      if (fileTabs.isEmpty) continue;
+      if (previewTabs.isEmpty) continue;
 
       floating.setActiveWorkspace(workspaceId);
-      for (final tab in fileTabs) {
-        final path = tab.payload is String
+      for (final tab in previewTabs) {
+        final payload = tab.payload is String
             ? (tab.payload! as String).trim()
             : '';
-        if (path.isEmpty) {
+        if (payload.isEmpty) {
           floating.removeTab(tab.id);
           continue;
         }
-        // preview: false so an already-open file is not treated as replaceable.
-        workbench.ensureTab(
-          workspaceId,
-          WorkbenchTabId.file(path),
-          preview: false,
-        );
+        if (tab.surfaceId == 'diffPreview') {
+          final parsed = WorkbenchTabId.parseDiffKey(payload);
+          if (parsed == null) {
+            floating.removeTab(tab.id);
+            continue;
+          }
+          workbench.ensureTab(
+            workspaceId,
+            WorkbenchTabId.diff(parsed.$1, source: parsed.$2),
+            preview: false,
+          );
+        } else {
+          workbench.ensureTab(
+            workspaceId,
+            WorkbenchTabId.file(payload),
+            preview: false,
+          );
+        }
         floating.removeTab(tab.id);
         moved++;
       }
@@ -132,9 +156,9 @@ int migrateFloatingFileTabsToWorkbench({
   return moved;
 }
 
-/// Aligns in-memory file tabs with [host] after a runtime preference change.
+/// Aligns in-memory file/diff tabs with [host] after a runtime preference change.
 ///
-/// Shell leftovers always migrate to floating; file tabs follow [host].
+/// Shell leftovers always migrate to floating; file/diff tabs follow [host].
 int syncFilePreviewHostTabs({
   required WorkbenchCubit workbench,
   required FloatingWorkspaceCubit floating,
@@ -148,7 +172,6 @@ int syncFilePreviewHostTabs({
         migrateFiles: true,
       );
     case FilePreviewHost.center:
-      // Shell tabs still leave the center strip; files move the other way.
       final shells = migrateLegacyWorkbenchTabsToFloating(
         workbench: workbench,
         floating: floating,

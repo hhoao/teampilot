@@ -9,13 +9,13 @@ import '../../models/floating_workspace_tab.dart';
 import '../../models/layout_preferences.dart';
 import '../editor/file_editor_theme.dart';
 import '../editor/markdown_view_mode_store.dart';
+import '../floating_workspace/surfaces/diff_preview_floating_surface.dart';
 import '../io/filesystem.dart';
 
-/// Single entry for opening file/diff center tabs (editor bucket + workbench).
+/// Single entry for opening file/diff tabs (editor bucket + host strip).
 ///
-/// File opens go to the floating file-preview surface when
+/// File and diff opens go to the floating surfaces when
 /// [readFilePreviewInFloating] is true; otherwise they use the center strip.
-/// Diffs always stay on the center workbench strip.
 class WorkbenchEditorOpener {
   WorkbenchEditorOpener({
     required EditorCubit editor,
@@ -99,6 +99,22 @@ class WorkbenchEditorOpener {
       reloadDiff: reloadDiff,
     );
     final tab = WorkbenchTabId.diff(absolutePath, source: source);
+    if (_readFilePreviewInFloating()) {
+      final stagedSuffix =
+          source == WorkbenchDiffSource.staged ? ' (staged)' : '';
+      _floating.ensureOpen();
+      _floating.setActiveWorkspace(workspaceId);
+      _floating.ensureTab(
+        FloatingTab(
+          id: floatingDiffTabId(tab.id),
+          surfaceId: 'diffPreview',
+          title: '${p.basename(absolutePath)}$stagedSuffix',
+          payload: tab.id,
+        ),
+      );
+      _chat?.dismissNewChat();
+      return;
+    }
     final replaced = _workbench.ensureTab(workspaceId, tab, preview: preview);
     _closeReplaced(workspaceId, replaced);
     _chat?.dismissNewChat();

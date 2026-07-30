@@ -125,7 +125,7 @@ void main() {
     expect(editor.bytesFor('ws', '/repo/a.png'), isNotNull);
   });
 
-  test('openDiff still creates center workbench diff tab', () {
+  test('openDiff opens floating diff tab by default', () {
     final editor = EditorCubit();
     final workbench = WorkbenchCubit();
     final floating = FloatingWorkspaceCubit();
@@ -139,6 +139,43 @@ void main() {
       floating: floating,
       markdownViewModes: MarkdownViewModeStore(),
       readMarkdownOpenMode: () => MarkdownOpenMode.preview,
+    );
+    opener.openDiff(
+      workspaceId: 'ws',
+      absolutePath: '/repo/a.txt',
+      source: WorkbenchDiffSource.changes,
+      title: 'a.txt',
+      diffText: 'diff',
+    );
+
+    final diffKey = WorkbenchTabId.diffKey(
+      '/repo/a.txt',
+      source: WorkbenchDiffSource.changes,
+    );
+    expect(workbench.state.bucket('ws').tabOrder, isEmpty);
+    expect(
+      floating.state.activeBucket.tabs.any((t) => t.payload == diffKey),
+      isTrue,
+    );
+    expect(floating.state.visibility, FloatingPanelVisibility.open);
+    expect(editor.state.bucket('ws').openDiffs.containsKey(diffKey), isTrue);
+  });
+
+  test('openDiff creates center workbench tab when filePreviewHost is center', () {
+    final editor = EditorCubit();
+    final workbench = WorkbenchCubit();
+    final floating = FloatingWorkspaceCubit();
+    addTearDown(editor.close);
+    addTearDown(workbench.close);
+    addTearDown(floating.close);
+
+    final opener = WorkbenchEditorOpener(
+      editor: editor,
+      workbench: workbench,
+      floating: floating,
+      markdownViewModes: MarkdownViewModeStore(),
+      readMarkdownOpenMode: () => MarkdownOpenMode.preview,
+      readFilePreviewInFloating: () => false,
     );
     opener.openDiff(
       workspaceId: 'ws',

@@ -70,6 +70,7 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
     return switch (surfaceId) {
       'terminal' => Icons.terminal_rounded,
       'filePreview' => Icons.description_outlined,
+      'diffPreview' => Icons.difference_outlined,
       _ => Icons.widgets_outlined,
     };
   }

@@ -215,8 +215,11 @@ class _HomeShellState extends State<HomeShell> {
     try {
       final insets = context.read<FloatingMaximizeInsets>();
       if (tab == null) {
-        // Home / global views: card padding only (no right-tools exclusion).
-        insets.update(FloatingMaximizeInsets.cardSafeArea());
+        // Home / global views: card padding only (covers full card width).
+        final isMobile = TpSidebarScope.maybeOf(context)?.isMobile ?? false;
+        insets.update(
+          FloatingMaximizeInsets.cardSafeArea(isMobile: isMobile),
+        );
       }
     } catch (_) {
       // Provider may be absent in isolated widget tests.

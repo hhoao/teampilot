@@ -115,6 +115,7 @@ import '../services/floating_workspace/floating_workspace_commands.dart';
 import '../services/floating_workspace/floating_workspace_open_file.dart';
 import '../services/floating_workspace/floating_workspace_persistence.dart';
 import '../services/floating_workspace/migrate_legacy_workbench_tabs.dart';
+import '../services/floating_workspace/surfaces/diff_preview_floating_surface.dart';
 import '../services/floating_workspace/surfaces/file_preview_floating_surface.dart';
 import '../services/floating_workspace/surfaces/terminal_floating_surface.dart';
 import '../pages/home_workspace/workspace_chrome_commands.dart';
@@ -1283,6 +1284,10 @@ Future<AppShell> buildAppShell({
       floating: floatingWorkspaceCubit,
       registry: workspaceTerminalRegistry,
       runService: workspaceTerminalRunService,
+    ),
+    diff: DiffPreviewFloatingSurface(
+      editor: editorCubit,
+      floating: floatingWorkspaceCubit,
     ),
   );
   final floatingMaximizeInsets = FloatingMaximizeInsets();

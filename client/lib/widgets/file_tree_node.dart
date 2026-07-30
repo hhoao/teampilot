@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../cubits/file_tree_cubit.dart';
+import '../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../cubits/workbench/workbench_cubit.dart';
 import '../cubits/workbench/workbench_tab.dart';
 import '../services/editor/file_editor_theme.dart';
@@ -85,15 +86,31 @@ class _FileTreeNodeState extends State<FileTreeNode> {
 
   bool _isActiveEditorFile(BuildContext context) {
     if (widget.entry.isDirectory) return false;
+    final pathCtx = widget.cubit.fs.pathContext;
     final active = context.select<WorkbenchCubit, WorkbenchTabId?>(
       (c) => c.activeTabId(widget.workspaceId),
     );
-    if (active == null || active.kind != WorkbenchTabKind.file) return false;
-    return fileTreePathsEqual(
-      widget.cubit.fs.pathContext,
-      widget.path,
-      active.id,
-    );
+    if (active != null &&
+        active.kind == WorkbenchTabKind.file &&
+        fileTreePathsEqual(pathCtx, widget.path, active.id)) {
+      return true;
+    }
+    // Floating file-preview host: active tab lives on FloatingWorkspaceCubit.
+    final floatingPath = context.select<FloatingWorkspaceCubit, String?>((c) {
+      if (c.state.activeWorkspaceId != widget.workspaceId) return null;
+      final bucket = c.state.activeBucket;
+      final activeId = bucket.activeTabId;
+      if (activeId == null) return null;
+      for (final tab in bucket.tabs) {
+        if (tab.id != activeId) continue;
+        if (tab.surfaceId != 'filePreview') return null;
+        final payload = tab.payload;
+        return payload is String ? payload : null;
+      }
+      return null;
+    });
+    if (floatingPath == null || floatingPath.isEmpty) return false;
+    return fileTreePathsEqual(pathCtx, widget.path, floatingPath);
   }
 
   /// Manual double-tap so single-click preview is not delayed by
