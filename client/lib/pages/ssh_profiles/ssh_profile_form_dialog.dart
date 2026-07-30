@@ -15,14 +15,18 @@ import '../../repositories/ssh_profile_repository.dart';
 import '../../services/ssh/ssh_connection_failure.dart';
 import '../../services/ssh/ssh_profile_connection_tester.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
+import '../../services/workspace/workspace_pane_policy.dart';
 
 /// Desktop settings: Orca-style modal for adding/editing an SSH target.
 Future<void> showSshProfileFormDialog(
   BuildContext context, {
   SshProfile? profile,
 }) {
-  return showDialog<void>(
+  return showTpDialog<void>(
     context: context,
+    presentation: TpDialogPresentation.page,
+    mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+    maxWidth: 560,
     builder: (ctx) => _SshProfileFormDialog(initialProfile: profile),
   );
 }
@@ -251,22 +255,23 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     final l10n = context.l10n;
     final busy = _saving || _testing;
 
-    return TpDialog(
-      maxWidth: 560,
-      maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+    return TpDialogPageShell(
+      title: _isEditing
+          ? l10n.sshProfileFormTitleEdit
+          : l10n.sshProfileFormTitleNew,
+      onClose: busy ? null : () => Navigator.of(context).pop(),
       child: TpForm(
         key: _formKey,
-        child: TpDialogPinnedLayout(
-          header: TpDialogHeader(
-            title: _isEditing
-                ? l10n.sshProfileFormTitleEdit
-                : l10n.sshProfileFormTitleNew,
-            onClose: busy ? null : () => Navigator.of(context).pop(),
-          ),
-          body: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
               _TwoColRow(
                 left: _field(
                   id: 'label',
@@ -340,38 +345,44 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
                 helper: l10n.sshProfileFormPasswordHelper,
                 obscure: true,
               ),
-            ],
-          ),
-          footer: TpDialogActions(
-            children: [
-              TextButton(
-                onPressed: busy ? null : () => Navigator.of(context).pop(),
-                child: Text(l10n.cancel),
+                  ],
+                ),
               ),
-              OutlinedButton(
-                onPressed: busy ? null : _testConnection,
-                child: _testing
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(l10n.sshProfileTest),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: TpDialogActions(
+                children: [
+                  TextButton(
+                    onPressed: busy ? null : () => Navigator.of(context).pop(),
+                    child: Text(l10n.cancel),
+                  ),
+                  OutlinedButton(
+                    onPressed: busy ? null : _testConnection,
+                    child: _testing
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(l10n.sshProfileTest),
+                  ),
+                  FilledButton(
+                    onPressed: busy ? null : _submit,
+                    child: _saving
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            _isEditing ? l10n.save : l10n.sshProfilesAddTarget,
+                          ),
+                  ),
+                ],
               ),
-              FilledButton(
-                onPressed: busy ? null : _submit,
-                child: _saving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(
-                        _isEditing ? l10n.save : l10n.sshProfilesAddTarget,
-                      ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

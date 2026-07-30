@@ -10,8 +10,8 @@ import '../../models/run/launch_type_contribution.dart';
 import '../../models/workspace_folder.dart';
 import '../../services/run/launch_config_l10n.dart';
 import '../../services/run/shell_script_launch_schema.dart';
-import '../../theme/app_dialog_theme.dart';
 import 'package:shared_ui/shared_ui.dart';
+import '../../services/workspace/workspace_pane_policy.dart';
 import 'launch_config_schema_form.dart';
 
 const double _kEditorWidth = 560;
@@ -27,10 +27,13 @@ Future<void> showRunConfigEditorDialog(
   WorkspaceFolder? folder,
 }) {
   final cubit = context.read<RunCubit>();
-  return showDialog<void>(
+  return showTpDialog<void>(
     context: context,
+    presentation: TpDialogPresentation.page,
+    mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
     // ESC / barrier tap go through [PopScope] → [_onCancel] (dirty prompt).
     barrierDismissible: true,
+    maxWidth: _kEditorWidth,
     builder: (dialogContext) => BlocProvider<RunCubit>.value(
       value: cubit,
       child: RunConfigEditorDialog(
@@ -294,12 +297,6 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final media = MediaQuery.of(context);
-    final dialogWidth = _kEditorWidth.clamp(
-      0.0,
-      media.size.width - kTpDialogInsetExtent,
-    );
-    final maxHeight = media.size.height * 0.85;
     final title = _isCreating
         ? l10n.runAddConfiguration
         : l10n.runEditConfigurations;
@@ -310,33 +307,43 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
         if (didPop) return;
         unawaited(_onCancel());
       },
-      child: TpDialog(
-        maxWidth: dialogWidth,
-        maxHeight: maxHeight,
+      child: TpDialogPageShell(
+        title: title,
+        onClose: _onCancel,
         child: TpForm(
           key: _formKey,
-          child: TpDialogPinnedLayout(
-            header: TpDialogHeader(title: title, onClose: _onCancel),
-            body: _buildBody(context),
-            footer: TpDialogActions(
-              children: [
-                TextButton(
-                  key: const Key('run-config-editor-cancel'),
-                  onPressed: _onCancel,
-                  child: Text(l10n.cancel),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  child: _buildBody(context),
                 ),
-                TextButton(
-                  key: const Key('run-config-editor-apply'),
-                  onPressed: _draft == null ? null : _onApply,
-                  child: Text(l10n.runApply),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: TpDialogActions(
+                  children: [
+                    TextButton(
+                      key: const Key('run-config-editor-cancel'),
+                      onPressed: _onCancel,
+                      child: Text(l10n.cancel),
+                    ),
+                    TextButton(
+                      key: const Key('run-config-editor-apply'),
+                      onPressed: _draft == null ? null : _onApply,
+                      child: Text(l10n.runApply),
+                    ),
+                    FilledButton(
+                      key: const Key('run-config-editor-ok'),
+                      onPressed: _draft == null ? null : _onOk,
+                      child: Text(l10n.ok),
+                    ),
+                  ],
                 ),
-                FilledButton(
-                  key: const Key('run-config-editor-ok'),
-                  onPressed: _draft == null ? null : _onOk,
-                  child: Text(l10n.ok),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

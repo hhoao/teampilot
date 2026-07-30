@@ -2,12 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/automation_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/automation_list_scope.dart';
-import 'package:shared_ui/shared_ui.dart';
+import '../../services/workspace/workspace_pane_policy.dart';
 import 'automation_editor_dialog.dart';
 import 'automation_sort.dart';
 import 'automations_list_body.dart';
@@ -68,53 +69,48 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.85;
 
-    return TpDialog(
-      maxWidth: 720,
-      maxHeight: maxHeight,
-      child: TpDialogPinnedLayout(
-        header: TpDialogHeader(
-          title: l10n.automationsTitle,
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 132,
-                child: TpSelect<AutomationEnabledFilter>(
-                  items: const [
-                    AutomationEnabledFilter.all,
-                    AutomationEnabledFilter.enabledOnly,
-                  ],
-                  initialItem: _enabledFilter,
-                  decoration: TpSelectDecorations.themed(context),
-                  itemLabel: (f) => switch (f) {
-                    AutomationEnabledFilter.all => l10n.automationsFilterAll,
-                    AutomationEnabledFilter.enabledOnly =>
-                      l10n.automationsFilterEnabled,
-                    AutomationEnabledFilter.disabledOnly =>
-                      l10n.automationsFilterDisabled,
-                  },
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() => _enabledFilter = value);
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              TpIconButton(
-                icon: Icons.add_rounded,
-                tooltip: l10n.automationsNew,
-                onTap: () => unawaited(_create()),
-              ),
-            ],
+    return TpDialogPageShell(
+      title: l10n.automationsTitle,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 132,
+            child: TpSelect<AutomationEnabledFilter>(
+              items: const [
+                AutomationEnabledFilter.all,
+                AutomationEnabledFilter.enabledOnly,
+              ],
+              initialItem: _enabledFilter,
+              decoration: TpSelectDecorations.themed(context),
+              itemLabel: (f) => switch (f) {
+                AutomationEnabledFilter.all => l10n.automationsFilterAll,
+                AutomationEnabledFilter.enabledOnly =>
+                  l10n.automationsFilterEnabled,
+                AutomationEnabledFilter.disabledOnly =>
+                  l10n.automationsFilterDisabled,
+              },
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _enabledFilter = value);
+              },
+            ),
           ),
-        ),
-        bodyTopSpacing: 8,
-        body: AutomationsListBody(
+          const SizedBox(width: 8),
+          TpIconButton(
+            icon: Icons.add_rounded,
+            tooltip: l10n.automationsNew,
+            onTap: () => unawaited(_create()),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: AutomationsListBody(
           listScope: widget.listScope,
           enabledFilter: _enabledFilter,
-          shrinkWrap: true,
+          shrinkWrap: false,
         ),
       ),
     );
@@ -126,8 +122,11 @@ Future<void> showAutomationsPanelDialog(
   BuildContext context, {
   required AutomationListScope listScope,
 }) {
-  return showDialog<void>(
+  return showTpDialog<void>(
     context: context,
-    builder: (dialogContext) => AutomationsDialog(listScope: listScope),
+    presentation: TpDialogPresentation.page,
+    mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+    maxWidth: 720,
+    builder: (_) => AutomationsDialog(listScope: listScope),
   );
 }

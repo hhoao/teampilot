@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
+import '../../services/workspace/workspace_pane_policy.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -18,9 +19,12 @@ Future<bool> showMcpOAuthConnectDialog({
   required McpServer server,
   required String configDir,
 }) async {
-  final result = await showDialog<bool>(
+  final result = await showTpDialog<bool>(
     context: context,
+    presentation: TpDialogPresentation.page,
+    mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
     barrierDismissible: true,
+    maxWidth: 480,
     builder: (ctx) =>
         _McpOAuthConnectDialog(server: server, configDir: configDir),
   );
@@ -174,17 +178,14 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
         if (didPop || finishing) return;
         _cancel();
       },
-      child: TpDialog(
-        maxWidth: 480,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+      child: TpDialogPageShell(
+        title: l10n.mcpOAuthConnectTitle(widget.server.name),
+        onClose: finishing ? () {} : _cancel,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TpDialogHeader(
-              title: l10n.mcpOAuthConnectTitle(widget.server.name),
-              onClose: finishing ? () {} : _cancel,
-            ),
-            const SizedBox(height: 16),
             Text(l10n.mcpOAuthConnectHint),
             if (discovering) ...[
               const SizedBox(height: 16),
@@ -262,6 +263,7 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

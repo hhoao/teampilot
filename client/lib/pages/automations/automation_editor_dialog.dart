@@ -17,6 +17,7 @@ import '../../models/workspace.dart';
 import '../../pages/home_workspace/workspace/workspace_landing_selectors.dart';
 import '../../services/automation/automation_launch_session_binding.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
+import '../../services/workspace/workspace_pane_policy.dart';
 import '../../utils/workspace/landing_draft_resolver.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -50,8 +51,11 @@ class AutomationEditorDialog extends StatefulWidget {
     String? sessionId,
     String? defaultName,
   }) {
-    return showDialog<Automation>(
+    return showTpDialog<Automation>(
       context: context,
+      presentation: TpDialogPresentation.page,
+      mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+      maxWidth: kind == AutomationEditorKind.scheduledMessage ? 480 : 560,
       builder: (_) => AutomationEditorDialog(
         initial: initial,
         kind: kind,
@@ -395,58 +399,72 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
               ? l10n.automationsCompactTitle
               : l10n.automationsCreateTitle);
 
-    return TpDialog(
-      maxWidth: _isScheduledMessage ? 480 : 560,
-      maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+    return TpDialogPageShell(
+      title: title,
       child: TpForm(
         key: _formKey,
-        child: TpDialogPinnedLayout(
-          header: TpDialogHeader(title: title),
-          body: AutomationEditorFormBody(
-            isScheduledMessage: _isScheduledMessage,
-            nameController: _nameCtl,
-            messageController: _messageCtl,
-            maxRunCountController: _maxRunCountCtl,
-            schedule: _schedule,
-            onScheduleChanged: (draft) => setState(() => _schedule = draft),
-            calculator: _calculator,
-            enabled: _enabled,
-            onEnabledChanged: (v) => setState(() => _enabled = v),
-            runLimitReached: _runLimitReached,
-            reuseSession: _reuseSession,
-            onReuseSessionChanged: (v) => setState(() => _reuseSession = v),
-            reuseSessionSubtitle: _reuseSessionBoundSubtitle(l10n),
-            onMaxRunCountChanged: () => setState(() {
-              if (_runLimitReached && _enabled) _enabled = false;
-            }),
-            workspace: _workspace,
-            isPersonal: _isPersonal,
-            projectFolderPath: _projectFolderPath,
-            workingDirectoryPath: _workingDirectoryPath,
-            presetId: _presetId,
-            teamId: _teamId,
-            expertKey: _expertKey,
-            dangerouslySkipPermissions: _dangerouslySkipPermissions,
-            targetMemberId: _targetMemberId,
-            onIsPersonalChanged: _onIsPersonalChanged,
-            onProjectChanged: (v) => setState(() => _projectFolderPath = v),
-            onWorktreeChanged: (v) => setState(() => _workingDirectoryPath = v),
-            onPresetChanged: (v) => setState(() => _presetId = v),
-            onTeamChanged: _onTeamChanged,
-            onExpertChanged: (v) => setState(() => _expertKey = v),
-            onPermissionsChanged: (v) =>
-                setState(() => _dangerouslySkipPermissions = v),
-            onTargetMemberChanged: (v) => setState(() => _targetMemberId = v),
-          ),
-          footer: TpDialogActions(
-            children: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(l10n.cancel),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: AutomationEditorFormBody(
+                  isScheduledMessage: _isScheduledMessage,
+                  nameController: _nameCtl,
+                  messageController: _messageCtl,
+                  maxRunCountController: _maxRunCountCtl,
+                  schedule: _schedule,
+                  onScheduleChanged: (draft) =>
+                      setState(() => _schedule = draft),
+                  calculator: _calculator,
+                  enabled: _enabled,
+                  onEnabledChanged: (v) => setState(() => _enabled = v),
+                  runLimitReached: _runLimitReached,
+                  reuseSession: _reuseSession,
+                  onReuseSessionChanged: (v) =>
+                      setState(() => _reuseSession = v),
+                  reuseSessionSubtitle: _reuseSessionBoundSubtitle(l10n),
+                  onMaxRunCountChanged: () => setState(() {
+                    if (_runLimitReached && _enabled) _enabled = false;
+                  }),
+                  workspace: _workspace,
+                  isPersonal: _isPersonal,
+                  projectFolderPath: _projectFolderPath,
+                  workingDirectoryPath: _workingDirectoryPath,
+                  presetId: _presetId,
+                  teamId: _teamId,
+                  expertKey: _expertKey,
+                  dangerouslySkipPermissions: _dangerouslySkipPermissions,
+                  targetMemberId: _targetMemberId,
+                  onIsPersonalChanged: _onIsPersonalChanged,
+                  onProjectChanged: (v) =>
+                      setState(() => _projectFolderPath = v),
+                  onWorktreeChanged: (v) =>
+                      setState(() => _workingDirectoryPath = v),
+                  onPresetChanged: (v) => setState(() => _presetId = v),
+                  onTeamChanged: _onTeamChanged,
+                  onExpertChanged: (v) => setState(() => _expertKey = v),
+                  onPermissionsChanged: (v) =>
+                      setState(() => _dangerouslySkipPermissions = v),
+                  onTargetMemberChanged: (v) =>
+                      setState(() => _targetMemberId = v),
+                ),
               ),
-              FilledButton(onPressed: _save, child: Text(l10n.save)),
-            ],
-          ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: TpDialogActions(
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(l10n.cancel),
+                  ),
+                  FilledButton(onPressed: _save, child: Text(l10n.save)),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
