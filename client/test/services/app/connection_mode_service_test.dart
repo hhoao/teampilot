@@ -22,4 +22,60 @@ void main() {
     expect(service.isLocalMode, isTrue);
     expect(service.requiresSshProfileSetup, isFalse);
   });
+
+  test('hasBoundAndroidWorkHome true for termux, false for local', () {
+    final termux = ConnectionModeService(
+      defaultTargetResolver: RuntimeTarget.termux,
+      hasSshProfiles: () => false,
+    );
+    final localWithProfiles = ConnectionModeService(
+      defaultTargetResolver: RuntimeTarget.local,
+      hasSshProfiles: () => true,
+    );
+
+    expect(termux.hasBoundAndroidWorkHome, isTrue);
+    expect(localWithProfiles.hasBoundAndroidWorkHome, isFalse);
+  });
+
+  test('requiresSshProfileSetup false for termux home with no profiles', () {
+    final service = ConnectionModeService(
+      defaultTargetResolver: RuntimeTarget.termux,
+      hasSshProfiles: () => false,
+    );
+
+    expect(service.requiresSshProfileSetup, isFalse);
+  });
+
+  test('isTermuxMode true and isSshMode false for termux', () {
+    final service = ConnectionModeService(
+      defaultTargetResolver: RuntimeTarget.termux,
+      hasSshProfiles: () => false,
+    );
+
+    expect(service.isTermuxMode, isTrue);
+    expect(service.isSshMode, isFalse);
+  });
+
+  test('isRemoteWorkPlane true for termux and ssh', () {
+    final termux = ConnectionModeService(
+      defaultTargetResolver: RuntimeTarget.termux,
+      hasSshProfiles: () => false,
+    );
+    final ssh = ConnectionModeService(
+      defaultTargetResolver: () => RuntimeTarget.ssh('p1', label: 'box'),
+      hasSshProfiles: () => true,
+    );
+
+    expect(termux.isRemoteWorkPlane, isTrue);
+    expect(ssh.isRemoteWorkPlane, isTrue);
+  });
+
+  test('termux is not local mode', () {
+    final service = ConnectionModeService(
+      defaultTargetResolver: RuntimeTarget.termux,
+      hasSshProfiles: () => false,
+    );
+
+    expect(service.isLocalMode, isFalse);
+  });
 }

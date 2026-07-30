@@ -14,7 +14,15 @@ class ConnectionModeService {
 
   bool get isSshMode => _defaultTargetResolver().kind == RuntimeKind.ssh;
 
-  bool get isLocalMode => !isSshMode;
+  bool get isTermuxMode =>
+      _defaultTargetResolver().kind == RuntimeKind.termux;
+
+  bool get hasBoundAndroidWorkHome => isSshMode || isTermuxMode;
+
+  bool get isRemoteWorkPlane => isSshMode || isTermuxMode;
+
+  bool get isLocalMode =>
+      _defaultTargetResolver().kind == RuntimeKind.local;
 
   /// SSH mode requires at least one saved profile before entering the app.
   bool get requiresSshProfileSetup => isSshMode && !_hasSshProfiles();
