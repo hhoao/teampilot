@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/models/layout_preferences.dart';
+import 'package:teampilot/pages/workspace_ide/pane_overlay_host.dart';
 import 'package:teampilot/pages/workspace_ide/workspace_ide_shell.dart';
 import 'package:teampilot/services/workspace/workspace_pane_policy.dart';
 
@@ -14,6 +15,7 @@ void main() {
   Future<LayoutCubit> pumpShell(
     WidgetTester tester, {
     Size size = const Size(1400, 900),
+    TpThemeData? themeData,
   }) async {
     final layout = LayoutCubit();
     // Default wide viewport so the policy docks all intent-visible panes;
@@ -27,7 +29,7 @@ void main() {
     final scheme = ColorScheme.fromSeed(seedColor: Colors.blue);
     await tester.pumpWidget(
       TpTheme(
-        data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
+        data: themeData ?? TpThemeData.fromColorScheme(scheme, scale: 1.0),
         child: MaterialApp(
           home: BlocProvider<LayoutCubit>.value(
             value: layout,
@@ -114,6 +116,43 @@ void main() {
 
     expect(layout.state.preferences.sidebarVisible, isFalse);
     expect(find.text('left'), findsNothing);
+  });
+
+  testWidgets('narrow right overlay uses theme drawer fraction width', (
+    tester,
+  ) async {
+    const viewportWidth = 600.0;
+    final scheme = ColorScheme.fromSeed(seedColor: Colors.blue);
+    final themeData = TpThemeData.fromColorScheme(
+      scheme,
+      scale: 1.0,
+      sidebar: const TpSidebarTheme(widthMobileFraction: 0.75),
+    );
+    final expectedWidth = themeData.sidebarTheme.resolveMobileDrawerWidth(
+      viewportWidth,
+    );
+    expect(expectedWidth, closeTo(450, 0.5));
+    expect(expectedWidth, isNot(LayoutPreferences.defaultRightToolsWidth));
+
+    await pumpShell(
+      tester,
+      size: const Size(viewportWidth, 900),
+      themeData: themeData,
+    );
+    await tester.pumpAndSettle();
+
+    final rightPanel = find.ancestor(
+      of: find.byKey(rightKey),
+      matching: find.byWidgetPredicate(
+        (widget) => widget is Positioned && widget.right == 0,
+      ),
+    );
+    expect(rightPanel, findsOneWidget);
+    expect(
+      tester.getSize(rightPanel).width,
+      closeTo(expectedWidth, 0.5),
+    );
+    expect(find.byType(PaneOverlayHost), findsOneWidget);
   });
 
   testWidgets('narrow right overlay still works independently of left drawer', (
