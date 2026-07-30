@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'fade_expand_body.dart';
+
 const kAiToolCardPreviewLines = 5;
-const kAiToolCardExpandedMaxHeight = 320.0;
+const kAiToolCardExpandedMaxHeight = kAiFadeExpandExpandedMaxHeight;
 
 /// Whole-card tap target for edit/shell tool cards; exclusive child gestures win.
 class AiExpandableToolCard extends StatelessWidget {

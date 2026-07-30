@@ -11,6 +11,7 @@ export 'src/part_grouping.dart';
 export 'src/part_registry.dart';
 export 'src/parts/chain_of_thought_view.dart';
 export 'src/parts/expandable_tool_card.dart';
+export 'src/parts/fade_expand_body.dart';
 export 'src/parts/reasoning_part_view.dart';
 export 'src/parts/text_part_view.dart';
 export 'src/parts/subagent_preview_scaffold.dart';
