@@ -16,9 +16,14 @@ import '../../cubits/workbench/workbench_tab.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../services/file_tree/file_tree_visible_rows.dart';
+import '../../services/file_tree_import/file_tree_drop_hit_test.dart';
+import '../../services/file_tree_import/file_tree_drop_ingestor.dart';
+import '../../services/file_tree_import/import_models.dart';
 import '../../services/storage/runtime_context.dart';
+import '../../services/workspace_dnd/workspace_file_ref.dart';
 import '../../utils/ui/app_keys.dart';
 import '../file_tree/file_tree_drop_region.dart';
+import '../file_tree/file_tree_import_dialogs.dart';
 import '../file_tree_node.dart';
 import 'file_tree_header_overflow_menu.dart';
 import 'right_tools_lifecycle.dart';
@@ -551,7 +556,7 @@ class _FileTreeListState extends State<_FileTreeList> {
                     itemBuilder: (context, index) {
                       final row = rows[index];
                       if (row.isEmptyPlaceholder) {
-                        return SizedBox(
+                        final placeholder = SizedBox(
                           width: contentWidth,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
@@ -569,16 +574,92 @@ class _FileTreeListState extends State<_FileTreeList> {
                                 ),
                                 child: Text(
                                   '(empty)',
-                                  style: TpTextStyles.of(context).xs
-                                      .copyWith(
-                                        color: widget.textColor.withValues(
-                                          alpha: 0.35,
-                                        ),
-                                      ),
+                                  style: TpTextStyles.of(context).xs.copyWith(
+                                    color: widget.textColor.withValues(
+                                      alpha: 0.35,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
+                        );
+                        final dropHost = FileTreeDropScope.maybeOf(context);
+                        if (dropHost == null) return placeholder;
+                        return DragTarget<WorkspaceDragPayload>(
+                          onWillAcceptWithDetails: (details) {
+                            return details.data.kind ==
+                                    DragPayloadKind.workspaceFile &&
+                                details.data.refs.isNotEmpty;
+                          },
+                          onAcceptWithDetails: (details) {
+                            final hit = resolveFileTreeDropDest(
+                              kind: FileTreeDropRowKind.empty,
+                              rowPath: row.path,
+                              pathContext: widget.cubit
+                                  .fsFor(row.path)
+                                  .pathContext,
+                              sourcePaths: [
+                                for (final ref in details.data.refs)
+                                  ref.nativePath,
+                              ],
+                            );
+                            switch (resolveFileTreeDropAcceptAction(hit)) {
+                              case FileTreeDropAcceptAction.ingest:
+                                unawaited(
+                                  dropHost.ingest(
+                                    destDir: hit.destDir!,
+                                    payload: details.data,
+                                    fromExternalOs: false,
+                                  ),
+                                );
+                              case FileTreeDropAcceptAction.rejectSelf:
+                                if (context.mounted) {
+                                  showFileTreeImportRejectSelfToast(context);
+                                }
+                              case FileTreeDropAcceptAction.ignore:
+                                break;
+                            }
+                          },
+                          builder: (context, candidates, rejected) {
+                            final inTreeHover =
+                                candidates.isNotEmpty &&
+                                candidates.first != null;
+                            final osHover =
+                                dropHost.osHoverRowPath != null &&
+                                fileTreePathsEqual(
+                                  widget.cubit.fsFor(row.path).pathContext,
+                                  dropHost.osHoverRowPath!,
+                                  row.path,
+                                );
+                            ImportMode? affordance;
+                            if (inTreeHover) {
+                              final payload = candidates.first!;
+                              final sourcePath =
+                                  payload.refs.first.nativePath;
+                              final sameFs = fileTreePathsShareFilesystem(
+                                sourceFs: widget.cubit.fsFor(sourcePath),
+                                destFs: widget.cubit.fsFor(row.path),
+                                sourceWorkContext: widget.cubit
+                                    .workContextFor(sourcePath),
+                                destWorkContext: widget.cubit.workContextFor(
+                                  row.path,
+                                ),
+                              );
+                              affordance = resolveFileTreeImportMode(
+                                fromExternalOs: false,
+                                sameFs: sameFs,
+                                copyModifier: fileTreeCopyModifierPressed(),
+                              );
+                            } else if (osHover) {
+                              affordance = dropHost.osHoverAffordance;
+                            }
+                            return FileTreeDropHighlight(
+                              active: inTreeHover || osHover,
+                              affordance: affordance,
+                              child: placeholder,
+                            );
+                          },
                         );
                       }
                       return SizedBox(

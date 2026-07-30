@@ -18,6 +18,9 @@ class DraggableFileRow extends StatelessWidget {
     required this.label,
     required this.child,
     this.enabled = true,
+    /// Zero keeps [DragTargetDetails.offset] as the pointer global position
+    /// so empty-area panel drops can resolve dest by Y.
+    this.dragAnchorStrategy = _globalPointerDragAnchor,
     super.key,
   });
 
@@ -29,13 +32,22 @@ class DraggableFileRow extends StatelessWidget {
 
   final Widget child;
   final bool enabled;
+  final DragAnchorStrategy dragAnchorStrategy;
+
+  /// Anchor at pointer so drag details offset ≈ global pointer position.
+  static Offset _globalPointerDragAnchor(
+    Draggable<Object> draggable,
+    BuildContext context,
+    Offset position,
+  ) =>
+      Offset.zero;
 
   @override
   Widget build(BuildContext context) {
     if (!enabled || payload.isEmpty) return child;
     return Draggable<WorkspaceDragPayload>(
       data: payload,
-      dragAnchorStrategy: pointerDragAnchorStrategy,
+      dragAnchorStrategy: dragAnchorStrategy,
       feedback: _DragFeedback(label: label, count: payload.refs.length),
       childWhenDragging: Opacity(opacity: 0.4, child: child),
       child: child,

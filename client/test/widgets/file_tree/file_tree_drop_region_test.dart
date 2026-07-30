@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/file_tree/file_tree_visible_rows.dart';
+import 'package:teampilot/services/file_tree_import/file_tree_drop_hit_test.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/widgets/file_tree/file_tree_drop_region.dart';
 
@@ -74,13 +75,74 @@ void main() {
     });
   });
 
+  group('resolveFileTreeDropAcceptAction', () {
+    test('valid hit → ingest', () {
+      expect(
+        resolveFileTreeDropAcceptAction(
+          const FileTreeDropHit(destDir: '/proj'),
+        ),
+        FileTreeDropAcceptAction.ingest,
+      );
+    });
+
+    test('ontoSelf → rejectSelf (toast path)', () {
+      expect(
+        resolveFileTreeDropAcceptAction(
+          const FileTreeDropHit(destDir: null, rejectedReason: 'ontoSelf'),
+        ),
+        FileTreeDropAcceptAction.rejectSelf,
+      );
+    });
+
+    test('other invalid → ignore', () {
+      expect(
+        resolveFileTreeDropAcceptAction(const FileTreeDropHit(destDir: null)),
+        FileTreeDropAcceptAction.ignore,
+      );
+    });
+  });
+
+  group('resolveOsHoverHighlight', () {
+    test('row under pointer highlights that row', () {
+      final highlight = resolveOsHoverHighlight(
+        hit: const FileTreeDropHit(destDir: '/proj/src'),
+        rowUnderPointer: '/proj/src',
+      );
+      expect(highlight.rowPath, '/proj/src');
+      expect(highlight.panelHighlight, isFalse);
+    });
+
+    test('valid empty-area hit highlights dest + panel', () {
+      final highlight = resolveOsHoverHighlight(
+        hit: const FileTreeDropHit(destDir: '/proj'),
+        rowUnderPointer: null,
+      );
+      expect(highlight.rowPath, '/proj');
+      expect(highlight.panelHighlight, isTrue);
+    });
+
+    test('invalid hit clears highlight', () {
+      final highlight = resolveOsHoverHighlight(
+        hit: const FileTreeDropHit(destDir: null, rejectedReason: 'ontoSelf'),
+        rowUnderPointer: '/proj/src',
+      );
+      expect(highlight.rowPath, isNull);
+      expect(highlight.panelHighlight, isFalse);
+    });
+  });
+
   group('resolveFileTreePanelDropHit dest injection', () {
     final ctx = p.posix;
 
     test('folder row contentY maps to that folder as destDir', () {
       final rows = [
         _row(path: '/proj/src', name: 'src', isDirectory: true),
-        _row(path: '/proj/src/a.txt', name: 'a.txt', isDirectory: false, depth: 1),
+        _row(
+          path: '/proj/src/a.txt',
+          name: 'a.txt',
+          isDirectory: false,
+          depth: 1,
+        ),
       ];
 
       final hit = resolveFileTreePanelDropHit(
@@ -97,7 +159,12 @@ void main() {
     test('file row contentY maps to parent destDir', () {
       final rows = [
         _row(path: '/proj/src', name: 'src', isDirectory: true),
-        _row(path: '/proj/src/a.txt', name: 'a.txt', isDirectory: false, depth: 1),
+        _row(
+          path: '/proj/src/a.txt',
+          name: 'a.txt',
+          isDirectory: false,
+          depth: 1,
+        ),
       ];
 
       final hit = resolveFileTreePanelDropHit(
@@ -142,6 +209,44 @@ void main() {
       expect(hit.destDir, '/proj');
     });
 
+    test('below last row single-root resolves to that root', () {
+      final rows = [
+        _row(path: '/proj/src', name: 'src', isDirectory: true),
+      ];
+
+      final hit = resolveFileTreePanelDropHit(
+        contentY: kFileTreeRowExtent * 3,
+        visibleRows: rows,
+        rootPaths: const ['/proj'],
+        pathContextFor: (_) => ctx,
+      );
+
+      expect(hit.isValid, isTrue);
+      expect(hit.destDir, '/proj');
+    });
+
+    test('empty placeholder row resolves to parent dir', () {
+      final rows = [
+        _row(
+          path: '/proj/emptyDir',
+          name: '(empty)',
+          isDirectory: false,
+          depth: 1,
+          isEmptyPlaceholder: true,
+        ),
+      ];
+
+      final hit = resolveFileTreePanelDropHit(
+        contentY: kFileTreeRowExtent * 0.4,
+        visibleRows: rows,
+        rootPaths: const ['/proj'],
+        pathContextFor: (_) => ctx,
+      );
+
+      expect(hit.isValid, isTrue);
+      expect(hit.destDir, '/proj/emptyDir');
+    });
+
     test('in-tree onto self rejects', () {
       final rows = [
         _row(path: '/proj/src', name: 'src', isDirectory: true),
@@ -157,13 +262,14 @@ void main() {
 
       expect(hit.isValid, isFalse);
       expect(hit.rejectedReason, 'ontoSelf');
+      expect(
+        resolveFileTreeDropAcceptAction(hit),
+        FileTreeDropAcceptAction.rejectSelf,
+      );
     });
 
     test('scroll offset is applied via contentY helper', () {
-      expect(
-        fileTreeDropContentY(listLocalY: 10, scrollOffset: 72),
-        82,
-      );
+      expect(fileTreeDropContentY(listLocalY: 10, scrollOffset: 72), 82);
     });
   });
 }

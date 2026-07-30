@@ -312,25 +312,29 @@ class _FileTreeNodeState extends State<FileTreeNode> {
     return RepaintBoundary(
       child: DragTarget<WorkspaceDragPayload>(
         onWillAcceptWithDetails: (details) {
-          if (details.data.kind != DragPayloadKind.workspaceFile) return false;
-          if (details.data.refs.isEmpty) return false;
-          return _hitForPayload(details.data).isValid;
+          // Accept by kind so ontoSelf reaches onAccept (toast); do not
+          // pre-filter with hit validity here.
+          return details.data.kind == DragPayloadKind.workspaceFile &&
+              details.data.refs.isNotEmpty;
         },
         onAcceptWithDetails: (details) {
           final hit = _hitForPayload(details.data);
-          if (!hit.isValid) {
-            if (hit.rejectedReason == 'ontoSelf' && context.mounted) {
-              showFileTreeImportRejectSelfToast(context);
-            }
-            return;
+          switch (resolveFileTreeDropAcceptAction(hit)) {
+            case FileTreeDropAcceptAction.ingest:
+              unawaited(
+                dropHost.ingest(
+                  destDir: hit.destDir!,
+                  payload: details.data,
+                  fromExternalOs: false,
+                ),
+              );
+            case FileTreeDropAcceptAction.rejectSelf:
+              if (context.mounted) {
+                showFileTreeImportRejectSelfToast(context);
+              }
+            case FileTreeDropAcceptAction.ignore:
+              break;
           }
-          unawaited(
-            dropHost.ingest(
-              destDir: hit.destDir!,
-              payload: details.data,
-              fromExternalOs: false,
-            ),
-          );
         },
         builder: (context, candidates, rejected) {
           final inTreeHover = candidates.isNotEmpty && candidates.first != null;

@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/file_tree_cubit.dart';
 import 'package:teampilot/l10n/l10n_extensions.dart';
 import 'package:teampilot/services/file_tree/file_tree_visible_rows.dart';
@@ -15,6 +18,8 @@ import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/workspace_dnd/workspace_drop_target.dart';
 import 'package:teampilot/services/workspace_dnd/workspace_file_ref.dart';
+import 'package:teampilot/utils/logging/logger_utils.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:teampilot/widgets/file_tree/file_tree_import_dialogs.dart';
 import 'package:teampilot/widgets/workspace_dnd/external_file_drop_region.dart';
 
@@ -134,6 +139,30 @@ FileTreeDropHit resolveFileTreePanelDropHit({
   return FileTreeDropHit(destDir: pathContextFor(dest).normalize(dest));
 }
 
+enum FileTreeDropAcceptAction { ingest, rejectSelf, ignore }
+
+FileTreeDropAcceptAction resolveFileTreeDropAcceptAction(FileTreeDropHit hit) {
+  if (hit.isValid) return FileTreeDropAcceptAction.ingest;
+  if (hit.rejectedReason == 'ontoSelf') {
+    return FileTreeDropAcceptAction.rejectSelf;
+  }
+  return FileTreeDropAcceptAction.ignore;
+}
+
+/// OS hover chrome: row when over a row; dest + panel overlay on empty area.
+({String? rowPath, bool panelHighlight}) resolveOsHoverHighlight({
+  required FileTreeDropHit hit,
+  required String? rowUnderPointer,
+}) {
+  if (!hit.isValid) {
+    return (rowPath: null, panelHighlight: false);
+  }
+  if (rowUnderPointer != null) {
+    return (rowPath: rowUnderPointer, panelHighlight: false);
+  }
+  return (rowPath: hit.destDir, panelHighlight: true);
+}
+
 /// Stub [WorkspaceDropTarget] for file-tree OS drops (custom handler owns ingest).
 class NoopWorkspaceDropTarget implements WorkspaceDropTarget {
   const NoopWorkspaceDropTarget();
@@ -164,6 +193,7 @@ class FileTreeDropScope extends InheritedWidget {
   bool updateShouldNotify(FileTreeDropScope oldWidget) {
     return host.osHoverRowPath != oldWidget.host.osHoverRowPath ||
         host.osHoverAffordance != oldWidget.host.osHoverAffordance ||
+        host.osHoverPanelHighlight != oldWidget.host.osHoverPanelHighlight ||
         host.revision != oldWidget.host.revision;
   }
 }
@@ -174,6 +204,7 @@ class FileTreeDropHost {
     required this.cubit,
     this.osHoverRowPath,
     this.osHoverAffordance,
+    this.osHoverPanelHighlight = false,
     this.revision = 0,
   });
 
@@ -186,21 +217,28 @@ class FileTreeDropHost {
   final FileTreeCubit cubit;
   final String? osHoverRowPath;
   final ImportMode? osHoverAffordance;
+  final bool osHoverPanelHighlight;
   final int revision;
 
   FileTreeDropHost copyWith({
     String? osHoverRowPath,
     ImportMode? osHoverAffordance,
+    bool? osHoverPanelHighlight,
     bool clearOsHover = false,
     int? revision,
   }) {
     return FileTreeDropHost(
       ingest: ingest,
       cubit: cubit,
-      osHoverRowPath: clearOsHover ? null : (osHoverRowPath ?? this.osHoverRowPath),
+      osHoverRowPath: clearOsHover
+          ? null
+          : (osHoverRowPath ?? this.osHoverRowPath),
       osHoverAffordance: clearOsHover
           ? null
           : (osHoverAffordance ?? this.osHoverAffordance),
+      osHoverPanelHighlight: clearOsHover
+          ? false
+          : (osHoverPanelHighlight ?? this.osHoverPanelHighlight),
       revision: revision ?? this.revision,
     );
   }
@@ -282,6 +320,7 @@ class _FileTreeDropRegionState extends State<FileTreeDropRegion> {
         cubit: widget.cubit,
         osHoverRowPath: _host.osHoverRowPath,
         osHoverAffordance: _host.osHoverAffordance,
+        osHoverPanelHighlight: _host.osHoverPanelHighlight,
         revision: _host.revision + 1,
       );
     }
@@ -333,7 +372,9 @@ class _FileTreeDropRegionState extends State<FileTreeDropRegion> {
 
   void _updateOsHover(Offset? listLocal) {
     if (listLocal == null) {
-      if (_host.osHoverRowPath != null || _host.osHoverAffordance != null) {
+      if (_host.osHoverRowPath != null ||
+          _host.osHoverAffordance != null ||
+          _host.osHoverPanelHighlight) {
         setState(() {
           _host = _host.copyWith(
             clearOsHover: true,
@@ -344,21 +385,49 @@ class _FileTreeDropRegionState extends State<FileTreeDropRegion> {
       return;
     }
     final hit = _hitAt(listLocal);
-    final rowPath = hit.isValid ? _rowPathAt(listLocal) : null;
+    final highlight = resolveOsHoverHighlight(
+      hit: hit,
+      rowUnderPointer: hit.isValid ? _rowPathAt(listLocal) : null,
+    );
     final affordance = hit.isValid ? ImportMode.copy : null;
-    if (rowPath == _host.osHoverRowPath &&
-        affordance == _host.osHoverAffordance) {
+    if (highlight.rowPath == _host.osHoverRowPath &&
+        affordance == _host.osHoverAffordance &&
+        highlight.panelHighlight == _host.osHoverPanelHighlight) {
       return;
     }
     setState(() {
       _host = FileTreeDropHost(
         ingest: _ingest,
         cubit: widget.cubit,
-        osHoverRowPath: rowPath,
+        osHoverRowPath: highlight.rowPath,
         osHoverAffordance: affordance,
+        osHoverPanelHighlight: highlight.panelHighlight,
         revision: _host.revision + 1,
       );
     });
+  }
+
+  List<String> _sourcePaths(WorkspaceDragPayload payload) => [
+    for (final ref in payload.refs) ref.nativePath,
+  ];
+
+  Future<void> _handleResolvedDrop({
+    required FileTreeDropHit hit,
+    required WorkspaceDragPayload payload,
+    required bool fromExternalOs,
+  }) async {
+    switch (resolveFileTreeDropAcceptAction(hit)) {
+      case FileTreeDropAcceptAction.ingest:
+        await _ingest(
+          destDir: hit.destDir!,
+          payload: payload,
+          fromExternalOs: fromExternalOs,
+        );
+      case FileTreeDropAcceptAction.rejectSelf:
+        if (mounted) showFileTreeImportRejectSelfToast(context);
+      case FileTreeDropAcceptAction.ignore:
+        break;
+    }
   }
 
   Future<void> _onOsDrop(
@@ -366,17 +435,29 @@ class _FileTreeDropRegionState extends State<FileTreeDropRegion> {
     DropDoneDetails details,
   ) async {
     _updateOsHover(null);
-    final hit = _hitAt(details.localPosition);
-    if (!hit.isValid) {
-      if (hit.rejectedReason == 'ontoSelf' && mounted) {
-        showFileTreeImportRejectSelfToast(context);
-      }
-      return;
-    }
-    await _ingest(
-      destDir: hit.destDir!,
+    final hit = _hitAt(
+      details.localPosition,
+      sourcePaths: _sourcePaths(payload),
+    );
+    await _handleResolvedDrop(
+      hit: hit,
       payload: payload,
       fromExternalOs: true,
+    );
+  }
+
+  Future<void> _onInTreePanelDrop(
+    DragTargetDetails<WorkspaceDragPayload> details,
+  ) async {
+    final box = context.findRenderObject() as RenderBox?;
+    final local = box != null && box.hasSize
+        ? box.globalToLocal(details.offset)
+        : details.offset;
+    final hit = _hitAt(local, sourcePaths: _sourcePaths(details.data));
+    await _handleResolvedDrop(
+      hit: hit,
+      payload: details.data,
+      fromExternalOs: false,
     );
   }
 
@@ -424,6 +505,19 @@ class _FileTreeDropRegionState extends State<FileTreeDropRegion> {
       if (mounted) {
         showFileTreeImportSummaryIfNeeded(context, summary);
       }
+    } catch (error, stackTrace) {
+      AppLogger.instance.e(
+        'File tree import failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (mounted) {
+        AppToast.show(
+          context,
+          message: context.l10n.fileTreeImportSummary(0, 0, 1),
+          variant: TpToastVariant.error,
+        );
+      }
     } finally {
       _conflictResolver = null;
       _busy = false;
@@ -439,7 +533,59 @@ class _FileTreeDropRegionState extends State<FileTreeDropRegion> {
         onDropPayload: _onOsDrop,
         onDragPositionChanged: _updateOsHover,
         showPanelHighlight: false,
-        child: widget.child,
+        child: DragTarget<WorkspaceDragPayload>(
+          onWillAcceptWithDetails: (details) {
+            return details.data.kind == DragPayloadKind.workspaceFile &&
+                details.data.refs.isNotEmpty;
+          },
+          onAcceptWithDetails: (details) {
+            unawaited(_onInTreePanelDrop(details));
+          },
+          builder: (context, candidates, rejected) {
+            final inTreeEmptyHover =
+                candidates.isNotEmpty && candidates.first != null;
+            final showPanel =
+                inTreeEmptyHover || _host.osHoverPanelHighlight;
+            ImportMode? affordance;
+            if (inTreeEmptyHover) {
+              final payload = candidates.first!;
+              final sourcePath = payload.refs.first.nativePath;
+              final destDir =
+                  widget.cubit.state.rootPath.isNotEmpty
+                  ? widget.cubit.state.rootPath
+                  : sourcePath;
+              final sameFs = fileTreePathsShareFilesystem(
+                sourceFs: widget.cubit.fsFor(sourcePath),
+                destFs: widget.cubit.fsFor(destDir),
+                sourceWorkContext: widget.cubit.workContextFor(sourcePath),
+                destWorkContext: widget.cubit.workContextFor(destDir),
+              );
+              affordance = resolveFileTreeImportMode(
+                fromExternalOs: false,
+                sameFs: sameFs,
+                copyModifier: fileTreeCopyModifierPressed(),
+              );
+            } else {
+              affordance = _host.osHoverAffordance;
+            }
+            return Stack(
+              fit: StackFit.passthrough,
+              children: [
+                widget.child,
+                if (showPanel)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: FileTreeDropHighlight(
+                        active: true,
+                        affordance: affordance,
+                        child: const SizedBox.expand(),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
