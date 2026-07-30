@@ -91,13 +91,15 @@ Lift / reuse placement resolution currently private on `SessionRepository` (`_re
 | Caller | Behavior |
 |--------|----------|
 | `session_launch_pipeline` (team create) | `resolveSessionMemberCliLocks` → plan → provisional `AppSession.members` / `memberTargets`. Staged session is the source of truth for bindings. |
-| `_persistSessionIfNeeded` / `createSession` | UI staged path: read **`session.members` + `session.memberTargets`** (do not re-expand roster to invent taskIds). Still assign `cliTeamName`, write `session.json`. If plan/`persistTargets` is true, **`createSession` still runs `updateWorkspaceMemberTargets`** (same workspace-manifest side effect as today) — do not drop this when skipping re-allocation. |
+| `_persistSessionIfNeeded` / `createSession` | UI staged path: pass staged `session.members` + `session.memberTargets` into `createSession` (API must accept them under `fixedSessionId`). **Re-run the plan (or at least placement resolution)** only to compute `persistTargets` and to assert the included `rosterMemberId` set matches staged members — on mismatch `StateError`. **`taskId` / `cli` always taken from staged bindings**, never re-allocated. Still assign `cliTeamName`, write `session.json`. When `persistTargets` is true, **`createSession` still runs `updateWorkspaceMemberTargets`**. |
 | Non-UI `createSession` (automation / default materializer) | Call the **same** plan builder inside the repository, then write — one allocation path. |
-| `SessionPersistParams` | **No new binding fields required.** After staging, persist uses the in-memory `AppSession` members/targets already on the tab/snapshot. |
+| `SessionPersistParams` | **Shape unchanged.** Bindings are not duplicated on params; `_persistSessionIfNeeded` reads the staged `AppSession` on the tab/snapshot. |
 
 Prefer **one** allocation path (builder always), not “repo allocates unless optional override”.
 
 **`persistTargets` ownership:** Plan computes the flag; **`SessionRepository.createSession` executes** `updateWorkspaceMemberTargets` when the flag is true (whether members came from staged session or an in-repo plan call). Pipeline does not pre-write workspace member targets.
+
+**Provisional inclusion:** Staged `members` are **placement-included seats only** (same set persist would write), not a full expand of every roster instance. That is an intentional behavior change vs today’s pipeline (which staged placeholder bindings for the full expand before persist filtered).
 
 ### Explicitly out of History
 
