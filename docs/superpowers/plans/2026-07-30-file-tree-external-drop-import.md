@@ -307,14 +307,37 @@ class FileTreeDropIngestor {
   final ConflictResolver onConflict;
   final bool Function() isCopyModifierPressed;
 
-  /// External OS drop or in-tree drop with explicit dest.
-  Future<ImportSummary> consumeAt({
+  /// Walk + mode + build plan (no IO writes yet). UI uses this for progress gate.
+  Future<ImportPlan> prepareAt({
     required String destDir,
     required WorkspaceDragPayload payload,
     required bool fromExternalOs,
   });
+
+  /// Run a plan from [prepareAt]; apply conflicts + refresh.
+  Future<ImportSummary> runPrepared(
+    ImportPlan plan, {
+    required bool Function() isCancelled,
+  });
+
+  /// Convenience: prepare + run (tests / silent path without mid-hooks).
+  Future<ImportSummary> consumeAt({
+    required String destDir,
+    required WorkspaceDragPayload payload,
+    required bool fromExternalOs,
+    bool Function()? isCancelled,
+  });
 }
 ```
+
+**`prepareAt` / `runPrepared` / `consumeAt` pipeline (required order):**
+
+1. `prepareAt`: resolve mode → `planSources` → build full `ImportPlan` (`flattenedFileCount`, `maxFileBytes`, `destIsLocal`).
+2. UI: `shouldShowImportProgress(plan…)` → optionally open progress dialog.
+3. `runPrepared(plan, isCancelled:)` → `importService.run` → refresh cubit.
+4. `consumeAt` = prepare + run for callers that do not need a UI hook between them.
+
+Never call `importService.run` without a plan built via `planSources`.
 
 Mode rules (implement exactly):
 
@@ -323,19 +346,6 @@ Mode rules (implement exactly):
 | true | any | copy; sourceFs = `hostLocalFs` |
 | false | same | move, unless `isCopyModifierPressed()` → copy |
 | false | different | copy; sourceFs = `cubit.fsFor(source)` |
-
-**`consumeAt` pipeline (required order):**
-
-1. Resolve mode via `resolveFileTreeImportMode` / same-FS check.
-2. Call `importService.planSources(sourceFs, sources)` → flattened files + `maxFileBytes`.
-3. Build `ImportPlan` including `flattenedFileCount`, `maxFileBytes`, `destIsLocal`.
-4. Caller/UI uses `shouldShowImportProgress(...)` **before** `run` (ingestor may expose the plan or a `prepare` method so UI can open the progress dialog). Minimum: `consumeAt` always plans first internally; never call `run` without a fully populated plan.
-5. `importService.run(plan, onConflict:, isCancelled:)`.
-6. `cubit.refreshPaths` for `destDir` (and source parent on move).
-
-Map `ImportSummary` into a `DropOutcome`-like result if UI needs it (`delivered` = succeeded).
-
-- [ ] **Step 1: Write failing tests** with fake cubit/fs or minimal `FileTreeCubit` if cheap; otherwise test mode selection via a package-visible helper `resolveImportMode(...)` extracted in the same file. Include a test that `consumeAt` invokes `planSources` before `run` (mock service).
 
 Prefer extracting:
 
@@ -347,7 +357,7 @@ ImportMode resolveFileTreeImportMode({
 });
 ```
 
-Test that pure function thoroughly; one integration test that `consumeAt` copies a file via `InMemoryFilesystem` + stub refresh callback if cubit is heavy.
+- [ ] **Step 1: Write failing tests** for `resolveFileTreeImportMode`, `prepareAt`→`planSources` before `run`, and one `consumeAt` copy via `InMemoryFilesystem` (+ stub refresh if cubit is heavy).
 
 - [ ] **Step 2–4: TDD implement**
 
@@ -426,8 +436,8 @@ git commit -m "feat(file_tree): import conflict and progress dialogs"
 4. **Copy vs move affordance (spec):** While dragging over a valid dest, show an overlay/badge or cursor hint — external OS drag always “copy”; in-tree shows “move” or “copy” based on modifier + same-FS (cross-FS always “copy”). Implement as a small label in the highlight overlay (l10n: `fileTreeImportDropCopy` / `fileTreeImportDropMove`).
 5. Filter mode: only **visible** rows are valid hover targets; empty area still resolves to root by Y. Prefer `visibleRows` + `kFileTreeRowExtent` + list scroll offset for row/root band geometry (`file_tree_visible_rows.dart`).
 6. Build `FileTreeDropIngestor` once per panel state; pass dialog `ConflictResolver` that shows Task 6 dialogs.
-7. **Progress + silent summary:** After `planSources` / plan build, if `shouldShowImportProgress` → show progress dialog wrapping `run` with cancel flag; else run silently. When summary has `failed > 0` or `skipped > 0` (or cancelled), always show toast/snack with `fileTreeImportSummary` — **including the silent path**.
-8. **`ExternalFileDropRegion` API:** If adding `onDropDetails` / custom handler, document: when custom handler is non-null, **do not** also call `target.consume` (avoid double ingest). Keep `target` required for Compose/Terminal unchanged call sites (they omit the new optional callback).
+7. **Progress + silent summary:** UI calls `prepareAt` → if `shouldShowImportProgress` open progress dialog → `runPrepared` with cancel flag; else `runPrepared` silently (or `consumeAt`). When summary has `failed > 0` or `skipped > 0` (or cancelled), always show toast/snack with `fileTreeImportSummary` — **including the silent path**. Invalid self/descendant hit → toast `fileTreeImportRejectSelf` (no import).
+8. **`ExternalFileDropRegion` API:** If adding `onDropDetails` / custom handler, document: when custom handler is non-null, **do not** also call `target.consume` (avoid double ingest). Keep `target` required for Compose/Terminal unchanged call sites. File-tree custom path may pass a **noop** `WorkspaceDropTarget` stub when the custom handler owns ingest.
 
 Modifier copy detection helper (put next to ingestor or in drop region):
 
