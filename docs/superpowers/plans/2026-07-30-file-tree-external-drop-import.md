@@ -17,8 +17,10 @@
 - Cross-FS / cross-mount tree ops are **copy only** (never delete source).
 - Progress when: any file ≥ 5 MiB, **or** flattened file count ≥ 10, **or** dest FS is non-local.
 - Same/cross FS decided by `FileTreeCubit.fsFor` / `workContextFor`, not global `PathNamespace.ofCurrentStorage()`.
+- `destIsLocal`: `cubit.workContextFor(destDir)?.mode` is native/local only; **WSL and SFTP are non-local** (always show progress).
 - `destDir` resolved at drop time (hit-test), not constructed into a panel-global ingestor.
 - Before claiming done: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings` and the test commands in the final task.
+- Tests use `InMemoryFilesystem` from `client/test/support/in_memory_filesystem.dart`.
 
 ---
 
@@ -322,11 +324,18 @@ Mode rules (implement exactly):
 | false | same | move, unless `isCopyModifierPressed()` → copy |
 | false | different | copy; sourceFs = `cubit.fsFor(source)` |
 
-After run: `cubit.refreshPaths` for `destDir` (and source parent on move).
+**`consumeAt` pipeline (required order):**
+
+1. Resolve mode via `resolveFileTreeImportMode` / same-FS check.
+2. Call `importService.planSources(sourceFs, sources)` → flattened files + `maxFileBytes`.
+3. Build `ImportPlan` including `flattenedFileCount`, `maxFileBytes`, `destIsLocal`.
+4. Caller/UI uses `shouldShowImportProgress(...)` **before** `run` (ingestor may expose the plan or a `prepare` method so UI can open the progress dialog). Minimum: `consumeAt` always plans first internally; never call `run` without a fully populated plan.
+5. `importService.run(plan, onConflict:, isCancelled:)`.
+6. `cubit.refreshPaths` for `destDir` (and source parent on move).
 
 Map `ImportSummary` into a `DropOutcome`-like result if UI needs it (`delivered` = succeeded).
 
-- [ ] **Step 1: Write failing tests** with fake cubit/fs or minimal `FileTreeCubit` if cheap; otherwise test mode selection via a package-visible helper `resolveImportMode(...)` extracted in the same file.
+- [ ] **Step 1: Write failing tests** with fake cubit/fs or minimal `FileTreeCubit` if cheap; otherwise test mode selection via a package-visible helper `resolveImportMode(...)` extracted in the same file. Include a test that `consumeAt` invokes `planSources` before `run` (mock service).
 
 Prefer extracting:
 
@@ -377,8 +386,9 @@ Strings (examples — use Tp/l10n style already in ARBs):
 
 - `fileTreeImportConflictTitle`, `fileTreeImportOverwrite`, `fileTreeImportSkip`, `fileTreeImportCancelAll`, `fileTreeImportApplyRemaining`
 - `fileTreeImportProgressTitle`, `fileTreeImportProgressCancel`
-- `fileTreeImportSummary` (succeeded/skipped/failed)
+- `fileTreeImportSummary` (succeeded/skipped/failed) — used for **both** progress completion and silent partial-failure toast
 - `fileTreeImportRejectSelf`
+- `fileTreeImportDropCopy`, `fileTreeImportDropMove` (drag affordance)
 
 After ARB edits, run codegen if the project requires it (follow existing pattern in repo — usually `flutter gen-l10n` via `flutter test` / analyze). Also run `dart run tool/gen_warmup_glyphs.dart` if ARB glyph set changes per AGENTS.md.
 
@@ -413,8 +423,11 @@ git commit -m "feat(file_tree): import conflict and progress dialogs"
    - else multi-root bands → `resolveNearestRootDest`
 2. **In-tree drop:** Each `FileTreeNode` wraps content in `DragTarget<WorkspaceDragPayload>` (or `WorkspaceFileDropRegion` if it can pass dest). On accept, read modifier via `HardwareKeyboard.instance.logicalKeysPressed` (`LogicalKeyboardKey.control` / `LogicalKeyboardKey.alt` on macOS — use `defaultTargetPlatform == TargetPlatform.macOS` for Option).
 3. Highlight hovered valid dest row (border/background using theme primary, mirror ExternalFileDropRegion alpha).
-4. Filter mode: only **visible** rows are valid hover targets; empty area still resolves to root by Y.
-5. Build `FileTreeDropIngestor` once per panel state; pass dialog `ConflictResolver` that shows Task 6 dialogs; if `shouldShowImportProgress`, show progress dialog around `consumeAt`.
+4. **Copy vs move affordance (spec):** While dragging over a valid dest, show an overlay/badge or cursor hint — external OS drag always “copy”; in-tree shows “move” or “copy” based on modifier + same-FS (cross-FS always “copy”). Implement as a small label in the highlight overlay (l10n: `fileTreeImportDropCopy` / `fileTreeImportDropMove`).
+5. Filter mode: only **visible** rows are valid hover targets; empty area still resolves to root by Y. Prefer `visibleRows` + `kFileTreeRowExtent` + list scroll offset for row/root band geometry (`file_tree_visible_rows.dart`).
+6. Build `FileTreeDropIngestor` once per panel state; pass dialog `ConflictResolver` that shows Task 6 dialogs.
+7. **Progress + silent summary:** After `planSources` / plan build, if `shouldShowImportProgress` → show progress dialog wrapping `run` with cancel flag; else run silently. When summary has `failed > 0` or `skipped > 0` (or cancelled), always show toast/snack with `fileTreeImportSummary` — **including the silent path**.
+8. **`ExternalFileDropRegion` API:** If adding `onDropDetails` / custom handler, document: when custom handler is non-null, **do not** also call `target.consume` (avoid double ingest). Keep `target` required for Compose/Terminal unchanged call sites (they omit the new optional callback).
 
 Modifier copy detection helper (put next to ingestor or in drop region):
 
@@ -459,7 +472,15 @@ cd client && flutter test test/services/file_tree_import test/widgets/file_tree
 
 Expected: PASS
 
-- [ ] **Step 2: Run analyze**
+- [ ] **Step 2: Run broader unit suite (optional but preferred)**
+
+```bash
+cd client && flutter test --exclude-tags integration
+```
+
+Expected: PASS (or only pre-existing failures unrelated to this feature)
+
+- [ ] **Step 3: Run analyze**
 
 ```bash
 cd client && flutter analyze --no-fatal-infos --no-fatal-warnings
@@ -467,7 +488,7 @@ cd client && flutter analyze --no-fatal-infos --no-fatal-warnings
 
 Expected: no errors related to new code
 
-- [ ] **Step 3: Manual smoke (desktop)**
+- [ ] **Step 4: Manual smoke (desktop)**
 
 1. Local workspace: drag files + folder from OS into folder / onto file / empty → correct dest
 2. Conflict dialog overwrite/skip/apply remaining
@@ -475,7 +496,7 @@ Expected: no errors related to new code
 4. SSH or WSL workspace: OS drop uploads with progress; cancel leaves prior files
 5. Compose/Terminal drop still inserts paths only (regression)
 
-- [ ] **Step 4: Commit any leftover fixes**
+- [ ] **Step 5: Commit any leftover fixes**
 
 ```bash
 git add -A  # only intentional leftovers from this feature
