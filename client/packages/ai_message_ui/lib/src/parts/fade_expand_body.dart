@@ -31,6 +31,7 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
   double? _childHeight;
 
   void _onMeasured(Size size) {
+    if (!mounted) return;
     if (_childHeight == size.height) return;
     setState(() => _childHeight = size.height);
   }
