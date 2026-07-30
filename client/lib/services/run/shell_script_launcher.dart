@@ -25,7 +25,7 @@ class RunShellScriptLauncher implements RunProcessLauncher {
     registerTerminalSession,
   }) : _terminalRunDeps = terminalRunDeps,
        _processExecutor = processExecutor,
-       _resolver = resolver ?? const RunTargetResolver(),
+       _resolver = resolver ?? RunTargetResolver(),
        _commandBuilder = commandBuilder ?? const ShellScriptCommandBuilder(),
        _emitUiIntent = emitUiIntent ?? ((_) {}),
        _registerTerminalSession = registerTerminalSession;

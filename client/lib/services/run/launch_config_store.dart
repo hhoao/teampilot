@@ -2,9 +2,11 @@ import 'dart:convert';
 
 import '../../models/run/launch_config_document.dart';
 import '../../models/run/launch_configuration.dart';
+import '../../models/runtime_target.dart';
 import '../../models/workspace_folder.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
+import '../storage/work_target_canonicalizer.dart';
 
 /// Read/write surface for per-folder `.teampilot/launch.json`.
 ///
@@ -77,20 +79,25 @@ typedef LaunchConfigFilesystemResolver =
 class TargetAwareLaunchConfigIo implements LaunchConfigIo {
   TargetAwareLaunchConfigIo({
     required LaunchConfigFilesystemResolver resolveFilesystem,
-  }) : _resolveFilesystem = resolveFilesystem;
+    RuntimeTarget Function()? homeTarget,
+  }) : _resolveFilesystem = resolveFilesystem,
+       _homeTarget = homeTarget ?? (() => RuntimeTarget.local());
 
   final LaunchConfigFilesystemResolver _resolveFilesystem;
+  final RuntimeTarget Function() _homeTarget;
 
   /// Convenience: AppStorage home FS for local; inject resolver for WSL/SSH.
   factory TargetAwareLaunchConfigIo.localFallback({
     LaunchConfigFilesystemResolver? resolveFilesystem,
+    RuntimeTarget Function()? homeTarget,
   }) {
     return TargetAwareLaunchConfigIo(
+      homeTarget: homeTarget,
       resolveFilesystem:
           resolveFilesystem ??
           (targetId) async {
-            if (targetId == WorkspaceFolder.localTargetId ||
-                targetId.trim().isEmpty) {
+            if (WorkTargetCanonicalizer.fromId(targetId).kind ==
+                RuntimeKind.local) {
               return AppStorage.fs;
             }
             throw StateError(
@@ -100,7 +107,13 @@ class TargetAwareLaunchConfigIo implements LaunchConfigIo {
     );
   }
 
-  Future<Filesystem> _fsFor(String targetId) => _resolveFilesystem(targetId);
+  Future<Filesystem> _fsFor(String targetId) {
+    final resolved = WorkTargetCanonicalizer.resolve(
+      targetId,
+      home: _homeTarget(),
+    );
+    return _resolveFilesystem(resolved.id);
+  }
 
   @override
   Future<bool> exists(String path, {required String targetId}) async {

@@ -280,6 +280,14 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     }
   }
 
+  RuntimeTarget _homeTargetForLaunch() {
+    try {
+      return context.read<HomeTargetController>().current;
+    } on Object {
+      return RuntimeTarget.local();
+    }
+  }
+
   void _startVoiceSessionClock() {
     _voiceStopwatch = Stopwatch()..start();
     _voiceSoundLevel = 0;
@@ -571,6 +579,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           globalPresets: presets,
           selectableTargets: _runtimeTargets,
           readiness: readiness,
+          home: _homeTargetForLaunch(),
         );
       }
       if (!mounted || generation != _teamLaunchReadinessGeneration) return;
@@ -936,6 +945,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           globalPresets: presets,
           selectableTargets: _runtimeTargets,
           readiness: readiness,
+          home: _homeTargetForLaunch(),
         );
         if (!mounted) return;
         if (remoteBlock != null) {

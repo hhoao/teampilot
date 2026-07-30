@@ -1,4 +1,5 @@
 import '../../models/extension_manifest.dart';
+import '../../models/runtime_target.dart';
 import '../../models/run/run_ui_intent.dart';
 import '../../models/ssh_profile.dart';
 import '../../models/workspace_folder.dart';
@@ -10,6 +11,7 @@ import '../io/filesystem.dart';
 import '../ssh/ssh_client_factory.dart';
 import '../storage/app_storage.dart';
 import '../storage/runtime_context.dart';
+import '../storage/work_target_canonicalizer.dart';
 import '../terminal/workspace_terminal_run_service.dart';
 import 'launch_adapter_client.dart';
 import 'launch_config_store.dart';
@@ -18,6 +20,7 @@ import 'launch_type_registry.dart';
 import 'process_run_executor.dart';
 import 'run_platform.dart';
 import 'run_session_manager.dart';
+import 'run_target_resolver.dart';
 import 'shell_script_launcher.dart';
 
 /// [RunPlatform] plus the retained entry-closed listener tear-off for cleanup.
@@ -49,6 +52,7 @@ class WorkspaceRunPlatformFactory {
     SshProfileRepository? sshProfileRepository,
     SshClientFactory? sshClientFactory,
     TerminalRunDepsResolver? terminalRunDeps,
+    RuntimeTarget Function()? homeTarget,
   }) : _extensionRepository = extensionRepository,
        _projectConfigRepository = projectConfigRepository,
        _fs = fs,
@@ -57,6 +61,7 @@ class WorkspaceRunPlatformFactory {
        _resolveWorkContext = resolveWorkContext,
        _sshProfileRepository = sshProfileRepository,
        _sshClientFactory = sshClientFactory,
+       _homeTarget = homeTarget ?? (() => RuntimeTarget.local()),
        terminalRunDeps = terminalRunDeps ?? TerminalRunDepsResolver();
 
   final ExtensionRepository _extensionRepository;
@@ -67,6 +72,7 @@ class WorkspaceRunPlatformFactory {
   final Future<RuntimeContext> Function(String targetId)? _resolveWorkContext;
   final SshProfileRepository? _sshProfileRepository;
   final SshClientFactory? _sshClientFactory;
+  final RuntimeTarget Function() _homeTarget;
 
   /// Filled after [WorkspaceShellConnector] exists (see app_shell bootstrap).
   final TerminalRunDepsResolver terminalRunDeps;
@@ -89,15 +95,20 @@ class WorkspaceRunPlatformFactory {
       extensionPathResolver: pathFor,
     );
     final store = LaunchConfigStore(
-      io: TargetAwareLaunchConfigIo(resolveFilesystem: _filesystemForTarget),
+      io: TargetAwareLaunchConfigIo(
+        resolveFilesystem: _filesystemForTarget,
+        homeTarget: _homeTarget,
+      ),
     );
     final executor = ProcessRunExecutor(sshSpawner: _sshSpawner);
+    final runTargetResolver = RunTargetResolver(homeTarget: _homeTarget);
     RunSessionManager? sessionManagerRef;
     final sessionManager = RunSessionManager(
       executor: RunShellScriptLauncher(
         workspaceId: workspaceId,
         terminalRunDeps: terminalRunDeps,
         processExecutor: executor,
+        resolver: runTargetResolver,
         emitUiIntent: emitUiIntent,
         registerTerminalSession: ({
           required String entryId,
@@ -131,10 +142,11 @@ class WorkspaceRunPlatformFactory {
   }
 
   Future<Filesystem> _filesystemForTarget(String targetId) async {
+    if (WorkTargetCanonicalizer.fromId(targetId).kind == RuntimeKind.local) {
+      return _filesystem;
+    }
     final resolver = _resolveWorkContext;
-    if (resolver == null ||
-        targetId == WorkspaceFolder.localTargetId ||
-        targetId.trim().isEmpty) {
+    if (resolver == null) {
       return _filesystem;
     }
     final ctx = await resolver(targetId);

@@ -158,6 +158,7 @@ class WorkspaceLandingLaunchGate {
     required List<CliPreset> globalPresets,
     required List<RuntimeTarget> selectableTargets,
     required RemoteCliReadinessService readiness,
+    required RuntimeTarget home,
   }) async {
     if (!draft.isPersonal) return null;
     final identity = resolveLandingSimpleLaunchIdentity(
@@ -173,6 +174,7 @@ class WorkspaceLandingLaunchGate {
       projectFolderPath: projectFolderPath,
       cli: identity.cli,
       selectableTargets: selectableTargets,
+      home: home,
     );
     return _probeRemoteCliRequirements(requirements, readiness);
   }

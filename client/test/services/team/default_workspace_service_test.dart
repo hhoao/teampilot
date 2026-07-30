@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/team/team_roster_editor.dart';
+import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/team/default_workspace_service.dart';
@@ -74,6 +75,22 @@ void main() {
       sessions.where((s) => s.workspaceId == workspaces.single.workspaceId),
       hasLength(2),
     );
+  });
+
+  test('ensureDefault stamps ssh home as folder targetId', () async {
+    final repo = SessionRepository();
+    final team = const TeamRosterEditor().defaultNativeTeam();
+    final home = RuntimeTarget.ssh('p1', label: 'box');
+
+    await DefaultWorkspaceService.ensureDefault(
+      repo,
+      defaultTeam: team,
+      home: home,
+    );
+
+    final workspaces = await repo.loadWorkspaces();
+    expect(workspaces, isNotEmpty);
+    expect(workspaces.first.folders.first.targetId, 'ssh:p1');
   });
 
   test('ensureDefault is idempotent and reports no mutation', () async {

@@ -17,6 +17,9 @@ class HomeTargetController {
   final RuntimeTarget Function() _current;
   final Future<void> Function(String id) _switchTo;
 
+  /// Active home target (local / SSH / WSL).
+  RuntimeTarget get current => _current();
+
   /// Canonical id of the active home target.
   String get currentId => _current().id;
 

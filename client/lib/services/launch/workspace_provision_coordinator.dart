@@ -4,6 +4,7 @@ import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
 import '../../utils/logging/logger.dart';
 import '../cli/installer_types.dart';
+import '../storage/work_target_canonicalizer.dart';
 import 'launch_artifacts.dart';
 import 'workspace_provisioner.dart';
 
@@ -21,8 +22,13 @@ class WorkspaceProvisionCoordinator {
   final Map<String, WorkspaceProvisionResult> _ready = {};
 
   bool isOffHome(RuntimeTarget memberTarget) {
-    if (memberTarget.kind != RuntimeKind.ssh) return false;
-    return memberTarget.id != homeTarget().id;
+    final home = homeTarget();
+    final resolved = WorkTargetCanonicalizer.resolve(
+      memberTarget.id,
+      home: home,
+    );
+    if (resolved.kind != RuntimeKind.ssh) return false;
+    return resolved.id != home.id;
   }
 
   /// Background provision when a workspace tab opens or config changes.

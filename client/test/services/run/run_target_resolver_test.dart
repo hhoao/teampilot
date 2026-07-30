@@ -51,4 +51,13 @@ void main() {
     expect(plan.runtimeTarget.sshProfileId, 'profile-1');
     expect(plan.useWslPaths, isFalse);
   });
+
+  test('resolves local owner to ssh home', () {
+    final home = RuntimeTarget.ssh('p1', label: 'box');
+    final plan = RunTargetResolver(homeTarget: () => home).resolve(
+      owner: const WorkspaceFolder(path: '/repo'),
+    );
+    expect(plan.runtimeTarget.kind, RuntimeKind.ssh);
+    expect(plan.targetId, 'ssh:p1');
+  });
 }

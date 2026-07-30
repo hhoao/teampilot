@@ -8,6 +8,7 @@ import '../../models/workspace_folder.dart';
 import '../../models/workspace_topology.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 import '../cli/preset_resolver.dart';
+import '../storage/work_target_canonicalizer.dart';
 
 /// One required remote CLI for an SSH machine used by the current placement.
 class RemoteCliRequirement {
@@ -72,6 +73,7 @@ RuntimeTarget? sshTargetForProjectFolder({
   required Workspace workspace,
   required String projectFolderPath,
   required List<RuntimeTarget> selectableTargets,
+  required RuntimeTarget home,
 }) {
   final normalized = normalizeWorkspacePath(projectFolderPath);
   WorkspaceFolder? folder;
@@ -84,13 +86,16 @@ RuntimeTarget? sshTargetForProjectFolder({
   folder ??= workspace.folders.firstOrNull;
   if (folder == null) return null;
 
-  final targetId = folder.targetId.trim();
-  if (targetId.isEmpty || targetId == WorkspaceFolder.localTargetId) {
-    return null;
-  }
+  final resolved = WorkTargetCanonicalizer.resolve(
+    folder.targetId,
+    home: home,
+  );
+  if (resolved.kind != RuntimeKind.ssh) return null;
+
   return selectableTargets
-      .where((t) => t.id == targetId && t.kind == RuntimeKind.ssh)
-      .firstOrNull;
+      .where((t) => t.id == resolved.id && t.kind == RuntimeKind.ssh)
+      .firstOrNull ??
+      resolved;
 }
 
 /// Required remote CLI for Simple (personal) launch on an SSH project folder.
@@ -99,11 +104,13 @@ List<RemoteCliRequirement> remoteCliRequirementsForSimpleLaunch({
   required String projectFolderPath,
   required CliTool cli,
   required List<RuntimeTarget> selectableTargets,
+  required RuntimeTarget home,
 }) {
   final target = sshTargetForProjectFolder(
     workspace: workspace,
     projectFolderPath: projectFolderPath,
     selectableTargets: selectableTargets,
+    home: home,
   );
   if (target == null) return const [];
 

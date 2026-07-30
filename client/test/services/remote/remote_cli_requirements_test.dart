@@ -76,13 +76,34 @@ void main() {
     expect(requirements, hasLength(1));
   });
 
+  group('sshTargetForProjectFolder', () {
+    test('SSH home + local folder returns home ssh target', () {
+      final home = RuntimeTarget.ssh('host-a', label: 'Build host');
+      final ws = Workspace(
+        workspaceId: 'ws',
+        folders: const [WorkspaceFolder(path: '/local')],
+        createdAt: 1,
+      );
+      final target = sshTargetForProjectFolder(
+        workspace: ws,
+        projectFolderPath: '/local',
+        selectableTargets: [home],
+        home: home,
+      );
+      expect(target?.id, 'ssh:host-a');
+    });
+  });
+
   group('remoteCliRequirementsForSimpleLaunch', () {
+    final localHome = RuntimeTarget.local();
+
     test('returns requirement for SSH project folder', () {
       final requirements = remoteCliRequirementsForSimpleLaunch(
         workspace: workspace,
         projectFolderPath: '/remote',
         cli: CliTool.codex,
         selectableTargets: [localTarget, sshTarget],
+        home: localHome,
       );
 
       expect(requirements, hasLength(1));
@@ -96,6 +117,7 @@ void main() {
         projectFolderPath: '/local',
         cli: CliTool.codex,
         selectableTargets: [localTarget, sshTarget],
+        home: localHome,
       );
 
       expect(requirements, isEmpty);

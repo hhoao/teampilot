@@ -6,6 +6,8 @@ import '../l10n/l10n_extensions.dart';
 import '../models/workspace.dart';
 import '../models/workspace_folder.dart';
 import '../repositories/session_repository.dart';
+import '../services/storage/home_target_controller.dart';
+import '../services/storage/work_target_canonicalizer.dart';
 import 'workspace_folders_editor.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -41,6 +43,7 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
   late final TextEditingController _displayController;
   late List<WorkspaceFolder> _folders;
   var _saving = false;
+  var _defaultTargetIdInitialized = false;
 
   @override
   void initState() {
@@ -49,6 +52,21 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
     _folders = List<WorkspaceFolder>.from(widget.workspace.folders);
     if (_folders.isEmpty) {
       _folders = [const WorkspaceFolder(path: '')];
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_defaultTargetIdInitialized) return;
+    _defaultTargetIdInitialized = true;
+    final homeDefault = WorkTargetCanonicalizer.defaultFolderTargetId(
+      context.read<HomeTargetController>().current,
+    );
+    if (_folders.length == 1 &&
+        _folders.single.path.trim().isEmpty &&
+        _folders.single.targetId == WorkspaceFolder.localTargetId) {
+      _folders = [WorkspaceFolder(path: '', targetId: homeDefault)];
     }
   }
 

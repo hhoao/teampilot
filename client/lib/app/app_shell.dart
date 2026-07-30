@@ -675,6 +675,7 @@ Future<AppShell> buildAppShell({
   sessionLifecycleService = SessionLifecycleService(
     storageRootsResolver: () async => AppStorage.context,
     catalogContextResolver: () async => runtimeContextRegistry.home(),
+    homeTarget: defaultTargetResolver,
     // P2: launch resolves the work-plane on the workspace's target machine.
     workContextResolver: runtimeContextRegistry.forTarget,
     loadEnabledExtensionIds: ({teamId, workspaceId}) async {
@@ -865,6 +866,7 @@ Future<AppShell> buildAppShell({
       resolveWorkContext: sessionLifecycleService.resolveWorkContextForTargetId,
       sshProfileRepository: sshProfileRepo,
       sshClientFactory: sshClientFactory,
+      homeTarget: defaultTargetResolver,
     ),
   );
   final configCubit = ConfigCubit();
@@ -890,6 +892,7 @@ Future<AppShell> buildAppShell({
     sshProfileRepository: sshProfileRepo,
     sshUseLoginShell: () =>
         sessionPreferencesCubit.state.preferences.sshUseLoginShell,
+    homeTarget: defaultTargetResolver,
   );
   // Terminal inject deps after connector: registry was created earlier.
   final workspaceTerminalSessionOps = WorkspaceTerminalSessionOps();
@@ -1165,6 +1168,7 @@ Future<AppShell> buildAppShell({
     homeSshProfileId: defaultTargetResolver().sshProfileId,
     sshProfileExists: (id) => sshProfileById(id) != null,
     reinstallStorageContext: reinstallStorageContext,
+    home: defaultTargetResolver(),
   );
 
   Future<void> bootstrapAppData() async {
@@ -1189,6 +1193,7 @@ Future<AppShell> buildAppShell({
           homeSshProfileId: defaultTargetResolver().sshProfileId,
           sshProfileExists: (id) => sshProfileById(id) != null,
           reinstallStorageContext: reinstallStorageContext,
+          home: defaultTargetResolver(),
         );
       } else {
         await AppDataBootstrap.hydrateNativeHomeIndex(
@@ -1197,6 +1202,7 @@ Future<AppShell> buildAppShell({
           chatCubit: chatCubit,
           sessionRepo: sessionRepo,
           layoutCubit: layoutCubit,
+          home: defaultTargetResolver(),
         );
       }
       bootstrapCubit?.markHomeIndexReady();
@@ -1273,6 +1279,7 @@ Future<AppShell> buildAppShell({
     connector: workspaceShellConnector,
     layout: layoutCubit,
     sessionOps: workspaceTerminalSessionOps,
+    homeTarget: defaultTargetResolver,
   );
   workbenchShellLauncher = resolvedShellLauncher;
   final floatingSurfaceRegistry = FloatingSurfaceRegistry.withDefaults(

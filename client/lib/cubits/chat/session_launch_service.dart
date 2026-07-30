@@ -26,6 +26,7 @@ import '../../services/launch/session_tab_connect_prep.dart';
 import '../../services/launch/session_launch_workspace_index.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/session/session_member_cli_locks.dart';
+import '../../services/storage/work_target_canonicalizer.dart';
 import '../../services/team/team_config_launch_validator.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
 import 'session_launch_host.dart';
@@ -565,15 +566,20 @@ class SessionLaunchService
       _state.sessions,
       workspaces: _state.workspaces,
     );
+    final homeTargetId = WorkTargetCanonicalizer.defaultFolderTargetId(
+      _h.lifecycle.currentHome,
+    );
     final session =
         tab.persistedSession ??
         AppSession(
           sessionId: tab.info.id,
           workspaceId: '',
           folders: [
-            if (launch.$1.isNotEmpty) WorkspaceFolder(path: launch.$1),
+            if (launch.$1.isNotEmpty)
+              WorkspaceFolder(path: launch.$1, targetId: homeTargetId),
             for (final p in launch.$2)
-              if (p.isNotEmpty) WorkspaceFolder(path: p),
+              if (p.isNotEmpty)
+                WorkspaceFolder(path: p, targetId: homeTargetId),
           ],
           sessionTeam: team.id,
           cliTeamName: tab.effectiveCliTeamName,

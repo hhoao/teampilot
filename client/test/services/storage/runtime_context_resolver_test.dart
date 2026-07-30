@@ -40,8 +40,7 @@ void main() {
     expect(ctx.appDataRoot, tmp.path); // fell back to native off Windows
   });
 
-  test('ssh target with no profile falls back to native off Android', () async {
-    if (Platform.isAndroid) return;
+  test('ssh target with no profile falls back to native', () async {
     final tmp = await Directory.systemTemp.createTemp('rcr_ssh_');
     addTearDown(() => tmp.deleteSync(recursive: true));
     final resolver = RuntimeContextResolver(

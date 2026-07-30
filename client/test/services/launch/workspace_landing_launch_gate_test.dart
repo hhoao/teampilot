@@ -175,6 +175,7 @@ void main() {
       kind: RuntimeKind.ssh,
       sshProfileId: 'host-a',
     );
+    final localHome = RuntimeTarget.local();
 
     test('blocks when remote CLI is missing on SSH project folder', () async {
       final workspace = Workspace(
@@ -192,6 +193,7 @@ void main() {
         globalPresets: const [],
         selectableTargets: const [sshTarget],
         readiness: _FakeRemoteCliReadiness(alwaysReady: false),
+        home: localHome,
       );
 
       expect(block, isA<RemoteCliMissingLaunchBlock>());
@@ -213,6 +215,7 @@ void main() {
         globalPresets: const [],
         selectableTargets: const [sshTarget],
         readiness: _FakeRemoteCliReadiness(alwaysReady: true),
+        home: localHome,
       );
 
       expect(block, isNull);
