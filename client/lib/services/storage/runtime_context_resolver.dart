@@ -38,10 +38,9 @@ class RuntimeContextResolver {
     SshProfile? sshProfile,
   }) async {
     final useSsh =
-        Platform.isAndroid ||
-        (target.kind == RuntimeKind.ssh &&
-            sshProfile != null &&
-            sshClientFactory != null);
+        target.kind == RuntimeKind.ssh &&
+        sshProfile != null &&
+        sshClientFactory != null;
 
     if (useSsh && sshProfile != null && sshClientFactory != null) {
       return _resolveSsh(
