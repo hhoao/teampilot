@@ -12,7 +12,7 @@ device-local control plane for SSH profiles / `targets.json`.
 
 ## Goal
 
-On Android, make **Termux a first-class work home** peer to remote SSH: one home = one machine for file tree, Git, workspace shell, and CLI agent sessions. Cold start offers Termux **or** remote SSH; neither is mandatory if the other is connected.
+On Android, make **Termux a first-class work home** peer to remote SSH: one home = one machine for file tree, Git, workspace shell, and CLI agent sessions. Cold start offers Termux **or** remote SSH; neither path is mandatory once the other home is **bound** (persisted). Connection liveness is separate from that bind.
 
 ## Decisions (locked)
 
