@@ -195,7 +195,10 @@ Add:
 testWidgets('collapsed shell output capped at 5 lines', …);
 testWidgets('tap shell mini panel toggles full output', …);
 testWidgets('initiallyExpanded shows full shell output', …);
+testWidgets('expanded shell output is selectable', …); // SelectionArea / SelectableText as applicable
 ```
+
+When implementing `_ShellToolCard`, remove the header-level `GestureDetector` from today’s `_ShellToolTrigger` so only `AiExpandableToolCard` owns toggle. Update `tool_call_edit_target_test.dart` Bash “still shell chrome” case if it still asserts collapsed hides command.
 
 - [ ] **Step 2: Implement shell card**
 
