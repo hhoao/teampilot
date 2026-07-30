@@ -67,6 +67,7 @@ class WorkspaceShellConnector {
     final target = runtimeTargetFor(spec);
     return switch (target.kind) {
       RuntimeKind.ssh => _sshLaunchPlan(workingDirectory: workingDirectory),
+      RuntimeKind.termux => _sshLaunchPlan(workingDirectory: workingDirectory),
       RuntimeKind.wsl => _wslLaunchPlan(
         distro: target.wslDistro ?? '',
         shell: _posixShellSpec(spec),
@@ -241,6 +242,7 @@ class WorkspaceShellConnector {
   dnd.RuntimeTarget _dndTargetFor(RuntimeTarget target) =>
       switch (target.kind) {
         RuntimeKind.ssh => const dnd.RuntimeTarget.ssh(),
+        RuntimeKind.termux => const dnd.RuntimeTarget.ssh(),
         RuntimeKind.wsl => dnd.RuntimeTarget.wsl(),
         RuntimeKind.local =>
           Platform.isWindows

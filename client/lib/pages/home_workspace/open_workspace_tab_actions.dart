@@ -32,6 +32,7 @@ String? formatWorkspaceFolderTooltipLine(WorkspaceFolder folder) {
   if (path.isEmpty) return null;
   return switch (runtimeKindOfId(folder.targetId)) {
     RuntimeKind.ssh => 'SSH: $path',
+    RuntimeKind.termux => 'Termux: $path',
     RuntimeKind.wsl => 'WSL: $path',
     RuntimeKind.local => path,
   };

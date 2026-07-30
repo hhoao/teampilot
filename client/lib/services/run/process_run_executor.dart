@@ -195,6 +195,12 @@ class ProcessRunExecutor {
         plan: plan,
         environment: launchEnv,
       ),
+      RuntimeKind.termux => _spawnSsh(
+        command: command,
+        args: args,
+        plan: plan,
+        environment: launchEnv,
+      ),
     };
   }
 

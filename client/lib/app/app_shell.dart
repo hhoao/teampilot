@@ -398,6 +398,7 @@ Future<AppShell> buildAppShell({
       sshProfileIdOfId(id) ?? '',
       label: 'SSH',
     ),
+    RuntimeKind.termux => RuntimeTarget.termux(),
     RuntimeKind.wsl => RuntimeTarget.wsl(wslDistroOfId(id) ?? ''),
     RuntimeKind.local => RuntimeTarget.local(),
   };

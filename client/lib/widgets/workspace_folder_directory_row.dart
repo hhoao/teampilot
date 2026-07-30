@@ -56,6 +56,7 @@ String workspaceFolderTargetLabel(
 IconData workspaceFolderTargetIcon(String targetId) {
   return switch (runtimeKindOfId(targetId)) {
     RuntimeKind.ssh => Icons.dns_outlined,
+    RuntimeKind.termux => Icons.phone_android_outlined,
     RuntimeKind.wsl => Icons.terminal_outlined,
     RuntimeKind.local => Icons.computer_outlined,
   };

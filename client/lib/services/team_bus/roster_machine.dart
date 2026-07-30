@@ -22,7 +22,7 @@ RosterMachine rosterMachineFromTarget(
   final machine = switch (target.kind) {
     RuntimeKind.local => 'local',
     RuntimeKind.wsl => id,
-    RuntimeKind.ssh =>
+    RuntimeKind.ssh || RuntimeKind.termux =>
       (profile != null && profile.hostIdentifier.trim().isNotEmpty)
           ? profile.hostIdentifier
           : id,
