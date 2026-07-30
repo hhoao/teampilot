@@ -11,6 +11,7 @@ abstract final class McpMethod {
 
 /// JSON-RPC 2.0 error codes used by the teammate-bus MCP server.
 abstract final class JsonRpcErrorCode {
+  static const serverError = -32000;
   static const methodNotFound = -32601;
   static const invalidParams = -32602;
 }
