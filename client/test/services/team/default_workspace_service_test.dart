@@ -128,6 +128,44 @@ void main() {
     expect(Directory(p.join(remoteHome.path, 'TeamPilot')).existsSync(), isTrue);
   });
 
+  test('ensureDefault uses home/TeamPilot path for termux home', () async {
+    final termuxHome = Directory(p.join(base.path, 'termux-home'))
+      ..createSync();
+    final appData = Directory(p.join(base.path, 'termux-app-data'))
+      ..createSync();
+    AppStorage.installForTesting(
+      filesystem: LocalFilesystem(
+        pathContext: AppPaths.pathContextForDataRoot(termuxHome.path),
+      ),
+      paths: AppPaths(appData.path),
+      home: termuxHome.path,
+      cwd: termuxHome.path,
+    );
+    DefaultWorkspaceDirectory.setForTesting(p.join(base.path, 'Documents'));
+
+    final repo = SessionRepository();
+    final team = const TeamRosterEditor().defaultNativeTeam();
+    final home = RuntimeTarget.termux();
+
+    await DefaultWorkspaceService.ensureDefault(
+      repo,
+      defaultTeam: team,
+      home: home,
+    );
+
+    final workspaces = await repo.loadWorkspaces();
+    expect(workspaces, isNotEmpty);
+    expect(
+      workspaces.first.folders.first.path,
+      normalizeWorkspacePath(p.join(termuxHome.path, 'TeamPilot')),
+    );
+    expect(workspaces.first.folders.first.targetId, 'termux:default');
+    expect(
+      Directory(p.join(termuxHome.path, 'TeamPilot')).existsSync(),
+      isTrue,
+    );
+  });
+
   test('ensureDefault is idempotent and reports no mutation', () async {
     final repo = SessionRepository();
     final team = const TeamRosterEditor().defaultNativeTeam();
