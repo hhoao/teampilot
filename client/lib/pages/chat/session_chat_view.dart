@@ -49,7 +49,6 @@ import '../../services/session/history_seat_key.dart';
 import '../../services/session/session_continue_overrides_apply.dart';
 import '../../services/session/session_history_pagination.dart';
 import '../../services/storage/app_storage.dart';
-import '../../services/ai_history/workspace_edit_context_enricher.dart';
 import '../../services/ai_history/workspace_edit_line_highlighter.dart';
 import '../../services/workbench/ai_tool_file_open_coordinator.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
@@ -1360,15 +1359,6 @@ class _SessionChatViewState extends State<SessionChatView> {
                                           );
                                         }
                                       },
-                                enrichEditContext: workspaceFs == null
-                                    ? null
-                                    : (hunk) => WorkspaceEditContextEnricher(
-                                        fs: workspaceFs,
-                                        sessionWorkingDirectory:
-                                            sessionWorkingDirectory,
-                                        workspaceFolderPaths:
-                                            workspaceFolderPaths,
-                                      ).enrich(hunk),
                                 lineHighlighter: WorkspaceAiEditLineHighlighter(
                                   brightness: Theme.of(context).brightness,
                                 ),

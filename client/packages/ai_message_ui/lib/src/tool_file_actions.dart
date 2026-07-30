@@ -9,13 +9,11 @@ class AiToolFileActions {
   const AiToolFileActions({
     this.resolver = const DefaultAiToolFileTargetResolver(),
     this.onOpenFile,
-    this.enrichEditContext,
     this.lineHighlighter = const PlainEditLineHighlighter(),
   });
 
   final AiToolFileTargetResolver resolver;
   final Future<void> Function(AiToolFileTarget target)? onOpenFile;
-  final Future<AiEditHunk> Function(AiEditHunk hunk)? enrichEditContext;
   final AiEditLineHighlighter lineHighlighter;
 
   static AiToolFileActions of(BuildContext context) {

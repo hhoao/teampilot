@@ -7,6 +7,7 @@ import '../markdown/compiled_markdown_chrome.dart';
 import '../markdown/compiled_markdown_style.dart';
 import '../parts/expandable_tool_card.dart';
 import '../parts/fade_expand_body.dart';
+import '../selection_dead_zone.dart';
 import '../theme.dart';
 import '../tool_file_actions.dart';
 import 'edit_line_highlighter.dart';
@@ -103,9 +104,18 @@ class EditToolCard extends StatelessWidget {
     }
 
     final badges = <Widget>[
-      if (hunk.addedCount > 0) _EditBadge(label: '+${hunk.addedCount}', color: scheme.primary),
+      if (hunk.addedCount > 0)
+        _EditBadge(
+          label: '+${hunk.addedCount}',
+          color: scheme.primary,
+          style: markdown.toolTrigger(scheme.primary),
+        ),
       if (hunk.removedCount > 0)
-        _EditBadge(label: '−${hunk.removedCount}', color: scheme.error),
+        _EditBadge(
+          label: '-${hunk.removedCount}',
+          color: scheme.error,
+          style: markdown.toolTrigger(scheme.error),
+        ),
     ];
 
     return Column(
@@ -151,85 +161,8 @@ class EditToolCard extends StatelessWidget {
           open: open,
           onToggle: onToggle,
           forceChrome: !open && hasMore,
-          onOpenFile: onOpenFile == null ? null : () => onOpenFile(openTarget!),
         ),
       ],
-    );
-  }
-}
-
-/// Stateful wrapper that enriches hunk context after first frame.
-class EditToolCardHost extends StatefulWidget {
-  const EditToolCardHost({
-    required this.part,
-    required this.initialHunk,
-    required this.actions,
-    required this.triggerColor,
-    required this.markdown,
-    required this.dense,
-    required this.open,
-    required this.onToggle,
-    super.key,
-  });
-
-  final AiToolCallPart part;
-  final AiEditHunk initialHunk;
-  final AiToolFileActions actions;
-  final Color triggerColor;
-  final CompiledMarkdownStyle markdown;
-  final bool dense;
-  final bool open;
-  final VoidCallback onToggle;
-
-  @override
-  State<EditToolCardHost> createState() => _EditToolCardHostState();
-}
-
-class _EditToolCardHostState extends State<EditToolCardHost> {
-  late AiEditHunk _hunk = widget.initialHunk;
-
-  @override
-  void initState() {
-    super.initState();
-    _scheduleEnrich();
-  }
-
-  @override
-  void didUpdateWidget(EditToolCardHost oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.initialHunk, widget.initialHunk)) {
-      _hunk = widget.initialHunk;
-      _scheduleEnrich();
-    }
-  }
-
-  void _scheduleEnrich() {
-    final enrich = widget.actions.enrichEditContext;
-    if (enrich == null) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      try {
-        final enriched = await enrich(_hunk);
-        if (!mounted) return;
-        setState(() => _hunk = enriched);
-      } on Object {
-        // Keep args-only hunk on enrich failure.
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Fade/chevron only (user-bubble parity) — no whole-card tap wrapper.
-    return EditToolCard(
-      part: widget.part,
-      hunk: _hunk,
-      actions: widget.actions,
-      triggerColor: widget.triggerColor,
-      markdown: widget.markdown,
-      dense: widget.dense,
-      open: widget.open,
-      onToggle: widget.onToggle,
     );
   }
 }
@@ -245,7 +178,6 @@ class _EditDiffPanel extends StatelessWidget {
     required this.open,
     required this.onToggle,
     required this.forceChrome,
-    this.onOpenFile,
   });
 
   final AiEditHunk hunk;
@@ -257,7 +189,6 @@ class _EditDiffPanel extends StatelessWidget {
   final bool open;
   final VoidCallback onToggle;
   final bool forceChrome;
-  final VoidCallback? onOpenFile;
 
   @override
   Widget build(BuildContext context) {
@@ -275,7 +206,6 @@ class _EditDiffPanel extends StatelessWidget {
             scheme: scheme,
             highlighter: highlighter,
             allowWrap: open,
-            onOpenFile: onOpenFile,
           ),
       ],
     );
@@ -288,13 +218,12 @@ class _EditDiffPanel extends StatelessWidget {
       child: lineList,
     );
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
+    // Single clipped surface: line tint fills to the rounded edge (no inset
+    // frame from outer padding).
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: ColoredBox(
         color: panelColor,
-        borderRadius: BorderRadius.circular(radius),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
         child: lineList,
       ),
     );
@@ -309,7 +238,6 @@ class _EditDiffLine extends StatelessWidget {
     required this.scheme,
     required this.highlighter,
     required this.allowWrap,
-    this.onOpenFile,
   });
 
   final String path;
@@ -318,7 +246,6 @@ class _EditDiffLine extends StatelessWidget {
   final ColorScheme scheme;
   final AiEditLineHighlighter highlighter;
   final bool allowWrap;
-  final VoidCallback? onOpenFile;
 
   @override
   Widget build(BuildContext context) {
@@ -333,7 +260,7 @@ class _EditDiffLine extends StatelessWidget {
     };
     final prefix = switch (line.kind) {
       AiEditLineKind.add => '+',
-      AiEditLineKind.remove => '−',
+      AiEditLineKind.remove => '-',
       AiEditLineKind.context => ' ',
     };
     final baseStyle = mono.copyWith(color: fg);
@@ -357,7 +284,6 @@ class _EditDiffLine extends StatelessWidget {
               '${line.lineNumber}',
               style: mono.copyWith(
                 color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
-                fontSize: (mono.fontSize ?? 12) - 1,
               ),
               textAlign: TextAlign.right,
             ),
@@ -366,27 +292,30 @@ class _EditDiffLine extends StatelessWidget {
     final row = DecoratedBox(
       decoration: BoxDecoration(color: bg),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 1),
+        padding: const EdgeInsets.symmetric(vertical: 1, horizontal: 8),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GestureDetector(
-              onTap: onOpenFile,
-              behavior: HitTestBehavior.opaque,
-              child: gutter,
-            ),
-            Text(
-              prefix,
-              style: mono.copyWith(
-                color: switch (line.kind) {
-                  AiEditLineKind.add => scheme.primary,
-                  AiEditLineKind.remove => scheme.error,
-                  AiEditLineKind.context => scheme.onSurfaceVariant,
-                },
-                fontWeight: FontWeight.w600,
+            SelectionDeadZone(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  gutter,
+                  Text(
+                    prefix,
+                    style: mono.copyWith(
+                      color: switch (line.kind) {
+                        AiEditLineKind.add => scheme.primary,
+                        AiEditLineKind.remove => scheme.error,
+                        AiEditLineKind.context => scheme.onSurfaceVariant,
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                ],
               ),
             ),
-            const SizedBox(width: 4),
             Expanded(
               child: Text.rich(
                 content,
@@ -406,10 +335,15 @@ class _EditDiffLine extends StatelessWidget {
 }
 
 class _EditBadge extends StatelessWidget {
-  const _EditBadge({required this.label, required this.color});
+  const _EditBadge({
+    required this.label,
+    required this.color,
+    required this.style,
+  });
 
   final String label;
   final Color color;
+  final TextStyle style;
 
   @override
   Widget build(BuildContext context) {
@@ -422,14 +356,7 @@ class _EditBadge extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          child: Text(label, style: style),
         ),
       ),
     );

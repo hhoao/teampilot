@@ -108,7 +108,56 @@ void main() {
     expect(find.byIcon(Icons.expand_less), findsNothing);
   });
 
-  testWidgets('tap line gutter opens file and does not toggle expand', (
+  testWidgets('gutter and +/- prefix are selection-disabled', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SelectionArea(
+            child: AiToolCallPartView(
+              part: AiToolCallPart(
+                toolCallId: '1',
+                toolName: 'StrReplace',
+                args: {
+                  'file_path': 'lib/a.dart',
+                  'old_string': 'old',
+                  'new_string': 'new',
+                  'start_line': 10,
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.ancestor(of: find.text('10'), matching: find.byType(SelectionDeadZone)),
+      findsWidgets,
+    );
+    expect(
+      find.ancestor(
+        of: find.descendant(
+          of: find.byType(AiFadeExpandBody),
+          matching: find.byWidgetPredicate(
+            (w) => w is Text && (w.data == '+' || w.data == '-'),
+          ),
+        ),
+        matching: find.byType(SelectionDeadZone),
+      ),
+      findsWidgets,
+    );
+    // Code body stays selectable.
+    expect(
+      find.ancestor(
+        of: find.textContaining('new'),
+        matching: find.byType(SelectionDeadZone),
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('tap line gutter does not open file or toggle expand', (
     tester,
   ) async {
     AiToolFileTarget? opened;
@@ -145,7 +194,7 @@ void main() {
           .hitTestable(),
     );
     await tester.pumpAndSettle();
-    expect(opened, isNotNull);
+    expect(opened, isNull);
     expect(find.byIcon(Icons.expand_less), findsNothing);
   });
 
@@ -271,153 +320,23 @@ void main() {
     expect(opened?.endLine, 11);
   });
 
-  testWidgets(
-    'enricher with leading context still shows add line in collapsed preview',
-    (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: AiToolFileActionsScope(
-            actions: AiToolFileActions(
-              enrichEditContext: (hunk) async => AiEditHunk(
-                path: hunk.path,
-                addedCount: 1,
-                removedCount: 0,
-                startLine: 1,
-                lines: [
-                  const AiEditLine(
-                    kind: AiEditLineKind.context,
-                    text: 'ctx1',
-                    lineNumber: 1,
-                  ),
-                  const AiEditLine(
-                    kind: AiEditLineKind.context,
-                    text: 'ctx2',
-                    lineNumber: 2,
-                  ),
-                  const AiEditLine(
-                    kind: AiEditLineKind.context,
-                    text: 'ctx3',
-                    lineNumber: 3,
-                  ),
-                  const AiEditLine(
-                    kind: AiEditLineKind.context,
-                    text: 'ctx4',
-                    lineNumber: 4,
-                  ),
-                  const AiEditLine(
-                    kind: AiEditLineKind.context,
-                    text: 'ctx5',
-                    lineNumber: 5,
-                  ),
-                  const AiEditLine(
-                    kind: AiEditLineKind.context,
-                    text: 'ctx6',
-                    lineNumber: 6,
-                  ),
-                  const AiEditLine(
-                    kind: AiEditLineKind.add,
-                    text: 'added-line',
-                    lineNumber: 7,
-                  ),
-                ],
-              ),
-            ),
-            child: const Scaffold(
-              body: AiToolCallPartView(
-                part: AiToolCallPart(
-                  toolCallId: '1',
-                  toolName: 'StrReplace',
-                  args: {
-                    'file_path': 'lib/a.dart',
-                    'old_string': 'x',
-                    'new_string': 'y',
-                  },
-                ),
-              ),
-            ),
-          ),
+  test('previewEditHunkLines prefers change window over leading context', () {
+    final lines = [
+      for (var i = 1; i <= 6; i++)
+        AiEditLine(
+          kind: AiEditLineKind.context,
+          text: 'ctx$i',
+          lineNumber: i,
         ),
-      );
-
-      await tester.pumpAndSettle();
-      // Preview prefers change window — added-line visible; early ctx may be omitted.
-      expect(find.textContaining('added-line'), findsOneWidget);
-      expect(find.textContaining('ctx1'), findsNothing);
-    },
-  );
-
-  testWidgets('enricher throw keeps original hunk visible', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: AiToolFileActionsScope(
-          actions: AiToolFileActions(
-            enrichEditContext: (_) async => throw StateError('enrich failed'),
-          ),
-          child: const Scaffold(
-            body: AiToolCallPartView(
-              part: AiToolCallPart(
-                toolCallId: '1',
-                toolName: 'StrReplace',
-                args: {
-                  'file_path': 'lib/a.dart',
-                  'old_string': 'original-old',
-                  'new_string': 'original-new',
-                },
-              ),
-            ),
-          ),
-        ),
+      const AiEditLine(
+        kind: AiEditLineKind.add,
+        text: 'added-line',
+        lineNumber: 7,
       ),
-    );
-
-    await tester.pumpAndSettle();
-    expect(find.textContaining('original-old'), findsAtLeastNWidgets(1));
-    expect(find.textContaining('original-new'), findsAtLeastNWidgets(1));
-  });
-
-  testWidgets('enrichEditContext success updates line numbers', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: AiToolFileActionsScope(
-          actions: AiToolFileActions(
-            enrichEditContext: (hunk) async => AiEditHunk(
-              path: hunk.path,
-              addedCount: hunk.addedCount,
-              removedCount: hunk.removedCount,
-              startLine: 40,
-              lines: [
-                const AiEditLine(
-                  kind: AiEditLineKind.context,
-                  text: 'before',
-                  lineNumber: 40,
-                ),
-                const AiEditLine(
-                  kind: AiEditLineKind.add,
-                  text: 'added',
-                  lineNumber: 41,
-                ),
-              ],
-            ),
-          ),
-          child: const Scaffold(
-            body: AiToolCallPartView(
-              part: AiToolCallPart(
-                toolCallId: '1',
-                toolName: 'StrReplace',
-                args: {
-                  'file_path': 'lib/a.dart',
-                  'old_string': 'x',
-                  'new_string': 'y',
-                },
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.textContaining('40'), findsWidgets);
-    expect(find.textContaining('before'), findsAtLeastNWidgets(1));
+    ];
+    final preview = previewEditHunkLines(lines, cap: 5);
+    expect(preview.any((l) => l.text == 'added-line'), isTrue);
+    expect(preview.any((l) => l.text == 'ctx1'), isFalse);
   });
 
   testWidgets('Read still uses summary chrome', (tester) async {

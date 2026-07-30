@@ -1,5 +1,8 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+
+import '../selection_dead_zone.dart';
 
 const kAiFadeExpandCollapsedMaxHeight = 120.0;
 const kAiFadeExpandExpandedMaxHeight = 320.0;
@@ -7,9 +10,9 @@ const kAiFadeExpandHitStripHeight = 32.0;
 
 /// Collapsed fade + chevron / expanded scroll shell.
 ///
-/// Mounts [child] **once**. A custom render object lays the child out at full
-/// height, reports that height, and clips paint when collapsed — avoiding the
-/// dual probe+visible tree that doubled layout cost on long edit diffs / bubbles.
+/// Lays [child] out once per build. Collapsed: full-height layout + paint clip.
+/// Open: always capped at [expandedMaxHeight] inside a scroll view so swapping
+/// a short preview for a tall body (edit cards) never flashes unbounded height.
 class AiFadeExpandBody extends StatefulWidget {
   const AiFadeExpandBody({
     required this.open,
@@ -88,16 +91,11 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
     final overflows = _overflows;
     final needsScroll = _needsScroll;
 
-    // Until measured, clip at collapsed max (short content sizes naturally
-    // inside the render object once height is known on the same layout pass).
-    final clipAt = needsScroll
-        ? null
-        : (!widget.open || _childHeight == null)
-            ? widget.collapsedMaxHeight
-            : null;
-
-    final Widget body;
-    if (needsScroll) {
+    Widget body;
+    if (widget.open) {
+      // Always cap at expanded max while open. Edit cards swap short preview →
+      // full hunk on expand; a stale small `_childHeight` must not briefly
+      // layout the full child unbounded before the scroll path kicks in.
       body = ConstrainedBox(
         constraints: BoxConstraints(maxHeight: widget.expandedMaxHeight),
         child: SingleChildScrollView(
@@ -109,11 +107,18 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
       );
     } else {
       body = _FadeExpandClip(
-        clipMaxHeight: clipAt,
-        // When expanded mid-length, never clip; when collapsed / unknown, clip.
-        forceClip: _childHeight == null || (!widget.open && overflows),
+        clipMaxHeight: widget.collapsedMaxHeight,
+        forceClip: _childHeight == null || overflows,
         onHeight: _onChildHeight,
         child: child,
+      );
+    }
+
+    // Keep body text under the fade strip out of hit-testing / selection.
+    if (overflows) {
+      body = _BlockBottomHits(
+        blockedHeight: kAiFadeExpandHitStripHeight,
+        child: body,
       );
     }
 
@@ -126,11 +131,13 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
             left: 0,
             right: 0,
             bottom: 0,
-            child: _FadeChevronHit(
-              fadeColor: widget.fadeColor,
-              icon: widget.open ? Icons.expand_less : Icons.expand_more,
-              onTap: widget.onToggle,
-              showFade: !widget.open || needsScroll,
+            child: SelectionDeadZone(
+              child: _FadeChevronHit(
+                fadeColor: widget.fadeColor,
+                icon: widget.open ? Icons.expand_less : Icons.expand_more,
+                onTap: widget.onToggle,
+                showFade: !widget.open || needsScroll,
+              ),
             ),
           ),
       ],
@@ -288,7 +295,42 @@ class _RenderHeightReporter extends RenderProxyBox {
   }
 }
 
-class _FadeChevronHit extends StatelessWidget {
+/// Skips hit tests in the bottom [blockedHeight] so an overlay (fade strip)
+/// owns that band exclusively — body text there cannot be selected.
+class _BlockBottomHits extends SingleChildRenderObjectWidget {
+  const _BlockBottomHits({
+    required this.blockedHeight,
+    required super.child,
+  });
+
+  final double blockedHeight;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderBlockBottomHits(blockedHeight);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderBlockBottomHits renderObject,
+  ) {
+    renderObject.blockedHeight = blockedHeight;
+  }
+}
+
+class _RenderBlockBottomHits extends RenderProxyBox {
+  _RenderBlockBottomHits(this.blockedHeight);
+
+  double blockedHeight;
+
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    if (position.dy > size.height - blockedHeight) return false;
+    return super.hitTest(result, position: position);
+  }
+}
+
+class _FadeChevronHit extends StatefulWidget {
   const _FadeChevronHit({
     required this.fadeColor,
     required this.icon,
@@ -302,40 +344,58 @@ class _FadeChevronHit extends StatelessWidget {
   final bool showFade;
 
   @override
+  State<_FadeChevronHit> createState() => _FadeChevronHitState();
+}
+
+class _FadeChevronHitState extends State<_FadeChevronHit> {
+  bool _hovering = false;
+
+  @override
   Widget build(BuildContext context) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final fadeEnd = _hovering
+        ? Color.alphaBlend(onSurface.withValues(alpha: 0.14), widget.fadeColor)
+        : widget.fadeColor;
+    final iconAlpha = _hovering ? 0.78 : 0.55;
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      child: GestureDetector(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: RawGestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: onTap,
+        gestures: <Type, GestureRecognizerFactory>{
+          _MaskPointerRecognizer:
+              GestureRecognizerFactoryWithHandlers<_MaskPointerRecognizer>(
+            () => _MaskPointerRecognizer(onTap: widget.onTap),
+            (instance) => instance.onTap = widget.onTap,
+          ),
+        },
         child: SizedBox(
           height: kAiFadeExpandHitStripHeight,
           width: double.infinity,
           child: Stack(
             alignment: Alignment.center,
             children: [
-              if (showFade)
+              if (widget.showFade)
                 DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        fadeColor.withValues(alpha: 0),
-                        fadeColor,
+                        fadeEnd.withValues(alpha: 0),
+                        fadeEnd,
                       ],
                     ),
                   ),
                   child: const SizedBox.expand(),
                 ),
               Icon(
-                icon,
+                widget.icon,
                 key: const ValueKey('ai-fade-expand-chevron'),
                 size: 18,
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.55),
+                color: onSurface.withValues(alpha: iconAlpha),
               ),
             ],
           ),
@@ -343,4 +403,61 @@ class _FadeChevronHit extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Wins the gesture arena on pointer-down so ancestor [SelectableRegion]
+/// cannot start a text selection through the fade overlay.
+class _MaskPointerRecognizer extends OneSequenceGestureRecognizer {
+  _MaskPointerRecognizer({this.onTap});
+
+  VoidCallback? onTap;
+  int? _pointer;
+  Offset? _startGlobal;
+
+  @override
+  void addPointer(PointerDownEvent event) {
+    startTrackingPointer(event.pointer, event.transform);
+    _pointer = event.pointer;
+    _startGlobal = event.position;
+    resolve(GestureDisposition.accepted);
+  }
+
+  @override
+  void handleEvent(PointerEvent event) {
+    if (event.pointer != _pointer) return;
+    if (event is PointerUpEvent) {
+      final start = _startGlobal;
+      if (start != null &&
+          (event.position - start).distance <= kTouchSlop) {
+        onTap?.call();
+      }
+      _clear(event.pointer);
+    } else if (event is PointerCancelEvent) {
+      _clear(event.pointer);
+    }
+  }
+
+  void _clear(int pointer) {
+    stopTrackingPointer(pointer);
+    _pointer = null;
+    _startGlobal = null;
+  }
+
+  @override
+  void acceptGesture(int pointer) {}
+
+  @override
+  void rejectGesture(int pointer) {
+    stopTrackingPointer(pointer);
+    if (_pointer == pointer) {
+      _pointer = null;
+      _startGlobal = null;
+    }
+  }
+
+  @override
+  void didStopTrackingLastPointer(int pointer) {}
+
+  @override
+  String get debugDescription => 'maskPointer';
 }

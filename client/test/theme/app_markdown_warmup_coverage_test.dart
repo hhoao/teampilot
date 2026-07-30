@@ -38,6 +38,23 @@ void main() {
     expect(warmupKeys.contains(TpGlyphWarmup.shapeKey(sheet.code!)), isTrue);
     expect(warmupKeys.contains(TpGlyphWarmup.shapeKey(sheet.em!)), isTrue);
     expect(warmupKeys.contains(TpGlyphWarmup.shapeKey(sheet.strong!)), isTrue);
+
+    // Edit tool chrome: codeBlock (+ color only) and badge = codeLanguage + w600
+    // (same shape as toolTrigger / smSemibold).
+    final markdown = buildAppCompiledMarkdownStyle(theme);
+    expect(
+      warmupKeys.contains(TpGlyphWarmup.shapeKey(markdown.codeBlock)),
+      isTrue,
+    );
+    expect(
+      warmupKeys.contains(
+        TpGlyphWarmup.shapeKey(
+          markdown.codeLanguage.copyWith(fontWeight: FontWeight.w600),
+        ),
+      ),
+      isTrue,
+      reason: 'edit +/- badges use toolTrigger (codeLanguage+w600); must stay in warmup',
+    );
   });
 
   test('markdown code uses mono body size, not a unique scaled size', () {

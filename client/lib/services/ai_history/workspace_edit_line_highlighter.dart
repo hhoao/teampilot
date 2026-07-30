@@ -293,8 +293,12 @@ class WorkspaceAiEditLineHighlighter extends AiEditLineHighlighter {
     return buffer.toString();
   }
 
+  /// History edit cards paint on boot-warmed mono; [EditorSyntaxTheme] comment
+  /// italic / strong bold would open a cold (family, size, weight, style)
+  /// fingerprint and stall expand via fontconfig. Color-only is enough here.
   TextStyle _mergeStyle(TextStyle base, TextStyle? themed) {
-    if (themed == null) return base;
-    return base.merge(themed);
+    final color = themed?.color;
+    if (color == null) return base;
+    return base.copyWith(color: color);
   }
 }

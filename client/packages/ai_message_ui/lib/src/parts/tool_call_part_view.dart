@@ -94,9 +94,9 @@ class _AiToolCallPartViewState extends State<AiToolCallPartView> {
               onToggle: _toggleExpanded,
             )
           else if (editTarget != null)
-            EditToolCardHost(
+            EditToolCard(
               part: part,
-              initialHunk: editTarget.hunk,
+              hunk: editTarget.hunk,
               actions: fileActions,
               triggerColor: triggerColor,
               markdown: markdown,
