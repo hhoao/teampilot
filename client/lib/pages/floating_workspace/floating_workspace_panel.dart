@@ -68,13 +68,14 @@ class _FloatingWorkspacePanelState extends State<FloatingWorkspacePanel> {
     );
 
     if (keepAliveMinimized) {
-      child = Offstage(
+      // Keep PTY/editor state alive while chrome is hidden.
+      child = Visibility(
         key: const Key('floating_workspace_panel_keep_alive'),
-        offstage: true,
-        child: TickerMode(
-          enabled: false,
-          child: IgnorePointer(child: child),
-        ),
+        visible: false,
+        maintainState: true,
+        maintainAnimation: true,
+        maintainSize: false,
+        child: IgnorePointer(child: child),
       );
     }
 

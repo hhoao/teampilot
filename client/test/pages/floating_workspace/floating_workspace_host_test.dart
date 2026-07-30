@@ -72,7 +72,15 @@ void main() {
     final insets = FloatingMaximizeInsets();
     addTearDown(insets.dispose);
 
+    await tester.pumpWidget(
+      wrap(cubit: cubit, registry: registry, insets: insets),
+    );
+    await tester.pump();
+
+    // Drive open + tab through the live widget tree so BlocBuilder is subscribed.
     cubit.setActiveWorkspace('ws-1');
+    cubit.ensureOpen();
+    await tester.pump();
     cubit.ensureTab(
       const FloatingTab(
         id: 'terminal:a',
@@ -81,17 +89,10 @@ void main() {
         payload: 'a',
       ),
     );
-    cubit.ensureOpen();
-
-    await tester.pumpWidget(
-      wrap(cubit: cubit, registry: registry, insets: insets),
-    );
     await tester.pump();
     expect(find.text('fake-body'), findsOneWidget);
 
     cubit.minimize();
-    await tester.pump();
-    // Bloc/cubit listener setState lands on the next frame in widget tests.
     await tester.pump();
 
     expect(cubit.state.visibility, FloatingPanelVisibility.minimized);
@@ -103,10 +104,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(
-      find.text('fake-body', skipOffstage: false),
-      findsOneWidget,
-    );
+    expect(find.text('fake-body', skipOffstage: false), findsOneWidget);
   });
 }
 
