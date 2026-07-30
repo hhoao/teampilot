@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
+import '../../services/workspace/workspace_pane_policy.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/expert_hub_cubit.dart';
@@ -32,8 +33,10 @@ Future<DiscoverableMember?> showExpertEditorDialog(
   } catch (_) {
     hub = null;
   }
-  return showDialog<DiscoverableMember>(
+  return showTpDialog<DiscoverableMember>(
     context: context,
+    presentation: TpDialogPresentation.page,
+    mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
     builder: (ctx) {
       Widget dialog = ExpertEditorDialog(
         writer: writer ?? LocalExpertWriter(),
@@ -322,17 +325,19 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
     final styles = TpTextStyles.of(context);
     final bodyStyle = styles.md;
 
-    return TpDialog(
-      maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+    return TpDialogPageShell(
+      title: _isEditing
+          ? l10n.expertEditorEditTitle
+          : l10n.expertEditorCreateTitle,
       child: TpForm(
         key: _formKey,
-        child: TpDialogPinnedLayout(
-          header: TpDialogHeader(
-            title: _isEditing
-                ? l10n.expertEditorEditTitle
-                : l10n.expertEditorCreateTitle,
-          ),
-          body: Column(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -425,20 +430,26 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
                 onConfigure: () => _openDepPicker(ExpertEditorDepCategory.mcp),
               ),
             ],
-          ),
-          footer: TpDialogActions(
-            children: [
-              TextButton(
-                onPressed: _saving ? null : () => Navigator.of(context).pop(),
-                child: Text(l10n.cancel),
+                ),
               ),
-              FilledButton(
-                key: const Key('expert-editor-submit'),
-                onPressed: _saving ? null : _submit,
-                child: Text(_isEditing ? l10n.save : l10n.create),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: TpDialogActions(
+                children: [
+                  TextButton(
+                    onPressed: _saving ? null : () => Navigator.of(context).pop(),
+                    child: Text(l10n.cancel),
+                  ),
+                  FilledButton(
+                    key: const Key('expert-editor-submit'),
+                    onPressed: _saving ? null : _submit,
+                    child: Text(_isEditing ? l10n.save : l10n.create),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

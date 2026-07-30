@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
+import '../../services/workspace/workspace_pane_policy.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/ai_feature_settings_cubit.dart';
@@ -46,8 +47,11 @@ Future<void> showHomeNewTeamDialog(
   BuildContext context,
   LaunchProfileCubit teamCubit,
 ) async {
-  final result = await showDialog<_NewTeamDialogResult>(
+  final result = await showTpDialog<_NewTeamDialogResult>(
     context: context,
+    presentation: TpDialogPresentation.page,
+    mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+    maxWidth: 720,
     builder: (_) => const HomeNewTeamDialog(),
   );
   if (result == null || !context.mounted) return;
@@ -306,22 +310,14 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
     final l10n = context.l10n;
     final styles = TpTextStyles.of(context);
 
-    final maxDialogHeight = MediaQuery.sizeOf(context).height * 0.92;
-
-    return TpDialog(
-      maxWidth: 720,
-      maxHeight: maxDialogHeight,
-      scrollable: true,
-      child: Column(
+    return TpDialogPageShell(
+      title: l10n.homeWorkspaceNewTeam,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TpDialogHeader(
-            title: l10n.homeWorkspaceNewTeam,
-            titleAlignment: Alignment.center,
-            showDividerBelow: false,
-          ),
-          const SizedBox(height: 20),
           TpSegmentedPicker<_TeamCreationMethod>(
             alignment: Alignment.center,
             customWidths: const [156, 120],
@@ -468,6 +464,7 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
             ],
           ),
         ],
+      ),
       ),
     );
   }

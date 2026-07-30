@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:teampilot/widgets/settings/configured_status_badge.dart';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -21,10 +20,10 @@ import '../../../services/cli/preset_resolver.dart';
 import '../../../services/cli/registry/cli_display_name.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/launch/member_placement_save.dart';
+import '../../../services/workspace/workspace_pane_policy.dart';
 import '../../../utils/team/team_member_naming.dart';
 import '../../../widgets/cli/cli_brand_icon.dart';
 import '../../../widgets/settings/settings_dialog_pane_host.dart';
-import '../../../widgets/settings/workspace_hub_shell.dart';
 import '../../../widgets/team/team_lead_badge.dart';
 import '../../team_config/team_config_helpers.dart';
 import '../../team_config/team_default_preset_configure_dialog.dart';
@@ -32,11 +31,9 @@ import '../../team_config/team_member_launch_config_helpers.dart';
 import '../../team_config/team_member_launch_config_section.dart';
 import 'config/workspace_cli_config_helpers.dart';
 import 'mixed_workspace_member_placement_panel.dart';
-import 'package:teampilot/theme/workspace_surface_layers.dart';
 
 const double _kDialogWidth = 960;
 const double _kDialogHeight = 720;
-const double _kDialogInset = 24;
 
 enum _LandingTeamSettingsSection { team, members, machines }
 
@@ -46,8 +43,13 @@ Future<bool?> showLandingTeamSettingsDialog(
   required Workspace workspace,
   required TeamProfile team,
 }) {
-  return showDialog<bool>(
+  return showTpDialog<bool?>(
     context: context,
+    presentation: TpDialogPresentation.page,
+    mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+    barrierDismissible: false,
+    maxWidth: _kDialogWidth,
+    maxHeight: _kDialogHeight,
     builder: (_) =>
         _LandingTeamSettingsDialog(workspace: workspace, team: team),
   );
@@ -100,13 +102,15 @@ class _LandingTeamSettingsDialog extends StatefulWidget {
 
 class _LandingTeamSettingsDialogState
     extends State<_LandingTeamSettingsDialog> {
-  late final ValueNotifier<int> _selectedIndex;
+  late int _selectedIndex;
+  late final int _initialIndex;
   late TeamProfile _initialTeam;
   late TeamProfile _teamDraft;
   late Workspace _workspace;
   late MemberPlacementByTarget _placement;
   var _saving = false;
   var _cubitDirty = false;
+  final _wideBodyKey = GlobalKey();
 
   bool get _needsMixedInit => workspaceNeedsMixedPlacementInit(
     folders: _workspace.folders,
@@ -128,19 +132,13 @@ class _LandingTeamSettingsDialogState
     _initialTeam = _teamFromCubit(cubit) ?? widget.team;
     _teamDraft = _initialTeam;
     _placement = _placementFromWorkspace(_workspace, _teamDraft);
-    final initialIndex = _needsMixedInit
+    _initialIndex = _needsMixedInit
         ? _sections.indexOf(_LandingTeamSettingsSection.machines)
         : 0;
-    _selectedIndex = ValueNotifier(initialIndex);
+    _selectedIndex = _initialIndex;
     unawaited(
       cubit.selectTeam(widget.team.id, silent: true, syncResources: false),
     );
-  }
-
-  @override
-  void dispose() {
-    _selectedIndex.dispose();
-    super.dispose();
   }
 
   TeamProfile? _teamFromCubit(LaunchProfileCubit cubit) {
@@ -323,290 +321,124 @@ class _LandingTeamSettingsDialogState
 
   @override
   Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-    final dialogWidth = _kDialogWidth.clamp(
-      0.0,
-      media.size.width - _kDialogInset,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: TpDialogNavShell(
+            mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+            onClose: () => unawaited(_cancel()),
+            navTitle: (c) => c.l10n.teamSettings,
+            initialIndex: _initialIndex,
+            onSelectedIndexChanged: (index) {
+              setState(() => _selectedIndex = index);
+            },
+            entries: _mapEntries(),
+          ),
+        ),
+        SafeArea(
+          top: false,
+          child: _Footer(
+            canSave: _canSave,
+            saving: _saving,
+            placementHint: !_preparedSave.leadValid
+                ? context.l10n.mixedWorkspaceLeadPlacementInvalid
+                : _needsMixedInit
+                ? context.l10n.mixedWorkspaceMemberAssignmentIncomplete
+                : null,
+            onCancel: () => unawaited(_cancel()),
+            onSave: () => unawaited(_save()),
+          ),
+        ),
+      ],
     );
-    final dialogHeight = _kDialogHeight.clamp(
-      0.0,
-      media.size.height - _kDialogInset,
-    );
-    final cs = Theme.of(context).colorScheme;
+  }
 
-    return Dialog(
-      insetPadding: const EdgeInsets.all(_kDialogInset / 2),
-      backgroundColor: cs.workspacePage,
-      child: SizedBox(
-        width: dialogWidth,
-        height: dialogHeight,
-        child: Row(
-          children: [
-            _Nav(
-              title: context.l10n.teamSettings,
-              sections: _sections,
-              selectedListenable: _selectedIndex,
-              onSelect: (index) => _selectedIndex.value = index,
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 16,
-                ),
-                child: TpDeferredMountShell(
-                  delayFrames: 1,
-                  child: ListenableBuilder(
-                    listenable: _selectedIndex,
-                    builder: (context, _) {
-                      final section = _sections[_selectedIndex.value];
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _PaneHeader(
-                            section: section,
-                            team: _teamDraft,
-                            machinesHint: !_preparedSave.leadValid
-                                ? context
-                                      .l10n
-                                      .mixedWorkspaceLeadPlacementInvalid
-                                : _needsMixedInit
-                                ? context
-                                      .l10n
-                                      .mixedWorkspaceMemberAssignmentIncomplete
-                                : null,
-                            placement: _placement,
-                            onClose: _cancel,
-                          ),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                              child: RepaintBoundary(
-                                child: SettingsDialogPaneHost(
-                                  key: const ValueKey(
-                                    'landing-team-settings-pane-host',
-                                  ),
-                                  paneCount: _sections.length,
-                                  selectedIndex: _selectedIndex.value,
-                                  builder: (context, paneIndex) {
-                                    final active = _sections[paneIndex];
-                                    return _PaneBody(
-                                      section: active,
-                                      teamDraft: _teamDraft,
-                                      workspace: _workspace,
-                                      placement: _placement,
-                                      onPlacementChanged: (next) =>
-                                          setState(() => _placement = next),
-                                      onWorkspaceRemapped: _onWorkspaceRemapped,
-                                      onDelegateChanged: (value) => setState(
-                                        () => _teamDraft = _teamDraft.copyWith(
-                                          forceTeamLeadDelegateMode: value,
-                                          updateForceTeamLeadDelegateMode: true,
-                                        ),
-                                      ),
-                                      onMemberUpdated: _updateMember,
-                                      onOpenTeamPresetConfigure:
-                                          _openTeamPresetConfigure,
-                                      onOpenMemberConfigure:
-                                          _openMemberConfigure,
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
-                          _Footer(
-                            canSave: _canSave,
-                            saving: _saving,
-                            placementHint: !_preparedSave.leadValid
-                                ? context
-                                      .l10n
-                                      .mixedWorkspaceLeadPlacementInvalid
-                                : _needsMixedInit
-                                ? context
-                                      .l10n
-                                      .mixedWorkspaceMemberAssignmentIncomplete
-                                : null,
-                            onCancel: _cancel,
-                            onSave: _save,
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-          ],
+  bool _isWide(BuildContext context) =>
+      MediaQuery.sizeOf(context).width >=
+      WorkspacePanePolicy.narrowBreakpointWidth;
+
+  Widget _wideBody(BuildContext context) {
+    return TpDeferredMountShell(
+      key: const ValueKey('landing-team-settings-deferred-mount'),
+      delayFrames: 1,
+      child: RepaintBoundary(
+        child: SettingsDialogPaneHost(
+          key: _wideBodyKey,
+          paneCount: _sections.length,
+          selectedIndex: _selectedIndex,
+          builder: (context, paneIndex) =>
+              _paneBodyForSection(context, _sections[paneIndex]),
         ),
       ),
     );
   }
-}
 
-class _Nav extends StatelessWidget {
-  const _Nav({
-    required this.title,
-    required this.sections,
-    required this.selectedListenable,
-    required this.onSelect,
-  });
-
-  final String title;
-  final List<_LandingTeamSettingsSection> sections;
-  final ValueListenable<int> selectedListenable;
-  final ValueChanged<int> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
-    final l10n = context.l10n;
-
-    String label(_LandingTeamSettingsSection section) => switch (section) {
-      _LandingTeamSettingsSection.team => l10n.landingTeamSettingsNavTeam,
-      _LandingTeamSettingsSection.members => l10n.members,
-      _LandingTeamSettingsSection.machines =>
-        l10n.landingTeamSettingsNavMachines,
-    };
-
-    IconData icon(_LandingTeamSettingsSection section) => switch (section) {
-      _LandingTeamSettingsSection.team => Icons.tune_outlined,
-      _LandingTeamSettingsSection.members => Icons.groups_outlined,
-      _LandingTeamSettingsSection.machines => Icons.hub_outlined,
-    };
-
-    return Container(
-      width: 220,
-      decoration: BoxDecoration(
-        color: cs.workspaceSubtleSurface,
-        border: Border(
-          right: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
+  Widget _paneBodyForSection(
+    BuildContext context,
+    _LandingTeamSettingsSection section,
+  ) {
+    return _PaneBody(
+      section: section,
+      teamDraft: _teamDraft,
+      workspace: _workspace,
+      placement: _placement,
+      onPlacementChanged: (next) => setState(() => _placement = next),
+      onWorkspaceRemapped: _onWorkspaceRemapped,
+      onDelegateChanged: (value) => setState(
+        () => _teamDraft = _teamDraft.copyWith(
+          forceTeamLeadDelegateMode: value,
+          updateForceTeamLeadDelegateMode: true,
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 22, 20, 14),
-              child: Text(
-                title,
-                style: styles.lgBoldSnugColored(cs.onSurface,),
-              ),
-            ),
-            Expanded(
-              child: ListenableBuilder(
-                listenable: selectedListenable,
-                builder: (context, _) {
-                  final selected = selectedListenable.value;
-                  return ListView(
-                    children: [
-                      for (final (index, section) in sections.indexed)
-                        WorkspaceHubNavItem(
-                          title: label(section),
-                          icon: icon(section),
-                          selected: index == selected,
-                          onTap: () => onSelect(index),
-                        ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+      onMemberUpdated: _updateMember,
+      onOpenTeamPresetConfigure: _openTeamPresetConfigure,
+      onOpenMemberConfigure: _openMemberConfigure,
     );
   }
-}
 
-class _PaneHeader extends StatelessWidget {
-  const _PaneHeader({
-    required this.section,
-    required this.team,
-    required this.machinesHint,
-    required this.placement,
-    required this.onClose,
-  });
-
-  final _LandingTeamSettingsSection section;
-  final TeamProfile team;
-  final String? machinesHint;
-  final MemberPlacementByTarget placement;
-  final VoidCallback onClose;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
-
-    final (title, subtitle) = switch (section) {
-      _LandingTeamSettingsSection.team => (
-        l10n.landingTeamSettingsNavTeam,
-        l10n.landingTeamSettingsGlobalHint,
-      ),
-      _LandingTeamSettingsSection.members => (
-        l10n.members,
-        '${team.members.where((m) => m.isValid).length}',
-      ),
-      _LandingTeamSettingsSection.machines => (
-        l10n.landingTeamSettingsNavMachines,
-        _machinesSubtitle(l10n, team, placement),
-      ),
-    };
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: styles.lgBoldSnugColored(cs.onSurface,),
-                ),
-                if (subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TpTextStyles.of(context).mutedMd,
-                  ),
-                ],
-                if (machinesHint != null &&
-                    section == _LandingTeamSettingsSection.machines) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    machinesHint!,
-                    style: TpTextStyles.of(context).smColored(cs.error),
-                  ),
-                ],
-              ],
+  List<TpDialogNavEntry> _mapEntries() {
+    return [
+      for (final section in _sections)
+        TpDialogNavEntry(
+          icon: switch (section) {
+            _LandingTeamSettingsSection.team => Icons.tune_outlined,
+            _LandingTeamSettingsSection.members => Icons.groups_outlined,
+            _LandingTeamSettingsSection.machines => Icons.hub_outlined,
+          },
+          navLabel: (c) => switch (section) {
+            _LandingTeamSettingsSection.team =>
+              c.l10n.landingTeamSettingsNavTeam,
+            _LandingTeamSettingsSection.members => c.l10n.members,
+            _LandingTeamSettingsSection.machines =>
+              c.l10n.landingTeamSettingsNavMachines,
+          },
+          title: (c) => switch (section) {
+            _LandingTeamSettingsSection.team =>
+              c.l10n.landingTeamSettingsNavTeam,
+            _LandingTeamSettingsSection.members => c.l10n.members,
+            _LandingTeamSettingsSection.machines =>
+              c.l10n.landingTeamSettingsNavMachines,
+          },
+          subtitle: (c) => switch (section) {
+            _LandingTeamSettingsSection.team =>
+              c.l10n.landingTeamSettingsGlobalHint,
+            _LandingTeamSettingsSection.members =>
+              '${_teamDraft.members.where((m) => m.isValid).length}',
+            _LandingTeamSettingsSection.machines => _machinesSubtitle(
+              c.l10n,
+              _teamDraft,
+              _placement,
             ),
-          ),
-          IconButton(
-            tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-            onPressed: onClose,
-            icon: Icon(Icons.close, size: context.tpIconSizes.md),
-            color: cs.onSurfaceVariant,
-          ),
-        ],
-      ),
-    );
+          },
+          bodyBuilder: (context) {
+            if (_isWide(context)) {
+              return _wideBody(context);
+            }
+            return _paneBodyForSection(context, section);
+          },
+        ),
+    ];
   }
 
   static String _machinesSubtitle(
@@ -836,10 +668,9 @@ class _TeamDefaultPresetSummary extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              catalogDef != null
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final icon = catalogDef != null
                   ? CliBrandIcon(
                       cli: displayCli,
                       definition: catalogDef,
@@ -847,45 +678,68 @@ class _TeamDefaultPresetSummary extends StatelessWidget {
                       size: 40,
                       borderRadius: 10,
                     )
-                  : Icon(Icons.tune_outlined, size: 40, color: cs.primary),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            l10n.teamDefaultPresetLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: styles.lgColored(cs.onSurface,),
-                          ),
+                  : Icon(Icons.tune_outlined, size: 40, color: cs.primary);
+              final summary = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          l10n.teamDefaultPresetLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: styles.lgColored(cs.onSurface),
                         ),
-                        const SizedBox(width: 8),
-                        configuredStatusBadge(context, configured: configured),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      configured ? configLine : l10n.teamDefaultPresetSubtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: configured
-                          ? styles.smMediumColored(cs.onSurfaceVariant)
-                          : styles.smColored(cs.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              OutlinedButton.icon(
+                      ),
+                      const SizedBox(width: 8),
+                      configuredStatusBadge(context, configured: configured),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    configured ? configLine : l10n.teamDefaultPresetSubtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: configured
+                        ? styles.smMediumColored(cs.onSurfaceVariant)
+                        : styles.smColored(cs.onSurfaceVariant),
+                  ),
+                ],
+              );
+              final configure = OutlinedButton.icon(
                 onPressed: onConfigure,
                 icon: Icon(Icons.tune, size: context.tpIconSizes.sm),
                 label: Text(l10n.workspaceCliConfigure),
-              ),
-            ],
+              );
+              if (constraints.maxWidth < 420) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        icon,
+                        const SizedBox(width: 14),
+                        Expanded(child: summary),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Align(alignment: Alignment.centerRight, child: configure),
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  icon,
+                  const SizedBox(width: 14),
+                  Expanded(child: summary),
+                  const SizedBox(width: 12),
+                  configure,
+                ],
+              );
+            },
           ),
         ),
         if (showDividerBelow)

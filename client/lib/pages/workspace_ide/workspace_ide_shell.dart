@@ -596,11 +596,13 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
     required LayoutPreferences prefs,
     required bool composeLanding,
   }) {
+    final fractionWidth = TpTheme.of(context).sidebarTheme
+        .resolveMobileDrawerWidth(MediaQuery.sizeOf(context).width);
     final overlayHost = PaneOverlayHost(
       showLeft: false,
       showRight: effective.overlayRight,
       leftWidth: prefs.sidebarWidth,
-      rightWidth: prefs.rightToolsWidth,
+      rightWidth: effective.isNarrow ? fractionWidth : prefs.rightToolsWidth,
       onDismissLeft: () {},
       onDismissRight: () {
         final layout = context.read<LayoutCubit>();

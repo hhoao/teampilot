@@ -15,6 +15,7 @@ import '../../../utils/session/workspace_sessions.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'workspace_session_actions.dart';
 import 'package:shared_ui/shared_ui.dart';
+import '../../../services/workspace/workspace_pane_policy.dart';
 
 /// Opens the workspace search dialog, which searches both conversation sessions
 /// and workspace files by name. Reads the current session list and CLI fallback
@@ -34,8 +35,12 @@ Future<void> showWorkspaceSearchDialog(
     final fallback = context.l10n.defaultNewChatSessionTitle;
     final sessions = sessionsForWorkspace(workspace, chatCubit.state.sessions);
 
-    await showDialog<void>(
+    await showTpDialog<void>(
       context: context,
+      presentation: TpDialogPresentation.page,
+      mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+      maxWidth: 560,
+      maxHeight: 560,
       builder: (dialogContext) => WorkspaceSearchDialog(
         workspace: workspace,
         sessions: sessions,
@@ -150,44 +155,43 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
     final hasQuery = _query.trim().isNotEmpty;
     final hasResults = filteredSessions.isNotEmpty || _fileMatches.isNotEmpty;
 
-    return TpDialog(
-      maxWidth: 560,
-      maxHeight: 560,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TpDialogHeader(title: l10n.workspaceSearchTitle),
-          const SizedBox(height: 12),
-          _SearchField(
-            controller: _controller,
-            hint: l10n.workspaceSearchHint,
-            onChanged: _onQueryChanged,
-            onClear: () {
-              _controller.clear();
-              _onQueryChanged('');
-            },
-          ),
-          const SizedBox(height: 12),
-          Flexible(
-            child: !hasQuery
-                ? const SizedBox.shrink()
-                : (!hasResults && !_searchingFiles)
-                ? _EmptyResults(label: l10n.workspaceSearchNoResults)
-                : _Results(
-                    sessions: filteredSessions,
-                    fileMatches: _fileMatches,
-                    searchingFiles: _searchingFiles,
-                    fileResultsTruncated: _fileResultsTruncated,
-                    sessionsHeader: l10n.homeWorkspaceConversationsSection,
-                    filesHeader: l10n.workspaceSearchFilesSection,
-                    searchingLabel: l10n.workspaceSearchSearching,
-                    truncatedLabel: l10n.workspaceSearchFilesTruncated,
-                    onOpenSession: widget.onOpenSession,
-                    onOpenFile: widget.onOpenFile,
-                  ),
-          ),
-        ],
+    return TpDialogPageShell(
+      title: l10n.workspaceSearchTitle,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SearchField(
+              controller: _controller,
+              hint: l10n.workspaceSearchHint,
+              onChanged: _onQueryChanged,
+              onClear: () {
+                _controller.clear();
+                _onQueryChanged('');
+              },
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: !hasQuery
+                  ? const SizedBox.shrink()
+                  : (!hasResults && !_searchingFiles)
+                  ? _EmptyResults(label: l10n.workspaceSearchNoResults)
+                  : _Results(
+                      sessions: filteredSessions,
+                      fileMatches: _fileMatches,
+                      searchingFiles: _searchingFiles,
+                      fileResultsTruncated: _fileResultsTruncated,
+                      sessionsHeader: l10n.homeWorkspaceConversationsSection,
+                      filesHeader: l10n.workspaceSearchFilesSection,
+                      searchingLabel: l10n.workspaceSearchSearching,
+                      truncatedLabel: l10n.workspaceSearchFilesTruncated,
+                      onOpenSession: widget.onOpenSession,
+                      onOpenFile: widget.onOpenFile,
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

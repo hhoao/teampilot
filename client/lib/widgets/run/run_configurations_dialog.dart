@@ -9,6 +9,7 @@ import '../../models/run/launch_configuration.dart';
 import '../../models/workspace_folder.dart';
 import '../../services/run/shell_script_launch_schema.dart';
 import 'package:shared_ui/shared_ui.dart';
+import '../../services/workspace/workspace_pane_policy.dart';
 import 'run_config_editor_dialog.dart';
 
 /// Workspace-scoped launch configurations list in a modal dialog
@@ -21,23 +22,18 @@ class RunConfigurationsDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.85;
 
-    return TpDialog(
-      maxWidth: 720,
-      maxHeight: maxHeight,
-      child: TpDialogPinnedLayout(
-        header: TpDialogHeader(
-          title: l10n.runConfigureLaunchItems,
-          trailing: TpIconButton(
-            key: const Key('run-configurations-add'),
-            icon: Icons.add_rounded,
-            tooltip: l10n.runAddConfiguration,
-            onTap: () => unawaited(_create(context)),
-          ),
-        ),
-        bodyTopSpacing: 8,
-        body: _RunConfigurationsListBody(workspaceId: workspaceId),
+    return TpDialogPageShell(
+      title: l10n.runConfigureLaunchItems,
+      trailing: TpIconButton(
+        key: const Key('run-configurations-add'),
+        icon: Icons.add_rounded,
+        tooltip: l10n.runAddConfiguration,
+        onTap: () => unawaited(_create(context)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: _RunConfigurationsListBody(workspaceId: workspaceId),
       ),
     );
   }
@@ -72,8 +68,11 @@ Future<void> showRunConfigurationsPanelDialog(
   required String workspaceId,
 }) {
   final cubit = context.read<RunCubit>();
-  return showDialog<void>(
+  return showTpDialog<void>(
     context: context,
+    presentation: TpDialogPresentation.page,
+    mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+    maxWidth: 720,
     builder: (dialogContext) => BlocProvider<RunCubit>.value(
       value: cubit,
       child: RunConfigurationsDialog(workspaceId: workspaceId),

@@ -50,4 +50,100 @@ void main() {
     expect(find.text('pane-1'), findsOneWidget);
     expect(find.text('pane-0'), findsNothing);
   });
+
+  testWidgets('SettingsDialogPaneHost keeps pane state across re-selection', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: _PaneHostHarness(
+          entries: const [
+            _CounterPane(label: 'A'),
+            _CounterPane(label: 'B'),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.text('A: 0'), findsOneWidget);
+    await tester.tap(find.text('inc'));
+    await tester.pumpAndSettle();
+    expect(find.text('A: 1'), findsOneWidget);
+
+    await tester.tap(find.text('select-1'));
+    await tester.pumpAndSettle();
+    expect(find.text('B: 0'), findsOneWidget);
+
+    await tester.tap(find.text('select-0'));
+    await tester.pumpAndSettle();
+    expect(find.text('A: 1'), findsOneWidget);
+  });
+}
+
+class _PaneHostHarness extends StatefulWidget {
+  const _PaneHostHarness({required this.entries});
+
+  final List<Widget> entries;
+
+  @override
+  State<_PaneHostHarness> createState() => _PaneHostHarnessState();
+}
+
+class _PaneHostHarnessState extends State<_PaneHostHarness> {
+  var _selectedIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Column(
+        children: [
+          TextButton(
+            onPressed: () => setState(() => _selectedIndex = 0),
+            child: const Text('select-0'),
+          ),
+          TextButton(
+            onPressed: () => setState(() => _selectedIndex = 1),
+            child: const Text('select-1'),
+          ),
+          Expanded(
+            child: SettingsDialogPaneHost(
+              paneCount: widget.entries.length,
+              selectedIndex: _selectedIndex,
+              builder: (context, index) => widget.entries[index],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CounterPane extends StatefulWidget {
+  const _CounterPane({required this.label});
+
+  final String label;
+
+  @override
+  State<_CounterPane> createState() => _CounterPaneState();
+}
+
+class _CounterPaneState extends State<_CounterPane> {
+  var _count = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('${widget.label}: $_count'),
+        TextButton(
+          onPressed: () => setState(() => _count++),
+          child: const Text('inc'),
+        ),
+      ],
+    );
+  }
 }
