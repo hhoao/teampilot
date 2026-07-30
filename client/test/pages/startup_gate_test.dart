@@ -11,6 +11,7 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/ssh_connection_cubit.dart';
 import 'package:teampilot/cubits/ssh_profile_cubit.dart';
+import 'package:teampilot/cubits/termux_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
@@ -22,6 +23,9 @@ import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/termux/termux_config_store.dart';
 import 'package:teampilot/services/ssh/android_ssh_connect_home.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
@@ -175,6 +179,7 @@ Future<Widget> _gateHost({
   required TerminalTransportFactory transportFactory,
   required SshProfileRepository profileRepository,
   required SessionPreferencesCubit sessionPrefs,
+  required TermuxCubit termuxCubit,
   bool? isAndroid,
   Widget child = const Text('APP_CHILD'),
 }) async {
@@ -206,6 +211,7 @@ Future<Widget> _gateHost({
             BlocProvider<SshProfileCubit>.value(value: profileCubit),
             BlocProvider<SshConnectionCubit>.value(value: connectionCubit),
             BlocProvider<SessionPreferencesCubit>.value(value: sessionPrefs),
+            BlocProvider<TermuxCubit>.value(value: termuxCubit),
           ],
           child: StartupGate(isAndroid: isAndroid, child: child),
         ),
@@ -222,6 +228,8 @@ void main() {
   late SshProfileCubit profileCubit;
   late TerminalTransportFactory transportFactory;
   late SessionPreferencesCubit sessionPrefs;
+  late Directory termuxNativeDir;
+  late TermuxCubit termuxCubit;
   late AppLocalizations l10n;
 
   setUp(() async {
@@ -249,15 +257,34 @@ void main() {
       repository: SessionPreferencesRepository(prefs),
     );
     await sessionPrefs.load();
+    termuxNativeDir = await Directory.systemTemp.createTemp(
+      'startup_gate_termux_',
+    );
+    termuxCubit = TermuxCubit(
+      store: TermuxConfigStore(
+        rootDir: termuxNativeDir.path,
+        fs: LocalFilesystem(
+          pathContext: AppPaths.pathContextForDataRoot(termuxNativeDir.path),
+        ),
+      ),
+      credentials: harness.credentialStore,
+      nativeAppDataPath: termuxNativeDir.path,
+      selectHome: (_) async {},
+      testConnect: (_) async => (ok: true, message: ''),
+    );
     l10n = await AppLocalizations.delegate.load(const Locale('en'));
   });
 
   tearDown(() async {
     await connectionCubit.close();
     await profileCubit.close();
+    await termuxCubit.close();
     await sessionPrefs.close();
     await harness.dispose();
     await tempDir.delete(recursive: true);
+    if (await termuxNativeDir.exists()) {
+      await termuxNativeDir.delete(recursive: true);
+    }
   });
 
   Future<void> pumpGatedEmptyList(WidgetTester tester) async {
@@ -274,6 +301,7 @@ void main() {
         transportFactory: transportFactory,
         profileRepository: profileRepository,
         sessionPrefs: sessionPrefs,
+        termuxCubit: termuxCubit,
       ),
     );
     await tester.pumpAndSettle();
@@ -324,6 +352,7 @@ void main() {
         transportFactory: transportFactory,
         profileRepository: profileRepository,
         sessionPrefs: sessionPrefs,
+        termuxCubit: termuxCubit,
         isAndroid: true,
       ),
     );
@@ -395,6 +424,7 @@ void main() {
       transportFactory: transportFactory,
       profileRepository: profileRepository,
       sessionPrefs: sessionPrefs,
+      termuxCubit: termuxCubit,
       isAndroid: true,
     );
 
@@ -430,6 +460,7 @@ void main() {
         transportFactory: transportFactory,
         profileRepository: profileRepository,
         sessionPrefs: sessionPrefs,
+        termuxCubit: termuxCubit,
         isAndroid: true,
       ),
     );
@@ -457,6 +488,7 @@ void main() {
         transportFactory: transportFactory,
         profileRepository: profileRepository,
         sessionPrefs: sessionPrefs,
+        termuxCubit: termuxCubit,
         isAndroid: true,
       ),
     );
@@ -487,6 +519,7 @@ void main() {
         transportFactory: transportFactory,
         profileRepository: profileRepository,
         sessionPrefs: sessionPrefs,
+        termuxCubit: termuxCubit,
         isAndroid: true,
       ),
     );
