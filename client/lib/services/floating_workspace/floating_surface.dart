@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:teampilot/cubits/floating_workspace/floating_workspace_state.dart';
+import 'package:teampilot/models/floating_workspace_tab.dart';
 
 class FloatingEmptyAction {
   const FloatingEmptyAction({

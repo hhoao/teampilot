@@ -13,6 +13,7 @@ class FloatingSurfaceRegistry {
 
   FloatingSurface? operator [](String id) => _byId[id];
 
+  // Order follows registration/insertion order; withDefaults registers terminal then file.
   List<FloatingEmptyAction> get emptyActions => [
     for (final s in _byId.values)
       if (s.emptyAction != null) s.emptyAction!,
