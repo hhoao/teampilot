@@ -24,6 +24,18 @@ class WorkspaceTerminalConnectCoordinator {
   final bool Function()? _termuxConnected;
   final String Function()? _termuxWorkOpsBlockedMessage;
 
+  /// Workspace / floating shell connect path with optional Termux gate.
+  factory WorkspaceTerminalConnectCoordinator.termuxAware({
+    required WorkspaceShellConnector connector,
+    bool Function()? termuxConnected,
+    String Function()? termuxWorkOpsBlockedMessage,
+  }) => WorkspaceTerminalConnectCoordinator(
+    connector: connector,
+    homeTarget: connector.homeTarget,
+    termuxConnected: termuxConnected,
+    termuxWorkOpsBlockedMessage: termuxWorkOpsBlockedMessage,
+  );
+
   static bool stillLive(
     WorkspaceTerminalGroup group,
     WorkspaceTerminalEntry entry,

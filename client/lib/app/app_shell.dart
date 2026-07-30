@@ -144,6 +144,7 @@ import '../services/storage/home_target_store.dart';
 import '../services/storage/runtime_target_registry.dart';
 import '../services/termux/termux_config.dart';
 import '../services/termux/termux_transport_profile.dart';
+import '../services/termux/termux_work_ops_message.dart';
 import '../services/ssh/ssh_profile_connection_tester.dart';
 import '../services/notification/notification_recorder.dart';
 import '../services/session/session_lifecycle_service.dart';
@@ -176,6 +177,7 @@ import '../services/run/workspace_run_platform_factory.dart';
 import '../services/workspace/workspace_worktree_registry.dart';
 import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
+import '../services/terminal/workspace_terminal_connect_coordinator.dart';
 import '../services/terminal/workspace_terminal_run_service.dart';
 import '../services/terminal/workspace_terminal_session_ops.dart';
 import '../utils/logging/logger.dart';
@@ -504,6 +506,7 @@ Future<AppShell> buildAppShell({
   final targetsRepo = deviceLocalTargetsRepository(nativeAppDataPath);
   final termuxConfigStore = deviceLocalTermuxConfigStore(nativeAppDataPath);
   var termuxConfigCache = await termuxConfigStore.load();
+  TermuxCubit? termuxGateCubit;
   SshProfile? sshProfileById(String id) {
     if (id == 'termux') {
       final cfg = termuxConfigCache;
@@ -997,6 +1000,12 @@ Future<AppShell> buildAppShell({
       connector: workspaceShellConnector,
       ops: workspaceTerminalSessionOps,
       runService: workspaceTerminalRunService,
+      connectCoordinatorFactory: (connector) =>
+          WorkspaceTerminalConnectCoordinator.termuxAware(
+            connector: connector,
+            termuxConnected: () => termuxGateCubit?.state.connected ?? true,
+            termuxWorkOpsBlockedMessage: TermuxWorkOpsMessage.disconnectedBlocked,
+          ),
     ),
   );
 
@@ -1009,7 +1018,6 @@ Future<AppShell> buildAppShell({
 
   final agentAttentionCubit = AgentAttentionCubit();
   final agentStatusSeatLookup = AgentStatusSeatLookup();
-  TermuxCubit? termuxGateCubit;
   teammateBusMcpGateway.attachAgentStatusHandler(
     AgentStatusHttpHandler(
       attention: agentAttentionCubit,
@@ -1068,8 +1076,8 @@ Future<AppShell> buildAppShell({
     remoteCliReadiness: remoteCliReadiness,
     cliProvisionActivity: cliProvisionActivityAdapter,
     termuxConnectedResolver: () => termuxGateCubit?.state.connected ?? true,
-    termuxDisconnectedWorkOpsMessageResolver: () =>
-        'Termux is disconnected. Reconnect from the banner, then try again.',
+    termuxDisconnectedWorkOpsMessageResolver:
+        TermuxWorkOpsMessage.disconnectedBlocked,
     termuxGateHomeResolver: defaultTargetResolver,
   );
 
@@ -1398,6 +1406,8 @@ Future<AppShell> buildAppShell({
     layout: layoutCubit,
     sessionOps: workspaceTerminalSessionOps,
     homeTarget: defaultTargetResolver,
+    termuxConnected: () => termuxGateCubit?.state.connected ?? true,
+    termuxWorkOpsBlockedMessage: TermuxWorkOpsMessage.disconnectedBlocked,
   );
   workbenchShellLauncher = resolvedShellLauncher;
   final floatingSurfaceRegistry = FloatingSurfaceRegistry.withDefaults(

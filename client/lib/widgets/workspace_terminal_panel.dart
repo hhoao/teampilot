@@ -29,6 +29,7 @@ import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_connect_coordinator.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
 import '../services/terminal/workspace_terminal_session_ops.dart';
+import '../services/termux/termux_work_ops_message.dart';
 import '../services/workspace/workspace_tools_scope.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/ui/app_keys.dart';
@@ -133,12 +134,10 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       WorkspaceToolsScope.maybeOf(context)?.effectiveFolders ?? const [];
 
   WorkspaceTerminalConnectCoordinator get _connect => _connectCoordinator ??=
-      WorkspaceTerminalConnectCoordinator(
+      WorkspaceTerminalConnectCoordinator.termuxAware(
         connector: _connector,
-        homeTarget: _connector.homeTarget,
         termuxConnected: () => context.read<TermuxCubit>().state.connected,
-        termuxWorkOpsBlockedMessage: () =>
-            context.l10n.termuxDisconnectedWorkOpsBlocked,
+        termuxWorkOpsBlockedMessage: TermuxWorkOpsMessage.disconnectedBlocked,
       );
 
   @override

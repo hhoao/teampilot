@@ -78,6 +78,7 @@ import 'services/notification/session_idle_notification_tap.dart';
 import 'widgets/notification/session_idle_notification_listener.dart';
 import 'widgets/ssh/home_ssh_profile_binder.dart';
 import 'widgets/ssh/ssh_connection_binder.dart';
+import 'widgets/termux/termux_work_ops_message_binder.dart';
 import 'repositories/layout_repository.dart';
 import 'theme/app_font_prepare.dart';
 import 'theme/app_font_resolver.dart';
@@ -956,8 +957,10 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
                 ),
               );
               Widget content = AppTextScaleBoundary(
-                child: _AppUpdateAutoCheck(
-                  child: child ?? const SizedBox.shrink(),
+                child: TermuxWorkOpsMessageBinder(
+                  child: _AppUpdateAutoCheck(
+                    child: child ?? const SizedBox.shrink(),
+                  ),
                 ),
               );
               // Single global zoom: scales fonts + icons + padding + every
