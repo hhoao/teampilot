@@ -15,17 +15,36 @@ import '../../services/workspace_dnd/workspace_file_ref.dart';
 /// ingestor — projection, quoting, cross-namespace rejection all apply.
 ///
 /// Desktop-only: on mobile (where TeamPilot runs over SSH) it is a passthrough.
+///
+/// When [onDropPayload] is non-null, that handler owns ingest and
+/// [target.consume] is **not** called (Compose/Terminal keep the default path).
 class ExternalFileDropRegion extends StatefulWidget {
   const ExternalFileDropRegion({
     required this.target,
     required this.child,
     this.onOutcome,
+    this.onDropPayload,
+    this.onDragPositionChanged,
+    this.showPanelHighlight = true,
     super.key,
   });
 
   final WorkspaceDropTarget target;
   final Widget child;
   final ValueChanged<DropOutcome>? onOutcome;
+
+  /// Custom OS-drop handler. When set, skips [WorkspaceDropTarget.consume].
+  final Future<void> Function(
+    WorkspaceDragPayload payload,
+    DropDoneDetails details,
+  )?
+  onDropPayload;
+
+  /// Local pointer while an OS drag is over this region; `null` on exit/done.
+  final ValueChanged<Offset?>? onDragPositionChanged;
+
+  /// Full-region highlight border. Disable when the child paints its own.
+  final bool showPanelHighlight;
 
   static bool get _isDesktop =>
       Platform.isLinux || Platform.isMacOS || Platform.isWindows;
@@ -55,12 +74,20 @@ class _ExternalFileDropRegionState extends State<ExternalFileDropRegion> {
         ),
     ];
     if (_highlighted) setState(() => _highlighted = false);
+    widget.onDragPositionChanged?.call(null);
     if (refs.isEmpty) return;
     final payload = WorkspaceDragPayload(
       kind: DragPayloadKind.workspaceFile,
       refs: refs,
     );
     if (!widget.target.accepts(payload.kind)) return;
+
+    final custom = widget.onDropPayload;
+    if (custom != null) {
+      await custom(payload, detail);
+      return;
+    }
+
     final outcome = await widget.target.consume(payload);
     widget.onOutcome?.call(outcome);
   }
@@ -82,18 +109,23 @@ class _ExternalFileDropRegionState extends State<ExternalFileDropRegion> {
     final cs = Theme.of(context).colorScheme;
     return DropTarget(
       enable: enabled,
-      onDragEntered: (_) {
+      onDragEntered: (details) {
         if (!_highlighted) setState(() => _highlighted = true);
+        widget.onDragPositionChanged?.call(details.localPosition);
+      },
+      onDragUpdated: (details) {
+        widget.onDragPositionChanged?.call(details.localPosition);
       },
       onDragExited: (_) {
         if (_highlighted) setState(() => _highlighted = false);
+        widget.onDragPositionChanged?.call(null);
       },
       onDragDone: _onDrop,
       child: Stack(
         fit: StackFit.passthrough,
         children: [
           widget.child,
-          if (enabled && _highlighted)
+          if (enabled && widget.showPanelHighlight && _highlighted)
             Positioned.fill(
               child: IgnorePointer(
                 child: DecoratedBox(

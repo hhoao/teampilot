@@ -18,6 +18,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../services/file_tree/file_tree_visible_rows.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../utils/ui/app_keys.dart';
+import '../file_tree/file_tree_drop_region.dart';
 import '../file_tree_node.dart';
 import 'file_tree_header_overflow_menu.dart';
 import 'right_tools_lifecycle.dart';
@@ -274,37 +275,43 @@ class _FileTreePanelState extends State<FileTreePanel> {
                     ),
                     const SizedBox(height: 10),
                     Expanded(
-                      child:
-                          BlocSelector<
-                            FileTreeCubit,
-                            FileTreeState,
-                            List<FileTreeVisibleRow>
-                          >(
-                            selector: (state) => state.visibleRows,
-                            builder: (context, rows) {
-                              if (!context
-                                  .read<FileTreeCubit>()
-                                  .state
-                                  .anyRootExists) {
-                                return const SizedBox.shrink();
-                              }
-                              return _FileTreeList(
-                                rows: rows,
-                                cubit: _cubit,
-                                textColor: cs.onSurface,
-                                listScrollController: _listScrollController,
-                                horizontalScrollController:
-                                    _horizontalScrollController,
-                                desktopShellActions: _desktopShellActionsFor(
-                                  _workContext,
-                                ),
-                                remoteFileManagerActions:
-                                    _remoteFileManagerActionsFor(_workContext),
-                                workContext: _workContext,
-                                workspaceId: widget.workspaceId,
-                              );
-                            },
-                          ),
+                      child: FileTreeDropRegion(
+                        cubit: _cubit,
+                        listScrollController: _listScrollController,
+                        child:
+                            BlocSelector<
+                              FileTreeCubit,
+                              FileTreeState,
+                              List<FileTreeVisibleRow>
+                            >(
+                              selector: (state) => state.visibleRows,
+                              builder: (context, rows) {
+                                if (!context
+                                    .read<FileTreeCubit>()
+                                    .state
+                                    .anyRootExists) {
+                                  return const SizedBox.shrink();
+                                }
+                                return _FileTreeList(
+                                  rows: rows,
+                                  cubit: _cubit,
+                                  textColor: cs.onSurface,
+                                  listScrollController: _listScrollController,
+                                  horizontalScrollController:
+                                      _horizontalScrollController,
+                                  desktopShellActions: _desktopShellActionsFor(
+                                    _workContext,
+                                  ),
+                                  remoteFileManagerActions:
+                                      _remoteFileManagerActionsFor(
+                                        _workContext,
+                                      ),
+                                  workContext: _workContext,
+                                  workspaceId: widget.workspaceId,
+                                );
+                              },
+                            ),
+                      ),
                     ),
                   ] else
                     const Expanded(child: SizedBox.shrink()),
