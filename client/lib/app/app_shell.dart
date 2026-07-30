@@ -144,6 +144,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/ssh/ssh_connection_events.dart';
 import '../widgets/ssh/ssh_host_key_prompt_dialog.dart';
 import '../services/ssh/ssh_profile_connection_coordinator.dart';
+import '../services/ssh/ssh_transport_close.dart';
 import '../services/ssh/android_ssh_connect_home.dart';
 import '../services/plugin/profile_plugin_linker_service.dart';
 import '../services/terminal/terminal_transport_factory.dart';
@@ -432,7 +433,10 @@ Future<AppShell> buildAppShell({
     locateRemoteCliPaths: locateRemoteClis,
     onRemoteCliLocated: (cli, path) =>
         sessionPreferencesCubit.setCliExecutablePathFor(cli, path),
-    invalidateProfileConnection: sshClientFactory.disconnectProfile,
+    invalidateProfileConnection: (id) => sshClientFactory.disconnectProfile(
+      id,
+      reason: SshTransportCloseReason.profileInvalidated,
+    ),
     enableRemoteCliDiscovery: () =>
         Platform.isAndroid && defaultTargetResolver().kind == RuntimeKind.ssh,
   );
@@ -499,7 +503,12 @@ Future<AppShell> buildAppShell({
     sshProfileById: sshProfileById,
     onEvict: (targetId) async {
       final pid = sshProfileIdOfId(targetId);
-      if (pid != null) sshClientFactory.disconnectProfile(pid);
+      if (pid != null) {
+        sshClientFactory.disconnectProfile(
+          pid,
+          reason: SshTransportCloseReason.runtimeContextEvicted,
+        );
+      }
       // v1: clear all history memory cache on work-plane drop.
       aiHistoryLoaderRef?.clearCache();
     },
@@ -959,8 +968,28 @@ Future<AppShell> buildAppShell({
     events: sshConnectionEvents,
     profileResolver: sshProfileById,
     onDisconnect: (profileId, error, stackTrace) {
+      final profile = sshProfileById(profileId);
+      final label = profile == null
+          ? profileId
+          : () {
+              final name = profile.name.trim();
+              return name.isEmpty
+                  ? '${profile.username}@${profile.host}'
+                  : '$name (${profile.username}@${profile.host})';
+            }();
+      if (error is SshTransportClosed) {
+        final cause = error.cause;
+        appLogger.w(
+          '[ssh] profile $profileId ($label) transport closed: '
+          'reason=${error.reason.name} plane=${error.plane.name}'
+          '${cause != null ? ' cause=$cause' : ''}',
+          error: cause,
+          stackTrace: cause != null ? stackTrace : null,
+        );
+        return;
+      }
       appLogger.w(
-        '[ssh] profile $profileId transport closed: $error',
+        '[ssh] profile $profileId ($label) transport closed: $error',
         error: error,
         stackTrace: stackTrace,
       );

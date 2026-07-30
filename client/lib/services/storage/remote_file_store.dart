@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import '../io/filesystem.dart';
 import '../host/host_one_shot_runner.dart';
 import '../ssh/ssh_client_factory.dart';
+import '../ssh/ssh_transport_close.dart';
 import '../ssh/ssh_run_result.dart';
 import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
@@ -397,7 +398,10 @@ class RemoteFileStore {
   }
 
   Future<void> disconnect() async {
-    _clientFactory.disconnectProfile(_profile.id);
+    _clientFactory.disconnectProfile(
+      _profile.id,
+      reason: SshTransportCloseReason.remoteFileStoreDisconnect,
+    );
   }
 
   Future<void> copyFile(String source, String destination) async {

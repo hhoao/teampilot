@@ -8,6 +8,7 @@ import '../remote/remote_connection_monitor.dart';
 import 'ssh_client_factory.dart';
 import 'ssh_connection_events.dart';
 import 'ssh_profile_reconnect_policy.dart';
+import 'ssh_transport_close.dart';
 
 typedef SshProfileResolver = SshProfile? Function(String profileId);
 
@@ -94,7 +95,10 @@ class SshProfileConnectionCoordinator {
     _reconnectTimers.remove(profileId);
     _pendingDisconnectErrors.remove(profileId);
     _pendingDisconnectStacks.remove(profileId);
-    _factory.disconnectProfile(profileId);
+    _factory.disconnectProfile(
+      profileId,
+      reason: SshTransportCloseReason.userDisconnect,
+    );
   }
 
   void _onStoragePoolChanged(String profileId) {
@@ -143,11 +147,7 @@ class SshProfileConnectionCoordinator {
   }) {
     if (_disposed) return;
     final previous = _pendingDisconnectErrors[profileId];
-    // Prefer a non-retryable cause (e.g. host-key rejection) over a later
-    // generic transport-closed StateError from the same disconnect wave.
-    if (previous == null ||
-        !_shouldSkipReconnect(previous) ||
-        _shouldSkipReconnect(error)) {
+    if (previous == null || _shouldPreferDisconnectError(error, previous)) {
       _pendingDisconnectErrors[profileId] = error;
       _pendingDisconnectStacks[profileId] = stackTrace;
     }
@@ -185,6 +185,20 @@ class SshProfileConnectionCoordinator {
       return true;
     }
     return false;
+  }
+
+  bool _shouldPreferDisconnectError(Object incoming, Object existing) {
+    if (_shouldSkipReconnect(incoming) && !_shouldSkipReconnect(existing)) {
+      return true;
+    }
+    if (_shouldSkipReconnect(existing) && !_shouldSkipReconnect(incoming)) {
+      return false;
+    }
+    final incomingGeneric = isGenericSshTransportClose(incoming);
+    final existingGeneric = isGenericSshTransportClose(existing);
+    if (!incomingGeneric && existingGeneric) return true;
+    if (incomingGeneric && !existingGeneric) return false;
+    return true;
   }
 
   void _scheduleReconnect(String profileId) {
@@ -230,7 +244,10 @@ class SshProfileConnectionCoordinator {
     try {
       await reconnectStorage(profile);
       if (_userDisconnectLatched.contains(profileId)) {
-        _factory.disconnectProfile(profileId);
+        _factory.disconnectProfile(
+      profileId,
+      reason: SshTransportCloseReason.userDisconnect,
+    );
         monitor.reconnectFailed();
         return;
       }
@@ -242,7 +259,10 @@ class SshProfileConnectionCoordinator {
         await sessionPlane(profileId);
       }
       if (_userDisconnectLatched.contains(profileId)) {
-        _factory.disconnectProfile(profileId);
+        _factory.disconnectProfile(
+      profileId,
+      reason: SshTransportCloseReason.userDisconnect,
+    );
         monitor.reconnectFailed();
         return;
       }

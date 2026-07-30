@@ -6,12 +6,21 @@ import '../../models/ssh_profile.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_known_host_repository.dart';
 import 'ssh_connection_events.dart';
+import 'ssh_transport_close.dart';
 
 typedef SshClientConnector =
     Future<SSHClient> Function(SshProfile profile, {Duration timeout});
 
 typedef SshProfileTransportClosedHandler =
     void Function(String profileId, Object error, StackTrace stackTrace);
+
+class _ClientLifecycle {
+  _ClientLifecycle({required this.profileId, required this.plane});
+
+  final String profileId;
+  final SshTransportPlane plane;
+  SshTransportCloseReason? pendingLocalCloseReason;
+}
 
 class _PooledConnection {
   _PooledConnection({
@@ -75,6 +84,7 @@ class SshClientFactory {
   final Map<String, _PooledConnection> _pool = {};
   final Map<String, SftpClient> _sftpByProfile = {};
   final Set<SSHClient> _watchedClients = {};
+  final Map<SSHClient, _ClientLifecycle> _clientLifecycle = {};
   final _poolChanges = StreamController<String>.broadcast();
 
   bool hasLiveStorageClient(String profileId) {
@@ -106,11 +116,19 @@ class SshClientFactory {
         await cached.ready;
         return cached.client;
       } else {
-        _evictProfile(profile.id, closePooled: true);
+        _evictProfile(
+          profile.id,
+          closePooled: true,
+          reason: SshTransportCloseReason.hostIdentityChanged,
+        );
       }
     }
 
-    final client = await _connectClient(profile, timeout: timeout);
+    final client = await _connectClient(
+      profile,
+      plane: SshTransportPlane.storage,
+      timeout: timeout,
+    );
     final ready = client.authenticated;
     final pooled = _PooledConnection(
       client: client,
@@ -123,7 +141,11 @@ class SshClientFactory {
       pooled.readyCompleted = true;
       _notifyPoolChange(profile.id);
     } on Object {
-      _evictProfile(profile.id, closePooled: true);
+      _evictProfile(
+        profile.id,
+        closePooled: true,
+        reason: SshTransportCloseReason.authFailed,
+      );
       rethrow;
     }
     return client;
@@ -147,15 +169,33 @@ class SshClientFactory {
     return sftp;
   }
 
-  void disconnectProfile(String profileId) {
-    _evictProfile(profileId, closePooled: true);
+  void prepareClientClose(
+    SSHClient client, {
+    required SshTransportCloseReason reason,
+  }) {
+    _clientLifecycle[client]?.pendingLocalCloseReason = reason;
   }
 
-  void _evictProfile(String profileId, {required bool closePooled}) {
+  void disconnectProfile(
+    String profileId, {
+    SshTransportCloseReason reason = SshTransportCloseReason.userDisconnect,
+  }) {
+    _evictProfile(profileId, closePooled: true, reason: reason);
+  }
+
+  void _evictProfile(
+    String profileId, {
+    required bool closePooled,
+    SshTransportCloseReason? reason,
+  }) {
     _sftpByProfile.remove(profileId);
     final cached = _pool.remove(profileId);
     final wasLive = cached != null && cached.readyCompleted;
     if (closePooled && cached != null && !cached.client.isClosed) {
+      final lifecycle = _clientLifecycle[cached.client];
+      if (lifecycle != null && reason != null) {
+        lifecycle.pendingLocalCloseReason = reason;
+      }
       cached.client.close();
     }
     if (wasLive) {
@@ -163,29 +203,44 @@ class SshClientFactory {
     }
   }
 
-  void _attachTransportLifecycle(String profileId, SSHClient client) {
+  void _attachTransportLifecycle(
+    String profileId,
+    SSHClient client,
+    SshTransportPlane plane,
+  ) {
     if (!_watchedClients.add(client)) return;
+    _clientLifecycle[client] = _ClientLifecycle(
+      profileId: profileId,
+      plane: plane,
+    );
     client.done.then(
-      (_) => _handleProfileTransportClosed(
-        profileId,
-        StateError('SSH transport closed'),
-        StackTrace.empty,
-      ),
-      onError: (Object error) => _handleProfileTransportClosed(
-        profileId,
-        error,
-        StackTrace.current,
-      ),
+      (_) => _onClientDone(client, null, StackTrace.empty),
+      onError: (Object error) => _onClientDone(client, error, StackTrace.current),
     );
   }
 
-  void _handleProfileTransportClosed(
-    String profileId,
-    Object error,
-    StackTrace stackTrace,
-  ) {
-    _evictProfile(profileId, closePooled: false);
-    _events.onTransportClosed?.call(profileId, error, stackTrace);
+  void _onClientDone(SSHClient client, Object? error, StackTrace stackTrace) {
+    final lifecycle = _clientLifecycle.remove(client);
+    _watchedClients.remove(client);
+    if (lifecycle == null) return;
+
+    final reason = lifecycle.pendingLocalCloseReason ??
+        (error != null
+            ? SshTransportCloseReason.transportError
+            : SshTransportCloseReason.remotePeerClosed);
+
+    if (lifecycle.plane == SshTransportPlane.storage) {
+      final cached = _pool[lifecycle.profileId];
+      if (cached != null && identical(cached.client, client)) {
+        _evictProfile(lifecycle.profileId, closePooled: false);
+      }
+    }
+
+    _events.onTransportClosed?.call(
+      lifecycle.profileId,
+      SshTransportClosed(reason: reason, plane: lifecycle.plane, cause: error),
+      stackTrace,
+    );
   }
 
   void _handleKeepAliveFailed(
@@ -196,10 +251,16 @@ class SshClientFactory {
     _events.onKeepAliveFailed?.call(profileId, error, stackTrace);
   }
 
-  void disconnectAll() {
+  void disconnectAll({
+    SshTransportCloseReason reason = SshTransportCloseReason.disconnectAll,
+  }) {
     _sftpByProfile.clear();
     for (final cached in _pool.values) {
       if (!cached.client.isClosed) {
+        final lifecycle = _clientLifecycle[cached.client];
+        if (lifecycle != null) {
+          lifecycle.pendingLocalCloseReason = reason;
+        }
         cached.client.close();
       }
     }
@@ -270,21 +331,30 @@ class SshClientFactory {
   Future<SSHClient> createMemberClient(
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
-  }) => _connectClient(profile, timeout: timeout);
+  }) => _connectClient(
+    profile,
+    plane: SshTransportPlane.member,
+    timeout: timeout,
+  );
 
   Future<SSHClient> createClient(
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
-  }) => _connectClient(profile, timeout: timeout);
+  }) => _connectClient(
+    profile,
+    plane: SshTransportPlane.member,
+    timeout: timeout,
+  );
 
   Future<SSHClient> _connectClient(
     SshProfile profile, {
+    required SshTransportPlane plane,
     Duration timeout = const Duration(seconds: 10),
   }) async {
     final client = _connector != null
         ? await _connector!(profile, timeout: timeout)
         : await _openClient(profile, timeout: timeout);
-    _attachTransportLifecycle(profile.id, client);
+    _attachTransportLifecycle(profile.id, client, plane);
     return client;
   }
 

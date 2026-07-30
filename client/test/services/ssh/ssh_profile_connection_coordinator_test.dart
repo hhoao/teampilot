@@ -11,6 +11,7 @@ import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/ssh/ssh_profile_reconnect_policy.dart';
+import 'package:teampilot/services/ssh/ssh_transport_close.dart';
 
 void main() {
   test('transport close coalesces and notifies coordinator once per wave', () async {
@@ -179,7 +180,10 @@ void main() {
 
     events.onTransportClosed?.call(
       profile.id,
-      StateError('SSH transport closed'),
+      const SshTransportClosed(
+        reason: SshTransportCloseReason.remotePeerClosed,
+        plane: SshTransportPlane.storage,
+      ),
       StackTrace.empty,
     );
 

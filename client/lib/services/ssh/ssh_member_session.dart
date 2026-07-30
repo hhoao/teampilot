@@ -3,13 +3,15 @@ import 'package:dartssh2/dartssh2.dart';
 import '../../models/ssh_profile.dart';
 import '../team_bus/remote/reverse_tunnel.dart';
 import 'ssh_client_factory.dart';
+import 'ssh_transport_close.dart';
 
 /// Dedicated SSH connection for one remote member's **session plane**: reverse
 /// bus tunnels, exec probes, and PTY. Not pooled with the storage-plane SFTP
 /// client ([SshClientFactory.clientForStorage]).
 class SshMemberSession {
-  SshMemberSession._(this.profile, this.client);
+  SshMemberSession._(this._factory, this.profile, this.client);
 
+  final SshClientFactory? _factory;
   final SshProfile profile;
   final SSHClient client;
 
@@ -20,14 +22,14 @@ class SshMemberSession {
   }) async {
     final client = await factory.createMemberClient(profile, timeout: timeout);
     await client.authenticated;
-    return SshMemberSession._(profile, client);
+    return SshMemberSession._(factory, profile, client);
   }
 
   /// Test harness with an already-authenticated [client].
   static SshMemberSession testing({
     required SshProfile profile,
     required SSHClient client,
-  }) => SshMemberSession._(profile, client);
+  }) => SshMemberSession._(null, profile, client);
 
   Future<String> run(String command) async {
     final out = await client.run(command);
@@ -53,6 +55,10 @@ class SshMemberSession {
 
   void close() {
     if (!client.isClosed) {
+      _factory?.prepareClientClose(
+        client,
+        reason: SshTransportCloseReason.memberSessionClosed,
+      );
       client.close();
     }
   }
