@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../l10n/l10n_extensions.dart';
 import '../models/workspace_folder.dart';
+import '../services/storage/home_target_controller.dart';
+import '../services/storage/work_target_canonicalizer.dart';
 import 'workspace_create_directory_picker.dart';
 
 typedef CreateWorkspaceDraft = ({
@@ -29,6 +32,17 @@ class _CreateWorkspaceDialogState extends State<_CreateWorkspaceDialog> {
   final _displayController = TextEditingController();
   var _targetId = WorkspaceFolder.localTargetId;
   var _folders = <WorkspaceFolder>[];
+  var _targetIdInitialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_targetIdInitialized) return;
+    _targetIdInitialized = true;
+    _targetId = WorkTargetCanonicalizer.defaultFolderTargetId(
+      context.read<HomeTargetController>().current,
+    );
+  }
 
   @override
   void dispose() {

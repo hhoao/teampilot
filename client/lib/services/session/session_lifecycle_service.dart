@@ -107,6 +107,9 @@ class SessionLifecycleService {
   final RuntimeTarget Function() _homeTarget;
   SessionRuntimePlanBuilder? _runtimePlanBuilder;
 
+  /// Current app home target (local, SSH, or WSL).
+  RuntimeTarget get currentHome => _homeTarget();
+
   /// Late-bind after bootstrap constructs [SessionRuntimePlanBuilder].
   void attachRuntimePlanBuilder(SessionRuntimePlanBuilder builder) {
     _runtimePlanBuilder = builder;

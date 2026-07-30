@@ -6,6 +6,8 @@ import '../../cubits/chat_cubit.dart';
 import '../../models/workspace_folder.dart';
 import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/session_repository.dart';
+import '../../services/storage/home_target_controller.dart';
+import '../../services/storage/work_target_canonicalizer.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/workspace_create_directory_picker.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -49,11 +51,22 @@ class _HomeNewWorkspaceDialogState extends State<HomeNewWorkspaceDialog> {
   late final TextEditingController _nameController;
   var _targetId = WorkspaceFolder.localTargetId;
   var _folders = <WorkspaceFolder>[];
+  var _targetIdInitialized = false;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_targetIdInitialized) return;
+    _targetIdInitialized = true;
+    _targetId = WorkTargetCanonicalizer.defaultFolderTargetId(
+      context.read<HomeTargetController>().current,
+    );
   }
 
   @override

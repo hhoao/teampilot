@@ -1,7 +1,9 @@
 import '../../models/app_session.dart';
+import '../../models/runtime_target.dart';
 import '../../models/simple_launch_identity.dart';
 import '../../models/workspace.dart';
 import '../../models/team_config.dart';
+import '../../services/storage/work_target_canonicalizer.dart';
 
 /// In-memory session used to stage the workbench before disk persistence.
 AppSession buildProvisionalSession({
@@ -13,12 +15,16 @@ AppSession buildProvisionalSession({
   String? workingDirectory,
   String sessionTeamId = '',
   String? expertKey,
+  RuntimeTarget? home,
 }) {
   final now = DateTime.now().millisecondsSinceEpoch;
   final trimmedTeam = sessionTeamId.trim();
   final folders = Workspace.foldersForPrimaryPath(
     workspace.folders,
     workingDirectory ?? '',
+    defaultTargetId: home == null
+        ? null
+        : WorkTargetCanonicalizer.defaultFolderTargetId(home),
   );
   final identity = isPersonal
       ? (simpleIdentity ??

@@ -203,6 +203,7 @@ class SessionLaunchPipeline {
       workingDirectory: request.workingDirectory,
       sessionTeamId: sessionTeamId,
       expertKey: request.expertKey,
+      home: _host.lifecycle.currentHome,
     );
 
     // Team sessions need provisional member bindings so history loading (which

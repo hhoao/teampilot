@@ -8,6 +8,7 @@ import '../models/runtime_target.dart';
 import '../models/workspace_folder.dart';
 import '../models/workspace_topology.dart';
 import '../services/storage/home_target_controller.dart';
+import '../services/storage/work_target_canonicalizer.dart';
 import '../utils/workspace/workspace_path_picker.dart';
 import '../utils/workspace/workspace_path_utils.dart';
 import 'workspace_folder_directory_row.dart';
@@ -74,12 +75,32 @@ class _TargetFolderGroup {
 class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
   late List<WorkspaceFolder> _folders;
   Future<List<RuntimeTarget>>? _targets;
+  var _defaultTargetIdInitialized = false;
 
   @override
   void initState() {
     super.initState();
     _folders = List<WorkspaceFolder>.from(widget.folders);
     _targets = _loadTargets();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_defaultTargetIdInitialized) return;
+    _defaultTargetIdInitialized = true;
+    final homeDefault = WorkTargetCanonicalizer.defaultFolderTargetId(
+      context.read<HomeTargetController>().current,
+    );
+    if (_folders.length == 1 &&
+        _folders.single.path.trim().isEmpty &&
+        _folders.single.targetId == WorkspaceFolder.localTargetId &&
+        homeDefault != WorkspaceFolder.localTargetId) {
+      setState(() {
+        _folders = [WorkspaceFolder(path: '', targetId: homeDefault)];
+      });
+      widget.onChanged(_folders);
+    }
   }
 
   @override

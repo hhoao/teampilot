@@ -12,6 +12,7 @@ import '../../../../models/workspace_topology.dart';
 import '../../../../repositories/session_repository.dart';
 import '../../../../repositories/ssh_profile_repository.dart';
 import '../../../../services/storage/home_target_controller.dart';
+import '../../../../services/storage/work_target_canonicalizer.dart';
 import '../../../../services/workspace/target_liveness.dart';
 import '../../../../widgets/workspace/workspace_dead_target_remap_dialog.dart';
 import '../../../../widgets/workspace_folders_editor.dart';
@@ -139,7 +140,14 @@ class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {
       ),
     );
     final folders = live.folders.isEmpty
-        ? [const WorkspaceFolder(path: '')]
+        ? [
+            WorkspaceFolder(
+              path: '',
+              targetId: WorkTargetCanonicalizer.defaultFolderTargetId(
+                context.read<HomeTargetController>().current,
+              ),
+            ),
+          ]
         : live.folders;
 
     _ensureDeadTargetsChecked(live.folders);

@@ -102,6 +102,16 @@ void main() {
     expect(Workspace.foldersForPrimaryPath(folders, '/main'), folders);
   });
 
+  test('foldersForPrimaryPath stamps defaultTargetId when folders empty', () {
+    final folders = Workspace.foldersForPrimaryPath(
+      const [],
+      '/repo',
+      defaultTargetId: 'ssh:p1',
+    );
+    expect(folders.single.path, '/repo');
+    expect(folders.single.targetId, 'ssh:p1');
+  });
+
   test('defaultProfileId round-trips and defaults empty', () {
     final p = Workspace(
       workspaceId: 'p1',

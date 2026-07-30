@@ -109,12 +109,18 @@ class Workspace {
   /// path (e.g. a git worktree) while keeping the rest as additional directories.
   static List<WorkspaceFolder> foldersForPrimaryPath(
     List<WorkspaceFolder> folders,
-    String primaryPath,
-  ) {
+    String primaryPath, {
+    String? defaultTargetId,
+  }) {
     if (folders.isEmpty) {
       final primary = normalizeWorkspacePath(primaryPath);
       if (primary.isEmpty) return folders;
-      return [WorkspaceFolder(path: primary)];
+      return [
+        WorkspaceFolder(
+          path: primary,
+          targetId: defaultTargetId ?? WorkspaceFolder.localTargetId,
+        ),
+      ];
     }
     final primary = normalizeWorkspacePath(primaryPath);
     if (primary.isEmpty) return folders;

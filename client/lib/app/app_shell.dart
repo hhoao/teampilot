@@ -1167,6 +1167,7 @@ Future<AppShell> buildAppShell({
     homeSshProfileId: defaultTargetResolver().sshProfileId,
     sshProfileExists: (id) => sshProfileById(id) != null,
     reinstallStorageContext: reinstallStorageContext,
+    home: defaultTargetResolver(),
   );
 
   Future<void> bootstrapAppData() async {
@@ -1191,6 +1192,7 @@ Future<AppShell> buildAppShell({
           homeSshProfileId: defaultTargetResolver().sshProfileId,
           sshProfileExists: (id) => sshProfileById(id) != null,
           reinstallStorageContext: reinstallStorageContext,
+          home: defaultTargetResolver(),
         );
       } else {
         await AppDataBootstrap.hydrateNativeHomeIndex(
@@ -1199,6 +1201,7 @@ Future<AppShell> buildAppShell({
           chatCubit: chatCubit,
           sessionRepo: sessionRepo,
           layoutCubit: layoutCubit,
+          home: defaultTargetResolver(),
         );
       }
       bootstrapCubit?.markHomeIndexReady();

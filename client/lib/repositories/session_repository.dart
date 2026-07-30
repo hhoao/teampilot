@@ -18,6 +18,7 @@ import '../services/session/session_member_cli_locks.dart';
 import '../services/session/session_team_counter.dart';
 import '../services/session/team_session_member_plan.dart';
 import '../services/storage/app_storage.dart';
+import '../services/storage/work_target_canonicalizer.dart';
 import '../models/workspace_icon_ref.dart';
 import '../services/workspace/target_liveness.dart';
 import '../services/workspace/workspace_icon_service.dart';
@@ -743,6 +744,11 @@ class SessionRepository {
       folders: Workspace.foldersForPrimaryPath(
         workspace.folders,
         workingDirectory ?? '',
+        defaultTargetId: _lifecycleService == null
+            ? null
+            : WorkTargetCanonicalizer.defaultFolderTargetId(
+                _lifecycleService!.currentHome,
+              ),
       ),
       display: '',
       sessionTeam: sessionTeam,
