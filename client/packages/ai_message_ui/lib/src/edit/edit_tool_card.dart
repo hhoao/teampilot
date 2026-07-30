@@ -6,36 +6,10 @@ import 'package:flutter/material.dart';
 import '../markdown/compiled_markdown_chrome.dart';
 import '../markdown/compiled_markdown_style.dart';
 import '../parts/expandable_tool_card.dart';
+import '../parts/fade_expand_body.dart';
 import '../theme.dart';
 import '../tool_file_actions.dart';
 import 'edit_line_highlighter.dart';
-
-/// Picks up to [cap] lines for collapsed preview, preferring add/remove rows.
-List<AiEditLine> previewEditHunkLines(
-  List<AiEditLine> lines, {
-  int cap = kAiToolCardPreviewLines,
-}) {
-  if (lines.length <= cap) return lines;
-
-  bool isChange(AiEditLine line) =>
-      line.kind == AiEditLineKind.add || line.kind == AiEditLineKind.remove;
-
-  final head = lines.take(cap);
-  if (head.any(isChange)) {
-    return head.toList(growable: false);
-  }
-
-  final changeIndex = lines.indexWhere(isChange);
-  if (changeIndex < 0) {
-    return head.toList(growable: false);
-  }
-
-  var start = math.max(0, changeIndex - 1);
-  if (start + cap > lines.length) {
-    start = math.max(0, lines.length - cap);
-  }
-  return lines.sublist(start, start + cap);
-}
 
 /// Cursor-style edit tool card: header + inline mini/full diff.
 class EditToolCard extends StatelessWidget {
@@ -47,6 +21,7 @@ class EditToolCard extends StatelessWidget {
     required this.markdown,
     required this.dense,
     required this.open,
+    required this.onToggle,
     super.key,
   });
 
@@ -57,6 +32,7 @@ class EditToolCard extends StatelessWidget {
   final CompiledMarkdownStyle markdown;
   final bool dense;
   final bool open;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +44,7 @@ class EditToolCard extends StatelessWidget {
     final onOpenFile = actions.onOpenFile;
     final triggerStyle = markdown.toolTrigger(triggerColor);
     final openTargetStyle = markdown.toolFileLink(triggerStyle, triggerColor);
-    final visibleLines = open ? hunk.lines : previewEditHunkLines(hunk.lines);
+    final visibleLines = hunk.lines;
 
     final titleWidget = Text(
       basename,
@@ -137,6 +113,7 @@ class EditToolCard extends StatelessWidget {
               markdown: markdown,
               highlighter: actions.lineHighlighter,
               open: open,
+              onToggle: onToggle,
               onOpenFile: onOpenFile == null ? null : () => onOpenFile(openTarget!),
             ),
           )
@@ -149,6 +126,7 @@ class EditToolCard extends StatelessWidget {
             markdown: markdown,
             highlighter: actions.lineHighlighter,
             open: open,
+            onToggle: onToggle,
             onOpenFile: onOpenFile == null ? null : () => onOpenFile(openTarget!),
           ),
       ],
@@ -229,6 +207,7 @@ class _EditToolCardHostState extends State<EditToolCardHost> {
         markdown: widget.markdown,
         dense: widget.dense,
         open: widget.open,
+        onToggle: widget.onToggle,
       ),
     );
   }
@@ -243,6 +222,7 @@ class _EditDiffPanel extends StatelessWidget {
     required this.markdown,
     required this.highlighter,
     required this.open,
+    required this.onToggle,
     this.onOpenFile,
   });
 
@@ -253,6 +233,7 @@ class _EditDiffPanel extends StatelessWidget {
   final CompiledMarkdownStyle markdown;
   final AiEditLineHighlighter highlighter;
   final bool open;
+  final VoidCallback onToggle;
   final VoidCallback? onOpenFile;
 
   @override
@@ -276,12 +257,12 @@ class _EditDiffPanel extends StatelessWidget {
       ],
     );
 
-    if (open && hunk.lines.length > kAiToolCardPreviewLines) {
-      lineList = ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: kAiToolCardExpandedMaxHeight),
-        child: SingleChildScrollView(child: lineList),
-      );
-    }
+    lineList = AiFadeExpandBody(
+      open: open,
+      onToggle: onToggle,
+      fadeColor: panelColor,
+      child: lineList,
+    );
 
     return DecoratedBox(
       decoration: BoxDecoration(

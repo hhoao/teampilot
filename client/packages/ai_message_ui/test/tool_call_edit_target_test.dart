@@ -3,6 +3,16 @@ import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+Finder _editBodyFadeChevron() => find.descendant(
+      of: find.byType(AiFadeExpandBody),
+      matching: find.byKey(const ValueKey('ai-fade-expand-chevron')),
+    );
+
+Finder _visibleDiffText(String text) => find.descendant(
+      of: find.byType(AiFadeExpandBody),
+      matching: find.textContaining(text),
+    );
+
 void main() {
   testWidgets('StrReplace shows basename + badge + mini-diff (not Used tool)', (
     tester,
@@ -31,7 +41,7 @@ void main() {
     expect(find.textContaining('Used tool:'), findsNothing);
     expect(find.textContaining('tp_sidebar_provider.dart'), findsOneWidget);
     expect(find.textContaining('+'), findsWidgets);
-    expect(find.textContaining('edgeOpenEnabled'), findsOneWidget);
+    expect(find.textContaining('edgeOpenEnabled'), findsAtLeastNWidgets(1));
     expect(find.textContaining('ok'), findsNothing);
   });
 
@@ -46,17 +56,19 @@ void main() {
               args: {
                 'file_path': 'lib/a.dart',
                 'old_string': 'l1\nl2\nl3\nl4\nl5\nl6',
-                'new_string': 'l1\nl2\nl3\nl4\nl5\nCHANGED',
+                'new_string': 'l1\nl2\nl3\nl4\nl5\nlate-line',
               },
             ),
           ),
         ),
       ),
     );
-    expect(find.textContaining('CHANGED'), findsNothing);
-    await tester.tap(find.textContaining('l3'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('CHANGED'), findsOneWidget);
+    expect(find.textContaining('late-line'), findsAtLeastNWidgets(1));
+    expect(find.byIcon(Icons.expand_less), findsNothing);
+    await tester.tap(_visibleDiffText('l3').first);
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.expand_less), findsWidgets);
   });
 
   testWidgets('tap basename opens file and does not toggle expand', (
@@ -75,7 +87,7 @@ void main() {
                 args: {
                   'file_path': 'lib/a.dart',
                   'old_string': 'l1\nl2\nl3\nl4\nl5\nl6',
-                  'new_string': 'l1\nl2\nl3\nl4\nl5\nCHANGED',
+                  'new_string': 'l1\nl2\nl3\nl4\nl5\nlate-line',
                   'start_line': 1,
                 },
               ),
@@ -84,11 +96,13 @@ void main() {
         ),
       ),
     );
-    expect(find.textContaining('CHANGED'), findsNothing);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('late-line'), findsAtLeastNWidgets(1));
+    expect(find.byIcon(Icons.expand_less), findsNothing);
     await tester.tap(find.textContaining('a.dart'));
     await tester.pumpAndSettle();
     expect(opened?.path, 'lib/a.dart');
-    expect(find.textContaining('CHANGED'), findsNothing);
+    expect(find.byIcon(Icons.expand_less), findsNothing);
   });
 
   testWidgets('tap line gutter opens file and does not toggle expand', (
@@ -107,7 +121,7 @@ void main() {
                 args: {
                   'file_path': 'lib/a.dart',
                   'old_string': 'l1\nl2\nl3\nl4\nl5\nl6',
-                  'new_string': 'l1\nl2\nl3\nl4\nl5\nCHANGED',
+                  'new_string': 'l1\nl2\nl3\nl4\nl5\nlate-line',
                   'start_line': 1,
                 },
               ),
@@ -116,11 +130,20 @@ void main() {
         ),
       ),
     );
-    expect(find.textContaining('CHANGED'), findsNothing);
-    await tester.tap(find.text('3'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('late-line'), findsAtLeastNWidgets(1));
+    expect(find.byIcon(Icons.expand_less), findsNothing);
+    await tester.tap(
+      find
+          .descendant(
+            of: find.byType(AiFadeExpandBody),
+            matching: find.text('3'),
+          )
+          .first,
+    );
     await tester.pumpAndSettle();
     expect(opened, isNotNull);
-    expect(find.textContaining('CHANGED'), findsNothing);
+    expect(find.byIcon(Icons.expand_less), findsNothing);
   });
 
   testWidgets('expand grows same region; no Result: label or args JSON', (
@@ -136,7 +159,7 @@ void main() {
               args: {
                 'file_path': 'lib/a.dart',
                 'old_string': 'l1\nl2\nl3\nl4\nl5\nl6',
-                'new_string': 'l1\nl2\nl3\nl4\nl5\nCHANGED',
+                'new_string': 'l1\nl2\nl3\nl4\nl5\nlate-line',
               },
               result: 'ok',
             ),
@@ -144,12 +167,43 @@ void main() {
         ),
       ),
     );
-    expect(find.textContaining('CHANGED'), findsNothing);
-    await tester.tap(find.byIcon(Icons.expand_more));
     await tester.pumpAndSettle();
-    expect(find.textContaining('CHANGED'), findsOneWidget);
+    expect(find.textContaining('late-line'), findsAtLeastNWidgets(1));
+    expect(find.byIcon(Icons.expand_less), findsNothing);
+    await tester.tap(_editBodyFadeChevron());
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.expand_less), findsWidgets);
     expect(find.textContaining('Result:'), findsNothing);
     expect(find.textContaining('old_string'), findsNothing);
+  });
+
+  testWidgets('body fade chevron tap toggles expand once', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: AiToolCallPartView(
+            part: AiToolCallPart(
+              toolCallId: '1',
+              toolName: 'StrReplace',
+              args: {
+                'file_path': 'lib/a.dart',
+                'old_string': 'l1\nl2\nl3\nl4\nl5\nl6',
+                'new_string': 'l1\nl2\nl3\nl4\nl5\nlate-line',
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(_editBodyFadeChevron(), findsOneWidget);
+    expect(find.byIcon(Icons.expand_less), findsNothing);
+    await tester.tap(_editBodyFadeChevron());
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.expand_less), findsWidgets);
+    await tester.tap(_editBodyFadeChevron());
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.expand_less), findsNothing);
   });
 
   testWidgets('expanded long single-line add shows full text', (tester) async {
@@ -175,7 +229,8 @@ void main() {
       ),
     );
 
-    expect(find.textContaining(marker), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.textContaining(marker), findsAtLeastNWidgets(1));
   });
 
   testWidgets('tap basename opens file with endLine', (tester) async {
@@ -279,8 +334,8 @@ void main() {
       );
 
       await tester.pumpAndSettle();
-      expect(find.textContaining('added-line'), findsOneWidget);
-      expect(find.textContaining('ctx1'), findsNothing);
+      expect(find.textContaining('added-line'), findsAtLeastNWidgets(1));
+      expect(find.textContaining('ctx1'), findsAtLeastNWidgets(1));
     },
   );
 
@@ -309,8 +364,8 @@ void main() {
     );
 
     await tester.pumpAndSettle();
-    expect(find.textContaining('original-old'), findsOneWidget);
-    expect(find.textContaining('original-new'), findsOneWidget);
+    expect(find.textContaining('original-old'), findsAtLeastNWidgets(1));
+    expect(find.textContaining('original-new'), findsAtLeastNWidgets(1));
   });
 
   testWidgets('enrichEditContext success updates line numbers', (tester) async {
@@ -355,7 +410,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.textContaining('40'), findsWidgets);
-    expect(find.textContaining('before'), findsOneWidget);
+    expect(find.textContaining('before'), findsAtLeastNWidgets(1));
   });
 
   testWidgets('Read still uses summary chrome', (tester) async {
