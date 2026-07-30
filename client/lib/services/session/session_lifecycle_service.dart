@@ -21,6 +21,7 @@ import '../team_bus/member_bus_idle_endpoint.dart';
 import '../agent_status/member_agent_status_endpoint.dart';
 import '../storage/app_storage.dart';
 import '../storage/runtime_layout.dart';
+import '../storage/work_target_canonicalizer.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
 import '../cli/registry/capabilities/session_resume_capability.dart';
 import '../cli/preset_resolver.dart';
@@ -66,6 +67,7 @@ class SessionLifecycleService {
     List<CliPreset> Function()? loadPresets,
     WorkspaceProjectConfigRepository? projectConfigRepository,
     SessionRuntimePlanBuilder? runtimePlanBuilder,
+    RuntimeTarget Function()? homeTarget,
   }) : _appDataBasePath = appDataBasePath,
        _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
@@ -78,7 +80,8 @@ class SessionLifecycleService {
        _cliPresetsRepository = cliPresetsRepository,
        _loadPresets = loadPresets,
        _projectConfigRepository = projectConfigRepository,
-       _runtimePlanBuilder = runtimePlanBuilder;
+       _runtimePlanBuilder = runtimePlanBuilder,
+       _homeTarget = homeTarget ?? RuntimeTarget.local;
 
   final String? _appDataBasePath;
   final ConfigProfileService? _configProfileService;
@@ -101,6 +104,7 @@ class SessionLifecycleService {
   final CliPresetsRepository? _cliPresetsRepository;
   final List<CliPreset> Function()? _loadPresets;
   final WorkspaceProjectConfigRepository? _projectConfigRepository;
+  final RuntimeTarget Function() _homeTarget;
   SessionRuntimePlanBuilder? _runtimePlanBuilder;
 
   /// Late-bind after bootstrap constructs [SessionRuntimePlanBuilder].
@@ -1371,13 +1375,8 @@ class SessionLifecycleService {
     return _localRoots(_appDataBasePath ?? AppStorage.paths.basePath);
   }
 
-  RuntimeTarget _runtimeTargetFromId(String id) => switch (runtimeKindOfId(
-    id,
-  )) {
-    RuntimeKind.ssh => RuntimeTarget.ssh(sshProfileIdOfId(id) ?? '', label: ''),
-    RuntimeKind.wsl => RuntimeTarget.wsl(wslDistroOfId(id) ?? ''),
-    RuntimeKind.local => RuntimeTarget.local(),
-  };
+  RuntimeTarget _runtimeTargetFromId(String id) =>
+      WorkTargetCanonicalizer.resolve(id, home: _homeTarget());
 
   /// Where the CLI process runs for this launch.
   ///

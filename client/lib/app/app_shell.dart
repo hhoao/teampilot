@@ -675,6 +675,7 @@ Future<AppShell> buildAppShell({
   sessionLifecycleService = SessionLifecycleService(
     storageRootsResolver: () async => AppStorage.context,
     catalogContextResolver: () async => runtimeContextRegistry.home(),
+    homeTarget: defaultTargetResolver,
     // P2: launch resolves the work-plane on the workspace's target machine.
     workContextResolver: runtimeContextRegistry.forTarget,
     loadEnabledExtensionIds: ({teamId, workspaceId}) async {
