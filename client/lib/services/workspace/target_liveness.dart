@@ -6,10 +6,14 @@ abstract class TargetLiveness {
 }
 
 class DefaultTargetLiveness implements TargetLiveness {
-  DefaultTargetLiveness({required SshProfileRepository sshProfiles})
-    : _sshProfiles = sshProfiles;
+  DefaultTargetLiveness({
+    required SshProfileRepository sshProfiles,
+    bool Function()? hasTermuxConfig,
+  }) : _sshProfiles = sshProfiles,
+       _hasTermuxConfig = hasTermuxConfig;
 
   final SshProfileRepository _sshProfiles;
+  final bool Function()? _hasTermuxConfig;
 
   @override
   Future<bool> isAlive(String targetId) async {
@@ -26,7 +30,8 @@ class DefaultTargetLiveness implements TargetLiveness {
         if (profileId == null || profileId.isEmpty) return false;
         return (await _sshProfiles.findById(profileId)) != null;
       case RuntimeKind.termux:
-        return id.startsWith('termux:');
+        if (!id.startsWith('termux:')) return false;
+        return _hasTermuxConfig?.call() ?? true;
     }
   }
 }

@@ -8,6 +8,7 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import '../../../cubits/progress_activity_cubit.dart';
 import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/ssh_profile_cubit.dart';
+import '../../../cubits/termux_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/ssh_profile.dart';
 import '../../../models/team_config.dart';
@@ -22,6 +23,7 @@ import '../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/progress_activity/cli_provision_activity_adapter.dart';
 import '../../../services/ssh/ssh_client_factory.dart';
+import '../../../services/termux/termux_transport_profile.dart';
 import '../../../widgets/cli_install_progress_panel.dart';
 import 'onboarding_cli_row.dart';
 import 'onboarding_step_scaffold.dart';
@@ -126,8 +128,10 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
       final mode = context.read<ConnectionModeService>();
       final discovery = CliExecutableDiscovery(registry: _registry);
       final Map<CliTool, String> located;
-      if (mode.isSshMode) {
-        final profile = context.read<SshProfileCubit>().state.selectedProfile;
+      if (mode.isRemoteWorkPlane) {
+        final profile = mode.isTermuxMode
+            ? _termuxProfile(context)
+            : context.read<SshProfileCubit>().state.selectedProfile;
         if (profile == null) {
           located = const {};
         } else {
@@ -188,7 +192,9 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
     _syncBusy();
     try {
       final connectionMode = context.read<ConnectionModeService>();
-      final sshProfile = context.read<SshProfileCubit>().state.selectedProfile;
+      final sshProfile = connectionMode.isTermuxMode
+          ? _termuxProfile(context)
+          : context.read<SshProfileCubit>().state.selectedProfile;
       final installer = CliInstallerService(
         sshClientFactory: context.read<SshClientFactory>(),
         cliToolRegistry: _registry,
@@ -201,7 +207,7 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
         cubit: context.read<ProgressActivityCubit>(),
       );
       final result = await adapter.runTracked(
-        title: connectionMode.isSshMode
+        title: connectionMode.isRemoteWorkPlane
             ? 'Install $cliLabel on ${sshProfile?.host ?? 'remote host'}'
             : 'Install $cliLabel',
         historyMessageFor: (installResult) => installResult.success
@@ -210,7 +216,7 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
         run: (onProgress) async {
           final installResult = await installer.install(
             cli: cli,
-            mode: connectionMode.isSshMode
+            mode: connectionMode.isRemoteWorkPlane
                 ? CliInstallMode.ssh
                 : CliInstallMode.local,
             sshProfile: sshProfile,
@@ -395,6 +401,11 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
       ),
     );
   }
+}
+
+SshProfile? _termuxProfile(BuildContext context) {
+  final config = context.read<TermuxCubit>().state.config;
+  return config == null ? null : termuxTransportProfile(config);
 }
 
 Future<Map<CliTool, String>> _locateRemoteAll(

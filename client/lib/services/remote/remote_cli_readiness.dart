@@ -100,8 +100,10 @@ class RemoteCliReadinessService {
     required RuntimeTarget target,
     required CliTool cli,
   }) async {
-    if (target.kind != RuntimeKind.ssh) {
-      throw ArgumentError('probe requires an SSH target, got ${target.id}');
+    if (!usesSshTransport(target.kind)) {
+      throw ArgumentError(
+        'probe requires an SSH transport target, got ${target.id}',
+      );
     }
     try {
       final path = await _locate(target: target, cli: cli);
@@ -131,8 +133,10 @@ class RemoteCliReadinessService {
     required CliTool cli,
     void Function(CliInstallProgress progress)? onProgress,
   }) async {
-    if (target.kind != RuntimeKind.ssh) {
-      throw ArgumentError('install requires an SSH target, got ${target.id}');
+    if (!usesSshTransport(target.kind)) {
+      throw ArgumentError(
+        'install requires an SSH transport target, got ${target.id}',
+      );
     }
     final profile = profileById(target.sshProfileId ?? '');
     if (profile == null) {

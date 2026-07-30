@@ -129,7 +129,7 @@ final class MemberLifecycleConnectGate {
     final launchTarget = launchWorkTarget(session, memberId: member.id);
     final memberWork = memberWorkDirs(session, member.id);
     final busIdle = team.teamMode == TeamMode.mixed &&
-            launchTarget.kind != RuntimeKind.ssh
+            !usesSshTransport(launchTarget.kind)
         ? MemberBusIdleEndpoint.local(
             teammateBusMcpGateway,
             sessionId: session.sessionId,
@@ -146,7 +146,7 @@ final class MemberLifecycleConnectGate {
         team: team,
         busIdle: busIdle,
         workingDirectory: memberWork.workingDirectory,
-        crossMachine: launchTarget.kind == RuntimeKind.ssh,
+        crossMachine: usesSshTransport(launchTarget.kind),
       ),
     );
 
@@ -160,7 +160,7 @@ final class MemberLifecycleConnectGate {
         team: team,
         busIdle: busIdle,
         workingDirectory: memberWork.workingDirectory,
-        crossMachine: launchTarget.kind == RuntimeKind.ssh,
+        crossMachine: usesSshTransport(launchTarget.kind),
         resolvedProviderId:
             resolvedProviderId.isNotEmpty ? resolvedProviderId : null,
         credentialBasePath: paths.basePath,
@@ -177,7 +177,7 @@ final class MemberLifecycleConnectGate {
         team: team,
         busIdle: busIdle,
         workingDirectory: memberWork.workingDirectory,
-        crossMachine: launchTarget.kind == RuntimeKind.ssh,
+        crossMachine: usesSshTransport(launchTarget.kind),
       ),
     );
     if (gate.allowed) return const LifecycleConnectGateOutcome.allowed();
@@ -219,7 +219,7 @@ final class MemberLifecycleConnectGate {
     final launchTarget = launchWorkTarget(session, memberId: member.id);
     final memberWork = memberWorkDirs(session, member.id);
     final busIdle = team.teamMode == TeamMode.mixed &&
-            launchTarget.kind != RuntimeKind.ssh
+            !usesSshTransport(launchTarget.kind)
         ? MemberBusIdleEndpoint.local(
             teammateBusMcpGateway,
             sessionId: session.sessionId,
@@ -234,7 +234,7 @@ final class MemberLifecycleConnectGate {
       team: team,
       busIdle: busIdle,
       workingDirectory: memberWork.workingDirectory,
-      crossMachine: launchTarget.kind == RuntimeKind.ssh,
+      crossMachine: usesSshTransport(launchTarget.kind),
     );
 
     final phase = lifecycle.peekSessionPhase(gateCtx);

@@ -64,7 +64,7 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
   required SshProfile? profile,
   bool injectRootSandboxEnv = false,
 }) async {
-  if (memberTarget.kind != RuntimeKind.ssh ||
+  if (!usesSshTransport(memberTarget.kind) ||
       memberSession == null ||
       profile == null) {
     return spec;

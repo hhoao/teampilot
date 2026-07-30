@@ -27,7 +27,9 @@ class WorkspaceProvisionCoordinator {
       memberTarget.id,
       home: home,
     );
-    if (resolved.kind != RuntimeKind.ssh) return false;
+    if (resolved.kind != RuntimeKind.ssh && resolved.kind != RuntimeKind.termux) {
+      return false;
+    }
     return resolved.id != home.id;
   }
 

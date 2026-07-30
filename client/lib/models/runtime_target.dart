@@ -20,6 +20,10 @@ String? wslDistroOfId(String id) =>
 String? sshProfileIdOfId(String id) =>
     id.startsWith('ssh:') ? id.substring(4) : null;
 
+/// SSH transport targets (catalog SSH + synthetic Termux loopback profile).
+bool usesSshTransport(RuntimeKind kind) =>
+    kind == RuntimeKind.ssh || kind == RuntimeKind.termux;
+
 @immutable
 class RuntimeTarget {
   const RuntimeTarget({

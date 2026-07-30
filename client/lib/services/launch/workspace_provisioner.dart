@@ -112,7 +112,7 @@ class WorkspaceProvisioner {
     step('ensure-cli done path=$remoteCliPath');
 
     final home = homeContext();
-    if (target.kind == RuntimeKind.ssh) {
+    if (usesSshTransport(target.kind)) {
       final optInCredentials = await isCredentialOptIn(target.id);
       report(
         CliInstallPhase.syncingRemoteWorkspace,
@@ -137,7 +137,7 @@ class WorkspaceProvisioner {
 
     step('config-profile begin');
     final configProfile = await configProfileFactory(workContext);
-    if (target.kind == RuntimeKind.ssh) {
+    if (usesSshTransport(target.kind)) {
       report(
         CliInstallPhase.syncingRemoteWorkspace,
         detail: 'workspace-config',
@@ -165,7 +165,7 @@ class WorkspaceProvisioner {
     required RuntimeTarget target,
     required CliTool cli,
   }) async {
-    if (target.kind != RuntimeKind.ssh) {
+    if (!usesSshTransport(target.kind)) {
       return localCliPath(cli);
     }
     final profile = profileById(target.sshProfileId ?? '');

@@ -350,7 +350,7 @@ class SessionShellConnector {
             busIdle: mixedBus
                 ? switch (remoteBinding) {
                     final binding? => MemberBusIdleEndpoint.remote(binding),
-                    null when launchTarget.kind != RuntimeKind.ssh =>
+                    null when !usesSshTransport(launchTarget.kind) =>
                       MemberBusIdleEndpoint.local(
                         _host.teammateBusMcpGateway,
                         sessionId: activeSession.sessionId,
@@ -395,7 +395,7 @@ class SessionShellConnector {
         }
       }
 
-      if (launchTarget.kind == RuntimeKind.ssh) {
+      if (usesSshTransport(launchTarget.kind)) {
         final injectRootSandboxEnv = await _host.isWorkspaceRootSandboxEnvOptIn(
           activeSession.workspaceId,
         );
@@ -751,7 +751,7 @@ class SessionShellConnector {
     Function(void Function(CliInstallProgress progress)? onProgress)
     prepare,
   }) async {
-    final hostLabel = launchTarget.kind == RuntimeKind.ssh
+    final hostLabel = usesSshTransport(launchTarget.kind)
         ? (_host.shellFactory.profileFor(launchTarget)?.host.trim() ??
               launchTarget.id)
         : '';
@@ -796,7 +796,7 @@ class SessionShellConnector {
       }
     }
 
-    if (launchTarget.kind != RuntimeKind.ssh) {
+    if (!usesSshTransport(launchTarget.kind)) {
       return runPrepare(null);
     }
 
@@ -995,7 +995,7 @@ class SessionShellConnector {
     required String memberKey,
     required RuntimeTarget launchTarget,
   }) async {
-    if (launchTarget.kind != RuntimeKind.ssh) return null;
+    if (!usesSshTransport(launchTarget.kind)) return null;
     final factory = _host.shellFactory.transportFactory?.sshClientFactory;
     final profile = _host.shellFactory.profileFor(launchTarget);
     if (factory == null || profile == null) return null;

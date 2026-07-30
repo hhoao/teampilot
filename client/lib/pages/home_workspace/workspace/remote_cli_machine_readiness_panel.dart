@@ -99,7 +99,7 @@ class _RemoteCliMachineReadinessPanelState
     }
 
     final target = _selectedTarget;
-    if (target == null || target.kind != RuntimeKind.ssh) return const [];
+    if (target == null || !usesSshTransport(target.kind)) return const [];
     final all = remoteCliRequirementsForPlacement(
       workspace: workspace,
       team: team,

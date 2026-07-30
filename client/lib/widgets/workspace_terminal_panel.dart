@@ -308,7 +308,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   void _onSshReconnectSignal(String profileId) {
     for (final entry in _group.entries) {
       final target = _connector.runtimeTargetFor(entry.spec);
-      if (target.kind != RuntimeKind.ssh) continue;
+      if (!usesSshTransport(target.kind)) continue;
       final pid = target.sshProfileId ?? sshProfileIdOfId(target.id);
       if (pid != profileId) continue;
       if (!entry.connected && !entry.session.isRunning) continue;

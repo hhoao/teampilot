@@ -507,7 +507,7 @@ class SessionLaunchService
     String? rosterMemberId,
   }) {
     final workTarget = _launchWorkTarget(session, memberId: rosterMemberId);
-    final needsRemoteLaunch = workTarget.kind == RuntimeKind.ssh;
+    final needsRemoteLaunch = usesSshTransport(workTarget.kind);
     _discardIdleShellIfMismatched(
       tab: tab,
       shellKey: shellKey,

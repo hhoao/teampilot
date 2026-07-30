@@ -63,4 +63,26 @@ void main() {
     final liveness = DefaultTargetLiveness(sshProfiles: ssh);
     expect(await liveness.isAlive('ssh:'), isFalse);
   });
+
+  test('termux without config is dead when checker provided', () async {
+    final tmp = await Directory.systemTemp.createTemp('liveness_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final ssh = SshProfileRepository(rootDir: tmp.path);
+    final liveness = DefaultTargetLiveness(
+      sshProfiles: ssh,
+      hasTermuxConfig: () => false,
+    );
+    expect(await liveness.isAlive('termux:default'), isFalse);
+  });
+
+  test('termux with config is alive when checker provided', () async {
+    final tmp = await Directory.systemTemp.createTemp('liveness_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final ssh = SshProfileRepository(rootDir: tmp.path);
+    final liveness = DefaultTargetLiveness(
+      sshProfiles: ssh,
+      hasTermuxConfig: () => true,
+    );
+    expect(await liveness.isAlive('termux:default'), isTrue);
+  });
 }

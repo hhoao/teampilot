@@ -72,7 +72,7 @@ class RuntimeContextRegistry {
     if (identical(_home, ctx)) _home = null;
     if (!notifyEvict) return;
     final shouldNotify =
-        ctx.storageIsRemote || ctx.target.kind == RuntimeKind.ssh;
+        ctx.storageIsRemote || usesSshTransport(ctx.target.kind);
     if (shouldNotify) await _onEvict?.call(targetId);
   }
 

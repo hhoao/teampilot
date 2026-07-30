@@ -13,3 +13,15 @@ SshProfile termuxTransportProfile(TermuxConfig config) {
     authType: SshAuthType.privateKey,
   );
 }
+
+/// Resolves catalog SSH profiles plus the synthetic Termux transport profile.
+SshProfile? profileByIdIncludingTermux({
+  required String id,
+  required TermuxConfig? termuxConfig,
+  required SshProfile? Function(String id) catalogProfileById,
+}) {
+  if (id == 'termux') {
+    return termuxConfig == null ? null : termuxTransportProfile(termuxConfig);
+  }
+  return catalogProfileById(id);
+}

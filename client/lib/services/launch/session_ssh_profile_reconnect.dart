@@ -63,7 +63,7 @@ class SessionSshProfileReconnect {
   }
 
   bool _targetUsesProfile(RuntimeTarget target, String profileId) {
-    if (target.kind != RuntimeKind.ssh) return false;
+    if (!usesSshTransport(target.kind)) return false;
     final id = target.sshProfileId ?? sshProfileIdOfId(target.id);
     return id == profileId;
   }

@@ -41,7 +41,7 @@ List<RemoteCliRequirement> remoteCliRequirementsForPlacement({
   for (final entry in placement.entries) {
     final targetId = entry.key;
     final target = byId[targetId];
-    if (target == null || target.kind != RuntimeKind.ssh) continue;
+    if (target == null || !usesSshTransport(target.kind)) continue;
 
     for (final memberEntry in entry.value.entries) {
       if (memberEntry.value <= 0) continue;
@@ -90,10 +90,10 @@ RuntimeTarget? sshTargetForProjectFolder({
     folder.targetId,
     home: home,
   );
-  if (resolved.kind != RuntimeKind.ssh) return null;
+  if (!usesSshTransport(resolved.kind)) return null;
 
   return selectableTargets
-      .where((t) => t.id == resolved.id && t.kind == RuntimeKind.ssh)
+      .where((t) => t.id == resolved.id && usesSshTransport(t.kind))
       .firstOrNull ??
       resolved;
 }
