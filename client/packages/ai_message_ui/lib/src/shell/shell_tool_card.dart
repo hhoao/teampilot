@@ -163,7 +163,7 @@ class _ShellTerminalBody extends StatelessWidget {
     final mono = markdown.codeBlock;
     final rawOutput = part.result == null ? null : _stringify(part.result);
     final hasOutput = rawOutput != null && rawOutput.trim().isNotEmpty;
-    final output = hasOutput ? rawOutput! : null;
+    final output = hasOutput ? rawOutput : null;
     final outputColor = part.isError
         ? scheme.error
         : scheme.onSurface.withValues(alpha: 0.65);

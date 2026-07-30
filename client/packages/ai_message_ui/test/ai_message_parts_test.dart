@@ -251,7 +251,8 @@ void main() {
     expect(find.text('输出:'), findsNothing);
     // Collapsed shell mini panel already shows $ and result (no further tap needed).
     expect(find.textContaining(r'$'), findsWidgets);
-    expect(find.textContaining('ok'), findsOneWidget);
+    // Fade-expand keeps full output in tree for measurement.
+    expect(find.textContaining('ok'), findsAtLeastNWidgets(1));
   });
 
   testWidgets('tool expand uses AnimatedSize; long args soft-wrap', (

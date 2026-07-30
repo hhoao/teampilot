@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
-import '../parts/text_part_view.dart';
 import '../strings.dart';
 import '../theme.dart';
 import 'compiled_markdown_style.dart';
