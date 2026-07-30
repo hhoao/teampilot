@@ -327,6 +327,17 @@ class SshClientFactory {
     return base64.encode(fingerprint);
   }
 
+  /// One-shot SSH client for heavy or short-lived remote work (manifest apply,
+  /// probes). Does not register with [SshProfileConnectionCoordinator].
+  Future<SSHClient> createEphemeralClient(
+    SshProfile profile, {
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    return _connector != null
+        ? await _connector!(profile, timeout: timeout)
+        : await _openClient(profile, timeout: timeout);
+  }
+
   /// Opens a fresh, caller-owned SSH connection for one member session plane.
   Future<SSHClient> createMemberClient(
     SshProfile profile, {

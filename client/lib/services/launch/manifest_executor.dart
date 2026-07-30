@@ -76,13 +76,20 @@ class ManifestExecutor {
     appLogger.d(
       '[session-launch] manifest flush via ssh ops=${manifest.entries.length}',
     );
-    final client = await sshClientFactory!.clientForStorage(profile);
-    final result = await client.runWithResult(script, stderr: true);
-    if (sshRunFailed(result)) {
-      final stderr = utf8.decode(result.stderr, allowMalformed: true);
-      throw StateError(
-        'Failed to apply launch manifest on ${profile.host}: $stderr',
-      );
+    final client = await sshClientFactory!.createEphemeralClient(profile);
+    try {
+      await client.authenticated;
+      final result = await client.runWithResult(script, stderr: true);
+      if (sshRunFailed(result)) {
+        final stderr = utf8.decode(result.stderr, allowMalformed: true);
+        throw StateError(
+          'Failed to apply launch manifest on ${profile.host}: $stderr',
+        );
+      }
+    } finally {
+      if (!client.isClosed) {
+        client.close();
+      }
     }
   }
 
