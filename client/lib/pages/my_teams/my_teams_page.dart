@@ -164,7 +164,7 @@ class _MyTeamsPageState extends State<MyTeamsPage> {
                   padding: const EdgeInsets.fromLTRB(28, 18, 28, 24),
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 380,
-                    mainAxisExtent: 186,
+                    mainAxisExtent: 220,
                     crossAxisSpacing: 14,
                     mainAxisSpacing: 14,
                   ),

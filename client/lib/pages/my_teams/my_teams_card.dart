@@ -96,6 +96,12 @@ class _MyTeamsCardState extends State<MyTeamsCard> {
                           key: Key('my-teams-upload-${team.id}'),
                           tooltip: l10n.myTeamsUpload,
                           onPressed: widget.onUpload,
+                          visualDensity: VisualDensity.compact,
+                          style: IconButton.styleFrom(
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            minimumSize: const Size(32, 32),
+                            padding: const EdgeInsets.all(4),
+                          ),
                           icon: Icon(
                             Icons.upload_outlined,
                             size: context.tpIconSizes.md,
@@ -105,6 +111,12 @@ class _MyTeamsCardState extends State<MyTeamsCard> {
                         key: Key('my-teams-delete-${team.id}'),
                         tooltip: l10n.deleteTeam,
                         onPressed: widget.onDelete,
+                        visualDensity: VisualDensity.compact,
+                        style: IconButton.styleFrom(
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          minimumSize: const Size(32, 32),
+                          padding: const EdgeInsets.all(4),
+                        ),
                         icon: Icon(
                           Icons.delete_outline,
                           size: context.tpIconSizes.md,
@@ -114,12 +126,12 @@ class _MyTeamsCardState extends State<MyTeamsCard> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 Text(
                   l10n.myTeamsMemberCount(team.roster.length),
                   style: styles.smColored(cs.onSurfaceVariant),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text(
                   '$cliLabel · $modeLabel',
                   maxLines: 1,
@@ -127,7 +139,7 @@ class _MyTeamsCardState extends State<MyTeamsCard> {
                   style: styles.smColored(cs.onSurfaceVariant),
                 ),
                 if (widget.publishRecord != null) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: HubPublishBadge(
@@ -139,6 +151,8 @@ class _MyTeamsCardState extends State<MyTeamsCard> {
                 const Spacer(),
                 Text(
                   l10n.myTeamsCreatedAt(formatMyTeamsTimestamp(team.createdAt)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: styles.xsColored(cs.onSurfaceVariant),
                 ),
               ],

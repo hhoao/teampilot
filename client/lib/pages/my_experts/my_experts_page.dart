@@ -339,7 +339,7 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
                     gridDelegate:
                         const SliverGridDelegateWithMaxCrossAxisExtent(
                       maxCrossAxisExtent: 380,
-                      mainAxisExtent: 186,
+                      mainAxisExtent: 220,
                       crossAxisSpacing: 14,
                       mainAxisSpacing: 14,
                     ),
