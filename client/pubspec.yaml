@@ -26,6 +26,7 @@ dependencies:
     path: packages/flutter_pty_new
   dartssh2:
     path: packages/dartssh2
+  pinenacl: ^0.6.0
   ai_message_core:
     path: packages/ai_message_core
   ai_message_ui:
