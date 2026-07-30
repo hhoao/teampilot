@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/foundation.dart' show listEquals, setEquals;
 import 'package:uuid/uuid.dart';
 
 import '../models/workspace.dart';
@@ -660,6 +660,8 @@ class SessionRepository {
     String? fixedSessionId,
     String? expertKey,
     SessionContinueOverrides? continueOverrides,
+    List<SessionMemberBinding>? members,
+    Map<String, String>? memberTargets,
   }) async {
     final fs = await _fs();
     var workspace = await _readManifest(fs, workspaceId);
@@ -668,7 +670,7 @@ class SessionRepository {
     }
     final trimmedTeam = sessionTeam.trim();
     var cliTeamName = '';
-    var members = const <SessionMemberBinding>[];
+    var resolvedMembers = const <SessionMemberBinding>[];
     var sessionTargets = const <String, String>{};
 
     if (trimmedTeam.isNotEmpty) {
@@ -678,6 +680,33 @@ class SessionRepository {
         rosterMembers: rosterMembers,
         memberClis: memberClis,
       );
+
+      if (members != null) {
+        final stagedIds = {
+          for (final m in members) m.rosterMemberId,
+        };
+        final planIds = {
+          for (final m in plan.members) m.rosterMemberId,
+        };
+        if (stagedIds.length != members.length ||
+            !setEquals(stagedIds, planIds)) {
+          throw StateError(
+            'staged members disagree with placement: '
+            'staged=$stagedIds plan=$planIds',
+          );
+        }
+        resolvedMembers = List<SessionMemberBinding>.unmodifiable(members);
+        final stagedTargets = memberTargets;
+        if (stagedTargets != null &&
+            setEquals(stagedTargets.keys.toSet(), planIds)) {
+          sessionTargets = Map<String, String>.unmodifiable(stagedTargets);
+        } else {
+          sessionTargets = plan.memberTargets;
+        }
+      } else {
+        resolvedMembers = plan.members;
+        sessionTargets = plan.memberTargets;
+      }
 
       if (plan.persistTargets) {
         await updateWorkspaceMemberTargets(
@@ -701,8 +730,6 @@ class SessionRepository {
         layout: counterCtx.layout,
       );
       cliTeamName = await counter.nextCliTeamName(trimmedTeam);
-      members = plan.members;
-      sessionTargets = plan.memberTargets;
     }
 
     final pinnedId = fixedSessionId?.trim() ?? '';
@@ -725,7 +752,7 @@ class SessionRepository {
       model: trimmedTeam.isEmpty ? (model?.trim() ?? '') : '',
       effort: trimmedTeam.isEmpty ? (effort?.trim() ?? '') : '',
       presetId: trimmedTeam.isEmpty ? (presetId?.trim() ?? '') : '',
-      members: members,
+      members: resolvedMembers,
       memberTargets: sessionTargets,
       launchState: AppSessionLaunchState.created,
       createdAt: now,

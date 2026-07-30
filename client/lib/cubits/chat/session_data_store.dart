@@ -4,6 +4,7 @@ import '../../models/workspace_folder.dart';
 import '../../models/workspace.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
+import '../../models/session_member_binding.dart';
 import '../../models/workspace_icon_ref.dart';
 import '../../models/team_config.dart' show CliTool, TeamMemberConfig, TeamProfile;
 import '../../repositories/launch_profile_repository.dart';
@@ -173,6 +174,8 @@ class SessionDataStore {
     CliTool? cli,
     String? workingDirectory,
     String? fixedSessionId,
+    List<SessionMemberBinding>? members,
+    Map<String, String>? memberTargets,
   }) {
     return repo.createSession(
       workspaceId,
@@ -182,6 +185,8 @@ class SessionDataStore {
       cli: cli,
       workingDirectory: workingDirectory,
       fixedSessionId: fixedSessionId,
+      members: members,
+      memberTargets: memberTargets,
     );
   }
 
