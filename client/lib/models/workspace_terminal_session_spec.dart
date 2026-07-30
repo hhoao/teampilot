@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../services/storage/work_target_canonicalizer.dart';
+import 'runtime_target.dart';
 import 'workspace_folder.dart';
 import 'workspace_topology.dart';
 
@@ -82,14 +84,16 @@ WorkspaceTerminalSessionSpec defaultSessionSpecFor({
   required String cwd,
   required List<WorkspaceFolder> folders,
   required String fallbackLocalShell,
+  required RuntimeTarget home,
 }) {
-  final targetId =
+  final rawId =
       targetIdForFolderPaths(folders, [cwd], matchSubpaths: true) ??
       (folders.isNotEmpty
           ? folders.first.targetId
           : WorkspaceFolder.localTargetId);
-  if (targetId == WorkspaceFolder.localTargetId) {
+  final resolved = WorkTargetCanonicalizer.resolve(rawId, home: home);
+  if (resolved.kind == RuntimeKind.local) {
     return WorkspaceTerminalLocalSpec(fallbackLocalShell);
   }
-  return WorkspaceTerminalWorkspaceTargetSpec(targetId);
+  return WorkspaceTerminalWorkspaceTargetSpec(resolved.id);
 }

@@ -7,6 +7,7 @@ import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../models/floating_workspace_tab.dart';
+import '../../models/runtime_target.dart';
 import '../../models/workspace_folder.dart';
 import '../../models/workspace_terminal_session_spec.dart';
 import '../host/host_interactive_shell.dart';
@@ -114,6 +115,7 @@ class WorkbenchShellLauncher {
     required LayoutCubit layout,
     WorkspaceTerminalSessionOps? sessionOps,
     String Function()? fallbackLocalShell,
+    RuntimeTarget Function()? homeTarget,
     Brightness Function()? platformBrightness,
     String Function()? sshConnectFailedMessage,
   }) : _floating = floating,
@@ -124,6 +126,7 @@ class WorkbenchShellLauncher {
        _sessionOps = sessionOps ?? WorkspaceTerminalSessionOps(),
        _fallbackLocalShell =
            fallbackLocalShell ?? HostInteractiveShell.defaultExecutable,
+       _homeTarget = homeTarget ?? RuntimeTarget.local,
        _platformBrightness =
            platformBrightness ??
            (() =>
@@ -141,6 +144,7 @@ class WorkbenchShellLauncher {
   final LayoutCubit _layout;
   final WorkspaceTerminalSessionOps _sessionOps;
   final String Function() _fallbackLocalShell;
+  final RuntimeTarget Function() _homeTarget;
   final Brightness Function() _platformBrightness;
   final String Function() _sshConnectFailedMessage;
 
@@ -183,6 +187,7 @@ class WorkbenchShellLauncher {
       cwd: cwd,
       folders: folders,
       fallbackLocalShell: _fallbackLocalShell(),
+      home: _homeTarget(),
     );
     await openAndSelect(
       workspaceId: plan.workspaceId,

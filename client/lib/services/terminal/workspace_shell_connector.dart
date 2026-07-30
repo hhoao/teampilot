@@ -6,6 +6,7 @@ import '../../models/ssh_profile.dart';
 import '../../models/workspace_folder.dart';
 import '../../models/workspace_terminal_session_spec.dart';
 import '../../repositories/ssh_profile_repository.dart';
+import '../storage/work_target_canonicalizer.dart';
 import '../session/launch_command_builder.dart';
 import '../session/remote_flashskyai_command_builder.dart';
 import '../ssh/ssh_member_session.dart';
@@ -22,13 +23,16 @@ class WorkspaceShellConnector {
     required TerminalTransportFactory transportFactory,
     required SshProfileRepository sshProfileRepository,
     bool Function()? sshUseLoginShell,
+    RuntimeTarget Function()? homeTarget,
   }) : _transportFactory = transportFactory,
        _sshProfileRepository = sshProfileRepository,
-       _sshUseLoginShell = sshUseLoginShell ?? (() => true);
+       _sshUseLoginShell = sshUseLoginShell ?? (() => true),
+       _homeTarget = homeTarget ?? RuntimeTarget.local;
 
   final TerminalTransportFactory _transportFactory;
   final SshProfileRepository _sshProfileRepository;
   final bool Function() _sshUseLoginShell;
+  final RuntimeTarget Function() _homeTarget;
 
   static final _remoteShell = HostInteractiveShell.remotePosixExecutable;
 
@@ -36,7 +40,7 @@ class WorkspaceShellConnector {
       switch (spec) {
         WorkspaceTerminalLocalSpec() => RuntimeTarget.local(),
         WorkspaceTerminalWorkspaceTargetSpec(:final targetId) =>
-          _runtimeTargetFromId(targetId),
+          WorkTargetCanonicalizer.resolve(targetId, home: _homeTarget()),
         WorkspaceTerminalSshProfileSpec(:final profileId) => RuntimeTarget.ssh(
           profileId,
           label: '',
@@ -233,14 +237,6 @@ class WorkspaceShellConnector {
       usesRemoteTransport: true,
     );
   }
-
-  RuntimeTarget _runtimeTargetFromId(String id) => switch (runtimeKindOfId(
-    id,
-  )) {
-    RuntimeKind.ssh => RuntimeTarget.ssh(sshProfileIdOfId(id) ?? '', label: ''),
-    RuntimeKind.wsl => RuntimeTarget.wsl(wslDistroOfId(id) ?? ''),
-    RuntimeKind.local => RuntimeTarget.local(),
-  };
 
   dnd.RuntimeTarget _dndTargetFor(RuntimeTarget target) =>
       switch (target.kind) {

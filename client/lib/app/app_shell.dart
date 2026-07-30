@@ -891,6 +891,7 @@ Future<AppShell> buildAppShell({
     sshProfileRepository: sshProfileRepo,
     sshUseLoginShell: () =>
         sessionPreferencesCubit.state.preferences.sshUseLoginShell,
+    homeTarget: defaultTargetResolver,
   );
   // Terminal inject deps after connector: registry was created earlier.
   final workspaceTerminalSessionOps = WorkspaceTerminalSessionOps();
@@ -1274,6 +1275,7 @@ Future<AppShell> buildAppShell({
     connector: workspaceShellConnector,
     layout: layoutCubit,
     sessionOps: workspaceTerminalSessionOps,
+    homeTarget: defaultTargetResolver,
   );
   workbenchShellLauncher = resolvedShellLauncher;
   final floatingSurfaceRegistry = FloatingSurfaceRegistry.withDefaults(
