@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/services/file_tree_import/import_models.dart';
 import 'package:teampilot/services/file_tree_import/workspace_import_service.dart';
+import 'package:teampilot/services/io/filesystem.dart';
 import '../../support/in_memory_filesystem.dart';
 
 Future<ConflictChoice> _skipConflict({
@@ -23,7 +27,7 @@ Future<ConflictChoice> _overwriteConflict({
 
 Future<ImportPlan> _buildPlan(
   WorkspaceImportService service,
-  InMemoryFilesystem fs, {
+  Filesystem fs, {
   required List<ImportSource> sources,
   required String destDir,
   required ImportMode mode,
@@ -41,6 +45,191 @@ Future<ImportPlan> _buildPlan(
   );
 }
 
+/// Delegates to [delegate] but throws on [rename] when [failRename] is true.
+class RenameFailingFilesystem implements Filesystem {
+  RenameFailingFilesystem(this.delegate, {this.failRename = true});
+
+  final InMemoryFilesystem delegate;
+  bool failRename;
+  int renameCalls = 0;
+
+  @override
+  p.Context get pathContext => delegate.pathContext;
+
+  @override
+  Future<void> rename(String from, String to) async {
+    renameCalls++;
+    if (failRename) {
+      throw Exception('simulated rename failure');
+    }
+    return delegate.rename(from, to);
+  }
+
+  @override
+  Future<FsStat> stat(String path) => delegate.stat(path);
+
+  @override
+  Future<void> ensureDir(String path) => delegate.ensureDir(path);
+
+  @override
+  Future<void> removeRecursive(String path) => delegate.removeRecursive(path);
+
+  @override
+  Future<String?> readString(String path) => delegate.readString(path);
+
+  @override
+  Future<List<int>?> readBytes(String path) => delegate.readBytes(path);
+
+  @override
+  Future<void> writeString(String path, String content) =>
+      delegate.writeString(path, content);
+
+  @override
+  Future<void> writeBytes(String path, List<int> bytes) =>
+      delegate.writeBytes(path, bytes);
+
+  @override
+  Future<List<int>?> readBytesRange(String path, int offset, int length) =>
+      delegate.readBytesRange(path, offset, length);
+
+  @override
+  Future<void> appendBytes(String path, List<int> bytes) =>
+      delegate.appendBytes(path, bytes);
+
+  @override
+  Future<void> atomicWrite(String path, String content) =>
+      delegate.atomicWrite(path, content);
+
+  @override
+  Future<List<FsDirEntry>> listDir(String path) => delegate.listDir(path);
+
+  @override
+  Future<bool> createSymlink({
+    required String target,
+    required String linkPath,
+  }) =>
+      delegate.createSymlink(target: target, linkPath: linkPath);
+
+  @override
+  Future<String?> readSymlinkTarget(String linkPath) =>
+      delegate.readSymlinkTarget(linkPath);
+
+  @override
+  Future<String?> resolveSymlink(String path) => delegate.resolveSymlink(path);
+
+  @override
+  Future<void> copyTree({
+    required String source,
+    required String destination,
+  }) =>
+      delegate.copyTree(source: source, destination: destination);
+
+  @override
+  Future<void> copyFile(String source, String destination) =>
+      delegate.copyFile(source, destination);
+
+  @override
+  Future<List<FsDirEntry>> listDirRecursive(String path) =>
+      delegate.listDirRecursive(path);
+
+  @override
+  Future<String> createTempDir({String? prefix, String? parent}) =>
+      delegate.createTempDir(prefix: prefix, parent: parent);
+
+  @override
+  Future<void> appendString(String path, String content) =>
+      delegate.appendString(path, content);
+}
+
+/// Delegates to [delegate] but throws on [copyFile].
+class CopyFailingFilesystem implements Filesystem {
+  CopyFailingFilesystem(this.delegate);
+
+  final InMemoryFilesystem delegate;
+
+  @override
+  p.Context get pathContext => delegate.pathContext;
+
+  @override
+  Future<void> copyFile(String source, String destination) async {
+    throw Exception('simulated copy failure');
+  }
+
+  @override
+  Future<FsStat> stat(String path) => delegate.stat(path);
+
+  @override
+  Future<void> ensureDir(String path) => delegate.ensureDir(path);
+
+  @override
+  Future<void> removeRecursive(String path) => delegate.removeRecursive(path);
+
+  @override
+  Future<void> rename(String from, String to) => delegate.rename(from, to);
+
+  @override
+  Future<String?> readString(String path) => delegate.readString(path);
+
+  @override
+  Future<List<int>?> readBytes(String path) => delegate.readBytes(path);
+
+  @override
+  Future<void> writeString(String path, String content) =>
+      delegate.writeString(path, content);
+
+  @override
+  Future<void> writeBytes(String path, List<int> bytes) =>
+      delegate.writeBytes(path, bytes);
+
+  @override
+  Future<List<int>?> readBytesRange(String path, int offset, int length) =>
+      delegate.readBytesRange(path, offset, length);
+
+  @override
+  Future<void> appendBytes(String path, List<int> bytes) =>
+      delegate.appendBytes(path, bytes);
+
+  @override
+  Future<void> atomicWrite(String path, String content) =>
+      delegate.atomicWrite(path, content);
+
+  @override
+  Future<List<FsDirEntry>> listDir(String path) => delegate.listDir(path);
+
+  @override
+  Future<bool> createSymlink({
+    required String target,
+    required String linkPath,
+  }) =>
+      delegate.createSymlink(target: target, linkPath: linkPath);
+
+  @override
+  Future<String?> readSymlinkTarget(String linkPath) =>
+      delegate.readSymlinkTarget(linkPath);
+
+  @override
+  Future<String?> resolveSymlink(String path) => delegate.resolveSymlink(path);
+
+  @override
+  Future<void> copyTree({
+    required String source,
+    required String destination,
+  }) =>
+      delegate.copyTree(source: source, destination: destination);
+
+  @override
+  Future<List<FsDirEntry>> listDirRecursive(String path) =>
+      delegate.listDirRecursive(path);
+
+  @override
+  Future<String> createTempDir({String? prefix, String? parent}) =>
+      delegate.createTempDir(prefix: prefix, parent: parent);
+
+  @override
+  Future<void> appendString(String path, String content) =>
+      delegate.appendString(path, content);
+}
+
 void main() {
   late InMemoryFilesystem fs;
   late WorkspaceImportService service;
@@ -48,6 +237,10 @@ void main() {
   setUp(() {
     fs = InMemoryFilesystem();
     service = WorkspaceImportService();
+  });
+
+  tearDown(() {
+    service.dispose();
   });
 
   group('planSources', () {
@@ -112,6 +305,80 @@ void main() {
       expect(summary.succeeded, 1);
       expect(await fs.readString('/dest/tree/a.txt'), 'a');
       expect(await fs.readString('/dest/tree/sub/b.txt'), 'b');
+    });
+
+    test('progress stream updates during multi-item copy', () async {
+      await fs.writeString('/src/a.txt', 'a');
+      await fs.writeString('/src/b.txt', 'b');
+      await fs.ensureDir('/dest');
+
+      final plan = await _buildPlan(
+        service,
+        fs,
+        sources: [
+          const ImportSource(path: '/src/a.txt', isDirectory: false),
+          const ImportSource(path: '/src/b.txt', isDirectory: false),
+        ],
+        destDir: '/dest',
+        mode: ImportMode.copy,
+      );
+
+      final progressEvents = <ImportProgress>[];
+      final allItemsDone = Completer<void>();
+      final subscription = service.progress.listen((event) {
+        progressEvents.add(event);
+        if (event.completedItems == event.totalItems && event.totalItems > 0) {
+          if (!allItemsDone.isCompleted) {
+            allItemsDone.complete();
+          }
+        }
+      });
+
+      final summary = await service.run(
+        plan,
+        onConflict: _skipConflict,
+        isCancelled: () => false,
+      );
+      await allItemsDone.future;
+
+      await subscription.cancel();
+
+      expect(summary.succeeded, 2);
+      expect(progressEvents, isNotEmpty);
+      expect(progressEvents.first.completedItems, 0);
+      expect(progressEvents.first.totalItems, 2);
+      expect(progressEvents.last.completedItems, 2);
+      expect(progressEvents.last.totalItems, 2);
+    });
+
+    test('move falls back to copy and remove when rename fails', () async {
+      await fs.writeString('/src/fallback.txt', 'payload');
+      await fs.ensureDir('/dest');
+      final failingFs = RenameFailingFilesystem(fs);
+
+      final plan = await _buildPlan(
+        service,
+        failingFs,
+        sources: [
+          const ImportSource(path: '/src/fallback.txt', isDirectory: false),
+        ],
+        destDir: '/dest',
+        mode: ImportMode.move,
+      );
+
+      final summary = await service.run(
+        plan,
+        onConflict: _skipConflict,
+        isCancelled: () => false,
+      );
+
+      expect(failingFs.renameCalls, 1);
+      expect(summary.succeeded, 1);
+      expect(await failingFs.readString('/dest/fallback.txt'), 'payload');
+      expect(
+        await failingFs.stat('/src/fallback.txt').then((s) => s.exists),
+        isFalse,
+      );
     });
 
     test('moves a file via rename', () async {
@@ -274,6 +541,31 @@ void main() {
 
       expect(summary.skipped, 1);
       expect((await fs.stat('/dest/item')).isDirectory, isTrue);
+    });
+
+    test('records failedPaths when copy throws', () async {
+      await fs.writeString('/src/broken.txt', 'data');
+      await fs.ensureDir('/dest');
+      final failingFs = CopyFailingFilesystem(fs);
+
+      final plan = await _buildPlan(
+        service,
+        failingFs,
+        sources: [
+          const ImportSource(path: '/src/broken.txt', isDirectory: false),
+        ],
+        destDir: '/dest',
+        mode: ImportMode.copy,
+      );
+
+      final summary = await service.run(
+        plan,
+        onConflict: _skipConflict,
+        isCancelled: () => false,
+      );
+
+      expect(summary.failed, 1);
+      expect(summary.failedPaths, ['/dest/broken.txt']);
     });
 
     test('cross-FS plan throws UnimplementedError', () async {

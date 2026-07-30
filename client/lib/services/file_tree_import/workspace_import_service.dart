@@ -21,6 +21,12 @@ class WorkspaceImportService {
 
   Stream<ImportProgress> get progress => _progressController.stream;
 
+  void dispose() {
+    if (!_progressController.isClosed) {
+      _progressController.close();
+    }
+  }
+
   /// Walk sources on [sourceFs], return flattened file paths + max size.
   Future<({List<String> files, int maxBytes, List<ImportSource> topLevel})>
   planSources(Filesystem sourceFs, List<ImportSource> sources) async {
@@ -69,6 +75,7 @@ class WorkspaceImportService {
     var skipped = 0;
     var failed = 0;
     var cancelled = false;
+    final failedPaths = <String>[];
 
     final totalItems = plan.sources.length;
     var completedItems = 0;
@@ -154,7 +161,10 @@ class WorkspaceImportService {
           );
         }
         succeeded++;
-      } on Object {
+      } on Error {
+        rethrow;
+      } catch (_) {
+        failedPaths.add(destPath);
         failed++;
       }
 
@@ -167,6 +177,7 @@ class WorkspaceImportService {
       skipped: skipped,
       failed: failed,
       cancelled: cancelled,
+      failedPaths: List.unmodifiable(failedPaths),
     );
   }
 
@@ -205,7 +216,9 @@ class WorkspaceImportService {
   }) async {
     try {
       await fs.rename(sourcePath, destPath);
-    } on Object {
+    } on Error {
+      rethrow;
+    } catch (_) {
       await _copySameFs(
         fs,
         sourcePath: sourcePath,

@@ -55,10 +55,12 @@ class ImportSummary {
     this.skipped = 0,
     this.failed = 0,
     this.cancelled = false,
+    this.failedPaths = const [],
   });
 
   final int succeeded;
   final int skipped;
   final int failed;
   final bool cancelled;
+  final List<String> failedPaths;
 }
