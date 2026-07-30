@@ -84,6 +84,9 @@ class ProgressActivity {
   final ProgressActivityKind kind;
   final String title;
   final String? subtitle;
+  /// Optional workspace scope. Null = app-global (e.g. appUpdate, hubClone).
+  /// Status bar segment for a workspace shows null-scoped + matching workspaceId.
+  final String? workspaceId;
   final ProgressActivityPhase phase;
   final double? fraction; // null = indeterminate
   final int? completedItems;
