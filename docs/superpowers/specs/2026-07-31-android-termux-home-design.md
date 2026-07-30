@@ -65,10 +65,12 @@ HomeTargetController.select('termux:default')
 
 **Gate predicate (Android):** allow main shell when either:
 
-- home is `termux:…` and Termux has successfully Connected at least once in this process **or** reconnect succeeds; or  
-- home is `ssh:…` with existing Connect semantics.
+- home is already bound to `termux:…` (persisted after a successful first-time setup Connect / `select('termux:default')`) — **connection liveness is not part of the gate**; or  
+- home is `ssh:…` with existing Connect semantics (unchanged peer path).
 
 Otherwise show a **work environment chooser** (not SSH-list-only):
+
+**Gate vs connection:** StartupGate only answers “has the user chosen and bound a work home?” Once `termux:default` is the persisted home, a down sshd must **not** return the user to the chooser. Disconnected / reconnect-failed states are handled in-shell (banner, blocked launch) per §3.
 
 1. **On-device · Termux** → Termux setup / Connect flow  
 2. **Remote · SSH** → existing `SshProfilesPage` → Connect → `select('ssh:$id')`
@@ -92,7 +94,7 @@ Top-bar selector upgrades from SSH-only to **work environment** (Termux + SSH pr
 | Event | Behavior |
 |-------|----------|
 | Connect OK | Open/reuse SSH pool; bind home; resolve `$HOME` / app-data |
-| Cold start, last home Termux | Auto-reconnect; on failure **keep home**, enter shell with disconnected banner (avoid StartupGate thrash) |
+| Cold start, last home Termux | Auto-reconnect; on failure **keep home** and enter main shell with disconnected banner (gate already satisfied by persisted home — see §2) |
 | Mid-session sshd down | Mark disconnected; existing SSH PTY failure path; non-blocking banner + Reconnect; optional deep-link / copy `sshd` |
 | Disconnect | Tear down pool; keep keys/username; home may stay `termux:` |
 | Clear setup | Remove config/keys; if home was Termux → return to environment chooser |
@@ -145,8 +147,9 @@ Prefer unit/widget tests with mocks; do not require a physical Termux for CI.
 - `RuntimeKind.termux` / id parsing / `RuntimeTarget.termux()`  
 - `WorkTargetCanonicalizer` with termux home  
 - `DefaultWorkspaceService` seeds `$HOME/TeamPilot` + `termux:default`  
-- StartupGate: chooser when unbound; pass for connected termux or ssh; Termux path not blocked by empty SSH catalog  
+- StartupGate: chooser when unbound; pass for persisted termux home (even if reconnect mocked as failed) or ssh home; Termux path not blocked by empty SSH catalog  
 - Connect helper selects `termux:default` only on success  
+- Disconnect / Clear setup: disconnect keeps home; clear setup returns to chooser when home was Termux  
 - Resolver builds SFTP context for termux (mocked); CLI validation skips native `File.existsSync` for that target  
 - Regression: Android SSH Connect home + device-local control plane unchanged  
 
@@ -158,7 +161,7 @@ Manual / device: install Termux → setup → Connect → open Default → launc
 2. Under Termux home, at least one supported CLI session can start after detect or one-click install.  
 3. Remote SSH home remains a peer path with today’s behavior.  
 4. Control plane (SSH catalog, Termux keys, home selection) stays device-local across Termux Connect.  
-5. Disconnect shows recoverable UI without StartupGate thrashing.
+5. After Termux home is persisted, disconnect / failed reconnect shows recoverable in-shell UI and does **not** re-open the work-environment chooser (StartupGate thrash).
 
 ## Non-goals (v1)
 
