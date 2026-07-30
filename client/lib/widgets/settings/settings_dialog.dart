@@ -1,12 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/app_dialog_theme.dart';
-import '../../theme/workspace_surface_layers.dart';
-import 'settings_dialog_pane_host.dart';
-import 'workspace_hub_shell.dart';
+import '../../services/workspace/workspace_pane_policy.dart';
 
 typedef SettingsLabelBuilder = String Function(AppLocalizations l10n);
 
@@ -31,10 +27,6 @@ class SettingsDialogEntry {
   final WidgetBuilder bodyBuilder;
 }
 
-const double _kSettingsDialogWidth = 1160;
-const double _kSettingsDialogHeight = 960;
-const double _kSettingsDialogInset = kTpDialogInsetExtent;
-
 Future<void> showSettingsDialog(
   BuildContext context, {
   required SettingsLabelBuilder navTitle,
@@ -42,257 +34,27 @@ Future<void> showSettingsDialog(
   int initialIndex = 0,
 }) {
   assert(entries.isNotEmpty, 'showSettingsDialog needs at least one entry');
-  return showDialog<void>(
+  return showTpDialog<void>(
     context: context,
-    builder: (_) => _SettingsDialog(
-      navTitle: navTitle,
-      entries: entries,
+    presentation: TpDialogPresentation.page,
+    mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+    barrierDismissible: false,
+    builder: (ctx) => TpDialogNavShell(
+      mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+      onClose: () => Navigator.of(ctx).pop(),
+      navTitle: (c) => navTitle(c.l10n),
       initialIndex: initialIndex,
+      entries: entries
+          .map(
+            (e) => TpDialogNavEntry(
+              icon: e.icon,
+              navLabel: (c) => e.navLabel(c.l10n),
+              title: (c) => e.title(c.l10n),
+              subtitle: (c) => e.subtitle(c.l10n),
+              bodyBuilder: e.bodyBuilder,
+            ),
+          )
+          .toList(),
     ),
   );
-}
-
-class _SettingsDialog extends StatefulWidget {
-  const _SettingsDialog({
-    required this.navTitle,
-    required this.entries,
-    this.initialIndex = 0,
-  });
-
-  final SettingsLabelBuilder navTitle;
-  final List<SettingsDialogEntry> entries;
-  final int initialIndex;
-
-  @override
-  State<_SettingsDialog> createState() => _SettingsDialogState();
-}
-
-class _SettingsDialogState extends State<_SettingsDialog> {
-  late final ValueNotifier<int> _selected;
-
-  @override
-  void initState() {
-    super.initState();
-    final maxIndex = widget.entries.length - 1;
-    _selected = ValueNotifier(widget.initialIndex.clamp(0, maxIndex));
-  }
-
-  @override
-  void dispose() {
-    _selected.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final media = MediaQuery.of(context);
-    final dialogWidth = _kSettingsDialogWidth.clamp(
-      0.0,
-      media.size.width - _kSettingsDialogInset,
-    );
-    final dialogHeight = _kSettingsDialogHeight.clamp(
-      0.0,
-      media.size.height - _kSettingsDialogInset,
-    );
-    final cs = Theme.of(context).colorScheme;
-
-    return TpDialog(
-      maxWidth: dialogWidth,
-      maxHeight: dialogHeight,
-      contentPadding: EdgeInsets.zero,
-      backgroundColor: cs.workspacePage,
-      child: SizedBox(
-        width: dialogWidth,
-        height: dialogHeight,
-        child: Row(
-          children: [
-            _SettingsNav(
-              title: widget.navTitle(l10n),
-              entries: widget.entries,
-              selectedListenable: _selected,
-              onSelect: (index) => _selected.value = index,
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 16,
-                ),
-                child: TpDeferredMountShell(
-                  delayFrames: 1,
-                  child: ListenableBuilder(
-                    listenable: _selected,
-                    builder: (context, _) {
-                      final index = _selected.value;
-                      final active = widget.entries[index];
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _SettingsHeader(
-                            title: active.title(l10n),
-                            subtitle: active.subtitle(l10n),
-                            onClose: () => Navigator.of(context).pop(),
-                          ),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                24,
-                                16,
-                                24,
-                                24,
-                              ),
-                              child: RepaintBoundary(
-                                child: SettingsDialogPaneHost(
-                                  key: const ValueKey('settings-pane-host'),
-                                  paneCount: widget.entries.length,
-                                  selectedIndex: index,
-                                  builder: (context, paneIndex) => widget
-                                      .entries[paneIndex]
-                                      .bodyBuilder(context),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SettingsNav extends StatelessWidget {
-  const _SettingsNav({
-    required this.title,
-    required this.entries,
-    required this.selectedListenable,
-    required this.onSelect,
-  });
-
-  final String title;
-  final List<SettingsDialogEntry> entries;
-  final ValueListenable<int> selectedListenable;
-  final ValueChanged<int> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
-
-    return RepaintBoundary(
-      child: Container(
-        width: 220,
-        decoration: BoxDecoration(
-          color: cs.workspaceSubtleSurface,
-          border: Border(
-            right: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 22, 20, 14),
-                child: Text(
-                  title,
-                  style: styles.lgSemiboldSnugColored(cs.onSurface),
-                ),
-              ),
-              Expanded(
-                child: ListenableBuilder(
-                  listenable: selectedListenable,
-                  builder: (context, _) {
-                    final selectedIndex = selectedListenable.value;
-                    return ListView(
-                      children: [
-                        for (final (index, entry) in entries.indexed)
-                          WorkspaceHubNavItem(
-                            title: entry.navLabel(l10n),
-                            icon: entry.icon,
-                            selected: index == selectedIndex,
-                            onTap: () => onSelect(index),
-                          ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SettingsHeader extends StatelessWidget {
-  const _SettingsHeader({
-    required this.title,
-    required this.subtitle,
-    required this.onClose,
-  });
-
-  final String title;
-  final String subtitle;
-  final VoidCallback onClose;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: styles.lgSemiboldSnugColored(cs.onSurface),
-                ),
-                if (subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: styles.mutedMd,
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          IconButton(
-            tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-            onPressed: onClose,
-            icon: Icon(Icons.close, size: context.tpIconSizes.md),
-            color: cs.onSurfaceVariant,
-          ),
-        ],
-      ),
-    );
-  }
 }
