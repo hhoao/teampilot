@@ -246,15 +246,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('调用工具:'), findsNothing);
-    expect(find.textContaining('ls'), findsOneWidget);
+    // Header summary + mini panel both show the command when no description.
+    expect(find.textContaining('ls'), findsWidgets);
     expect(find.text('输出:'), findsNothing);
-
-    await tester.tap(find.textContaining('ls'));
-    await tester.pumpAndSettle();
-
+    // Collapsed shell mini panel already shows $ and result (no further tap needed).
     expect(find.textContaining(r'$'), findsWidgets);
     expect(find.textContaining('ok'), findsOneWidget);
-    expect(find.text('输出:'), findsNothing);
   });
 
   testWidgets('tool expand uses AnimatedSize; long args soft-wrap', (
