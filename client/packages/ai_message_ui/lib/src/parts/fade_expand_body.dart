@@ -5,6 +5,11 @@ const kAiFadeExpandCollapsedMaxHeight = 120.0;
 const kAiFadeExpandExpandedMaxHeight = 320.0;
 const kAiFadeExpandHitStripHeight = 32.0;
 
+/// Collapsed fade + chevron / expanded scroll shell.
+///
+/// Mounts [child] **once**. A custom render object lays the child out at full
+/// height, reports that height, and clips paint when collapsed — avoiding the
+/// dual probe+visible tree that doubled layout cost on long edit diffs / bubbles.
 class AiFadeExpandBody extends StatefulWidget {
   const AiFadeExpandBody({
     required this.open,
@@ -30,150 +35,250 @@ class AiFadeExpandBody extends StatefulWidget {
 class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
   double? _childHeight;
 
-  void _onMeasured(Size size) {
+  bool get _overflows =>
+      _childHeight != null && _childHeight! > widget.collapsedMaxHeight;
+
+  bool get _needsScroll =>
+      widget.open &&
+      _childHeight != null &&
+      _childHeight! > widget.expandedMaxHeight;
+
+  void _onChildHeight(double height) {
     if (!mounted) return;
-    if (_childHeight == size.height) return;
-    setState(() => _childHeight = size.height);
+    final prev = _childHeight;
+    if (prev == height) return;
+
+    final wasOverflow =
+        prev != null && prev > widget.collapsedMaxHeight;
+    final nowOverflow = height > widget.collapsedMaxHeight;
+    final wasScroll =
+        widget.open && prev != null && prev > widget.expandedMaxHeight;
+    final nowScroll =
+        widget.open && height > widget.expandedMaxHeight;
+
+    _childHeight = height;
+    // Rebuild only when chrome / scroll mode changes — keep child stable.
+    if (prev == null ||
+        wasOverflow != nowOverflow ||
+        wasScroll != nowScroll) {
+      setState(() {});
+    }
   }
 
-  /// Measure-only probe: zero Stack contribution and **never paints**.
-  /// Painting a full OverflowBox copy here previously bled through bubble
-  /// chrome (DecoratedBox does not clip) into messages below.
-  Widget _probe(double maxWidth, Widget child) => Positioned(
-        left: 0,
-        top: 0,
-        width: maxWidth,
-        height: 0,
-        child: IgnorePointer(
-          child: ExcludeSemantics(
-            child: OverflowBox(
-              alignment: Alignment.topLeft,
-              minWidth: maxWidth,
-              maxWidth: maxWidth,
-              minHeight: 0,
-              maxHeight: double.infinity,
-              child: _ReportSize(onSize: _onMeasured, child: child),
-            ),
-          ),
-        ),
-      );
-
-  /// Clip tall content to [height] via scroll viewport (clips paint reliably).
-  Widget _viewportClip({required double height, required Widget child}) {
-    return SizedBox(
-      height: height,
-      width: double.infinity,
-      child: ClipRect(
-        child: SingleChildScrollView(
-          physics: const NeverScrollableScrollPhysics(),
-          child: child,
-        ),
-      ),
-    );
+  @override
+  void didUpdateWidget(covariant AiFadeExpandBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.open != widget.open ||
+        oldWidget.collapsedMaxHeight != widget.collapsedMaxHeight ||
+        oldWidget.expandedMaxHeight != widget.expandedMaxHeight) {
+      // Mode change may need scroll↔clip swap; height stays valid.
+      setState(() {});
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final child = widget.child;
-    final measured = _childHeight;
-    final overflows = measured != null && measured > widget.collapsedMaxHeight;
+    final overflows = _overflows;
+    final needsScroll = _needsScroll;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final maxW = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : MediaQuery.sizeOf(context).width;
+    // Until measured, clip at collapsed max (short content sizes naturally
+    // inside the render object once height is known on the same layout pass).
+    final clipAt = needsScroll
+        ? null
+        : (!widget.open || _childHeight == null)
+            ? widget.collapsedMaxHeight
+            : null;
 
-        if (measured == null) {
-          // Clip-until-measured: maxHeight only — short content keeps natural height.
-          return Stack(
-            clipBehavior: Clip.hardEdge,
-            children: [
-              _probe(maxW, child),
-              ConstrainedBox(
-                constraints:
-                    BoxConstraints(maxHeight: widget.collapsedMaxHeight),
-                child: ClipRect(
-                  child: SingleChildScrollView(
-                    physics: const NeverScrollableScrollPhysics(),
-                    child: child,
-                  ),
-                ),
-              ),
-            ],
-          );
-        }
+    final Widget body;
+    if (needsScroll) {
+      body = ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: widget.expandedMaxHeight),
+        child: SingleChildScrollView(
+          child: _HeightReporter(
+            onHeight: _onChildHeight,
+            child: child,
+          ),
+        ),
+      );
+    } else {
+      body = _FadeExpandClip(
+        clipMaxHeight: clipAt,
+        // When expanded mid-length, never clip; when collapsed / unknown, clip.
+        forceClip: _childHeight == null || (!widget.open && overflows),
+        onHeight: _onChildHeight,
+        child: child,
+      );
+    }
 
-        if (!overflows) {
-          return Stack(
-            clipBehavior: Clip.hardEdge,
-            children: [
-              _probe(maxW, child),
-              child,
-            ],
-          );
-        }
-
-        if (!widget.open) {
-          return Stack(
-            clipBehavior: Clip.hardEdge,
-            children: [
-              _probe(maxW, child),
-              SizedBox(
-                height: widget.collapsedMaxHeight,
-                width: double.infinity,
-                child: Stack(
-                  fit: StackFit.expand,
-                  clipBehavior: Clip.hardEdge,
-                  children: [
-                    _viewportClip(
-                      height: widget.collapsedMaxHeight,
-                      child: child,
-                    ),
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: _FadeChevronHit(
-                        fadeColor: widget.fadeColor,
-                        icon: Icons.expand_more,
-                        onTap: widget.onToggle,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          );
-        }
-
-        final needsScroll = measured > widget.expandedMaxHeight;
-        Widget body = child;
-        if (needsScroll) {
-          body = ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: widget.expandedMaxHeight),
-            child: SingleChildScrollView(child: child),
-          );
-        }
-
-        return Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            _probe(maxW, child),
-            body,
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _FadeChevronHit(
-                fadeColor: widget.fadeColor,
-                icon: Icons.expand_less,
-                onTap: widget.onToggle,
-                showFade: needsScroll,
-              ),
+    return Stack(
+      clipBehavior: Clip.hardEdge,
+      children: [
+        body,
+        if (overflows)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _FadeChevronHit(
+              fadeColor: widget.fadeColor,
+              icon: widget.open ? Icons.expand_less : Icons.expand_more,
+              onTap: widget.onToggle,
+              showFade: !widget.open || needsScroll,
             ),
-          ],
-        );
-      },
+          ),
+      ],
     );
+  }
+}
+
+/// Layouts [child] at full height (max width only), reports height, optionally
+/// sizes itself to [clipMaxHeight] and clips paint.
+class _FadeExpandClip extends SingleChildRenderObjectWidget {
+  const _FadeExpandClip({
+    required this.onHeight,
+    required this.forceClip,
+    this.clipMaxHeight,
+    required super.child,
+  });
+
+  final ValueChanged<double> onHeight;
+  final double? clipMaxHeight;
+  final bool forceClip;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return _RenderFadeExpandClip(
+      onHeight: onHeight,
+      clipMaxHeight: clipMaxHeight,
+      forceClip: forceClip,
+    );
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderFadeExpandClip renderObject,
+  ) {
+    renderObject
+      ..onHeight = onHeight
+      ..clipMaxHeight = clipMaxHeight
+      ..forceClip = forceClip;
+  }
+}
+
+class _RenderFadeExpandClip extends RenderProxyBox {
+  _RenderFadeExpandClip({
+    required this.onHeight,
+    required this.clipMaxHeight,
+    required this.forceClip,
+  });
+
+  ValueChanged<double> onHeight;
+  double? clipMaxHeight;
+  bool forceClip;
+  double? _lastReported;
+
+  @override
+  void performLayout() {
+    final child = this.child;
+    if (child == null) {
+      size = constraints.smallest;
+      return;
+    }
+
+    child.layout(
+      BoxConstraints(maxWidth: constraints.maxWidth),
+      parentUsesSize: true,
+    );
+    final childSize = child.size;
+    final height = childSize.height;
+
+    if (_lastReported != height) {
+      _lastReported = height;
+      final reported = height;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        onHeight(reported);
+      });
+    }
+
+    final maxClip = clipMaxHeight;
+    final shouldClip =
+        forceClip && maxClip != null && height > maxClip;
+    if (shouldClip) {
+      size = constraints.constrain(Size(childSize.width, maxClip));
+    } else {
+      size = constraints.constrain(childSize);
+    }
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final child = this.child;
+    if (child == null) return;
+
+    final maxClip = clipMaxHeight;
+    final shouldClip =
+        forceClip && maxClip != null && child.size.height > size.height;
+    if (shouldClip) {
+      context.pushClipRect(
+        needsCompositing,
+        offset,
+        Offset.zero & size,
+        (context, offset) => context.paintChild(child, offset),
+      );
+    } else {
+      context.paintChild(child, offset);
+    }
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    if (child == null) return false;
+    if (position.dy < 0 || position.dy > size.height) return false;
+    if (position.dx < 0 || position.dx > size.width) return false;
+    return super.hitTestChildren(result, position: position);
+  }
+}
+
+/// Reports intrinsic height while participating normally in layout (scroll path).
+class _HeightReporter extends SingleChildRenderObjectWidget {
+  const _HeightReporter({
+    required this.onHeight,
+    required super.child,
+  });
+
+  final ValueChanged<double> onHeight;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderHeightReporter(onHeight);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderHeightReporter renderObject,
+  ) {
+    renderObject.onHeight = onHeight;
+  }
+}
+
+class _RenderHeightReporter extends RenderProxyBox {
+  _RenderHeightReporter(this.onHeight);
+
+  ValueChanged<double> onHeight;
+  double? _lastReported;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    final height = size.height;
+    if (_lastReported == height) return;
+    _lastReported = height;
+    final reported = height;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      onHeight(reported);
+    });
   }
 }
 
@@ -229,55 +334,4 @@ class _FadeChevronHit extends StatelessWidget {
       ),
     );
   }
-}
-
-class _ReportSize extends SingleChildRenderObjectWidget {
-  const _ReportSize({required this.onSize, required super.child});
-
-  final ValueChanged<Size> onSize;
-
-  @override
-  RenderObject createRenderObject(BuildContext context) =>
-      _RenderReportSize(onSize);
-
-  @override
-  void updateRenderObject(BuildContext context, _RenderReportSize renderObject) {
-    renderObject.onSize = onSize;
-  }
-}
-
-class _RenderReportSize extends RenderProxyBox {
-  _RenderReportSize(this.onSize);
-
-  ValueChanged<Size> onSize;
-  Size? _last;
-
-  @override
-  void performLayout() {
-    final child = this.child;
-    if (child == null) {
-      size = constraints.smallest;
-      return;
-    }
-    child.layout(
-      BoxConstraints(maxWidth: constraints.maxWidth),
-      parentUsesSize: true,
-    );
-    // Probe must not inflate Stack; report child height via callback only.
-    size = constraints.smallest;
-    final measured = child.size;
-    if (_last != measured) {
-      _last = measured;
-      WidgetsBinding.instance.addPostFrameCallback((_) => onSize(measured));
-    }
-  }
-
-  @override
-  void paint(PaintingContext context, Offset offset) {
-    // Measure-only: never paint the probe copy (prevents bleed-through).
-  }
-
-  @override
-  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
-      false;
 }

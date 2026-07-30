@@ -127,7 +127,7 @@ void main() {
   });
 
   testWidgets(
-    'collapsed overflow uses non-scroll viewport clip, not OverflowBox paint',
+    'collapsed overflow mounts child once and clips host to collapsed max',
     (tester) async {
       await tester.pumpWidget(_wrap(
         AiFadeExpandBody(
@@ -139,17 +139,13 @@ void main() {
       ));
       await tester.pump();
 
-      // Visible path must clip via a fixed viewport (ScrollView), not OverflowBox
-      // paint that can escape the bubble DecoratedBox.
-      expect(find.byType(SingleChildScrollView), findsOneWidget);
-      final scrollable = tester.widget<Scrollable>(find.byType(Scrollable));
-      expect(scrollable.physics, isA<NeverScrollableScrollPhysics>());
-
-      // No OverflowBox on the hit-testable (visible) tree.
-      expect(
-        find.byType(OverflowBox).hitTestable(),
-        findsNothing,
-      );
+      // Single mount (no probe duplicate).
+      expect(find.text('clip-me'), findsOneWidget);
+      final box = tester.renderObject<RenderBox>(find.byType(AiFadeExpandBody));
+      expect(box.size.height, closeTo(kAiFadeExpandCollapsedMaxHeight, 1));
+      expect(find.byKey(const ValueKey('ai-fade-expand-chevron')), findsOneWidget);
+      // Collapsed clip must not use a scrollable viewport.
+      expect(find.byType(Scrollable), findsNothing);
     },
   );
 }
