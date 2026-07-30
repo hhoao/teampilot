@@ -116,9 +116,12 @@ class _FloatingWorkspacePanelBodyState
   }
 
   void _endGesture(Rect bounds) {
+    // Prefer live gesture geometry: child onEnd often still sees the pre-rebuild
+    // [panelBounds] one frame behind the last [onGestureUpdate].
+    final finalBounds = _gestureBounds ?? bounds;
     context.read<FloatingWorkspaceCubit>().setPanelRect(
-      bounds,
-      _lastHostSize ?? Size(bounds.width, bounds.height),
+      finalBounds,
+      _lastHostSize ?? Size(finalBounds.width, finalBounds.height),
     );
     if (_gestureBounds != null) {
       setState(() => _gestureBounds = null);
