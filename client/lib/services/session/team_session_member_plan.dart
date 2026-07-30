@@ -7,7 +7,6 @@ import '../../models/workspace.dart';
 import '../../models/workspace_folder.dart';
 import '../../models/workspace_topology.dart';
 import '../../utils/team/team_member_naming.dart';
-import '../../utils/workspace/workspace_path_utils.dart';
 
 /// Placement + taskId allocation result for a team session create/stage path.
 class TeamSessionMemberPlan {
