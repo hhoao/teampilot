@@ -49,12 +49,17 @@ import 'member_connector.dart';
 /// [MemberConnector] for mid-connect lifecycle callbacks.
 class SessionLaunchService
     implements MemberConnector, SessionShellConnectorDelegate {
-  SessionLaunchService(this._h);
+  SessionLaunchService(
+    this._h, {
+    TermuxWorkOpsBlockResolver? termuxWorkOpsBlockFor,
+  }) : _termuxWorkOpsBlockFor = termuxWorkOpsBlockFor;
 
   final SessionLaunchHost _h;
+  final TermuxWorkOpsBlockResolver? _termuxWorkOpsBlockFor;
   late final SessionShellConnector _shellConnector = SessionShellConnector(
     _h,
     this,
+    termuxWorkOpsBlockFor: _termuxWorkOpsBlockFor,
   );
   late final SessionMemberConnectScheduler _memberConnectScheduler =
       SessionMemberConnectScheduler(

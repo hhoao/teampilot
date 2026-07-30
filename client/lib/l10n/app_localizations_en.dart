@@ -6566,4 +6566,29 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get termuxSetupClearConfirmAction => 'Clear setup';
+
+  @override
+  String get termuxDisconnectedBannerMessage =>
+      'Termux is disconnected. Shell, Git, and agent sessions are paused until you reconnect.';
+
+  @override
+  String get termuxDisconnectedReconnect => 'Reconnect';
+
+  @override
+  String get termuxDisconnectedWorkOpsBlocked =>
+      'Termux is disconnected. Reconnect from the banner, then try again.';
+
+  @override
+  String get androidWorkEnvironmentSelectorLabel => 'Work environment';
+
+  @override
+  String get androidWorkEnvironmentSelectorTermux => 'Termux';
+
+  @override
+  String androidWorkEnvironmentSelectorTermuxWithUser(String username) {
+    return 'Termux · $username';
+  }
+
+  @override
+  String get androidWorkEnvironmentSelectorManageTermux => 'Termux setup…';
 }

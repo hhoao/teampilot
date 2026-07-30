@@ -2540,5 +2540,12 @@
   "termuxSetupClearSetup": "清除设置",
   "termuxSetupClearConfirmTitle": "清除 Termux 设置？",
   "termuxSetupClearConfirmBody": "将删除已保存的 Termux 密钥和用户名，需要重新完成 Termux 设置。",
-  "termuxSetupClearConfirmAction": "清除设置"
+  "termuxSetupClearConfirmAction": "清除设置",
+  "termuxDisconnectedBannerMessage": "Termux 已断开连接。请重新连接后再使用 Shell、Git 和 Agent 会话。",
+  "termuxDisconnectedReconnect": "重新连接",
+  "termuxDisconnectedWorkOpsBlocked": "Termux 已断开连接。请通过顶部横幅重新连接后再试。",
+  "androidWorkEnvironmentSelectorLabel": "工作环境",
+  "androidWorkEnvironmentSelectorTermux": "Termux",
+  "androidWorkEnvironmentSelectorTermuxWithUser": "Termux · {username}",
+  "androidWorkEnvironmentSelectorManageTermux": "Termux 设置…"
 }

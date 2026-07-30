@@ -3,6 +3,7 @@ import 'package:flutter_alacritty/flutter_alacritty.dart';
 
 import '../../models/runtime_target.dart';
 import '../ssh/ssh_member_session.dart';
+import '../termux/termux_connection_gate.dart';
 import 'workspace_shell_connector.dart';
 import 'workspace_terminal_registry.dart';
 
@@ -10,9 +11,18 @@ import 'workspace_terminal_registry.dart';
 class WorkspaceTerminalConnectCoordinator {
   WorkspaceTerminalConnectCoordinator({
     required WorkspaceShellConnector connector,
-  }) : _connector = connector;
+    RuntimeTarget Function()? homeTarget,
+    bool Function()? termuxConnected,
+    String Function()? termuxWorkOpsBlockedMessage,
+  }) : _connector = connector,
+       _homeTarget = homeTarget ?? connector.homeTarget,
+       _termuxConnected = termuxConnected,
+       _termuxWorkOpsBlockedMessage = termuxWorkOpsBlockedMessage;
 
   final WorkspaceShellConnector _connector;
+  final RuntimeTarget Function() _homeTarget;
+  final bool Function()? _termuxConnected;
+  final String Function()? _termuxWorkOpsBlockedMessage;
 
   static bool stillLive(
     WorkspaceTerminalGroup group,
@@ -35,6 +45,24 @@ class WorkspaceTerminalConnectCoordinator {
     if (cwd.isEmpty) return;
     if (entry.connected && entry.session.isRunning) return;
 
+    final target = _connector.runtimeTargetFor(entry.spec);
+    final blockMessage = _termuxWorkOpsBlockedMessage?.call();
+    final connected = _termuxConnected?.call();
+    if (blockMessage != null && connected != null) {
+      final blocked = termuxWorkOpsBlockMessage(
+        target: target,
+        home: _homeTarget(),
+        termuxConnected: connected,
+        message: blockMessage,
+      );
+      if (blocked != null) {
+        entry.connected = false;
+        entry.session.write('\r\n$blocked\r\n');
+        onStateChanged();
+        return;
+      }
+    }
+
     final generation = entry.bumpConnectGeneration();
 
     entry.session.applyTerminalTheme(theme);
@@ -47,7 +75,8 @@ class WorkspaceTerminalConnectCoordinator {
     if (!stillLive(group, entry, generation) || !mounted()) return;
 
     SshMemberSession? sshSession;
-    if (_connector.runtimeTargetFor(entry.spec).kind == RuntimeKind.ssh) {
+    final targetKind = target.kind;
+    if (targetKind == RuntimeKind.ssh || targetKind == RuntimeKind.termux) {
       sshSession = await _connector.openSshSession(entry.spec);
       if (!stillLive(group, entry, generation) || !mounted()) {
         sshSession?.close();

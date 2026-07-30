@@ -6312,4 +6312,28 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get termuxSetupClearConfirmAction => '清除设置';
+
+  @override
+  String get termuxDisconnectedBannerMessage =>
+      'Termux 已断开连接。请重新连接后再使用 Shell、Git 和 Agent 会话。';
+
+  @override
+  String get termuxDisconnectedReconnect => '重新连接';
+
+  @override
+  String get termuxDisconnectedWorkOpsBlocked => 'Termux 已断开连接。请通过顶部横幅重新连接后再试。';
+
+  @override
+  String get androidWorkEnvironmentSelectorLabel => '工作环境';
+
+  @override
+  String get androidWorkEnvironmentSelectorTermux => 'Termux';
+
+  @override
+  String androidWorkEnvironmentSelectorTermuxWithUser(String username) {
+    return 'Termux · $username';
+  }
+
+  @override
+  String get androidWorkEnvironmentSelectorManageTermux => 'Termux 设置…';
 }

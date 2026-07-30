@@ -24,15 +24,20 @@ class WorkspaceShellConnector {
     required SshProfileRepository sshProfileRepository,
     bool Function()? sshUseLoginShell,
     RuntimeTarget Function()? homeTarget,
+    SshProfile? Function(String profileId)? profileById,
   }) : _transportFactory = transportFactory,
        _sshProfileRepository = sshProfileRepository,
        _sshUseLoginShell = sshUseLoginShell ?? (() => true),
-       _homeTarget = homeTarget ?? RuntimeTarget.local;
+       _homeTarget = homeTarget ?? RuntimeTarget.local,
+       _profileById = profileById;
 
   final TerminalTransportFactory _transportFactory;
   final SshProfileRepository _sshProfileRepository;
   final bool Function() _sshUseLoginShell;
   final RuntimeTarget Function() _homeTarget;
+  final SshProfile? Function(String profileId)? _profileById;
+
+  RuntimeTarget Function() get homeTarget => _homeTarget;
 
   static final _remoteShell = HostInteractiveShell.remotePosixExecutable;
 
@@ -49,7 +54,7 @@ class WorkspaceShellConnector {
 
   TerminalSession createSession(WorkspaceTerminalSessionSpec spec) {
     final target = runtimeTargetFor(spec);
-    if (target.kind == RuntimeKind.ssh) {
+    if (target.kind == RuntimeKind.ssh || target.kind == RuntimeKind.termux) {
       return _createSshSession();
     }
     return TerminalSession(
@@ -117,6 +122,11 @@ class WorkspaceShellConnector {
   }
 
   Future<SshProfile?> _profileFor(WorkspaceTerminalSessionSpec spec) async {
+    final target = runtimeTargetFor(spec);
+    if (target.kind == RuntimeKind.termux) {
+      return _profileById?.call('termux') ??
+          await _sshProfileRepository.findById('termux');
+    }
     final id = switch (spec) {
       WorkspaceTerminalSshProfileSpec(:final profileId) => profileId,
       WorkspaceTerminalWorkspaceTargetSpec(:final targetId) =>

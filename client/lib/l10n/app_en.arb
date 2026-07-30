@@ -2969,5 +2969,17 @@
   "termuxSetupClearSetup": "Clear setup",
   "termuxSetupClearConfirmTitle": "Clear Termux setup?",
   "termuxSetupClearConfirmBody": "This removes saved Termux keys and username. You will need to set up Termux again.",
-  "termuxSetupClearConfirmAction": "Clear setup"
+  "termuxSetupClearConfirmAction": "Clear setup",
+  "termuxDisconnectedBannerMessage": "Termux is disconnected. Shell, Git, and agent sessions are paused until you reconnect.",
+  "termuxDisconnectedReconnect": "Reconnect",
+  "termuxDisconnectedWorkOpsBlocked": "Termux is disconnected. Reconnect from the banner, then try again.",
+  "androidWorkEnvironmentSelectorLabel": "Work environment",
+  "androidWorkEnvironmentSelectorTermux": "Termux",
+  "androidWorkEnvironmentSelectorTermuxWithUser": "Termux · {username}",
+  "@androidWorkEnvironmentSelectorTermuxWithUser": {
+    "placeholders": {
+      "username": { "type": "String" }
+    }
+  },
+  "androidWorkEnvironmentSelectorManageTermux": "Termux setup…"
 }

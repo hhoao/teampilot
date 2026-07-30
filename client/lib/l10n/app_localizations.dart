@@ -11759,6 +11759,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Clear setup'**
   String get termuxSetupClearConfirmAction;
+
+  /// No description provided for @termuxDisconnectedBannerMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Termux is disconnected. Shell, Git, and agent sessions are paused until you reconnect.'**
+  String get termuxDisconnectedBannerMessage;
+
+  /// No description provided for @termuxDisconnectedReconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect'**
+  String get termuxDisconnectedReconnect;
+
+  /// No description provided for @termuxDisconnectedWorkOpsBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Termux is disconnected. Reconnect from the banner, then try again.'**
+  String get termuxDisconnectedWorkOpsBlocked;
+
+  /// No description provided for @androidWorkEnvironmentSelectorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Work environment'**
+  String get androidWorkEnvironmentSelectorLabel;
+
+  /// No description provided for @androidWorkEnvironmentSelectorTermux.
+  ///
+  /// In en, this message translates to:
+  /// **'Termux'**
+  String get androidWorkEnvironmentSelectorTermux;
+
+  /// No description provided for @androidWorkEnvironmentSelectorTermuxWithUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Termux · {username}'**
+  String androidWorkEnvironmentSelectorTermuxWithUser(String username);
+
+  /// No description provided for @androidWorkEnvironmentSelectorManageTermux.
+  ///
+  /// In en, this message translates to:
+  /// **'Termux setup…'**
+  String get androidWorkEnvironmentSelectorManageTermux;
 }
 
 class _AppLocalizationsDelegate

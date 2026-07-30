@@ -10,6 +10,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/chat_cubit.dart';
 import '../cubits/layout_cubit.dart';
+import '../cubits/termux_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/runtime_target.dart';
 import '../models/workspace_folder.dart';
@@ -132,7 +133,13 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       WorkspaceToolsScope.maybeOf(context)?.effectiveFolders ?? const [];
 
   WorkspaceTerminalConnectCoordinator get _connect => _connectCoordinator ??=
-      WorkspaceTerminalConnectCoordinator(connector: _connector);
+      WorkspaceTerminalConnectCoordinator(
+        connector: _connector,
+        homeTarget: _connector.homeTarget,
+        termuxConnected: () => context.read<TermuxCubit>().state.connected,
+        termuxWorkOpsBlockedMessage: () =>
+            context.l10n.termuxDisconnectedWorkOpsBlocked,
+      );
 
   @override
   void initState() {

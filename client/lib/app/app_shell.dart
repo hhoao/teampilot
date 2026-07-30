@@ -986,6 +986,7 @@ Future<AppShell> buildAppShell({
     sshUseLoginShell: () =>
         sessionPreferencesCubit.state.preferences.sshUseLoginShell,
     homeTarget: defaultTargetResolver,
+    profileById: sshProfileById,
   );
   // Terminal inject deps after connector: registry was created earlier.
   final workspaceTerminalSessionOps = WorkspaceTerminalSessionOps();
@@ -1008,6 +1009,7 @@ Future<AppShell> buildAppShell({
 
   final agentAttentionCubit = AgentAttentionCubit();
   final agentStatusSeatLookup = AgentStatusSeatLookup();
+  TermuxCubit? termuxGateCubit;
   teammateBusMcpGateway.attachAgentStatusHandler(
     AgentStatusHttpHandler(
       attention: agentAttentionCubit,
@@ -1065,6 +1067,10 @@ Future<AppShell> buildAppShell({
     ),
     remoteCliReadiness: remoteCliReadiness,
     cliProvisionActivity: cliProvisionActivityAdapter,
+    termuxConnectedResolver: () => termuxGateCubit?.state.connected ?? true,
+    termuxDisconnectedWorkOpsMessageResolver: () =>
+        'Termux is disconnected. Reconnect from the banner, then try again.',
+    termuxGateHomeResolver: defaultTargetResolver,
   );
 
   // Bound after [WorkbenchCubit] exists; togglePanel aliases new-terminal UX
@@ -1480,6 +1486,7 @@ Future<AppShell> buildAppShell({
   if (homeTarget.kind == RuntimeKind.termux) {
     unawaited(termuxCubit.reconnect());
   }
+  termuxGateCubit = termuxCubit;
 
   // Target-aware directory picker for workspace dialogs: resolves the chosen
   // target's filesystem (real SSH connect for ssh targets) and lists targets.
