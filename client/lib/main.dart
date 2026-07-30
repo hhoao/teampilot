@@ -23,6 +23,7 @@ import 'cubits/chat_cubit.dart';
 import 'cubits/layout_cubit.dart';
 import 'cubits/mailbox_cubit.dart';
 import 'cubits/notification_cubit.dart';
+import 'cubits/progress_activity_cubit.dart';
 import 'cubits/ai_history_cubit.dart';
 import 'cubits/shortcut_cubit.dart';
 import 'l10n/l10n_extensions.dart';
@@ -231,6 +232,7 @@ class _AppShutdownScope extends StatefulWidget {
     required this.boardCubit,
     required this.aiHistoryCubit,
     required this.notificationCubit,
+    required this.progressActivityCubit,
     required this.sshConnectionCubit,
     required this.workspaceTerminalRegistry,
     required this.gitRepoStore,
@@ -248,6 +250,7 @@ class _AppShutdownScope extends StatefulWidget {
   final BoardCubit boardCubit;
   final AiHistoryCubit aiHistoryCubit;
   final NotificationCubit notificationCubit;
+  final ProgressActivityCubit progressActivityCubit;
   final SshConnectionCubit sshConnectionCubit;
   final WorkspaceTerminalRegistry workspaceTerminalRegistry;
   final GitRepoStore gitRepoStore;
@@ -271,6 +274,7 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
     unawaited(widget.boardCubit.close());
     unawaited(widget.aiHistoryCubit.close());
     unawaited(widget.notificationCubit.close());
+    unawaited(widget.progressActivityCubit.close());
     unawaited(widget.sshConnectionCubit.close());
     NotificationRecorder.install(null);
     widget.workspaceTerminalRegistry.disposeAll();
@@ -573,6 +577,7 @@ void main() async {
             boardCubit: shell.boardCubit,
             aiHistoryCubit: shell.aiHistoryCubit,
             notificationCubit: shell.notificationCubit,
+            progressActivityCubit: shell.progressActivityCubit,
             sshConnectionCubit: shell.sshConnectionCubit,
             workspaceTerminalRegistry: shell.workspaceTerminalRegistry,
             gitRepoStore: shell.gitRepoStore,
@@ -685,6 +690,7 @@ void main() async {
                   BlocProvider.value(value: shell.boardCubit),
                   BlocProvider.value(value: shell.aiHistoryCubit),
                   BlocProvider.value(value: shell.notificationCubit),
+                  BlocProvider.value(value: shell.progressActivityCubit),
                   BlocProvider.value(value: shell.editorCubit),
                   BlocProvider.value(value: shell.workbenchCubit),
                   BlocProvider.value(value: shell.floatingWorkspaceCubit),

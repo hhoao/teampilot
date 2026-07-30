@@ -25,6 +25,7 @@ import '../utils/session/workspace_tab_session_scope.dart';
 import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
 import '../cubits/notification_cubit.dart';
+import '../cubits/progress_activity_cubit.dart';
 import '../cubits/ai_history_cubit.dart';
 import '../cubits/shortcut_cubit.dart';
 import '../cubits/editor_cubit.dart';
@@ -185,6 +186,7 @@ class AppShell {
     required this.boardCubit,
     required this.aiHistoryCubit,
     required this.notificationCubit,
+    required this.progressActivityCubit,
     required this.editorCubit,
     required this.workbenchCubit,
     required this.workbenchEditorOpener,
@@ -260,6 +262,7 @@ class AppShell {
   final BoardCubit boardCubit;
   final AiHistoryCubit aiHistoryCubit;
   final NotificationCubit notificationCubit;
+  final ProgressActivityCubit progressActivityCubit;
   final EditorCubit editorCubit;
   final WorkbenchCubit workbenchCubit;
   final WorkbenchEditorOpener workbenchEditorOpener;
@@ -1132,6 +1135,9 @@ Future<AppShell> buildAppShell({
   final notificationCubit = NotificationCubit();
   final notificationBootstrap = notificationCubit.load();
   NotificationRecorder.install(notificationCubit);
+  final progressActivityCubit = ProgressActivityCubit(
+    historyRecorder: notificationCubit,
+  );
 
   boot('loading layout');
   await layoutCubit.load();
@@ -1339,6 +1345,7 @@ Future<AppShell> buildAppShell({
     boardCubit: boardCubit,
     aiHistoryCubit: aiHistoryCubit,
     notificationCubit: notificationCubit,
+    progressActivityCubit: progressActivityCubit,
     editorCubit: editorCubit,
     workbenchCubit: workbenchCubit,
     workbenchEditorOpener: workbenchEditorOpener,
