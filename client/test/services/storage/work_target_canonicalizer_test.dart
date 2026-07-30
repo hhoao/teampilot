@@ -6,6 +6,7 @@ void main() {
   final sshHome = RuntimeTarget.ssh('p1', label: 'box');
   final wslHome = RuntimeTarget.wsl('Ubuntu');
   final localHome = RuntimeTarget.local();
+  final termuxHome = RuntimeTarget.termux();
 
   test('defaultFolderTargetId follows home kind', () {
     expect(WorkTargetCanonicalizer.defaultFolderTargetId(localHome), 'local');
@@ -45,5 +46,30 @@ void main() {
   test('fromId parses bare ids without home rewrite', () {
     expect(WorkTargetCanonicalizer.fromId('local').kind, RuntimeKind.local);
     expect(WorkTargetCanonicalizer.fromId('ssh:p1').sshProfileId, 'p1');
+  });
+
+  test('defaultFolderTargetId for termux home', () {
+    expect(
+      WorkTargetCanonicalizer.defaultFolderTargetId(termuxHome),
+      'termux:default',
+    );
+  });
+
+  test('bare local resolves to termux home', () {
+    expect(
+      WorkTargetCanonicalizer.resolve('local', home: termuxHome),
+      termuxHome,
+    );
+  });
+
+  test('fromId parses termux', () {
+    expect(
+      WorkTargetCanonicalizer.fromId('termux:default').kind,
+      RuntimeKind.termux,
+    );
+    expect(
+      WorkTargetCanonicalizer.fromId('termux:default').sshProfileId,
+      'termux',
+    );
   });
 }
