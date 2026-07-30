@@ -89,7 +89,7 @@ Top-bar selector upgrades from SSH-only to **work environment** (Termux + SSH pr
 
 ### 3. Connection lifecycle
 
-`TermuxConnection` (config + runtime) states: unconfigured → configured disconnected → connected → degraded.
+`TermuxConnection` (config + runtime) states: unconfigured → configured disconnected → connected. (Treat intermittent SFTP failures after auth as disconnected/degraded UX under the same reconnect path — no separate long-lived `degraded` state required in v1.)
 
 | Event | Behavior |
 |-------|----------|
