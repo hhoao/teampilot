@@ -105,7 +105,11 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       busIdle: null,
       forceTeamLeadDelegateMode: false,
       mixed: false,
-      realHomeRoot: paths.home,
+      // Off-home staging uses ManifestFilesystem + local catalog reads.
+      // Mirroring local $HOME would list the control-plane home and stage
+      // symlinks that point at local paths on the remote host. Skip here;
+      // session connect applies remote passthrough on the work FS after flush.
+      realHomeRoot: ctx.crossMachine ? null : paths.home,
     );
 
     await _provisionWorkspaceTrust(ctx: ctx, homeRoot: home);

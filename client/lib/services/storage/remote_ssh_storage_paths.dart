@@ -6,6 +6,7 @@ import '../../models/ssh_profile.dart';
 import 'app_storage.dart';
 import '../ssh/ssh_client_factory.dart';
 import '../ssh/ssh_run_result.dart';
+import '../ssh/ssh_storage_io.dart';
 
 typedef SshRunCapture =
     Future<SSHRunResult> Function(SSHClient client, String command);
@@ -40,8 +41,22 @@ printf '%s\n' "$HOME_DIR" "$TP_DIR"
 ''';
 
   Future<RemoteSshStoragePaths> resolve(SshProfile profile) async {
-    final client = await _clientFactory.clientForStorage(profile);
-    final result = await (_runCommand ?? _defaultRun)(client, resolveCommand);
+    final SSHRunResult result;
+    final customRun = _runCommand;
+    if (customRun != null) {
+      final client = await _clientFactory.clientForStorage(profile);
+      result = await SshStorageIo.awaitOrThrow(
+        customRun(client, resolveCommand),
+        timeout: SshStorageIo.locateTimeout,
+        operation: 'remote path resolve',
+      );
+    } else {
+      result = await _clientFactory.runOnStorage(
+        profile,
+        resolveCommand,
+        timeout: SshStorageIo.locateTimeout,
+      );
+    }
     final lines = utf8
         .decode(result.stdout, allowMalformed: true)
         .split('\n')
@@ -73,9 +88,5 @@ printf '%s\n' "$HOME_DIR" "$TP_DIR"
         AppPaths.defaultTeampilotAppDataDirForHome(home),
       ),
     );
-  }
-
-  static Future<SSHRunResult> _defaultRun(SSHClient client, String command) {
-    return client.runWithResult(command);
   }
 }

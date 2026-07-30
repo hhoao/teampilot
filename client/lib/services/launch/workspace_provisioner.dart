@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
@@ -10,6 +12,8 @@ import '../provider/config_profile_service.dart';
 import '../remote/remote_app_data_materializer.dart';
 import '../remote/remember_remote_cli_path.dart';
 import '../ssh/ssh_client_factory.dart';
+import '../ssh/ssh_storage_io.dart';
+import '../ssh/ssh_transport_close.dart';
 import '../storage/runtime_context.dart';
 import 'launch_artifacts.dart';
 
@@ -93,10 +97,16 @@ class WorkspaceProvisioner {
     }
 
     step('start');
+    report(CliInstallPhase.locatingExecutable, detail: 'resolve-work-ctx');
     step('resolve-work-ctx begin');
-    final workContext = await contextForTarget(target);
+    final workContext = await SshStorageIo.awaitOrThrow(
+      contextForTarget(target),
+      timeout: SshStorageIo.locateTimeout,
+      operation: 'resolve work context (${target.id})',
+    );
     step('resolve-work-ctx done root=${workContext.appDataRoot}');
 
+    report(CliInstallPhase.locatingExecutable, detail: 'ensure-cli');
     step('ensure-cli begin');
     final remoteCliPath = await _ensureCli(target: target, cli: cli);
     step('ensure-cli done path=$remoteCliPath');
@@ -109,14 +119,18 @@ class WorkspaceProvisioner {
         detail: 'materialize',
       );
       step('materialize-app-data begin optInCredentials=$optInCredentials');
-      await _appData.materialize(
-        homeFs: home.fs,
-        homeRoot: home.appDataRoot,
-        workFs: workContext.fs,
-        machineRoot: workContext.appDataRoot,
-        cli: cli,
-        workspaceId: trimmedWorkspaceId,
-        optInCredentials: optInCredentials,
+      await SshStorageIo.awaitOrThrow(
+        _appData.materialize(
+          homeFs: home.fs,
+          homeRoot: home.appDataRoot,
+          workFs: workContext.fs,
+          machineRoot: workContext.appDataRoot,
+          cli: cli,
+          workspaceId: trimmedWorkspaceId,
+          optInCredentials: optInCredentials,
+        ),
+        timeout: SshStorageIo.provisionPhaseTimeout,
+        operation: 'materialize app data',
       );
       step('materialize-app-data done');
     }
@@ -130,10 +144,14 @@ class WorkspaceProvisioner {
       );
     }
     step('provision-workspace begin trusted=${trustedDirectories.length}');
-    await configProfile.provisionWorkspace(
-      workspaceId: trimmedWorkspaceId,
-      cli: cli,
-      trustedDirectories: trustedDirectories,
+    await SshStorageIo.awaitOrThrow(
+      configProfile.provisionWorkspace(
+        workspaceId: trimmedWorkspaceId,
+        cli: cli,
+        trustedDirectories: trustedDirectories,
+      ),
+      timeout: SshStorageIo.provisionPhaseTimeout,
+      operation: 'provision workspace config',
     );
     step('done');
     return WorkspaceProvisionResult(
@@ -160,32 +178,47 @@ class WorkspaceProvisioner {
       'target=${target.id} cli=${cli.value} host=${profile.host}',
     );
     final client = await sshClientFactory.clientForStorage(profile);
-    final run = RemoteCliLocator.runnerForClient(client);
+    final run = RemoteCliLocator.runnerForClient(
+      client,
+      timeout: SshStorageIo.locateTimeout,
+    );
     final storedPath = (await cliPathOverride(target.id, cli.value) ?? '')
         .trim();
-    final path = await _installer.locate(
-      cli: cli,
-      run: run,
-      manualPathOverride: storedPath,
-    );
-    if (path == null || path.trim().isEmpty) {
-      throw RemoteCliUnavailableException(
-        cli,
-        RemoteCliUnavailableReason.notInstalled,
+    try {
+      final path = await SshStorageIo.awaitOrThrow(
+        _installer.locate(
+          cli: cli,
+          run: run,
+          manualPathOverride: storedPath,
+        ),
+        timeout: SshStorageIo.locateTimeout,
+        operation: 'remote CLI locate (${cli.value})',
       );
+      if (path == null || path.trim().isEmpty) {
+        throw RemoteCliUnavailableException(
+          cli,
+          RemoteCliUnavailableReason.notInstalled,
+        );
+      }
+      appLogger.d(
+        '[workspace-provision] ensure-cli locate hit '
+        'target=${target.id} path=$path '
+        'elapsedMs=${sw.elapsedMilliseconds}',
+      );
+      await rememberRemoteCliPathIfNeeded(
+        targetId: target.id,
+        cli: cli,
+        resolvedPath: path,
+        readCliPathOverride: cliPathOverride,
+        writeCliPathOverride: setCliPathOverride,
+      );
+      return path;
+    } on TimeoutException {
+      sshClientFactory.disconnectProfile(
+        profile.id,
+        reason: SshTransportCloseReason.transportError,
+      );
+      rethrow;
     }
-    appLogger.d(
-      '[workspace-provision] ensure-cli locate hit '
-      'target=${target.id} path=$path '
-      'elapsedMs=${sw.elapsedMilliseconds}',
-    );
-    await rememberRemoteCliPathIfNeeded(
-      targetId: target.id,
-      cli: cli,
-      resolvedPath: path,
-      readCliPathOverride: cliPathOverride,
-      writeCliPathOverride: setCliPathOverride,
-    );
-    return path;
   }
 }

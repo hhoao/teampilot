@@ -239,8 +239,8 @@ class RemoteFileStore {
     if (resolved.isEmpty || resolved == '.' || resolved == '/') return;
     if ((await statKind(resolved)) == FsEntityKind.directory) return;
 
-    final client = await _clientFactory.clientForStorage(_profile);
-    final result = await client.runWithResult(
+    final result = await _clientFactory.runOnStorage(
+      _profile,
       'mkdir -p -- ${shellSingleQuote(resolved)}',
       stderr: false,
     );
@@ -276,8 +276,8 @@ class RemoteFileStore {
   }
 
   Future<void> removeRecursive(String absolutePosixPath) async {
-    final client = await _clientFactory.clientForStorage(_profile);
-    await client.runWithResult(
+    await _clientFactory.runOnStorage(
+      _profile,
       'rm -rf -- ${shellSingleQuote(absolutePosixPath)}',
       stderr: false,
     );
@@ -287,13 +287,13 @@ class RemoteFileStore {
     required String target,
     required String linkPath,
   }) async {
-    final client = await _clientFactory.clientForStorage(_profile);
     final parent = p.Context(style: p.Style.posix).dirname(linkPath);
     if (parent.isNotEmpty && parent != '.') {
       await ensureDirectory(parent);
     }
     await removeRecursive(linkPath);
-    final result = await client.runWithResult(
+    final result = await _clientFactory.runOnStorage(
+      _profile,
       'ln -sf -- ${shellSingleQuote(target)} ${shellSingleQuote(linkPath)}',
       stderr: false,
     );
@@ -341,8 +341,8 @@ class RemoteFileStore {
       await ensureDirectory(parent);
     }
     await removeRecursive(to);
-    final client = await _clientFactory.clientForStorage(_profile);
-    final result = await client.runWithResult(
+    final result = await _clientFactory.runOnStorage(
+      _profile,
       'mv -- ${shellSingleQuote(from)} ${shellSingleQuote(to)}',
       stderr: false,
     );
@@ -364,8 +364,8 @@ class RemoteFileStore {
     }
     await removeRecursive(destination);
     await ensureDirectory(destination);
-    final client = await _clientFactory.clientForStorage(_profile);
-    final result = await client.runWithResult(
+    final result = await _clientFactory.runOnStorage(
+      _profile,
       'cp -R -- ${shellSingleQuote('$source/.')} ${shellSingleQuote(destination)}',
       stderr: false,
     );
@@ -410,8 +410,8 @@ class RemoteFileStore {
     if (parent.isNotEmpty && parent != '.' && parent != '/') {
       await ensureDirectory(parent);
     }
-    final client = await _clientFactory.clientForStorage(_profile);
-    final result = await client.runWithResult(
+    final result = await _clientFactory.runOnStorage(
+      _profile,
       'cp -- ${shellSingleQuote(source)} ${shellSingleQuote(destination)}',
       stderr: false,
     );
@@ -425,8 +425,8 @@ class RemoteFileStore {
   Future<List<RemoteDirEntry>> listDirectoryEntriesRecursive(
     String path,
   ) async {
-    final client = await _clientFactory.clientForStorage(_profile);
-    final result = await client.runWithResult(
+    final result = await _clientFactory.runOnStorage(
+      _profile,
       'find ${shellSingleQuote(path)} -mindepth 1 -printf "%P\\t%y\\n"',
       stderr: false,
     );
@@ -458,8 +458,7 @@ class RemoteFileStore {
 
   /// Runs [command] in the remote login shell and returns the full exit status.
   Future<SSHRunResult> execShell(String command) async {
-    final client = await _clientFactory.clientForStorage(_profile);
-    return client.runWithResult(command);
+    return _clientFactory.runOnStorage(_profile, command);
   }
 
   /// Opens [absolutePath] in the remote OS file manager (best-effort).
@@ -470,7 +469,6 @@ class RemoteFileStore {
     final resolved = (await expandHome(absolutePath)).trim();
     if (resolved.isEmpty) return false;
 
-    final client = await _clientFactory.clientForStorage(_profile);
     final quoted = shellSingleQuote(resolved);
     final cmd = switch (remoteOs) {
       RemoteOs.windows => 'explorer $quoted',
@@ -481,17 +479,24 @@ class RemoteFileStore {
             'open -- $quoted; '
             'else exit 127; fi',
     };
-    final result = await client.runWithResult(cmd, stderr: false);
+    final result = await _clientFactory.runOnStorage(
+      _profile,
+      cmd,
+      stderr: false,
+    );
     return sshRunSucceeded(result);
   }
 
   Future<String> createTempDir({String? prefix, String? parent}) async {
-    final client = await _clientFactory.clientForStorage(_profile);
     final template = '${prefix ?? 'tmp'}XXXXXX';
     final cmd = parent != null
         ? 'mktemp -d -p ${shellSingleQuote(parent)} $template'
         : 'mktemp -d $template';
-    final result = await client.runWithResult(cmd, stderr: false);
+    final result = await _clientFactory.runOnStorage(
+      _profile,
+      cmd,
+      stderr: false,
+    );
     if (sshRunFailed(result)) {
       throw StateError(
         'mktemp failed (${sshRunFailureLabel(result)}): '
@@ -505,8 +510,8 @@ class RemoteFileStore {
     final resolved = await expandHome(path);
     await _ensureParentDirs(resolved);
     final encoded = base64.encode(utf8.encode(content));
-    final client = await _clientFactory.clientForStorage(_profile);
-    final result = await client.runWithResult(
+    final result = await _clientFactory.runOnStorage(
+      _profile,
       'printf \'%s\' ${shellSingleQuote(encoded)} | base64 -d >> ${shellSingleQuote(path)}',
       stderr: false,
     );

@@ -749,7 +749,12 @@ class SessionShellConnector {
     }
 
     if (launchTarget.kind == RuntimeKind.ssh) {
-      onProgress(const CliInstallProgress(phase: CliInstallPhase.checkingNpm));
+      onProgress(
+        const CliInstallProgress(
+          phase: CliInstallPhase.locatingExecutable,
+          detail: 'connecting',
+        ),
+      );
     }
 
     try {
@@ -765,7 +770,8 @@ class SessionShellConnector {
         (latest ??
                 MemberRemoteProvisionProgress(
                   memberId: memberId,
-                  phase: CliInstallPhase.checkingNpm,
+                  phase: CliInstallPhase.locatingExecutable,
+                  detail: 'connecting',
                   hostLabel: hostLabel,
                 ))
             .copyWith(error: '$e'),

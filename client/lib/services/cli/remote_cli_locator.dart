@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:dartssh2/dartssh2.dart';
@@ -39,12 +40,11 @@ class RemoteCliLocator {
   static SshCommandRunner runnerForClient(
     SSHClient client, {
     bool includeStderr = false,
+    Duration? timeout,
   }) {
     return (command) async {
-      final result = await client.runWithResult(
-        command,
-        stderr: includeStderr,
-      );
+      final run = client.runWithResult(command, stderr: includeStderr);
+      final result = timeout == null ? await run : await run.timeout(timeout);
       return SshCommandResult(
         exitCode: result.exitCode ?? 1,
         stdout: utf8.decode(result.stdout, allowMalformed: true),

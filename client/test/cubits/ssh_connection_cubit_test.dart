@@ -527,6 +527,9 @@ class _InstantAuthClient extends SSHClient {
 
   @override
   Future<void> get authenticated => Future.value();
+
+  @override
+  Future<void> ping() async {}
 }
 
 class _FakeSSHSocket implements SSHSocket {

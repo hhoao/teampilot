@@ -9,6 +9,37 @@ import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 
 void main() {
+  test('clientForStorage rebuilds when keepalive probe fails', () async {
+    var createCount = 0;
+    var pingCount = 0;
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        createCount += 1;
+        return _ProbeFailClient(() {
+          pingCount += 1;
+          return pingCount > 1;
+        });
+      },
+    );
+
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+
+    final first = await factory.clientForStorage(profile);
+    final second = await factory.clientForStorage(profile);
+
+    expect(createCount, 2);
+    expect(identical(first, second), isFalse);
+    expect(first.isClosed, isTrue);
+    expect(factory.hasLiveStorageClient(profile.id), isTrue);
+  });
+
   test(
     'clientForStorage reuses the same pooled client for one profile',
     () async {
@@ -230,11 +261,31 @@ void main() {
   });
 }
 
+class _ProbeFailClient extends SSHClient {
+  _ProbeFailClient(this._shouldSucceed)
+    : super(_FakeSSHSocket(), username: 'test');
+
+  final bool Function() _shouldSucceed;
+
+  @override
+  Future<void> get authenticated => Future.value();
+
+  @override
+  Future<void> ping() async {
+    if (!_shouldSucceed()) {
+      throw StateError('keepalive failed');
+    }
+  }
+}
+
 class _InstantAuthClient extends SSHClient {
   _InstantAuthClient() : super(_FakeSSHSocket(), username: 'test');
 
   @override
   Future<void> get authenticated => Future.value();
+
+  @override
+  Future<void> ping() async {}
 }
 
 class _DelayedAuthClient extends SSHClient {
@@ -246,6 +297,9 @@ class _DelayedAuthClient extends SSHClient {
 
   @override
   Future<void> get authenticated => _gate;
+
+  @override
+  Future<void> ping() async {}
 }
 
 class _FailAuthClient extends SSHClient {
@@ -254,6 +308,9 @@ class _FailAuthClient extends SSHClient {
   @override
   Future<void> get authenticated =>
       Future<void>.error(StateError('authentication failed'));
+
+  @override
+  Future<void> ping() async {}
 }
 
 class _FakeSSHSocket implements SSHSocket {

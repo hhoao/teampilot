@@ -75,6 +75,9 @@ class _RunnableClient extends SSHClient {
       exitSignal: null,
     );
   }
+
+  @override
+  Future<void> ping() async {}
 }
 
 class _FakeSSHSocket implements SSHSocket {

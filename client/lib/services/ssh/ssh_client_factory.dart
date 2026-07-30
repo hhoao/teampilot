@@ -6,6 +6,7 @@ import '../../models/ssh_profile.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_known_host_repository.dart';
 import 'ssh_connection_events.dart';
+import 'ssh_storage_io.dart';
 import 'ssh_transport_close.dart';
 
 typedef SshClientConnector =
@@ -104,17 +105,29 @@ class SshClientFactory {
   ///
   /// Interactive session work (PTY, reverse bus tunnels, exec probes) must use
   /// [createMemberClient] via [SshMemberSession.open] instead.
+  ///
+  /// Reuses a pooled client only after a short keepalive probe so half-dead
+  /// sockets (FIN not yet observed) are rebuilt instead of hanging callers.
   Future<SSHClient> clientForStorage(
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
+    bool probeCached = true,
   }) async {
     final cached = _pool[profile.id];
     if (cached != null) {
       if (cached.client.isClosed) {
         _pool.remove(profile.id);
+        _sftpByProfile.remove(profile.id);
       } else if (cached.hostIdentifier == profile.hostIdentifier) {
         await cached.ready;
-        return cached.client;
+        if (!probeCached || await _probeStorageClient(cached.client)) {
+          return cached.client;
+        }
+        _evictProfile(
+          profile.id,
+          closePooled: true,
+          reason: SshTransportCloseReason.transportError,
+        );
       } else {
         _evictProfile(
           profile.id,
@@ -151,22 +164,83 @@ class SshClientFactory {
     return client;
   }
 
+  Future<bool> _probeStorageClient(SSHClient client) async {
+    if (client.isClosed) return false;
+    try {
+      await SshStorageIo.awaitOrThrow(
+        client.ping(),
+        timeout: SshStorageIo.probeTimeout,
+        operation: 'storage keepalive probe',
+      );
+      return true;
+    } on Object {
+      return false;
+    }
+  }
+
   /// Shared SFTP session for [profile] (reused by all [RemoteFileStore] instances).
   Future<SftpClient> sftpFor(SshProfile profile) async {
     final cached = _sftpByProfile[profile.id];
     if (cached != null) {
       try {
-        await cached.absolute('.');
+        await SshStorageIo.awaitOrThrow(
+          cached.absolute('.'),
+          timeout: SshStorageIo.probeTimeout,
+          operation: 'sftp liveness probe',
+        );
         return cached;
       } on Object {
         _sftpByProfile.remove(profile.id);
       }
     }
 
+    return _openSftp(profile);
+  }
+
+  Future<SftpClient> _openSftp(SshProfile profile) async {
     final client = await clientForStorage(profile);
-    final sftp = await client.sftp();
-    _sftpByProfile[profile.id] = sftp;
-    return sftp;
+    try {
+      final sftp = await SshStorageIo.awaitOrThrow(
+        client.sftp(),
+        timeout: SshStorageIo.ioTimeout,
+        operation: 'sftp open',
+      );
+      _sftpByProfile[profile.id] = sftp;
+      return sftp;
+    } on Object {
+      _evictProfile(
+        profile.id,
+        closePooled: true,
+        reason: SshTransportCloseReason.transportError,
+      );
+      rethrow;
+    }
+  }
+
+  /// Runs [command] on the storage-plane client with an I/O timeout.
+  ///
+  /// On timeout the pooled client is evicted so the next caller rebuilds.
+  Future<SSHRunResult> runOnStorage(
+    SshProfile profile,
+    String command, {
+    Duration timeout = SshStorageIo.ioTimeout,
+    bool stderr = true,
+  }) async {
+    final client = await clientForStorage(profile);
+    try {
+      return await SshStorageIo.awaitOrThrow(
+        client.runWithResult(command, stderr: stderr),
+        timeout: timeout,
+        operation: 'storage exec',
+      );
+    } on TimeoutException {
+      _evictProfile(
+        profile.id,
+        closePooled: true,
+        reason: SshTransportCloseReason.transportError,
+      );
+      rethrow;
+    }
   }
 
   void prepareClientClose(

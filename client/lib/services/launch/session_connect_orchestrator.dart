@@ -10,11 +10,13 @@ import '../cli/installer_types.dart';
 import '../cli/registry/mcp_writers/claude_project_mcp_cleanup.dart';
 import '../cli/preset_resolver.dart';
 import '../provider/config_profile_service.dart';
+import '../provider/cursor/cursor_member_home_passthrough.dart';
 import '../session/session_continue_overrides_apply.dart';
 import '../session/session_lifecycle_service.dart';
 import '../storage/runtime_context.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
 import '../agent_status/member_agent_status_endpoint.dart';
+import '../../utils/logging/logger.dart';
 import 'launch_manifest.dart';
 import 'launch_manifest_paths.dart';
 import 'manifest_executor.dart';
@@ -197,6 +199,19 @@ class SessionConnectOrchestrator {
       remoteCliPath = await workspaceProvision.provisioner.localCliPath(cli);
     }
 
+    void report(CliInstallPhase phase, {String? detail}) {
+      onProvisionProgress?.call(CliInstallProgress(phase: phase, detail: detail));
+    }
+
+    report(
+      CliInstallPhase.syncingRemoteWorkspace,
+      detail: 'stage-session',
+    );
+    appLogger.d(
+      '[session-launch] stage-session begin '
+      'session=${session.sessionId} cli=${cli.value} offHome=$offHome',
+    );
+
     final catalogProfile = await configProfileFor(
       offHome ? homeContext() : workContext,
     );
@@ -264,12 +279,44 @@ class SessionConnectOrchestrator {
       );
     }
 
+    appLogger.d(
+      '[session-launch] stage-session done '
+      'session=${session.sessionId} ops=${staged.manifest.entries.length}',
+    );
+
+    report(
+      CliInstallPhase.syncingRemoteWorkspace,
+      detail: 'manifest-flush',
+    );
     await manifestExecutor.flush(
       manifest: staged.manifest,
       targetFs: workContext.fs,
       sourceFs: offHome ? homeContext().fs : workContext.fs,
       sshProfileId: offHome ? launchTarget.sshProfileId : null,
     );
+
+    if (offHome && cli == CliTool.cursor) {
+      final memberHome = staged.outcome.environment['HOME']?.trim() ?? '';
+      final realHome = workContext.home.trim();
+      if (memberHome.isNotEmpty && realHome.isNotEmpty) {
+        report(
+          CliInstallPhase.syncingRemoteWorkspace,
+          detail: 'cursor-home-passthrough',
+        );
+        appLogger.d(
+          '[session-launch] cursor home passthrough begin '
+          'session=${session.sessionId} realHome=$realHome',
+        );
+        await CursorMemberHomePassthrough(fs: workContext.fs).mirror(
+          realHomeRoot: realHome,
+          memberHomeRoot: memberHome,
+        );
+        appLogger.d(
+          '[session-launch] cursor home passthrough done '
+          'session=${session.sessionId}',
+        );
+      }
+    }
 
     final environment = offHome
         ? normalizeWorkEnvironment(workContext.fs, staged.outcome.environment)
