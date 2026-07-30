@@ -2170,6 +2170,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get fileTreeImportSummaryCancelledSuffix => ' — 已取消';
+
+  @override
   String get fileTreeImportRejectSelf => '无法将项目移动到自身或其子目录中。';
 
   @override

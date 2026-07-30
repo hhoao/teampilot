@@ -170,16 +170,28 @@ Future<T> showFileTreeImportProgressDialog<T>({
   required Stream<ImportProgress> progress,
   required ValueNotifier<bool> cancelRequested,
   required Future<T> task,
-}) {
-  return showDialog<T>(
+}) async {
+  final taskCompletion = Completer<T>();
+  unawaited(
+    task
+        .then(taskCompletion.complete)
+        .catchError((Object error, StackTrace stackTrace) {
+          if (!taskCompletion.isCompleted) {
+            taskCompletion.completeError(error, stackTrace);
+          }
+        }),
+  );
+
+  await showDialog<void>(
     context: context,
     barrierDismissible: false,
     builder: (dialogContext) => _FileTreeImportProgressDialog<T>(
       progress: progress,
       cancelRequested: cancelRequested,
-      task: task,
+      task: taskCompletion.future,
     ),
-  ).then((value) => value as T);
+  );
+  return await taskCompletion.future;
 }
 
 class _FileTreeImportProgressDialog<T> extends StatefulWidget {
@@ -213,15 +225,17 @@ class _FileTreeImportProgressDialogState<T>
       if (!mounted) return;
       setState(() => _latest = event);
     });
-    _taskFuture.then(_finish).catchError((Object _, StackTrace __) {
-      _finish(null);
-    });
-  }
-
-  void _finish(T? result) {
-    if (!mounted) return;
-    setState(() => _running = false);
-    Navigator.of(context).pop(result);
+    unawaited(
+      _taskFuture.then((_) {
+        if (!mounted) return;
+        setState(() => _running = false);
+        Navigator.of(context).pop();
+      }).catchError((Object _, StackTrace __) {
+        if (!mounted) return;
+        setState(() => _running = false);
+        Navigator.of(context).pop();
+      }),
+    );
   }
 
   @override
@@ -297,13 +311,17 @@ void showFileTreeImportSummaryIfNeeded(
   }
 
   final l10n = context.l10n;
+  var message = l10n.fileTreeImportSummary(
+    summary.succeeded,
+    summary.skipped,
+    summary.failed,
+  );
+  if (summary.cancelled) {
+    message = '$message${l10n.fileTreeImportSummaryCancelledSuffix}';
+  }
   AppToast.show(
     context,
-    message: l10n.fileTreeImportSummary(
-      summary.succeeded,
-      summary.skipped,
-      summary.failed,
-    ),
+    message: message,
     variant: summary.failed > 0
         ? TpToastVariant.warning
         : TpToastVariant.info,

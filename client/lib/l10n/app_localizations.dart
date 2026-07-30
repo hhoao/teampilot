@@ -4136,6 +4136,12 @@ abstract class AppLocalizations {
   /// **'{succeeded} succeeded, {skipped} skipped, {failed} failed'**
   String fileTreeImportSummary(int succeeded, int skipped, int failed);
 
+  /// No description provided for @fileTreeImportSummaryCancelledSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **' — cancelled'**
+  String get fileTreeImportSummaryCancelledSuffix;
+
   /// No description provided for @fileTreeImportRejectSelf.
   ///
   /// In en, this message translates to:

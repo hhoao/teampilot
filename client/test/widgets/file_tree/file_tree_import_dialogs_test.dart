@@ -2,8 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/services/file_tree_import/import_models.dart';
+import 'package:teampilot/theme/team_pilot_toast_config.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:teampilot/widgets/file_tree/file_tree_import_dialogs.dart';
 
 Widget _host({required Widget home}) {
@@ -11,6 +14,22 @@ Widget _host({required Widget home}) {
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: home,
+  );
+}
+
+Widget _toastHost({required Widget home}) {
+  final scheme = ColorScheme.fromSeed(seedColor: Colors.indigo);
+  return TpToastWrapper(
+    config: buildTeamPilotToastConfig(),
+    child: MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      theme: ThemeData(colorScheme: scheme),
+      home: TpTheme(
+        data: TpThemeData.fromColorScheme(scheme, scale: 1),
+        child: home,
+      ),
+    ),
   );
 }
 
@@ -227,5 +246,60 @@ void main() {
     expect(cancelRequested.value, isTrue);
 
     await progressController.close();
+  });
+
+  test('import progress dialog forwards task failures to caller', () async {
+    final task = Future<ImportSummary>.error(Exception('import failed'));
+    final taskCompletion = Completer<ImportSummary>();
+    unawaited(
+      task
+          .then(taskCompletion.complete)
+          .catchError((Object error, StackTrace stackTrace) {
+            if (!taskCompletion.isCompleted) {
+              taskCompletion.completeError(error, stackTrace);
+            }
+          }),
+    );
+
+    await expectLater(
+      taskCompletion.future,
+      throwsA(isA<Exception>()),
+    );
+  });
+
+  testWidgets('cancelled summary toast includes cancelled suffix', (
+    tester,
+  ) async {
+    addTearDown(TpToast.dismiss);
+
+    await tester.pumpWidget(
+      _toastHost(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () {
+                showFileTreeImportSummaryIfNeeded(
+                  context,
+                  const ImportSummary(
+                    succeeded: 2,
+                    skipped: 1,
+                    cancelled: true,
+                  ),
+                );
+              },
+              child: const Text('toast'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('toast'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('cancelled'), findsOneWidget);
+
+    TpToast.dismiss();
+    await tester.pumpAndSettle();
   });
 }

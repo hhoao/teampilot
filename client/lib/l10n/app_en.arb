@@ -1003,6 +1003,7 @@
       }
     }
   },
+  "fileTreeImportSummaryCancelledSuffix": " — cancelled",
   "fileTreeImportRejectSelf": "Cannot move or copy an item into itself or its children.",
   "fileTreeImportDropCopy": "Copy",
   "fileTreeImportDropMove": "Move",

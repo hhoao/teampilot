@@ -2270,6 +2270,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get fileTreeImportSummaryCancelledSuffix => ' — cancelled';
+
+  @override
   String get fileTreeImportRejectSelf =>
       'Cannot move or copy an item into itself or its children.';
 
