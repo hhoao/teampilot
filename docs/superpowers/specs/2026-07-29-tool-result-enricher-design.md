@@ -188,9 +188,11 @@ Applies to Claude and flashskyai (shared implementation).
    any tool whose `result` string matches truncation sentinel**):
    - Sentinel examples: content equals / contains `tool output truncated`
      (case-insensitive), matching known Claude truncation copy.
-3. Replace `result` with `stdout` (append `stderr` if non-empty); set
-   `isError` from `exitCode != 0` or existing `is_error`.
-4. Non-truncated + existing result → unchanged.
+3. Replace `result`:
+   - If `toolUseResult` is a `Map`: use `stdout` (append `stderr` if
+     non-empty); `isError` from `exitCode != 0` or existing `is_error`.
+   - If `toolUseResult` is a non-empty `String`: use that string as `result`.
+4. Non-truncated + existing non-blank result → unchanged.
 
 Prefer re-reading the primary transcript bytes from `rootTranscriptPath` /
 bundle fragment rather than changing `parseClaudeCompatibleJsonl` to smuggle
