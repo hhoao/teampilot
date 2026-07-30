@@ -738,7 +738,8 @@ class SessionShellConnector {
               launchTarget.id)
         : '';
     MemberRemoteProvisionProgress? latest;
-    void onProgress(CliInstallProgress progress) {
+
+    void reportMemberProgress(CliInstallProgress progress) {
       latest = MemberRemoteProvisionProgress(
         memberId: memberId,
         phase: progress.phase,
@@ -748,36 +749,73 @@ class SessionShellConnector {
       _host.setMemberRemoteProvisionProgress(tab.info.id, memberId, latest);
     }
 
-    if (launchTarget.kind == RuntimeKind.ssh) {
-      onProgress(
+    Future<
+      ({
+        ShellLaunchSpec shellLaunch,
+        List<String> warnings,
+        String remoteCliPath,
+      })
+    >
+    runPrepare(void Function(CliInstallProgress progress)? onProgress) async {
+      try {
+        final result = await prepare(onProgress);
+        _host.setMemberRemoteProvisionProgress(tab.info.id, memberId, null);
+        return result;
+      } on Object catch (e) {
+        _host.setMemberRemoteProvisionProgress(
+          tab.info.id,
+          memberId,
+          (latest ??
+                  MemberRemoteProvisionProgress(
+                    memberId: memberId,
+                    phase: CliInstallPhase.locatingExecutable,
+                    detail: 'connecting',
+                    hostLabel: hostLabel,
+                  ))
+              .copyWith(error: '$e'),
+        );
+        rethrow;
+      }
+    }
+
+    if (launchTarget.kind != RuntimeKind.ssh) {
+      return runPrepare(null);
+    }
+
+    final adapter = _host.cliProvisionActivity;
+    if (adapter == null) {
+      reportMemberProgress(
         const CliInstallProgress(
           phase: CliInstallPhase.locatingExecutable,
           detail: 'connecting',
         ),
       );
+      return runPrepare(reportMemberProgress);
     }
 
-    try {
-      final result = await prepare(
-        launchTarget.kind == RuntimeKind.ssh ? onProgress : null,
-      );
-      _host.setMemberRemoteProvisionProgress(tab.info.id, memberId, null);
-      return result;
-    } on Object catch (e) {
-      _host.setMemberRemoteProvisionProgress(
-        tab.info.id,
-        memberId,
-        (latest ??
-                MemberRemoteProvisionProgress(
-                  memberId: memberId,
-                  phase: CliInstallPhase.locatingExecutable,
-                  detail: 'connecting',
-                  hostLabel: hostLabel,
-                ))
-            .copyWith(error: '$e'),
-      );
-      rethrow;
-    }
+    return adapter.runTracked(
+      title: hostLabel.isEmpty
+          ? 'Provisioning remote environment'
+          : 'Provisioning $hostLabel',
+      workspaceId: tab.workspaceId.trim().isEmpty ? null : tab.workspaceId,
+      historyMessageFor: (_) => hostLabel.isEmpty
+          ? 'Remote environment ready'
+          : 'Remote environment ready on $hostLabel',
+      run: (onActivityProgress) async {
+        void onProgress(CliInstallProgress progress) {
+          onActivityProgress(progress);
+          reportMemberProgress(progress);
+        }
+
+        onProgress(
+          const CliInstallProgress(
+            phase: CliInstallPhase.locatingExecutable,
+            detail: 'connecting',
+          ),
+        );
+        return runPrepare(onProgress);
+      },
+    );
   }
 
   /// Work context + reverse tunnels for a mixed remote member.

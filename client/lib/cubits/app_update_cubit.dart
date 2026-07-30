@@ -9,6 +9,7 @@ import '../models/app_release_info.dart';
 import '../repositories/app_settings_repository.dart';
 import '../services/app/app_update_installer.dart';
 import '../services/app/app_update_service.dart';
+import '../services/progress_activity/app_update_activity_adapter.dart';
 
 enum AppUpdateStatus {
   idle,
@@ -25,7 +26,6 @@ class AppUpdateState extends Equatable {
     this.status = AppUpdateStatus.idle,
     this.currentVersionLabel = '',
     this.availableRelease,
-    this.downloadProgress = 0,
     this.errorMessage,
     this.autoCheckEnabled = true,
     this.skippedVersion,
@@ -35,7 +35,6 @@ class AppUpdateState extends Equatable {
   final AppUpdateStatus status;
   final String currentVersionLabel;
   final AppReleaseInfo? availableRelease;
-  final double downloadProgress;
   final String? errorMessage;
 
   /// Whether the app silently checks for updates on startup.
@@ -58,7 +57,6 @@ class AppUpdateState extends Equatable {
     String? currentVersionLabel,
     AppReleaseInfo? availableRelease,
     bool clearRelease = false,
-    double? downloadProgress,
     String? errorMessage,
     bool clearError = false,
     bool? autoCheckEnabled,
@@ -72,7 +70,6 @@ class AppUpdateState extends Equatable {
     availableRelease: clearRelease
         ? null
         : (availableRelease ?? this.availableRelease),
-    downloadProgress: downloadProgress ?? this.downloadProgress,
     errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     autoCheckEnabled: autoCheckEnabled ?? this.autoCheckEnabled,
     skippedVersion: clearSkippedVersion
@@ -86,7 +83,6 @@ class AppUpdateState extends Equatable {
     status,
     currentVersionLabel,
     availableRelease,
-    downloadProgress,
     errorMessage,
     autoCheckEnabled,
     skippedVersion,
@@ -94,19 +90,38 @@ class AppUpdateState extends Equatable {
   ];
 }
 
+class AppUpdateDownloadCopy {
+  const AppUpdateDownloadCopy({
+    required this.title,
+    required this.downloadingSubtitle,
+    required this.installingSubtitle,
+    this.successHistoryMessage,
+    this.cancelledHistoryMessage,
+  });
+
+  final String title;
+  final String downloadingSubtitle;
+  final String installingSubtitle;
+  final String? successHistoryMessage;
+  final String? cancelledHistoryMessage;
+}
+
 class AppUpdateCubit extends Cubit<AppUpdateState> {
   AppUpdateCubit({
     AppUpdateService? service,
     AppUpdateInstaller? installer,
     AppSettingsRepository? settings,
+    AppUpdateActivityAdapter? activityAdapter,
   }) : _service = service ?? AppUpdateService(),
        _installer = installer ?? AppUpdateInstaller(),
        _settings = settings,
+       _activityAdapter = activityAdapter,
        super(const AppUpdateState());
 
   final AppUpdateService _service;
   final AppUpdateInstaller _installer;
   final AppSettingsRepository? _settings;
+  final AppUpdateActivityAdapter? _activityAdapter;
   File? _downloadedPackage;
 
   /// Loads persisted preferences (auto-check toggle, skipped version) and the
@@ -227,7 +242,6 @@ class AppUpdateCubit extends Cubit<AppUpdateState> {
         status: AppUpdateStatus.checking,
         clearError: true,
         clearRelease: true,
-        downloadProgress: 0,
       ),
     );
 
@@ -264,7 +278,7 @@ class AppUpdateCubit extends Cubit<AppUpdateState> {
     }
   }
 
-  Future<void> downloadAndInstall() async {
+  Future<void> downloadAndInstall({AppUpdateDownloadCopy? copy}) async {
     final release = state.availableRelease;
     if (release == null || state.isBusy) return;
 
@@ -279,36 +293,73 @@ class AppUpdateCubit extends Cubit<AppUpdateState> {
       return;
     }
 
+    final activityCopy =
+        copy ??
+        AppUpdateDownloadCopy(
+          title: 'Update ${release.version}',
+          downloadingSubtitle: 'Downloading update…',
+          installingSubtitle: 'Installing update…',
+        );
+    final adapter = _activityAdapter;
+    String? activityId;
+
     emit(
       state.copyWith(
         status: AppUpdateStatus.downloading,
-        downloadProgress: 0,
         clearError: true,
       ),
     );
+
+    if (adapter != null) {
+      activityId = adapter.startDownload(
+        title: activityCopy.title,
+        subtitle: activityCopy.downloadingSubtitle,
+      );
+    }
 
     try {
       _downloadedPackage = await _service.downloadRelease(
         release,
         onProgress: (p) {
           if (!isClosed) {
-            emit(
-              state.copyWith(
-                status: AppUpdateStatus.downloading,
-                downloadProgress: p.clamp(0.0, 1.0),
-              ),
-            );
+            emit(state.copyWith(status: AppUpdateStatus.downloading));
+            if (activityId != null) {
+              adapter?.updateDownloadProgress(activityId, p);
+            }
           }
         },
       );
 
       emit(state.copyWith(status: AppUpdateStatus.installing));
+      if (activityId != null) {
+        adapter?.beginInstalling(
+          activityId,
+          subtitle: activityCopy.installingSubtitle,
+        );
+      }
+
       await _installer.install(_downloadedPackage!);
+
+      if (activityId != null) {
+        adapter?.completeSucceeded(
+          activityId,
+          historyTitle: activityCopy.title,
+          historyMessage: activityCopy.successHistoryMessage,
+        );
+      }
     } catch (e) {
+      final message = _messageFor(e);
+      if (activityId != null) {
+        adapter?.completeFailed(
+          activityId,
+          historyTitle: activityCopy.title,
+          errorMessage: message,
+        );
+      }
       emit(
         state.copyWith(
           status: AppUpdateStatus.error,
-          errorMessage: _messageFor(e),
+          errorMessage: message,
         ),
       );
     }

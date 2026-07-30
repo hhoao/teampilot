@@ -25,6 +25,11 @@ import '../utils/session/workspace_tab_session_scope.dart';
 import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
 import '../cubits/notification_cubit.dart';
+import '../cubits/progress_activity_cubit.dart';
+import '../services/progress_activity/app_update_activity_adapter.dart';
+import '../services/progress_activity/hub_clone_activity_adapter.dart';
+import '../services/progress_activity/pack_acquire_activity_adapter.dart';
+import '../services/progress_activity/cli_provision_activity_adapter.dart';
 import '../cubits/ai_history_cubit.dart';
 import '../cubits/shortcut_cubit.dart';
 import '../cubits/editor_cubit.dart';
@@ -185,6 +190,7 @@ class AppShell {
     required this.boardCubit,
     required this.aiHistoryCubit,
     required this.notificationCubit,
+    required this.progressActivityCubit,
     required this.editorCubit,
     required this.workbenchCubit,
     required this.workbenchEditorOpener,
@@ -260,6 +266,7 @@ class AppShell {
   final BoardCubit boardCubit;
   final AiHistoryCubit aiHistoryCubit;
   final NotificationCubit notificationCubit;
+  final ProgressActivityCubit progressActivityCubit;
   final EditorCubit editorCubit;
   final WorkbenchCubit workbenchCubit;
   final WorkbenchEditorOpener workbenchEditorOpener;
@@ -667,10 +674,6 @@ Future<AppShell> buildAppShell({
   final workspaceProjectConfigRepository = WorkspaceProjectConfigRepository(
     fs: AppStorage.fs,
   );
-  extensionCubit = ExtensionCubit(
-    extensionRepository,
-    ExtensionAcquisitionEngine(),
-  );
 
   identityRepository = LaunchProfileRepository();
 
@@ -751,10 +754,28 @@ Future<AppShell> buildAppShell({
       return provisioner.collectMcpContributions();
     },
   );
+
+  final notificationCubit = NotificationCubit();
+  final notificationBootstrap = notificationCubit.load();
+  NotificationRecorder.install(notificationCubit);
+  final progressActivityCubit = ProgressActivityCubit(
+    historyRecorder: notificationCubit,
+  );
+  final hubCloneActivityAdapter = HubCloneActivityAdapter(
+    cubit: progressActivityCubit,
+  );
+  final packAcquireActivityAdapter = PackAcquireActivityAdapter(
+    cubit: progressActivityCubit,
+  );
+  final cliProvisionActivityAdapter = CliProvisionActivityAdapter(
+    cubit: progressActivityCubit,
+  );
+
   skillCubit = SkillCubit(
     skillRepo,
     acquisitionEngine: skillAcquisitionEngine,
     onSkillUninstalled: teamCubit.removeSkillFromAllTeams,
+    packAcquireActivity: packAcquireActivityAdapter,
   );
   pluginCubit = PluginCubit(
     repository: pluginRepository,
@@ -763,6 +784,12 @@ Future<AppShell> buildAppShell({
     diskCache: PluginRepoDiskCacheService(),
     onPluginUninstalled: teamCubit.removePluginFromAllTeams,
     onPluginUpdated: teamCubit.syncTeamsUsingPlugin,
+    packAcquireActivity: packAcquireActivityAdapter,
+  );
+  extensionCubit = ExtensionCubit(
+    extensionRepository,
+    ExtensionAcquisitionEngine(),
+    packAcquireActivity: packAcquireActivityAdapter,
   );
   cliPresetsCubit = CliPresetsCubit(repository: cliPresetsRepo);
   mcpCubit = McpCubit(
@@ -807,7 +834,14 @@ Future<AppShell> buildAppShell({
     source: teamHubSource,
     loadFavorites: teamHubFavorites.load,
     saveFavoriteToggle: teamHubFavorites.toggle,
-    cloneTeam: teamCloneService.clone,
+    cloneTeam: (team) => hubCloneActivityAdapter.runTracked(
+      title: 'Clone ${team.name}',
+      historyMessageFor: (result) => result.hasFailures
+          ? 'Cloned ${team.name} with ${result.failedDeps.length} dependency failures'
+          : 'Cloned ${team.name}',
+      run: (onProgress) =>
+          teamCloneService.clone(team, onProgress: onProgress),
+    ),
     loadInstalledDepIds: () async {
       final skills = await skillRepo.loadInstalled();
       final plugins = await pluginRepository.loadAll();
@@ -840,6 +874,7 @@ Future<AppShell> buildAppShell({
     saveFavoriteToggle: expertHubFavorites.toggle,
     memberRosterService: memberRosterService,
     launchProfiles: () => teamCubit,
+    hubCloneActivity: hubCloneActivityAdapter,
     loadInstalledDepIds: () async {
       final skills = await skillRepo.loadInstalled();
       return skills.map((s) => s.id).toSet();
@@ -852,7 +887,6 @@ Future<AppShell> buildAppShell({
   );
   sessionLifecycleService.attachRuntimePlanBuilder(sessionRuntimePlanBuilder);
 
-  final appUpdateCubit = AppUpdateCubit(settings: appSettings);
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
   final floatingWorkspaceCubit = FloatingWorkspaceCubit();
   final floatingWorkspacePersistence = FloatingWorkspacePersistence(
@@ -977,6 +1011,7 @@ Future<AppShell> buildAppShell({
       runtimePlanBuilder: sessionRuntimePlanBuilder,
     ),
     remoteCliReadiness: remoteCliReadiness,
+    cliProvisionActivity: cliProvisionActivityAdapter,
   );
 
   // Bound after [WorkbenchCubit] exists; togglePanel aliases new-terminal UX
@@ -1144,9 +1179,10 @@ Future<AppShell> buildAppShell({
   };
   chatCubit.onHistorySeatsDispose = aiHistoryCubit.disposeSeatsForSession;
 
-  final notificationCubit = NotificationCubit();
-  final notificationBootstrap = notificationCubit.load();
-  NotificationRecorder.install(notificationCubit);
+  final appUpdateCubit = AppUpdateCubit(
+    settings: appSettings,
+    activityAdapter: AppUpdateActivityAdapter(cubit: progressActivityCubit),
+  );
 
   boot('loading layout');
   await layoutCubit.load();
@@ -1361,6 +1397,7 @@ Future<AppShell> buildAppShell({
     boardCubit: boardCubit,
     aiHistoryCubit: aiHistoryCubit,
     notificationCubit: notificationCubit,
+    progressActivityCubit: progressActivityCubit,
     editorCubit: editorCubit,
     workbenchCubit: workbenchCubit,
     workbenchEditorOpener: workbenchEditorOpener,

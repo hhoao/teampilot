@@ -5135,6 +5135,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get notificationCenterTitle => '通知';
 
   @override
+  String get notificationOngoingSection => '进行中';
+
+  @override
+  String progressActivitiesMany(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个活动进行中',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get progressActivitiesPanelTitle => '进行中的活动';
+
+  @override
+  String get notificationHistorySection => '历史';
+
+  @override
   String get notificationEmpty => '暂无通知';
 
   @override

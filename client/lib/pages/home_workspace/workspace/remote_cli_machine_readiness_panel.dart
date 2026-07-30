@@ -3,7 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../cubits/progress_activity_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/cli_preset.dart';
 import '../../../models/runtime_target.dart';
@@ -15,6 +17,7 @@ import '../../../services/cli/registry/capabilities/installer_capability.dart';
 import '../../../services/cli/registry/cli_display_name.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
+import '../../../services/progress_activity/cli_provision_activity_adapter.dart';
 import '../../../services/remote/remote_cli_readiness.dart';
 import '../../../services/remote/remote_cli_requirements.dart';
 import '../../../widgets/cli_install_progress_panel.dart';
@@ -151,12 +154,39 @@ class _RemoteCliMachineReadinessPanelState
       _installProgress = null;
     });
     try {
-      final result = await widget.readiness.install(
-        target: requirement.target,
-        cli: requirement.cli,
-        onProgress: (progress) {
-          if (!mounted) return;
-          setState(() => _installProgress = progress);
+      final registry = CliToolRegistryScope.of(context);
+      final l10n = context.l10n;
+      final def = registry.tryGet(requirement.cli);
+      final cliLabel = def != null
+          ? cliDisplayName(def, l10n, registry: registry)
+          : requirement.cli.value;
+      final hostLabel = requirement.target.label.trim().isNotEmpty
+          ? requirement.target.label
+          : requirement.target.id;
+      final progressCubit = context.read<ProgressActivityCubit>();
+      final adapter = CliProvisionActivityAdapter(cubit: progressCubit);
+
+      final result = await adapter.runTracked<RemoteCliReadiness>(
+        title: 'Install $cliLabel on $hostLabel',
+        workspaceId: widget.workspace?.workspaceId,
+        historyMessageFor: (readiness) => switch (readiness) {
+          RemoteCliReady() => '$cliLabel ready on $hostLabel',
+          _ => null,
+        },
+        run: (onProgress) async {
+          final readiness = await widget.readiness.install(
+            target: requirement.target,
+            cli: requirement.cli,
+            onProgress: (progress) {
+              onProgress(progress);
+              if (!mounted) return;
+              setState(() => _installProgress = progress);
+            },
+          );
+          if (readiness is RemoteCliFailed) {
+            throw StateError(readiness.message);
+          }
+          return readiness;
         },
       );
       if (!mounted) return;

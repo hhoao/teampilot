@@ -36,6 +36,7 @@ import 'agent_attention_cubit.dart';
 import '../services/launch/launch_factory.dart';
 import '../services/launch/session_connect_orchestrator.dart';
 import '../services/launch/workspace_provision_coordinator.dart';
+import '../services/progress_activity/cli_provision_activity_adapter.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/member_turn_interrupt_service.dart';
@@ -109,9 +110,11 @@ class ChatCubit extends Cubit<ChatState>
     required AutomationRepository automationRepository,
     LayoutCubit? layoutCubit,
     RemoteCliReadinessService? remoteCliReadiness,
+    CliProvisionActivityAdapter? cliProvisionActivity,
   }) : _remoteBusResolver = remoteBusResolver,
        _remoteCliReadiness = remoteCliReadiness,
        _sessionConnect = sessionConnect,
+       _cliProvisionActivity = cliProvisionActivity,
        _teamById = teamById,
        _teammateBusMcpGateway =
            teammateBusMcpGateway ?? TeammateBusMcpGateway(),
@@ -159,6 +162,7 @@ class ChatCubit extends Cubit<ChatState>
 
   final RemoteBusBindingResolver? _remoteBusResolver;
   final RemoteCliReadinessService? _remoteCliReadiness;
+  final CliProvisionActivityAdapter? _cliProvisionActivity;
   final SessionConnectOrchestrator? _sessionConnect;
 
   /// User-driven remote CLI locate/install (Machines panel + landing gate).
@@ -448,6 +452,9 @@ class ChatCubit extends Cubit<ChatState>
   @override
   WorkspaceProvisionCoordinator get workspaceProvision =>
       sessionConnect.workspaceProvision;
+
+  @override
+  CliProvisionActivityAdapter? get cliProvisionActivity => _cliProvisionActivity;
 
   @override
   CliToolRegistry get cliRegistry => _lifecycle.cliToolRegistry;

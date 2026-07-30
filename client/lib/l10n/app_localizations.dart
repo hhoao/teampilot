@@ -9600,6 +9600,30 @@ abstract class AppLocalizations {
   /// **'Notifications'**
   String get notificationCenterTitle;
 
+  /// No description provided for @notificationOngoingSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Ongoing'**
+  String get notificationOngoingSection;
+
+  /// No description provided for @progressActivitiesMany.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 activity in progress} other{{count} activities in progress}}'**
+  String progressActivitiesMany(int count);
+
+  /// No description provided for @progressActivitiesPanelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Activities in progress'**
+  String get progressActivitiesPanelTitle;
+
+  /// No description provided for @notificationHistorySection.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get notificationHistorySection;
+
   /// No description provided for @notificationEmpty.
   ///
   /// In en, this message translates to:

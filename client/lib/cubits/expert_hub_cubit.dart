@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/discoverable_member.dart';
 import '../services/expert_hub/composite_expert_hub_source.dart';
 import '../services/expert_hub/member_roster_service.dart';
+import '../services/progress_activity/hub_clone_activity_adapter.dart';
+import '../services/team/team_clone_service.dart';
 import 'launch_profile_cubit.dart';
 
 enum ExpertHubLoadStatus { idle, loading, ready, error }
@@ -141,12 +143,14 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
     required MemberRosterService memberRosterService,
     required LaunchProfilesAccessor launchProfiles,
     InstalledDepIdsLoader? loadInstalledDepIds,
+    HubCloneActivityAdapter? hubCloneActivity,
   }) : _source = source,
        _loadFavorites = loadFavorites,
        _saveFavoriteToggle = saveFavoriteToggle,
        _memberRosterService = memberRosterService,
        _launchProfiles = launchProfiles,
        _loadInstalledDepIds = loadInstalledDepIds,
+       _hubCloneActivity = hubCloneActivity,
        super(const ExpertHubState());
 
   final CompositeExpertHubSource _source;
@@ -155,6 +159,7 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
   final MemberRosterService _memberRosterService;
   final LaunchProfilesAccessor _launchProfiles;
   final InstalledDepIdsLoader? _loadInstalledDepIds;
+  final HubCloneActivityAdapter? _hubCloneActivity;
 
   Future<void> load({bool forceRefresh = false}) async {
     emit(
@@ -225,13 +230,14 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
   Future<MemberAddResult> addToTeam({
     required String teamId,
     required DiscoverableMember member,
+    String? activityTitle,
   }) async {
     emit(state.copyWith(addingKeys: {...state.addingKeys, member.key}));
     try {
-      final result = await _memberRosterService.addExpertToTeam(
+      final result = await _runAddExpertToTeam(
         teamId: teamId,
-        expert: member,
-        launchProfiles: _launchProfiles(),
+        member: member,
+        activityTitle: activityTitle,
       );
       final installed =
           await _loadInstalledDepIds?.call() ?? state.installedDepIds;
@@ -242,6 +248,38 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
         state.copyWith(addingKeys: {...state.addingKeys}..remove(member.key)),
       );
     }
+  }
+
+  Future<MemberAddResult> _runAddExpertToTeam({
+    required String teamId,
+    required DiscoverableMember member,
+    String? activityTitle,
+  }) {
+    Future<MemberAddResult> run(void Function(CloneProgress) onProgress) =>
+        _memberRosterService.addExpertToTeam(
+          teamId: teamId,
+          expert: member,
+          launchProfiles: _launchProfiles(),
+          onProgress: onProgress,
+        );
+
+    final adapter = _hubCloneActivity;
+    if (adapter == null) {
+      return _memberRosterService.addExpertToTeam(
+        teamId: teamId,
+        expert: member,
+        launchProfiles: _launchProfiles(),
+      );
+    }
+
+    final title = activityTitle ?? 'Add ${member.name}';
+    return adapter.runTracked(
+      title: title,
+      historyMessageFor: (result) => result.hasFailures
+          ? 'Added ${member.name} with dependency failures'
+          : 'Added ${member.name}',
+      run: run,
+    );
   }
 
   void clearError() => emit(state.copyWith(clearError: true));

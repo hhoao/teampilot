@@ -3,9 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/extension_manifest.dart';
 import '../models/extension_state.dart';
+import '../models/progress_activity.dart';
 import '../repositories/extension_repository.dart';
 import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_detector.dart';
+import '../services/progress_activity/pack_acquire_activity_adapter.dart';
 import '../utils/ui/yield_ui_frame.dart';
 
 enum ExtensionLoadStatus { idle, loading, ready, error }
@@ -88,13 +90,19 @@ class ExtensionUiState extends Equatable {
 }
 
 class ExtensionCubit extends Cubit<ExtensionUiState> {
-  ExtensionCubit(this._repository, this._engine, {ExtensionDetector? detector})
-    : _detector = detector ?? ExtensionDetector(),
-      super(const ExtensionUiState());
+  ExtensionCubit(
+    this._repository,
+    this._engine, {
+    ExtensionDetector? detector,
+    PackAcquireActivityAdapter? packAcquireActivity,
+  }) : _detector = detector ?? ExtensionDetector(),
+       _packAcquireActivity = packAcquireActivity,
+       super(const ExtensionUiState());
 
   final ExtensionRepository _repository;
   final ExtensionAcquisitionEngine _engine;
   final ExtensionDetector _detector;
+  final PackAcquireActivityAdapter? _packAcquireActivity;
   Future<void>? _loadFuture;
 
   /// Loads extension rows from the host. Skips work when already [ready] unless
@@ -229,14 +237,40 @@ class ExtensionCubit extends Cubit<ExtensionUiState> {
   Future<void> install(String id) async {
     await _withBusy(id, () async {
       final manifest = _repository.manifests.firstWhere((m) => m.id == id);
-      final result = await _engine.install(manifest);
-      if (result.success) {
-        await _repository.recordInstalled(id, result.version ?? '');
-      } else {
-        emit(state.copyWith(errorMessage: result.message));
-      }
+      await _runPackAcquireTracked(
+        title: 'Installing extension: ${manifest.name}',
+        historyMessage: 'Installed ${manifest.name}',
+        run: (_) => _installCore(manifest),
+      );
       await _replaceRow(id);
     });
+  }
+
+  Future<void> _installCore(ExtensionManifest manifest) async {
+    final result = await _engine.install(manifest);
+    if (result.success) {
+      await _repository.recordInstalled(manifest.id, result.version ?? '');
+    } else {
+      throw StateError(result.message);
+    }
+  }
+
+  Future<void> _runPackAcquireTracked({
+    required String title,
+    required String historyMessage,
+    required Future<void> Function(PackAcquireStepReporter onStep) run,
+  }) async {
+    final adapter = _packAcquireActivity;
+    if (adapter == null) {
+      await run(({subtitle, completedSteps, totalSteps}) {});
+      return;
+    }
+    await adapter.runTracked<void>(
+      kind: ProgressActivityKind.packAcquire,
+      title: title,
+      historyMessageFor: (_) => historyMessage,
+      run: run,
+    );
   }
 
   Future<void> uninstall(String id) async {
