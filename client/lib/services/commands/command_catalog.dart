@@ -166,6 +166,58 @@ abstract final class CommandCatalog {
       titleL10nKey: 'shortcutsToggleSecondarySidebar',
     ),
 
+    // Floating workspace — Mod+Alt+A is Ctrl+Alt+A on Linux/Win, Cmd+Opt+A
+    // on macOS. Maximize default is macOS-only (Orca parity); others unbound.
+    CommandDefinition(
+      id: CommandIds.floatingToggle,
+      category: CommandCategory.view,
+      defaultChords: [
+        KeyChord(key: 'a', mods: [KeyChordMod.mod, KeyChordMod.alt]),
+      ],
+      when: ShortcutWhen.hasWorkspace,
+      terminalPassthrough: true,
+      titleL10nKey: 'shortcutsFloatingToggle',
+    ),
+    CommandDefinition(
+      id: CommandIds.floatingMaximize,
+      category: CommandCategory.view,
+      defaultChords: defaultIsMacOS()
+          ? [
+              KeyChord(
+                key: 'a',
+                mods: [KeyChordMod.mod, KeyChordMod.alt, KeyChordMod.shift],
+              ),
+            ]
+          : const [],
+      when: ShortcutWhen.hasWorkspace,
+      terminalPassthrough: true,
+      titleL10nKey: 'shortcutsFloatingMaximize',
+    ),
+    CommandDefinition(
+      id: CommandIds.floatingMinimize,
+      category: CommandCategory.view,
+      defaultChords: const [],
+      when: ShortcutWhen.hasWorkspace,
+      terminalPassthrough: true,
+      titleL10nKey: 'shortcutsFloatingMinimize',
+    ),
+    CommandDefinition(
+      id: CommandIds.floatingNewTerminal,
+      category: CommandCategory.view,
+      defaultChords: const [],
+      when: ShortcutWhen.hasWorkspace,
+      terminalPassthrough: true,
+      titleL10nKey: 'shortcutsFloatingNewTerminal',
+    ),
+    CommandDefinition(
+      id: CommandIds.floatingOpenFile,
+      category: CommandCategory.view,
+      defaultChords: const [],
+      when: ShortcutWhen.hasWorkspace,
+      terminalPassthrough: true,
+      titleL10nKey: 'shortcutsFloatingOpenFile',
+    ),
+
     // Zoom
     CommandDefinition(
       id: CommandIds.zoomIn,

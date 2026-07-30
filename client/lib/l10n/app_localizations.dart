@@ -10512,6 +10512,36 @@ abstract class AppLocalizations {
   /// **'Toggle Secondary Sidebar'**
   String get shortcutsToggleSecondarySidebar;
 
+  /// No description provided for @shortcutsFloatingToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle Floating Workspace'**
+  String get shortcutsFloatingToggle;
+
+  /// No description provided for @shortcutsFloatingMaximize.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximize Floating Workspace'**
+  String get shortcutsFloatingMaximize;
+
+  /// No description provided for @shortcutsFloatingMinimize.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimize Floating Workspace'**
+  String get shortcutsFloatingMinimize;
+
+  /// No description provided for @shortcutsFloatingNewTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'New Floating Terminal'**
+  String get shortcutsFloatingNewTerminal;
+
+  /// No description provided for @shortcutsFloatingOpenFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Open File in Floating Workspace'**
+  String get shortcutsFloatingOpenFile;
+
   /// No description provided for @shortcutsZoomIn.
   ///
   /// In en, this message translates to:

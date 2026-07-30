@@ -5861,6 +5861,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shortcutsToggleSecondarySidebar => 'Toggle Secondary Sidebar';
 
   @override
+  String get shortcutsFloatingToggle => 'Toggle Floating Workspace';
+
+  @override
+  String get shortcutsFloatingMaximize => 'Maximize Floating Workspace';
+
+  @override
+  String get shortcutsFloatingMinimize => 'Minimize Floating Workspace';
+
+  @override
+  String get shortcutsFloatingNewTerminal => 'New Floating Terminal';
+
+  @override
+  String get shortcutsFloatingOpenFile => 'Open File in Floating Workspace';
+
+  @override
   String get shortcutsZoomIn => 'Zoom In';
 
   @override

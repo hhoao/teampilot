@@ -38,6 +38,7 @@ import '../services/session/session_history_context_builder.dart';
 import '../cubits/ai_feature_settings_cubit.dart';
 import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
+import '../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../cubits/workspace_tools_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
@@ -107,6 +108,8 @@ import '../services/commands/run_command_registrar.dart';
 import '../services/commands/session_command_registrar.dart';
 import '../services/commands/shortcuts_ui_commands.dart';
 import '../services/commands/workspace_search_command_registrar.dart';
+import '../services/floating_workspace/floating_workspace_commands.dart';
+import '../services/floating_workspace/floating_workspace_persistence.dart';
 import '../pages/home_workspace/workspace_chrome_commands.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
@@ -176,6 +179,7 @@ class AppShell {
     required this.workbenchCubit,
     required this.workbenchEditorOpener,
     required this.workbenchShellLauncher,
+    required this.floatingWorkspaceCubit,
     required this.sessionRepo,
     required this.workspaceProjectConfigRepository,
     required this.sshProfileRepo,
@@ -247,6 +251,7 @@ class AppShell {
   final WorkbenchCubit workbenchCubit;
   final WorkbenchEditorOpener workbenchEditorOpener;
   final WorkbenchShellLauncher workbenchShellLauncher;
+  final FloatingWorkspaceCubit floatingWorkspaceCubit;
   final SessionRepository sessionRepo;
   final WorkspaceProjectConfigRepository workspaceProjectConfigRepository;
   final SshProfileRepository sshProfileRepo;
@@ -822,6 +827,11 @@ Future<AppShell> buildAppShell({
 
   final appUpdateCubit = AppUpdateCubit(settings: appSettings);
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
+  final floatingWorkspaceCubit = FloatingWorkspaceCubit();
+  final floatingWorkspacePersistence = FloatingWorkspacePersistence(
+    layout: layoutCubit,
+    floating: floatingWorkspaceCubit,
+  );
   final workspaceToolsCubit = WorkspaceToolsCubit();
   final workspaceTerminalRegistry = WorkspaceTerminalRegistry();
   final gitRepoStore = GitRepoStore();
@@ -940,16 +950,31 @@ Future<AppShell> buildAppShell({
     remoteCliReadiness: remoteCliReadiness,
   );
 
-  // Bound after [WorkbenchCubit] exists; togglePanel no-ops until then.
+  // Bound after [WorkbenchCubit] exists; togglePanel aliases new-terminal UX
+  // into the floating shell (Task 6 redirects the launcher to floating tabs).
   WorkbenchShellLauncher? workbenchShellLauncher;
+  Future<void> focusOrCreateDefaultShell() async {
+    await workbenchShellLauncher?.focusOrCreateDefaultShell();
+  }
+
+  Future<void> openFloatingNewTerminal() async {
+    floatingWorkspaceCubit.ensureOpen();
+    await focusOrCreateDefaultShell();
+  }
+
+  registerFloatingWorkspaceCommands(
+    commandBus,
+    floatingWorkspaceCubit,
+    onNewTerminal: focusOrCreateDefaultShell,
+    // Task 10 wires the file picker; ensureOpen alone until then.
+    onOpenFile: null,
+  );
   registerLayoutCommands(
     commandBus,
     layoutCubit,
     uiZoomBaseline: () => uiZoomBaseline.value,
     composeLanding: () => chatCubit.state.newChatActive,
-    onTogglePanel: () async {
-      await workbenchShellLauncher?.focusOrCreateDefaultShell();
-    },
+    onTogglePanel: openFloatingNewTerminal,
   );
 
   memberPresenceCubit = MemberPresenceCubit();
@@ -1060,6 +1085,8 @@ Future<AppShell> buildAppShell({
 
   boot('loading layout');
   await layoutCubit.load();
+  floatingWorkspacePersistence.hydrateFromLayout();
+  floatingWorkspacePersistence.bind();
   await shortcutCubit.load();
   unawaited(notificationBootstrap);
   boot('layout ready (home index prefetched in background)');
@@ -1228,6 +1255,7 @@ Future<AppShell> buildAppShell({
     workbenchCubit: workbenchCubit,
     workbenchEditorOpener: workbenchEditorOpener,
     workbenchShellLauncher: resolvedShellLauncher,
+    floatingWorkspaceCubit: floatingWorkspaceCubit,
     sessionRepo: sessionRepo,
     workspaceProjectConfigRepository: workspaceProjectConfigRepository,
     sshProfileRepo: sshProfileRepo,

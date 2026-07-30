@@ -16,7 +16,50 @@ void main() {
       CommandIds.composeSubmit,
       CommandIds.showCheatsheet,
       CommandIds.toggleSidebar,
+      CommandIds.floatingToggle,
+      CommandIds.floatingMaximize,
+      CommandIds.floatingMinimize,
+      CommandIds.floatingNewTerminal,
+      CommandIds.floatingOpenFile,
     ]));
+  });
+
+  test('floating toggle defaults to Mod+Alt+A', () {
+    final def = CommandCatalog.v1.singleWhere(
+      (c) => c.id == CommandIds.floatingToggle,
+    );
+    expect(def.defaultChords, [
+      KeyChord(key: 'a', mods: [KeyChordMod.mod, KeyChordMod.alt]),
+    ]);
+    expect(def.when, ShortcutWhen.hasWorkspace);
+    expect(def.terminalPassthrough, isTrue);
+  });
+
+  test('floating maximize default is macOS-only Mod+Alt+Shift+A', () {
+    final def = CommandCatalog.v1.singleWhere(
+      (c) => c.id == CommandIds.floatingMaximize,
+    );
+    if (defaultIsMacOS()) {
+      expect(def.defaultChords, [
+        KeyChord(
+          key: 'a',
+          mods: [KeyChordMod.mod, KeyChordMod.alt, KeyChordMod.shift],
+        ),
+      ]);
+    } else {
+      expect(def.defaultChords, isEmpty);
+    }
+  });
+
+  test('floating minimize / newTerminal / openFile ship unbound', () {
+    for (final id in [
+      CommandIds.floatingMinimize,
+      CommandIds.floatingNewTerminal,
+      CommandIds.floatingOpenFile,
+    ]) {
+      final def = CommandCatalog.v1.singleWhere((c) => c.id == id);
+      expect(def.defaultChords, isEmpty, reason: id);
+    }
   });
 
   test('workspace search defaults to Mod+F and double Shift', () {

@@ -5637,6 +5637,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get shortcutsToggleSecondarySidebar => '切换次侧边栏';
 
   @override
+  String get shortcutsFloatingToggle => '切换浮动工作区';
+
+  @override
+  String get shortcutsFloatingMaximize => '最大化浮动工作区';
+
+  @override
+  String get shortcutsFloatingMinimize => '最小化浮动工作区';
+
+  @override
+  String get shortcutsFloatingNewTerminal => '新建浮动终端';
+
+  @override
+  String get shortcutsFloatingOpenFile => '在浮动工作区打开文件';
+
+  @override
   String get shortcutsZoomIn => '放大';
 
   @override
