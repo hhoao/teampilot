@@ -31,4 +31,19 @@ void main() {
     expect(r.kind, RuntimeKind.wsl);
     expect(r.wslDistro, 'Debian');
   });
+
+  test('termux factory and id helpers', () {
+    expect(RuntimeTarget.termux().id, 'termux:default');
+    expect(runtimeKindOfId('termux:default'), RuntimeKind.termux);
+    expect(runtimeKindOfId('termux:other'), RuntimeKind.termux);
+    expect(RuntimeTarget.termux().sshProfileId, 'termux');
+  });
+
+  test('termux json round-trip', () {
+    final t = RuntimeTarget.termux(label: 'Termux');
+    final r = RuntimeTarget.fromJson(t.toJson());
+    expect(r.kind, RuntimeKind.termux);
+    expect(r.id, 'termux:default');
+    expect(r.sshProfileId, 'termux');
+  });
 }
