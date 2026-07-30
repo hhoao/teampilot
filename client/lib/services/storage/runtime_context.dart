@@ -22,6 +22,7 @@ class RuntimeContext {
     required this.cwd,
     required this.appDataRoot,
     required this.paths,
+    this.termuxPathsFromCache = false,
   });
 
   final RuntimeTarget target;
@@ -30,6 +31,10 @@ class RuntimeContext {
   final String cwd;
   final String appDataRoot;
   final AppPaths paths;
+
+  /// True when termux home/appDataRoot came from persisted cache, not a live
+  /// SSH path resolve (cold-start while sshd is down).
+  final bool termuxPathsFromCache;
 
   /// Resolved backend, derived from the actual filesystem (so an ssh target
   /// that fell back to native reports native, matching legacy semantics).

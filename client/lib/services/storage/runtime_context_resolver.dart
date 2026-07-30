@@ -47,13 +47,19 @@ class RuntimeContextResolver {
     if (useSshTransport) {
       return _resolveSsh(
         target,
-        profile: sshProfile!,
+        profile: sshProfile,
         clientFactory: sshClientFactory!,
         pathResolver:
             remotePathResolver ??
             RemoteSshStoragePathResolver(clientFactory: sshClientFactory!),
         cachedHome: cachedHome,
         cachedAppDataRoot: cachedAppDataRoot,
+      );
+    }
+
+    if (target.kind == RuntimeKind.termux) {
+      throw StateError(
+        'Termux home requires a transport profile and SSH client factory',
       );
     }
 
@@ -171,6 +177,7 @@ class RuntimeContextResolver {
       cwd: home,
       appDataRoot: appDataRoot,
       paths: AppPaths(appDataRoot),
+      termuxPathsFromCache: true,
     );
   }
 

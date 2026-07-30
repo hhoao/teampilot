@@ -150,6 +150,41 @@ void main() {
     );
   });
 
+  test('termux without profile throws instead of native fallback', () async {
+    final resolver = RuntimeContextResolver(
+      nativeAppDataPath: tmp.path,
+      nativeHome: tmp.path,
+      nativeCwd: tmp.path,
+    );
+
+    await expectLater(
+      () => resolver.resolve(RuntimeTarget.termux()),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('Termux home requires'),
+        ),
+      ),
+    );
+  });
+
+  test('termux without ssh client factory throws instead of native fallback', () async {
+    final resolver = RuntimeContextResolver(
+      nativeAppDataPath: tmp.path,
+      nativeHome: tmp.path,
+      nativeCwd: tmp.path,
+    );
+
+    await expectLater(
+      () => resolver.resolve(
+        RuntimeTarget.termux(),
+        sshProfile: termuxProfile,
+      ),
+      throwsA(isA<StateError>()),
+    );
+  });
+
   test('ssh target with no profile falls back to native', () async {
     final resolver = RuntimeContextResolver(
       nativeAppDataPath: tmp.path,

@@ -563,7 +563,19 @@ Future<AppShell> buildAppShell({
   final ensureHomeSw = Stopwatch()..start();
   await runtimeContextRegistry.ensureHome();
   boot('home runtime context ensured +${ensureHomeSw.elapsedMilliseconds}ms');
-  AppStorage.bindHome(runtimeContextRegistry.home());
+  final homeCtx = runtimeContextRegistry.home();
+  final cfg = termuxConfigCache;
+  if (homeTarget.kind == RuntimeKind.termux &&
+      cfg != null &&
+      !homeCtx.termuxPathsFromCache) {
+    final updated = cfg.copyWith(
+      lastHome: homeCtx.home,
+      lastAppDataRoot: homeCtx.appDataRoot,
+    );
+    termuxConfigCache = updated;
+    await termuxConfigStore.save(updated);
+  }
+  AppStorage.bindHome(homeCtx);
   boot(
     'home context installed '
     '(${AppStorage.context.mode}, home=${homeTarget.id}, '
