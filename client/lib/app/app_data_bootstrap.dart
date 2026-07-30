@@ -136,7 +136,7 @@ abstract final class AppDataBootstrap {
     final phaseSw = Stopwatch()..start();
     boot('bootstrapHomeIndex start');
 
-    final sshLoad = sshProfileCubit.load(notifyActiveProfileChanged: false);
+    final sshLoad = sshProfileCubit.load();
 
     if (isSshMode) {
       await sshLoad;
@@ -275,7 +275,7 @@ abstract final class AppDataBootstrap {
     await _timed(
       boot,
       'sshProfiles',
-      () => sshProfileCubit.load(notifyActiveProfileChanged: false),
+      () => sshProfileCubit.load(),
     );
     await yieldUiFrame();
     await _timed(boot, 'cliPresets', cliPresetsCubit.load);

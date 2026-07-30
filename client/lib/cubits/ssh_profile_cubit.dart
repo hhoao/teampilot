@@ -56,14 +56,12 @@ class SshProfileCubit extends Cubit<SshProfileState> {
     RemoteCliPathHandler? onRemoteCliLocated,
     void Function(String profileId)? invalidateProfileConnection,
     bool Function()? enableRemoteCliDiscovery,
-    Future<void> Function()? onActiveProfileChanged,
   }) : _profileRepository = profileRepository,
        _credentialStore = credentialStore,
        _locateRemoteCliPaths = locateRemoteCliPaths,
        _onRemoteCliLocated = onRemoteCliLocated,
        _invalidateProfileConnection = invalidateProfileConnection,
        _enableRemoteCliDiscovery = enableRemoteCliDiscovery,
-       _onActiveProfileChanged = onActiveProfileChanged,
        super(const SshProfileState());
 
   final SshProfileRepository _profileRepository;
@@ -72,9 +70,8 @@ class SshProfileCubit extends Cubit<SshProfileState> {
   final RemoteCliPathHandler? _onRemoteCliLocated;
   final void Function(String profileId)? _invalidateProfileConnection;
   final bool Function()? _enableRemoteCliDiscovery;
-  final Future<void> Function()? _onActiveProfileChanged;
 
-  Future<void> load({bool notifyActiveProfileChanged = true}) async {
+  Future<void> load() async {
     emit(state.copyWith(isLoading: true));
     final profiles = await _profileRepository.loadAll();
     final persistedSelectedId = await _profileRepository
@@ -100,9 +97,6 @@ class SshProfileCubit extends Cubit<SshProfileState> {
     final selected = state.selectedProfile;
     if (selected != null) {
       await _discoverRemoteCliPath(selected);
-      if (notifyActiveProfileChanged) {
-        await _onActiveProfileChanged?.call();
-      }
     }
   }
 
@@ -119,7 +113,6 @@ class SshProfileCubit extends Cubit<SshProfileState> {
     await _profileRepository.saveSelectedProfileId(profileId);
     emit(state.copyWith(selectedProfileId: profileId));
     await _discoverRemoteCliPath(profile);
-    await _onActiveProfileChanged?.call();
   }
 
   Future<void> saveProfile(SshProfile profile) async {

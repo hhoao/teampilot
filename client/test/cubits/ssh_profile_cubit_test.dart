@@ -119,7 +119,7 @@ void main() {
       );
       addTearDown(cubit.close);
 
-      await cubit.load(notifyActiveProfileChanged: false);
+      await cubit.load();
       expect(cubit.state.profiles, hasLength(1));
 
       await cubit.deleteProfile('p1');
@@ -158,15 +158,52 @@ void main() {
           username: 'user',
         ),
       );
-      await cubit.load(notifyActiveProfileChanged: false);
+      await cubit.load();
       expect(cubit.state.profiles, hasLength(1));
 
       bindTestNativeHome(rootB.path);
 
-      await cubit.load(notifyActiveProfileChanged: false);
+      await cubit.load();
       expect(cubit.state.profiles, isEmpty);
     },
   );
+
+  test('selectProfile updates selection without home-plane side effects', () async {
+    final temp = await Directory.systemTemp.createTemp(
+      'ssh_profile_cubit_select_',
+    );
+    addTearDown(() => temp.delete(recursive: true));
+
+    final repository = SshProfileRepository(rootDir: temp.path);
+    await repository.save(
+      const SshProfile(
+        id: 'p1',
+        name: 'one',
+        host: 'one.example.com',
+        username: 'alice',
+      ),
+    );
+    await repository.save(
+      const SshProfile(
+        id: 'p2',
+        name: 'two',
+        host: 'two.example.com',
+        username: 'alice',
+      ),
+    );
+
+    final cubit = SshProfileCubit(
+      profileRepository: repository,
+      credentialStore: InMemorySshCredentialStore(),
+    );
+    addTearDown(cubit.close);
+
+    await cubit.load();
+    await cubit.selectProfile('p2');
+
+    expect(cubit.state.selectedProfileId, 'p2');
+    expect(await repository.loadSelectedProfileId(), 'p2');
+  });
 }
 
 class _ThrowingCredentialStore implements SshCredentialStore {

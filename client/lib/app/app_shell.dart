@@ -119,6 +119,7 @@ import '../services/app/connection_mode_service.dart';
 import '../services/cli/remote_cli_locator.dart';
 import '../services/storage/runtime_context_resolver.dart';
 import '../services/storage/runtime_context_registry.dart';
+import '../services/storage/home_storage_invalidator.dart';
 import '../services/storage/home_target_controller.dart';
 import '../services/storage/workspace_directory_picker.dart';
 import '../services/storage/home_target_store.dart';
@@ -212,6 +213,7 @@ class AppShell {
     required this.extensionCubit,
     required this.appUpdateCubit,
     required this.sshProfileCubit,
+    required this.homeStorageInvalidator,
     required this.sshConnectionCubit,
     required this.githubCredentialsStore,
     required this.githubAccountCubit,
@@ -283,6 +285,7 @@ class AppShell {
   final ExtensionCubit extensionCubit;
   final AppUpdateCubit appUpdateCubit;
   final SshProfileCubit sshProfileCubit;
+  final HomeStorageInvalidator homeStorageInvalidator;
   final SshConnectionCubit sshConnectionCubit;
   final GithubCredentialsStore githubCredentialsStore;
   final GithubAccountCubit githubAccountCubit;
@@ -432,10 +435,6 @@ Future<AppShell> buildAppShell({
     invalidateProfileConnection: sshClientFactory.disconnectProfile,
     enableRemoteCliDiscovery: () =>
         Platform.isAndroid && defaultTargetResolver().kind == RuntimeKind.ssh,
-    onActiveProfileChanged: () async {
-      await reinstallStorageContext();
-      await reloadAllAppData();
-    },
   );
 
   final githubCredentialsStore = GithubCredentialsStore(
@@ -1199,6 +1198,15 @@ Future<AppShell> buildAppShell({
     await reloadAllAppData();
   }
 
+  final homeStorageInvalidator = HomeStorageInvalidator(
+    homeTargetId: () => defaultTargetResolver().id,
+    reinstallAndReload: () async {
+      await reinstallStorageContext();
+      await reloadAllAppData();
+    },
+    switchHome: switchHomeTarget,
+  );
+
   homeTargetController = HomeTargetController(
     registry: runtimeTargetRegistry,
     current: defaultTargetResolver,
@@ -1264,6 +1272,7 @@ Future<AppShell> buildAppShell({
     extensionCubit: extensionCubit,
     appUpdateCubit: appUpdateCubit,
     sshProfileCubit: sshProfileCubit,
+    homeStorageInvalidator: homeStorageInvalidator,
     sshConnectionCubit: sshConnectionCubit,
     githubCredentialsStore: githubCredentialsStore,
     githubAccountCubit: githubAccountCubit,

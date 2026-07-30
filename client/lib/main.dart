@@ -52,6 +52,7 @@ import 'services/app/boot_splash.dart';
 import 'services/app/desktop_text_input_probe_bypass.dart';
 import 'services/app/windows_keyboard_workaround.dart';
 import 'services/app/connection_mode_service.dart';
+import 'services/storage/home_storage_invalidator.dart';
 import 'services/storage/home_target_controller.dart';
 import 'services/storage/workspace_directory_picker.dart';
 import 'services/app/desktop_window_actions.dart';
@@ -70,6 +71,7 @@ import 'services/notification/desktop_system_notifier.dart';
 import 'services/notification/notification_recorder.dart';
 import 'services/notification/session_idle_notification_tap.dart';
 import 'widgets/notification/session_idle_notification_listener.dart';
+import 'widgets/ssh/home_ssh_profile_binder.dart';
 import 'widgets/ssh/ssh_connection_binder.dart';
 import 'repositories/layout_repository.dart';
 import 'theme/app_font_prepare.dart';
@@ -617,6 +619,9 @@ void main() async {
                 RepositoryProvider<HomeTargetController>.value(
                   value: shell.homeTargetController,
                 ),
+                RepositoryProvider<HomeStorageInvalidator>.value(
+                  value: shell.homeStorageInvalidator,
+                ),
                 RepositoryProvider<WorkspaceDirectoryPicker>.value(
                   value: shell.directoryPicker,
                 ),
@@ -702,8 +707,10 @@ void main() async {
                 child: CliToolRegistryScope(
                   registry: shell.cliToolRegistry,
                   child: SshConnectionBinder(
-                    child: const SessionIdleNotificationListener(
-                      child: ShortcutDispatcherHost(child: TeamPilotApp()),
+                    child: HomeSshProfileBinder(
+                      child: const SessionIdleNotificationListener(
+                        child: ShortcutDispatcherHost(child: TeamPilotApp()),
+                      ),
                     ),
                   ),
                 ),
