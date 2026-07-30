@@ -2084,6 +2084,8 @@
   "teamGenFailed": "无法生成团队，请手动编辑。",
   "teamGenApplied": "草稿已应用，创建前请检查调整。",
   "notificationCenterTitle": "通知",
+  "notificationOngoingSection": "进行中",
+  "notificationHistorySection": "历史",
   "notificationEmpty": "暂无通知",
   "notificationMarkAllRead": "全部标为已读",
   "notificationClearAll": "清空",

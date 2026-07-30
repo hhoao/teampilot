@@ -1,17 +1,12 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/notification_cubit.dart';
+import '../../cubits/progress_activity_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../router/app_router.dart';
-import '../../services/notification/notification_center_open.dart';
-import 'notification_list_tile.dart';
+import 'notification_center_panel.dart';
 
-const _dropdownWidth = 560.0;
-const _dropdownListMaxHeight = 360.0;
 const _bellWidth = 34.0;
 
 /// Title-bar bell with unread badge and notification dropdown.
@@ -36,20 +31,24 @@ class _NotificationBellButtonState extends State<NotificationBellButton> {
     final unread = context.select(
       (NotificationCubit cubit) => cubit.state.unreadCount,
     );
+    final ongoingCount = context.select(
+      (ProgressActivityCubit cubit) => cubit.state.activities.length,
+    );
+    final badgeCount = unread + ongoingCount;
     final l10n = context.l10n;
 
     return TpActionMenuAnchor(
       controller: _popoverController,
-      fixedPanelWidth: _dropdownWidth,
+      fixedPanelWidth: notificationCenterPanelWidth,
       anchor: const TpAnchor(
         childAlignment: Alignment.topLeft,
         overlayAlignment: Alignment.bottomLeft,
-        offset: Offset(-(_dropdownWidth - _bellWidth), 8),
+        offset: Offset(-(notificationCenterPanelWidth - _bellWidth), 8),
       ),
       popoverBuilder: (context, controller) =>
-          _NotificationDropdownPanel(onClose: controller.close),
+          NotificationCenterPanel(onClose: controller.close),
       child: _BellGlyph(
-        unread: unread,
+        unread: badgeCount,
         tooltip: l10n.notificationCenterTitle,
         onTap: _popoverController.toggle,
       ),
@@ -142,103 +141,5 @@ class _BellGlyphState extends State<_BellGlyph> {
       ),
     );
     return Tooltip(message: widget.tooltip, child: glyph);
-  }
-}
-
-class _NotificationDropdownPanel extends StatelessWidget {
-  const _NotificationDropdownPanel({required this.onClose});
-
-  final VoidCallback onClose;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
-    final cubit = context.read<NotificationCubit>();
-    final items = context.select((NotificationCubit c) => c.state.items);
-
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: _dropdownWidth),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  l10n.notificationCenterTitle,
-                  style: styles.mdSemiboldTightSnug,
-                ),
-              ),
-              IconButton(
-                tooltip: l10n.notificationMarkAllRead,
-                onPressed: items.isEmpty ? null : () => cubit.markAllRead(),
-                icon: const Icon(Icons.done_all, size: 18),
-                visualDensity: VisualDensity.compact,
-              ),
-            ],
-          ),
-          const TpActionMenuDivider(),
-          if (items.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Text(
-                l10n.notificationEmpty,
-                textAlign: TextAlign.center,
-                style: styles.mutedMd,
-              ),
-            )
-          else
-            ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxHeight: _dropdownListMaxHeight,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (var i = 0; i < items.length; i++) ...[
-                      if (i > 0)
-                        Divider(
-                          height: 1,
-                          color: cs.outlineVariant.withValues(alpha: 0.25),
-                        ),
-                      NotificationListTile(
-                        notification: items[i],
-                        onMarkRead: () => cubit.markRead(items[i].id),
-                        onDelete: () => cubit.delete(items[i].id),
-                        onOpen: () {
-                          final item = items[i];
-                          unawaited(
-                            openNotificationCenterItem(
-                              notification: item,
-                              markRead: cubit.markRead,
-                              go: (location) {
-                                onClose();
-                                appRouter.go(location);
-                              },
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          const TpActionMenuDivider(),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-              onPressed: items.isEmpty ? null : () => cubit.clearAll(),
-              child: Text(l10n.notificationClearAll),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

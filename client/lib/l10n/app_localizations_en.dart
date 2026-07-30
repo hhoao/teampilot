@@ -5344,6 +5344,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationCenterTitle => 'Notifications';
 
   @override
+  String get notificationOngoingSection => 'Ongoing';
+
+  @override
+  String get notificationHistorySection => 'History';
+
+  @override
   String get notificationEmpty => 'No notifications';
 
   @override

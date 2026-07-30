@@ -5129,6 +5129,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get notificationCenterTitle => '通知';
 
   @override
+  String get notificationOngoingSection => '进行中';
+
+  @override
+  String get notificationHistorySection => '历史';
+
+  @override
   String get notificationEmpty => '暂无通知';
 
   @override

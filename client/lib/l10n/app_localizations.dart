@@ -9588,6 +9588,18 @@ abstract class AppLocalizations {
   /// **'Notifications'**
   String get notificationCenterTitle;
 
+  /// No description provided for @notificationOngoingSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Ongoing'**
+  String get notificationOngoingSection;
+
+  /// No description provided for @notificationHistorySection.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get notificationHistorySection;
+
   /// No description provided for @notificationEmpty.
   ///
   /// In en, this message translates to:

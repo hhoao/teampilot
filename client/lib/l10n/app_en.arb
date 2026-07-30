@@ -2428,6 +2428,8 @@
   "teamGenFailed": "Could not generate a team. Please edit manually.",
   "teamGenApplied": "Draft applied. Review and adjust before creating.",
   "notificationCenterTitle": "Notifications",
+  "notificationOngoingSection": "Ongoing",
+  "notificationHistorySection": "History",
   "notificationEmpty": "No notifications",
   "notificationMarkAllRead": "Mark all as read",
   "notificationClearAll": "Clear",
