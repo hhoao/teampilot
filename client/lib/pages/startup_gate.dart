@@ -7,6 +7,7 @@ import '../cubits/session_preferences_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
 import '../services/app/connection_mode_service.dart';
 import 'ssh_profiles_page.dart';
+import 'termux/work_environment_chooser_page.dart';
 
 class StartupGate extends StatelessWidget {
   const StartupGate({
@@ -24,11 +25,10 @@ class StartupGate extends StatelessWidget {
   Widget build(BuildContext context) {
     context.watch<SessionPreferencesCubit>();
     final mode = context.read<ConnectionModeService>();
-    // Android can only run over SSH: it must have an ssh home target. Desktop
-    // with a local/wsl home needs no gate.
+    // Android needs a bound work home (Termux or SSH). Desktop local/wsl passes.
     final android = isAndroid ?? Platform.isAndroid;
-    final androidNeedsSshHome = android && !mode.isSshMode;
-    if (!mode.isSshMode && !androidNeedsSshHome) return child;
+    final androidNeedsWorkHome = android && !mode.hasBoundAndroidWorkHome;
+    if (!mode.isRemoteWorkPlane && !androidNeedsWorkHome) return child;
 
     final sshState = context.watch<SshProfileCubit>().state;
 
@@ -36,8 +36,12 @@ class StartupGate extends StatelessWidget {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    if (mode.requiresSshProfileSetup || androidNeedsSshHome) {
+    if (mode.requiresSshProfileSetup) {
       return const SshProfilesPage();
+    }
+
+    if (androidNeedsWorkHome) {
+      return const WorkEnvironmentChooserPage();
     }
 
     return child;

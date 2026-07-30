@@ -16,6 +16,7 @@ import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/pages/ssh_profiles_page.dart';
 import 'package:teampilot/pages/startup_gate.dart';
+import 'package:teampilot/pages/termux/work_environment_chooser_page.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
@@ -328,6 +329,11 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('APP_CHILD'), findsNothing);
+    expect(find.text('On-device · Termux'), findsOneWidget);
+    expect(find.text('Remote · SSH'), findsOneWidget);
+
+    await tester.tap(find.text('Remote · SSH'));
+    await tester.pumpAndSettle();
     expect(find.text(l10n.sshProfilesEmpty), findsOneWidget);
 
     final ctx = tester.element(find.byType(SshProfilesPage));
@@ -395,6 +401,7 @@ void main() {
     await tester.pumpWidget(await host());
     await tester.pumpAndSettle();
     expect(find.text('APP_CHILD'), findsNothing);
+    expect(find.byType(WorkEnvironmentChooserPage), findsOneWidget);
 
     await applyAndroidSshConnectHome(
       profileId: 'p1',
@@ -405,5 +412,87 @@ void main() {
     await tester.pumpWidget(await host());
     await tester.pumpAndSettle();
     expect(find.text('APP_CHILD'), findsOneWidget);
+  });
+
+  testWidgets('Android with local home shows work environment chooser', (
+    tester,
+  ) async {
+    final mode = ConnectionModeService(
+      defaultTargetResolver: RuntimeTarget.local,
+      hasSshProfiles: () => profileCubit.state.hasProfiles,
+    );
+    await tester.pumpWidget(
+      await _gateHost(
+        mode: mode,
+        profileCubit: profileCubit,
+        connectionCubit: connectionCubit,
+        credentialStore: harness.credentialStore,
+        transportFactory: transportFactory,
+        profileRepository: profileRepository,
+        sessionPrefs: sessionPrefs,
+        isAndroid: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('APP_CHILD'), findsNothing);
+    expect(find.text('On-device · Termux'), findsOneWidget);
+    expect(find.text('Remote · SSH'), findsOneWidget);
+    expect(find.text(l10n.sshProfilesEmpty), findsNothing);
+  });
+
+  testWidgets('Android with termux home shows child without connection', (
+    tester,
+  ) async {
+    final mode = ConnectionModeService(
+      defaultTargetResolver: RuntimeTarget.termux,
+      hasSshProfiles: () => profileCubit.state.hasProfiles,
+    );
+    await tester.pumpWidget(
+      await _gateHost(
+        mode: mode,
+        profileCubit: profileCubit,
+        connectionCubit: connectionCubit,
+        credentialStore: harness.credentialStore,
+        transportFactory: transportFactory,
+        profileRepository: profileRepository,
+        sessionPrefs: sessionPrefs,
+        isAndroid: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('APP_CHILD'), findsOneWidget);
+    expect(find.byType(WorkEnvironmentChooserPage), findsNothing);
+  });
+
+  testWidgets('Android with ssh home and profiles shows child', (tester) async {
+    await profileCubit.close();
+    profileCubit = _SeededSshProfileCubit(
+      profileRepository: profileRepository,
+      credentialStore: harness.credentialStore,
+      profiles: const [_profile],
+    );
+
+    final mode = ConnectionModeService(
+      defaultTargetResolver: () => RuntimeTarget.ssh('p1', label: 'box'),
+      hasSshProfiles: () => profileCubit.state.hasProfiles,
+    );
+    await tester.pumpWidget(
+      await _gateHost(
+        mode: mode,
+        profileCubit: profileCubit,
+        connectionCubit: connectionCubit,
+        credentialStore: harness.credentialStore,
+        transportFactory: transportFactory,
+        profileRepository: profileRepository,
+        sessionPrefs: sessionPrefs,
+        isAndroid: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('APP_CHILD'), findsOneWidget);
+    expect(find.byType(WorkEnvironmentChooserPage), findsNothing);
   });
 }
