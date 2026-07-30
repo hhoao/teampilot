@@ -417,8 +417,6 @@ class _ChatWorkspaceShell extends StatelessWidget {
                       isPersonalContext: isPersonalContext,
                       team: teamConfig,
                       workbenchSlice: view.workbenchSlice,
-                      workingDirectory: cwd,
-                      holdHandle: holdHandle,
                     ),
                   ),
                 );

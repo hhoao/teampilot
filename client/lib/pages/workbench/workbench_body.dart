@@ -8,17 +8,14 @@ import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../services/workbench/workbench_body_keep_alive.dart';
 import '../../services/workbench/workbench_center_mode.dart';
-import '../../widgets/workspace_terminal_panel.dart';
 import '../chat/chat_workbench_slice.dart';
 import '../chat_workbench.dart';
 import 'diff_editor_surface.dart';
-import 'file_editor_surface.dart';
 import 'run_tab_surface.dart';
-import 'shell_terminal_surface.dart';
 import 'workbench_welcome_page.dart';
 
-/// Center workbench body: session / file / diff / shell / run, with keep-alive
-/// for shell + run so PTY scrollback and Run output survive tab switches.
+/// Center workbench body: session / diff / run, with keep-alive for run so
+/// output survives tab switches. File and shell live in the floating panel.
 class WorkbenchBody extends StatelessWidget {
   const WorkbenchBody({
     required this.workspaceId,
@@ -30,8 +27,6 @@ class WorkbenchBody extends StatelessWidget {
     this.sessionId,
     this.isPersonalContext = false,
     this.team,
-    this.workingDirectory,
-    this.holdHandle,
     super.key,
   });
 
@@ -44,12 +39,6 @@ class WorkbenchBody extends StatelessWidget {
   final String? sessionId;
   final bool isPersonalContext;
   final TeamProfile? team;
-
-  /// CWD for the workspace shell PTY (worktree / first folder).
-  final String? workingDirectory;
-
-  /// PTY resize hold; bound by the center [ShellTerminalSurface] panel.
-  final WorkspaceTerminalHoldHandle? holdHandle;
 
   @override
   Widget build(BuildContext context) {
@@ -72,13 +61,22 @@ class WorkbenchBody extends StatelessWidget {
       return const WorkbenchWelcomePage();
     }
     final selected = active!;
+    if (!isCenterStripWorkbenchTab(selected.kind)) {
+      assert(() {
+        debugPrint(
+          'WorkbenchBody: file and shell tabs must not be active on the '
+          'center workbench strip',
+        );
+        return true;
+      }());
+      return const WorkbenchWelcomePage();
+    }
 
     final plan = resolveWorkbenchBodyKeepAlive(
       tabOrder: tabOrder,
       active: selected,
       liveRunSessionIds: liveRunIds,
     );
-    final cwd = workingDirectory;
 
     return Stack(
       fit: StackFit.expand,
@@ -95,32 +93,11 @@ class WorkbenchBody extends StatelessWidget {
             team: team,
             workbenchSlice: workbenchSlice,
           )
-        else if (selected.kind == WorkbenchTabKind.file)
-          FileEditorSurface(
-            key: ValueKey(selected.id),
-            workspaceId: workspaceId,
-            path: selected.id,
-          )
         else if (selected.kind == WorkbenchTabKind.diff)
           DiffEditorSurface(
             key: ValueKey(selected.id),
             workspaceId: workspaceId,
             diffKey: selected.id,
-          ),
-        // One shell panel for all shell tabs (HoldHandle binds once).
-        if (plan.mountShell && cwd != null)
-          Offstage(
-            offstage: plan.shellOffstage,
-            child: IgnorePointer(
-              ignoring: plan.shellOffstage,
-              child: ShellTerminalSurface(
-                workspaceId: workspaceId,
-                tabScopeId: tabScopeId,
-                workingDirectory: cwd,
-                holdHandle: holdHandle,
-                activeEntryId: plan.shellActiveEntryId,
-              ),
-            ),
           ),
         for (final runId in plan.runSessionIds)
           Offstage(
