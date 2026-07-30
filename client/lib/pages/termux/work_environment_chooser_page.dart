@@ -5,6 +5,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../cubits/ssh_connection_cubit.dart';
 import '../../cubits/ssh_profile_cubit.dart';
+import '../../cubits/termux_cubit.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import '../../services/app/connection_mode_service.dart';
@@ -87,6 +88,9 @@ void _pushWithGateProviders(BuildContext context, Widget page) {
             ),
             BlocProvider<SessionPreferencesCubit>.value(
               value: context.read<SessionPreferencesCubit>(),
+            ),
+            BlocProvider<TermuxCubit>.value(
+              value: context.read<TermuxCubit>(),
             ),
           ],
           child: page,
