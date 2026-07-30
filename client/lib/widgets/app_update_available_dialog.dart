@@ -67,10 +67,6 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
                         const SizedBox(height: 4),
                         _changelog(context, changelogs, styles, cs),
                       ],
-                      if (busy) ...[
-                        const SizedBox(height: 16),
-                        _progress(context, state, styles, cs),
-                      ],
                       if (state.errorMessage != null) ...[
                         const SizedBox(height: 12),
                         Text(
@@ -197,41 +193,6 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
     );
   }
 
-  Widget _progress(
-    BuildContext context,
-    AppUpdateState state,
-    TpTextStyles styles,
-    ColorScheme cs,
-  ) {
-    final installing = state.status == AppUpdateStatus.installing;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              installing
-                  ? context.l10n.appUpdateInstalling
-                  : context.l10n.appUpdateDownloading,
-              style: styles.smColored(cs.primary),
-            ),
-            if (!installing)
-              Text(
-                '${(state.downloadProgress * 100).toStringAsFixed(0)}%',
-                style: styles.mdSemiboldColored(cs.primary),
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        LinearProgressIndicator(
-          value: installing ? null : state.downloadProgress,
-          minHeight: 6,
-        ),
-      ],
-    );
-  }
-
   Widget _actions(BuildContext context, AppUpdateState state, bool busy) {
     final l10n = context.l10n;
     final cubit = context.read<AppUpdateCubit>();
@@ -272,7 +233,15 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
           child: Text(l10n.appUpdateLater),
         ),
         FilledButton.icon(
-          onPressed: () => cubit.downloadAndInstall(),
+          onPressed: () => cubit.downloadAndInstall(
+            copy: AppUpdateDownloadCopy(
+              title: l10n.appUpdateNewVersion(
+                widget.release.version.toString(),
+              ),
+              downloadingSubtitle: l10n.appUpdateDownloading,
+              installingSubtitle: l10n.appUpdateInstalling,
+            ),
+          ),
           icon: const Icon(Icons.download_outlined),
           label: Text(l10n.appUpdateDownloadInstall),
         ),

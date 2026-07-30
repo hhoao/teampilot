@@ -100,31 +100,6 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                           showDividerBelow: true,
                         ),
                       ],
-                      if (state.status == AppUpdateStatus.downloading ||
-                          state.status == AppUpdateStatus.installing) ...[
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              LinearProgressIndicator(
-                                value:
-                                    state.status == AppUpdateStatus.installing
-                                    ? null
-                                    : state.downloadProgress,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                state.status == AppUpdateStatus.installing
-                                    ? l10n.appUpdateInstalling
-                                    : l10n.appUpdateDownloading,
-                                style: TpTextStyles.of(context).sm
-                                    ?.copyWith(color: cs.onSurfaceVariant),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
                       if (state.errorMessage != null)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
@@ -147,7 +122,20 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                                     ? null
                                     : () => context
                                           .read<AppUpdateCubit>()
-                                          .downloadAndInstall(),
+                                          .downloadAndInstall(
+                                            copy: AppUpdateDownloadCopy(
+                                              title: l10n.appUpdateNewVersion(
+                                                state
+                                                    .availableRelease!
+                                                    .version
+                                                    .toString(),
+                                              ),
+                                              downloadingSubtitle:
+                                                  l10n.appUpdateDownloading,
+                                              installingSubtitle:
+                                                  l10n.appUpdateInstalling,
+                                            ),
+                                          ),
                                 icon: Icon(Icons.download_outlined),
                                 label: Text(l10n.appUpdateDownloadInstall),
                               ),

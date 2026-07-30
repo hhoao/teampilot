@@ -26,6 +26,7 @@ import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
 import '../cubits/notification_cubit.dart';
 import '../cubits/progress_activity_cubit.dart';
+import '../services/progress_activity/app_update_activity_adapter.dart';
 import '../cubits/ai_history_cubit.dart';
 import '../cubits/shortcut_cubit.dart';
 import '../cubits/editor_cubit.dart';
@@ -848,7 +849,6 @@ Future<AppShell> buildAppShell({
   );
   sessionLifecycleService.attachRuntimePlanBuilder(sessionRuntimePlanBuilder);
 
-  final appUpdateCubit = AppUpdateCubit(settings: appSettings);
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
   final floatingWorkspaceCubit = FloatingWorkspaceCubit();
   final floatingWorkspacePersistence = FloatingWorkspacePersistence(
@@ -1137,6 +1137,10 @@ Future<AppShell> buildAppShell({
   NotificationRecorder.install(notificationCubit);
   final progressActivityCubit = ProgressActivityCubit(
     historyRecorder: notificationCubit,
+  );
+  final appUpdateCubit = AppUpdateCubit(
+    settings: appSettings,
+    activityAdapter: AppUpdateActivityAdapter(cubit: progressActivityCubit),
   );
 
   boot('loading layout');
