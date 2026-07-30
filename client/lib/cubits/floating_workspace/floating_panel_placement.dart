@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 
-import '../../pages/floating_workspace/floating_workspace_toggle_metrics.dart';
+import '../../services/floating_workspace/floating_workspace_toggle_metrics.dart';
 
 /// Panel size + position relative to the **app host** (bottom-right insets).
 ///

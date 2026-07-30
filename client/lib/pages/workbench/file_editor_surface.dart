@@ -10,6 +10,8 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/editor_cubit.dart';
+import '../../cubits/workbench/workbench_cubit.dart';
+import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/editor/file_editor_ai_context.dart';
 import '../../services/editor/file_editor_theme.dart';
@@ -48,19 +50,32 @@ class FileEditorSurface extends StatelessWidget {
         child: FileEditorImagePreview(workspaceId: workspaceId, path: path),
       );
     }
-    // Floating file tabs are always multi-tab (never auto-replaced), so there
-    // is no workbench preview pin on dirty.
-    return ColoredBox(
-      color: cs.workspaceCard,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _FileEditorToolbar(workspaceId: workspaceId, path: path),
-          const Divider(height: 1),
-          Expanded(
-            child: _FileEditorBody(workspaceId: workspaceId, path: path),
-          ),
-        ],
+    // Center preview tabs pin on first edit; floating tabs are not in the
+    // workbench preview set so [pinTab] is a no-op there.
+    return BlocListener<EditorCubit, EditorState>(
+      listenWhen: (prev, next) {
+        final wasDirty = prev.bucket(workspaceId).isDirty(path);
+        final isDirty = next.bucket(workspaceId).isDirty(path);
+        return !wasDirty && isDirty;
+      },
+      listener: (context, state) {
+        context.read<WorkbenchCubit>().pinTab(
+          workspaceId,
+          WorkbenchTabId.file(path),
+        );
+      },
+      child: ColoredBox(
+        color: cs.workspaceCard,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _FileEditorToolbar(workspaceId: workspaceId, path: path),
+            const Divider(height: 1),
+            Expanded(
+              child: _FileEditorBody(workspaceId: workspaceId, path: path),
+            ),
+          ],
+        ),
       ),
     );
   }

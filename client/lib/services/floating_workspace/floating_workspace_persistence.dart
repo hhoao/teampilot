@@ -6,7 +6,7 @@ import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/floating_workspace/floating_workspace_state.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../models/layout_preferences.dart';
-import '../../pages/floating_workspace/floating_workspace_toggle_metrics.dart';
+import 'floating_workspace_toggle_metrics.dart';
 
 /// Bridges [FloatingWorkspaceCubit] geometry with [LayoutCubit] preferences.
 class FloatingWorkspacePersistence {

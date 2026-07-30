@@ -19,13 +19,15 @@ import '../../services/commands/keybinding_resolver.dart';
 import '../../services/floating_workspace/close_floating_tab.dart';
 import '../../services/floating_workspace/floating_maximize_insets.dart';
 import '../../services/floating_workspace/floating_surface_registry.dart';
+import '../../services/floating_workspace/floating_terminal_pty_hold_scope.dart';
+import '../../services/floating_workspace/floating_workspace_toggle_metrics.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/workspace_terminal_panel.dart';
 import 'floating_workspace_chrome.dart';
 import 'floating_workspace_close_shortcut.dart';
 import 'floating_workspace_empty.dart';
 import 'floating_workspace_new_terminal_menu.dart';
 import 'floating_workspace_tab_bar.dart';
-import 'floating_workspace_toggle_metrics.dart';
 
 const double _kMinPanelWidth = 320;
 const double _kMinPanelHeight = 240;
@@ -105,6 +107,7 @@ class _FloatingWorkspacePanelBodyState
   /// Local geometry while dragging/resizing so the panel tracks the pointer
   /// without waiting on Bloc rebuilds / persistence.
   Rect? _gestureBounds;
+  final _terminalHold = WorkspaceTerminalHoldHandle();
 
   void _beginGesture(Rect bounds) {
     _gestureBounds = bounds;
@@ -200,16 +203,19 @@ class _FloatingWorkspacePanelBodyState
                   top: positioned.top,
                   width: positioned.width,
                   height: positioned.height,
-                  child: _PanelChromeFrame(
-                    state: state,
-                    registry: widget.registry,
-                    hostSize: hostSize,
-                    panelBounds: positioned,
-                    allowDragResize: !state.isMaximized &&
-                        state.visibility == FloatingPanelVisibility.open,
-                    onGestureBegin: _beginGesture,
-                    onGestureUpdate: _updateGesture,
-                    onGestureEnd: _endGesture,
+                  child: FloatingTerminalPtyHoldScope(
+                    holdHandle: _terminalHold,
+                    child: _PanelChromeFrame(
+                      state: state,
+                      registry: widget.registry,
+                      hostSize: hostSize,
+                      panelBounds: positioned,
+                      allowDragResize: !state.isMaximized &&
+                          state.visibility == FloatingPanelVisibility.open,
+                      onGestureBegin: _beginGesture,
+                      onGestureUpdate: _updateGesture,
+                      onGestureEnd: _endGesture,
+                    ),
                   ),
                 ),
               ],
@@ -507,10 +513,13 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
             _activeResizeEdge = edge;
             _resizeStartPointer = details.globalPosition;
             _resizeStartBounds = widget.panelBounds;
+            FloatingTerminalPtyHoldScope.maybeOf(context)?.beginPtyHold();
             widget.onGestureBegin(widget.panelBounds);
           },
           onUpdate: (details) => _applyResize(edge, details.globalPosition),
           onEnd: (_) {
+            FloatingTerminalPtyHoldScope.maybeOf(context)
+                ?.endPtyHold(flush: true);
             widget.onGestureEnd(widget.panelBounds);
             _activeResizeEdge = null;
             _resizeStartPointer = null;

@@ -6,7 +6,7 @@ import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/floating_workspace/floating_workspace_state.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/workspace_surface_layers.dart';
-import 'floating_workspace_toggle_metrics.dart';
+import '../../services/floating_workspace/floating_workspace_toggle_metrics.dart';
 
 /// Draggable floating-workspace toggle, positioned from bottom-right.
 ///

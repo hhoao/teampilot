@@ -11,6 +11,7 @@ import '../../commands/command_ids.dart';
 import '../../terminal/workspace_terminal_registry.dart';
 import '../../terminal/workspace_terminal_run_service.dart';
 import '../floating_surface.dart';
+import '../floating_terminal_pty_hold_scope.dart';
 
 /// Floating surface that hosts a workspace shell terminal for one entry id.
 ///
@@ -87,6 +88,7 @@ class TerminalFloatingSurface extends FloatingSurface {
       workspaceId: workspaceId,
       tabScopeId: workspaceId,
       workingDirectory: cwd,
+      holdHandle: FloatingTerminalPtyHoldScope.maybeOf(context),
       activeEntryId: entryId,
     );
   }

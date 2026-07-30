@@ -1,9 +1,11 @@
 import 'package:path/path.dart' as p;
 
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
+import '../../cubits/floating_workspace/floating_workspace_state.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../models/floating_workspace_tab.dart';
+import '../../models/layout_preferences.dart';
 import '../workbench/workbench_shell_launcher.dart';
 
 /// One-shot migration of leftover center-strip `file` / `shell` tabs into the
@@ -78,4 +80,84 @@ int migrateLegacyWorkbenchTabsToFloating({
   }
 
   return moved;
+}
+
+/// Moves open floating `filePreview` tabs onto the center workbench strip.
+///
+/// Does **not** call surface [onTabClosed] — the editor session stays open and
+/// is only re-hosted. Shell tabs remain floating.
+int migrateFloatingFileTabsToWorkbench({
+  required WorkbenchCubit workbench,
+  required FloatingWorkspaceCubit floating,
+}) {
+  final previousActive = floating.state.activeWorkspaceId;
+  var moved = 0;
+
+  try {
+    final snapshot = Map<String, FloatingWorkspaceBucket>.of(
+      floating.state.buckets,
+    );
+    for (final entry in snapshot.entries) {
+      final workspaceId = entry.key;
+      final fileTabs = entry.value.tabs
+          .where((t) => t.surfaceId == 'filePreview')
+          .toList(growable: false);
+      if (fileTabs.isEmpty) continue;
+
+      floating.setActiveWorkspace(workspaceId);
+      for (final tab in fileTabs) {
+        final path = tab.payload is String
+            ? (tab.payload! as String).trim()
+            : '';
+        if (path.isEmpty) {
+          floating.removeTab(tab.id);
+          continue;
+        }
+        // preview: false so an already-open file is not treated as replaceable.
+        workbench.ensureTab(
+          workspaceId,
+          WorkbenchTabId.file(path),
+          preview: false,
+        );
+        floating.removeTab(tab.id);
+        moved++;
+      }
+    }
+  } finally {
+    if (floating.state.activeWorkspaceId != previousActive) {
+      floating.setActiveWorkspace(previousActive);
+    }
+  }
+
+  return moved;
+}
+
+/// Aligns in-memory file tabs with [host] after a runtime preference change.
+///
+/// Shell leftovers always migrate to floating; file tabs follow [host].
+int syncFilePreviewHostTabs({
+  required WorkbenchCubit workbench,
+  required FloatingWorkspaceCubit floating,
+  required FilePreviewHost host,
+}) {
+  switch (host) {
+    case FilePreviewHost.floating:
+      return migrateLegacyWorkbenchTabsToFloating(
+        workbench: workbench,
+        floating: floating,
+        migrateFiles: true,
+      );
+    case FilePreviewHost.center:
+      // Shell tabs still leave the center strip; files move the other way.
+      final shells = migrateLegacyWorkbenchTabsToFloating(
+        workbench: workbench,
+        floating: floating,
+        migrateFiles: false,
+      );
+      final files = migrateFloatingFileTabsToWorkbench(
+        workbench: workbench,
+        floating: floating,
+      );
+      return shells + files;
+  }
 }

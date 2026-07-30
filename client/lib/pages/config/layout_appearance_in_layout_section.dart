@@ -3,8 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/layout_cubit.dart';
+import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
+import '../../cubits/workbench/workbench_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
+import '../../services/floating_workspace/migrate_legacy_workbench_tabs.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_typography_scale.dart';
 import '../../theme/font_catalog.dart';
@@ -222,7 +225,14 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                     selected: context.select<LayoutCubit, FilePreviewHost>(
                       (c) => c.state.preferences.filePreviewHost,
                     ),
-                    onChanged: controller.setFilePreviewHost,
+                    onChanged: (host) {
+                      controller.setFilePreviewHost(host);
+                      syncFilePreviewHostTabs(
+                        workbench: context.read<WorkbenchCubit>(),
+                        floating: context.read<FloatingWorkspaceCubit>(),
+                        host: host,
+                      );
+                    },
                   ),
                   showDividerBelow: true,
                 ),

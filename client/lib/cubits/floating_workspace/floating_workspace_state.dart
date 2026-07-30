@@ -2,7 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 
 import 'package:teampilot/models/floating_workspace_tab.dart';
-import 'package:teampilot/pages/floating_workspace/floating_workspace_toggle_metrics.dart';
+import 'package:teampilot/services/floating_workspace/floating_workspace_toggle_metrics.dart';
 
 import 'floating_panel_placement.dart';
 import 'floating_panel_visibility.dart';
