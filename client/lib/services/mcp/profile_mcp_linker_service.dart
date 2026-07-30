@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import '../../models/mcp_server.dart';
+import '../storage/app_storage.dart';
 import '../storage/runtime_layout.dart';
 import '../io/filesystem.dart';
-import '../io/local_filesystem.dart';
 
 class ProfileMcpSyncResult {
   const ProfileMcpSyncResult({
@@ -21,10 +21,16 @@ class ProfileMcpSyncResult {
 
 /// Writes identity MCP snapshot to
 /// `identities-runtime/{profileId}/mcp/servers.json`.
+///
+/// Defaults to [AppStorage.fs] (same as [ProfilePluginLinkerService]) so
+/// Android/SSH control-plane roots under `$HOME` are written remotely, not
+/// via the device-local filesystem.
 class ProfileMcpLinkerService {
-  ProfileMcpLinkerService({Filesystem? fs}) : _fs = fs ?? LocalFilesystem();
+  ProfileMcpLinkerService({Filesystem? fs}) : _fsOverride = fs;
 
-  final Filesystem _fs;
+  final Filesystem? _fsOverride;
+
+  Filesystem get _fs => _fsOverride ?? AppStorage.fs;
 
   Future<ProfileMcpSyncResult> syncForProfile({
     required String profileId,
@@ -58,10 +64,11 @@ class ProfileMcpLinkerService {
       linked.add(id);
     }
 
+    final fs = _fs;
     final outPath = layout.identityMcpServersFile(trimmedIdentityId);
     try {
-      await _fs.ensureDir(layout.identityMcpDir(trimmedIdentityId));
-      await _fs.atomicWrite(
+      await fs.ensureDir(layout.identityMcpDir(trimmedIdentityId));
+      await fs.atomicWrite(
         outPath,
         const JsonEncoder.withIndent('  ').convert({
           'mcpServers': mcpServers,
