@@ -123,10 +123,29 @@ const _subThemes = FlexSubThemesData(
   menuRadius: 10,
   segmentedButtonRadius: 10,
   switchSchemeColor: SchemeColor.primary,
-  // primaryContainer == primary in our palettes; default M3 hover thumb
-  // would match the track. Keep thumb on onPrimary for contrast.
+  // Selected thumb is finalized in [buildAppSwitchTheme] (light → white,
+  // dark → black). FCS still needs a thumb role for unselected / overlay.
   switchThumbSchemeColor: SchemeColor.onPrimary,
 );
+
+/// Selected (on) thumb: white in light mode, black in dark. Unselected keeps
+/// the Flex / Material defaults.
+SwitchThemeData buildAppSwitchTheme({
+  required Brightness brightness,
+  SwitchThemeData? base,
+}) {
+  final selectedThumb =
+      brightness == Brightness.light ? Colors.white : Colors.black;
+  final fallback = base ?? const SwitchThemeData();
+  return fallback.copyWith(
+    thumbColor: WidgetStateProperty.resolveWith((states) {
+      if (states.contains(WidgetState.selected)) {
+        return selectedThumb;
+      }
+      return fallback.thumbColor?.resolve(states);
+    }),
+  );
+}
 
 /// In `flutter test`, HTTP is stubbed so [google_fonts] cannot download files.
 /// Use Material [TextTheme] there; real app loads Noto Sans SC at runtime.
@@ -287,6 +306,10 @@ ThemeData _applyTypography(
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       iconTheme: TpIconSizes.iconTheme(scheme, scale: resolvedIconScale.multiplier),
       textTheme: textTheme,
+      switchTheme: buildAppSwitchTheme(
+        brightness: flexTheme.brightness,
+        base: flexTheme.switchTheme,
+      ),
       extensions: _appThemeExtensions(
         flexTheme: flexTheme,
         textTheme: textTheme,
@@ -344,6 +367,10 @@ ThemeData _applyTypography(
     iconTheme: TpIconSizes.iconTheme(scheme, scale: resolvedIconScale.multiplier),
     textTheme: mergedTextTheme,
     primaryTextTheme: primaryTextTheme,
+    switchTheme: buildAppSwitchTheme(
+      brightness: flexTheme.brightness,
+      base: flexTheme.switchTheme,
+    ),
     extensions: _appThemeExtensions(
       flexTheme: flexTheme,
       textTheme: mergedTextTheme,
