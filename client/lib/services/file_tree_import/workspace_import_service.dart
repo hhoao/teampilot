@@ -265,11 +265,12 @@ class WorkspaceImportService {
         }
 
         await destFs.removeRecursive(destPath);
+        await _deleteIfExists(destFs, '$destPath.partial');
       }
 
       try {
         if (source.isDirectory) {
-          final copyCancelled = await _copyDirectoryCrossFs(
+          final dirResult = await _copyDirectoryCrossFs(
             sourceFs: sourceFs,
             destFs: destFs,
             sourcePath: source.path,
@@ -278,9 +279,15 @@ class WorkspaceImportService {
             isCancelled: isCancelled,
             failedPaths: failedPaths,
           );
-          if (copyCancelled) {
+          if (dirResult.cancelled) {
             cancelled = true;
             break;
+          }
+          if (dirResult.hadFailures) {
+            failedPaths.add(destPath);
+            failed++;
+          } else {
+            succeeded++;
           }
         } else {
           final copyCancelled = await _copyFileCrossFs(
@@ -296,8 +303,8 @@ class WorkspaceImportService {
             cancelled = true;
             break;
           }
+          succeeded++;
         }
-        succeeded++;
       } on Error {
         rethrow;
       } catch (_) {
@@ -318,7 +325,7 @@ class WorkspaceImportService {
     );
   }
 
-  Future<bool> _copyDirectoryCrossFs({
+  Future<({bool cancelled, bool hadFailures})> _copyDirectoryCrossFs({
     required Filesystem sourceFs,
     required Filesystem destFs,
     required String sourcePath,
@@ -337,12 +344,13 @@ class WorkspaceImportService {
 
     await destFs.ensureDir(destPath);
 
+    var hadFailures = false;
     final entries = await sourceFs.listDirRecursive(sourcePath);
     for (final entry in entries) {
       if (entry.isDirectory) continue;
 
       if (isCancelled()) {
-        return true;
+        return (cancelled: true, hadFailures: hadFailures);
       }
 
       final sourceFilePath = sourcePathContext.join(sourcePath, entry.name);
@@ -359,16 +367,17 @@ class WorkspaceImportService {
           isCancelled: isCancelled,
         );
         if (copyCancelled) {
-          return true;
+          return (cancelled: true, hadFailures: hadFailures);
         }
       } on Error {
         rethrow;
       } catch (_) {
         failedPaths.add(destFilePath);
+        hadFailures = true;
       }
     }
 
-    return false;
+    return (cancelled: false, hadFailures: hadFailures);
   }
 
   /// Returns `true` when the transfer was cancelled mid-file.
@@ -396,6 +405,7 @@ class WorkspaceImportService {
     final pathContext = destFs.pathContext;
 
     await destFs.ensureDir(pathContext.dirname(destPath));
+    await _deleteIfExists(destFs, partial);
 
     var bytesWritten = 0;
     emitProgress(
