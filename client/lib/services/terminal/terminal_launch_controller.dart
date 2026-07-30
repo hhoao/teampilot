@@ -446,6 +446,22 @@ final class TerminalLaunchController {
             '(executable: ${CliExecutableValidator.cliDisplayName(executable)})',
           );
           writeToDisplay?.call('\r\n$message\r\n');
+          if (_transport == transport) {
+            transport.close();
+            _transport = null;
+          }
+          _teardownPtyState();
+          // Prefer failure UI so chat shows why the CLI stopped; finishSessionConnect
+          // inside failSessionConnect also refreshes isRunning.
+          final failed = onProcessFailed;
+          final exited = onProcessExited;
+          onProcessFailed = null;
+          onProcessExited = null;
+          if (failed != null) {
+            failed(message);
+          } else {
+            exited?.call();
+          }
           return;
         }
         if (_transport == transport) {

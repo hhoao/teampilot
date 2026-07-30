@@ -339,8 +339,9 @@ void main() {
     );
   });
 
-  test('non-zero exit keeps terminal running for inspection', () async {
+  test('non-zero exit stops session and reports failure', () async {
     final handle = _FakeTransport();
+    String? failedMessage;
 
     final session = TerminalSession(
       executable: _ptyTestExecutable,
@@ -362,7 +363,10 @@ void main() {
       await handle.outputController.close();
     });
 
-    session.connect(workingDirectory: Directory.systemTemp.path);
+    session.connect(
+      workingDirectory: Directory.systemTemp.path,
+      onProcessFailed: (message) => failedMessage = message,
+    );
     session.onViewportResize(80, 24);
     await Future<void>.delayed(const Duration(milliseconds: 300));
 
@@ -370,12 +374,52 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     await handle.done;
 
-    expect(session.isRunning, isTrue);
+    expect(session.isRunning, isFalse);
+    expect(failedMessage, '[process exited with code 1]');
     await flushTerminalEngine(session.engine);
     expect(
       exportTerminalScrollback(session.engine),
       contains('[process exited with code 1]'),
     );
+  });
+
+  test('non-zero exit without onProcessFailed still clears running', () async {
+    final handle = _FakeTransport();
+    var exited = false;
+
+    final session = TerminalSession(
+      executable: _ptyTestExecutable,
+      validateLaunch: false,
+      transportStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            return Future.value(handle);
+          },
+    );
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    session.connect(
+      workingDirectory: Directory.systemTemp.path,
+      onProcessExited: () => exited = true,
+    );
+    session.onViewportResize(80, 24);
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
+    handle.doneCompleter.complete(1);
+    await Future<void>.delayed(Duration.zero);
+    await handle.done;
+
+    expect(session.isRunning, isFalse);
+    expect(exited, isTrue);
   });
 
   test('exec failure output during confirming reports failure', () async {
