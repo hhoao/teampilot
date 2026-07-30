@@ -2,10 +2,13 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 
 import 'package:teampilot/models/floating_workspace_tab.dart';
+import 'package:teampilot/pages/floating_workspace/floating_workspace_toggle_metrics.dart';
 
+import 'floating_panel_placement.dart';
 import 'floating_panel_visibility.dart';
 
 export 'package:teampilot/models/floating_workspace_tab.dart';
+export 'floating_panel_placement.dart';
 
 class FloatingWorkspaceBucket extends Equatable {
   const FloatingWorkspaceBucket({
@@ -37,8 +40,9 @@ class FloatingWorkspaceState extends Equatable {
     this.isMaximized = false,
     this.activeWorkspaceId = '',
     this.buckets = const {},
-    this.panelBounds = const Rect.fromLTWH(80, 80, 720, 480),
-    this.toggleOffset = const Offset(-24, -24),
+    this.panelPlacement,
+    this.legacyAbsoluteBounds,
+    this.toggleOffset = kFloatingWorkspaceToggleDefaultOffset,
     this.attention = false,
   });
 
@@ -46,9 +50,18 @@ class FloatingWorkspaceState extends Equatable {
   final bool isMaximized;
   final String activeWorkspaceId;
   final Map<String, FloatingWorkspaceBucket> buckets;
-  final Rect panelBounds;
+
+  /// App-relative placement (bottom-right insets). Null until first place.
+  final FloatingPanelPlacement? panelPlacement;
+
+  /// Prefs written before inset anchoring; converted on first host layout.
+  final Rect? legacyAbsoluteBounds;
+
   final Offset toggleOffset;
   final bool attention;
+
+  bool get hasPlacedPanel =>
+      panelPlacement != null || legacyAbsoluteBounds != null;
 
   FloatingWorkspaceBucket get activeBucket =>
       buckets[activeWorkspaceId] ?? const FloatingWorkspaceBucket();
@@ -58,7 +71,10 @@ class FloatingWorkspaceState extends Equatable {
     bool? isMaximized,
     String? activeWorkspaceId,
     Map<String, FloatingWorkspaceBucket>? buckets,
-    Rect? panelBounds,
+    FloatingPanelPlacement? panelPlacement,
+    Rect? legacyAbsoluteBounds,
+    bool clearPanelPlacement = false,
+    bool clearLegacyAbsoluteBounds = false,
     Offset? toggleOffset,
     bool? attention,
   }) {
@@ -67,7 +83,12 @@ class FloatingWorkspaceState extends Equatable {
       isMaximized: isMaximized ?? this.isMaximized,
       activeWorkspaceId: activeWorkspaceId ?? this.activeWorkspaceId,
       buckets: buckets ?? this.buckets,
-      panelBounds: panelBounds ?? this.panelBounds,
+      panelPlacement: clearPanelPlacement
+          ? null
+          : (panelPlacement ?? this.panelPlacement),
+      legacyAbsoluteBounds: clearLegacyAbsoluteBounds
+          ? null
+          : (legacyAbsoluteBounds ?? this.legacyAbsoluteBounds),
       toggleOffset: toggleOffset ?? this.toggleOffset,
       attention: attention ?? this.attention,
     );
@@ -79,7 +100,8 @@ class FloatingWorkspaceState extends Equatable {
     isMaximized,
     activeWorkspaceId,
     buckets,
-    panelBounds,
+    panelPlacement,
+    legacyAbsoluteBounds,
     toggleOffset,
     attention,
   ];

@@ -122,9 +122,41 @@ class FloatingWorkspaceCubit extends Cubit<FloatingWorkspaceState> {
     emit(state.copyWith(buckets: updatedBuckets));
   }
 
-  void setPanelBounds(Rect bounds) {
-    if (state.panelBounds == bounds) return;
-    emit(state.copyWith(panelBounds: bounds));
+  /// Places the panel from a host-local [rect], storing bottom-right insets.
+  void setPanelRect(Rect rect, Size host) {
+    if (host.width <= 0 || host.height <= 0) return;
+    final placement = FloatingPanelPlacement.fromRect(rect, host);
+    if (state.panelPlacement == placement && state.legacyAbsoluteBounds == null) {
+      return;
+    }
+    emit(
+      state.copyWith(
+        panelPlacement: placement,
+        clearLegacyAbsoluteBounds: true,
+      ),
+    );
+  }
+
+  void setPanelPlacement(FloatingPanelPlacement placement) {
+    if (state.panelPlacement == placement && state.legacyAbsoluteBounds == null) {
+      return;
+    }
+    emit(
+      state.copyWith(
+        panelPlacement: placement,
+        clearLegacyAbsoluteBounds: true,
+      ),
+    );
+  }
+
+  /// Hydrate absolute left/top from older prefs; converted on first layout.
+  void setLegacyAbsoluteBounds(Rect bounds) {
+    emit(
+      state.copyWith(
+        legacyAbsoluteBounds: bounds,
+        clearPanelPlacement: true,
+      ),
+    );
   }
 
   void setToggleOffset(Offset offset) {

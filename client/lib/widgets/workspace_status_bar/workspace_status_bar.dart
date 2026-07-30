@@ -24,6 +24,9 @@ class WorkspaceStatusBar extends StatelessWidget {
   /// Chrome breath above and below the content row.
   static const double verticalInset = 4;
 
+  /// Full chrome height consumed under the workbench body.
+  static const double totalHeight = height + verticalInset * 2;
+
   static const double compactBreakpoint = 720;
 
   final List<WorkspaceStatusBarItem> items;

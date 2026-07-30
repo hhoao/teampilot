@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -108,5 +109,51 @@ void main() {
     await tester.pump();
 
     expect(activated, 'openFile');
+  });
+
+  testWidgets('hover highlight clears when pointer leaves the row', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrap(
+        FloatingWorkspaceEmpty(
+          rows: const [
+            FloatingWorkspaceEmptyRow(
+              id: 'newTerminal',
+              icon: Icons.terminal_outlined,
+              label: '新 Terminal',
+            ),
+            FloatingWorkspaceEmptyRow(
+              id: 'openFile',
+              icon: Icons.insert_drive_file_outlined,
+              label: '打开文件',
+            ),
+          ],
+          onActivate: (_) {},
+        ),
+      ),
+    );
+
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    await tester.pump();
+
+    await gesture.moveTo(tester.getCenter(find.text('打开文件')));
+    await tester.pumpAndSettle();
+
+    Color fillOf(String id) => tester
+        .widget<ColoredBox>(
+          find.byKey(ValueKey('floating_empty_row_fill_$id')),
+        )
+        .color;
+
+    expect(fillOf('newTerminal'), Colors.transparent);
+    expect(fillOf('openFile'), isNot(Colors.transparent));
+
+    await gesture.moveTo(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    expect(fillOf('newTerminal'), Colors.transparent);
+    expect(fillOf('openFile'), Colors.transparent);
   });
 }

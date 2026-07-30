@@ -131,7 +131,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     if (!isCenterStripWorkbenchTab(tab.kind)) {
       assert(() {
         debugPrint(
-          'WorkbenchCubit.ensureTab: file and shell tabs must not be '
+          'WorkbenchCubit.ensureTab: shell tabs must not be '
           'added to the center workbench strip',
         );
         return true;

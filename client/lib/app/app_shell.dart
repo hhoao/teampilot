@@ -39,6 +39,7 @@ import '../cubits/ai_feature_settings_cubit.dart';
 import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/floating_workspace/floating_workspace_cubit.dart';
+import '../models/layout_preferences.dart';
 import '../cubits/workspace_tools_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
@@ -1223,13 +1224,18 @@ Future<AppShell> buildAppShell({
     markdownViewModes: markdownViewModes,
     readMarkdownOpenMode: () =>
         layoutCubit.state.preferences.markdownOpenMode,
+    readFilePreviewInFloating: () =>
+        layoutCubit.state.preferences.filePreviewHost ==
+        FilePreviewHost.floating,
   );
   workbenchEditorOpenerRef = workbenchEditorOpener;
-  // One-shot: move any leftover center file/shell tabs into floating buckets.
-  // Usually a no-op after Task 7 reject + syncSessions filter; see helper docs.
+  // One-shot: move leftover center shell tabs (and file tabs when floating
+  // preview is preferred) into floating buckets.
   migrateLegacyWorkbenchTabsToFloating(
     workbench: workbenchCubit,
     floating: floatingWorkspaceCubit,
+    migrateFiles: layoutCubit.state.preferences.filePreviewHost ==
+        FilePreviewHost.floating,
   );
   final resolvedShellLauncher = WorkbenchShellLauncher(
     floating: floatingWorkspaceCubit,

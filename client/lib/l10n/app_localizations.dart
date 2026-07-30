@@ -11442,11 +11442,41 @@ abstract class AppLocalizations {
   /// **'Close tab'**
   String get floatingWorkspaceCloseTab;
 
+  /// No description provided for @floatingWorkspaceAddTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in floating workspace'**
+  String get floatingWorkspaceAddTooltip;
+
   /// No description provided for @floatingWorkspaceToggleTooltip.
   ///
   /// In en, this message translates to:
   /// **'Floating workspace'**
   String get floatingWorkspaceToggleTooltip;
+
+  /// No description provided for @filePreviewHostTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'File preview'**
+  String get filePreviewHostTitle;
+
+  /// No description provided for @filePreviewHostDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Open files in the floating workspace or the center workbench.'**
+  String get filePreviewHostDescription;
+
+  /// No description provided for @filePreviewHostFloating.
+  ///
+  /// In en, this message translates to:
+  /// **'Floating'**
+  String get filePreviewHostFloating;
+
+  /// No description provided for @filePreviewHostCenter.
+  ///
+  /// In en, this message translates to:
+  /// **'Center'**
+  String get filePreviewHostCenter;
 }
 
 class _AppLocalizationsDelegate

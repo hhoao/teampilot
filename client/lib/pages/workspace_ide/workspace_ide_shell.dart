@@ -518,6 +518,14 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
             _relevantPrefsChanged(a.preferences, b.preferences) ||
             a.landingRightToolsOverride != b.landingRightToolsOverride,
         builder: (context, layoutState) {
+          // Depend so tab foreground switches re-publish maximize insets.
+          final routeActive =
+              context
+                  .dependOnInheritedWidgetOfExactType<
+                    WorkspaceRouteActiveScope
+                  >()
+                  ?.routeActive ??
+              true;
           final effective = WorkspacePanePolicy.effective(
             preferences: layoutState.preferences,
             viewportWidth: _viewportWidth,
@@ -535,7 +543,11 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
           // root pane's layout, which is after this synchronous assignment.
           _narrow = effective.isNarrow;
           final prefs = layoutState.preferences;
-          _publishMaximizeInsets(effective, prefs);
+          _publishMaximizeInsets(
+            effective,
+            prefs,
+            routeActive: routeActive,
+          );
           // Measure via PaneSizeReporter so center/sidebar BUILD stays in the
           // normal build phase — not nested under LayoutBuilder layout.
           return PaneSizeReporter(
@@ -561,21 +573,27 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
         a.rightToolsWidth != b.rightToolsWidth;
   }
 
-  /// Publish sidebar-aware maximize safe area for the floating workspace panel.
+  /// Publish maximize safe area: card-padded left sidebar + center content.
+  ///
+  /// Insets are relative to [FloatingWorkspaceHost], which wraps the page card
+  /// **and** the status bar. Uses [FloatingMaximizeInsets.cardSafeArea] and
+  /// excludes a docked right-tools pane.
   void _publishMaximizeInsets(
     WorkspacePaneEffective effective,
-    LayoutPreferences prefs,
-  ) {
-    if (!WorkspaceRouteActiveScope.routeActiveOf(context)) return;
+    LayoutPreferences prefs, {
+    required bool routeActive,
+  }) {
+    if (!routeActive) return;
     FloatingMaximizeInsets insets;
     try {
       insets = context.read<FloatingMaximizeInsets>();
     } catch (_) {
       return;
     }
-    final left =
-        (!effective.isNarrow && effective.dockLeft) ? prefs.sidebarWidth : 0.0;
-    final next = EdgeInsets.only(left: left);
+    final rightTools = (!effective.isNarrow && effective.dockRight)
+        ? prefs.rightToolsWidth
+        : 0.0;
+    final next = FloatingMaximizeInsets.cardSafeArea(extraRight: rightTools);
     if (insets.value == next) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;

@@ -129,14 +129,8 @@ void main() {
     cubit.setAttention(true);
     await tester.pump();
 
-    final toggle = tester.widget<Material>(
-      find.descendant(
-        of: find.byKey(const Key('floating_workspace_toggle')),
-        matching: find.byType(Material),
-      ),
-    );
-    expect(toggle, isNotNull);
-    // Error-colored 8px attention dot sits in the toggle Stack.
+    expect(find.byKey(const Key('floating_workspace_toggle')), findsOneWidget);
+    // Amber 8px attention dot sits in the toggle Stack (Orca unread convention).
     expect(
       find.descendant(
         of: find.byKey(const Key('floating_workspace_toggle')),
@@ -145,12 +139,11 @@ void main() {
               w is Container &&
               w.decoration is BoxDecoration &&
               (w.decoration! as BoxDecoration).shape == BoxShape.circle &&
-              (w.constraints?.maxWidth == 8 || w.constraints?.minWidth == 8 ||
-                  (w.constraints == null &&
-                      (w.decoration as BoxDecoration).color != null)),
+              (w.decoration! as BoxDecoration).color ==
+                  const Color(0xFFF59E0B),
         ),
       ),
-      findsWidgets,
+      findsOneWidget,
     );
   });
 }

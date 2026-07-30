@@ -215,7 +215,8 @@ class _HomeShellState extends State<HomeShell> {
     try {
       final insets = context.read<FloatingMaximizeInsets>();
       if (tab == null) {
-        insets.update(null);
+        // Home / global views: card padding only (no right-tools exclusion).
+        insets.update(FloatingMaximizeInsets.cardSafeArea());
       }
     } catch (_) {
       // Provider may be absent in isolated widget tests.

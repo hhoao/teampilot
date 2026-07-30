@@ -6128,5 +6128,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get floatingWorkspaceCloseTab => '关闭标签';
 
   @override
+  String get floatingWorkspaceAddTooltip => '在浮动工作区打开';
+
+  @override
   String get floatingWorkspaceToggleTooltip => '浮动工作区';
+
+  @override
+  String get filePreviewHostTitle => '文件预览位置';
+
+  @override
+  String get filePreviewHostDescription => '在浮动工作区或中间工作台打开文件。';
+
+  @override
+  String get filePreviewHostFloating => '浮动';
+
+  @override
+  String get filePreviewHostCenter => '中间';
 }

@@ -77,6 +77,63 @@ void main() {
 
     expect(cubit.state.activeBucket.tabs, isEmpty);
   });
+
+  test('closeOtherFloatingTabs keeps only the requested tab', () async {
+    final cubit = FloatingWorkspaceCubit();
+    addTearDown(cubit.close);
+    final registry = FloatingSurfaceRegistry([
+      _FakeSurface(id: 'terminal', onClosed: () {}),
+    ]);
+
+    cubit.setActiveWorkspace('ws-1');
+    const keep = FloatingTab(
+      id: 'keep',
+      surfaceId: 'terminal',
+      title: 'Keep',
+    );
+    const other = FloatingTab(
+      id: 'other',
+      surfaceId: 'terminal',
+      title: 'Other',
+    );
+    cubit.ensureTab(keep);
+    cubit.ensureTab(other);
+
+    await closeOtherFloatingTabs(
+      cubit: cubit,
+      registry: registry,
+      keepTabId: keep.id,
+    );
+
+    expect(cubit.state.activeBucket.tabs.single.id, keep.id);
+  });
+
+  test('closeFloatingTabsToTheRight trims after the pivot', () async {
+    final cubit = FloatingWorkspaceCubit();
+    addTearDown(cubit.close);
+    final registry = FloatingSurfaceRegistry([
+      _FakeSurface(id: 'terminal', onClosed: () {}),
+    ]);
+
+    cubit.setActiveWorkspace('ws-1');
+    const a = FloatingTab(id: 'a', surfaceId: 'terminal', title: 'A');
+    const b = FloatingTab(id: 'b', surfaceId: 'terminal', title: 'B');
+    const c = FloatingTab(id: 'c', surfaceId: 'terminal', title: 'C');
+    cubit.ensureTab(a);
+    cubit.ensureTab(b);
+    cubit.ensureTab(c);
+
+    await closeFloatingTabsToTheRight(
+      cubit: cubit,
+      registry: registry,
+      fromTabId: a.id,
+    );
+
+    expect(
+      cubit.state.activeBucket.tabs.map((t) => t.id).toList(),
+      ['a'],
+    );
+  });
 }
 
 class _FakeSurface extends FloatingSurface {

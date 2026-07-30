@@ -9,23 +9,20 @@ import '../workbench/workbench_shell_launcher.dart';
 /// One-shot migration of leftover center-strip `file` / `shell` tabs into the
 /// floating workspace bucket.
 ///
-/// **Why this exists:** Task 7 rejects *new* file/shell via
+/// **Why this exists:** Task 7 rejects *new* shell tabs via
 /// [WorkbenchCubit.ensureTab], and [WorkbenchCubit.syncSessions] already drops
-/// leftovers on the next session sync. This helper covers in-memory buckets
-/// that still hold file/shell before sync runs (mid-session upgrade, tests,
-/// or any path that seeded tabs before the reject landed).
+/// shell leftovers on the next session sync. This helper covers in-memory
+/// buckets that still hold shell (and optionally file) before sync runs.
 ///
-/// **What it does:** For each workbench workspace bucket, move every
-/// `WorkbenchTabKind.file` / `.shell` into the matching floating bucket
-/// (`filePreview` / `terminal` tab ids), then [WorkbenchCubit.removeTab] them
-/// from the center strip. Domain state (`EditorCubit` open files, terminal
-/// registry entries) is left alone — only the strip membership moves.
+/// When [migrateFiles] is false (center file-preview preference), only shell
+/// tabs move; file tabs stay on the center strip.
 ///
 /// Returns the number of tabs moved. Safe to call multiple times (idempotent
 /// once the strip is clean). Does not open the floating panel.
 int migrateLegacyWorkbenchTabsToFloating({
   required WorkbenchCubit workbench,
   required FloatingWorkspaceCubit floating,
+  bool migrateFiles = true,
 }) {
   final previousActive = floating.state.activeWorkspaceId;
   var moved = 0;
@@ -36,8 +33,8 @@ int migrateLegacyWorkbenchTabsToFloating({
       final leftovers = entry.value.tabOrder
           .where(
             (t) =>
-                t.kind == WorkbenchTabKind.file ||
-                t.kind == WorkbenchTabKind.shell,
+                t.kind == WorkbenchTabKind.shell ||
+                (migrateFiles && t.kind == WorkbenchTabKind.file),
           )
           .toList(growable: false);
       if (leftovers.isEmpty) continue;

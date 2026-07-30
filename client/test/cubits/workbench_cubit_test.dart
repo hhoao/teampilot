@@ -30,18 +30,19 @@ void main() {
       expect(cubit.activeTabId(ws), session);
     });
 
-    test('ensureTab rejects file and shell tabs on center strip', () {
+    test('ensureTab rejects shell tabs but allows file on center strip', () {
       const ws = 'ws-a';
       final session = WorkbenchTabId.session('s1');
       cubit.ensureTab(ws, session);
 
-      cubit.ensureTab(ws, WorkbenchTabId.file('/a.dart'));
-      expect(cubit.tabOrder(ws), [session]);
-      expect(cubit.activeTabId(ws), session);
+      final file = WorkbenchTabId.file('/a.dart');
+      cubit.ensureTab(ws, file);
+      expect(cubit.tabOrder(ws), [session, file]);
+      expect(cubit.activeTabId(ws), file);
 
       cubit.ensureTab(ws, WorkbenchTabId.shell('e1'));
-      expect(cubit.tabOrder(ws), [session]);
-      expect(cubit.activeTabId(ws), session);
+      expect(cubit.tabOrder(ws), [session, file]);
+      expect(cubit.activeTabId(ws), file);
     });
 
     test('buckets are isolated per workspace', () {
@@ -309,7 +310,7 @@ void main() {
       expect(cubit.isPreview(ws, session), isTrue); // not displaced
     });
 
-    test('syncSessions preserves run tabs and drops legacy shell/file tabs', () {
+    test('syncSessions preserves run/file tabs and drops legacy shell tabs', () {
       const ws = 'ws';
       final s1 = WorkbenchTabId.session('s1');
       final shell = WorkbenchTabId.shell('e1');
@@ -328,10 +329,9 @@ void main() {
       cubit.syncSessions(ws, ['s1', 's2']);
       expect(
         cubit.tabOrder(ws),
-        containsAll([run, WorkbenchTabId.session('s2')]),
+        containsAll([run, file, WorkbenchTabId.session('s2')]),
       );
       expect(cubit.tabOrder(ws), isNot(contains(shell)));
-      expect(cubit.tabOrder(ws), isNot(contains(file)));
     });
   });
 }

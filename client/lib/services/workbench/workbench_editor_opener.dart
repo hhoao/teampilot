@@ -13,8 +13,9 @@ import '../io/filesystem.dart';
 
 /// Single entry for opening file/diff center tabs (editor bucket + workbench).
 ///
-/// File opens go to the floating file-preview surface; diffs stay on the
-/// center workbench strip.
+/// File opens go to the floating file-preview surface when
+/// [readFilePreviewInFloating] is true; otherwise they use the center strip.
+/// Diffs always stay on the center workbench strip.
 class WorkbenchEditorOpener {
   WorkbenchEditorOpener({
     required EditorCubit editor,
@@ -22,11 +23,14 @@ class WorkbenchEditorOpener {
     required FloatingWorkspaceCubit floating,
     required this.markdownViewModes,
     required MarkdownOpenMode Function() readMarkdownOpenMode,
+    bool Function()? readFilePreviewInFloating,
     ChatCubit? chat,
   }) : _editor = editor,
        _workbench = workbench,
        _floating = floating,
        _readMarkdownOpenMode = readMarkdownOpenMode,
+       _readFilePreviewInFloating =
+           readFilePreviewInFloating ?? (() => true),
        _chat = chat;
 
   final EditorCubit _editor;
@@ -35,12 +39,12 @@ class WorkbenchEditorOpener {
   final ChatCubit? _chat;
   final MarkdownViewModeStore markdownViewModes;
   final MarkdownOpenMode Function() _readMarkdownOpenMode;
+  final bool Function() _readFilePreviewInFloating;
 
   Future<void> openFile(
     String workspaceId,
     String path, {
     Filesystem? fs,
-    // Ignored: floating file tabs are always multi-tab (never auto-replaced).
     bool preview = true,
   }) async {
     final normalized = path.trim();
@@ -53,16 +57,26 @@ class WorkbenchEditorOpener {
     if (isMarkdownEditorPath(normalized)) {
       markdownViewModes.seedOnOpen(normalized, _readMarkdownOpenMode());
     }
-    _floating.ensureOpen();
-    _floating.setActiveWorkspace(workspaceId);
-    _floating.ensureTab(
-      FloatingTab(
-        id: 'file:$normalized',
-        surfaceId: 'filePreview',
-        title: p.basename(normalized),
-        payload: normalized,
-      ),
-    );
+
+    if (_readFilePreviewInFloating()) {
+      _floating.ensureOpen();
+      _floating.setActiveWorkspace(workspaceId);
+      _floating.ensureTab(
+        FloatingTab(
+          id: 'file:$normalized',
+          surfaceId: 'filePreview',
+          title: p.basename(normalized),
+          payload: normalized,
+        ),
+      );
+      _chat?.dismissNewChat();
+      await _editor.openFile(workspaceId, normalized, fs: fs);
+      return;
+    }
+
+    final tab = WorkbenchTabId.file(normalized);
+    final replaced = _workbench.ensureTab(workspaceId, tab, preview: preview);
+    _closeReplaced(workspaceId, replaced);
     _chat?.dismissNewChat();
     await _editor.openFile(workspaceId, normalized, fs: fs);
   }

@@ -23,7 +23,8 @@ class FloatingWorkspaceEmptyRow {
 
 /// Orca-like empty launcher: icon + label + optional shortcut keycaps.
 ///
-/// Supports ↑↓ + Enter keyboard selection when focused.
+/// Hover highlight is owned per-row (no parent rebuild) so light-mode does not
+/// flash. ↑↓ keeps a keyboard focus ring until the pointer enters a row.
 class FloatingWorkspaceEmpty extends StatefulWidget {
   const FloatingWorkspaceEmpty({
     required this.rows,
@@ -42,7 +43,9 @@ class FloatingWorkspaceEmpty extends StatefulWidget {
 
 class _FloatingWorkspaceEmptyState extends State<FloatingWorkspaceEmpty> {
   late final FocusNode _focusNode;
-  int _selectedIndex = 0;
+  int _keyboardIndex = 0;
+  int? _hoveredIndex;
+  var _keyboardNavActive = false;
 
   @override
   void initState() {
@@ -59,10 +62,15 @@ class _FloatingWorkspaceEmptyState extends State<FloatingWorkspaceEmpty> {
   @override
   void didUpdateWidget(covariant FloatingWorkspaceEmpty oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_selectedIndex >= widget.rows.length) {
-      _selectedIndex = widget.rows.isEmpty ? 0 : widget.rows.length - 1;
+    if (_keyboardIndex >= widget.rows.length) {
+      _keyboardIndex = widget.rows.isEmpty ? 0 : widget.rows.length - 1;
+    }
+    if (_hoveredIndex != null && _hoveredIndex! >= widget.rows.length) {
+      _hoveredIndex = null;
     }
   }
+
+  int get _activateIndex => _hoveredIndex ?? _keyboardIndex;
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent || widget.rows.isEmpty) {
@@ -70,23 +78,38 @@ class _FloatingWorkspaceEmptyState extends State<FloatingWorkspaceEmpty> {
     }
     if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
       setState(() {
-        _selectedIndex = (_selectedIndex + 1) % widget.rows.length;
+        _keyboardNavActive = true;
+        _hoveredIndex = null;
+        _keyboardIndex = (_keyboardIndex + 1) % widget.rows.length;
       });
       return KeyEventResult.handled;
     }
     if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
       setState(() {
-        _selectedIndex =
-            (_selectedIndex - 1 + widget.rows.length) % widget.rows.length;
+        _keyboardNavActive = true;
+        _hoveredIndex = null;
+        _keyboardIndex =
+            (_keyboardIndex - 1 + widget.rows.length) % widget.rows.length;
       });
       return KeyEventResult.handled;
     }
     if (event.logicalKey == LogicalKeyboardKey.enter ||
         event.logicalKey == LogicalKeyboardKey.numpadEnter) {
-      widget.onActivate(widget.rows[_selectedIndex].id);
+      widget.onActivate(widget.rows[_activateIndex].id);
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
+  }
+
+  void _onHoverEnter(int index) {
+    _hoveredIndex = index;
+    if (!_keyboardNavActive) return;
+    // Drop keyboard ring without touching hover-owned row paint.
+    setState(() => _keyboardNavActive = false);
+  }
+
+  void _onHoverExit(int index) {
+    if (_hoveredIndex == index) _hoveredIndex = null;
   }
 
   @override
@@ -107,16 +130,19 @@ class _FloatingWorkspaceEmptyState extends State<FloatingWorkspaceEmpty> {
             children: [
               for (var i = 0; i < widget.rows.length; i++)
                 _EmptyRowTile(
+                  key: ValueKey(widget.rows[i].id),
                   row: widget.rows[i],
-                  selected: i == _selectedIndex,
-                  onHover: () => setState(() => _selectedIndex = i),
-                  onTap: () {
-                    setState(() => _selectedIndex = i);
-                    widget.onActivate(widget.rows[i].id);
-                  },
+                  keyboardHighlighted:
+                      _keyboardNavActive && _keyboardIndex == i,
+                  onHoverEnter: () => _onHoverEnter(i),
+                  onHoverExit: () => _onHoverExit(i),
+                  onTap: () => widget.onActivate(widget.rows[i].id),
                   foreground: cs.onSurface,
                   styles: styles,
-                  subtle: cs.workspaceSubtleSurface,
+                  // Card-level hover: inset, not page-level subtle (subtle on
+                  // workspaceCard reads as a flash in light mode).
+                  highlight: cs.workspaceInset,
+                  chipFill: cs.workspaceSubtleSurface,
                   outline: cs.outlineVariant,
                 ),
             ],
@@ -127,66 +153,91 @@ class _FloatingWorkspaceEmptyState extends State<FloatingWorkspaceEmpty> {
   }
 }
 
-class _EmptyRowTile extends StatelessWidget {
+class _EmptyRowTile extends StatefulWidget {
   const _EmptyRowTile({
     required this.row,
-    required this.selected,
-    required this.onHover,
+    required this.keyboardHighlighted,
+    required this.onHoverEnter,
+    required this.onHoverExit,
     required this.onTap,
     required this.foreground,
     required this.styles,
-    required this.subtle,
+    required this.highlight,
+    required this.chipFill,
     required this.outline,
+    super.key,
   });
 
   final FloatingWorkspaceEmptyRow row;
-  final bool selected;
-  final VoidCallback onHover;
+  final bool keyboardHighlighted;
+  final VoidCallback onHoverEnter;
+  final VoidCallback onHoverExit;
   final VoidCallback onTap;
   final Color foreground;
   final TpTextStyles styles;
-  final Color subtle;
+  final Color highlight;
+  final Color chipFill;
   final Color outline;
+
+  @override
+  State<_EmptyRowTile> createState() => _EmptyRowTileState();
+}
+
+class _EmptyRowTileState extends State<_EmptyRowTile> {
+  var _hovering = false;
+
+  bool get _highlighted => _hovering || widget.keyboardHighlighted;
 
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      onEnter: (_) => onHover(),
-      child: Material(
-        color: selected ? subtle : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-        child: InkWell(
-          onTap: onTap,
+      onEnter: (_) {
+        if (!_hovering) setState(() => _hovering = true);
+        widget.onHoverEnter();
+      },
+      onExit: (_) {
+        if (_hovering) setState(() => _hovering = false);
+        widget.onHoverExit();
+      },
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              children: [
-                Icon(row.icon, size: 18, color: foreground),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    row.label,
-                    style: styles.smMediumColored(foreground),
+          child: ColoredBox(
+            key: ValueKey('floating_empty_row_fill_${widget.row.id}'),
+            color: _highlighted ? widget.highlight : Colors.transparent,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  Icon(widget.row.icon, size: 20, color: widget.foreground),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      widget.row.label,
+                      style: widget.styles.mdColored(widget.foreground),
+                    ),
                   ),
-                ),
-                if (row.shortcutLabels.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  Wrap(
-                    spacing: 4,
-                    children: [
-                      for (final label in row.shortcutLabels)
-                        _KeycapChip(
-                          label: label,
-                          subtle: subtle,
-                          outline: outline,
-                          styles: styles,
-                          foreground: foreground,
-                        ),
-                    ],
-                  ),
+                  if (widget.row.shortcutLabels.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Wrap(
+                      spacing: 4,
+                      children: [
+                        for (final label in widget.row.shortcutLabels)
+                          _KeycapChip(
+                            label: label,
+                            fill: widget.chipFill,
+                            outline: widget.outline,
+                            styles: widget.styles,
+                            foreground: widget.foreground,
+                          ),
+                      ],
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -198,14 +249,14 @@ class _EmptyRowTile extends StatelessWidget {
 class _KeycapChip extends StatelessWidget {
   const _KeycapChip({
     required this.label,
-    required this.subtle,
+    required this.fill,
     required this.outline,
     required this.styles,
     required this.foreground,
   });
 
   final String label;
-  final Color subtle;
+  final Color fill;
   final Color outline;
   final TpTextStyles styles;
   final Color foreground;
@@ -215,11 +266,11 @@ class _KeycapChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: subtle,
+        color: fill,
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: outline.withValues(alpha: 0.6)),
       ),
-      child: Text(label, style: styles.xsSemiboldColored(foreground)),
+      child: Text(label, style: styles.smColored(foreground)),
     );
   }
 }

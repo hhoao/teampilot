@@ -3,11 +3,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
+import '../../cubits/floating_workspace/floating_workspace_state.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/commands/command_bus.dart';
 import '../../services/commands/command_ids.dart';
 
 /// Maximize / minimize window controls for the floating panel chrome.
+///
+/// Maximize toggles to a restore glyph while maximized (same convention as
+/// the desktop window chrome). Minimize stays a distinct dash.
 class FloatingWorkspaceChrome extends StatelessWidget {
   const FloatingWorkspaceChrome({
     this.onMaximize,
@@ -53,22 +57,32 @@ class FloatingWorkspaceChrome extends StatelessWidget {
       cubit.minimize();
     }
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        TpIconButton(
-          icon: Icons.crop_square_outlined,
-          compact: true,
-          tooltip: l10n.floatingWorkspaceMaximize,
-          onTap: maximize,
-        ),
-        TpIconButton(
-          icon: Icons.remove,
-          compact: true,
-          tooltip: l10n.floatingWorkspaceMinimize,
-          onTap: minimize,
-        ),
-      ],
+    return BlocBuilder<FloatingWorkspaceCubit, FloatingWorkspaceState>(
+      buildWhen: (a, b) => a.isMaximized != b.isMaximized,
+      builder: (context, state) {
+        final maximized = state.isMaximized;
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TpIconButton(
+              icon: maximized
+                  ? Icons.filter_none
+                  : Icons.crop_square_outlined,
+              compact: true,
+              tooltip: maximized
+                  ? l10n.windowControlRestore
+                  : l10n.floatingWorkspaceMaximize,
+              onTap: maximize,
+            ),
+            TpIconButton(
+              icon: Icons.horizontal_rule,
+              compact: true,
+              tooltip: l10n.floatingWorkspaceMinimize,
+              onTap: minimize,
+            ),
+          ],
+        );
+      },
     );
   }
 

@@ -23,7 +23,9 @@ import '../../theme/workspace_surface_layers.dart';
 import 'floating_workspace_chrome.dart';
 import 'floating_workspace_close_shortcut.dart';
 import 'floating_workspace_empty.dart';
+import 'floating_workspace_new_terminal_menu.dart';
 import 'floating_workspace_tab_bar.dart';
+import 'floating_workspace_toggle_metrics.dart';
 
 const double _kMinPanelWidth = 320;
 const double _kMinPanelHeight = 240;
@@ -83,7 +85,7 @@ class _FloatingWorkspacePanelState extends State<FloatingWorkspacePanel> {
   }
 }
 
-class _FloatingWorkspacePanelBody extends StatelessWidget {
+class _FloatingWorkspacePanelBody extends StatefulWidget {
   const _FloatingWorkspacePanelBody({
     required this.state,
     required this.registry,
@@ -94,7 +96,63 @@ class _FloatingWorkspacePanelBody extends StatelessWidget {
   final FloatingSurfaceRegistry registry;
 
   @override
+  State<_FloatingWorkspacePanelBody> createState() =>
+      _FloatingWorkspacePanelBodyState();
+}
+
+class _FloatingWorkspacePanelBodyState
+    extends State<_FloatingWorkspacePanelBody> {
+  /// Local geometry while dragging/resizing so the panel tracks the pointer
+  /// without waiting on Bloc rebuilds / persistence.
+  Rect? _gestureBounds;
+
+  void _beginGesture(Rect bounds) {
+    _gestureBounds = bounds;
+  }
+
+  void _updateGesture(Rect bounds) {
+    if (_gestureBounds == bounds) return;
+    setState(() => _gestureBounds = bounds);
+  }
+
+  void _endGesture(Rect bounds) {
+    context.read<FloatingWorkspaceCubit>().setPanelRect(
+      bounds,
+      _lastHostSize ?? Size(bounds.width, bounds.height),
+    );
+    if (_gestureBounds != null) {
+      setState(() => _gestureBounds = null);
+    }
+  }
+
+  Size? _lastHostSize;
+
+  Rect _resolvePlacedRect(FloatingWorkspaceState state, Size hostSize) {
+    final legacy = state.legacyAbsoluteBounds;
+    if (legacy != null) {
+      final clamped = clampFloatingPanelBounds(legacy, hostSize);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final cubit = context.read<FloatingWorkspaceCubit>();
+        if (cubit.state.legacyAbsoluteBounds != null) {
+          cubit.setPanelRect(clamped, hostSize);
+        }
+      });
+      return clamped;
+    }
+    final placement =
+        state.panelPlacement ??
+        defaultFloatingPanelPlacement(toggleOffset: state.toggleOffset);
+    return placement.resolve(
+      hostSize,
+      minWidth: _kMinPanelWidth,
+      minHeight: _kMinPanelHeight,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final state = widget.state;
     final insetsListenable = context.read<FloatingMaximizeInsets>().listenable;
     return ValueListenableBuilder<EdgeInsets?>(
       valueListenable: insetsListenable,
@@ -102,7 +160,8 @@ class _FloatingWorkspacePanelBody extends StatelessWidget {
         return LayoutBuilder(
           builder: (context, constraints) {
             final hostSize = Size(constraints.maxWidth, constraints.maxHeight);
-            final safe = insets ?? EdgeInsets.zero;
+            _lastHostSize = hostSize;
+            final safe = insets ?? FloatingMaximizeInsets.cardSafeArea();
 
             final Rect positioned;
             if (state.isMaximized &&
@@ -114,7 +173,21 @@ class _FloatingWorkspacePanelBody extends StatelessWidget {
                 hostSize.height - safe.bottom,
               );
             } else {
-              positioned = clampFloatingPanelBounds(state.panelBounds, hostSize);
+              final raw = _gestureBounds ?? _resolvePlacedRect(state, hostSize);
+              positioned = clampFloatingPanelBounds(raw, hostSize);
+              if (_gestureBounds == null &&
+                  !state.hasPlacedPanel &&
+                  state.visibility == FloatingPanelVisibility.open &&
+                  hostSize.width > 0 &&
+                  hostSize.height > 0) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!context.mounted) return;
+                  final cubit = context.read<FloatingWorkspaceCubit>();
+                  if (!cubit.state.hasPlacedPanel) {
+                    cubit.setPanelRect(positioned, hostSize);
+                  }
+                });
+              }
             }
 
             return Stack(
@@ -126,10 +199,14 @@ class _FloatingWorkspacePanelBody extends StatelessWidget {
                   height: positioned.height,
                   child: _PanelChromeFrame(
                     state: state,
-                    registry: registry,
+                    registry: widget.registry,
                     hostSize: hostSize,
+                    panelBounds: positioned,
                     allowDragResize: !state.isMaximized &&
                         state.visibility == FloatingPanelVisibility.open,
+                    onGestureBegin: _beginGesture,
+                    onGestureUpdate: _updateGesture,
+                    onGestureEnd: _endGesture,
                   ),
                 ),
               ],
@@ -139,6 +216,47 @@ class _FloatingWorkspacePanelBody extends StatelessWidget {
       },
     );
   }
+}
+
+/// Default open placement: bottom-right insets cleared above the toggle.
+@visibleForTesting
+FloatingPanelPlacement defaultFloatingPanelPlacement({
+  Offset toggleOffset = kFloatingWorkspaceToggleDefaultOffset,
+  double preferredWidth = 720,
+  double preferredHeight = 480,
+}) {
+  final rightInset = (-toggleOffset.dx).clamp(0.0, double.infinity).toDouble();
+  final bottomInset =
+      ((-toggleOffset.dy) +
+              kFloatingWorkspaceToggleSize +
+              kFloatingWorkspacePanelToggleGap)
+          .clamp(0.0, double.infinity)
+          .toDouble();
+  return FloatingPanelPlacement(
+    width: preferredWidth,
+    height: preferredHeight,
+    rightInset: rightInset,
+    bottomInset: bottomInset,
+  );
+}
+
+/// Default open placement resolved against [host] (tests / first paint).
+@visibleForTesting
+Rect defaultFloatingPanelBounds(
+  Size host, {
+  Offset toggleOffset = kFloatingWorkspaceToggleDefaultOffset,
+  double preferredWidth = 720,
+  double preferredHeight = 480,
+}) {
+  return defaultFloatingPanelPlacement(
+    toggleOffset: toggleOffset,
+    preferredWidth: preferredWidth,
+    preferredHeight: preferredHeight,
+  ).resolve(
+    host,
+    minWidth: _kMinPanelWidth,
+    minHeight: _kMinPanelHeight,
+  );
 }
 
 /// Clamps [bounds] inside [host] with minimum panel size.
@@ -157,13 +275,21 @@ class _PanelChromeFrame extends StatefulWidget {
     required this.state,
     required this.registry,
     required this.hostSize,
+    required this.panelBounds,
     required this.allowDragResize,
+    required this.onGestureBegin,
+    required this.onGestureUpdate,
+    required this.onGestureEnd,
   });
 
   final FloatingWorkspaceState state;
   final FloatingSurfaceRegistry registry;
   final Size hostSize;
+  final Rect panelBounds;
   final bool allowDragResize;
+  final ValueChanged<Rect> onGestureBegin;
+  final ValueChanged<Rect> onGestureUpdate;
+  final ValueChanged<Rect> onGestureEnd;
 
   @override
   State<_PanelChromeFrame> createState() => _PanelChromeFrameState();
@@ -172,6 +298,9 @@ class _PanelChromeFrame extends StatefulWidget {
 class _PanelChromeFrameState extends State<_PanelChromeFrame> {
   Offset? _dragStartPointer;
   Rect? _dragStartBounds;
+  Offset? _resizeStartPointer;
+  Rect? _resizeStartBounds;
+  _ResizeEdge? _activeResizeEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -201,29 +330,52 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
                 onPanStart: widget.allowDragResize ? _onDragStart : null,
                 onPanUpdate: widget.allowDragResize ? _onDragUpdate : null,
                 onPanEnd: widget.allowDragResize ? _onDragEnd : null,
-                tabBar: tabs.isEmpty
-                    ? null
-                    : FloatingWorkspaceTabBar(
-                        tabs: tabs,
-                        activeTabId: activeId,
-                        onSelect: (id) {
-                          context.read<FloatingWorkspaceCubit>().selectTab(id);
-                          final tab = tabs.firstWhereOrNull((t) => t.id == id);
-                          if (tab == null) return;
-                          final s = widget.registry[tab.surfaceId];
-                          if (s != null) unawaited(s.activate(tab));
-                        },
-                        onClose: (tab) {
-                          unawaited(
-                            closeFloatingTab(
-                              cubit: context.read<FloatingWorkspaceCubit>(),
-                              registry: widget.registry,
-                              tab: tab,
-                              context: context,
-                            ),
-                          );
-                        },
+                tabBar: FloatingWorkspaceTabBar(
+                  tabs: tabs,
+                  activeTabId: activeId,
+                  onSelect: (id) {
+                    context.read<FloatingWorkspaceCubit>().selectTab(id);
+                    final tab = tabs.firstWhereOrNull((t) => t.id == id);
+                    if (tab == null) return;
+                    final s = widget.registry[tab.surfaceId];
+                    if (s != null) unawaited(s.activate(tab));
+                  },
+                  onClose: (tab) {
+                    unawaited(
+                      closeFloatingTab(
+                        cubit: context.read<FloatingWorkspaceCubit>(),
+                        registry: widget.registry,
+                        tab: tab,
+                        context: context,
                       ),
+                    );
+                  },
+                  onCloseOthers: (tab) {
+                    unawaited(
+                      closeOtherFloatingTabs(
+                        cubit: context.read<FloatingWorkspaceCubit>(),
+                        registry: widget.registry,
+                        keepTabId: tab.id,
+                        context: context,
+                      ),
+                    );
+                  },
+                  onCloseRight: (tab) {
+                    unawaited(
+                      closeFloatingTabsToTheRight(
+                        cubit: context.read<FloatingWorkspaceCubit>(),
+                        registry: widget.registry,
+                        fromTabId: tab.id,
+                        context: context,
+                      ),
+                    );
+                  },
+                  onOpenFile: () {
+                    context.read<CommandBus>().invoke(
+                      CommandIds.floatingOpenFile,
+                    );
+                  },
+                ),
               ),
               Expanded(
                 child: tabs.isEmpty
@@ -241,7 +393,7 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
               ),
             ],
           ),
-          if (widget.allowDragResize) ..._resizeHandles(context),
+          if (widget.allowDragResize) ..._resizeHandles(),
         ],
       ),
     );
@@ -259,7 +411,7 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
         ),
       FloatingWorkspaceEmptyRow(
         id: CommandIds.floatingMinimize,
-        icon: Icons.remove,
+        icon: Icons.horizontal_rule,
         label: l10n.floatingWorkspaceMinimize,
         shortcutLabels: _shortcutLabels(context, CommandIds.floatingMinimize),
       ),
@@ -297,12 +449,26 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
   }
 
   void _onEmptyActivate(BuildContext context, String id) {
+    if (id == CommandIds.floatingNewTerminal) {
+      final box = context.findRenderObject() as RenderBox?;
+      final origin = box != null && box.hasSize
+          ? box.localToGlobal(box.size.center(Offset.zero))
+          : Offset.zero;
+      unawaited(
+        showFloatingNewTerminalMenu(
+          context: context,
+          globalPosition: origin,
+        ),
+      );
+      return;
+    }
     context.read<CommandBus>().invoke(id);
   }
 
   void _onDragStart(DragStartDetails details) {
     _dragStartPointer = details.globalPosition;
-    _dragStartBounds = widget.state.panelBounds;
+    _dragStartBounds = widget.panelBounds;
+    widget.onGestureBegin(widget.panelBounds);
   }
 
   void _onDragUpdate(DragUpdateDetails details) {
@@ -310,7 +476,7 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
     final pointer = _dragStartPointer;
     if (start == null || pointer == null) return;
     final delta = details.globalPosition - pointer;
-    context.read<FloatingWorkspaceCubit>().setPanelBounds(
+    widget.onGestureUpdate(
       clampFloatingPanelBounds(
         Rect.fromLTWH(
           start.left + delta.dx,
@@ -324,26 +490,44 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
   }
 
   void _onDragEnd(DragEndDetails details) {
+    widget.onGestureEnd(widget.panelBounds);
     _dragStartPointer = null;
     _dragStartBounds = null;
   }
 
-  List<Widget> _resizeHandles(BuildContext context) {
+  List<Widget> _resizeHandles() {
     return [
       for (final edge in _ResizeEdge.values)
         _ResizeHandle(
           edge: edge,
-          onUpdate: (delta) => _applyResize(context, edge, delta),
+          onStart: (details) {
+            _activeResizeEdge = edge;
+            _resizeStartPointer = details.globalPosition;
+            _resizeStartBounds = widget.panelBounds;
+            widget.onGestureBegin(widget.panelBounds);
+          },
+          onUpdate: (details) => _applyResize(edge, details.globalPosition),
+          onEnd: (_) {
+            widget.onGestureEnd(widget.panelBounds);
+            _activeResizeEdge = null;
+            _resizeStartPointer = null;
+            _resizeStartBounds = null;
+          },
         ),
     ];
   }
 
-  void _applyResize(BuildContext context, _ResizeEdge edge, Offset delta) {
-    final b = widget.state.panelBounds;
-    var left = b.left;
-    var top = b.top;
-    var right = b.right;
-    var bottom = b.bottom;
+  void _applyResize(_ResizeEdge edge, Offset globalPosition) {
+    final startBounds = _resizeStartBounds;
+    final startPointer = _resizeStartPointer;
+    if (startBounds == null || startPointer == null) return;
+    if (_activeResizeEdge != edge) return;
+
+    final delta = globalPosition - startPointer;
+    var left = startBounds.left;
+    var top = startBounds.top;
+    var right = startBounds.right;
+    var bottom = startBounds.bottom;
 
     if (edge.adjustsLeft) left += delta.dx;
     if (edge.adjustsRight) right += delta.dx;
@@ -369,7 +553,7 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
       height = _kMinPanelHeight;
     }
 
-    context.read<FloatingWorkspaceCubit>().setPanelBounds(
+    widget.onGestureUpdate(
       clampFloatingPanelBounds(
         Rect.fromLTRB(left, top, left + width, top + height),
         widget.hostSize,
@@ -386,7 +570,7 @@ class _TitleBar extends StatelessWidget {
     this.onPanEnd,
   });
 
-  final Widget? tabBar;
+  final Widget tabBar;
   final GestureDragStartCallback? onPanStart;
   final GestureDragUpdateCallback? onPanUpdate;
   final GestureDragEndCallback? onPanEnd;
@@ -401,14 +585,17 @@ class _TitleBar extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onPanStart: onPanStart,
-                onPanUpdate: onPanUpdate,
-                onPanEnd: onPanEnd,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: tabBar ?? const SizedBox.expand(),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.grab,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onPanStart: onPanStart,
+                  onPanUpdate: onPanUpdate,
+                  onPanEnd: onPanEnd,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 6),
+                    child: tabBar,
+                  ),
                 ),
               ),
             ),
@@ -445,10 +632,17 @@ enum _ResizeEdge {
 }
 
 class _ResizeHandle extends StatelessWidget {
-  const _ResizeHandle({required this.edge, required this.onUpdate});
+  const _ResizeHandle({
+    required this.edge,
+    required this.onStart,
+    required this.onUpdate,
+    required this.onEnd,
+  });
 
   final _ResizeEdge edge;
-  final ValueChanged<Offset> onUpdate;
+  final GestureDragStartCallback onStart;
+  final GestureDragUpdateCallback onUpdate;
+  final GestureDragEndCallback onEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -522,7 +716,9 @@ class _ResizeHandle extends StatelessWidget {
         cursor: cursor,
         child: GestureDetector(
           behavior: HitTestBehavior.translucent,
-          onPanUpdate: (details) => onUpdate(details.delta),
+          onPanStart: onStart,
+          onPanUpdate: onUpdate,
+          onPanEnd: onEnd,
           child: const SizedBox.expand(),
         ),
       ),

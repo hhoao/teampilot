@@ -2861,5 +2861,11 @@
   "floatingWorkspaceMinimize": "Minimize",
   "floatingWorkspaceMaximize": "Maximize",
   "floatingWorkspaceCloseTab": "Close tab",
-  "floatingWorkspaceToggleTooltip": "Floating workspace"
+  "floatingWorkspaceAddTooltip": "Open in floating workspace",
+  "floatingWorkspaceToggleTooltip": "Floating workspace",
+
+  "filePreviewHostTitle": "File preview",
+  "filePreviewHostDescription": "Open files in the floating workspace or the center workbench.",
+  "filePreviewHostFloating": "Floating",
+  "filePreviewHostCenter": "Center"
 }

@@ -154,6 +154,33 @@ void main() {
     );
     expect(floating.state.activeBucket.tabs, isEmpty);
   });
+
+  test('openFile opens center workbench tab when filePreviewHost is center', () async {
+    final gate = Completer<void>();
+    final fs = _GatedFilesystem(gate)..files['/repo/a.txt'] = 'hello';
+    final editor = EditorCubit(fs: fs);
+    final workbench = WorkbenchCubit();
+    final floating = FloatingWorkspaceCubit();
+    addTearDown(editor.close);
+    addTearDown(workbench.close);
+    addTearDown(floating.close);
+
+    final opener = WorkbenchEditorOpener(
+      editor: editor,
+      workbench: workbench,
+      floating: floating,
+      markdownViewModes: MarkdownViewModeStore(),
+      readMarkdownOpenMode: () => MarkdownOpenMode.preview,
+      readFilePreviewInFloating: () => false,
+    );
+    gate.complete();
+    await opener.openFile('ws', '/repo/a.txt');
+
+    expect(workbench.activeTabId('ws')?.kind, WorkbenchTabKind.file);
+    expect(workbench.activeTabId('ws')?.id, '/repo/a.txt');
+    expect(floating.state.activeBucket.tabs, isEmpty);
+    expect(editor.state.bucket('ws').openFilePaths, contains('/repo/a.txt'));
+  });
 }
 
 class _GatedFilesystem extends InMemoryFilesystem {

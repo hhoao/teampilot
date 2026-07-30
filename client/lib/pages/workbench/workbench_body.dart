@@ -11,11 +11,12 @@ import '../../services/workbench/workbench_center_mode.dart';
 import '../chat/chat_workbench_slice.dart';
 import '../chat_workbench.dart';
 import 'diff_editor_surface.dart';
+import 'file_editor_surface.dart';
 import 'run_tab_surface.dart';
 import 'workbench_welcome_page.dart';
 
-/// Center workbench body: session / diff / run, with keep-alive for run so
-/// output survives tab switches. File and shell live in the floating panel.
+/// Center workbench body: session / file / diff / run, with keep-alive for run
+/// so output survives tab switches. Shell lives in the floating panel.
 class WorkbenchBody extends StatelessWidget {
   const WorkbenchBody({
     required this.workspaceId,
@@ -64,7 +65,7 @@ class WorkbenchBody extends StatelessWidget {
     if (!isCenterStripWorkbenchTab(selected.kind)) {
       assert(() {
         debugPrint(
-          'WorkbenchBody: file and shell tabs must not be active on the '
+          'WorkbenchBody: shell tabs must not be active on the '
           'center workbench strip',
         );
         return true;
@@ -92,6 +93,12 @@ class WorkbenchBody extends StatelessWidget {
             isPersonalContext: isPersonalContext,
             team: team,
             workbenchSlice: workbenchSlice,
+          )
+        else if (selected.kind == WorkbenchTabKind.file)
+          FileEditorSurface(
+            key: ValueKey(selected.id),
+            workspaceId: workspaceId,
+            path: selected.id,
           )
         else if (selected.kind == WorkbenchTabKind.diff)
           DiffEditorSurface(

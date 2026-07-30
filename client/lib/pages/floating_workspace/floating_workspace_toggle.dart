@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/floating_workspace/floating_panel_visibility.dart';
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/floating_workspace/floating_workspace_state.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../theme/workspace_surface_layers.dart';
+import 'floating_workspace_toggle_metrics.dart';
 
-/// Draggable floating-workspace toggle (grid icon), positioned from bottom-right.
+/// Draggable floating-workspace toggle, positioned from bottom-right.
 ///
-/// Uses [FloatingWorkspaceState.toggleOffset] (typically negative insets from
-/// the bottom-right corner, e.g. `Offset(-24, -24)` → 24px inset).
+/// Uses [FloatingWorkspaceState.toggleOffset] (negative insets from the
+/// bottom-right corner, e.g. `Offset(-24, -72)` → 24px right / 72px bottom).
 class FloatingWorkspaceToggle extends StatefulWidget {
   const FloatingWorkspaceToggle({super.key});
 
@@ -36,6 +37,8 @@ class _FloatingWorkspaceToggleState extends State<FloatingWorkspaceToggle> {
         final cubit = context.read<FloatingWorkspaceCubit>();
         final right = -state.toggleOffset.dx;
         final bottom = -state.toggleOffset.dy;
+        final cs = Theme.of(context).colorScheme;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
 
         return Positioned(
           key: const Key('floating_workspace_toggle'),
@@ -51,8 +54,6 @@ class _FloatingWorkspaceToggleState extends State<FloatingWorkspaceToggle> {
               final pointer = _dragStartPointer;
               if (start == null || pointer == null) return;
               final delta = details.globalPosition - pointer;
-              // Offset is stored as bottom-right inset (negative when inset > 0).
-              // Dragging right/up decreases inset magnitude → add to dx/dy.
               cubit.setToggleOffset(
                 Offset(start.dx + delta.dx, start.dy + delta.dy),
               );
@@ -64,37 +65,65 @@ class _FloatingWorkspaceToggleState extends State<FloatingWorkspaceToggle> {
             onTap: cubit.toggle,
             child: Tooltip(
               message: l10n.floatingWorkspaceToggleTooltip,
-              child: Material(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                elevation: 2,
-                shape: const CircleBorder(),
-                child: SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Icon(
-                        Icons.dashboard_customize_outlined,
-                        size: context.tpIconSizes.md,
-                        color: Theme.of(context).colorScheme.onSurface,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.grab,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: isDark ? cs.surfaceContainerHigh : cs.workspaceCard,
+                    borderRadius: BorderRadius.circular(
+                      kFloatingWorkspaceToggleRadius,
+                    ),
+                    border: Border.all(
+                      color: cs.onSurface.withValues(
+                        alpha: isDark ? 0.22 : 0.12,
                       ),
-                      if (state.attention &&
-                          state.visibility ==
-                              FloatingPanelVisibility.minimized)
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.error,
-                              shape: BoxShape.circle,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.55 : 0.22,
+                        ),
+                        blurRadius: isDark ? 16 : 12,
+                        offset: Offset(0, isDark ? 6 : 4),
+                      ),
+                    ],
+                  ),
+                  child: SizedBox(
+                    width: kFloatingWorkspaceToggleSize,
+                    height: kFloatingWorkspaceToggleSize,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Icon(
+                          // Orca uses Lucide PanelsTopLeft — closest Material match.
+                          Icons.space_dashboard_outlined,
+                          size: kFloatingWorkspaceToggleIconSize,
+                          color: cs.onSurface,
+                        ),
+                        if (state.attention &&
+                            state.visibility ==
+                                FloatingPanelVisibility.minimized)
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                // Orca unread convention (amber-500).
+                                color: const Color(0xFFF59E0B),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isDark
+                                      ? cs.surfaceContainerHigh
+                                      : cs.workspaceCard,
+                                  width: 2,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

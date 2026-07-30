@@ -1,17 +1,24 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/floating_workspace_tab.dart';
-import '../../theme/workspace_surface_layers.dart';
+import '../workspace_shell/workspace_shell_tabs.dart';
+import 'floating_workspace_new_terminal_menu.dart';
 
-/// Horizontal tab strip for floating workspace tabs with per-tab close.
+/// Horizontal tab strip matching [WorkspaceShellTabRow] chrome: chips,
+/// right-click close menu, and a "+" open menu.
 class FloatingWorkspaceTabBar extends StatelessWidget {
   const FloatingWorkspaceTabBar({
     required this.tabs,
     required this.activeTabId,
     required this.onSelect,
     required this.onClose,
+    required this.onCloseOthers,
+    required this.onCloseRight,
+    required this.onOpenFile,
     super.key,
   });
 
@@ -19,57 +26,113 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
   final String? activeTabId;
   final ValueChanged<String> onSelect;
   final ValueChanged<FloatingTab> onClose;
+  final ValueChanged<FloatingTab> onCloseOthers;
+  final ValueChanged<FloatingTab> onCloseRight;
+  final VoidCallback onOpenFile;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
-    final l10n = context.l10n;
-
-    return SizedBox(
-      height: 36,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: tabs.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 4),
-        itemBuilder: (context, index) {
-          final tab = tabs[index];
-          final selected = tab.id == activeTabId;
-          return Material(
-            color: selected ? cs.workspaceSubtleSurface : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-            child: InkWell(
-              onTap: () => onSelect(tab.id),
-              borderRadius: BorderRadius.circular(6),
-              child: Padding(
-                padding: const EdgeInsets.only(left: 10, right: 4),
+    return MouseRegion(
+      cursor: SystemMouseCursors.grab,
+      child: SizedBox(
+        height: 36,
+        child: Row(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 160),
-                      child: Text(
-                        tab.title,
-                        overflow: TextOverflow.ellipsis,
-                        style: selected
-                            ? styles.smMediumColored(cs.onSurface)
-                            : styles.smColored(cs.onSurfaceVariant),
+                    for (final tab in tabs)
+                      WorkspaceShellTabChip(
+                        key: ValueKey(tab.id),
+                        title: tab.title,
+                        active: tab.id == activeTabId,
+                        icon: _iconFor(tab.surfaceId),
+                        onTap: () => onSelect(tab.id),
+                        onClose: () => onClose(tab),
+                        onCloseOthers: () => onCloseOthers(tab),
+                        onCloseRight: () => onCloseRight(tab),
                       ),
-                    ),
-                    TpIconButton(
-                      icon: Icons.close,
-                      compact: true,
-                      size: 22,
-                      iconSize: 14,
-                      tooltip: l10n.floatingWorkspaceCloseTab,
-                      onTap: () => onClose(tab),
-                    ),
+                    if (tabs.isNotEmpty) const SizedBox(width: 2),
+                    _FloatingWorkspaceAddButton(onOpenFile: onOpenFile),
                   ],
                 ),
               ),
             ),
-          );
-        },
+          ],
+        ),
+      ),
+    );
+  }
+
+  static IconData _iconFor(String surfaceId) {
+    return switch (surfaceId) {
+      'terminal' => Icons.terminal_rounded,
+      'filePreview' => Icons.description_outlined,
+      _ => Icons.widgets_outlined,
+    };
+  }
+}
+
+class _FloatingWorkspaceAddButton extends StatefulWidget {
+  const _FloatingWorkspaceAddButton({required this.onOpenFile});
+
+  final VoidCallback onOpenFile;
+
+  @override
+  State<_FloatingWorkspaceAddButton> createState() =>
+      _FloatingWorkspaceAddButtonState();
+}
+
+class _FloatingWorkspaceAddButtonState
+    extends State<_FloatingWorkspaceAddButton> {
+  final _anchorKey = GlobalKey();
+
+  Future<void> _showMenu() async {
+    final box = _anchorKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final anchor = box.localToGlobal(box.size.bottomLeft(Offset.zero));
+    final menuOrigin = anchor + const Offset(0, 4);
+    final l10n = context.l10n;
+    final selected = await showTpActionMenuFromSpecs<String>(
+      context: context,
+      globalPosition: menuOrigin,
+      specs: [
+        TpActionMenuSpec.item(
+          value: 'terminal',
+          label: l10n.workspaceTerminalNewSession,
+          icon: Icons.terminal_rounded,
+        ),
+        TpActionMenuSpec.item(
+          value: 'file',
+          label: l10n.floatingWorkspaceOpenFile,
+          icon: Icons.description_outlined,
+        ),
+      ],
+    );
+    if (!mounted || selected == null) return;
+    switch (selected) {
+      case 'terminal':
+        await showFloatingNewTerminalMenu(
+          context: context,
+          globalPosition: menuOrigin,
+        );
+      case 'file':
+        widget.onOpenFile();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyedSubtree(
+      key: _anchorKey,
+      child: TpIconButton(
+        key: const Key('floating_workspace_add_button'),
+        icon: Icons.add_rounded,
+        tooltip: context.l10n.floatingWorkspaceAddTooltip,
+        compact: true,
+        onTap: () => unawaited(_showMenu()),
       ),
     );
   }

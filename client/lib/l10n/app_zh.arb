@@ -2432,5 +2432,11 @@
   "floatingWorkspaceMinimize": "最小化",
   "floatingWorkspaceMaximize": "最大化",
   "floatingWorkspaceCloseTab": "关闭标签",
-  "floatingWorkspaceToggleTooltip": "浮动工作区"
+  "floatingWorkspaceAddTooltip": "在浮动工作区打开",
+  "floatingWorkspaceToggleTooltip": "浮动工作区",
+
+  "filePreviewHostTitle": "文件预览位置",
+  "filePreviewHostDescription": "在浮动工作区或中间工作台打开文件。",
+  "filePreviewHostFloating": "浮动",
+  "filePreviewHostCenter": "中间"
 }

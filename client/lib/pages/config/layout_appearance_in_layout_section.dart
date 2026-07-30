@@ -203,6 +203,29 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   ),
                   showDividerBelow: true,
                 ),
+                TpPreferenceRow(
+                  title: l10n.filePreviewHostTitle,
+                  subtitle: l10n.filePreviewHostDescription,
+                  trailing: TpSegmentedPicker<FilePreviewHost>(
+                    segments: [
+                      TpSegmentedOption<FilePreviewHost>(
+                        value: FilePreviewHost.floating,
+                        label: l10n.filePreviewHostFloating,
+                        icon: Icons.dashboard_customize_outlined,
+                      ),
+                      TpSegmentedOption<FilePreviewHost>(
+                        value: FilePreviewHost.center,
+                        label: l10n.filePreviewHostCenter,
+                        icon: Icons.vertical_split_outlined,
+                      ),
+                    ],
+                    selected: context.select<LayoutCubit, FilePreviewHost>(
+                      (c) => c.state.preferences.filePreviewHost,
+                    ),
+                    onChanged: controller.setFilePreviewHost,
+                  ),
+                  showDividerBelow: true,
+                ),
                 TpSectionHeader(title: l10n.thinkingProcessSectionTitle),
                 TpPreferenceRow(
                   title: l10n.cotExpandReasoningOnOpenTitle,

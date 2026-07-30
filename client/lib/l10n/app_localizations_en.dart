@@ -6374,5 +6374,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get floatingWorkspaceCloseTab => 'Close tab';
 
   @override
+  String get floatingWorkspaceAddTooltip => 'Open in floating workspace';
+
+  @override
   String get floatingWorkspaceToggleTooltip => 'Floating workspace';
+
+  @override
+  String get filePreviewHostTitle => 'File preview';
+
+  @override
+  String get filePreviewHostDescription =>
+      'Open files in the floating workspace or the center workbench.';
+
+  @override
+  String get filePreviewHostFloating => 'Floating';
+
+  @override
+  String get filePreviewHostCenter => 'Center';
 }
