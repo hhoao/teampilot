@@ -49,7 +49,8 @@ class WorkbenchEditorOpener {
     if (!isWorkbenchOpenableFilePath(normalized)) {
       await _editor.openFile(workspaceId, normalized, fs: fs);
       return;
-    }    if (isMarkdownEditorPath(normalized)) {
+    }
+    if (isMarkdownEditorPath(normalized)) {
       markdownViewModes.seedOnOpen(normalized, _readMarkdownOpenMode());
     }
     _floating.ensureOpen();
@@ -84,11 +85,7 @@ class WorkbenchEditorOpener {
       reloadDiff: reloadDiff,
     );
     final tab = WorkbenchTabId.diff(absolutePath, source: source);
-    final replaced = _workbench.ensureTab(
-      workspaceId,
-      tab,
-      preview: preview,
-    );
+    final replaced = _workbench.ensureTab(workspaceId, tab, preview: preview);
     _closeReplaced(workspaceId, replaced);
     _chat?.dismissNewChat();
   }
@@ -97,10 +94,7 @@ class WorkbenchEditorOpener {
   Future<void> openChangesDiff({
     required String workspaceId,
     required String absolutePath,
-    required Future<String?> Function({
-      bool ignoreWhitespace,
-      bool fullContext,
-    })
+    required Future<String?> Function({bool ignoreWhitespace, bool fullContext})
     loadDiff,
     String? title,
     bool preview = true,
