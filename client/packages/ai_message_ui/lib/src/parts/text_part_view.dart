@@ -7,7 +7,6 @@ import '../markdown/content_compiler.dart';
 import '../markdown/content_ir.dart';
 import '../markdown/content_truncate.dart';
 import '../strings.dart';
-import '../theme.dart';
 
 export '../markdown/streaming_markdown.dart';
 
