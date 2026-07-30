@@ -50,6 +50,7 @@ import 'services/storage/app_storage.dart';
 import 'services/perf/live_perf_driver.dart';
 import 'services/app/boot_splash.dart';
 import 'services/app/desktop_text_input_probe_bypass.dart';
+import 'services/app/platform_utils.dart';
 import 'services/app/windows_keyboard_workaround.dart';
 import 'services/app/connection_mode_service.dart';
 import 'services/storage/home_storage_invalidator.dart';
@@ -839,6 +840,7 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
     final textBaseline = autoTextScaleForSystem(
       systemMq.textScaler.scale(1.0),
       systemMq.devicePixelRatio,
+      compensateDisplayScaling: usesDesktopDisplayScalingCompensation,
     );
     final effectiveTextMult = resolveRelativeScale(
       scaleId: widget.typographyScaleId,
@@ -924,11 +926,15 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
               uiZoomCustomMultiplier: state.preferences.uiZoomCustomMultiplier,
             ),
             builder: (context, zoomBundle) {
-              // Interface zoom: `standard` == the per-display baseline (1/dpr,
-              // compensating for OS display scaling); compact/comfortable/custom
-              // are relative to it.
+              // Interface zoom: `standard` == the per-display baseline
+              // (desktop: 1/dpr; mobile: 1.0 — see
+              // [usesDesktopDisplayScalingCompensation]); presets are relative.
               final dpr = MediaQuery.of(context).devicePixelRatio;
-              final baseline = autoUiZoomForDevicePixelRatio(dpr);
+              final baseline = autoUiZoomForDevicePixelRatio(
+                dpr,
+                compensateDisplayScaling:
+                    usesDesktopDisplayScalingCompensation,
+              );
               context.read<UiZoomBaseline>().value = baseline;
               final effectiveZoom = clampUiZoom(
                 resolveRelativeScale(

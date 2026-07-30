@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 
 void main() {
-  test('autoUiZoomForDevicePixelRatio = 1/dpr (standard zoom baseline)', () {
+  test('autoUiZoomForDevicePixelRatio = 1/dpr (desktop baseline)', () {
     expect(autoUiZoomForDevicePixelRatio(1.0), 1.0); // Linux/macOS @100%
     expect(
       autoUiZoomForDevicePixelRatio(1.5),
@@ -14,7 +14,27 @@ void main() {
   });
 
   test(
-    'autoTextScaleForSystem = osTextScale × dpr (standard text baseline)',
+    'autoUiZoomForDevicePixelRatio skips 1/dpr on mobile (logical px)',
+    () {
+      expect(
+        autoUiZoomForDevicePixelRatio(
+          3.0,
+          compensateDisplayScaling: false,
+        ),
+        1.0,
+      );
+      expect(
+        autoUiZoomForDevicePixelRatio(
+          2.0,
+          compensateDisplayScaling: false,
+        ),
+        1.0,
+      );
+    },
+  );
+
+  test(
+    'autoTextScaleForSystem = osTextScale × dpr (desktop text baseline)',
     () {
       expect(autoTextScaleForSystem(1.5, 1.0), 1.5); // Ubuntu GNOME 1.5 @100%
       expect(autoTextScaleForSystem(1.0, 1.5), 1.5); // Windows @150%
@@ -24,6 +44,28 @@ void main() {
         kTypographyCustomMultiplierMax,
       ); // clamped
       expect(autoTextScaleForSystem(0.0, 0.0), 1.0); // guards
+    },
+  );
+
+  test(
+    'autoTextScaleForSystem uses mobile baseline when not compensating',
+    () {
+      expect(
+        autoTextScaleForSystem(
+          1.0,
+          3.0,
+          compensateDisplayScaling: false,
+        ),
+        closeTo(kMobileTextScaleBaseline, 0.0001),
+      );
+      expect(
+        autoTextScaleForSystem(
+          1.2,
+          3.0,
+          compensateDisplayScaling: false,
+        ),
+        closeTo(1.2 * kMobileTextScaleBaseline, 0.0001),
+      );
     },
   );
 

@@ -14,6 +14,12 @@ ConnectionMode defaultConnectionMode() {
 /// Linux / Windows / macOS window chrome; false on Android.
 bool get useCustomDesktopWindowTitleBar => !Platform.isAndroid;
 
+/// Desktop undoes OS display scaling via `1/dpr` in [autoUiZoomForDevicePixelRatio]
+/// / [autoTextScaleForSystem]. Android/iOS already use density-independent
+/// logical pixels — leave baseline at 1.0 instead of compensating again.
+bool get usesDesktopDisplayScalingCompensation =>
+    !Platform.isAndroid && !Platform.isIOS;
+
 /// macOS uses left-aligned traffic-light window controls instead of the
 /// Windows-style buttons on the right.
 bool get useMacWindowChromeStyle =>

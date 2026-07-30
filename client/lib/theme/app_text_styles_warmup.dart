@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../models/layout_preferences.dart';
+import '../services/app/platform_utils.dart';
 import 'app_fonts.dart';
 import 'app_markdown_style_sheet.dart';
 import 'app_outline_input_theme.dart';
@@ -70,6 +71,7 @@ double _systemTextBaseline() {
   return autoTextScaleForSystem(
     systemMq.textScaler.scale(1.0),
     systemMq.devicePixelRatio,
+    compensateDisplayScaling: usesDesktopDisplayScalingCompensation,
   );
 }
 

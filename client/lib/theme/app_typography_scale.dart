@@ -54,10 +54,21 @@ double clampUiZoomMultiplierForBaseline(
 
 /// `standard` whole-UI zoom baseline for a display [devicePixelRatio]. The
 /// `standard` preset maps to this; compact/comfortable/custom are relative to
-/// it. Compensates for OS scaling so density is consistent across platforms:
-/// Windows @150% (dpr 1.5) → ~0.67, Linux/macOS @100% (dpr 1.0) → 1.0.
-double autoUiZoomForDevicePixelRatio(double devicePixelRatio) =>
-    devicePixelRatio <= 0 ? 1.0 : 1.0 / devicePixelRatio;
+/// it.
+///
+/// When [compensateDisplayScaling] is true (desktop), undoes OS display
+/// scaling so density stays consistent: Windows @150% (dpr 1.5) → ~0.67,
+/// Linux/macOS @100% (dpr 1.0) → 1.0.
+///
+/// When false (Android/iOS), returns `1.0`: Flutter logical pixels already
+/// absorb screen density, so applying `1/dpr` would shrink the UI twice.
+double autoUiZoomForDevicePixelRatio(
+  double devicePixelRatio, {
+  bool compensateDisplayScaling = true,
+}) {
+  if (!compensateDisplayScaling) return 1.0;
+  return devicePixelRatio <= 0 ? 1.0 : 1.0 / devicePixelRatio;
+}
 
 String normalizeTypographyScale(String? raw) {
   if (raw != null && kTypographyScaleIds.contains(raw)) return raw;
@@ -67,16 +78,30 @@ String normalizeTypographyScale(String? raw) {
 double clampTypographyCustomMultiplier(double value) =>
     value.clamp(kTypographyCustomMultiplierMin, kTypographyCustomMultiplierMax);
 
-/// `standard` text-size baseline: the OS's intended *physical* text scale =
-/// [osTextScale] (e.g. GNOME text-scaling-factor; 1.0 where the OS has none) ×
-/// [devicePixelRatio] (display scaling). The `standard` preset maps to this;
-/// compact/comfortable/custom are relative to it. Combined with the standard
-/// interface zoom (1/dpr) this renders text at the size the OS would while
-/// icons/spacing stay compact. e.g. Ubuntu GNOME 1.5 @100% → 1.5; Windows @150%
-/// → 1.5.
-double autoTextScaleForSystem(double osTextScale, double devicePixelRatio) {
-  final dpr = devicePixelRatio <= 0 ? 1.0 : devicePixelRatio;
+/// Mobile `standard` text baseline multiplier (× OS accessibility text scale).
+/// Logical pixels already absorb dpr; this only lifts default font size for
+/// touch readability relative to the desktop design sizes.
+const double kMobileTextScaleBaseline = 1.3;
+
+/// `standard` text-size baseline.
+///
+/// Desktop ([compensateDisplayScaling] true): [osTextScale] (e.g. GNOME
+/// text-scaling-factor) × [devicePixelRatio]. Combined with interface zoom
+/// `1/dpr` this renders text at the size the OS would while icons/spacing stay
+/// compact. e.g. Ubuntu GNOME 1.5 @100% → 1.5; Windows @150% → 1.5.
+///
+/// Mobile ([compensateDisplayScaling] false): [osTextScale] ×
+/// [kMobileTextScaleBaseline]. Logical pixels already absorb dpr.
+double autoTextScaleForSystem(
+  double osTextScale,
+  double devicePixelRatio, {
+  bool compensateDisplayScaling = true,
+}) {
   final os = osTextScale <= 0 ? 1.0 : osTextScale;
+  if (!compensateDisplayScaling) {
+    return clampTypographyCustomMultiplier(os * kMobileTextScaleBaseline);
+  }
+  final dpr = devicePixelRatio <= 0 ? 1.0 : devicePixelRatio;
   return clampTypographyCustomMultiplier(os * dpr);
 }
 
