@@ -65,6 +65,7 @@ class ProgressActivityCubit extends Cubit<ProgressActivityState> {
     String id, {
     String? title,
     String? subtitle,
+    bool clearSubtitle = false,
     ProgressActivityPhase? phase,
     double? fraction,
     bool clearFraction = false,
@@ -76,6 +77,7 @@ class ProgressActivityCubit extends Cubit<ProgressActivityState> {
     bool clearBytesDone = false,
     int? bytesTotal,
     bool clearBytesTotal = false,
+    bool? cancellable,
     String? errorMessage,
     bool clearErrorMessage = false,
   }) {
@@ -87,7 +89,7 @@ class ProgressActivityCubit extends Cubit<ProgressActivityState> {
       id: current.id,
       kind: current.kind,
       title: title ?? current.title,
-      subtitle: subtitle ?? current.subtitle,
+      subtitle: clearSubtitle ? null : (subtitle ?? current.subtitle),
       workspaceId: current.workspaceId,
       phase: phase ?? current.phase,
       fraction: clearFraction ? null : (fraction ?? current.fraction),
@@ -97,7 +99,7 @@ class ProgressActivityCubit extends Cubit<ProgressActivityState> {
       totalItems: clearTotalItems ? null : (totalItems ?? current.totalItems),
       bytesDone: clearBytesDone ? null : (bytesDone ?? current.bytesDone),
       bytesTotal: clearBytesTotal ? null : (bytesTotal ?? current.bytesTotal),
-      cancellable: current.cancellable,
+      cancellable: cancellable ?? current.cancellable,
       detailOpen: current.detailOpen,
       errorMessage: clearErrorMessage
           ? null

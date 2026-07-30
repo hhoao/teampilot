@@ -215,5 +215,26 @@ void main() {
       expect(activity.completedItems, 2);
       expect(activity.totalItems, 4);
     });
+
+    test('update can set cancellable to false during install phase', () {
+      final recorder = _FakeNotificationRecorder();
+      final cubit = _cubit(recorder);
+      addTearDown(cubit.close);
+      var cancelCount = 0;
+
+      cubit.start(
+        _activity(id: 'update', cancellable: true),
+        onCancelRequested: () => cancelCount++,
+      );
+
+      cubit.update('update', cancellable: false);
+
+      expect(cubit.state.activities.single.cancellable, isFalse);
+
+      cubit.requestCancel('update');
+
+      expect(cubit.state.activities.single.phase, ProgressActivityPhase.running);
+      expect(cancelCount, 0);
+    });
   });
 }
