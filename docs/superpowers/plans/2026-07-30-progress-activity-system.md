@@ -151,12 +151,13 @@ git commit -m "feat(progress): add ProgressActivityCubit runtime bus"
 ### Task 3: Provide cubit in app shell
 
 **Files:**
-- Modify: `client/lib/app/app_shell.dart` (construct + `BlocProvider` / TeamPilotServices bag as existing pattern)
+- Modify: `client/lib/app/app_shell.dart` (construct + provide as existing pattern)
+- Modify: `client/lib/main.dart` (`MultiBlocProvider` / shell args — mirror `NotificationCubit`)
 - Modify: any `TeamPilotServices` / DI holder if notifications are injected that way
 
 Wire `ProgressActivityCubit(historyRecorder: notificationCubit)` next to `NotificationCubit`. Ensure dispose on shell teardown.
 
-- [ ] **Step 1: Locate how `NotificationCubit` is provided; mirror for progress cubit**
+- [ ] **Step 1: Locate how `NotificationCubit` is provided in `app_shell.dart` + `main.dart`; mirror for progress cubit**
 
 - [ ] **Step 2: Implement wiring**
 
@@ -165,7 +166,7 @@ Wire `ProgressActivityCubit(historyRecorder: notificationCubit)` next to `Notifi
 - [ ] **Step 4: Commit**
 
 ```bash
-git add client/lib/app/app_shell.dart
+git add client/lib/app/app_shell.dart client/lib/main.dart
 git commit -m "feat(progress): provide ProgressActivityCubit in app shell"
 ```
 
