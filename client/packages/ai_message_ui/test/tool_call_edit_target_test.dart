@@ -402,7 +402,7 @@ void main() {
 
     expect(find.textContaining('Used tool:'), findsNothing);
     expect(find.textContaining('Check worktree git state'), findsOneWidget);
-    expect(find.textContaining('git status --short'), findsNothing);
+    expect(find.textContaining('git status --short'), findsOneWidget);
     expect(find.textContaining('Result:'), findsNothing);
     expect(find.byIcon(Icons.terminal), findsOneWidget);
 

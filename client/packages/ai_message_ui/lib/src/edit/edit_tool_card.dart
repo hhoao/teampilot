@@ -102,39 +102,55 @@ class EditToolCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: EdgeInsets.symmetric(vertical: dense ? 4 : 6),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _EditStatusIcon(part: part, color: triggerColor),
-              const SizedBox(width: 6),
-              Icon(
-                _fileTypeIcon(hunk.path),
-                size: 15,
-                color: triggerColor,
-              ),
-              const SizedBox(width: 6),
-              Expanded(child: title),
-              ...badges,
-              const SizedBox(width: 4),
-              _EditExpandChevron(
-                open: open,
-                color: triggerColor,
-              ),
-            ],
+        SelectionContainer.disabled(
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: dense ? 4 : 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _EditStatusIcon(part: part, color: triggerColor),
+                const SizedBox(width: 6),
+                Icon(
+                  _fileTypeIcon(hunk.path),
+                  size: 15,
+                  color: triggerColor,
+                ),
+                const SizedBox(width: 6),
+                Expanded(child: title),
+                ...badges,
+                const SizedBox(width: 4),
+                _EditExpandChevron(
+                  open: open,
+                  color: triggerColor,
+                ),
+              ],
+            ),
           ),
         ),
-        _EditDiffPanel(
-          hunk: hunk,
-          lines: visibleLines,
-          panelColor: panelColor,
-          radius: aiTheme.panelRadius,
-          markdown: markdown,
-          highlighter: actions.lineHighlighter,
-          open: open,
-          onOpenFile: onOpenFile == null ? null : () => onOpenFile(openTarget!),
-        ),
+        if (!open)
+          SelectionContainer.disabled(
+            child: _EditDiffPanel(
+              hunk: hunk,
+              lines: visibleLines,
+              panelColor: panelColor,
+              radius: aiTheme.panelRadius,
+              markdown: markdown,
+              highlighter: actions.lineHighlighter,
+              open: open,
+              onOpenFile: onOpenFile == null ? null : () => onOpenFile(openTarget!),
+            ),
+          )
+        else
+          _EditDiffPanel(
+            hunk: hunk,
+            lines: visibleLines,
+            panelColor: panelColor,
+            radius: aiTheme.panelRadius,
+            markdown: markdown,
+            highlighter: actions.lineHighlighter,
+            open: open,
+            onOpenFile: onOpenFile == null ? null : () => onOpenFile(openTarget!),
+          ),
       ],
     );
   }
