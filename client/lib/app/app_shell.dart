@@ -60,6 +60,7 @@ import '../repositories/mcp_repository.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
 import '../cubits/ssh_connection_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
+import '../cubits/termux_cubit.dart';
 import '../cubits/github_account_cubit.dart';
 import '../config/github_oauth_config.dart';
 import '../cubits/launch_profile_cubit.dart';
@@ -141,7 +142,9 @@ import '../services/storage/home_target_controller.dart';
 import '../services/storage/workspace_directory_picker.dart';
 import '../services/storage/home_target_store.dart';
 import '../services/storage/runtime_target_registry.dart';
+import '../services/termux/termux_config.dart';
 import '../services/termux/termux_transport_profile.dart';
+import '../services/ssh/ssh_profile_connection_tester.dart';
 import '../services/notification/notification_recorder.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/skill/skill_acquisition_engine.dart';
@@ -235,6 +238,7 @@ class AppShell {
     required this.extensionCubit,
     required this.appUpdateCubit,
     required this.sshProfileCubit,
+    required this.termuxCubit,
     required this.homeStorageInvalidator,
     required this.sshConnectionCubit,
     required this.githubCredentialsStore,
@@ -311,6 +315,7 @@ class AppShell {
   final ExtensionCubit extensionCubit;
   final AppUpdateCubit appUpdateCubit;
   final SshProfileCubit sshProfileCubit;
+  final TermuxCubit termuxCubit;
   final HomeStorageInvalidator homeStorageInvalidator;
   final SshConnectionCubit sshConnectionCubit;
   final GithubCredentialsStore githubCredentialsStore;
@@ -1436,6 +1441,46 @@ Future<AppShell> buildAppShell({
     switchTo: switchHomeTarget,
   );
 
+  void refreshTermuxConfigCache(TermuxConfig? config) {
+    termuxConfigCache = config;
+  }
+
+  final termuxConnectionTester = SshProfileConnectionTester(
+    clientFactory: sshClientFactory,
+  );
+  final termuxCubit = TermuxCubit(
+    store: termuxConfigStore,
+    credentials: sshCredentialStore,
+    nativeAppDataPath: nativeAppDataPath,
+    selectHome: homeTargetController.select,
+    initialConfig: termuxConfigCache,
+    onConfigChanged: refreshTermuxConfigCache,
+    resolvePathsAfterHomeSelect: () async {
+      final homeCtx = runtimeContextRegistry.home();
+      if (homeCtx.termuxPathsFromCache) {
+        return (home: null, appDataRoot: null);
+      }
+      return (home: homeCtx.home, appDataRoot: homeCtx.appDataRoot);
+    },
+    testConnect: (profile) async {
+      try {
+        await termuxConnectionTester.test(profile);
+        return (ok: true, message: '');
+      } on Object catch (error) {
+        return (ok: false, message: error.toString());
+      }
+    },
+    disconnectTransport: () async {
+      sshClientFactory.disconnectProfile(
+        'termux',
+        reason: SshTransportCloseReason.userDisconnect,
+      );
+    },
+  );
+  if (homeTarget.kind == RuntimeKind.termux) {
+    unawaited(termuxCubit.reconnect());
+  }
+
   // Target-aware directory picker for workspace dialogs: resolves the chosen
   // target's filesystem (real SSH connect for ssh targets) and lists targets.
   final directoryPicker = WorkspaceDirectoryPicker(
@@ -1499,6 +1544,7 @@ Future<AppShell> buildAppShell({
     extensionCubit: extensionCubit,
     appUpdateCubit: appUpdateCubit,
     sshProfileCubit: sshProfileCubit,
+    termuxCubit: termuxCubit,
     homeStorageInvalidator: homeStorageInvalidator,
     sshConnectionCubit: sshConnectionCubit,
     githubCredentialsStore: githubCredentialsStore,
