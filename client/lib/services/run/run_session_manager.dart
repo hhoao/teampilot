@@ -51,7 +51,7 @@ class DefaultRunProcessLauncher implements RunProcessLauncher {
     ProcessRunExecutor? executor,
     RunTargetResolver? resolver,
   }) : _executor = executor ?? ProcessRunExecutor(),
-       _resolver = resolver ?? const RunTargetResolver();
+       _resolver = resolver ?? RunTargetResolver();
 
   final ProcessRunExecutor _executor;
   final RunTargetResolver _resolver;
