@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../markdown/compiled_markdown_chrome.dart';
 import '../markdown/compiled_markdown_style.dart';
 import '../parts/expandable_tool_card.dart';
+import '../parts/fade_expand_body.dart';
 import '../theme.dart';
 
 /// Cursor-style shell tool card: header + always-visible mini/full terminal panel.
@@ -18,6 +19,7 @@ class ShellToolCard extends StatelessWidget {
     required this.markdown,
     required this.dense,
     required this.open,
+    required this.onToggle,
     super.key,
   });
 
@@ -27,6 +29,7 @@ class ShellToolCard extends StatelessWidget {
   final CompiledMarkdownStyle markdown;
   final bool dense;
   final bool open;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +78,7 @@ class ShellToolCard extends StatelessWidget {
               markdown: markdown,
               accentColor: triggerColor,
               open: false,
+              onToggle: onToggle,
             ),
           )
         else
@@ -86,6 +90,7 @@ class ShellToolCard extends StatelessWidget {
             markdown: markdown,
             accentColor: triggerColor,
             open: true,
+            onToggle: onToggle,
           ),
       ],
     );
@@ -125,6 +130,7 @@ class ShellToolCardHost extends StatelessWidget {
         markdown: markdown,
         dense: dense,
         open: open,
+        onToggle: onToggle,
       ),
     );
   }
@@ -139,6 +145,7 @@ class _ShellTerminalBody extends StatelessWidget {
     required this.markdown,
     required this.accentColor,
     required this.open,
+    required this.onToggle,
   });
 
   final AiToolCallPart part;
@@ -148,6 +155,7 @@ class _ShellTerminalBody extends StatelessWidget {
   final CompiledMarkdownStyle markdown;
   final Color accentColor;
   final bool open;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -155,24 +163,44 @@ class _ShellTerminalBody extends StatelessWidget {
     final mono = markdown.codeBlock;
     final rawOutput = part.result == null ? null : _stringify(part.result);
     final hasOutput = rawOutput != null && rawOutput.trim().isNotEmpty;
-    final output = hasOutput
-        ? (open ? rawOutput! : previewToolCardText(rawOutput!))
-        : null;
+    final output = hasOutput ? rawOutput! : null;
     final outputColor = part.isError
         ? scheme.error
         : scheme.onSurface.withValues(alpha: 0.65);
 
-    Widget outputWidget = Text(
-      output ?? '',
-      style: mono.copyWith(color: outputColor),
+    final body = AiFadeExpandBody(
+      open: open,
+      onToggle: onToggle,
+      fadeColor: panelColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: r'$ ',
+                  style: mono.copyWith(color: accentColor),
+                ),
+                TextSpan(
+                  text: command,
+                  style: mono.copyWith(
+                    color: scheme.onSurface.withValues(alpha: 0.9),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (output != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              output,
+              style: mono.copyWith(color: outputColor),
+            ),
+          ],
+        ],
+      ),
     );
-
-    if (open && hasOutput) {
-      outputWidget = ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: kAiToolCardExpandedMaxHeight),
-        child: SingleChildScrollView(child: outputWidget),
-      );
-    }
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -181,31 +209,7 @@ class _ShellTerminalBody extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.all(10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(
-                    text: r'$ ',
-                    style: mono.copyWith(color: accentColor),
-                  ),
-                  TextSpan(
-                    text: command,
-                    style: mono.copyWith(
-                      color: scheme.onSurface.withValues(alpha: 0.9),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (output != null) ...[
-              const SizedBox(height: 8),
-              outputWidget,
-            ],
-          ],
-        ),
+        child: body,
       ),
     );
   }

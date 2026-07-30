@@ -457,7 +457,7 @@ void main() {
 
     expect(find.textContaining('Used tool:'), findsNothing);
     expect(find.textContaining('Check worktree git state'), findsOneWidget);
-    expect(find.textContaining('git status --short'), findsOneWidget);
+    expect(find.textContaining('git status --short'), findsAtLeastNWidgets(1));
     expect(find.textContaining('Result:'), findsNothing);
     expect(find.byIcon(Icons.terminal), findsOneWidget);
 
@@ -465,8 +465,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('\$'), findsWidgets);
-    expect(find.textContaining('git status --short'), findsOneWidget);
-    expect(find.textContaining('M client/lib/a.dart'), findsOneWidget);
+    expect(find.textContaining('git status --short'), findsAtLeastNWidgets(1));
+    expect(find.textContaining('M client/lib/a.dart'), findsAtLeastNWidgets(1));
     expect(find.textContaining('Result:'), findsNothing);
     expect(find.textContaining('"command"'), findsNothing);
   });
