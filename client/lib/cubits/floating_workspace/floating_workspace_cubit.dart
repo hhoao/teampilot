@@ -10,17 +10,35 @@ class FloatingWorkspaceCubit extends Cubit<FloatingWorkspaceState> {
   void toggle() {
     switch (state.visibility) {
       case FloatingPanelVisibility.hidden:
-        emit(state.copyWith(visibility: FloatingPanelVisibility.open));
+        emit(
+          state.copyWith(
+            visibility: FloatingPanelVisibility.open,
+            attention: false,
+          ),
+        );
       case FloatingPanelVisibility.open:
         emit(state.copyWith(visibility: FloatingPanelVisibility.minimized));
       case FloatingPanelVisibility.minimized:
-        emit(state.copyWith(visibility: FloatingPanelVisibility.open));
+        emit(
+          state.copyWith(
+            visibility: FloatingPanelVisibility.open,
+            attention: false,
+          ),
+        );
     }
   }
 
   void ensureOpen() {
-    if (state.visibility == FloatingPanelVisibility.open) return;
-    emit(state.copyWith(visibility: FloatingPanelVisibility.open));
+    if (state.visibility == FloatingPanelVisibility.open) {
+      if (state.attention) emit(state.copyWith(attention: false));
+      return;
+    }
+    emit(
+      state.copyWith(
+        visibility: FloatingPanelVisibility.open,
+        attention: false,
+      ),
+    );
   }
 
   void minimize({bool closeIfEmpty = false}) {

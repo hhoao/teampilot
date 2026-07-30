@@ -111,6 +111,7 @@ import '../services/commands/workspace_search_command_registrar.dart';
 import '../services/floating_workspace/floating_maximize_insets.dart';
 import '../services/floating_workspace/floating_surface_registry.dart';
 import '../services/floating_workspace/floating_workspace_commands.dart';
+import '../services/floating_workspace/floating_workspace_open_file.dart';
 import '../services/floating_workspace/floating_workspace_persistence.dart';
 import '../services/floating_workspace/surfaces/file_preview_floating_surface.dart';
 import '../services/floating_workspace/surfaces/terminal_floating_surface.dart';
@@ -961,6 +962,7 @@ Future<AppShell> buildAppShell({
   // Bound after [WorkbenchCubit] exists; togglePanel aliases new-terminal UX
   // into the floating shell (Task 6 redirects the launcher to floating tabs).
   WorkbenchShellLauncher? workbenchShellLauncher;
+  WorkbenchEditorOpener? workbenchEditorOpenerRef;
   Future<void> focusOrCreateDefaultShell() async {
     await workbenchShellLauncher?.focusOrCreateDefaultShell();
   }
@@ -970,12 +972,21 @@ Future<AppShell> buildAppShell({
     await focusOrCreateDefaultShell();
   }
 
+  Future<void> openFloatingFilePicker() async {
+    final opener = workbenchEditorOpenerRef;
+    if (opener == null) return;
+    await pickAndOpenFloatingWorkspaceFile(
+      floating: floatingWorkspaceCubit,
+      opener: opener,
+      workspaces: chatCubit.state.workspaces,
+    );
+  }
+
   registerFloatingWorkspaceCommands(
     commandBus,
     floatingWorkspaceCubit,
     onNewTerminal: focusOrCreateDefaultShell,
-    // Task 10 wires the file picker; ensureOpen alone until then.
-    onOpenFile: null,
+    onOpenFile: openFloatingFilePicker,
   );
   registerLayoutCommands(
     commandBus,
@@ -1212,6 +1223,7 @@ Future<AppShell> buildAppShell({
     readMarkdownOpenMode: () =>
         layoutCubit.state.preferences.markdownOpenMode,
   );
+  workbenchEditorOpenerRef = workbenchEditorOpener;
   final resolvedShellLauncher = WorkbenchShellLauncher(
     floating: floatingWorkspaceCubit,
     chat: chatCubit,

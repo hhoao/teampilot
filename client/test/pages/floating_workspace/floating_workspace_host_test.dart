@@ -10,12 +10,14 @@ import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/floating_workspace/floating_maximize_insets.dart';
 import 'package:teampilot/services/floating_workspace/floating_surface.dart';
 import 'package:teampilot/services/floating_workspace/floating_surface_registry.dart';
+import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 
 void main() {
   Widget wrap({
     required FloatingWorkspaceCubit cubit,
     required FloatingSurfaceRegistry registry,
     required FloatingMaximizeInsets insets,
+    WorkspaceTerminalRegistry? terminalRegistry,
   }) {
     return MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -27,11 +29,14 @@ void main() {
           value: registry,
           child: RepositoryProvider<FloatingMaximizeInsets>.value(
             value: insets,
-            child: BlocProvider.value(
-              value: cubit,
-              child: const Scaffold(
-                body: FloatingWorkspaceHost(
-                  child: SizedBox.expand(child: Text('shell-body')),
+            child: RepositoryProvider<WorkspaceTerminalRegistry>.value(
+              value: terminalRegistry ?? WorkspaceTerminalRegistry(),
+              child: BlocProvider.value(
+                value: cubit,
+                child: const Scaffold(
+                  body: FloatingWorkspaceHost(
+                    child: SizedBox.expand(child: Text('shell-body')),
+                  ),
                 ),
               ),
             ),
@@ -105,6 +110,48 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('fake-body', skipOffstage: false), findsOneWidget);
+  });
+
+  testWidgets('attention dot shows while minimized with attention', (
+    tester,
+  ) async {
+    final cubit = FloatingWorkspaceCubit();
+    addTearDown(cubit.close);
+    final registry = FloatingSurfaceRegistry([_FakeSurface()]);
+    final insets = FloatingMaximizeInsets();
+    addTearDown(insets.dispose);
+
+    await tester.pumpWidget(
+      wrap(cubit: cubit, registry: registry, insets: insets),
+    );
+    cubit.ensureOpen();
+    cubit.minimize();
+    cubit.setAttention(true);
+    await tester.pump();
+
+    final toggle = tester.widget<Material>(
+      find.descendant(
+        of: find.byKey(const Key('floating_workspace_toggle')),
+        matching: find.byType(Material),
+      ),
+    );
+    expect(toggle, isNotNull);
+    // Error-colored 8px attention dot sits in the toggle Stack.
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('floating_workspace_toggle')),
+        matching: find.byWidgetPredicate(
+          (w) =>
+              w is Container &&
+              w.decoration is BoxDecoration &&
+              (w.decoration! as BoxDecoration).shape == BoxShape.circle &&
+              (w.constraints?.maxWidth == 8 || w.constraints?.minWidth == 8 ||
+                  (w.constraints == null &&
+                      (w.decoration as BoxDecoration).color != null)),
+        ),
+      ),
+      findsWidgets,
+    );
   });
 }
 

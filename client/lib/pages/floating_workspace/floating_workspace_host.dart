@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'floating_workspace_lifecycle_binder.dart';
 import 'floating_workspace_panel.dart';
 import 'floating_workspace_toggle.dart';
 
@@ -13,13 +14,15 @@ class FloatingWorkspaceHost extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        child,
-        const FloatingWorkspacePanel(),
-        const FloatingWorkspaceToggle(),
-      ],
+    return FloatingWorkspaceLifecycleBinder(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          child,
+          const FloatingWorkspacePanel(),
+          const FloatingWorkspaceToggle(),
+        ],
+      ),
     );
   }
 }
