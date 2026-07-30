@@ -37,10 +37,12 @@ This is an **identity mutation** bug, not a missing History refresh.
 |-------|--------|
 | Fix locus | **Source identity** (allocate once), not History consumption |
 | Provisional `taskId` | Real `Uuid.v4()` per included seat — **never** `sessionId` |
-| Persist | Write the staged bindings; **do not** re-allocate `taskId` |
+| Persist | Write staged `session.members` / `memberTargets`; **do not** re-allocate `taskId` |
+| Workspace targets side effect | `createSession` still honors `persistTargets` → `updateWorkspaceMemberTargets` |
 | Builder | Single shared plan builder for expand + placement + allocate |
-| Placement mismatch | `StateError` if staged roster ids ≠ persist included set (bug, not self-heal) |
+| Placement mismatch | `StateError` if staged roster ids ≠ plan included set at persist (bug, not self-heal) |
 | History | Unchanged APIs / softReload semantics |
+| `SessionPersistParams` | Unchanged shape; bindings live on staged `AppSession` |
 
 ## Contract
 
@@ -65,11 +67,22 @@ Members omitted by placement never receive a binding. Members appended later via
 
 ### Shared builder
 
-Add a pure(ish) plan builder, e.g. `client/lib/services/session/team_session_member_plan.dart`:
+Add a plan builder, e.g. `client/lib/services/session/team_session_member_plan.dart`:
 
-**Input:** workspace, team id, roster members, `memberClis` (type id → `CliTool`), remembered targets / placement inputs as today.
+**Input:** workspace, team id, roster members, `memberClis` (type id → `CliTool`; caller runs `resolveSessionMemberCliLocks` first), remembered targets / placement inputs as today.
 
-**Output:** `{ members: List<SessionMemberBinding>, memberTargets: Map<String,String> }` (and fail the same way `createSession` fails today for lead placement / uninitialized mixed placement).
+**Output:**
+
+```text
+{
+  members: List<SessionMemberBinding>,  // included seats only; real taskIds
+  memberTargets: Map<String, String>,     // session-scoped pins for included
+  persistTargets: bool,                   // same meaning as today's
+                                          // _resolveSessionMemberTargets.persistTargets
+}
+```
+
+Fail the same way `createSession` fails today for lead placement / uninitialized mixed placement.
 
 Lift / reuse placement resolution currently private on `SessionRepository` (`_resolveSessionMemberTargets` and related) so provisional and persist cannot diverge.
 
@@ -77,11 +90,14 @@ Lift / reuse placement resolution currently private on `SessionRepository` (`_re
 
 | Caller | Behavior |
 |--------|----------|
-| `session_launch_pipeline` (team create) | Call plan → provisional `members` / `memberTargets`; pass bindings into persist params (or persist reads `session.members`) |
-| `SessionRepository.createSession` | When bindings are supplied (UI staged path): validate included set, assign `cliTeamName`, write disk — **no new taskIds**. When bindings are absent (automation / default materializer): call the **same** plan builder internally, then write — still one allocation path |
-| `SessionPersistParams` | Carry staged `List<SessionMemberBinding>` (and targets if not already on `AppSession`), or document that persist uses `session.members` as source of truth after staging |
+| `session_launch_pipeline` (team create) | `resolveSessionMemberCliLocks` → plan → provisional `AppSession.members` / `memberTargets`. Staged session is the source of truth for bindings. |
+| `_persistSessionIfNeeded` / `createSession` | UI staged path: read **`session.members` + `session.memberTargets`** (do not re-expand roster to invent taskIds). Still assign `cliTeamName`, write `session.json`. If plan/`persistTargets` is true, **`createSession` still runs `updateWorkspaceMemberTargets`** (same workspace-manifest side effect as today) — do not drop this when skipping re-allocation. |
+| Non-UI `createSession` (automation / default materializer) | Call the **same** plan builder inside the repository, then write — one allocation path. |
+| `SessionPersistParams` | **No new binding fields required.** After staging, persist uses the in-memory `AppSession` members/targets already on the tab/snapshot. |
 
 Prefer **one** allocation path (builder always), not “repo allocates unless optional override”.
+
+**`persistTargets` ownership:** Plan computes the flag; **`SessionRepository.createSession` executes** `updateWorkspaceMemberTargets` when the flag is true (whether members came from staged session or an in-repo plan call). Pipeline does not pre-write workspace member targets.
 
 ### Explicitly out of History
 
