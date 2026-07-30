@@ -282,6 +282,7 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = TpSidebarScope.maybeOf(context)?.isMobile ?? false;
     return BlocProvider<ResourceManagerCubit>.value(
       value: _cubit,
       child: ResourceManagerNavigateScope(
@@ -289,14 +290,15 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
         child: Column(
           children: [
             Expanded(child: widget.child),
-            WorkspaceStatusBar(
-              items: [
-                ResourceUsageStatusItem(),
-                SshHostsStatusItem(
-                  onManage: () => openSshProfilesManagement(context),
-                ),
-              ],
-            ),
+            if (!isMobile)
+              WorkspaceStatusBar(
+                items: [
+                  ResourceUsageStatusItem(),
+                  SshHostsStatusItem(
+                    onManage: () => openSshProfilesManagement(context),
+                  ),
+                ],
+              ),
           ],
         ),
       ),

@@ -279,11 +279,14 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
     final l10n = context.l10n;
     final showWindowControls = useCustomDesktopWindowTitleBar;
     final sidebarScope = TpSidebarScope.maybeOf(context);
+    final isMobile = sidebarScope?.isMobile ?? false;
     final showSidebarTrigger = homeSidebarTriggerVisible(
-      isMobile: sidebarScope?.isMobile ?? false,
+      isMobile: isMobile,
       activeTabKey: widget.activeTabKey,
     );
-    final compactChrome = showSidebarTrigger;
+    // Compact on all mobile widths — brand + home label + pane toggles overflow
+    // phone title bars once UI zoom baseline is 1.0 (logical px, not 1/dpr).
+    final compactChrome = isMobile;
 
     // Paint chrome under the status bar; pad interactive row below it (Android).
     return Material(
@@ -402,31 +405,51 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
                     },
                   ),
                 ),
-              if (widget.trailingActions != null) ...[
-                widget.trailingActions!,
-                const SizedBox(width: 8),
-              ],
-              if (widget.activeTabKey != null) ...[
-                const WorkspaceShellPaneVisibilityToggles(),
-                const SizedBox(width: 4),
-              ],
-              const SizedBox(width: 8),
-              const NotificationBellButton(),
-              TpIconButton(
-                iconWidget: SvgPicture.asset(
-                  'assets/icons/settings_gear.svg',
-                  width: context.tpIconSizes.md,
-                  height: context.tpIconSizes.md,
-                  theme: SvgTheme(currentColor: cs.onSurfaceVariant),
+              // Cap + scale-down so Run/panes/bell/settings never blow the Row
+              // on phone widths (tabs stay the sole Expanded flex child).
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: compactChrome
+                      ? MediaQuery.sizeOf(context).width * 0.55
+                      : double.infinity,
                 ),
-                tooltip: l10n.settings,
-                backgroundColor: Colors.transparent,
-                onTap: () => showWorkspaceSettingsDialog(context),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (widget.trailingActions != null) ...[
+                        widget.trailingActions!,
+                        const SizedBox(width: 8),
+                      ],
+                      if (widget.activeTabKey != null) ...[
+                        const WorkspaceShellPaneVisibilityToggles(),
+                        const SizedBox(width: 4),
+                      ],
+                      const SizedBox(width: 8),
+                      const NotificationBellButton(),
+                      TpIconButton(
+                        iconWidget: SvgPicture.asset(
+                          'assets/icons/settings_gear.svg',
+                          width: context.tpIconSizes.md,
+                          height: context.tpIconSizes.md,
+                          theme: SvgTheme(
+                            currentColor: cs.onSurfaceVariant,
+                          ),
+                        ),
+                        tooltip: l10n.settings,
+                        backgroundColor: Colors.transparent,
+                        onTap: () => showWorkspaceSettingsDialog(context),
+                      ),
+                      const SizedBox(width: 10),
+                      if (showWindowControls && !useMacWindowChromeStyle)
+                        _buildWindowControls(),
+                      const SizedBox(width: 16),
+                    ],
+                  ),
+                ),
               ),
-              const SizedBox(width: 10),
-              if (showWindowControls && !useMacWindowChromeStyle)
-                _buildWindowControls(),
-              const SizedBox(width: 16),
             ],
           ),
         ),

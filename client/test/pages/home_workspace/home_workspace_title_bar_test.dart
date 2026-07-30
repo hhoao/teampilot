@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/notification_cubit.dart';
@@ -125,5 +126,48 @@ void main() {
       tester.getSize(find.byType(HomeTitleBar)).height,
       closeTo(kHomeTitleBarHeight + statusTop, 0.5),
     );
+  });
+
+  testWidgets('title bar does not overflow at phone width with workspace', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final theme = ThemeData(useMaterial3: true);
+    await tester.pumpWidget(
+      TpTheme(
+        data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider<ChatCubit>.value(value: chatCubit),
+            BlocProvider(create: (_) => NotificationCubit()),
+            BlocProvider(create: (_) => LayoutCubit()),
+          ],
+          child: TpSidebarProvider(
+            mobileBreakpoint: 900,
+            child: MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              theme: theme,
+              home: const Scaffold(
+                body: HomeTitleBar(
+                  tabs: [
+                    HomeWorkspaceTab(id: 'ws-a', name: 'Solo Workspace'),
+                  ],
+                  activeTabKey: 'ws-a',
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(HomeTitleBar), findsOneWidget);
   });
 }

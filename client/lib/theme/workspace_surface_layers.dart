@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 /// Which workspace-home route family chrome paints with.
 ///
@@ -81,6 +82,7 @@ class WorkspacePageCardShell extends StatelessWidget {
     required this.child,
     this.chrome = WorkspacePageChrome.home,
     this.omitLeftPadding = false,
+    this.omitHorizontalPadding = false,
     this.omitBottomPadding = true,
     super.key,
   });
@@ -90,6 +92,10 @@ class WorkspacePageCardShell extends StatelessWidget {
 
   /// When true, drops the left inset (legacy rail flush layout).
   final bool omitLeftPadding;
+
+  /// When true, drops left and right insets (full-bleed card). Also applied
+  /// automatically when [TpSidebarScope.isMobile] is true.
+  final bool omitHorizontalPadding;
 
   /// When true (default), drops the card bottom inset; status-bar vertical
   /// inset provides the small gap instead. Corners stay rounded.
@@ -103,7 +109,11 @@ class WorkspacePageCardShell extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final borderRadius = BorderRadius.circular(radius);
-    var inset = omitLeftPadding ? padding.copyWith(left: 0) : padding;
+    final isMobile = TpSidebarScope.maybeOf(context)?.isMobile ?? false;
+    final flushHorizontal = omitHorizontalPadding || isMobile;
+    var inset = flushHorizontal
+        ? padding.copyWith(left: 0, right: 0)
+        : (omitLeftPadding ? padding.copyWith(left: 0) : padding);
     if (omitBottomPadding) {
       inset = inset.copyWith(bottom: 0);
     }
