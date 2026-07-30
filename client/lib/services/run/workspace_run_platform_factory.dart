@@ -11,6 +11,7 @@ import '../io/filesystem.dart';
 import '../ssh/ssh_client_factory.dart';
 import '../storage/app_storage.dart';
 import '../storage/runtime_context.dart';
+import '../storage/work_target_canonicalizer.dart';
 import '../terminal/workspace_terminal_run_service.dart';
 import 'launch_adapter_client.dart';
 import 'launch_config_store.dart';
@@ -94,7 +95,10 @@ class WorkspaceRunPlatformFactory {
       extensionPathResolver: pathFor,
     );
     final store = LaunchConfigStore(
-      io: TargetAwareLaunchConfigIo(resolveFilesystem: _filesystemForTarget),
+      io: TargetAwareLaunchConfigIo(
+        resolveFilesystem: _filesystemForTarget,
+        homeTarget: _homeTarget,
+      ),
     );
     final executor = ProcessRunExecutor(sshSpawner: _sshSpawner);
     final runTargetResolver = RunTargetResolver(homeTarget: _homeTarget);
@@ -138,10 +142,11 @@ class WorkspaceRunPlatformFactory {
   }
 
   Future<Filesystem> _filesystemForTarget(String targetId) async {
+    if (WorkTargetCanonicalizer.fromId(targetId).kind == RuntimeKind.local) {
+      return _filesystem;
+    }
     final resolver = _resolveWorkContext;
-    if (resolver == null ||
-        targetId == WorkspaceFolder.localTargetId ||
-        targetId.trim().isEmpty) {
+    if (resolver == null) {
       return _filesystem;
     }
     final ctx = await resolver(targetId);
