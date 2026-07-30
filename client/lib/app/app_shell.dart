@@ -28,6 +28,7 @@ import '../cubits/notification_cubit.dart';
 import '../cubits/progress_activity_cubit.dart';
 import '../services/progress_activity/app_update_activity_adapter.dart';
 import '../services/progress_activity/hub_clone_activity_adapter.dart';
+import '../services/progress_activity/pack_acquire_activity_adapter.dart';
 import '../cubits/ai_history_cubit.dart';
 import '../cubits/shortcut_cubit.dart';
 import '../cubits/editor_cubit.dart';
@@ -666,10 +667,6 @@ Future<AppShell> buildAppShell({
   final workspaceProjectConfigRepository = WorkspaceProjectConfigRepository(
     fs: AppStorage.fs,
   );
-  extensionCubit = ExtensionCubit(
-    extensionRepository,
-    ExtensionAcquisitionEngine(),
-  );
 
   identityRepository = LaunchProfileRepository();
 
@@ -749,24 +746,6 @@ Future<AppShell> buildAppShell({
       return provisioner.collectMcpContributions();
     },
   );
-  skillCubit = SkillCubit(
-    skillRepo,
-    acquisitionEngine: skillAcquisitionEngine,
-    onSkillUninstalled: teamCubit.removeSkillFromAllTeams,
-  );
-  pluginCubit = PluginCubit(
-    repository: pluginRepository,
-    installService: pluginRepository.install,
-    repoService: pluginRepository.repos,
-    diskCache: PluginRepoDiskCacheService(),
-    onPluginUninstalled: teamCubit.removePluginFromAllTeams,
-    onPluginUpdated: teamCubit.syncTeamsUsingPlugin,
-  );
-  cliPresetsCubit = CliPresetsCubit(repository: cliPresetsRepo);
-  mcpCubit = McpCubit(
-    mcpRepository,
-    onMcpDeleted: teamCubit.removeMcpFromAllTeams,
-  );
 
   final notificationCubit = NotificationCubit();
   final notificationBootstrap = notificationCubit.load();
@@ -776,6 +755,35 @@ Future<AppShell> buildAppShell({
   );
   final hubCloneActivityAdapter = HubCloneActivityAdapter(
     cubit: progressActivityCubit,
+  );
+  final packAcquireActivityAdapter = PackAcquireActivityAdapter(
+    cubit: progressActivityCubit,
+  );
+
+  skillCubit = SkillCubit(
+    skillRepo,
+    acquisitionEngine: skillAcquisitionEngine,
+    onSkillUninstalled: teamCubit.removeSkillFromAllTeams,
+    packAcquireActivity: packAcquireActivityAdapter,
+  );
+  pluginCubit = PluginCubit(
+    repository: pluginRepository,
+    installService: pluginRepository.install,
+    repoService: pluginRepository.repos,
+    diskCache: PluginRepoDiskCacheService(),
+    onPluginUninstalled: teamCubit.removePluginFromAllTeams,
+    onPluginUpdated: teamCubit.syncTeamsUsingPlugin,
+    packAcquireActivity: packAcquireActivityAdapter,
+  );
+  extensionCubit = ExtensionCubit(
+    extensionRepository,
+    ExtensionAcquisitionEngine(),
+    packAcquireActivity: packAcquireActivityAdapter,
+  );
+  cliPresetsCubit = CliPresetsCubit(repository: cliPresetsRepo);
+  mcpCubit = McpCubit(
+    mcpRepository,
+    onMcpDeleted: teamCubit.removeMcpFromAllTeams,
   );
 
   final teamHubSource = CompositeTeamHubSource.withDefaults(

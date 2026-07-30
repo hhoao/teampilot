@@ -5,8 +5,10 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/discoverable_team.dart';
+import '../models/progress_activity.dart';
 import '../models/skill.dart';
 import '../repositories/skill_repository.dart';
+import '../services/progress_activity/pack_acquire_activity_adapter.dart';
 import '../services/skill/skill_acquisition_engine.dart';
 import '../services/skill/skill_repo_disk_cache_service.dart';
 import '../utils/logging/logger.dart';
@@ -127,6 +129,7 @@ class SkillCubit extends Cubit<SkillState> {
     this._repo, {
     SkillAcquisitionEngine? acquisitionEngine,
     SkillUninstalledHandler? onSkillUninstalled,
+    PackAcquireActivityAdapter? packAcquireActivity,
   }) : _acquisitionEngine =
            acquisitionEngine ??
            SkillAcquisitionEngine(
@@ -144,11 +147,13 @@ class SkillCubit extends Cubit<SkillState> {
              repoCache: _repo.repoCache,
            ),
        _onSkillUninstalled = onSkillUninstalled,
+       _packAcquireActivity = packAcquireActivity,
        super(const SkillState());
 
   final SkillRepository _repo;
   final SkillAcquisitionEngine _acquisitionEngine;
   final SkillUninstalledHandler? _onSkillUninstalled;
+  final PackAcquireActivityAdapter? _packAcquireActivity;
   int _discoveryGeneration = 0;
 
   Future<void> loadAll() async {
@@ -402,21 +407,49 @@ class SkillCubit extends Cubit<SkillState> {
     final busy = {...state.busyIds, busyId};
     emit(state.copyWith(busyIds: busy, clearError: true));
     try {
-      final result = await _acquisitionEngine.installDiscoverable(
-        d,
-        overwrite: overwrite,
+      await _runPackAcquireTracked(
+        title: 'Installing skill: ${d.name}',
+        historyMessage: 'Installed ${d.name}',
+        run: (_) => _installDiscoverableCore(d, overwrite: overwrite),
       );
-      if (result.success) {
-        await _emitInstalled();
-      } else {
-        emit(state.copyWith(errorMessage: result.message));
-      }
     } catch (e) {
       emit(state.copyWith(errorMessage: '$e'));
     } finally {
       final next = {...state.busyIds}..remove(busyId);
       emit(state.copyWith(busyIds: next));
     }
+  }
+
+  Future<void> _installDiscoverableCore(
+    DiscoverableSkill d, {
+    required bool overwrite,
+  }) async {
+    final result = await _acquisitionEngine.installDiscoverable(
+      d,
+      overwrite: overwrite,
+    );
+    if (!result.success) {
+      throw StateError(result.message);
+    }
+    await _emitInstalled();
+  }
+
+  Future<void> _runPackAcquireTracked({
+    required String title,
+    required String historyMessage,
+    required Future<void> Function(PackAcquireStepReporter onStep) run,
+  }) async {
+    final adapter = _packAcquireActivity;
+    if (adapter == null) {
+      await run(({subtitle, completedSteps, totalSteps}) {});
+      return;
+    }
+    await adapter.runTracked<void>(
+      kind: ProgressActivityKind.packAcquire,
+      title: title,
+      historyMessageFor: (_) => historyMessage,
+      run: run,
+    );
   }
 
   /// TeamHub clone path: install one template skill dep and refresh cubit state.

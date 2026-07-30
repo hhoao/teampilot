@@ -9,7 +9,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/discoverable_team.dart';
 import '../models/plugin.dart';
+import '../models/progress_activity.dart';
 import '../repositories/plugin_repository.dart';
+import '../services/progress_activity/pack_acquire_activity_adapter.dart';
 import '../services/plugin/plugin_install_service.dart';
 import '../services/plugin/plugin_external_fetch_service.dart';
 import '../services/plugin/plugin_repo_disk_cache_service.dart';
@@ -101,10 +103,12 @@ class PluginCubit extends Cubit<PluginState> {
     PluginExternalFetchService? externalFetch,
     PluginUninstalledHandler? onPluginUninstalled,
     PluginUpdatedHandler? onPluginUpdated,
+    PackAcquireActivityAdapter? packAcquireActivity,
   }) : _diskCache = diskCache ?? PluginRepoDiskCacheService(),
        _externalFetch = externalFetch ?? PluginExternalFetchService(),
        _onPluginUninstalled = onPluginUninstalled,
        _onPluginUpdated = onPluginUpdated,
+       _packAcquireActivity = packAcquireActivity,
        super(const PluginState());
 
   /// Test-only constructor that skips service wiring and accepts a pre-built
@@ -120,7 +124,8 @@ class PluginCubit extends Cubit<PluginState> {
        _diskCache = PluginRepoDiskCacheService(),
        _externalFetch = PluginExternalFetchService(),
        _onPluginUninstalled = onPluginUninstalled,
-       _onPluginUpdated = onPluginUpdated;
+       _onPluginUpdated = onPluginUpdated,
+       _packAcquireActivity = null;
 
   static final _dummyRepo = PluginRepository();
   static final _dummyInstallService = PluginInstallService();
@@ -133,6 +138,7 @@ class PluginCubit extends Cubit<PluginState> {
   final PluginExternalFetchService _externalFetch;
   final PluginUninstalledHandler? _onPluginUninstalled;
   final PluginUpdatedHandler? _onPluginUpdated;
+  final PackAcquireActivityAdapter? _packAcquireActivity;
   int _discoveryGeneration = 0;
 
   /// Loads discovery when the Discovery tab opens: disk cache first, then git sync.
@@ -290,36 +296,62 @@ class PluginCubit extends Cubit<PluginState> {
     final busy = {...state.busyIds, d.key};
     emit(state.copyWith(busyIds: busy, clearError: true));
     try {
-      final marketplace = PluginMarketplace(
-        owner: d.marketplaceOwner,
-        name: d.marketplaceName,
-        branch: d.marketplaceBranch,
+      await _runPackAcquireTracked(
+        title: 'Installing plugin: ${d.name}',
+        historyMessage: 'Installed ${d.name}',
+        run: (_) => _installDiscoverableCore(d),
       );
-      final Directory sourceDir;
-      if (d.localInstall) {
-        final marketDir = await _diskCache.syncMarketplace(marketplace);
-        sourceDir = Directory('$marketDir/${d.source}');
-      } else {
-        sourceDir = await _externalFetch.fetchPluginDirectory(
-          d.externalSource!,
-        );
-      }
-      if (!sourceDir.existsSync()) {
-        throw StateError('Plugin source directory missing: ${sourceDir.path}');
-      }
-      await installService.installFromDirectory(
-        sourceDir,
-        marketplace: marketplace,
-        marketplaceEntryName: d.name,
-      );
-      final installed = await repository.loadAll();
-      emit(state.copyWith(installed: installed));
     } catch (e) {
       emit(state.copyWith(errorMessage: '$e'));
     } finally {
       final next = {...state.busyIds}..remove(d.key);
       emit(state.copyWith(busyIds: next));
     }
+  }
+
+  Future<void> _installDiscoverableCore(DiscoverablePlugin d) async {
+    final marketplace = PluginMarketplace(
+      owner: d.marketplaceOwner,
+      name: d.marketplaceName,
+      branch: d.marketplaceBranch,
+    );
+    final Directory sourceDir;
+    if (d.localInstall) {
+      final marketDir = await _diskCache.syncMarketplace(marketplace);
+      sourceDir = Directory('$marketDir/${d.source}');
+    } else {
+      sourceDir = await _externalFetch.fetchPluginDirectory(
+        d.externalSource!,
+      );
+    }
+    if (!sourceDir.existsSync()) {
+      throw StateError('Plugin source directory missing: ${sourceDir.path}');
+    }
+    await installService.installFromDirectory(
+      sourceDir,
+      marketplace: marketplace,
+      marketplaceEntryName: d.name,
+    );
+    final installed = await repository.loadAll();
+    emit(state.copyWith(installed: installed));
+  }
+
+  Future<void> _runPackAcquireTracked({
+    required String title,
+    required String historyMessage,
+    required Future<void> Function(PackAcquireStepReporter onStep) run,
+  }) async {
+    final adapter = _packAcquireActivity;
+    if (adapter == null) {
+      await run(({subtitle, completedSteps, totalSteps}) {});
+      return;
+    }
+    await adapter.runTracked<void>(
+      kind: ProgressActivityKind.packAcquire,
+      title: title,
+      historyMessageFor: (_) => historyMessage,
+      run: run,
+    );
   }
 
   /// TeamHub clone path: install one template plugin dep and refresh cubit state.
