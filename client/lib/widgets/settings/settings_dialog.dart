@@ -3,6 +3,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../services/workspace/workspace_pane_policy.dart';
+import '../../theme/workspace_surface_layers.dart';
 import 'settings_dialog_pane_host.dart';
 
 typedef SettingsLabelBuilder = String Function(AppLocalizations l10n);
@@ -41,6 +42,7 @@ Future<void> showSettingsDialog(
     presentation: TpDialogPresentation.page,
     mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
     barrierDismissible: false,
+    backgroundColor: Theme.of(context).colorScheme.workspacePage,
     builder: (ctx) => _SettingsDialogHost(
       navTitle: navTitle,
       entries: entries,

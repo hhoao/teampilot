@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_theme.dart';
@@ -8,15 +9,68 @@ class ThemeColorPresetPicker extends StatelessWidget {
   const ThemeColorPresetPicker({
     required this.selected,
     required this.onSelect,
+    this.mobileBreakpoint = kTpSegmentedPickerMobileBreakpoint,
     super.key,
   });
 
   final String selected;
   final ValueChanged<String> onSelect;
+  final double mobileBreakpoint;
+
+  bool _useSelect(BuildContext context) =>
+      MediaQuery.sizeOf(context).width < mobileBreakpoint;
+
+  Widget _swatchLabel(BuildContext context, String id) {
+    final l10n = context.l10n;
+    final primary = themePresetSwatchPrimary(id);
+    final secondary = themePresetSwatchSecondary(id);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: primary, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: secondary, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            l10n.themeColorPresetName(id),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    if (_useSelect(context)) {
+      return SizedBox(
+        width: double.infinity,
+        child: TpCompactSelect<String>(
+          value: selected,
+          entries: [
+            for (final id in kThemeColorPresetIds)
+              (id, l10n.themeColorPresetName(id)),
+          ],
+          itemBuilder: _swatchLabel,
+          listItemBuilder: _swatchLabel,
+          onChanged: (v) {
+            if (v != null) onSelect(v);
+          },
+        ),
+      );
+    }
+
     return Align(
       alignment: Alignment.centerRight,
       child: SingleChildScrollView(

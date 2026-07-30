@@ -178,7 +178,7 @@ void main() {
     expect(find.text(l10n.landingTeamSettingsNavTeam), findsOneWidget);
     expect(find.text(l10n.members), findsOneWidget);
     expect(find.text(l10n.landingTeamSettingsNavMachines), findsOneWidget);
-    expect(find.byIcon(Icons.arrow_back_rounded), findsNothing);
+    expect(find.byIcon(Icons.chevron_left_rounded), findsOneWidget);
     // Detail body not pushed yet on narrow.
     expect(find.text(l10n.landingTeamSettingsGlobalHint), findsNothing);
 
@@ -186,16 +186,17 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
+    // Nav route stays under detail in the nested Navigator, so two chevrons.
+    expect(find.byIcon(Icons.chevron_left_rounded), findsWidgets);
     expect(find.text(l10n.landingTeamSettingsGlobalHint), findsWidgets);
 
-    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.tap(find.byIcon(Icons.chevron_left_rounded).last);
     await tester.pump(); // start pop
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text(l10n.teamSettings), findsOneWidget);
-    expect(find.byIcon(Icons.arrow_back_rounded), findsNothing);
+    expect(find.byIcon(Icons.chevron_left_rounded), findsOneWidget);
     expect(find.text(l10n.landingTeamSettingsGlobalHint), findsNothing);
   });
 
@@ -225,7 +226,7 @@ void main() {
     expect(find.text(l10n.landingTeamSettingsNavTeam), findsWidgets);
     expect(find.text(l10n.members), findsOneWidget);
     expect(find.text(l10n.landingTeamSettingsNavMachines), findsOneWidget);
-    expect(find.byIcon(Icons.arrow_back_rounded), findsNothing);
+    expect(find.byIcon(Icons.chevron_left_rounded), findsNothing);
 
     // Deferred mount + frame for pane host.
     await tester.pump();
@@ -255,12 +256,12 @@ void main() {
 
     final l10n = lookupAppLocalizations(const Locale('en'));
     expect(find.byType(TpDialogNavShell), findsOneWidget);
-    expect(find.byIcon(Icons.arrow_back_rounded), findsNothing);
+    expect(find.byIcon(Icons.chevron_left_rounded), findsOneWidget);
     expect(find.text(l10n.landingTeamSettingsNavTeam), findsOneWidget);
 
     await tester.tap(find.text(l10n.landingTeamSettingsNavTeam));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.chevron_left_rounded), findsWidgets);
   });
 }

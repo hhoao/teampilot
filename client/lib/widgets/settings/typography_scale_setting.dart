@@ -66,70 +66,106 @@ class _TypographyScaleSettingState extends State<TypographyScaleSetting> {
     widget.onCustomMultiplierChanged(multiplier);
   }
 
+  List<TpSegmentedOption<String>> _segments(AppLocalizations l10n) => [
+    TpSegmentedOption<String>(
+      value: 'compact',
+      label: l10n.typographyScaleCompact,
+      icon: Icons.density_small_outlined,
+    ),
+    TpSegmentedOption<String>(
+      value: 'standard',
+      label: l10n.typographyScaleStandard,
+      icon: Icons.density_medium_outlined,
+    ),
+    TpSegmentedOption<String>(
+      value: 'comfortable',
+      label: l10n.typographyScaleComfortable,
+      icon: Icons.density_large_outlined,
+    ),
+    TpSegmentedOption<String>(
+      value: 'custom',
+      label: l10n.typographyScaleCustom,
+      icon: Icons.tune_outlined,
+    ),
+  ];
+
+  void _onScaleChanged(String id) {
+    widget.onScaleIdChanged(id);
+    if (id == 'custom') {
+      widget.onCustomMultiplierChanged(widget.customMultiplier);
+    }
+  }
+
+  Widget _percentField(AppLocalizations l10n) {
+    return SizedBox(
+      width: 96,
+      height: tpSegmentedControlMinHeight,
+      child: TextField(
+        controller: _percentController,
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: l10n.typographyScaleCustomHint,
+          suffixText: '%',
+        ),
+        onSubmitted: (_) => _commitPercentInput(),
+        onEditingComplete: _commitPercentInput,
+        onTapOutside: (_) => _commitPercentInput(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final isCustom = widget.scaleId == 'custom';
+    final narrow =
+        MediaQuery.sizeOf(context).width < kTpSegmentedPickerMobileBreakpoint;
 
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      alignment: Alignment.centerRight,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
+    // Mobile select: fill trailing width so the chevron sits on the far right.
+    // Do not wrap in an unbounded horizontal ScrollView (that pins the arrow
+    // next to the label).
+    if (narrow) {
+      return Row(
         children: [
-          TpSegmentedPicker<String>(
-            segments: [
-              TpSegmentedOption<String>(
-                value: 'compact',
-                label: l10n.typographyScaleCompact,
-                icon: Icons.density_small_outlined,
-              ),
-              TpSegmentedOption<String>(
-                value: 'standard',
-                label: l10n.typographyScaleStandard,
-                icon: Icons.density_medium_outlined,
-              ),
-              TpSegmentedOption<String>(
-                value: 'comfortable',
-                label: l10n.typographyScaleComfortable,
-                icon: Icons.density_large_outlined,
-              ),
-              TpSegmentedOption<String>(
-                value: 'custom',
-                label: l10n.typographyScaleCustom,
-                icon: Icons.tune_outlined,
-              ),
-            ],
-            selected: widget.scaleId,
-            onChanged: (id) {
-              widget.onScaleIdChanged(id);
-              if (id == 'custom') {
-                widget.onCustomMultiplierChanged(widget.customMultiplier);
-              }
-            },
+          Expanded(
+            child: TpSegmentedPicker<String>(
+              segments: _segments(l10n),
+              selected: widget.scaleId,
+              onChanged: _onScaleChanged,
+            ),
           ),
           if (isCustom) ...[
             const SizedBox(width: 8),
-            SizedBox(
-              width: 96,
-              height: 38,
-              child: TextField(
-                controller: _percentController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  isDense: true,
-                  hintText: l10n.typographyScaleCustomHint,
-                  suffixText: '%',
-                ),
-                onSubmitted: (_) => _commitPercentInput(),
-                onEditingComplete: _commitPercentInput,
-                onTapOutside: (_) => _commitPercentInput(),
-              ),
-            ),
+            _percentField(l10n),
           ],
         ],
+      );
+    }
+
+    return Align(
+      alignment: Alignment.centerRight,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        reverse: true,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            TpSegmentedPicker<String>(
+              alignment: Alignment.centerRight,
+              scrollable: false,
+              segments: _segments(l10n),
+              selected: widget.scaleId,
+              onChanged: _onScaleChanged,
+            ),
+            if (isCustom) ...[
+              const SizedBox(width: 8),
+              _percentField(l10n),
+            ],
+          ],
+        ),
       ),
     );
   }
