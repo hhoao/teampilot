@@ -102,11 +102,26 @@ class ProgressActivity {
 
 | Method | Behavior |
 |--------|----------|
-| `start(activity)` | Insert/replace by `id`; phase typically `running` |
+| `start(activity, {FutureOr<void> Function()? onCancelRequested})` | Insert/replace by `id`; phase typically `running`; store cancel hook with the activity |
 | `update(id, …)` | Patch progress fields; bump `updatedAt` |
-| `requestCancel(id)` | If `cancellable`, set `cancelling` and invoke producer cancel hook |
+| `requestCancel(id)` | If `cancellable`, set `cancelling` and invoke the hook from `start` |
 | `setDetailOpen(id, bool)` | Dialog visibility only |
 | `complete(id, outcome)` | Remove from active list; emit history notification; optional toast |
+
+**Cancel registration:** The cancel callback is passed at `start` (not a separate
+registry). Adapters own domain tokens/flags and close over them in
+`onCancelRequested`. Missing hook + `cancellable: true` is a programming error
+(assert in debug; treat as non-cancellable in release).
+
+**Ordering:** Active list is FIFO by `createdAt`. Same `id` on `start` replaces
+in place (keeps position).
+
+**Progress display priority** (UI): `fraction` if non-null → else
+`completedItems/totalItems` → else `bytesDone/bytesTotal` → else indeterminate.
+
+**History mapping on `complete`:** `succeeded` → success notification;
+`failed` → error; `cancelled` → warning (kind-specific copy allowed). Cubit
+calls `NotificationCubit` / `NotificationRecorder` for history only.
 
 Producers **must not** treat local UI widgets as the source of truth for
 progress. They report through the cubit (directly or via a thin adapter).
@@ -144,13 +159,14 @@ progress (e.g. conflict overwrite dialogs, update release notes confirm) remain.
 - On terminal outcome: drop from ongoing; append history `AppNotification`
   (success / warning / error) with stable copy.
 
+**Bulk actions (mark all read / clear all):** Apply to **history only**. Never
+remove, cancel, or mark “read” on ongoing activities. Clear-all must not imply
+cancel; expose cancel only via per-row Cancel / `requestCancel`.
+
 **Model change (allowed to break):** notification list is no longer “only
-persisted toast echoes.” Either:
-
-- View-model merges `ProgressActivityCubit` ongoing + repository history, or  
-- `AppNotification` gains an explicit non-persisted ongoing shape used only in UI.
-
-Prefer **view-model merge** so disk schema stays history-only and simple.
+persisted toast echoes.” Prefer **view-model merge**:
+`ProgressActivityCubit` ongoing + repository history. Disk schema stays
+history-only.
 
 ## Status bar UX
 
@@ -159,6 +175,9 @@ Prefer **view-model merge** so disk schema stays history-only and simple.
 - Many: `N activities in progress` → click opens popover/list of ongoing
   (same data as notification ongoing section).
 - Coexists with resource-manager and SSH segments.
+- **Desktop only** for the status-bar segment (align with
+  `GlobalResourceManagerHost` `!isMobile`). Mobile relies on the notification
+  center ongoing section.
 
 ## Detail dialog UX
 
@@ -196,5 +215,10 @@ Prefer **view-model merge** so disk schema stays history-only and simple.
 ## Related
 
 - File-tree import: [2026-07-30-file-tree-external-drop-import-design.md](2026-07-30-file-tree-external-drop-import-design.md)
+  — **Supersedes** that doc’s “import progress dialog/banner as sole surface”
+  for progress UX. Keep conflict dialogs; migrate progress to this activity
+  system (dismissible detail dialog + notification + status bar). Update the
+  file-tree UI integration table when implementing the `fileTreeImport`
+  adapter.
 - Status bar shell: [2026-07-23-workspace-status-bar-resource-manager-design.md](2026-07-23-workspace-status-bar-resource-manager-design.md)
 - Artifact (excluded): [2026-07-21-artifact-chunked-transfer-design.md](2026-07-21-artifact-chunked-transfer-design.md)
