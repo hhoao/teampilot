@@ -72,9 +72,7 @@ void main() {
             BlocProvider(create: (_) => LayoutCubit()),
           ],
           child: const HomeTitleBar(
-            tabs: [
-              HomeWorkspaceTab(id: 'ws-a', name: 'Solo'),
-            ],
+            tabs: [HomeWorkspaceTab(id: 'ws-a', name: 'Solo')],
             activeTabKey: null,
           ),
         ),
@@ -82,5 +80,50 @@ void main() {
     );
 
     expect(find.byType(WorkspaceShellPaneVisibilityToggles), findsNothing);
+  });
+
+  testWidgets('title bar content clears top view padding', (tester) async {
+    const statusTop = 48.0;
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.padding = const FakeViewPadding(top: statusTop);
+    tester.view.viewPadding = const FakeViewPadding(top: statusTop);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPadding);
+    addTearDown(tester.view.resetViewPadding);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MultiBlocProvider(
+          providers: [
+            BlocProvider<ChatCubit>.value(value: chatCubit),
+            BlocProvider(create: (_) => NotificationCubit()),
+            BlocProvider(create: (_) => LayoutCubit()),
+          ],
+          child: const Scaffold(
+            body: Column(
+              children: [
+                HomeTitleBar(
+                  tabs: [HomeWorkspaceTab(id: 'ws-a', name: 'Default')],
+                  activeTabKey: 'ws-a',
+                ),
+                Expanded(child: SizedBox.expand()),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Default'), findsOneWidget);
+    final tabTop = tester.getTopLeft(find.text('Default')).dy;
+    expect(tabTop, greaterThanOrEqualTo(statusTop));
+    expect(
+      tester.getSize(find.byType(HomeTitleBar)).height,
+      closeTo(kHomeTitleBarHeight + statusTop, 0.5),
+    );
   });
 }

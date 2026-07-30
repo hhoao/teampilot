@@ -285,146 +285,150 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
     );
     final compactChrome = showSidebarTrigger;
 
+    // Paint chrome under the status bar; pad interactive row below it (Android).
     return Material(
       color: cs.workspacePageChrome(widget.pageChrome),
-      child: SizedBox(
-        height: kHomeTitleBarHeight,
-        child: Row(
-          children: [
-            SizedBox(width: 8),
-            if (showWindowControls && useMacWindowChromeStyle)
-              _buildWindowControls(),
-            if (!compactChrome)
-              SizedBox(width: useMacWindowChromeStyle ? 8 : 20),
-            if (showSidebarTrigger) ...[
-              const TpSidebarTrigger(),
-              const SizedBox(width: 8),
-            ],
-            if (!compactChrome) ...[
-              const _BrandMark(),
-              const SizedBox(width: 24),
-            ],
-            _HomePill(
-              label: compactChrome ? '' : l10n.homeWorkspaceMainWindow,
-              active: widget.activeTabKey == null,
-              onTap: widget.onHomeTap,
-            ),
-            if (widget.tabs.isEmpty)
-              Expanded(
-                child: Row(
-                  children: [
-                    const SizedBox(width: 6),
-                    _RecentlyClosedOverflowButton(
-                      entries: widget.recentlyClosed,
-                      workspaces: widget.workspaces,
-                      launchProfiles: widget.launchProfiles,
-                      onReopen: widget.onReopenClosedTab,
-                    ),
-                    Expanded(
-                      child: showWindowControls
-                          ? const WindowDragArea(child: SizedBox.expand())
-                          : const SizedBox.expand(),
-                    ),
-                  ],
-                ),
-              )
-            else
-              // The open workspace tabs share the remaining width with a single
-              // Expanded spacer that doubles as the window-move area, so the
-              // action buttons stay flush right with no dead band.
-              //
-              // The earlier layout paired a Flexible tab strip with a separate
-              // Expanded spacer; two flex siblings split the free width 50/50,
-              // and the greedy horizontal scroll view filled its half on the
-              // left while the right half sat empty. Here the tabs are instead
-              // sized to their content (a shrink-wrapping horizontal ListView,
-              // capped at the available width so they scroll only when they
-              // would overflow), which leaves the spacer as the *sole* flex
-              // child: it absorbs all leftover width and remains draggable.
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return Row(
-                      children: [
-                        ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: constraints.maxWidth,
-                          ),
-                          child: ListView(
-                            shrinkWrap: true,
-                            scrollDirection: Axis.horizontal,
-                            children: [
-                              for (final tab in widget.tabs) ...[
+      child: SafeArea(
+        bottom: false,
+        child: SizedBox(
+          height: kHomeTitleBarHeight,
+          child: Row(
+            children: [
+              SizedBox(width: 8),
+              if (showWindowControls && useMacWindowChromeStyle)
+                _buildWindowControls(),
+              if (!compactChrome)
+                SizedBox(width: useMacWindowChromeStyle ? 8 : 20),
+              if (showSidebarTrigger) ...[
+                const TpSidebarTrigger(),
+                const SizedBox(width: 8),
+              ],
+              if (!compactChrome) ...[
+                const _BrandMark(),
+                const SizedBox(width: 24),
+              ],
+              _HomePill(
+                label: compactChrome ? '' : l10n.homeWorkspaceMainWindow,
+                active: widget.activeTabKey == null,
+                onTap: widget.onHomeTap,
+              ),
+              if (widget.tabs.isEmpty)
+                Expanded(
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 6),
+                      _RecentlyClosedOverflowButton(
+                        entries: widget.recentlyClosed,
+                        workspaces: widget.workspaces,
+                        launchProfiles: widget.launchProfiles,
+                        onReopen: widget.onReopenClosedTab,
+                      ),
+                      Expanded(
+                        child: showWindowControls
+                            ? const WindowDragArea(child: SizedBox.expand())
+                            : const SizedBox.expand(),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                // The open workspace tabs share the remaining width with a single
+                // Expanded spacer that doubles as the window-move area, so the
+                // action buttons stay flush right with no dead band.
+                //
+                // The earlier layout paired a Flexible tab strip with a separate
+                // Expanded spacer; two flex siblings split the free width 50/50,
+                // and the greedy horizontal scroll view filled its half on the
+                // left while the right half sat empty. Here the tabs are instead
+                // sized to their content (a shrink-wrapping horizontal ListView,
+                // capped at the available width so they scroll only when they
+                // would overflow), which leaves the spacer as the *sole* flex
+                // child: it absorbs all leftover width and remains draggable.
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Row(
+                        children: [
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: constraints.maxWidth,
+                            ),
+                            child: ListView(
+                              shrinkWrap: true,
+                              scrollDirection: Axis.horizontal,
+                              children: [
+                                for (final tab in widget.tabs) ...[
+                                  const SizedBox(width: 6),
+                                  // widthFactor keeps the tab at its content
+                                  // width; the ListView otherwise stretches each
+                                  // child to the full bar height.
+                                  Align(
+                                    alignment: Alignment.center,
+                                    widthFactor: 1,
+                                    child: _WorkspaceTab(
+                                      label: tab.name,
+                                      tooltip: tab.tooltip ?? tab.name,
+                                      topology: tab.topology,
+                                      active: tab.id == widget.activeTabKey,
+                                      closable: tab.closable,
+                                      onTap: () =>
+                                          widget.onSelectTab?.call(tab.id),
+                                      onClose: () =>
+                                          widget.onCloseTab?.call(tab.id),
+                                    ),
+                                  ),
+                                ],
                                 const SizedBox(width: 6),
-                                // widthFactor keeps the tab at its content
-                                // width; the ListView otherwise stretches each
-                                // child to the full bar height.
                                 Align(
                                   alignment: Alignment.center,
                                   widthFactor: 1,
-                                  child: _WorkspaceTab(
-                                    label: tab.name,
-                                    tooltip: tab.tooltip ?? tab.name,
-                                    topology: tab.topology,
-                                    active: tab.id == widget.activeTabKey,
-                                    closable: tab.closable,
-                                    onTap: () =>
-                                        widget.onSelectTab?.call(tab.id),
-                                    onClose: () =>
-                                        widget.onCloseTab?.call(tab.id),
+                                  child: _RecentlyClosedOverflowButton(
+                                    entries: widget.recentlyClosed,
+                                    workspaces: widget.workspaces,
+                                    launchProfiles: widget.launchProfiles,
+                                    onReopen: widget.onReopenClosedTab,
                                   ),
                                 ),
                               ],
-                              const SizedBox(width: 6),
-                              Align(
-                                alignment: Alignment.center,
-                                widthFactor: 1,
-                                child: _RecentlyClosedOverflowButton(
-                                  entries: widget.recentlyClosed,
-                                  workspaces: widget.workspaces,
-                                  launchProfiles: widget.launchProfiles,
-                                  onReopen: widget.onReopenClosedTab,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
-                        Expanded(
-                          child: showWindowControls
-                              ? const WindowDragArea(child: SizedBox.expand())
-                              : const SizedBox.expand(),
-                        ),
-                      ],
-                    );
-                  },
+                          Expanded(
+                            child: showWindowControls
+                                ? const WindowDragArea(child: SizedBox.expand())
+                                : const SizedBox.expand(),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
-              ),
-            if (widget.trailingActions != null) ...[
-              widget.trailingActions!,
+              if (widget.trailingActions != null) ...[
+                widget.trailingActions!,
+                const SizedBox(width: 8),
+              ],
+              if (widget.activeTabKey != null) ...[
+                const WorkspaceShellPaneVisibilityToggles(),
+                const SizedBox(width: 4),
+              ],
               const SizedBox(width: 8),
-            ],
-            if (widget.activeTabKey != null) ...[
-              const WorkspaceShellPaneVisibilityToggles(),
-              const SizedBox(width: 4),
-            ],
-            const SizedBox(width: 8),
-            const NotificationBellButton(),
-            TpIconButton(
-              iconWidget: SvgPicture.asset(
-                'assets/icons/settings_gear.svg',
-                width: context.tpIconSizes.md,
-                height: context.tpIconSizes.md,
-                theme: SvgTheme(currentColor: cs.onSurfaceVariant),
+              const NotificationBellButton(),
+              TpIconButton(
+                iconWidget: SvgPicture.asset(
+                  'assets/icons/settings_gear.svg',
+                  width: context.tpIconSizes.md,
+                  height: context.tpIconSizes.md,
+                  theme: SvgTheme(currentColor: cs.onSurfaceVariant),
+                ),
+                tooltip: l10n.settings,
+                backgroundColor: Colors.transparent,
+                onTap: () => showWorkspaceSettingsDialog(context),
               ),
-              tooltip: l10n.settings,
-              backgroundColor: Colors.transparent,
-              onTap: () => showWorkspaceSettingsDialog(context),
-            ),
-            const SizedBox(width: 10),
-            if (showWindowControls && !useMacWindowChromeStyle)
-              _buildWindowControls(),
-            const SizedBox(width: 16),
-          ],
+              const SizedBox(width: 10),
+              if (showWindowControls && !useMacWindowChromeStyle)
+                _buildWindowControls(),
+              const SizedBox(width: 16),
+            ],
+          ),
         ),
       ),
     );
@@ -456,9 +460,7 @@ class _HomePill extends StatelessWidget {
     final styles = TpTextStyles.of(context);
     final Color fg = active ? cs.primary : cs.onSurfaceVariant;
     return Material(
-      color: active
-          ? cs.primary.withValues(alpha: 0.16)
-          : Colors.transparent,
+      color: active ? cs.primary.withValues(alpha: 0.16) : Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
         side: BorderSide(
@@ -815,9 +817,7 @@ class _RecentlyClosedOverflowButtonState
                     children: [
                       for (var i = 0; i < entries.length; i++) ...[
                         if (i > 0)
-                          const SizedBox(
-                            height: TpActionMenuMetrics.itemGap,
-                          ),
+                          const SizedBox(height: TpActionMenuMetrics.itemGap),
                         _RecentlyClosedMenuItem(
                           entry: entries[i],
                           entries: entries,
