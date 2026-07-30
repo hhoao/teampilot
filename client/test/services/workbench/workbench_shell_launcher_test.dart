@@ -1,9 +1,155 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/floating_workspace/floating_panel_visibility.dart';
+import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
+import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
+import 'package:teampilot/models/floating_workspace_tab.dart';
+import 'package:teampilot/models/workspace_terminal_session_spec.dart';
+import 'package:teampilot/repositories/ssh_credential_store.dart';
+import 'package:teampilot/repositories/ssh_known_host_repository.dart';
+import 'package:teampilot/repositories/ssh_profile_repository.dart';
+import 'package:teampilot/services/terminal/terminal_session.dart';
+import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
+import 'package:teampilot/services/terminal/workspace_shell_connector.dart';
+import 'package:teampilot/services/terminal/workspace_terminal_connect_coordinator.dart';
+import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
+import 'package:teampilot/services/terminal/workspace_terminal_session_ops.dart';
 import 'package:teampilot/services/workbench/workbench_shell_launcher.dart';
 
+import '../../support/post_frame_test_harness.dart';
+
+TerminalSession _testSession() => TerminalSession(
+  executable: '/bin/bash',
+  validateLaunch: false,
+  parseExecutable: false,
+);
+
+class _FakeSessionOps extends WorkspaceTerminalSessionOps {
+  @override
+  Future<WorkspaceTerminalEntry> openEntry({
+    required WorkspaceTerminalGroup group,
+    required WorkspaceShellConnector connector,
+    required WorkspaceTerminalConnectCoordinator connectCoordinator,
+    required String cwd,
+    required WorkspaceTerminalSessionSpec spec,
+    required TerminalTheme theme,
+    required String sshConnectFailedMessage,
+    required bool select,
+    String titleLabel = '',
+    bool followWorkspace = false,
+    VoidCallback? onStateChanged,
+    bool Function()? mounted,
+  }) async {
+    return group.addEntry(
+      cwd: cwd,
+      spec: spec,
+      session: _testSession(),
+      select: select,
+      titleLabel: titleLabel.isNotEmpty ? titleLabel : 'Local',
+      followWorkspace: followWorkspace,
+    );
+  }
+}
+
+class _StubConnector extends WorkspaceShellConnector {
+  _StubConnector()
+    : super(
+        transportFactory: TerminalTransportFactory(
+          sshProfileRepository: SshProfileRepository(),
+          sshCredentialStore: InMemorySshCredentialStore(),
+          sshKnownHostRepository: InMemorySshKnownHostRepository(),
+        ),
+        sshProfileRepository: SshProfileRepository(),
+      );
+}
+
+WorkbenchShellLauncher _launcher({
+  required ChatCubit chat,
+  required FloatingWorkspaceCubit floating,
+  required WorkspaceTerminalRegistry registry,
+  WorkspaceTerminalSessionOps? sessionOps,
+}) {
+  return WorkbenchShellLauncher(
+    floating: floating,
+    chat: chat,
+    registry: registry,
+    connector: _StubConnector(),
+    layout: LayoutCubit(),
+    sessionOps: sessionOps ?? _FakeSessionOps(),
+    fallbackLocalShell: () => '/bin/bash',
+    platformBrightness: () => Brightness.dark,
+  );
+}
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(setUpTestAppStorage);
+  tearDown(tearDownTestAppStorage);
+
+  group('resolveMostRecentFloatingShell', () {
+    test('prefers active terminal tab payload', () {
+      final shell = resolveMostRecentFloatingShell(
+        tabs: const [
+          FloatingTab(
+            id: 'shell:e1',
+            surfaceId: 'terminal',
+            title: 'Local',
+            payload: 'e1',
+          ),
+          FloatingTab(
+            id: 'shell:e2',
+            surfaceId: 'terminal',
+            title: 'Local',
+            payload: 'e2',
+          ),
+        ],
+        activeTabId: 'shell:e1',
+      );
+      expect(shell, WorkbenchTabId.shell('e1'));
+    });
+
+    test('falls back to last terminal tab then registry active', () {
+      expect(
+        resolveMostRecentFloatingShell(
+          tabs: const [
+            FloatingTab(
+              id: 'file:/a',
+              surfaceId: 'filePreview',
+              title: 'a',
+              payload: '/a',
+            ),
+            FloatingTab(
+              id: 'shell:e1',
+              surfaceId: 'terminal',
+              title: 'Local',
+              payload: 'e1',
+            ),
+            FloatingTab(
+              id: 'shell:e2',
+              surfaceId: 'terminal',
+              title: 'Local',
+              payload: 'e2',
+            ),
+          ],
+          activeTabId: 'file:/a',
+        ),
+        WorkbenchTabId.shell('e2'),
+      );
+      expect(
+        resolveMostRecentFloatingShell(
+          tabs: const [],
+          activeTabId: null,
+          registryActiveEntryId: 'reg-1',
+        ),
+        WorkbenchTabId.shell('reg-1'),
+      );
+    });
+  });
+
   group('resolveWorkbenchShellToggle', () {
     test('returns null when workspaceId is empty', () {
       expect(
@@ -41,26 +187,122 @@ void main() {
     });
   });
 
-  group('WorkbenchCubit.resolveMostRecentShell integration', () {
-    late WorkbenchCubit cubit;
+  group('WorkbenchShellLauncher.openAndSelect', () {
+    late ChatCubit chat;
+    late WorkbenchCubit workbench;
+    late FloatingWorkspaceCubit floating;
+    late WorkspaceTerminalRegistry registry;
 
-    setUp(() => cubit = WorkbenchCubit());
-    tearDown(() => cubit.close());
+    setUp(() {
+      chat = testChatCubit(executableResolver: () => 'true');
+      workbench = WorkbenchCubit();
+      floating = FloatingWorkspaceCubit();
+      registry = WorkspaceTerminalRegistry();
+    });
 
-    test('toggle plan selects last focused shell', () {
-      const ws = 'ws';
-      final e1 = WorkbenchTabId.shell('e1');
-      final e2 = WorkbenchTabId.shell('e2');
-      cubit.ensureTab(ws, e1);
-      cubit.ensureTab(ws, e2);
-      cubit.select(ws, e1);
+    tearDown(() async {
+      await chat.close();
+      await workbench.close();
+      await floating.close();
+      registry.disposeAll();
+    });
 
-      final plan = resolveWorkbenchShellToggle(
-        workspaceId: ws,
-        resolveMostRecentShell: cubit.resolveMostRecentShell,
+    test('creates registry entry and floating tab, not workbench shell', () async {
+      final launcher = _launcher(
+        chat: chat,
+        floating: floating,
+        registry: registry,
       );
-      expect(plan!.action, WorkbenchShellToggleAction.selectExisting);
-      expect(plan.existing, e1);
+
+      final entry = await launcher.openAndSelect(
+        workspaceId: 'ws',
+        tabScopeId: 'ws',
+        cwd: '/tmp/proj',
+        spec: const WorkspaceTerminalLocalSpec('/bin/bash'),
+      );
+
+      expect(entry, isNotNull);
+      expect(registry.groupFor('ws').entries.map((e) => e.id), [entry!.id]);
+      expect(floating.state.visibility, FloatingPanelVisibility.open);
+      expect(floating.state.activeWorkspaceId, 'ws');
+      expect(
+        floating.state.activeBucket.tabs,
+        [
+          FloatingTab(
+            id: 'shell:${entry.id}',
+            surfaceId: 'terminal',
+            title: entry.titleLabel,
+            payload: entry.id,
+          ),
+        ],
+      );
+      expect(
+        workbench.state.bucket('ws').tabOrder.where(
+          (t) => t.kind == WorkbenchTabKind.shell,
+        ),
+        isEmpty,
+      );
+    });
+  });
+
+  group('WorkbenchShellLauncher.focusOrCreateDefaultShell', () {
+    late ChatCubit chat;
+    late WorkbenchCubit workbench;
+    late FloatingWorkspaceCubit floating;
+    late WorkspaceTerminalRegistry registry;
+
+    setUp(() {
+      chat = testChatCubit(executableResolver: () => 'true');
+      workbench = WorkbenchCubit();
+      floating = FloatingWorkspaceCubit();
+      registry = WorkspaceTerminalRegistry();
+    });
+
+    tearDown(() async {
+      await chat.close();
+      await workbench.close();
+      await floating.close();
+      registry.disposeAll();
+    });
+
+    test('selectExisting focuses floating tab, not workbench', () async {
+      chat.setActiveWorkspace('ws');
+      floating.setActiveWorkspace('ws');
+      floating.ensureTab(
+        const FloatingTab(
+          id: 'shell:e1',
+          surfaceId: 'terminal',
+          title: 'Local',
+          payload: 'e1',
+        ),
+      );
+      floating.ensureTab(
+        const FloatingTab(
+          id: 'shell:e2',
+          surfaceId: 'terminal',
+          title: 'Local',
+          payload: 'e2',
+        ),
+      );
+      floating.selectTab('shell:e1');
+      floating.minimize();
+
+      final launcher = _launcher(
+        chat: chat,
+        floating: floating,
+        registry: registry,
+      );
+      await launcher.focusOrCreateDefaultShell();
+
+      expect(floating.state.visibility, FloatingPanelVisibility.open);
+      expect(floating.state.activeBucket.activeTabId, 'shell:e1');
+      expect(
+        workbench.state.bucket('ws').tabOrder.where(
+          (t) => t.kind == WorkbenchTabKind.shell,
+        ),
+        isEmpty,
+      );
+      expect(registry.groupFor('ws').entries, isEmpty);
     });
   });
 }

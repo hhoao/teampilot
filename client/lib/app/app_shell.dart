@@ -1205,7 +1205,7 @@ Future<AppShell> buildAppShell({
         layoutCubit.state.preferences.markdownOpenMode,
   );
   final resolvedShellLauncher = WorkbenchShellLauncher(
-    workbench: workbenchCubit,
+    floating: floatingWorkspaceCubit,
     chat: chatCubit,
     registry: workspaceTerminalRegistry,
     connector: workspaceShellConnector,

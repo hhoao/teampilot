@@ -1,7 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/floating_workspace/floating_panel_visibility.dart';
+import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
-import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
-import 'package:teampilot/cubits/workbench/workbench_tab.dart';
+import 'package:teampilot/models/floating_workspace_tab.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/commands/command_ids.dart';
 import 'package:teampilot/services/commands/layout_command_registrar.dart';
@@ -107,8 +108,8 @@ void main() {
     );
 
     test('togglePanel invokes onTogglePanel create-or-focus handler', () async {
-      final workbench = WorkbenchCubit();
-      addTearDown(workbench.close);
+      final floating = FloatingWorkspaceCubit();
+      addTearDown(floating.close);
       var calls = 0;
       final panelBus = CommandBus();
       registerLayoutCommands(
@@ -117,10 +118,16 @@ void main() {
         uiZoomBaseline: () => baseline,
         onTogglePanel: () async {
           calls++;
-          const ws = 'ws';
-          final shell = WorkbenchTabId.shell('e1');
-          workbench.ensureTab(ws, shell);
-          workbench.select(ws, shell);
+          floating.ensureOpen();
+          floating.setActiveWorkspace('ws');
+          floating.ensureTab(
+            const FloatingTab(
+              id: 'shell:e1',
+              surfaceId: 'terminal',
+              title: 'Local',
+              payload: 'e1',
+            ),
+          );
         },
       );
       final terminalVisible = layout.state.preferences.workspaceTerminalVisible;
@@ -130,9 +137,10 @@ void main() {
 
       expect(calls, 1);
       expect(layout.state.preferences.workspaceTerminalVisible, terminalVisible);
+      expect(floating.state.visibility, FloatingPanelVisibility.open);
       expect(
-        workbench.resolveMostRecentShell('ws'),
-        WorkbenchTabId.shell('e1'),
+        floating.state.activeBucket.tabs.any((t) => t.payload == 'e1'),
+        isTrue,
       );
     });
 

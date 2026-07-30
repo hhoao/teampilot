@@ -1,6 +1,10 @@
 import '../../cubits/workbench/workbench_tab.dart';
 
-/// Diff between workbench strip shell/run tabs and live domain ids.
+/// Diff between workbench strip run tabs and live RunPanel session ids.
+///
+/// Shell terminals live on the floating workspace surface — this plan never
+/// projects `shell` onto the center strip (`shellIdsToEnsure` /
+/// `shellTabsToRemove` are always empty).
 class WorkbenchShellRunSyncPlan {
   const WorkbenchShellRunSyncPlan({
     required this.shellIdsToEnsure,
@@ -9,10 +13,10 @@ class WorkbenchShellRunSyncPlan {
     required this.runTabsToRemove,
   });
 
-  /// Registry entry ids missing from [tabOrder] — ensure without selecting.
+  /// Always empty — floating surface owns shell tabs.
   final List<String> shellIdsToEnsure;
 
-  /// Shell tabs whose registry entry no longer exists.
+  /// Always empty — floating surface owns shell tabs.
   final List<WorkbenchTabId> shellTabsToRemove;
 
   /// New RunPanel session ids — ensure and select (last wins if several).
@@ -26,33 +30,6 @@ class WorkbenchShellRunSyncPlan {
       shellTabsToRemove.isEmpty &&
       runIdsToEnsureAndSelect.isEmpty &&
       runTabsToRemove.isEmpty;
-}
-
-/// Registry entry ids not yet present as shell tabs.
-List<String> shellIdsToEnsure({
-  required List<WorkbenchTabId> tabOrder,
-  required Iterable<String> registryEntryIds,
-}) {
-  final existing = {
-    for (final tab in tabOrder)
-      if (tab.kind == WorkbenchTabKind.shell) tab.id,
-  };
-  return [
-    for (final id in registryEntryIds)
-      if (!existing.contains(id)) id,
-  ];
-}
-
-/// Shell tabs whose entry id is absent from the registry.
-List<WorkbenchTabId> shellTabsToRemove({
-  required List<WorkbenchTabId> tabOrder,
-  required Iterable<String> registryEntryIds,
-}) {
-  final live = registryEntryIds.toSet();
-  return [
-    for (final tab in tabOrder)
-      if (tab.kind == WorkbenchTabKind.shell && !live.contains(tab.id)) tab,
-  ];
 }
 
 /// RunPanel session ids not yet present as run tabs (order preserved).
@@ -82,21 +59,18 @@ List<WorkbenchTabId> runTabsToRemove({
   ];
 }
 
-/// Full shell/run strip reconciliation plan for the current domain snapshot.
+/// Run-only strip reconciliation plan (shell projection discontinued).
+///
+/// [registryEntryIds] is accepted for call-site compatibility but ignored —
+/// workspace shells are no longer mirrored into [WorkbenchCubit].
 WorkbenchShellRunSyncPlan planWorkbenchShellRunSync({
   required List<WorkbenchTabId> tabOrder,
   required Iterable<String> registryEntryIds,
   required Iterable<String> runPanelSessionIds,
 }) {
   return WorkbenchShellRunSyncPlan(
-    shellIdsToEnsure: shellIdsToEnsure(
-      tabOrder: tabOrder,
-      registryEntryIds: registryEntryIds,
-    ),
-    shellTabsToRemove: shellTabsToRemove(
-      tabOrder: tabOrder,
-      registryEntryIds: registryEntryIds,
-    ),
+    shellIdsToEnsure: const [],
+    shellTabsToRemove: const [],
     runIdsToEnsureAndSelect: runIdsToEnsureAndSelect(
       tabOrder: tabOrder,
       runPanelSessionIds: runPanelSessionIds,

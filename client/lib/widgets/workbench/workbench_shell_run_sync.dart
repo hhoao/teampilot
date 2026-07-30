@@ -13,8 +13,11 @@ import '../../services/workbench/workbench_run_intent.dart';
 import '../../services/workbench/workbench_shell_run_sync_logic.dart';
 import '../workspace_terminal_panel.dart';
 
-/// Passively mirrors workspace shell entries + RunPanel sessions into the
-/// center workbench strip (peer to [WorkbenchSessionSync]).
+/// Passively mirrors RunPanel sessions into the center workbench strip
+/// (peer to [WorkbenchSessionSync]).
+///
+/// Workspace shell entries are **not** projected here — they open on the
+/// floating terminal surface via [WorkbenchShellLauncher].
 class WorkbenchShellRunSync extends StatefulWidget {
   const WorkbenchShellRunSync({
     required this.workspaceId,
@@ -81,9 +84,10 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
     if (identical(_group, group)) return;
     _detachGroupListener();
     _group = group;
+    // Registry still drives hold-handle selection / focus for run→terminal
+    // intents; we no longer reconcile shell tabs into WorkbenchCubit.
     _groupListener = () {
       if (!mounted) return;
-      _reconcile();
       setState(() {});
     };
     group.addListener(_groupListener!);
@@ -131,9 +135,6 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
 
   void _reconcile() {
     final workbench = context.read<WorkbenchCubit>();
-    final group = context.read<WorkspaceTerminalRegistry>().groupFor(
-      widget.tabScopeId,
-    );
     final runPanelIds = context
         .read<RunCubit>()
         .state
@@ -144,33 +145,16 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
     final tabOrder = workbench.tabOrder(widget.workspaceId);
     final plan = planWorkbenchShellRunSync(
       tabOrder: tabOrder,
-      registryEntryIds: group.entries.map((e) => e.id),
+      registryEntryIds: const [],
       runPanelSessionIds: runPanelIds,
     );
     if (plan.isEmpty) return;
 
-    for (final tab in plan.shellTabsToRemove) {
-      workbench.removeTab(widget.workspaceId, tab);
-    }
     for (final tab in plan.runTabsToRemove) {
       workbench.removeTab(widget.workspaceId, tab);
     }
 
-    final previousActive = workbench.activeTabId(widget.workspaceId);
-    for (final id in plan.shellIdsToEnsure) {
-      workbench.ensureTab(widget.workspaceId, WorkbenchTabId.shell(id));
-    }
-
-    if (plan.runIdsToEnsureAndSelect.isEmpty) {
-      if (plan.shellIdsToEnsure.isNotEmpty) {
-        if (previousActive != null) {
-          workbench.select(widget.workspaceId, previousActive);
-        } else {
-          workbench.clearActive(widget.workspaceId);
-        }
-      }
-      return;
-    }
+    if (plan.runIdsToEnsureAndSelect.isEmpty) return;
 
     WorkbenchTabId? lastRun;
     for (final id in plan.runIdsToEnsureAndSelect) {

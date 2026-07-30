@@ -31,7 +31,6 @@ bool shouldRemoveRunWorkbenchTab({
 }) => !sessionFound || dismissSucceeded;
 
 /// Clears run-service binds then removes the shell entry from its group.
-@visibleForTesting
 void disposeWorkbenchShellDomain({
   required WorkspaceTerminalRunService runService,
   required WorkspaceTerminalGroup group,
