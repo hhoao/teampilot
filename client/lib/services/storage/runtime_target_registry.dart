@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../models/runtime_target.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import 'targets_repository.dart';
@@ -11,11 +13,14 @@ class RuntimeTargetRegistry {
     required SshProfileRepository sshProfileRepo,
     required this.isWindows,
     required this.isAndroid,
+    bool Function()? hasTermuxConfig,
   }) : _repo = repo,
-       _sshProfileRepo = sshProfileRepo;
+       _sshProfileRepo = sshProfileRepo,
+       _hasTermuxConfig = hasTermuxConfig;
 
   final TargetsRepository _repo;
   final SshProfileRepository _sshProfileRepo;
+  final bool Function()? _hasTermuxConfig;
   final bool isWindows;
   final bool isAndroid;
 
@@ -52,6 +57,8 @@ class RuntimeTargetRegistry {
 
     return [
       RuntimeTarget.local(),
+      if (isAndroid && (_hasTermuxConfig?.call() ?? false))
+        RuntimeTarget.termux(),
       if (isWindows && wslDistro.trim().isNotEmpty)
         RuntimeTarget.wsl(wslDistro.trim()),
       ...reconciled,

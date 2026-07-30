@@ -141,6 +141,7 @@ import '../services/storage/home_target_controller.dart';
 import '../services/storage/workspace_directory_picker.dart';
 import '../services/storage/home_target_store.dart';
 import '../services/storage/runtime_target_registry.dart';
+import '../services/termux/termux_transport_profile.dart';
 import '../services/notification/notification_recorder.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/skill/skill_acquisition_engine.dart';
@@ -496,8 +497,15 @@ Future<AppShell> buildAppShell({
   // target authority is the device-local homeTargetStore read above. The
   // registry is used by the picker UI to list selectable targets.
   final targetsRepo = deviceLocalTargetsRepository(nativeAppDataPath);
-  SshProfile? sshProfileById(String id) =>
-      sshProfileCubit.state.profiles.where((p) => p.id == id).firstOrNull;
+  final termuxConfigStore = deviceLocalTermuxConfigStore(nativeAppDataPath);
+  var termuxConfigCache = await termuxConfigStore.load();
+  SshProfile? sshProfileById(String id) {
+    if (id == 'termux') {
+      final cfg = termuxConfigCache;
+      return cfg == null ? null : termuxTransportProfile(cfg);
+    }
+    return sshProfileCubit.state.profiles.where((p) => p.id == id).firstOrNull;
+  }
   final remoteCliReadiness = RemoteCliReadinessService(
     registry: cliToolRegistry,
     sshClientFactory: sshClientFactory,
@@ -510,6 +518,7 @@ Future<AppShell> buildAppShell({
     sshProfileRepo: sshProfileRepo,
     isWindows: Platform.isWindows,
     isAndroid: Platform.isAndroid,
+    hasTermuxConfig: () => termuxConfigCache != null,
   );
 
   // P2: de-singleton. One resolver + a per-target context registry. The home
@@ -529,8 +538,17 @@ Future<AppShell> buildAppShell({
     resolver: runtimeContextResolver,
     homeTarget: defaultTargetResolver(),
     sshProfileById: sshProfileById,
+    termuxPathCache: () {
+      final cfg = termuxConfigCache;
+      if (cfg == null) {
+        return (home: null, appDataRoot: null);
+      }
+      return (home: cfg.lastHome, appDataRoot: cfg.lastAppDataRoot);
+    },
     onEvict: (targetId) async {
-      final pid = sshProfileIdOfId(targetId);
+      final pid =
+          homeTargetFromId(targetId).sshProfileId ??
+          sshProfileIdOfId(targetId);
       if (pid != null) {
         sshClientFactory.disconnectProfile(
           pid,
@@ -720,12 +738,29 @@ Future<AppShell> buildAppShell({
   sessionRepo = SessionRepository(lifecycleService: sessionLifecycleService);
   boot('prefetching home index snapshots');
   bootstrapCubit?.beginHomeIndex();
-  final homeIndexPrefetch =
-      homeIndexPrefetchFuture ??
-      Future.wait([
+  Future<void> prefetchHomeIndex() async {
+    try {
+      await Future.wait([
         sessionRepo.loadWorkspacesIndex(),
         identityRepository.loadAll(),
       ]);
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[boot] home index prefetch failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  final homeIndexPrefetch =
+      homeIndexPrefetchFuture ??
+      (connectionModeService.isRemoteWorkPlane
+          ? prefetchHomeIndex()
+          : Future.wait([
+              sessionRepo.loadWorkspacesIndex(),
+              identityRepository.loadAll(),
+            ]));
   final pluginRepository = PluginRepository();
   final mcpRepository = McpRepository();
   identityProvisioner = LaunchProfileProvisioner(
@@ -1213,7 +1248,7 @@ Future<AppShell> buildAppShell({
     chatCubit: chatCubit,
     sessionRepo: sessionRepo,
     layoutCubit: layoutCubit,
-    isSshMode: connectionModeService.isSshMode,
+    isSshMode: connectionModeService.isRemoteWorkPlane,
     homeSshProfileId: defaultTargetResolver().sshProfileId,
     sshProfileExists: (id) => sshProfileById(id) != null,
     reinstallStorageContext: reinstallStorageContext,
@@ -1229,23 +1264,33 @@ Future<AppShell> buildAppShell({
     }
     boot('bootstrapAppData start');
     if (!indexReady) {
-      boot('awaiting home index snapshots');
-      await homeIndexPrefetch;
-      if (connectionModeService.isSshMode) {
-        await AppDataBootstrap.bootstrapHomeIndex(
-          boot: boot,
-          sshProfileCubit: sshProfileCubit,
-          teamCubit: teamCubit,
-          chatCubit: chatCubit,
-          sessionRepo: sessionRepo,
-          layoutCubit: layoutCubit,
-          isSshMode: connectionModeService.isSshMode,
-          homeSshProfileId: defaultTargetResolver().sshProfileId,
-          sshProfileExists: (id) => sshProfileById(id) != null,
-          reinstallStorageContext: reinstallStorageContext,
-          home: defaultTargetResolver(),
-        );
+      if (connectionModeService.isRemoteWorkPlane) {
+        boot('awaiting remote home index snapshots');
+        try {
+          await homeIndexPrefetch;
+          await AppDataBootstrap.bootstrapHomeIndex(
+            boot: boot,
+            sshProfileCubit: sshProfileCubit,
+            teamCubit: teamCubit,
+            chatCubit: chatCubit,
+            sessionRepo: sessionRepo,
+            layoutCubit: layoutCubit,
+            isSshMode: connectionModeService.isRemoteWorkPlane,
+            homeSshProfileId: defaultTargetResolver().sshProfileId,
+            sshProfileExists: (id) => sshProfileById(id) != null,
+            reinstallStorageContext: reinstallStorageContext,
+            home: defaultTargetResolver(),
+          );
+        } on Object catch (error, stackTrace) {
+          appLogger.w(
+            '[boot] remote home index bootstrap failed',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
       } else {
+        boot('awaiting home index snapshots');
+        await homeIndexPrefetch;
         await AppDataBootstrap.hydrateNativeHomeIndex(
           boot: boot,
           teamCubit: teamCubit,

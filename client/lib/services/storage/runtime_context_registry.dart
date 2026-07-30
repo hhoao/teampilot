@@ -3,6 +3,8 @@ import '../../models/ssh_profile.dart';
 import 'runtime_context.dart';
 import 'runtime_context_resolver.dart';
 
+typedef TermuxPathCache = ({String? home, String? appDataRoot});
+
 /// Owns the live runtime contexts. The home context (control plane) is
 /// materialized once at bootstrap and cached; work-plane contexts are
 /// materialized lazily per target id and cached so multiple workspaces/sessions
@@ -12,15 +14,18 @@ class RuntimeContextRegistry {
     required RuntimeContextResolver resolver,
     required RuntimeTarget homeTarget,
     SshProfile? Function(String id)? sshProfileById,
+    TermuxPathCache Function()? termuxPathCache,
     Future<void> Function(String targetId)? onEvict,
   }) : _resolver = resolver,
        _homeTarget = homeTarget,
        _sshProfileById = sshProfileById,
+       _termuxPathCache = termuxPathCache,
        _onEvict = onEvict;
 
   final RuntimeContextResolver _resolver;
   RuntimeTarget _homeTarget;
   final SshProfile? Function(String id)? _sshProfileById;
+  final TermuxPathCache Function()? _termuxPathCache;
   final Future<void> Function(String targetId)? _onEvict;
 
   final _cache = <String, RuntimeContext>{};
@@ -41,9 +46,14 @@ class RuntimeContextRegistry {
     final cached = _cache[target.id];
     if (cached != null) return cached;
     final profileId = target.sshProfileId;
+    final termuxCache = target.kind == RuntimeKind.termux
+        ? _termuxPathCache?.call()
+        : null;
     final ctx = await _resolver.resolve(
       target,
       sshProfile: profileId != null ? _sshProfileById?.call(profileId) : null,
+      cachedHome: termuxCache?.home,
+      cachedAppDataRoot: termuxCache?.appDataRoot,
     );
     _cache[target.id] = ctx;
     return ctx;

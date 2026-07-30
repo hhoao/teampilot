@@ -36,20 +36,24 @@ class RuntimeContextResolver {
   Future<RuntimeContext> resolve(
     RuntimeTarget target, {
     SshProfile? sshProfile,
+    String? cachedHome,
+    String? cachedAppDataRoot,
   }) async {
-    final useSsh =
-        target.kind == RuntimeKind.ssh &&
+    final useSshTransport =
+        (target.kind == RuntimeKind.ssh || target.kind == RuntimeKind.termux) &&
         sshProfile != null &&
         sshClientFactory != null;
 
-    if (useSsh && sshProfile != null && sshClientFactory != null) {
+    if (useSshTransport) {
       return _resolveSsh(
         target,
-        profile: sshProfile,
+        profile: sshProfile!,
         clientFactory: sshClientFactory!,
         pathResolver:
             remotePathResolver ??
             RemoteSshStoragePathResolver(clientFactory: sshClientFactory!),
+        cachedHome: cachedHome,
+        cachedAppDataRoot: cachedAppDataRoot,
       );
     }
 
@@ -108,21 +112,65 @@ class RuntimeContextResolver {
     required SshProfile profile,
     required SshClientFactory clientFactory,
     required RemoteSshStoragePathResolver pathResolver,
+    String? cachedHome,
+    String? cachedAppDataRoot,
   }) async {
-    final paths = await pathResolver.resolve(profile);
+    try {
+      final paths = await pathResolver.resolve(profile);
+      final fileStore = RemoteFileStore(
+        profile: profile,
+        clientFactory: clientFactory,
+      );
+      await clientFactory.sftpFor(profile);
+      final fs = SftpFilesystem(fileStore);
+      return RuntimeContext(
+        target: target,
+        filesystem: fs,
+        home: paths.home,
+        cwd: paths.home,
+        appDataRoot: paths.teampilotAppDir,
+        paths: AppPaths(paths.teampilotAppDir),
+      );
+    } on Object {
+      if (target.kind == RuntimeKind.termux &&
+          _hasTermuxPathCache(cachedHome, cachedAppDataRoot)) {
+        return _resolveTermuxFromCache(
+          target,
+          profile: profile,
+          clientFactory: clientFactory,
+          home: cachedHome!.trim(),
+          appDataRoot: cachedAppDataRoot!.trim(),
+        );
+      }
+      rethrow;
+    }
+  }
+
+  static bool _hasTermuxPathCache(String? home, String? appDataRoot) =>
+      home != null &&
+      home.trim().isNotEmpty &&
+      appDataRoot != null &&
+      appDataRoot.trim().isNotEmpty;
+
+  RuntimeContext _resolveTermuxFromCache(
+    RuntimeTarget target, {
+    required SshProfile profile,
+    required SshClientFactory clientFactory,
+    required String home,
+    required String appDataRoot,
+  }) {
     final fileStore = RemoteFileStore(
       profile: profile,
       clientFactory: clientFactory,
     );
-    await clientFactory.sftpFor(profile);
     final fs = SftpFilesystem(fileStore);
     return RuntimeContext(
       target: target,
       filesystem: fs,
-      home: paths.home,
-      cwd: paths.home,
-      appDataRoot: paths.teampilotAppDir,
-      paths: AppPaths(paths.teampilotAppDir),
+      home: home,
+      cwd: home,
+      appDataRoot: appDataRoot,
+      paths: AppPaths(appDataRoot),
     );
   }
 

@@ -24,11 +24,13 @@ void main() {
   RuntimeTargetRegistry build({
     bool isWindows = false,
     bool isAndroid = false,
+    bool Function()? hasTermuxConfig,
   }) => RuntimeTargetRegistry(
     repo: targetsRepo,
     sshProfileRepo: sshRepo,
     isWindows: isWindows,
     isAndroid: isAndroid,
+    hasTermuxConfig: hasTermuxConfig,
   );
 
   SshProfile profile(String id) =>
@@ -68,5 +70,24 @@ void main() {
         .map((t) => t.id)
         .toSet();
     expect(persisted, {'ssh:p1', 'ssh:p2'});
+  });
+
+  test('listTargets injects termux on Android when configured', () async {
+    final reg = build(isAndroid: true, hasTermuxConfig: () => true);
+    final ids = (await reg.listTargets()).map((t) => t.id).toList();
+    expect(ids, contains('termux:default'));
+    expect(ids.indexOf('termux:default'), greaterThan(ids.indexOf('local')));
+  });
+
+  test('listTargets omits termux on Android when not configured', () async {
+    final reg = build(isAndroid: true, hasTermuxConfig: () => false);
+    final ids = (await reg.listTargets()).map((t) => t.id);
+    expect(ids, isNot(contains('termux:default')));
+  });
+
+  test('listTargets omits termux off Android even when configured', () async {
+    final reg = build(isAndroid: false, hasTermuxConfig: () => true);
+    final ids = (await reg.listTargets()).map((t) => t.id);
+    expect(ids, isNot(contains('termux:default')));
   });
 }
