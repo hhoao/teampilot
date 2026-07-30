@@ -215,6 +215,8 @@ class SessionLaunchService
       fixedSessionId: session.sessionId,
       expertKey: params.simpleIdentity?.expertKey ?? params.expertKey,
       continueOverrides: params.continueOverrides,
+      members: session.members,
+      memberTargets: session.memberTargets,
     );
     tab.persistedSession = persisted;
     _h.replaceSessionSnapshot(persisted);
