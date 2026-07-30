@@ -866,6 +866,7 @@ Future<AppShell> buildAppShell({
       resolveWorkContext: sessionLifecycleService.resolveWorkContextForTargetId,
       sshProfileRepository: sshProfileRepo,
       sshClientFactory: sshClientFactory,
+      homeTarget: defaultTargetResolver,
     ),
   );
   final configCubit = ConfigCubit();
