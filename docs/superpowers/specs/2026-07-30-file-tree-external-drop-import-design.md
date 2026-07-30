@@ -76,6 +76,11 @@ for OS→tree or cross-mount tree copies; it always materializes bytes via
 | Empty panel area / root chrome | Mounted workspace root for that panel |
 | In-tree: onto self or descendant | Reject (invalid move/copy) |
 
+**Multi-root empty area:** Prefer the root whose vertical band contains the
+pointer. If the pointer sits in a gap between roots, use the **nearest** root
+by Y. Never silently default to “first root only” when another root is clearly
+under the pointer.
+
 Multi-root trees: dest is resolved against the hovered mount; `FileTreeCubit.fsFor(destDir)` selects the destination `Filesystem`.
 
 **Same-FS vs cross-FS (authoritative):** Do **not** infer mount from a single
