@@ -508,8 +508,12 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     final cleaned = identical(expertKey, draft.expertKey)
         ? draft
         : draft.copyWith(expertKey: expertKey);
-    setState(() => _applyDraft(cleaned));
-    if (!identical(cleaned, draft)) _persistDraft();
+    final presets = context.read<CliPresetsCubit>().state.presets;
+    final seeded = seedLandingDraftPresetDefault(cleaned, presets);
+    setState(() => _applyDraft(seeded));
+    if (!identical(cleaned, draft) || seeded.presetId != cleaned.presetId) {
+      _persistDraft();
+    }
     await _syncActiveProjectFromDraft();
     // Sync may return early after dispose; do not touch context/setState.
     if (!mounted) return;
@@ -910,9 +914,25 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
 
   void _setConversationMode(_LandingConversationMode mode) {
     if (_conversationMode == mode) return;
-    setState(() => _conversationMode = mode);
+    setState(() {
+      _conversationMode = mode;
+      if (mode == _LandingConversationMode.simple) {
+        _seedFirstPresetIfNeeded();
+      }
+    });
     _persistDraft();
     _scheduleTeamLaunchReadinessCheck();
+  }
+
+  /// Mirrors automation editor: default Simple landing to the first global preset.
+  bool _seedFirstPresetIfNeeded() {
+    if (_selectedPresetId?.trim().isNotEmpty == true) return false;
+    if (_selectedCli != null) return false;
+    final presets = context.read<CliPresetsCubit>().state.presets;
+    final first = presets.firstOrNull;
+    if (first == null) return false;
+    _selectedPresetId = first.id;
+    return true;
   }
 
   void _setDangerouslySkipPermissions(bool value) {

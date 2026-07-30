@@ -71,6 +71,19 @@ LandingLaunchContext landingDraftSelectingCustom(
   );
 }
 
+/// When [draft] is personal with no preset and no custom launch, pick [presets].first.
+LandingLaunchContext seedLandingDraftPresetDefault(
+  LandingLaunchContext draft,
+  List<CliPreset> presets,
+) {
+  if (!draft.isPersonal) return draft;
+  if (draft.presetId?.trim().isNotEmpty == true) return draft;
+  if (draft.cli != null) return draft;
+  final first = presets.firstOrNull;
+  if (first == null) return draft;
+  return landingDraftSelectingPreset(draft, first.id);
+}
+
 /// Loads persisted compose-landing draft for a workspace (local to landing UI).
 ///
 /// When no workspace prefs exist, [simpleModeDefaultFullAccess] seeds the

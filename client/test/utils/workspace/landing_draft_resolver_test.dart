@@ -225,6 +225,65 @@ void main() {
     });
   });
 
+  group('seedLandingDraftPresetDefault', () {
+    const preset = CliPreset(
+      id: 'preset-1',
+      name: 'Cursor Fast',
+      cli: CliTool.cursor,
+      provider: 'cursor-account',
+      model: 'gpt-5.5',
+      effort: 'high',
+      createdAt: 1,
+      updatedAt: 2,
+    );
+
+    test('seeds first preset for empty personal draft', () {
+      const draft = LandingLaunchContext(isPersonal: true);
+      final seeded = seedLandingDraftPresetDefault(draft, const [preset]);
+      expect(seeded.presetId, 'preset-1');
+      expect(seeded.cli, isNull);
+    });
+
+    test('keeps existing presetId', () {
+      const draft = LandingLaunchContext(
+        isPersonal: true,
+        presetId: 'preset-1',
+      );
+      expect(
+        seedLandingDraftPresetDefault(draft, const [preset]),
+        draft,
+      );
+    });
+
+    test('keeps custom launch without preset', () {
+      const draft = LandingLaunchContext(
+        isPersonal: true,
+        cli: CliTool.codex,
+        provider: 'openai-official',
+      );
+      expect(
+        seedLandingDraftPresetDefault(draft, const [preset]),
+        draft,
+      );
+    });
+
+    test('no-op when presets empty', () {
+      const draft = LandingLaunchContext(isPersonal: true);
+      expect(seedLandingDraftPresetDefault(draft, const []), draft);
+    });
+
+    test('no-op for team draft', () {
+      const draft = LandingLaunchContext(
+        isPersonal: false,
+        teamId: 'team-1',
+      );
+      expect(
+        seedLandingDraftPresetDefault(draft, const [preset]),
+        draft,
+      );
+    });
+  });
+
   group('landing draft select helpers', () {
     test('selecting preset clears custom four-tuple', () {
       const base = LandingLaunchContext(
