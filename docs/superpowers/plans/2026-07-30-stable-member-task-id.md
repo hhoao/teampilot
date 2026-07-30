@@ -242,7 +242,7 @@ git commit -m "feat(session): persist staged member taskIds without reallocation
 **Files:**
 - Modify: `client/lib/services/launch/session_launch_pipeline.dart`
 - Modify: `client/lib/cubits/chat/session_launch_service.dart` (`_persistSessionIfNeeded`)
-- Test: extend or add under `client/test/services/launch/` or `client/test/cubits/chat/` — prefer a focused unit that mocks/fakes as existing launch tests do
+- Test: `client/test/services/launch/session_launch_pipeline_stable_task_id_test.dart`
 
 - [ ] **Step 1: Write failing test — provisional taskId ≠ sessionId and survives persist**
 
@@ -278,7 +278,7 @@ with:
 final memberClis = resolveSessionMemberCliLocks(
   team: request.team!,
   rosterMembers: request.team!.members,
-  globalPresets: /* same source as persist path */,
+  globalPresets: _host.lifecycle.globalPresets, // same as _persistSessionIfNeeded
 );
 final plan = buildTeamSessionMemberPlan(
   workspace: request.workspace,
@@ -292,7 +292,9 @@ provisional = provisional.copyWith(
 );
 ```
 
-Handle plan failures the same way create would (surface blocked / rollback). Do **not** stage full-expand placeholders for excluded mixed seats.
+On plan `StateError` (`lead_placement_invalid`, `mixed_workspace_member_placement_uninitialized`): map to the same blocked outcomes already used before connect (e.g. `LaunchOpened(SessionOpenStatus.blockedMixedMemberTargets)` / existing placement gates) — do not let the exception escape `_runCreate` uncaught.
+
+Do **not** stage full-expand placeholders for excluded mixed seats.
 
 In `_persistSessionIfNeeded`:
 
