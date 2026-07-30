@@ -27,6 +27,7 @@ import '../cubits/member_presence_cubit.dart';
 import '../cubits/notification_cubit.dart';
 import '../cubits/progress_activity_cubit.dart';
 import '../services/progress_activity/app_update_activity_adapter.dart';
+import '../services/progress_activity/hub_clone_activity_adapter.dart';
 import '../cubits/ai_history_cubit.dart';
 import '../cubits/shortcut_cubit.dart';
 import '../cubits/editor_cubit.dart';
@@ -767,6 +768,16 @@ Future<AppShell> buildAppShell({
     onMcpDeleted: teamCubit.removeMcpFromAllTeams,
   );
 
+  final notificationCubit = NotificationCubit();
+  final notificationBootstrap = notificationCubit.load();
+  NotificationRecorder.install(notificationCubit);
+  final progressActivityCubit = ProgressActivityCubit(
+    historyRecorder: notificationCubit,
+  );
+  final hubCloneActivityAdapter = HubCloneActivityAdapter(
+    cubit: progressActivityCubit,
+  );
+
   final teamHubSource = CompositeTeamHubSource.withDefaults(
     GitRegistryTeamHubSource(),
   );
@@ -804,7 +815,14 @@ Future<AppShell> buildAppShell({
     source: teamHubSource,
     loadFavorites: teamHubFavorites.load,
     saveFavoriteToggle: teamHubFavorites.toggle,
-    cloneTeam: teamCloneService.clone,
+    cloneTeam: (team) => hubCloneActivityAdapter.runTracked(
+      title: 'Clone ${team.name}',
+      historyMessageFor: (result) => result.hasFailures
+          ? 'Cloned ${team.name} with ${result.failedDeps.length} dependency failures'
+          : 'Cloned ${team.name}',
+      run: (onProgress) =>
+          teamCloneService.clone(team, onProgress: onProgress),
+    ),
     loadInstalledDepIds: () async {
       final skills = await skillRepo.loadInstalled();
       final plugins = await pluginRepository.loadAll();
@@ -837,6 +855,7 @@ Future<AppShell> buildAppShell({
     saveFavoriteToggle: expertHubFavorites.toggle,
     memberRosterService: memberRosterService,
     launchProfiles: () => teamCubit,
+    hubCloneActivity: hubCloneActivityAdapter,
     loadInstalledDepIds: () async {
       final skills = await skillRepo.loadInstalled();
       return skills.map((s) => s.id).toSet();
@@ -1132,12 +1151,6 @@ Future<AppShell> buildAppShell({
   };
   chatCubit.onHistorySeatsDispose = aiHistoryCubit.disposeSeatsForSession;
 
-  final notificationCubit = NotificationCubit();
-  final notificationBootstrap = notificationCubit.load();
-  NotificationRecorder.install(notificationCubit);
-  final progressActivityCubit = ProgressActivityCubit(
-    historyRecorder: notificationCubit,
-  );
   final appUpdateCubit = AppUpdateCubit(
     settings: appSettings,
     activityAdapter: AppUpdateActivityAdapter(cubit: progressActivityCubit),
