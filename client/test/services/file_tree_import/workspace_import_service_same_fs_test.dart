@@ -568,29 +568,5 @@ void main() {
       expect(summary.failedPaths, ['/dest/broken.txt']);
     });
 
-    test('cross-FS plan throws UnimplementedError', () async {
-      final otherFs = InMemoryFilesystem();
-      await otherFs.ensureDir('/dest');
-
-      final plan = ImportPlan(
-        sources: [const ImportSource(path: '/src/x.txt', isDirectory: false)],
-        destDir: '/dest',
-        mode: ImportMode.copy,
-        sourceFs: fs,
-        destFs: otherFs,
-        flattenedFileCount: 1,
-        maxFileBytes: 0,
-        destIsLocal: true,
-      );
-
-      await expectLater(
-        service.run(
-          plan,
-          onConflict: _skipConflict,
-          isCancelled: () => false,
-        ),
-        throwsA(isA<UnimplementedError>()),
-      );
-    });
   });
 }

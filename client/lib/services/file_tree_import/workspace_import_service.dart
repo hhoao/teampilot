@@ -66,7 +66,11 @@ class WorkspaceImportService {
     required bool Function() isCancelled,
   }) async {
     if (!identical(plan.sourceFs, plan.destFs)) {
-      throw UnimplementedError('cross-FS import');
+      return _runCrossFs(
+        plan,
+        onConflict: onConflict,
+        isCancelled: isCancelled,
+      );
     }
 
     final fs = plan.sourceFs;
@@ -181,6 +185,292 @@ class WorkspaceImportService {
     );
   }
 
+  Future<ImportSummary> _runCrossFs(
+    ImportPlan plan, {
+    required ConflictResolver onConflict,
+    required bool Function() isCancelled,
+  }) async {
+    final sourceFs = plan.sourceFs;
+    final destFs = plan.destFs;
+    final pathContext = destFs.pathContext;
+
+    var succeeded = 0;
+    var skipped = 0;
+    var failed = 0;
+    var cancelled = false;
+    final failedPaths = <String>[];
+
+    final totalItems = plan.sources.length;
+    var completedItems = 0;
+    var remainingConflicts = await _countConflicts(plan);
+
+    void emitProgress({
+      String currentName = '',
+      int bytesDone = 0,
+      int bytesTotal = 0,
+    }) {
+      if (_progressController.isClosed) return;
+      _progressController.add(
+        ImportProgress(
+          completedItems: completedItems,
+          totalItems: totalItems,
+          bytesDone: bytesDone,
+          bytesTotal: bytesTotal,
+          currentName: currentName,
+        ),
+      );
+    }
+
+    emitProgress();
+
+    for (final source in plan.sources) {
+      if (isCancelled()) {
+        cancelled = true;
+        break;
+      }
+
+      final destPath = pathContext.join(
+        plan.destDir,
+        pathContext.basename(source.path),
+      );
+      final destStat = await destFs.stat(destPath);
+
+      if (destStat.exists) {
+        final destIsDirectory = destStat.isDirectory;
+        final typeMismatch = source.isDirectory != destIsDirectory;
+
+        final choice = await onConflict(
+          destPath: destPath,
+          sourceIsDirectory: source.isDirectory,
+          destIsDirectory: destIsDirectory,
+          typeMismatch: typeMismatch,
+          remainingConflicts: remainingConflicts,
+        );
+        remainingConflicts--;
+
+        final effectiveChoice =
+            typeMismatch && choice == ConflictChoice.overwrite
+            ? ConflictChoice.skip
+            : choice;
+
+        if (effectiveChoice == ConflictChoice.cancelAll) {
+          cancelled = true;
+          break;
+        }
+        if (effectiveChoice == ConflictChoice.skip) {
+          skipped++;
+          completedItems++;
+          emitProgress(currentName: pathContext.basename(source.path));
+          continue;
+        }
+
+        await destFs.removeRecursive(destPath);
+      }
+
+      try {
+        if (source.isDirectory) {
+          final copyCancelled = await _copyDirectoryCrossFs(
+            sourceFs: sourceFs,
+            destFs: destFs,
+            sourcePath: source.path,
+            destPath: destPath,
+            emitProgress: emitProgress,
+            isCancelled: isCancelled,
+            failedPaths: failedPaths,
+          );
+          if (copyCancelled) {
+            cancelled = true;
+            break;
+          }
+        } else {
+          final copyCancelled = await _copyFileCrossFs(
+            sourceFs: sourceFs,
+            destFs: destFs,
+            sourcePath: source.path,
+            destPath: destPath,
+            currentName: pathContext.basename(source.path),
+            emitProgress: emitProgress,
+            isCancelled: isCancelled,
+          );
+          if (copyCancelled) {
+            cancelled = true;
+            break;
+          }
+        }
+        succeeded++;
+      } on Error {
+        rethrow;
+      } catch (_) {
+        failedPaths.add(destPath);
+        failed++;
+      }
+
+      completedItems++;
+      emitProgress(currentName: pathContext.basename(source.path));
+    }
+
+    return ImportSummary(
+      succeeded: succeeded,
+      skipped: skipped,
+      failed: failed,
+      cancelled: cancelled,
+      failedPaths: List.unmodifiable(failedPaths),
+    );
+  }
+
+  Future<bool> _copyDirectoryCrossFs({
+    required Filesystem sourceFs,
+    required Filesystem destFs,
+    required String sourcePath,
+    required String destPath,
+    required void Function({
+      String currentName,
+      int bytesDone,
+      int bytesTotal,
+    })
+    emitProgress,
+    required bool Function() isCancelled,
+    required List<String> failedPaths,
+  }) async {
+    final sourcePathContext = sourceFs.pathContext;
+    final destPathContext = destFs.pathContext;
+
+    await destFs.ensureDir(destPath);
+
+    final entries = await sourceFs.listDirRecursive(sourcePath);
+    for (final entry in entries) {
+      if (entry.isDirectory) continue;
+
+      if (isCancelled()) {
+        return true;
+      }
+
+      final sourceFilePath = sourcePathContext.join(sourcePath, entry.name);
+      final destFilePath = destPathContext.join(destPath, entry.name);
+
+      try {
+        final copyCancelled = await _copyFileCrossFs(
+          sourceFs: sourceFs,
+          destFs: destFs,
+          sourcePath: sourceFilePath,
+          destPath: destFilePath,
+          currentName: destPathContext.basename(destFilePath),
+          emitProgress: emitProgress,
+          isCancelled: isCancelled,
+        );
+        if (copyCancelled) {
+          return true;
+        }
+      } on Error {
+        rethrow;
+      } catch (_) {
+        failedPaths.add(destFilePath);
+      }
+    }
+
+    return false;
+  }
+
+  /// Returns `true` when the transfer was cancelled mid-file.
+  Future<bool> _copyFileCrossFs({
+    required Filesystem sourceFs,
+    required Filesystem destFs,
+    required String sourcePath,
+    required String destPath,
+    required String currentName,
+    required void Function({
+      String currentName,
+      int bytesDone,
+      int bytesTotal,
+    })
+    emitProgress,
+    required bool Function() isCancelled,
+  }) async {
+    final srcStat = await sourceFs.stat(sourcePath);
+    if (!srcStat.isFile) {
+      return false;
+    }
+
+    final liveSize = srcStat.size;
+    final partial = '$destPath.partial';
+    final pathContext = destFs.pathContext;
+
+    await destFs.ensureDir(pathContext.dirname(destPath));
+
+    var bytesWritten = 0;
+    emitProgress(
+      currentName: currentName,
+      bytesDone: 0,
+      bytesTotal: liveSize ?? 0,
+    );
+
+    while (true) {
+      if (isCancelled()) {
+        await _deleteIfExists(destFs, partial);
+        return true;
+      }
+
+      if (liveSize != null && bytesWritten >= liveSize) {
+        if (bytesWritten > liveSize) {
+          await _deleteIfExists(destFs, partial);
+          throw StateError('bytesWritten exceeded live source size');
+        }
+        break;
+      }
+
+      final chunk = await sourceFs.readBytesRange(
+        sourcePath,
+        bytesWritten,
+        chunkSize,
+      );
+      if (chunk == null) {
+        await _deleteIfExists(destFs, partial);
+        throw StateError('source unreadable: $sourcePath');
+      }
+
+      if (chunk.isEmpty) {
+        if (liveSize != null && bytesWritten < liveSize) {
+          await _deleteIfExists(destFs, partial);
+          throw StateError('source ended before expected size');
+        }
+        break;
+      }
+
+      await destFs.appendBytes(partial, chunk);
+      bytesWritten += chunk.length;
+
+      emitProgress(
+        currentName: currentName,
+        bytesDone: bytesWritten,
+        bytesTotal: liveSize ?? bytesWritten,
+      );
+
+      if (liveSize != null && bytesWritten > liveSize) {
+        await _deleteIfExists(destFs, partial);
+        throw StateError('bytesWritten exceeded live source size');
+      }
+
+      if (liveSize == null && chunk.length < chunkSize) {
+        break;
+      }
+      if (liveSize != null && bytesWritten == liveSize) {
+        break;
+      }
+    }
+
+    if (isCancelled()) {
+      await _deleteIfExists(destFs, partial);
+      return true;
+    }
+
+    final partialStat = await destFs.stat(partial);
+    if (!partialStat.exists) {
+      await destFs.writeBytes(partial, const []);
+    }
+    await destFs.rename(partial, destPath);
+    return false;
+  }
+
   Future<int> _countConflicts(ImportPlan plan) async {
     final pathContext = plan.destFs.pathContext;
     var count = 0;
@@ -226,6 +516,13 @@ class WorkspaceImportService {
         isDirectory: isDirectory,
       );
       await fs.removeRecursive(sourcePath);
+    }
+  }
+
+  Future<void> _deleteIfExists(Filesystem fs, String path) async {
+    final stat = await fs.stat(path);
+    if (stat.exists) {
+      await fs.removeRecursive(path);
     }
   }
 }
