@@ -33,35 +33,48 @@ class TeamHubBody extends StatelessWidget {
       children: [
         Padding(
           padding: EdgeInsets.fromLTRB(inset, 18, inset, 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: l10n.teamHubSearchHint,
-                    prefixIcon: Icon(
-                      Icons.search,
-                      size: context.tpIconSizes.md,
-                    ),
-                    floatingLabelBehavior: FloatingLabelBehavior.never,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Search + fixed 180 sort exceeds narrow phone widths.
+              final stackControls = constraints.maxWidth < 420;
+              final searchField = TextField(
+                decoration: InputDecoration(
+                  hintText: l10n.teamHubSearchHint,
+                  prefixIcon: Icon(
+                    Icons.search,
+                    size: context.tpIconSizes.md,
                   ),
-                  onChanged: cubit.setSearch,
+                  floatingLabelBehavior: FloatingLabelBehavior.never,
                 ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 180,
-                child: TpSelect<TeamSort>(
-                  items: const [TeamSort.name, TeamSort.updated],
-                  initialItem: state.sort,
-                  itemLabel: (s) => switch (s) {
-                    TeamSort.name => l10n.teamHubSortName,
-                    TeamSort.updated => l10n.teamHubSortUpdated,
-                  },
-                  onChanged: (s) => s == null ? null : cubit.setSort(s),
-                ),
-              ),
-            ],
+                onChanged: cubit.setSearch,
+              );
+              final sortSelect = TpSelect<TeamSort>(
+                items: const [TeamSort.name, TeamSort.updated],
+                initialItem: state.sort,
+                itemLabel: (s) => switch (s) {
+                  TeamSort.name => l10n.teamHubSortName,
+                  TeamSort.updated => l10n.teamHubSortUpdated,
+                },
+                onChanged: (s) => s == null ? null : cubit.setSort(s),
+              );
+              if (stackControls) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    searchField,
+                    const SizedBox(height: 8),
+                    sortSelect,
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: searchField),
+                  const SizedBox(width: 12),
+                  SizedBox(width: 180, child: sortSelect),
+                ],
+              );
+            },
           ),
         ),
         _FilterBar(cubit: cubit, inset: inset),

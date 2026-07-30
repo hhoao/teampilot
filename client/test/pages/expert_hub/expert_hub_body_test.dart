@@ -111,4 +111,42 @@ void main() {
 
     expect(find.byKey(const Key('expert-hub-refresh')), findsOneWidget);
   });
+
+  testWidgets('toolbar does not overflow at phone width', (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final cubit = ExpertHubCubit(
+      source: _FakeSource([_member('Alpha')]),
+      loadFavorites: () async => const {},
+      saveFavoriteToggle: (_) async => true,
+      memberRosterService: stubMemberRosterService(),
+      launchProfiles: () => throw UnimplementedError('not used'),
+    );
+    await cubit.load();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: ExpertHubBody(
+            cubit: cubit,
+            onOpen: (_) {},
+            onCreate: () {},
+            inset: 16,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('expert-hub-refresh')), findsOneWidget);
+    expect(find.byKey(const Key('expert-hub-create')), findsOneWidget);
+  });
 }

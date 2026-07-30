@@ -66,36 +66,31 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
       children: [
         Padding(
           padding: EdgeInsets.fromLTRB(widget.inset, 18, widget.inset, 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: l10n.expertHubSearchHint,
-                    prefixIcon: Icon(
-                      Icons.search,
-                      size: context.tpIconSizes.md,
-                    ),
-                    floatingLabelBehavior: FloatingLabelBehavior.never,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Search + fixed 180 sort + refresh + create exceeds phone width.
+              final stackControls = constraints.maxWidth < 520;
+              final searchField = TextField(
+                decoration: InputDecoration(
+                  hintText: l10n.expertHubSearchHint,
+                  prefixIcon: Icon(
+                    Icons.search,
+                    size: context.tpIconSizes.md,
                   ),
-                  onChanged: _onSearchChanged,
+                  floatingLabelBehavior: FloatingLabelBehavior.never,
                 ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 180,
-                child: TpSelect<MemberSort>(
-                  items: const [MemberSort.name, MemberSort.updated],
-                  initialItem: state.sort,
-                  itemLabel: (s) => switch (s) {
-                    MemberSort.name => l10n.expertHubSortName,
-                    MemberSort.updated => l10n.expertHubSortUpdated,
-                  },
-                  onChanged: (s) => s == null ? null : widget.cubit.setSort(s),
-                ),
-              ),
-              const SizedBox(width: 4),
-              IconButton(
+                onChanged: _onSearchChanged,
+              );
+              final sortSelect = TpSelect<MemberSort>(
+                items: const [MemberSort.name, MemberSort.updated],
+                initialItem: state.sort,
+                itemLabel: (s) => switch (s) {
+                  MemberSort.name => l10n.expertHubSortName,
+                  MemberSort.updated => l10n.expertHubSortUpdated,
+                },
+                onChanged: (s) => s == null ? null : widget.cubit.setSort(s),
+              );
+              final refreshButton = IconButton(
                 key: const Key('expert-hub-refresh'),
                 tooltip: l10n.expertHubRefresh,
                 onPressed: state.refreshing
@@ -108,17 +103,49 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : Icon(Icons.refresh, size: context.tpIconSizes.md),
-              ),
-              if (widget.showCreate) ...[
-                const SizedBox(width: 12),
-                FilledButton.tonalIcon(
-                  key: const Key('expert-hub-create'),
-                  onPressed: () => widget.onCreate?.call(),
-                  icon: const Icon(Icons.add),
-                  label: Text(l10n.expertHubCreate),
-                ),
-              ],
-            ],
+              );
+              final createButton = widget.showCreate
+                  ? FilledButton.tonalIcon(
+                      key: const Key('expert-hub-create'),
+                      onPressed: () => widget.onCreate?.call(),
+                      icon: const Icon(Icons.add),
+                      label: Text(l10n.expertHubCreate),
+                    )
+                  : null;
+              if (stackControls) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    searchField,
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(child: sortSelect),
+                        const SizedBox(width: 4),
+                        refreshButton,
+                        if (createButton != null) ...[
+                          const SizedBox(width: 8),
+                          createButton,
+                        ],
+                      ],
+                    ),
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: searchField),
+                  const SizedBox(width: 12),
+                  SizedBox(width: 180, child: sortSelect),
+                  const SizedBox(width: 4),
+                  refreshButton,
+                  if (createButton != null) ...[
+                    const SizedBox(width: 12),
+                    createButton,
+                  ],
+                ],
+              );
+            },
           ),
         ),
         _FilterBar(
