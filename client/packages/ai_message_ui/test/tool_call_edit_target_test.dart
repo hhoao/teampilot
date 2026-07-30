@@ -8,10 +8,12 @@ Finder _editBodyFadeChevron() => find.descendant(
       matching: find.byKey(const ValueKey('ai-fade-expand-chevron')),
     );
 
-Finder _visibleDiffText(String text) => find.descendant(
+Finder _visibleDiffText(String text) => find
+    .descendant(
       of: find.byType(AiFadeExpandBody),
       matching: find.textContaining(text),
-    );
+    )
+    .hitTestable();
 
 void main() {
   testWidgets('StrReplace shows basename + badge + mini-diff (not Used tool)', (
@@ -66,7 +68,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('late-line'), findsAtLeastNWidgets(1));
     expect(find.byIcon(Icons.expand_less), findsNothing);
-    await tester.tap(_visibleDiffText('l3').first);
+    await tester.tap(_visibleDiffText('l3'));
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.expand_less), findsWidgets);
   });
@@ -139,7 +141,7 @@ void main() {
             of: find.byType(AiFadeExpandBody),
             matching: find.text('3'),
           )
-          .first,
+          .hitTestable(),
     );
     await tester.pumpAndSettle();
     expect(opened, isNotNull);

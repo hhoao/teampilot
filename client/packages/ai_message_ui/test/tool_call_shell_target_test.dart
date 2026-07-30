@@ -8,10 +8,12 @@ Finder _shellBodyFadeChevron() => find.descendant(
       matching: find.byKey(const ValueKey('ai-fade-expand-chevron')),
     );
 
-Finder _visibleShellText(String text) => find.descendant(
+Finder _visibleShellText(String text) => find
+    .descendant(
       of: find.byType(AiFadeExpandBody),
       matching: find.textContaining(text),
-    );
+    )
+    .hitTestable();
 
 void main() {
   testWidgets('Bash shows shell summary; collapsed shows \$ command + output', (
@@ -102,7 +104,7 @@ void main() {
 
     expect(find.textContaining('line6'), findsAtLeastNWidgets(1));
     expect(find.byIcon(Icons.expand_less), findsNothing);
-    await tester.tap(_visibleShellText('line3').last);
+    await tester.tap(_visibleShellText('line3'));
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.expand_less), findsWidgets);
     expect(find.textContaining('line7'), findsAtLeastNWidgets(1));

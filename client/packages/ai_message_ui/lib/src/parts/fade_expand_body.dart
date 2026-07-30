@@ -49,13 +49,17 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
           top: 0,
           width: maxWidth,
           height: 0,
-          child: OverflowBox(
-            alignment: Alignment.topLeft,
-            minWidth: maxWidth,
-            maxWidth: maxWidth,
-            minHeight: 0,
-            maxHeight: double.infinity,
-            child: _ReportSize(onSize: _onMeasured, child: child),
+          child: IgnorePointer(
+            child: ExcludeSemantics(
+              child: OverflowBox(
+                alignment: Alignment.topLeft,
+                minWidth: maxWidth,
+                maxWidth: maxWidth,
+                minHeight: 0,
+                maxHeight: double.infinity,
+                child: _ReportSize(onSize: _onMeasured, child: child),
+              ),
+            ),
           ),
         );
 
