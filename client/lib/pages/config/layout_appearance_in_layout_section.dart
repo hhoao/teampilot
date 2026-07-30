@@ -260,14 +260,14 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                   showDividerBelow: true,
                 ),
                 TpPreferenceRow(
-                  title: '终端主题',
-                  subtitle: '跟随主题色或使用固定风格',
+                  title: l10n.terminalThemeModeTitle,
+                  subtitle: l10n.terminalThemeModeDescription,
                   trailing: TpCompactSelect<String>(
                     value: terminalThemeMode,
-                    entries: const [
-                      ('adaptive', '跟随主题'),
-                      ('classicDark', '经典暗色'),
-                      ('highContrast', '高对比'),
+                    entries: [
+                      ('adaptive', l10n.workspaceTerminalThemeAdaptive),
+                      ('classicDark', l10n.workspaceTerminalThemeClassicDark),
+                      ('highContrast', l10n.workspaceTerminalThemeHighContrast),
                     ],
                     onChanged: (v) {
                       if (v != null) controller.setTerminalThemeMode(v);

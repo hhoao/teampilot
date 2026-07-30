@@ -2314,6 +2314,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceTerminalSettings => 'Settings';
 
   @override
+  String get terminalThemeModeTitle => 'Terminal theme';
+
+  @override
+  String get terminalThemeModeDescription =>
+      'Match app colors or use a fixed style';
+
+  @override
   String get workspaceTerminalThemeAdaptive => 'Match app theme';
 
   @override

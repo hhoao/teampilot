@@ -84,6 +84,7 @@ import '../services/extension/builtin_manifests.dart';
 import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
 import '../services/storage/app_storage.dart';
+import '../services/storage/device_local_control_plane.dart';
 import '../services/perf/live_perf_driver.dart';
 import '../services/storage/workspace_layout.dart';
 import '../services/automation/automation_bus_gateway.dart';
@@ -135,7 +136,6 @@ import '../services/storage/home_target_controller.dart';
 import '../services/storage/workspace_directory_picker.dart';
 import '../services/storage/home_target_store.dart';
 import '../services/storage/runtime_target_registry.dart';
-import '../services/storage/targets_repository.dart';
 import '../services/notification/notification_recorder.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/skill/skill_acquisition_engine.dart';
@@ -400,7 +400,10 @@ Future<AppShell> buildAppShell({
   var homeTarget = homeTargetFromId(homeTargetStore.load());
   RuntimeTarget defaultTargetResolver() => homeTarget;
 
-  final sshProfileRepo = SshProfileRepository();
+  // SSH catalog + targets.json are device-local control plane: they must not
+  // follow AppStorage home (Android Connect rebinds home onto SSH and would
+  // otherwise reload an empty remote catalog → disconnect → gate again).
+  final sshProfileRepo = deviceLocalSshProfileRepository(nativeAppDataPath);
   Future<Map<CliTool, String>> locateRemoteClis(SshProfile profile) async {
     try {
       final client = await sshClientFactory.clientForStorage(profile);
@@ -439,7 +442,7 @@ Future<AppShell> buildAppShell({
   late final ConnectionModeService connectionModeService;
   late final Future<void> Function() reinstallStorageContext;
 
-  late final Future<void> Function() reloadAllAppData;
+  late final Future<void> Function({bool reinstallSshHome}) reloadAllAppData;
 
   late final SshProfileCubit sshProfileCubit;
   late final HomeTargetController homeTargetController;
@@ -484,7 +487,7 @@ Future<AppShell> buildAppShell({
   // P1: targets.json is a pure target catalog (no default/migrate); the home
   // target authority is the device-local homeTargetStore read above. The
   // registry is used by the picker UI to list selectable targets.
-  final targetsRepo = TargetsRepository();
+  final targetsRepo = deviceLocalTargetsRepository(nativeAppDataPath);
   SshProfile? sshProfileById(String id) =>
       sshProfileCubit.state.profiles.where((p) => p.id == id).firstOrNull;
   final remoteCliReadiness = RemoteCliReadinessService(
@@ -557,9 +560,12 @@ Future<AppShell> buildAppShell({
   );
 
   // Re-resolve the home context (e.g. after an ssh profile's details change):
-  // evict the cached context for the home id, rebind, republish.
+  // drop the cached wrapper and rebuild it, but keep the live SSH storage pool.
   reinstallStorageContext = () async {
-    await runtimeContextRegistry.dispose(defaultTargetResolver().id);
+    await runtimeContextRegistry.dispose(
+      defaultTargetResolver().id,
+      notifyEvict: false,
+    );
     await runtimeContextRegistry.rebindHome(defaultTargetResolver());
     AppStorage.bindHome(runtimeContextRegistry.home());
   };
@@ -1029,13 +1035,19 @@ Future<AppShell> buildAppShell({
             }();
       if (error is SshTransportClosed) {
         final cause = error.cause;
-        appLogger.w(
-          '[ssh] profile $profileId ($label) transport closed: '
-          'reason=${error.reason.name} plane=${error.plane.name}'
-          '${cause != null ? ' cause=$cause' : ''}',
-          error: cause,
-          stackTrace: cause != null ? stackTrace : null,
-        );
+        final message =
+            '[ssh] profile $profileId ($label) transport closed: '
+            'reason=${error.reason.name} plane=${error.plane.name}'
+            '${cause != null ? ' cause=$cause' : ''}';
+        if (isExpectedLocalSshTransportClose(error)) {
+          appLogger.i(message);
+        } else {
+          appLogger.w(
+            message,
+            error: cause,
+            stackTrace: cause != null ? stackTrace : null,
+          );
+        }
         return;
       }
       appLogger.w(
@@ -1151,7 +1163,7 @@ Future<AppShell> buildAppShell({
   bootstrapCubit?.markShellReady();
   boot('buildAppShell shell ready');
 
-  reloadAllAppData = () => AppDataBootstrap.reloadAll(
+  reloadAllAppData = ({bool reinstallSshHome = true}) => AppDataBootstrap.reloadAll(
     boot: boot,
     sshProfileCubit: sshProfileCubit,
     llmConfigCubit: llmConfigCubit,
@@ -1169,6 +1181,7 @@ Future<AppShell> buildAppShell({
     sshProfileExists: (id) => sshProfileById(id) != null,
     reinstallStorageContext: reinstallStorageContext,
     home: defaultTargetResolver(),
+    reinstallSshHome: reinstallSshHome,
   );
 
   Future<void> bootstrapAppData() async {
@@ -1309,7 +1322,9 @@ Future<AppShell> buildAppShell({
   // backend/profile switches used).
   Future<void> switchHomeTarget(String id) async {
     await setHomeTarget(id); // persists + rebinds home + republishes AppStorage
-    await reloadAllAppData();
+    // Home already rebound — skip a second dispose/rebind that would tear down
+    // the Connect storage pool (runtimeContextEvicted WARN).
+    await reloadAllAppData(reinstallSshHome: false);
   }
 
   final homeStorageInvalidator = HomeStorageInvalidator(

@@ -48,3 +48,22 @@ bool isGenericSshTransportClose(Object error) {
   if (error is SshTransportClosed) return error.isGenericRemoteClose;
   return error is StateError && error.message == 'SSH transport closed';
 }
+
+/// Local, intentional teardowns — log at info, not warn.
+bool isExpectedLocalSshTransportClose(SshTransportClosed closed) {
+  switch (closed.reason) {
+    case SshTransportCloseReason.userDisconnect:
+    case SshTransportCloseReason.profileInvalidated:
+    case SshTransportCloseReason.profileRemoved:
+    case SshTransportCloseReason.runtimeContextEvicted:
+    case SshTransportCloseReason.disconnectAll:
+    case SshTransportCloseReason.remoteFileStoreDisconnect:
+    case SshTransportCloseReason.memberSessionClosed:
+      return true;
+    case SshTransportCloseReason.hostIdentityChanged:
+    case SshTransportCloseReason.authFailed:
+    case SshTransportCloseReason.remotePeerClosed:
+    case SshTransportCloseReason.transportError:
+      return false;
+  }
+}

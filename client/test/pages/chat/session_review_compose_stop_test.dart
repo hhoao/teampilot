@@ -90,10 +90,75 @@ void main() {
     expect(stopCalls, 1);
   });
 
-  testWidgets('shows send when showStop is false', (tester) async {
-    await pumpCompose(tester: tester, showStop: false);
+  testWidgets('shows send when showStop is false and input has text', (
+    tester,
+  ) async {
+    final textController = TextEditingController(text: 'hello');
+    addTearDown(textController.dispose);
+    final focusNode = FocusNode();
+    addTearDown(focusNode.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: WorkspaceComposeCard(
+            controller: textController,
+            focusNode: focusNode,
+            hint: 'Continue',
+            canSubmit: true,
+            onSubmit: () {},
+            onChanged: (_) {},
+            chrome: const BoundComposeChrome(
+              identityLabel: 'Team',
+              identityIcon: Icons.groups_outlined,
+              modelPresetLabel: 'Model',
+              emptyPresetHintLabel: 'No presets',
+              onPresetSelected: _noopString,
+            ),
+            dropTarget: ComposeFileDropIngestor(
+              workspaceRoot: '/tmp',
+              onInsertReferences: (_) {},
+            ),
+            attachTooltip: 'Attach',
+            enhanceTooltip: 'Enhance',
+            voiceTooltip: 'Voice',
+            voiceCancelTooltip: 'Cancel',
+            voiceStopTooltip: 'Stop voice',
+            isEnhancing: false,
+            isVoiceListening: false,
+            voiceElapsed: Duration.zero,
+            voiceSoundLevel: 0,
+            onAttach: () {},
+            onEnhance: () {},
+            onVoice: () {},
+            onVoiceCancel: () {},
+            onVoiceStop: () {},
+            workspaceRoot: '/tmp',
+            skills: const [],
+            plugins: const [],
+            slashBundle: const ConfigBundle(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.arrow_upward_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.mic_none_outlined), findsNothing);
+    expect(find.byIcon(Icons.stop_rounded), findsNothing);
+  });
+
+  testWidgets('shows voice when showStop is false and input is empty', (
+    tester,
+  ) async {
+    await pumpCompose(tester: tester, showStop: false);
+
+    expect(find.byIcon(Icons.mic_none_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_upward_rounded), findsNothing);
     expect(find.byIcon(Icons.stop_rounded), findsNothing);
   });
 }
+
+void _noopString(String _) {}

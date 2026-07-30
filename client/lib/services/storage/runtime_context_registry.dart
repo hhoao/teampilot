@@ -49,12 +49,21 @@ class RuntimeContextRegistry {
     return ctx;
   }
 
-  /// Evict a cached context (remote disconnect / workspace close).
-  Future<void> dispose(String targetId) async {
+  /// Evict a cached context.
+  ///
+  /// When [notifyEvict] is true (default), remote/SSH targets invoke [onEvict]
+  /// (typically disconnects the storage pool). Pass `false` for home reinstall
+  /// that only needs a fresh [RuntimeContext] wrapper while keeping the live
+  /// SSH pool (Android Connect → reload must not tear down the just-connected
+  /// transport).
+  Future<void> dispose(String targetId, {bool notifyEvict = true}) async {
     final ctx = _cache.remove(targetId);
     if (ctx == null) return;
     if (identical(_home, ctx)) _home = null;
-    if (ctx.storageIsRemote) await _onEvict?.call(targetId);
+    if (!notifyEvict) return;
+    final shouldNotify =
+        ctx.storageIsRemote || ctx.target.kind == RuntimeKind.ssh;
+    if (shouldNotify) await _onEvict?.call(targetId);
   }
 
   /// Rebind the home target (user switched home device).

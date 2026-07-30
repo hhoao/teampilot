@@ -1017,6 +1017,8 @@
   "workspaceTerminalNewSessionMenu": "New terminal session menu",
   "workspaceTerminalNewSshSession": "New SSH Session…",
   "workspaceTerminalSettings": "Settings",
+  "terminalThemeModeTitle": "Terminal theme",
+  "terminalThemeModeDescription": "Match app colors or use a fixed style",
   "workspaceTerminalThemeAdaptive": "Match app theme",
   "workspaceTerminalThemeClassicDark": "Classic dark",
   "workspaceTerminalThemeHighContrast": "High contrast",

@@ -5,6 +5,9 @@ import '../services/storage/app_storage.dart';
 import '../services/io/filesystem.dart';
 
 class SshProfileRepository {
+  /// Defaults follow [AppStorage] home (test convenience). Production must use
+  /// [deviceLocalSshProfileRepository] so the catalog stays on-device when home
+  /// is rebound to SSH.
   SshProfileRepository({String? rootDir, Filesystem? fs})
     : _rootDirOverride = rootDir,
       _fsOverride = fs;

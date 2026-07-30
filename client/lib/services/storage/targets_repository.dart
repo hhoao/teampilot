@@ -88,7 +88,9 @@ class TargetsRegistryFile {
 }
 
 /// Reads/writes `targets.json`. Mirrors [SshProfileRepository]'s injection
-/// pattern (constructor `rootDir`/`fs` overrides for tests).
+/// pattern (constructor `rootDir`/`fs` overrides for tests). Production must
+/// use [deviceLocalTargetsRepository] so the file stays on-device when home is
+/// rebound to SSH.
 class TargetsRepository {
   TargetsRepository({String? rootDir, Filesystem? fs})
     : _rootOverride = rootDir,

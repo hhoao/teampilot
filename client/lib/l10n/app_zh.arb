@@ -947,6 +947,8 @@
   "workspaceTerminalNewSessionMenu": "新建终端会话菜单",
   "workspaceTerminalNewSshSession": "新建 SSH 会话…",
   "workspaceTerminalSettings": "设置",
+  "terminalThemeModeTitle": "终端主题",
+  "terminalThemeModeDescription": "跟随主题色或使用固定风格",
   "workspaceTerminalThemeAdaptive": "跟随主题",
   "workspaceTerminalThemeClassicDark": "经典暗色",
   "workspaceTerminalThemeHighContrast": "高对比",

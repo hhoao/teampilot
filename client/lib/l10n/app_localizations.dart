@@ -4220,6 +4220,18 @@ abstract class AppLocalizations {
   /// **'Settings'**
   String get workspaceTerminalSettings;
 
+  /// No description provided for @terminalThemeModeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminal theme'**
+  String get terminalThemeModeTitle;
+
+  /// No description provided for @terminalThemeModeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Match app colors or use a fixed style'**
+  String get terminalThemeModeDescription;
+
   /// No description provided for @workspaceTerminalThemeAdaptive.
   ///
   /// In en, this message translates to:

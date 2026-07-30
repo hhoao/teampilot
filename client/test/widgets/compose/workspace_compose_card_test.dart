@@ -169,6 +169,25 @@ void main() {
 
     expect(find.text('Something went wrong'), findsOneWidget);
   });
+
+  testWidgets('empty input shows voice in trailing slot; text shows send', (
+    tester,
+  ) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(pumpCard(chrome: unboundChrome, controller: controller));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.mic_none_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_upward_rounded), findsNothing);
+
+    controller.text = 'hello';
+    await tester.pump();
+
+    expect(find.byIcon(Icons.arrow_upward_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.mic_none_outlined), findsNothing);
+  });
 }
 
 void _noop(Object? _) {}

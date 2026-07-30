@@ -11,6 +11,8 @@ import 'package:teampilot/cubits/ssh_connection_cubit.dart';
 import 'package:teampilot/cubits/ssh_profile_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/ssh_profile.dart';
+import 'package:teampilot/pages/ssh_profiles/ssh_profile_connection_status.dart';
+import 'package:teampilot/pages/ssh_profiles/ssh_profile_target_card.dart';
 import 'package:teampilot/pages/ssh_profiles/ssh_profiles_section.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
@@ -317,6 +319,55 @@ void main() {
     await tester.pump();
 
     expect(connectionCubit.disconnectCalls, [_profile.id]);
+  });
+
+  testWidgets('card layout does not overflow at narrow width', (tester) async {
+    connectionCubit.seed(
+      _stateWithHost(status: SshHostUiStatus.disconnected),
+    );
+
+    await tester.binding.setSurfaceSize(const Size(320, 600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final theme = ThemeData(useMaterial3: true);
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        theme: theme,
+        home: TpTheme(
+          data: TpThemeData.fromColorScheme(
+            theme.colorScheme,
+            scale: 1.0,
+            controlScale: AppTypographyScale.standard.multiplier,
+          ),
+          child: Scaffold(
+            body: Padding(
+              padding: const EdgeInsets.all(8),
+              child: SshProfileTargetCard(
+                profile: _profile,
+                status: SshProfileConnectionStatus.disconnected,
+                testing: false,
+                busy: false,
+                onTest: () {},
+                onConnect: () {},
+                onDisconnect: () {},
+                onEdit: () {},
+                onDelete: () {},
+                onRefresh: () {},
+                onConfigure: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byIcon(Icons.more_vert), findsOneWidget);
+    expect(find.text(l10n.sshProfileConnect), findsNothing);
   });
 
   testWidgets('Test does not mark Cubit connected', (tester) async {

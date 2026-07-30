@@ -149,6 +149,45 @@ void main() {
     expect(closed.cause, isA<SocketException>());
     await coordinator.dispose();
   });
+
+  test('isExpectedLocalSshTransportClose covers intentional teardowns', () {
+    expect(
+      isExpectedLocalSshTransportClose(
+        const SshTransportClosed(
+          reason: SshTransportCloseReason.runtimeContextEvicted,
+          plane: SshTransportPlane.storage,
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      isExpectedLocalSshTransportClose(
+        const SshTransportClosed(
+          reason: SshTransportCloseReason.userDisconnect,
+          plane: SshTransportPlane.storage,
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      isExpectedLocalSshTransportClose(
+        const SshTransportClosed(
+          reason: SshTransportCloseReason.remotePeerClosed,
+          plane: SshTransportPlane.storage,
+        ),
+      ),
+      isFalse,
+    );
+    expect(
+      isExpectedLocalSshTransportClose(
+        const SshTransportClosed(
+          reason: SshTransportCloseReason.transportError,
+          plane: SshTransportPlane.storage,
+        ),
+      ),
+      isFalse,
+    );
+  });
 }
 
 class _InstantAuthClient extends SSHClient {

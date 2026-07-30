@@ -2212,6 +2212,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceTerminalSettings => '设置';
 
   @override
+  String get terminalThemeModeTitle => '终端主题';
+
+  @override
+  String get terminalThemeModeDescription => '跟随主题色或使用固定风格';
+
+  @override
   String get workspaceTerminalThemeAdaptive => '跟随主题';
 
   @override

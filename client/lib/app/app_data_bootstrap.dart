@@ -126,6 +126,9 @@ abstract final class AppDataBootstrap {
 
   /// SSH home reinstall + parallel team/workspace index — blocks until the home
   /// shell can list workspaces and identities. Sessions load on demand.
+  ///
+  /// When [reinstallSshHome] is false (home was just rebound via switch-home),
+  /// skip the extra dispose/rebind — Connect already holds a live storage pool.
   static Future<void> bootstrapHomeIndex({
     required BootLog boot,
     required SshProfileCubit sshProfileCubit,
@@ -138,6 +141,7 @@ abstract final class AppDataBootstrap {
     required bool Function(String id) sshProfileExists,
     required Future<void> Function() reinstallStorageContext,
     RuntimeTarget? home,
+    bool reinstallSshHome = true,
   }) async {
     final phaseSw = Stopwatch()..start();
     boot('bootstrapHomeIndex start');
@@ -147,7 +151,9 @@ abstract final class AppDataBootstrap {
     if (isSshMode) {
       await sshLoad;
       boot('bootstrapHomeIndex ssh profiles loaded');
-      if (homeSshProfileId != null && sshProfileExists(homeSshProfileId)) {
+      if (reinstallSshHome &&
+          homeSshProfileId != null &&
+          sshProfileExists(homeSshProfileId)) {
         boot('bootstrapHomeIndex reinstalling home storage context (ssh)');
         await reinstallStorageContext();
         boot('bootstrapHomeIndex home storage context reinstalled');
@@ -326,6 +332,7 @@ abstract final class AppDataBootstrap {
     required bool Function(String id) sshProfileExists,
     required Future<void> Function() reinstallStorageContext,
     RuntimeTarget? home,
+    bool reinstallSshHome = true,
   }) async {
     await bootstrapHomeIndex(
       boot: boot,
@@ -339,6 +346,7 @@ abstract final class AppDataBootstrap {
       sshProfileExists: sshProfileExists,
       reinstallStorageContext: reinstallStorageContext,
       home: home,
+      reinstallSshHome: reinstallSshHome,
     );
     await warmAuxiliaryData(
       boot: boot,

@@ -110,6 +110,38 @@ void main() {
     expect(resolver.resolveCount['ssh:p1'], 2);
   });
 
+  test('dispose(notifyEvict: false) drops cache without onEvict', () async {
+    final evicted = <String>[];
+    final resolver = _FakeResolver();
+    final reg = RuntimeContextRegistry(
+      resolver: resolver,
+      homeTarget: RuntimeTarget.local(),
+      onEvict: (id) async => evicted.add(id),
+    );
+    final t = RuntimeTarget.ssh('p1', label: 'box');
+    await reg.forTarget(t);
+
+    await reg.dispose('ssh:p1', notifyEvict: false);
+
+    expect(evicted, isEmpty);
+    await reg.forTarget(t);
+    expect(resolver.resolveCount['ssh:p1'], 2);
+  });
+
+  test('dispose notifies onEvict for remote contexts by default', () async {
+    final evicted = <String>[];
+    final reg = RuntimeContextRegistry(
+      resolver: _FakeResolver(),
+      homeTarget: RuntimeTarget.local(),
+      onEvict: (id) async => evicted.add(id),
+    );
+    await reg.forTarget(RuntimeTarget.ssh('p1', label: 'box'));
+
+    await reg.dispose('ssh:p1');
+
+    expect(evicted, ['ssh:p1']);
+  });
+
   test('rebindHome swaps the home context', () async {
     final reg = RuntimeContextRegistry(
       resolver: _FakeResolver(),

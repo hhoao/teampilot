@@ -192,20 +192,28 @@ class WorkspaceComposeCard extends StatelessWidget {
             ),
             field,
             SizedBox(height: spacing.md),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: isVoiceListening
-                  ? _voiceRecordingActions(
-                      context: context,
-                      palette: palette,
-                      spacing: spacing,
-                    )
-                  : _idleActions(
-                      context,
-                      chrome: chrome,
-                      palette: palette,
-                      spacing: spacing,
-                    ),
+            ListenableBuilder(
+              listenable: controller,
+              builder: (context, _) {
+                final hasText = controller.text.trim().isNotEmpty;
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: isVoiceListening
+                      ? _voiceRecordingActions(
+                          context: context,
+                          palette: palette,
+                          spacing: spacing,
+                          hasText: hasText,
+                        )
+                      : _idleActions(
+                          context,
+                          chrome: chrome,
+                          palette: palette,
+                          spacing: spacing,
+                          hasText: hasText,
+                        ),
+                );
+              },
             ),
           ],
         ),
@@ -268,9 +276,11 @@ class WorkspaceComposeCard extends StatelessWidget {
     ];
   }
 
-  Widget _composePrimaryAction({
+  Widget? _trailingComposeAction({
     required BuildContext context,
     required WorkspaceChatLandingPalette palette,
+    required bool hasText,
+    bool hideVoiceWhenEmpty = false,
   }) {
     final chrome = this.chrome;
     if (chrome is BoundComposeChrome &&
@@ -282,13 +292,22 @@ class WorkspaceComposeCard extends StatelessWidget {
         onStop: chrome.onStop!,
       );
     }
-    return _SendButton(
+    if (hasText) {
+      return _SendButton(
+        palette: palette,
+        canSubmit: _effectiveCanSubmit,
+        isSubmitting: isSubmitting,
+        onSubmit: onSubmit,
+        throttleKey: _sendThrottleKey,
+        blockedTooltip: submitBlockedTooltip,
+      );
+    }
+    if (hideVoiceWhenEmpty) return null;
+    return _VoicePrimaryButton(
       palette: palette,
-      canSubmit: _effectiveCanSubmit,
-      isSubmitting: isSubmitting,
-      onSubmit: onSubmit,
-      throttleKey: _sendThrottleKey,
-      blockedTooltip: submitBlockedTooltip,
+      tooltip: voiceTooltip,
+      enabled: _composeActionsEnabled,
+      onTap: onVoice,
     );
   }
 
@@ -407,6 +426,7 @@ class WorkspaceComposeCard extends StatelessWidget {
     required ComposeChrome chrome,
     required WorkspaceChatLandingPalette palette,
     required TpSpacing spacing,
+    required bool hasText,
   }) {
     final leading = switch (chrome) {
       UnboundComposeChrome c => _unboundLeadingChips(c, palette, spacing),
@@ -441,19 +461,16 @@ class WorkspaceComposeCard extends StatelessWidget {
         palette: palette,
         tooltip: enhanceTooltip,
         icon: Icons.auto_awesome_outlined,
-        enabled: _composeActionsEnabled && controller.text.trim().isNotEmpty,
+        enabled: _composeActionsEnabled && hasText,
         isLoading: isEnhancing,
         onTap: onEnhance,
       ),
-      _ComposeActionIcon(
-        palette: palette,
-        tooltip: voiceTooltip,
-        icon: Icons.mic_none_outlined,
-        enabled: _composeActionsEnabled,
-        onTap: onVoice,
-      ),
       SizedBox(width: spacing.xs),
-      _composePrimaryAction(context: context, palette: palette),
+      _trailingComposeAction(
+        context: context,
+        palette: palette,
+        hasText: hasText,
+      )!,
     ];
   }
 
@@ -467,6 +484,7 @@ class WorkspaceComposeCard extends StatelessWidget {
     required BuildContext context,
     required WorkspaceChatLandingPalette palette,
     required TpSpacing spacing,
+    required bool hasText,
   }) {
     return [
       _ComposeActionIcon(
@@ -480,7 +498,7 @@ class WorkspaceComposeCard extends StatelessWidget {
         palette: palette,
         tooltip: enhanceTooltip,
         icon: Icons.auto_awesome_outlined,
-        enabled: _composeActionsEnabled && controller.text.trim().isNotEmpty,
+        enabled: _composeActionsEnabled && hasText,
         isLoading: isEnhancing,
         onTap: onEnhance,
       ),
@@ -498,8 +516,16 @@ class WorkspaceComposeCard extends StatelessWidget {
           ),
         ),
       ),
-      SizedBox(width: spacing.xs),
-      _composePrimaryAction(context: context, palette: palette),
+      if (_trailingComposeAction(
+            context: context,
+            palette: palette,
+            hasText: hasText,
+            hideVoiceWhenEmpty: true,
+          )
+          case final action?) ...[
+        SizedBox(width: spacing.xs),
+        action,
+      ],
     ];
   }
 }
@@ -681,6 +707,56 @@ class _StopButton extends StatelessWidget {
                 child: Icon(
                   Icons.stop_rounded,
                   color: palette.sendIcon,
+                  size: icons.md,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VoicePrimaryButton extends StatelessWidget {
+  const _VoicePrimaryButton({
+    required this.palette,
+    required this.tooltip,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final WorkspaceChatLandingPalette palette;
+  final String tooltip;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  static const double _size = 36;
+
+  @override
+  Widget build(BuildContext context) {
+    final icons = context.tpIconSizes;
+    final color = enabled ? palette.muted : palette.disabled;
+
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        button: true,
+        label: tooltip,
+        child: Material(
+          color: palette.sendIdle,
+          shape: const CircleBorder(),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: enabled ? onTap : null,
+            customBorder: const CircleBorder(),
+            child: SizedBox(
+              width: _size,
+              height: _size,
+              child: Center(
+                child: Icon(
+                  Icons.mic_none_outlined,
+                  color: color,
                   size: icons.md,
                 ),
               ),
