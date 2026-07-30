@@ -26,11 +26,13 @@ class SpyTermuxCubit extends TermuxCubit {
     required this.homeSelections,
     this.onConnect,
     this.onClearSetup,
+    this.fastSaveConfig = false,
   });
 
   final Future<void> Function()? onConnect;
   final Future<void> Function()? onClearSetup;
   final List<String> homeSelections;
+  final bool fastSaveConfig;
 
   int saveConfigCalls = 0;
   int connectCalls = 0;
@@ -39,6 +41,10 @@ class SpyTermuxCubit extends TermuxCubit {
   @override
   Future<void> saveConfig(TermuxConfig config) async {
     saveConfigCalls++;
+    if (fastSaveConfig) {
+      emit(state.copyWith(config: config, clearLastError: true));
+      return;
+    }
     await super.saveConfig(config);
   }
 
@@ -63,7 +69,7 @@ class SpyTermuxCubit extends TermuxCubit {
   }
 }
 
-SpyTermuxCubit _createSpyCubit(Directory nativeDir) {
+SpyTermuxCubit _createSpyCubit(Directory nativeDir, {bool fastSaveConfig = false}) {
   final store = TermuxConfigStore(
     rootDir: nativeDir.path,
     fs: LocalFilesystem(
@@ -78,6 +84,7 @@ SpyTermuxCubit _createSpyCubit(Directory nativeDir) {
     credentials: credentials,
     nativeAppDataPath: nativeDir.path,
     homeSelections: homeSelections,
+    fastSaveConfig: fastSaveConfig,
     selectHome: (id) async => homeSelections.add(id),
     testConnect: (_) async => (ok: true, message: ''),
     onConnect: () async {
@@ -94,7 +101,7 @@ SpyTermuxCubit _createSpyCubit(Directory nativeDir) {
 }
 
 void _largeTestSurface(WidgetTester tester) {
-  tester.view.physicalSize = const Size(1600, 2400);
+  tester.view.physicalSize = const Size(1600, 10000);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(() {
     tester.view.resetPhysicalSize();
@@ -172,21 +179,6 @@ void main() {
     expect(cubit.state.config, isNull);
   });
 
-  test('connect saves config and invokes cubit connect', () async {
-    final cubit = _createSpyCubit(nativeDir);
-    addTearDown(() async {
-      if (!cubit.isClosed) await cubit.close();
-    });
-
-    await cubit.saveConfig(const TermuxConfig(username: 'u0_a123'));
-    await cubit.connect();
-
-    expect(cubit.saveConfigCalls, 1);
-    expect(cubit.connectCalls, 1);
-    expect(cubit.state.connected, isTrue);
-    expect(cubit.state.config?.username, 'u0_a123');
-  });
-
   testWidgets('shows guided step texts and username field', (tester) async {
     _largeTestSurface(tester);
     final cubit = _createSpyCubit(nativeDir);
@@ -252,9 +244,9 @@ void main() {
     expect(cubit.connectCalls, 0);
   });
 
-  testWidgets('shows connect action after valid username entry', (tester) async {
+  testWidgets('Connect taps cubit saveConfig and connect', (tester) async {
     _largeTestSurface(tester);
-    final cubit = _createSpyCubit(nativeDir);
+    final cubit = _createSpyCubit(nativeDir, fastSaveConfig: true);
     addTearDown(() async {
       if (!cubit.isClosed) await cubit.close();
     });
@@ -270,9 +262,25 @@ void main() {
       'u0_a123',
     );
     await tester.pump();
+    expect(
+      tester
+          .widget<TextFormField>(find.byKey(const Key('termux_username_field')))
+          .controller
+          ?.text,
+      'u0_a123',
+    );
 
-    expect(find.text('u0_a123'), findsOneWidget);
-    expect(find.byKey(const Key('termux_connect_button')), findsOneWidget);
+    await _scrollToBottom(tester);
+    final connectButton = find.byKey(const Key('termux_connect_button'));
+    await tester.ensureVisible(connectButton);
+    await tester.tap(connectButton);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(cubit.saveConfigCalls, 1);
+    expect(cubit.connectCalls, 1);
+    expect(cubit.state.connected, isTrue);
+    expect(cubit.state.config?.username, 'u0_a123');
+    await tester.pump(const Duration(seconds: 3));
   });
 
   testWidgets('Clear setup confirms and invokes clear path', (tester) async {

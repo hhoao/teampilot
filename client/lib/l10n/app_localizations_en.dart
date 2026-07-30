@@ -6547,6 +6547,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get termuxSetupConnectSuccess => 'Connected to Termux';
 
   @override
+  String get termuxSetupConnectFailed => 'Could not connect to Termux';
+
+  @override
+  String termuxSetupConnectFailedWithDetail(String detail) {
+    return 'Could not connect to Termux: $detail';
+  }
+
+  @override
   String get termuxSetupClearSetup => 'Clear setup';
 
   @override

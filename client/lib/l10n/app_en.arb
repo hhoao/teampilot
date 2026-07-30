@@ -2959,6 +2959,13 @@
   "termuxSetupConnect": "Connect",
   "termuxSetupConnecting": "Connecting…",
   "termuxSetupConnectSuccess": "Connected to Termux",
+  "termuxSetupConnectFailed": "Could not connect to Termux",
+  "termuxSetupConnectFailedWithDetail": "Could not connect to Termux: {detail}",
+  "@termuxSetupConnectFailedWithDetail": {
+    "placeholders": {
+      "detail": { "type": "String" }
+    }
+  },
   "termuxSetupClearSetup": "Clear setup",
   "termuxSetupClearConfirmTitle": "Clear Termux setup?",
   "termuxSetupClearConfirmBody": "This removes saved Termux keys and username. You will need to set up Termux again.",

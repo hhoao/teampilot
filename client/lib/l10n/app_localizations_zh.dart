@@ -6293,6 +6293,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get termuxSetupConnectSuccess => '已连接到 Termux';
 
   @override
+  String get termuxSetupConnectFailed => '无法连接到 Termux';
+
+  @override
+  String termuxSetupConnectFailedWithDetail(String detail) {
+    return '无法连接到 Termux：$detail';
+  }
+
+  @override
   String get termuxSetupClearSetup => '清除设置';
 
   @override

@@ -120,14 +120,19 @@ class _TermuxSetupPageState extends State<TermuxSetupPage> {
       Navigator.of(context).popUntil((route) => route.isFirst);
       return;
     }
-    final error = state.lastError;
+    final error = state.lastError?.trim();
     if (error != null && error.isNotEmpty) {
       AppToast.show(
         context,
-        message: error,
+        message: _connectFailureMessage(context.l10n, error),
         variant: TpToastVariant.error,
       );
     }
+  }
+
+  String _connectFailureMessage(AppLocalizations l10n, String error) {
+    final short = error.length > 120 ? '${error.substring(0, 117)}...' : error;
+    return l10n.termuxSetupConnectFailedWithDetail(short);
   }
 
   Future<void> _confirmClearSetup() async {
@@ -277,7 +282,7 @@ class _TermuxSetupPageState extends State<TermuxSetupPage> {
             SizedBox(height: tp.spacing.md),
             TpButton(
               key: const Key('termux_connect_button'),
-              onPressed: _connect,
+              onPressed: () => unawaited(_connect()),
               child: BlocBuilder<TermuxCubit, TermuxState>(
                 builder: (context, state) {
                   if (state.connecting) {

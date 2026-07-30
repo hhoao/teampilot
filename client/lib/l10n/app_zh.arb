@@ -2530,6 +2530,13 @@
   "termuxSetupConnect": "连接",
   "termuxSetupConnecting": "正在连接…",
   "termuxSetupConnectSuccess": "已连接到 Termux",
+  "termuxSetupConnectFailed": "无法连接到 Termux",
+  "termuxSetupConnectFailedWithDetail": "无法连接到 Termux：{detail}",
+  "@termuxSetupConnectFailedWithDetail": {
+    "placeholders": {
+      "detail": { "type": "String" }
+    }
+  },
   "termuxSetupClearSetup": "清除设置",
   "termuxSetupClearConfirmTitle": "清除 Termux 设置？",
   "termuxSetupClearConfirmBody": "将删除已保存的 Termux 密钥和用户名，需要重新完成 Termux 设置。",

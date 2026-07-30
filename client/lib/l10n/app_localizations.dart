@@ -11724,6 +11724,18 @@ abstract class AppLocalizations {
   /// **'Connected to Termux'**
   String get termuxSetupConnectSuccess;
 
+  /// No description provided for @termuxSetupConnectFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not connect to Termux'**
+  String get termuxSetupConnectFailed;
+
+  /// No description provided for @termuxSetupConnectFailedWithDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not connect to Termux: {detail}'**
+  String termuxSetupConnectFailedWithDetail(String detail);
+
   /// No description provided for @termuxSetupClearSetup.
   ///
   /// In en, this message translates to:
