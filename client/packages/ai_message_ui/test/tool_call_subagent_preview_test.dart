@@ -151,7 +151,8 @@ void main() {
       ),
     );
     expect(find.textContaining('Used tool:'), findsNothing);
-    expect(find.textContaining('ls'), findsOneWidget);
+    // Header summary + mini panel both show the command when no description.
+    expect(find.textContaining('ls'), findsWidgets);
   });
 
   testWidgets('Read still prefers file chrome when resolver hits', (
