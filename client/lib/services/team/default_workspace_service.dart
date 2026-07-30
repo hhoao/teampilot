@@ -20,9 +20,20 @@ abstract final class DefaultWorkspaceService {
 
   static const defaultDisplay = 'Default';
 
-  /// Built-in personal workspace folder: `<Documents>/TeamPilot`.
-  static Future<String> resolvePrimaryPath() =>
-      DefaultWorkspaceDirectory.resolveDefaultWorkspacePath();
+  /// Built-in personal workspace folder.
+  ///
+  /// Local home: `<Documents>/TeamPilot`. SSH/WSL home: `$HOME/TeamPilot` on
+  /// the bound home work plane ([AppStorage.home]).
+  static Future<String> resolvePrimaryPath({RuntimeTarget? home}) async {
+    final resolved = home ?? RuntimeTarget.local();
+    if (resolved.kind == RuntimeKind.local) {
+      return DefaultWorkspaceDirectory.resolveDefaultWorkspacePath();
+    }
+    final pathCtx = AppPaths.pathContextForDataRoot(AppStorage.home);
+    final path = pathCtx.join(AppStorage.home, 'TeamPilot');
+    await AppStorage.fs.ensureDir(path);
+    return path;
+  }
 
   /// Ensures the default workspace exists with Simple + team launch sessions.
   /// Returns whether storage was mutated. Pass [knownWorkspaces] when the index
@@ -33,7 +44,7 @@ abstract final class DefaultWorkspaceService {
     List<Workspace>? knownWorkspaces,
     RuntimeTarget? home,
   }) async {
-    final primaryPath = await resolvePrimaryPath();
+    final primaryPath = await resolvePrimaryPath(home: home);
     final resolvedHome = home ?? RuntimeTarget.local();
     final folderTargetId =
         WorkTargetCanonicalizer.defaultFolderTargetId(resolvedHome);
@@ -90,7 +101,7 @@ abstract final class DefaultWorkspaceService {
     required TeamProfile defaultTeam,
     RuntimeTarget? home,
   }) async {
-    final primaryPath = await resolvePrimaryPath();
+    final primaryPath = await resolvePrimaryPath(home: home);
     await ensureDefault(repository, defaultTeam: defaultTeam, home: home);
     final workspaces = await repository.loadWorkspaces();
     return workspaces

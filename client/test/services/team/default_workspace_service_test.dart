@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/team/team_roster_editor.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/team/default_workspace_service.dart';
 import 'package:teampilot/utils/workspace/workspace_path_utils.dart';
@@ -91,6 +92,40 @@ void main() {
     final workspaces = await repo.loadWorkspaces();
     expect(workspaces, isNotEmpty);
     expect(workspaces.first.folders.first.targetId, 'ssh:p1');
+  });
+
+  test('ensureDefault uses home/TeamPilot path for ssh home', () async {
+    final remoteHome = Directory(p.join(base.path, 'remote-home'))
+      ..createSync();
+    final appData = Directory(p.join(base.path, 'app-data'))..createSync();
+    AppStorage.installForTesting(
+      filesystem: LocalFilesystem(
+        pathContext: AppPaths.pathContextForDataRoot(remoteHome.path),
+      ),
+      paths: AppPaths(appData.path),
+      home: remoteHome.path,
+      cwd: remoteHome.path,
+    );
+    DefaultWorkspaceDirectory.setForTesting(p.join(base.path, 'Documents'));
+
+    final repo = SessionRepository();
+    final team = const TeamRosterEditor().defaultNativeTeam();
+    final home = RuntimeTarget.ssh('p1', label: 'box');
+
+    await DefaultWorkspaceService.ensureDefault(
+      repo,
+      defaultTeam: team,
+      home: home,
+    );
+
+    final workspaces = await repo.loadWorkspaces();
+    expect(workspaces, isNotEmpty);
+    expect(
+      workspaces.first.folders.first.path,
+      normalizeWorkspacePath(p.join(remoteHome.path, 'TeamPilot')),
+    );
+    expect(workspaces.first.folders.first.targetId, 'ssh:p1');
+    expect(Directory(p.join(remoteHome.path, 'TeamPilot')).existsSync(), isTrue);
   });
 
   test('ensureDefault is idempotent and reports no mutation', () async {
