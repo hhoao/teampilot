@@ -9594,6 +9594,18 @@ abstract class AppLocalizations {
   /// **'Ongoing'**
   String get notificationOngoingSection;
 
+  /// No description provided for @progressActivitiesMany.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 activity in progress} other{{count} activities in progress}}'**
+  String progressActivitiesMany(int count);
+
+  /// No description provided for @progressActivitiesPanelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Activities in progress'**
+  String get progressActivitiesPanelTitle;
+
   /// No description provided for @notificationHistorySection.
   ///
   /// In en, this message translates to:

@@ -5347,6 +5347,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationOngoingSection => 'Ongoing';
 
   @override
+  String progressActivitiesMany(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count activities in progress',
+      one: '1 activity in progress',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get progressActivitiesPanelTitle => 'Activities in progress';
+
+  @override
   String get notificationHistorySection => 'History';
 
   @override

@@ -2085,6 +2085,13 @@
   "teamGenApplied": "草稿已应用，创建前请检查调整。",
   "notificationCenterTitle": "通知",
   "notificationOngoingSection": "进行中",
+  "progressActivitiesMany": "{count, plural, other{{count} 个活动进行中}}",
+  "@progressActivitiesMany": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "progressActivitiesPanelTitle": "进行中的活动",
   "notificationHistorySection": "历史",
   "notificationEmpty": "暂无通知",
   "notificationMarkAllRead": "全部标为已读",

@@ -2429,6 +2429,13 @@
   "teamGenApplied": "Draft applied. Review and adjust before creating.",
   "notificationCenterTitle": "Notifications",
   "notificationOngoingSection": "Ongoing",
+  "progressActivitiesMany": "{count, plural, =1{1 activity in progress} other{{count} activities in progress}}",
+  "@progressActivitiesMany": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "progressActivitiesPanelTitle": "Activities in progress",
   "notificationHistorySection": "History",
   "notificationEmpty": "No notifications",
   "notificationMarkAllRead": "Mark all as read",
