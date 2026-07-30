@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
-import '../pane_entry_animation.dart';
-
 /// Lazily mounts settings panes on first visit and keeps them alive afterward.
 ///
 /// The active pane defers its first [builder] call by one frame so the dialog
@@ -25,7 +23,6 @@ class SettingsDialogPaneHost extends StatefulWidget {
 
 class _SettingsDialogPaneHostState extends State<SettingsDialogPaneHost> {
   late final List<bool> _visited;
-  var _selectionEpoch = 0;
 
   @override
   void initState() {
@@ -47,7 +44,6 @@ class _SettingsDialogPaneHostState extends State<SettingsDialogPaneHost> {
         ..addAll(next);
     }
     if (widget.selectedIndex != oldWidget.selectedIndex) {
-      _selectionEpoch++;
       if (!_visited[widget.selectedIndex]) {
         _visited[widget.selectedIndex] = true;
       }
@@ -66,10 +62,6 @@ class _SettingsDialogPaneHostState extends State<SettingsDialogPaneHost> {
             key: ValueKey('settings-pane-$i'),
             mount: _visited[i],
             deferFirstBuild: i == widget.selectedIndex,
-            isActive: i == widget.selectedIndex,
-            sectionAnimationKey: i == widget.selectedIndex
-                ? ValueKey('settings-section-$i-$_selectionEpoch')
-                : null,
             builder: (context) => widget.builder(context, i),
           ),
       ],
@@ -81,16 +73,12 @@ class _SettingsLazyPane extends StatefulWidget {
   const _SettingsLazyPane({
     required this.mount,
     required this.deferFirstBuild,
-    required this.isActive,
-    required this.sectionAnimationKey,
     required this.builder,
     super.key,
   });
 
   final bool mount;
   final bool deferFirstBuild;
-  final bool isActive;
-  final Key? sectionAnimationKey;
   final WidgetBuilder builder;
 
   @override
@@ -101,6 +89,7 @@ class _SettingsLazyPaneState extends State<_SettingsLazyPane>
     with AutomaticKeepAliveClientMixin {
   var _contentReady = false;
   var _builtOnce = false;
+  Widget? _cachedContent;
 
   @override
   bool get wantKeepAlive => _builtOnce;
@@ -145,10 +134,6 @@ class _SettingsLazyPaneState extends State<_SettingsLazyPane>
     if (!widget.mount || !_contentReady) {
       return const SizedBox.expand();
     }
-    final content = widget.builder(context);
-    if (!widget.isActive || widget.sectionAnimationKey == null) {
-      return content;
-    }
-    return PaneEntryAnimation(key: widget.sectionAnimationKey, child: content);
+    return _cachedContent ??= widget.builder(context);
   }
 }

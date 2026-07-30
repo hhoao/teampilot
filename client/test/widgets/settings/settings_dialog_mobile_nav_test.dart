@@ -46,9 +46,27 @@ List<SettingsDialogEntry> _stubEntries() => [
   ),
 ];
 
+List<SettingsDialogEntry> _statefulEntries() => [
+  SettingsDialogEntry(
+    icon: Icons.home_outlined,
+    navLabel: (_) => 'Section A',
+    title: (_) => 'Section A Title',
+    subtitle: (_) => '',
+    bodyBuilder: (_) => const _CounterPane(label: 'A'),
+  ),
+  SettingsDialogEntry(
+    icon: Icons.settings_outlined,
+    navLabel: (_) => 'Section B',
+    title: (_) => 'Section B Title',
+    subtitle: (_) => '',
+    bodyBuilder: (_) => const _CounterPane(label: 'B'),
+  ),
+];
+
 Future<void> _openSettingsDialog(
   WidgetTester tester, {
   required Size viewport,
+  List<SettingsDialogEntry>? entries,
 }) async {
   await _pumpSized(
     tester,
@@ -60,7 +78,7 @@ Future<void> _openSettingsDialog(
             showSettingsDialog(
               context,
               navTitle: (_) => 'Settings',
-              entries: _stubEntries(),
+              entries: entries ?? _stubEntries(),
             );
           },
           child: const Text('open'),
@@ -139,4 +157,54 @@ void main() {
 
     expect(find.text('Section A Title'), findsOneWidget);
   });
+
+  testWidgets('wide: A→B→A keeps pane state', (tester) async {
+    await _openSettingsDialog(
+      tester,
+      viewport: const Size(1200, 800),
+      entries: _statefulEntries(),
+    );
+
+    expect(find.text('A: 0'), findsOneWidget);
+
+    await tester.tap(find.text('inc'));
+    await tester.pumpAndSettle();
+    expect(find.text('A: 1'), findsOneWidget);
+
+    await tester.tap(find.text('Section B'));
+    await tester.pumpAndSettle();
+    expect(find.text('B: 0'), findsOneWidget);
+    expect(find.text('A: 1'), findsNothing);
+
+    await tester.tap(find.text('Section A'));
+    await tester.pumpAndSettle();
+    expect(find.text('A: 1'), findsOneWidget);
+  });
+}
+
+class _CounterPane extends StatefulWidget {
+  const _CounterPane({required this.label});
+
+  final String label;
+
+  @override
+  State<_CounterPane> createState() => _CounterPaneState();
+}
+
+class _CounterPaneState extends State<_CounterPane> {
+  var _count = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('${widget.label}: $_count'),
+        TextButton(
+          onPressed: () => setState(() => _count++),
+          child: const Text('inc'),
+        ),
+      ],
+    );
+  }
 }
