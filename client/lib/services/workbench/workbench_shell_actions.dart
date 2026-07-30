@@ -31,7 +31,6 @@ bool shouldRemoveRunWorkbenchTab({
 }) => !sessionFound || dismissSucceeded;
 
 /// Clears run-service binds then removes the shell entry from its group.
-@visibleForTesting
 void disposeWorkbenchShellDomain({
   required WorkspaceTerminalRunService runService,
   required WorkspaceTerminalGroup group,
@@ -229,34 +228,38 @@ abstract final class WorkbenchShellActions {
     return null;
   }
 
-  static Future<bool?> _confirmDiscard(BuildContext context) {
-    final l10n = context.l10n;
-    return showDialog<bool>(
-      context: context,
-      builder: (ctx) => TpDialog(
-        maxWidth: 480,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TpDialogHeader(title: l10n.editorUnsavedChangesTitle),
-            const SizedBox(height: 16),
-            Text(l10n.editorUnsavedChangesDiscardMultiple(1)),
-            TpDialogActions(
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: Text(l10n.cancel),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: Text(l10n.editorDiscard),
-                ),
-              ],
-            ),
-          ],
-        ),
+  static Future<bool?> _confirmDiscard(BuildContext context) =>
+      confirmEditorUnsavedDiscard(context);
+}
+
+/// Shared dirty-file discard prompt used by workbench and floating close.
+Future<bool?> confirmEditorUnsavedDiscard(BuildContext context) {
+  final l10n = context.l10n;
+  return showDialog<bool>(
+    context: context,
+    builder: (ctx) => TpDialog(
+      maxWidth: 480,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TpDialogHeader(title: l10n.editorUnsavedChangesTitle),
+          const SizedBox(height: 16),
+          Text(l10n.editorUnsavedChangesDiscardMultiple(1)),
+          TpDialogActions(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(l10n.cancel),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(l10n.editorDiscard),
+              ),
+            ],
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 }

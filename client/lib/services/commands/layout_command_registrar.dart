@@ -10,8 +10,11 @@ import 'command_ids.dart';
 /// `buildAppShell`); handlers stay registered for the app's lifetime, so
 /// there is no matching unregister step.
 ///
-/// [onTogglePanel] retargets [CommandIds.togglePanel] to create-or-focus a
-/// center workbench shell tab (no longer toggles bottom-dock visibility).
+/// [onTogglePanel] retargets [CommandIds.togglePanel] to the floating-shell
+/// new-terminal UX (ensureOpen + create-or-focus shell). It keeps its
+/// existing keybinding and aliases [CommandIds.floatingNewTerminal]; the
+/// dedicated floating id ships unbound. No longer toggles bottom-dock
+/// visibility.
 void registerLayoutCommands(
   CommandBus bus,
   LayoutCubit layout, {

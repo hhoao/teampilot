@@ -5,6 +5,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/layout_cubit.dart';
 import '../../models/layout_preferences.dart';
+import '../../services/floating_workspace/floating_maximize_insets.dart';
 import '../../services/workspace/workspace_pane_policy.dart';
 import '../../widgets/workspace_terminal_panel.dart';
 import '../home_workspace/workspace/workspace_route_active_scope.dart';
@@ -517,6 +518,14 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
             _relevantPrefsChanged(a.preferences, b.preferences) ||
             a.landingRightToolsOverride != b.landingRightToolsOverride,
         builder: (context, layoutState) {
+          // Depend so tab foreground switches re-publish maximize insets.
+          final routeActive =
+              context
+                  .dependOnInheritedWidgetOfExactType<
+                    WorkspaceRouteActiveScope
+                  >()
+                  ?.routeActive ??
+              true;
           final effective = WorkspacePanePolicy.effective(
             preferences: layoutState.preferences,
             viewportWidth: _viewportWidth,
@@ -534,6 +543,11 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
           // root pane's layout, which is after this synchronous assignment.
           _narrow = effective.isNarrow;
           final prefs = layoutState.preferences;
+          _publishMaximizeInsets(
+            effective,
+            prefs,
+            routeActive: routeActive,
+          );
           // Measure via PaneSizeReporter so center/sidebar BUILD stays in the
           // normal build phase — not nested under LayoutBuilder layout.
           return PaneSizeReporter(
@@ -557,6 +571,34 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
         a.rightToolsVisible != b.rightToolsVisible ||
         a.sidebarWidth != b.sidebarWidth ||
         a.rightToolsWidth != b.rightToolsWidth;
+  }
+
+  /// Publish maximize safe area: card-padded left sidebar + center content.
+  ///
+  /// Insets are relative to [FloatingWorkspaceHost], which wraps the page card
+  /// **and** the status bar. Uses [FloatingMaximizeInsets.cardSafeArea] and
+  /// excludes a docked right-tools pane.
+  void _publishMaximizeInsets(
+    WorkspacePaneEffective effective,
+    LayoutPreferences prefs, {
+    required bool routeActive,
+  }) {
+    if (!routeActive) return;
+    FloatingMaximizeInsets insets;
+    try {
+      insets = context.read<FloatingMaximizeInsets>();
+    } catch (_) {
+      return;
+    }
+    final rightTools = (!effective.isNarrow && effective.dockRight)
+        ? prefs.rightToolsWidth
+        : 0.0;
+    final next = FloatingMaximizeInsets.cardSafeArea(extraRight: rightTools);
+    if (insets.value == next) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      insets.update(next);
+    });
   }
 
   Widget _buildPaneHost({

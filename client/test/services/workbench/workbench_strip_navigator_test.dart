@@ -138,39 +138,39 @@ void main() {
       expect(chat.state.newChatActive, isTrue);
     });
 
-    test('next/prev wrap across mixed session and file tabs', () async {
+    test('next/prev wrap across mixed session and diff tabs', () async {
       await openSession();
       await openSession();
       final s0 = WorkbenchTabId.session(sessionIds[0]);
       final s1 = WorkbenchTabId.session(sessionIds[1]);
-      final file = WorkbenchTabId.file('/tmp/a.dart');
-      workbench.ensureTab(workspaceId, file, preview: false);
+      final diff = WorkbenchTabId.diffStaged('/tmp/a.dart', staged: false);
+      workbench.ensureTab(workspaceId, diff, preview: false);
       workbench.select(workspaceId, s0);
-      expect(workbench.tabOrder(workspaceId), [s0, s1, file]);
+      expect(workbench.tabOrder(workspaceId), [s0, s1, diff]);
 
       strip.next();
       expect(workbench.activeTabId(workspaceId), s1);
       expect(chat.state.activeSessionId, sessionIds[1]);
 
       strip.next();
-      expect(workbench.activeTabId(workspaceId), file);
+      expect(workbench.activeTabId(workspaceId), diff);
 
       strip.next();
       expect(workbench.activeTabId(workspaceId), s0);
 
       strip.previous();
-      expect(workbench.activeTabId(workspaceId), file);
+      expect(workbench.activeTabId(workspaceId), diff);
     });
 
-    test('focusAt selects 1-based strip ordinal including files', () async {
+    test('focusAt selects 1-based strip ordinal including diffs', () async {
       await openSession();
       final s0 = WorkbenchTabId.session(sessionIds[0]);
-      final file = WorkbenchTabId.file('/tmp/b.dart');
-      workbench.ensureTab(workspaceId, file, preview: false);
+      final diff = WorkbenchTabId.diffStaged('/tmp/b.dart', staged: false);
+      workbench.ensureTab(workspaceId, diff, preview: false);
       workbench.select(workspaceId, s0);
 
       strip.focusAt(2);
-      expect(workbench.activeTabId(workspaceId), file);
+      expect(workbench.activeTabId(workspaceId), diff);
 
       strip.focusAt(1);
       expect(workbench.activeTabId(workspaceId), s0);

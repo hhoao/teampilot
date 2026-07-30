@@ -38,6 +38,8 @@ import '../services/session/session_history_context_builder.dart';
 import '../cubits/ai_feature_settings_cubit.dart';
 import '../cubits/config_cubit.dart';
 import '../cubits/layout_cubit.dart';
+import '../cubits/floating_workspace/floating_workspace_cubit.dart';
+import '../models/layout_preferences.dart';
 import '../cubits/workspace_tools_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
@@ -107,6 +109,14 @@ import '../services/commands/run_command_registrar.dart';
 import '../services/commands/session_command_registrar.dart';
 import '../services/commands/shortcuts_ui_commands.dart';
 import '../services/commands/workspace_search_command_registrar.dart';
+import '../services/floating_workspace/floating_maximize_insets.dart';
+import '../services/floating_workspace/floating_surface_registry.dart';
+import '../services/floating_workspace/floating_workspace_commands.dart';
+import '../services/floating_workspace/floating_workspace_open_file.dart';
+import '../services/floating_workspace/floating_workspace_persistence.dart';
+import '../services/floating_workspace/migrate_legacy_workbench_tabs.dart';
+import '../services/floating_workspace/surfaces/file_preview_floating_surface.dart';
+import '../services/floating_workspace/surfaces/terminal_floating_surface.dart';
 import '../pages/home_workspace/workspace_chrome_commands.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
@@ -178,6 +188,9 @@ class AppShell {
     required this.workbenchCubit,
     required this.workbenchEditorOpener,
     required this.workbenchShellLauncher,
+    required this.floatingWorkspaceCubit,
+    required this.floatingSurfaceRegistry,
+    required this.floatingMaximizeInsets,
     required this.sessionRepo,
     required this.workspaceProjectConfigRepository,
     required this.sshProfileRepo,
@@ -250,6 +263,9 @@ class AppShell {
   final WorkbenchCubit workbenchCubit;
   final WorkbenchEditorOpener workbenchEditorOpener;
   final WorkbenchShellLauncher workbenchShellLauncher;
+  final FloatingWorkspaceCubit floatingWorkspaceCubit;
+  final FloatingSurfaceRegistry floatingSurfaceRegistry;
+  final FloatingMaximizeInsets floatingMaximizeInsets;
   final SessionRepository sessionRepo;
   final WorkspaceProjectConfigRepository workspaceProjectConfigRepository;
   final SshProfileRepository sshProfileRepo;
@@ -830,6 +846,11 @@ Future<AppShell> buildAppShell({
 
   final appUpdateCubit = AppUpdateCubit(settings: appSettings);
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
+  final floatingWorkspaceCubit = FloatingWorkspaceCubit();
+  final floatingWorkspacePersistence = FloatingWorkspacePersistence(
+    layout: layoutCubit,
+    floating: floatingWorkspaceCubit,
+  );
   final workspaceToolsCubit = WorkspaceToolsCubit();
   final workspaceTerminalRegistry = WorkspaceTerminalRegistry();
   final gitRepoStore = GitRepoStore();
@@ -948,16 +969,41 @@ Future<AppShell> buildAppShell({
     remoteCliReadiness: remoteCliReadiness,
   );
 
-  // Bound after [WorkbenchCubit] exists; togglePanel no-ops until then.
+  // Bound after [WorkbenchCubit] exists; togglePanel aliases new-terminal UX
+  // into the floating shell (Task 6 redirects the launcher to floating tabs).
   WorkbenchShellLauncher? workbenchShellLauncher;
+  WorkbenchEditorOpener? workbenchEditorOpenerRef;
+  Future<void> focusOrCreateDefaultShell() async {
+    await workbenchShellLauncher?.focusOrCreateDefaultShell();
+  }
+
+  Future<void> openFloatingNewTerminal() async {
+    floatingWorkspaceCubit.ensureOpen();
+    await focusOrCreateDefaultShell();
+  }
+
+  Future<void> openFloatingFilePicker() async {
+    final opener = workbenchEditorOpenerRef;
+    if (opener == null) return;
+    await pickAndOpenFloatingWorkspaceFile(
+      floating: floatingWorkspaceCubit,
+      opener: opener,
+      workspaces: chatCubit.state.workspaces,
+    );
+  }
+
+  registerFloatingWorkspaceCommands(
+    commandBus,
+    floatingWorkspaceCubit,
+    onNewTerminal: focusOrCreateDefaultShell,
+    onOpenFile: openFloatingFilePicker,
+  );
   registerLayoutCommands(
     commandBus,
     layoutCubit,
     uiZoomBaseline: () => uiZoomBaseline.value,
     composeLanding: () => chatCubit.state.newChatActive,
-    onTogglePanel: () async {
-      await workbenchShellLauncher?.focusOrCreateDefaultShell();
-    },
+    onTogglePanel: openFloatingNewTerminal,
   );
 
   memberPresenceCubit = MemberPresenceCubit();
@@ -1088,6 +1134,8 @@ Future<AppShell> buildAppShell({
 
   boot('loading layout');
   await layoutCubit.load();
+  floatingWorkspacePersistence.hydrateFromLayout();
+  floatingWorkspacePersistence.bind();
   await shortcutCubit.load();
   unawaited(notificationBootstrap);
   boot('layout ready (home index prefetched in background)');
@@ -1199,13 +1247,26 @@ Future<AppShell> buildAppShell({
   final workbenchEditorOpener = WorkbenchEditorOpener(
     editor: editorCubit,
     workbench: workbenchCubit,
+    floating: floatingWorkspaceCubit,
     chat: chatCubit,
     markdownViewModes: markdownViewModes,
     readMarkdownOpenMode: () =>
         layoutCubit.state.preferences.markdownOpenMode,
+    readFilePreviewInFloating: () =>
+        layoutCubit.state.preferences.filePreviewHost ==
+        FilePreviewHost.floating,
+  );
+  workbenchEditorOpenerRef = workbenchEditorOpener;
+  // One-shot: move leftover center shell tabs (and file tabs when floating
+  // preview is preferred) into floating buckets.
+  migrateLegacyWorkbenchTabsToFloating(
+    workbench: workbenchCubit,
+    floating: floatingWorkspaceCubit,
+    migrateFiles: layoutCubit.state.preferences.filePreviewHost ==
+        FilePreviewHost.floating,
   );
   final resolvedShellLauncher = WorkbenchShellLauncher(
-    workbench: workbenchCubit,
+    floating: floatingWorkspaceCubit,
     chat: chatCubit,
     registry: workspaceTerminalRegistry,
     connector: workspaceShellConnector,
@@ -1213,6 +1274,18 @@ Future<AppShell> buildAppShell({
     sessionOps: workspaceTerminalSessionOps,
   );
   workbenchShellLauncher = resolvedShellLauncher;
+  final floatingSurfaceRegistry = FloatingSurfaceRegistry.withDefaults(
+    file: FilePreviewFloatingSurface(
+      editor: editorCubit,
+      floating: floatingWorkspaceCubit,
+    ),
+    terminal: TerminalFloatingSurface(
+      floating: floatingWorkspaceCubit,
+      registry: workspaceTerminalRegistry,
+      runService: workspaceTerminalRunService,
+    ),
+  );
+  final floatingMaximizeInsets = FloatingMaximizeInsets();
   registerSessionCommands(
     commandBus,
     chatCubit,
@@ -1265,6 +1338,9 @@ Future<AppShell> buildAppShell({
     workbenchCubit: workbenchCubit,
     workbenchEditorOpener: workbenchEditorOpener,
     workbenchShellLauncher: resolvedShellLauncher,
+    floatingWorkspaceCubit: floatingWorkspaceCubit,
+    floatingSurfaceRegistry: floatingSurfaceRegistry,
+    floatingMaximizeInsets: floatingMaximizeInsets,
     sessionRepo: sessionRepo,
     workspaceProjectConfigRepository: workspaceProjectConfigRepository,
     sshProfileRepo: sshProfileRepo,

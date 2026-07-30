@@ -10512,6 +10512,36 @@ abstract class AppLocalizations {
   /// **'Toggle Secondary Sidebar'**
   String get shortcutsToggleSecondarySidebar;
 
+  /// No description provided for @shortcutsFloatingToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle Floating Workspace'**
+  String get shortcutsFloatingToggle;
+
+  /// No description provided for @shortcutsFloatingMaximize.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximize Floating Workspace'**
+  String get shortcutsFloatingMaximize;
+
+  /// No description provided for @shortcutsFloatingMinimize.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimize Floating Workspace'**
+  String get shortcutsFloatingMinimize;
+
+  /// No description provided for @shortcutsFloatingNewTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'New Floating Terminal'**
+  String get shortcutsFloatingNewTerminal;
+
+  /// No description provided for @shortcutsFloatingOpenFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Open File in Floating Workspace'**
+  String get shortcutsFloatingOpenFile;
+
   /// No description provided for @shortcutsZoomIn.
   ///
   /// In en, this message translates to:
@@ -11381,6 +11411,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not kill session.'**
   String get resourceManagerKillFailed;
+
+  /// No description provided for @floatingWorkspaceNewTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'New Terminal'**
+  String get floatingWorkspaceNewTerminal;
+
+  /// No description provided for @floatingWorkspaceOpenFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Open File'**
+  String get floatingWorkspaceOpenFile;
+
+  /// No description provided for @floatingWorkspaceMinimize.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimize'**
+  String get floatingWorkspaceMinimize;
+
+  /// No description provided for @floatingWorkspaceMaximize.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximize'**
+  String get floatingWorkspaceMaximize;
+
+  /// No description provided for @floatingWorkspaceCloseTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Close tab'**
+  String get floatingWorkspaceCloseTab;
+
+  /// No description provided for @floatingWorkspaceAddTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in floating workspace'**
+  String get floatingWorkspaceAddTooltip;
+
+  /// No description provided for @floatingWorkspaceToggleTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Floating workspace'**
+  String get floatingWorkspaceToggleTooltip;
+
+  /// No description provided for @filePreviewHostTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'File preview'**
+  String get filePreviewHostTitle;
+
+  /// No description provided for @filePreviewHostDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Open files in the floating workspace or the center workbench.'**
+  String get filePreviewHostDescription;
+
+  /// No description provided for @filePreviewHostFloating.
+  ///
+  /// In en, this message translates to:
+  /// **'Floating'**
+  String get filePreviewHostFloating;
+
+  /// No description provided for @filePreviewHostCenter.
+  ///
+  /// In en, this message translates to:
+  /// **'Center'**
+  String get filePreviewHostCenter;
 }
 
 class _AppLocalizationsDelegate

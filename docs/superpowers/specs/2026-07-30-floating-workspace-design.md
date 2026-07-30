@@ -103,7 +103,7 @@ Empty panel + `Ctrl/Cmd+W` (no closable tab): `open` → `minimized` (may drop t
 | `floatingWorkspace.toggle` shortcut | Same (defaults: Linux/Win `Ctrl+Alt+A`, macOS `Cmd+Opt+A`, aligned with Orca) |
 | Sidebar / file-tree open | Ensure `open` → focus/create file tab → `EditorCubit.openFile` via redirected opener |
 | Former shell / file workbench openers | Redirect into floating surfaces (see Migration) |
-| Chrome maximize / minimize | Maximize fills workbench safe area; minimize → `minimized` with keep-alive |
+| Chrome maximize / minimize | Maximize fills left sidebar + center content inside workspace card padding (excludes docked right-tools + status bar); minimize → `minimized` with keep-alive |
 | Empty panel close shortcut | `Ctrl/Cmd+W` → minimize when there is no closable tab |
 
 ### Empty state (v1)

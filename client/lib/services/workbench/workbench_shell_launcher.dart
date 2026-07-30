@@ -3,9 +3,10 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/layout_cubit.dart';
-import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
+import '../../models/floating_workspace_tab.dart';
 import '../../models/workspace_folder.dart';
 import '../../models/workspace_terminal_session_spec.dart';
 import '../host/host_interactive_shell.dart';
@@ -46,6 +47,41 @@ class WorkbenchShellTogglePlan {
   final WorkbenchTabId? existing;
 }
 
+/// Floating terminal tab id for a registry [entryId].
+String floatingShellTabId(String entryId) => 'shell:$entryId';
+
+/// Resolves the most recent shell from floating terminal tabs (by payload
+/// entry id), then falls back to [registryActiveEntryId].
+///
+/// Center workbench no longer hosts shell tabs after the floating migration —
+/// do not use `WorkbenchCubit.resolveMostRecentShell`.
+WorkbenchTabId? resolveMostRecentFloatingShell({
+  required List<FloatingTab> tabs,
+  required String? activeTabId,
+  String? registryActiveEntryId,
+}) {
+  if (activeTabId != null) {
+    for (final tab in tabs) {
+      if (tab.id != activeTabId || tab.surfaceId != 'terminal') continue;
+      final entryId = tab.payload;
+      if (entryId is String && entryId.trim().isNotEmpty) {
+        return WorkbenchTabId.shell(entryId.trim());
+      }
+    }
+  }
+  for (var i = tabs.length - 1; i >= 0; i--) {
+    final tab = tabs[i];
+    if (tab.surfaceId != 'terminal') continue;
+    final entryId = tab.payload;
+    if (entryId is String && entryId.trim().isNotEmpty) {
+      return WorkbenchTabId.shell(entryId.trim());
+    }
+  }
+  final reg = registryActiveEntryId?.trim() ?? '';
+  if (reg.isNotEmpty) return WorkbenchTabId.shell(reg);
+  return null;
+}
+
 /// Resolves whether [togglePanel] should select an existing shell or create one.
 ///
 /// Returns null when [workspaceId] is empty (no active workspace).
@@ -67,9 +103,11 @@ WorkbenchShellTogglePlan? resolveWorkbenchShellToggle({
 /// Active workspace comes from [ChatCubit.tabStore.activeWorkspaceId] (the
 /// title-bar tab key; equals [Workspace.workspaceId] for normal workspace
 /// pages). Terminal registry groups use the same id as [tabScopeId].
+///
+/// Shell UI lives on the floating terminal surface — not the center strip.
 class WorkbenchShellLauncher {
   WorkbenchShellLauncher({
-    required WorkbenchCubit workbench,
+    required FloatingWorkspaceCubit floating,
     required ChatCubit chat,
     required WorkspaceTerminalRegistry registry,
     required WorkspaceShellConnector connector,
@@ -78,7 +116,7 @@ class WorkbenchShellLauncher {
     String Function()? fallbackLocalShell,
     Brightness Function()? platformBrightness,
     String Function()? sshConnectFailedMessage,
-  }) : _workbench = workbench,
+  }) : _floating = floating,
        _chat = chat,
        _registry = registry,
        _connector = connector,
@@ -96,7 +134,7 @@ class WorkbenchShellLauncher {
        _sshConnectFailedMessage =
            sshConnectFailedMessage ?? (() => 'SSH connect failed');
 
-  final WorkbenchCubit _workbench;
+  final FloatingWorkspaceCubit _floating;
   final ChatCubit _chat;
   final WorkspaceTerminalRegistry _registry;
   final WorkspaceShellConnector _connector;
@@ -106,19 +144,30 @@ class WorkbenchShellLauncher {
   final Brightness Function() _platformBrightness;
   final String Function() _sshConnectFailedMessage;
 
+  WorkbenchTabId? _resolveMostRecentShell(String workspaceId) {
+    final bucket = _floating.state.buckets[workspaceId];
+    return resolveMostRecentFloatingShell(
+      tabs: bucket?.tabs ?? const <FloatingTab>[],
+      activeTabId: bucket?.activeTabId,
+      registryActiveEntryId: _registry.groupFor(workspaceId).activeId,
+    );
+  }
+
   /// Focus most-recent shell, or open a default local/SSH/WSL shell for cwd.
   Future<void> focusOrCreateDefaultShell() async {
     final workspaceId = _chat.tabStore.activeWorkspaceId.trim();
     final plan = resolveWorkbenchShellToggle(
       workspaceId: workspaceId,
-      resolveMostRecentShell: _workbench.resolveMostRecentShell,
+      resolveMostRecentShell: _resolveMostRecentShell,
     );
     if (plan == null) return;
 
     if (plan.action == WorkbenchShellToggleAction.selectExisting) {
       final existing = plan.existing;
       if (existing != null) {
-        _workbench.select(plan.workspaceId, existing);
+        _floating.ensureOpen();
+        _floating.setActiveWorkspace(plan.workspaceId);
+        _floating.selectTab(floatingShellTabId(existing.id));
       }
       return;
     }
@@ -144,7 +193,7 @@ class WorkbenchShellLauncher {
   }
 
   /// Opens [spec] via [WorkspaceTerminalSessionOps.openEntry], then ensures and
-  /// selects the matching workbench shell tab (snappy UX ahead of sync).
+  /// selects the matching floating terminal tab (snappy UX ahead of sync).
   Future<WorkspaceTerminalEntry?> openAndSelect({
     required String workspaceId,
     required String tabScopeId,
@@ -182,9 +231,19 @@ class WorkbenchShellLauncher {
       mounted: mounted,
     );
 
-    final tab = WorkbenchTabId.shell(entry.id);
-    _workbench.ensureTab(workspaceId, tab);
-    _workbench.select(workspaceId, tab);
+    final title = entry.titleLabel.trim().isNotEmpty
+        ? entry.titleLabel
+        : entry.id;
+    _floating.ensureOpen();
+    _floating.setActiveWorkspace(workspaceId);
+    _floating.ensureTab(
+      FloatingTab(
+        id: floatingShellTabId(entry.id),
+        surfaceId: 'terminal',
+        title: title,
+        payload: entry.id,
+      ),
+    );
     return entry;
   }
 }

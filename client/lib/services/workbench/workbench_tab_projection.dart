@@ -22,7 +22,8 @@ List<TabInfo> projectWorkbenchTabs({
 }) {
   return [
     for (final tab in tabOrder)
-      switch (tab.kind) {
+      if (isCenterStripWorkbenchTab(tab.kind))
+        switch (tab.kind) {
         WorkbenchTabKind.session => TabInfo(
           id: tab.id,
           sessionId: tab.id,
@@ -37,7 +38,7 @@ List<TabInfo> projectWorkbenchTabs({
         ),
         WorkbenchTabKind.file => TabInfo(
           id: tab.id,
-          title: _fileTitle(tab.id, editorBucket),
+          title: p.basename(tab.id),
           icon: Icons.description_outlined,
           preview: previewTabIds.contains(tab),
         ),
@@ -47,12 +48,6 @@ List<TabInfo> projectWorkbenchTabs({
           icon: Icons.difference_outlined,
           preview: previewTabIds.contains(tab),
         ),
-        WorkbenchTabKind.shell => TabInfo(
-          id: tab.id,
-          title: shellTitles[tab.id] ?? tab.id,
-          icon: Icons.terminal_outlined,
-          pinnable: false,
-        ),
         WorkbenchTabKind.run => TabInfo(
           id: tab.id,
           title: runTitles[tab.id] ?? tab.id,
@@ -60,13 +55,11 @@ List<TabInfo> projectWorkbenchTabs({
           working: runWorking[tab.id] ?? false,
           pinnable: false,
         ),
+        WorkbenchTabKind.shell => throw StateError(
+          'shell tabs are filtered before center-strip projection',
+        ),
       },
   ];
-}
-
-String _fileTitle(String path, WorkspaceEditorBucket bucket) {
-  final name = p.basename(path);
-  return bucket.isDirty(path) ? '$name •' : name;
 }
 
 String _diffTitle(WorkbenchTabId tab, WorkspaceEditorBucket bucket) {

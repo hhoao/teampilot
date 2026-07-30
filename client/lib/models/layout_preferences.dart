@@ -9,6 +9,9 @@ enum WorkspaceEntryMode { home, lastWorkspace }
 /// Default surface when opening a markdown file in the workbench editor.
 enum MarkdownOpenMode { preview, source, remember }
 
+/// Where file open/preview hosts: floating workspace overlay vs center strip.
+enum FilePreviewHost { floating, center }
+
 /// Dropdown value for language preference: `system` | `en` | `zh`.
 String languagePreferenceUiValue(String locale) {
   if (locale.isEmpty) return 'system';
@@ -67,6 +70,16 @@ class LayoutPreferences {
     this.markdownOpenMode = MarkdownOpenMode.preview,
     this.cotExpandReasoningOnOpen = false,
     this.cotExpandToolsOnOpen = false,
+    this.floatingPanelLeft,
+    this.floatingPanelTop,
+    this.floatingPanelWidth,
+    this.floatingPanelHeight,
+    this.floatingPanelRightInset,
+    this.floatingPanelBottomInset,
+    this.floatingToggleDx,
+    this.floatingToggleDy,
+    this.floatingMaximized = false,
+    this.filePreviewHost = FilePreviewHost.floating,
   });
 
   factory LayoutPreferences.fromJson(Map<String, Object?> json) {
@@ -138,6 +151,18 @@ class LayoutPreferences {
       cotExpandReasoningOnOpen:
           json['cotExpandReasoningOnOpen'] as bool? ?? false,
       cotExpandToolsOnOpen: json['cotExpandToolsOnOpen'] as bool? ?? false,
+      floatingPanelLeft: _optionalDouble(json['floatingPanelLeft']),
+      floatingPanelTop: _optionalDouble(json['floatingPanelTop']),
+      floatingPanelWidth: _optionalDouble(json['floatingPanelWidth']),
+      floatingPanelHeight: _optionalDouble(json['floatingPanelHeight']),
+      floatingPanelRightInset: _optionalDouble(json['floatingPanelRightInset']),
+      floatingPanelBottomInset: _optionalDouble(json['floatingPanelBottomInset']),
+      floatingToggleDx: _optionalDouble(json['floatingToggleDx']),
+      floatingToggleDy: _optionalDouble(json['floatingToggleDy']),
+      floatingMaximized: json['floatingMaximized'] as bool? ?? false,
+      filePreviewHost:
+          _enumValue(FilePreviewHost.values, json['filePreviewHost']) ??
+          FilePreviewHost.floating,
     ).withAtLeastOneToolVisible();
   }
 
@@ -200,6 +225,16 @@ class LayoutPreferences {
   final MarkdownOpenMode markdownOpenMode;
   final bool cotExpandReasoningOnOpen;
   final bool cotExpandToolsOnOpen;
+  final double? floatingPanelLeft;
+  final double? floatingPanelTop;
+  final double? floatingPanelWidth;
+  final double? floatingPanelHeight;
+  final double? floatingPanelRightInset;
+  final double? floatingPanelBottomInset;
+  final double? floatingToggleDx;
+  final double? floatingToggleDy;
+  final bool floatingMaximized;
+  final FilePreviewHost filePreviewHost;
 
   LayoutPreferences copyWith({
     LayoutPreset? preset,
@@ -231,6 +266,16 @@ class LayoutPreferences {
     MarkdownOpenMode? markdownOpenMode,
     bool? cotExpandReasoningOnOpen,
     bool? cotExpandToolsOnOpen,
+    double? floatingPanelLeft,
+    double? floatingPanelTop,
+    double? floatingPanelWidth,
+    double? floatingPanelHeight,
+    double? floatingPanelRightInset,
+    double? floatingPanelBottomInset,
+    double? floatingToggleDx,
+    double? floatingToggleDy,
+    bool? floatingMaximized,
+    FilePreviewHost? filePreviewHost,
   }) {
     return LayoutPreferences(
       preset: preset ?? this.preset,
@@ -293,6 +338,18 @@ class LayoutPreferences {
       cotExpandReasoningOnOpen:
           cotExpandReasoningOnOpen ?? this.cotExpandReasoningOnOpen,
       cotExpandToolsOnOpen: cotExpandToolsOnOpen ?? this.cotExpandToolsOnOpen,
+      floatingPanelLeft: floatingPanelLeft ?? this.floatingPanelLeft,
+      floatingPanelTop: floatingPanelTop ?? this.floatingPanelTop,
+      floatingPanelWidth: floatingPanelWidth ?? this.floatingPanelWidth,
+      floatingPanelHeight: floatingPanelHeight ?? this.floatingPanelHeight,
+      floatingPanelRightInset:
+          floatingPanelRightInset ?? this.floatingPanelRightInset,
+      floatingPanelBottomInset:
+          floatingPanelBottomInset ?? this.floatingPanelBottomInset,
+      floatingToggleDx: floatingToggleDx ?? this.floatingToggleDx,
+      floatingToggleDy: floatingToggleDy ?? this.floatingToggleDy,
+      floatingMaximized: floatingMaximized ?? this.floatingMaximized,
+      filePreviewHost: filePreviewHost ?? this.filePreviewHost,
     ).withAtLeastOneToolVisible();
   }
 
@@ -330,6 +387,16 @@ class LayoutPreferences {
       markdownOpenMode: markdownOpenMode,
       cotExpandReasoningOnOpen: cotExpandReasoningOnOpen,
       cotExpandToolsOnOpen: cotExpandToolsOnOpen,
+      floatingPanelLeft: floatingPanelLeft,
+      floatingPanelTop: floatingPanelTop,
+      floatingPanelWidth: floatingPanelWidth,
+      floatingPanelHeight: floatingPanelHeight,
+      floatingPanelRightInset: floatingPanelRightInset,
+      floatingPanelBottomInset: floatingPanelBottomInset,
+      floatingToggleDx: floatingToggleDx,
+      floatingToggleDy: floatingToggleDy,
+      floatingMaximized: floatingMaximized,
+      filePreviewHost: filePreviewHost,
     );
   }
 
@@ -364,6 +431,16 @@ class LayoutPreferences {
       'markdownOpenMode': markdownOpenMode.name,
       'cotExpandReasoningOnOpen': cotExpandReasoningOnOpen,
       'cotExpandToolsOnOpen': cotExpandToolsOnOpen,
+      'floatingPanelLeft': floatingPanelLeft,
+      'floatingPanelTop': floatingPanelTop,
+      'floatingPanelWidth': floatingPanelWidth,
+      'floatingPanelHeight': floatingPanelHeight,
+      'floatingPanelRightInset': floatingPanelRightInset,
+      'floatingPanelBottomInset': floatingPanelBottomInset,
+      'floatingToggleDx': floatingToggleDx,
+      'floatingToggleDy': floatingToggleDy,
+      'floatingMaximized': floatingMaximized,
+      'filePreviewHost': filePreviewHost.name,
     };
   }
 }
@@ -385,6 +462,13 @@ double _doubleValue(Object? raw, {double fallback = 320.0}) {
     return raw.toDouble();
   }
   return fallback;
+}
+
+double? _optionalDouble(Object? raw) {
+  if (raw is num) {
+    return raw.toDouble();
+  }
+  return null;
 }
 
 String _terminalThemeModeValue(String? raw) {

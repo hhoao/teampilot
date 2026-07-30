@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../widgets/workspace_terminal_panel.dart';
 
-/// Center workbench body for workspace shell terminals (no dock chrome).
+/// Workspace shell terminal body (floating-capable; no dock chrome).
 ///
 /// Hosts a single [WorkspaceTerminalPanel] that multi-entry IndexedStacks
 /// internally so [WorkspaceTerminalHoldHandle] stays bound to one panel state.

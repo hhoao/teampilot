@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
+import 'package:teampilot/cubits/floating_workspace/floating_panel_visibility.dart';
+import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/models/layout_preferences.dart';
@@ -12,17 +14,20 @@ import 'package:teampilot/services/workbench/workbench_editor_opener.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
-  test('openFile activates workbench tab before disk read finishes', () async {
+  test('openFile activates floating tab before disk read finishes', () async {
     final gate = Completer<void>();
     final fs = _GatedFilesystem(gate)..files['/repo/a.txt'] = 'hello';
     final editor = EditorCubit(fs: fs);
     final workbench = WorkbenchCubit();
+    final floating = FloatingWorkspaceCubit();
     addTearDown(editor.close);
     addTearDown(workbench.close);
+    addTearDown(floating.close);
 
     final opener = WorkbenchEditorOpener(
       editor: editor,
       workbench: workbench,
+      floating: floating,
       markdownViewModes: MarkdownViewModeStore(),
       readMarkdownOpenMode: () => MarkdownOpenMode.preview,
     );
@@ -30,38 +35,151 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(
-      workbench.activeTabId('ws'),
-      WorkbenchTabId.file('/repo/a.txt'),
+      workbench.state.bucket('ws').tabOrder.where(
+        (t) => t.kind == WorkbenchTabKind.file,
+      ),
+      isEmpty,
     );
+    expect(
+      floating.state.activeBucket.tabs.any((t) => t.payload == '/repo/a.txt'),
+      isTrue,
+    );
+    expect(floating.state.visibility, FloatingPanelVisibility.open);
     expect(editor.state.bucket('ws').openFilePaths, isEmpty);
 
     gate.complete();
     await pending;
-    expect(editor.state.bucket('ws').openFilePaths, ['/repo/a.txt']);
+    expect(editor.state.bucket('ws').openFilePaths, contains('/repo/a.txt'));
   });
 
-  test('openFile ensures workbench tab for image paths', () async {
+  test('openFile opens editor and floating tab, not workbench file tab', () async {
+    final gate = Completer<void>();
+    final fs = _GatedFilesystem(gate)..files['/repo/a.txt'] = 'hello';
+    final editor = EditorCubit(fs: fs);
+    final workbench = WorkbenchCubit();
+    final floating = FloatingWorkspaceCubit();
+    addTearDown(editor.close);
+    addTearDown(workbench.close);
+    addTearDown(floating.close);
+    floating.setActiveWorkspace('ws');
+
+    final opener = WorkbenchEditorOpener(
+      editor: editor,
+      workbench: workbench,
+      floating: floating,
+      markdownViewModes: MarkdownViewModeStore(),
+      readMarkdownOpenMode: () => MarkdownOpenMode.preview,
+    );
+    gate.complete();
+    await opener.openFile('ws', '/repo/a.txt');
+
+    expect(workbench.activeTabId('ws')?.kind, isNot(WorkbenchTabKind.file));
+    expect(
+      workbench.state.bucket('ws').tabOrder.where(
+        (t) => t.kind == WorkbenchTabKind.file,
+      ),
+      isEmpty,
+    );
+    expect(
+      floating.state.activeBucket.tabs.any((t) => t.payload == '/repo/a.txt'),
+      isTrue,
+    );
+    expect(floating.state.visibility, FloatingPanelVisibility.open);
+    expect(editor.state.bucket('ws').openFilePaths, contains('/repo/a.txt'));
+  });
+
+  test('openFile ensures floating tab for image paths', () async {
     final gate = Completer<void>();
     final fs = _GatedFilesystem(gate)
       ..byteFiles['/repo/a.png'] = const [1, 2, 3];
     final editor = EditorCubit(fs: fs);
     final workbench = WorkbenchCubit();
+    final floating = FloatingWorkspaceCubit();
     addTearDown(editor.close);
     addTearDown(workbench.close);
+    addTearDown(floating.close);
 
     final opener = WorkbenchEditorOpener(
       editor: editor,
       workbench: workbench,
+      floating: floating,
       markdownViewModes: MarkdownViewModeStore(),
       readMarkdownOpenMode: () => MarkdownOpenMode.preview,
     );
     final pending = opener.openFile('ws', '/repo/a.png');
     await Future<void>.delayed(Duration.zero);
 
-    expect(workbench.activeTabId('ws'), WorkbenchTabId.file('/repo/a.png'));
+    expect(
+      workbench.state.bucket('ws').tabOrder.where(
+        (t) => t.kind == WorkbenchTabKind.file,
+      ),
+      isEmpty,
+    );
+    expect(
+      floating.state.activeBucket.tabs.any((t) => t.payload == '/repo/a.png'),
+      isTrue,
+    );
+    expect(floating.state.visibility, FloatingPanelVisibility.open);
     gate.complete();
     await pending;
     expect(editor.bytesFor('ws', '/repo/a.png'), isNotNull);
+  });
+
+  test('openDiff still creates center workbench diff tab', () {
+    final editor = EditorCubit();
+    final workbench = WorkbenchCubit();
+    final floating = FloatingWorkspaceCubit();
+    addTearDown(editor.close);
+    addTearDown(workbench.close);
+    addTearDown(floating.close);
+
+    final opener = WorkbenchEditorOpener(
+      editor: editor,
+      workbench: workbench,
+      floating: floating,
+      markdownViewModes: MarkdownViewModeStore(),
+      readMarkdownOpenMode: () => MarkdownOpenMode.preview,
+    );
+    opener.openDiff(
+      workspaceId: 'ws',
+      absolutePath: '/repo/a.txt',
+      source: WorkbenchDiffSource.changes,
+      title: 'a.txt',
+      diffText: 'diff',
+    );
+
+    expect(
+      workbench.activeTabId('ws'),
+      WorkbenchTabId.diff('/repo/a.txt', source: WorkbenchDiffSource.changes),
+    );
+    expect(floating.state.activeBucket.tabs, isEmpty);
+  });
+
+  test('openFile opens center workbench tab when filePreviewHost is center', () async {
+    final gate = Completer<void>();
+    final fs = _GatedFilesystem(gate)..files['/repo/a.txt'] = 'hello';
+    final editor = EditorCubit(fs: fs);
+    final workbench = WorkbenchCubit();
+    final floating = FloatingWorkspaceCubit();
+    addTearDown(editor.close);
+    addTearDown(workbench.close);
+    addTearDown(floating.close);
+
+    final opener = WorkbenchEditorOpener(
+      editor: editor,
+      workbench: workbench,
+      floating: floating,
+      markdownViewModes: MarkdownViewModeStore(),
+      readMarkdownOpenMode: () => MarkdownOpenMode.preview,
+      readFilePreviewInFloating: () => false,
+    );
+    gate.complete();
+    await opener.openFile('ws', '/repo/a.txt');
+
+    expect(workbench.activeTabId('ws')?.kind, WorkbenchTabKind.file);
+    expect(workbench.activeTabId('ws')?.id, '/repo/a.txt');
+    expect(floating.state.activeBucket.tabs, isEmpty);
+    expect(editor.state.bucket('ws').openFilePaths, contains('/repo/a.txt'));
   });
 }
 

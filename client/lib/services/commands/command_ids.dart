@@ -31,6 +31,13 @@ abstract final class CommandIds {
   static const String toggleSecondarySidebar =
       'workbench.view.toggleSecondarySidebar';
 
+  // Floating workspace
+  static const String floatingToggle = 'floatingWorkspace.toggle';
+  static const String floatingMaximize = 'floatingWorkspace.maximize';
+  static const String floatingMinimize = 'floatingWorkspace.minimize';
+  static const String floatingNewTerminal = 'floatingWorkspace.newTerminal';
+  static const String floatingOpenFile = 'floatingWorkspace.openFile';
+
   // Zoom
   static const String zoomIn = 'workbench.zoom.in';
   static const String zoomOut = 'workbench.zoom.out';

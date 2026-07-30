@@ -2,31 +2,44 @@ import 'package:path/path.dart' as p;
 
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/editor_cubit.dart';
+import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
+import '../../models/floating_workspace_tab.dart';
 import '../../models/layout_preferences.dart';
 import '../editor/file_editor_theme.dart';
 import '../editor/markdown_view_mode_store.dart';
 import '../io/filesystem.dart';
 
 /// Single entry for opening file/diff center tabs (editor bucket + workbench).
+///
+/// File opens go to the floating file-preview surface when
+/// [readFilePreviewInFloating] is true; otherwise they use the center strip.
+/// Diffs always stay on the center workbench strip.
 class WorkbenchEditorOpener {
   WorkbenchEditorOpener({
     required EditorCubit editor,
     required WorkbenchCubit workbench,
+    required FloatingWorkspaceCubit floating,
     required this.markdownViewModes,
     required MarkdownOpenMode Function() readMarkdownOpenMode,
+    bool Function()? readFilePreviewInFloating,
     ChatCubit? chat,
   }) : _editor = editor,
        _workbench = workbench,
+       _floating = floating,
        _readMarkdownOpenMode = readMarkdownOpenMode,
+       _readFilePreviewInFloating =
+           readFilePreviewInFloating ?? (() => true),
        _chat = chat;
 
   final EditorCubit _editor;
   final WorkbenchCubit _workbench;
+  final FloatingWorkspaceCubit _floating;
   final ChatCubit? _chat;
   final MarkdownViewModeStore markdownViewModes;
   final MarkdownOpenMode Function() _readMarkdownOpenMode;
+  final bool Function() _readFilePreviewInFloating;
 
   Future<void> openFile(
     String workspaceId,
@@ -44,12 +57,25 @@ class WorkbenchEditorOpener {
     if (isMarkdownEditorPath(normalized)) {
       markdownViewModes.seedOnOpen(normalized, _readMarkdownOpenMode());
     }
+
+    if (_readFilePreviewInFloating()) {
+      _floating.ensureOpen();
+      _floating.setActiveWorkspace(workspaceId);
+      _floating.ensureTab(
+        FloatingTab(
+          id: 'file:$normalized',
+          surfaceId: 'filePreview',
+          title: p.basename(normalized),
+          payload: normalized,
+        ),
+      );
+      _chat?.dismissNewChat();
+      await _editor.openFile(workspaceId, normalized, fs: fs);
+      return;
+    }
+
     final tab = WorkbenchTabId.file(normalized);
-    final replaced = _workbench.ensureTab(
-      workspaceId,
-      tab,
-      preview: preview,
-    );
+    final replaced = _workbench.ensureTab(workspaceId, tab, preview: preview);
     _closeReplaced(workspaceId, replaced);
     _chat?.dismissNewChat();
     await _editor.openFile(workspaceId, normalized, fs: fs);
@@ -73,11 +99,7 @@ class WorkbenchEditorOpener {
       reloadDiff: reloadDiff,
     );
     final tab = WorkbenchTabId.diff(absolutePath, source: source);
-    final replaced = _workbench.ensureTab(
-      workspaceId,
-      tab,
-      preview: preview,
-    );
+    final replaced = _workbench.ensureTab(workspaceId, tab, preview: preview);
     _closeReplaced(workspaceId, replaced);
     _chat?.dismissNewChat();
   }
@@ -86,10 +108,7 @@ class WorkbenchEditorOpener {
   Future<void> openChangesDiff({
     required String workspaceId,
     required String absolutePath,
-    required Future<String?> Function({
-      bool ignoreWhitespace,
-      bool fullContext,
-    })
+    required Future<String?> Function({bool ignoreWhitespace, bool fullContext})
     loadDiff,
     String? title,
     bool preview = true,

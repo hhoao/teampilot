@@ -2647,6 +2647,11 @@
   "shortcutsToggleSidebar": "Toggle Sidebar",
   "shortcutsTogglePanel": "Toggle Terminal Panel",
   "shortcutsToggleSecondarySidebar": "Toggle Secondary Sidebar",
+  "shortcutsFloatingToggle": "Toggle Floating Workspace",
+  "shortcutsFloatingMaximize": "Maximize Floating Workspace",
+  "shortcutsFloatingMinimize": "Minimize Floating Workspace",
+  "shortcutsFloatingNewTerminal": "New Floating Terminal",
+  "shortcutsFloatingOpenFile": "Open File in Floating Workspace",
   "shortcutsZoomIn": "Zoom In",
   "shortcutsZoomOut": "Zoom Out",
   "shortcutsZoomReset": "Reset Zoom",
@@ -2849,5 +2854,18 @@
   "resourceManagerEmptyTree": "Nothing running right now.",
   "resourceManagerAppProcess": "App",
   "resourceManagerMetricsError": "Could not refresh process metrics.",
-  "resourceManagerKillFailed": "Could not kill session."
+  "resourceManagerKillFailed": "Could not kill session.",
+
+  "floatingWorkspaceNewTerminal": "New Terminal",
+  "floatingWorkspaceOpenFile": "Open File",
+  "floatingWorkspaceMinimize": "Minimize",
+  "floatingWorkspaceMaximize": "Maximize",
+  "floatingWorkspaceCloseTab": "Close tab",
+  "floatingWorkspaceAddTooltip": "Open in floating workspace",
+  "floatingWorkspaceToggleTooltip": "Floating workspace",
+
+  "filePreviewHostTitle": "File preview",
+  "filePreviewHostDescription": "Open files in the floating workspace or the center workbench.",
+  "filePreviewHostFloating": "Floating",
+  "filePreviewHostCenter": "Center"
 }

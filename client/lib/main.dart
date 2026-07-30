@@ -60,6 +60,8 @@ import 'services/ssh/ssh_client_factory.dart';
 import 'services/ssh/ssh_profile_connection_coordinator.dart';
 import 'services/terminal/terminal_transport_factory.dart';
 import 'services/file_tree/workspace_file_tree_store.dart';
+import 'services/floating_workspace/floating_maximize_insets.dart';
+import 'services/floating_workspace/floating_surface_registry.dart';
 import 'services/git/git_repo_store.dart';
 import 'services/workspace/workspace_tools_scope_registry.dart';
 import 'services/workspace/workspace_run_registry.dart';
@@ -665,6 +667,12 @@ void main() async {
                 RepositoryProvider<UiZoomBaseline>.value(
                   value: shell.uiZoomBaseline,
                 ),
+                RepositoryProvider<FloatingSurfaceRegistry>.value(
+                  value: shell.floatingSurfaceRegistry,
+                ),
+                RepositoryProvider<FloatingMaximizeInsets>.value(
+                  value: shell.floatingMaximizeInsets,
+                ),
               ],
               child: MultiBlocProvider(
                 providers: [
@@ -678,6 +686,7 @@ void main() async {
                   BlocProvider.value(value: shell.notificationCubit),
                   BlocProvider.value(value: shell.editorCubit),
                   BlocProvider.value(value: shell.workbenchCubit),
+                  BlocProvider.value(value: shell.floatingWorkspaceCubit),
                   RepositoryProvider.value(value: shell.workbenchEditorOpener),
                   RepositoryProvider.value(value: shell.workbenchShellLauncher),
                   BlocProvider.value(value: shell.configCubit),

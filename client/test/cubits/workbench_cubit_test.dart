@@ -17,50 +17,65 @@ void main() {
     test('ensureTab appends and activates; re-open dedupes', () {
       const ws = 'ws-a';
       final session = WorkbenchTabId.session('s1');
-      final file = WorkbenchTabId.file('/repo/a.dart');
+      final diff = WorkbenchTabId.diffStaged('/repo/a.dart', staged: false);
 
       cubit.ensureTab(ws, session);
-      cubit.ensureTab(ws, file);
+      cubit.ensureTab(ws, diff);
 
+      expect(cubit.tabOrder(ws), [session, diff]);
+      expect(cubit.activeTabId(ws), diff);
+
+      cubit.ensureTab(ws, session);
+      expect(cubit.tabOrder(ws), [session, diff]);
+      expect(cubit.activeTabId(ws), session);
+    });
+
+    test('ensureTab rejects shell tabs but allows file on center strip', () {
+      const ws = 'ws-a';
+      final session = WorkbenchTabId.session('s1');
+      cubit.ensureTab(ws, session);
+
+      final file = WorkbenchTabId.file('/a.dart');
+      cubit.ensureTab(ws, file);
       expect(cubit.tabOrder(ws), [session, file]);
       expect(cubit.activeTabId(ws), file);
 
-      cubit.ensureTab(ws, session);
+      cubit.ensureTab(ws, WorkbenchTabId.shell('e1'));
       expect(cubit.tabOrder(ws), [session, file]);
-      expect(cubit.activeTabId(ws), session);
+      expect(cubit.activeTabId(ws), file);
     });
 
     test('buckets are isolated per workspace', () {
       const a = 'ws-a';
       const b = 'ws-b';
-      final fileA = WorkbenchTabId.file('/a.dart');
-      final fileB = WorkbenchTabId.file('/b.dart');
+      final diffA = WorkbenchTabId.diffStaged('/a.dart', staged: false);
+      final diffB = WorkbenchTabId.diffStaged('/b.dart', staged: true);
 
-      cubit.ensureTab(a, fileA);
-      cubit.ensureTab(b, fileB);
+      cubit.ensureTab(a, diffA);
+      cubit.ensureTab(b, diffB);
 
-      expect(cubit.tabOrder(a), [fileA]);
-      expect(cubit.tabOrder(b), [fileB]);
-      expect(cubit.activeTabId(a), fileA);
-      expect(cubit.activeTabId(b), fileB);
+      expect(cubit.tabOrder(a), [diffA]);
+      expect(cubit.tabOrder(b), [diffB]);
+      expect(cubit.activeTabId(a), diffA);
+      expect(cubit.activeTabId(b), diffB);
     });
 
     test('removeTab activates previous neighbor', () {
       const ws = 'ws-a';
       final s1 = WorkbenchTabId.session('s1');
-      final f1 = WorkbenchTabId.file('/a.dart');
       final d1 = WorkbenchTabId.diffStaged('/a.dart', staged: false);
+      final d2 = WorkbenchTabId.diffStaged('/b.dart', staged: true);
 
       cubit.ensureTab(ws, s1);
-      cubit.ensureTab(ws, f1);
       cubit.ensureTab(ws, d1);
+      cubit.ensureTab(ws, d2);
+      expect(cubit.activeTabId(ws), d2);
+
+      cubit.removeTab(ws, d2);
+      expect(cubit.tabOrder(ws), [s1, d1]);
       expect(cubit.activeTabId(ws), d1);
 
       cubit.removeTab(ws, d1);
-      expect(cubit.tabOrder(ws), [s1, f1]);
-      expect(cubit.activeTabId(ws), f1);
-
-      cubit.removeTab(ws, f1);
       expect(cubit.activeTabId(ws), s1);
 
       cubit.removeTab(ws, s1);
@@ -71,29 +86,29 @@ void main() {
     test('select sets active; closeOthers keeps one; closeRight trims', () {
       const ws = 'ws-a';
       final s1 = WorkbenchTabId.session('s1');
-      final f1 = WorkbenchTabId.file('/a.dart');
-      final f2 = WorkbenchTabId.file('/b.dart');
-      final d1 = WorkbenchTabId.diffStaged('/a.dart', staged: true);
+      final d1 = WorkbenchTabId.diffStaged('/a.dart', staged: false);
+      final d2 = WorkbenchTabId.diffStaged('/b.dart', staged: false);
+      final d3 = WorkbenchTabId.diffStaged('/c.dart', staged: true);
 
       cubit.ensureTab(ws, s1);
-      cubit.ensureTab(ws, f1);
-      cubit.ensureTab(ws, f2);
       cubit.ensureTab(ws, d1);
+      cubit.ensureTab(ws, d2);
+      cubit.ensureTab(ws, d3);
 
-      cubit.select(ws, f1);
-      expect(cubit.activeTabId(ws), f1);
+      cubit.select(ws, d1);
+      expect(cubit.activeTabId(ws), d1);
 
-      final closedRight = cubit.closeRight(ws, f1);
-      expect(closedRight, [f2, d1]);
-      expect(cubit.tabOrder(ws), [s1, f1]);
+      final closedRight = cubit.closeRight(ws, d1);
+      expect(closedRight, [d2, d3]);
+      expect(cubit.tabOrder(ws), [s1, d1]);
 
-      cubit.ensureTab(ws, f2);
-      cubit.ensureTab(ws, d1);
-      cubit.select(ws, f1);
-      final closedOthers = cubit.closeOthers(ws, f1);
-      expect(closedOthers, [s1, f2, d1]);
-      expect(cubit.tabOrder(ws), [f1]);
-      expect(cubit.activeTabId(ws), f1);
+      cubit.ensureTab(ws, d2);
+      cubit.ensureTab(ws, d3);
+      cubit.select(ws, d1);
+      final closedOthers = cubit.closeOthers(ws, d1);
+      expect(closedOthers, [s1, d2, d3]);
+      expect(cubit.tabOrder(ws), [d1]);
+      expect(cubit.activeTabId(ws), d1);
     });
 
     test('staged and unstaged diffs are distinct tabs', () {
@@ -156,18 +171,18 @@ void main() {
       expect(cubit.activeTabId(ws), isNull);
     });
 
-    test('syncSessions does not steal focus from file/diff tab', () {
+    test('syncSessions does not steal focus from diff tab', () {
       const ws = 'ws-a';
-      final file = WorkbenchTabId.file('/a.dart');
+      final diff = WorkbenchTabId.diffStaged('/a.dart', staged: false);
       cubit.ensureTab(ws, WorkbenchTabId.session('s1'));
-      cubit.ensureTab(ws, file);
+      cubit.ensureTab(ws, diff);
       cubit.syncSessions(
         ws,
         ['s1'],
         preferredActiveSessionId: 's1',
         newChatActive: false,
       );
-      expect(cubit.activeTabId(ws), file);
+      expect(cubit.activeTabId(ws), diff);
     });
 
     // Landing compose unmounts ChatPage while a Run tab may stay active;
@@ -196,9 +211,9 @@ void main() {
 
     test('preview open replaces existing preview; permanent pins', () {
       const ws = 'ws-a';
-      final a = WorkbenchTabId.file('/a.dart');
-      final b = WorkbenchTabId.file('/b.dart');
-      final c = WorkbenchTabId.file('/c.dart');
+      final a = WorkbenchTabId.diffStaged('/a.dart', staged: false);
+      final b = WorkbenchTabId.diffStaged('/b.dart', staged: false);
+      final c = WorkbenchTabId.diffStaged('/c.dart', staged: false);
 
       expect(cubit.ensureTab(ws, a, preview: true), isNull);
       expect(cubit.isPreview(ws, a), isTrue);
@@ -217,30 +232,30 @@ void main() {
       expect(cubit.isPreview(ws, c), isTrue);
     });
 
-    test('diff preview can replace file preview', () {
+    test('second diff preview replaces first diff preview', () {
       const ws = 'ws-a';
-      final file = WorkbenchTabId.file('/a.dart');
-      final diff = WorkbenchTabId.diffStaged('/a.dart', staged: false);
+      final first = WorkbenchTabId.diffStaged('/a.dart', staged: false);
+      final second = WorkbenchTabId.diffStaged('/b.dart', staged: false);
 
-      cubit.ensureTab(ws, file, preview: true);
-      final replaced = cubit.ensureTab(ws, diff, preview: true);
-      expect(replaced, file);
-      expect(cubit.tabOrder(ws), [diff]);
-      expect(cubit.isPreview(ws, diff), isTrue);
+      cubit.ensureTab(ws, first, preview: true);
+      final replaced = cubit.ensureTab(ws, second, preview: true);
+      expect(replaced, first);
+      expect(cubit.tabOrder(ws), [second]);
+      expect(cubit.isPreview(ws, second), isTrue);
     });
 
-    test('session preview replaces file preview and vice versa', () {
+    test('session preview replaces diff preview and vice versa', () {
       const ws = 'ws-a';
-      final file = WorkbenchTabId.file('/a.dart');
+      final diff = WorkbenchTabId.diffStaged('/a.dart', staged: false);
       final session = WorkbenchTabId.session('s1');
 
-      cubit.ensureTab(ws, file, preview: true);
-      final replacedFile = cubit.ensureTab(ws, session, preview: true);
-      expect(replacedFile, file);
+      cubit.ensureTab(ws, diff, preview: true);
+      final replacedDiff = cubit.ensureTab(ws, session, preview: true);
+      expect(replacedDiff, diff);
       expect(cubit.tabOrder(ws), [session]);
       expect(cubit.isPreview(ws, session), isTrue);
 
-      final other = WorkbenchTabId.file('/b.dart');
+      final other = WorkbenchTabId.diffStaged('/b.dart', staged: false);
       final replacedSession = cubit.ensureTab(ws, other, preview: true);
       expect(replacedSession, session);
       expect(cubit.tabOrder(ws), [other]);
@@ -252,14 +267,14 @@ void main() {
       () {
         const ws = 'ws-a';
         final session = WorkbenchTabId.session('s1');
-        final file = WorkbenchTabId.file('/a.dart');
+        final diff = WorkbenchTabId.diffStaged('/a.dart', staged: false);
 
         cubit.ensureTab(ws, session, preview: false);
-        cubit.ensureTab(ws, file, preview: true);
-        expect(cubit.tabOrder(ws), [session, file]);
+        cubit.ensureTab(ws, diff, preview: true);
+        expect(cubit.tabOrder(ws), [session, diff]);
 
         final replaced = cubit.ensureTab(ws, session, preview: true);
-        expect(replaced, file);
+        expect(replaced, diff);
         expect(cubit.tabOrder(ws), [session]);
         expect(cubit.isPreview(ws, session), isTrue);
       },
@@ -267,10 +282,10 @@ void main() {
 
     test('pinTab clears preview flag', () {
       const ws = 'ws-a';
-      final file = WorkbenchTabId.file('/a.dart');
-      cubit.ensureTab(ws, file, preview: true);
-      cubit.pinTab(ws, file);
-      expect(cubit.isPreview(ws, file), isFalse);
+      final diff = WorkbenchTabId.diffStaged('/a.dart', staged: false);
+      cubit.ensureTab(ws, diff, preview: true);
+      cubit.pinTab(ws, diff);
+      expect(cubit.isPreview(ws, diff), isFalse);
     });
 
     test('shell/run factories and equality', () {
@@ -283,64 +298,40 @@ void main() {
       expect(a, isNot(c));
     });
 
-    test(
-      'ensureTab shell/run ignores preview flag (never enters preview set)',
-      () {
-        const ws = 'ws';
-        final session = WorkbenchTabId.session('s1');
-        cubit.ensureTab(ws, session, preview: true);
-        expect(cubit.isPreview(ws, session), isTrue);
+    test('ensureTab run ignores preview flag (never enters preview set)', () {
+      const ws = 'ws';
+      final session = WorkbenchTabId.session('s1');
+      cubit.ensureTab(ws, session, preview: true);
+      expect(cubit.isPreview(ws, session), isTrue);
 
-        final shell = WorkbenchTabId.shell('e1');
-        cubit.ensureTab(ws, shell, preview: true);
-        expect(cubit.isPreview(ws, shell), isFalse);
-        expect(cubit.isPreview(ws, session), isTrue); // not displaced
-      },
-    );
+      final run = WorkbenchTabId.run('r1');
+      cubit.ensureTab(ws, run, preview: true);
+      expect(cubit.isPreview(ws, run), isFalse);
+      expect(cubit.isPreview(ws, session), isTrue); // not displaced
+    });
 
-    test('syncSessions preserves shell/run tabs', () {
+    test('syncSessions preserves run/file tabs and drops legacy shell tabs', () {
       const ws = 'ws';
       final s1 = WorkbenchTabId.session('s1');
       final shell = WorkbenchTabId.shell('e1');
       final run = WorkbenchTabId.run('r1');
+      final file = WorkbenchTabId.file('/a.dart');
       cubit.ensureTab(ws, s1);
-      cubit.ensureTab(ws, shell);
       cubit.ensureTab(ws, run);
+      cubit.emit(
+        cubit.state.withBucket(
+          ws,
+          cubit.state.bucket(ws).copyWith(
+            tabOrder: [s1, shell, run, file],
+          ),
+        ),
+      );
       cubit.syncSessions(ws, ['s1', 's2']);
       expect(
         cubit.tabOrder(ws),
-        containsAll([shell, run, WorkbenchTabId.session('s2')]),
+        containsAll([run, file, WorkbenchTabId.session('s2')]),
       );
-      expect(cubit.tabOrder(ws), contains(shell));
-    });
-
-    test(
-      'select shell updates lastFocusedShellTabId; resolveMostRecentShell',
-      () {
-        const ws = 'ws';
-        final e1 = WorkbenchTabId.shell('e1');
-        final e2 = WorkbenchTabId.shell('e2');
-        cubit.ensureTab(ws, e1);
-        cubit.ensureTab(ws, e2);
-        cubit.select(ws, e1);
-        expect(cubit.lastFocusedShellTabId(ws), e1);
-        // ensure session first before selecting it
-        cubit.ensureTab(ws, WorkbenchTabId.session('s1'));
-        cubit.select(ws, WorkbenchTabId.session('s1'));
-        expect(cubit.resolveMostRecentShell(ws), e1);
-      },
-    );
-
-    test('select already-active shell still sets lastFocusedShellTabId', () {
-      const ws = 'ws';
-      final shell = WorkbenchTabId.shell('e1');
-      cubit.ensureTab(ws, shell);
-      expect(cubit.activeTabId(ws), shell);
-      expect(cubit.lastFocusedShellTabId(ws), isNull);
-
-      cubit.select(ws, shell);
-      expect(cubit.lastFocusedShellTabId(ws), shell);
-      expect(cubit.activeTabId(ws), shell);
+      expect(cubit.tabOrder(ws), isNot(contains(shell)));
     });
   });
 }

@@ -146,6 +146,35 @@ void main() {
     expect(parsed.toJson()['cotExpandToolsOnOpen'], isTrue);
   });
 
+  test('floating workspace geometry defaults null and round-trips', () {
+    const defaults = LayoutPreferences();
+    expect(defaults.floatingPanelLeft, isNull);
+    expect(defaults.floatingPanelTop, isNull);
+    expect(defaults.floatingPanelWidth, isNull);
+    expect(defaults.floatingPanelHeight, isNull);
+    expect(defaults.floatingToggleDx, isNull);
+    expect(defaults.floatingToggleDy, isNull);
+    expect(defaults.floatingMaximized, isFalse);
+
+    const prefs = LayoutPreferences(
+      floatingPanelLeft: 80,
+      floatingPanelTop: 90,
+      floatingPanelWidth: 720,
+      floatingPanelHeight: 480,
+      floatingToggleDx: -24,
+      floatingToggleDy: -32,
+      floatingMaximized: true,
+    );
+    final parsed = LayoutPreferences.fromJson(prefs.toJson());
+    expect(parsed.floatingPanelLeft, 80);
+    expect(parsed.floatingPanelTop, 90);
+    expect(parsed.floatingPanelWidth, 720);
+    expect(parsed.floatingPanelHeight, 480);
+    expect(parsed.floatingToggleDx, -24);
+    expect(parsed.floatingToggleDy, -32);
+    expect(parsed.floatingMaximized, isTrue);
+  });
+
   test('markdownOpenMode defaults to preview and round-trips', () {
     expect(
       const LayoutPreferences().markdownOpenMode,

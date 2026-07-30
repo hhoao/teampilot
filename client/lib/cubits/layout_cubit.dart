@@ -219,9 +219,36 @@ class LayoutCubit extends Cubit<LayoutState> {
   Future<void> setMarkdownOpenMode(MarkdownOpenMode mode) =>
       _save(state.preferences.copyWith(markdownOpenMode: mode));
 
+  Future<void> setFilePreviewHost(FilePreviewHost host) =>
+      _save(state.preferences.copyWith(filePreviewHost: host));
+
   Future<void> setCotExpandReasoningOnOpen(bool value) =>
       _save(state.preferences.copyWith(cotExpandReasoningOnOpen: value));
 
   Future<void> setCotExpandToolsOnOpen(bool value) =>
       _save(state.preferences.copyWith(cotExpandToolsOnOpen: value));
+
+  Future<void> setFloatingWorkspaceGeometry({
+    double? panelLeft,
+    double? panelTop,
+    double? panelWidth,
+    double? panelHeight,
+    double? panelRightInset,
+    double? panelBottomInset,
+    double? toggleDx,
+    double? toggleDy,
+    bool? maximized,
+  }) => _save(
+    state.preferences.copyWith(
+      floatingPanelLeft: panelLeft,
+      floatingPanelTop: panelTop,
+      floatingPanelWidth: panelWidth,
+      floatingPanelHeight: panelHeight,
+      floatingPanelRightInset: panelRightInset,
+      floatingPanelBottomInset: panelBottomInset,
+      floatingToggleDx: toggleDx,
+      floatingToggleDy: toggleDy,
+      floatingMaximized: maximized,
+    ),
+  );
 }

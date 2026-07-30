@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'workbench_tab.dart';
@@ -127,8 +128,17 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     WorkbenchTabId tab, {
     bool preview = false,
   }) {
-    if (tab.kind == WorkbenchTabKind.shell ||
-        tab.kind == WorkbenchTabKind.run) {
+    if (!isCenterStripWorkbenchTab(tab.kind)) {
+      assert(() {
+        debugPrint(
+          'WorkbenchCubit.ensureTab: shell tabs must not be '
+          'added to the center workbench strip',
+        );
+        return true;
+      }());
+      return null;
+    }
+    if (tab.kind == WorkbenchTabKind.run) {
       preview = false;
     }
     final bucket = state.bucket(workspaceId);
@@ -361,6 +371,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     final order = <WorkbenchTabId>[];
 
     for (final tab in bucket.tabOrder) {
+      if (!isCenterStripWorkbenchTab(tab.kind)) continue;
       if (tab.kind == WorkbenchTabKind.session) {
         if (sessionSet.contains(tab.id)) order.add(tab);
       } else {

@@ -5,11 +5,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/resource_manager_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/floating_workspace_tab.dart';
 import '../../models/team_config.dart';
 import '../../services/resource_manager/process_metrics_service.dart';
 import '../../services/resource_manager/pty_process_registry.dart';
@@ -19,6 +21,8 @@ import '../../services/resource_manager/resource_manager_lifecycle.dart';
 import '../../services/resource_manager/resource_tree_merge.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../services/terminal/workspace_terminal_run_service.dart';
+import '../../services/workbench/workbench_shell_launcher.dart';
+
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/workspace_status_bar/resource_usage_status_item.dart';
 import '../../widgets/workspace_status_bar/ssh_hosts_status_item.dart';
@@ -211,6 +215,9 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
             workspaceId,
             WorkbenchTabId.shell(entryId),
           );
+          final floating = context.read<FloatingWorkspaceCubit>();
+          floating.setActiveWorkspace(workspaceId);
+          floating.removeTab(floatingShellTabId(entryId));
         },
       );
       _refreshBindings();
@@ -254,14 +261,22 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
       case ResourceBindingKind.workspaceShell:
         final entryId = leaf.shellEntryId?.trim() ?? '';
         if (entryId.isEmpty) return;
-        workbench.ensureTab(
-          workspaceId,
-          WorkbenchTabId.shell(entryId),
-        );
-        context
+        final group = context
             .read<WorkspaceTerminalRegistry>()
-            .groupFor(workspaceId)
-            .activeId = entryId;
+            .groupFor(workspaceId);
+        group.activeId = entryId;
+        final label = group.entryById(entryId)?.titleLabel.trim() ?? '';
+        final floating = context.read<FloatingWorkspaceCubit>();
+        floating.ensureOpen();
+        floating.setActiveWorkspace(workspaceId);
+        floating.ensureTab(
+          FloatingTab(
+            id: floatingShellTabId(entryId),
+            surfaceId: 'terminal',
+            title: label.isNotEmpty ? label : entryId,
+            payload: entryId,
+          ),
+        );
     }
   }
 

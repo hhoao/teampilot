@@ -5637,6 +5637,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get shortcutsToggleSecondarySidebar => '切换次侧边栏';
 
   @override
+  String get shortcutsFloatingToggle => '切换浮动工作区';
+
+  @override
+  String get shortcutsFloatingMaximize => '最大化浮动工作区';
+
+  @override
+  String get shortcutsFloatingMinimize => '最小化浮动工作区';
+
+  @override
+  String get shortcutsFloatingNewTerminal => '新建浮动终端';
+
+  @override
+  String get shortcutsFloatingOpenFile => '在浮动工作区打开文件';
+
+  @override
   String get shortcutsZoomIn => '放大';
 
   @override
@@ -6096,4 +6111,37 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get resourceManagerKillFailed => '无法结束会话。';
+
+  @override
+  String get floatingWorkspaceNewTerminal => '新 Terminal';
+
+  @override
+  String get floatingWorkspaceOpenFile => '打开文件';
+
+  @override
+  String get floatingWorkspaceMinimize => '最小化';
+
+  @override
+  String get floatingWorkspaceMaximize => '最大化';
+
+  @override
+  String get floatingWorkspaceCloseTab => '关闭标签';
+
+  @override
+  String get floatingWorkspaceAddTooltip => '在浮动工作区打开';
+
+  @override
+  String get floatingWorkspaceToggleTooltip => '浮动工作区';
+
+  @override
+  String get filePreviewHostTitle => '文件预览位置';
+
+  @override
+  String get filePreviewHostDescription => '在浮动工作区或中间工作台打开文件。';
+
+  @override
+  String get filePreviewHostFloating => '浮动';
+
+  @override
+  String get filePreviewHostCenter => '中间';
 }

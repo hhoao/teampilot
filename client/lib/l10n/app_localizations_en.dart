@@ -5861,6 +5861,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shortcutsToggleSecondarySidebar => 'Toggle Secondary Sidebar';
 
   @override
+  String get shortcutsFloatingToggle => 'Toggle Floating Workspace';
+
+  @override
+  String get shortcutsFloatingMaximize => 'Maximize Floating Workspace';
+
+  @override
+  String get shortcutsFloatingMinimize => 'Minimize Floating Workspace';
+
+  @override
+  String get shortcutsFloatingNewTerminal => 'New Floating Terminal';
+
+  @override
+  String get shortcutsFloatingOpenFile => 'Open File in Floating Workspace';
+
+  @override
   String get shortcutsZoomIn => 'Zoom In';
 
   @override
@@ -6342,4 +6357,38 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get resourceManagerKillFailed => 'Could not kill session.';
+
+  @override
+  String get floatingWorkspaceNewTerminal => 'New Terminal';
+
+  @override
+  String get floatingWorkspaceOpenFile => 'Open File';
+
+  @override
+  String get floatingWorkspaceMinimize => 'Minimize';
+
+  @override
+  String get floatingWorkspaceMaximize => 'Maximize';
+
+  @override
+  String get floatingWorkspaceCloseTab => 'Close tab';
+
+  @override
+  String get floatingWorkspaceAddTooltip => 'Open in floating workspace';
+
+  @override
+  String get floatingWorkspaceToggleTooltip => 'Floating workspace';
+
+  @override
+  String get filePreviewHostTitle => 'File preview';
+
+  @override
+  String get filePreviewHostDescription =>
+      'Open files in the floating workspace or the center workbench.';
+
+  @override
+  String get filePreviewHostFloating => 'Floating';
+
+  @override
+  String get filePreviewHostCenter => 'Center';
 }
