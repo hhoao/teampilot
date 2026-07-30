@@ -38,6 +38,7 @@ class _FloatingWorkspaceToggleState extends State<FloatingWorkspaceToggle> {
         final bottom = -state.toggleOffset.dy;
 
         return Positioned(
+          key: const Key('floating_workspace_toggle'),
           right: right,
           bottom: bottom,
           child: GestureDetector(

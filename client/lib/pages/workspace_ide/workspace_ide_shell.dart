@@ -5,6 +5,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/layout_cubit.dart';
 import '../../models/layout_preferences.dart';
+import '../../services/floating_workspace/floating_maximize_insets.dart';
 import '../../services/workspace/workspace_pane_policy.dart';
 import '../../widgets/workspace_terminal_panel.dart';
 import '../home_workspace/workspace/workspace_route_active_scope.dart';
@@ -534,6 +535,7 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
           // root pane's layout, which is after this synchronous assignment.
           _narrow = effective.isNarrow;
           final prefs = layoutState.preferences;
+          _publishMaximizeInsets(effective, prefs);
           // Measure via PaneSizeReporter so center/sidebar BUILD stays in the
           // normal build phase — not nested under LayoutBuilder layout.
           return PaneSizeReporter(
@@ -557,6 +559,28 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
         a.rightToolsVisible != b.rightToolsVisible ||
         a.sidebarWidth != b.sidebarWidth ||
         a.rightToolsWidth != b.rightToolsWidth;
+  }
+
+  /// Publish sidebar-aware maximize safe area for the floating workspace panel.
+  void _publishMaximizeInsets(
+    WorkspacePaneEffective effective,
+    LayoutPreferences prefs,
+  ) {
+    if (!WorkspaceRouteActiveScope.routeActiveOf(context)) return;
+    FloatingMaximizeInsets insets;
+    try {
+      insets = context.read<FloatingMaximizeInsets>();
+    } catch (_) {
+      return;
+    }
+    final left =
+        (!effective.isNarrow && effective.dockLeft) ? prefs.sidebarWidth : 0.0;
+    final next = EdgeInsets.only(left: left);
+    if (insets.value == next) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      insets.update(next);
+    });
   }
 
   Widget _buildPaneHost({

@@ -108,8 +108,12 @@ import '../services/commands/run_command_registrar.dart';
 import '../services/commands/session_command_registrar.dart';
 import '../services/commands/shortcuts_ui_commands.dart';
 import '../services/commands/workspace_search_command_registrar.dart';
+import '../services/floating_workspace/floating_maximize_insets.dart';
+import '../services/floating_workspace/floating_surface_registry.dart';
 import '../services/floating_workspace/floating_workspace_commands.dart';
 import '../services/floating_workspace/floating_workspace_persistence.dart';
+import '../services/floating_workspace/surfaces/file_preview_floating_surface.dart';
+import '../services/floating_workspace/surfaces/terminal_floating_surface.dart';
 import '../pages/home_workspace/workspace_chrome_commands.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
@@ -180,6 +184,8 @@ class AppShell {
     required this.workbenchEditorOpener,
     required this.workbenchShellLauncher,
     required this.floatingWorkspaceCubit,
+    required this.floatingSurfaceRegistry,
+    required this.floatingMaximizeInsets,
     required this.sessionRepo,
     required this.workspaceProjectConfigRepository,
     required this.sshProfileRepo,
@@ -252,6 +258,8 @@ class AppShell {
   final WorkbenchEditorOpener workbenchEditorOpener;
   final WorkbenchShellLauncher workbenchShellLauncher;
   final FloatingWorkspaceCubit floatingWorkspaceCubit;
+  final FloatingSurfaceRegistry floatingSurfaceRegistry;
+  final FloatingMaximizeInsets floatingMaximizeInsets;
   final SessionRepository sessionRepo;
   final WorkspaceProjectConfigRepository workspaceProjectConfigRepository;
   final SshProfileRepository sshProfileRepo;
@@ -1213,6 +1221,18 @@ Future<AppShell> buildAppShell({
     sessionOps: workspaceTerminalSessionOps,
   );
   workbenchShellLauncher = resolvedShellLauncher;
+  final floatingSurfaceRegistry = FloatingSurfaceRegistry.withDefaults(
+    file: FilePreviewFloatingSurface(
+      editor: editorCubit,
+      floating: floatingWorkspaceCubit,
+    ),
+    terminal: TerminalFloatingSurface(
+      floating: floatingWorkspaceCubit,
+      registry: workspaceTerminalRegistry,
+      runService: workspaceTerminalRunService,
+    ),
+  );
+  final floatingMaximizeInsets = FloatingMaximizeInsets();
   registerSessionCommands(
     commandBus,
     chatCubit,
@@ -1257,6 +1277,8 @@ Future<AppShell> buildAppShell({
     workbenchEditorOpener: workbenchEditorOpener,
     workbenchShellLauncher: resolvedShellLauncher,
     floatingWorkspaceCubit: floatingWorkspaceCubit,
+    floatingSurfaceRegistry: floatingSurfaceRegistry,
+    floatingMaximizeInsets: floatingMaximizeInsets,
     sessionRepo: sessionRepo,
     workspaceProjectConfigRepository: workspaceProjectConfigRepository,
     sshProfileRepo: sshProfileRepo,

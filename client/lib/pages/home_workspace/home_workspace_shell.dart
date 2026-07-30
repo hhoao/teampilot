@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as p;
 
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/run_cubit.dart';
@@ -22,6 +23,7 @@ import '../../models/workspace_topology.dart';
 import '../../services/commands/command_bus.dart';
 import '../../services/commands/command_ids.dart';
 import '../../services/file_tree/workspace_file_tree_store.dart';
+import '../../services/floating_workspace/floating_maximize_insets.dart';
 import '../../services/home_workspace/home_closed_workspaces_store.dart';
 import '../../services/home_workspace/home_open_workspaces_store.dart';
 import '../../services/home_workspace/home_recent_workspaces_store.dart';
@@ -36,6 +38,7 @@ import '../../theme/workspace_surface_layers.dart';
 import '../../utils/workspace/workspace_display_name.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/run/run_toolbar.dart';
+import '../floating_workspace/floating_workspace_host.dart';
 import 'home_workspace_body_stack.dart';
 import 'home_workspace_tab_scope.dart';
 import 'home_workspace_title_bar.dart';
@@ -144,6 +147,10 @@ class _HomeShellState extends State<HomeShell> {
     }
     _registerChromeCommands();
     unawaited(_finishOpenTabsBootstrap(routeTab));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _syncFloatingActiveWorkspace();
+    });
     if (routeTab == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -197,6 +204,22 @@ class _HomeShellState extends State<HomeShell> {
     final entry = _recentlyClosed.firstOrNull;
     if (entry == null) return;
     unawaited(_reopenClosedTab(entry.tabKey));
+  }
+
+  void _syncFloatingActiveWorkspace() {
+    final tab = WorkspaceTabRef.fromLocation(widget.location);
+    final floating = context.read<FloatingWorkspaceCubit>();
+    if (tab != null) {
+      floating.setActiveWorkspace(tab.workspaceId);
+    }
+    try {
+      final insets = context.read<FloatingMaximizeInsets>();
+      if (tab == null) {
+        insets.update(null);
+      }
+    } catch (_) {
+      // Provider may be absent in isolated widget tests.
+    }
   }
 
   /// Updates [_openTabs] and keeps [_chromeCommands] in sync — every mutation
@@ -264,6 +287,7 @@ class _HomeShellState extends State<HomeShell> {
   void didUpdateWidget(covariant HomeShell oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.location != widget.location) {
+      _syncFloatingActiveWorkspace();
       final routeTab = WorkspaceTabRef.fromLocation(widget.location);
       if (routeTab != null) {
         _tabRestorableLocations[routeTab.tabKey] = widget.location;
@@ -355,6 +379,7 @@ class _HomeShellState extends State<HomeShell> {
 
     terminalRegistry.disposeWorkspace(tab.tabKey);
     context.read<WorkbenchCubit>().clearWorkspace(tab.workspaceId);
+    context.read<FloatingWorkspaceCubit>().disposeWorkspace(tab.workspaceId);
     workspaceTools.removeWorkspace(tab.tabKey);
     context.read<WorkspaceToolsScopeRegistry>().removeScope(tab.tabKey);
     context.read<WorkspaceRunRegistry>().removeScope(tab.tabKey);
@@ -466,13 +491,15 @@ class _HomeShellState extends State<HomeShell> {
                 child: SafeArea(
                   top: false,
                   bottom: false,
-                  child: HomeTabScope(
-                    openWorkspace: (id, {activate = true}) =>
-                        _openWorkspace(id, activate: activate),
-                    child: GlobalResourceManagerHost(
-                      child: HomeWorkspaceBodyStack(
-                        location: widget.location,
-                        openTabs: _openTabs,
+                  child: FloatingWorkspaceHost(
+                    child: HomeTabScope(
+                      openWorkspace: (id, {activate = true}) =>
+                          _openWorkspace(id, activate: activate),
+                      child: GlobalResourceManagerHost(
+                        child: HomeWorkspaceBodyStack(
+                          location: widget.location,
+                          openTabs: _openTabs,
+                        ),
                       ),
                     ),
                   ),
