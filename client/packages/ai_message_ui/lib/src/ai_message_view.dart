@@ -6,6 +6,7 @@ import 'ai_message_parts.dart';
 import 'markdown/compiled_markdown_chrome.dart';
 import 'message_action_bar.dart';
 import 'part_registry.dart';
+import 'parts/fade_expand_body.dart';
 import 'strings.dart';
 import 'theme.dart';
 
@@ -249,7 +250,17 @@ class _UserBubble extends StatelessWidget {
                                 color: aiTheme.resolveUserForeground(scheme),
                               ),
                             ),
-                          Flexible(child: parts),
+                          Flexible(
+                            child: _UserBubbleFadeHost(
+                              messageId: message.id,
+                              textSignature: message.parts
+                                  .whereType<AiTextPart>()
+                                  .map((p) => p.text)
+                                  .join('\u0000'),
+                              fadeColor: aiTheme.resolveUserBubble(scheme),
+                              child: parts,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -260,6 +271,46 @@ class _UserBubble extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+class _UserBubbleFadeHost extends StatefulWidget {
+  const _UserBubbleFadeHost({
+    required this.messageId,
+    required this.textSignature,
+    required this.fadeColor,
+    required this.child,
+  });
+
+  final String messageId;
+  final String textSignature;
+  final Color fadeColor;
+  final Widget child;
+
+  @override
+  State<_UserBubbleFadeHost> createState() => _UserBubbleFadeHostState();
+}
+
+class _UserBubbleFadeHostState extends State<_UserBubbleFadeHost> {
+  bool _open = false;
+
+  @override
+  void didUpdateWidget(covariant _UserBubbleFadeHost oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.messageId != widget.messageId ||
+        oldWidget.textSignature != widget.textSignature) {
+      _open = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AiFadeExpandBody(
+      open: _open,
+      onToggle: () => setState(() => _open = !_open),
+      fadeColor: widget.fadeColor,
+      child: widget.child,
     );
   }
 }

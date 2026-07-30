@@ -74,7 +74,7 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
                 height: widget.collapsedMaxHeight,
                 width: double.infinity,
                 child: ClipRect(
-                  child: Align(alignment: Alignment.topLeft, child: child),
+                  child: _collapsedClipChild(maxW, child),
                 ),
               ),
             ],
@@ -102,7 +102,7 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
                   fit: StackFit.expand,
                   children: [
                     ClipRect(
-                      child: Align(alignment: Alignment.topLeft, child: child),
+                      child: _collapsedClipChild(maxW, child),
                     ),
                     Align(
                       alignment: Alignment.bottomCenter,
@@ -149,6 +149,17 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
       },
     );
   }
+}
+
+Widget _collapsedClipChild(double maxWidth, Widget child) {
+  return OverflowBox(
+    alignment: Alignment.topLeft,
+    minWidth: maxWidth,
+    maxWidth: maxWidth,
+    minHeight: 0,
+    maxHeight: double.infinity,
+    child: child,
+  );
 }
 
 class _FadeChevronHit extends StatelessWidget {
