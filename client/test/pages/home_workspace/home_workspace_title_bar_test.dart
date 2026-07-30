@@ -5,12 +5,32 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/notification_cubit.dart';
+import 'package:teampilot/cubits/progress_activity_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_title_bar.dart';
 import 'package:teampilot/pages/workspace_shell/workspace_shell_tabs.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 
 import '../../support/post_frame_test_harness.dart';
+
+Widget _wrapTitleBar({
+  required ChatCubit chatCubit,
+  required Widget child,
+}) {
+  return MultiBlocProvider(
+    providers: [
+      BlocProvider<ChatCubit>.value(value: chatCubit),
+      BlocProvider(create: (_) => NotificationCubit()),
+      BlocProvider(
+        create: (context) => ProgressActivityCubit(
+          historyRecorder: context.read<NotificationCubit>(),
+        ),
+      ),
+      BlocProvider(create: (_) => LayoutCubit()),
+    ],
+    child: child,
+  );
+}
 
 void main() {
   late ChatCubit chatCubit;
@@ -36,12 +56,8 @@ void main() {
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: MultiBlocProvider(
-          providers: [
-            BlocProvider<ChatCubit>.value(value: chatCubit),
-            BlocProvider(create: (_) => NotificationCubit()),
-            BlocProvider(create: (_) => LayoutCubit()),
-          ],
+        home: _wrapTitleBar(
+          chatCubit: chatCubit,
           child: const HomeTitleBar(
             tabs: [
               HomeWorkspaceTab(id: 'ws-a', name: 'Solo'),
@@ -66,12 +82,8 @@ void main() {
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: MultiBlocProvider(
-          providers: [
-            BlocProvider<ChatCubit>.value(value: chatCubit),
-            BlocProvider(create: (_) => NotificationCubit()),
-            BlocProvider(create: (_) => LayoutCubit()),
-          ],
+        home: _wrapTitleBar(
+          chatCubit: chatCubit,
           child: const HomeTitleBar(
             tabs: [HomeWorkspaceTab(id: 'ws-a', name: 'Solo')],
             activeTabKey: null,
@@ -98,12 +110,8 @@ void main() {
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: MultiBlocProvider(
-          providers: [
-            BlocProvider<ChatCubit>.value(value: chatCubit),
-            BlocProvider(create: (_) => NotificationCubit()),
-            BlocProvider(create: (_) => LayoutCubit()),
-          ],
+        home: _wrapTitleBar(
+          chatCubit: chatCubit,
           child: const Scaffold(
             body: Column(
               children: [
@@ -140,12 +148,8 @@ void main() {
     await tester.pumpWidget(
       TpTheme(
         data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
-        child: MultiBlocProvider(
-          providers: [
-            BlocProvider<ChatCubit>.value(value: chatCubit),
-            BlocProvider(create: (_) => NotificationCubit()),
-            BlocProvider(create: (_) => LayoutCubit()),
-          ],
+        child: _wrapTitleBar(
+          chatCubit: chatCubit,
           child: TpSidebarProvider(
             mobileBreakpoint: 900,
             child: MaterialApp(

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/notification_cubit.dart';
+import 'package:teampilot/cubits/progress_activity_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_sidebar.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_title_bar.dart';
@@ -67,6 +68,11 @@ void main() {
           providers: [
             BlocProvider<ChatCubit>.value(value: chatCubit),
             BlocProvider(create: (_) => NotificationCubit()),
+            BlocProvider(
+              create: (context) => ProgressActivityCubit(
+                historyRecorder: context.read<NotificationCubit>(),
+              ),
+            ),
           ],
           child: TpSidebarProvider(
             mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,

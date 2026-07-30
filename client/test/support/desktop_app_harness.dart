@@ -18,8 +18,10 @@ import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/llm_config_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
+import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/cubits/notification_cubit.dart';
 import 'package:teampilot/cubits/plugin_cubit.dart';
+import 'package:teampilot/cubits/progress_activity_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
@@ -300,6 +302,12 @@ Widget buildTestApp({
         ),
         BlocProvider(create: (_) => WorkspaceToolsCubit()),
         BlocProvider(create: (_) => NotificationCubit()),
+        BlocProvider(
+          create: (context) => ProgressActivityCubit(
+            historyRecorder: context.read<NotificationCubit>(),
+          ),
+        ),
+        BlocProvider(create: (_) => FloatingWorkspaceCubit()),
         BlocProvider(
           create: (_) => SshConnectionCubit(
             factory: sshClientFactory,

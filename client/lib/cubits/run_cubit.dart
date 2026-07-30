@@ -159,8 +159,11 @@ class RunCubit extends Cubit<RunState> {
     );
 
     _ensureSubscriptions();
+    // Refresh before default selection: selection may call adapter
+    // provideOptions (slow / may fail) and must not block pruning accepted
+    // discover entries against the configurations we just loaded.
+    await refreshDiscover(existing: configurations);
     await _applyDefaultSelection();
-    await refreshDiscover();
   }
 
   Future<void> _applyDefaultSelection() async {
@@ -254,7 +257,14 @@ class RunCubit extends Cubit<RunState> {
       return;
     }
 
-    final options = await _platform.provideOptions(owned);
+    List<LaunchOption> options;
+    try {
+      options = await _platform.provideOptions(owned);
+    } catch (_) {
+      // Adapter options are optional; keep the selection when the adapter
+      // is unavailable (tests, missing extension, SSH host down, etc.).
+      options = const [];
+    }
     final values = <String, Object?>{
       for (final option in options)
         if (option.value != null) option.id: option.value,
@@ -370,11 +380,13 @@ class RunCubit extends Cubit<RunState> {
   }
 
   /// Refreshes glob-based discover recommendations for workspace folders.
-  Future<void> refreshDiscover() async {
+  Future<void> refreshDiscover({
+    List<OwnedLaunchConfiguration>? existing,
+  }) async {
     try {
       final recommendations = await _platform.discoverRecommendations(
         _folders,
-        existing: state.configurations,
+        existing: existing ?? state.configurations,
       );
       if (!isClosed) {
         emit(state.copyWith(recommendations: recommendations, clearError: true));

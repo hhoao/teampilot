@@ -364,9 +364,10 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
     final folders = cubit.folders;
     final showFolderPicker = _isCreating && folders.length > 1;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
         if (showFolderPicker) ...[
           TpFormField<String>(
             id: 'folder',
@@ -447,7 +448,8 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
             );
           },
         ),
-      ],
+        ],
+      ),
     );
   }
 }

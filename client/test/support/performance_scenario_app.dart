@@ -26,9 +26,11 @@ import 'package:teampilot/cubits/llm_config_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/notification_cubit.dart';
 import 'package:teampilot/cubits/plugin_cubit.dart';
+import 'package:teampilot/cubits/progress_activity_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
+import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/utils/session/workspace_tab_session_scope.dart';
@@ -265,6 +267,12 @@ class PerformanceScenarioApp {
             ),
             BlocProvider(create: (_) => WorkspaceToolsCubit()),
             BlocProvider(create: (_) => NotificationCubit()),
+            BlocProvider(
+              create: (context) => ProgressActivityCubit(
+                historyRecorder: context.read<NotificationCubit>(),
+              ),
+            ),
+            BlocProvider(create: (_) => FloatingWorkspaceCubit()),
             BlocProvider(create: (_) => ShortcutCubit()),
             BlocProvider(create: (_) => SkillCubit(SkillRepository())),
             BlocProvider(
