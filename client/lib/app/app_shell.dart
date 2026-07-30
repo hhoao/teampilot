@@ -113,6 +113,7 @@ import '../services/floating_workspace/floating_surface_registry.dart';
 import '../services/floating_workspace/floating_workspace_commands.dart';
 import '../services/floating_workspace/floating_workspace_open_file.dart';
 import '../services/floating_workspace/floating_workspace_persistence.dart';
+import '../services/floating_workspace/migrate_legacy_workbench_tabs.dart';
 import '../services/floating_workspace/surfaces/file_preview_floating_surface.dart';
 import '../services/floating_workspace/surfaces/terminal_floating_surface.dart';
 import '../pages/home_workspace/workspace_chrome_commands.dart';
@@ -1224,6 +1225,12 @@ Future<AppShell> buildAppShell({
         layoutCubit.state.preferences.markdownOpenMode,
   );
   workbenchEditorOpenerRef = workbenchEditorOpener;
+  // One-shot: move any leftover center file/shell tabs into floating buckets.
+  // Usually a no-op after Task 7 reject + syncSessions filter; see helper docs.
+  migrateLegacyWorkbenchTabsToFloating(
+    workbench: workbenchCubit,
+    floating: floatingWorkspaceCubit,
+  );
   final resolvedShellLauncher = WorkbenchShellLauncher(
     floating: floatingWorkspaceCubit,
     chat: chatCubit,
