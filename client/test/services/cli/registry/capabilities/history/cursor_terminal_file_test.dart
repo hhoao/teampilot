@@ -61,6 +61,30 @@ hello from terminal
       expect(parsed.endedAt, isNull);
     });
 
+    test('parses CRLF fence lines from Windows terminal files', () {
+      const raw =
+          '---\r\n'
+          'pid: 12345\r\n'
+          'command: "pwd"\r\n'
+          'title: "pwd"\r\n'
+          'status: succeeded\r\n'
+          'started_at: 2026-07-29T10:00:00.000Z\r\n'
+          '---\r\n'
+          '/home/hhoa/proj\r\n'
+          '---\r\n'
+          'exit_code: 0\r\n'
+          'elapsed_ms: 50\r\n'
+          'ended_at: 2026-07-29T10:00:00.050Z\r\n'
+          '---\r\n';
+
+      final parsed = parseCursorTerminalFile(raw);
+
+      expect(parsed, isNotNull);
+      expect(parsed!.command, 'pwd');
+      expect(parsed.body, '/home/hhoa/proj');
+      expect(parsed.exitCode, 0);
+    });
+
     test('returns null for garbage input', () {
       expect(parseCursorTerminalFile('not a terminal file'), isNull);
       expect(parseCursorTerminalFile('---\nno command here\n---\nbody\n'), isNull);

@@ -58,6 +58,7 @@ class WorkspaceFsWatcher {
   final Set<String> _pendingDirs = {};
   bool _pendingFull = false;
   bool _disposed = false;
+  bool _suspended = false;
 
   /// Whether the backing filesystem can deliver change events at all.
   bool get isSupported => _watcher != null;
@@ -71,7 +72,7 @@ class WorkspaceFsWatcher {
   /// native watch (SFTP/WSL), where [isSupported] is false; on watch-capable
   /// backends it just adds one harmless extra debounced refresh.
   void poke() {
-    if (_disposed) return;
+    if (_disposed || _suspended) return;
     _pendingFull = true;
     _scheduleEmit();
   }
@@ -79,6 +80,7 @@ class WorkspaceFsWatcher {
   /// Stops native watch + debounce without tearing down [onChanged] subscribers.
   void suspend() {
     if (_disposed) return;
+    _suspended = true;
     _debounceTimer?.cancel();
     _debounceTimer = null;
     _enqueueWatchOp(_stopNativeWatch);
@@ -129,10 +131,11 @@ class WorkspaceFsWatcher {
     await _stopNativeWatch();
     if (_disposed) return;
     _attachNativeWatch();
+    _suspended = false;
   }
 
   void _onEvent(FsChangeEvent event) {
-    if (_isIgnored(event.path)) return;
+    if (_suspended || _isIgnored(event.path)) return;
     // The parent directory's listing is what changed (entry added/removed/
     // modified); targeting it lets consumers reload just that folder.
     _pendingDirs.add(_pathContext.dirname(event.path));
@@ -152,7 +155,7 @@ class WorkspaceFsWatcher {
   }
 
   void _emit() {
-    if (_disposed || _controller.isClosed) return;
+    if (_disposed || _suspended || _controller.isClosed) return;
     final batch = _pendingFull
         ? const <String>{}
         : Set<String>.of(_pendingDirs);

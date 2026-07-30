@@ -28,7 +28,9 @@ final class CursorTerminalFile {
 }
 
 CursorTerminalFile? parseCursorTerminalFile(String raw) {
-  final sections = _splitOnFenceLines(raw);
+  final sections = _splitOnFenceLines(
+    raw.replaceAll('\r\n', '\n').replaceAll('\r', '\n'),
+  );
   if (sections.length < 3) return null;
 
   final header = _parseKeyValueSection(sections[1]);

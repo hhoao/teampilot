@@ -20,6 +20,8 @@ Future<ConflictChoice> _overwriteConflict({
     ConflictChoice.overwrite;
 
 void main() {
+  final pathCtx = p.Context(style: p.Style.posix);
+
   group('resolveFileTreeImportMode', () {
     test('external OS drop always copies', () {
       expect(
@@ -81,14 +83,14 @@ void main() {
 
   group('prepareAt', () {
     test('walks sources via planSources without writing', () async {
-      final fs = InMemoryFilesystem();
-      final root = p.normalize('/proj');
-      final srcDir = p.join(root, 'src');
-      final destDir = p.join(root, 'dest');
+      final fs = InMemoryFilesystem(pathContext: pathCtx);
+      final root = pathCtx.normalize('/proj');
+      final srcDir = pathCtx.join(root, 'src');
+      final destDir = pathCtx.join(root, 'dest');
       await fs.ensureDir(srcDir);
       await fs.ensureDir(destDir);
-      await fs.writeString(p.join(srcDir, 'a.txt'), 'aaa');
-      await fs.writeString(p.join(srcDir, 'b.txt'), 'bbbb');
+      await fs.writeString(pathCtx.join(srcDir, 'a.txt'), 'aaa');
+      await fs.writeString(pathCtx.join(srcDir, 'b.txt'), 'bbbb');
 
       final cubit = FileTreeCubit(fs: fs);
       await cubit.setRoot(root);
@@ -126,7 +128,7 @@ void main() {
       expect(plan.destIsLocal, isTrue);
 
       // prepareAt must not copy yet.
-      final destA = await fs.stat(p.join(destDir, 'a.txt'));
+      final destA = await fs.stat(pathCtx.join(destDir, 'a.txt'));
       expect(destA.exists, isFalse);
 
       await cubit.close();
@@ -135,11 +137,11 @@ void main() {
 
   group('consumeAt', () {
     test('copies in-tree with modifier and refreshes dest', () async {
-      final fs = InMemoryFilesystem();
-      final root = p.normalize('/proj');
-      final srcFile = p.join(root, 'src', 'file.txt');
-      final destDir = p.join(root, 'dest');
-      await fs.ensureDir(p.dirname(srcFile));
+      final fs = InMemoryFilesystem(pathContext: pathCtx);
+      final root = pathCtx.normalize('/proj');
+      final srcFile = pathCtx.join(root, 'src', 'file.txt');
+      final destDir = pathCtx.join(root, 'dest');
+      await fs.ensureDir(pathCtx.dirname(srcFile));
       await fs.ensureDir(destDir);
       await fs.writeString(srcFile, 'hello');
 
@@ -176,7 +178,7 @@ void main() {
       expect(summary.succeeded, 1);
       expect(summary.failed, 0);
 
-      final copied = p.join(destDir, 'file.txt');
+      final copied = pathCtx.join(destDir, 'file.txt');
       final copiedStat = await fs.stat(copied);
       expect(copiedStat.exists, isTrue);
       expect(await fs.readString(copied), 'hello');
@@ -194,10 +196,10 @@ void main() {
     });
 
     test('external OS drop copies from hostLocalFs into workspace mount', () async {
-      final hostFs = InMemoryFilesystem();
-      final workspaceFs = InMemoryFilesystem();
-      final hostFile = p.normalize('/host/drop.txt');
-      final destDir = p.normalize('/ws/proj');
+      final hostFs = InMemoryFilesystem(pathContext: pathCtx);
+      final workspaceFs = InMemoryFilesystem(pathContext: pathCtx);
+      final hostFile = pathCtx.normalize('/host/drop.txt');
+      final destDir = pathCtx.normalize('/ws/proj');
       await hostFs.writeString(hostFile, 'from-host');
       await workspaceFs.ensureDir(destDir);
 
@@ -234,7 +236,7 @@ void main() {
       );
 
       expect(summary.succeeded, 1);
-      final destPath = p.join(destDir, 'drop.txt');
+      final destPath = pathCtx.join(destDir, 'drop.txt');
       expect((await workspaceFs.stat(destPath)).exists, isTrue);
       expect(
         await workspaceFs.readBytes(destPath),
