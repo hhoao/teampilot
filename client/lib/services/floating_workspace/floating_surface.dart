@@ -21,7 +21,10 @@ abstract class FloatingSurface {
   FloatingTab createTab({required String workspaceId, Object? payload});
   Widget build(BuildContext context, FloatingTab tab);
   Future<void> activate(FloatingTab tab);
-  Future<bool> canClose(FloatingTab tab) async => true;
+  /// Returns whether [tab] may close. Pass [context] when a UI prompt
+  /// (e.g. dirty-file discard) is needed.
+  Future<bool> canClose(FloatingTab tab, {BuildContext? context}) async =>
+      true;
   void onTabClosed(FloatingTab tab) {}
   Stream<bool>? get attentionWhileMinimized => null;
 }

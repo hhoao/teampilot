@@ -103,7 +103,7 @@ class TerminalFloatingSurface extends FloatingSurface {
   }
 
   @override
-  Future<bool> canClose(FloatingTab tab) async => true;
+  Future<bool> canClose(FloatingTab tab, {BuildContext? context}) async => true;
 
   @override
   void onTabClosed(FloatingTab tab) {

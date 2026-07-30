@@ -6111,4 +6111,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get resourceManagerKillFailed => '无法结束会话。';
+
+  @override
+  String get floatingWorkspaceNewTerminal => '新 Terminal';
+
+  @override
+  String get floatingWorkspaceOpenFile => '打开文件';
+
+  @override
+  String get floatingWorkspaceMinimize => '最小化';
+
+  @override
+  String get floatingWorkspaceMaximize => '最大化';
+
+  @override
+  String get floatingWorkspaceCloseTab => '关闭标签';
+
+  @override
+  String get floatingWorkspaceToggleTooltip => '浮动工作区';
 }

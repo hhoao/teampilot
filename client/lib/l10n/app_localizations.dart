@@ -11411,6 +11411,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not kill session.'**
   String get resourceManagerKillFailed;
+
+  /// No description provided for @floatingWorkspaceNewTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'New Terminal'**
+  String get floatingWorkspaceNewTerminal;
+
+  /// No description provided for @floatingWorkspaceOpenFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Open File'**
+  String get floatingWorkspaceOpenFile;
+
+  /// No description provided for @floatingWorkspaceMinimize.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimize'**
+  String get floatingWorkspaceMinimize;
+
+  /// No description provided for @floatingWorkspaceMaximize.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximize'**
+  String get floatingWorkspaceMaximize;
+
+  /// No description provided for @floatingWorkspaceCloseTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Close tab'**
+  String get floatingWorkspaceCloseTab;
+
+  /// No description provided for @floatingWorkspaceToggleTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Floating workspace'**
+  String get floatingWorkspaceToggleTooltip;
 }
 
 class _AppLocalizationsDelegate

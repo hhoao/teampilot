@@ -6357,4 +6357,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get resourceManagerKillFailed => 'Could not kill session.';
+
+  @override
+  String get floatingWorkspaceNewTerminal => 'New Terminal';
+
+  @override
+  String get floatingWorkspaceOpenFile => 'Open File';
+
+  @override
+  String get floatingWorkspaceMinimize => 'Minimize';
+
+  @override
+  String get floatingWorkspaceMaximize => 'Maximize';
+
+  @override
+  String get floatingWorkspaceCloseTab => 'Close tab';
+
+  @override
+  String get floatingWorkspaceToggleTooltip => 'Floating workspace';
 }

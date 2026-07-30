@@ -6,6 +6,7 @@ import '../../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../../models/floating_workspace_tab.dart';
 import '../../../pages/workbench/file_editor_surface.dart';
 import '../../commands/command_ids.dart';
+import '../../workbench/workbench_shell_actions.dart';
 import '../floating_surface.dart';
 
 /// Floating surface that hosts [FileEditorSurface] for one absolute path.
@@ -65,9 +66,16 @@ class FilePreviewFloatingSurface extends FloatingSurface {
   }
 
   @override
-  Future<bool> canClose(FloatingTab tab) async {
-    // Dirty discard UI needs panel BuildContext (Task 8). Allow close for now.
-    return true;
+  Future<bool> canClose(FloatingTab tab, {BuildContext? context}) async {
+    final path = tab.payload;
+    if (path is! String || path.isEmpty) return true;
+    final workspaceId = _floating.state.activeWorkspaceId;
+    if (workspaceId.isEmpty) return true;
+    if (!_editor.state.bucket(workspaceId).isDirty(path)) return true;
+    // Without a context we cannot show the discard dialog — block close.
+    if (context == null || !context.mounted) return false;
+    final discard = await confirmEditorUnsavedDiscard(context);
+    return discard == true;
   }
 
   @override

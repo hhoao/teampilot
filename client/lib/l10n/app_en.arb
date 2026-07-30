@@ -2854,5 +2854,12 @@
   "resourceManagerEmptyTree": "Nothing running right now.",
   "resourceManagerAppProcess": "App",
   "resourceManagerMetricsError": "Could not refresh process metrics.",
-  "resourceManagerKillFailed": "Could not kill session."
+  "resourceManagerKillFailed": "Could not kill session.",
+
+  "floatingWorkspaceNewTerminal": "New Terminal",
+  "floatingWorkspaceOpenFile": "Open File",
+  "floatingWorkspaceMinimize": "Minimize",
+  "floatingWorkspaceMaximize": "Maximize",
+  "floatingWorkspaceCloseTab": "Close tab",
+  "floatingWorkspaceToggleTooltip": "Floating workspace"
 }
