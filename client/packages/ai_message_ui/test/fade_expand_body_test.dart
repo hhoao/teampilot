@@ -125,6 +125,33 @@ void main() {
     final box = tester.renderObject<RenderBox>(find.byType(AiFadeExpandBody));
     expect(box.size.height, closeTo(kAiFadeExpandCollapsedMaxHeight, 1));
   });
+
+  testWidgets(
+    'collapsed overflow uses non-scroll viewport clip, not OverflowBox paint',
+    (tester) async {
+      await tester.pumpWidget(_wrap(
+        AiFadeExpandBody(
+          open: false,
+          onToggle: () {},
+          fadeColor: Colors.grey,
+          child: const SizedBox(height: 400, child: Text('clip-me')),
+        ),
+      ));
+      await tester.pump();
+
+      // Visible path must clip via a fixed viewport (ScrollView), not OverflowBox
+      // paint that can escape the bubble DecoratedBox.
+      expect(find.byType(SingleChildScrollView), findsOneWidget);
+      final scrollable = tester.widget<Scrollable>(find.byType(Scrollable));
+      expect(scrollable.physics, isA<NeverScrollableScrollPhysics>());
+
+      // No OverflowBox on the hit-testable (visible) tree.
+      expect(
+        find.byType(OverflowBox).hitTestable(),
+        findsNothing,
+      );
+    },
+  );
 }
 
 Widget _wrap(Widget child) => MaterialApp(home: Scaffold(body: child));

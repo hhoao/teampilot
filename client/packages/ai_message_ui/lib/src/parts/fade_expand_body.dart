@@ -36,32 +36,47 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
     setState(() => _childHeight = size.height);
   }
 
+  /// Measure-only probe: zero Stack contribution and **never paints**.
+  /// Painting a full OverflowBox copy here previously bled through bubble
+  /// chrome (DecoratedBox does not clip) into messages below.
+  Widget _probe(double maxWidth, Widget child) => Positioned(
+        left: 0,
+        top: 0,
+        width: maxWidth,
+        height: 0,
+        child: IgnorePointer(
+          child: ExcludeSemantics(
+            child: OverflowBox(
+              alignment: Alignment.topLeft,
+              minWidth: maxWidth,
+              maxWidth: maxWidth,
+              minHeight: 0,
+              maxHeight: double.infinity,
+              child: _ReportSize(onSize: _onMeasured, child: child),
+            ),
+          ),
+        ),
+      );
+
+  /// Clip tall content to [height] via scroll viewport (clips paint reliably).
+  Widget _viewportClip({required double height, required Widget child}) {
+    return SizedBox(
+      height: height,
+      width: double.infinity,
+      child: ClipRect(
+        child: SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          child: child,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final child = widget.child;
     final measured = _childHeight;
     final overflows = measured != null && measured > widget.collapsedMaxHeight;
-
-    // Clip-until-measured: avoid one-frame full flash.
-    // Probe must NOT inflate Stack size (see File map measurement strategy A).
-    Widget probe(double maxWidth) => Positioned(
-          left: 0,
-          top: 0,
-          width: maxWidth,
-          height: 0,
-          child: IgnorePointer(
-            child: ExcludeSemantics(
-              child: OverflowBox(
-                alignment: Alignment.topLeft,
-                minWidth: maxWidth,
-                maxWidth: maxWidth,
-                minHeight: 0,
-                maxHeight: double.infinity,
-                child: _ReportSize(onSize: _onMeasured, child: child),
-              ),
-            ),
-          ),
-        );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -70,15 +85,19 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
             : MediaQuery.sizeOf(context).width;
 
         if (measured == null) {
+          // Clip-until-measured: maxHeight only — short content keeps natural height.
           return Stack(
             clipBehavior: Clip.hardEdge,
             children: [
-              probe(maxW),
+              _probe(maxW, child),
               ConstrainedBox(
                 constraints:
                     BoxConstraints(maxHeight: widget.collapsedMaxHeight),
                 child: ClipRect(
-                  child: _collapsedClipChild(maxW, child),
+                  child: SingleChildScrollView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: child,
+                  ),
                 ),
               ),
             ],
@@ -87,8 +106,9 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
 
         if (!overflows) {
           return Stack(
+            clipBehavior: Clip.hardEdge,
             children: [
-              probe(maxW),
+              _probe(maxW, child),
               child,
             ],
           );
@@ -98,15 +118,17 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
           return Stack(
             clipBehavior: Clip.hardEdge,
             children: [
-              probe(maxW),
+              _probe(maxW, child),
               SizedBox(
                 height: widget.collapsedMaxHeight,
                 width: double.infinity,
                 child: Stack(
                   fit: StackFit.expand,
+                  clipBehavior: Clip.hardEdge,
                   children: [
-                    ClipRect(
-                      child: _collapsedClipChild(maxW, child),
+                    _viewportClip(
+                      height: widget.collapsedMaxHeight,
+                      child: child,
                     ),
                     Align(
                       alignment: Alignment.bottomCenter,
@@ -135,7 +157,7 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
         return Stack(
           clipBehavior: Clip.hardEdge,
           children: [
-            probe(maxW),
+            _probe(maxW, child),
             body,
             Positioned(
               left: 0,
@@ -153,18 +175,6 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
       },
     );
   }
-}
-
-Widget _collapsedClipChild(double maxWidth, Widget child) {
-  return OverflowBox(
-    alignment: Alignment.topLeft,
-    fit: OverflowBoxFit.deferToChild,
-    minWidth: maxWidth,
-    maxWidth: maxWidth,
-    minHeight: 0,
-    maxHeight: double.infinity,
-    child: child,
-  );
 }
 
 class _FadeChevronHit extends StatelessWidget {
@@ -261,4 +271,13 @@ class _RenderReportSize extends RenderProxyBox {
       WidgetsBinding.instance.addPostFrameCallback((_) => onSize(measured));
     }
   }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    // Measure-only: never paint the probe copy (prevents bleed-through).
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      false;
 }
