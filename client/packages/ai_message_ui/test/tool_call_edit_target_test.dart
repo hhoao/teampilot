@@ -47,7 +47,7 @@ void main() {
     expect(find.textContaining('ok'), findsNothing);
   });
 
-  testWidgets('tap diff panel toggles expand', (tester) async {
+  testWidgets('tap diff line does not toggle expand', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -66,11 +66,12 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('late-line'), findsAtLeastNWidgets(1));
+    // Collapsed is on-demand preview — late-line not mounted yet.
+    expect(find.textContaining('late-line'), findsNothing);
     expect(find.byIcon(Icons.expand_less), findsNothing);
     await tester.tap(_visibleDiffText('l3'));
     await tester.pumpAndSettle();
-    expect(find.byIcon(Icons.expand_less), findsWidgets);
+    expect(find.byIcon(Icons.expand_less), findsNothing);
   });
 
   testWidgets('tap basename opens file and does not toggle expand', (
@@ -99,7 +100,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('late-line'), findsAtLeastNWidgets(1));
+    expect(find.textContaining('late-line'), findsNothing);
     expect(find.byIcon(Icons.expand_less), findsNothing);
     await tester.tap(find.textContaining('a.dart'));
     await tester.pumpAndSettle();
@@ -133,7 +134,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('late-line'), findsAtLeastNWidgets(1));
+    expect(find.textContaining('late-line'), findsNothing);
     expect(find.byIcon(Icons.expand_less), findsNothing);
     await tester.tap(
       find
@@ -170,11 +171,12 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('late-line'), findsAtLeastNWidgets(1));
+    expect(find.textContaining('late-line'), findsNothing);
     expect(find.byIcon(Icons.expand_less), findsNothing);
     await tester.tap(_editBodyFadeChevron());
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.expand_less), findsWidgets);
+    expect(find.textContaining('late-line'), findsOneWidget);
     expect(find.textContaining('Result:'), findsNothing);
     expect(find.textContaining('old_string'), findsNothing);
   });
@@ -203,9 +205,11 @@ void main() {
     await tester.tap(_editBodyFadeChevron());
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.expand_less), findsWidgets);
+    expect(find.textContaining('late-line'), findsOneWidget);
     await tester.tap(_editBodyFadeChevron());
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.expand_less), findsNothing);
+    expect(find.textContaining('late-line'), findsNothing);
   });
 
   testWidgets('expanded long single-line add shows full text', (tester) async {
@@ -336,8 +340,9 @@ void main() {
       );
 
       await tester.pumpAndSettle();
-      expect(find.textContaining('added-line'), findsAtLeastNWidgets(1));
-      expect(find.textContaining('ctx1'), findsAtLeastNWidgets(1));
+      // Preview prefers change window — added-line visible; early ctx may be omitted.
+      expect(find.textContaining('added-line'), findsOneWidget);
+      expect(find.textContaining('ctx1'), findsNothing);
     },
   );
 

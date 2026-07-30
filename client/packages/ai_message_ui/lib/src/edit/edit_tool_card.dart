@@ -11,6 +11,36 @@ import '../theme.dart';
 import '../tool_file_actions.dart';
 import 'edit_line_highlighter.dart';
 
+/// Picks up to [cap] lines for collapsed preview, preferring add/remove rows.
+///
+/// Collapsed edit cards mount **only** this preview (on-demand); full hunk
+/// lines mount after expand — unlike user bubbles which always clip full text.
+List<AiEditLine> previewEditHunkLines(
+  List<AiEditLine> lines, {
+  int cap = kAiToolCardPreviewLines,
+}) {
+  if (lines.length <= cap) return lines;
+
+  bool isChange(AiEditLine line) =>
+      line.kind == AiEditLineKind.add || line.kind == AiEditLineKind.remove;
+
+  final head = lines.take(cap);
+  if (head.any(isChange)) {
+    return head.toList(growable: false);
+  }
+
+  final changeIndex = lines.indexWhere(isChange);
+  if (changeIndex < 0) {
+    return head.toList(growable: false);
+  }
+
+  var start = math.max(0, changeIndex - 1);
+  if (start + cap > lines.length) {
+    start = math.max(0, lines.length - cap);
+  }
+  return lines.sublist(start, start + cap);
+}
+
 /// Cursor-style edit tool card: header + inline mini/full diff.
 class EditToolCard extends StatelessWidget {
   const EditToolCard({
@@ -44,7 +74,10 @@ class EditToolCard extends StatelessWidget {
     final onOpenFile = actions.onOpenFile;
     final triggerStyle = markdown.toolTrigger(triggerColor);
     final openTargetStyle = markdown.toolFileLink(triggerStyle, triggerColor);
-    final visibleLines = hunk.lines;
+    // On-demand: collapsed mounts preview only; expand mounts full hunk.
+    final visibleLines =
+        open ? hunk.lines : previewEditHunkLines(hunk.lines);
+    final hasMore = hunk.lines.length > visibleLines.length;
 
     final titleWidget = Text(
       basename,
@@ -95,40 +128,31 @@ class EditToolCard extends StatelessWidget {
                 Expanded(child: title),
                 ...badges,
                 const SizedBox(width: 4),
-                _EditExpandChevron(
-                  open: open,
-                  color: triggerColor,
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onToggle,
+                  child: _EditExpandChevron(
+                    open: open,
+                    color: triggerColor,
+                  ),
                 ),
               ],
             ),
           ),
         ),
-        if (!open)
-          SelectionContainer.disabled(
-            child: _EditDiffPanel(
-              hunk: hunk,
-              lines: visibleLines,
-              panelColor: panelColor,
-              radius: aiTheme.panelRadius,
-              markdown: markdown,
-              highlighter: actions.lineHighlighter,
-              open: open,
-              onToggle: onToggle,
-              onOpenFile: onOpenFile == null ? null : () => onOpenFile(openTarget!),
-            ),
-          )
-        else
-          _EditDiffPanel(
-            hunk: hunk,
-            lines: visibleLines,
-            panelColor: panelColor,
-            radius: aiTheme.panelRadius,
-            markdown: markdown,
-            highlighter: actions.lineHighlighter,
-            open: open,
-            onToggle: onToggle,
-            onOpenFile: onOpenFile == null ? null : () => onOpenFile(openTarget!),
-          ),
+        // Body stays selectable (user-bubble parity); only fade/chevron toggles.
+        _EditDiffPanel(
+          hunk: hunk,
+          lines: visibleLines,
+          panelColor: panelColor,
+          radius: aiTheme.panelRadius,
+          markdown: markdown,
+          highlighter: actions.lineHighlighter,
+          open: open,
+          onToggle: onToggle,
+          forceChrome: !open && hasMore,
+          onOpenFile: onOpenFile == null ? null : () => onOpenFile(openTarget!),
+        ),
       ],
     );
   }
@@ -196,19 +220,16 @@ class _EditToolCardHostState extends State<EditToolCardHost> {
 
   @override
   Widget build(BuildContext context) {
-    return AiExpandableToolCard(
+    // Fade/chevron only (user-bubble parity) — no whole-card tap wrapper.
+    return EditToolCard(
+      part: widget.part,
+      hunk: _hunk,
+      actions: widget.actions,
+      triggerColor: widget.triggerColor,
+      markdown: widget.markdown,
+      dense: widget.dense,
       open: widget.open,
       onToggle: widget.onToggle,
-      child: EditToolCard(
-        part: widget.part,
-        hunk: _hunk,
-        actions: widget.actions,
-        triggerColor: widget.triggerColor,
-        markdown: widget.markdown,
-        dense: widget.dense,
-        open: widget.open,
-        onToggle: widget.onToggle,
-      ),
     );
   }
 }
@@ -223,6 +244,7 @@ class _EditDiffPanel extends StatelessWidget {
     required this.highlighter,
     required this.open,
     required this.onToggle,
+    required this.forceChrome,
     this.onOpenFile,
   });
 
@@ -234,6 +256,7 @@ class _EditDiffPanel extends StatelessWidget {
   final AiEditLineHighlighter highlighter;
   final bool open;
   final VoidCallback onToggle;
+  final bool forceChrome;
   final VoidCallback? onOpenFile;
 
   @override
@@ -261,6 +284,7 @@ class _EditDiffPanel extends StatelessWidget {
       open: open,
       onToggle: onToggle,
       fadeColor: panelColor,
+      forceChrome: forceChrome,
       child: lineList,
     );
 

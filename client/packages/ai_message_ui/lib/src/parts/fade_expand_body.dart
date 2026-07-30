@@ -18,6 +18,9 @@ class AiFadeExpandBody extends StatefulWidget {
     required this.child,
     this.collapsedMaxHeight = kAiFadeExpandCollapsedMaxHeight,
     this.expandedMaxHeight = kAiFadeExpandExpandedMaxHeight,
+    /// When true, show fade/chevron even if [child] fits in collapsed max
+    /// (e.g. edit card mounts a short preview but more lines exist off-tree).
+    this.forceChrome = false,
     super.key,
   });
 
@@ -27,6 +30,7 @@ class AiFadeExpandBody extends StatefulWidget {
   final Widget child;
   final double collapsedMaxHeight;
   final double expandedMaxHeight;
+  final bool forceChrome;
 
   @override
   State<AiFadeExpandBody> createState() => _AiFadeExpandBodyState();
@@ -36,7 +40,8 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
   double? _childHeight;
 
   bool get _overflows =>
-      _childHeight != null && _childHeight! > widget.collapsedMaxHeight;
+      widget.forceChrome ||
+      (_childHeight != null && _childHeight! > widget.collapsedMaxHeight);
 
   bool get _needsScroll =>
       widget.open &&
@@ -69,6 +74,7 @@ class _AiFadeExpandBodyState extends State<AiFadeExpandBody> {
   void didUpdateWidget(covariant AiFadeExpandBody oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.open != widget.open ||
+        oldWidget.forceChrome != widget.forceChrome ||
         oldWidget.collapsedMaxHeight != widget.collapsedMaxHeight ||
         oldWidget.expandedMaxHeight != widget.expandedMaxHeight) {
       // Mode change may need scroll↔clip swap; height stays valid.
