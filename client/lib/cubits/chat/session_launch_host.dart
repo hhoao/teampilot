@@ -8,6 +8,7 @@ import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/team/team_config_launch_validator.dart';
 import '../../services/launch/session_connect_orchestrator.dart';
 import '../../services/launch/workspace_provision_coordinator.dart';
+import '../../services/progress_activity/cli_provision_activity_adapter.dart';
 import '../../services/session/session_lifecycle_service.dart';
 import '../../services/agent_status/agent_status_seat_lookup.dart';
 import '../../cubits/agent_attention_cubit.dart';
@@ -107,6 +108,9 @@ abstract interface class SessionLaunchHost
 
   /// Exposes workspace Phase A for team / mixed off-home paths.
   WorkspaceProvisionCoordinator get workspaceProvision;
+
+  /// Optional progress activity reporting for remote CLI provision.
+  CliProvisionActivityAdapter? get cliProvisionActivity;
 
   /// CLI registry for lifecycle gating and tool capabilities at connect time.
   CliToolRegistry get cliRegistry;

@@ -29,6 +29,7 @@ import '../cubits/progress_activity_cubit.dart';
 import '../services/progress_activity/app_update_activity_adapter.dart';
 import '../services/progress_activity/hub_clone_activity_adapter.dart';
 import '../services/progress_activity/pack_acquire_activity_adapter.dart';
+import '../services/progress_activity/cli_provision_activity_adapter.dart';
 import '../cubits/ai_history_cubit.dart';
 import '../cubits/shortcut_cubit.dart';
 import '../cubits/editor_cubit.dart';
@@ -759,6 +760,9 @@ Future<AppShell> buildAppShell({
   final packAcquireActivityAdapter = PackAcquireActivityAdapter(
     cubit: progressActivityCubit,
   );
+  final cliProvisionActivityAdapter = CliProvisionActivityAdapter(
+    cubit: progressActivityCubit,
+  );
 
   skillCubit = SkillCubit(
     skillRepo,
@@ -998,6 +1002,7 @@ Future<AppShell> buildAppShell({
       runtimePlanBuilder: sessionRuntimePlanBuilder,
     ),
     remoteCliReadiness: remoteCliReadiness,
+    cliProvisionActivity: cliProvisionActivityAdapter,
   );
 
   // Bound after [WorkbenchCubit] exists; togglePanel aliases new-terminal UX

@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
+import '../../../cubits/progress_activity_cubit.dart';
 import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/ssh_profile_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
@@ -19,6 +20,7 @@ import '../../../services/cli/registry/cli_display_name.dart';
 import '../../../services/cli/registry/cli_tool_definition.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../../services/progress_activity/cli_provision_activity_adapter.dart';
 import '../../../services/ssh/ssh_client_factory.dart';
 import '../../../widgets/cli_install_progress_panel.dart';
 import 'onboarding_cli_row.dart';
@@ -191,13 +193,37 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
         sshClientFactory: context.read<SshClientFactory>(),
         cliToolRegistry: _registry,
       );
-      final result = await installer.install(
-        cli: cli,
-        mode: connectionMode.isSshMode
-            ? CliInstallMode.ssh
-            : CliInstallMode.local,
-        sshProfile: sshProfile,
-        onProgress: _onInstallProgress,
+      final def = _registry.tryGet(cli);
+      final cliLabel = def != null
+          ? cliDisplayName(def, context.l10n, registry: _registry)
+          : cli.value;
+      final adapter = CliProvisionActivityAdapter(
+        cubit: context.read<ProgressActivityCubit>(),
+      );
+      final result = await adapter.runTracked(
+        title: connectionMode.isSshMode
+            ? 'Install $cliLabel on ${sshProfile?.host ?? 'remote host'}'
+            : 'Install $cliLabel',
+        historyMessageFor: (installResult) => installResult.success
+            ? '$cliLabel installed'
+            : installResult.message,
+        run: (onProgress) async {
+          final installResult = await installer.install(
+            cli: cli,
+            mode: connectionMode.isSshMode
+                ? CliInstallMode.ssh
+                : CliInstallMode.local,
+            sshProfile: sshProfile,
+            onProgress: (progress) {
+              onProgress(progress);
+              _onInstallProgress(progress);
+            },
+          );
+          if (!installResult.success) {
+            throw StateError(installResult.message);
+          }
+          return installResult;
+        },
       );
       if (!mounted) return;
       final path = result.executablePath?.trim() ?? '';
