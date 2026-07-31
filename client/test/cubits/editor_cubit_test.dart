@@ -452,32 +452,36 @@ void main() {
       expect(cubit.diffCanonicalFor(diffKey), left);
     });
 
-    test('write failure preserves dirty canonical', () async {
-      final fs = _FailingWriteFilesystem();
-      const left = 'a\nb\nc';
-      const right = 'a\nx\nc';
-      final cubit = await cubitWithDiff(fs: fs, left: left, right: right);
-      final result = computeLineDiff(left, right);
-      final block = result.blocks.single;
+    test(
+      'apply with discard restores canonical before write even when write fails',
+      () async {
+        final fs = _FailingWriteFilesystem();
+        const left = 'a\nb\nc';
+        const right = 'a\nx\nc';
+        final cubit = await cubitWithDiff(fs: fs, left: left, right: right);
+        final result = computeLineDiff(left, right);
+        final block = result.blocks.single;
 
-      cubit.updateDiffCanonical(diffKey, 'a\ny\nc');
-      final applied = await cubit.applyDiffHunk(
-        workspaceId: ws,
-        diffKey: diffKey,
-        result: result,
-        block: block,
-        discardDirtyIfNeeded: true,
-      );
+        cubit.updateDiffCanonical(diffKey, 'a\ny\nc');
+        final applied = await cubit.applyDiffHunk(
+          workspaceId: ws,
+          diffKey: diffKey,
+          result: result,
+          block: block,
+          discardDirtyIfNeeded: true,
+        );
 
-      expect(applied, isFalse);
-      expect(fs.files[path], right);
-      expect(cubit.isDiffDirty(diffKey), isTrue);
-      expect(cubit.diffCanonicalFor(diffKey), 'a\ny\nc');
-      expect(
-        cubit.state.snackbarMessage,
-        startsWith('diffApplyFailed:'),
-      );
-    });
+        expect(applied, isFalse);
+        expect(fs.files[path], right);
+        expect(cubit.isDiffDirty(diffKey), isFalse);
+        expect(cubit.diffCanonicalFor(diffKey), right);
+        expect(cubit.state.bucket(ws).dirtyDiffKeys, isNot(contains(diffKey)));
+        expect(
+          cubit.state.snackbarMessage,
+          startsWith('diffApplyFailed:'),
+        );
+      },
+    );
 
     test('saveDiffWorkingTree writes dirty canonical', () async {
       final fs = InMemoryFilesystem();

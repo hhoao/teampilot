@@ -391,13 +391,14 @@ class EditorCubit extends Cubit<EditorState> {
     final handle = _writableDiffs[diffKey];
     if (handle == null) return false;
     if (handle.isDirty && !discardDirtyIfNeeded) return false;
-    final baseCanonical = handle.isDirty && discardDirtyIfNeeded
-        ? handle.lastLoadedCanonical
-        : handle.canonical;
+    if (handle.isDirty && discardDirtyIfNeeded) {
+      handle.canonical = handle.lastLoadedCanonical;
+      _syncDirtyDiffKey(workspaceId, diffKey);
+    }
     final next = DiffHunkApplier.applyLeftToRight(
       result: result,
       block: block,
-      rightFileText: baseCanonical,
+      rightFileText: handle.canonical,
     );
     return _commitWorkingTreeWrite(
       workspaceId: workspaceId,
