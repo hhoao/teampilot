@@ -467,6 +467,28 @@ void main() {
       );
     });
 
+    test('saveDiffWorkingTree write failure preserves dirty canonical', () async {
+      final fs = _FailingWriteFilesystem();
+      const right = 'a\nx\nc';
+      final cubit = await cubitWithDiff(
+        fs: fs,
+        left: 'a\nb\nc',
+        right: right,
+      );
+
+      cubit.updateDiffCanonical(diffKey, 'a\nsaved\nc');
+      final saved = await cubit.saveDiffWorkingTree(ws, diffKey);
+
+      expect(saved, isFalse);
+      expect(fs.files[path], right);
+      expect(cubit.isDiffDirty(diffKey), isTrue);
+      expect(cubit.diffCanonicalFor(diffKey), 'a\nsaved\nc');
+      expect(
+        cubit.state.snackbarMessage,
+        startsWith('diffSaveFailed:'),
+      );
+    });
+
     test('retryDiffReload after failed reload succeeds', () async {
       final fs = InMemoryFilesystem();
       const left = 'a\nb\nc';

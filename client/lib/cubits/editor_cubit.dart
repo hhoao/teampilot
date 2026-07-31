@@ -388,6 +388,7 @@ class EditorCubit extends Cubit<EditorState> {
       workspaceId: workspaceId,
       diffKey: diffKey,
       nextCanonical: next,
+      writeFailureMessagePrefix: 'diffApplyFailed',
     );
   }
 
@@ -398,6 +399,7 @@ class EditorCubit extends Cubit<EditorState> {
       workspaceId: workspaceId,
       diffKey: diffKey,
       nextCanonical: handle.canonical,
+      writeFailureMessagePrefix: 'diffSaveFailed',
     );
   }
 
@@ -671,13 +673,16 @@ class EditorCubit extends Cubit<EditorState> {
     required String workspaceId,
     required String diffKey,
     required String nextCanonical,
+    required String writeFailureMessagePrefix,
   }) async {
     final handle = _writableDiffs[diffKey];
     if (handle == null) return false;
     try {
       await _fs.atomicWrite(handle.absolutePath, nextCanonical);
     } on Object catch (e) {
-      emit(state.copyWith(snackbarMessage: 'diffApplyFailed: $e'));
+      emit(state.copyWith(
+        snackbarMessage: '$writeFailureMessagePrefix: $e',
+      ));
       return false;
     }
 
