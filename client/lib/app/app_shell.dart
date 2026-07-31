@@ -626,6 +626,9 @@ Future<AppShell> buildAppShell({
     if (pid == null || pid.isEmpty) return;
     final ctx = runtimeContextRegistry.home();
     if (ctx.pathsFromCache) return;
+    if (!sshProfileCubit.state.profiles.any((p) => p.id == pid)) {
+      await sshProfileCubit.load();
+    }
     await sshProfileCubit.updatePathCache(
       pid,
       home: ctx.home,
@@ -1377,7 +1380,6 @@ Future<AppShell> buildAppShell({
             reinstallStorageContext: reinstallStorageContext,
             home: defaultTargetResolver(),
           );
-          await persistSshHomePathCacheIfLive();
         } on Object catch (error, stackTrace) {
           appLogger.w(
             '[boot] remote home index bootstrap failed',
@@ -1385,6 +1387,7 @@ Future<AppShell> buildAppShell({
             stackTrace: stackTrace,
           );
         }
+        await persistSshHomePathCacheIfLive();
       } else {
         boot('awaiting home index snapshots');
         await homeIndexPrefetch;
