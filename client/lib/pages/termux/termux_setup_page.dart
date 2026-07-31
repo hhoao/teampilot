@@ -36,10 +36,18 @@ class TermuxSetupPage extends StatefulWidget {
     super.key,
     this.packageProbe,
     this.apkAcquisition,
+    this.embedded = false,
+    this.onHomeBound,
   });
 
   final TermuxPackageProbe? packageProbe;
   final TermuxApkAcquisition? apkAcquisition;
+
+  /// When true, omits [Scaffold] so onboarding can host the form in-place.
+  final bool embedded;
+
+  /// Called after a successful Connect when [embedded] is true.
+  final VoidCallback? onHomeBound;
 
   @override
   State<TermuxSetupPage> createState() => _TermuxSetupPageState();
@@ -248,7 +256,11 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
         message: context.l10n.termuxSetupConnectSuccess,
         variant: TpToastVariant.success,
       );
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      if (widget.embedded) {
+        widget.onHomeBound?.call();
+      } else {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
       return;
     }
     final error = state.lastError?.trim();
@@ -307,7 +319,9 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
       _loadingKey = true;
     });
     if (!mounted) return;
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    if (!widget.embedded) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
     unawaited(_prepareKeys());
   }
 
@@ -389,113 +403,119 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
     final tp = TpTheme.of(context);
     final pubKey = _publicKey ?? '';
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.termuxSetupTitle)),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: EdgeInsets.all(tp.spacing.lg),
-          children: [
-            Text(
-              l10n.termuxSetupIntro,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            SizedBox(height: tp.spacing.lg),
-            _SetupStep(
-              title: l10n.termuxSetupStepInstallTermux,
-              child: _buildInstallStep(context),
-            ),
-            _SetupStep(
-              title: l10n.termuxSetupStepInstallOpenssh,
-              child: _CopyCommandBlock(command: 'pkg install openssh'),
-            ),
-            _SetupStep(
-              title: l10n.termuxSetupStepAuthorizedKeys,
-              child: _loadingKey
-                  ? const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: LinearProgressIndicator(),
-                    )
-                  : _CopyCommandBlock(
-                      command: _authorizedKeysCommand(pubKey),
-                      multiline: true,
-                    ),
-            ),
-            _SetupStep(
-              title: l10n.termuxSetupStepStorage,
-              child: const _CopyCommandBlock(command: 'termux-setup-storage'),
-            ),
-            _SetupStep(
-              title: l10n.termuxSetupStepStartSshd,
-              child: const _CopyCommandBlock(command: 'sshd'),
-            ),
-            _SetupStep(
-              title: l10n.termuxSetupStepWhoami,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const _CopyCommandBlock(command: 'whoami'),
-                  SizedBox(height: tp.spacing.xs),
-                  Text(
-                    l10n.termuxSetupWhoamiHint,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+    final form = Form(
+      key: _formKey,
+      child: ListView(
+        padding: EdgeInsets.all(tp.spacing.lg),
+        children: [
+          Text(
+            l10n.termuxSetupIntro,
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          SizedBox(height: tp.spacing.lg),
+          _SetupStep(
+            title: l10n.termuxSetupStepInstallTermux,
+            child: _buildInstallStep(context),
+          ),
+          _SetupStep(
+            title: l10n.termuxSetupStepInstallOpenssh,
+            child: _CopyCommandBlock(command: 'pkg install openssh'),
+          ),
+          _SetupStep(
+            title: l10n.termuxSetupStepAuthorizedKeys,
+            child: _loadingKey
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: LinearProgressIndicator(),
+                  )
+                : _CopyCommandBlock(
+                    command: _authorizedKeysCommand(pubKey),
+                    multiline: true,
                   ),
-                ],
-              ),
-            ),
-            _SetupStep(
-              title: l10n.termuxSetupUsernameLabel,
-              child: TextFormField(
-                key: const Key('termux_username_field'),
-                controller: _usernameController,
-                onChanged: (value) => _username = value,
-                decoration: tpOutlineInputDecoration(
-                  context,
-                  decoration: InputDecoration(
-                    hintText: l10n.termuxSetupUsernameHint,
+          ),
+          _SetupStep(
+            title: l10n.termuxSetupStepStorage,
+            child: const _CopyCommandBlock(command: 'termux-setup-storage'),
+          ),
+          _SetupStep(
+            title: l10n.termuxSetupStepStartSshd,
+            child: const _CopyCommandBlock(command: 'sshd'),
+          ),
+          _SetupStep(
+            title: l10n.termuxSetupStepWhoami,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const _CopyCommandBlock(command: 'whoami'),
+                SizedBox(height: tp.spacing.xs),
+                Text(
+                  l10n.termuxSetupWhoamiHint,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
-                validator: _validateUsername,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                textInputAction: TextInputAction.done,
+              ],
+            ),
+          ),
+          _SetupStep(
+            title: l10n.termuxSetupUsernameLabel,
+            child: TextFormField(
+              key: const Key('termux_username_field'),
+              controller: _usernameController,
+              onChanged: (value) => _username = value,
+              decoration: tpOutlineInputDecoration(
+                context,
+                decoration: InputDecoration(
+                  hintText: l10n.termuxSetupUsernameHint,
+                ),
               ),
+              validator: _validateUsername,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              textInputAction: TextInputAction.done,
             ),
-            SizedBox(height: tp.spacing.md),
-            TpButton(
-              key: const Key('termux_connect_button'),
-              onPressed: () => unawaited(_connect()),
-              child: BlocBuilder<TermuxCubit, TermuxState>(
-                builder: (context, state) {
-                  if (state.connecting) {
-                    return Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                        SizedBox(width: tp.spacing.sm),
-                        Text(l10n.termuxSetupConnecting),
-                      ],
-                    );
-                  }
-                  return Text(l10n.termuxSetupConnect);
-                },
-              ),
+          ),
+          SizedBox(height: tp.spacing.md),
+          TpButton(
+            key: const Key('termux_connect_button'),
+            onPressed: () => unawaited(_connect()),
+            child: BlocBuilder<TermuxCubit, TermuxState>(
+              builder: (context, state) {
+                if (state.connecting) {
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: tp.spacing.sm),
+                      Text(l10n.termuxSetupConnecting),
+                    ],
+                  );
+                }
+                return Text(l10n.termuxSetupConnect);
+              },
             ),
-            SizedBox(height: tp.spacing.lg),
-            TpButton(
-              key: const Key('termux_clear_setup_button'),
-              variant: TpButtonVariant.destructive,
-              onPressed: _confirmClearSetup,
-              child: Text(l10n.termuxSetupClearSetup),
-            ),
-          ],
-        ),
+          ),
+          SizedBox(height: tp.spacing.lg),
+          TpButton(
+            key: const Key('termux_clear_setup_button'),
+            variant: TpButtonVariant.destructive,
+            onPressed: _confirmClearSetup,
+            child: Text(l10n.termuxSetupClearSetup),
+          ),
+        ],
       ),
+    );
+
+    if (widget.embedded) {
+      return Material(child: form);
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.termuxSetupTitle)),
+      body: form,
     );
   }
 }

@@ -15,47 +15,87 @@ import 'termux_setup_page.dart';
 
 /// Android cold-start picker: on-device Termux or remote SSH home.
 class WorkEnvironmentChooserPage extends StatelessWidget {
-  const WorkEnvironmentChooserPage({super.key});
+  const WorkEnvironmentChooserPage({
+    super.key,
+    this.embedded = false,
+    this.onChooseTermux,
+    this.onChooseSsh,
+  });
+
+  final bool embedded;
+  /// When set (onboarding), call instead of Navigator.push.
+  final VoidCallback? onChooseTermux;
+  final VoidCallback? onChooseSsh;
+
+  @override
+  Widget build(BuildContext context) {
+    final body = _ChooserBody(
+      onChooseTermux: () {
+        if (onChooseTermux != null) {
+          onChooseTermux!();
+          return;
+        }
+        _pushWithGateProviders(context, const TermuxSetupPage());
+      },
+      onChooseSsh: () {
+        if (onChooseSsh != null) {
+          onChooseSsh!();
+          return;
+        }
+        _pushWithGateProviders(context, const SshProfilesPage());
+      },
+    );
+
+    if (embedded) {
+      return body;
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Choose work environment')),
+      body: body,
+    );
+  }
+}
+
+class _ChooserBody extends StatelessWidget {
+  const _ChooserBody({
+    required this.onChooseTermux,
+    required this.onChooseSsh,
+  });
+
+  final VoidCallback onChooseTermux;
+  final VoidCallback onChooseSsh;
 
   @override
   Widget build(BuildContext context) {
     final tp = TpTheme.of(context);
     final scheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Choose work environment')),
-      body: ListView(
-        padding: EdgeInsets.all(tp.spacing.lg),
-        children: [
-          Text(
-            'Where should TeamPilot run your workspaces, shell, and agents?',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          SizedBox(height: tp.spacing.lg),
-          _EnvironmentTile(
-            title: 'On-device · Termux',
-            subtitle:
-                'Use Termux on this phone as your Linux work plane via local SSH.',
-            icon: Icons.phone_android_outlined,
-            iconColor: scheme.primary,
-            onTap: () => _pushWithGateProviders(
-              context,
-              const TermuxSetupPage(),
-            ),
-          ),
-          SizedBox(height: tp.spacing.md),
-          _EnvironmentTile(
-            title: 'Remote · SSH',
-            subtitle: 'Connect to a remote Linux or macOS host over SSH.',
-            icon: Icons.cloud_outlined,
-            iconColor: scheme.tertiary,
-            onTap: () => _pushWithGateProviders(
-              context,
-              const SshProfilesPage(),
-            ),
-          ),
-        ],
-      ),
+    return ListView(
+      padding: EdgeInsets.all(tp.spacing.lg),
+      children: [
+        Text(
+          'Where should TeamPilot run your workspaces, shell, and agents?',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        SizedBox(height: tp.spacing.lg),
+        _EnvironmentTile(
+          title: 'On-device · Termux',
+          subtitle:
+              'Use Termux on this phone as your Linux work plane via local SSH.',
+          icon: Icons.phone_android_outlined,
+          iconColor: scheme.primary,
+          onTap: onChooseTermux,
+        ),
+        SizedBox(height: tp.spacing.md),
+        _EnvironmentTile(
+          title: 'Remote · SSH',
+          subtitle: 'Connect to a remote Linux or macOS host over SSH.',
+          icon: Icons.cloud_outlined,
+          iconColor: scheme.tertiary,
+          onTap: onChooseSsh,
+        ),
+      ],
     );
   }
 }

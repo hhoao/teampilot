@@ -4896,6 +4896,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get onboardingSshSubtitle => 'Android 通过 SSH 在远程主机运行 AI CLI。';
 
   @override
+  String get onboardingWorkHomeTitle => '选择工作环境';
+
+  @override
+  String get onboardingWorkHomeSubtitle => '先连接本机 Termux 或远程 SSH，再检测 AI CLI。';
+
+  @override
   String get onboardingCliTitle => '检测 CLI 工具';
 
   @override

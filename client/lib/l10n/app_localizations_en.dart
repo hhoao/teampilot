@@ -5098,6 +5098,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Android runs AI CLIs on a remote host over SSH.';
 
   @override
+  String get onboardingWorkHomeTitle => 'Choose work environment';
+
+  @override
+  String get onboardingWorkHomeSubtitle =>
+      'Connect Termux on this device or a remote SSH host before detecting AI CLIs.';
+
+  @override
   String get onboardingCliTitle => 'Detect CLI tools';
 
   @override

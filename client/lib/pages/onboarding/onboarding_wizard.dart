@@ -3,22 +3,43 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../cubits/session_preferences_cubit.dart';
+import '../../cubits/ssh_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../services/app/connection_mode_service.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'steps/appearance_step.dart';
 import 'steps/cli_step.dart';
 import 'steps/default_preset_step.dart';
 import 'steps/provider_import_step.dart';
-import 'steps/ssh_step.dart';
+import 'steps/work_home_step.dart';
 
-enum OnboardingStepKind { appearance, ssh, cli, providerImport, defaultPreset }
+enum OnboardingStepKind {
+  appearance,
+  workHome,
+  cli,
+  providerImport,
+  defaultPreset,
+}
 
-List<OnboardingStepKind> onboardingStepsForPlatform() {
-  if (Platform.isAndroid) {
+List<OnboardingStepKind> onboardingStepsForPlatform({
+  bool? isAndroid,
+  bool hasBoundAndroidWorkHome = false,
+}) {
+  final android = isAndroid ?? Platform.isAndroid;
+  if (!android) {
     return const [
       OnboardingStepKind.appearance,
-      OnboardingStepKind.ssh,
+      OnboardingStepKind.cli,
+      OnboardingStepKind.providerImport,
+      OnboardingStepKind.defaultPreset,
+    ];
+  }
+  if (hasBoundAndroidWorkHome) {
+    return const [
+      OnboardingStepKind.appearance,
       OnboardingStepKind.cli,
       OnboardingStepKind.providerImport,
       OnboardingStepKind.defaultPreset,
@@ -26,6 +47,7 @@ List<OnboardingStepKind> onboardingStepsForPlatform() {
   }
   return const [
     OnboardingStepKind.appearance,
+    OnboardingStepKind.workHome,
     OnboardingStepKind.cli,
     OnboardingStepKind.providerImport,
     OnboardingStepKind.defaultPreset,
@@ -33,9 +55,17 @@ List<OnboardingStepKind> onboardingStepsForPlatform() {
 }
 
 class OnboardingWizard extends StatefulWidget {
-  const OnboardingWizard({super.key, required this.onComplete});
+  const OnboardingWizard({
+    super.key,
+    required this.onComplete,
+    @visibleForTesting this.steps,
+  });
 
   final VoidCallback onComplete;
+
+  /// Test-only override of the step list (e.g. force Android workHome).
+  @visibleForTesting
+  final List<OnboardingStepKind>? steps;
 
   @override
   State<OnboardingWizard> createState() => _OnboardingWizardState();
@@ -58,7 +88,12 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
   @override
   void initState() {
     super.initState();
-    _steps = onboardingStepsForPlatform();
+    _steps =
+        widget.steps ??
+        onboardingStepsForPlatform(
+          hasBoundAndroidWorkHome:
+              context.read<ConnectionModeService>().hasBoundAndroidWorkHome,
+        );
     _pageController = PageController();
   }
 
@@ -70,6 +105,9 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
 
   bool get _isFirstStep => _pageIndex <= 0;
   bool get _isLastStep => _pageIndex >= _steps.length - 1;
+  bool get _isWorkHomeStep =>
+      _pageIndex < _steps.length &&
+      _steps[_pageIndex] == OnboardingStepKind.workHome;
 
   Future<void> _goPrevious() async {
     if (_isAnimating || _isFirstStep) return;
@@ -78,6 +116,10 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
 
   Future<void> _goNext() async {
     if (_isAnimating) return;
+    if (_isWorkHomeStep &&
+        !context.read<ConnectionModeService>().hasBoundAndroidWorkHome) {
+      return;
+    }
     if (_isLastStep) {
       await _defaultPresetKey.currentState?.commitSelection();
       if (!mounted) return;
@@ -106,9 +148,18 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
 
   @override
   Widget build(BuildContext context) {
+    // Mirror StartupGate / work-home step: rebuild when Connect updates prefs
+    // and/or the selected SSH profile, then read derived bind flags.
+    context.watch<SessionPreferencesCubit>();
+    context.watch<SshProfileCubit>();
+    final workHomeBound =
+        context.read<ConnectionModeService>().hasBoundAndroidWorkHome;
+
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final navigationLocked = _isAnimating;
+    final nextBlocked =
+        navigationLocked || (_isWorkHomeStep && !workHomeBound);
 
     return Scaffold(
       backgroundColor: cs.workspacePage,
@@ -159,10 +210,11 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
                         const SizedBox(height: 20),
                         Row(
                           children: [
-                            TextButton(
-                              onPressed: navigationLocked ? null : _skip,
-                              child: Text(l10n.onboardingSkip),
-                            ),
+                            if (!_isWorkHomeStep)
+                              TextButton(
+                                onPressed: navigationLocked ? null : _skip,
+                                child: Text(l10n.onboardingSkip),
+                              ),
                             const Spacer(),
                             if (!_isFirstStep) ...[
                               OutlinedButton(
@@ -174,7 +226,7 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
                               const SizedBox(width: 12),
                             ],
                             FilledButton(
-                              onPressed: navigationLocked
+                              onPressed: nextBlocked
                                   ? null
                                   : () => unawaited(_goNext()),
                               child: Text(
@@ -202,9 +254,8 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
       OnboardingStepKind.appearance => OnboardingAppearanceStep(
         isActive: isActive,
       ),
-      OnboardingStepKind.ssh => OnboardingSshStep(
-        isActive: isActive,
-        onContinue: () => unawaited(_goNext()),
+      OnboardingStepKind.workHome => OnboardingWorkHomeStep(
+        onBound: () => unawaited(_goNext()),
       ),
       OnboardingStepKind.cli => OnboardingCliStep(isActive: isActive),
       OnboardingStepKind.providerImport => OnboardingProviderImportStep(

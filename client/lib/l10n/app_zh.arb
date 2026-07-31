@@ -1993,6 +1993,8 @@
   "onboardingAppearanceSubtitle": "可随时在「设置 → 布局」中修改。",
   "onboardingSshTitle": "配置 SSH 连接",
   "onboardingSshSubtitle": "Android 通过 SSH 在远程主机运行 AI CLI。",
+  "onboardingWorkHomeTitle": "选择工作环境",
+  "onboardingWorkHomeSubtitle": "先连接本机 Termux 或远程 SSH，再检测 AI CLI。",
   "onboardingCliTitle": "检测 CLI 工具",
   "onboardingCliSubtitle": "定位用于启动会话的可执行文件。可安装缺失项，或稍后在设置中指定路径。",
   "onboardingCliFound": "已找到 CLI",
