@@ -304,26 +304,32 @@ void main() {
       tester,
       cubit: cubit,
       credentials: InMemorySshCredentialStore(),
+      packageProbe: _installedProbe(),
     );
 
     final l10n = AppLocalizations.of(
       tester.element(find.byType(TermuxSetupPage)),
     );
-    expect(find.text(l10n.termuxSetupStepInstallOpenssh), findsOneWidget);
-    expect(find.text(l10n.termuxSetupStepAuthorizedKeys), findsOneWidget);
-    expect(find.text(l10n.termuxSetupStepStorage), findsOneWidget);
-    expect(find.text(l10n.termuxSetupStepStartSshd), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text(l10n.termuxSetupStepWhoami),
-      120,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text(l10n.termuxSetupStepWhoami), findsOneWidget);
+    expect(find.text(l10n.termuxSetupStepInstallTermux), findsOneWidget);
+    expect(find.text(l10n.termuxSetupStepRunScript), findsOneWidget);
     expect(find.byKey(const Key('termux_username_field')), findsOneWidget);
-    expect(find.text('pkg install openssh'), findsOneWidget);
-    expect(find.text('termux-setup-storage'), findsOneWidget);
-    expect(find.text('sshd'), findsOneWidget);
-    expect(find.text('whoami'), findsOneWidget);
+    // Script body appears after async key prep; content covered by unit test.
+    expect(
+      find.byKey(const Key('termux_setup_script_block')).evaluate().isNotEmpty ||
+          find.byType(LinearProgressIndicator).evaluate().isNotEmpty,
+      isTrue,
+    );
+  });
+
+  test('bootstrapScript chains setup commands with quoted key', () {
+    final script = TermuxSetupPage.bootstrapScript(
+      "ssh-ed25519 AAAAC3 test'key",
+    );
+    expect(script, contains('pkg install -y openssh'));
+    expect(script, contains('termux-setup-storage'));
+    expect(script, contains('sshd'));
+    expect(script, contains('whoami'));
+    expect(script, contains(r"'ssh-ed25519 AAAAC3 test'\''key'"));
   });
 
   testWidgets('invalid username shows validation error', (tester) async {

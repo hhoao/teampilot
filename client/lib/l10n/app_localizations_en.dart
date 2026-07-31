@@ -6526,7 +6526,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get termuxSetupIntro =>
-      'Follow these steps in Termux on your phone, then connect TeamPilot to the local SSH server.';
+      'Install Termux, paste one setup script, then connect TeamPilot to the local SSH server.';
 
   @override
   String get termuxSetupStepInstallTermux => '1. Install Termux';
@@ -6561,26 +6561,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get termuxSetupTermuxInstalled => 'Termux is installed';
 
   @override
-  String get termuxSetupStepInstallOpenssh => '2. Install OpenSSH';
+  String get termuxSetupStepRunScript => '2. Paste this script in Termux';
 
   @override
-  String get termuxSetupStepAuthorizedKeys =>
-      '3. Authorize TeamPilot\'s SSH key';
+  String get termuxSetupScriptHint =>
+      'Allow storage access when prompted. The last line prints your username (e.g. u0_a399).';
 
   @override
-  String get termuxSetupStepStorage => '4. Grant shared storage access';
-
-  @override
-  String get termuxSetupStepStartSshd => '5. Start the SSH server';
-
-  @override
-  String get termuxSetupStepWhoami => '6. Copy your Termux username';
-
-  @override
-  String get termuxSetupWhoamiHint => 'Example output: u0_a399';
-
-  @override
-  String get termuxSetupUsernameLabel => '7. Paste your Termux username';
+  String get termuxSetupUsernameLabel => '3. Paste your Termux username';
 
   @override
   String get termuxSetupUsernameHint => 'e.g. u0_a399';

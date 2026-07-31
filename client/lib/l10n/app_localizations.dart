@@ -11685,7 +11685,7 @@ abstract class AppLocalizations {
   /// No description provided for @termuxSetupIntro.
   ///
   /// In en, this message translates to:
-  /// **'Follow these steps in Termux on your phone, then connect TeamPilot to the local SSH server.'**
+  /// **'Install Termux, paste one setup script, then connect TeamPilot to the local SSH server.'**
   String get termuxSetupIntro;
 
   /// No description provided for @termuxSetupStepInstallTermux.
@@ -11748,46 +11748,22 @@ abstract class AppLocalizations {
   /// **'Termux is installed'**
   String get termuxSetupTermuxInstalled;
 
-  /// No description provided for @termuxSetupStepInstallOpenssh.
+  /// No description provided for @termuxSetupStepRunScript.
   ///
   /// In en, this message translates to:
-  /// **'2. Install OpenSSH'**
-  String get termuxSetupStepInstallOpenssh;
+  /// **'2. Paste this script in Termux'**
+  String get termuxSetupStepRunScript;
 
-  /// No description provided for @termuxSetupStepAuthorizedKeys.
+  /// No description provided for @termuxSetupScriptHint.
   ///
   /// In en, this message translates to:
-  /// **'3. Authorize TeamPilot\'s SSH key'**
-  String get termuxSetupStepAuthorizedKeys;
-
-  /// No description provided for @termuxSetupStepStorage.
-  ///
-  /// In en, this message translates to:
-  /// **'4. Grant shared storage access'**
-  String get termuxSetupStepStorage;
-
-  /// No description provided for @termuxSetupStepStartSshd.
-  ///
-  /// In en, this message translates to:
-  /// **'5. Start the SSH server'**
-  String get termuxSetupStepStartSshd;
-
-  /// No description provided for @termuxSetupStepWhoami.
-  ///
-  /// In en, this message translates to:
-  /// **'6. Copy your Termux username'**
-  String get termuxSetupStepWhoami;
-
-  /// No description provided for @termuxSetupWhoamiHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Example output: u0_a399'**
-  String get termuxSetupWhoamiHint;
+  /// **'Allow storage access when prompted. The last line prints your username (e.g. u0_a399).'**
+  String get termuxSetupScriptHint;
 
   /// No description provided for @termuxSetupUsernameLabel.
   ///
   /// In en, this message translates to:
-  /// **'7. Paste your Termux username'**
+  /// **'3. Paste your Termux username'**
   String get termuxSetupUsernameLabel;
 
   /// No description provided for @termuxSetupUsernameHint.

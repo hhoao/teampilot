@@ -49,6 +49,24 @@ class TermuxSetupPage extends StatefulWidget {
   /// Called after a successful Connect when [embedded] is true.
   final VoidCallback? onHomeBound;
 
+  /// One paste-and-run script for OpenSSH + key auth + storage + sshd.
+  /// Ends with `whoami` so the last printed line is the Termux username.
+  @visibleForTesting
+  static String bootstrapScript(String publicKey) {
+    final quotedKey = _shellSingleQuote(publicKey);
+    return [
+      'pkg install -y openssh',
+      'mkdir -p ~/.ssh && chmod 700 ~/.ssh',
+      'echo $quotedKey >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys',
+      'termux-setup-storage',
+      'sshd',
+      'whoami',
+    ].join(' && \\\n');
+  }
+
+  static String _shellSingleQuote(String value) =>
+      "'${value.replaceAll("'", r"'\''")}'";
+
   @override
   State<TermuxSetupPage> createState() => _TermuxSetupPageState();
 }
@@ -167,13 +185,6 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
       _publicKey = pubKey;
       _loadingKey = false;
     });
-  }
-
-  String _authorizedKeysCommand(String publicKey) {
-    return 'mkdir -p ~/.ssh\n\n'
-        'chmod 700 ~/.ssh\n\n'
-        'echo "$publicKey" >> ~/.ssh/authorized_keys\n\n'
-        'chmod 600 ~/.ssh/authorized_keys';
   }
 
   String? _validateUsername(String? value) {
@@ -418,44 +429,31 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
             child: _buildInstallStep(context),
           ),
           _SetupStep(
-            title: l10n.termuxSetupStepInstallOpenssh,
-            child: _CopyCommandBlock(command: 'pkg install openssh'),
-          ),
-          _SetupStep(
-            title: l10n.termuxSetupStepAuthorizedKeys,
+            title: l10n.termuxSetupStepRunScript,
             child: _loadingKey
                 ? const Padding(
                     padding: EdgeInsets.symmetric(vertical: 8),
                     child: LinearProgressIndicator(),
                   )
-                : _CopyCommandBlock(
-                    command: _authorizedKeysCommand(pubKey),
-                    multiline: true,
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _CopyCommandBlock(
+                        key: const Key('termux_setup_script_block'),
+                        command: TermuxSetupPage.bootstrapScript(pubKey),
+                        multiline: true,
+                      ),
+                      SizedBox(height: tp.spacing.xs),
+                      Text(
+                        l10n.termuxSetupScriptHint,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
-          ),
-          _SetupStep(
-            title: l10n.termuxSetupStepStorage,
-            child: const _CopyCommandBlock(command: 'termux-setup-storage'),
-          ),
-          _SetupStep(
-            title: l10n.termuxSetupStepStartSshd,
-            child: const _CopyCommandBlock(command: 'sshd'),
-          ),
-          _SetupStep(
-            title: l10n.termuxSetupStepWhoami,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const _CopyCommandBlock(command: 'whoami'),
-                SizedBox(height: tp.spacing.xs),
-                Text(
-                  l10n.termuxSetupWhoamiHint,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
           ),
           _SetupStep(
             title: l10n.termuxSetupUsernameLabel,
@@ -544,7 +542,11 @@ class _SetupStep extends StatelessWidget {
 }
 
 class _CopyCommandBlock extends StatelessWidget {
-  const _CopyCommandBlock({required this.command, this.multiline = false});
+  const _CopyCommandBlock({
+    super.key,
+    required this.command,
+    this.multiline = false,
+  });
 
   final String command;
   final bool multiline;

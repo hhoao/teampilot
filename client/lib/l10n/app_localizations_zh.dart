@@ -6273,7 +6273,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get termuxSetupIntro =>
-      '在手机上按以下步骤在 Termux 中完成配置，然后连接 TeamPilot 的本地 SSH 服务。';
+      '安装 Termux，粘贴一条配置脚本，然后连接 TeamPilot 的本地 SSH 服务。';
 
   @override
   String get termuxSetupStepInstallTermux => '1. 安装 Termux';
@@ -6306,25 +6306,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get termuxSetupTermuxInstalled => 'Termux 已安装';
 
   @override
-  String get termuxSetupStepInstallOpenssh => '2. 安装 OpenSSH';
+  String get termuxSetupStepRunScript => '2. 在 Termux 中粘贴这条脚本';
 
   @override
-  String get termuxSetupStepAuthorizedKeys => '3. 授权 TeamPilot SSH 公钥';
+  String get termuxSetupScriptHint => '弹出存储授权时请允许。最后一行会打印用户名（例如 u0_a399）。';
 
   @override
-  String get termuxSetupStepStorage => '4. 授予共享存储访问权限';
-
-  @override
-  String get termuxSetupStepStartSshd => '5. 启动 SSH 服务';
-
-  @override
-  String get termuxSetupStepWhoami => '6. 复制 Termux 用户名';
-
-  @override
-  String get termuxSetupWhoamiHint => '示例输出：u0_a399';
-
-  @override
-  String get termuxSetupUsernameLabel => '7. 粘贴 Termux 用户名';
+  String get termuxSetupUsernameLabel => '3. 粘贴 Termux 用户名';
 
   @override
   String get termuxSetupUsernameHint => '例如 u0_a399';
