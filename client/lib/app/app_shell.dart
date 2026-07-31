@@ -79,6 +79,7 @@ import '../services/app/boot_splash.dart';
 import '../utils/ui/yield_ui_frame.dart';
 import '../l10n/app_localizations.dart';
 import '../pages/system/app_bootstrap_loading_page.dart';
+import '../pages/system/bootstrap_startup_error_page.dart';
 import '../repositories/app_settings_repository.dart';
 import '../repositories/layout_repository.dart';
 import '../repositories/session_preferences_repository.dart';
@@ -1744,6 +1745,19 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     }
   }
 
+  Future<void> _retryBootstrap() async {
+    if (_retrying) return;
+    setState(() => _retrying = true);
+    await _start();
+  }
+
+  Future<void> _chooseWorkEnvironmentAndRetry() async {
+    if (_retrying) return;
+    setState(() => _retrying = true);
+    await HomeTargetStore(widget.preferences).save(RuntimeTarget.localId);
+    await _start();
+  }
+
   Future<void> _switchToNativeStorageAndRetry() async {
     if (_retrying) return;
     setState(() => _retrying = true);
@@ -1765,40 +1779,14 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       return MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: Center(
-            child: Builder(
-              builder: (context) {
-                final l10n = AppLocalizations.of(context);
-                return Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(l10n.bootstrapStartupFailed(_error.toString())),
-                      if (_canFallbackToNativeStorage) ...[
-                        const SizedBox(height: 16),
-                        FilledButton(
-                          onPressed: _retrying
-                              ? null
-                              : _switchToNativeStorageAndRetry,
-                          child: _retrying
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Text(l10n.bootstrapUseNativeStorageInstead),
-                        ),
-                      ],
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
+        home: BootstrapStartupErrorPage(
+          error: _error!,
+          showChooseWorkEnvironment: Platform.isAndroid,
+          showNativeStorageFallback: _canFallbackToNativeStorage,
+          retrying: _retrying,
+          onRetry: _retryBootstrap,
+          onChooseWorkEnvironment: _chooseWorkEnvironmentAndRetry,
+          onNativeStorageFallback: _switchToNativeStorageAndRetry,
         ),
       );
     }

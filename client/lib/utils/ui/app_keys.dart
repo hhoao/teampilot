@@ -290,4 +290,12 @@ class AppKeys {
   static const languageZhButton = Key('language-zh-button');
 
   static const automationsWorkspace = Key('automations-workspace');
+
+  static const bootstrapRetryButton = Key('bootstrap-retry-button');
+  static const bootstrapChooseWorkEnvironmentButton = Key(
+    'bootstrap-choose-work-environment-button',
+  );
+  static const bootstrapNativeStorageFallbackButton = Key(
+    'bootstrap-native-storage-fallback-button',
+  );
 }
