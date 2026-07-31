@@ -113,7 +113,7 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
         children: [
           Text(
             title,
-            style: styles.lgBoldColored(cs.onSurface),
+            style: styles.xl,
           ),
           const SizedBox(height: 20),
           Expanded(

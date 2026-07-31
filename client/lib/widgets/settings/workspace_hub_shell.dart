@@ -100,7 +100,7 @@ class WorkspaceHubTitleBar extends StatelessWidget {
           title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TpTextStyles.of(context).lgSemiboldSnugColored(textBase),
+          style: TpTextStyles.of(context).xlColored(textBase),
         ),
         const SizedBox(height: 8),
         Text(
@@ -465,7 +465,7 @@ class WorkspaceSectionHeading extends StatelessWidget {
       children: [
         Text(
           title,
-          style: styles.lgSemiboldSnugColored(cs.onSurface),
+          style: styles.xlColored(cs.onSurface),
         ),
         const SizedBox(height: 6),
         Text(
