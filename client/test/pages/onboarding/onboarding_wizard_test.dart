@@ -26,11 +26,41 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('onboardingStepsForPlatform', () {
-    test('desktop has four steps without SSH', () {
-      expect(onboardingStepsForPlatform(), hasLength(4));
+    test('desktop has four steps without workHome', () {
       expect(
-        onboardingStepsForPlatform(),
-        isNot(contains(OnboardingStepKind.ssh)),
+        onboardingStepsForPlatform(isAndroid: false),
+        [
+          OnboardingStepKind.appearance,
+          OnboardingStepKind.cli,
+          OnboardingStepKind.providerImport,
+          OnboardingStepKind.defaultPreset,
+        ],
+      );
+    });
+
+    test('android includes workHome before cli when unbound', () {
+      expect(
+        onboardingStepsForPlatform(
+          isAndroid: true,
+          hasBoundAndroidWorkHome: false,
+        ),
+        [
+          OnboardingStepKind.appearance,
+          OnboardingStepKind.workHome,
+          OnboardingStepKind.cli,
+          OnboardingStepKind.providerImport,
+          OnboardingStepKind.defaultPreset,
+        ],
+      );
+    });
+
+    test('android skips workHome when already bound', () {
+      expect(
+        onboardingStepsForPlatform(
+          isAndroid: true,
+          hasBoundAndroidWorkHome: true,
+        ),
+        isNot(contains(OnboardingStepKind.workHome)),
       );
     });
   });

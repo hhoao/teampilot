@@ -3,22 +3,40 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../l10n/l10n_extensions.dart';
+import '../../services/app/connection_mode_service.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'steps/appearance_step.dart';
 import 'steps/cli_step.dart';
 import 'steps/default_preset_step.dart';
 import 'steps/provider_import_step.dart';
-import 'steps/ssh_step.dart';
 
-enum OnboardingStepKind { appearance, ssh, cli, providerImport, defaultPreset }
+enum OnboardingStepKind {
+  appearance,
+  workHome,
+  cli,
+  providerImport,
+  defaultPreset,
+}
 
-List<OnboardingStepKind> onboardingStepsForPlatform() {
-  if (Platform.isAndroid) {
+List<OnboardingStepKind> onboardingStepsForPlatform({
+  bool? isAndroid,
+  bool hasBoundAndroidWorkHome = false,
+}) {
+  final android = isAndroid ?? Platform.isAndroid;
+  if (!android) {
     return const [
       OnboardingStepKind.appearance,
-      OnboardingStepKind.ssh,
+      OnboardingStepKind.cli,
+      OnboardingStepKind.providerImport,
+      OnboardingStepKind.defaultPreset,
+    ];
+  }
+  if (hasBoundAndroidWorkHome) {
+    return const [
+      OnboardingStepKind.appearance,
       OnboardingStepKind.cli,
       OnboardingStepKind.providerImport,
       OnboardingStepKind.defaultPreset,
@@ -26,6 +44,7 @@ List<OnboardingStepKind> onboardingStepsForPlatform() {
   }
   return const [
     OnboardingStepKind.appearance,
+    OnboardingStepKind.workHome,
     OnboardingStepKind.cli,
     OnboardingStepKind.providerImport,
     OnboardingStepKind.defaultPreset,
@@ -58,7 +77,10 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
   @override
   void initState() {
     super.initState();
-    _steps = onboardingStepsForPlatform();
+    _steps = onboardingStepsForPlatform(
+      hasBoundAndroidWorkHome:
+          context.read<ConnectionModeService>().hasBoundAndroidWorkHome,
+    );
     _pageController = PageController();
   }
 
@@ -202,10 +224,7 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
       OnboardingStepKind.appearance => OnboardingAppearanceStep(
         isActive: isActive,
       ),
-      OnboardingStepKind.ssh => OnboardingSshStep(
-        isActive: isActive,
-        onContinue: () => unawaited(_goNext()),
-      ),
+      OnboardingStepKind.workHome => const SizedBox.shrink(),
       OnboardingStepKind.cli => OnboardingCliStep(isActive: isActive),
       OnboardingStepKind.providerImport => OnboardingProviderImportStep(
         isActive: isActive,
