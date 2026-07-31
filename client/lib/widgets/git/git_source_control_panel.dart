@@ -298,6 +298,7 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
         ignoreWhitespace: ignoreWhitespace,
         fullContext: fullContext,
       ),
+      onWorkingTreeWritten: () => _cubit.refresh(),
     );
   }
 

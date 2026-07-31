@@ -332,6 +332,45 @@ void main() {
       expect(cubit.diffCanonicalFor(diffKey), 'a\ny\nc');
     });
 
+    test('openDiff stores onWorkingTreeWritten; apply invokes it', () async {
+      final fs = InMemoryFilesystem();
+      const left = 'a\nb\nc';
+      const right = 'a\nx\nc';
+      fs.files[path] = right;
+      var refreshCount = 0;
+      final cubit = EditorCubit(fs: fs);
+      addTearDown(cubit.close);
+      cubit.openDiff(
+        workspaceId: ws,
+        absolutePath: path,
+        source: WorkbenchDiffSource.unstaged,
+        title: 'a.txt',
+        diffText: 'initial',
+        onWorkingTreeWritten: () async {
+          refreshCount++;
+        },
+      );
+      await cubit.bindWritableDiff(
+        workspaceId: ws,
+        diffKey: diffKey,
+        absolutePath: path,
+        lastLoadedCanonical: right,
+      );
+      final result = computeLineDiff(left, right);
+      final block = result.blocks.single;
+
+      final applied = await cubit.applyDiffHunk(
+        workspaceId: ws,
+        diffKey: diffKey,
+        result: result,
+        block: block,
+        discardDirtyIfNeeded: false,
+      );
+
+      expect(applied, isTrue);
+      expect(refreshCount, 1);
+    });
+
     test('applyDiffHunk on clean diff writes and reloads', () async {
       final fs = InMemoryFilesystem();
       const left = 'a\nb\nc';

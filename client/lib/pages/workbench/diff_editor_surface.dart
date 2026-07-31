@@ -11,7 +11,7 @@ import '../../widgets/diff/diff_viewer.dart';
 import '../../widgets/workbench/file_diff_surface_toggle.dart';
 
 /// Center-pane git diff for one path + staged|unstaged|changes.
-class DiffEditorSurface extends StatelessWidget {
+class DiffEditorSurface extends StatefulWidget {
   const DiffEditorSurface({
     required this.workspaceId,
     required this.diffKey,
@@ -22,9 +22,58 @@ class DiffEditorSurface extends StatelessWidget {
   final String diffKey;
 
   @override
+  State<DiffEditorSurface> createState() => _DiffEditorSurfaceState();
+}
+
+class _DiffEditorSurfaceState extends State<DiffEditorSurface> {
+  String? _boundDiffText;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncWritableBind());
+  }
+
+  @override
+  void didUpdateWidget(DiffEditorSurface oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.diffKey != widget.diffKey ||
+        oldWidget.workspaceId != widget.workspaceId) {
+      _boundDiffText = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _syncWritableBind());
+    }
+  }
+
+  Future<void> _syncWritableBind() async {
+    if (!mounted) return;
+    final editor = context.read<EditorCubit>();
+    final tab = editor.state.bucket(widget.workspaceId).openDiffs[widget.diffKey];
+    if (tab == null || tab.source != WorkbenchDiffSource.unstaged) return;
+
+    final diskText = await editor.readWorkingTreeText(tab.absolutePath);
+    if (!mounted) return;
+
+    await editor.bindWritableDiff(
+      workspaceId: widget.workspaceId,
+      diffKey: widget.diffKey,
+      absolutePath: tab.absolutePath,
+      lastLoadedCanonical: diskText,
+      onWorkingTreeWritten: editor.onWorkingTreeWrittenFor(widget.diffKey),
+    );
+    if (!mounted) return;
+    setState(() => _boundDiffText = tab.diffText);
+  }
+
+  void _scheduleWritableBindIfNeeded(DiffTabState tab) {
+    if (tab.source != WorkbenchDiffSource.unstaged) return;
+    if (tab.diffText == _boundDiffText) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncWritableBind());
+  }
+
+  @override
   Widget build(BuildContext context) {
     final tab = context.select<EditorCubit, DiffTabState?>(
-      (c) => c.state.bucket(workspaceId).openDiffs[diffKey],
+      (c) => c.state.bucket(widget.workspaceId).openDiffs[widget.diffKey],
     );
     final cs = Theme.of(context).colorScheme;
     if (tab == null) {
@@ -34,15 +83,17 @@ class DiffEditorSurface extends StatelessWidget {
       );
     }
 
+    _scheduleWritableBindIfNeeded(tab);
+
     final stagedLabel = tab.source == WorkbenchDiffSource.staged
         ? ' (staged)'
         : '';
-    final reload = context.read<EditorCubit>().diffReloadFor(diffKey);
+    final reload = context.read<EditorCubit>().diffReloadFor(widget.diffKey);
 
     return ColoredBox(
       color: cs.workspaceCardChrome(WorkspacePageChrome.workspace),
       child: DiffViewer.fromUnifiedDiff(
-        key: ValueKey(Object.hash(diffKey, tab.diffText, tab.title)),
+        key: ValueKey(Object.hash(widget.diffKey, tab.diffText, tab.title)),
         title: '${tab.title}$stagedLabel',
         diffText: tab.diffText,
         filePath: tab.absolutePath,
@@ -52,14 +103,14 @@ class DiffEditorSurface extends StatelessWidget {
                 final editor = context.read<EditorCubit>();
                 final next = await reload(ignoreWhitespace, fullContext);
                 if (next == null || !context.mounted) return next;
-                editor.updateDiffText(workspaceId, diffKey, next);
+                editor.updateDiffText(widget.workspaceId, widget.diffKey, next);
                 return next;
               },
         onSwitchToFile: () {
           unawaited(
             switchFileDiffSurface(
               context: context,
-              workspaceId: workspaceId,
+              workspaceId: widget.workspaceId,
               absolutePath: tab.absolutePath,
               target: FileDiffSurfaceMode.file,
             ),

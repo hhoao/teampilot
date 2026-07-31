@@ -331,6 +331,14 @@ class EditorCubit extends Cubit<EditorState> {
 
   DiffReload? diffReloadFor(String diffKey) => _diffReloadByKey[diffKey];
 
+  Future<void> Function()? onWorkingTreeWrittenFor(String diffKey) =>
+      _onWorkingTreeWritten[diffKey];
+
+  Future<String> readWorkingTreeText(String absolutePath) async {
+    final content = await _fs.readString(absolutePath);
+    return content ?? '';
+  }
+
   bool isDiffWritable(String diffKey) => _writableDiffs.containsKey(diffKey);
 
   bool isDiffDirty(String diffKey) => _writableDiffs[diffKey]?.isDirty ?? false;
@@ -344,13 +352,20 @@ class EditorCubit extends Cubit<EditorState> {
     required String lastLoadedCanonical,
     Future<void> Function()? onWorkingTreeWritten,
   }) async {
-    _writableDiffs[diffKey] = _WritableDiffHandle(
-      lastLoadedCanonical: lastLoadedCanonical,
-      canonical: lastLoadedCanonical,
-      absolutePath: absolutePath,
-      diffKey: diffKey,
-    );
-    _onWorkingTreeWritten[diffKey] = onWorkingTreeWritten;
+    final existing = _writableDiffs[diffKey];
+    if (existing != null && existing.isDirty) {
+      existing.lastLoadedCanonical = lastLoadedCanonical;
+    } else {
+      _writableDiffs[diffKey] = _WritableDiffHandle(
+        lastLoadedCanonical: lastLoadedCanonical,
+        canonical: lastLoadedCanonical,
+        absolutePath: absolutePath,
+        diffKey: diffKey,
+      );
+    }
+    if (onWorkingTreeWritten != null) {
+      _onWorkingTreeWritten[diffKey] = onWorkingTreeWritten;
+    }
     _syncDirtyDiffKey(workspaceId, diffKey);
   }
 
@@ -633,6 +648,7 @@ class EditorCubit extends Cubit<EditorState> {
     required String title,
     required String diffText,
     DiffReload? reloadDiff,
+    Future<void> Function()? onWorkingTreeWritten,
   }) {
     final key = WorkbenchTabId.diffKey(absolutePath, source: source);
     final bucket = state.bucket(workspaceId);
@@ -644,6 +660,9 @@ class EditorCubit extends Cubit<EditorState> {
     );
     if (reloadDiff != null) {
       _diffReloadByKey[key] = reloadDiff;
+    }
+    if (onWorkingTreeWritten != null) {
+      _onWorkingTreeWritten[key] = onWorkingTreeWritten;
     }
     final diffs = Map<String, DiffTabState>.from(bucket.openDiffs)..[key] = tab;
     emit(state.withBucket(workspaceId, bucket.copyWith(openDiffs: diffs)));
