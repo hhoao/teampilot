@@ -168,7 +168,15 @@ class ManifestFilesystem implements Filesystem {
 
   @override
   Future<List<FsDirEntry>> listDir(String path) async {
-    if (_overlayDirs.contains(path)) return const [];
+    path = _normalize(path);
+    // ensureDir walks parents into _overlayDirs (e.g. $HOME when staging a
+    // session tree under it). Do not hide an already-real directory — that
+    // breaks Cursor home passthrough listDir($HOME). Only staged dirs that
+    // do not exist on the read delegate stay empty.
+    if (_overlayDirs.contains(path)) {
+      final real = await readDelegate.stat(path);
+      if (!real.exists) return const [];
+    }
     return readDelegate.listDir(path);
   }
 

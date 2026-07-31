@@ -361,6 +361,82 @@ class RuntimeLayout {
     );
   }
 
+  /// Links `session …/codex/.tmp/plugins` → `cli-defaults/codex/.tmp/plugins`.
+  ///
+  /// When the shared tree is missing/empty and the session still has a real
+  /// plugins dir, promotes that dir into the shared root first (one-time
+  /// migration), then symlinks. Codex writes through the link into the shared
+  /// cache.
+  Future<void> ensureSessionInheritsCodexTmpPlugins(
+    String workspaceId,
+    String sessionId, {
+    String? memberId,
+  }) async {
+    final trimmedWorkspace = workspaceId.trim();
+    final trimmedSession = sessionId.trim();
+    if (trimmedWorkspace.isEmpty || trimmedSession.isEmpty) return;
+
+    await _workspaceInheritLocks.synchronized(
+      _workspaceInheritLockKey(trimmedWorkspace, 'codex'),
+      () async {
+        await ensureAppToolLayout('codex');
+        final appTmp = _pathContext.join(appToolRoot('codex'), '.tmp');
+        final sharedPlugins = _pathContext.join(appTmp, 'plugins');
+        final sessionRoot = sessionRuntimeToolDir(
+          trimmedWorkspace,
+          trimmedSession,
+          'codex',
+          memberId: memberId,
+        );
+        final sessionTmp = _pathContext.join(sessionRoot, '.tmp');
+        final sessionPlugins = _pathContext.join(sessionTmp, 'plugins');
+
+        await _fs.ensureDir(appTmp);
+        await _maybePromoteCodexPluginsToShared(
+          sharedPlugins: sharedPlugins,
+          sessionPlugins: sessionPlugins,
+        );
+        await _fs.ensureDir(sessionTmp);
+        await _ensureInheritedChild(
+          childName: 'plugins',
+          parentToolRoot: appTmp,
+          ownToolRoot: sessionTmp,
+        );
+      },
+    );
+  }
+
+  Future<void> _maybePromoteCodexPluginsToShared({
+    required String sharedPlugins,
+    required String sessionPlugins,
+  }) async {
+    final sharedStat = await _fs.stat(sharedPlugins);
+    final sessionStat = await _fs.stat(sessionPlugins);
+    final sessionIsRealDir =
+        sessionStat.exists && sessionStat.isDirectory && !sessionStat.isSymlink;
+    if (!sessionIsRealDir) {
+      if (!sharedStat.exists) {
+        await _fs.ensureDir(sharedPlugins);
+      }
+      return;
+    }
+
+    final sharedMissing = !sharedStat.exists;
+    final sharedEmpty =
+        sharedStat.exists &&
+        sharedStat.isDirectory &&
+        !sharedStat.isSymlink &&
+        (await _fs.listDir(sharedPlugins)).isEmpty;
+    if (sharedMissing || sharedEmpty) {
+      if (sharedStat.exists) {
+        await _fs.removeRecursive(sharedPlugins);
+      }
+      await _fs.ensureDir(_pathContext.dirname(sharedPlugins));
+      await _fs.rename(sessionPlugins, sharedPlugins);
+      return;
+    }
+  }
+
   Future<void> _ensureInheritedFile({
     required String fileName,
     required String parentToolRoot,

@@ -54,6 +54,15 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     final warnings = <String>[];
 
     await paths.fs.ensureDir(codexHome);
+    try {
+      await paths.layout.ensureSessionInheritsCodexTmpPlugins(
+        ctx.scope.workspaceId,
+        ctx.scope.sessionId,
+        memberId: ctx.scope.memberId,
+      );
+    } on Object catch (e) {
+      warnings.add('codex_tmp_plugins: $e');
+    }
     await _provisionWorkspaceTrust(
       paths: paths,
       workspaceId: ctx.scope.workspaceId,

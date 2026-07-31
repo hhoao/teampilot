@@ -81,7 +81,7 @@ double clampTypographyCustomMultiplier(double value) =>
 /// Mobile `standard` text baseline multiplier (× OS accessibility text scale).
 /// Logical pixels already absorb dpr; this only lifts default font size for
 /// touch readability relative to the desktop design sizes.
-const double kMobileTextScaleBaseline = 1.3;
+const double kMobileTextScaleBaseline = 1;
 
 /// `standard` text-size baseline.
 ///

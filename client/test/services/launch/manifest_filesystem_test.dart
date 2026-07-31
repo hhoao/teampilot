@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/launch/launch_manifest.dart';
 import 'package:teampilot/services/launch/manifest_executor.dart';
 import 'package:teampilot/services/launch/manifest_filesystem.dart';
+import 'package:teampilot/services/provider/cursor/cursor_member_home_passthrough.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -50,6 +51,83 @@ void main() {
         expect(home.files.containsKey(to), isFalse);
         expect(manifest.files[to], '{"ok":true}');
         expect(manifest.entries.whereType<ManifestRemoveRecursive>().length, 1);
+      },
+    );
+
+    test(
+      'listDir still sees real home after ensureDir under that home',
+      () async {
+        final disk = InMemoryFilesystem();
+        const realHome = '/home/user';
+        const pubCache = '$realHome/.pub-cache';
+        const memberHome =
+            '$realHome/.local/share/com.hhoa.teampilot/workspace/'
+            'ws/sessions/s1/runtime/cursor/home';
+        await disk.ensureDir(pubCache);
+        await disk.ensureDir(realHome);
+
+        final staging = ManifestFilesystem(
+          manifest: LaunchManifest(),
+          readDelegate: disk,
+        );
+        await staging.ensureDir(memberHome);
+
+        final names = (await staging.listDir(realHome)).map((e) => e.name);
+        expect(names, contains('.pub-cache'));
+      },
+    );
+
+    test(
+      'listDir stays empty for brand-new overlay-only dirs',
+      () async {
+        final disk = InMemoryFilesystem();
+        const fresh = '/teampilot/workspace/ws/sessions/s1/runtime/cursor/home';
+
+        final staging = ManifestFilesystem(
+          manifest: LaunchManifest(),
+          readDelegate: disk,
+        );
+        await staging.ensureDir(fresh);
+
+        expect(await staging.listDir(fresh), isEmpty);
+      },
+    );
+
+    test(
+      'cursor home passthrough stages symlinks after ensureDir under real home',
+      () async {
+        final disk = InMemoryFilesystem();
+        const realHome = '/home/user';
+        const pubCache = '$realHome/.pub-cache';
+        const memberHome =
+            '$realHome/.local/share/com.hhoa.teampilot/workspace/'
+            'ws/sessions/s1/runtime/cursor/home';
+        await disk.ensureDir(pubCache);
+
+        final manifest = LaunchManifest();
+        final staging = ManifestFilesystem(
+          manifest: manifest,
+          readDelegate: disk,
+        );
+        await CursorMemberHomePassthrough(fs: staging).mirror(
+          realHomeRoot: realHome,
+          memberHomeRoot: memberHome,
+        );
+
+        expect(
+          manifest.entries.whereType<ManifestSymlink>().map((e) => e.linkPath),
+          contains('$memberHome/.pub-cache'),
+        );
+
+        await const ManifestExecutor().flush(
+          manifest: manifest,
+          targetFs: disk,
+          sourceFs: disk,
+        );
+        expect(
+          await disk.readSymlinkTarget('$memberHome/.pub-cache'),
+          pubCache,
+        );
       },
     );
   });
