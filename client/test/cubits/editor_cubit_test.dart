@@ -5,6 +5,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
+import 'package:teampilot/services/diff/diff_engine.dart';
+import 'package:teampilot/services/diff/diff_model.dart';
 import 'package:teampilot/services/editor/editor_messages.dart';
 import 'package:teampilot/services/editor/file_editor_theme.dart';
 import 'package:teampilot/services/io/filesystem.dart';
@@ -279,6 +281,478 @@ void main() {
     expect(cubit.bytesFor(ws, '/repo/dot.png'), isNull);
   });
 
+  group('writable unstaged diff', () {
+    const path = '/repo/a.txt';
+    final diffKey = WorkbenchTabId.diffKey(
+      path,
+      source: WorkbenchDiffSource.unstaged,
+    );
+
+    Future<EditorCubit> cubitWithDiff({
+      required InMemoryFilesystem fs,
+      required String left,
+      required String right,
+      DiffReload? reloadDiff,
+    }) async {
+      fs.files[path] = right;
+      final cubit = EditorCubit(fs: fs);
+      addTearDown(cubit.close);
+      cubit.openDiff(
+        workspaceId: ws,
+        absolutePath: path,
+        source: WorkbenchDiffSource.unstaged,
+        title: 'a.txt',
+        diffText: 'initial',
+        reloadDiff: reloadDiff,
+      );
+      await cubit.bindWritableDiff(
+        workspaceId: ws,
+        diffKey: diffKey,
+        absolutePath: path,
+        lastLoadedCanonical: right,
+      );
+      return cubit;
+    }
+
+    test('bind and updateDiffCanonical marks diff dirty', () async {
+      final fs = InMemoryFilesystem();
+      final cubit = await cubitWithDiff(
+        fs: fs,
+        left: 'a\nb\nc',
+        right: 'a\nx\nc',
+      );
+
+      expect(cubit.isDiffWritable(diffKey), isTrue);
+      expect(cubit.isDiffDirty(diffKey), isFalse);
+      expect(cubit.diffCanonicalFor(diffKey), 'a\nx\nc');
+
+      cubit.updateDiffCanonical(diffKey, 'a\ny\nc');
+      expect(cubit.isDiffDirty(diffKey), isTrue);
+      expect(cubit.state.bucket(ws).dirtyDiffKeys, contains(diffKey));
+      expect(cubit.diffCanonicalFor(diffKey), 'a\ny\nc');
+    });
+
+    test('openDiff stores onWorkingTreeWritten; apply invokes it', () async {
+      final fs = InMemoryFilesystem();
+      const left = 'a\nb\nc';
+      const right = 'a\nx\nc';
+      fs.files[path] = right;
+      var refreshCount = 0;
+      final cubit = EditorCubit(fs: fs);
+      addTearDown(cubit.close);
+      cubit.openDiff(
+        workspaceId: ws,
+        absolutePath: path,
+        source: WorkbenchDiffSource.unstaged,
+        title: 'a.txt',
+        diffText: 'initial',
+        onWorkingTreeWritten: () async {
+          refreshCount++;
+        },
+      );
+      await cubit.bindWritableDiff(
+        workspaceId: ws,
+        diffKey: diffKey,
+        absolutePath: path,
+        lastLoadedCanonical: right,
+      );
+      final result = computeLineDiff(left, right);
+      final block = result.blocks.single;
+
+      final applied = await cubit.applyDiffHunk(
+        workspaceId: ws,
+        diffKey: diffKey,
+        result: result,
+        block: block,
+        discardDirtyIfNeeded: false,
+      );
+
+      expect(applied, isTrue);
+      expect(refreshCount, 1);
+    });
+
+    test('applyDiffHunk on clean diff writes and reloads', () async {
+      final fs = InMemoryFilesystem();
+      const left = 'a\nb\nc';
+      const right = 'a\nx\nc';
+      var reloadCount = 0;
+      final cubit = await cubitWithDiff(
+        fs: fs,
+        left: left,
+        right: right,
+        reloadDiff: (_, __) async {
+          reloadCount++;
+          return 'reloaded diff';
+        },
+      );
+      final result = computeLineDiff(left, right);
+      final block = result.blocks.single;
+
+      final applied = await cubit.applyDiffHunk(
+        workspaceId: ws,
+        diffKey: diffKey,
+        result: result,
+        block: block,
+        discardDirtyIfNeeded: false,
+      );
+
+      expect(applied, isTrue);
+      expect(fs.files[path], left);
+      expect(cubit.isDiffDirty(diffKey), isFalse);
+      expect(cubit.diffCanonicalFor(diffKey), left);
+      expect(reloadCount, 1);
+      expect(
+        cubit.state.bucket(ws).openDiffs[diffKey]?.diffText,
+        'reloaded diff',
+      );
+    });
+
+    test('applyDiffHunk fails when dirty without discard', () async {
+      final fs = InMemoryFilesystem();
+      const left = 'a\nb\nc';
+      const right = 'a\nx\nc';
+      final cubit = await cubitWithDiff(fs: fs, left: left, right: right);
+      final result = computeLineDiff(left, right);
+      final block = result.blocks.single;
+
+      cubit.updateDiffCanonical(diffKey, 'a\ny\nc');
+      final applied = await cubit.applyDiffHunk(
+        workspaceId: ws,
+        diffKey: diffKey,
+        result: result,
+        block: block,
+        discardDirtyIfNeeded: false,
+      );
+
+      expect(applied, isFalse);
+      expect(fs.files[path], right);
+      expect(cubit.isDiffDirty(diffKey), isTrue);
+    });
+
+    test('applyDiffHunk with discard restores then applies', () async {
+      final fs = InMemoryFilesystem();
+      const left = 'a\nb\nc';
+      const right = 'a\nx\nc';
+      final cubit = await cubitWithDiff(fs: fs, left: left, right: right);
+      final result = computeLineDiff(left, right);
+      final block = result.blocks.single;
+
+      cubit.updateDiffCanonical(diffKey, 'a\ny\nc');
+      final applied = await cubit.applyDiffHunk(
+        workspaceId: ws,
+        diffKey: diffKey,
+        result: result,
+        block: block,
+        discardDirtyIfNeeded: true,
+      );
+
+      expect(applied, isTrue);
+      expect(fs.files[path], left);
+      expect(cubit.isDiffDirty(diffKey), isFalse);
+      expect(cubit.diffCanonicalFor(diffKey), left);
+    });
+
+    test(
+      'apply with discard restores canonical before write even when write fails',
+      () async {
+        final fs = _FailingWriteFilesystem();
+        const left = 'a\nb\nc';
+        const right = 'a\nx\nc';
+        final cubit = await cubitWithDiff(fs: fs, left: left, right: right);
+        final result = computeLineDiff(left, right);
+        final block = result.blocks.single;
+
+        cubit.updateDiffCanonical(diffKey, 'a\ny\nc');
+        final applied = await cubit.applyDiffHunk(
+          workspaceId: ws,
+          diffKey: diffKey,
+          result: result,
+          block: block,
+          discardDirtyIfNeeded: true,
+        );
+
+        expect(applied, isFalse);
+        expect(fs.files[path], right);
+        expect(cubit.isDiffDirty(diffKey), isFalse);
+        expect(cubit.diffCanonicalFor(diffKey), right);
+        expect(cubit.state.bucket(ws).dirtyDiffKeys, isNot(contains(diffKey)));
+        expect(
+          cubit.state.snackbarMessage,
+          startsWith('diffApplyFailed:'),
+        );
+      },
+    );
+
+    test('saveDiffWorkingTree writes dirty canonical', () async {
+      final fs = InMemoryFilesystem();
+      const right = 'a\nx\nc';
+      var reloadCount = 0;
+      final cubit = await cubitWithDiff(
+        fs: fs,
+        left: 'a\nb\nc',
+        right: right,
+        reloadDiff: (_, __) async {
+          reloadCount++;
+          return 'saved reload';
+        },
+      );
+
+      cubit.updateDiffCanonical(diffKey, 'a\nsaved\nc');
+      final saved = await cubit.saveDiffWorkingTree(ws, diffKey);
+
+      expect(saved, isTrue);
+      expect(fs.files[path], 'a\nsaved\nc');
+      expect(cubit.isDiffDirty(diffKey), isFalse);
+      expect(reloadCount, 1);
+      expect(
+        cubit.state.bucket(ws).openDiffs[diffKey]?.diffText,
+        'saved reload',
+      );
+    });
+
+    test('saveDiffWorkingTree write failure preserves dirty canonical', () async {
+      final fs = _FailingWriteFilesystem();
+      const right = 'a\nx\nc';
+      final cubit = await cubitWithDiff(
+        fs: fs,
+        left: 'a\nb\nc',
+        right: right,
+      );
+
+      cubit.updateDiffCanonical(diffKey, 'a\nsaved\nc');
+      final saved = await cubit.saveDiffWorkingTree(ws, diffKey);
+
+      expect(saved, isFalse);
+      expect(fs.files[path], right);
+      expect(cubit.isDiffDirty(diffKey), isTrue);
+      expect(cubit.diffCanonicalFor(diffKey), 'a\nsaved\nc');
+      expect(
+        cubit.state.snackbarMessage,
+        startsWith('diffSaveFailed:'),
+      );
+    });
+
+    test('retryDiffReload after failed reload succeeds', () async {
+      final fs = InMemoryFilesystem();
+      const left = 'a\nb\nc';
+      const right = 'a\nx\nc';
+      var reloadAttempts = 0;
+      final cubit = await cubitWithDiff(
+        fs: fs,
+        left: left,
+        right: right,
+        reloadDiff: (_, __) async {
+          reloadAttempts++;
+          return reloadAttempts == 1 ? null : 'retry ok';
+        },
+      );
+      final result = computeLineDiff(left, right);
+
+      final applied = await cubit.applyDiffHunk(
+        workspaceId: ws,
+        diffKey: diffKey,
+        result: result,
+        block: result.blocks.single,
+        discardDirtyIfNeeded: false,
+      );
+
+      expect(applied, isTrue);
+      expect(fs.files[path], left);
+      expect(cubit.state.snackbarMessage, 'diffReloadAfterSaveFailed');
+      expect(
+        cubit.state.bucket(ws).openDiffs[diffKey]?.diffText,
+        'initial',
+      );
+
+      final retried = await cubit.retryDiffReload(ws, diffKey);
+      expect(retried, isTrue);
+      expect(
+        cubit.state.bucket(ws).openDiffs[diffKey]?.diffText,
+        'retry ok',
+      );
+    });
+
+    test('closeDiff clears writable handle', () async {
+      final fs = InMemoryFilesystem();
+      final cubit = await cubitWithDiff(
+        fs: fs,
+        left: 'a',
+        right: 'b',
+      );
+      cubit.updateDiffCanonical(diffKey, 'dirty');
+      cubit.closeDiff(ws, diffKey);
+
+      expect(cubit.isDiffWritable(diffKey), isFalse);
+      expect(cubit.isDiffDirty(diffKey), isFalse);
+      expect(cubit.state.bucket(ws).dirtyDiffKeys, isEmpty);
+    });
+  });
+
+  group('file and diff buffer sync', () {
+    const path = '/repo/a.txt';
+    final diffKey = WorkbenchTabId.diffKey(
+      path,
+      source: WorkbenchDiffSource.unstaged,
+    );
+
+    Future<EditorCubit> cubitWithOpenFileAndDiff({
+      required InMemoryFilesystem fs,
+      required String fileText,
+      String? diffCanonical,
+      DiffReload? reloadDiff,
+    }) async {
+      fs.files[path] = fileText;
+      final cubit = EditorCubit(fs: fs);
+      addTearDown(cubit.close);
+      await cubit.openFile(ws, path);
+      cubit.openDiff(
+        workspaceId: ws,
+        absolutePath: path,
+        source: WorkbenchDiffSource.unstaged,
+        title: 'a.txt',
+        diffText: 'initial',
+        reloadDiff: reloadDiff,
+      );
+      await cubit.bindWritableDiff(
+        workspaceId: ws,
+        diffKey: diffKey,
+        absolutePath: path,
+        lastLoadedCanonical: diffCanonical ?? fileText,
+      );
+      return cubit;
+    }
+
+    test('diff apply syncs open file and clears file dirty with snackbar',
+        () async {
+      final fs = InMemoryFilesystem();
+      const disk = 'a\nx\nc';
+      const left = 'a\nb\nc';
+      final cubit = await cubitWithOpenFileAndDiff(
+        fs: fs,
+        fileText: disk,
+        diffCanonical: disk,
+      );
+
+      cubit.controllerFor(ws, path)!.text = 'stale file edit';
+      await pumpEventQueue();
+      expect(cubit.state.bucket(ws).isDirty(path), isTrue);
+
+      final result = computeLineDiff(left, disk);
+      final applied = await cubit.applyDiffHunk(
+        workspaceId: ws,
+        diffKey: diffKey,
+        result: result,
+        block: result.blocks.single,
+        discardDirtyIfNeeded: false,
+      );
+
+      expect(applied, isTrue);
+      expect(fs.files[path], left);
+      expect(cubit.controllerFor(ws, path)?.text, left);
+      expect(cubit.state.bucket(ws).isDirty(path), isFalse);
+      expect(cubit.state.snackbarMessage, 'diffFileReloadedAfterDiffWrite');
+    });
+
+    test('diff save syncs open file and clears file dirty with snackbar',
+        () async {
+      final fs = InMemoryFilesystem();
+      const disk = 'a\nx\nc';
+      final cubit = await cubitWithOpenFileAndDiff(
+        fs: fs,
+        fileText: disk,
+        diffCanonical: disk,
+      );
+
+      cubit.controllerFor(ws, path)!.text = 'stale file edit';
+      await pumpEventQueue();
+      cubit.updateDiffCanonical(diffKey, 'a\nsaved\nc');
+
+      final saved = await cubit.saveDiffWorkingTree(ws, diffKey);
+
+      expect(saved, isTrue);
+      expect(fs.files[path], 'a\nsaved\nc');
+      expect(cubit.controllerFor(ws, path)?.text, 'a\nsaved\nc');
+      expect(cubit.state.bucket(ws).isDirty(path), isFalse);
+      expect(cubit.state.snackbarMessage, 'diffFileReloadedAfterDiffWrite');
+    });
+
+    test('saveFile returns false when writable diff is dirty', () async {
+      final fs = InMemoryFilesystem();
+      final cubit = await cubitWithOpenFileAndDiff(
+        fs: fs,
+        fileText: 'hello',
+      );
+
+      cubit.updateDiffCanonical(diffKey, 'dirty diff');
+      cubit.controllerFor(ws, path)!.text = 'edited file';
+      await pumpEventQueue();
+
+      expect(await cubit.saveFile(ws, path), isFalse);
+      expect(fs.files[path], 'hello');
+      expect(cubit.isDiffDirty(diffKey), isTrue);
+      expect(cubit.state.bucket(ws).isDirty(path), isTrue);
+    });
+
+    test('saveFile with discardDiffDirty reloads diff from saved file text',
+        () async {
+      final fs = InMemoryFilesystem();
+      var reloadCount = 0;
+      final cubit = await cubitWithOpenFileAndDiff(
+        fs: fs,
+        fileText: 'hello',
+        reloadDiff: (_, __) async {
+          reloadCount++;
+          return 'reloaded after file save';
+        },
+      );
+
+      cubit.updateDiffCanonical(diffKey, 'dirty diff');
+      cubit.controllerFor(ws, path)!.text = 'saved from file';
+      await pumpEventQueue();
+
+      final saved = await cubit.saveFile(ws, path, discardDiffDirty: true);
+
+      expect(saved, isTrue);
+      expect(fs.files[path], 'saved from file');
+      expect(reloadCount, 1);
+      expect(cubit.isDiffDirty(diffKey), isFalse);
+      expect(cubit.diffCanonicalFor(diffKey), 'saved from file');
+      expect(
+        cubit.state.bucket(ws).openDiffs[diffKey]?.diffText,
+        'reloaded after file save',
+      );
+    });
+
+    test('saveFile reloads clean diff after file save', () async {
+      final fs = InMemoryFilesystem();
+      var reloadCount = 0;
+      final cubit = await cubitWithOpenFileAndDiff(
+        fs: fs,
+        fileText: 'hello',
+        reloadDiff: (_, __) async {
+          reloadCount++;
+          return 'reloaded after clean file save';
+        },
+      );
+
+      cubit.controllerFor(ws, path)!.text = 'saved from file';
+      await pumpEventQueue();
+      expect(cubit.isDiffDirty(diffKey), isFalse);
+
+      final saved = await cubit.saveFile(ws, path);
+
+      expect(saved, isTrue);
+      expect(fs.files[path], 'saved from file');
+      expect(reloadCount, 1);
+      expect(cubit.isDiffDirty(diffKey), isFalse);
+      expect(cubit.diffCanonicalFor(diffKey), 'saved from file');
+      expect(
+        cubit.state.bucket(ws).openDiffs[diffKey]?.diffText,
+        'reloaded after clean file save',
+      );
+    });
+  });
+
   test('openFile rejects oversized images', () async {
     final fs = InMemoryFilesystem();
     fs.byteFiles['/repo/big.png'] = List<int>.filled(kEditorMaxImageBytes + 1, 0);
@@ -292,6 +766,13 @@ void main() {
       EditorMessage.imageTooLarge,
     );
   });
+}
+
+class _FailingWriteFilesystem extends InMemoryFilesystem {
+  @override
+  Future<void> atomicWrite(String path, String content) async {
+    throw Exception('disk full');
+  }
 }
 
 class _GatedFilesystem extends InMemoryFilesystem {

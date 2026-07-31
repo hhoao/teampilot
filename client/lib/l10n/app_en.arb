@@ -2408,6 +2408,30 @@
       "total": { "type": "int" }
     }
   },
+  "diffApplyHunkTooltip": "Apply change to working tree",
+  "diffDiscardEditsApplyTitle": "Discard edits?",
+  "diffDiscardEditsApplyBody": "Applying this change discards unsaved edits in the diff.",
+  "diffApplyFailed": "Could not apply change: {error}",
+  "@diffApplyFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "diffSaveFailed": "Could not save: {error}",
+  "@diffSaveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "diffReloadAfterSaveFailed": "Saved, but refreshing the diff failed.",
+  "diffFileReloadedAfterDiffWrite": "File tab reloaded from disk.",
+  "diffDiscardDiffBeforeFileSaveTitle": "Discard diff edits?",
+  "diffDiscardDiffBeforeFileSaveBody": "Saving the file will discard unsaved edits in the diff view.",
+  "diffApplyDisabledNoPath": "Cannot apply: file path unavailable",
   "aiFeatures": "AI Features",
   "aiFeaturesPageSubtitle": "Choose which CLI provider, model, and effort each AI feature uses.",
   "aiFeatureCommitMessageTitle": "Commit message generation",

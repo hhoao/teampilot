@@ -88,6 +88,7 @@ class WorkbenchEditorOpener {
     required String title,
     required String diffText,
     DiffReload? reloadDiff,
+    Future<void> Function()? onWorkingTreeWritten,
     bool preview = true,
   }) {
     _editor.openDiff(
@@ -97,6 +98,7 @@ class WorkbenchEditorOpener {
       title: title,
       diffText: diffText,
       reloadDiff: reloadDiff,
+      onWorkingTreeWritten: onWorkingTreeWritten,
     );
     final tab = WorkbenchTabId.diff(absolutePath, source: source);
     if (_readFilePreviewInFloating()) {

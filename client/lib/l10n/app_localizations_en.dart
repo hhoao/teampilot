@@ -5316,6 +5316,43 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get diffApplyHunkTooltip => 'Apply change to working tree';
+
+  @override
+  String get diffDiscardEditsApplyTitle => 'Discard edits?';
+
+  @override
+  String get diffDiscardEditsApplyBody =>
+      'Applying this change discards unsaved edits in the diff.';
+
+  @override
+  String diffApplyFailed(String error) {
+    return 'Could not apply change: $error';
+  }
+
+  @override
+  String diffSaveFailed(String error) {
+    return 'Could not save: $error';
+  }
+
+  @override
+  String get diffReloadAfterSaveFailed =>
+      'Saved, but refreshing the diff failed.';
+
+  @override
+  String get diffFileReloadedAfterDiffWrite => 'File tab reloaded from disk.';
+
+  @override
+  String get diffDiscardDiffBeforeFileSaveTitle => 'Discard diff edits?';
+
+  @override
+  String get diffDiscardDiffBeforeFileSaveBody =>
+      'Saving the file will discard unsaved edits in the diff view.';
+
+  @override
+  String get diffApplyDisabledNoPath => 'Cannot apply: file path unavailable';
+
+  @override
   String get aiFeatures => 'AI Features';
 
   @override

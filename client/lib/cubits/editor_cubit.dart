@@ -7,6 +7,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
 
+import '../services/diff/diff_hunk_applier.dart';
+import '../services/diff/diff_model.dart';
 import '../services/editor/code_line_selection_for_lines.dart';
 import '../services/editor/editor_messages.dart';
 import '../services/editor/file_editor_theme.dart';
@@ -55,6 +57,7 @@ class WorkspaceEditorBucket extends Equatable {
     this.openFilePaths = const [],
     this.openDiffs = const {},
     this.dirtyPaths = const {},
+    this.dirtyDiffKeys = const {},
     this.loadingPaths = const {},
     this.errorByPath = const {},
     this.readOnlyPaths = const {},
@@ -63,6 +66,7 @@ class WorkspaceEditorBucket extends Equatable {
   final List<String> openFilePaths;
   final Map<String, DiffTabState> openDiffs;
   final Set<String> dirtyPaths;
+  final Set<String> dirtyDiffKeys;
   final Set<String> loadingPaths;
   final Map<String, String> errorByPath;
   final Set<String> readOnlyPaths;
@@ -76,6 +80,7 @@ class WorkspaceEditorBucket extends Equatable {
     List<String>? openFilePaths,
     Map<String, DiffTabState>? openDiffs,
     Set<String>? dirtyPaths,
+    Set<String>? dirtyDiffKeys,
     Set<String>? loadingPaths,
     Map<String, String>? errorByPath,
     Set<String>? readOnlyPaths,
@@ -84,6 +89,7 @@ class WorkspaceEditorBucket extends Equatable {
       openFilePaths: openFilePaths ?? this.openFilePaths,
       openDiffs: openDiffs ?? this.openDiffs,
       dirtyPaths: dirtyPaths ?? this.dirtyPaths,
+      dirtyDiffKeys: dirtyDiffKeys ?? this.dirtyDiffKeys,
       loadingPaths: loadingPaths ?? this.loadingPaths,
       errorByPath: errorByPath ?? this.errorByPath,
       readOnlyPaths: readOnlyPaths ?? this.readOnlyPaths,
@@ -95,6 +101,7 @@ class WorkspaceEditorBucket extends Equatable {
     openFilePaths,
     openDiffs,
     dirtyPaths,
+    dirtyDiffKeys,
     loadingPaths,
     errorByPath,
     readOnlyPaths,
@@ -228,6 +235,22 @@ class _OpenFileHandle {
 typedef DiffReload =
     Future<String?> Function(bool ignoreWhitespace, bool fullContext);
 
+class _WritableDiffHandle {
+  _WritableDiffHandle({
+    required this.lastLoadedCanonical,
+    required this.canonical,
+    required this.absolutePath,
+    required this.diffKey,
+  });
+
+  String lastLoadedCanonical;
+  String canonical;
+  final String absolutePath;
+  final String diffKey;
+
+  bool get isDirty => canonical != lastLoadedCanonical;
+}
+
 class EditorCubit extends Cubit<EditorState> {
   EditorCubit({
     Filesystem? fs,
@@ -250,6 +273,8 @@ class EditorCubit extends Cubit<EditorState> {
   final Map<String, _OpenFileHandle> _handles = {};
   final Map<String, Uint8List> _imageBytes = {};
   final Map<String, DiffReload> _diffReloadByKey = {};
+  final Map<String, _WritableDiffHandle> _writableDiffs = {};
+  final Map<String, Future<void> Function()?> _onWorkingTreeWritten = {};
 
   TsWorkerPool get _pool => _injectedPool ?? EditorPlatform.workerPool;
   LanguageRegistry get _registry => _injectedRegistry ?? EditorPlatform.registry;
@@ -305,6 +330,122 @@ class EditorCubit extends Cubit<EditorState> {
       state.bucket(workspaceId).readOnlyPaths.contains(path);
 
   DiffReload? diffReloadFor(String diffKey) => _diffReloadByKey[diffKey];
+
+  Future<void> Function()? onWorkingTreeWrittenFor(String diffKey) =>
+      _onWorkingTreeWritten[diffKey];
+
+  Future<String> readWorkingTreeText(String absolutePath) async {
+    final content = await _fs.readString(absolutePath);
+    return content ?? '';
+  }
+
+  bool isDiffWritable(String diffKey) => _writableDiffs.containsKey(diffKey);
+
+  bool isDiffDirty(String diffKey) => _writableDiffs[diffKey]?.isDirty ?? false;
+
+  String? diffCanonicalFor(String diffKey) => _writableDiffs[diffKey]?.canonical;
+
+  Future<void> bindWritableDiff({
+    required String workspaceId,
+    required String diffKey,
+    required String absolutePath,
+    required String lastLoadedCanonical,
+    Future<void> Function()? onWorkingTreeWritten,
+  }) async {
+    final existing = _writableDiffs[diffKey];
+    if (existing != null && existing.isDirty) {
+      existing.lastLoadedCanonical = lastLoadedCanonical;
+    } else {
+      _writableDiffs[diffKey] = _WritableDiffHandle(
+        lastLoadedCanonical: lastLoadedCanonical,
+        canonical: lastLoadedCanonical,
+        absolutePath: absolutePath,
+        diffKey: diffKey,
+      );
+    }
+    if (onWorkingTreeWritten != null) {
+      _onWorkingTreeWritten[diffKey] = onWorkingTreeWritten;
+    }
+    _syncDirtyDiffKey(workspaceId, diffKey);
+  }
+
+  void updateDiffCanonical(String diffKey, String canonical) {
+    final handle = _writableDiffs[diffKey];
+    if (handle == null) return;
+    handle.canonical = canonical;
+    for (final workspaceId in state.byWorkspace.keys) {
+      if (state.bucket(workspaceId).openDiffs.containsKey(diffKey)) {
+        _syncDirtyDiffKey(workspaceId, diffKey);
+        return;
+      }
+    }
+  }
+
+  Future<bool> applyDiffHunk({
+    required String workspaceId,
+    required String diffKey,
+    required DiffResult result,
+    required DiffBlock block,
+    required bool discardDirtyIfNeeded,
+  }) async {
+    final handle = _writableDiffs[diffKey];
+    if (handle == null) return false;
+    if (handle.isDirty && !discardDirtyIfNeeded) return false;
+    if (handle.isDirty && discardDirtyIfNeeded) {
+      handle.canonical = handle.lastLoadedCanonical;
+      _syncDirtyDiffKey(workspaceId, diffKey);
+    }
+    final next = DiffHunkApplier.applyLeftToRight(
+      result: result,
+      block: block,
+      rightFileText: handle.canonical,
+    );
+    return _commitWorkingTreeWrite(
+      workspaceId: workspaceId,
+      diffKey: diffKey,
+      nextCanonical: next,
+      writeFailureMessagePrefix: 'diffApplyFailed',
+    );
+  }
+
+  Future<bool> saveDiffWorkingTree(String workspaceId, String diffKey) async {
+    final handle = _writableDiffs[diffKey];
+    if (handle == null) return false;
+    return _commitWorkingTreeWrite(
+      workspaceId: workspaceId,
+      diffKey: diffKey,
+      nextCanonical: handle.canonical,
+      writeFailureMessagePrefix: 'diffSaveFailed',
+    );
+  }
+
+  void clearWritableDiff(String diffKey) {
+    final workspaceId = _workspaceIdForDiffKey(diffKey);
+    _writableDiffs.remove(diffKey);
+    _onWorkingTreeWritten.remove(diffKey);
+    if (workspaceId != null) {
+      _syncDirtyDiffKey(workspaceId, diffKey);
+    }
+  }
+
+  Future<bool> retryDiffReload(String workspaceId, String diffKey) async {
+    final reloaded = await _reloadDiffAfterWrite(workspaceId, diffKey);
+    if (reloaded) {
+      emit(state.copyWith(clearSnackbar: true));
+    }
+    return reloaded;
+  }
+
+  bool anyWritableDiffDirtyFor(String workspaceId, String absolutePath) {
+    final bucket = state.bucket(workspaceId);
+    for (final diffKey in bucket.openDiffs.keys) {
+      final handle = _writableDiffs[diffKey];
+      if (handle == null) continue;
+      if (handle.absolutePath != absolutePath) continue;
+      if (handle.isDirty) return true;
+    }
+    return false;
+  }
 
   void clearSnackbarMessage() {
     if (state.snackbarMessage == null) return;
@@ -508,6 +649,7 @@ class EditorCubit extends Cubit<EditorState> {
     required String title,
     required String diffText,
     DiffReload? reloadDiff,
+    Future<void> Function()? onWorkingTreeWritten,
   }) {
     final key = WorkbenchTabId.diffKey(absolutePath, source: source);
     final bucket = state.bucket(workspaceId);
@@ -519,6 +661,9 @@ class EditorCubit extends Cubit<EditorState> {
     );
     if (reloadDiff != null) {
       _diffReloadByKey[key] = reloadDiff;
+    }
+    if (onWorkingTreeWritten != null) {
+      _onWorkingTreeWritten[key] = onWorkingTreeWritten;
     }
     final diffs = Map<String, DiffTabState>.from(bucket.openDiffs)..[key] = tab;
     emit(state.withBucket(workspaceId, bucket.copyWith(openDiffs: diffs)));
@@ -536,10 +681,90 @@ class EditorCubit extends Cubit<EditorState> {
   void closeDiff(String workspaceId, String diffKey) {
     final bucket = state.bucket(workspaceId);
     if (!bucket.openDiffs.containsKey(diffKey)) return;
+    clearWritableDiff(diffKey);
     _diffReloadByKey.remove(diffKey);
-    final diffs = Map<String, DiffTabState>.from(bucket.openDiffs)
+    final current = state.bucket(workspaceId);
+    final diffs = Map<String, DiffTabState>.from(current.openDiffs)
       ..remove(diffKey);
-    emit(state.withBucket(workspaceId, bucket.copyWith(openDiffs: diffs)));
+    emit(state.withBucket(workspaceId, current.copyWith(openDiffs: diffs)));
+  }
+
+  Future<bool> _commitWorkingTreeWrite({
+    required String workspaceId,
+    required String diffKey,
+    required String nextCanonical,
+    required String writeFailureMessagePrefix,
+  }) async {
+    final handle = _writableDiffs[diffKey];
+    if (handle == null) return false;
+    try {
+      await _fs.atomicWrite(handle.absolutePath, nextCanonical);
+    } on Object catch (e) {
+      emit(state.copyWith(
+        snackbarMessage: '$writeFailureMessagePrefix: $e',
+      ));
+      return false;
+    }
+
+    handle.lastLoadedCanonical = nextCanonical;
+    handle.canonical = nextCanonical;
+    _syncDirtyDiffKey(workspaceId, diffKey);
+
+    await _reloadDiffAfterWrite(workspaceId, diffKey);
+
+    _syncFileHandleFromText(
+      workspaceId,
+      handle.absolutePath,
+      nextCanonical,
+      notifyIfDiscardedFileDirty: true,
+    );
+
+    final callback = _onWorkingTreeWritten[diffKey];
+    if (callback != null) {
+      await callback();
+    }
+    return true;
+  }
+
+  Future<bool> _reloadDiffAfterWrite(String workspaceId, String diffKey) async {
+    final reload = _diffReloadByKey[diffKey];
+    if (reload == null) return true;
+    try {
+      final newDiff = await reload(false, false);
+      if (newDiff == null) {
+        emit(state.copyWith(snackbarMessage: 'diffReloadAfterSaveFailed'));
+        return false;
+      }
+      updateDiffText(workspaceId, diffKey, newDiff);
+      return true;
+    } on Object {
+      emit(state.copyWith(snackbarMessage: 'diffReloadAfterSaveFailed'));
+      return false;
+    }
+  }
+
+  String? _workspaceIdForDiffKey(String diffKey) {
+    for (final entry in state.byWorkspace.entries) {
+      if (entry.value.openDiffs.containsKey(diffKey)) {
+        return entry.key;
+      }
+    }
+    return null;
+  }
+
+  void _syncDirtyDiffKey(String workspaceId, String diffKey) {
+    final handle = _writableDiffs[diffKey];
+    final bucket = state.bucket(workspaceId);
+    final dirty = Set<String>.from(bucket.dirtyDiffKeys);
+    if (handle != null && handle.isDirty) {
+      dirty.add(diffKey);
+    } else {
+      dirty.remove(diffKey);
+    }
+    if (dirty.length != bucket.dirtyDiffKeys.length ||
+        !dirty.containsAll(bucket.dirtyDiffKeys)) {
+      emit(state.withBucket(workspaceId, bucket.copyWith(dirtyDiffKeys: dirty)));
+    }
   }
 
   EditorState _clearLoading(
@@ -618,17 +843,25 @@ class EditorCubit extends Cubit<EditorState> {
     emit(state.withBucket(workspaceId, bucket.copyWith(dirtyPaths: dirty)));
   }
 
-  Future<bool> saveFile(String workspaceId, String path) async {
+  Future<bool> saveFile(
+    String workspaceId,
+    String path, {
+    bool discardDiffDirty = false,
+  }) async {
     final handle = _handles[_handleKey(workspaceId, path)];
     if (handle == null) return false;
     if (state.bucket(workspaceId).readOnlyPaths.contains(path)) {
       emit(state.copyWith(snackbarMessage: EditorMessage.readOnly));
       return false;
     }
+    if (anyWritableDiffDirtyFor(workspaceId, path) && !discardDiffDirty) {
+      return false;
+    }
     final fs = _fsByHandle[_handleKey(workspaceId, path)] ?? _fs;
+    final savedText = handle.controller.text;
     try {
-      await fs.atomicWrite(path, handle.controller.text);
-      handle.savedText = handle.controller.text;
+      await fs.atomicWrite(path, savedText);
+      handle.savedText = savedText;
       final bucket = state.bucket(workspaceId);
       final dirty = Set<String>.from(bucket.dirtyPaths)..remove(path);
       emit(
@@ -636,10 +869,56 @@ class EditorCubit extends Cubit<EditorState> {
             .withBucket(workspaceId, bucket.copyWith(dirtyPaths: dirty))
             .copyWith(clearSnackbar: true),
       );
+      await _reloadDiffsForPath(workspaceId, path, savedText);
       return true;
     } on Object catch (e) {
       emit(state.copyWith(snackbarMessage: EditorMessage.saveFailed(e)));
       return false;
+    }
+  }
+
+  void _syncFileHandleFromText(
+    String workspaceId,
+    String path,
+    String text, {
+    bool notifyIfDiscardedFileDirty = false,
+  }) {
+    final fileHandle = _handles[_handleKey(workspaceId, path)];
+    if (fileHandle == null) return;
+
+    final bucket = state.bucket(workspaceId);
+    final wasFileDirty = bucket.dirtyPaths.contains(path);
+    fileHandle.controller.text = text;
+    fileHandle.savedText = text;
+
+    final dirty = Set<String>.from(bucket.dirtyPaths)..remove(path);
+    final snackbar = state.snackbarMessage == 'diffReloadAfterSaveFailed'
+        ? 'diffReloadAfterSaveFailed'
+        : notifyIfDiscardedFileDirty && wasFileDirty
+        ? 'diffFileReloadedAfterDiffWrite'
+        : state.snackbarMessage;
+    emit(
+      state
+          .withBucket(workspaceId, bucket.copyWith(dirtyPaths: dirty))
+          .copyWith(snackbarMessage: snackbar),
+    );
+  }
+
+  Future<void> _reloadDiffsForPath(
+    String workspaceId,
+    String absolutePath,
+    String diskText,
+  ) async {
+    final bucket = state.bucket(workspaceId);
+    for (final diffKey in bucket.openDiffs.keys) {
+      final diffHandle = _writableDiffs[diffKey];
+      if (diffHandle == null || diffHandle.absolutePath != absolutePath) {
+        continue;
+      }
+      diffHandle.lastLoadedCanonical = diskText;
+      diffHandle.canonical = diskText;
+      _syncDirtyDiffKey(workspaceId, diffKey);
+      await _reloadDiffAfterWrite(workspaceId, diffKey);
     }
   }
 
@@ -658,6 +937,8 @@ class EditorCubit extends Cubit<EditorState> {
     _fsByHandle.clear();
     _imageBytes.clear();
     _diffReloadByKey.clear();
+    _writableDiffs.clear();
+    _onWorkingTreeWritten.clear();
     return super.close();
   }
 }

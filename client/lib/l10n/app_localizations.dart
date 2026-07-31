@@ -9546,6 +9546,66 @@ abstract class AppLocalizations {
   /// **'{current} / {total}'**
   String diffChangeCounter(int current, int total);
 
+  /// No description provided for @diffApplyHunkTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply change to working tree'**
+  String get diffApplyHunkTooltip;
+
+  /// No description provided for @diffDiscardEditsApplyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard edits?'**
+  String get diffDiscardEditsApplyTitle;
+
+  /// No description provided for @diffDiscardEditsApplyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Applying this change discards unsaved edits in the diff.'**
+  String get diffDiscardEditsApplyBody;
+
+  /// No description provided for @diffApplyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not apply change: {error}'**
+  String diffApplyFailed(String error);
+
+  /// No description provided for @diffSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save: {error}'**
+  String diffSaveFailed(String error);
+
+  /// No description provided for @diffReloadAfterSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved, but refreshing the diff failed.'**
+  String get diffReloadAfterSaveFailed;
+
+  /// No description provided for @diffFileReloadedAfterDiffWrite.
+  ///
+  /// In en, this message translates to:
+  /// **'File tab reloaded from disk.'**
+  String get diffFileReloadedAfterDiffWrite;
+
+  /// No description provided for @diffDiscardDiffBeforeFileSaveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard diff edits?'**
+  String get diffDiscardDiffBeforeFileSaveTitle;
+
+  /// No description provided for @diffDiscardDiffBeforeFileSaveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving the file will discard unsaved edits in the diff view.'**
+  String get diffDiscardDiffBeforeFileSaveBody;
+
+  /// No description provided for @diffApplyDisabledNoPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot apply: file path unavailable'**
+  String get diffApplyDisabledNoPath;
+
   /// No description provided for @aiFeatures.
   ///
   /// In en, this message translates to:

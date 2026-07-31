@@ -26,6 +26,8 @@ class DiffToolbar extends StatelessWidget {
     this.onOpenSource,
     this.onSwitchToFile,
     this.title,
+    this.isDirty = false,
+    this.onSave,
     super.key,
   });
 
@@ -51,6 +53,9 @@ class DiffToolbar extends StatelessWidget {
 
   /// Optional leading title (e.g. file name). Tools stay right-aligned.
   final String? title;
+
+  final bool isDirty;
+  final VoidCallback? onSave;
 
   static const double _actionSize = TpIconButton.kCompactSize;
 
@@ -83,6 +88,15 @@ class DiffToolbar extends StatelessWidget {
             )
           else
             const Spacer(),
+          if (isDirty && onSave != null)
+            TpIconButton(
+              icon: Icons.save_outlined,
+              tooltip: l10n.editorSave,
+              size: _actionSize,
+              compact: true,
+              color: iconColor,
+              onTap: onSave,
+            ),
           if (showOpenSource)
             TpIconButton(
               icon: Icons.description_outlined,
