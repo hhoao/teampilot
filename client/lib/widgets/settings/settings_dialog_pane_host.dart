@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import '../pane_entry_animation.dart';
+
 /// Lazily mounts settings panes on first visit and keeps them alive afterward.
 ///
 /// The active pane defers its first [builder] call by one frame so the dialog
-/// chrome can paint before a heavy config subtree builds.
+/// chrome can paint before a heavy config subtree builds. Section switches
+/// replay [PaneEntryAnimation] via [restartToken] without remounting pane
+/// content, so keep-alive state survives A→B→A.
 class SettingsDialogPaneHost extends StatefulWidget {
   const SettingsDialogPaneHost({
     required this.paneCount,
@@ -23,6 +27,7 @@ class SettingsDialogPaneHost extends StatefulWidget {
 
 class _SettingsDialogPaneHostState extends State<SettingsDialogPaneHost> {
   late final List<bool> _visited;
+  var _selectionEpoch = 0;
 
   @override
   void initState() {
@@ -44,6 +49,7 @@ class _SettingsDialogPaneHostState extends State<SettingsDialogPaneHost> {
         ..addAll(next);
     }
     if (widget.selectedIndex != oldWidget.selectedIndex) {
+      _selectionEpoch++;
       if (!_visited[widget.selectedIndex]) {
         _visited[widget.selectedIndex] = true;
       }
@@ -62,6 +68,8 @@ class _SettingsDialogPaneHostState extends State<SettingsDialogPaneHost> {
             key: ValueKey('settings-pane-$i'),
             mount: _visited[i],
             deferFirstBuild: i == widget.selectedIndex,
+            isActive: i == widget.selectedIndex,
+            entryEpoch: _selectionEpoch,
             builder: (context) => widget.builder(context, i),
           ),
       ],
@@ -73,12 +81,16 @@ class _SettingsLazyPane extends StatefulWidget {
   const _SettingsLazyPane({
     required this.mount,
     required this.deferFirstBuild,
+    required this.isActive,
+    required this.entryEpoch,
     required this.builder,
     super.key,
   });
 
   final bool mount;
   final bool deferFirstBuild;
+  final bool isActive;
+  final int entryEpoch;
   final WidgetBuilder builder;
 
   @override
@@ -90,6 +102,7 @@ class _SettingsLazyPaneState extends State<_SettingsLazyPane>
   var _contentReady = false;
   var _builtOnce = false;
   Widget? _cachedContent;
+  Object? _playToken;
 
   @override
   bool get wantKeepAlive => _builtOnce;
@@ -97,6 +110,9 @@ class _SettingsLazyPaneState extends State<_SettingsLazyPane>
   @override
   void initState() {
     super.initState();
+    if (widget.isActive) {
+      _playToken = widget.entryEpoch;
+    }
     _maybeScheduleContent();
   }
 
@@ -105,6 +121,12 @@ class _SettingsLazyPaneState extends State<_SettingsLazyPane>
     super.didUpdateWidget(oldWidget);
     if (widget.mount && !_contentReady) {
       _maybeScheduleContent();
+    }
+    // Bump only on activation so inactive panes keep a stable animation tree
+    // (parent structure never unwraps — preserves StatefulElement for content).
+    if (widget.isActive &&
+        (!oldWidget.isActive || widget.entryEpoch != oldWidget.entryEpoch)) {
+      _playToken = widget.entryEpoch;
     }
   }
 
@@ -134,6 +156,10 @@ class _SettingsLazyPaneState extends State<_SettingsLazyPane>
     if (!widget.mount || !_contentReady) {
       return const SizedBox.expand();
     }
-    return _cachedContent ??= widget.builder(context);
+    final content = _cachedContent ??= widget.builder(context);
+    return PaneEntryAnimation(
+      restartToken: _playToken,
+      child: content,
+    );
   }
 }

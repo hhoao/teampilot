@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/widgets/pane_entry_animation.dart';
 import 'package:teampilot/widgets/settings/settings_dialog_pane_host.dart';
 
 void main() {
@@ -80,6 +81,45 @@ void main() {
     await tester.tap(find.text('select-0'));
     await tester.pumpAndSettle();
     expect(find.text('A: 1'), findsOneWidget);
+  });
+
+  testWidgets('SettingsDialogPaneHost replays entry animation on reselect', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: _PaneHostHarness(
+          entries: const [
+            Text('pane-A'),
+            Text('pane-B'),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.byType(PaneEntryAnimation), findsWidgets);
+
+    final firstToken = tester
+        .widgetList<PaneEntryAnimation>(find.byType(PaneEntryAnimation))
+        .map((w) => w.restartToken)
+        .whereType<int>()
+        .toSet();
+
+    await tester.tap(find.text('select-1'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    await tester.tap(find.text('select-0'));
+    await tester.pump();
+    final tokensAfter = tester
+        .widgetList<PaneEntryAnimation>(find.byType(PaneEntryAnimation))
+        .map((w) => w.restartToken)
+        .whereType<int>()
+        .toSet();
+
+    expect(tokensAfter.any((t) => !firstToken.contains(t)), isTrue);
   });
 }
 

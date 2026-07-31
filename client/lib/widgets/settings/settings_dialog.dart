@@ -40,9 +40,6 @@ Future<void> showSettingsDialog(
     context: context,
     presentation: TpDialogPresentation.page,
     mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
-    barrierDismissible: false,
-    // Do not pass a Theme-resolved Color here — it freezes the dialog
-    // surface at open time so theme toggles leave stale backgrounds.
     builder: (ctx) => _SettingsDialogHost(
       navTitle: navTitle,
       entries: entries,

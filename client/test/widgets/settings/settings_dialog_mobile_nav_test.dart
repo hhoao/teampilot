@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
@@ -179,6 +180,21 @@ void main() {
     await tester.tap(find.text('Section A'));
     await tester.pumpAndSettle();
     expect(find.text('A: 1'), findsOneWidget);
+  });
+
+  testWidgets('wide: Escape dismisses settings dialog', (tester) async {
+    await _openSettingsDialog(
+      tester,
+      viewport: const Size(1200, 800),
+    );
+
+    expect(find.text('Section A Title'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Section A Title'), findsNothing);
+    expect(find.text('open'), findsOneWidget);
   });
 }
 
