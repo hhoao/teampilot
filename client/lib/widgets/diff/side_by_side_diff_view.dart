@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:re_editor/re_editor.dart';
 
+import '../../l10n/l10n_extensions.dart';
 import '../../services/diff/diff_decoration_mapper.dart';
 import '../../services/diff/diff_model.dart';
 import '../../services/editor/file_editor_theme.dart';
@@ -12,6 +13,7 @@ import '../../services/editor_platform/document_session_token_provider.dart';
 import '../../services/editor_platform/editor_platform.dart';
 import '../../services/editor_platform/editor_viewport_token_binder.dart';
 import '../../theme/workspace_surface_layers.dart';
+import 'diff_hunk_apply_gutter.dart';
 import 'diff_overview_ruler.dart';
 import 'diff_ribbon_painter.dart';
 import 'diff_view_controller.dart';
@@ -28,6 +30,10 @@ class SideBySideDiffView extends StatefulWidget {
     this.filePath,
     this.controller,
     this.chrome = WorkspacePageChrome.workspace,
+    this.writable = false,
+    this.canonicalText = '',
+    this.onCanonicalChanged,
+    this.onApplyHunk,
     super.key,
   });
 
@@ -42,6 +48,18 @@ class SideBySideDiffView extends StatefulWidget {
   /// Workspace surface chrome for editor backgrounds.
   final WorkspacePageChrome chrome;
 
+  /// When true, the right pane is editable and shows [canonicalText] (no fillers).
+  final bool writable;
+
+  /// Working-tree text for the right pane when [writable].
+  final String canonicalText;
+
+  /// Called when the user edits the right pane while [writable].
+  final ValueChanged<String>? onCanonicalChanged;
+
+  /// Invoked when the user taps `>>` on a change block while [writable].
+  final Future<void> Function(DiffResult result, DiffBlock block)? onApplyHunk;
+
   @override
   State<SideBySideDiffView> createState() => _SideBySideDiffViewState();
 }
@@ -55,6 +73,7 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
   late DiffResult _result;
   late DiffPaneTexts _texts;
   bool _syncing = false;
+  bool _suppressCanonicalNotify = false;
   double _lineHeightCache = 16;
 
   DocumentSession? _leftSession;
@@ -73,11 +92,14 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
     _result = widget.result;
     _texts = buildDiffPaneTexts(_result.rows);
     _leftController = CodeLineEditingController.fromText(_texts.leftText);
-    _rightController = CodeLineEditingController.fromText(_texts.rightText);
+    _rightController = CodeLineEditingController.fromText(_rightPaneText());
     _leftScroll = CodeScrollController();
     _rightScroll = CodeScrollController();
     _leftScroll.verticalScroller.addListener(_syncFromLeft);
     _rightScroll.verticalScroller.addListener(_syncFromRight);
+    if (widget.writable) {
+      _rightController.addListener(_onRightTextChanged);
+    }
     widget.controller?.addListener(_onNavigate);
     _publishChangeCount();
     unawaited(_openSessions());
@@ -94,10 +116,39 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
       _result = widget.result;
       _texts = buildDiffPaneTexts(_result.rows);
       _leftController.text = _texts.leftText;
-      _rightController.text = _texts.rightText;
+      _setRightPaneText(_rightPaneText());
       _publishChangeCount();
       unawaited(_openSessions());
+    } else if (widget.writable &&
+        oldWidget.canonicalText != widget.canonicalText) {
+      _setRightPaneText(widget.canonicalText);
+      unawaited(_openSessions());
     }
+    if (oldWidget.writable != widget.writable) {
+      if (widget.writable) {
+        _rightController.addListener(_onRightTextChanged);
+        _setRightPaneText(_rightPaneText());
+      } else {
+        _rightController.removeListener(_onRightTextChanged);
+        _setRightPaneText(_texts.rightText);
+      }
+      unawaited(_openSessions());
+    }
+  }
+
+  String _rightPaneText() =>
+      widget.writable ? widget.canonicalText : _texts.rightText;
+
+  void _setRightPaneText(String text) {
+    if (_rightController.text == text) return;
+    _suppressCanonicalNotify = true;
+    _rightController.text = text;
+    _suppressCanonicalNotify = false;
+  }
+
+  void _onRightTextChanged() {
+    if (_suppressCanonicalNotify || !widget.writable) return;
+    widget.onCanonicalChanged?.call(_rightController.text);
   }
 
   /// Opens fresh read-only [DocumentSession]s for the current left/right pane
@@ -109,7 +160,7 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
     final generation = ++_sessionGeneration;
     final path = widget.filePath ?? 'untitled.txt';
     final leftText = _texts.leftText;
-    final rightText = _texts.rightText;
+    final rightText = _rightPaneText();
     final registry = EditorPlatform.registry;
     final pool = EditorPlatform.workerPool;
 
@@ -200,6 +251,9 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
     widget.controller?.removeListener(_onNavigate);
     _leftScroll.verticalScroller.removeListener(_syncFromLeft);
     _rightScroll.verticalScroller.removeListener(_syncFromRight);
+    if (widget.writable) {
+      _rightController.removeListener(_onRightTextChanged);
+    }
     _leftController.dispose();
     _rightController.dispose();
     _leftScroll.dispose();
@@ -219,6 +273,10 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
     final cs = Theme.of(context).colorScheme;
     final colors = diffColorsFor(cs);
     final decorations = buildDiffPaneDecorations(_result.rows, colors);
+    final rightDecorations = widget.writable ? const <CodeLineDecoration>[] : decorations.right;
+    final rightNumbers = widget.writable
+        ? _canonicalLineNumbers(widget.canonicalText)
+        : _texts.rightNumbers;
     final path = widget.filePath ?? 'untitled.txt';
     final shellSurface = cs.workspaceCardChrome(widget.chrome);
     final leftStyle = codeEditorStyleFor(
@@ -253,10 +311,11 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
           child: _pane(
             controller: _rightController,
             scroll: _rightScroll,
-            decorations: decorations.right,
-            numbers: _texts.rightNumbers,
+            decorations: rightDecorations,
+            numbers: rightNumbers,
             style: rightStyle,
             session: _rightSession,
+            readOnly: !widget.writable,
           ),
         ),
         DiffOverviewRuler(
@@ -278,26 +337,42 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
       color: cs.outlineVariant,
     );
     final lineHeight = _lineHeight(style);
+    final gutterWidth = widget.writable ? 36.0 : 24.0;
     return Row(
       children: [
         divider,
         SizedBox(
-          width: 24,
+          width: gutterWidth,
           child: ClipRect(
             child: ListenableBuilder(
               listenable: _leftScroll.verticalScroller,
               builder: (context, _) {
                 final scroller = _leftScroll.verticalScroller;
                 final offset = scroller.hasClients ? scroller.offset : 0.0;
-                return CustomPaint(
-                  painter: DiffRibbonPainter(
-                    scrollOffset: offset,
-                    lineHeight: lineHeight,
-                    topPadding: _kEditorTopPadding,
-                    blocks: _result.blocks,
-                    colors: colors,
-                  ),
-                  child: const SizedBox.expand(),
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    CustomPaint(
+                      painter: DiffRibbonPainter(
+                        scrollOffset: offset,
+                        lineHeight: lineHeight,
+                        topPadding: _kEditorTopPadding,
+                        blocks: _result.blocks,
+                        colors: colors,
+                      ),
+                    ),
+                    if (widget.writable && widget.onApplyHunk != null)
+                      DiffHunkApplyGutter(
+                        blocks: _result.blocks,
+                        scrollOffset: offset,
+                        lineHeight: lineHeight,
+                        topPadding: _kEditorTopPadding,
+                        tooltip: context.l10n.diffApplyHunkTooltip,
+                        onApply: (block) {
+                          unawaited(widget.onApplyHunk!(_result, block));
+                        },
+                      ),
+                  ],
                 );
               },
             ),
@@ -315,12 +390,13 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
     required List<int?> numbers,
     required CodeEditorStyle style,
     required DocumentSession? session,
+    bool readOnly = true,
   }) {
     return CodeEditor(
       controller: controller,
       scrollController: scroll,
-      readOnly: true,
-      showCursorWhenReadOnly: false,
+      readOnly: readOnly,
+      showCursorWhenReadOnly: !readOnly,
       wordWrap: false,
       style: style,
       lineDecorations: decorations,
@@ -409,6 +485,15 @@ class _DiffPaneLineNumbersState extends State<_DiffPaneLineNumbers> {
 /// re-editor's default code-field top padding (`EdgeInsets.all(5)`); the diff
 /// view uses no find bar, so this is the content top inset.
 const double _kEditorTopPadding = 5;
+
+List<int?> _canonicalLineNumbers(String text) {
+  if (text.isEmpty) return const [];
+  final lines = text.split('\n');
+  if (lines.length > 1 && lines.last.isEmpty) {
+    lines.removeLast();
+  }
+  return List<int?>.generate(lines.length, (i) => i + 1);
+}
 
 /// Exact rendered line height, matching re-editor's internal TextPainter so the
 /// ribbon aligns with the text.

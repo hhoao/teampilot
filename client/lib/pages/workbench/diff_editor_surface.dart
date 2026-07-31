@@ -7,6 +7,7 @@ import '../../cubits/editor_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/diff/diff_toolbar.dart';
 import '../../widgets/diff/diff_viewer.dart';
 import '../../widgets/workbench/file_diff_surface_toggle.dart';
 
@@ -89,6 +90,10 @@ class _DiffEditorSurfaceState extends State<DiffEditorSurface> {
         ? ' (staged)'
         : '';
     final reload = context.read<EditorCubit>().diffReloadFor(widget.diffKey);
+    final isWritable = tab.source == WorkbenchDiffSource.unstaged;
+    final canonicalText = context.select<EditorCubit, String?>(
+      (c) => c.diffCanonicalFor(widget.diffKey),
+    );
 
     return ColoredBox(
       color: cs.workspaceCardChrome(WorkspacePageChrome.workspace),
@@ -97,6 +102,28 @@ class _DiffEditorSurfaceState extends State<DiffEditorSurface> {
         title: '${tab.title}$stagedLabel',
         diffText: tab.diffText,
         filePath: tab.absolutePath,
+        initialMode: isWritable ? DiffViewMode.sideBySide : DiffViewMode.unified,
+        writable: isWritable,
+        canonicalText: canonicalText ?? '',
+        onCanonicalChanged: isWritable
+            ? (text) => context.read<EditorCubit>().updateDiffCanonical(
+                widget.diffKey,
+                text,
+              )
+            : null,
+        onApplyHunk: isWritable
+            ? (result, block) async {
+                final editor = context.read<EditorCubit>();
+                if (editor.isDiffDirty(widget.diffKey)) return;
+                await editor.applyDiffHunk(
+                  workspaceId: widget.workspaceId,
+                  diffKey: widget.diffKey,
+                  result: result,
+                  block: block,
+                  discardDirtyIfNeeded: false,
+                );
+              }
+            : null,
         reloadDiff: reload == null
             ? null
             : (ignoreWhitespace, fullContext) async {

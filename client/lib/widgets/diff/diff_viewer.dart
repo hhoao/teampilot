@@ -35,6 +35,10 @@ class DiffViewer extends StatefulWidget {
     this.onOpenSource,
     this.onSwitchToFile,
     this.title,
+    this.writable = false,
+    this.canonicalText = '',
+    this.onCanonicalChanged,
+    this.onApplyHunk,
     super.key,
   });
 
@@ -47,6 +51,10 @@ class DiffViewer extends StatefulWidget {
     VoidCallback? onOpenSource,
     VoidCallback? onSwitchToFile,
     String? title,
+    bool writable = false,
+    String canonicalText = '',
+    ValueChanged<String>? onCanonicalChanged,
+    Future<void> Function(DiffResult result, DiffBlock block)? onApplyHunk,
     Key? key,
   }) {
     return DiffViewer._(
@@ -65,6 +73,10 @@ class DiffViewer extends StatefulWidget {
       onOpenSource: onOpenSource,
       onSwitchToFile: onSwitchToFile,
       title: title,
+      writable: writable,
+      canonicalText: canonicalText,
+      onCanonicalChanged: onCanonicalChanged,
+      onApplyHunk: onApplyHunk,
       key: key,
     );
   }
@@ -80,6 +92,10 @@ class DiffViewer extends StatefulWidget {
     VoidCallback? onOpenSource,
     VoidCallback? onSwitchToFile,
     String? title,
+    bool writable = false,
+    String canonicalText = '',
+    ValueChanged<String>? onCanonicalChanged,
+    Future<void> Function(DiffResult result, DiffBlock block)? onApplyHunk,
     Key? key,
   }) {
     return DiffViewer._(
@@ -99,6 +115,10 @@ class DiffViewer extends StatefulWidget {
       onOpenSource: onOpenSource,
       onSwitchToFile: onSwitchToFile,
       title: title,
+      writable: writable,
+      canonicalText: canonicalText,
+      onCanonicalChanged: onCanonicalChanged,
+      onApplyHunk: onApplyHunk,
       key: key,
     );
   }
@@ -129,6 +149,16 @@ class DiffViewer extends StatefulWidget {
 
   /// Optional surface title shown on the left of the toolbar.
   final String? title;
+
+  /// When true, side-by-side mode exposes an editable right pane and apply gutter.
+  final bool writable;
+
+  /// Working-tree text for the editable right pane.
+  final String canonicalText;
+
+  final ValueChanged<String>? onCanonicalChanged;
+
+  final Future<void> Function(DiffResult result, DiffBlock block)? onApplyHunk;
 
   @override
   State<DiffViewer> createState() => _DiffViewerState();
@@ -195,6 +225,10 @@ class _DiffViewerState extends State<DiffViewer> {
         filePath: widget.filePath,
         controller: _controller,
         chrome: widget.chrome,
+        writable: widget.writable,
+        canonicalText: widget.canonicalText,
+        onCanonicalChanged: widget.onCanonicalChanged,
+        onApplyHunk: widget.onApplyHunk,
       ),
       DiffViewMode.unified => UnifiedDiffView(
         result: _result,
