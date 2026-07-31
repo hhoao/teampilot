@@ -4,11 +4,13 @@ import 'package:panes/panes.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/layout_cubit.dart';
+import '../../cubits/mobile_workspace_drawer.dart';
 import '../../models/layout_preferences.dart';
 import '../../services/floating_workspace/floating_maximize_insets.dart';
 import '../../services/workspace/workspace_pane_policy.dart';
 import '../../widgets/workspace_terminal_panel.dart';
 import '../home_workspace/workspace/workspace_route_active_scope.dart';
+import 'mobile_workspace_drawer_host.dart';
 import 'pane_overlay_host.dart';
 import 'workspace_ide_pane_chrome.dart';
 import 'workspace_ide_pane_sync.dart';
@@ -31,6 +33,7 @@ class WorkspaceIdeShell extends StatefulWidget {
     required this.right,
     this.composeLanding = false,
     this.terminalHold,
+    this.onOpenWorkspaceManagement,
     super.key,
   });
 
@@ -45,6 +48,10 @@ class WorkspaceIdeShell extends StatefulWidget {
   /// Bridge used to bracket PTY resizes of center shell terminals during a
   /// split drag.
   final WorkspaceTerminalHoldHandle? terminalHold;
+
+  /// Opens workspace manage (`view=manage`). Required on narrow for the unified
+  /// drawer shell footer; optional on wide (sidebar embeds its own manage tile).
+  final VoidCallback? onOpenWorkspaceManagement;
 
   @override
   State<WorkspaceIdeShell> createState() => _WorkspaceIdeShellState();
@@ -73,7 +80,7 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
 
   bool _rowResizing = false;
 
-  /// When narrow, left/right use [PaneOverlayHost], so docked MultiPane
+  /// When narrow, left/right use [MobileWorkspaceDrawerHost], so docked MultiPane
   /// left/right panes render nothing to avoid double-mount.
   /// Set each build before the pane builders run (during layout of the root
   /// `MultiPane`).
@@ -625,37 +632,45 @@ class _WorkspaceIdeShellState extends State<WorkspaceIdeShell> {
   }) {
     final fractionWidth = TpTheme.of(context).sidebarTheme
         .resolveMobileDrawerWidth(MediaQuery.sizeOf(context).width);
-    final showLeft = effective.isNarrow &&
-        effective.overlayLeft &&
-        !layoutState.narrowLeftSuppressed;
+    final multiPane = MultiPane(
+      direction: Axis.horizontal,
+      controller: _rowController,
+      animationDuration: _paneAnimationDuration,
+      paneBuilder: _rowPaneBuilder,
+    );
+    if (effective.isNarrow) {
+      final open = mobileWorkspaceDrawerOpen(
+        layoutState: layoutState,
+        composeLanding: composeLanding,
+      );
+      return MobileWorkspaceDrawerHost(
+        open: open,
+        mode: mobileWorkspaceDrawerDisplayMode(
+          rightToolsEffective: effective.overlayRight,
+        ),
+        width: fractionWidth,
+        chatBody: WorkspaceIdePaneChrome(child: widget.left),
+        toolsBody: WorkspaceIdePaneChrome(child: widget.right),
+        onDismiss: () => context.read<LayoutCubit>().closeMobileWorkspaceDrawer(
+          composeLanding: composeLanding,
+        ),
+        onModeChanged: (mode) => context.read<LayoutCubit>().setMobileDrawerMode(
+          mode,
+          composeLanding: composeLanding,
+        ),
+        onOpenWorkspaceManagement:
+            widget.onOpenWorkspaceManagement ?? () {},
+        child: multiPane,
+      );
+    }
     return PaneOverlayHost(
-      showLeft: showLeft,
-      showRight: effective.overlayRight,
-      leftWidth: effective.isNarrow ? fractionWidth : prefs.sidebarWidth,
-      rightWidth: effective.isNarrow ? fractionWidth : prefs.rightToolsWidth,
-      onDismissLeft: () {
-        final layout = context.read<LayoutCubit>();
-        layout.setSidebarVisible(false);
-        layout.clearNarrowLeftSuppressed();
-      },
-      onDismissRight: () {
-        final layout = context.read<LayoutCubit>();
-        if (composeLanding) {
-          layout.setLandingRightToolsOverride(false);
-        } else {
-          layout.setRightToolsVisible(false);
-        }
-      },
-      left: effective.isNarrow
-          ? WorkspaceIdePaneChrome(child: widget.left)
-          : null,
-      right: WorkspaceIdePaneChrome(child: widget.right),
-      child: MultiPane(
-        direction: Axis.horizontal,
-        controller: _rowController,
-        animationDuration: _paneAnimationDuration,
-        paneBuilder: _rowPaneBuilder,
-      ),
+      showLeft: false,
+      showRight: false,
+      leftWidth: prefs.sidebarWidth,
+      rightWidth: prefs.rightToolsWidth,
+      onDismissLeft: () {},
+      onDismissRight: () {},
+      child: multiPane,
     );
   }
 }

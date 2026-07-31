@@ -131,10 +131,10 @@ void main() {
     expect(find.text('Automations'), findsNothing);
   });
 
-  test('home sidebar trigger only on mobile home tab', () {
+  test('home sidebar trigger on all mobile tabs', () {
     expect(
       homeSidebarTriggerVisible(isMobile: true, activeTabKey: 'ws-a'),
-      isFalse,
+      isTrue,
     );
     expect(
       homeSidebarTriggerVisible(isMobile: true, activeTabKey: null),

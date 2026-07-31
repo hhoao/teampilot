@@ -147,9 +147,13 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
             child: WorkspaceIdeShell(
               composeLanding: composeLanding,
               terminalHold: _terminalHold,
+              onOpenWorkspaceManagement: () =>
+                  openWorkspaceManagementRoute(context, widget.workspace),
               left: WorkspaceSidebar(
                 workspace: widget.workspace,
                 tabScopeId: widget.tabScopeId,
+                embedFooter:
+                    !(TpSidebarScope.maybeOf(context)?.isMobile ?? false),
               ),
               // Unbound Chat pane skips ChatPageShell / workbench projection.
               center: buildWorkspaceIdeCenter(

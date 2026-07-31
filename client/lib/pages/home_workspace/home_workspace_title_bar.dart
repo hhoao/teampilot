@@ -2,9 +2,14 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:window_manager/window_manager.dart';
+
+import '../../cubits/chat_cubit.dart';
+import '../../cubits/layout_cubit.dart';
+import '../../cubits/mobile_workspace_drawer.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/home_closed_workspace_entry.dart';
@@ -29,9 +34,7 @@ import '../workspace_shell/workspace_shell_tabs.dart';
 bool homeSidebarTriggerVisible({
   required bool isMobile,
   required String? activeTabKey,
-}) {
-  return isMobile && activeTabKey == null;
-}
+}) => isMobile;
 
 /// Height of the Apifox-style workspace title bar.
 const double kHomeTitleBarHeight = 58;
@@ -304,7 +307,7 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
               if (!compactChrome)
                 SizedBox(width: useMacWindowChromeStyle ? 8 : 20),
               if (showSidebarTrigger) ...[
-                const TpSidebarTrigger(),
+                _HomeTitleBarMobileDrawerTrigger(activeTabKey: widget.activeTabKey),
                 const SizedBox(width: 8),
               ],
               if (!compactChrome) ...[
@@ -408,57 +411,83 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
                 ),
               // Cap + scale-down so Run/panes/bell/settings never blow the Row
               // on phone widths (tabs stay the sole Expanded flex child).
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: compactChrome
-                      ? MediaQuery.sizeOf(context).width * 0.55
-                      : double.infinity,
-                ),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerRight,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (Platform.isAndroid) ...[
-                        const AndroidWorkEnvironmentSelector(),
-                        const SizedBox(width: 4),
-                      ],
-                      if (widget.trailingActions != null) ...[
-                        widget.trailingActions!,
+              if (!compactChrome)
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: double.infinity),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (Platform.isAndroid) ...[
+                          const AndroidWorkEnvironmentSelector(),
+                          const SizedBox(width: 4),
+                        ],
+                        if (widget.trailingActions != null) ...[
+                          widget.trailingActions!,
+                          const SizedBox(width: 8),
+                        ],
+                        if (widget.activeTabKey != null) ...[
+                          const WorkspaceShellPaneVisibilityToggles(),
+                          const SizedBox(width: 4),
+                        ],
                         const SizedBox(width: 8),
-                      ],
-                      if (widget.activeTabKey != null) ...[
-                        const WorkspaceShellPaneVisibilityToggles(),
-                        const SizedBox(width: 4),
-                      ],
-                      const SizedBox(width: 8),
-                      const NotificationBellButton(),
-                      TpIconButton(
-                        iconWidget: SvgPicture.asset(
-                          'assets/icons/settings_gear.svg',
-                          width: context.tpIconSizes.md,
-                          height: context.tpIconSizes.md,
-                          theme: SvgTheme(
-                            currentColor: cs.onSurfaceVariant,
+                        const NotificationBellButton(),
+                        TpIconButton(
+                          iconWidget: SvgPicture.asset(
+                            'assets/icons/settings_gear.svg',
+                            width: context.tpIconSizes.md,
+                            height: context.tpIconSizes.md,
+                            theme: SvgTheme(
+                              currentColor: cs.onSurfaceVariant,
+                            ),
                           ),
+                          tooltip: l10n.settings,
+                          backgroundColor: Colors.transparent,
+                          onTap: () => showWorkspaceSettingsDialog(context),
                         ),
-                        tooltip: l10n.settings,
-                        backgroundColor: Colors.transparent,
-                        onTap: () => showWorkspaceSettingsDialog(context),
-                      ),
-                      const SizedBox(width: 10),
-                      if (showWindowControls && !useMacWindowChromeStyle)
-                        _buildWindowControls(),
-                      const SizedBox(width: 16),
-                    ],
+                        const SizedBox(width: 10),
+                        if (showWindowControls && !useMacWindowChromeStyle)
+                          _buildWindowControls(),
+                        const SizedBox(width: 16),
+                      ],
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _HomeTitleBarMobileDrawerTrigger extends StatelessWidget {
+  const _HomeTitleBarMobileDrawerTrigger({required this.activeTabKey});
+
+  final String? activeTabKey;
+
+  @override
+  Widget build(BuildContext context) {
+    if (activeTabKey == null) {
+      return const TpSidebarTrigger();
+    }
+    return TpIconButton(
+      icon: Icons.menu,
+      onTap: () {
+        final composeLanding = context.read<ChatCubit>().state.newChatActive;
+        final layout = context.read<LayoutCubit>();
+        final open = mobileWorkspaceDrawerOpen(
+          layoutState: layout.state,
+          composeLanding: composeLanding,
+        );
+        if (open) {
+          layout.closeMobileWorkspaceDrawer(composeLanding: composeLanding);
+        } else {
+          layout.openMobileWorkspaceDrawer(composeLanding: composeLanding);
+        }
+      },
     );
   }
 }
