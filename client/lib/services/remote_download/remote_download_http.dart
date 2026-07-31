@@ -79,7 +79,7 @@ class RemoteDownloadHttp {
     }
 
     throw RemoteDownloadException(
-      _failureMessage(attempts),
+      failureMessage(attempts),
       attempts: attempts,
     );
   }
@@ -116,7 +116,7 @@ class RemoteDownloadHttp {
     }
 
     throw RemoteDownloadException(
-      _failureMessage(attempts),
+      failureMessage(attempts),
       attempts: attempts,
     );
   }
@@ -124,7 +124,7 @@ class RemoteDownloadHttp {
   static bool _isSuccessStatus(int statusCode) =>
       statusCode >= 200 && statusCode < 300;
 
-  static String _failureMessage(List<RemoteDownloadAttempt> attempts) {
+  static String failureMessage(List<RemoteDownloadAttempt> attempts) {
     final details = attempts
         .map((attempt) {
           final status = attempt.statusCode;
