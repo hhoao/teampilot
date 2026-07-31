@@ -41,6 +41,7 @@ import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/member_turn_interrupt_service.dart';
 import '../services/terminal/session_member_cli_resolver.dart';
+import '../services/termux/termux_connection_gate.dart';
 import '../services/terminal/terminal_theme_for_launch.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../services/follow_up/follow_up_queue.dart';
@@ -111,6 +112,9 @@ class ChatCubit extends Cubit<ChatState>
     LayoutCubit? layoutCubit,
     RemoteCliReadinessService? remoteCliReadiness,
     CliProvisionActivityAdapter? cliProvisionActivity,
+    bool Function()? termuxConnectedResolver,
+    String Function()? termuxDisconnectedWorkOpsMessageResolver,
+    RuntimeTarget Function()? termuxGateHomeResolver,
   }) : _remoteBusResolver = remoteBusResolver,
        _remoteCliReadiness = remoteCliReadiness,
        _sessionConnect = sessionConnect,
@@ -139,6 +143,10 @@ class ChatCubit extends Cubit<ChatState>
        _lifecycle = lifecycleService ?? SessionLifecycleService(),
        _sessionRepository = sessionRepository,
        _followUpQueue = followUpQueueStore ?? InMemoryFollowUpQueueStore(),
+       _termuxConnectedResolver = termuxConnectedResolver,
+       _termuxDisconnectedWorkOpsMessageResolver =
+           termuxDisconnectedWorkOpsMessageResolver,
+       _termuxGateHomeResolver = termuxGateHomeResolver,
        super(const ChatState()) {
     _followUpDrainer =
         followUpQueueDrainer ??
@@ -168,6 +176,9 @@ class ChatCubit extends Cubit<ChatState>
   /// User-driven remote CLI locate/install (Machines panel + landing gate).
   RemoteCliReadinessService? get remoteCliReadiness => _remoteCliReadiness;
   final Future<TeamProfile?> Function(String teamId)? _teamById;
+  final bool Function()? _termuxConnectedResolver;
+  final String Function()? _termuxDisconnectedWorkOpsMessageResolver;
+  final RuntimeTarget Function()? _termuxGateHomeResolver;
   final TeammateBusMcpGateway _teammateBusMcpGateway;
   final AgentStatusSeatLookup? _agentStatusSeatLookup;
   final AgentAttentionCubit? _agentAttentionCubit;
@@ -186,12 +197,29 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   void _notifyAutomationsChanged() => _onAutomationsChanged?.call();
+
+  String? _termuxWorkOpsBlockFor(RuntimeTarget target) {
+    final connected = _termuxConnectedResolver?.call();
+    final message = _termuxDisconnectedWorkOpsMessageResolver?.call();
+    final home = _termuxGateHomeResolver?.call();
+    if (connected == null || message == null || home == null) return null;
+    return termuxWorkOpsBlockMessage(
+      target: target,
+      home: home,
+      termuxConnected: connected,
+      message: message,
+    );
+  }
+
   final ChatTabStore _tabStore = ChatTabStore();
   final SessionDataStore _dataStore = SessionDataStore();
   static const _continueOverridesController =
       SessionContinueOverridesController();
   final Map<String, Future<void>> _sessionHydrationByWorkspace = {};
-  late final SessionLaunchService _launchService = SessionLaunchService(this);
+  late final SessionLaunchService _launchService = SessionLaunchService(
+    this,
+    termuxWorkOpsBlockFor: _termuxWorkOpsBlockFor,
+  );
   late final TabSessionRuntimeCoordinator _sessionRuntime =
       TabSessionRuntimeCoordinator(
         tabStore: _tabStore,

@@ -17,6 +17,7 @@ import '../../theme/workspace_surface_layers.dart';
 import '../../theme/workspace_topology_colors.dart';
 import '../../widgets/tab_close_button.dart';
 import '../../widgets/notification/notification_bell_button.dart';
+import '../../widgets/android_work_environment_selector.dart';
 import '../../widgets/team_pilot_brand_logo.dart';
 import '../../widgets/window_chrome_controls.dart';
 import '../../widgets/window_drag_area.dart';
@@ -419,6 +420,10 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (Platform.isAndroid) ...[
+                        const AndroidWorkEnvironmentSelector(),
+                        const SizedBox(width: 4),
+                      ],
                       if (widget.trailingActions != null) ...[
                         widget.trailingActions!,
                         const SizedBox(width: 8),

@@ -17,7 +17,7 @@ import '../pages/mcp/mcp_management_page.dart';
 import '../pages/onboarding/onboarding_gate.dart';
 import '../pages/startup_gate.dart';
 import '../pages/team_config/team_config_page.dart';
-import '../widgets/android_ssh_profile_selector.dart';
+import '../widgets/android_work_environment_selector.dart';
 import 'android_shell_chrome.dart';
 import 'settings_chrome_home_sidebar.dart';
 import '../models/layout_preferences.dart';
@@ -482,7 +482,7 @@ Widget _settingsChromeShell(
                   onPressed: () => AndroidShellChrome.pop(context, path),
                 )
               : const TpSidebarTrigger(),
-          actions: const [AndroidSshProfileSelector()],
+          actions: const [AndroidWorkEnvironmentSelector()],
         ),
         body: Row(
           children: [

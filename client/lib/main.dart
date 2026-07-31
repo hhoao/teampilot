@@ -19,6 +19,7 @@ import 'cubits/app_update_cubit.dart';
 import 'cubits/board_cubit.dart';
 import 'cubits/automation_cubit.dart';
 import 'cubits/ssh_connection_cubit.dart';
+import 'cubits/termux_cubit.dart';
 import 'cubits/chat_cubit.dart';
 import 'cubits/layout_cubit.dart';
 import 'cubits/mailbox_cubit.dart';
@@ -77,6 +78,7 @@ import 'services/notification/session_idle_notification_tap.dart';
 import 'widgets/notification/session_idle_notification_listener.dart';
 import 'widgets/ssh/home_ssh_profile_binder.dart';
 import 'widgets/ssh/ssh_connection_binder.dart';
+import 'widgets/termux/termux_work_ops_message_binder.dart';
 import 'repositories/layout_repository.dart';
 import 'theme/app_font_prepare.dart';
 import 'theme/app_font_resolver.dart';
@@ -234,6 +236,7 @@ class _AppShutdownScope extends StatefulWidget {
     required this.notificationCubit,
     required this.progressActivityCubit,
     required this.sshConnectionCubit,
+    required this.termuxCubit,
     required this.workspaceTerminalRegistry,
     required this.gitRepoStore,
     required this.workspaceFileTreeStore,
@@ -252,6 +255,7 @@ class _AppShutdownScope extends StatefulWidget {
   final NotificationCubit notificationCubit;
   final ProgressActivityCubit progressActivityCubit;
   final SshConnectionCubit sshConnectionCubit;
+  final TermuxCubit termuxCubit;
   final WorkspaceTerminalRegistry workspaceTerminalRegistry;
   final GitRepoStore gitRepoStore;
   final WorkspaceFileTreeStore workspaceFileTreeStore;
@@ -276,6 +280,7 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
     unawaited(widget.notificationCubit.close());
     unawaited(widget.progressActivityCubit.close());
     unawaited(widget.sshConnectionCubit.close());
+    unawaited(widget.termuxCubit.close());
     NotificationRecorder.install(null);
     widget.workspaceTerminalRegistry.disposeAll();
     widget.gitRepoStore.dispose();
@@ -579,6 +584,7 @@ void main() async {
             notificationCubit: shell.notificationCubit,
             progressActivityCubit: shell.progressActivityCubit,
             sshConnectionCubit: shell.sshConnectionCubit,
+            termuxCubit: shell.termuxCubit,
             workspaceTerminalRegistry: shell.workspaceTerminalRegistry,
             gitRepoStore: shell.gitRepoStore,
             workspaceFileTreeStore: shell.workspaceFileTreeStore,
@@ -712,6 +718,7 @@ void main() async {
                   BlocProvider.value(value: shell.appUpdateCubit),
                   BlocProvider.value(value: shell.sshProfileCubit),
                   BlocProvider.value(value: shell.sshConnectionCubit),
+                  BlocProvider.value(value: shell.termuxCubit),
                   BlocProvider.value(value: shell.githubAccountCubit),
                   RepositoryProvider.value(
                     value: shell.githubCredentialsStore,
@@ -950,8 +957,10 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
                 ),
               );
               Widget content = AppTextScaleBoundary(
-                child: _AppUpdateAutoCheck(
-                  child: child ?? const SizedBox.shrink(),
+                child: TermuxWorkOpsMessageBinder(
+                  child: _AppUpdateAutoCheck(
+                    child: child ?? const SizedBox.shrink(),
+                  ),
                 ),
               );
               // Single global zoom: scales fonts + icons + padding + every

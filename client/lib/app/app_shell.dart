@@ -60,6 +60,7 @@ import '../repositories/mcp_repository.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
 import '../cubits/ssh_connection_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
+import '../cubits/termux_cubit.dart';
 import '../cubits/github_account_cubit.dart';
 import '../config/github_oauth_config.dart';
 import '../cubits/launch_profile_cubit.dart';
@@ -141,6 +142,10 @@ import '../services/storage/home_target_controller.dart';
 import '../services/storage/workspace_directory_picker.dart';
 import '../services/storage/home_target_store.dart';
 import '../services/storage/runtime_target_registry.dart';
+import '../services/termux/termux_config.dart';
+import '../services/termux/termux_transport_profile.dart';
+import '../services/termux/termux_work_ops_message.dart';
+import '../services/ssh/ssh_profile_connection_tester.dart';
 import '../services/notification/notification_recorder.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/skill/skill_acquisition_engine.dart';
@@ -172,6 +177,7 @@ import '../services/run/workspace_run_platform_factory.dart';
 import '../services/workspace/workspace_worktree_registry.dart';
 import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
+import '../services/terminal/workspace_terminal_connect_coordinator.dart';
 import '../services/terminal/workspace_terminal_run_service.dart';
 import '../services/terminal/workspace_terminal_session_ops.dart';
 import '../utils/logging/logger.dart';
@@ -234,6 +240,7 @@ class AppShell {
     required this.extensionCubit,
     required this.appUpdateCubit,
     required this.sshProfileCubit,
+    required this.termuxCubit,
     required this.homeStorageInvalidator,
     required this.sshConnectionCubit,
     required this.githubCredentialsStore,
@@ -310,6 +317,7 @@ class AppShell {
   final ExtensionCubit extensionCubit;
   final AppUpdateCubit appUpdateCubit;
   final SshProfileCubit sshProfileCubit;
+  final TermuxCubit termuxCubit;
   final HomeStorageInvalidator homeStorageInvalidator;
   final SshConnectionCubit sshConnectionCubit;
   final GithubCredentialsStore githubCredentialsStore;
@@ -398,6 +406,7 @@ Future<AppShell> buildAppShell({
       sshProfileIdOfId(id) ?? '',
       label: 'SSH',
     ),
+    RuntimeKind.termux => RuntimeTarget.termux(),
     RuntimeKind.wsl => RuntimeTarget.wsl(wslDistroOfId(id) ?? ''),
     RuntimeKind.local => RuntimeTarget.local(),
   };
@@ -495,8 +504,16 @@ Future<AppShell> buildAppShell({
   // target authority is the device-local homeTargetStore read above. The
   // registry is used by the picker UI to list selectable targets.
   final targetsRepo = deviceLocalTargetsRepository(nativeAppDataPath);
-  SshProfile? sshProfileById(String id) =>
-      sshProfileCubit.state.profiles.where((p) => p.id == id).firstOrNull;
+  final termuxConfigStore = deviceLocalTermuxConfigStore(nativeAppDataPath);
+  var termuxConfigCache = await termuxConfigStore.load();
+  TermuxCubit? termuxGateCubit;
+  SshProfile? sshProfileById(String id) {
+    if (id == 'termux') {
+      final cfg = termuxConfigCache;
+      return cfg == null ? null : termuxTransportProfile(cfg);
+    }
+    return sshProfileCubit.state.profiles.where((p) => p.id == id).firstOrNull;
+  }
   final remoteCliReadiness = RemoteCliReadinessService(
     registry: cliToolRegistry,
     sshClientFactory: sshClientFactory,
@@ -509,6 +526,7 @@ Future<AppShell> buildAppShell({
     sshProfileRepo: sshProfileRepo,
     isWindows: Platform.isWindows,
     isAndroid: Platform.isAndroid,
+    hasTermuxConfig: () => termuxConfigCache != null,
   );
 
   // P2: de-singleton. One resolver + a per-target context registry. The home
@@ -528,8 +546,17 @@ Future<AppShell> buildAppShell({
     resolver: runtimeContextResolver,
     homeTarget: defaultTargetResolver(),
     sshProfileById: sshProfileById,
+    termuxPathCache: () {
+      final cfg = termuxConfigCache;
+      if (cfg == null) {
+        return (home: null, appDataRoot: null);
+      }
+      return (home: cfg.lastHome, appDataRoot: cfg.lastAppDataRoot);
+    },
     onEvict: (targetId) async {
-      final pid = sshProfileIdOfId(targetId);
+      final pid =
+          homeTargetFromId(targetId).sshProfileId ??
+          sshProfileIdOfId(targetId);
       if (pid != null) {
         sshClientFactory.disconnectProfile(
           pid,
@@ -544,7 +571,19 @@ Future<AppShell> buildAppShell({
   final ensureHomeSw = Stopwatch()..start();
   await runtimeContextRegistry.ensureHome();
   boot('home runtime context ensured +${ensureHomeSw.elapsedMilliseconds}ms');
-  AppStorage.bindHome(runtimeContextRegistry.home());
+  final homeCtx = runtimeContextRegistry.home();
+  final cfg = termuxConfigCache;
+  if (homeTarget.kind == RuntimeKind.termux &&
+      cfg != null &&
+      !homeCtx.termuxPathsFromCache) {
+    final updated = cfg.copyWith(
+      lastHome: homeCtx.home,
+      lastAppDataRoot: homeCtx.appDataRoot,
+    );
+    termuxConfigCache = updated;
+    await termuxConfigStore.save(updated);
+  }
+  AppStorage.bindHome(homeCtx);
   boot(
     'home context installed '
     '(${AppStorage.context.mode}, home=${homeTarget.id}, '
@@ -719,12 +758,29 @@ Future<AppShell> buildAppShell({
   sessionRepo = SessionRepository(lifecycleService: sessionLifecycleService);
   boot('prefetching home index snapshots');
   bootstrapCubit?.beginHomeIndex();
-  final homeIndexPrefetch =
-      homeIndexPrefetchFuture ??
-      Future.wait([
+  Future<void> prefetchHomeIndex() async {
+    try {
+      await Future.wait([
         sessionRepo.loadWorkspacesIndex(),
         identityRepository.loadAll(),
       ]);
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[boot] home index prefetch failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  final homeIndexPrefetch =
+      homeIndexPrefetchFuture ??
+      (connectionModeService.isRemoteWorkPlane
+          ? prefetchHomeIndex()
+          : Future.wait([
+              sessionRepo.loadWorkspacesIndex(),
+              identityRepository.loadAll(),
+            ]));
   final pluginRepository = PluginRepository();
   final mcpRepository = McpRepository();
   identityProvisioner = LaunchProfileProvisioner(
@@ -933,6 +989,7 @@ Future<AppShell> buildAppShell({
     sshUseLoginShell: () =>
         sessionPreferencesCubit.state.preferences.sshUseLoginShell,
     homeTarget: defaultTargetResolver,
+    profileById: sshProfileById,
   );
   // Terminal inject deps after connector: registry was created earlier.
   final workspaceTerminalSessionOps = WorkspaceTerminalSessionOps();
@@ -943,6 +1000,12 @@ Future<AppShell> buildAppShell({
       connector: workspaceShellConnector,
       ops: workspaceTerminalSessionOps,
       runService: workspaceTerminalRunService,
+      connectCoordinatorFactory: (connector) =>
+          WorkspaceTerminalConnectCoordinator.termuxAware(
+            connector: connector,
+            termuxConnected: () => termuxGateCubit?.state.connected ?? true,
+            termuxWorkOpsBlockedMessage: TermuxWorkOpsMessage.disconnectedBlocked,
+          ),
     ),
   );
 
@@ -1012,6 +1075,10 @@ Future<AppShell> buildAppShell({
     ),
     remoteCliReadiness: remoteCliReadiness,
     cliProvisionActivity: cliProvisionActivityAdapter,
+    termuxConnectedResolver: () => termuxGateCubit?.state.connected ?? true,
+    termuxDisconnectedWorkOpsMessageResolver:
+        TermuxWorkOpsMessage.disconnectedBlocked,
+    termuxGateHomeResolver: defaultTargetResolver,
   );
 
   // Bound after [WorkbenchCubit] exists; togglePanel aliases new-terminal UX
@@ -1212,7 +1279,7 @@ Future<AppShell> buildAppShell({
     chatCubit: chatCubit,
     sessionRepo: sessionRepo,
     layoutCubit: layoutCubit,
-    isSshMode: connectionModeService.isSshMode,
+    isSshMode: connectionModeService.isRemoteWorkPlane,
     homeSshProfileId: defaultTargetResolver().sshProfileId,
     sshProfileExists: (id) => sshProfileById(id) != null,
     reinstallStorageContext: reinstallStorageContext,
@@ -1228,23 +1295,33 @@ Future<AppShell> buildAppShell({
     }
     boot('bootstrapAppData start');
     if (!indexReady) {
-      boot('awaiting home index snapshots');
-      await homeIndexPrefetch;
-      if (connectionModeService.isSshMode) {
-        await AppDataBootstrap.bootstrapHomeIndex(
-          boot: boot,
-          sshProfileCubit: sshProfileCubit,
-          teamCubit: teamCubit,
-          chatCubit: chatCubit,
-          sessionRepo: sessionRepo,
-          layoutCubit: layoutCubit,
-          isSshMode: connectionModeService.isSshMode,
-          homeSshProfileId: defaultTargetResolver().sshProfileId,
-          sshProfileExists: (id) => sshProfileById(id) != null,
-          reinstallStorageContext: reinstallStorageContext,
-          home: defaultTargetResolver(),
-        );
+      if (connectionModeService.isRemoteWorkPlane) {
+        boot('awaiting remote home index snapshots');
+        try {
+          await homeIndexPrefetch;
+          await AppDataBootstrap.bootstrapHomeIndex(
+            boot: boot,
+            sshProfileCubit: sshProfileCubit,
+            teamCubit: teamCubit,
+            chatCubit: chatCubit,
+            sessionRepo: sessionRepo,
+            layoutCubit: layoutCubit,
+            isSshMode: connectionModeService.isRemoteWorkPlane,
+            homeSshProfileId: defaultTargetResolver().sshProfileId,
+            sshProfileExists: (id) => sshProfileById(id) != null,
+            reinstallStorageContext: reinstallStorageContext,
+            home: defaultTargetResolver(),
+          );
+        } on Object catch (error, stackTrace) {
+          appLogger.w(
+            '[boot] remote home index bootstrap failed',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
       } else {
+        boot('awaiting home index snapshots');
+        await homeIndexPrefetch;
         await AppDataBootstrap.hydrateNativeHomeIndex(
           boot: boot,
           teamCubit: teamCubit,
@@ -1329,6 +1406,8 @@ Future<AppShell> buildAppShell({
     layout: layoutCubit,
     sessionOps: workspaceTerminalSessionOps,
     homeTarget: defaultTargetResolver,
+    termuxConnected: () => termuxGateCubit?.state.connected ?? true,
+    termuxWorkOpsBlockedMessage: TermuxWorkOpsMessage.disconnectedBlocked,
   );
   workbenchShellLauncher = resolvedShellLauncher;
   final floatingSurfaceRegistry = FloatingSurfaceRegistry.withDefaults(
@@ -1377,6 +1456,47 @@ Future<AppShell> buildAppShell({
     current: defaultTargetResolver,
     switchTo: switchHomeTarget,
   );
+
+  void refreshTermuxConfigCache(TermuxConfig? config) {
+    termuxConfigCache = config;
+  }
+
+  final termuxConnectionTester = SshProfileConnectionTester(
+    clientFactory: sshClientFactory,
+  );
+  final termuxCubit = TermuxCubit(
+    store: termuxConfigStore,
+    credentials: sshCredentialStore,
+    nativeAppDataPath: nativeAppDataPath,
+    selectHome: homeTargetController.select,
+    initialConfig: termuxConfigCache,
+    onConfigChanged: refreshTermuxConfigCache,
+    resolvePathsAfterHomeSelect: () async {
+      final homeCtx = runtimeContextRegistry.home();
+      if (homeCtx.termuxPathsFromCache) {
+        return (home: null, appDataRoot: null);
+      }
+      return (home: homeCtx.home, appDataRoot: homeCtx.appDataRoot);
+    },
+    testConnect: (profile) async {
+      try {
+        await termuxConnectionTester.test(profile);
+        return (ok: true, message: '');
+      } on Object catch (error) {
+        return (ok: false, message: error.toString());
+      }
+    },
+    disconnectTransport: () async {
+      sshClientFactory.disconnectProfile(
+        'termux',
+        reason: SshTransportCloseReason.userDisconnect,
+      );
+    },
+  );
+  if (homeTarget.kind == RuntimeKind.termux) {
+    unawaited(termuxCubit.reconnect());
+  }
+  termuxGateCubit = termuxCubit;
 
   // Target-aware directory picker for workspace dialogs: resolves the chosen
   // target's filesystem (real SSH connect for ssh targets) and lists targets.
@@ -1441,6 +1561,7 @@ Future<AppShell> buildAppShell({
     extensionCubit: extensionCubit,
     appUpdateCubit: appUpdateCubit,
     sshProfileCubit: sshProfileCubit,
+    termuxCubit: termuxCubit,
     homeStorageInvalidator: homeStorageInvalidator,
     sshConnectionCubit: sshConnectionCubit,
     githubCredentialsStore: githubCredentialsStore,

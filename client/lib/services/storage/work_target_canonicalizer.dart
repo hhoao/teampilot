@@ -2,8 +2,8 @@ import '../../models/runtime_target.dart';
 
 /// Single choke point: folder/member target ids ↔ execution [RuntimeTarget].
 ///
-/// [RuntimeTarget.localId] means device-native only. When [home] is SSH/WSL,
-/// bare `local` is normalized to [home] (dirty Android / SSH-home data).
+/// [RuntimeTarget.localId] means device-native only. When [home] is SSH/WSL/
+/// Termux, bare `local` is normalized to [home] (dirty Android / SSH-home data).
 abstract final class WorkTargetCanonicalizer {
   static String defaultFolderTargetId(RuntimeTarget home) {
     if (home.kind == RuntimeKind.local) return RuntimeTarget.localId;
@@ -18,6 +18,7 @@ abstract final class WorkTargetCanonicalizer {
         label: '',
       ),
       RuntimeKind.wsl => RuntimeTarget.wsl(wslDistroOfId(trimmed) ?? ''),
+      RuntimeKind.termux => RuntimeTarget.termux(),
       RuntimeKind.local => RuntimeTarget.local(),
     };
   }

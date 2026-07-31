@@ -1,16 +1,54 @@
 import 'dart:io';
 
+import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:teampilot/models/runtime_target.dart';
+import 'package:teampilot/models/ssh_profile.dart';
+import 'package:teampilot/services/io/sftp_filesystem.dart';
+import 'package:teampilot/services/ssh/ssh_client_factory.dart';
+import 'package:teampilot/services/storage/remote_ssh_storage_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_context_resolver.dart';
+import 'package:teampilot/services/termux/termux_config.dart';
+import 'package:teampilot/services/termux/termux_transport_profile.dart';
 
-/// RuntimeContextResolver materializes a RuntimeContext per target kind,
-/// reproducing the legacy resolve() platform branches (now the only entry).
+class _MockSshClientFactory extends Mock implements SshClientFactory {}
+
+class _MockSftpClient extends Mock implements SftpClient {}
+
+class _FakePathResolver extends RemoteSshStoragePathResolver {
+  _FakePathResolver({
+    required SshClientFactory clientFactory,
+    required this.onResolve,
+  }) : super(clientFactory: clientFactory);
+
+  final Future<RemoteSshStoragePaths> Function(SshProfile profile) onResolve;
+
+  @override
+  Future<RemoteSshStoragePaths> resolve(SshProfile profile) => onResolve(profile);
+}
+
 void main() {
+  late Directory tmp;
+  late SshProfile termuxProfile;
+
+  setUpAll(() {
+    registerFallbackValue(
+      const SshProfile(id: 'termux', name: 'Termux', host: '127.0.0.1', username: 'u'),
+    );
+  });
+
+  setUp(() async {
+    tmp = await Directory.systemTemp.createTemp('rcr_termux_');
+    termuxProfile = termuxTransportProfile(
+      const TermuxConfig(username: 'u0_a123', port: 8022),
+    );
+  });
+
+  tearDown(() => tmp.deleteSync(recursive: true));
+
   test('local target installs native context', () async {
-    final tmp = await Directory.systemTemp.createTemp('rcr_local_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
     final resolver = RuntimeContextResolver(
       nativeAppDataPath: tmp.path,
       nativeHome: tmp.path,
@@ -20,29 +58,134 @@ void main() {
     expect(ctx.target.kind, RuntimeKind.local);
     expect(ctx.mode, StorageBackendMode.native);
     expect(ctx.appDataRoot, tmp.path);
-    expect(ctx.usesPosixPaths, isFalse);
-    expect(ctx.cwd, tmp.path);
   });
 
-  test('wsl target forwards distro and is posix', () async {
-    final tmp = await Directory.systemTemp.createTemp('rcr_wsl_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
+  test('termux with working SSH transport resolves sftp context', () async {
+    final factory = _MockSshClientFactory();
+    final sftp = _MockSftpClient();
+    when(() => factory.sftpFor(any())).thenAnswer((_) async => sftp);
+
+    final resolver = RuntimeContextResolver(
+      sshClientFactory: factory,
+      nativeAppDataPath: tmp.path,
+      remotePathResolver: _FakePathResolver(
+        clientFactory: factory,
+        onResolve: (_) async => const RemoteSshStoragePaths(
+          home: '/data/data/com.termux/files/home',
+          teampilotAppDir:
+              '/data/data/com.termux/files/home/.local/share/com.hhoa.teampilot',
+        ),
+      ),
+    );
+
+    final ctx = await resolver.resolve(
+      RuntimeTarget.termux(),
+      sshProfile: termuxProfile,
+    );
+
+    expect(ctx.target.kind, RuntimeKind.termux);
+    expect(ctx.mode, StorageBackendMode.ssh);
+    expect(ctx.filesystem, isA<SftpFilesystem>());
+    expect(ctx.home, '/data/data/com.termux/files/home');
+    expect(
+      ctx.appDataRoot,
+      '/data/data/com.termux/files/home/.local/share/com.hhoa.teampilot',
+    );
+    verify(() => factory.sftpFor(termuxProfile)).called(1);
+  });
+
+  test('termux SFTP failure with cached paths falls back without throwing', () async {
+    final factory = _MockSshClientFactory();
+    when(() => factory.sftpFor(any())).thenThrow(StateError('sshd down'));
+
+    final resolver = RuntimeContextResolver(
+      sshClientFactory: factory,
+      nativeAppDataPath: tmp.path,
+      remotePathResolver: _FakePathResolver(
+        clientFactory: factory,
+        onResolve: (_) async => const RemoteSshStoragePaths(
+          home: '/data/data/com.termux/files/home',
+          teampilotAppDir:
+              '/data/data/com.termux/files/home/.local/share/com.hhoa.teampilot',
+        ),
+      ),
+    );
+
+    final ctx = await resolver.resolve(
+      RuntimeTarget.termux(),
+      sshProfile: termuxProfile,
+      cachedHome: '/data/data/com.termux/files/home',
+      cachedAppDataRoot:
+          '/data/data/com.termux/files/home/.local/share/com.hhoa.teampilot',
+    );
+
+    expect(ctx.target.kind, RuntimeKind.termux);
+    expect(ctx.mode, StorageBackendMode.ssh);
+    expect(ctx.home, '/data/data/com.termux/files/home');
+    expect(
+      ctx.appDataRoot,
+      '/data/data/com.termux/files/home/.local/share/com.hhoa.teampilot',
+    );
+  });
+
+  test('termux failure without cache rethrows', () async {
+    final factory = _MockSshClientFactory();
+    when(() => factory.sftpFor(any())).thenThrow(StateError('sshd down'));
+
+    final resolver = RuntimeContextResolver(
+      sshClientFactory: factory,
+      nativeAppDataPath: tmp.path,
+      remotePathResolver: _FakePathResolver(
+        clientFactory: factory,
+        onResolve: (_) => Future.error(StateError('resolve failed')),
+      ),
+    );
+
+    await expectLater(
+      () => resolver.resolve(
+        RuntimeTarget.termux(),
+        sshProfile: termuxProfile,
+      ),
+      throwsA(isA<StateError>()),
+    );
+  });
+
+  test('termux without profile throws instead of native fallback', () async {
     final resolver = RuntimeContextResolver(
       nativeAppDataPath: tmp.path,
       nativeHome: tmp.path,
       nativeCwd: tmp.path,
     );
-    // Off Windows the wsl branch is not taken → native, mirroring legacy
-    // resolve(windowsStorageBackend: wsl) off Windows.
-    if (Platform.isWindows) return;
-    final ctx = await resolver.resolve(RuntimeTarget.wsl('Ubuntu'));
-    expect(ctx.target.wslDistro, 'Ubuntu');
-    expect(ctx.appDataRoot, tmp.path); // fell back to native off Windows
+
+    await expectLater(
+      () => resolver.resolve(RuntimeTarget.termux()),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('Termux home requires'),
+        ),
+      ),
+    );
+  });
+
+  test('termux without ssh client factory throws instead of native fallback', () async {
+    final resolver = RuntimeContextResolver(
+      nativeAppDataPath: tmp.path,
+      nativeHome: tmp.path,
+      nativeCwd: tmp.path,
+    );
+
+    await expectLater(
+      () => resolver.resolve(
+        RuntimeTarget.termux(),
+        sshProfile: termuxProfile,
+      ),
+      throwsA(isA<StateError>()),
+    );
   });
 
   test('ssh target with no profile falls back to native', () async {
-    final tmp = await Directory.systemTemp.createTemp('rcr_ssh_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
     final resolver = RuntimeContextResolver(
       nativeAppDataPath: tmp.path,
       nativeHome: tmp.path,

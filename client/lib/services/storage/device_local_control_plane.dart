@@ -2,6 +2,7 @@ import '../../repositories/ssh_profile_repository.dart';
 import '../io/local_filesystem.dart';
 import 'app_storage.dart';
 import 'targets_repository.dart';
+import '../termux/termux_config_store.dart';
 
 /// Device-local SSH profile catalog.
 ///
@@ -22,4 +23,12 @@ TargetsRepository deviceLocalTargetsRepository(String nativeAppDataPath) {
     pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
   );
   return TargetsRepository(rootDir: nativeAppDataPath, fs: fs);
+}
+
+/// Device-local Termux loopback config (`.termux/config.json` under native app data).
+TermuxConfigStore deviceLocalTermuxConfigStore(String nativeAppDataPath) {
+  final fs = LocalFilesystem(
+    pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
+  );
+  return TermuxConfigStore(rootDir: nativeAppDataPath, fs: fs);
 }

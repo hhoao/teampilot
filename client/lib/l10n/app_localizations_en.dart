@@ -6488,4 +6488,107 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get filePreviewHostCenter => 'Center';
+
+  @override
+  String get termuxSetupTitle => 'Termux setup';
+
+  @override
+  String get termuxSetupIntro =>
+      'Follow these steps in Termux on your phone, then connect TeamPilot to the local SSH server.';
+
+  @override
+  String get termuxSetupStepInstallTermux => '1. Install Termux';
+
+  @override
+  String get termuxSetupInstallPlayStore => 'Play Store';
+
+  @override
+  String get termuxSetupInstallFDroid => 'F-Droid';
+
+  @override
+  String get termuxSetupInstallGitHub => 'GitHub';
+
+  @override
+  String get termuxSetupStepInstallOpenssh => '2. Install OpenSSH';
+
+  @override
+  String get termuxSetupStepAuthorizedKeys =>
+      '3. Authorize TeamPilot\'s SSH key';
+
+  @override
+  String get termuxSetupStepStorage => '4. Grant shared storage access';
+
+  @override
+  String get termuxSetupStepStartSshd => '5. Start the SSH server';
+
+  @override
+  String get termuxSetupStepWhoami => '6. Copy your Termux username';
+
+  @override
+  String get termuxSetupWhoamiHint => 'Example output: u0_a399';
+
+  @override
+  String get termuxSetupUsernameLabel => '7. Paste your Termux username';
+
+  @override
+  String get termuxSetupUsernameHint => 'e.g. u0_a399';
+
+  @override
+  String get termuxSetupUsernameError =>
+      'Enter a valid Termux username (starts with u)';
+
+  @override
+  String get termuxSetupConnect => 'Connect';
+
+  @override
+  String get termuxSetupConnecting => 'Connecting…';
+
+  @override
+  String get termuxSetupConnectSuccess => 'Connected to Termux';
+
+  @override
+  String get termuxSetupConnectFailed => 'Could not connect to Termux';
+
+  @override
+  String termuxSetupConnectFailedWithDetail(String detail) {
+    return 'Could not connect to Termux: $detail';
+  }
+
+  @override
+  String get termuxSetupClearSetup => 'Clear setup';
+
+  @override
+  String get termuxSetupClearConfirmTitle => 'Clear Termux setup?';
+
+  @override
+  String get termuxSetupClearConfirmBody =>
+      'This removes saved Termux keys and username. You will need to set up Termux again.';
+
+  @override
+  String get termuxSetupClearConfirmAction => 'Clear setup';
+
+  @override
+  String get termuxDisconnectedBannerMessage =>
+      'Termux is disconnected. Shell, Git, and agent sessions are paused until you reconnect.';
+
+  @override
+  String get termuxDisconnectedReconnect => 'Reconnect';
+
+  @override
+  String get termuxDisconnectedWorkOpsBlocked =>
+      'Termux is disconnected. Reconnect from the banner, then try again.';
+
+  @override
+  String get androidWorkEnvironmentSelectorLabel => 'Work environment';
+
+  @override
+  String get androidWorkEnvironmentSelectorTermux => 'Termux';
+
+  @override
+  String androidWorkEnvironmentSelectorTermuxWithUser(String username) {
+    return 'Termux · $username';
+  }
+
+  @override
+  String get androidWorkEnvironmentSelectorManageTermux => 'Termux setup…';
 }

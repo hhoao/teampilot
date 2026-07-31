@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 /// Where files live and processes run for a unit of work. P0: one global
 /// default target reproduces today's behavior; P2 attaches targets per folder.
-enum RuntimeKind { local, wsl, ssh }
+enum RuntimeKind { local, wsl, ssh, termux }
 
 /// Probed for ssh targets at connect (P3). P0 always null.
 enum RemoteOs { posix, windows }
@@ -10,6 +10,7 @@ enum RemoteOs { posix, windows }
 RuntimeKind runtimeKindOfId(String id) {
   if (id.startsWith('wsl:')) return RuntimeKind.wsl;
   if (id.startsWith('ssh:')) return RuntimeKind.ssh;
+  if (id.startsWith('termux:')) return RuntimeKind.termux;
   return RuntimeKind.local;
 }
 
@@ -18,6 +19,10 @@ String? wslDistroOfId(String id) =>
 
 String? sshProfileIdOfId(String id) =>
     id.startsWith('ssh:') ? id.substring(4) : null;
+
+/// SSH transport targets (catalog SSH + synthetic Termux loopback profile).
+bool usesSshTransport(RuntimeKind kind) =>
+    kind == RuntimeKind.ssh || kind == RuntimeKind.termux;
 
 @immutable
 class RuntimeTarget {
@@ -31,9 +36,17 @@ class RuntimeTarget {
   });
 
   static const String localId = 'local';
+  static const termuxDefaultId = 'termux:default';
 
   factory RuntimeTarget.local({String label = 'This device'}) =>
       RuntimeTarget(id: localId, label: label, kind: RuntimeKind.local);
+
+  factory RuntimeTarget.termux({String label = 'Termux'}) => RuntimeTarget(
+    id: termuxDefaultId,
+    label: label,
+    kind: RuntimeKind.termux,
+    sshProfileId: 'termux',
+  );
 
   factory RuntimeTarget.wsl(String distro, {String? label}) => RuntimeTarget(
     id: 'wsl:$distro',

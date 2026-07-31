@@ -118,6 +118,8 @@ class WorkbenchShellLauncher {
     RuntimeTarget Function()? homeTarget,
     Brightness Function()? platformBrightness,
     String Function()? sshConnectFailedMessage,
+    bool Function()? termuxConnected,
+    String Function()? termuxWorkOpsBlockedMessage,
   }) : _floating = floating,
        _chat = chat,
        _registry = registry,
@@ -135,7 +137,9 @@ class WorkbenchShellLauncher {
                    .platformDispatcher
                    .platformBrightness),
        _sshConnectFailedMessage =
-           sshConnectFailedMessage ?? (() => 'SSH connect failed');
+           sshConnectFailedMessage ?? (() => 'SSH connect failed'),
+       _termuxConnected = termuxConnected,
+       _termuxWorkOpsBlockedMessage = termuxWorkOpsBlockedMessage;
 
   final FloatingWorkspaceCubit _floating;
   final ChatCubit _chat;
@@ -147,6 +151,8 @@ class WorkbenchShellLauncher {
   final RuntimeTarget Function() _homeTarget;
   final Brightness Function() _platformBrightness;
   final String Function() _sshConnectFailedMessage;
+  final bool Function()? _termuxConnected;
+  final String Function()? _termuxWorkOpsBlockedMessage;
 
   WorkbenchTabId? _resolveMostRecentShell(String workspaceId) {
     final bucket = _floating.state.buckets[workspaceId];
@@ -217,8 +223,10 @@ class WorkbenchShellLauncher {
     final entry = await _sessionOps.openEntry(
       group: group,
       connector: _connector,
-      connectCoordinator: WorkspaceTerminalConnectCoordinator(
+      connectCoordinator: WorkspaceTerminalConnectCoordinator.termuxAware(
         connector: _connector,
+        termuxConnected: _termuxConnected,
+        termuxWorkOpsBlockedMessage: _termuxWorkOpsBlockedMessage,
       ),
       cwd: trimmedCwd,
       spec: spec,

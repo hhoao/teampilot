@@ -11,16 +11,21 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/ssh_connection_cubit.dart';
 import 'package:teampilot/cubits/ssh_profile_cubit.dart';
+import 'package:teampilot/cubits/termux_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/pages/ssh_profiles_page.dart';
 import 'package:teampilot/pages/startup_gate.dart';
+import 'package:teampilot/pages/termux/work_environment_chooser_page.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/termux/termux_config_store.dart';
 import 'package:teampilot/services/ssh/android_ssh_connect_home.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
@@ -174,6 +179,7 @@ Future<Widget> _gateHost({
   required TerminalTransportFactory transportFactory,
   required SshProfileRepository profileRepository,
   required SessionPreferencesCubit sessionPrefs,
+  required TermuxCubit termuxCubit,
   bool? isAndroid,
   Widget child = const Text('APP_CHILD'),
 }) async {
@@ -205,6 +211,7 @@ Future<Widget> _gateHost({
             BlocProvider<SshProfileCubit>.value(value: profileCubit),
             BlocProvider<SshConnectionCubit>.value(value: connectionCubit),
             BlocProvider<SessionPreferencesCubit>.value(value: sessionPrefs),
+            BlocProvider<TermuxCubit>.value(value: termuxCubit),
           ],
           child: StartupGate(isAndroid: isAndroid, child: child),
         ),
@@ -221,6 +228,8 @@ void main() {
   late SshProfileCubit profileCubit;
   late TerminalTransportFactory transportFactory;
   late SessionPreferencesCubit sessionPrefs;
+  late Directory termuxNativeDir;
+  late TermuxCubit termuxCubit;
   late AppLocalizations l10n;
 
   setUp(() async {
@@ -248,15 +257,34 @@ void main() {
       repository: SessionPreferencesRepository(prefs),
     );
     await sessionPrefs.load();
+    termuxNativeDir = await Directory.systemTemp.createTemp(
+      'startup_gate_termux_',
+    );
+    termuxCubit = TermuxCubit(
+      store: TermuxConfigStore(
+        rootDir: termuxNativeDir.path,
+        fs: LocalFilesystem(
+          pathContext: AppPaths.pathContextForDataRoot(termuxNativeDir.path),
+        ),
+      ),
+      credentials: harness.credentialStore,
+      nativeAppDataPath: termuxNativeDir.path,
+      selectHome: (_) async {},
+      testConnect: (_) async => (ok: true, message: ''),
+    );
     l10n = await AppLocalizations.delegate.load(const Locale('en'));
   });
 
   tearDown(() async {
     await connectionCubit.close();
     await profileCubit.close();
+    await termuxCubit.close();
     await sessionPrefs.close();
     await harness.dispose();
     await tempDir.delete(recursive: true);
+    if (await termuxNativeDir.exists()) {
+      await termuxNativeDir.delete(recursive: true);
+    }
   });
 
   Future<void> pumpGatedEmptyList(WidgetTester tester) async {
@@ -273,6 +301,7 @@ void main() {
         transportFactory: transportFactory,
         profileRepository: profileRepository,
         sessionPrefs: sessionPrefs,
+        termuxCubit: termuxCubit,
       ),
     );
     await tester.pumpAndSettle();
@@ -323,11 +352,17 @@ void main() {
         transportFactory: transportFactory,
         profileRepository: profileRepository,
         sessionPrefs: sessionPrefs,
+        termuxCubit: termuxCubit,
         isAndroid: true,
       ),
     );
     await tester.pumpAndSettle();
     expect(find.text('APP_CHILD'), findsNothing);
+    expect(find.text('On-device · Termux'), findsOneWidget);
+    expect(find.text('Remote · SSH'), findsOneWidget);
+
+    await tester.tap(find.text('Remote · SSH'));
+    await tester.pumpAndSettle();
     expect(find.text(l10n.sshProfilesEmpty), findsOneWidget);
 
     final ctx = tester.element(find.byType(SshProfilesPage));
@@ -389,12 +424,14 @@ void main() {
       transportFactory: transportFactory,
       profileRepository: profileRepository,
       sessionPrefs: sessionPrefs,
+      termuxCubit: termuxCubit,
       isAndroid: true,
     );
 
     await tester.pumpWidget(await host());
     await tester.pumpAndSettle();
     expect(find.text('APP_CHILD'), findsNothing);
+    expect(find.byType(WorkEnvironmentChooserPage), findsOneWidget);
 
     await applyAndroidSshConnectHome(
       profileId: 'p1',
@@ -405,5 +442,90 @@ void main() {
     await tester.pumpWidget(await host());
     await tester.pumpAndSettle();
     expect(find.text('APP_CHILD'), findsOneWidget);
+  });
+
+  testWidgets('Android with local home shows work environment chooser', (
+    tester,
+  ) async {
+    final mode = ConnectionModeService(
+      defaultTargetResolver: RuntimeTarget.local,
+      hasSshProfiles: () => profileCubit.state.hasProfiles,
+    );
+    await tester.pumpWidget(
+      await _gateHost(
+        mode: mode,
+        profileCubit: profileCubit,
+        connectionCubit: connectionCubit,
+        credentialStore: harness.credentialStore,
+        transportFactory: transportFactory,
+        profileRepository: profileRepository,
+        sessionPrefs: sessionPrefs,
+        termuxCubit: termuxCubit,
+        isAndroid: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('APP_CHILD'), findsNothing);
+    expect(find.text('On-device · Termux'), findsOneWidget);
+    expect(find.text('Remote · SSH'), findsOneWidget);
+    expect(find.text(l10n.sshProfilesEmpty), findsNothing);
+  });
+
+  testWidgets('Android with termux home shows child without connection', (
+    tester,
+  ) async {
+    final mode = ConnectionModeService(
+      defaultTargetResolver: RuntimeTarget.termux,
+      hasSshProfiles: () => profileCubit.state.hasProfiles,
+    );
+    await tester.pumpWidget(
+      await _gateHost(
+        mode: mode,
+        profileCubit: profileCubit,
+        connectionCubit: connectionCubit,
+        credentialStore: harness.credentialStore,
+        transportFactory: transportFactory,
+        profileRepository: profileRepository,
+        sessionPrefs: sessionPrefs,
+        termuxCubit: termuxCubit,
+        isAndroid: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('APP_CHILD'), findsOneWidget);
+    expect(find.byType(WorkEnvironmentChooserPage), findsNothing);
+  });
+
+  testWidgets('Android with ssh home and profiles shows child', (tester) async {
+    await profileCubit.close();
+    profileCubit = _SeededSshProfileCubit(
+      profileRepository: profileRepository,
+      credentialStore: harness.credentialStore,
+      profiles: const [_profile],
+    );
+
+    final mode = ConnectionModeService(
+      defaultTargetResolver: () => RuntimeTarget.ssh('p1', label: 'box'),
+      hasSshProfiles: () => profileCubit.state.hasProfiles,
+    );
+    await tester.pumpWidget(
+      await _gateHost(
+        mode: mode,
+        profileCubit: profileCubit,
+        connectionCubit: connectionCubit,
+        credentialStore: harness.credentialStore,
+        transportFactory: transportFactory,
+        profileRepository: profileRepository,
+        sessionPrefs: sessionPrefs,
+        termuxCubit: termuxCubit,
+        isAndroid: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('APP_CHILD'), findsOneWidget);
+    expect(find.byType(WorkEnvironmentChooserPage), findsNothing);
   });
 }

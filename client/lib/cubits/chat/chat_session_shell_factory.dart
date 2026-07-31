@@ -1,5 +1,5 @@
 import '../../models/runtime_target.dart' as rt;
-import '../../models/runtime_target.dart' show RuntimeKind, sshProfileIdOfId;
+import '../../models/runtime_target.dart' show RuntimeKind, sshProfileIdOfId, usesSshTransport;
 import '../../models/ssh_profile.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
@@ -63,7 +63,7 @@ class ChatSessionShellFactory {
       _defaultTargetResolver?.call() ?? rt.RuntimeTarget.local();
 
   bool _useSshFor(rt.RuntimeTarget target) =>
-      target.kind == RuntimeKind.ssh && _transportFactory != null;
+      usesSshTransport(target.kind) && _transportFactory != null;
 
   rt.RuntimeTarget _effectiveTarget(rt.RuntimeTarget? workTarget) =>
       workTarget ?? _target;

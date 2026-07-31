@@ -33,6 +33,8 @@ import '../../services/terminal/terminal_session.dart';
 import '../../services/terminal/terminal_theme_for_launch.dart';
 import '../../utils/logging/logger.dart';
 
+typedef TermuxWorkOpsBlockResolver = String? Function(RuntimeTarget target);
+
 /// Hooks [SessionShellConnector] delegates back to [SessionLaunchService].
 abstract interface class SessionShellConnectorDelegate {
   WorkspaceLaunchContext launchContextFor(AppSession session);
@@ -54,12 +56,18 @@ abstract interface class SessionShellConnectorDelegate {
 
 /// Attaches a member shell after launch prep, lifecycle gating, and SSH/bus setup.
 class SessionShellConnector {
-  SessionShellConnector(this._host, this._delegate, {Uuid? uuid})
-    : _uuid = uuid ?? const Uuid();
+  SessionShellConnector(
+    this._host,
+    this._delegate, {
+    Uuid? uuid,
+    TermuxWorkOpsBlockResolver? termuxWorkOpsBlockFor,
+  }) : _uuid = uuid ?? const Uuid(),
+       _termuxWorkOpsBlockFor = termuxWorkOpsBlockFor;
 
   final SessionLaunchHost _host;
   final SessionShellConnectorDelegate _delegate;
   final Uuid _uuid;
+  final TermuxWorkOpsBlockResolver? _termuxWorkOpsBlockFor;
 
   ChatTabStore get _tabStore => _host.tabStore;
 
@@ -215,6 +223,16 @@ class SessionShellConnector {
         'targetId=${launchTarget.id}',
       );
 
+      final termuxBlock = _termuxWorkOpsBlockFor?.call(launchTarget);
+      if (termuxBlock != null) {
+        appLogger.d(
+          '[session-launch] connectShell aborted session=${tab.info.id} '
+          'reason=termux_disconnected',
+        );
+        _host.failSessionConnect(tab.info.id, termuxBlock);
+        return ConnectShellResult.failed;
+      }
+
       final mixedBus =
           team != null &&
           launchMember != null &&
@@ -332,7 +350,7 @@ class SessionShellConnector {
             busIdle: mixedBus
                 ? switch (remoteBinding) {
                     final binding? => MemberBusIdleEndpoint.remote(binding),
-                    null when launchTarget.kind != RuntimeKind.ssh =>
+                    null when !usesSshTransport(launchTarget.kind) =>
                       MemberBusIdleEndpoint.local(
                         _host.teammateBusMcpGateway,
                         sessionId: activeSession.sessionId,
@@ -377,7 +395,7 @@ class SessionShellConnector {
         }
       }
 
-      if (launchTarget.kind == RuntimeKind.ssh) {
+      if (usesSshTransport(launchTarget.kind)) {
         final injectRootSandboxEnv = await _host.isWorkspaceRootSandboxEnvOptIn(
           activeSession.workspaceId,
         );
@@ -733,7 +751,7 @@ class SessionShellConnector {
     Function(void Function(CliInstallProgress progress)? onProgress)
     prepare,
   }) async {
-    final hostLabel = launchTarget.kind == RuntimeKind.ssh
+    final hostLabel = usesSshTransport(launchTarget.kind)
         ? (_host.shellFactory.profileFor(launchTarget)?.host.trim() ??
               launchTarget.id)
         : '';
@@ -778,7 +796,7 @@ class SessionShellConnector {
       }
     }
 
-    if (launchTarget.kind != RuntimeKind.ssh) {
+    if (!usesSshTransport(launchTarget.kind)) {
       return runPrepare(null);
     }
 
@@ -977,7 +995,7 @@ class SessionShellConnector {
     required String memberKey,
     required RuntimeTarget launchTarget,
   }) async {
-    if (launchTarget.kind != RuntimeKind.ssh) return null;
+    if (!usesSshTransport(launchTarget.kind)) return null;
     final factory = _host.shellFactory.transportFactory?.sshClientFactory;
     final profile = _host.shellFactory.profileFor(launchTarget);
     if (factory == null || profile == null) return null;

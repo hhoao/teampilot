@@ -2510,5 +2510,42 @@
   "filePreviewHostTitle": "文件预览位置",
   "filePreviewHostDescription": "在浮动工作区或中间工作台打开文件。",
   "filePreviewHostFloating": "浮动",
-  "filePreviewHostCenter": "中间"
+  "filePreviewHostCenter": "中间",
+
+  "termuxSetupTitle": "Termux 设置",
+  "termuxSetupIntro": "在手机上按以下步骤在 Termux 中完成配置，然后连接 TeamPilot 的本地 SSH 服务。",
+  "termuxSetupStepInstallTermux": "1. 安装 Termux",
+  "termuxSetupInstallPlayStore": "Play 商店",
+  "termuxSetupInstallFDroid": "F-Droid",
+  "termuxSetupInstallGitHub": "GitHub",
+  "termuxSetupStepInstallOpenssh": "2. 安装 OpenSSH",
+  "termuxSetupStepAuthorizedKeys": "3. 授权 TeamPilot SSH 公钥",
+  "termuxSetupStepStorage": "4. 授予共享存储访问权限",
+  "termuxSetupStepStartSshd": "5. 启动 SSH 服务",
+  "termuxSetupStepWhoami": "6. 复制 Termux 用户名",
+  "termuxSetupWhoamiHint": "示例输出：u0_a399",
+  "termuxSetupUsernameLabel": "7. 粘贴 Termux 用户名",
+  "termuxSetupUsernameHint": "例如 u0_a399",
+  "termuxSetupUsernameError": "请输入有效的 Termux 用户名（以 u 开头）",
+  "termuxSetupConnect": "连接",
+  "termuxSetupConnecting": "正在连接…",
+  "termuxSetupConnectSuccess": "已连接到 Termux",
+  "termuxSetupConnectFailed": "无法连接到 Termux",
+  "termuxSetupConnectFailedWithDetail": "无法连接到 Termux：{detail}",
+  "@termuxSetupConnectFailedWithDetail": {
+    "placeholders": {
+      "detail": { "type": "String" }
+    }
+  },
+  "termuxSetupClearSetup": "清除设置",
+  "termuxSetupClearConfirmTitle": "清除 Termux 设置？",
+  "termuxSetupClearConfirmBody": "将删除已保存的 Termux 密钥和用户名，需要重新完成 Termux 设置。",
+  "termuxSetupClearConfirmAction": "清除设置",
+  "termuxDisconnectedBannerMessage": "Termux 已断开连接。请重新连接后再使用 Shell、Git 和 Agent 会话。",
+  "termuxDisconnectedReconnect": "重新连接",
+  "termuxDisconnectedWorkOpsBlocked": "Termux 已断开连接。请通过顶部横幅重新连接后再试。",
+  "androidWorkEnvironmentSelectorLabel": "工作环境",
+  "androidWorkEnvironmentSelectorTermux": "Termux",
+  "androidWorkEnvironmentSelectorTermuxWithUser": "Termux · {username}",
+  "androidWorkEnvironmentSelectorManageTermux": "Termux 设置…"
 }

@@ -6,11 +6,14 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/session_preferences_cubit.dart';
 import '../../cubits/ssh_profile_cubit.dart';
+import '../../cubits/termux_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import '../../services/app/connection_mode_service.dart';
 import '../../services/cli/cli_installer_service.dart';
 import '../../services/ssh/ssh_client_factory.dart';
+import '../../services/termux/termux_transport_profile.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/cli_install_progress_panel.dart';
@@ -146,16 +149,15 @@ class CliExecutablePathSettingsRowState
     });
     try {
       final connectionMode = context.read<ConnectionModeService>();
-      final sshProfile = context.read<SshProfileCubit>().state.selectedProfile;
       final installer = CliInstallerService(
         sshClientFactory: context.read<SshClientFactory>(),
       );
       final result = await installer.install(
         cli: widget.cli,
-        mode: connectionMode.isSshMode
+        mode: connectionMode.isRemoteWorkPlane
             ? CliInstallMode.ssh
             : CliInstallMode.local,
-        sshProfile: sshProfile,
+        sshProfile: _remoteSshProfile(context, connectionMode),
         onProgress: _onInstallProgress,
       );
       if (!mounted) return;
@@ -216,8 +218,8 @@ class CliExecutablePathSettingsRowState
     final l10n = context.l10n;
     _syncFromState(stored);
 
-    final isSshMode = context.select<ConnectionModeService, bool>(
-      (service) => service.isSshMode,
+    final isRemoteWorkPlane = context.select<ConnectionModeService, bool>(
+      (service) => service.isRemoteWorkPlane,
     );
     final effective = widget.cubit.resolveExecutable(widget.cli);
     final isFallback = stored.trim().isEmpty;
@@ -283,7 +285,7 @@ class CliExecutablePathSettingsRowState
               ],
               OutlinedButton.icon(
                 key: widget.browseKey,
-                onPressed: isSshMode ? null : _pickFile,
+                onPressed: isRemoteWorkPlane ? null : _pickFile,
                 icon: Icon(
                   Icons.folder_open_outlined,
                   size: context.tpIconSizes.md,
@@ -310,4 +312,16 @@ class CliExecutablePathSettingsRowState
       showDividerBelow: widget.showDividerBelow,
     );
   }
+}
+
+SshProfile? _remoteSshProfile(
+  BuildContext context,
+  ConnectionModeService mode,
+) {
+  if (!mode.isRemoteWorkPlane) return null;
+  if (mode.isTermuxMode) {
+    final config = context.read<TermuxCubit>().state.config;
+    return config == null ? null : termuxTransportProfile(config);
+  }
+  return context.read<SshProfileCubit>().state.selectedProfile;
 }

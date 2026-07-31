@@ -11615,6 +11615,192 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Center'**
   String get filePreviewHostCenter;
+
+  /// No description provided for @termuxSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Termux setup'**
+  String get termuxSetupTitle;
+
+  /// No description provided for @termuxSetupIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow these steps in Termux on your phone, then connect TeamPilot to the local SSH server.'**
+  String get termuxSetupIntro;
+
+  /// No description provided for @termuxSetupStepInstallTermux.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Install Termux'**
+  String get termuxSetupStepInstallTermux;
+
+  /// No description provided for @termuxSetupInstallPlayStore.
+  ///
+  /// In en, this message translates to:
+  /// **'Play Store'**
+  String get termuxSetupInstallPlayStore;
+
+  /// No description provided for @termuxSetupInstallFDroid.
+  ///
+  /// In en, this message translates to:
+  /// **'F-Droid'**
+  String get termuxSetupInstallFDroid;
+
+  /// No description provided for @termuxSetupInstallGitHub.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub'**
+  String get termuxSetupInstallGitHub;
+
+  /// No description provided for @termuxSetupStepInstallOpenssh.
+  ///
+  /// In en, this message translates to:
+  /// **'2. Install OpenSSH'**
+  String get termuxSetupStepInstallOpenssh;
+
+  /// No description provided for @termuxSetupStepAuthorizedKeys.
+  ///
+  /// In en, this message translates to:
+  /// **'3. Authorize TeamPilot\'s SSH key'**
+  String get termuxSetupStepAuthorizedKeys;
+
+  /// No description provided for @termuxSetupStepStorage.
+  ///
+  /// In en, this message translates to:
+  /// **'4. Grant shared storage access'**
+  String get termuxSetupStepStorage;
+
+  /// No description provided for @termuxSetupStepStartSshd.
+  ///
+  /// In en, this message translates to:
+  /// **'5. Start the SSH server'**
+  String get termuxSetupStepStartSshd;
+
+  /// No description provided for @termuxSetupStepWhoami.
+  ///
+  /// In en, this message translates to:
+  /// **'6. Copy your Termux username'**
+  String get termuxSetupStepWhoami;
+
+  /// No description provided for @termuxSetupWhoamiHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Example output: u0_a399'**
+  String get termuxSetupWhoamiHint;
+
+  /// No description provided for @termuxSetupUsernameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'7. Paste your Termux username'**
+  String get termuxSetupUsernameLabel;
+
+  /// No description provided for @termuxSetupUsernameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. u0_a399'**
+  String get termuxSetupUsernameHint;
+
+  /// No description provided for @termuxSetupUsernameError.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid Termux username (starts with u)'**
+  String get termuxSetupUsernameError;
+
+  /// No description provided for @termuxSetupConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get termuxSetupConnect;
+
+  /// No description provided for @termuxSetupConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting…'**
+  String get termuxSetupConnecting;
+
+  /// No description provided for @termuxSetupConnectSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected to Termux'**
+  String get termuxSetupConnectSuccess;
+
+  /// No description provided for @termuxSetupConnectFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not connect to Termux'**
+  String get termuxSetupConnectFailed;
+
+  /// No description provided for @termuxSetupConnectFailedWithDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not connect to Termux: {detail}'**
+  String termuxSetupConnectFailedWithDetail(String detail);
+
+  /// No description provided for @termuxSetupClearSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear setup'**
+  String get termuxSetupClearSetup;
+
+  /// No description provided for @termuxSetupClearConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Termux setup?'**
+  String get termuxSetupClearConfirmTitle;
+
+  /// No description provided for @termuxSetupClearConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes saved Termux keys and username. You will need to set up Termux again.'**
+  String get termuxSetupClearConfirmBody;
+
+  /// No description provided for @termuxSetupClearConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear setup'**
+  String get termuxSetupClearConfirmAction;
+
+  /// No description provided for @termuxDisconnectedBannerMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Termux is disconnected. Shell, Git, and agent sessions are paused until you reconnect.'**
+  String get termuxDisconnectedBannerMessage;
+
+  /// No description provided for @termuxDisconnectedReconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect'**
+  String get termuxDisconnectedReconnect;
+
+  /// No description provided for @termuxDisconnectedWorkOpsBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Termux is disconnected. Reconnect from the banner, then try again.'**
+  String get termuxDisconnectedWorkOpsBlocked;
+
+  /// No description provided for @androidWorkEnvironmentSelectorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Work environment'**
+  String get androidWorkEnvironmentSelectorLabel;
+
+  /// No description provided for @androidWorkEnvironmentSelectorTermux.
+  ///
+  /// In en, this message translates to:
+  /// **'Termux'**
+  String get androidWorkEnvironmentSelectorTermux;
+
+  /// No description provided for @androidWorkEnvironmentSelectorTermuxWithUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Termux · {username}'**
+  String androidWorkEnvironmentSelectorTermuxWithUser(String username);
+
+  /// No description provided for @androidWorkEnvironmentSelectorManageTermux.
+  ///
+  /// In en, this message translates to:
+  /// **'Termux setup…'**
+  String get androidWorkEnvironmentSelectorManageTermux;
 }
 
 class _AppLocalizationsDelegate

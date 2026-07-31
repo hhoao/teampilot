@@ -618,7 +618,7 @@ git commit -m "fix(android): termux synthetic profile for remote CLI and shell"
 
 ### Task 12: Verification + docs touch-up
 
-- [ ] **Step 1: Run focused suites**
+- [x] **Step 1: Run focused suites**
 
 ```bash
 cd client && flutter test \

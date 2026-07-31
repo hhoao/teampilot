@@ -20,6 +20,8 @@ class _FakeResolver extends RuntimeContextResolver {
   Future<RuntimeContext> resolve(
     RuntimeTarget target, {
     SshProfile? sshProfile,
+    String? cachedHome,
+    String? cachedAppDataRoot,
   }) async {
     resolveCount[target.id] = (resolveCount[target.id] ?? 0) + 1;
     if (offline.contains(target.id)) {

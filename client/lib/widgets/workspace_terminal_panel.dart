@@ -10,6 +10,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/chat_cubit.dart';
 import '../cubits/layout_cubit.dart';
+import '../cubits/termux_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/runtime_target.dart';
 import '../models/workspace_folder.dart';
@@ -28,6 +29,7 @@ import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_connect_coordinator.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
 import '../services/terminal/workspace_terminal_session_ops.dart';
+import '../services/termux/termux_work_ops_message.dart';
 import '../services/workspace/workspace_tools_scope.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/ui/app_keys.dart';
@@ -132,7 +134,11 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       WorkspaceToolsScope.maybeOf(context)?.effectiveFolders ?? const [];
 
   WorkspaceTerminalConnectCoordinator get _connect => _connectCoordinator ??=
-      WorkspaceTerminalConnectCoordinator(connector: _connector);
+      WorkspaceTerminalConnectCoordinator.termuxAware(
+        connector: _connector,
+        termuxConnected: () => context.read<TermuxCubit>().state.connected,
+        termuxWorkOpsBlockedMessage: TermuxWorkOpsMessage.disconnectedBlocked,
+      );
 
   @override
   void initState() {
@@ -302,7 +308,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   void _onSshReconnectSignal(String profileId) {
     for (final entry in _group.entries) {
       final target = _connector.runtimeTargetFor(entry.spec);
-      if (target.kind != RuntimeKind.ssh) continue;
+      if (!usesSshTransport(target.kind)) continue;
       final pid = target.sshProfileId ?? sshProfileIdOfId(target.id);
       if (pid != profileId) continue;
       if (!entry.connected && !entry.session.isRunning) continue;

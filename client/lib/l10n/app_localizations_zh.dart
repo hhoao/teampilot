@@ -6236,4 +6236,104 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get filePreviewHostCenter => '中间';
+
+  @override
+  String get termuxSetupTitle => 'Termux 设置';
+
+  @override
+  String get termuxSetupIntro =>
+      '在手机上按以下步骤在 Termux 中完成配置，然后连接 TeamPilot 的本地 SSH 服务。';
+
+  @override
+  String get termuxSetupStepInstallTermux => '1. 安装 Termux';
+
+  @override
+  String get termuxSetupInstallPlayStore => 'Play 商店';
+
+  @override
+  String get termuxSetupInstallFDroid => 'F-Droid';
+
+  @override
+  String get termuxSetupInstallGitHub => 'GitHub';
+
+  @override
+  String get termuxSetupStepInstallOpenssh => '2. 安装 OpenSSH';
+
+  @override
+  String get termuxSetupStepAuthorizedKeys => '3. 授权 TeamPilot SSH 公钥';
+
+  @override
+  String get termuxSetupStepStorage => '4. 授予共享存储访问权限';
+
+  @override
+  String get termuxSetupStepStartSshd => '5. 启动 SSH 服务';
+
+  @override
+  String get termuxSetupStepWhoami => '6. 复制 Termux 用户名';
+
+  @override
+  String get termuxSetupWhoamiHint => '示例输出：u0_a399';
+
+  @override
+  String get termuxSetupUsernameLabel => '7. 粘贴 Termux 用户名';
+
+  @override
+  String get termuxSetupUsernameHint => '例如 u0_a399';
+
+  @override
+  String get termuxSetupUsernameError => '请输入有效的 Termux 用户名（以 u 开头）';
+
+  @override
+  String get termuxSetupConnect => '连接';
+
+  @override
+  String get termuxSetupConnecting => '正在连接…';
+
+  @override
+  String get termuxSetupConnectSuccess => '已连接到 Termux';
+
+  @override
+  String get termuxSetupConnectFailed => '无法连接到 Termux';
+
+  @override
+  String termuxSetupConnectFailedWithDetail(String detail) {
+    return '无法连接到 Termux：$detail';
+  }
+
+  @override
+  String get termuxSetupClearSetup => '清除设置';
+
+  @override
+  String get termuxSetupClearConfirmTitle => '清除 Termux 设置？';
+
+  @override
+  String get termuxSetupClearConfirmBody =>
+      '将删除已保存的 Termux 密钥和用户名，需要重新完成 Termux 设置。';
+
+  @override
+  String get termuxSetupClearConfirmAction => '清除设置';
+
+  @override
+  String get termuxDisconnectedBannerMessage =>
+      'Termux 已断开连接。请重新连接后再使用 Shell、Git 和 Agent 会话。';
+
+  @override
+  String get termuxDisconnectedReconnect => '重新连接';
+
+  @override
+  String get termuxDisconnectedWorkOpsBlocked => 'Termux 已断开连接。请通过顶部横幅重新连接后再试。';
+
+  @override
+  String get androidWorkEnvironmentSelectorLabel => '工作环境';
+
+  @override
+  String get androidWorkEnvironmentSelectorTermux => 'Termux';
+
+  @override
+  String androidWorkEnvironmentSelectorTermuxWithUser(String username) {
+    return 'Termux · $username';
+  }
+
+  @override
+  String get androidWorkEnvironmentSelectorManageTermux => 'Termux 设置…';
 }
