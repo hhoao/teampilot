@@ -18,15 +18,19 @@ import '../cubits/workbench/workbench_tab.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
 import '../models/workspace.dart';
+import '../models/workspace_launch_context.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../services/storage/home_target_controller.dart';
+import '../services/io/filesystem.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/terminal_theme_mapper.dart';
+import '../services/workbench/session_member_filesystem.dart';
 import '../services/workbench/workbench_editor_opener.dart';
 import '../services/workspace/dead_ssh_target_error.dart';
 import '../services/workspace/target_liveness.dart';
+import '../services/workspace/workspace_tools_scope.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/ui/app_keys.dart';
 import '../widgets/workspace/workspace_dead_target_remap_dialog.dart';
@@ -89,12 +93,53 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
   Future<void> _openTerminalLink(String link) async {
     if (!mounted) return;
+    final chatCubit = context.read<ChatCubit>();
+    final sessionId = chatCubit.state.activeSessionId?.trim() ?? '';
+    AppSession? appSession;
+    if (sessionId.isNotEmpty) {
+      for (final s in chatCubit.state.sessions) {
+        if (s.sessionId == sessionId &&
+            s.workspaceId == widget.workspaceId) {
+          appSession = s;
+          break;
+        }
+      }
+    }
+    Workspace? workspace;
+    for (final w in chatCubit.state.workspaces) {
+      if (w.workspaceId == widget.workspaceId) {
+        workspace = w;
+        break;
+      }
+    }
+
+    final memberId = chatCubit.state.selectedMemberId;
+    final isPersonal = appSession?.sessionTeam.trim().isEmpty ?? true;
+    final historyMemberId = isPersonal ? '' : memberId;
+
+    Filesystem? fs;
+    if (appSession != null && workspace != null) {
+      fs = await resolveSessionMemberFilesystem(
+        lifecycle: chatCubit.lifecycle,
+        launchContext: WorkspaceLaunchContext(
+          session: appSession,
+          workspace: workspace,
+        ),
+        memberId: historyMemberId,
+        toolsScope: WorkspaceToolsScope.maybeOf(context),
+      );
+    } else {
+      fs = WorkspaceToolsScope.maybeOf(context)?.tools?.context.filesystem;
+    }
+    if (!mounted) return;
+
     await openChatWorkbenchTerminalLink(
       link: link,
-      chatCubit: context.read<ChatCubit>(),
+      chatCubit: chatCubit,
       editorOpener: context.read<WorkbenchEditorOpener>(),
       workspaceId: widget.workspaceId,
       isMounted: () => mounted,
+      fs: fs,
     );
   }
 

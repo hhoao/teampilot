@@ -15,6 +15,7 @@ import '../../repositories/session_repository.dart';
 import '../../services/selection_ai/selection_ai_context.dart';
 import '../../services/selection_ai/selection_ask_ai.dart';
 import '../../services/selection_ai/selection_ask_ai_fab_host.dart';
+import '../../services/io/filesystem.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../services/terminal/terminal_uri_opener.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
@@ -315,13 +316,15 @@ Future<void> openChatWorkbenchTerminalLink({
   required WorkbenchEditorOpener editorOpener,
   required String workspaceId,
   required bool Function() isMounted,
+  Filesystem? fs,
 }) async {
   await TerminalUriOpener.open(
     link,
     workingDirectory: chatCubit.activeTabWorkingDirectory,
+    fs: fs,
     openInEditor: (path) async {
       if (!isMounted()) return;
-      await editorOpener.openFile(workspaceId, path);
+      await editorOpener.openFile(workspaceId, path, fs: fs);
     },
   );
 }

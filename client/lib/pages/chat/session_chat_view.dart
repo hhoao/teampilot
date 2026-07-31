@@ -51,6 +51,7 @@ import '../../services/session/session_history_pagination.dart';
 import '../../services/storage/app_storage.dart';
 import '../../services/ai_history/workspace_edit_line_highlighter.dart';
 import '../../services/workbench/ai_tool_file_open_coordinator.dart';
+import '../../services/workbench/session_member_filesystem.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
 import '../../services/terminal/pending_user_message.dart';
@@ -1290,13 +1291,12 @@ class _SessionChatViewState extends State<SessionChatView> {
                         ),
                         builder: (context, cotExpand) {
                           final (expandReasoning, expandTools) = cotExpand;
-                          final workspaceFs = WorkspaceToolsScope.maybeOf(
-                            context,
-                          )?.tools?.context.filesystem;
-                          final workspaceFolderPaths = _launchContext
-                              .folderCatalog
-                              .map((f) => f.path)
-                              .toList();
+                          final lifecycle = context.read<ChatCubit>().lifecycle;
+                          final workspaceFolderPaths = sessionMemberFolderPaths(
+                            lifecycle: lifecycle,
+                            launchContext: _launchContext,
+                            memberId: widget.selectedMemberId,
+                          );
                           final sessionWorkingDirectory = _workspaceRoot.isEmpty
                               ? null
                               : _workspaceRoot;
@@ -1327,38 +1327,44 @@ class _SessionChatViewState extends State<SessionChatView> {
                             ),
                             child: AiToolFileActionsScope(
                               actions: AiToolFileActions(
-                                onOpenFile: workspaceFs == null
-                                    ? null
-                                    : (target) async {
-                                        final coordinator =
-                                            AiToolFileOpenCoordinator(
-                                              opener: context
-                                                  .read<WorkbenchEditorOpener>(),
-                                              editor: context
-                                                  .read<EditorCubit>(),
-                                            );
-                                        final result = await coordinator
-                                            .openToolFile(
-                                              workspaceId:
-                                                  widget.session.workspaceId,
-                                              target: target,
-                                              sessionWorkingDirectory:
-                                                  sessionWorkingDirectory,
-                                              workspaceFolderPaths:
-                                                  workspaceFolderPaths,
-                                              fs: workspaceFs,
-                                            );
-                                        if (!context.mounted) return;
-                                        if (result.isMissing) {
-                                          AppToast.show(
-                                            context,
-                                            message: l10n.aiToolFileNotFound(
-                                              target.path,
+                                onOpenFile: (target) async {
+                                  final fs =
+                                      await resolveSessionMemberFilesystem(
+                                        lifecycle: lifecycle,
+                                        launchContext: _launchContext,
+                                        memberId: widget.selectedMemberId,
+                                        toolsScope:
+                                            WorkspaceToolsScope.maybeOf(
+                                              context,
                                             ),
-                                            variant: TpToastVariant.warning,
-                                          );
-                                        }
-                                      },
+                                      );
+                                  if (!context.mounted) return;
+                                  final coordinator =
+                                      AiToolFileOpenCoordinator(
+                                        opener: context
+                                            .read<WorkbenchEditorOpener>(),
+                                        editor: context.read<EditorCubit>(),
+                                      );
+                                  final result = await coordinator.openToolFile(
+                                    workspaceId: widget.session.workspaceId,
+                                    target: target,
+                                    sessionWorkingDirectory:
+                                        sessionWorkingDirectory,
+                                    workspaceFolderPaths:
+                                        workspaceFolderPaths,
+                                    fs: fs,
+                                  );
+                                  if (!context.mounted) return;
+                                  if (result.isMissing) {
+                                    AppToast.show(
+                                      context,
+                                      message: l10n.aiToolFileNotFound(
+                                        target.path,
+                                      ),
+                                      variant: TpToastVariant.warning,
+                                    );
+                                  }
+                                },
                                 lineHighlighter: WorkspaceAiEditLineHighlighter(
                                   brightness: Theme.of(context).brightness,
                                 ),
