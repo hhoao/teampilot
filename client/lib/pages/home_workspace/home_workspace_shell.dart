@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 
 import 'package:collection/collection.dart';
 import 'package:file_picker/file_picker.dart';
@@ -39,7 +38,6 @@ import '../../theme/workspace_surface_layers.dart';
 import '../../utils/workspace/workspace_display_name.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/run/run_toolbar.dart';
-import '../../widgets/android_work_environment_selector.dart';
 import '../../widgets/ssh/ssh_home_disconnected_banner.dart';
 import '../../widgets/termux/termux_disconnected_banner.dart';
 import '../floating_workspace/floating_workspace_host.dart';
