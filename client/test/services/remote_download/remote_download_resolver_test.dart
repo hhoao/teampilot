@@ -48,6 +48,31 @@ void main() {
     expect(c.single.uri, uri);
   });
 
+  test('matchPathPrefix filters sources by uri path', () {
+    final catalog = RemoteDownloadCatalog([
+      const RemoteDownloadSource(
+        id: 'repos-api',
+        priority: 10,
+        enabled: true,
+        matchHosts: ['api.github.com'],
+        matchPathPrefix: '/repos',
+      ),
+      const RemoteDownloadSource(
+        id: 'releases-only',
+        priority: 20,
+        enabled: true,
+        matchHosts: ['api.github.com'],
+        matchPathPrefix: '/releases',
+      ),
+    ]);
+    final resolver = RemoteDownloadResolver(catalog);
+    final uri = Uri.parse('https://api.github.com/repos/a/b/releases/latest');
+    final c = resolver.resolve(uri);
+    expect(c, hasLength(1));
+    expect(c.single.sourceId, 'repos-api');
+    expect(c.single.uri, uri);
+  });
+
   test('withProvider re-reads catalog on each resolve', () {
     var callCount = 0;
     final resolver = RemoteDownloadResolver.withProvider(() {
