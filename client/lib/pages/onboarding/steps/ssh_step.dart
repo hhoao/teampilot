@@ -28,6 +28,7 @@ class OnboardingSshStep extends StatelessWidget {
       title: l10n.onboardingSshTitle,
       subtitle: l10n.onboardingSshSubtitle,
       body: SshProfileSetupPage(
+        embedded: true,
         profileRepository: context.read<SshProfileRepository>(),
         credentialStore: context.read<SshCredentialStore>(),
         connectionTester: SshProfileConnectionTester(

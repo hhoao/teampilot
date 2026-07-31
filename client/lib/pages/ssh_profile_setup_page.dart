@@ -18,6 +18,7 @@ class SshProfileSetupPage extends StatefulWidget {
     this.initialProfile,
     this.connectionTester,
     this.onProfileSaved,
+    this.embedded = false,
   });
 
   final SshProfileRepository profileRepository;
@@ -25,6 +26,10 @@ class SshProfileSetupPage extends StatefulWidget {
   final SshProfile? initialProfile;
   final SshProfileConnectionTester? connectionTester;
   final VoidCallback? onProfileSaved;
+
+  /// When true, omits [Scaffold] so a parent (e.g. onboarding step) supplies
+  /// chrome and scrolling.
+  final bool embedded;
 
   @override
   State<SshProfileSetupPage> createState() => _SshProfileSetupPageState();
@@ -179,17 +184,8 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
     return null;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? '编辑 SSH Profile' : '新增 SSH Profile'),
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
+  List<Widget> _buildFormFields() {
+    return [
             TextFormField(
               controller: _nameController,
               decoration: const InputDecoration(
@@ -326,9 +322,30 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
                     )
                   : const Text('保存 Profile'),
             ),
-          ],
-        ),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final form = Form(
+      key: _formKey,
+      child: widget.embedded
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: _buildFormFields(),
+            )
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: _buildFormFields(),
+            ),
+    );
+    if (widget.embedded) return form;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_isEditing ? '编辑 SSH Profile' : '新增 SSH Profile'),
       ),
+      body: form,
     );
   }
 }
