@@ -3574,6 +3574,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String get githubSettingsSubtitle => '连接 GitHub，以便将专家和团队发布到 Hub';
 
   @override
+  String get downloadSourcesSettingsTitle => '下载源';
+
+  @override
+  String get downloadSourcesSettingsSubtitle =>
+      '配置 GitHub 下载镜像（应用更新、Termux APK）';
+
+  @override
+  String get downloadSourcesMirrorBaseUrl => '镜像基础 URL';
+
+  @override
+  String get downloadSourcesMirrorHint => 'https://mirror.example';
+
+  @override
+  String get downloadSourcesSave => '保存';
+
+  @override
+  String get downloadSourcesRestoreDefaults => '恢复默认';
+
+  @override
+  String get downloadSourcesIdentity => '直连（官方）';
+
+  @override
+  String get downloadSourcesEnabledSources => '已启用源';
+
+  @override
   String get githubSignIn => '使用 GitHub 登录';
 
   @override

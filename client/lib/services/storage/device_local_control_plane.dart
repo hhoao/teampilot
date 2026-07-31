@@ -2,6 +2,7 @@ import '../../repositories/ssh_profile_repository.dart';
 import '../io/local_filesystem.dart';
 import 'app_storage.dart';
 import 'targets_repository.dart';
+import '../remote_download/remote_download_settings_store.dart';
 import '../termux/termux_config_store.dart';
 
 /// Device-local SSH profile catalog.
@@ -31,4 +32,14 @@ TermuxConfigStore deviceLocalTermuxConfigStore(String nativeAppDataPath) {
     pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
   );
   return TermuxConfigStore(rootDir: nativeAppDataPath, fs: fs);
+}
+
+/// Device-local remote download catalog overrides (`.remote-download/` under native app data).
+RemoteDownloadSettingsStore deviceLocalRemoteDownloadSettingsStore(
+  String nativeAppDataPath,
+) {
+  final fs = LocalFilesystem(
+    pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
+  );
+  return RemoteDownloadSettingsStore(rootDir: nativeAppDataPath, fs: fs);
 }

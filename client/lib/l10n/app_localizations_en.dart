@@ -3713,6 +3713,31 @@ class AppLocalizationsEn extends AppLocalizations {
       'Connect GitHub to publish experts and teams to Hub';
 
   @override
+  String get downloadSourcesSettingsTitle => 'Download sources';
+
+  @override
+  String get downloadSourcesSettingsSubtitle =>
+      'Configure mirrors for GitHub downloads (app updates, Termux APK)';
+
+  @override
+  String get downloadSourcesMirrorBaseUrl => 'Mirror base URL';
+
+  @override
+  String get downloadSourcesMirrorHint => 'https://mirror.example';
+
+  @override
+  String get downloadSourcesSave => 'Save';
+
+  @override
+  String get downloadSourcesRestoreDefaults => 'Restore defaults';
+
+  @override
+  String get downloadSourcesIdentity => 'identity (official)';
+
+  @override
+  String get downloadSourcesEnabledSources => 'Enabled sources';
+
+  @override
   String get githubSignIn => 'Sign in with GitHub';
 
   @override

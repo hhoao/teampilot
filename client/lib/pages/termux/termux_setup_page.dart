@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../cubits/remote_download_catalog_cubit.dart';
 import '../../cubits/termux_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../repositories/ssh_credential_store.dart';
@@ -56,7 +58,7 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
   var _acquirePhase = _TermuxAcquireUiPhase.idle;
 
   late final TermuxPackageProbe _packageProbe;
-  late final TermuxApkAcquisition _apkAcquisition;
+  late TermuxApkAcquisition _apkAcquisition;
   http.Client? _ownedHttpClient;
 
   @override
@@ -67,24 +69,41 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
     if (widget.apkAcquisition != null) {
       _apkAcquisition = widget.apkAcquisition!;
     } else {
-      _ownedHttpClient = http.Client();
-      final resolver = RemoteDownloadResolver(RemoteDownloadCatalog.defaults());
-      final downloadHttp = RemoteDownloadHttp(
-        client: _ownedHttpClient!,
-        resolver: resolver,
-      );
-      final downloader = RemoteDownloader(
-        client: _ownedHttpClient!,
-        resolver: resolver,
-      );
-      _apkAcquisition = TermuxApkAcquisition(
-        http: downloadHttp,
-        downloader: downloader,
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _initDefaultApkAcquisition();
+        unawaited(_bootstrap());
+      });
+      return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_bootstrap());
     });
+  }
+
+  void _initDefaultApkAcquisition() {
+    RemoteDownloadCatalogCubit? catalogCubit;
+    try {
+      catalogCubit = context.read<RemoteDownloadCatalogCubit>();
+    } on ProviderNotFoundException {
+      catalogCubit = null;
+    }
+    _ownedHttpClient = http.Client();
+    final resolver = RemoteDownloadResolver.withProvider(
+      () => catalogCubit?.state.catalog ?? RemoteDownloadCatalog.defaults(),
+    );
+    final downloadHttp = RemoteDownloadHttp(
+      client: _ownedHttpClient!,
+      resolver: resolver,
+    );
+    final downloader = RemoteDownloader(
+      client: _ownedHttpClient!,
+      resolver: resolver,
+    );
+    _apkAcquisition = TermuxApkAcquisition(
+      http: downloadHttp,
+      downloader: downloader,
+    );
   }
 
   @override

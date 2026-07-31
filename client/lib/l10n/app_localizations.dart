@@ -6663,6 +6663,54 @@ abstract class AppLocalizations {
   /// **'Connect GitHub to publish experts and teams to Hub'**
   String get githubSettingsSubtitle;
 
+  /// No description provided for @downloadSourcesSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Download sources'**
+  String get downloadSourcesSettingsTitle;
+
+  /// No description provided for @downloadSourcesSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure mirrors for GitHub downloads (app updates, Termux APK)'**
+  String get downloadSourcesSettingsSubtitle;
+
+  /// No description provided for @downloadSourcesMirrorBaseUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Mirror base URL'**
+  String get downloadSourcesMirrorBaseUrl;
+
+  /// No description provided for @downloadSourcesMirrorHint.
+  ///
+  /// In en, this message translates to:
+  /// **'https://mirror.example'**
+  String get downloadSourcesMirrorHint;
+
+  /// No description provided for @downloadSourcesSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get downloadSourcesSave;
+
+  /// No description provided for @downloadSourcesRestoreDefaults.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore defaults'**
+  String get downloadSourcesRestoreDefaults;
+
+  /// No description provided for @downloadSourcesIdentity.
+  ///
+  /// In en, this message translates to:
+  /// **'identity (official)'**
+  String get downloadSourcesIdentity;
+
+  /// No description provided for @downloadSourcesEnabledSources.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled sources'**
+  String get downloadSourcesEnabledSources;
+
   /// No description provided for @githubSignIn.
   ///
   /// In en, this message translates to:
