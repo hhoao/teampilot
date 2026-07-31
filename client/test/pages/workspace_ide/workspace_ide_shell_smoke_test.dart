@@ -3,12 +3,20 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
+import 'package:teampilot/cubits/notification_cubit.dart';
+import 'package:teampilot/cubits/progress_activity_cubit.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/layout_preferences.dart';
-import 'package:teampilot/pages/workspace_ide/pane_overlay_host.dart';
+import 'package:teampilot/pages/workspace_ide/mobile_workspace_drawer_host.dart';
 import 'package:teampilot/pages/workspace_ide/workspace_ide_shell.dart';
 import 'package:teampilot/services/workspace/workspace_pane_policy.dart';
 
+import '../../support/post_frame_test_harness.dart';
+
 void main() {
+  setUp(setUpTestAppStorage);
+  tearDown(tearDownTestAppStorage);
+
   const centerKey = ValueKey('center-smoke');
   const rightKey = ValueKey('right-smoke');
 
@@ -30,10 +38,21 @@ void main() {
     await tester.pumpWidget(
       TpTheme(
         data: themeData ?? TpThemeData.fromColorScheme(scheme, scale: 1.0),
-        child: MaterialApp(
-          home: BlocProvider<LayoutCubit>.value(
-            value: layout,
-            child: TpSidebarProvider(
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider<LayoutCubit>.value(value: layout),
+            BlocProvider(create: (_) => NotificationCubit()),
+            BlocProvider(
+              create: (context) => ProgressActivityCubit(
+                historyRecorder: context.read<NotificationCubit>(),
+              ),
+            ),
+          ],
+          child: MaterialApp(
+            locale: const Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: TpSidebarProvider(
               mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
               child: const Scaffold(
                 body: WorkspaceIdeShell(
@@ -102,10 +121,21 @@ void main() {
       await tester.pumpWidget(
         TpTheme(
           data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
-          child: MaterialApp(
-            home: BlocProvider<LayoutCubit>.value(
-              value: layout,
-              child: TpSidebarProvider(
+          child: MultiBlocProvider(
+            providers: [
+              BlocProvider<LayoutCubit>.value(value: layout),
+              BlocProvider(create: (_) => NotificationCubit()),
+              BlocProvider(
+                create: (context) => ProgressActivityCubit(
+                  historyRecorder: context.read<NotificationCubit>(),
+                ),
+              ),
+            ],
+            child: MaterialApp(
+              locale: const Locale('en'),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: TpSidebarProvider(
                 mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
                 child: const Scaffold(
                   body: WorkspaceIdeShell(
@@ -133,10 +163,11 @@ void main() {
     },
   );
 
-  testWidgets('narrow left opens after clear suppress', (tester) async {
+  testWidgets('narrow chat drawer opens after clear suppress', (tester) async {
     final layout = await pumpShell(tester, size: const Size(600, 900));
     expect(find.text('left'), findsNothing);
 
+    await layout.setRightToolsVisible(false);
     layout.clearNarrowLeftSuppressed();
     await layout.setSidebarVisible(true);
     await tester.pumpAndSettle();
@@ -144,7 +175,7 @@ void main() {
     expect(find.text('left'), findsOneWidget);
     expect(
       find.descendant(
-        of: find.byType(PaneOverlayHost),
+        of: find.byType(MobileWorkspaceDrawerHost),
         matching: find.text('left'),
       ),
       findsOneWidget,
@@ -153,11 +184,10 @@ void main() {
     expect(layout.state.narrowLeftSuppressed, isFalse);
   });
 
-  testWidgets('dismissing narrow left overlay clears sidebar intent', (
+  testWidgets('dismissing narrow drawer clears sidebar intent', (
     tester,
   ) async {
     final layout = await pumpShell(tester, size: const Size(600, 900));
-    // Hide right so the scrim is tappable beside the left drawer.
     await layout.setRightToolsVisible(false);
     layout.clearNarrowLeftSuppressed();
     await layout.setSidebarVisible(true);
@@ -168,11 +198,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(layout.state.preferences.sidebarVisible, isFalse);
+    expect(layout.state.preferences.rightToolsVisible, isFalse);
     expect(layout.state.narrowLeftSuppressed, isFalse);
     expect(find.text('left'), findsNothing);
   });
 
-  testWidgets('narrow right overlay uses theme drawer fraction width', (
+  testWidgets('narrow tools drawer uses theme drawer fraction width', (
     tester,
   ) async {
     const viewportWidth = 600.0;
@@ -195,22 +226,22 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final rightPanel = find.ancestor(
+    final drawerPanel = find.ancestor(
       of: find.byKey(rightKey),
       matching: find.byWidgetPredicate(
-        (widget) => widget is Positioned && widget.right == 0,
+        (widget) => widget is Positioned && widget.left == 0,
       ),
     );
-    expect(rightPanel, findsOneWidget);
+    expect(drawerPanel, findsOneWidget);
     expect(
-      tester.getSize(rightPanel).width,
+      tester.getSize(drawerPanel).width,
       closeTo(expectedWidth, 0.5),
     );
-    expect(find.byType(PaneOverlayHost), findsOneWidget);
+    expect(find.byType(MobileWorkspaceDrawerHost), findsOneWidget);
   });
 
   testWidgets(
-    'narrow right overlay still works while left is suppressed',
+    'narrow tools drawer still works while left is suppressed',
     (tester) async {
       final layout = await pumpShell(tester, size: const Size(600, 900));
       expect(find.text('left'), findsNothing);
@@ -256,6 +287,7 @@ void main() {
     expect(layout.state.narrowLeftSuppressed, isTrue);
     expect(find.text('left'), findsNothing);
 
+    await layout.setRightToolsVisible(false);
     layout.clearNarrowLeftSuppressed();
     await layout.setSidebarVisible(true);
     await tester.pumpAndSettle();
@@ -273,12 +305,13 @@ void main() {
     expect(layout.state.preferences.sidebarVisible, isTrue);
   });
 
-  testWidgets('narrow overlay toggle keeps the center workbench identity', (
+  testWidgets('narrow drawer toggle keeps the center workbench identity', (
     tester,
   ) async {
     final layout = await pumpShell(tester, size: const Size(600, 900));
     final centerBefore = tester.element(find.byKey(centerKey));
 
+    await layout.setRightToolsVisible(false);
     layout.clearNarrowLeftSuppressed();
     await layout.setSidebarVisible(true);
     await tester.pumpAndSettle();
@@ -288,8 +321,25 @@ void main() {
     expect(
       identical(tester.element(find.byKey(centerKey)), centerBefore),
       isTrue,
-      reason: 'center was reparented when left overlay toggled',
+      reason: 'center was reparented when drawer toggled',
     );
+  });
+
+  testWidgets('setSidebarVisible false on narrow closes drawer', (
+    tester,
+  ) async {
+    final layout = await pumpShell(tester, size: const Size(600, 900));
+    await layout.setRightToolsVisible(false);
+    layout.clearNarrowLeftSuppressed();
+    await layout.setSidebarVisible(true);
+    await tester.pumpAndSettle();
+    expect(find.text('left'), findsOneWidget);
+
+    await layout.setSidebarVisible(false);
+    await tester.pumpAndSettle();
+
+    expect(find.text('left'), findsNothing);
+    expect(find.byType(MobileWorkspaceDrawerHost), findsOneWidget);
   });
 
   testWidgets('side panes stop before crushing the center workbench', (

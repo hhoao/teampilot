@@ -37,6 +37,25 @@ import 'workspace_automations_section.dart';
 import 'workspace_search_dialog.dart';
 import 'workspace_session_actions.dart';
 
+/// Navigates to workspace manage view for [workspace].
+void openWorkspaceManagementRoute(BuildContext context, Workspace workspace) {
+  final location = GoRouterState.of(context).uri.toString();
+  final routeProfile = HomeWorkspaceRoute.profile(location);
+  final profileId = workspaceChromeProfileId(
+    workspace,
+    routeProfileId: routeProfile,
+  );
+  context.go(
+    Uri(
+      path: '/home-v2/workspace/${workspace.workspaceId}',
+      queryParameters: {
+        'profile': profileId,
+        'view': 'manage',
+      },
+    ).toString(),
+  );
+}
+
 /// Shared resize limits for [WorkspaceSidebar].
 class WorkspaceSidebarLayout {
   const WorkspaceSidebarLayout._();
@@ -51,11 +70,13 @@ class WorkspaceSidebar extends StatefulWidget {
   const WorkspaceSidebar({
     required this.workspace,
     required this.tabScopeId,
+    this.embedFooter = true,
     super.key,
   });
 
   final Workspace workspace;
   final String tabScopeId;
+  final bool embedFooter;
 
   @override
   State<WorkspaceSidebar> createState() => _WorkspaceSidebarState();
@@ -164,43 +185,31 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
               onSessionsReordered: _onSessionsReordered,
             ),
           ),
-          const SizedBox(height: 8),
-          Divider(
-            height: 1,
-            color: Theme.of(context).colorScheme.outlineVariant
-                .withValues(alpha: 0.5),
-          ),
-          const SizedBox(height: 4),
-          _SidebarActionTile(
-            key: AppKeys.homeWorkspaceWorkspaceManagementTile,
-            icon: Icons.tune_outlined,
-            label: l10n.homeWorkspaceWorkspaceManagement,
-            onTap: throttledTap(
-              'workspace_sidebar_manage',
-              () => _openWorkspaceManagement(context),
+          if (widget.embedFooter) ...[
+            const SizedBox(height: 8),
+            Divider(
+              height: 1,
+              color: Theme.of(context).colorScheme.outlineVariant
+                  .withValues(alpha: 0.5),
             ),
-          ),
+            const SizedBox(height: 4),
+            _SidebarActionTile(
+              key: AppKeys.homeWorkspaceWorkspaceManagementTile,
+              icon: Icons.tune_outlined,
+              label: l10n.homeWorkspaceWorkspaceManagement,
+              onTap: throttledTap(
+                'workspace_sidebar_manage',
+                () => _openWorkspaceManagement(context),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
   void _openWorkspaceManagement(BuildContext context) {
-    final location = GoRouterState.of(context).uri.toString();
-    final routeProfile = HomeWorkspaceRoute.profile(location);
-    final profileId = workspaceChromeProfileId(
-      widget.workspace,
-      routeProfileId: routeProfile,
-    );
-    context.go(
-      Uri(
-        path: '/home-v2/workspace/${widget.workspace.workspaceId}',
-        queryParameters: {
-          'profile': profileId,
-          'view': 'manage',
-        },
-      ).toString(),
-    );
+    openWorkspaceManagementRoute(context, widget.workspace);
   }
 
   /// Drag always available; dropping stamps [AppSession.sortOrder] and switches

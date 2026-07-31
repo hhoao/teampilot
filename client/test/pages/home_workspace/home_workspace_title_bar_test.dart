@@ -9,7 +9,9 @@ import 'package:teampilot/cubits/progress_activity_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_title_bar.dart';
 import 'package:teampilot/pages/workspace_shell/workspace_shell_tabs.dart';
+import 'package:teampilot/services/workspace/workspace_pane_policy.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
+import 'package:teampilot/widgets/notification/notification_bell_button.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
@@ -173,5 +175,43 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byType(HomeTitleBar), findsOneWidget);
+  });
+
+  testWidgets('mobile title bar hides trailing tools with workspace active', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final theme = ThemeData(useMaterial3: true);
+    await tester.pumpWidget(
+      TpTheme(
+        data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
+        child: _wrapTitleBar(
+          chatCubit: chatCubit,
+          child: TpSidebarProvider(
+            mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+            child: MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              theme: theme,
+              home: const Scaffold(
+                body: HomeTitleBar(
+                  tabs: [HomeWorkspaceTab(id: 'ws-a', name: 'Solo')],
+                  activeTabKey: 'ws-a',
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(WorkspaceShellPaneVisibilityToggles), findsNothing);
+    expect(find.byType(NotificationBellButton), findsNothing);
+    expect(find.byIcon(Icons.menu), findsOneWidget);
   });
 }

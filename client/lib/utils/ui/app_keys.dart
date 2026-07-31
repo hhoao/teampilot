@@ -186,6 +186,10 @@ class AppKeys {
   static const homeWorkspaceWorkspaceManagementTile = Key(
     'home-workspace-workspace-management-tile',
   );
+  static const mobileWorkspaceDrawerScrim = Key('mobile-workspace-drawer-scrim');
+  static const mobileWorkspaceDrawerModeSwitch = Key(
+    'mobile-workspace-drawer-mode-switch',
+  );
   static const workspaceConfigWorkspace = Key('workspace-config-workspace');
   static const teamConfigHub = Key('team-config-hub');
   static const teamConfigWorkspace = Key('team-config-workspace');

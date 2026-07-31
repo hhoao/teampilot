@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/ui/app_keys.dart';
+import '../../widgets/notification/notification_bell_button.dart';
+import '../config/config_workspace.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_library_view.dart';
 
@@ -93,12 +96,41 @@ class HomeSidebar extends StatelessWidget {
             ),
           ),
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
-          _ProvidersButton(
-            key: AppKeys.homeWorkspaceProvidersButton,
-            label: l10n.homeWorkspaceProviders,
-            active: activeGlobalView == HomeGlobalView.providers,
-            onTap: () => onGlobal?.call(HomeGlobalView.providers),
-          ),
+          if (isMobileDrawer)
+            Row(
+              children: [
+                Expanded(
+                  child: _ProvidersButton(
+                    key: AppKeys.homeWorkspaceProvidersButton,
+                    label: l10n.homeWorkspaceProviders,
+                    active: activeGlobalView == HomeGlobalView.providers,
+                    onTap: () => onGlobal?.call(HomeGlobalView.providers),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const NotificationBellButton(),
+                TpIconButton(
+                  iconWidget: SvgPicture.asset(
+                    'assets/icons/settings_gear.svg',
+                    width: context.tpIconSizes.md,
+                    height: context.tpIconSizes.md,
+                    theme: SvgTheme(
+                      currentColor: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  tooltip: l10n.settings,
+                  backgroundColor: Colors.transparent,
+                  onTap: () => showWorkspaceSettingsDialog(context),
+                ),
+              ],
+            )
+          else
+            _ProvidersButton(
+              key: AppKeys.homeWorkspaceProvidersButton,
+              label: l10n.homeWorkspaceProviders,
+              active: activeGlobalView == HomeGlobalView.providers,
+              onTap: () => onGlobal?.call(HomeGlobalView.providers),
+            ),
         ],
       ),
     );
