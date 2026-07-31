@@ -45,7 +45,7 @@
 2. **All filesystem/gallery/permission/desktop/preview side effects** go through Ports; UI/controller never import those packages.
 3. **Public selection result** is `TpPickedEntry` (path + kind + optional metadata), never `dart:io` types in the shared API.
 4. **Cross-tab selection** is owned by a page controller with explicit tab interfaces (`clearSelection` / `selectAll` / `selectableCount`) — no `as dynamic` + GlobalKey reflection.
-5. **Behavior parity** with current huji for: multi-select, max count, extension filter, hidden files, directory mode, tab-switch clear confirmation, sort options, album pagination, desktop fallback.
+5. **Behavior parity** with current huji for: multi-select, max count, extension filter, hidden files, directory mode, tab-switch clear confirmation, **in-list search** (filesystem current-dir filter + gallery album filter), sort options, album pagination, desktop fallback, and bottom-bar confirm chrome (not app-bar confirm).
 6. **Missing optional ports degrade safely** (no gallery tab / no preview / no full-disk search sub-tab) rather than crashing.
 
 ## Design
@@ -109,11 +109,11 @@ Gallery selection resolves assets to paths via `TpGalleryPort.resolveToPath` bef
 
 | Port | Required? | Responsibility |
 |------|-----------|----------------|
-| `TpFilesystemPort` | yes | `listDir`, roots (`defaultRoots` / phone storage / app folders), optional full-disk search |
-| `TpPermissionPort` | yes | `ensureStorageAccess` / `ensureGalleryAccess` (or combined) |
-| `TpGalleryPort` | no | albums, paged assets, thumbnails, `resolveToPath` |
-| `TpDesktopPickerPort` | no | `pickFiles` / `pickDirectory` |
-| `TpMediaPreviewPort` | no | image/video full-screen preview |
+| `TpFilesystemPort` | yes | `listDir(path) → List<TpFsEntry>`; `defaultRoots` (phone storage / app folders / …); optional `searchFiles(root, query)` — if absent/null capability, hide full-disk-search sub-tab |
+| `TpPermissionPort` | yes | `ensureStorageAccess` / `ensureGalleryAccess` (or combined); optional `openAppSettings()` for denied empty-states |
+| `TpGalleryPort` | no | `listAlbums`; `listAssets(albumId, page, pageSize)`; `thumbnail(assetId) → bytes?`; `resolveToPath(assetId) → String?` |
+| `TpDesktopPickerPort` | no | `pickFiles(...)` / `pickDirectory(...)` → `List<TpPickedEntry>?` |
+| `TpMediaPreviewPort` | no | `previewImage(context, path)` / `previewVideo(context, path)` |
 
 ```dart
 class TpFileSelectionDeps {
@@ -154,11 +154,13 @@ Future<List<TpPickedEntry>?> showTpFileSelection({
 1. If `deps.isDesktop()` and `deps.desktop != null` → desktop port; return immediately.
 2. Else push full-screen `TpFileSelectionPage` (mobile chrome; align with existing huji full-screen page / `TpDialog` page presentation where appropriate).
 
-**Page**
+**Page chrome (match huji layout)**
 
-- App bar: title, cancel/confirm, select-all when multi-select active, sort entry for filesystem.
+- **App bar:** title, leading close, trailing **sort** (filesystem). Confirm does **not** live in the app bar.
+- **Bottom bar (files / both):** selection summary, clear, select-all, confirm with count.
+- **Bottom bar (directories):** current path + “select this directory” (distinct from the multi-select bar).
 - Tabs: Filesystem | Gallery. Gallery omitted when `gallery == null` or `selectionMode == directories`.
-- Directory mode: confirm returns current directory path as a single `TpPickedEntry(kind: directory)`.
+- Directory mode confirm returns current directory as a single `TpPickedEntry(kind: directory)`.
 
 **Cross-tab**
 
@@ -167,21 +169,24 @@ Future<List<TpPickedEntry>?> showTpFileSelection({
 
 **Filesystem tab**
 
-- Sub-nav driven by filesystem roots / capabilities: phone storage, app folders, full-disk search (hide search if port lacks it).
+- Sub-nav driven by filesystem roots / capabilities: phone storage, app folders, full-disk search (hide that sub-tab if `searchFiles` is unavailable).
+- **In-list search:** toolbar query filters the **current directory listing** (client-side); this is separate from the full-disk-search sub-tab.
 - Lazy `listDir`; filter by extensions + hidden files; sort by name/date/size/type.
-- Permission gate via `permission.ensureStorageAccess()`; denied → empty state (+ open settings if port supports it).
-- Missing `initialPath` → dialog then pop (match huji).
+- Permission gate via `permission.ensureStorageAccess()`; denied → empty state (+ `openAppSettings` when provided).
+- **`initialPath`:** `null` → platform default root (Android `/storage/emulated/0`, else `$HOME` / port default). Path **not found** → error dialog, then **pop the entire selection page** (match huji).
 
 **Gallery tab**
 
 - Album list → paged asset grid/list.
+- **In-list search:** filter assets in the current album (`searchMedia` parity).
 - Thumbnails via port; selection resolves to path.
 - Media kind (image/video/all) derived from `allowedExtensions` in controller.
 - Preview affordances call `preview`; absent preview disables those controls.
 
 **Limits / feedback**
 
-- Exceeding `maxSelectionCount` shows toast/snackbar and rejects the extra items.
+- Exceeding `maxSelectionCount` on incremental select: toast/snackbar and reject the extra items.
+- Select-all when the selectable set exceeds `maxSelectionCount`: select the first N and toast that the first N were selected (huji gallery/filesystem parity).
 - Prefer `TpToast` where the host already wraps it; otherwise a thin host callback is acceptable.
 
 ### 5. Package file layout
@@ -222,7 +227,7 @@ Delete or shrink the current monolithic tab/page files once adapters + shared_ui
 
 1. Land models/ports + fake-port unit tests in shared_ui.
 2. Port controller + UI with behavior parity vs huji.
-3. Wire huji adapters + facade; keep `FileSelection.show` / `selectVideos` / `selectImages` / `selectMedia` / `selectDirectories` signatures for call sites.
+3. Wire huji adapters + facade; keep `FileSelection.show` / `selectVideos` / `selectImages` / `selectMedia` / `selectDirectories` / `selectFilesAndDirectories` signatures for call sites.
 4. TeamPilot: filesystem (+ desktop) first; gallery later if needed.
 5. Document under shared_ui README “File Selection”.
 
