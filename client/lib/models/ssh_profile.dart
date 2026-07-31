@@ -13,6 +13,8 @@ class SshProfile {
     this.authType = SshAuthType.password,
     this.createdAt = 0,
     this.updatedAt = 0,
+    this.lastHome,
+    this.lastAppDataRoot,
   });
 
   factory SshProfile.fromJson(Map<String, Object?> json) {
@@ -30,6 +32,8 @@ class SshProfile {
       authType: auth,
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
       updatedAt: (json['updatedAt'] as num?)?.toInt() ?? 0,
+      lastHome: json['lastHome'] as String?,
+      lastAppDataRoot: json['lastAppDataRoot'] as String?,
     );
   }
 
@@ -41,6 +45,8 @@ class SshProfile {
   final SshAuthType authType;
   final int createdAt;
   final int updatedAt;
+  final String? lastHome;
+  final String? lastAppDataRoot;
 
   String get hostIdentifier => '$username@$host:$port';
 
@@ -53,6 +59,8 @@ class SshProfile {
     SshAuthType? authType,
     int? createdAt,
     int? updatedAt,
+    String? lastHome,
+    String? lastAppDataRoot,
   }) {
     return SshProfile(
       id: id ?? this.id,
@@ -63,6 +71,8 @@ class SshProfile {
       authType: authType ?? this.authType,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      lastHome: lastHome ?? this.lastHome,
+      lastAppDataRoot: lastAppDataRoot ?? this.lastAppDataRoot,
     );
   }
 
@@ -77,9 +87,14 @@ class SshProfile {
       'authType': authType.name,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
+      if (lastHome != null) 'lastHome': lastHome,
+      if (lastAppDataRoot != null) 'lastAppDataRoot': lastAppDataRoot,
     };
   }
 
+  /// Includes [lastHome]/[lastAppDataRoot] so Bloc/Equatable emits after path
+  /// cache updates. Home storage invalidation uses
+  /// [sshHomeConnectionFingerprint], not `==`.
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
@@ -89,9 +104,20 @@ class SshProfile {
             host == other.host &&
             port == other.port &&
             username == other.username &&
-            authType == other.authType;
+            authType == other.authType &&
+            lastHome == other.lastHome &&
+            lastAppDataRoot == other.lastAppDataRoot;
   }
 
   @override
-  int get hashCode => Object.hash(id, name, host, port, username, authType);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    host,
+    port,
+    username,
+    authType,
+    lastHome,
+    lastAppDataRoot,
+  );
 }

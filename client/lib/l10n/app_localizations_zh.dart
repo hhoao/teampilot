@@ -6395,6 +6395,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get termuxDisconnectedWorkOpsBlocked => 'Termux 已断开连接。请通过顶部横幅重新连接后再试。';
 
   @override
+  String get sshHomeDisconnectedBannerMessage =>
+      '远程 SSH 工作环境已断开。请重新连接后再使用 Shell、Git 和 Agent 会话。';
+
+  @override
+  String get sshHomeDisconnectedReconnect => '重新连接';
+
+  @override
+  String get bootstrapRetry => '重试';
+
+  @override
+  String get bootstrapChooseWorkEnvironment => '选择工作环境';
+
+  @override
   String get androidWorkEnvironmentSelectorLabel => '工作环境';
 
   @override

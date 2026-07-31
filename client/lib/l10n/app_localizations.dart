@@ -11910,6 +11910,30 @@ abstract class AppLocalizations {
   /// **'Termux is disconnected. Reconnect from the banner, then try again.'**
   String get termuxDisconnectedWorkOpsBlocked;
 
+  /// No description provided for @sshHomeDisconnectedBannerMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote SSH work home is disconnected. Shell, Git, and agent sessions are paused until you reconnect.'**
+  String get sshHomeDisconnectedBannerMessage;
+
+  /// No description provided for @sshHomeDisconnectedReconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect'**
+  String get sshHomeDisconnectedReconnect;
+
+  /// No description provided for @bootstrapRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get bootstrapRetry;
+
+  /// No description provided for @bootstrapChooseWorkEnvironment.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose work environment'**
+  String get bootstrapChooseWorkEnvironment;
+
   /// No description provided for @androidWorkEnvironmentSelectorLabel.
   ///
   /// In en, this message translates to:

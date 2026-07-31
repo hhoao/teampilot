@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logger/logger.dart';
@@ -136,6 +137,29 @@ class SshProfileCubit extends Cubit<SshProfileState> {
     }
     await _profileRepository.delete(profileId);
     await load();
+  }
+
+  Future<void> updatePathCache(
+    String profileId, {
+    required String home,
+    required String appDataRoot,
+  }) async {
+    final existing =
+        state.profiles.where((p) => p.id == profileId).firstOrNull;
+    if (existing == null) return;
+    final next = existing.copyWith(
+      lastHome: home,
+      lastAppDataRoot: appDataRoot,
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+    );
+    await _profileRepository.save(next);
+    emit(
+      state.copyWith(
+        profiles: [
+          for (final p in state.profiles) p.id == profileId ? next : p,
+        ],
+      ),
+    );
   }
 
   Future<void> _discoverRemoteCliPath(SshProfile profile) async {

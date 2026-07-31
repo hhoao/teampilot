@@ -79,6 +79,7 @@ import '../services/app/boot_splash.dart';
 import '../utils/ui/yield_ui_frame.dart';
 import '../l10n/app_localizations.dart';
 import '../pages/system/app_bootstrap_loading_page.dart';
+import '../pages/system/bootstrap_startup_error_page.dart';
 import '../repositories/app_settings_repository.dart';
 import '../repositories/layout_repository.dart';
 import '../repositories/session_preferences_repository.dart';
@@ -521,12 +522,27 @@ Future<AppShell> buildAppShell({
   unawaited(remoteDownloadCatalogCubit.load());
   var termuxConfigCache = await termuxConfigStore.load();
   TermuxCubit? termuxGateCubit;
+  SshProfile? homeSshProfileCache;
+  if (homeTarget.kind == RuntimeKind.ssh) {
+    final pid = homeTarget.sshProfileId;
+    if (pid != null && pid.isNotEmpty) {
+      homeSshProfileCache = await sshProfileRepo.findById(pid);
+    }
+  }
   SshProfile? sshProfileById(String id) {
     if (id == 'termux') {
       final cfg = termuxConfigCache;
       return cfg == null ? null : termuxTransportProfile(cfg);
     }
-    return sshProfileCubit.state.profiles.where((p) => p.id == id).firstOrNull;
+    final fromCubit = sshProfileCubit.state.profiles
+        .where((p) => p.id == id)
+        .firstOrNull;
+    if (fromCubit != null) return fromCubit;
+    final cached = homeSshProfileCache;
+    if (cached != null && cached.id == id) {
+      return cached;
+    }
+    return null;
   }
   final remoteCliReadiness = RemoteCliReadinessService(
     registry: cliToolRegistry,
@@ -589,7 +605,7 @@ Future<AppShell> buildAppShell({
   final cfg = termuxConfigCache;
   if (homeTarget.kind == RuntimeKind.termux &&
       cfg != null &&
-      !homeCtx.termuxPathsFromCache) {
+      !homeCtx.pathsFromCache) {
     final updated = cfg.copyWith(
       lastHome: homeCtx.home,
       lastAppDataRoot: homeCtx.appDataRoot,
@@ -604,6 +620,23 @@ Future<AppShell> buildAppShell({
     'root=${AppStorage.appDataRoot})',
   );
 
+  Future<void> persistSshHomePathCacheIfLive() async {
+    final home = defaultTargetResolver();
+    if (home.kind != RuntimeKind.ssh) return;
+    final pid = home.sshProfileId;
+    if (pid == null || pid.isEmpty) return;
+    final ctx = runtimeContextRegistry.home();
+    if (ctx.pathsFromCache) return;
+    if (!sshProfileCubit.state.profiles.any((p) => p.id == pid)) {
+      await sshProfileCubit.load();
+    }
+    await sshProfileCubit.updatePathCache(
+      pid,
+      home: ctx.home,
+      appDataRoot: ctx.appDataRoot,
+    );
+  }
+
   // Persists the chosen home id, rebinds the registry home, and republishes it
   // on AppStorage.
   Future<void> setHomeTarget(String id) async {
@@ -612,6 +645,7 @@ Future<AppShell> buildAppShell({
     await runtimeContextRegistry.dispose(id);
     await runtimeContextRegistry.rebindHome(homeTarget);
     AppStorage.bindHome(runtimeContextRegistry.home());
+    await persistSshHomePathCacheIfLive();
   }
 
   connectionModeService = ConnectionModeService(
@@ -628,6 +662,7 @@ Future<AppShell> buildAppShell({
     );
     await runtimeContextRegistry.rebindHome(defaultTargetResolver());
     AppStorage.bindHome(runtimeContextRegistry.home());
+    await persistSshHomePathCacheIfLive();
   };
 
   cliToolRegistry.configure(
@@ -1297,26 +1332,37 @@ Future<AppShell> buildAppShell({
   bootstrapCubit?.markShellReady();
   boot('buildAppShell shell ready');
 
-  reloadAllAppData = ({bool reinstallSshHome = true}) => AppDataBootstrap.reloadAll(
-    boot: boot,
-    sshProfileCubit: sshProfileCubit,
-    llmConfigCubit: llmConfigCubit,
-    appProviderCubit: appProviderCubit,
-    teamCubit: teamCubit,
-    pluginCubit: pluginCubit,
-    skillCubit: skillCubit,
-    mcpCubit: mcpCubit,
-    extensionCubit: extensionCubit,
-    chatCubit: chatCubit,
-    sessionRepo: sessionRepo,
-    layoutCubit: layoutCubit,
-    isSshMode: connectionModeService.isRemoteWorkPlane,
-    homeSshProfileId: defaultTargetResolver().sshProfileId,
-    sshProfileExists: (id) => sshProfileById(id) != null,
-    reinstallStorageContext: reinstallStorageContext,
-    home: defaultTargetResolver(),
-    reinstallSshHome: reinstallSshHome,
-  );
+  reloadAllAppData = ({bool reinstallSshHome = true}) async {
+    await AppDataBootstrap.reloadAll(
+      boot: boot,
+      sshProfileCubit: sshProfileCubit,
+      llmConfigCubit: llmConfigCubit,
+      appProviderCubit: appProviderCubit,
+      teamCubit: teamCubit,
+      pluginCubit: pluginCubit,
+      skillCubit: skillCubit,
+      mcpCubit: mcpCubit,
+      extensionCubit: extensionCubit,
+      chatCubit: chatCubit,
+      sessionRepo: sessionRepo,
+      layoutCubit: layoutCubit,
+      isSshMode: connectionModeService.isRemoteWorkPlane,
+      homeSshProfileId: defaultTargetResolver().sshProfileId,
+      sshProfileExists: (id) => sshProfileById(id) != null,
+      reinstallStorageContext: reinstallStorageContext,
+      home: defaultTargetResolver(),
+      reinstallSshHome: reinstallSshHome,
+    );
+    await persistSshHomePathCacheIfLive();
+  };
+
+  Future<void> reconnectHomeSshIfNeeded() async {
+    final home = defaultTargetResolver();
+    final pid = home.sshProfileId;
+    if (home.kind != RuntimeKind.ssh || pid == null || pid.isEmpty) return;
+    await sshConnectionCubit.syncProfiles(sshProfileCubit.state.profiles);
+    unawaited(sshConnectionCubit.connect(pid));
+  }
 
   Future<void> bootstrapAppData() async {
     await notificationBootstrap;
@@ -1350,6 +1396,7 @@ Future<AppShell> buildAppShell({
             stackTrace: stackTrace,
           );
         }
+        await persistSshHomePathCacheIfLive();
       } else {
         boot('awaiting home index snapshots');
         await homeIndexPrefetch;
@@ -1364,6 +1411,7 @@ Future<AppShell> buildAppShell({
       }
       bootstrapCubit?.markHomeIndexReady();
     }
+    await reconnectHomeSshIfNeeded();
     await yieldUiFrame();
     boot(
       'bootstrapAppData index ready '
@@ -1504,7 +1552,7 @@ Future<AppShell> buildAppShell({
     onConfigChanged: refreshTermuxConfigCache,
     resolvePathsAfterHomeSelect: () async {
       final homeCtx = runtimeContextRegistry.home();
-      if (homeCtx.termuxPathsFromCache) {
+      if (homeCtx.pathsFromCache) {
         return (home: null, appDataRoot: null);
       }
       return (home: homeCtx.home, appDataRoot: homeCtx.appDataRoot);
@@ -1697,6 +1745,19 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     }
   }
 
+  Future<void> _retryBootstrap() async {
+    if (_retrying) return;
+    setState(() => _retrying = true);
+    await _start();
+  }
+
+  Future<void> _chooseWorkEnvironmentAndRetry() async {
+    if (_retrying) return;
+    setState(() => _retrying = true);
+    await HomeTargetStore(widget.preferences).save(RuntimeTarget.localId);
+    await _start();
+  }
+
   Future<void> _switchToNativeStorageAndRetry() async {
     if (_retrying) return;
     setState(() => _retrying = true);
@@ -1718,40 +1779,14 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       return MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: Center(
-            child: Builder(
-              builder: (context) {
-                final l10n = AppLocalizations.of(context);
-                return Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(l10n.bootstrapStartupFailed(_error.toString())),
-                      if (_canFallbackToNativeStorage) ...[
-                        const SizedBox(height: 16),
-                        FilledButton(
-                          onPressed: _retrying
-                              ? null
-                              : _switchToNativeStorageAndRetry,
-                          child: _retrying
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Text(l10n.bootstrapUseNativeStorageInstead),
-                        ),
-                      ],
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
+        home: BootstrapStartupErrorPage(
+          error: _error!,
+          showChooseWorkEnvironment: Platform.isAndroid,
+          showNativeStorageFallback: _canFallbackToNativeStorage,
+          retrying: _retrying,
+          onRetry: _retryBootstrap,
+          onChooseWorkEnvironment: _chooseWorkEnvironmentAndRetry,
+          onNativeStorageFallback: _switchToNativeStorageAndRetry,
         ),
       );
     }

@@ -138,9 +138,8 @@ class RuntimeContextResolver {
         paths: AppPaths(paths.teampilotAppDir),
       );
     } on Object {
-      if (target.kind == RuntimeKind.termux &&
-          _hasTermuxPathCache(cachedHome, cachedAppDataRoot)) {
-        return _resolveTermuxFromCache(
+      if (_hasPathCache(cachedHome, cachedAppDataRoot)) {
+        return _resolveSshFromCache(
           target,
           profile: profile,
           clientFactory: clientFactory,
@@ -152,13 +151,13 @@ class RuntimeContextResolver {
     }
   }
 
-  static bool _hasTermuxPathCache(String? home, String? appDataRoot) =>
+  static bool _hasPathCache(String? home, String? appDataRoot) =>
       home != null &&
       home.trim().isNotEmpty &&
       appDataRoot != null &&
       appDataRoot.trim().isNotEmpty;
 
-  RuntimeContext _resolveTermuxFromCache(
+  RuntimeContext _resolveSshFromCache(
     RuntimeTarget target, {
     required SshProfile profile,
     required SshClientFactory clientFactory,
@@ -177,7 +176,7 @@ class RuntimeContextResolver {
       cwd: home,
       appDataRoot: appDataRoot,
       paths: AppPaths(appDataRoot),
-      termuxPathsFromCache: true,
+      pathsFromCache: true,
     );
   }
 

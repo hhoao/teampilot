@@ -1,12 +1,30 @@
+import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
+import 'package:teampilot/services/io/sftp_filesystem.dart';
+import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/remote_ssh_storage_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_context_registry.dart';
 import 'package:teampilot/services/storage/runtime_context_resolver.dart';
 
 import '../../support/in_memory_filesystem.dart';
+
+class _MockSshClientFactory extends Mock implements SshClientFactory {}
+
+class _MockSftpClient extends Mock implements SftpClient {}
+
+class _FailingPathResolver extends RemoteSshStoragePathResolver {
+  _FailingPathResolver({required SshClientFactory clientFactory})
+    : super(clientFactory: clientFactory);
+
+  @override
+  Future<RemoteSshStoragePaths> resolve(SshProfile profile) =>
+      Future.error(StateError('resolve failed'));
+}
 
 /// Resolver that returns a distinct in-memory context per target id (no IO),
 /// counts resolves, and can be told to fail specific targets (offline).
@@ -40,6 +58,45 @@ class _FakeResolver extends RuntimeContextResolver {
 }
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(
+      const SshProfile(id: 'p1', name: 'Remote', host: 'example.com', username: 'u'),
+    );
+  });
+
+  test(
+    'ensureHome ssh with persisted lastHome soft-fails when SFTP is down',
+    () async {
+      final factory = _MockSshClientFactory();
+      when(() => factory.sftpFor(any())).thenThrow(StateError('host down'));
+      final profile = SshProfile(
+        id: 'p1',
+        name: 'Remote',
+        host: 'example.com',
+        username: 'u',
+        lastHome: '/home/u',
+        lastAppDataRoot: '/home/u/.local/share/com.hhoa.teampilot',
+      );
+      final resolver = RuntimeContextResolver(
+        sshClientFactory: factory,
+        nativeAppDataPath: '/native',
+        remotePathResolver: _FailingPathResolver(clientFactory: factory),
+      );
+      final reg = RuntimeContextRegistry(
+        resolver: resolver,
+        homeTarget: RuntimeTarget.ssh('p1', label: 'Remote'),
+        sshProfileById: (id) => id == 'p1' ? profile : null,
+      );
+      await reg.ensureHome();
+      final home = reg.home();
+      expect(home.target.kind, RuntimeKind.ssh);
+      expect(home.pathsFromCache, isTrue);
+      expect(home.home, '/home/u');
+      expect(home.appDataRoot, '/home/u/.local/share/com.hhoa.teampilot');
+      expect(home.filesystem, isA<SftpFilesystem>());
+    },
+  );
+
   test('home() returns the bootstrapped home context', () async {
     final reg = RuntimeContextRegistry(
       resolver: _FakeResolver(),

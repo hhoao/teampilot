@@ -29,7 +29,7 @@
 
 | File | Responsibility |
 |------|----------------|
-| `client/lib/models/ssh_profile.dart` | Optional `lastHome` / `lastAppDataRoot`; JSON round-trip; **exclude from `==` / `hashCode`** (cache churn must not look like identity change) |
+| `client/lib/models/ssh_profile.dart` | Optional `lastHome` / `lastAppDataRoot`; JSON round-trip; **`==` includes cache** (Bloc emit after `updatePathCache`); home invalidation uses `sshHomeConnectionFingerprint`, not `==` |
 | `client/lib/services/storage/runtime_context.dart` | Rename `termuxPathsFromCache` → `pathsFromCache` |
 | `client/lib/services/storage/runtime_context_resolver.dart` | Soft-fail SSH with profile cache; set `pathsFromCache` |
 | `client/lib/services/storage/runtime_context_registry.dart` | Pass profile `lastHome`/`lastAppDataRoot` as cached paths for SSH targets |
@@ -70,7 +70,7 @@ test('json round-trip preserves lastHome and lastAppDataRoot', () {
   expect(r.lastAppDataRoot, '/home/u/.local/share/com.hhoa.teampilot');
 });
 
-test('equality ignores path cache fields', () {
+test('equality includes path cache fields', () {
   final a = SshProfile(
     id: 'a', name: 'Box', host: 'h', username: 'u',
     lastHome: '/home/u',
@@ -79,11 +79,11 @@ test('equality ignores path cache fields', () {
     id: 'a', name: 'Box', host: 'h', username: 'u',
     lastHome: '/other',
   );
-  expect(a, equals(b));
+  expect(a, isNot(equals(b)));
 });
 ```
 
-Also assert `sshHomeConnectionFingerprint` is unchanged when only cache fields differ (reuse existing helper test file or add one line there).
+Also assert `sshHomeConnectionFingerprint` is unchanged when only cache fields differ (reuse existing helper test file or add one line there). **Home invalidation** uses fingerprint, not `==`.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -93,7 +93,7 @@ Expected: FAIL (no `lastHome` constructor / fields)
 
 - [ ] **Step 3: Minimal implementation**
 
-Add optional `lastHome` / `lastAppDataRoot` to constructor, `fromJson`, `toJson`, `copyWith`. Keep `==` / `hashCode` on connection + display fields only (same set as today — **do not** include cache). Leave `sshHomeConnectionFingerprint` as-is (already excludes cache).
+Add optional `lastHome` / `lastAppDataRoot` to constructor, `fromJson`, `toJson`, `copyWith`. Include cache in `==` / `hashCode` so cubit emits after path-cache writes. Leave `sshHomeConnectionFingerprint` as-is (connection identity for home invalidation).
 
 - [ ] **Step 4: Run tests**
 

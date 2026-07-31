@@ -6656,6 +6656,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'Termux is disconnected. Reconnect from the banner, then try again.';
 
   @override
+  String get sshHomeDisconnectedBannerMessage =>
+      'Remote SSH work home is disconnected. Shell, Git, and agent sessions are paused until you reconnect.';
+
+  @override
+  String get sshHomeDisconnectedReconnect => 'Reconnect';
+
+  @override
+  String get bootstrapRetry => 'Retry';
+
+  @override
+  String get bootstrapChooseWorkEnvironment => 'Choose work environment';
+
+  @override
   String get androidWorkEnvironmentSelectorLabel => 'Work environment';
 
   @override
