@@ -107,7 +107,7 @@ Buffers stay separate until a successful write; there is no live shared `CodeLin
 
 | Action | Behavior |
 |--------|----------|
-| Click `>>` on a block | If Diff dirty → confirm discard edits or cancel. Else apply → write → reload → SCM refresh |
+| Click `>>` on a block | If Diff is clean → apply on current canonical → write → reload → SCM refresh. If Diff is dirty → confirm discard or cancel. On **confirm discard**: restore Diff canonical to the **last-loaded** working-tree text (the text that produced the current `DiffResult` / `DiffBlock` line map), clear Diff dirty, **then** apply that block → write → reload → SCM refresh. On cancel: no-op. Never apply a hunk against dirty/out-of-sync canonical text. |
 | Type on right (unstaged SxS) | Diff dirty; Save enabled |
 | Diff Save | Write canonical → clear Diff dirty → reload (+ File tab sync per §3) |
 | `staged` / `changes` / Unified | No `>>`; right read-only |
