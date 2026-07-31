@@ -50,9 +50,8 @@ void main() {
     final script = node.sshBootstrapCommand().arguments.last;
     expect(script, contains('pkg install -y nodejs'));
     expect(script, contains('is_termux'));
-    // Termux path must exit before the glibc archive extract.
     final termuxIdx = script.indexOf('pkg install -y nodejs');
-    final extractIdx = script.indexOf('tar -xJf "\$tmp/\$archive"');
+    final extractIdx = script.indexOf(r'tar -xJf "$tmp/$archive"');
     expect(termuxIdx, greaterThanOrEqualTo(0));
     expect(extractIdx, greaterThan(termuxIdx));
   });

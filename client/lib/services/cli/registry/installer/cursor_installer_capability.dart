@@ -2,12 +2,14 @@ import '../../installer_types.dart';
 import '../capabilities/installer_capability.dart';
 import 'installer_context.dart';
 import 'npm_installer_capability.dart';
+import 'termux_remote_detect.dart';
 
 /// In-app installer for Cursor CLI (`cursor-agent`).
 ///
 /// Uses the official install scripts from
 /// https://cursor.com/docs/cli/installation (curl|bash on Unix, PowerShell on
-/// Windows native).
+/// Windows native). Termux/Android is rejected up front — the official script
+/// targets glibc Linux/macOS, not bionic.
 final class CursorInstallerCapability implements InstallerCapability {
   const CursorInstallerCapability();
 
@@ -15,6 +17,11 @@ final class CursorInstallerCapability implements InstallerCapability {
   static const winInstallUrl = 'https://cursor.com/install?win32=true';
   static const executableName = 'cursor-agent';
   static const displayName = 'Cursor CLI';
+
+  static const termuxUnsupportedMessage =
+      'Cursor CLI install is not supported on Termux (Android). '
+      'Install cursor-agent manually if you have a Termux-compatible build, '
+      'then use Detect — or skip Cursor on this device.';
 
   @override
   bool get supportsInstaller => true;
@@ -80,6 +87,33 @@ final class CursorInstallerCapability implements InstallerCapability {
     }
 
     final host = context.host;
+
+    final probe = await host.runSsh(
+      profile,
+      CliInstallerCommand.unixShellScript(TermuxRemoteDetect.probeScript()),
+    );
+    if (TermuxRemoteDetect.isTermuxFromProbeOutput(probe.stdout)) {
+      host.report(CliInstallPhase.locatingExecutable);
+      final existing = await host.runSsh(
+        profile,
+        CliInstallerCommand.unixShellScript(
+          NpmInstallerCapability.remotePostInstallLocateScript(executableName),
+        ),
+      );
+      final path = firstInstallerOutputLine(existing);
+      if (path != null) {
+        return CliInstallResult(
+          success: true,
+          message: '$displayName already present on ${profile.hostIdentifier}.',
+          executablePath: path,
+        );
+      }
+      return const CliInstallResult(
+        success: false,
+        message: termuxUnsupportedMessage,
+      );
+    }
+
     host.report(CliInstallPhase.installingCli, detail: displayName);
     final install = await host.runSsh(
       profile,

@@ -10,6 +10,7 @@ import 'registry/capabilities/installer_capability.dart';
 import 'registry/cli_tool_registry.dart';
 import 'registry/installer/installer_context.dart';
 import 'registry/installer/teampilot_node_install.dart';
+import 'registry/installer/termux_remote_detect.dart';
 import '../host/host_execution_environment.dart';
 import '../host/host_login_shell_lookup.dart';
 import '../host/host_script_runner.dart';
@@ -151,13 +152,8 @@ class CliInstallerService {
     final prefixAware = await _sshRunner(
       profile,
       CliInstallerCommand.unixShellScript(
-        r'''
-export PATH="${PREFIX:+$PREFIX/bin:}$HOME/.local/bin:$PATH"
-if [ -z "${PREFIX:-}" ] && [ -d /data/data/com.termux/files/usr/bin ]; then
-  export PATH="/data/data/com.termux/files/usr/bin:$PATH"
-fi
-command -v npm
-''',
+        '${TermuxRemoteDetect.exportPrefixPathShell}\n'
+        'command -v npm',
       ),
     );
     return firstInstallerOutputLine(prefixAware);

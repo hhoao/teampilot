@@ -2,6 +2,7 @@ import '../../installer_types.dart';
 import '../capabilities/installer_capability.dart';
 import 'installer_context.dart';
 import 'teampilot_node_install.dart';
+import 'termux_remote_detect.dart';
 
 /// Shared in-app npm installer for Node-based CLIs (local + SSH).
 ///
@@ -158,10 +159,7 @@ abstract class NpmInstallerCapability implements InstallerCapability {
   /// Mirrors [DefaultRemoteCliLocator] probes in one remote shell script.
   static String remotePostInstallLocateScript(String executableName) =>
       '''
-export PATH="\${PREFIX:+\$PREFIX/bin:}\$HOME/.local/bin:\$PATH"
-if [ -z "\${PREFIX:-}" ] && [ -d /data/data/com.termux/files/usr/bin ]; then
-  export PATH="/data/data/com.termux/files/usr/bin:\$PATH"
-fi
+${TermuxRemoteDetect.exportPrefixPathShell}
 if command -v $executableName >/dev/null 2>&1; then
   command -v $executableName
   exit 0
