@@ -6602,7 +6602,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get termuxSetupScriptHint =>
-      'Allow storage access when prompted. The last line prints your username (e.g. u0_a399).';
+      'Allow storage access when prompted. sshd is enabled via termux-services (starts when Termux opens). Optional: install Termux:Boot from F-Droid for reboot without opening Termux. The last line prints your username (e.g. u0_a399).';
 
   @override
   String get termuxSetupUsernameLabel => '3. Paste your Termux username';

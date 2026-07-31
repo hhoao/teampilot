@@ -8,27 +8,32 @@ import 'package:teampilot/cubits/progress_activity_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_sidebar.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_title_bar.dart';
+import 'package:teampilot/pages/workspace_ide/mobile_slide_panel_host.dart';
 import 'package:teampilot/services/workspace/workspace_pane_policy.dart';
+import 'package:teampilot/utils/ui/app_keys.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
-class _NarrowHomeDrawerBody extends StatelessWidget {
-  const _NarrowHomeDrawerBody();
+class _NarrowHomeSlideBody extends StatelessWidget {
+  const _NarrowHomeSlideBody();
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        TpSidebar(
-          collapsible: TpSidebarCollapsible.offcanvas,
-          child: HomeSidebar(
-            onSelectLibraryView: (_) {
-              TpSidebarScope.maybeOf(context)?.setOpenMobile(false);
-            },
-          ),
-        ),
-        const Expanded(child: SizedBox()),
-      ],
+    final scope = TpSidebarScope.maybeOf(context);
+    final width = TpTheme.of(context).sidebarTheme.resolveMobileDrawerWidth(
+      MediaQuery.sizeOf(context).width,
+    );
+    return MobileSlidePanelHost(
+      open: scope?.openMobile ?? false,
+      width: width,
+      onDismiss: () => scope?.setOpenMobile(false),
+      scrimKey: AppKeys.mobileHomeSidebarScrim,
+      panel: HomeSidebar(
+        onSelectLibraryView: (_) {
+          TpSidebarScope.maybeOf(context)?.setOpenMobile(false);
+        },
+      ),
+      child: const ColoredBox(color: Colors.transparent),
     );
   }
 }
@@ -92,7 +97,7 @@ void main() {
                               HomeWorkspaceTab(id: 'ws-a', name: 'Solo'),
                             ],
                     ),
-                    const Expanded(child: _NarrowHomeDrawerBody()),
+                    const Expanded(child: _NarrowHomeSlideBody()),
                   ],
                 ),
               ),
@@ -104,13 +109,14 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('narrow home hides sidebar until trigger opens drawer', (
+  testWidgets('narrow home hides sidebar until trigger opens panel', (
     tester,
   ) async {
     await pumpHarness(tester);
 
     expect(find.text('Automations'), findsNothing);
     expect(find.byType(TpSidebarTrigger), findsOneWidget);
+    expect(find.byType(MobileSlidePanelHost), findsOneWidget);
 
     await tester.tap(find.byType(TpSidebarTrigger));
     await tester.pumpAndSettle();
@@ -118,7 +124,7 @@ void main() {
     expect(find.text('Automations'), findsOneWidget);
   });
 
-  testWidgets('narrow home closes drawer after nav selection', (tester) async {
+  testWidgets('narrow home closes panel after nav selection', (tester) async {
     await pumpHarness(tester);
 
     await tester.tap(find.byType(TpSidebarTrigger));
@@ -126,6 +132,20 @@ void main() {
     expect(find.text('Automations'), findsOneWidget);
 
     await tester.tap(find.text('Recent'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Automations'), findsNothing);
+  });
+
+  testWidgets('narrow home closes panel on scrim tap', (tester) async {
+    await pumpHarness(tester);
+
+    await tester.tap(find.byType(TpSidebarTrigger));
+    await tester.pumpAndSettle();
+    expect(find.text('Automations'), findsOneWidget);
+
+    // Panel is left ~75% width; tap the uncovered right edge of the scrim.
+    await tester.tapAt(const Offset(360, 400));
     await tester.pumpAndSettle();
 
     expect(find.text('Automations'), findsNothing);

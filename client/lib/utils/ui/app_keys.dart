@@ -186,6 +186,7 @@ class AppKeys {
   static const homeWorkspaceWorkspaceManagementTile = Key(
     'home-workspace-workspace-management-tile',
   );
+  static const mobileHomeSidebarScrim = Key('mobile-home-sidebar-scrim');
   static const mobileWorkspaceDrawerScrim = Key('mobile-workspace-drawer-scrim');
   static const mobileWorkspaceDrawerModeSwitch = Key(
     'mobile-workspace-drawer-mode-switch',

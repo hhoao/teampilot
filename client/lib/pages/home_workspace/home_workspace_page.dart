@@ -9,8 +9,10 @@ import '../../models/launch_profile_kind.dart';
 import '../../models/layout_preferences.dart';
 import '../../models/team_config.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../utils/ui/app_keys.dart';
 import '../../widgets/split_layout.dart';
 import '../team_config/team_config_section.dart';
+import '../workspace_ide/mobile_slide_panel_host.dart';
 import 'home_all_workspaces_pane.dart';
 import 'home_route_active_scope.dart';
 import 'home_workspace_content.dart';
@@ -164,15 +166,9 @@ class _HomePageState extends State<HomePage> {
 
     return WorkspacePageCardShell(
       child: isMobile
-          ? Row(
-              children: [
-                TpSidebar(
-                  overlayActive: HomeRouteActiveScope.routeActiveOf(context),
-                  collapsible: TpSidebarCollapsible.offcanvas,
-                  child: sidebar,
-                ),
-                Expanded(child: rightPane),
-              ],
+          ? _HomeMobileSlideBody(
+              sidebar: sidebar,
+              rightPane: rightPane,
             )
           : BlocBuilder<LayoutCubit, LayoutState>(
               buildWhen: (a, b) =>
@@ -192,6 +188,37 @@ class _HomePageState extends State<HomePage> {
                 );
               },
             ),
+    );
+  }
+}
+
+/// Mobile home body: custom slide panel (same motion as workspace drawer),
+/// not [TpSidebar] Material offcanvas.
+class _HomeMobileSlideBody extends StatelessWidget {
+  const _HomeMobileSlideBody({
+    required this.sidebar,
+    required this.rightPane,
+  });
+
+  final Widget sidebar;
+  final Widget rightPane;
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = TpSidebarScope.maybeOf(context);
+    final routeActive = HomeRouteActiveScope.routeActiveOf(context);
+    final width = TpTheme.of(context).sidebarTheme.resolveMobileDrawerWidth(
+      MediaQuery.sizeOf(context).width,
+    );
+    return MobileSlidePanelHost(
+      open: scope?.openMobile ?? false,
+      overlayActive: routeActive,
+      width: width,
+      onDismiss: () => scope?.setOpenMobile(false),
+      onReleaseOverlayOwnership: () => scope?.setOpenMobile(false),
+      scrimKey: AppKeys.mobileHomeSidebarScrim,
+      panel: sidebar,
+      child: rightPane,
     );
   }
 }

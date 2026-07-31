@@ -6343,7 +6343,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get termuxSetupStepRunScript => '2. 在 Termux 中粘贴这条脚本';
 
   @override
-  String get termuxSetupScriptHint => '弹出存储授权时请允许。最后一行会打印用户名（例如 u0_a399）。';
+  String get termuxSetupScriptHint =>
+      '弹出存储授权时请允许。脚本会用 termux-services 启用 sshd（打开 Termux 即启动）。若需开机且不打开 Termux，可另装 Termux:Boot（F-Droid）。最后一行会打印用户名（例如 u0_a399）。';
 
   @override
   String get termuxSetupUsernameLabel => '3. 粘贴 Termux 用户名';

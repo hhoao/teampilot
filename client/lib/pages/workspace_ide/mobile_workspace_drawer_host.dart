@@ -5,14 +5,16 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../pages/config/config_workspace.dart';
+import '../../theme/app_typography_scale.dart';
 import '../../utils/ui/app_keys.dart';
 import '../../widgets/notification/notification_bell_button.dart';
+import 'mobile_slide_panel_host.dart';
 
 /// Single left-side mobile workspace drawer overlay for narrow IDE layouts.
 ///
 /// The shell owns the shared footer (manage + notifications + settings) and the
 /// chat/tools mode switch; [chatBody] / [toolsBody] are supplied by the parent.
-class MobileWorkspaceDrawerHost extends StatefulWidget {
+class MobileWorkspaceDrawerHost extends StatelessWidget {
   const MobileWorkspaceDrawerHost({
     required this.child,
     required this.width,
@@ -39,120 +41,20 @@ class MobileWorkspaceDrawerHost extends StatefulWidget {
   final VoidCallback onOpenWorkspaceManagement;
 
   @override
-  State<MobileWorkspaceDrawerHost> createState() =>
-      _MobileWorkspaceDrawerHostState();
-}
-
-class _MobileWorkspaceDrawerHostState extends State<MobileWorkspaceDrawerHost>
-    with SingleTickerProviderStateMixin {
-  static const _duration = Duration(milliseconds: 200);
-
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: _duration,
-      value: widget.open ? 1 : 0,
-    )..addStatusListener(_onAnimationStatus);
-  }
-
-  @override
-  void didUpdateWidget(covariant MobileWorkspaceDrawerHost oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.open) {
-      _controller.forward();
-    } else {
-      _controller.reverse();
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _onAnimationStatus(AnimationStatus status) {
-    if (status == AnimationStatus.dismissed && mounted) {
-      setState(() {});
-    }
-  }
-
-  bool get _panelMounted =>
-      _controller.status != AnimationStatus.dismissed;
-
-  @override
   Widget build(BuildContext context) {
-    final panelMounted = _panelMounted;
-    return Stack(
-      children: [
-        Positioned.fill(child: widget.child),
-        if (panelMounted)
-          Positioned.fill(
-            child: AnimatedBuilder(
-              animation: _controller,
-              builder: (context, _) {
-                final t = _controller.value;
-                if (t <= 0) return const SizedBox.shrink();
-                return GestureDetector(
-                  key: AppKeys.mobileWorkspaceDrawerScrim,
-                  behavior: HitTestBehavior.opaque,
-                  onTap: widget.onDismiss,
-                  child: ColoredBox(
-                    color: Colors.black.withValues(alpha: 0.45 * t),
-                  ),
-                );
-              },
-            ),
-          ),
-        if (panelMounted)
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: widget.width,
-            child: _DrawerPanel(
-              controller: _controller,
-              child: _DrawerShell(
-                mode: widget.mode,
-                chatBody: widget.chatBody,
-                toolsBody: widget.toolsBody,
-                onModeChanged: widget.onModeChanged,
-                onOpenWorkspaceManagement: widget.onOpenWorkspaceManagement,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _DrawerPanel extends StatelessWidget {
-  const _DrawerPanel({
-    required this.controller,
-    required this.child,
-  });
-
-  final AnimationController controller;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final slide = Tween<Offset>(
-      begin: const Offset(-1, 0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: controller, curve: Curves.easeOutCubic));
-    return SlideTransition(
-      position: slide,
-      child: Material(
-        color: cs.surface,
-        elevation: 12,
-        child: child,
+    return MobileSlidePanelHost(
+      open: open,
+      width: width,
+      onDismiss: onDismiss,
+      scrimKey: AppKeys.mobileWorkspaceDrawerScrim,
+      panel: _DrawerShell(
+        mode: mode,
+        chatBody: chatBody,
+        toolsBody: toolsBody,
+        onModeChanged: onModeChanged,
+        onOpenWorkspaceManagement: onOpenWorkspaceManagement,
       ),
+      child: child,
     );
   }
 }
@@ -266,6 +168,12 @@ class _ManageTileState extends State<_ManageTile> {
         ? cs.onSurface.withValues(alpha: 0.05)
         : Colors.transparent;
 
+    final labelStyle = styles.lg;
+    final iconSize = context.tpIconSizeForText(
+      labelStyle,
+      textBaseAtScale1: AppTypographyScale.bodyLargeBase,
+    );
+
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
@@ -282,12 +190,12 @@ class _ManageTileState extends State<_ManageTile> {
               children: [
                 Icon(
                   Icons.tune_outlined,
-                  size: context.tpIconSizes.md,
+                  size: iconSize,
                   color: cs.onSurface,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(widget.label, style: styles.lg),
+                  child: Text(widget.label, style: labelStyle),
                 ),
               ],
             ),

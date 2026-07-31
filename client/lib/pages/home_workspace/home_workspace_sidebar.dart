@@ -5,6 +5,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../theme/app_typography_scale.dart';
 import '../../utils/ui/app_keys.dart';
 import '../../widgets/notification/notification_bell_button.dart';
 import '../config/config_workspace.dart';
@@ -257,6 +258,14 @@ class _ShortcutRowState extends State<_ShortcutRow> {
         ? cs.onSurface.withValues(alpha: 0.05)
         : Colors.transparent;
 
+    final labelStyle = active
+        ? styles.lgSemiboldColored(fg)
+        : styles.lgColored(fg);
+    final iconSize = context.tpIconSizeForText(
+      labelStyle,
+      textBaseAtScale1: AppTypographyScale.bodyLargeBase,
+    );
+
     return RepaintBoundary(
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
@@ -276,7 +285,7 @@ class _ShortcutRowState extends State<_ShortcutRow> {
               children: [
                 Icon(
                   widget.icon,
-                  size: context.tpIconSizes.md,
+                  size: iconSize,
                   color: active ? cs.primary : cs.onSurfaceVariant,
                 ),
                 const SizedBox(width: 8),
@@ -285,9 +294,7 @@ class _ShortcutRowState extends State<_ShortcutRow> {
                     widget.label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: active
-                        ? styles.lgSemiboldColored(fg)
-                        : styles.lgColored(fg),
+                    style: labelStyle,
                   ),
                 ),
               ],
@@ -337,6 +344,14 @@ class _ProvidersButtonState extends State<_ProvidersButton> {
         ? cs.primary.withValues(alpha: 0.35)
         : cs.outlineVariant.withValues(alpha: 0.7);
 
+    final labelStyle = (active ? styles.mdSemibold : styles.md).copyWith(
+      color: fg,
+    );
+    final iconSize = context.tpIconSizeForText(
+      labelStyle,
+      textBaseAtScale1: AppTypographyScale.bodyMediumBase,
+    );
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
@@ -356,15 +371,13 @@ class _ProvidersButtonState extends State<_ProvidersButton> {
             children: [
               Icon(
                 Icons.memory_outlined,
-                size: context.tpIconSizes.md,
+                size: iconSize,
                 color: active ? cs.primary : cs.onSurfaceVariant,
               ),
               const SizedBox(width: 8),
               Text(
                 widget.label,
-                style: (active ? styles.mdSemibold : styles.md).copyWith(
-                  color: fg,
-                ),
+                style: labelStyle,
               ),
             ],
           ),

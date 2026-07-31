@@ -11817,7 +11817,7 @@ abstract class AppLocalizations {
   /// No description provided for @termuxSetupScriptHint.
   ///
   /// In en, this message translates to:
-  /// **'Allow storage access when prompted. The last line prints your username (e.g. u0_a399).'**
+  /// **'Allow storage access when prompted. sshd is enabled via termux-services (starts when Termux opens). Optional: install Termux:Boot from F-Droid for reboot without opening Termux. The last line prints your username (e.g. u0_a399).'**
   String get termuxSetupScriptHint;
 
   /// No description provided for @termuxSetupUsernameLabel.

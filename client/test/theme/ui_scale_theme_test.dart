@@ -90,16 +90,13 @@ void main() {
     expect(comfyText, greaterThan(1.0));
   });
 
-  test('icon theme scales with the text-size preset (mapped, not 1:1)', () {
+  test('icon theme ignores in-app text-size preset at baseline 1.0', () {
     final std = buildDarkTheme(null, AppTypographyScale.standard);
     final comfy = buildDarkTheme(null, AppTypographyScale.comfortable);
 
-    final stdIconMult = TpIconSizes.resolveIconMultiplier(
-      effectiveTextMultiplier: 1.0,
-      textBaseline: 1.0,
-    );
+    final stdIconMult = TpIconSizes.resolveIconMultiplier(textBaseline: 1.0);
     expect(std.iconTheme.size, TpIconSizes.mdBase * stdIconMult);
-    expect(comfy.iconTheme.size, greaterThan(std.iconTheme.size!));
+    expect(comfy.iconTheme.size, std.iconTheme.size);
   });
 
   testWidgets('context.uiScale is fixed at 1.0 (spacing is not text-scaled)', (

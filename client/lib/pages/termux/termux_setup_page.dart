@@ -49,17 +49,56 @@ class TermuxSetupPage extends StatefulWidget {
   /// Called after a successful Connect when [embedded] is true.
   final VoidCallback? onHomeBound;
 
-  /// One paste-and-run script for OpenSSH + key auth + storage + sshd.
-  /// Ends with `whoami` so the last printed line is the Termux username.
+  /// One paste-and-run script for OpenSSH + key auth + storage, then enables
+  /// `sshd` via **termux-services** (`sv-enable`).
+  ///
+  /// Waits for `runsvdir` before `sv-enable` to avoid the common
+  /// `supervise/ok: file does not exist` race. Falls back to plain `sshd` if
+  /// the supervisor is still not ready. Also writes `~/.termux/boot/start-sshd`
+  /// for optional Termux:Boot. Ends with `whoami`.
   @visibleForTesting
   static String bootstrapScript(String publicKey) {
     final quotedKey = _shellSingleQuote(publicKey);
+    // Termux:Boot (optional app) runs ~/.termux/boot/*; start runsvdir so
+    // the already-enabled sshd service comes up after reboot.
+    const bootScriptLines = [
+      r'#!/data/data/com.termux/files/usr/bin/sh',
+      r'. "$PREFIX/etc/profile.d/start-services.sh"',
+    ];
+    final writeBootScript = [
+      'mkdir -p ~/.termux/boot',
+      "printf '%s\\n' ${bootScriptLines.map(_shellSingleQuote).join(' ')} "
+          '> ~/.termux/boot/start-sshd',
+      'chmod +x ~/.termux/boot/start-sshd',
+    ].join(' && ');
+    // Start service-daemon, wait for runsvdir, enable sshd, retry sv up, then
+    // fall back to a direct sshd so TeamPilot can connect immediately.
+    const enableSshdService = r'''(
+. "$PREFIX/etc/profile.d/start-services.sh"
+i=0
+while [ "$i" -lt 25 ] && ! pgrep -f runsvdir >/dev/null 2>&1; do
+  sleep 0.2
+  i=$((i+1))
+done
+sv-enable sshd >/dev/null 2>&1 || true
+i=0
+while [ "$i" -lt 25 ]; do
+  if sv status sshd 2>/dev/null | grep -q '^run:'; then
+    break
+  fi
+  sv up sshd >/dev/null 2>&1 || true
+  sleep 0.2
+  i=$((i+1))
+done
+pgrep -x sshd >/dev/null 2>&1 || sshd
+)''';
     return [
-      'pkg install -y openssh',
+      'pkg install -y openssh termux-services',
       'mkdir -p ~/.ssh && chmod 700 ~/.ssh',
       'echo $quotedKey >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys',
       'termux-setup-storage',
-      'sshd',
+      enableSshdService,
+      writeBootScript,
       'whoami',
     ].join(' && \\\n');
   }

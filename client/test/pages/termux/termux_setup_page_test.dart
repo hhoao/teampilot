@@ -325,9 +325,14 @@ void main() {
     final script = TermuxSetupPage.bootstrapScript(
       "ssh-ed25519 AAAAC3 test'key",
     );
-    expect(script, contains('pkg install -y openssh'));
+    expect(script, contains('pkg install -y openssh termux-services'));
+    expect(script, isNot(contains('termux-boot')));
     expect(script, contains('termux-setup-storage'));
-    expect(script, contains('sshd'));
+    expect(script, contains('start-services.sh'));
+    expect(script, contains('sv-enable sshd'));
+    expect(script, contains('runsvdir'));
+    expect(script, contains('pgrep -x sshd'));
+    expect(script, contains('~/.termux/boot/start-sshd'));
     expect(script, contains('whoami'));
     expect(script, contains(r"'ssh-ed25519 AAAAC3 test'\''key'"));
   });

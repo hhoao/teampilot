@@ -862,7 +862,6 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
       baseline: textBaseline,
     );
     final iconMultiplier = TpIconSizes.resolveIconMultiplier(
-      effectiveTextMultiplier: effectiveTextMult,
       textBaseline: textBaseline,
     );
     _cachedIconMultiplier = iconMultiplier;
@@ -964,21 +963,11 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
                   ),
                 ),
               );
-              // Single global zoom: scales fonts + icons + padding + every
-              // control as one. Must sit INSIDE DragToResizeArea so the window
-              // resize handles stay mapped to the real (unscaled) window edges.
-              content = UiZoom(scale: effectiveZoom, child: content);
-              // The native title bar is hidden (TitleBarStyle.hidden), which on
-              // Linux/GTK also strips the resize-border grips. DragToResizeArea
-              // re-adds invisible resize handles on all edges/corners so the
-              // frameless window can still be resized from its borders.
-              if (!Platform.isAndroid) {
-                content = _DragToResizeWrapper(child: content);
-              }
-              // TpTheme outside UiZoom. Spacing stays at design baseline;
-              // controlScale tracks text size; iconScale uses damped policy.
+              // TpTheme inside UiZoom so icon tokens and labels share the zoom
+              // canvas. Spacing stays at design baseline; controlScale tracks
+              // text size; iconScale tracks OS baseline only (see resolveIconMultiplier).
               final scheme = Theme.of(context).colorScheme;
-              return TpTheme(
+              content = TpTheme(
                 data: TpThemeData.fromColorScheme(
                   scheme,
                   scale: 1.0,
@@ -989,8 +978,19 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
                     backgroundColor: scheme.workspaceCard,
                   ),
                 ),
-                child: content,
+                child: UiZoom(scale: effectiveZoom, child: content),
               );
+              // Single global zoom: scales fonts + icons + padding + every
+              // control as one. Must sit INSIDE DragToResizeArea so the window
+              // resize handles stay mapped to the real (unscaled) window edges.
+              // The native title bar is hidden (TitleBarStyle.hidden), which on
+              // Linux/GTK also strips the resize-border grips. DragToResizeArea
+              // re-adds invisible resize handles on all edges/corners so the
+              // frameless window can still be resized from its borders.
+              if (!Platform.isAndroid) {
+                content = _DragToResizeWrapper(child: content);
+              }
+              return content;
             },
           );
         },

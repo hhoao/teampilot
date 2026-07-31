@@ -276,10 +276,7 @@ ThemeData _applyTypography(
   final resolvedIconScale =
       iconScale ??
       AppTypographyScale(
-        multiplier: TpIconSizes.resolveIconMultiplier(
-          effectiveTextMultiplier: typographyScale.multiplier,
-          textBaseline: 1.0,
-        ),
+        multiplier: TpIconSizes.resolveIconMultiplier(textBaseline: 1.0),
       );
   final typographyTheme = AppTypographyTheme.fromScale(typographyScale);
   final control = TpControlMetrics.fromScale(typographyScale.multiplier);
