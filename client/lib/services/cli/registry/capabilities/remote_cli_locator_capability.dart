@@ -45,13 +45,27 @@ class DefaultRemoteCliLocator implements RemoteCliLocatorCapability {
         if (located != null) return located;
       }
     }
-    return _tryCommand(run, _wellKnownLocalBinProbe(executableName));
+    final localBin = await _tryCommand(
+      run,
+      _wellKnownLocalBinProbe(executableName),
+    );
+    if (localBin != null) return localBin;
+    return _tryCommand(run, _termuxPrefixBinProbe(executableName));
   }
 
   /// TeamPilot remote npm installs default to prefix `~/.local` → `~/.local/bin`.
   static String _wellKnownLocalBinProbe(String executableName) =>
       'sh -c \'test -x "\$HOME/.local/bin/$executableName" && '
       'printf "%s\\n" "\$HOME/.local/bin/$executableName"\'';
+
+  /// Termux packages live under `$PREFIX/bin` (often missing from sparse SSH PATH).
+  static String _termuxPrefixBinProbe(String executableName) =>
+      'sh -c \''
+      'export PATH="\${PREFIX:+\$PREFIX/bin:}\$PATH"; '
+      'if [ -z "\${PREFIX:-}" ] && [ -d /data/data/com.termux/files/usr/bin ]; then '
+      'export PATH="/data/data/com.termux/files/usr/bin:\$PATH"; fi; '
+      'command -v $executableName'
+      '\'';
 
   static Future<String?> _tryCommand(
     SshCommandRunner run,

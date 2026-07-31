@@ -80,6 +80,13 @@ final class TeampilotNodeInstall {
     if (bootstrap.exitCode != 0) {
       return RemoteNpmBootstrapFailed(bootstrap);
     }
+    // Termux pkg installs put npm under $PREFIX/bin (often linked into
+    // ~/.local/bin by the bootstrap). Prefer a live locate over the glibc
+    // toolchain path, which Termux never creates.
+    final after = await host.locateRemoteNpm(profile);
+    if (after != null) {
+      return RemoteNpmFound(after);
+    }
     return RemoteNpmFound(bootstrappedUnixNpmPath);
   }
 
@@ -145,6 +152,8 @@ final class TeampilotNodeInstall {
     // curl exit 18 = partial transfer; retry + mirror fallback for flaky links.
     // Official Node 24 needs glibc ≥ 2.28; older hosts get unofficial Node 22
     // (linux-x64-glibc-217) which still satisfies Claude Code's Node ≥ 18.
+    // Termux/Android is bionic — official glibc Node + tar.xz (needs xz) fail;
+    // use `pkg install nodejs` instead.
     return '''
 set -e
 os="\$(uname -s)"
@@ -159,6 +168,50 @@ case "\$arch" in
   aarch64|arm64) node_arch="arm64" ;;
   *) echo "Unsupported architecture: \$arch" >&2; exit 2 ;;
 esac
+
+mkdir -p "\$HOME/.local/bin"
+
+# Termux: Android/bionic cannot run nodejs.org glibc builds; tar -xJf needs xz.
+is_termux=0
+if [ -n "\${TERMUX_VERSION:-}" ]; then
+  is_termux=1
+fi
+if [ -n "\${PREFIX:-}" ] && [ -d "\${PREFIX}/bin" ]; then
+  if [ -x "\${PREFIX}/bin/pkg" ] || command -v pkg >/dev/null 2>&1; then
+    is_termux=1
+  fi
+fi
+if [ -d /data/data/com.termux/files/usr/bin ]; then
+  export PREFIX="\${PREFIX:-/data/data/com.termux/files/usr}"
+  if [ -x "\$PREFIX/bin/pkg" ]; then
+    is_termux=1
+  fi
+fi
+if [ "\$is_termux" -eq 1 ]; then
+  export PATH="\${PREFIX:+\$PREFIX/bin:}\$HOME/.local/bin:\$PATH"
+  if ! command -v npm >/dev/null 2>&1; then
+    echo "Installing Node.js via Termux pkg (official Node builds are not compatible with Android)..." >&2
+    if ! command -v pkg >/dev/null 2>&1; then
+      echo "Termux pkg not found. Open Termux and run: pkg install nodejs" >&2
+      exit 5
+    fi
+    pkg install -y nodejs
+  fi
+  if ! command -v npm >/dev/null 2>&1; then
+    echo "npm still not found after pkg install nodejs" >&2
+    exit 5
+  fi
+  npm_path="\$(command -v npm)"
+  node_path="\$(command -v node)"
+  npx_path="\$(command -v npx 2>/dev/null || true)"
+  ln -sfn "\$npm_path" "\$HOME/.local/bin/npm"
+  ln -sfn "\$node_path" "\$HOME/.local/bin/node"
+  if [ -n "\$npx_path" ]; then
+    ln -sfn "\$npx_path" "\$HOME/.local/bin/npx"
+  fi
+  npm --version
+  exit 0
+fi
 
 glibc_major=""
 glibc_minor=""
@@ -192,7 +245,7 @@ else
   archive="node-\$version-\$platform-\$node_arch.tar.xz"
   extract_dir="node-\$version-\$platform-\$node_arch"
 fi
-mkdir -p "\$base" "\$HOME/.local/bin"
+mkdir -p "\$base"
 tmp="\$(mktemp -d)"
 cleanup() { rm -rf "\$tmp"; }
 trap cleanup EXIT

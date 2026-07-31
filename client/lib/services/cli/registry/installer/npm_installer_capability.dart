@@ -158,6 +158,10 @@ abstract class NpmInstallerCapability implements InstallerCapability {
   /// Mirrors [DefaultRemoteCliLocator] probes in one remote shell script.
   static String remotePostInstallLocateScript(String executableName) =>
       '''
+export PATH="\${PREFIX:+\$PREFIX/bin:}\$HOME/.local/bin:\$PATH"
+if [ -z "\${PREFIX:-}" ] && [ -d /data/data/com.termux/files/usr/bin ]; then
+  export PATH="/data/data/com.termux/files/usr/bin:\$PATH"
+fi
 if command -v $executableName >/dev/null 2>&1; then
   command -v $executableName
   exit 0
@@ -173,6 +177,10 @@ for s in bash zsh; do
 done
 if [ -x "\$HOME/.local/bin/$executableName" ]; then
   printf '%s\\n' "\$HOME/.local/bin/$executableName"
+  exit 0
+fi
+if [ -n "\${PREFIX:-}" ] && [ -x "\$PREFIX/bin/$executableName" ]; then
+  printf '%s\\n' "\$PREFIX/bin/$executableName"
   exit 0
 fi
 exit 1

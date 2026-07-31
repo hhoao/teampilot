@@ -135,7 +135,7 @@ class CliInstallerService {
     final fromDirect = firstInstallerOutputLine(direct);
     if (fromDirect != null) return fromDirect;
 
-    return HostLoginShellLookup.locateViaLoginShells(
+    final fromLogin = await HostLoginShellLookup.locateViaLoginShells(
       innerCommand: npmLookup,
       runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
         final result = await _sshRunner(
@@ -145,6 +145,22 @@ class CliInstallerService {
         return ProcessResult(-1, result.exitCode, result.stdout, result.stderr);
       },
     );
+    if (fromLogin != null) return fromLogin;
+
+    // Termux SSH sessions often omit $PREFIX/bin from non-login PATH.
+    final prefixAware = await _sshRunner(
+      profile,
+      CliInstallerCommand.unixShellScript(
+        r'''
+export PATH="${PREFIX:+$PREFIX/bin:}$HOME/.local/bin:$PATH"
+if [ -z "${PREFIX:-}" ] && [ -d /data/data/com.termux/files/usr/bin ]; then
+  export PATH="/data/data/com.termux/files/usr/bin:$PATH"
+fi
+command -v npm
+''',
+      ),
+    );
+    return firstInstallerOutputLine(prefixAware);
   }
 
   Future<String?> _locateLocalExecutable(String name) {

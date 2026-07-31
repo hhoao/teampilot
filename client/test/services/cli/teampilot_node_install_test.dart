@@ -46,6 +46,17 @@ void main() {
     expect(script, isNot(contains('npm config set prefix')));
   });
 
+  test('ssh bootstrap prefers Termux pkg nodejs over glibc tarball', () {
+    final script = node.sshBootstrapCommand().arguments.last;
+    expect(script, contains('pkg install -y nodejs'));
+    expect(script, contains('is_termux'));
+    // Termux path must exit before the glibc archive extract.
+    final termuxIdx = script.indexOf('pkg install -y nodejs');
+    final extractIdx = script.indexOf('tar -xJf "\$tmp/\$archive"');
+    expect(termuxIdx, greaterThanOrEqualTo(0));
+    expect(extractIdx, greaterThan(termuxIdx));
+  });
+
   test('bootstrapped local package install references teampilot node path', () {
     final unixRunner = HostExecutionEnvironment.resolve(
       isWindowsHost: false,

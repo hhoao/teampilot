@@ -226,6 +226,7 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
             },
           );
           if (!installResult.success) {
+            // Fail the tracked activity; caught below so it is not unhandled.
             throw StateError(installResult.message);
           }
           return installResult;
@@ -250,6 +251,14 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
         variant: result.success
             ? TpToastVariant.success
             : TpToastVariant.error,
+      );
+    } on StateError catch (error) {
+      if (!mounted) return;
+      setState(() => _detectError = error.message);
+      AppToast.show(
+        context,
+        message: error.message,
+        variant: TpToastVariant.error,
       );
     } finally {
       if (mounted) {
