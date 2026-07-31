@@ -191,7 +191,6 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
     });
 
     final result = await _apkAcquisition.downloadAndInstall(
-      preferArm64: true,
       onProgress: (received, total) {
         if (!mounted) return;
         setState(() {
