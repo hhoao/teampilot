@@ -204,6 +204,7 @@ test('unmatched host returns single passthrough candidate', () {
 
 - [ ] **Step 3: Implement `RemoteDownloadResolver`**
 
+- Accept either a fixed `RemoteDownloadCatalog` **or** `RemoteDownloadCatalog Function() catalogProvider` so callers can read the **live** catalog on every `resolve` (settings changes apply without restart). Prefer `catalogProvider` in production wiring (Task 10).
 - Match `uri.host` against each enabled source’s `matchHosts` (case-insensitive).
 - If `rewriteOrigin == null` → candidate uses original URI.
 - Else parse `rewriteOrigin`, replace scheme/host/port; keep path + query.
@@ -370,7 +371,8 @@ Defaults: identity-only catalog resolver + matching http/downloader on same `htt
 - [ ] **Step 2: Route calls**
 
 - `_fetchLatestReleaseFromApi`: `downloadHttp.get(Uri.parse(apiUrl), headers: await _apiHeaders())`
-- `_resolveLatestReleaseTagName`: `downloadHttp.send` with `followRedirects: false`
+- `_resolveLatestReleaseTagName`: `downloadHttp.send` with `followRedirects: false` for the `releases/latest` page
+- Any `releases.atom` (or other GitHub) GET used in the rate-limit fallback path: also via `downloadHttp` (grep the file for remaining `_httpClient.get/head/send` and route them)
 - fallback HEAD: `downloadHttp.head(Uri.parse(downloadUrl), ...)`
 - `downloadRelease`: `downloader.fetch(Uri.parse(release.downloadUrl), destFileName: release.assetName, headers: await _httpHeaders(), onProgress: ...)` — map progress double 0–1 from `(received, total)`
 
@@ -523,6 +525,8 @@ Run codegen if the project uses `flutter gen-l10n` (usually automatic on `flutte
 
 On bootstrap: `TermuxPackageProbe().isTermuxInstalled()` → `_termuxInstalled`.
 
+Re-probe when the app resumes (`AppLifecycleListener` / `WidgetsBindingObserver.didChangeAppLifecycleState` → `resumed`) so returning from the system installer updates the UI without requiring a full page reopen.
+
 Install step UI:
 
 - If installed: show success text / skip primary button.
@@ -552,11 +556,12 @@ git commit -m "feat(termux): in-app Termux APK download and install CTA"
 
 **Files:**
 - Create: `client/lib/pages/config/download_sources_config_section.dart`
-- Modify: `client/lib/cubits/config_cubit.dart` — add `ConfigSection.downloadSources`
+- Modify: `client/lib/cubits/config_cubit.dart` — add `ConfigSection.downloadSources` (+ `title` / `breadcrumb` / `routeSegment` switches)
 - Modify: `client/lib/pages/config/config_workspace.dart` — dialog entry + hub tile + index map
-- Modify: router if `/config/:section` enumerates sections
-- Modify: app shell / bootstrap where providers are registered — provide `RemoteDownloadCatalogCubit` with store rooted at **native** `AppPaths` base path
-- Pass live resolver from cubit into `AppUpdateService` / Termux acquisition when constructed (or recreate thin wrappers that read `cubit.state.catalog`)
+- Modify: `client/lib/router/app_router.dart` (and any Android config hub / `android_shell_chrome.dart` section lists) so the new section routes
+- Modify: app shell / bootstrap — provide `RemoteDownloadCatalogCubit` with store rooted at **native** `AppPaths` base path
+- Wire resolver/http/downloader with `catalogProvider: () => cubit.state.catalog` (or equivalent) so mirror edits apply on the next request without restart
+- Pass that live stack into `AppUpdateService` / Termux acquisition construction sites
 
 - [ ] **Step 1: Settings section UI**
 
