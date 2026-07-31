@@ -173,7 +173,7 @@ Future<List<TpPickedEntry>?> showTpFileSelection({
 - **In-list search:** toolbar query filters the **current directory listing** (client-side); this is separate from the full-disk-search sub-tab.
 - Lazy `listDir`; filter by extensions + hidden files; sort by name/date/size/type.
 - Permission gate via `permission.ensureStorageAccess()`; denied → empty state (+ `openAppSettings` when provided).
-- **`initialPath`:** `null` → platform default root (Android `/storage/emulated/0`, else `$HOME` / port default). Path **not found** → error dialog, then **pop the entire selection page** (match huji).
+- **`initialPath`:** `null` → platform default root (Android `/storage/emulated/0`, else `$HOME` / port default). Path is a **file** → open its **parent directory**. Path **not found** → error dialog, then **pop the entire selection page** (match huji).
 
 **Gallery tab**
 
