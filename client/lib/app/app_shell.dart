@@ -1355,6 +1355,14 @@ Future<AppShell> buildAppShell({
     await persistSshHomePathCacheIfLive();
   };
 
+  Future<void> reconnectHomeSshIfNeeded() async {
+    final home = defaultTargetResolver();
+    final pid = home.sshProfileId;
+    if (home.kind != RuntimeKind.ssh || pid == null || pid.isEmpty) return;
+    await sshConnectionCubit.syncProfiles(sshProfileCubit.state.profiles);
+    unawaited(sshConnectionCubit.connect(pid));
+  }
+
   Future<void> bootstrapAppData() async {
     await notificationBootstrap;
     final indexReady = bootstrapCubit?.state.homeIndexReady ?? false;
@@ -1402,6 +1410,7 @@ Future<AppShell> buildAppShell({
       }
       bootstrapCubit?.markHomeIndexReady();
     }
+    await reconnectHomeSshIfNeeded();
     await yieldUiFrame();
     boot(
       'bootstrapAppData index ready '
