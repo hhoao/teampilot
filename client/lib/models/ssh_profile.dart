@@ -92,6 +92,9 @@ class SshProfile {
     };
   }
 
+  /// Includes [lastHome]/[lastAppDataRoot] so Bloc/Equatable emits after path
+  /// cache updates. Home storage invalidation uses
+  /// [sshHomeConnectionFingerprint], not `==`.
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||

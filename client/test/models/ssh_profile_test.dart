@@ -38,13 +38,14 @@ void main() {
     expect(r.lastAppDataRoot, '/home/u/.local/share/com.hhoa.teampilot');
   });
 
-  test('equality ignores path cache fields', () {
+  test('equality includes path cache fields', () {
     final a = SshProfile(
       id: 'a',
       name: 'Box',
       host: 'h',
       username: 'u',
       lastHome: '/home/u',
+      lastAppDataRoot: '/home/u/.local/share/com.hhoa.teampilot',
     );
     final b = SshProfile(
       id: 'a',
@@ -52,7 +53,8 @@ void main() {
       host: 'h',
       username: 'u',
       lastHome: '/other',
+      lastAppDataRoot: '/other/.local/share/com.hhoa.teampilot',
     );
-    expect(a, equals(b));
+    expect(a, isNot(equals(b)));
   });
 }
