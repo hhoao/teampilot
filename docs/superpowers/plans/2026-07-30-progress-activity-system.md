@@ -239,7 +239,10 @@ git commit -m "feat(progress): add dismissible progress activity detail dialog"
 
 **Behavior:**
 
-- Filter with `state.forWorkspace(workspaceId)`
+- Segment `id => 'progress-activities'` (same convention as `resource-usage` / `ssh-hosts`)
+- Resolve `workspaceId` from the active workspace in the host (e.g. active tab /
+  `ChatCubit` / layout active workspace — match how other workspace-scoped
+  status items obtain it). Filter with `state.forWorkspace(workspaceId)`.
 - 1 activity: short label + percent/spinner
 - N: `progressActivitiesMany(n)` l10n → open popover list (reuse tile)
 - Click opens detail or list
