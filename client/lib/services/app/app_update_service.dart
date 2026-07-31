@@ -2,11 +2,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import '../../config/app_update_config.dart';
 import '../../models/app_release_info.dart';
 import '../github/github_http.dart';
+import '../remote_download/remote_download_catalog.dart';
+import '../remote_download/remote_download_http.dart';
+import '../remote_download/remote_download_resolver.dart';
+import '../remote_download/remote_downloader.dart';
 import 'app_update_asset_selector.dart';
 
 typedef AppUpdateHttpClient = http.Client;
@@ -22,6 +25,9 @@ class AppUpdateService {
     String? githubToken,
     String? githubOwner,
     String? githubRepo,
+    RemoteDownloadResolver? resolver,
+    RemoteDownloader? downloader,
+    RemoteDownloadHttp? downloadHttp,
   }) : _httpClient = httpClient ?? http.Client(),
        _ownsClient = httpClient == null,
        _packageInfoLoader =
@@ -31,7 +37,16 @@ class AppUpdateService {
        _userAgent = userAgent,
        _githubToken = githubToken,
        _githubOwner = githubOwner,
-       _githubRepo = githubRepo;
+       _githubRepo = githubRepo {
+    final effectiveResolver =
+        resolver ?? RemoteDownloadResolver(RemoteDownloadCatalog.defaults());
+    _downloadHttp =
+        downloadHttp ??
+        RemoteDownloadHttp(client: _httpClient, resolver: effectiveResolver);
+    _downloader =
+        downloader ??
+        RemoteDownloader(client: _httpClient, resolver: effectiveResolver);
+  }
 
   final http.Client _httpClient;
   final bool _ownsClient;
@@ -41,6 +56,8 @@ class AppUpdateService {
   final String? _githubToken;
   final String? _githubOwner;
   final String? _githubRepo;
+  late final RemoteDownloadHttp _downloadHttp;
+  late final RemoteDownloader _downloader;
 
   void dispose() {
     if (_ownsClient) {
@@ -110,10 +127,15 @@ class AppUpdateService {
       owner: _githubOwner,
       repo: _githubRepo,
     );
-    final response = await _httpClient.get(
-      Uri.parse(url),
-      headers: await _apiHeaders(),
-    );
+    final http.Response response;
+    try {
+      response = await _downloadHttp.get(
+        Uri.parse(url),
+        headers: await _apiHeaders(),
+      );
+    } on RemoteDownloadException catch (e) {
+      throw _appUpdateExceptionFromRemoteDownload(e, api: true);
+    }
     if (response.statusCode != 200) {
       throw AppUpdateException(
         githubApiErrorMessage(
@@ -178,10 +200,15 @@ class AppUpdateService {
     );
 
     final headers = await _httpHeaders();
-    final head = await _httpClient.head(
-      Uri.parse(downloadUrl),
-      headers: headers,
-    );
+    final http.Response head;
+    try {
+      head = await _downloadHttp.head(
+        Uri.parse(downloadUrl),
+        headers: headers,
+      );
+    } on RemoteDownloadException catch (e) {
+      throw _appUpdateExceptionFromRemoteDownload(e);
+    }
     if (head.statusCode != 200) {
       throw AppUpdateAssetNotFoundException(kind, [assetName]);
     }
@@ -204,27 +231,40 @@ class AppUpdateService {
   }) async {
     final pageUrl = appUpdateLatestReleasePageUrl(owner: owner, repo: repo);
     final headers = await _httpHeaders();
-    final request = http.Request('GET', Uri.parse(pageUrl))
-      ..followRedirects = false
-      ..headers.addAll(headers);
-    final streamed = await _httpClient.send(request);
-    await streamed.stream.drain();
+    try {
+      final streamed = await _downloadHttp.send(
+        (candidateUri) {
+          final request = http.Request('GET', candidateUri)
+            ..followRedirects = false
+            ..headers.addAll(headers);
+          return request;
+        },
+        Uri.parse(pageUrl),
+      );
+      await streamed.stream.drain();
 
-    if (streamed.statusCode >= 300 && streamed.statusCode < 400) {
-      final location = streamed.headers['location'];
-      if (location != null) {
-        final tag = parseReleaseTagFromGithubUrl(location);
-        if (tag != null) return tag;
+      if (streamed.statusCode >= 300 && streamed.statusCode < 400) {
+        final location = streamed.headers['location'];
+        if (location != null) {
+          final tag = parseReleaseTagFromGithubUrl(location);
+          if (tag != null) return tag;
+        }
       }
+    } on RemoteDownloadException {
+      // Fall through to releases.atom.
     }
 
     final atomUrl = 'https://github.com/$owner/$repo/releases.atom';
-    final atomResponse = await _httpClient.get(
-      Uri.parse(atomUrl),
-      headers: headers,
-    );
-    if (atomResponse.statusCode != 200) return null;
-    return _parseLatestTagFromAtom(atomResponse.body);
+    try {
+      final atomResponse = await _downloadHttp.get(
+        Uri.parse(atomUrl),
+        headers: headers,
+      );
+      if (atomResponse.statusCode != 200) return null;
+      return _parseLatestTagFromAtom(atomResponse.body);
+    } on RemoteDownloadException {
+      return null;
+    }
   }
 
   String? _parseLatestTagFromAtom(String body) {
@@ -334,41 +374,42 @@ class AppUpdateService {
     AppReleaseInfo release, {
     void Function(double progress)? onProgress,
   }) async {
-    final request = http.Request('GET', Uri.parse(release.downloadUrl));
-    request.headers.addAll(await _httpHeaders());
-
-    final streamed = await _httpClient.send(request);
-    if (streamed.statusCode != 200) {
-      throw AppUpdateException('Download failed (${streamed.statusCode}).');
-    }
-
-    final total = release.fileSize > 0
-        ? release.fileSize
-        : streamed.contentLength;
-    final dir = await Directory.systemTemp.createTemp('teampilot_update_');
-    final dest = File(p.join(dir.path, release.assetName));
-    final sink = dest.openWrite();
-    var received = 0;
-
     try {
-      await for (final chunk in streamed.stream) {
-        sink.add(chunk);
-        received += chunk.length;
-        if (onProgress != null && total != null && total > 0) {
-          onProgress(received / total);
+      final file = await _downloader.fetch(
+        Uri.parse(release.downloadUrl),
+        destFileName: release.assetName,
+        headers: await _httpHeaders(),
+        onProgress: (received, total) {
+          if (onProgress != null && total != null && total > 0) {
+            onProgress(received / total);
+          }
+        },
+      );
+      if (onProgress != null && release.fileSize > 0) {
+        onProgress(1.0);
+      }
+      return file;
+    } on RemoteDownloadException catch (e) {
+      throw AppUpdateException(e.message);
+    }
+  }
+
+  AppUpdateException _appUpdateExceptionFromRemoteDownload(
+    RemoteDownloadException error, {
+    bool api = false,
+  }) {
+    if (api) {
+      for (final attempt in error.attempts) {
+        final status = attempt.statusCode;
+        if (status != null) {
+          return AppUpdateException(
+            githubApiErrorMessage(status),
+            isRateLimited: githubApiStatusIsRateLimited(status),
+          );
         }
       }
-    } catch (e) {
-      await sink.close();
-      await dir.delete(recursive: true);
-      rethrow;
     }
-
-    await sink.close();
-    if (onProgress != null && total != null && total > 0) {
-      onProgress(1.0);
-    }
-    return dest;
+    return AppUpdateException(error.message);
   }
 }
 

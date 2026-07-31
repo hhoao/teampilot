@@ -9,6 +9,20 @@ import 'package:teampilot/models/app_release_info.dart';
 import 'package:teampilot/config/app_update_config.dart';
 import 'package:teampilot/services/app/app_update_asset_selector.dart';
 import 'package:teampilot/services/app/app_update_service.dart';
+import 'package:teampilot/services/remote_download/remote_download_catalog.dart';
+import 'package:teampilot/services/remote_download/remote_download_resolver.dart';
+import 'package:teampilot/services/remote_download/remote_download_source.dart';
+
+class _StreamingFakeClient extends http.BaseClient {
+  _StreamingFakeClient(this._handler);
+
+  final Future<http.StreamedResponse> Function(http.BaseRequest request)
+  _handler;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) =>
+      _handler(request);
+}
 
 void main() {
   group('parseReleaseVersionFromTag', () {
@@ -292,6 +306,79 @@ void main() {
       expect(await file.length(), bytes.length);
       expect(progress.isNotEmpty, isTrue);
       expect(progress.last, 1.0);
+    });
+
+    test('fails over to mirror when official download fails', () async {
+      final bytes = List<int>.generate(256, (i) => i % 256);
+      final catalog = RemoteDownloadCatalog([
+        const RemoteDownloadSource(
+          id: 'github-official',
+          priority: 10,
+          enabled: true,
+          matchHosts: ['github.com', 'api.github.com'],
+        ),
+        const RemoteDownloadSource(
+          id: 'mirror',
+          priority: 20,
+          enabled: true,
+          matchHosts: ['github.com', 'api.github.com'],
+          rewriteOrigin: 'https://mirror.example',
+        ),
+      ]);
+      final fake = _StreamingFakeClient((request) async {
+        if (request.url.host == 'github.com') {
+          return http.StreamedResponse(
+            Stream.value(<int>[]),
+            500,
+            request: request,
+          );
+        }
+        if (request.url.host == 'mirror.example') {
+          return http.StreamedResponse(
+            Stream.value(bytes),
+            200,
+            contentLength: bytes.length,
+            request: request,
+          );
+        }
+        return http.StreamedResponse(
+          Stream.value(<int>[]),
+          404,
+          request: request,
+        );
+      });
+      final service = AppUpdateService(
+        httpClient: fake,
+        resolver: RemoteDownloadResolver(catalog),
+        packageInfoLoader: () async => PackageInfo(
+          appName: 'teampilot',
+          packageName: 'com.hhoa.teampilot',
+          version: '1.0.0',
+          buildNumber: '1',
+        ),
+      );
+      addTearDown(service.dispose);
+
+      final release = AppReleaseInfo(
+        version: Version(1, 1, 0),
+        tagName: 'v1.1.0',
+        releaseNotes: '',
+        downloadUrl:
+            'https://github.com/hhoao/teampilot/releases/download/v1.1.0/teampilot-1.1.0-windows-setup.exe',
+        assetName: 'teampilot-1.1.0-windows-setup.exe',
+        fileSize: bytes.length,
+        htmlUrl: 'https://github.com/hhoao/teampilot/releases/tag/v1.1.0',
+      );
+
+      final file = await service.downloadRelease(release);
+      addTearDown(() async {
+        final parent = file.parent;
+        if (await parent.exists()) {
+          await parent.delete(recursive: true);
+        }
+      });
+
+      expect(await file.length(), bytes.length);
     });
   });
 }
