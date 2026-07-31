@@ -524,7 +524,7 @@ Future<AppShell> buildAppShell({
   SshProfile? homeSshProfileCache;
   if (homeTarget.kind == RuntimeKind.ssh) {
     final pid = homeTarget.sshProfileId;
-    if (pid != null) {
+    if (pid != null && pid.isNotEmpty) {
       homeSshProfileCache = await sshProfileRepo.findById(pid);
     }
   }
@@ -533,10 +533,15 @@ Future<AppShell> buildAppShell({
       final cfg = termuxConfigCache;
       return cfg == null ? null : termuxTransportProfile(cfg);
     }
-    if (homeSshProfileCache != null && homeSshProfileCache!.id == id) {
-      return homeSshProfileCache;
+    final fromCubit = sshProfileCubit.state.profiles
+        .where((p) => p.id == id)
+        .firstOrNull;
+    if (fromCubit != null) return fromCubit;
+    final cached = homeSshProfileCache;
+    if (cached != null && cached.id == id) {
+      return cached;
     }
-    return sshProfileCubit.state.profiles.where((p) => p.id == id).firstOrNull;
+    return null;
   }
   final remoteCliReadiness = RemoteCliReadinessService(
     registry: cliToolRegistry,
@@ -614,6 +619,20 @@ Future<AppShell> buildAppShell({
     'root=${AppStorage.appDataRoot})',
   );
 
+  Future<void> persistSshHomePathCacheIfLive() async {
+    final home = defaultTargetResolver();
+    if (home.kind != RuntimeKind.ssh) return;
+    final pid = home.sshProfileId;
+    if (pid == null || pid.isEmpty) return;
+    final ctx = runtimeContextRegistry.home();
+    if (ctx.pathsFromCache) return;
+    await sshProfileCubit.updatePathCache(
+      pid,
+      home: ctx.home,
+      appDataRoot: ctx.appDataRoot,
+    );
+  }
+
   // Persists the chosen home id, rebinds the registry home, and republishes it
   // on AppStorage.
   Future<void> setHomeTarget(String id) async {
@@ -622,6 +641,7 @@ Future<AppShell> buildAppShell({
     await runtimeContextRegistry.dispose(id);
     await runtimeContextRegistry.rebindHome(homeTarget);
     AppStorage.bindHome(runtimeContextRegistry.home());
+    await persistSshHomePathCacheIfLive();
   }
 
   connectionModeService = ConnectionModeService(
@@ -638,6 +658,7 @@ Future<AppShell> buildAppShell({
     );
     await runtimeContextRegistry.rebindHome(defaultTargetResolver());
     AppStorage.bindHome(runtimeContextRegistry.home());
+    await persistSshHomePathCacheIfLive();
   };
 
   cliToolRegistry.configure(
@@ -1307,26 +1328,29 @@ Future<AppShell> buildAppShell({
   bootstrapCubit?.markShellReady();
   boot('buildAppShell shell ready');
 
-  reloadAllAppData = ({bool reinstallSshHome = true}) => AppDataBootstrap.reloadAll(
-    boot: boot,
-    sshProfileCubit: sshProfileCubit,
-    llmConfigCubit: llmConfigCubit,
-    appProviderCubit: appProviderCubit,
-    teamCubit: teamCubit,
-    pluginCubit: pluginCubit,
-    skillCubit: skillCubit,
-    mcpCubit: mcpCubit,
-    extensionCubit: extensionCubit,
-    chatCubit: chatCubit,
-    sessionRepo: sessionRepo,
-    layoutCubit: layoutCubit,
-    isSshMode: connectionModeService.isRemoteWorkPlane,
-    homeSshProfileId: defaultTargetResolver().sshProfileId,
-    sshProfileExists: (id) => sshProfileById(id) != null,
-    reinstallStorageContext: reinstallStorageContext,
-    home: defaultTargetResolver(),
-    reinstallSshHome: reinstallSshHome,
-  );
+  reloadAllAppData = ({bool reinstallSshHome = true}) async {
+    await AppDataBootstrap.reloadAll(
+      boot: boot,
+      sshProfileCubit: sshProfileCubit,
+      llmConfigCubit: llmConfigCubit,
+      appProviderCubit: appProviderCubit,
+      teamCubit: teamCubit,
+      pluginCubit: pluginCubit,
+      skillCubit: skillCubit,
+      mcpCubit: mcpCubit,
+      extensionCubit: extensionCubit,
+      chatCubit: chatCubit,
+      sessionRepo: sessionRepo,
+      layoutCubit: layoutCubit,
+      isSshMode: connectionModeService.isRemoteWorkPlane,
+      homeSshProfileId: defaultTargetResolver().sshProfileId,
+      sshProfileExists: (id) => sshProfileById(id) != null,
+      reinstallStorageContext: reinstallStorageContext,
+      home: defaultTargetResolver(),
+      reinstallSshHome: reinstallSshHome,
+    );
+    await persistSshHomePathCacheIfLive();
+  };
 
   Future<void> bootstrapAppData() async {
     await notificationBootstrap;
@@ -1353,6 +1377,7 @@ Future<AppShell> buildAppShell({
             reinstallStorageContext: reinstallStorageContext,
             home: defaultTargetResolver(),
           );
+          await persistSshHomePathCacheIfLive();
         } on Object catch (error, stackTrace) {
           appLogger.w(
             '[boot] remote home index bootstrap failed',

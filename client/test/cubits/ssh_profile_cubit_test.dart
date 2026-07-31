@@ -168,6 +168,45 @@ void main() {
     },
   );
 
+  test('updatePathCache saves without invalidateProfileConnection', () async {
+    final temp = await Directory.systemTemp.createTemp(
+      'ssh_profile_cubit_path_cache_',
+    );
+    addTearDown(() => temp.delete(recursive: true));
+
+    const profileId = 'p1';
+    final repository = SshProfileRepository(rootDir: temp.path);
+    await repository.save(
+      const SshProfile(
+        id: profileId,
+        name: 'one',
+        host: 'one.example.com',
+        username: 'alice',
+      ),
+    );
+
+    final invalidateCalls = <String>[];
+    final cubit = SshProfileCubit(
+      profileRepository: repository,
+      credentialStore: InMemorySshCredentialStore(),
+      invalidateProfileConnection: invalidateCalls.add,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.load();
+    await cubit.updatePathCache(
+      profileId,
+      home: '/home/u',
+      appDataRoot: '/home/u/.teampilot',
+    );
+
+    expect(invalidateCalls, isEmpty);
+    final saved = await repository.loadAll();
+    expect(saved.single.lastHome, '/home/u');
+    expect(saved.single.lastAppDataRoot, '/home/u/.teampilot');
+    expect(cubit.state.profiles.single.lastHome, '/home/u');
+  });
+
   test('selectProfile updates selection without home-plane side effects', () async {
     final temp = await Directory.systemTemp.createTemp(
       'ssh_profile_cubit_select_',

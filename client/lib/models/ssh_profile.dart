@@ -101,9 +101,20 @@ class SshProfile {
             host == other.host &&
             port == other.port &&
             username == other.username &&
-            authType == other.authType;
+            authType == other.authType &&
+            lastHome == other.lastHome &&
+            lastAppDataRoot == other.lastAppDataRoot;
   }
 
   @override
-  int get hashCode => Object.hash(id, name, host, port, username, authType);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    host,
+    port,
+    username,
+    authType,
+    lastHome,
+    lastAppDataRoot,
+  );
 }
