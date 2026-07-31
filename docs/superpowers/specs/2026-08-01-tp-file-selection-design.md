@@ -151,7 +151,7 @@ Future<List<TpPickedEntry>?> showTpFileSelection({
 
 **Entry**
 
-1. If `deps.isDesktop()` and `deps.desktop != null` → desktop port; return immediately.
+1. If `deps.isDesktop()` and `deps.desktop != null` → desktop port by `selectionMode`: `directories` → `pickDirectory`; `files` / `both` → `pickFiles` (match huji `_pickOnDesktop`); return immediately.
 2. Else push full-screen `TpFileSelectionPage` (mobile chrome; align with existing huji full-screen page / `TpDialog` page presentation where appropriate).
 
 **Page chrome (match huji layout)**
