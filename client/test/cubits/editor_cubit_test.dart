@@ -545,6 +545,171 @@ void main() {
     });
   });
 
+  group('file and diff buffer sync', () {
+    const path = '/repo/a.txt';
+    final diffKey = WorkbenchTabId.diffKey(
+      path,
+      source: WorkbenchDiffSource.unstaged,
+    );
+
+    Future<EditorCubit> cubitWithOpenFileAndDiff({
+      required InMemoryFilesystem fs,
+      required String fileText,
+      String? diffCanonical,
+      DiffReload? reloadDiff,
+    }) async {
+      fs.files[path] = fileText;
+      final cubit = EditorCubit(fs: fs);
+      addTearDown(cubit.close);
+      await cubit.openFile(ws, path);
+      cubit.openDiff(
+        workspaceId: ws,
+        absolutePath: path,
+        source: WorkbenchDiffSource.unstaged,
+        title: 'a.txt',
+        diffText: 'initial',
+        reloadDiff: reloadDiff,
+      );
+      await cubit.bindWritableDiff(
+        workspaceId: ws,
+        diffKey: diffKey,
+        absolutePath: path,
+        lastLoadedCanonical: diffCanonical ?? fileText,
+      );
+      return cubit;
+    }
+
+    test('diff apply syncs open file and clears file dirty with snackbar',
+        () async {
+      final fs = InMemoryFilesystem();
+      const disk = 'a\nx\nc';
+      const left = 'a\nb\nc';
+      final cubit = await cubitWithOpenFileAndDiff(
+        fs: fs,
+        fileText: disk,
+        diffCanonical: disk,
+      );
+
+      cubit.controllerFor(ws, path)!.text = 'stale file edit';
+      await pumpEventQueue();
+      expect(cubit.state.bucket(ws).isDirty(path), isTrue);
+
+      final result = computeLineDiff(left, disk);
+      final applied = await cubit.applyDiffHunk(
+        workspaceId: ws,
+        diffKey: diffKey,
+        result: result,
+        block: result.blocks.single,
+        discardDirtyIfNeeded: false,
+      );
+
+      expect(applied, isTrue);
+      expect(fs.files[path], left);
+      expect(cubit.controllerFor(ws, path)?.text, left);
+      expect(cubit.state.bucket(ws).isDirty(path), isFalse);
+      expect(cubit.state.snackbarMessage, 'diffFileReloadedAfterDiffWrite');
+    });
+
+    test('diff save syncs open file and clears file dirty with snackbar',
+        () async {
+      final fs = InMemoryFilesystem();
+      const disk = 'a\nx\nc';
+      final cubit = await cubitWithOpenFileAndDiff(
+        fs: fs,
+        fileText: disk,
+        diffCanonical: disk,
+      );
+
+      cubit.controllerFor(ws, path)!.text = 'stale file edit';
+      await pumpEventQueue();
+      cubit.updateDiffCanonical(diffKey, 'a\nsaved\nc');
+
+      final saved = await cubit.saveDiffWorkingTree(ws, diffKey);
+
+      expect(saved, isTrue);
+      expect(fs.files[path], 'a\nsaved\nc');
+      expect(cubit.controllerFor(ws, path)?.text, 'a\nsaved\nc');
+      expect(cubit.state.bucket(ws).isDirty(path), isFalse);
+      expect(cubit.state.snackbarMessage, 'diffFileReloadedAfterDiffWrite');
+    });
+
+    test('saveFile returns false when writable diff is dirty', () async {
+      final fs = InMemoryFilesystem();
+      final cubit = await cubitWithOpenFileAndDiff(
+        fs: fs,
+        fileText: 'hello',
+      );
+
+      cubit.updateDiffCanonical(diffKey, 'dirty diff');
+      cubit.controllerFor(ws, path)!.text = 'edited file';
+      await pumpEventQueue();
+
+      expect(await cubit.saveFile(ws, path), isFalse);
+      expect(fs.files[path], 'hello');
+      expect(cubit.isDiffDirty(diffKey), isTrue);
+      expect(cubit.state.bucket(ws).isDirty(path), isTrue);
+    });
+
+    test('saveFile with discardDiffDirty reloads diff from saved file text',
+        () async {
+      final fs = InMemoryFilesystem();
+      var reloadCount = 0;
+      final cubit = await cubitWithOpenFileAndDiff(
+        fs: fs,
+        fileText: 'hello',
+        reloadDiff: (_, __) async {
+          reloadCount++;
+          return 'reloaded after file save';
+        },
+      );
+
+      cubit.updateDiffCanonical(diffKey, 'dirty diff');
+      cubit.controllerFor(ws, path)!.text = 'saved from file';
+      await pumpEventQueue();
+
+      final saved = await cubit.saveFile(ws, path, discardDiffDirty: true);
+
+      expect(saved, isTrue);
+      expect(fs.files[path], 'saved from file');
+      expect(reloadCount, 1);
+      expect(cubit.isDiffDirty(diffKey), isFalse);
+      expect(cubit.diffCanonicalFor(diffKey), 'saved from file');
+      expect(
+        cubit.state.bucket(ws).openDiffs[diffKey]?.diffText,
+        'reloaded after file save',
+      );
+    });
+
+    test('saveFile reloads clean diff after file save', () async {
+      final fs = InMemoryFilesystem();
+      var reloadCount = 0;
+      final cubit = await cubitWithOpenFileAndDiff(
+        fs: fs,
+        fileText: 'hello',
+        reloadDiff: (_, __) async {
+          reloadCount++;
+          return 'reloaded after clean file save';
+        },
+      );
+
+      cubit.controllerFor(ws, path)!.text = 'saved from file';
+      await pumpEventQueue();
+      expect(cubit.isDiffDirty(diffKey), isFalse);
+
+      final saved = await cubit.saveFile(ws, path);
+
+      expect(saved, isTrue);
+      expect(fs.files[path], 'saved from file');
+      expect(reloadCount, 1);
+      expect(cubit.isDiffDirty(diffKey), isFalse);
+      expect(cubit.diffCanonicalFor(diffKey), 'saved from file');
+      expect(
+        cubit.state.bucket(ws).openDiffs[diffKey]?.diffText,
+        'reloaded after clean file save',
+      );
+    });
+  });
+
   test('openFile rejects oversized images', () async {
     final fs = InMemoryFilesystem();
     fs.byteFiles['/repo/big.png'] = List<int>.filled(kEditorMaxImageBytes + 1, 0);

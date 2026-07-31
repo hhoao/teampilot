@@ -692,6 +692,13 @@ class EditorCubit extends Cubit<EditorState> {
 
     await _reloadDiffAfterWrite(workspaceId, diffKey);
 
+    _syncFileHandleFromText(
+      workspaceId,
+      handle.absolutePath,
+      nextCanonical,
+      notifyIfDiscardedFileDirty: true,
+    );
+
     final callback = _onWorkingTreeWritten[diffKey];
     if (callback != null) {
       await callback();
@@ -816,17 +823,25 @@ class EditorCubit extends Cubit<EditorState> {
     emit(state.withBucket(workspaceId, bucket.copyWith(dirtyPaths: dirty)));
   }
 
-  Future<bool> saveFile(String workspaceId, String path) async {
+  Future<bool> saveFile(
+    String workspaceId,
+    String path, {
+    bool discardDiffDirty = false,
+  }) async {
     final handle = _handles[_handleKey(workspaceId, path)];
     if (handle == null) return false;
     if (state.bucket(workspaceId).readOnlyPaths.contains(path)) {
       emit(state.copyWith(snackbarMessage: EditorMessage.readOnly));
       return false;
     }
+    if (anyWritableDiffDirtyFor(workspaceId, path) && !discardDiffDirty) {
+      return false;
+    }
     final fs = _fsByHandle[_handleKey(workspaceId, path)] ?? _fs;
+    final savedText = handle.controller.text;
     try {
-      await fs.atomicWrite(path, handle.controller.text);
-      handle.savedText = handle.controller.text;
+      await fs.atomicWrite(path, savedText);
+      handle.savedText = savedText;
       final bucket = state.bucket(workspaceId);
       final dirty = Set<String>.from(bucket.dirtyPaths)..remove(path);
       emit(
@@ -834,10 +849,54 @@ class EditorCubit extends Cubit<EditorState> {
             .withBucket(workspaceId, bucket.copyWith(dirtyPaths: dirty))
             .copyWith(clearSnackbar: true),
       );
+      await _reloadDiffsForPath(workspaceId, path, savedText);
       return true;
     } on Object catch (e) {
       emit(state.copyWith(snackbarMessage: EditorMessage.saveFailed(e)));
       return false;
+    }
+  }
+
+  void _syncFileHandleFromText(
+    String workspaceId,
+    String path,
+    String text, {
+    bool notifyIfDiscardedFileDirty = false,
+  }) {
+    final fileHandle = _handles[_handleKey(workspaceId, path)];
+    if (fileHandle == null) return;
+
+    final bucket = state.bucket(workspaceId);
+    final wasFileDirty = bucket.dirtyPaths.contains(path);
+    fileHandle.controller.text = text;
+    fileHandle.savedText = text;
+
+    final dirty = Set<String>.from(bucket.dirtyPaths)..remove(path);
+    final snackbar = notifyIfDiscardedFileDirty && wasFileDirty
+        ? 'diffFileReloadedAfterDiffWrite'
+        : state.snackbarMessage;
+    emit(
+      state
+          .withBucket(workspaceId, bucket.copyWith(dirtyPaths: dirty))
+          .copyWith(snackbarMessage: snackbar),
+    );
+  }
+
+  Future<void> _reloadDiffsForPath(
+    String workspaceId,
+    String absolutePath,
+    String diskText,
+  ) async {
+    final bucket = state.bucket(workspaceId);
+    for (final diffKey in bucket.openDiffs.keys) {
+      final diffHandle = _writableDiffs[diffKey];
+      if (diffHandle == null || diffHandle.absolutePath != absolutePath) {
+        continue;
+      }
+      diffHandle.lastLoadedCanonical = diskText;
+      diffHandle.canonical = diskText;
+      _syncDirtyDiffKey(workspaceId, diffKey);
+      await _reloadDiffAfterWrite(workspaceId, diffKey);
     }
   }
 
