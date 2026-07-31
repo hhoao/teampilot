@@ -60,13 +60,13 @@ double clampUiZoomMultiplierForBaseline(
 /// scaling so density stays consistent: Windows @150% (dpr 1.5) → ~0.67,
 /// Linux/macOS @100% (dpr 1.0) → 1.0.
 ///
-/// When false (Android/iOS), returns `1.0`: Flutter logical pixels already
-/// absorb screen density, so applying `1/dpr` would shrink the UI twice.
+/// When false (Android/iOS), returns [kMobileUiZoomBaseline]: logical pixels
+/// already absorb dpr; mobile `standard` zoom is denser than desktop 1.0.
 double autoUiZoomForDevicePixelRatio(
   double devicePixelRatio, {
   bool compensateDisplayScaling = true,
 }) {
-  if (!compensateDisplayScaling) return 1.0;
+  if (!compensateDisplayScaling) return kMobileUiZoomBaseline;
   return devicePixelRatio <= 0 ? 1.0 : 1.0 / devicePixelRatio;
 }
 
@@ -78,10 +78,12 @@ String normalizeTypographyScale(String? raw) {
 double clampTypographyCustomMultiplier(double value) =>
     value.clamp(kTypographyCustomMultiplierMin, kTypographyCustomMultiplierMax);
 
-/// Mobile `standard` text baseline multiplier (× OS accessibility text scale).
-/// Logical pixels already absorb dpr; this only lifts default font size for
-/// touch readability relative to the desktop design sizes.
-const double kMobileTextScaleBaseline = 1;
+/// Mobile `standard` text-size baseline (× OS accessibility text scale).
+/// Logical pixels already absorb dpr; 1.3 lifts touch readability vs desktop.
+const double kMobileTextScaleBaseline = 1.3;
+
+/// Mobile `standard` interface-zoom baseline. `standard` preset × 1.0 maps here.
+const double kMobileUiZoomBaseline = 0.7;
 
 /// `standard` text-size baseline.
 ///
