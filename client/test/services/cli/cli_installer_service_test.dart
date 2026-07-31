@@ -11,7 +11,24 @@ bool _isRemoteClaudeLocate(String line) =>
     line.startsWith('sh -c') && line.contains('command -v claude');
 
 bool _isNpmVersionProbe(String line) =>
-    line.startsWith('sh -c') && line.contains('--version');
+    line.startsWith('sh -c') &&
+    line.contains('--version') &&
+    !line.contains('is_termux=0');
+
+bool _isTermuxProbe(String line) =>
+    line.startsWith('sh -c') &&
+    line.contains('is_termux=0') &&
+    line.contains('TERMUX=1') &&
+    line.contains('TERMUX=0');
+
+bool _isPrefixAwareNpmLocate(String line) =>
+    line.startsWith('sh -c') &&
+    line.contains('export PATH=') &&
+    line.contains('command -v npm') &&
+    !line.contains('nodejs.org/dist/');
+
+CliInstallerCommandResult _termuxProbeNotTermux() =>
+    const CliInstallerCommandResult(exitCode: 0, stdout: 'TERMUX=0\n');
 
 void main() {
   test(
@@ -310,6 +327,9 @@ void main() {
     final installer = CliInstallerService(
       sshRunner: (profile, command) async {
         commands.add(command.commandLine);
+        if (_isTermuxProbe(command.commandLine)) {
+          return _termuxProbeNotTermux();
+        }
         if (command.commandLine == 'command -v npm') {
           return const CliInstallerCommandResult(
             exitCode: 0,
@@ -342,11 +362,12 @@ void main() {
 
     expect(result.success, isTrue);
     expect(result.executablePath, '/home/alice/.npm-global/bin/claude');
-    expect(commands.length, 4);
-    expect(commands[0], 'command -v npm');
-    expect(_isNpmVersionProbe(commands[1]), isTrue);
-    expect(_isClaudeNpmInstall(commands[2]), isTrue);
-    expect(_isRemoteClaudeLocate(commands[3]), isTrue);
+    expect(commands.length, 5);
+    expect(_isTermuxProbe(commands[0]), isTrue);
+    expect(commands[1], 'command -v npm');
+    expect(_isNpmVersionProbe(commands[2]), isTrue);
+    expect(_isClaudeNpmInstall(commands[3]), isTrue);
+    expect(_isRemoteClaudeLocate(commands[4]), isTrue);
   });
 
   test('bootstraps Node npm on SSH host when npm is missing', () async {
@@ -354,6 +375,9 @@ void main() {
     final installer = CliInstallerService(
       sshRunner: (profile, command) async {
         commands.add(command.commandLine);
+        if (_isTermuxProbe(command.commandLine)) {
+          return _termuxProbeNotTermux();
+        }
         if (command.commandLine == 'command -v npm') {
           return const CliInstallerCommandResult(exitCode: 1);
         }
@@ -361,6 +385,9 @@ void main() {
           return const CliInstallerCommandResult(exitCode: 1);
         }
         if (command.commandLine == "zsh -ilc 'command -v npm'") {
+          return const CliInstallerCommandResult(exitCode: 1);
+        }
+        if (_isPrefixAwareNpmLocate(command.commandLine)) {
           return const CliInstallerCommandResult(exitCode: 1);
         }
         if (command.commandLine.contains('nodejs.org/dist/')) {
@@ -389,9 +416,10 @@ void main() {
       sshProfile: _profile,
     );
 
-    expect(result.success, isTrue);
+    expect(result.success, isTrue, reason: result.message);
     expect(result.executablePath, '/home/alice/.local/bin/claude');
-    expect(commands[0], 'command -v npm');
+    expect(_isTermuxProbe(commands[0]), isTrue);
+    expect(commands[1], 'command -v npm');
     expect(commands.any((line) => line.contains('nodejs.org/dist/')), isTrue);
     expect(commands.any(_isClaudeNpmInstall), isTrue);
   });
@@ -403,6 +431,9 @@ void main() {
       final installer = CliInstallerService(
         sshRunner: (profile, command) async {
           commands.add(command.commandLine);
+          if (_isTermuxProbe(command.commandLine)) {
+            return _termuxProbeNotTermux();
+          }
           if (command.commandLine == 'command -v npm') {
             return const CliInstallerCommandResult(exitCode: 1);
           }
@@ -438,12 +469,13 @@ void main() {
 
       expect(result.success, isTrue, reason: result.message);
       expect(result.executablePath, '/opt/homebrew/bin/claude');
-      expect(commands.length, 5);
-      expect(commands[0], 'command -v npm');
-      expect(commands[1], "bash -ilc 'command -v npm'");
-      expect(_isNpmVersionProbe(commands[2]), isTrue);
-      expect(_isClaudeNpmInstall(commands[3]), isTrue);
-      expect(_isRemoteClaudeLocate(commands[4]), isTrue);
+      expect(commands.length, 6);
+      expect(_isTermuxProbe(commands[0]), isTrue);
+      expect(commands[1], 'command -v npm');
+      expect(commands[2], "bash -ilc 'command -v npm'");
+      expect(_isNpmVersionProbe(commands[3]), isTrue);
+      expect(_isClaudeNpmInstall(commands[4]), isTrue);
+      expect(_isRemoteClaudeLocate(commands[5]), isTrue);
     },
   );
 
@@ -539,6 +571,9 @@ void main() {
     final installer = CliInstallerService(
       sshRunner: (profile, command) async {
         commands.add(command.commandLine);
+        if (_isTermuxProbe(command.commandLine)) {
+          return _termuxProbeNotTermux();
+        }
         if (command.commandLine.contains(
           'curl https://cursor.com/install -fsS | bash',
         )) {
@@ -563,9 +598,10 @@ void main() {
 
     expect(result.success, isTrue, reason: result.message);
     expect(result.executablePath, '/home/alice/.local/bin/cursor-agent');
-    expect(commands.length, 2);
-    expect(commands[0], contains('curl https://cursor.com/install'));
-    expect(commands[1], startsWith('sh -c'));
+    expect(commands.length, 3);
+    expect(_isTermuxProbe(commands[0]), isTrue);
+    expect(commands[1], contains('curl https://cursor.com/install'));
+    expect(commands[2], startsWith('sh -c'));
   });
 }
 
