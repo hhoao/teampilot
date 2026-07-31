@@ -14,7 +14,7 @@ import 'package:teampilot/cubits/ssh_profile_cubit.dart';
 import 'package:teampilot/cubits/termux_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/runtime_target.dart';
-import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/pages/onboarding/steps/work_home_step.dart';
 import 'package:teampilot/pages/ssh_profiles_page.dart';
 import 'package:teampilot/pages/termux/termux_setup_page.dart';
@@ -406,11 +406,25 @@ void main() {
     await tester.pump(const Duration(seconds: 3));
   });
 
-  testWidgets('SSH Connect notifies via SessionPreferencesCubit watch', (
-    tester,
-  ) async {
+  testWidgets('SSH Connect notifies via SshProfileCubit watch', (tester) async {
     _largeTestSurface(tester);
     var boundCalls = 0;
+
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+    const other = SshProfile(
+      id: 'p2',
+      name: 'other',
+      host: 'other.example.com',
+      username: 'bob',
+    );
+    await profileRepository.save(profile);
+    await profileRepository.save(other);
+    await profileCubit.load();
 
     await _pumpWorkHomeStep(
       tester,
@@ -430,11 +444,13 @@ void main() {
     expect(find.byType(SshProfilesPage), findsOneWidget);
     expect(boundCalls, 0);
 
-    // Simulate Connect home bind the same way StartupGate rebuilds: update
-    // the home resolver, then emit on SessionPreferencesCubit (not watching
-    // ConnectionModeService directly).
+    // Simulate production Connect: home bind + selectProfile emit (prefs may
+    // not emit when remote CLI discovery finds nothing). Pick a profile that
+    // is not already selected so Cubit notifies watchers.
     setHome(RuntimeTarget.ssh('p1', label: 'box'));
-    sessionPrefs.mergeLocatedExecutables({CliTool.claude: '/tmp/claude'});
+    final selectId =
+        profileCubit.state.selectedProfileId == 'p1' ? 'p2' : 'p1';
+    await profileCubit.selectProfile(selectId);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 

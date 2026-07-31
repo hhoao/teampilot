@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../cubits/session_preferences_cubit.dart';
+import '../../../cubits/ssh_profile_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../services/app/connection_mode_service.dart';
 import '../../ssh_profiles_page.dart';
@@ -37,9 +38,11 @@ class _OnboardingWorkHomeStepState extends State<OnboardingWorkHomeStep> {
 
   @override
   Widget build(BuildContext context) {
-    // Mirror StartupGate: rebuild when session prefs change after Connect,
-    // then read derived bind flags. Do not watch ConnectionModeService.
+    // Mirror StartupGate: rebuild when Connect updates prefs and/or the
+    // selected SSH profile, then read derived bind flags. Do not watch
+    // ConnectionModeService (it is not a Listenable).
     context.watch<SessionPreferencesCubit>();
+    context.watch<SshProfileCubit>();
     final bound =
         context.read<ConnectionModeService>().hasBoundAndroidWorkHome;
     if (!_didNotify && bound) {
