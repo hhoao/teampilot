@@ -6257,6 +6257,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get termuxSetupInstallGitHub => 'GitHub';
 
   @override
+  String get termuxSetupDownloadInstall => '下载并安装 Termux';
+
+  @override
+  String get termuxSetupDownloading => '正在下载 Termux…';
+
+  @override
+  String get termuxSetupInstalling => '正在安装…';
+
+  @override
+  String get termuxSetupDownloadFailed => '无法下载 Termux。请重试或使用应用商店链接。';
+
+  @override
+  String get termuxSetupInstallDenied => '安装已取消或被阻止。如需要请启用未知来源应用，然后重试。';
+
+  @override
+  String get termuxSetupTermuxInstalled => 'Termux 已安装';
+
+  @override
   String get termuxSetupStepInstallOpenssh => '2. 安装 OpenSSH';
 
   @override

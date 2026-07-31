@@ -1,8 +1,12 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/termux_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
@@ -10,11 +14,29 @@ import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/pages/termux/termux_setup_page.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/remote_download/remote_download_catalog.dart';
+import 'package:teampilot/services/remote_download/remote_download_http.dart';
+import 'package:teampilot/services/remote_download/remote_download_resolver.dart';
+import 'package:teampilot/services/remote_download/remote_downloader.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/termux/termux_apk_acquisition.dart';
 import 'package:teampilot/services/termux/termux_config.dart';
 import 'package:teampilot/services/termux/termux_config_store.dart';
+import 'package:teampilot/services/termux/termux_package_probe.dart';
 
 import '../../support/post_frame_test_harness.dart';
+
+const _termuxReleaseJson = {
+  'tag_name': 'v0.118.1',
+  'assets': [
+    {
+      'name': 'termux-app_v0.118.1+github-debug_arm64-v8a-debug_signed.apk',
+      'browser_download_url':
+          'https://github.com/termux/termux-app/releases/download/v0.118.1/termux-app_v0.118.1+github-debug_arm64-v8a-debug_signed.apk',
+      'size': 128,
+    },
+  ],
+};
 
 class SpyTermuxCubit extends TermuxCubit {
   SpyTermuxCubit({
@@ -119,6 +141,8 @@ Future<void> _pumpSetupPage(
   WidgetTester tester, {
   required SpyTermuxCubit cubit,
   required SshCredentialStore credentials,
+  TermuxPackageProbe? packageProbe,
+  TermuxApkAcquisition? apkAcquisition,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -137,7 +161,10 @@ Future<void> _pumpSetupPage(
               ],
               child: BlocProvider<TermuxCubit>.value(
                 value: cubit,
-                child: const TermuxSetupPage(),
+                child: TermuxSetupPage(
+                  packageProbe: packageProbe,
+                  apkAcquisition: apkAcquisition,
+                ),
               ),
             ),
           );
@@ -150,6 +177,36 @@ Future<void> _pumpSetupPage(
     await tester.pump(const Duration(milliseconds: 50));
     if (find.byType(LinearProgressIndicator).evaluate().isEmpty) break;
   }
+}
+
+TermuxPackageProbe _notInstalledProbe() {
+  const channel = MethodChannel('com.hhoa.teampilot/packages');
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(channel, (call) async {
+    if (call.method == 'isPackageInstalled') return false;
+    return null;
+  });
+  return TermuxPackageProbe(channel: channel, isAndroid: true);
+}
+
+TermuxApkAcquisition _spyApkAcquisition({required void Function() onInstall}) {
+  final client = MockClient((request) async {
+    if (request.url.path.endsWith('/releases/latest')) {
+      return http.Response(jsonEncode(_termuxReleaseJson), 200);
+    }
+    return http.Response.bytes(List<int>.generate(128, (i) => i % 256), 200);
+  });
+  final resolver = RemoteDownloadResolver(RemoteDownloadCatalog.defaults());
+  final downloadHttp = RemoteDownloadHttp(client: client, resolver: resolver);
+  final downloader = RemoteDownloader(client: client, resolver: resolver);
+  return TermuxApkAcquisition(
+    http: downloadHttp,
+    downloader: downloader,
+    installApk: (_) async {
+      onInstall();
+      return 0;
+    },
+  );
 }
 
 void main() {
@@ -177,6 +234,49 @@ void main() {
     await cubit.clearSetup();
     expect(cubit.homeSelections, contains(RuntimeTarget.localId));
     expect(cubit.state.config, isNull);
+  });
+
+  testWidgets('missing package shows download button and triggers acquisition',
+      (tester) async {
+    _largeTestSurface(tester);
+    final cubit = _createSpyCubit(nativeDir);
+    addTearDown(() async {
+      if (!cubit.isClosed) await cubit.close();
+    });
+
+    var installTriggered = false;
+    final acquisition = _spyApkAcquisition(
+      onInstall: () => installTriggered = true,
+    );
+
+    await _pumpSetupPage(
+      tester,
+      cubit: cubit,
+      credentials: InMemorySshCredentialStore(),
+      packageProbe: _notInstalledProbe(),
+      apkAcquisition: acquisition,
+    );
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(TermuxSetupPage)),
+    );
+
+    expect(find.byKey(const Key('termux_download_install_button')), findsOneWidget);
+    expect(find.text(l10n.termuxSetupDownloadInstall), findsOneWidget);
+    expect(find.text(l10n.termuxSetupTermuxInstalled), findsNothing);
+
+    await tester.runAsync(() async {
+      await tester.tap(find.byKey(const Key('termux_download_install_button')));
+      await tester.pump();
+      for (var i = 0; i < 120; i++) {
+        if (installTriggered) return;
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        await tester.pump();
+      }
+    });
+    await tester.pump();
+
+    expect(installTriggered, isTrue);
   });
 
   testWidgets('shows guided step texts and username field', (tester) async {

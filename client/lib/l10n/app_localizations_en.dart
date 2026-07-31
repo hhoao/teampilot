@@ -6509,6 +6509,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get termuxSetupInstallGitHub => 'GitHub';
 
   @override
+  String get termuxSetupDownloadInstall => 'Download & install Termux';
+
+  @override
+  String get termuxSetupDownloading => 'Downloading Termux…';
+
+  @override
+  String get termuxSetupInstalling => 'Installing…';
+
+  @override
+  String get termuxSetupDownloadFailed =>
+      'Could not download Termux. Retry or use a store link.';
+
+  @override
+  String get termuxSetupInstallDenied =>
+      'Install was cancelled or blocked. Enable unknown apps if needed, then retry.';
+
+  @override
+  String get termuxSetupTermuxInstalled => 'Termux is installed';
+
+  @override
   String get termuxSetupStepInstallOpenssh => '2. Install OpenSSH';
 
   @override

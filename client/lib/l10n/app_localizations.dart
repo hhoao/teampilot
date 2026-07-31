@@ -11652,6 +11652,42 @@ abstract class AppLocalizations {
   /// **'GitHub'**
   String get termuxSetupInstallGitHub;
 
+  /// No description provided for @termuxSetupDownloadInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Download & install Termux'**
+  String get termuxSetupDownloadInstall;
+
+  /// No description provided for @termuxSetupDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading Termux…'**
+  String get termuxSetupDownloading;
+
+  /// No description provided for @termuxSetupInstalling.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing…'**
+  String get termuxSetupInstalling;
+
+  /// No description provided for @termuxSetupDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not download Termux. Retry or use a store link.'**
+  String get termuxSetupDownloadFailed;
+
+  /// No description provided for @termuxSetupInstallDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Install was cancelled or blocked. Enable unknown apps if needed, then retry.'**
+  String get termuxSetupInstallDenied;
+
+  /// No description provided for @termuxSetupTermuxInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Termux is installed'**
+  String get termuxSetupTermuxInstalled;
+
   /// No description provided for @termuxSetupStepInstallOpenssh.
   ///
   /// In en, this message translates to:
