@@ -2064,6 +2064,30 @@
       "total": { "type": "int" }
     }
   },
+  "diffApplyHunkTooltip": "应用到工作区",
+  "diffDiscardEditsApplyTitle": "丢弃编辑？",
+  "diffDiscardEditsApplyBody": "应用此更改将丢弃 diff 中未保存的编辑。",
+  "diffApplyFailed": "无法应用更改：{error}",
+  "@diffApplyFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "diffSaveFailed": "无法保存：{error}",
+  "@diffSaveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "diffReloadAfterSaveFailed": "已保存，但刷新 diff 失败。",
+  "diffFileReloadedAfterDiffWrite": "已从磁盘重新加载文件页。",
+  "diffDiscardDiffBeforeFileSaveTitle": "丢弃 diff 编辑？",
+  "diffDiscardDiffBeforeFileSaveBody": "保存文件将丢弃 diff 视图中未保存的编辑。",
+  "diffApplyDisabledNoPath": "无法应用：文件路径不可用",
   "aiFeatures": "AI 功能",
   "aiFeaturesPageSubtitle": "为每个 AI 功能选择使用的 CLI provider、模型与 effort。",
   "aiFeatureCommitMessageTitle": "提交信息生成",

@@ -5105,6 +5105,40 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get diffApplyHunkTooltip => '应用到工作区';
+
+  @override
+  String get diffDiscardEditsApplyTitle => '丢弃编辑？';
+
+  @override
+  String get diffDiscardEditsApplyBody => '应用此更改将丢弃 diff 中未保存的编辑。';
+
+  @override
+  String diffApplyFailed(String error) {
+    return '无法应用更改：$error';
+  }
+
+  @override
+  String diffSaveFailed(String error) {
+    return '无法保存：$error';
+  }
+
+  @override
+  String get diffReloadAfterSaveFailed => '已保存，但刷新 diff 失败。';
+
+  @override
+  String get diffFileReloadedAfterDiffWrite => '已从磁盘重新加载文件页。';
+
+  @override
+  String get diffDiscardDiffBeforeFileSaveTitle => '丢弃 diff 编辑？';
+
+  @override
+  String get diffDiscardDiffBeforeFileSaveBody => '保存文件将丢弃 diff 视图中未保存的编辑。';
+
+  @override
+  String get diffApplyDisabledNoPath => '无法应用：文件路径不可用';
+
+  @override
   String get aiFeatures => 'AI 功能';
 
   @override
