@@ -10,6 +10,7 @@ enum ConfigSection {
   aiFeatures,
   sshProfiles,
   github,
+  downloadSources,
   shortcuts,
   about,
   logs,
@@ -19,6 +20,7 @@ extension ConfigSectionRoute on ConfigSection {
   String get routeSegment => switch (this) {
     ConfigSection.aiFeatures => 'ai-features',
     ConfigSection.sshProfiles => 'ssh-profiles',
+    ConfigSection.downloadSources => 'download-sources',
     _ => name,
   };
 }
@@ -39,6 +41,7 @@ class ConfigState extends Equatable {
     ConfigSection.aiFeatures => 'AI Features',
     ConfigSection.sshProfiles => 'SSH Servers',
     ConfigSection.github => 'GitHub',
+    ConfigSection.downloadSources => 'Download sources',
     ConfigSection.shortcuts => 'Keyboard Shortcuts',
     ConfigSection.about => 'About',
     ConfigSection.logs => 'Logs',
@@ -51,6 +54,7 @@ class ConfigState extends Equatable {
     ConfigSection.aiFeatures => 'Config / AI Features',
     ConfigSection.sshProfiles => 'Config / SSH Servers',
     ConfigSection.github => 'Config / GitHub',
+    ConfigSection.downloadSources => 'Config / Download sources',
     ConfigSection.shortcuts => 'Config / Keyboard Shortcuts',
     ConfigSection.about => 'Config / About',
     ConfigSection.logs => 'Config / Logs',

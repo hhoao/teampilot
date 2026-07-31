@@ -4,11 +4,13 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
 import '../cubits/app_bootstrap_cubit.dart';
 import 'app_data_bootstrap.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../cubits/app_update_cubit.dart';
+import '../cubits/remote_download_catalog_cubit.dart';
 import '../cubits/automation_cubit.dart';
 import '../cubits/agent_attention_cubit.dart';
 import '../cubits/chat_cubit.dart';
@@ -26,8 +28,12 @@ import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
 import '../cubits/notification_cubit.dart';
 import '../cubits/progress_activity_cubit.dart';
+import '../services/app/app_update_service.dart';
 import '../services/progress_activity/app_update_activity_adapter.dart';
 import '../services/progress_activity/hub_clone_activity_adapter.dart';
+import '../services/remote_download/remote_download_http.dart';
+import '../services/remote_download/remote_download_resolver.dart';
+import '../services/remote_download/remote_downloader.dart';
 import '../services/progress_activity/pack_acquire_activity_adapter.dart';
 import '../services/progress_activity/cli_provision_activity_adapter.dart';
 import '../cubits/ai_history_cubit.dart';
@@ -239,6 +245,7 @@ class AppShell {
     required this.expertCapabilityResolver,
     required this.extensionCubit,
     required this.appUpdateCubit,
+    required this.remoteDownloadCatalogCubit,
     required this.sshProfileCubit,
     required this.termuxCubit,
     required this.homeStorageInvalidator,
@@ -316,6 +323,7 @@ class AppShell {
   final ExpertCapabilityResolver expertCapabilityResolver;
   final ExtensionCubit extensionCubit;
   final AppUpdateCubit appUpdateCubit;
+  final RemoteDownloadCatalogCubit remoteDownloadCatalogCubit;
   final SshProfileCubit sshProfileCubit;
   final TermuxCubit termuxCubit;
   final HomeStorageInvalidator homeStorageInvalidator;
@@ -505,6 +513,12 @@ Future<AppShell> buildAppShell({
   // registry is used by the picker UI to list selectable targets.
   final targetsRepo = deviceLocalTargetsRepository(nativeAppDataPath);
   final termuxConfigStore = deviceLocalTermuxConfigStore(nativeAppDataPath);
+  final remoteDownloadSettingsStore =
+      deviceLocalRemoteDownloadSettingsStore(nativeAppDataPath);
+  final remoteDownloadCatalogCubit = RemoteDownloadCatalogCubit(
+    store: remoteDownloadSettingsStore,
+  );
+  unawaited(remoteDownloadCatalogCubit.load());
   var termuxConfigCache = await termuxConfigStore.load();
   TermuxCubit? termuxGateCubit;
   SshProfile? sshProfileById(String id) {
@@ -1246,7 +1260,24 @@ Future<AppShell> buildAppShell({
   };
   chatCubit.onHistorySeatsDispose = aiHistoryCubit.disposeSeatsForSession;
 
+  final appUpdateResolver = RemoteDownloadResolver.withProvider(
+    () => remoteDownloadCatalogCubit.state.catalog,
+  );
+  final appUpdateHttpClient = http.Client();
+  final appUpdateService = AppUpdateService(
+    httpClient: appUpdateHttpClient,
+    resolver: appUpdateResolver,
+    downloadHttp: RemoteDownloadHttp(
+      client: appUpdateHttpClient,
+      resolver: appUpdateResolver,
+    ),
+    downloader: RemoteDownloader(
+      client: appUpdateHttpClient,
+      resolver: appUpdateResolver,
+    ),
+  );
   final appUpdateCubit = AppUpdateCubit(
+    service: appUpdateService,
     settings: appSettings,
     activityAdapter: AppUpdateActivityAdapter(cubit: progressActivityCubit),
   );
@@ -1560,6 +1591,7 @@ Future<AppShell> buildAppShell({
     expertCapabilityResolver: expertCapabilityResolver,
     extensionCubit: extensionCubit,
     appUpdateCubit: appUpdateCubit,
+    remoteDownloadCatalogCubit: remoteDownloadCatalogCubit,
     sshProfileCubit: sshProfileCubit,
     termuxCubit: termuxCubit,
     homeStorageInvalidator: homeStorageInvalidator,

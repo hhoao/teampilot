@@ -716,6 +716,7 @@ void main() async {
                   BlocProvider.value(value: shell.expertHubCubit),
                   BlocProvider.value(value: shell.extensionCubit),
                   BlocProvider.value(value: shell.appUpdateCubit),
+                  BlocProvider.value(value: shell.remoteDownloadCatalogCubit),
                   BlocProvider.value(value: shell.sshProfileCubit),
                   BlocProvider.value(value: shell.sshConnectionCubit),
                   BlocProvider.value(value: shell.termuxCubit),

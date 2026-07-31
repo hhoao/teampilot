@@ -3713,6 +3713,31 @@ class AppLocalizationsEn extends AppLocalizations {
       'Connect GitHub to publish experts and teams to Hub';
 
   @override
+  String get downloadSourcesSettingsTitle => 'Download sources';
+
+  @override
+  String get downloadSourcesSettingsSubtitle =>
+      'Configure mirrors for GitHub downloads (app updates, Termux APK)';
+
+  @override
+  String get downloadSourcesMirrorBaseUrl => 'Mirror base URL';
+
+  @override
+  String get downloadSourcesMirrorHint => 'https://mirror.example';
+
+  @override
+  String get downloadSourcesSave => 'Save';
+
+  @override
+  String get downloadSourcesRestoreDefaults => 'Restore defaults';
+
+  @override
+  String get downloadSourcesIdentity => 'identity (official)';
+
+  @override
+  String get downloadSourcesEnabledSources => 'Enabled sources';
+
+  @override
   String get githubSignIn => 'Sign in with GitHub';
 
   @override
@@ -6507,6 +6532,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get termuxSetupInstallGitHub => 'GitHub';
+
+  @override
+  String get termuxSetupDownloadInstall => 'Download & install Termux';
+
+  @override
+  String get termuxSetupDownloading => 'Downloading Termux…';
+
+  @override
+  String get termuxSetupInstalling => 'Installing…';
+
+  @override
+  String get termuxSetupDownloadFailed =>
+      'Could not download Termux. Retry or use a store link.';
+
+  @override
+  String get termuxSetupInstallDenied =>
+      'Install was cancelled or blocked. Enable unknown apps if needed, then retry.';
+
+  @override
+  String get termuxSetupTermuxInstalled => 'Termux is installed';
 
   @override
   String get termuxSetupStepInstallOpenssh => '2. Install OpenSSH';

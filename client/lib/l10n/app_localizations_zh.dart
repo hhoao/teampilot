@@ -3574,6 +3574,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String get githubSettingsSubtitle => '连接 GitHub，以便将专家和团队发布到 Hub';
 
   @override
+  String get downloadSourcesSettingsTitle => '下载源';
+
+  @override
+  String get downloadSourcesSettingsSubtitle =>
+      '配置 GitHub 下载镜像（应用更新、Termux APK）';
+
+  @override
+  String get downloadSourcesMirrorBaseUrl => '镜像基础 URL';
+
+  @override
+  String get downloadSourcesMirrorHint => 'https://mirror.example';
+
+  @override
+  String get downloadSourcesSave => '保存';
+
+  @override
+  String get downloadSourcesRestoreDefaults => '恢复默认';
+
+  @override
+  String get downloadSourcesIdentity => '直连（官方）';
+
+  @override
+  String get downloadSourcesEnabledSources => '已启用源';
+
+  @override
   String get githubSignIn => '使用 GitHub 登录';
 
   @override
@@ -6255,6 +6280,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get termuxSetupInstallGitHub => 'GitHub';
+
+  @override
+  String get termuxSetupDownloadInstall => '下载并安装 Termux';
+
+  @override
+  String get termuxSetupDownloading => '正在下载 Termux…';
+
+  @override
+  String get termuxSetupInstalling => '正在安装…';
+
+  @override
+  String get termuxSetupDownloadFailed => '无法下载 Termux。请重试或使用应用商店链接。';
+
+  @override
+  String get termuxSetupInstallDenied => '安装已取消或被阻止。如需要请启用未知来源应用，然后重试。';
+
+  @override
+  String get termuxSetupTermuxInstalled => 'Termux 已安装';
 
   @override
   String get termuxSetupStepInstallOpenssh => '2. 安装 OpenSSH';

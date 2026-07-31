@@ -16,6 +16,7 @@ import '../system/log_config_workspace.dart';
 import 'ai_features_config_section.dart';
 import 'cli_config_section.dart';
 import 'github_config_section.dart';
+import 'download_sources_config_section.dart';
 import 'layout_config_section.dart';
 import 'session_config_section.dart';
 import 'shortcuts_config_section.dart';
@@ -29,9 +30,10 @@ int _configSectionDialogIndex(ConfigSection section) {
     ConfigSection.aiFeatures => 3,
     ConfigSection.sshProfiles => 4,
     ConfigSection.github => 5,
-    ConfigSection.shortcuts => 6,
-    ConfigSection.about => 7,
-    ConfigSection.logs => 7,
+    ConfigSection.downloadSources => 6,
+    ConfigSection.shortcuts => 7,
+    ConfigSection.about => 8,
+    ConfigSection.logs => 8,
   };
 }
 
@@ -103,6 +105,14 @@ Future<void> showWorkspaceSettingsDialog(
         title: (l10n) => l10n.githubSettingsTitle,
         subtitle: (l10n) => l10n.githubSettingsSubtitle,
         bodyBuilder: (_) => const GithubConfigWorkspace(showHeading: false),
+      ),
+      SettingsDialogEntry(
+        icon: Icons.cloud_download_outlined,
+        navLabel: (l10n) => l10n.downloadSourcesSettingsTitle,
+        title: (l10n) => l10n.downloadSourcesSettingsTitle,
+        subtitle: (l10n) => l10n.downloadSourcesSettingsSubtitle,
+        bodyBuilder: (_) =>
+            const DownloadSourcesConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.keyboard_outlined,
@@ -198,6 +208,18 @@ class ConfigSettingsHubPage extends StatelessWidget {
           }),
         ),
         WorkspaceHubEntry(
+          title: l10n.downloadSourcesSettingsTitle,
+          icon: Icons.cloud_download_outlined,
+          onTap: throttledTap('config_hub_download_sources', () {
+            context.read<ConfigCubit>().selectSection(
+              ConfigSection.downloadSources,
+            );
+            context.push(
+              '/config/${ConfigSection.downloadSources.routeSegment}',
+            );
+          }),
+        ),
+        WorkspaceHubEntry(
           key: AppKeys.configShortcutsSectionButton,
           title: l10n.shortcutsSettingsTitle,
           icon: Icons.keyboard_outlined,
@@ -271,6 +293,9 @@ class ConfigWorkspace extends StatelessWidget {
           showHeading: showHeading,
         ),
         ConfigSection.github => GithubConfigWorkspace(showHeading: showHeading),
+        ConfigSection.downloadSources => DownloadSourcesConfigWorkspace(
+          showHeading: showHeading,
+        ),
         ConfigSection.shortcuts => ShortcutsConfigWorkspace(
           showHeading: showHeading,
         ),
@@ -356,6 +381,15 @@ class ConfigNavPanel extends StatelessWidget {
           onTap: throttledTap(
             'config_nav_github',
             () => onSelectSection(ConfigSection.github),
+          ),
+        ),
+        WorkspaceHubEntry(
+          title: l10n.downloadSourcesSettingsTitle,
+          icon: Icons.cloud_download_outlined,
+          selected: section == ConfigSection.downloadSources,
+          onTap: throttledTap(
+            'config_nav_download_sources',
+            () => onSelectSection(ConfigSection.downloadSources),
           ),
         ),
         WorkspaceHubEntry(

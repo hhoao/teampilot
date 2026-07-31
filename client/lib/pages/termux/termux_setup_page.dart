@@ -3,15 +3,24 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../cubits/remote_download_catalog_cubit.dart';
 import '../../cubits/termux_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../repositories/ssh_credential_store.dart';
+import '../../services/remote_download/remote_download_catalog.dart';
+import '../../services/remote_download/remote_download_http.dart';
+import '../../services/remote_download/remote_download_resolver.dart';
+import '../../services/remote_download/remote_downloader.dart';
 import '../../services/storage/app_storage.dart';
+import '../../services/termux/termux_apk_acquisition.dart';
 import '../../services/termux/termux_config.dart';
 import '../../services/termux/termux_key_material.dart';
+import '../../services/termux/termux_package_probe.dart';
 import '../../widgets/app_toast/app_toast.dart';
 
 const _termuxPlayStoreUrl =
@@ -19,33 +28,97 @@ const _termuxPlayStoreUrl =
 const _termuxFdroidUrl = 'https://f-droid.org/packages/com.termux/';
 const _termuxGitHubUrl = 'https://github.com/termux/termux-app';
 
+enum _TermuxAcquireUiPhase { idle, downloading, installing }
+
 /// Guided Termux OpenSSH setup (Roxum-style copyable commands + Connect).
 class TermuxSetupPage extends StatefulWidget {
-  const TermuxSetupPage({super.key});
+  const TermuxSetupPage({
+    super.key,
+    this.packageProbe,
+    this.apkAcquisition,
+  });
+
+  final TermuxPackageProbe? packageProbe;
+  final TermuxApkAcquisition? apkAcquisition;
 
   @override
   State<TermuxSetupPage> createState() => _TermuxSetupPageState();
 }
 
-class _TermuxSetupPageState extends State<TermuxSetupPage> {
+class _TermuxSetupPageState extends State<TermuxSetupPage>
+    with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   String _username = '';
   String? _publicKey;
   var _loadingKey = true;
+  bool? _termuxInstalled;
+  var _probingTermux = true;
+  var _acquiring = false;
+  var _acquirePhase = _TermuxAcquireUiPhase.idle;
+
+  late final TermuxPackageProbe _packageProbe;
+  late TermuxApkAcquisition _apkAcquisition;
+  http.Client? _ownedHttpClient;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _packageProbe = widget.packageProbe ?? TermuxPackageProbe();
+    if (widget.apkAcquisition != null) {
+      _apkAcquisition = widget.apkAcquisition!;
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _initDefaultApkAcquisition();
+        unawaited(_bootstrap());
+      });
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_bootstrap());
     });
   }
 
+  void _initDefaultApkAcquisition() {
+    RemoteDownloadCatalogCubit? catalogCubit;
+    try {
+      catalogCubit = context.read<RemoteDownloadCatalogCubit>();
+    } on ProviderNotFoundException {
+      catalogCubit = null;
+    }
+    _ownedHttpClient = http.Client();
+    final resolver = RemoteDownloadResolver.withProvider(
+      () => catalogCubit?.state.catalog ?? RemoteDownloadCatalog.defaults(),
+    );
+    final downloadHttp = RemoteDownloadHttp(
+      client: _ownedHttpClient!,
+      resolver: resolver,
+    );
+    final downloader = RemoteDownloader(
+      client: _ownedHttpClient!,
+      resolver: resolver,
+    );
+    _apkAcquisition = TermuxApkAcquisition(
+      http: downloadHttp,
+      downloader: downloader,
+    );
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _usernameController.dispose();
+    _ownedHttpClient?.close();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_probeTermuxInstalled());
+    }
   }
 
   Future<void> _bootstrap() async {
@@ -55,7 +128,21 @@ class _TermuxSetupPageState extends State<TermuxSetupPage> {
       _username = config.username.trim();
       _usernameController.text = _username;
     }
-    await _prepareKeys();
+    await Future.wait([
+      _probeTermuxInstalled(),
+      _prepareKeys(),
+    ]);
+  }
+
+  Future<void> _probeTermuxInstalled() async {
+    if (!mounted) return;
+    setState(() => _probingTermux = true);
+    final installed = await _packageProbe.isTermuxInstalled();
+    if (!mounted) return;
+    setState(() {
+      _termuxInstalled = installed;
+      _probingTermux = false;
+    });
   }
 
   Future<void> _prepareKeys() async {
@@ -93,6 +180,50 @@ class _TermuxSetupPageState extends State<TermuxSetupPage> {
     final uri = Uri.tryParse(url);
     if (uri == null) return;
     await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _downloadAndInstall() async {
+    if (_acquiring || _termuxInstalled == true) return;
+
+    setState(() {
+      _acquiring = true;
+      _acquirePhase = _TermuxAcquireUiPhase.downloading;
+    });
+
+    final result = await _apkAcquisition.downloadAndInstall(
+      onProgress: (received, total) {
+        if (!mounted) return;
+        setState(() {
+          _acquirePhase = total != null && received >= total
+              ? _TermuxAcquireUiPhase.installing
+              : _TermuxAcquireUiPhase.downloading;
+        });
+      },
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _acquiring = false;
+      _acquirePhase = _TermuxAcquireUiPhase.idle;
+    });
+
+    if (result.success) {
+      await _probeTermuxInstalled();
+      return;
+    }
+
+    final l10n = context.l10n;
+    final message = switch (result.phase) {
+      TermuxApkAcquirePhase.installFailed ||
+      TermuxApkAcquirePhase.installNoResult =>
+        l10n.termuxSetupInstallDenied,
+      _ => l10n.termuxSetupDownloadFailed,
+    };
+    AppToast.show(
+      context,
+      message: message,
+      variant: TpToastVariant.error,
+    );
   }
 
   Future<void> _connect() async {
@@ -180,6 +311,78 @@ class _TermuxSetupPageState extends State<TermuxSetupPage> {
     unawaited(_prepareKeys());
   }
 
+  Widget _buildInstallStep(BuildContext context) {
+    final l10n = context.l10n;
+    final tp = TpTheme.of(context);
+    final cs = Theme.of(context).colorScheme;
+
+    if (_probingTermux) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: LinearProgressIndicator(),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_termuxInstalled == true)
+          Text(
+            l10n.termuxSetupTermuxInstalled,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: cs.primary,
+            ),
+          )
+        else ...[
+          if (_acquiring) ...[
+            if (_acquirePhase == _TermuxAcquireUiPhase.downloading)
+              const LinearProgressIndicator(),
+            SizedBox(height: tp.spacing.sm),
+            Text(
+              _acquirePhase == _TermuxAcquireUiPhase.installing
+                  ? l10n.termuxSetupInstalling
+                  : l10n.termuxSetupDownloading,
+            ),
+            SizedBox(height: tp.spacing.sm),
+          ],
+          TpButton(
+            key: const Key('termux_download_install_button'),
+            onPressed: _acquiring ? null : () => unawaited(_downloadAndInstall()),
+            child: Text(
+              _acquiring
+                  ? (_acquirePhase == _TermuxAcquireUiPhase.installing
+                        ? l10n.termuxSetupInstalling
+                        : l10n.termuxSetupDownloading)
+                  : l10n.termuxSetupDownloadInstall,
+            ),
+          ),
+        ],
+        SizedBox(height: tp.spacing.sm),
+        Wrap(
+          spacing: tp.spacing.sm,
+          runSpacing: tp.spacing.sm,
+          children: [
+            TpButton(
+              variant: TpButtonVariant.outline,
+              onPressed: () => _openUrl(_termuxPlayStoreUrl),
+              child: Text(l10n.termuxSetupInstallPlayStore),
+            ),
+            TpButton(
+              variant: TpButtonVariant.outline,
+              onPressed: () => _openUrl(_termuxFdroidUrl),
+              child: Text(l10n.termuxSetupInstallFDroid),
+            ),
+            TpButton(
+              variant: TpButtonVariant.outline,
+              onPressed: () => _openUrl(_termuxGitHubUrl),
+              child: Text(l10n.termuxSetupInstallGitHub),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -200,27 +403,7 @@ class _TermuxSetupPageState extends State<TermuxSetupPage> {
             SizedBox(height: tp.spacing.lg),
             _SetupStep(
               title: l10n.termuxSetupStepInstallTermux,
-              child: Wrap(
-                spacing: tp.spacing.sm,
-                runSpacing: tp.spacing.sm,
-                children: [
-                  TpButton(
-                    variant: TpButtonVariant.outline,
-                    onPressed: () => _openUrl(_termuxPlayStoreUrl),
-                    child: Text(l10n.termuxSetupInstallPlayStore),
-                  ),
-                  TpButton(
-                    variant: TpButtonVariant.outline,
-                    onPressed: () => _openUrl(_termuxFdroidUrl),
-                    child: Text(l10n.termuxSetupInstallFDroid),
-                  ),
-                  TpButton(
-                    variant: TpButtonVariant.outline,
-                    onPressed: () => _openUrl(_termuxGitHubUrl),
-                    child: Text(l10n.termuxSetupInstallGitHub),
-                  ),
-                ],
-              ),
+              child: _buildInstallStep(context),
             ),
             _SetupStep(
               title: l10n.termuxSetupStepInstallOpenssh,
