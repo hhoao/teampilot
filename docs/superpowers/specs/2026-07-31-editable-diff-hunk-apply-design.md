@@ -90,7 +90,8 @@ Covered cases in tests: insert, delete, modify; file head/tail; empty file; cons
 - **Left controller:** filler-aligned display text; `readOnly: true`.
 - **Right:** keep visual filler alignment for 1:1 scroll with left (existing mapper), but maintain a **canonical** right string (real file lines only).
 - Edits on filler visual rows are ignored/rejected so blanks never enter canonical text.
-- Hand edit updates Diff canonical text + marks the **Diff surface** dirty (track dirty by diff key; do not imply a shared live buffer with the File tab).
+- Hand edit updates Diff canonical text + marks the **Diff surface** dirty (track dirty by diff key; do not imply a shared live buffer with the File tab). Cubit keeps **`lastLoadedCanonical`** (baseline that matches the current `DiffResult`) separate from the dirty working canonical.
+- While Diff is dirty, side-by-side filler alignment **may break** (line-count drift). Do **not** live-recompute the diff on each keystroke in v1; alignment is restored on Save / `>>` reload.
 - Diff Save writes Diff canonical via the same filesystem path as `saveFile`.
 
 **Same path open as File tab + Diff tab (locked):**
