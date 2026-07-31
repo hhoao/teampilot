@@ -40,7 +40,7 @@ Reuse the two peer paths from the Termux home design, embedded in onboarding chr
 1. **On-device · Termux** → existing guided Termux setup → Connect → `select('termux:default')`  
 2. **Remote · SSH** → configure / pick profile → Connect → `select('ssh:$id')` via existing `selectProfileOnConnect`
 
-**Advance rule:** after Connect OK and home bind, advance to the CLI step (auto-advance or enable Next — either is fine; auto-advance preferred to avoid a dead enabled Next).
+**Advance rule:** after Connect OK and home bind, **auto-advance** to the CLI step (do not leave the user on a dead Next).
 
 **Failure:** stay on the work-home step; show existing connect/test errors; user may retry or switch peer path.
 
@@ -54,7 +54,7 @@ Router remains `OnboardingGate → StartupGate → shell`.
 |----------|----------|
 | First run, user completes work-home bind in wizard | StartupGate sees bound home → pass |
 | Clear setup / home reset to unbound local | StartupGate shows work-environment chooser (existing safety net) |
-| Re-open first-run wizard from settings | If home already bound: skip work-home step **or** show current home with optional “change” (implementation may pick one; must not force a second Connect to proceed). If unbound: force work-home step |
+| Re-open first-run wizard from settings | If home already bound: **skip** the work-home step (do not force a second Connect). Changing home remains via in-app work-environment selector / StartupGate after clear. If unbound: force work-home step |
 | User somehow finishes wizard without bind | Must not happen under skip policy; if it did, StartupGate still blocks |
 
 **Invariant:** bind authority is only Connect success → `select(...)`. The wizard does not bind on profile save alone.
