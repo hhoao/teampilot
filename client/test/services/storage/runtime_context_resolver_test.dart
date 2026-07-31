@@ -121,10 +121,68 @@ void main() {
 
     expect(ctx.target.kind, RuntimeKind.termux);
     expect(ctx.mode, StorageBackendMode.ssh);
+    expect(ctx.pathsFromCache, isTrue);
     expect(ctx.home, '/data/data/com.termux/files/home');
     expect(
       ctx.appDataRoot,
       '/data/data/com.termux/files/home/.local/share/com.hhoa.teampilot',
+    );
+  });
+
+  test('ssh SFTP failure with profile path cache soft-fails', () async {
+    final factory = _MockSshClientFactory();
+    when(() => factory.sftpFor(any())).thenThrow(StateError('host down'));
+    final profile = SshProfile(
+      id: 'p1',
+      name: 'Remote',
+      host: 'example.com',
+      username: 'u',
+      lastHome: '/home/u',
+      lastAppDataRoot: '/home/u/.local/share/com.hhoa.teampilot',
+    );
+    final resolver = RuntimeContextResolver(
+      sshClientFactory: factory,
+      nativeAppDataPath: tmp.path,
+      remotePathResolver: _FakePathResolver(
+        clientFactory: factory,
+        onResolve: (_) => Future.error(StateError('resolve failed')),
+      ),
+    );
+    final ctx = await resolver.resolve(
+      RuntimeTarget.ssh('p1', label: 'Remote'),
+      sshProfile: profile,
+      cachedHome: profile.lastHome,
+      cachedAppDataRoot: profile.lastAppDataRoot,
+    );
+    expect(ctx.target.kind, RuntimeKind.ssh);
+    expect(ctx.pathsFromCache, isTrue);
+    expect(ctx.home, '/home/u');
+    expect(ctx.appDataRoot, '/home/u/.local/share/com.hhoa.teampilot');
+  });
+
+  test('ssh failure without cache rethrows', () async {
+    final factory = _MockSshClientFactory();
+    when(() => factory.sftpFor(any())).thenThrow(StateError('host down'));
+    final profile = const SshProfile(
+      id: 'p1',
+      name: 'Remote',
+      host: 'example.com',
+      username: 'u',
+    );
+    final resolver = RuntimeContextResolver(
+      sshClientFactory: factory,
+      nativeAppDataPath: tmp.path,
+      remotePathResolver: _FakePathResolver(
+        clientFactory: factory,
+        onResolve: (_) => Future.error(StateError('resolve failed')),
+      ),
+    );
+    await expectLater(
+      () => resolver.resolve(
+        RuntimeTarget.ssh('p1', label: 'Remote'),
+        sshProfile: profile,
+      ),
+      throwsA(isA<StateError>()),
     );
   });
 

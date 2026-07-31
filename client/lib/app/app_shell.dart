@@ -521,10 +521,20 @@ Future<AppShell> buildAppShell({
   unawaited(remoteDownloadCatalogCubit.load());
   var termuxConfigCache = await termuxConfigStore.load();
   TermuxCubit? termuxGateCubit;
+  SshProfile? homeSshProfileCache;
+  if (homeTarget.kind == RuntimeKind.ssh) {
+    final pid = homeTarget.sshProfileId;
+    if (pid != null) {
+      homeSshProfileCache = await sshProfileRepo.findById(pid);
+    }
+  }
   SshProfile? sshProfileById(String id) {
     if (id == 'termux') {
       final cfg = termuxConfigCache;
       return cfg == null ? null : termuxTransportProfile(cfg);
+    }
+    if (homeSshProfileCache != null && homeSshProfileCache!.id == id) {
+      return homeSshProfileCache;
     }
     return sshProfileCubit.state.profiles.where((p) => p.id == id).firstOrNull;
   }
@@ -589,7 +599,7 @@ Future<AppShell> buildAppShell({
   final cfg = termuxConfigCache;
   if (homeTarget.kind == RuntimeKind.termux &&
       cfg != null &&
-      !homeCtx.termuxPathsFromCache) {
+      !homeCtx.pathsFromCache) {
     final updated = cfg.copyWith(
       lastHome: homeCtx.home,
       lastAppDataRoot: homeCtx.appDataRoot,
@@ -1504,7 +1514,7 @@ Future<AppShell> buildAppShell({
     onConfigChanged: refreshTermuxConfigCache,
     resolvePathsAfterHomeSelect: () async {
       final homeCtx = runtimeContextRegistry.home();
-      if (homeCtx.termuxPathsFromCache) {
+      if (homeCtx.pathsFromCache) {
         return (home: null, appDataRoot: null);
       }
       return (home: homeCtx.home, appDataRoot: homeCtx.appDataRoot);

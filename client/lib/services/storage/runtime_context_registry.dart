@@ -46,14 +46,15 @@ class RuntimeContextRegistry {
     final cached = _cache[target.id];
     if (cached != null) return cached;
     final profileId = target.sshProfileId;
+    final sshProfile = profileId != null ? _sshProfileById?.call(profileId) : null;
     final termuxCache = target.kind == RuntimeKind.termux
         ? _termuxPathCache?.call()
         : null;
     final ctx = await _resolver.resolve(
       target,
-      sshProfile: profileId != null ? _sshProfileById?.call(profileId) : null,
-      cachedHome: termuxCache?.home,
-      cachedAppDataRoot: termuxCache?.appDataRoot,
+      sshProfile: sshProfile,
+      cachedHome: termuxCache?.home ?? sshProfile?.lastHome,
+      cachedAppDataRoot: termuxCache?.appDataRoot ?? sshProfile?.lastAppDataRoot,
     );
     _cache[target.id] = ctx;
     return ctx;
