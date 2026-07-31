@@ -103,4 +103,23 @@ void main() {
       HomeSshProfileImpact.none,
     );
   });
+
+  test('path cache update does not change connection fingerprint', () {
+    final cached = home.copyWith(
+      lastHome: '/home/alice',
+      lastAppDataRoot: '/home/alice/.local/share/com.hhoa.teampilot',
+    );
+    expect(
+      sshHomeConnectionFingerprint(home),
+      sshHomeConnectionFingerprint(cached),
+    );
+    expect(
+      resolveHomeSshProfileImpact(
+        homeTargetId: 'ssh:p1',
+        previous: [home],
+        next: [cached],
+      ),
+      HomeSshProfileImpact.none,
+    );
+  });
 }
