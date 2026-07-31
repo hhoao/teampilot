@@ -19,31 +19,36 @@ Write path never persists filler/alignment blank lines.
 
 | Topic | Choice |
 |-------|--------|
-| Scope (v1) | Unstaged working-tree diffs; side-by-side only |
+| Scope (v1) | `WorkbenchDiffSource.unstaged` only; side-by-side only |
 | Writable side | Right only (working tree). Left is always read-only |
 | Apply direction | `>>` left → right only (no `<<`) |
 | Apply persistence | Immediate `atomicWrite` + reload |
 | Hand edits | Dirty → existing Save UX; then reload |
-| Staged / compare-commit / Unified | Remain read-only; no `>>` |
+| Other diff sources | `staged`, `changes`, and Unified remain read-only; no `>>` |
+| File ↔ Diff buffers | **Separate** buffers (not a live shared controller) |
 | Merge conflict three-way | Out of scope |
+| Disk change watcher | Out of scope (no new file-watch subsystem in v1) |
 | Architecture | Canonical right file text + pure `DiffHunkApplier`; display may keep filler alignment |
 
 ## Non-goals
 
 - Staged / index mutation via apply or edit
+- Writable `WorkbenchDiffSource.changes` (worktree vs HEAD compare) in v1
 - Bidirectional `<<` into HEAD/index
 - Merge conflict Ours/Theirs UI
 - Editable unified view
 - Stage single hunk (git add -p)
+- Background “external file changed” detection / prompt
 - Binary / oversized files beyond current diff limits
 
 ## Invariants
 
 1. **Canonical right text has no fillers.** Alignment blanks are display-only; Save and `>>` always write real file bytes.
 2. **Apply and Save share one write path:** `atomicWrite(absolutePath, text)` → `diffReload` → Git status refresh.
-3. **Staged tabs stay read-only.** `WorkbenchDiffSource.staged` must not enable edit or `>>`.
+3. **Only `unstaged` is writable.** `WorkbenchDiffSource.staged` and `WorkbenchDiffSource.changes` must not enable edit or `>>`.
 4. **Fail soft:** write failure must not leave the UI claiming success; keep prior editor/diff state.
 5. **SSH / WSL / local:** all writes go through the workspace `Filesystem` (same as `EditorCubit.saveFile`).
+6. **`>>` never unlinks.** It may create/recreate a missing working-tree file via `atomicWrite`; an apply that yields empty content writes an empty file, it does not delete the path.
 
 ## Design
 
@@ -85,20 +90,29 @@ Covered cases in tests: insert, delete, modify; file head/tail; empty file; cons
 - **Left controller:** filler-aligned display text; `readOnly: true`.
 - **Right:** keep visual filler alignment for 1:1 scroll with left (existing mapper), but maintain a **canonical** right string (real file lines only).
 - Edits on filler visual rows are ignored/rejected so blanks never enter canonical text.
-- Hand edit updates canonical text + marks dirty (diff-tab dirty keyed by diff key or absolute path — prefer absolute path so an open File tab stays consistent if both are open).
-- Save writes canonical text via the same filesystem path as `saveFile`.
+- Hand edit updates Diff canonical text + marks the **Diff surface** dirty (track dirty by diff key; do not imply a shared live buffer with the File tab).
+- Diff Save writes Diff canonical via the same filesystem path as `saveFile`.
 
-If the same path is open as a File tab and a Diff tab, after Diff Save/apply: refresh or mark the File tab buffer from disk (match existing multi-surface refresh patterns if any; otherwise reload file handle text).
+**Same path open as File tab + Diff tab (locked):**
+
+| Event | Behavior |
+|-------|----------|
+| Diff Save / `>>` succeeds | Write Diff canonical. If a File tab is open for that path, **reload File buffer from the written text (or disk)** and clear File dirty. If File had unsaved edits, they are discarded; show a short l10n snackbar. |
+| File Save while Diff is dirty | Confirm: discard Diff edits and save File, or cancel. On confirm: `saveFile`, then reload Diff from disk and clear Diff dirty. |
+| File Save while Diff is clean | Normal `saveFile`, then reload Diff from disk. |
+
+Buffers stay separate until a successful write; there is no live shared `CodeLineEditingController` across File and Diff in v1.
 
 ### 4. Interaction
 
 | Action | Behavior |
 |--------|----------|
-| Click `>>` on a block | If dirty → confirm discard edits or cancel. Else apply → write → reload → SCM refresh |
-| Type on right (unstaged SxS) | Dirty; Save enabled |
-| Save | Write canonical → clear dirty → reload |
-| Staged / Unified | No `>>`; right read-only |
-| Deleted / untracked edge | Enable `>>` only when `absolutePath` is writable and apply can produce a valid file body; else disable + tooltip |
+| Click `>>` on a block | If Diff dirty → confirm discard edits or cancel. Else apply → write → reload → SCM refresh |
+| Type on right (unstaged SxS) | Diff dirty; Save enabled |
+| Diff Save | Write canonical → clear Diff dirty → reload (+ File tab sync per §3) |
+| `staged` / `changes` / Unified | No `>>`; right read-only |
+| Deleted file (unstaged delete) | `>>` that restores left lines **recreates** the file via `atomicWrite`; never `unlink` |
+| Untracked / no writable path | Disable `>>` + tooltip |
 
 ### 5. Errors
 
@@ -106,7 +120,6 @@ If the same path is open as a File tab and a Diff tab, after Diff Save/apply: re
 |------|----|
 | Write failure | Snackbar / l10n; keep prior canonical + dirty state; do not reload as success |
 | Reload failure after successful write | Message: saved but refresh failed; offer retry reload |
-| External file change while dirty | Prompt reload vs keep edits |
 | Binary / too large | Keep current non-editable diff policy |
 
 ### 6. l10n
@@ -118,7 +131,7 @@ Add strings for: apply hunk tooltip, dirty-discard confirm, apply/save failure, 
 | Layer | Cases |
 |-------|--------|
 | Unit `DiffHunkApplier` | insert / delete / modify; head/tail; empty; multi-apply; invalid block |
-| Cubit | apply writes + reload; dirty confirm cancel; write failure leaves state |
+| Cubit | apply writes + reload; dirty confirm cancel; write failure leaves state; File tab reload after Diff write; File Save blocked/confirmed when Diff dirty |
 | Widget | unstaged SxS shows `>>`; staged / unified do not; tap invokes apply |
 
 ## Rollout
