@@ -6,6 +6,8 @@ import 'package:shared_ui/shared_ui.dart';
 ///
 /// Hosted in the wizard's fixed max-height viewport. Title stays put; [body]
 /// scrolls in the remaining space. Content stays top-aligned under the header.
+///
+/// Set [scrollBody] to false when [body] owns its own scroll view (e.g. ListView).
 class OnboardingStepScaffold extends StatelessWidget {
   const OnboardingStepScaffold({
     super.key,
@@ -13,12 +15,14 @@ class OnboardingStepScaffold extends StatelessWidget {
     required this.subtitle,
     required this.body,
     this.headerTrailing,
+    this.scrollBody = true,
   });
 
   final String title;
   final String subtitle;
   final Widget body;
   final Widget? headerTrailing;
+  final bool scrollBody;
 
   @override
   Widget build(BuildContext context) {
@@ -47,10 +51,12 @@ class OnboardingStepScaffold extends StatelessWidget {
           children: [
             ...header,
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: body,
-              ),
+              child: scrollBody
+                  ? SingleChildScrollView(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: body,
+                    )
+                  : body,
             ),
           ],
         );

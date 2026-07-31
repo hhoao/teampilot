@@ -9108,6 +9108,18 @@ abstract class AppLocalizations {
   /// **'Android runs AI CLIs on a remote host over SSH.'**
   String get onboardingSshSubtitle;
 
+  /// No description provided for @onboardingWorkHomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose work environment'**
+  String get onboardingWorkHomeTitle;
+
+  /// No description provided for @onboardingWorkHomeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect Termux on this device or a remote SSH host before detecting AI CLIs.'**
+  String get onboardingWorkHomeSubtitle;
+
   /// No description provided for @onboardingCliTitle.
   ///
   /// In en, this message translates to:

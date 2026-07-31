@@ -18,6 +18,7 @@ class SshProfileSetupPage extends StatefulWidget {
     this.initialProfile,
     this.connectionTester,
     this.onProfileSaved,
+    this.embedded = false,
   });
 
   final SshProfileRepository profileRepository;
@@ -25,6 +26,9 @@ class SshProfileSetupPage extends StatefulWidget {
   final SshProfile? initialProfile;
   final SshProfileConnectionTester? connectionTester;
   final VoidCallback? onProfileSaved;
+
+  /// When true, omits [Scaffold] so a parent scroll view can host the form.
+  final bool embedded;
 
   @override
   State<SshProfileSetupPage> createState() => _SshProfileSetupPageState();
@@ -181,154 +185,166 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? '编辑 SSH Profile' : '新增 SSH Profile'),
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
+    final form = Form(
+      key: _formKey,
+      child: ListView(
+        shrinkWrap: widget.embedded,
+        physics: widget.embedded ? const NeverScrollableScrollPhysics() : null,
+        padding: const EdgeInsets.all(16),
+        children: [
+          TextFormField(
+            controller: _nameController,
+            decoration: const InputDecoration(
+              labelText: 'Profile 名称',
+              hintText: 'My Server',
+            ),
+            validator: _required,
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _hostController,
+            decoration: const InputDecoration(
+              labelText: 'Host',
+              hintText: '192.168.1.100',
+            ),
+            validator: _required,
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _portController,
+            decoration: const InputDecoration(labelText: 'Port'),
+            keyboardType: TextInputType.number,
+            validator: (v) {
+              final port = int.tryParse(v ?? '');
+              if (port == null || port < 1 || port > 65535) {
+                return '端口无效';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _usernameController,
+            decoration: const InputDecoration(labelText: 'Username'),
+            validator: _required,
+          ),
+          const SizedBox(height: 16),
+          SegmentedButton<SshAuthType>(
+            segments: const [
+              ButtonSegment(value: SshAuthType.privateKey, label: Text('私钥')),
+              ButtonSegment(value: SshAuthType.password, label: Text('密码')),
+            ],
+            selected: {_authType},
+            onSelectionChanged: (selected) {
+              setState(() => _authType = selected.first);
+            },
+          ),
+          const SizedBox(height: 12),
+          if (_authType == SshAuthType.password)
             TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Profile 名称',
-                hintText: 'My Server',
+              controller: _passwordController,
+              decoration: InputDecoration(
+                labelText: 'Password',
+                hintText: _isEditing ? '留空则保留已保存密码' : null,
               ),
-              validator: _required,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _hostController,
-              decoration: const InputDecoration(
-                labelText: 'Host',
-                hintText: '192.168.1.100',
-              ),
-              validator: _required,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _portController,
-              decoration: const InputDecoration(labelText: 'Port'),
-              keyboardType: TextInputType.number,
-              validator: (v) {
-                final port = int.tryParse(v ?? '');
-                if (port == null || port < 1 || port > 65535) {
-                  return '端口无效';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _usernameController,
-              decoration: const InputDecoration(labelText: 'Username'),
-              validator: _required,
-            ),
-            const SizedBox(height: 16),
-            SegmentedButton<SshAuthType>(
-              segments: const [
-                ButtonSegment(value: SshAuthType.privateKey, label: Text('私钥')),
-                ButtonSegment(value: SshAuthType.password, label: Text('密码')),
-              ],
-              selected: {_authType},
-              onSelectionChanged: (selected) {
-                setState(() => _authType = selected.first);
-              },
-            ),
-            const SizedBox(height: 12),
-            if (_authType == SshAuthType.password)
-              TextFormField(
-                controller: _passwordController,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  hintText: _isEditing ? '留空则保留已保存密码' : null,
-                ),
-                obscureText: true,
-                validator: (v) => !_isEditing && (v == null || v.trim().isEmpty)
-                    ? '必填'
-                    : null,
-              )
-            else ...[
-              FormField<String>(
-                initialValue: _privateKeyController.text,
-                validator: (v) => !_isEditing && (v == null || v.trim().isEmpty)
-                    ? '必填'
-                    : null,
-                builder: (field) {
-                  final bodyStyle = TpTextStyles.of(context).md;
-                  final scheme = Theme.of(context).colorScheme;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      TpTextarea(
-                        controller: _privateKeyController,
-                        minHeight: tpTextareaHeightForLines(bodyStyle, lines: 4),
-                        maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 8),
-                        decoration: InputDecoration(
-                          labelText: 'Private Key',
-                          hintText: _isEditing
-                              ? '留空则保留已保存私钥'
-                              : 'Paste private key content',
-                          // Border reflects error; message is shown below.
-                          errorText: field.hasError ? '' : null,
-                          errorStyle: const TextStyle(height: 0, fontSize: 0),
-                        ),
-                        onChanged: field.didChange,
+              obscureText: true,
+              validator: (v) => !_isEditing && (v == null || v.trim().isEmpty)
+                  ? '必填'
+                  : null,
+            )
+          else ...[
+            FormField<String>(
+              initialValue: _privateKeyController.text,
+              validator: (v) => !_isEditing && (v == null || v.trim().isEmpty)
+                  ? '必填'
+                  : null,
+              builder: (field) {
+                final bodyStyle = TpTextStyles.of(context).md;
+                final scheme = Theme.of(context).colorScheme;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TpTextarea(
+                      controller: _privateKeyController,
+                      minHeight: tpTextareaHeightForLines(bodyStyle, lines: 4),
+                      maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 8),
+                      decoration: InputDecoration(
+                        labelText: 'Private Key',
+                        hintText: _isEditing
+                            ? '留空则保留已保存私钥'
+                            : 'Paste private key content',
+                        // Border reflects error; message is shown below.
+                        errorText: field.hasError ? '' : null,
+                        errorStyle: const TextStyle(height: 0, fontSize: 0),
                       ),
-                      if (field.hasError)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            field.errorText!,
-                            style: TextStyle(
-                              color: scheme.error,
-                              fontSize: 12,
-                            ),
+                      onChanged: field.didChange,
+                    ),
+                    if (field.hasError)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          field.errorText!,
+                          style: TextStyle(
+                            color: scheme.error,
+                            fontSize: 12,
                           ),
                         ),
-                    ],
-                  );
-                },
+                      ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _passphraseController,
+              decoration: const InputDecoration(
+                labelText: 'Private Key Passphrase',
+                hintText: '可选',
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _passphraseController,
-                decoration: const InputDecoration(
-                  labelText: 'Private Key Passphrase',
-                  hintText: '可选',
-                ),
-                obscureText: true,
-              ),
-            ],
-            const SizedBox(height: 24),
-            if (widget.connectionTester != null) ...[
-              OutlinedButton(
-                onPressed: _saving || _testing ? null : _testConnection,
-                child: _testing
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('测试连接'),
-              ),
-              const SizedBox(height: 12),
-            ],
-            ElevatedButton(
-              onPressed: _saving ? null : _save,
-              child: _saving
+              obscureText: true,
+            ),
+          ],
+          const SizedBox(height: 24),
+          if (widget.connectionTester != null) ...[
+            OutlinedButton(
+              onPressed: _saving || _testing ? null : _testConnection,
+              child: _testing
                   ? const SizedBox(
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('保存 Profile'),
+                  : const Text('测试连接'),
             ),
+            const SizedBox(height: 12),
           ],
-        ),
+          ElevatedButton(
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('保存 Profile'),
+          ),
+        ],
       ),
+    );
+
+    if (widget.embedded) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [form],
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_isEditing ? '编辑 SSH Profile' : '新增 SSH Profile'),
+      ),
+      body: form,
     );
   }
 }

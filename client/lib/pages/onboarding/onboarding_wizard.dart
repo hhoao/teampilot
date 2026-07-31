@@ -12,6 +12,7 @@ import 'steps/appearance_step.dart';
 import 'steps/cli_step.dart';
 import 'steps/default_preset_step.dart';
 import 'steps/provider_import_step.dart';
+import 'steps/work_home_step.dart';
 
 enum OnboardingStepKind {
   appearance,
@@ -224,7 +225,9 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
       OnboardingStepKind.appearance => OnboardingAppearanceStep(
         isActive: isActive,
       ),
-      OnboardingStepKind.workHome => const SizedBox.shrink(),
+      OnboardingStepKind.workHome => OnboardingWorkHomeStep(
+        onBound: () => unawaited(_goNext()),
+      ),
       OnboardingStepKind.cli => OnboardingCliStep(isActive: isActive),
       OnboardingStepKind.providerImport => OnboardingProviderImportStep(
         isActive: isActive,

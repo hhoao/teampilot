@@ -2308,6 +2308,8 @@
   "onboardingAppearanceSubtitle": "You can change these later in Settings → Layout.",
   "onboardingSshTitle": "Configure SSH connection",
   "onboardingSshSubtitle": "Android runs AI CLIs on a remote host over SSH.",
+  "onboardingWorkHomeTitle": "Choose work environment",
+  "onboardingWorkHomeSubtitle": "Connect Termux on this device or a remote SSH host before detecting AI CLIs.",
   "onboardingCliTitle": "Detect CLI tools",
   "onboardingCliSubtitle": "Locate executables used to launch sessions. Install missing ones, or set a path later in Settings.",
   "onboardingCliFound": "CLI found",
