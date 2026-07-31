@@ -21,7 +21,14 @@ const _termuxGitHubUrl = 'https://github.com/termux/termux-app';
 
 /// Guided Termux OpenSSH setup (Roxum-style copyable commands + Connect).
 class TermuxSetupPage extends StatefulWidget {
-  const TermuxSetupPage({super.key});
+  const TermuxSetupPage({
+    super.key,
+    this.embedded = false,
+    this.onHomeBound,
+  });
+
+  final bool embedded;
+  final VoidCallback? onHomeBound;
 
   @override
   State<TermuxSetupPage> createState() => _TermuxSetupPageState();
@@ -117,7 +124,11 @@ class _TermuxSetupPageState extends State<TermuxSetupPage> {
         message: context.l10n.termuxSetupConnectSuccess,
         variant: TpToastVariant.success,
       );
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      if (widget.embedded) {
+        widget.onHomeBound?.call();
+      } else {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
       return;
     }
     final error = state.lastError?.trim();
@@ -176,7 +187,9 @@ class _TermuxSetupPageState extends State<TermuxSetupPage> {
       _loadingKey = true;
     });
     if (!mounted) return;
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    if (!widget.embedded) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
     unawaited(_prepareKeys());
   }
 
@@ -186,13 +199,11 @@ class _TermuxSetupPageState extends State<TermuxSetupPage> {
     final tp = TpTheme.of(context);
     final pubKey = _publicKey ?? '';
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.termuxSetupTitle)),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: EdgeInsets.all(tp.spacing.lg),
-          children: [
+    final form = Form(
+      key: _formKey,
+      child: ListView(
+        padding: EdgeInsets.all(tp.spacing.lg),
+        children: [
             Text(
               l10n.termuxSetupIntro,
               style: Theme.of(context).textTheme.bodyLarge,
@@ -312,7 +323,15 @@ class _TermuxSetupPageState extends State<TermuxSetupPage> {
             ),
           ],
         ),
-      ),
+    );
+
+    if (widget.embedded) {
+      return Material(child: form);
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.termuxSetupTitle)),
+      body: form,
     );
   }
 }

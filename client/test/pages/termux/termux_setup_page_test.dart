@@ -119,6 +119,8 @@ Future<void> _pumpSetupPage(
   WidgetTester tester, {
   required SpyTermuxCubit cubit,
   required SshCredentialStore credentials,
+  bool embedded = false,
+  VoidCallback? onHomeBound,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -137,7 +139,10 @@ Future<void> _pumpSetupPage(
               ],
               child: BlocProvider<TermuxCubit>.value(
                 value: cubit,
-                child: const TermuxSetupPage(),
+                child: TermuxSetupPage(
+                  embedded: embedded,
+                  onHomeBound: onHomeBound,
+                ),
               ),
             ),
           );
@@ -318,5 +323,112 @@ void main() {
 
     expect(cubit.clearSetupCalls, 1);
     expect(cubit.state.config, isNull);
+  });
+
+  testWidgets('embedded setup has no AppBar', (tester) async {
+    _largeTestSurface(tester);
+    final cubit = _createSpyCubit(nativeDir);
+    addTearDown(() async {
+      if (!cubit.isClosed) await cubit.close();
+    });
+
+    await _pumpSetupPage(
+      tester,
+      cubit: cubit,
+      credentials: InMemorySshCredentialStore(),
+      embedded: true,
+    );
+
+    expect(find.byType(AppBar), findsNothing);
+    expect(find.byKey(const Key('termux_username_field')), findsOneWidget);
+  });
+
+  testWidgets('embedded connect does not pop navigator', (tester) async {
+    _largeTestSurface(tester);
+    final cubit = _createSpyCubit(nativeDir, fastSaveConfig: true);
+    addTearDown(() async {
+      if (!cubit.isClosed) await cubit.close();
+    });
+    var homeBoundCalls = 0;
+    final navigatorKey = GlobalKey<NavigatorState>();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) {
+            final scheme = Theme.of(context).colorScheme;
+            return TpTheme(
+              data: TpThemeData.fromColorScheme(scheme, scale: 1),
+              child: Navigator(
+                key: navigatorKey,
+                initialRoute: '/',
+                onGenerateRoute: (settings) {
+                  switch (settings.name) {
+                    case '/':
+                      return MaterialPageRoute<void>(
+                        builder: (_) => const Scaffold(
+                          body: Center(child: Text('ROOT_MARKER')),
+                        ),
+                      );
+                    case '/setup':
+                      return MaterialPageRoute<void>(
+                        builder: (_) => MultiRepositoryProvider(
+                          providers: [
+                            RepositoryProvider<SshCredentialStore>.value(
+                              value: InMemorySshCredentialStore(),
+                            ),
+                          ],
+                          child: BlocProvider<TermuxCubit>.value(
+                            value: cubit,
+                            child: TermuxSetupPage(
+                              embedded: true,
+                              onHomeBound: () => homeBoundCalls++,
+                            ),
+                          ),
+                        ),
+                      );
+                    default:
+                      return MaterialPageRoute<void>(
+                        builder: (_) => const SizedBox.shrink(),
+                      );
+                  }
+                },
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pump();
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+      if (find.byType(LinearProgressIndicator).evaluate().isEmpty) break;
+    }
+
+    navigatorKey.currentState!.pushNamed('/setup');
+    await tester.pump();
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+      if (find.byType(LinearProgressIndicator).evaluate().isEmpty) break;
+    }
+
+    expect(find.text('ROOT_MARKER'), findsNothing);
+
+    await tester.enterText(
+      find.byKey(const Key('termux_username_field')),
+      'u0_a123',
+    );
+    await tester.pump();
+    await _scrollToBottom(tester);
+    await tester.tap(find.byKey(const Key('termux_connect_button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(homeBoundCalls, 1);
+    expect(find.text('ROOT_MARKER'), findsNothing);
+    expect(find.byType(TermuxSetupPage), findsOneWidget);
+    await tester.pump(const Duration(seconds: 3));
   });
 }
