@@ -58,6 +58,8 @@ extension BuildContextL10n on BuildContext {
 
 extension EditorL10n on AppLocalizations {
   String editorSnackbarMessage(String code) {
+    final diff = diffEditorSnackbarMessage(code);
+    if (diff != null) return diff;
     if (code.startsWith(EditorMessage.saveFailedPrefix)) {
       final detail = code.substring(EditorMessage.saveFailedPrefix.length);
       return editorSaveFailed(detail);
@@ -75,4 +77,31 @@ extension EditorL10n on AppLocalizations {
   }
 
   String editorPanelErrorMessage(String code) => editorSnackbarMessage(code);
+
+  /// Localized text for diff-editor snackbar codes, or null when unrelated.
+  String? diffEditorSnackbarMessage(String code) {
+    if (code == 'diffReloadAfterSaveFailed') {
+      return diffReloadAfterSaveFailed;
+    }
+    if (code == 'diffFileReloadedAfterDiffWrite') {
+      return diffFileReloadedAfterDiffWrite;
+    }
+    const applyPrefix = 'diffApplyFailed: ';
+    if (code.startsWith(applyPrefix)) {
+      return diffApplyFailed(code.substring(applyPrefix.length));
+    }
+    const savePrefix = 'diffSaveFailed: ';
+    if (code.startsWith(savePrefix)) {
+      return diffSaveFailed(code.substring(savePrefix.length));
+    }
+    return null;
+  }
 }
+
+bool isDiffEditorSurfaceSnackbar(String code) =>
+    const {
+      'diffReloadAfterSaveFailed',
+      'diffFileReloadedAfterDiffWrite',
+    }.contains(code) ||
+    code.startsWith('diffApplyFailed: ') ||
+    code.startsWith('diffSaveFailed: ');

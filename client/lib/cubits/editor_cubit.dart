@@ -891,7 +891,9 @@ class EditorCubit extends Cubit<EditorState> {
     fileHandle.savedText = text;
 
     final dirty = Set<String>.from(bucket.dirtyPaths)..remove(path);
-    final snackbar = notifyIfDiscardedFileDirty && wasFileDirty
+    final snackbar = state.snackbarMessage == 'diffReloadAfterSaveFailed'
+        ? 'diffReloadAfterSaveFailed'
+        : notifyIfDiscardedFileDirty && wasFileDirty
         ? 'diffFileReloadedAfterDiffWrite'
         : state.snackbarMessage;
     emit(

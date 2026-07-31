@@ -39,6 +39,8 @@ class DiffViewer extends StatefulWidget {
     this.canonicalText = '',
     this.onCanonicalChanged,
     this.onApplyHunk,
+    this.isDirty = false,
+    this.onSave,
     super.key,
   });
 
@@ -55,6 +57,8 @@ class DiffViewer extends StatefulWidget {
     String canonicalText = '',
     ValueChanged<String>? onCanonicalChanged,
     Future<void> Function(DiffResult result, DiffBlock block)? onApplyHunk,
+    bool isDirty = false,
+    VoidCallback? onSave,
     Key? key,
   }) {
     return DiffViewer._(
@@ -77,6 +81,8 @@ class DiffViewer extends StatefulWidget {
       canonicalText: canonicalText,
       onCanonicalChanged: onCanonicalChanged,
       onApplyHunk: onApplyHunk,
+      isDirty: isDirty,
+      onSave: onSave,
       key: key,
     );
   }
@@ -96,6 +102,8 @@ class DiffViewer extends StatefulWidget {
     String canonicalText = '',
     ValueChanged<String>? onCanonicalChanged,
     Future<void> Function(DiffResult result, DiffBlock block)? onApplyHunk,
+    bool isDirty = false,
+    VoidCallback? onSave,
     Key? key,
   }) {
     return DiffViewer._(
@@ -119,6 +127,8 @@ class DiffViewer extends StatefulWidget {
       canonicalText: canonicalText,
       onCanonicalChanged: onCanonicalChanged,
       onApplyHunk: onApplyHunk,
+      isDirty: isDirty,
+      onSave: onSave,
       key: key,
     );
   }
@@ -159,6 +169,9 @@ class DiffViewer extends StatefulWidget {
   final ValueChanged<String>? onCanonicalChanged;
 
   final Future<void> Function(DiffResult result, DiffBlock block)? onApplyHunk;
+
+  final bool isDirty;
+  final VoidCallback? onSave;
 
   @override
   State<DiffViewer> createState() => _DiffViewerState();
@@ -258,6 +271,8 @@ class _DiffViewerState extends State<DiffViewer> {
           onOpenSource: widget.onOpenSource,
           onSwitchToFile: widget.onSwitchToFile,
           title: widget.title,
+          isDirty: widget.isDirty,
+          onSave: widget.onSave,
         ),
         Expanded(
           child: _bodyReady

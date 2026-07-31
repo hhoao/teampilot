@@ -505,7 +505,8 @@ Widget _chatLaunchListener(BuildContext context, Widget child) {
     child: BlocListener<EditorCubit, EditorState>(
       listenWhen: (previous, next) =>
           previous.snackbarMessage != next.snackbarMessage &&
-          next.snackbarMessage != null,
+          next.snackbarMessage != null &&
+          !isDiffEditorSurfaceSnackbar(next.snackbarMessage!),
       listener: (listenerContext, state) {
         if (!listenerContext.mounted) return;
         final code = state.snackbarMessage;

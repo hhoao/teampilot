@@ -26,6 +26,7 @@ import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
 import '../../theme/app_markdown_style_sheet.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/workbench/file_diff_surface_toggle.dart';
 import '../../widgets/workbench/markdown_view_mode_toggle.dart';
 import 'file_editor_image_preview.dart';
@@ -64,21 +65,84 @@ class FileEditorSurface extends StatelessWidget {
           WorkbenchTabId.file(path),
         );
       },
-      child: ColoredBox(
-        color: cs.workspaceCard,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _FileEditorToolbar(workspaceId: workspaceId, path: path),
-            const Divider(height: 1),
-            Expanded(
-              child: _FileEditorBody(workspaceId: workspaceId, path: path),
-            ),
-          ],
+      child: BlocListener<EditorCubit, EditorState>(
+        listenWhen: (previous, next) =>
+            previous.snackbarMessage != next.snackbarMessage &&
+            next.snackbarMessage != null &&
+            isDiffEditorSurfaceSnackbar(next.snackbarMessage!),
+        listener: (context, state) =>
+            _onFileEditorDiffSnackbar(context, state.snackbarMessage),
+        child: ColoredBox(
+          color: cs.workspaceCard,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _FileEditorToolbar(workspaceId: workspaceId, path: path),
+              const Divider(height: 1),
+              Expanded(
+                child: _FileEditorBody(workspaceId: workspaceId, path: path),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+void _onFileEditorDiffSnackbar(BuildContext context, String? code) {
+  if (code == null || !context.mounted) return;
+  final message = context.l10n.diffEditorSnackbarMessage(code);
+  if (message == null) return;
+  AppToast.show(context, message: message);
+  context.read<EditorCubit>().clearSnackbarMessage();
+}
+
+Future<void> _saveFileWithDiffGate(
+  BuildContext context,
+  String workspaceId,
+  String path,
+) async {
+  final editor = context.read<EditorCubit>();
+  if (editor.anyWritableDiffDirtyFor(workspaceId, path)) {
+    final confirmed = await _confirmDiscardDiffBeforeFileSave(context);
+    if (!confirmed || !context.mounted) return;
+    await editor.saveFile(workspaceId, path, discardDiffDirty: true);
+    return;
+  }
+  await editor.saveFile(workspaceId, path);
+}
+
+Future<bool> _confirmDiscardDiffBeforeFileSave(BuildContext context) async {
+  final l10n = context.l10n;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => TpDialog(
+      maxWidth: 440,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TpDialogHeader(title: l10n.diffDiscardDiffBeforeFileSaveTitle),
+          const SizedBox(height: 12),
+          Text(l10n.diffDiscardDiffBeforeFileSaveBody),
+          TpDialogActions(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(l10n.editorDiscard),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+  return confirmed == true;
 }
 
 class _FileEditorToolbar extends StatelessWidget {
@@ -118,7 +182,7 @@ class _FileEditorToolbar extends StatelessWidget {
                 tooltip: context.l10n.editorSave,
                 icon: const Icon(Icons.save_outlined, size: 18),
                 onPressed: () => unawaited(
-                  context.read<EditorCubit>().saveFile(workspaceId, path),
+                  _saveFileWithDiffGate(context, workspaceId, path),
                 ),
               ),
               IconButton(

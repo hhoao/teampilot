@@ -2,11 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../services/diff/diff_model.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/diff/diff_toolbar.dart';
 import '../../widgets/diff/diff_viewer.dart';
 import '../../widgets/workbench/file_diff_surface_toggle.dart';
@@ -71,8 +74,62 @@ class _DiffEditorSurfaceState extends State<DiffEditorSurface> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncWritableBind());
   }
 
+  Future<void> _applyHunk(DiffResult result, DiffBlock block) async {
+    final editor = context.read<EditorCubit>();
+    var discardDirty = false;
+    if (editor.isDiffDirty(widget.diffKey)) {
+      final confirmed = await _confirmDiscardDiffEdits(context);
+      if (!confirmed || !mounted) return;
+      discardDirty = true;
+    }
+    await editor.applyDiffHunk(
+      workspaceId: widget.workspaceId,
+      diffKey: widget.diffKey,
+      result: result,
+      block: block,
+      discardDirtyIfNeeded: discardDirty,
+    );
+  }
+
+  void _onDiffEditorSnackbar(String? code) {
+    if (code == null || !mounted) return;
+    final l10n = context.l10n;
+    final message = l10n.diffEditorSnackbarMessage(code);
+    if (message == null) return;
+
+    final editor = context.read<EditorCubit>();
+    if (code == 'diffReloadAfterSaveFailed') {
+      AppToast.show(
+        context,
+        message: message,
+        variant: TpToastVariant.warning,
+        action: TpToastAction(
+          label: l10n.sessionHistoryRetry,
+          onPressed: () => unawaited(
+            editor.retryDiffReload(widget.workspaceId, widget.diffKey),
+          ),
+        ),
+      );
+    } else {
+      AppToast.show(context, message: message);
+    }
+    editor.clearSnackbarMessage();
+  }
+
   @override
   Widget build(BuildContext context) {
+    return BlocListener<EditorCubit, EditorState>(
+      listenWhen: (previous, next) =>
+          previous.snackbarMessage != next.snackbarMessage &&
+          next.snackbarMessage != null &&
+          isDiffEditorSurfaceSnackbar(next.snackbarMessage!),
+      listener: (context, state) =>
+          _onDiffEditorSnackbar(state.snackbarMessage),
+      child: _buildBody(context),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     final tab = context.select<EditorCubit, DiffTabState?>(
       (c) => c.state.bucket(widget.workspaceId).openDiffs[widget.diffKey],
     );
@@ -94,6 +151,9 @@ class _DiffEditorSurfaceState extends State<DiffEditorSurface> {
     final canonicalText = context.select<EditorCubit, String?>(
       (c) => c.diffCanonicalFor(widget.diffKey),
     );
+    final isDirty = context.select<EditorCubit, bool>(
+      (c) => c.isDiffDirty(widget.diffKey),
+    );
 
     return ColoredBox(
       color: cs.workspaceCardChrome(WorkspacePageChrome.workspace),
@@ -105,25 +165,22 @@ class _DiffEditorSurfaceState extends State<DiffEditorSurface> {
         initialMode: isWritable ? DiffViewMode.sideBySide : DiffViewMode.unified,
         writable: isWritable,
         canonicalText: canonicalText ?? '',
+        isDirty: isWritable && isDirty,
+        onSave: isWritable
+            ? () => unawaited(
+                context.read<EditorCubit>().saveDiffWorkingTree(
+                  widget.workspaceId,
+                  widget.diffKey,
+                ),
+              )
+            : null,
         onCanonicalChanged: isWritable
             ? (text) => context.read<EditorCubit>().updateDiffCanonical(
                 widget.diffKey,
                 text,
               )
             : null,
-        onApplyHunk: isWritable
-            ? (result, block) async {
-                final editor = context.read<EditorCubit>();
-                if (editor.isDiffDirty(widget.diffKey)) return;
-                await editor.applyDiffHunk(
-                  workspaceId: widget.workspaceId,
-                  diffKey: widget.diffKey,
-                  result: result,
-                  block: block,
-                  discardDirtyIfNeeded: false,
-                );
-              }
-            : null,
+        onApplyHunk: isWritable ? _applyHunk : null,
         reloadDiff: reload == null
             ? null
             : (ignoreWhitespace, fullContext) async {
@@ -146,4 +203,36 @@ class _DiffEditorSurfaceState extends State<DiffEditorSurface> {
       ),
     );
   }
+}
+
+Future<bool> _confirmDiscardDiffEdits(BuildContext context) async {
+  final l10n = context.l10n;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => TpDialog(
+      maxWidth: 440,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TpDialogHeader(title: l10n.diffDiscardEditsApplyTitle),
+          const SizedBox(height: 12),
+          Text(l10n.diffDiscardEditsApplyBody),
+          TpDialogActions(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(l10n.editorDiscard),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+  return confirmed == true;
 }
