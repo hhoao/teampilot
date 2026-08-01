@@ -4,7 +4,6 @@ import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -25,7 +24,7 @@ import '../../services/selection_ai/selection_ask_ai.dart';
 import '../../services/selection_ai/selection_ask_ai_fab_host.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
-import '../../theme/app_markdown_style_sheet.dart';
+import '../../theme/app_markdown_style_sheet.dart' show buildAppMarkdownTokens;
 import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/workbench/file_diff_surface_toggle.dart';
@@ -447,7 +446,7 @@ class _MarkdownPreviewPaneState extends State<_MarkdownPreviewPane> {
 
   void _onControllerChanged() {
     final next = widget.controller.text;
-    // Ignore selection-only controller notifies — rebuilding MarkdownBody /
+    // Ignore selection-only controller notifies — rebuilding MarkdownView /
     // SelectionArea mid-drag jumps the scroll back toward the document head.
     if (next == _data) return;
     setState(() => _data = next);
@@ -455,8 +454,27 @@ class _MarkdownPreviewPaneState extends State<_MarkdownPreviewPane> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final opener = context.read<WorkbenchEditorOpener>();
     final roots = WorkspaceToolsScope.maybeOf(context)?.roots ?? const [];
+    final resolvers = MarkdownResolvers(
+      onLinkTap: (href) {
+        unawaited(
+          handleMarkdownPreviewLink(
+            href: href,
+            markdownFilePath: widget.path,
+            workspaceId: widget.workspaceId,
+            workspaceRoots: roots,
+            opener: opener,
+          ),
+        );
+      },
+      resolveImage: (src) => resolveMarkdownPreviewImage(
+        src: src,
+        markdownFilePath: widget.path,
+        workspaceRoots: roots,
+      ),
+    );
     // SelectionArea must sit *inside* the scroll content. As an ancestor it
     // enables edge auto-scroll while selecting, which yanks long previews to
     // the top (flutter/flutter#110917).
@@ -464,21 +482,10 @@ class _MarkdownPreviewPaneState extends State<_MarkdownPreviewPane> {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       child: AiLineSpacedSelectionStyle(
         child: SelectionArea(
-          child: MarkdownBody(
-            data: _data,
-            styleSheet: buildAppMarkdownStyleSheet(Theme.of(context)),
-            selectable: false,
-            onTapLink: (text, href, title) {
-              unawaited(
-                handleMarkdownPreviewLink(
-                  href: href,
-                  markdownFilePath: widget.path,
-                  workspaceId: widget.workspaceId,
-                  workspaceRoots: roots,
-                  opener: opener,
-                ),
-              );
-            },
+          child: MarkdownView(
+            document: compileMarkdown(_data),
+            tokens: buildAppMarkdownTokens(theme, MarkdownProfile.document),
+            resolvers: resolvers,
           ),
         ),
       ),

@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -51,4 +54,49 @@ Future<void> handleMarkdownPreviewLink({
   });
   if (!underWorkspace) return;
   await opener.openFile(workspaceId, normalized, preview: true);
+}
+
+/// Resolves markdown preview images: http(s) URLs or workspace-relative files.
+ImageProvider? resolveMarkdownPreviewImage({
+  required String src,
+  required String markdownFilePath,
+  required List<String> workspaceRoots,
+}) {
+  final raw = src.trim();
+  if (raw.isEmpty) return null;
+
+  final uri = Uri.tryParse(raw);
+  if (uri != null &&
+      (uri.scheme == 'http' || uri.scheme == 'https') &&
+      uri.host.isNotEmpty) {
+    return NetworkImage(uri.toString());
+  }
+
+  final p.Context ctx;
+  final String candidate;
+  if (uri != null && uri.scheme == 'file') {
+    candidate = uri.toFilePath();
+    ctx = p.context;
+  } else {
+    ctx = AppPaths.pathContextForDataRoot(markdownFilePath);
+    if (ctx.isAbsolute(raw)) {
+      candidate = raw;
+    } else {
+      candidate = ctx.normalize(ctx.join(ctx.dirname(markdownFilePath), raw));
+    }
+  }
+
+  if (!isImagePreviewPath(candidate)) return null;
+  final normalized = ctx.normalize(candidate);
+  final underWorkspace = workspaceRoots.any((root) {
+    if (root.isEmpty) return false;
+    final rootCtx = AppPaths.pathContextForDataRoot(root);
+    final nRoot = rootCtx.normalize(root);
+    return normalized == nRoot || rootCtx.isWithin(nRoot, normalized);
+  });
+  if (!underWorkspace) return null;
+
+  final file = File(candidate);
+  if (!file.existsSync()) return null;
+  return FileImage(file);
 }
