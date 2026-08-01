@@ -81,8 +81,8 @@ Host (`client/lib/theme/…`): only builds `MarkdownTokens` from `TpTextStyles` 
 
 Consumers:
 
-- `AiTextPartView` → pipeline + `MarkdownView(profile: compact)`
-- `_MarkdownPreviewPane` → pipeline + `MarkdownView(profile: document)` + preview resolvers (workspace-relative links/images)
+- `AiTextPartView` → pipeline + `MarkdownView(profile: compact)`; preserve history IR truncation (`content_truncate` / expandable history) before render.
+- `_MarkdownPreviewPane` → pipeline + `MarkdownView(profile: document)` + preview resolvers (workspace-relative links/images); keep `SelectionArea` **inside** the scrollable content (avoid jump-to-top on long docs).
 
 ### Rename policy
 
