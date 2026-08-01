@@ -30,7 +30,9 @@ class _TeampilotTerminalAccessoryHostState
   var _imeShown = true;
 
   void _onBeforeKey() {
-    widget.viewKey.currentState?.ensureKeyboardVisible();
+    final view = widget.viewKey.currentState;
+    view?.requestTerminalFocus();
+    view?.ensureKeyboardVisible();
   }
 
   void _onInjectKey(LogicalKeyboardKey key) {
