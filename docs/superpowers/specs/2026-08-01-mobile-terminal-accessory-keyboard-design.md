@@ -51,8 +51,8 @@ touch tap / IME / accessory key
 │  ImeSession.ensureVisible()         │  show even if already attached
 │  ModifierLatch (ctrl/alt[/shift])   │  sticky + auto-off policy
 │  TerminalKeyInjector                │  encodeKey / UTF-8 → engine
-│  TerminalView merges latch on all   │  hardware, IME commit, inject
-│    input paths                      │
+│  TerminalView merges latch on       │  IME commit + accessory inject
+│    soft/virtual input paths         │  (not hardware onKeyEvent OS mods)
 │  TerminalAccessoryKey + Layout      │  extensible data model
 │  TerminalAccessoryBar (unstyled)    │  render + long-press repeat
 └──────────────────┬──────────────────┘

@@ -407,6 +407,16 @@ final class AccessoryInjectKey extends TerminalAccessoryKey {
   final bool repeatable;
 }
 
+final class AccessoryInjectRaw extends TerminalAccessoryKey {
+  const AccessoryInjectRaw({
+    required super.id,
+    required this.bytes,
+    super.label,
+    super.icon,
+  });
+  final List<int> bytes;
+}
+
 final class AccessoryActionKey extends TerminalAccessoryKey {
   const AccessoryActionKey({
     required super.id,
@@ -638,20 +648,22 @@ git commit -m "feat(alacritty): export accessory keyboard public API"
 
 - [ ] **Step 1: Write failing test**
 
+`TeampilotAlacrittyTerminal` requires `ShortcutCubit` + `SessionPreferencesCubit` (via `context.watch`). Wrap with `MultiBlocProvider` in the test, **or** extract a private/public `TeampilotTerminalAccessoryHost` (Column + latch + bar) and test that host with `debugDefaultTargetPlatformOverride` while keeping the shell as thin wiring.
+
 ```dart
 testWidgets('shows accessory bar on android touch shell', (tester) async {
-  // debugDefaultTargetPlatformOverride = TargetPlatform.android;
-  // pump TeampilotAlacrittyTerminal with FakeEngine / stubs matching existing
-  // terminal widget tests; expect find.text('Ctrl') / find.text('Esc').
+  debugDefaultTargetPlatformOverride = TargetPlatform.android;
+  addTearDown(() => debugDefaultTargetPlatformOverride = null);
+  // Pump host or full terminal with MultiBlocProvider stubs;
+  // expect find.text('Ctrl') / find.text('Esc').
 });
 
 testWidgets('hides accessory bar on linux desktop', (tester) async {
-  // debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+  debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+  addTearDown(() => debugDefaultTargetPlatformOverride = null);
   // expect find.text('Ctrl'), findsNothing);
 });
 ```
-
-Reuse whatever fake engine / harness existing terminal tests use (`chat_workbench` or alacritty example fakes). If constructing a full engine is hard, extract a small `TeampilotTerminalAccessoryHost` widget that only owns Column+latch+bar and unit-test that; keep `TeampilotAlacrittyTerminal` as thin wiring — **prefer one shell file still**.
 
 - [ ] **Step 2: Run — expect FAIL**
 
