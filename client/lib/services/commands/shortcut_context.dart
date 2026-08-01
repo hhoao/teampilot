@@ -12,6 +12,7 @@ class ShortcutContext {
     this.hasWorkspace = false,
     this.hasOpenWorkspaceTabs = false,
     this.hasSessionTab = false,
+    this.floatingPanelOpen = false,
   });
 
   /// Primary focus is an agent PTY or workspace shell terminal view.
@@ -31,6 +32,9 @@ class ShortcutContext {
 
   /// Active workspace has a selected session tab (not compose-only landing).
   final bool hasSessionTab;
+
+  /// Floating workspace panel visibility is [FloatingPanelVisibility.open].
+  final bool floatingPanelOpen;
 }
 
 extension ShortcutWhenEvaluation on ShortcutWhen {
@@ -47,6 +51,8 @@ extension ShortcutWhenEvaluation on ShortcutWhen {
         return context.hasSessionTab;
       case ShortcutWhen.inCompose:
         return context.inCompose;
+      case ShortcutWhen.floatingPanelOpen:
+        return context.floatingPanelOpen;
     }
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'command_catalog.dart';
 import 'command_definition.dart';
 import 'key_chord.dart';
+import 'shortcut_context.dart';
 
 /// Builds a `TerminalView.shortcuts` overlay that claims every effective
 /// chord of a `terminalPassthrough` command, so the terminal engine's own
@@ -25,14 +26,20 @@ import 'key_chord.dart';
 /// regardless of whether any `Action` ends up bound to the intent — see
 /// docs/superpowers/specs/2026-07-11-keyboard-shortcuts-platform-design.md
 /// ("Terminal widgets must not swallow Mod chords before the dispatcher").
+///
+/// When [context] is provided, only commands whose `when` is satisfied are
+/// claimed — e.g. Escape for floating minimize must not permanently steal
+/// Esc from dock terminals while the floating panel is closed.
 Map<ShortcutActivator, Intent> terminalPassthroughShortcutOverlay({
   required Map<String, List<KeyChord>> effectiveByCommand,
   required bool isMacOS,
   List<CommandDefinition>? catalog,
+  ShortcutContext? context,
 }) {
   final overlay = <ShortcutActivator, Intent>{};
   for (final def in catalog ?? CommandCatalog.v1) {
     if (!def.terminalPassthrough) continue;
+    if (context != null && !def.when.isSatisfiedBy(context)) continue;
     for (final chord in effectiveByCommand[def.id] ?? const <KeyChord>[]) {
       // Double-tap Shift is matched by ShortcutDispatcher state, not
       // SingleActivator; bare Shift is a no-op for PTY encode anyway.

@@ -179,6 +179,7 @@ LogicalKeyboardKey logicalKeyForChordKey(String key) {
     'numpadSubtract' => LogicalKeyboardKey.numpadSubtract,
     'f5' => LogicalKeyboardKey.f5,
     'shift' => LogicalKeyboardKey.shift,
+    'escape' => LogicalKeyboardKey.escape,
     _ => throw ArgumentError('Unsupported key chord key: $key'),
   };
 }
@@ -211,6 +212,7 @@ String chordKeyForLogicalKey(LogicalKeyboardKey logicalKey) {
     LogicalKeyboardKey.numpadAdd => 'numpadAdd',
     LogicalKeyboardKey.numpadSubtract => 'numpadSubtract',
     LogicalKeyboardKey.f5 => 'f5',
+    LogicalKeyboardKey.escape => 'escape',
     LogicalKeyboardKey.shift ||
     LogicalKeyboardKey.shiftLeft ||
     LogicalKeyboardKey.shiftRight =>

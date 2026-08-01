@@ -69,7 +69,9 @@ abstract final class KeybindingResolver {
         if (!chord.hasModifiers && context.inTextInput) {
           final allowedBareComposeKey =
               def.when == ShortcutWhen.inCompose && context.inCompose;
-          if (!allowedBareComposeKey) {
+          // Escape is not a typing key — allow even when focus is in an editor.
+          final allowedBareEscape = chord.key == 'escape';
+          if (!allowedBareComposeKey && !allowedBareEscape) {
             continue;
           }
         }

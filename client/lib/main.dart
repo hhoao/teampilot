@@ -21,6 +21,8 @@ import 'cubits/automation_cubit.dart';
 import 'cubits/ssh_connection_cubit.dart';
 import 'cubits/termux_cubit.dart';
 import 'cubits/chat_cubit.dart';
+import 'cubits/floating_workspace/floating_panel_visibility.dart';
+import 'cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'cubits/layout_cubit.dart';
 import 'cubits/mailbox_cubit.dart';
 import 'cubits/notification_cubit.dart';
@@ -109,6 +111,7 @@ import 'widgets/ui_zoom.dart';
 ShortcutContext _liveShortcutContext(
   ChatCubit chatCubit,
   WorkspaceChromeCommands workspaceChromeCommands,
+  FloatingWorkspaceCubit floatingWorkspaceCubit,
 ) {
   final location = appRouter.routerDelegate.currentConfiguration.uri
       .toString();
@@ -122,6 +125,10 @@ ShortcutContext _liveShortcutContext(
     hasWorkspace: location.contains('/home-v2/workspace/'),
     hasOpenWorkspaceTabs: workspaceChromeCommands.openTabCount >= 1,
     hasSessionTab: chatCubit.state.activeSessionId != null,
+    floatingPanelOpen:
+        floatingWorkspaceCubit.state.visibility ==
+            FloatingPanelVisibility.open &&
+        !isTpActionMenuOpen,
   );
 }
 
@@ -157,11 +164,16 @@ class _ShortcutDispatcherHostState extends State<ShortcutDispatcherHost> {
     final shortcutCubit = context.read<ShortcutCubit>();
     final chatCubit = context.read<ChatCubit>();
     final workspaceChromeCommands = context.read<WorkspaceChromeCommands>();
+    final floatingWorkspaceCubit = context.read<FloatingWorkspaceCubit>();
     final dispatcher = ShortcutDispatcher(
       bus: context.read<CommandBus>(),
       effectiveChords: (commandId) =>
           shortcutCubit.effective[commandId] ?? const [],
-      context: () => _liveShortcutContext(chatCubit, workspaceChromeCommands),
+      context: () => _liveShortcutContext(
+        chatCubit,
+        workspaceChromeCommands,
+        floatingWorkspaceCubit,
+      ),
       isMacOS: defaultIsMacOS,
     );
     dispatcher.attach();

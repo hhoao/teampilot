@@ -196,8 +196,8 @@ abstract final class CommandCatalog {
     CommandDefinition(
       id: CommandIds.floatingMinimize,
       category: CommandCategory.view,
-      defaultChords: const [],
-      when: ShortcutWhen.hasWorkspace,
+      defaultChords: [KeyChord(key: 'escape')],
+      when: ShortcutWhen.floatingPanelOpen,
       terminalPassthrough: true,
       titleL10nKey: 'shortcutsFloatingMinimize',
     ),

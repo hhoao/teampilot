@@ -214,7 +214,9 @@ class _FloatingWorkspacePanelBodyState
                       registry: widget.registry,
                       hostSize: hostSize,
                       panelBounds: positioned,
-                      allowDragResize: !state.isMaximized &&
+                      allowTitleDrag:
+                          state.visibility == FloatingPanelVisibility.open,
+                      allowEdgeResize: !state.isMaximized &&
                           state.visibility == FloatingPanelVisibility.open,
                       onGestureBegin: _beginGesture,
                       onGestureUpdate: _updateGesture,
@@ -283,13 +285,54 @@ Rect clampFloatingPanelBounds(Rect bounds, Size host) {
   return Rect.fromLTWH(left.toDouble(), top.toDouble(), width, height);
 }
 
+/// Follow-the-pointer restore rect when dragging out of maximize.
+@visibleForTesting
+Rect restoreFloatingPanelBoundsFromMaximize({
+  required Rect maxRect,
+  required Size hostSize,
+  required Offset hostLocalPointer,
+  required double restoredWidth,
+  required double restoredHeight,
+  double titleBarHeight = _kTitleBarHeight,
+}) {
+  final fracX = maxRect.width <= 0
+      ? 0.5
+      : ((hostLocalPointer.dx - maxRect.left) / maxRect.width).clamp(0.0, 1.0);
+  final left = hostLocalPointer.dx - fracX * restoredWidth;
+  final top = hostLocalPointer.dy - titleBarHeight / 2;
+  return clampFloatingPanelBounds(
+    Rect.fromLTWH(left, top, restoredWidth, restoredHeight),
+    hostSize,
+  );
+}
+
+/// Restore size only (no legacy post-frame migration side effects).
+@visibleForTesting
+Size floatingPanelRestoreSize(FloatingWorkspaceState state, Size hostSize) {
+  final legacy = state.legacyAbsoluteBounds;
+  if (legacy != null) {
+    final clamped = clampFloatingPanelBounds(legacy, hostSize);
+    return Size(clamped.width, clamped.height);
+  }
+  final placement =
+      state.panelPlacement ??
+      defaultFloatingPanelPlacement(toggleOffset: state.toggleOffset);
+  final resolved = placement.resolve(
+    hostSize,
+    minWidth: _kMinPanelWidth,
+    minHeight: _kMinPanelHeight,
+  );
+  return Size(resolved.width, resolved.height);
+}
+
 class _PanelChromeFrame extends StatefulWidget {
   const _PanelChromeFrame({
     required this.state,
     required this.registry,
     required this.hostSize,
     required this.panelBounds,
-    required this.allowDragResize,
+    required this.allowTitleDrag,
+    required this.allowEdgeResize,
     required this.onGestureBegin,
     required this.onGestureUpdate,
     required this.onGestureEnd,
@@ -299,7 +342,8 @@ class _PanelChromeFrame extends StatefulWidget {
   final FloatingSurfaceRegistry registry;
   final Size hostSize;
   final Rect panelBounds;
-  final bool allowDragResize;
+  final bool allowTitleDrag;
+  final bool allowEdgeResize;
   final ValueChanged<Rect> onGestureBegin;
   final ValueChanged<Rect> onGestureUpdate;
   final ValueChanged<Rect> onGestureEnd;
@@ -346,7 +390,7 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
       ),
       child: Material(
         elevation: 0,
-        color: cs.workspaceCard,
+        color: cs.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
           side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.7)),
@@ -358,9 +402,16 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _TitleBar(
-                  onPanStart: widget.allowDragResize ? _onDragStart : null,
-                  onPanUpdate: widget.allowDragResize ? _onDragUpdate : null,
-                  onPanEnd: widget.allowDragResize ? _onDragEnd : null,
+                  onPanStart: widget.allowTitleDrag ? _onDragStart : null,
+                  onPanUpdate: widget.allowTitleDrag ? _onDragUpdate : null,
+                  onPanEnd: widget.allowTitleDrag ? _onDragEnd : null,
+                  onDoubleTap: widget.allowTitleDrag
+                      ? () {
+                          context.read<FloatingWorkspaceCubit>().setMaximized(
+                            !widget.state.isMaximized,
+                          );
+                        }
+                      : null,
                   tabBar: FloatingWorkspaceTabBar(
                     tabs: tabs,
                     activeTabId: activeId,
@@ -424,7 +475,7 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
                 ),
               ],
             ),
-            if (widget.allowDragResize) ..._resizeHandles(),
+            if (widget.allowEdgeResize) ..._resizeHandles(),
           ],
         ),
       ),
@@ -498,6 +549,33 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
   }
 
   void _onDragStart(DragStartDetails details) {
+    if (widget.state.isMaximized) {
+      final size = floatingPanelRestoreSize(widget.state, widget.hostSize);
+      final panelBox = context.findRenderObject() as RenderBox?;
+      final Offset hostLocal;
+      if (panelBox != null && panelBox.hasSize) {
+        final inPanel = panelBox.globalToLocal(details.globalPosition);
+        hostLocal = Offset(
+          widget.panelBounds.left + inPanel.dx,
+          widget.panelBounds.top + inPanel.dy,
+        );
+      } else {
+        hostLocal = details.globalPosition;
+      }
+      final restored = restoreFloatingPanelBoundsFromMaximize(
+        maxRect: widget.panelBounds,
+        hostSize: widget.hostSize,
+        hostLocalPointer: hostLocal,
+        restoredWidth: size.width,
+        restoredHeight: size.height,
+      );
+      _dragStartPointer = details.globalPosition;
+      _dragStartBounds = restored;
+      widget.onGestureBegin(restored);
+      context.read<FloatingWorkspaceCubit>().setMaximized(false);
+      return;
+    }
+
     _dragStartPointer = details.globalPosition;
     _dragStartBounds = widget.panelBounds;
     widget.onGestureBegin(widget.panelBounds);
@@ -603,18 +681,27 @@ class _TitleBar extends StatelessWidget {
     this.onPanStart,
     this.onPanUpdate,
     this.onPanEnd,
+    this.onDoubleTap,
   });
 
   final Widget tabBar;
   final GestureDragStartCallback? onPanStart;
   final GestureDragUpdateCallback? onPanUpdate;
   final GestureDragEndCallback? onPanEnd;
+  final VoidCallback? onDoubleTap;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Material(
-      color: cs.workspaceSubtleSurface,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
+      ),
       child: SizedBox(
         height: _kTitleBarHeight,
         child: Row(
@@ -623,10 +710,12 @@ class _TitleBar extends StatelessWidget {
               child: MouseRegion(
                 cursor: SystemMouseCursors.grab,
                 child: GestureDetector(
+                  key: const Key('floating_workspace_title_drag'),
                   behavior: HitTestBehavior.opaque,
                   onPanStart: onPanStart,
                   onPanUpdate: onPanUpdate,
                   onPanEnd: onPanEnd,
+                  onDoubleTap: onDoubleTap,
                   child: Padding(
                     padding: const EdgeInsets.only(left: 6),
                     child: tabBar,

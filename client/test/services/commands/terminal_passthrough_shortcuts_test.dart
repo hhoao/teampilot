@@ -6,6 +6,7 @@ import 'package:teampilot/services/commands/command_definition.dart';
 import 'package:teampilot/services/commands/command_ids.dart';
 import 'package:teampilot/services/commands/key_chord.dart';
 import 'package:teampilot/services/commands/keybinding_resolver.dart';
+import 'package:teampilot/services/commands/shortcut_context.dart';
 import 'package:teampilot/services/commands/terminal_passthrough_shortcuts.dart';
 
 PhysicalKeyboardKey _physicalFor(LogicalKeyboardKey logicalKey) {
@@ -15,6 +16,7 @@ PhysicalKeyboardKey _physicalFor(LogicalKeyboardKey logicalKey) {
     LogicalKeyboardKey.controlLeft => PhysicalKeyboardKey.controlLeft,
     LogicalKeyboardKey.metaLeft => PhysicalKeyboardKey.metaLeft,
     LogicalKeyboardKey.keyW => PhysicalKeyboardKey.keyW,
+    LogicalKeyboardKey.escape => PhysicalKeyboardKey.escape,
     _ => throw UnsupportedError('Add mapping for $logicalKey'),
   };
 }
@@ -169,6 +171,35 @@ void main() {
       );
 
       expect(overlay, isEmpty);
+    });
+
+    test('Escape claimed only when floatingPanelOpen context is true', () {
+      final effective = KeybindingResolver.effectiveBindings(
+        catalog: CommandCatalog.v1,
+        overrides: {},
+      );
+
+      final closed = terminalPassthroughShortcutOverlay(
+        effectiveByCommand: effective,
+        isMacOS: false,
+        context: const ShortcutContext(),
+      );
+      expect(
+        anyEntryAccepts(closed, keyDown(LogicalKeyboardKey.escape)),
+        isFalse,
+        reason: 'dock terminals must keep Esc when floating is closed',
+      );
+
+      final open = terminalPassthroughShortcutOverlay(
+        effectiveByCommand: effective,
+        isMacOS: false,
+        context: const ShortcutContext(floatingPanelOpen: true),
+      );
+      expect(
+        anyEntryAccepts(open, keyDown(LogicalKeyboardKey.escape)),
+        isTrue,
+        reason: 'floatingMinimize Esc overlay while panel open',
+      );
     });
   });
 }

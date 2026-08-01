@@ -51,9 +51,17 @@ void main() {
     }
   });
 
-  test('floating minimize / newTerminal / openFile ship unbound', () {
+  test('floating minimize defaults to Escape when panel open', () {
+    final def = CommandCatalog.v1.singleWhere(
+      (c) => c.id == CommandIds.floatingMinimize,
+    );
+    expect(def.defaultChords, [KeyChord(key: 'escape')]);
+    expect(def.when, ShortcutWhen.floatingPanelOpen);
+    expect(def.terminalPassthrough, isTrue);
+  });
+
+  test('floating newTerminal / openFile ship unbound', () {
     for (final id in [
-      CommandIds.floatingMinimize,
       CommandIds.floatingNewTerminal,
       CommandIds.floatingOpenFile,
     ]) {

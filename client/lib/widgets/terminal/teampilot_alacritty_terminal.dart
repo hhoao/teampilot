@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
+import '../../cubits/floating_workspace/floating_panel_visibility.dart';
+import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../cubits/shortcut_cubit.dart';
 import '../../services/commands/key_chord.dart';
+import '../../services/commands/shortcut_context.dart';
 import '../../services/commands/shortcut_focus.dart';
 import '../../services/commands/terminal_passthrough_shortcuts.dart';
 import '../../services/terminal/terminal_fonts.dart';
@@ -48,11 +52,23 @@ class TeampilotAlacrittyTerminal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shortcutCubit = context.watch<ShortcutCubit>();
+    var floatingPanelOpen = false;
+    try {
+      floatingPanelOpen =
+          context.watch<FloatingWorkspaceCubit>().state.visibility ==
+          FloatingPanelVisibility.open;
+    } catch (_) {
+      // Terminal hosts outside the floating cubit (isolated tests).
+    }
+    final overlayContext = ShortcutContext(
+      floatingPanelOpen: floatingPanelOpen && !isTpActionMenuOpen,
+    );
     final terminalShortcuts = <ShortcutActivator, Intent>{
       ...defaultTerminalShortcuts,
       ...terminalPassthroughShortcutOverlay(
         effectiveByCommand: shortcutCubit.effective,
         isMacOS: defaultIsMacOS(),
+        context: overlayContext,
       ),
     };
     return ShortcutFocus(

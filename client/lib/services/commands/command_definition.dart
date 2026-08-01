@@ -8,6 +8,7 @@ enum ShortcutWhen {
   hasOpenWorkspaceTabs,
   hasSessionTab,
   inCompose,
+  floatingPanelOpen,
 }
 
 class CommandDefinition {

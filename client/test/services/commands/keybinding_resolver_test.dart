@@ -16,6 +16,7 @@ PhysicalKeyboardKey _physicalFor(LogicalKeyboardKey logicalKey) {
     LogicalKeyboardKey.metaLeft => PhysicalKeyboardKey.metaLeft,
     LogicalKeyboardKey.keyW => PhysicalKeyboardKey.keyW,
     LogicalKeyboardKey.keyK => PhysicalKeyboardKey.keyK,
+    LogicalKeyboardKey.escape => PhysicalKeyboardKey.escape,
     _ => throw UnsupportedError('Add mapping for $logicalKey'),
   };
 }
@@ -241,6 +242,56 @@ void main() {
 
         expect(result, CommandIds.composeSubmit);
       });
+
+      test('bare Escape matches floatingMinimize even in text input', () {
+        final result = KeybindingResolver.match(
+          event: keyDown(LogicalKeyboardKey.escape),
+          effectiveByCommand: effective,
+          context: const ShortcutContext(
+            floatingPanelOpen: true,
+            inTextInput: true,
+          ),
+          isMacOS: false,
+        );
+
+        expect(result, CommandIds.floatingMinimize);
+      });
+    });
+
+    test('Escape matches floatingMinimize when floatingPanelOpen', () {
+      final result = KeybindingResolver.match(
+        event: keyDown(LogicalKeyboardKey.escape),
+        effectiveByCommand: effective,
+        context: const ShortcutContext(floatingPanelOpen: true),
+        isMacOS: false,
+      );
+
+      expect(result, CommandIds.floatingMinimize);
+    });
+
+    test('Escape ignored when floating panel is not open', () {
+      final result = KeybindingResolver.match(
+        event: keyDown(LogicalKeyboardKey.escape),
+        effectiveByCommand: effective,
+        context: const ShortcutContext(hasWorkspace: true),
+        isMacOS: false,
+      );
+
+      expect(result, isNull);
+    });
+
+    test('Escape matches floatingMinimize while inTerminal', () {
+      final result = KeybindingResolver.match(
+        event: keyDown(LogicalKeyboardKey.escape),
+        effectiveByCommand: effective,
+        context: const ShortcutContext(
+          floatingPanelOpen: true,
+          inTerminal: true,
+        ),
+        isMacOS: false,
+      );
+
+      expect(result, CommandIds.floatingMinimize);
     });
 
     test('duplicate chord across commands: first catalog order wins', () {
