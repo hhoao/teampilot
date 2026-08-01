@@ -2,6 +2,7 @@ import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:ai_message_ui/src/markdown/compiled_text_part_view.dart';
 import 'package:ai_message_ui/src/markdown/ir/markdown_document.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -79,7 +80,7 @@ void main() {
   });
 
   testWidgets(
-    'AiTextPartView uses compiled path for GFM table and onTapLink',
+    'AiTextPartView uses MarkdownView for GFM table and onTapLink',
     (tester) async {
       String? tappedHref;
       await tester.pumpWidget(
@@ -97,7 +98,8 @@ void main() {
         ),
       );
 
-      expect(find.byType(CompiledTextPartView), findsOneWidget);
+      expect(find.byType(MarkdownView), findsOneWidget);
+      expect(find.byType(MarkdownBody), findsNothing);
       expect(find.textContaining('1'), findsOneWidget);
       await tester.tap(find.text('link'));
       await tester.pump();
