@@ -1,5 +1,6 @@
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:ai_message_ui/src/markdown/compiled_text_part_view.dart';
+import 'package:ai_message_ui/src/markdown/content_ir.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -67,6 +68,67 @@ void main() {
       (sheet.tableCellsDecoration! as BoxDecoration).color,
       Colors.transparent,
     );
+  });
+
+  testWidgets('CompiledTextPartView table uses style table chrome', (tester) async {
+    final base = CompiledMarkdownStyle.test();
+    const padding = EdgeInsets.symmetric(horizontal: 14, vertical: 8);
+    const head = Color(0x14000000);
+    final style = CompiledMarkdownStyle(
+      body: base.body,
+      h1: base.h1,
+      h2: base.h2,
+      h3: base.h3,
+      h4: base.h4,
+      h5: base.h5,
+      h6: base.h6,
+      link: base.link,
+      inlineCode: base.inlineCode,
+      codeBlock: base.codeBlock,
+      codeLanguage: base.codeLanguage,
+      listBullet: base.listBullet,
+      blockquote: base.blockquote,
+      tableHead: base.tableHead,
+      tableBody: base.tableBody,
+      mutedSurface: base.mutedSurface,
+      borderColor: base.borderColor,
+      codeBlockRadius: base.codeBlockRadius,
+      tableCellsPadding: padding,
+      tableHeadBackground: head,
+      tableBodyBackground: Colors.transparent,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CompiledTextPartView(
+            style: style,
+            document: const MessageContentDocument(
+              blocks: [
+                TableBlock(
+                  headers: [
+                    InlineDocument(runs: [TextRun('Doc')]),
+                  ],
+                  rows: [
+                    [
+                      InlineDocument(runs: [TextRun('AGENTS.md')]),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final headerPad = tester.widgetList<Padding>(find.byType(Padding)).where(
+      (p) => p.padding == padding,
+    );
+    expect(headerPad, isNotEmpty);
+
+    final fills = tester.widgetList<ColoredBox>(find.byType(ColoredBox));
+    expect(fills.any((c) => c.color == head), isTrue);
   });
 
   testWidgets(
