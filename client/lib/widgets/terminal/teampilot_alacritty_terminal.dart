@@ -12,13 +12,14 @@ import '../../services/commands/shortcut_context.dart';
 import '../../services/commands/shortcut_focus.dart';
 import '../../services/commands/terminal_passthrough_shortcuts.dart';
 import '../../services/terminal/terminal_fonts.dart';
+import 'teampilot_terminal_accessory_host.dart';
 import 'terminal_with_history_scrollbar.dart';
 
 /// Shared Alacritty [TerminalView] shell for chat workbench and workspace dock.
 ///
 /// Hosts own chrome around this (find bar, DnD, parked send, semantics).
 /// [padding] stays host-specific — chat keeps a wider inset than the dock shell.
-class TeampilotAlacrittyTerminal extends StatelessWidget {
+class TeampilotAlacrittyTerminal extends StatefulWidget {
   const TeampilotAlacrittyTerminal({
     required this.engine,
     required this.controller,
@@ -50,6 +51,25 @@ class TeampilotAlacrittyTerminal extends StatelessWidget {
   final void Function(TapDownDetails details, CellOffset? cell)? onTapDown;
 
   @override
+  State<TeampilotAlacrittyTerminal> createState() =>
+      _TeampilotAlacrittyTerminalState();
+}
+
+class _TeampilotAlacrittyTerminalState extends State<TeampilotAlacrittyTerminal> {
+  ModifierLatch? _modifierLatch;
+  GlobalKey<TerminalViewState>? _fallbackViewKey;
+
+  ModifierLatch get _latch => _modifierLatch ??= ModifierLatch();
+
+  GlobalKey<TerminalViewState> get _viewKey {
+    final key = widget.terminalViewKey;
+    if (key is GlobalKey<TerminalViewState>) {
+      return key;
+    }
+    return _fallbackViewKey ??= GlobalKey<TerminalViewState>();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final shortcutCubit = context.watch<ShortcutCubit>();
     var floatingPanelOpen = false;
@@ -71,33 +91,45 @@ class TeampilotAlacrittyTerminal extends StatelessWidget {
         context: overlayContext,
       ),
     };
-    return ShortcutFocus(
+    final touchShell = isTouchShell();
+    final content = ShortcutFocus(
       kind: ShortcutFocusKind.terminal,
       child: TerminalWithHistoryScrollbar(
-        engine: engine,
-        controller: controller,
+        engine: widget.engine,
+        controller: widget.controller,
         child: TerminalView(
-          engine,
-          key: terminalViewKey,
-          controller: controller,
-          theme: theme,
-          backgroundOpacity: backgroundOpacity,
-          padding: padding,
+          widget.engine,
+          key: touchShell ? _viewKey : widget.terminalViewKey,
+          controller: widget.controller,
+          theme: widget.theme,
+          backgroundOpacity: widget.backgroundOpacity,
+          padding: widget.padding,
           textStyle: appTerminalTextStyle(context),
-          autofocus: autofocus,
+          autofocus: widget.autofocus,
           shortcuts: terminalShortcuts,
-          linkProviders: linkProviders,
+          linkProviders: widget.linkProviders,
+          modifierLatch: touchShell ? _latch : null,
           primaryTapActivatesLink: context
               .watch<SessionPreferencesCubit>()
               .state
               .preferences
               .terminalLinkClickOpensInApp,
-          onPtyResize: onPtyResize,
-          onTapDown: onTapDown,
-          onLinkActivate: onLinkActivate,
-          onSecondaryTapDown: onSecondaryTapDown,
+          onPtyResize: widget.onPtyResize,
+          onTapDown: widget.onTapDown,
+          onLinkActivate: widget.onLinkActivate,
+          onSecondaryTapDown: widget.onSecondaryTapDown,
         ),
       ),
+    );
+
+    if (!touchShell) {
+      return content;
+    }
+
+    return TeampilotTerminalAccessoryHost(
+      viewKey: _viewKey,
+      latch: _latch,
+      child: content,
     );
   }
 }
