@@ -237,6 +237,9 @@ class WorkspaceHubPage extends StatelessWidget {
   final String? subtitle;
   final bool showSubtitle;
   final List<WorkspaceHubEntry> entries;
+
+  /// When true, skip page inset and page fill — parent card chrome already
+  /// supplies [ColorScheme.workspaceCard].
   final bool embedded;
 
   @override
@@ -262,7 +265,9 @@ class WorkspaceHubPage extends StatelessWidget {
 
     return Container(
       key: pageKey,
-      color: cs.workspacePage,
+      // Transparent when embedded so home [WorkspacePageCardShell] card fill
+      // is not overwritten by [workspacePage].
+      color: embedded ? null : cs.workspacePage,
       child: column,
     );
   }
@@ -352,6 +357,7 @@ class WorkspaceSectionPage extends StatelessWidget {
     required this.pageKey,
     required this.child,
     this.padding = const EdgeInsets.fromLTRB(16, 12, 16, 16),
+    this.embedded = false,
     super.key,
   });
 
@@ -359,12 +365,18 @@ class WorkspaceSectionPage extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;
 
+  /// When true, skip page fill — parent card chrome already supplies
+  /// [ColorScheme.workspaceCard] (e.g. home MCP / plugins / extensions).
+  final bool embedded;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Container(
       key: pageKey,
-      color: cs.workspacePage,
+      // Transparent when embedded so home [WorkspacePageCardShell] card fill
+      // is not overwritten by [workspacePage].
+      color: embedded ? null : cs.workspacePage,
       child: Padding(
         padding: padding,
         child: Column(

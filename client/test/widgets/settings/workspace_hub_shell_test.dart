@@ -1,10 +1,101 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/theme/workspace_surface_layers.dart';
 import 'package:teampilot/widgets/pane_entry_animation.dart';
 import 'package:teampilot/widgets/split_layout.dart';
 import 'package:teampilot/widgets/settings/workspace_hub_shell.dart';
 
 void main() {
+  testWidgets('section page paints workspacePage when not embedded', (
+    tester,
+  ) async {
+    late ColorScheme cs;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            cs = Theme.of(context).colorScheme;
+            return const Scaffold(
+              body: WorkspaceSectionPage(
+                pageKey: Key('section'),
+                child: Text('Body'),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    final outer = tester.widget<Container>(find.byKey(const Key('section')));
+    expect(outer.color, cs.workspacePage);
+  });
+
+  testWidgets('section page is transparent when embedded in card chrome', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: WorkspaceSectionPage(
+            pageKey: Key('section-embedded'),
+            embedded: true,
+            child: Text('Body'),
+          ),
+        ),
+      ),
+    );
+
+    final outer = tester.widget<Container>(
+      find.byKey(const Key('section-embedded')),
+    );
+    expect(outer.color, isNull);
+  });
+
+  testWidgets('hub page is transparent when embedded in card chrome', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: WorkspaceHubPage(
+            pageKey: Key('hub-embedded'),
+            title: 'MCP',
+            embedded: true,
+            entries: [],
+          ),
+        ),
+      ),
+    );
+
+    final outer = tester.widget<Container>(
+      find.byKey(const Key('hub-embedded')),
+    );
+    expect(outer.color, isNull);
+  });
+
+  testWidgets('hub page paints workspacePage when not embedded', (tester) async {
+    late ColorScheme cs;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            cs = Theme.of(context).colorScheme;
+            return const Scaffold(
+              body: WorkspaceHubPage(
+                pageKey: Key('hub-page'),
+                title: 'MCP',
+                entries: [],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    final outer = tester.widget<Container>(find.byKey(const Key('hub-page')));
+    expect(outer.color, cs.workspacePage);
+  });
+
   testWidgets('split shell lays out nav and body', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

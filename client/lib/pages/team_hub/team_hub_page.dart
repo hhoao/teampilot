@@ -151,6 +151,8 @@ class _TeamHubPageState extends State<TeamHubPage> {
           return WorkspaceSectionPage(
             pageKey: _pageKey,
             padding: EdgeInsets.zero,
+            // Always hosted inside home [WorkspacePageCardShell].
+            embedded: true,
             child: pane,
           );
         }

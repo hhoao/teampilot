@@ -92,7 +92,11 @@ class WorkspaceAdaptiveSectionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (useAndroidHubNavigation(context)) {
-      return WorkspaceSectionPage(pageKey: pageKey, child: body);
+      return WorkspaceSectionPage(
+        pageKey: pageKey,
+        embedded: embedded,
+        child: body,
+      );
     }
     return WorkspaceHubDesktopShell(
       pageKey: pageKey,

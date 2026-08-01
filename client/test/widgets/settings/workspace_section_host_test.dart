@@ -88,6 +88,27 @@ void main() {
     expect(find.text('Plugins'), findsOneWidget);
   });
 
+  testWidgets('adaptive section page forwards embedded to desktop shell', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrap(
+        WorkspaceAdaptiveSectionPage(
+          pageKey: const Key('test-page'),
+          title: 'Plugins',
+          subtitle: 'Manage plugins',
+          nav: const SizedBox(child: Text('Nav')),
+          body: const Text('Body'),
+          embedded: true,
+        ),
+      ),
+    );
+    final shell = tester.widget<WorkspaceHubDesktopShell>(
+      find.byType(WorkspaceHubDesktopShell),
+    );
+    expect(shell.embedded, isTrue);
+  });
+
   testWidgets('desktop shell applies page inset when not embedded', (
     tester,
   ) async {
