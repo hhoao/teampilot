@@ -315,6 +315,11 @@ bool _hasUnsupportedInline(List<md.Node>? nodes) {
       if (node.tag == 'input' && node.attributes['type'] == 'checkbox') {
         continue;
       }
+      // Inline code is opaque literal text — do not treat `<…>` inside
+      // backticks as raw HTML (that wrongly demoted whole GFM tables).
+      if (node.tag == 'code') {
+        continue;
+      }
       // Raw HTML elements other than known markdown tags.
       if (!_isSupportedInlineTag(node.tag)) return true;
       if (_hasUnsupportedInline(node.children)) return true;
