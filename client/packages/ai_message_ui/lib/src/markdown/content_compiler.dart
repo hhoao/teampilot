@@ -1,14 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:markdown/markdown.dart' as md;
 
-import 'content_ir.dart';
+import 'ir/markdown_document.dart';
 import 'streaming_markdown.dart';
 
 const int _kMessageContentCacheMax = 64;
 
 /// LRU cache of compiled docs keyed by [prepareStreamingMarkdown] output.
-final Map<String, MessageContentDocument> _messageContentCache =
-    <String, MessageContentDocument>{};
+final Map<String, MarkdownDocument> _messageContentCache =
+    <String, MarkdownDocument>{};
 
 @visibleForTesting
 int messageContentCacheHits = 0;
@@ -22,14 +22,14 @@ void clearMessageContentCache() {
   messageContentCacheHits = 0;
 }
 
-/// Compiles GFM markdown into a style-free [MessageContentDocument].
+/// Compiles GFM markdown into a style-free [MarkdownDocument].
 ///
-/// Images and raw HTML become [UnsupportedBlock] slices. Task-list checkboxes
+/// Images and raw HTML become [RawLiteralBlock] slices. Task-list checkboxes
 /// are recognized and do not count as unsupported HTML.
 ///
 /// Results are cached (LRU, max 64) by the prepared markdown string. Cache hits
-/// return the identical [MessageContentDocument] instance.
-MessageContentDocument compileMessageContent(String markdown) {
+/// return the identical [MarkdownDocument] instance.
+MarkdownDocument compileMessageContent(String markdown) {
   final prepared = prepareStreamingMarkdown(markdown);
   final cached = _messageContentCache.remove(prepared);
   if (cached != null) {
@@ -42,7 +42,7 @@ MessageContentDocument compileMessageContent(String markdown) {
     encodeHtml: false,
   );
   final nodes = document.parse(prepared);
-  final compiled = MessageContentDocument(
+  final compiled = MarkdownDocument(
     blocks: [for (final node in nodes) _compileTopLevel(node)],
   );
   if (_messageContentCache.length >= _kMessageContentCacheMax) {
@@ -52,11 +52,11 @@ MessageContentDocument compileMessageContent(String markdown) {
   return compiled;
 }
 
-ContentBlock _compileTopLevel(md.Node node) {
+MarkdownBlock _compileTopLevel(md.Node node) {
   if (node is md.Text) {
     final text = node.textContent;
     if (_looksLikeHtml(text)) {
-      return UnsupportedBlock(rawMarkdown: text);
+      return RawLiteralBlock(rawMarkdown: text);
     }
     if (text.trim().isEmpty) {
       return const ParagraphBlock(runs: []);
@@ -64,12 +64,12 @@ ContentBlock _compileTopLevel(md.Node node) {
     return ParagraphBlock(runs: [TextRun(text)]);
   }
   if (node is! md.Element) {
-    return UnsupportedBlock(rawMarkdown: node.textContent);
+    return RawLiteralBlock(rawMarkdown: node.textContent);
   }
   return _compileElement(node);
 }
 
-ContentBlock _compileElement(md.Element element) {
+MarkdownBlock _compileElement(md.Element element) {
   final tag = element.tag;
   switch (tag) {
     case 'h1':
@@ -79,7 +79,7 @@ ContentBlock _compileElement(md.Element element) {
     case 'h5':
     case 'h6':
       if (_hasUnsupportedInline(element.children)) {
-        return UnsupportedBlock(rawMarkdown: _reconstructUnsupported(element));
+        return RawLiteralBlock(rawMarkdown: _reconstructUnsupported(element));
       }
       return HeadingBlock(
         level: int.parse(tag.substring(1)),
@@ -87,7 +87,7 @@ ContentBlock _compileElement(md.Element element) {
       );
     case 'p':
       if (_hasUnsupportedInline(element.children)) {
-        return UnsupportedBlock(rawMarkdown: _reconstructUnsupported(element));
+        return RawLiteralBlock(rawMarkdown: _reconstructUnsupported(element));
       }
       return ParagraphBlock(runs: _compileInlines(element.children));
     case 'pre':
@@ -107,7 +107,7 @@ ContentBlock _compileElement(md.Element element) {
     case 'table':
       return _compileTable(element);
     default:
-      return UnsupportedBlock(rawMarkdown: _reconstructUnsupported(element));
+      return RawLiteralBlock(rawMarkdown: _reconstructUnsupported(element));
   }
 }
 
@@ -140,10 +140,10 @@ ContentListItem _compileListItem(md.Element li) {
   final isTask = li.attributes['class'] == 'task-list-item';
   bool? isTaskChecked;
   final runs = <InlineRun>[];
-  final children = <ContentBlock>[];
+  final children = <MarkdownBlock>[];
 
   // Unsupported inlines (images, raw HTML) follow the paragraph policy: emit an
-  // [UnsupportedBlock] for that item region instead of silently dropping content.
+  // [RawLiteralBlock] for that item region instead of silently dropping content.
   for (final child in li.children ?? const <md.Node>[]) {
     if (child is md.Element &&
         child.tag == 'input' &&
@@ -155,7 +155,7 @@ ContentListItem _compileListItem(md.Element li) {
       if (child is md.Element && child.tag == 'p' && runs.isEmpty) {
         if (_hasUnsupportedInline(child.children)) {
           children.add(
-            UnsupportedBlock(rawMarkdown: _reconstructUnsupported(child)),
+            RawLiteralBlock(rawMarkdown: _reconstructUnsupported(child)),
           );
         } else {
           runs.addAll(_compileInlines(child.children));
@@ -167,7 +167,7 @@ ContentListItem _compileListItem(md.Element li) {
     }
     if (_hasUnsupportedInline([child])) {
       children.add(
-        UnsupportedBlock(rawMarkdown: _reconstructUnsupported(child)),
+        RawLiteralBlock(rawMarkdown: _reconstructUnsupported(child)),
       );
       continue;
     }
@@ -203,9 +203,9 @@ bool _isBlockChild(md.Node node) {
   }
 }
 
-ContentBlock _compileTable(md.Element table) {
+MarkdownBlock _compileTable(md.Element table) {
   if (_tableHasUnsupportedInline(table)) {
-    return UnsupportedBlock(rawMarkdown: _reconstructUnsupported(table));
+    return RawLiteralBlock(rawMarkdown: _reconstructUnsupported(table));
   }
 
   final headers = <InlineDocument>[];

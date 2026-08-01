@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:ai_message_ui/src/markdown/content_compiler.dart';
-import 'package:ai_message_ui/src/markdown/content_ir.dart';
+import 'package:ai_message_ui/src/markdown/ir/markdown_document.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -23,8 +23,8 @@ void main() {
     );
   }
 
-  int countUnsupported(ContentBlock block) {
-    var count = block is UnsupportedBlock ? 1 : 0;
+  int countUnsupported(MarkdownBlock block) {
+    var count = block is RawLiteralBlock ? 1 : 0;
     switch (block) {
       case BlockquoteBlock(:final blocks):
         for (final child in blocks) {
@@ -42,7 +42,7 @@ void main() {
     return count;
   }
 
-  int unsupportedInDocument(MessageContentDocument doc) {
+  int unsupportedInDocument(MarkdownDocument doc) {
     var total = 0;
     for (final block in doc.blocks) {
       total += countUnsupported(block);

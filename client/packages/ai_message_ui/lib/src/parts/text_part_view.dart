@@ -4,7 +4,7 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import '../history_render_scope.dart';
 import '../markdown/compiled_text_part_view.dart';
 import '../markdown/content_compiler.dart';
-import '../markdown/content_ir.dart';
+import '../markdown/ir/markdown_document.dart';
 import '../markdown/content_truncate.dart';
 import '../strings.dart';
 
@@ -54,7 +54,7 @@ class _ExpandableHistoryMarkdown extends StatefulWidget {
     this.onTapLink,
   });
 
-  final MessageContentDocument document;
+  final MarkdownDocument document;
   final ContentCollapseBudget budget;
   final MarkdownTapLinkCallback? onTapLink;
 

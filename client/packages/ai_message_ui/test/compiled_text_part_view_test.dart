@@ -1,5 +1,5 @@
 import 'package:ai_message_ui/src/markdown/compiled_text_part_view.dart';
-import 'package:ai_message_ui/src/markdown/content_ir.dart';
+import 'package:ai_message_ui/src/markdown/ir/markdown_document.dart';
 import 'package:ai_message_ui/src/theme.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -10,7 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   Future<void> pumpCompiled(
     WidgetTester tester, {
-    required MessageContentDocument document,
+    required MarkdownDocument document,
     MarkdownTapLinkCallback? onTapLink,
     ValueChanged<SelectedContent?>? onSelectionChanged,
   }) {
@@ -39,7 +39,7 @@ void main() {
   testWidgets('renders heading text', (tester) async {
     await pumpCompiled(
       tester,
-      document: const MessageContentDocument(
+      document: const MarkdownDocument(
         blocks: [
           HeadingBlock(level: 2, runs: [TextRun('Section Title')]),
         ],
@@ -53,7 +53,7 @@ void main() {
   testWidgets('renders ordered and task list text', (tester) async {
     await pumpCompiled(
       tester,
-      document: const MessageContentDocument(
+      document: const MarkdownDocument(
         blocks: [
           ListBlock(
             ordered: true,
@@ -90,7 +90,7 @@ void main() {
     String? tappedHref;
     await pumpCompiled(
       tester,
-      document: const MessageContentDocument(
+      document: const MarkdownDocument(
         blocks: [
           ParagraphBlock(
             runs: [
@@ -118,7 +118,7 @@ void main() {
   testWidgets('table shows bold cell text', (tester) async {
     await pumpCompiled(
       tester,
-      document: const MessageContentDocument(
+      document: const MarkdownDocument(
         blocks: [
           TableBlock(
             headers: [
@@ -157,7 +157,7 @@ void main() {
   testWidgets('code block shows fence body', (tester) async {
     await pumpCompiled(
       tester,
-      document: const MessageContentDocument(
+      document: const MarkdownDocument(
         blocks: [
           CodeBlock(language: 'dart', text: 'print(42);\n'),
         ],
@@ -173,7 +173,7 @@ void main() {
     SelectedContent? selection;
     await pumpCompiled(
       tester,
-      document: const MessageContentDocument(
+      document: const MarkdownDocument(
         blocks: [
           ParagraphBlock(runs: [TextRun('Selectable paragraph body')]),
         ],
@@ -205,7 +205,7 @@ void main() {
   testWidgets('must-compile docs have no MarkdownBody', (tester) async {
     await pumpCompiled(
       tester,
-      document: const MessageContentDocument(
+      document: const MarkdownDocument(
         blocks: [
           HeadingBlock(level: 1, runs: [TextRun('H')]),
           ParagraphBlock(runs: [TextRun('P')]),
@@ -227,10 +227,10 @@ void main() {
   ) async {
     await pumpCompiled(
       tester,
-      document: const MessageContentDocument(
+      document: const MarkdownDocument(
         blocks: [
           ParagraphBlock(runs: [TextRun('before')]),
-          UnsupportedBlock(rawMarkdown: '![alt](x.png)'),
+          RawLiteralBlock(rawMarkdown: '![alt](x.png)'),
           ParagraphBlock(runs: [TextRun('after')]),
         ],
       ),

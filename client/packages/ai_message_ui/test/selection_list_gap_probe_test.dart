@@ -1,7 +1,7 @@
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:ai_message_ui/src/markdown/compiled_markdown_style.dart';
 import 'package:ai_message_ui/src/markdown/compiled_text_part_view.dart';
-import 'package:ai_message_ui/src/markdown/content_ir.dart';
+import 'package:ai_message_ui/src/markdown/ir/markdown_document.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -40,7 +40,7 @@ void main() {
           body: SelectionArea(
             child: CompiledTextPartView(
               style: style,
-              document: const MessageContentDocument(
+              document: const MarkdownDocument(
                 blocks: [
                   ParagraphBlock(
                     runs: [
@@ -74,7 +74,7 @@ void main() {
           body: SelectionArea(
             child: CompiledTextPartView(
               style: style,
-              document: const MessageContentDocument(
+              document: const MarkdownDocument(
                 blocks: [
                   ListBlock(
                     ordered: false,

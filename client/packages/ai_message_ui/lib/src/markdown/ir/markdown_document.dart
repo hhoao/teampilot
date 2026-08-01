@@ -1,30 +1,48 @@
 import 'package:flutter/foundation.dart';
 
+import 'markdown_block_kind.dart';
+
+MarkdownBlockKind headingKindForLevel(int level) {
+  return switch (level.clamp(1, 6)) {
+    1 => MarkdownBlockKind.heading1,
+    2 => MarkdownBlockKind.heading2,
+    3 => MarkdownBlockKind.heading3,
+    4 => MarkdownBlockKind.heading4,
+    5 => MarkdownBlockKind.heading5,
+    _ => MarkdownBlockKind.heading6,
+  };
+}
+
 /// Style-free compiled markdown document (cacheable IR).
 @immutable
-class MessageContentDocument {
-  const MessageContentDocument({required this.blocks});
+class MarkdownDocument {
+  const MarkdownDocument({required this.blocks});
 
-  final List<ContentBlock> blocks;
+  final List<MarkdownBlock> blocks;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is MessageContentDocument && listEquals(blocks, other.blocks);
+      other is MarkdownDocument && listEquals(blocks, other.blocks);
 
   @override
   int get hashCode => Object.hashAll(blocks);
 }
 
-/// Top-level block in a [MessageContentDocument].
-sealed class ContentBlock {
-  const ContentBlock();
+/// Top-level block in a [MarkdownDocument].
+sealed class MarkdownBlock {
+  const MarkdownBlock();
+
+  MarkdownBlockKind get kind;
 }
 
-final class ParagraphBlock extends ContentBlock {
+final class ParagraphBlock extends MarkdownBlock {
   const ParagraphBlock({required this.runs});
 
   final List<InlineRun> runs;
+
+  @override
+  MarkdownBlockKind get kind => MarkdownBlockKind.paragraph;
 
   @override
   bool operator ==(Object other) =>
@@ -35,11 +53,14 @@ final class ParagraphBlock extends ContentBlock {
   int get hashCode => Object.hashAll(runs);
 }
 
-final class HeadingBlock extends ContentBlock {
+final class HeadingBlock extends MarkdownBlock {
   const HeadingBlock({required this.level, required this.runs});
 
   final int level;
   final List<InlineRun> runs;
+
+  @override
+  MarkdownBlockKind get kind => headingKindForLevel(level);
 
   @override
   bool operator ==(Object other) =>
@@ -52,11 +73,14 @@ final class HeadingBlock extends ContentBlock {
   int get hashCode => Object.hash(level, Object.hashAll(runs));
 }
 
-final class ListBlock extends ContentBlock {
+final class ListBlock extends MarkdownBlock {
   const ListBlock({required this.ordered, required this.items});
 
   final bool ordered;
   final List<ContentListItem> items;
+
+  @override
+  MarkdownBlockKind get kind => MarkdownBlockKind.list;
 
   @override
   bool operator ==(Object other) =>
@@ -78,7 +102,7 @@ class ContentListItem {
   });
 
   final List<InlineRun> runs;
-  final List<ContentBlock> children;
+  final List<MarkdownBlock> children;
 
   /// `null` when the item is not a task-list entry.
   final bool? isTaskChecked;
@@ -99,10 +123,13 @@ class ContentListItem {
       );
 }
 
-final class BlockquoteBlock extends ContentBlock {
+final class BlockquoteBlock extends MarkdownBlock {
   const BlockquoteBlock({required this.blocks});
 
-  final List<ContentBlock> blocks;
+  final List<MarkdownBlock> blocks;
+
+  @override
+  MarkdownBlockKind get kind => MarkdownBlockKind.blockquote;
 
   @override
   bool operator ==(Object other) =>
@@ -113,8 +140,11 @@ final class BlockquoteBlock extends ContentBlock {
   int get hashCode => Object.hashAll(blocks);
 }
 
-final class HorizontalRuleBlock extends ContentBlock {
+final class HorizontalRuleBlock extends MarkdownBlock {
   const HorizontalRuleBlock();
+
+  @override
+  MarkdownBlockKind get kind => MarkdownBlockKind.horizontalRule;
 
   @override
   bool operator ==(Object other) =>
@@ -124,11 +154,14 @@ final class HorizontalRuleBlock extends ContentBlock {
   int get hashCode => runtimeType.hashCode;
 }
 
-final class CodeBlock extends ContentBlock {
+final class CodeBlock extends MarkdownBlock {
   const CodeBlock({this.language, required this.text});
 
   final String? language;
   final String text;
+
+  @override
+  MarkdownBlockKind get kind => MarkdownBlockKind.code;
 
   @override
   bool operator ==(Object other) =>
@@ -139,11 +172,14 @@ final class CodeBlock extends ContentBlock {
   int get hashCode => Object.hash(language, text);
 }
 
-final class TableBlock extends ContentBlock {
+final class TableBlock extends MarkdownBlock {
   const TableBlock({required this.headers, required this.rows});
 
   final List<InlineDocument> headers;
   final List<List<InlineDocument>> rows;
+
+  @override
+  MarkdownBlockKind get kind => MarkdownBlockKind.table;
 
   @override
   bool operator ==(Object other) {
@@ -167,15 +203,36 @@ final class TableBlock extends ContentBlock {
   }
 }
 
-final class UnsupportedBlock extends ContentBlock {
-  const UnsupportedBlock({required this.rawMarkdown});
+final class ImageBlock extends MarkdownBlock {
+  const ImageBlock({required this.src, this.alt});
 
-  final String rawMarkdown;
+  final String src;
+  final String? alt;
+
+  @override
+  MarkdownBlockKind get kind => MarkdownBlockKind.image;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is UnsupportedBlock && rawMarkdown == other.rawMarkdown;
+      other is ImageBlock && src == other.src && alt == other.alt;
+
+  @override
+  int get hashCode => Object.hash(src, alt);
+}
+
+final class RawLiteralBlock extends MarkdownBlock {
+  const RawLiteralBlock({required this.rawMarkdown});
+
+  final String rawMarkdown;
+
+  @override
+  MarkdownBlockKind get kind => MarkdownBlockKind.rawLiteral;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RawLiteralBlock && rawMarkdown == other.rawMarkdown;
 
   @override
   int get hashCode => rawMarkdown.hashCode;
@@ -287,4 +344,19 @@ final class LinkRun extends InlineRun {
 
   @override
   int get hashCode => Object.hash(url, title, Object.hashAll(children));
+}
+
+final class ImageRun extends InlineRun {
+  const ImageRun({required this.src, this.alt});
+
+  final String src;
+  final String? alt;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ImageRun && src == other.src && alt == other.alt;
+
+  @override
+  int get hashCode => Object.hash(src, alt);
 }

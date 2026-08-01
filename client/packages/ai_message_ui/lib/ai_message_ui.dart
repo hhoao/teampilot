@@ -26,6 +26,7 @@ export 'src/tool_file_actions.dart';
 export 'src/tool_subagent_actions.dart';
 export 'src/markdown/compiled_markdown_style.dart';
 export 'src/markdown/ir/markdown_block_kind.dart';
+export 'src/markdown/ir/markdown_document.dart';
 export 'src/markdown/tokens/markdown_profile.dart';
 export 'src/markdown/tokens/markdown_tokens.dart';
 export 'src/theme.dart';

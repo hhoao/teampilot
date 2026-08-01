@@ -1,10 +1,10 @@
 import 'package:ai_message_ui/src/markdown/content_compiler.dart';
-import 'package:ai_message_ui/src/markdown/content_ir.dart';
+import 'package:ai_message_ui/src/markdown/ir/markdown_document.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  bool hasUnsupported(MessageContentDocument doc) =>
-      doc.blocks.any((b) => b is UnsupportedBlock);
+  bool hasUnsupported(MarkdownDocument doc) =>
+      doc.blocks.any((b) => b is RawLiteralBlock);
 
   test('compiles heading', () {
     final doc = compileMessageContent('## Hello world');
@@ -75,8 +75,8 @@ void main() {
     final doc = compileMessageContent(
       '| A | B |\n| --- | --- |\n| x | ![alt](x.png) |\n',
     );
-    expect(doc.blocks.single, isA<UnsupportedBlock>());
-    final block = doc.blocks.single as UnsupportedBlock;
+    expect(doc.blocks.single, isA<RawLiteralBlock>());
+    final block = doc.blocks.single as RawLiteralBlock;
     expect(block.rawMarkdown, contains('![alt](x.png)'));
   });
 
@@ -125,15 +125,15 @@ void main() {
 
   test('heading with inline image becomes unsupported', () {
     final doc = compileMessageContent('## Hello ![alt](x.png)');
-    expect(doc.blocks.single, isA<UnsupportedBlock>());
-    final block = doc.blocks.single as UnsupportedBlock;
+    expect(doc.blocks.single, isA<RawLiteralBlock>());
+    final block = doc.blocks.single as RawLiteralBlock;
     expect(block.rawMarkdown, '## Hello ![alt](x.png)');
   });
 
   test('images become unsupported', () {
     final doc = compileMessageContent('![alt](x.png)\n');
     expect(doc.blocks, isNotEmpty);
-    expect(doc.blocks.any((b) => b is UnsupportedBlock), isTrue);
+    expect(doc.blocks.any((b) => b is RawLiteralBlock), isTrue);
   });
 
   test('list item with inline image promotes unsupported child', () {
@@ -141,9 +141,9 @@ void main() {
     expect(hasUnsupported(doc), isFalse);
     expect(doc.blocks.single, isA<ListBlock>());
     final item = (doc.blocks.single as ListBlock).items.single;
-    expect(item.children.single, isA<UnsupportedBlock>());
+    expect(item.children.single, isA<RawLiteralBlock>());
     expect(
-      (item.children.single as UnsupportedBlock).rawMarkdown,
+      (item.children.single as RawLiteralBlock).rawMarkdown,
       '![alt](x.png)',
     );
   });
@@ -151,6 +151,6 @@ void main() {
   test('raw HTML becomes unsupported', () {
     final doc = compileMessageContent('<div>hi</div>\n');
     expect(doc.blocks, isNotEmpty);
-    expect(doc.blocks.any((b) => b is UnsupportedBlock), isTrue);
+    expect(doc.blocks.any((b) => b is RawLiteralBlock), isTrue);
   });
 }

@@ -5,7 +5,7 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import '../strings.dart';
 import '../theme.dart';
 import 'compiled_markdown_style.dart';
-import 'content_ir.dart';
+import 'ir/markdown_document.dart';
 
 /// Match [flutter_markdown_plus] `_buildRichText`: force a uniform line box so
 /// mixed CJK / Latin / mono weights cannot open selection seams between wraps.
@@ -20,7 +20,7 @@ StrutStyle _forcedStrut(TextStyle style) {
   );
 }
 
-/// Renders a style-free [MessageContentDocument] with cheap [Text.rich] /
+/// Renders a style-free [MarkdownDocument] with cheap [Text.rich] /
 /// lite table / code chrome. Parent should wrap with [SelectionArea]; leaves
 /// are non-selectable [Text] / [Text.rich].
 class CompiledTextPartView extends StatelessWidget {
@@ -31,7 +31,7 @@ class CompiledTextPartView extends StatelessWidget {
     super.key,
   });
 
-  final MessageContentDocument document;
+  final MarkdownDocument document;
   final MarkdownTapLinkCallback? onTapLink;
   final CompiledMarkdownStyle? style;
 
@@ -44,7 +44,7 @@ class CompiledTextPartView extends StatelessWidget {
     final children = <Widget>[];
     final gapsBefore = <double>[];
     final blocks = document.blocks;
-    ContentBlock? previousBlock;
+    MarkdownBlock? previousBlock;
     var i = 0;
     while (i < blocks.length) {
       final block = blocks[i];
@@ -83,8 +83,8 @@ class CompiledTextPartView extends StatelessWidget {
   /// Heading → list stays on the list rhythm; incoming headings use
   /// [CompiledMarkdownStyle.headingTopSpacing]; other pairs use [blockSpacing].
   double _blockGap(
-    ContentBlock previous,
-    ContentBlock next,
+    MarkdownBlock previous,
+    MarkdownBlock next,
     CompiledMarkdownStyle style,
   ) {
     if (previous is HeadingBlock && next is ListBlock) {
@@ -96,10 +96,10 @@ class CompiledTextPartView extends StatelessWidget {
     return style.blockSpacing;
   }
 
-  bool _isMergeableTextual(ContentBlock block) =>
+  bool _isMergeableTextual(MarkdownBlock block) =>
       block is ParagraphBlock || block is HeadingBlock;
 
-  int _mergeableRunEnd(List<ContentBlock> blocks, int start) {
+  int _mergeableRunEnd(List<MarkdownBlock> blocks, int start) {
     var end = start + 1;
     while (end < blocks.length && _isMergeableTextual(blocks[end])) {
       end++;
@@ -108,7 +108,7 @@ class CompiledTextPartView extends StatelessWidget {
   }
 
   Widget _buildMergedTextual(
-    List<ContentBlock> blocks,
+    List<MarkdownBlock> blocks,
     CompiledMarkdownStyle style,
   ) {
     final spans = <InlineSpan>[];
@@ -156,7 +156,7 @@ class CompiledTextPartView extends StatelessWidget {
 
   Widget _buildBlock(
     BuildContext context,
-    ContentBlock block,
+    MarkdownBlock block,
     CompiledMarkdownStyle style,
     ThemeData theme,
     AiMessageTheme aiTheme,
@@ -195,7 +195,7 @@ class CompiledTextPartView extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.only(left: 12),
             child: CompiledTextPartView(
-              document: MessageContentDocument(blocks: blocks),
+              document: MarkdownDocument(blocks: blocks),
               onTapLink: onTapLink,
               style: style,
             ),
@@ -213,7 +213,13 @@ class CompiledTextPartView extends StatelessWidget {
           style: style,
           onTapLink: onTapLink,
         ),
-      UnsupportedBlock(:final rawMarkdown) => MarkdownBody(
+      ImageBlock(:final src, :final alt) => MarkdownBody(
+          data: '![${alt ?? ''}]($src)',
+          styleSheet: aiTheme.markdown.toMarkdownStyleSheet(),
+          onTapLink: onTapLink,
+          selectable: false,
+        ),
+      RawLiteralBlock(:final rawMarkdown) => MarkdownBody(
           data: rawMarkdown,
           styleSheet: aiTheme.markdown.toMarkdownStyleSheet(),
           onTapLink: onTapLink,
@@ -286,6 +292,8 @@ class CompiledTextPartView extends StatelessWidget {
             ),
           ),
         ),
+      ImageRun(:final src, :final alt) =>
+        TextSpan(text: alt ?? src, style: base),
     };
   }
 }
@@ -304,6 +312,8 @@ String _plainText(List<InlineRun> runs) {
               StrikeRun(:final children) ||
               LinkRun(:final children):
           walk(children);
+        case ImageRun(:final alt, :final src):
+          buffer.write(alt ?? src);
       }
     }
   }
@@ -347,7 +357,7 @@ class _CompiledList extends StatelessWidget {
     // (separate bullet Text caused misaligned / gapped highlights). Strut on
     // the body matches MarkdownBody preview line boxes.
     final content = CompiledTextPartView(
-      document: MessageContentDocument(
+      document: MarkdownDocument(
         blocks: [ParagraphBlock(runs: item.runs)],
       ),
       onTapLink: onTapLink,
@@ -398,7 +408,7 @@ class _CompiledList extends StatelessWidget {
               _ => Padding(
                   padding: EdgeInsets.only(left: style.listIndent),
                   child: CompiledTextPartView(
-                    document: MessageContentDocument(blocks: [child]),
+                    document: MarkdownDocument(blocks: [child]),
                     onTapLink: onTapLink,
                     style: style,
                   ),
@@ -560,6 +570,7 @@ class _CompiledTable extends StatelessWidget {
             ),
           ),
         ),
+      ImageRun(:final src, :final alt) => TextSpan(text: alt ?? src, style: base),
     };
   }
 }
