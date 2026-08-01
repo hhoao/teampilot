@@ -203,23 +203,26 @@ class _UserBubble extends StatelessWidget {
           final threadMax = constraints.maxWidth.isFinite
               ? constraints.maxWidth
               : 480.0;
-          final bubbleMax = (threadMax * 0.85).clamp(
-            0.0,
-            showActionBar ? threadMax - actionBarReserve : threadMax,
-          );
+          final canFitActionBar =
+              showActionBar && threadMax >= actionBarReserve;
+          final bubbleCap = canFitActionBar
+              ? (threadMax - actionBarReserve).clamp(0.0, threadMax)
+              : threadMax;
+          final bubbleMax = (threadMax * 0.85).clamp(0.0, bubbleCap);
           return Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              if (showActionBar)
+              if (canFitActionBar)
                 _HoverScopedActionBar(
                   message: message,
                   reveal: actionBarReveal,
                   hoverListenable: hoverListenable,
                 ),
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: bubbleMax),
-                child: DecoratedBox(
+              Flexible(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: bubbleMax),
+                  child: DecoratedBox(
                   decoration: BoxDecoration(
                     color: aiTheme.resolveUserBubble(scheme),
                     borderRadius:
@@ -267,6 +270,7 @@ class _UserBubble extends StatelessWidget {
                   ),
                 ),
               ),
+            ),
             ],
           );
         },

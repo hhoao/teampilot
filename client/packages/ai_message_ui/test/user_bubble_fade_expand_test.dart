@@ -32,6 +32,28 @@ void main() {
     expect(find.byIcon(Icons.expand_more), findsOneWidget);
   });
 
+  testWidgets('narrow thread width does not throw when action bar shown',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 60,
+            child: AiMessageView(
+              message: const AiMessage(
+                id: 'u1',
+                role: AiRole.user,
+                parts: [AiTextPart(text: 'hi')],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('hi'), findsOneWidget);
+  });
+
   testWidgets('message text change resets to collapsed', (tester) async {
     final msg1 = AiMessage(
       id: 'u1',
