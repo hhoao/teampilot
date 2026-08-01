@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../ir/markdown_document.dart';
+import '../render/image_raw_blocks.dart';
 import '../render/inline_spans.dart';
 import '../render/list_blockquote_blocks.dart';
 import '../render/markdown_view.dart';
@@ -89,14 +90,12 @@ class BlockWidgetRegistry {
       return buildTable(block as TableBlock, tokens, resolvers);
     });
 
-    registry.register<ImageBlock>((block, _, __) {
-      final b = block as ImageBlock;
-      return Text(b.alt ?? b.src);
+    registry.register<ImageBlock>((block, tokens, resolvers) {
+      return buildImageBlock(block as ImageBlock, tokens, resolvers);
     });
 
-    registry.register<RawLiteralBlock>((block, _, __) {
-      final b = block as RawLiteralBlock;
-      return Text(b.rawMarkdown);
+    registry.register<RawLiteralBlock>((block, tokens, _) {
+      return buildRawLiteralBlock(block as RawLiteralBlock, tokens);
     });
 
     return registry;

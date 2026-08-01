@@ -4,6 +4,7 @@ import '../ir/markdown_block_kind.dart';
 import '../ir/markdown_document.dart';
 import '../registry/markdown_resolvers.dart';
 import '../tokens/markdown_tokens.dart';
+import 'image_raw_blocks.dart';
 
 /// Match [flutter_markdown_plus] `_buildRichText`: force a uniform line box so
 /// mixed CJK / Latin / mono weights cannot open selection seams between wraps.
@@ -93,7 +94,17 @@ InlineSpan inlineSpan(
           ),
         ),
       ),
-    ImageRun(:final alt) => TextSpan(text: alt ?? '', style: base),
+    ImageRun(:final src, :final alt) => WidgetSpan(
+        alignment: PlaceholderAlignment.baseline,
+        baseline: TextBaseline.alphabetic,
+        child: buildMarkdownImage(
+          src: src,
+          alt: alt,
+          tokens: tokens,
+          resolvers: resolvers,
+          inline: true,
+        ),
+      ),
   };
 }
 
