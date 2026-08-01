@@ -71,13 +71,15 @@ void main() {
     );
   });
 
-  test('GFM table with image in cell becomes unsupported', () {
-    final doc = compileMessageContent(
+  test('GFM table with image in cell compiles', () {
+    final doc = compileMarkdown(
       '| A | B |\n| --- | --- |\n| x | ![alt](x.png) |\n',
     );
-    expect(doc.blocks.single, isA<RawLiteralBlock>());
-    final block = doc.blocks.single as RawLiteralBlock;
-    expect(block.rawMarkdown, contains('![alt](x.png)'));
+    expect(hasUnsupported(doc), isFalse);
+    expect(doc.blocks.single, isA<TableBlock>());
+    final table = doc.blocks.single as TableBlock;
+    expect(table.rows.single[1].runs.single, isA<ImageRun>());
+    expect((table.rows.single[1].runs.single as ImageRun).src, 'x.png');
   });
 
   test('compiles nested list', () {
@@ -123,29 +125,37 @@ void main() {
     expect(doc.blocks.single, isA<HorizontalRuleBlock>());
   });
 
-  test('heading with inline image becomes unsupported', () {
-    final doc = compileMessageContent('## Hello ![alt](x.png)');
-    expect(doc.blocks.single, isA<RawLiteralBlock>());
-    final block = doc.blocks.single as RawLiteralBlock;
-    expect(block.rawMarkdown, '## Hello ![alt](x.png)');
-  });
-
-  test('images become unsupported', () {
-    final doc = compileMessageContent('![alt](x.png)\n');
-    expect(doc.blocks, isNotEmpty);
-    expect(doc.blocks.any((b) => b is RawLiteralBlock), isTrue);
-  });
-
-  test('list item with inline image promotes unsupported child', () {
-    final doc = compileMessageContent('- ![alt](x.png)\n');
+  test('heading with inline image compiles ImageRun', () {
+    final doc = compileMarkdown('## Hello ![alt](x.png)');
     expect(hasUnsupported(doc), isFalse);
+    expect(doc.blocks.single, isA<HeadingBlock>());
+    final runs = (doc.blocks.single as HeadingBlock).runs;
+    expect(runs.whereType<ImageRun>(), isNotEmpty);
+    expect(runs.whereType<ImageRun>().single.src, 'x.png');
+  });
+
+  test('images compile to ImageBlock not RawLiteral', () {
+    final doc = compileMarkdown('![alt](x.png)');
+    expect(doc.blocks.single, isA<ImageBlock>());
+    expect((doc.blocks.single as ImageBlock).src, 'x.png');
+    expect((doc.blocks.single as ImageBlock).alt, 'alt');
+  });
+
+  test('inline image in paragraph compiles to ImageRun', () {
+    final doc = compileMarkdown('hi ![a](b.png) there');
+    final p = doc.blocks.single as ParagraphBlock;
+    expect(p.runs.whereType<ImageRun>(), isNotEmpty);
+    expect(p.runs.whereType<ImageRun>().single.src, 'b.png');
+    expect(p.runs.whereType<ImageRun>().single.alt, 'a');
+  });
+
+  test('image inside list item compiles (not RawLiteral)', () {
+    final doc = compileMarkdown('- ![a](b.png)');
+    expect(doc.blocks.whereType<RawLiteralBlock>(), isEmpty);
     expect(doc.blocks.single, isA<ListBlock>());
     final item = (doc.blocks.single as ListBlock).items.single;
-    expect(item.children.single, isA<RawLiteralBlock>());
-    expect(
-      (item.children.single as RawLiteralBlock).rawMarkdown,
-      '![alt](x.png)',
-    );
+    expect(item.runs.whereType<ImageRun>(), isNotEmpty);
+    expect(item.runs.whereType<ImageRun>().single.src, 'b.png');
   });
 
   test('raw HTML becomes unsupported', () {
