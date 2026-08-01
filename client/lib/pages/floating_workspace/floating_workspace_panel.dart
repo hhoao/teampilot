@@ -704,9 +704,10 @@ class _TitleBar extends StatelessWidget {
       ),
       child: SizedBox(
         height: _kTitleBarHeight,
-        child: Row(
+        child: Stack(
           children: [
-            Expanded(
+            // Full-bleed drag / double-tap; tabs + chrome sit above and win hits.
+            Positioned.fill(
               child: MouseRegion(
                 cursor: SystemMouseCursors.grab,
                 child: GestureDetector(
@@ -716,15 +717,29 @@ class _TitleBar extends StatelessWidget {
                   onPanUpdate: onPanUpdate,
                   onPanEnd: onPanEnd,
                   onDoubleTap: onDoubleTap,
+                  child: const SizedBox.expand(),
+                ),
+              ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  fit: FlexFit.loose,
                   child: Padding(
                     padding: const EdgeInsets.only(left: 6),
                     child: tabBar,
                   ),
                 ),
-              ),
+                const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FloatingWorkspaceChrome(),
+                    SizedBox(width: 4),
+                  ],
+                ),
+              ],
             ),
-            const FloatingWorkspaceChrome(),
-            const SizedBox(width: 4),
           ],
         ),
       ),

@@ -1,21 +1,19 @@
 import 'dart:async';
-import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:teampilot/models/team_config.dart';
-import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
+import 'package:teampilot/models/team_config.dart';
 
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../../utils/ui/app_keys.dart';
 import '../../utils/session/session_row_content.dart';
-import '../../widgets/tab_close_button.dart';
+import '../../utils/ui/app_keys.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
-import '../../widgets/session_working_spinner.dart';
 import 'workspace_shell_models.dart';
 
 /// Sidebar + right-tools visibility toggles for the workspace IDE shell.
@@ -118,6 +116,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
     this.onTabCloseOthers,
     this.onTabCloseRight,
     this.onTabPin,
+    this.onReorder,
     this.newChatButton,
     this.leading,
     this.trailing,
@@ -130,61 +129,44 @@ class WorkspaceShellTabRow extends StatelessWidget {
   final ValueChanged<int>? onTabCloseOthers;
   final ValueChanged<int>? onTabCloseRight;
   final ValueChanged<int>? onTabPin;
+  final ReorderCallback? onReorder;
   final Widget? newChatButton;
   final Widget? leading;
   final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
-        ),
-      ),
-      child: Row(
-        children: [
-          if (leading != null) ...[leading!, const SizedBox(width: 2)],
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (var i = 0; i < tabs.length; i++)
-                    WorkspaceShellTabChip(
-                      key: ValueKey(tabs[i].id),
-                      sessionId: tabs[i].sessionId,
-                      title: tabs[i].title,
-                      working: tabs[i].working,
-                      active: activeIndex >= 0 && i == activeIndex,
-                      preview: tabs[i].preview,
-                      pinnable: tabs[i].pinnable,
-                      pinned: tabs[i].pinned,
-                      onTap: () => onTabSelected?.call(i),
-                      onClose: () => onTabClosed?.call(i),
-                      onCloseOthers: () => onTabCloseOthers?.call(i),
-                      onCloseRight: () => onTabCloseRight?.call(i),
-                      onPin: tabs[i].pinnable && onTabPin != null
-                          ? () => onTabPin!(i)
-                          : null,
-                      icon: tabs[i].icon,
-                      cli: tabs[i].cli,
-                      accentColor: tabs[i].accentColor,
-                    ),
-                  if (newChatButton != null) ...[
-                    const SizedBox(width: 2),
-                    newChatButton!,
-                  ],
-                ],
-              ),
-            ),
-          ),
-          if (trailing != null) trailing!,
-        ],
-      ),
+    return TpTabStrip(
+      metrics: TpTabStripMetrics.shell,
+      showBottomBorder: true,
+      itemCount: tabs.length,
+      itemKey: (i) => ValueKey(tabs[i].id),
+      onReorder: onReorder,
+      leading: leading,
+      inStripTrailing: newChatButton,
+      trailing: trailing,
+      itemBuilder: (context, i) {
+        final tab = tabs[i];
+        return WorkbenchStripTabChip(
+          sessionId: tab.sessionId,
+          title: tab.title,
+          working: tab.working,
+          active: activeIndex >= 0 && i == activeIndex,
+          preview: tab.preview,
+          pinnable: tab.pinnable,
+          pinned: tab.pinned,
+          onTap: () => onTabSelected?.call(i),
+          onClose: () => onTabClosed?.call(i),
+          onCloseOthers: () => onTabCloseOthers?.call(i),
+          onCloseRight: () => onTabCloseRight?.call(i),
+          onPin: tab.pinnable && onTabPin != null
+              ? () => onTabPin!(i)
+              : null,
+          icon: tab.icon,
+          cli: tab.cli,
+          accentColor: tab.accentColor,
+        );
+      },
     );
   }
 }
@@ -204,8 +186,6 @@ class WorkspaceShellNewChatButton extends StatefulWidget {
   final String newConversationLabel;
   final String newTerminalLabel;
   final VoidCallback? onNewConversation;
-
-  /// Called with the `+` button anchor when "New terminal" is chosen.
   final void Function(Offset anchor)? onNewTerminal;
 
   @override
@@ -264,9 +244,9 @@ class _WorkspaceShellNewChatButtonState
   }
 }
 
-
-class WorkspaceShellTabChip extends StatefulWidget {
-  const WorkspaceShellTabChip({
+/// App-host chip: domain menus / CLI / live session title around [TpTabChip].
+class WorkbenchStripTabChip extends StatefulWidget {
+  const WorkbenchStripTabChip({
     super.key,
     required this.title,
     required this.active,
@@ -302,17 +282,10 @@ class WorkspaceShellTabChip extends StatefulWidget {
   final Color? accentColor;
 
   @override
-  State<WorkspaceShellTabChip> createState() => WorkspaceShellTabChipState();
+  State<WorkbenchStripTabChip> createState() => WorkbenchStripTabChipState();
 }
 
-class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
-  var _hovered = false;
-
-  /// Keeps overflow actions (and [TpActionMenuButton]) mounted while the menu is
-  /// open; otherwise moving the pointer onto the overlay triggers
-  /// [MouseRegion.onExit] and removes the button before [onSelected] runs.
-  final _overflowMenuOpen = false;
-
+class WorkbenchStripTabChipState extends State<WorkbenchStripTabChip> {
   void _handleTabMenuSelection(String value) {
     if (value == 'pin') {
       widget.onPin?.call();
@@ -363,10 +336,6 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
     _handleTabMenuSelection(selected);
   }
 
-  void _showTabContextMenuFromTap(TapDownDetails details) {
-    _showTabContextMenuAtTap(details);
-  }
-
   Future<void> _showTabContextMenu(Offset globalPosition) async {
     if (!mounted) return;
     final selected = await showTpActionMenuFromSpecs<String>(
@@ -384,12 +353,8 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
     final center = box.localToGlobal(
       Offset(box.size.width / 2, box.size.height / 2),
     );
-    _showTabContextMenu(center);
+    unawaited(_showTabContextMenu(center));
   }
-
-  /// Touch platforms have no hover; keep tab chrome visible on Android.
-  bool get _showChrome =>
-      widget.active || _hovered || _overflowMenuOpen || Platform.isAndroid;
 
   @override
   Widget build(BuildContext context) {
@@ -405,170 +370,42 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
             (c) =>
                 SessionRowContent.fromChatState(c.state, sessionId).titleForPaint,
           );
-    final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
-    final active = widget.active;
-    final Color fg = active ? cs.onSurface : cs.onSurfaceVariant;
-    final Color accent = widget.accentColor ?? cs.primary;
-    final double barAlpha = active ? 1.0 : (_hovered ? 0.7 : 0.4);
-    final Color barColor = accent.withValues(alpha: barAlpha);
-    final double iconAlpha = active ? 1.0 : (_hovered ? 0.9 : 0.8);
-    final Color iconColor = accent.withValues(alpha: iconAlpha);
 
-    return Tooltip(
-      message: title,
-      waitDuration: const Duration(milliseconds: 500),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: widget.onTap,
-          onSecondaryTapDown: _showTabContextMenuFromTap,
-          onLongPress: Platform.isAndroid
-              ? _showTabContextMenuAtChipCenter
-              : null,
-          child: Material(
-            color: active
-                ? cs.surfaceContainerHigh
-                : _hovered
-                ? cs.onSurface.withValues(alpha: 0.05)
-                : Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: BorderSide(
-                color: active
-                    ? cs.outlineVariant.withValues(alpha: 0.7)
-                    : Colors.transparent,
-              ),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: widget.onTap,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 200),
-                child: Padding(
-                  padding: const EdgeInsets.only(
-                    left: 10,
-                    right: 6,
-                    top: 6,
-                    bottom: 6,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // Left accent bar
-                      SizedBox(
-                        width: 3,
-                        height: context.tpIconSizes.md,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: barColor,
-                            borderRadius: BorderRadius.circular(1.5),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Working indicator always visible when working;
-                      // icon fades with chrome when idle.
-                      if (working)
-                        SessionWorkingIndicator(
-                          working: true,
-                          size: context.tpIconSizes.sm,
-                          color: iconColor,
-                        )
-                      else
-                        _TabChromeSlot(
-                          visible: _showChrome,
-                          child: _TabLeadingIcon(
-                            cli: widget.cli,
-                            icon: widget.icon,
-                            iconColor: iconColor,
-                            iconOpacity: iconAlpha,
-                          ),
-                        ),
-                      const SizedBox(width: 12),
-                      // Title
-                      Flexible(
-                        child: Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: styles.smColored(
-                            widget.preview ? fg.withValues(alpha: 0.72) : fg,
-                          ),
-                        ),
-                      ),
-                      // Close button
-                      _TabChromeSlot(
-                        visible: _showChrome,
-                        child: TabCloseButton(
-                          active: active,
-                          onTap: widget.onClose,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
+    return TpTabChip(
+      title: title,
+      active: widget.active,
+      preview: widget.preview,
+      working: working,
+      accentColor: widget.accentColor,
+      onTap: widget.onTap,
+      onClose: widget.onClose,
+      onSecondaryTapDown: _showTabContextMenuAtTap,
+      onLongPress: defaultTargetPlatform == TargetPlatform.android
+          ? _showTabContextMenuAtChipCenter
+          : null,
+      leading: _WorkbenchStripLeading(cli: widget.cli, icon: widget.icon),
     );
   }
 }
 
-class _TabLeadingIcon extends StatelessWidget {
-  const _TabLeadingIcon({
-    required this.cli,
-    required this.icon,
-    required this.iconColor,
-    required this.iconOpacity,
-  });
+class _WorkbenchStripLeading extends StatelessWidget {
+  const _WorkbenchStripLeading({required this.cli, required this.icon});
 
   final CliTool? cli;
   final IconData icon;
-  final Color iconColor;
-  final double iconOpacity;
 
   @override
   Widget build(BuildContext context) {
     final cliTool = cli;
     if (cliTool == null) {
-      return Icon(icon, size: context.tpIconSizes.md, color: iconColor);
+      return Icon(icon, size: context.tpIconSizes.md);
     }
     final registry = CliToolRegistryScope.of(context);
-    return Opacity(
-      opacity: iconOpacity,
-      child: CliBrandIcon(
-        cli: cliTool,
-        definition: registry.tryGet(cliTool),
-        size: context.tpIconSizes.md,
-        borderRadius: 4,
-      ),
-    );
-  }
-}
-
-/// Keeps tab chrome in the layout while hiding it visually until hover/active.
-class _TabChromeSlot extends StatelessWidget {
-  const _TabChromeSlot({required this.visible, required this.child});
-
-  final bool visible;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      ignoring: !visible,
-      child: AnimatedOpacity(
-        opacity: visible ? 1 : 0,
-        duration: const Duration(milliseconds: 120),
-        curve: Curves.easeOut,
-        child: child,
-      ),
+    return CliBrandIcon(
+      cli: cliTool,
+      definition: registry.tryGet(cliTool),
+      size: context.tpIconSizes.md,
+      borderRadius: 4,
     );
   }
 }

@@ -11,6 +11,7 @@ import '../../services/run/run_platform.dart';
 import '../../services/run/run_terminal_bridge.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'run_session_dismiss.dart';
+import 'run_session_display_order.dart';
 import 'run_session_page.dart';
 
 /// Bottom Run pages: one tab per [RunSession], text log via [RunTerminalBridge].
@@ -44,6 +45,7 @@ class _RunPanelState extends State<RunPanel> {
   bool _bridgeInitStarted = false;
   String? _activeSessionId;
   List<String> _seenSessionIds = const [];
+  List<String> _tabOrderIds = const [];
 
   @override
   void didChangeDependencies() {
@@ -203,76 +205,71 @@ class _RunPanelState extends State<RunPanel> {
           return KeyedSubtree(key: const Key('run-panel'), child: body);
         }
 
+        final orderedSessions = mergeDisplayOrderIds(
+          items: sessions,
+          idOf: (s) => s.id,
+          orderIds: _tabOrderIds,
+        );
+
         return KeyedSubtree(
           key: const Key('run-panel'),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                height: 40,
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                decoration: BoxDecoration(
-                  color: cs.surface,
-                  border: Border(
-                    bottom: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.5),
-                    ),
-                  ),
+              TpTabStrip(
+                metrics: TpTabStripMetrics.shell,
+                showBottomBorder: true,
+                itemCount: orderedSessions.length,
+                itemKey: (i) =>
+                    ValueKey('run-session-tab-${orderedSessions[i].id}'),
+                onReorder: orderedSessions.length > 1
+                    ? (oldIndex, newIndex) {
+                        setState(() {
+                          _tabOrderIds = reorderListItems(
+                            orderedSessions.map((s) => s.id).toList(),
+                            oldIndex,
+                            newIndex,
+                          );
+                        });
+                      }
+                    : null,
+                trailing: TpIconButton(
+                  icon: Icons.close,
+                  color: cs.onSurfaceVariant,
+                  size: TpIconButton.kCompactSize,
+                  tooltip: l10n.runClearExited,
+                  onTap: () => unawaited(_clearExited()),
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: sessions.isEmpty
-                          ? Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                              ),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  l10n.runNoSessions,
-                                  style: styles.mutedSm,
-                                ),
-                              ),
-                            )
-                          : SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                children: [
-                                  for (final session in sessions)
-                                    WorkspaceShellTabChip(
-                                      key: ValueKey(
-                                        'run-session-tab-${session.id}',
-                                      ),
-                                      title: session.owned.configuration.name,
-                                      active: session.id == activeSession?.id,
-                                      working:
-                                          session.status ==
-                                              RunSessionStatus.running ||
-                                          session.status ==
-                                              RunSessionStatus.starting,
-                                      onTap: () => setState(
-                                        () => _activeSessionId = session.id,
-                                      ),
-                                      onClose: () => unawaited(
-                                        _closeSession(session),
-                                      ),
-                                      accentColor: cs.primary,
-                                      icon: Icons.play_arrow_rounded,
-                                    ),
-                                ],
-                              ),
-                            ),
-                    ),
-                    TpIconButton(
-                      icon: Icons.close,
-                      color: cs.onSurfaceVariant,
-                      size: TpIconButton.kCompactSize,
-                      tooltip: l10n.runClearExited,
-                      onTap: () => unawaited(_clearExited()),
-                    ),
-                  ],
-                ),
+                itemBuilder: (context, index) {
+                  if (orderedSessions.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  final session = orderedSessions[index];
+                  return WorkbenchStripTabChip(
+                    title: session.owned.configuration.name,
+                    active: session.id == activeSession?.id,
+                    working:
+                        session.status == RunSessionStatus.running ||
+                        session.status == RunSessionStatus.starting,
+                    onTap: () =>
+                        setState(() => _activeSessionId = session.id),
+                    onClose: () => unawaited(_closeSession(session)),
+                    accentColor: cs.primary,
+                    icon: Icons.play_arrow_rounded,
+                  );
+                },
+                leading: sessions.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            l10n.runNoSessions,
+                            style: styles.mutedSm,
+                          ),
+                        ),
+                      )
+                    : null,
               ),
               Expanded(child: body),
             ],

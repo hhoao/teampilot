@@ -1,15 +1,16 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
+import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/floating_workspace_tab.dart';
 import '../workspace_shell/workspace_shell_tabs.dart';
 import 'floating_workspace_new_terminal_menu.dart';
 
-/// Horizontal tab strip matching [WorkspaceShellTabRow] chrome: chips,
-/// right-click close menu, and a "+" open menu.
+/// Horizontal tab strip: [TpTabStrip] + close menus + "+" open menu.
 class FloatingWorkspaceTabBar extends StatelessWidget {
   const FloatingWorkspaceTabBar({
     required this.tabs,
@@ -32,37 +33,29 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.grab,
-      child: SizedBox(
-        height: 36,
-        child: Row(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    for (final tab in tabs)
-                      WorkspaceShellTabChip(
-                        key: ValueKey(tab.id),
-                        title: tab.title,
-                        active: tab.id == activeTabId,
-                        icon: _iconFor(tab.surfaceId),
-                        onTap: () => onSelect(tab.id),
-                        onClose: () => onClose(tab),
-                        onCloseOthers: () => onCloseOthers(tab),
-                        onCloseRight: () => onCloseRight(tab),
-                      ),
-                    if (tabs.isNotEmpty) const SizedBox(width: 2),
-                    _FloatingWorkspaceAddButton(onOpenFile: onOpenFile),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return TpTabStrip(
+      metrics: TpTabStripMetrics.compact,
+      fillWidth: false,
+      itemCount: tabs.length,
+      itemKey: (i) => ValueKey(tabs[i].id),
+      onReorder: tabs.length > 1
+          ? (oldIndex, newIndex) => context
+                .read<FloatingWorkspaceCubit>()
+                .reorderTabs(oldIndex, newIndex)
+          : null,
+      inStripTrailing: _FloatingWorkspaceAddButton(onOpenFile: onOpenFile),
+      itemBuilder: (context, index) {
+        final tab = tabs[index];
+        return WorkbenchStripTabChip(
+          title: tab.title,
+          active: tab.id == activeTabId,
+          icon: _iconFor(tab.surfaceId),
+          onTap: () => onSelect(tab.id),
+          onClose: () => onClose(tab),
+          onCloseOthers: () => onCloseOthers(tab),
+          onCloseRight: () => onCloseRight(tab),
+        );
+      },
     );
   }
 

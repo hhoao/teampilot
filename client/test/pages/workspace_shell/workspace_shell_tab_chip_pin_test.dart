@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/workspace_shell/workspace_shell_tabs.dart';
 
@@ -8,12 +9,18 @@ Widget _wrap(Widget child) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: Scaffold(body: child),
+    home: TpTheme(
+      data: TpThemeData.fromColorScheme(
+        ColorScheme.fromSeed(seedColor: Colors.blue),
+        scale: 1.0,
+      ),
+      child: Scaffold(body: child),
+    ),
   );
 }
 
 Future<void> _openContextMenu(WidgetTester tester) async {
-  final chip = find.byType(WorkspaceShellTabChip);
+  final chip = find.byType(WorkbenchStripTabChip);
   await tester.tap(chip, buttons: kSecondaryButton);
   await tester.pumpAndSettle();
 }
@@ -23,7 +30,7 @@ void main() {
     var pinned = false;
     await tester.pumpWidget(
       _wrap(
-        WorkspaceShellTabChip(
+        WorkbenchStripTabChip(
           title: 'Chat',
           active: true,
           pinnable: true,
@@ -46,7 +53,7 @@ void main() {
   testWidgets('unpinnable tab menu omits pin', (tester) async {
     await tester.pumpWidget(
       _wrap(
-        WorkspaceShellTabChip(
+        WorkbenchStripTabChip(
           title: 'file.dart',
           active: true,
           onTap: () {},
@@ -65,7 +72,7 @@ void main() {
   testWidgets('pinned session tab menu shows unpin', (tester) async {
     await tester.pumpWidget(
       _wrap(
-        WorkspaceShellTabChip(
+        WorkbenchStripTabChip(
           title: 'Chat',
           active: true,
           pinnable: true,

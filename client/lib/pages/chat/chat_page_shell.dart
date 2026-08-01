@@ -390,6 +390,15 @@ class _ChatWorkspaceShell extends StatelessWidget {
                           unawaited(cubit.toggleSessionPin(sessionId));
                         }
                       : null,
+                  onTabsReorder: routeActive
+                      ? (oldIndex, newIndex) {
+                          context.read<WorkbenchCubit>().reorderTabs(
+                            workspaceId,
+                            oldIndex,
+                            newIndex,
+                          );
+                        }
+                      : null,
                   tabBarTrailing: Padding(
                     padding: const EdgeInsets.only(left: 8),
                     child: SessionWorkbenchViewToggle(

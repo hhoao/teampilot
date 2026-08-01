@@ -30,6 +30,22 @@ void main() {
       expect(cubit.activeTabId(ws), session);
     });
 
+    test('reorderTabs permutes mixed kinds and keeps active', () {
+      const ws = 'ws-a';
+      final session = WorkbenchTabId.session('s1');
+      final file = WorkbenchTabId.file('/a.dart');
+      final run = WorkbenchTabId.run('r1');
+
+      cubit.ensureTab(ws, session);
+      cubit.ensureTab(ws, file);
+      cubit.ensureTab(ws, run);
+      expect(cubit.activeTabId(ws), run);
+
+      cubit.reorderTabs(ws, 0, 3);
+      expect(cubit.tabOrder(ws), [file, run, session]);
+      expect(cubit.activeTabId(ws), run);
+    });
+
     test('ensureTab rejects shell tabs but allows file on center strip', () {
       const ws = 'ws-a';
       final session = WorkbenchTabId.session('s1');

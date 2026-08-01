@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'floating_panel_visibility.dart';
 import 'floating_workspace_state.dart';
@@ -120,6 +121,31 @@ class FloatingWorkspaceCubit extends Cubit<FloatingWorkspaceState> {
     }
 
     emit(state.copyWith(buckets: updatedBuckets));
+  }
+
+  /// Reorders tabs in the active workspace. Preserves [activeTabId].
+  void reorderTabs(int oldIndex, int newIndex) {
+    final workspaceId = state.activeWorkspaceId;
+    if (workspaceId.isEmpty) return;
+
+    final bucket = state.buckets[workspaceId];
+    if (bucket == null || bucket.tabs.isEmpty) return;
+
+    final tabs = reorderListItems(bucket.tabs, oldIndex, newIndex);
+    if (_floatingTabsEqual(tabs, bucket.tabs)) return;
+
+    final updatedBuckets = Map<String, FloatingWorkspaceBucket>.of(state.buckets)
+      ..[workspaceId] = bucket.copyWith(tabs: tabs);
+
+    emit(state.copyWith(buckets: updatedBuckets));
+  }
+
+  static bool _floatingTabsEqual(List<FloatingTab> a, List<FloatingTab> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id) return false;
+    }
+    return true;
   }
 
   /// Places the panel from a host-local [rect], storing bottom-right insets.

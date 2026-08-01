@@ -24,6 +24,7 @@ class WorkspaceShell extends StatelessWidget {
     this.onTabCloseOthers,
     this.onTabCloseRight,
     this.onTabPin,
+    this.onTabsReorder,
     this.showNewChatButton = false,
     this.newChatTooltip = '',
     this.newConversationLabel = '',
@@ -47,6 +48,9 @@ class WorkspaceShell extends StatelessWidget {
   final ValueChanged<int>? onTabCloseOthers;
   final ValueChanged<int>? onTabCloseRight;
   final ValueChanged<int>? onTabPin;
+
+  /// Material [ReorderableListView.onReorder] for the center strip.
+  final ReorderCallback? onTabsReorder;
 
   /// "+" action at the end of the session tab row — New conversation / terminal.
   final bool showNewChatButton;
@@ -128,6 +132,7 @@ class WorkspaceShell extends StatelessWidget {
             onTabCloseOthers: onTabCloseOthers,
             onTabCloseRight: onTabCloseRight,
             onTabPin: onTabPin,
+            onReorder: onTabsReorder,
             newChatButton: showNewChatButton
                 ? WorkspaceShellNewChatButton(
                     tooltip: newChatTooltip,

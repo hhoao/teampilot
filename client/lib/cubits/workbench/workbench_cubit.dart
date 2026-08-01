@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_ui/shared_ui.dart';
 
 import 'workbench_tab.dart';
 
@@ -254,6 +255,20 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
                 welcomeActive: false,
               )
             : bucket.copyWith(activeTabId: tab, welcomeActive: false),
+      ),
+    );
+  }
+
+  /// Permutes center-strip [tabOrder]. Preserves [activeTabId].
+  void reorderTabs(String workspaceId, int oldIndex, int newIndex) {
+    final bucket = state.bucket(workspaceId);
+    if (bucket.tabOrder.isEmpty) return;
+    final order = reorderListItems(bucket.tabOrder, oldIndex, newIndex);
+    if (_listEquals(order, bucket.tabOrder)) return;
+    emit(
+      state.withBucket(
+        workspaceId,
+        bucket.copyWith(tabOrder: order),
       ),
     );
   }
