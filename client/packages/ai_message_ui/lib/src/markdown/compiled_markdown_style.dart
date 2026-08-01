@@ -30,12 +30,19 @@ class CompiledMarkdownStyle {
     this.blockSpacing = 12,
     this.listItemSpacing = 4,
     this.listIndent = 24,
+    this.tableCellsPadding =
+        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    this.tableHeadBackground,
+    this.tableBodyBackground = Colors.transparent,
   });
 
   /// Minimal styles for package widget tests (not for product UI).
   factory CompiledMarkdownStyle.test({
     ColorScheme? scheme,
     double codeBlockRadius = 12,
+    EdgeInsets? tableCellsPadding,
+    Color? tableHeadBackground,
+    Color? tableBodyBackground,
   }) {
     final colors = scheme ?? const ColorScheme.light();
     const body = TextStyle(fontSize: 14, height: 1.4);
@@ -67,6 +74,10 @@ class CompiledMarkdownStyle {
       mutedSurface: muted,
       borderColor: colors.outlineVariant.withValues(alpha: 0.55),
       codeBlockRadius: codeBlockRadius,
+      tableCellsPadding: tableCellsPadding ??
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      tableHeadBackground: tableHeadBackground,
+      tableBodyBackground: tableBodyBackground ?? Colors.transparent,
     );
   }
 
@@ -93,6 +104,9 @@ class CompiledMarkdownStyle {
   /// [blockSpacing] so paragraph gaps can grow without loosening lists.
   final double listItemSpacing;
   final double listIndent;
+  final EdgeInsets tableCellsPadding;
+  final Color? tableHeadBackground;
+  final Color tableBodyBackground;
 
   TextStyle headingStyle(int level) {
     return switch (level) {
@@ -147,9 +161,9 @@ class CompiledMarkdownStyle {
       checkbox: body,
       blockSpacing: blockSpacing,
       listIndent: listIndent,
-      h1Padding: const EdgeInsets.only(top: 8),
-      h2Padding: const EdgeInsets.only(top: 8),
-      h3Padding: const EdgeInsets.only(top: 4),
+      h1Padding: const EdgeInsets.only(top: 16),
+      h2Padding: const EdgeInsets.only(top: 12),
+      h3Padding: const EdgeInsets.only(top: 8),
       codeblockDecoration: BoxDecoration(
         color: mutedSurface,
         borderRadius: BorderRadius.circular(codeBlockRadius),
@@ -164,11 +178,11 @@ class CompiledMarkdownStyle {
       tableHeadAlign: TextAlign.start,
       tableBorder: TableBorder.all(color: borderColor, width: 1),
       tableColumnWidth: const IntrinsicColumnWidth(),
-      tableCellsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      tableCellsPadding: tableCellsPadding,
       tableHeadCellsDecoration: BoxDecoration(
-        color: mutedSurface.withValues(alpha: 0.85),
+        color: tableHeadBackground ?? mutedSurface.withValues(alpha: 0.85),
       ),
-      tableCellsDecoration: const BoxDecoration(),
+      tableCellsDecoration: BoxDecoration(color: tableBodyBackground),
       tablePadding: const EdgeInsets.symmetric(vertical: 8),
     );
   }

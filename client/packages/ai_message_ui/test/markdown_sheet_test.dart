@@ -26,6 +26,49 @@ void main() {
     expect(sheet.code, markdown.inlineCode);
   });
 
+  test('CompiledMarkdownStyle table chrome maps to sheet (defaults + override)', () {
+    final theme = ThemeData(
+      colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+      useMaterial3: true,
+    );
+    final defaults = CompiledMarkdownStyle.test(scheme: theme.colorScheme);
+    final defaultSheet = defaults.toMarkdownStyleSheet();
+
+    expect(
+      defaultSheet.tableCellsPadding,
+      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    );
+    // tableHeadBackground is Color? — null means resolve to mutedSurface@0.85
+    expect(
+      (defaultSheet.tableHeadCellsDecoration! as BoxDecoration).color,
+      defaults.mutedSurface.withValues(alpha: 0.85),
+    );
+    expect(defaultSheet.h1Padding, const EdgeInsets.only(top: 16));
+    expect(defaultSheet.h2Padding, const EdgeInsets.only(top: 12));
+    expect(defaultSheet.h3Padding, const EdgeInsets.only(top: 8));
+
+    const padding = EdgeInsets.symmetric(horizontal: 14, vertical: 8);
+    final head = theme.colorScheme.onSurface.withValues(alpha: 0.04);
+    // Construct with new named params on test() / constructor — no copyWith.
+    final custom = CompiledMarkdownStyle.test(
+      scheme: theme.colorScheme,
+      tableCellsPadding: padding,
+      tableHeadBackground: head,
+      tableBodyBackground: Colors.transparent,
+    );
+    final sheet = custom.toMarkdownStyleSheet();
+    expect(sheet.tableCellsPadding, padding);
+    expect(
+      (sheet.tableHeadCellsDecoration! as BoxDecoration).color,
+      head,
+    );
+    expect(sheet.tableCellsDecoration, isA<BoxDecoration>());
+    expect(
+      (sheet.tableCellsDecoration! as BoxDecoration).color,
+      Colors.transparent,
+    );
+  });
+
   testWidgets(
     'AiTextPartView uses compiled path for GFM table and onTapLink',
     (tester) async {
