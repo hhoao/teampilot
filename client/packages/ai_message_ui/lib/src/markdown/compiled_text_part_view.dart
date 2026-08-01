@@ -439,8 +439,9 @@ class _CompiledTable extends StatelessWidget {
       final cellStyle = isHeader ? style.tableHead : style.tableBody;
       return ColoredBox(
         color: isHeader
-            ? style.mutedSurface.withValues(alpha: 0.85)
-            : Colors.transparent,
+            ? (style.tableHeadBackground ??
+                style.mutedSurface.withValues(alpha: 0.85))
+            : style.tableBodyBackground,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -453,10 +454,7 @@ class _CompiledTable extends StatelessWidget {
                     ),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
+                    padding: style.tableCellsPadding,
                     child: Text.rich(
                       TextSpan(
                         style: cellStyle,

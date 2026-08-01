@@ -16,7 +16,7 @@ CompiledMarkdownStyle buildAppCompiledMarkdownStyle(
   ThemeData theme, {
   Color? mutedSurface,
   double codeBlockRadius = 12,
-  double blockSpacing = 24,
+  double blockSpacing = 28,
   double listItemSpacing = 8,
 }) {
   final fonts = theme.extension<TpFontTheme>() ?? TpFontTheme.fallback;
@@ -28,7 +28,7 @@ CompiledMarkdownStyle buildAppCompiledMarkdownStyle(
     fontFamilyFallback: fonts.uiFontFamilyFallback,
   );
 
-  final body = withUi(styles.mdRelaxed.copyWith(height: 1.65));
+  final body = withUi(styles.mdRelaxed.copyWith(height: 1.7));
   final muted =
       mutedSurface ?? scheme.surfaceContainerHighest.withValues(alpha: 0.55);
   final inlineCode = body.copyWith(
@@ -41,11 +41,13 @@ CompiledMarkdownStyle buildAppCompiledMarkdownStyle(
     body: body,
     // Size ladder (Material text theme): display → xl → lg → md.
     // Prefer warmup-covered TpTextStyles tokens over ad-hoc fontSize.
-    h1: withUi(styles.display),
-    h2: withUi(styles.xl),
-    h3: withUi(styles.lgSemiboldSnug),
-    h4: withUi(styles.lgSnug),
-    h5: withUi(styles.mdSemiboldTightSnug),
+    h1: withUi(
+      styles.display.copyWith(height: 1.3, letterSpacing: -0.02),
+    ),
+    h2: withUi(styles.xl.copyWith(height: 1.3)),
+    h3: withUi(styles.lgSemiboldSnug.copyWith(height: 1.3)),
+    h4: withUi(styles.lgSnug.copyWith(height: 1.3)),
+    h5: withUi(styles.mdSemiboldTightSnug.copyWith(height: 1.3)),
     h6: body,
     link: body.copyWith(
       color: scheme.primary,
@@ -59,16 +61,19 @@ CompiledMarkdownStyle buildAppCompiledMarkdownStyle(
     blockquote: withUi(
       styles.mdRelaxed.copyWith(
         color: scheme.onSurfaceVariant,
-        height: 1.65,
+        height: 1.7,
       ),
     ),
     tableHead: withUi(styles.mdSemibold),
     tableBody: body,
     mutedSurface: muted,
-    borderColor: scheme.outlineVariant.withValues(alpha: 0.55),
+    borderColor: scheme.outlineVariant.withValues(alpha: 0.45),
     codeBlockRadius: codeBlockRadius,
     blockSpacing: blockSpacing,
     listItemSpacing: listItemSpacing,
+    tableCellsPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+    tableHeadBackground: scheme.onSurface.withValues(alpha: 0.04),
+    tableBodyBackground: Colors.transparent,
   );
 }
 
