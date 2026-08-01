@@ -1,0 +1,1 @@
+enum MarkdownProfile { document, compact }
