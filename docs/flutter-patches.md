@@ -51,7 +51,7 @@ When `apply` fails with “does not apply cleanly”:
 
 | Patch | Purpose | Upstream |
 |-------|---------|----------|
-| `selection_height_style.patch` | `DefaultSelectionStyle.selectionHeightStyle` + close hairline gaps between stacked selection boxes | [flutter#161010](https://github.com/flutter/flutter/issues/161010) |
+| `selection_height_style.patch` | `DefaultSelectionStyle.selectionHeightStyle`; Theme/MaterialApp forward it; paint upgrades tight→line-spaced + joins ≤12px wrap gaps | [flutter#161010](https://github.com/flutter/flutter/issues/161010) |
 
 When an upstream fix ships on **stable**, delete that `.patch` and drop any
 app-only wrappers that existed solely for the workaround (if no longer needed).

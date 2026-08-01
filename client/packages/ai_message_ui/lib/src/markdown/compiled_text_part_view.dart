@@ -7,6 +7,19 @@ import '../theme.dart';
 import 'compiled_markdown_style.dart';
 import 'content_ir.dart';
 
+/// Match [flutter_markdown_plus] `_buildRichText`: force a uniform line box so
+/// mixed CJK / Latin / mono weights cannot open selection seams between wraps.
+StrutStyle _forcedStrut(TextStyle style) {
+  return StrutStyle(
+    fontFamily: style.fontFamily,
+    fontFamilyFallback: style.fontFamilyFallback,
+    fontSize: style.fontSize,
+    height: style.height,
+    leading: 0,
+    forceStrutHeight: true,
+  );
+}
+
 /// Renders a style-free [MessageContentDocument] with cheap [Text.rich] /
 /// lite table / code chrome. Parent should wrap with [SelectionArea]; leaves
 /// are non-selectable [Text] / [Text.rich].
@@ -128,7 +141,10 @@ class CompiledTextPartView extends StatelessWidget {
         );
       }
     }
-    return Text.rich(TextSpan(children: spans));
+    return Text.rich(
+      TextSpan(style: style.body, children: spans),
+      strutStyle: _forcedStrut(style.body),
+    );
   }
 
   Widget _buildBlock(
@@ -144,12 +160,14 @@ class CompiledTextPartView extends StatelessWidget {
             style: style.body,
             children: _inlineSpans(runs, style, style.body),
           ),
+          strutStyle: _forcedStrut(style.body),
         ),
       HeadingBlock(:final level, :final runs) => Text.rich(
           TextSpan(
             style: style.headingStyle(level),
             children: _inlineSpans(runs, style, style.headingStyle(level)),
           ),
+          strutStyle: _forcedStrut(style.headingStyle(level)),
         ),
       ListBlock(:final ordered, :final items) => _CompiledList(
           ordered: ordered,
@@ -257,6 +275,7 @@ class CompiledTextPartView extends StatelessWidget {
                 style: style.link,
                 children: _inlineSpans(children, style, style.link),
               ),
+              strutStyle: _forcedStrut(style.link),
             ),
           ),
         ),
@@ -317,6 +336,9 @@ class _CompiledList extends StatelessWidget {
 
   Widget _buildItem(ContentListItem item, int index) {
     final marker = _marker(item, index);
+    // Bullet is non-selectable so the body stays one SelectionArea fragment
+    // (separate bullet Text caused misaligned / gapped highlights). Strut on
+    // the body matches MarkdownBody preview line boxes.
     final content = CompiledTextPartView(
       document: MessageContentDocument(
         blocks: [ParagraphBlock(runs: item.runs)],
@@ -328,9 +350,15 @@ class _CompiledList extends StatelessWidget {
     final row = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: style.listIndent,
-          child: Text(marker, style: style.listBullet),
+        SelectionContainer.disabled(
+          child: SizedBox(
+            width: style.listIndent,
+            child: Text(
+              marker,
+              style: style.listBullet,
+              strutStyle: _forcedStrut(style.listBullet),
+            ),
+          ),
         ),
         Expanded(child: content),
       ],
@@ -437,6 +465,7 @@ class _CompiledTable extends StatelessWidget {
                           cellStyle,
                         ),
                       ),
+                      strutStyle: _forcedStrut(cellStyle),
                     ),
                   ),
                 ),
@@ -522,6 +551,7 @@ class _CompiledTable extends StatelessWidget {
                 style: style.link,
                 children: _cellSpans(children, style.link),
               ),
+              strutStyle: _forcedStrut(style.link),
             ),
           ),
         ),
@@ -625,7 +655,11 @@ class _CompiledCodeBlockState extends State<_CompiledCodeBlock> {
             ),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-              child: Text(widget.code, style: widget.style.codeBlock),
+              child: Text(
+                widget.code,
+                style: widget.style.codeBlock,
+                strutStyle: _forcedStrut(widget.style.codeBlock),
+              ),
             ),
           ),
         ],

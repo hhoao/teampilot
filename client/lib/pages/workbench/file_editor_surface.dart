@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -461,22 +462,24 @@ class _MarkdownPreviewPaneState extends State<_MarkdownPreviewPane> {
     // the top (flutter/flutter#110917).
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-      child: SelectionArea(
-        child: MarkdownBody(
-          data: _data,
-          styleSheet: buildAppMarkdownStyleSheet(Theme.of(context)),
-          selectable: false,
-          onTapLink: (text, href, title) {
-            unawaited(
-              handleMarkdownPreviewLink(
-                href: href,
-                markdownFilePath: widget.path,
-                workspaceId: widget.workspaceId,
-                workspaceRoots: roots,
-                opener: opener,
-              ),
-            );
-          },
+      child: AiLineSpacedSelectionStyle(
+        child: SelectionArea(
+          child: MarkdownBody(
+            data: _data,
+            styleSheet: buildAppMarkdownStyleSheet(Theme.of(context)),
+            selectable: false,
+            onTapLink: (text, href, title) {
+              unawaited(
+                handleMarkdownPreviewLink(
+                  href: href,
+                  markdownFilePath: widget.path,
+                  workspaceId: widget.workspaceId,
+                  workspaceRoots: roots,
+                  opener: opener,
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

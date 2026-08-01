@@ -18,9 +18,13 @@ Follow the Flutter team’s recommended architecture:
 1. Add `selectionHeightStyle` to `DefaultSelectionStyle` (ambient, one place).
 2. Plumb through `Text` → `RichText` → `RenderParagraph`.
 3. `_SelectableFragment.paint` uses that style in `getBoxesForSelection`.
-4. TeamPilot chat wraps `SelectionArea` with
-   `DefaultSelectionStyle(selectionHeightStyle: BoxHeightStyle.includeLineSpacingMiddle)`
-   via `AiLineSpacedSelectionStyle`.
+4. `Theme` / `MaterialApp` forward ambient `selectionHeightStyle` (nested
+   `Theme()` / color-only `DefaultSelectionStyle` must not wipe it to `tight`).
+5. Paint falls back: if style is still `tight`, use `includeLineSpacingTop`;
+   also join residual gaps up to 12px within one paragraph.
+6. TeamPilot chat wraps `SelectionArea` with
+   `DefaultSelectionStyle(selectionHeightStyle: BoxHeightStyle.includeLineSpacingTop)`
+   via `AiLineSpacedSelectionStyle` (also markdown file preview).
 
 Do **not** replace `SelectionArea` with per-leaf `SelectableText` (breaks
 cross-block selection). Do **not** invent an app-only paint overlay.
@@ -55,6 +59,10 @@ Local / after Flutter upgrade:
 
 Reading rhythm (paragraph spacing / body `height`) stays in
 `buildAppCompiledMarkdownStyle` — independent of selection paint style.
+
+Chat [CompiledTextPartView] uses the same forced [StrutStyle] as
+`flutter_markdown_plus` preview (`forceStrutHeight: true`) so mixed
+CJK/Latin/mono line boxes stay uniform under SelectionArea.
 
 ## Upstream
 

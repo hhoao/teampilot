@@ -1,5 +1,33 @@
+diff --git a/packages/flutter/lib/src/material/app.dart b/packages/flutter/lib/src/material/app.dart
+index fd618e3c326..e797f1405ef 100644
+--- a/packages/flutter/lib/src/material/app.dart
++++ b/packages/flutter/lib/src/material/app.dart
+@@ -1046,7 +1046,7 @@ class _MaterialAppState extends State<MaterialApp> {
+ 
+     childWidget = ScaffoldMessenger(
+       key: widget.scaffoldMessengerKey,
+-      child: DefaultSelectionStyle(
++      child: DefaultSelectionStyle.merge(
+         selectionColor: effectiveSelectionColor,
+         cursorColor: effectiveCursorColor,
+         child: childWidget,
+diff --git a/packages/flutter/lib/src/material/theme.dart b/packages/flutter/lib/src/material/theme.dart
+index 4595a4705f1..c777456282a 100644
+--- a/packages/flutter/lib/src/material/theme.dart
++++ b/packages/flutter/lib/src/material/theme.dart
+@@ -149,6 +149,10 @@ class Theme extends StatelessWidget {
+       child: DefaultSelectionStyle(
+         selectionColor: data.textSelectionTheme.selectionColor ?? selectionStyle.selectionColor,
+         cursorColor: data.textSelectionTheme.cursorColor ?? selectionStyle.cursorColor,
++        // Theme historically only forwarded colors; without this, a nested
++        // Theme() (e.g. chat message AiMessageTheme) nulls out ambient
++        // selectionHeightStyle and SelectionArea falls back to tight.
++        selectionHeightStyle: selectionStyle.selectionHeightStyle,
+         child: child,
+       ),
+     );
 diff --git a/packages/flutter/lib/src/rendering/paragraph.dart b/packages/flutter/lib/src/rendering/paragraph.dart
-index 97a41dafb8d..fa0b1326697 100644
+index 97a41dafb8d..4e12c9e8cd8 100644
 --- a/packages/flutter/lib/src/rendering/paragraph.dart
 +++ b/packages/flutter/lib/src/rendering/paragraph.dart
 @@ -352,6 +352,7 @@ class RenderParagraph extends RenderBox
@@ -44,38 +72,91 @@ index 97a41dafb8d..fa0b1326697 100644
    Offset _getOffsetForPosition(TextPosition position) {
      return getOffsetForCaret(position, Rect.zero) + Offset(0, getFullHeightForCaret(position));
    }
-@@ -3568,8 +3589,29 @@ class _SelectableFragment
+@@ -1518,7 +1539,10 @@ class _SelectableFragment
+     final flipHandles = isReversed != (TextDirection.rtl == paragraph.textDirection);
+     final selection = TextSelection(baseOffset: selectionStart, extentOffset: selectionEnd);
+     final selectionRects = <Rect>[];
+-    for (final TextBox textBox in paragraph.getBoxesForSelection(selection)) {
++    for (final TextBox textBox in paragraph.getBoxesForSelection(
++      selection,
++      boxHeightStyle: paragraph.selectionHeightStyle,
++    )) {
+       selectionRects.add(textBox.toRect());
+     }
+     final selectionCollapsed = selectionStart == selectionEnd;
+@@ -3568,9 +3592,70 @@ class _SelectableFragment
        final selectionPaint = Paint()
          ..style = PaintingStyle.fill
          ..color = paragraph.selectionColor!;
 -      for (final TextBox textBox in paragraph.getBoxesForSelection(selection)) {
 -        context.canvas.drawRect(textBox.toRect().shift(offset), selectionPaint);
++      // Always paint full line boxes. tight leaves ~9px seams at height 1.65;
++      // includeLineSpacing* still leaves hairlines under UiZoom / partial wraps.
 +      final List<ui.TextBox> boxes = paragraph.getBoxesForSelection(
 +        selection,
-+        boxHeightStyle: paragraph.selectionHeightStyle,
++        boxHeightStyle: ui.BoxHeightStyle.max,
 +      );
-+      // Close hairline gaps between stacked line boxes (font metrics / rounding
-+      // can leave a visible seam even with includeLineSpacing*).
++      // Merge vertically-near boxes into continuous fills. Partial multi-line
++      // selections often have line boxes that barely share X; still close the
++      // vertical seam so drag-select matches select-all.
 +      final List<Rect> rects = <Rect>[
 +        for (final ui.TextBox textBox in boxes) textBox.toRect().shift(offset),
-+      ]..sort((Rect a, Rect b) => a.top.compareTo(b.top));
-+      for (var i = 1; i < rects.length; i++) {
-+        final Rect prev = rects[i - 1];
-+        final Rect curr = rects[i];
++      ]..sort((Rect a, Rect b) {
++        final int byTop = a.top.compareTo(b.top);
++        return byTop != 0 ? byTop : a.left.compareTo(b.left);
++      });
++      const double maxJoinGap = 12.0;
++      const double seamOverlap = 1.0;
++      final List<Rect> merged = <Rect>[];
++      for (final Rect curr in rects) {
++        if (merged.isEmpty) {
++          merged.add(curr);
++          continue;
++        }
++        final Rect prev = merged.last;
 +        final double gap = curr.top - prev.bottom;
 +        final bool overlapsX =
 +            prev.left < curr.right && curr.left < prev.right;
-+        if (overlapsX && gap > 0 && gap <= 2.0) {
++        if (gap > maxJoinGap) {
++          merged.add(curr);
++          continue;
++        }
++        if (overlapsX) {
++          merged[merged.length - 1] = Rect.fromLTRB(
++            math.min(prev.left, curr.left),
++            prev.top,
++            math.max(prev.right, curr.right),
++            math.max(prev.bottom, curr.bottom),
++          );
++        } else {
++          // L-shaped partial selection: keep separate rects but erase the
++          // horizontal white seam between stacked wraps.
 +          final double mid = (prev.bottom + curr.top) / 2;
-+          rects[i - 1] = Rect.fromLTRB(prev.left, prev.top, prev.right, mid);
-+          rects[i] = Rect.fromLTRB(curr.left, mid, curr.right, curr.bottom);
++          final double half = seamOverlap / 2;
++          merged[merged.length - 1] = Rect.fromLTRB(
++            prev.left,
++            prev.top,
++            prev.right,
++            math.max(prev.bottom, mid + half),
++          );
++          merged.add(
++            Rect.fromLTRB(
++              curr.left,
++              math.min(curr.top, mid - half),
++              curr.right,
++              curr.bottom,
++            ),
++          );
 +        }
 +      }
-+      for (final Rect rect in rects) {
-+        context.canvas.drawRect(rect, selectionPaint);
++      final Path highlight = Path()..fillType = PathFillType.nonZero;
++      for (final Rect rect in merged) {
++        highlight.addRect(rect);
        }
++      context.canvas.drawPath(highlight, selectionPaint);
      }
      if (_startHandleLayerLink != null && value.startSelectionPoint != null) {
+       context.pushLayer(
 diff --git a/packages/flutter/lib/src/widgets/basic.dart b/packages/flutter/lib/src/widgets/basic.dart
 index 95c9ceadaf1..2327d16348b 100644
 --- a/packages/flutter/lib/src/widgets/basic.dart
