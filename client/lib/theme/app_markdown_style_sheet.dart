@@ -74,6 +74,12 @@ CompiledMarkdownStyle buildAppCompiledMarkdownStyle(
     tableCellsPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
     tableHeadBackground: scheme.onSurface.withValues(alpha: 0.04),
     tableBodyBackground: Colors.transparent,
+    h1TopSpacing: 40,
+    h2TopSpacing: 36,
+    h3TopSpacing: 32,
+    h4TopSpacing: 28,
+    h5TopSpacing: 28,
+    h6TopSpacing: 28,
   );
 }
 

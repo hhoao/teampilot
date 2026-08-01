@@ -30,6 +30,12 @@ class CompiledMarkdownStyle {
     this.blockSpacing = 12,
     this.listItemSpacing = 4,
     this.listIndent = 24,
+    this.h1TopSpacing = 16,
+    this.h2TopSpacing = 12,
+    this.h3TopSpacing = 8,
+    this.h4TopSpacing = 8,
+    this.h5TopSpacing = 8,
+    this.h6TopSpacing = 8,
     this.tableCellsPadding =
         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
     this.tableHeadBackground,
@@ -104,6 +110,13 @@ class CompiledMarkdownStyle {
   /// [blockSpacing] so paragraph gaps can grow without loosening lists.
   final double listItemSpacing;
   final double listIndent;
+  /// Space above a heading when it is not the first block (Orca ~1.5em).
+  final double h1TopSpacing;
+  final double h2TopSpacing;
+  final double h3TopSpacing;
+  final double h4TopSpacing;
+  final double h5TopSpacing;
+  final double h6TopSpacing;
   final EdgeInsets tableCellsPadding;
   final Color? tableHeadBackground;
   final Color tableBodyBackground;
@@ -116,6 +129,18 @@ class CompiledMarkdownStyle {
       4 => h4,
       5 => h5,
       _ => h6,
+    };
+  }
+
+  /// Top gap before [level] headings (not applied to the first document block).
+  double headingTopSpacing(int level) {
+    return switch (level) {
+      1 => h1TopSpacing,
+      2 => h2TopSpacing,
+      3 => h3TopSpacing,
+      4 => h4TopSpacing,
+      5 => h5TopSpacing,
+      _ => h6TopSpacing,
     };
   }
 
@@ -161,9 +186,12 @@ class CompiledMarkdownStyle {
       checkbox: body,
       blockSpacing: blockSpacing,
       listIndent: listIndent,
-      h1Padding: const EdgeInsets.only(top: 16),
-      h2Padding: const EdgeInsets.only(top: 12),
-      h3Padding: const EdgeInsets.only(top: 8),
+      h1Padding: EdgeInsets.only(top: h1TopSpacing),
+      h2Padding: EdgeInsets.only(top: h2TopSpacing),
+      h3Padding: EdgeInsets.only(top: h3TopSpacing),
+      h4Padding: EdgeInsets.only(top: h4TopSpacing),
+      h5Padding: EdgeInsets.only(top: h5TopSpacing),
+      h6Padding: EdgeInsets.only(top: h6TopSpacing),
       codeblockDecoration: BoxDecoration(
         color: mutedSurface,
         borderRadius: BorderRadius.circular(codeBlockRadius),

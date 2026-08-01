@@ -70,6 +70,38 @@ void main() {
     );
   });
 
+  test('headingTopSpacing maps into MarkdownStyleSheet paddings', () {
+    final base = CompiledMarkdownStyle.test();
+    final custom = CompiledMarkdownStyle(
+      body: base.body,
+      h1: base.h1,
+      h2: base.h2,
+      h3: base.h3,
+      h4: base.h4,
+      h5: base.h5,
+      h6: base.h6,
+      link: base.link,
+      inlineCode: base.inlineCode,
+      codeBlock: base.codeBlock,
+      codeLanguage: base.codeLanguage,
+      listBullet: base.listBullet,
+      blockquote: base.blockquote,
+      tableHead: base.tableHead,
+      tableBody: base.tableBody,
+      mutedSurface: base.mutedSurface,
+      borderColor: base.borderColor,
+      codeBlockRadius: base.codeBlockRadius,
+      h1TopSpacing: 40,
+      h2TopSpacing: 36,
+      h3TopSpacing: 32,
+    );
+    final sheet = custom.toMarkdownStyleSheet();
+    expect(sheet.h1Padding, const EdgeInsets.only(top: 40));
+    expect(sheet.h2Padding, const EdgeInsets.only(top: 36));
+    expect(sheet.h3Padding, const EdgeInsets.only(top: 32));
+    expect(custom.headingTopSpacing(2), 36);
+  });
+
   testWidgets('CompiledTextPartView table uses style table chrome', (tester) async {
     final base = CompiledMarkdownStyle.test();
     const padding = EdgeInsets.symmetric(horizontal: 14, vertical: 8);
