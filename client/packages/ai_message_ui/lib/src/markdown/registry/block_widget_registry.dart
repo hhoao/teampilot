@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../ir/markdown_document.dart';
 import '../render/inline_spans.dart';
+import '../render/list_blockquote_blocks.dart';
+import '../render/markdown_view.dart';
 import '../tokens/markdown_tokens.dart';
 import 'markdown_resolvers.dart';
 
@@ -36,6 +38,19 @@ class BlockWidgetRegistry {
   factory BlockWidgetRegistry.builtIn() {
     final registry = BlockWidgetRegistry._();
 
+    Widget buildNestedView(
+      MarkdownDocument document,
+      MarkdownTokens tokens,
+      MarkdownResolvers resolvers,
+    ) {
+      return MarkdownView(
+        document: document,
+        tokens: tokens,
+        resolvers: resolvers,
+        registry: registry,
+      );
+    }
+
     registry.register<ParagraphBlock>((block, tokens, resolvers) {
       return buildParagraph(block as ParagraphBlock, tokens, resolvers);
     });
@@ -44,22 +59,21 @@ class BlockWidgetRegistry {
       return buildHeading(block as HeadingBlock, tokens, resolvers);
     });
 
-    registry.register<ListBlock>((block, tokens, _) {
-      final b = block as ListBlock;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (final item in b.items)
-            Text(
-              '• ${plainTextFromRuns(item.runs)}',
-              style: tokens.body,
-            ),
-        ],
+    registry.register<ListBlock>((block, tokens, resolvers) {
+      return buildList(
+        block as ListBlock,
+        tokens,
+        resolvers,
+        nestedView: (document) => buildNestedView(document, tokens, resolvers),
       );
     });
 
-    registry.register<BlockquoteBlock>((block, _, __) {
-      return Text('BlockquoteBlock');
+    registry.register<BlockquoteBlock>((block, tokens, resolvers) {
+      return buildBlockquote(
+        block as BlockquoteBlock,
+        tokens,
+        nestedView: (document) => buildNestedView(document, tokens, resolvers),
+      );
     });
 
     registry.register<HorizontalRuleBlock>((_, __, ___) {
