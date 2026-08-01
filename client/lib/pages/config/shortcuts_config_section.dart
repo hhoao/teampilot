@@ -12,7 +12,7 @@ import '../../services/commands/command_definition.dart';
 import '../../services/commands/command_l10n.dart';
 import '../../services/commands/key_chord.dart';
 import '../../services/commands/key_chord_formatter.dart';
-import '../../widgets/settings/workspace_hub_shell.dart';
+import '../../widgets/settings/workspace_pane_header.dart';
 import '../../widgets/shortcuts/shortcut_cheatsheet_dialog.dart';
 import '../../widgets/shortcuts/shortcut_rebind_dialog.dart';
 import 'shortcuts_footer_actions.dart';
@@ -49,13 +49,8 @@ class _ShortcutsConfigWorkspaceState extends State<ShortcutsConfigWorkspace> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (widget.showHeading) ...[
-          WorkspaceSectionHeading(
-            title: l10n.shortcutsSettingsTitle,
-            subtitle: l10n.shortcutsPageSubtitle,
-          ),
-          const SizedBox(height: 16),
-        ],
+        if (widget.showHeading)
+          WorkspacePaneHeader(title: l10n.shortcutsSettingsTitle),
         Row(
           children: [
             Expanded(

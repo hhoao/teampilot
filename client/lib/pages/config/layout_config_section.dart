@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../widgets/settings/workspace_hub_shell.dart';
+import '../../widgets/settings/workspace_pane_header.dart';
 import 'layout_appearance_in_layout_section.dart';
 import 'layout_region_visibility_section.dart';
 
@@ -17,13 +17,7 @@ class LayoutConfigWorkspace extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (showHeading) ...[
-          WorkspaceSectionHeading(
-            title: l10n.layout,
-            subtitle: l10n.layoutPageSubtitle,
-          ),
-          const SizedBox(height: 16),
-        ],
+        if (showHeading) WorkspacePaneHeader(title: l10n.layout),
         const Expanded(child: _LayoutSettingsScroll()),
       ],
     );

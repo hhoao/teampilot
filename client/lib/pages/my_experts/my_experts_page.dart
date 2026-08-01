@@ -12,7 +12,7 @@ import '../../models/team_config.dart';
 import '../../services/expert_hub/local_expert_writer.dart';
 import '../../services/expert_hub/member_roster_service.dart';
 import '../../services/hub_publish/hub_publish_record_store.dart';
-import '../../widgets/settings/workspace_hub_shell.dart';
+import '../../widgets/settings/workspace_pane_header.dart';
 import '../expert_hub/expert_editor_dialog.dart';
 import '../expert_hub/expert_team_picker_dialog.dart';
 import '../expert_hub/member_hub_add_feedback.dart';
@@ -305,20 +305,14 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          WorkspaceHubTitleBar(
-            title: l10n.myExpertsTitle,
-            subtitle: l10n.myExpertsSubtitle,
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(28, 18, 28, 0),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                key: const Key('my-experts-create'),
-                onPressed: _create,
-                icon: const Icon(Icons.add),
-                label: Text(l10n.myExpertsCreate),
-              ),
+          WorkspacePaneHeader(title: l10n.myExpertsTitle),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              key: const Key('my-experts-create'),
+              onPressed: _create,
+              icon: const Icon(Icons.add),
+              label: Text(l10n.myExpertsCreate),
             ),
           ),
           Expanded(
@@ -335,7 +329,7 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
                   )
                 : GridView.builder(
                     key: ValueKey('my-experts-grid-$_recordsEpoch'),
-                    padding: const EdgeInsets.fromLTRB(28, 18, 28, 24),
+                    padding: const EdgeInsets.fromLTRB(0, 18, 0, 24),
                     gridDelegate:
                         const SliverGridDelegateWithMaxCrossAxisExtent(
                       maxCrossAxisExtent: 380,

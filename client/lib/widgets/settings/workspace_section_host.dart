@@ -5,55 +5,65 @@ import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/app/platform_utils.dart';
 import 'workspace_hub_shell.dart';
+import 'workspace_pane_header.dart';
+import 'workspace_pane_insets.dart';
 import 'workspace_section_navigation.dart';
 
 class WorkspaceHubDesktopShell extends StatelessWidget {
   const WorkspaceHubDesktopShell({
     required this.title,
-    required this.subtitle,
+    this.subtitle,
+    this.showSubtitle = false,
     required this.nav,
     required this.body,
     this.pageKey,
     this.onBack,
+    this.embedded = false,
     super.key,
   });
 
   final Key? pageKey;
   final String title;
-  final String subtitle;
+  final String? subtitle;
+  final bool showSubtitle;
   final Widget nav;
   final Widget body;
   final VoidCallback? onBack;
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      key: pageKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          WorkspaceHubTitleBar(
-            title: title,
-            subtitle: subtitle,
-            onBack: onBack,
+    Widget column = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        WorkspacePaneHeader(
+          title: title,
+          subtitle: subtitle,
+          showSubtitle: showSubtitle,
+          onBack: onBack,
+        ),
+        Expanded(
+          child: BlocBuilder<LayoutCubit, LayoutState>(
+            builder: (context, layoutState) {
+              return WorkspaceSplitShell(
+                navWidth: layoutState.preferences.workspaceNavWidth,
+                onNavWidthChanged: (width) {
+                  context.read<LayoutCubit>().setWorkspaceNavWidth(width);
+                },
+                nav: nav,
+                body: body,
+              );
+            },
           ),
-          Expanded(
-            child: BlocBuilder<LayoutCubit, LayoutState>(
-              builder: (context, layoutState) {
-                return WorkspaceSplitShell(
-                  navWidth: layoutState.preferences.workspaceNavWidth,
-                  onNavWidthChanged: (width) {
-                    context.read<LayoutCubit>().setWorkspaceNavWidth(width);
-                  },
-                  nav: nav,
-                  body: body,
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
+
+    if (!embedded) {
+      column = Padding(padding: WorkspacePaneInsets.page, child: column);
+    }
+
+    return Container(key: pageKey, child: column);
   }
 }
 
@@ -61,19 +71,23 @@ class WorkspaceAdaptiveSectionPage extends StatelessWidget {
   const WorkspaceAdaptiveSectionPage({
     required this.pageKey,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
+    this.showSubtitle = false,
     required this.nav,
     required this.body,
     this.onBack,
+    this.embedded = false,
     super.key,
   });
 
   final Key pageKey;
   final String title;
-  final String subtitle;
+  final String? subtitle;
+  final bool showSubtitle;
   final Widget nav;
   final Widget body;
   final VoidCallback? onBack;
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
@@ -84,9 +98,11 @@ class WorkspaceAdaptiveSectionPage extends StatelessWidget {
       pageKey: pageKey,
       title: title,
       subtitle: subtitle,
+      showSubtitle: showSubtitle,
       nav: nav,
       body: body,
       onBack: onBack,
+      embedded: embedded,
     );
   }
 }

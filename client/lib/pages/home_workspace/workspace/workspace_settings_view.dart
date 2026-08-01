@@ -11,6 +11,7 @@ import '../../../models/workspace.dart';
 import '../../../utils/workspace/workspace_display_name.dart';
 import '../../../widgets/workspace_details_dialog.dart';
 import '../../../widgets/settings/workspace_hub_shell.dart';
+import '../../../widgets/settings/workspace_pane_header.dart';
 import '../workspace_actions.dart';
 import 'workspace_section.dart';
 import 'workspace_icon_settings_row.dart';
@@ -84,29 +85,31 @@ class _WorkspaceSettingsViewState extends State<WorkspaceSettingsView> {
             ),
           ),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                WorkspaceHubTitleBar(
-                  compact: true,
-                  title: l10n.homeWorkspaceWorkspaceSettings,
-                  subtitle: workspace.localizedName(l10n),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-                    child: switch (_section) {
-                      WorkspaceSettingsSection.basic =>
-                        _WorkspaceSettingsBasicSection(
-                          workspace: workspace,
-                          sessionCount: sessionCount,
-                        ),
-                      WorkspaceSettingsSection.danger =>
-                        _WorkspaceSettingsDangerSection(workspace: workspace),
-                    },
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  WorkspacePaneHeader(
+                    title: l10n.homeWorkspaceWorkspaceSettings,
+                    subtitle: workspace.localizedName(l10n),
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.only(bottom: 32),
+                      child: switch (_section) {
+                        WorkspaceSettingsSection.basic =>
+                          _WorkspaceSettingsBasicSection(
+                            workspace: workspace,
+                            sessionCount: sessionCount,
+                          ),
+                        WorkspaceSettingsSection.danger =>
+                          _WorkspaceSettingsDangerSection(workspace: workspace),
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

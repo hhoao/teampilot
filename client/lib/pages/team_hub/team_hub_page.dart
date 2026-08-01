@@ -10,6 +10,7 @@ import '../../models/discoverable_team.dart';
 import '../../services/app/platform_utils.dart';
 import '../../services/team/team_clone_service.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
+import '../../widgets/settings/workspace_pane_header.dart';
 import '../home_workspace/home_workspace_route.dart';
 import 'team_hub_body.dart';
 import 'team_hub_clone_feedback.dart';
@@ -124,7 +125,8 @@ class _TeamHubPageState extends State<TeamHubPage> {
       builder: (context, state) {
         final cubit = context.read<TeamHubCubit>();
         final android = useAndroidHubNavigation(context);
-        final inset = android ? 16.0 : 28.0;
+        final listInset = android ? 16.0 : 0.0;
+        final detailInset = android ? 16.0 : 28.0;
         final detail = _detail;
 
         final paneKey = ValueKey(detail?.key ?? 'team-hub-list');
@@ -136,13 +138,13 @@ class _TeamHubPageState extends State<TeamHubPage> {
                 installedDepIds: state.installedDepIds,
                 onBack: () => setState(() => _detail = null),
                 onClone: () => _clone(cubit, detail),
-                inset: inset,
+                inset: detailInset,
               )
             : TeamHubBody(
                 key: paneKey,
                 cubit: cubit,
                 onOpen: (t) => setState(() => _detail = t),
-                inset: inset,
+                inset: listInset,
               );
 
         if (android) {
@@ -159,10 +161,7 @@ class _TeamHubPageState extends State<TeamHubPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (detail == null)
-                WorkspaceHubTitleBar(
-                  title: context.l10n.teamHubTitle,
-                  subtitle: context.l10n.teamHubSubtitle,
-                ),
+                WorkspacePaneHeader(title: context.l10n.teamHubTitle),
               Expanded(child: pane),
             ],
           ),

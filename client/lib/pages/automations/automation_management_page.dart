@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/ui/app_keys.dart';
+import '../../widgets/settings/workspace_pane_header.dart';
 import 'automation_sort.dart';
 import 'automations_management_tab.dart';
 
@@ -34,13 +34,7 @@ class _AutomationManagementPageState extends State<AutomationManagementPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            l10n.automationsTitle,
-            style: TpTextStyles.of(context).xl,
-          ),
-          const SizedBox(height: 16),
-          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
-          const SizedBox(height: 16),
+          WorkspacePaneHeader(title: l10n.automationsTitle),
           Expanded(
             child:
                 AutomationsManagementTab(

@@ -11,6 +11,8 @@ import '../../utils/ui/app_keys.dart';
 import '../../widgets/app_provider/app_provider_detail_panel.dart';
 import '../../widgets/app_provider/app_provider_form_sheet.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
+import '../../widgets/settings/workspace_pane_header.dart';
+import '../../widgets/settings/workspace_pane_insets.dart';
 import 'llm_config_helpers.dart';
 import 'llm_config_routes.dart';
 import 'llm_app_provider_models_panel.dart';
@@ -24,12 +26,17 @@ class LlmConfigWorkspace extends StatelessWidget {
     this.initialCli,
     this.showAddProviderOnOpen = false,
     this.showHeading = true,
+    this.embedded = false,
     super.key,
   });
 
   final CliTool? initialCli;
   final bool showAddProviderOnOpen;
   final bool showHeading;
+
+  /// When true, skip page inset — parent (home) already applied
+  /// [WorkspacePaneInsets.page].
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
@@ -51,22 +58,17 @@ class LlmConfigWorkspace extends StatelessWidget {
             showAddProviderOnOpen: showAddProviderOnOpen,
           );
 
-    return Column(
+    final column = Column(
       key: AppKeys.llmConfigWorkspace,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (showHeading) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: WorkspaceSectionHeading(
-              title: l10n.appProviderCatalogLabel,
-              subtitle: l10n.appProviderCatalogHint,
-            ),
-          ),
-        ],
+        if (showHeading)
+          WorkspacePaneHeader(title: l10n.appProviderCatalogLabel),
         Expanded(child: body),
       ],
     );
+    if (embedded) return column;
+    return Padding(padding: WorkspacePaneInsets.page, child: column);
   }
 }
 

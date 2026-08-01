@@ -4,7 +4,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_dialog_theme.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../../widgets/settings/workspace_hub_shell.dart';
+import '../../widgets/settings/workspace_pane_header.dart';
 import 'log_viewer_panel.dart';
 
 const double _kLogViewerDialogWidth = 920;
@@ -135,13 +135,7 @@ class LogConfigWorkspace extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (showHeading) ...[
-          WorkspaceSectionHeading(
-            title: l10n.logViewerTitle,
-            subtitle: l10n.logViewerSubtitle,
-          ),
-          const SizedBox(height: 16),
-        ],
+        if (showHeading) WorkspacePaneHeader(title: l10n.logViewerTitle),
         const Expanded(child: LogViewerPanel()),
       ],
     );

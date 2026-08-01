@@ -10,6 +10,7 @@ import '../../models/layout_preferences.dart';
 import '../../models/team_config.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/ui/app_keys.dart';
+import '../../widgets/settings/workspace_pane_insets.dart';
 import '../../widgets/split_layout.dart';
 import '../team_config/team_config_section.dart';
 import '../workspace_ide/mobile_slide_panel_host.dart';
@@ -147,7 +148,7 @@ class _HomePageState extends State<HomePage> {
     );
 
     final rightPane = Padding(
-      padding: const EdgeInsets.fromLTRB(44, 48, 42, 18),
+      padding: WorkspacePaneInsets.page,
       child: _HomeRightPane(
         globalView: globalView,
         libraryView: libraryView,

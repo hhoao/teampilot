@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../pane_entry_animation.dart';
 import '../split_layout.dart';
+import 'workspace_pane_header.dart';
+import 'workspace_pane_insets.dart';
 
 enum WorkspaceHubNavDensity { standard, relaxed, subItem }
 
@@ -30,90 +31,6 @@ class WorkspaceHubEntry {
   final IconData? trailingIcon;
   final bool showLeaderBadge;
   final WorkspaceHubNavDensity density;
-}
-
-/// Page header used on hub and desktop workspace shells.
-class WorkspaceHubTitleBar extends StatelessWidget {
-  const WorkspaceHubTitleBar({
-    required this.title,
-    required this.subtitle,
-    this.compact = false,
-    this.onBack,
-    super.key,
-  });
-
-  final String title;
-  final String subtitle;
-  final bool compact;
-  final VoidCallback? onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final textBase = cs.onSurface;
-    final back = onBack;
-    return Container(
-      padding: compact
-          ? const EdgeInsets.fromLTRB(20, 20, 20, 16)
-          : const EdgeInsets.fromLTRB(40, 42, 40, 28),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (back != null)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                IconButton(
-                  tooltip: context.l10n.back,
-                  icon: const Icon(Icons.arrow_back_rounded),
-                  onPressed: back,
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 36,
-                    minHeight: 36,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(child: _titleBlock(context, textBase)),
-              ],
-            )
-          else
-            _titleBlock(context, textBase),
-        ],
-      ),
-    );
-  }
-
-  Widget _titleBlock(BuildContext context, Color textBase) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TpTextStyles.of(context).xlColored(textBase),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          subtitle,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TpTextStyles.of(context).mdColored(
-            textBase.withValues(alpha: 0.66),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 class WorkspaceHubNavItem extends StatelessWidget {
@@ -308,31 +225,45 @@ class WorkspaceHubPage extends StatelessWidget {
   const WorkspaceHubPage({
     required this.pageKey,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
+    this.showSubtitle = false,
     required this.entries,
+    this.embedded = false,
     super.key,
   });
 
   final Key pageKey;
   final String title;
-  final String subtitle;
+  final String? subtitle;
+  final bool showSubtitle;
   final List<WorkspaceHubEntry> entries;
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    Widget column = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        WorkspacePaneHeader(
+          title: title,
+          subtitle: subtitle,
+          showSubtitle: showSubtitle,
+        ),
+        Expanded(
+          child: WorkspaceHubNavList(entries: entries, hubStyle: true),
+        ),
+      ],
+    );
+
+    if (!embedded) {
+      column = Padding(padding: WorkspacePaneInsets.page, child: column);
+    }
+
     return Container(
       key: pageKey,
       color: cs.workspacePage,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          WorkspaceHubTitleBar(title: title, subtitle: subtitle, compact: true),
-          Expanded(
-            child: WorkspaceHubNavList(entries: entries, hubStyle: true),
-          ),
-        ],
-      ),
+      child: column,
     );
   }
 }
@@ -441,38 +372,6 @@ class WorkspaceSectionPage extends StatelessWidget {
           children: [Expanded(child: child)],
         ),
       ),
-    );
-  }
-}
-
-/// Section title inside a detail pane (desktop; hidden on Android when AppBar shows title).
-class WorkspaceSectionHeading extends StatelessWidget {
-  const WorkspaceSectionHeading({
-    required this.title,
-    required this.subtitle,
-    super.key,
-  });
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    final styles = TpTextStyles.of(context);
-    final cs = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          title,
-          style: styles.xlColored(cs.onSurface),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          subtitle,
-          style: styles.mutedMd,
-        ),
-      ],
     );
   }
 }

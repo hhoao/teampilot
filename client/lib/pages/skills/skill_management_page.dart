@@ -46,6 +46,7 @@ class SkillManagementPage extends StatelessWidget {
   const SkillManagementPage({
     required this.section,
     this.onSelectSection,
+    this.embedded = false,
     super.key,
   });
 
@@ -54,6 +55,10 @@ class SkillManagementPage extends StatelessWidget {
   /// When set, section switches call this instead of route navigation — lets
   /// the page be embedded (e.g. in the workspace home) with local-state nav.
   final void Function(SkillSection target)? onSelectSection;
+
+  /// When true, skip page inset — parent (home) already applied
+  /// [WorkspacePaneInsets.page].
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
@@ -77,6 +82,8 @@ class SkillManagementPage extends StatelessWidget {
         pageKey: AppKeys.skillsWorkspace,
         title: context.l10n.skillsTitle,
         subtitle: context.l10n.skillsSubtitle,
+        showSubtitle: false,
+        embedded: embedded,
         nav: WorkspaceEnumNavPanel<SkillSection>(
           sections: SkillSection.values,
           current: section,

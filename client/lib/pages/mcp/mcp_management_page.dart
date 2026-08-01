@@ -94,6 +94,7 @@ class McpManagementPage extends StatefulWidget {
   const McpManagementPage({
     required this.section,
     this.onSelectSection,
+    this.embedded = false,
     super.key,
   });
 
@@ -102,6 +103,10 @@ class McpManagementPage extends StatefulWidget {
   /// When set, section switches call this instead of route navigation — lets
   /// the page be embedded (e.g. in the workspace home) with local-state nav.
   final void Function(McpSection target)? onSelectSection;
+
+  /// When true, skip page inset — parent (home) already applied
+  /// [WorkspacePaneInsets.page].
+  final bool embedded;
 
   @override
   State<McpManagementPage> createState() => _McpManagementPageState();
@@ -295,6 +300,8 @@ class _McpManagementPageState extends State<McpManagementPage> {
           pageKey: AppKeys.mcpWorkspace,
           title: context.l10n.mcpNavTitle,
           subtitle: context.l10n.mcpSubtitle,
+          showSubtitle: false,
+          embedded: widget.embedded,
           nav: WorkspaceEnumNavPanel<McpSection>(
             sections: McpSection.values,
             current: widget.section,

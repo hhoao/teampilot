@@ -89,18 +89,22 @@ class _HomeGlobalSectionState extends State<HomeGlobalSection> {
       HomeGlobalView.skills => SkillManagementPage(
         section: _skill,
         onSelectSection: (s) => setState(() => _skill = s),
+        embedded: true,
       ),
       HomeGlobalView.plugins => PluginManagementPage(
         section: _plugin,
         onSelectSection: (s) => setState(() => _plugin = s),
+        embedded: true,
       ),
       HomeGlobalView.mcp => McpManagementPage(
         section: _mcp,
         onSelectSection: (s) => setState(() => _mcp = s),
+        embedded: true,
       ),
       HomeGlobalView.extensions => ExtensionManagementPage(
         section: _extension,
         onSelectSection: (s) => setState(() => _extension = s),
+        embedded: true,
       ),
       HomeGlobalView.myTeams => MyTeamsPage(onOpenTeam: widget.onOpenTeam),
       HomeGlobalView.myExperts => const MyExpertsPage(),
@@ -109,7 +113,7 @@ class _HomeGlobalSectionState extends State<HomeGlobalSection> {
         onAddToTeam: expertHubAddToTeam,
         onLaunchInWorkspace: expertHubLaunchInWorkspace,
       ),
-      HomeGlobalView.providers => const LlmConfigWorkspace(),
+      HomeGlobalView.providers => const LlmConfigWorkspace(embedded: true),
       HomeGlobalView.automations => const AutomationManagementPage(),
     };
     if (MediaQuery.disableAnimationsOf(context)) return content;

@@ -162,6 +162,7 @@ class TeamConfigPage extends StatelessWidget {
       pageKey: AppKeys.teamConfigWorkspace,
       title: l10n.teamConfig,
       subtitle: l10n.teamSettingsSubtitle,
+      showSubtitle: false,
       nav: TeamConfigNavPanel(
         team: team,
         section: section,

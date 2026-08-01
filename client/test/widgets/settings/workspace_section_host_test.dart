@@ -5,10 +5,21 @@ import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/widgets/split_layout.dart';
 import 'package:teampilot/widgets/settings/workspace_hub_shell.dart';
+import 'package:teampilot/widgets/settings/workspace_pane_insets.dart';
 import 'package:teampilot/widgets/settings/workspace_section_host.dart';
 import 'package:teampilot/widgets/settings/workspace_section_navigation.dart';
 
 enum _TestSection { alpha, beta }
+
+void _noop() {}
+
+const _hubEntries = [
+  WorkspaceHubEntry(
+    title: 'Section',
+    icon: Icons.star_outline,
+    onTap: _noop,
+  ),
+];
 
 class _TestSectionDescriptor implements WorkspaceSectionDescriptor {
   _TestSectionDescriptor(this.section);
@@ -52,7 +63,7 @@ void main() {
       ),
     );
     expect(find.text('Skills'), findsOneWidget);
-    expect(find.text('Manage skills'), findsOneWidget);
+    expect(find.text('Manage skills'), findsNothing);
     expect(find.text('Nav'), findsOneWidget);
     expect(find.text('Body'), findsOneWidget);
     expect(find.byType(WorkspaceSplitShell), findsOneWidget);
@@ -75,6 +86,134 @@ void main() {
     );
     expect(find.byType(WorkspaceSplitShell), findsOneWidget);
     expect(find.text('Plugins'), findsOneWidget);
+  });
+
+  testWidgets('desktop shell applies page inset when not embedded', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrap(
+        const WorkspaceHubDesktopShell(
+          title: 'Skills',
+          subtitle: 'Manage skills',
+          nav: SizedBox(child: Text('Nav')),
+          body: Text('Body'),
+        ),
+      ),
+    );
+    final shell = tester.widget<WorkspaceHubDesktopShell>(
+      find.byType(WorkspaceHubDesktopShell),
+    );
+    expect(shell.embedded, isFalse);
+
+    final padding = tester.widget<Padding>(
+      find.descendant(
+        of: find.byType(WorkspaceHubDesktopShell),
+        matching: find.byType(Padding),
+      ).first,
+    );
+    expect(padding.padding, WorkspacePaneInsets.page);
+  });
+
+  testWidgets('desktop shell skips page inset when embedded', (tester) async {
+    await tester.pumpWidget(
+      wrap(
+        const WorkspaceHubDesktopShell(
+          title: 'Skills',
+          subtitle: 'Manage skills',
+          nav: SizedBox(child: Text('Nav')),
+          body: Text('Body'),
+          embedded: true,
+        ),
+      ),
+    );
+    final shell = tester.widget<WorkspaceHubDesktopShell>(
+      find.byType(WorkspaceHubDesktopShell),
+    );
+    expect(shell.embedded, isTrue);
+
+    final paddings = tester
+        .widgetList<Padding>(
+          find.descendant(
+            of: find.byType(WorkspaceHubDesktopShell),
+            matching: find.byType(Padding),
+          ),
+        )
+        .toList();
+    expect(
+      paddings.any((p) => p.padding == WorkspacePaneInsets.page),
+      isFalse,
+    );
+  });
+
+  testWidgets('hub page shows title and hides subtitle by default', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrap(
+        const WorkspaceHubPage(
+          pageKey: Key('hub-page'),
+          title: 'Skills',
+          subtitle: 'Manage skills',
+          entries: _hubEntries,
+        ),
+      ),
+    );
+    expect(find.text('Skills'), findsOneWidget);
+    expect(find.text('Manage skills'), findsNothing);
+    expect(find.text('Section'), findsOneWidget);
+  });
+
+  testWidgets('hub page applies page inset when not embedded', (tester) async {
+    await tester.pumpWidget(
+      wrap(
+        const WorkspaceHubPage(
+          pageKey: Key('hub-page'),
+          title: 'Skills',
+          subtitle: 'Manage skills',
+          entries: _hubEntries,
+        ),
+      ),
+    );
+    final page = tester.widget<WorkspaceHubPage>(find.byType(WorkspaceHubPage));
+    expect(page.embedded, isFalse);
+
+    final padding = tester.widget<Padding>(
+      find.descendant(
+        of: find.byType(WorkspaceHubPage),
+        matching: find.byType(Padding),
+      ).first,
+    );
+    expect(padding.padding, WorkspacePaneInsets.page);
+  });
+
+  testWidgets('hub page skips page inset when embedded', (tester) async {
+    await tester.pumpWidget(
+      wrap(
+        const WorkspaceHubPage(
+          pageKey: Key('hub-page'),
+          title: 'Skills',
+          subtitle: 'Manage skills',
+          entries: _hubEntries,
+          embedded: true,
+        ),
+      ),
+    );
+    final page = tester.widget<WorkspaceHubPage>(find.byType(WorkspaceHubPage));
+    expect(page.embedded, isTrue);
+
+    final paddings = tester
+        .widgetList<Padding>(
+          find.descendant(
+            of: find.byType(WorkspaceHubPage),
+            matching: find.byType(Padding),
+          ),
+        )
+        .toList();
+    expect(
+      paddings.any((p) => p.padding == WorkspacePaneInsets.page),
+      isFalse,
+    );
   });
 
   testWidgets('enum nav panel invokes onSelect when entry tapped', (

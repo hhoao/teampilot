@@ -8,7 +8,7 @@ import '../../cubits/remote_download_catalog_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/remote_download/remote_download_source.dart';
-import '../../widgets/settings/workspace_hub_shell.dart';
+import '../../widgets/settings/workspace_pane_header.dart';
 
 class DownloadSourcesConfigWorkspace extends StatefulWidget {
   const DownloadSourcesConfigWorkspace({this.showHeading = true, super.key});
@@ -92,13 +92,8 @@ class _DownloadSourcesConfigWorkspaceState
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (widget.showHeading) ...[
-              WorkspaceSectionHeading(
-                title: l10n.downloadSourcesSettingsTitle,
-                subtitle: l10n.downloadSourcesSettingsSubtitle,
-              ),
-              const SizedBox(height: 16),
-            ],
+            if (widget.showHeading)
+              WorkspacePaneHeader(title: l10n.downloadSourcesSettingsTitle),
             Expanded(
               child: SingleChildScrollView(
                 child: TpCard.outlined(

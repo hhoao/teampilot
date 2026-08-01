@@ -10,6 +10,7 @@ import '../../models/discoverable_member.dart';
 import '../../services/app/platform_utils.dart';
 import '../../services/expert_hub/member_roster_service.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
+import '../../widgets/settings/workspace_pane_header.dart';
 import '../home_workspace/home_workspace_route.dart';
 import 'expert_hub_body.dart';
 import 'expert_hub_detail_overlay.dart';
@@ -193,7 +194,8 @@ class _ExpertHubPageState extends State<ExpertHubPage> {
       builder: (context, state) {
         final cubit = context.read<ExpertHubCubit>();
         final android = useAndroidHubNavigation(context);
-        final inset = android ? 16.0 : 28.0;
+        final listInset = android ? 16.0 : 0.0;
+        final detailInset = android ? 16.0 : 28.0;
         final detail = _detail;
 
         final paneKey = ValueKey(detail?.key ?? 'expert-hub-list');
@@ -212,14 +214,14 @@ class _ExpertHubPageState extends State<ExpertHubPage> {
                 onLaunchInWorkspace: widget.onLaunchInWorkspace == null
                     ? () {}
                     : () => _handleLaunchInWorkspace(detail),
-                inset: inset,
+                inset: detailInset,
               )
             : ExpertHubBody(
                 key: paneKey,
                 cubit: cubit,
                 onOpen: (m) => setState(() => _detail = m),
                 onCreate: _handleCreate,
-                inset: inset,
+                inset: listInset,
               );
 
         if (android) {
@@ -236,10 +238,7 @@ class _ExpertHubPageState extends State<ExpertHubPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (detail == null)
-                WorkspaceHubTitleBar(
-                  title: context.l10n.expertHubTitle,
-                  subtitle: context.l10n.expertHubSubtitle,
-                ),
+                WorkspacePaneHeader(title: context.l10n.expertHubTitle),
               Expanded(child: pane),
             ],
           ),

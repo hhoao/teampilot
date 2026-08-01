@@ -3,7 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../widgets/settings/workspace_hub_shell.dart';
+import '../../widgets/settings/workspace_pane_header.dart';
+import '../../widgets/settings/workspace_pane_insets.dart';
 import '../../utils/logging/logger_utils.dart';
 import 'fatal_app_theme.dart';
 import 'log_config_workspace.dart';
@@ -132,23 +133,27 @@ ${AppLogger.instance.getFormattedPendingLogs()}
   Widget _buildHome(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
+    final versionLabel = _version != null
+        ? l10n.initErrorVersion(_version!, _buildNumber!)
+        : l10n.logViewerSubtitle;
 
     return Scaffold(
       backgroundColor: cs.workspacePage,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            WorkspaceHubTitleBar(
-              title: l10n.initErrorTitle,
-              subtitle: _version != null
-                  ? l10n.initErrorVersion(_version!, _buildNumber!)
-                  : l10n.logViewerSubtitle,
-              compact: true,
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        child: Padding(
+          padding: WorkspacePaneInsets.page,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              WorkspacePaneHeader(title: l10n.initErrorTitle),
+              Text(
+                versionLabel,
+                style: TpTextStyles.of(context).mdColored(
+                  cs.onSurface.withValues(alpha: 0.66),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
                 child: TpCard.outlined(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.only(bottom: 8),
@@ -194,10 +199,8 @@ ${AppLogger.instance.getFormattedPendingLogs()}
                   ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Row(
+              const SizedBox(height: 12),
+              Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
@@ -220,8 +223,8 @@ ${AppLogger.instance.getFormattedPendingLogs()}
                   ),
                 ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

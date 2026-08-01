@@ -15,6 +15,7 @@ import '../../services/home_workspace/home_recent_workspaces_store.dart';
 import '../../services/home_workspace/workspace_display_prefs_store.dart';
 import '../../services/home_workspace/workspace_favorites_store.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/settings/workspace_pane_header.dart';
 import 'home_workspace_library_view.dart';
 import 'workspace_card.dart';
 import 'workspace_sort.dart';
@@ -73,7 +74,6 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
     final l10n = context.l10n;
     final isFavorites = widget.view == HomeLibraryView.favorites;
 
@@ -111,11 +111,7 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            title,
-            style: styles.xl,
-          ),
-          const SizedBox(height: 20),
+          WorkspacePaneHeader(title: title),
           Expanded(
             child: isEmpty
                 ? _LibraryEmptyState(

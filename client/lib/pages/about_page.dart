@@ -10,7 +10,7 @@ import '../l10n/l10n_extensions.dart';
 import '../pages/system/log_config_workspace.dart';
 import '../pages/onboarding/onboarding_gate.dart';
 import '../utils/ui/app_keys.dart';
-import '../widgets/settings/workspace_hub_shell.dart';
+import '../widgets/settings/workspace_pane_header.dart';
 
 /// About / app update section inside [ConfigWorkspace] (desktop split or Android hub).
 class AboutConfigWorkspace extends StatefulWidget {
@@ -44,13 +44,7 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (widget.showHeading) ...[
-          WorkspaceSectionHeading(
-            title: l10n.aboutTitle,
-            subtitle: l10n.aboutPageSubtitle,
-          ),
-          const SizedBox(height: 16),
-        ],
+        if (widget.showHeading) WorkspacePaneHeader(title: l10n.aboutTitle),
         Expanded(
           child: BlocConsumer<AppUpdateCubit, AppUpdateState>(
             listener: (context, state) {

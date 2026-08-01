@@ -46,6 +46,7 @@ class PluginManagementPage extends StatelessWidget {
   const PluginManagementPage({
     required this.section,
     this.onSelectSection,
+    this.embedded = false,
     super.key,
   });
 
@@ -54,6 +55,10 @@ class PluginManagementPage extends StatelessWidget {
   /// When set, section switches call this instead of route navigation — lets
   /// the page be embedded (e.g. in the workspace home) with local-state nav.
   final void Function(PluginSection target)? onSelectSection;
+
+  /// When true, skip page inset — parent (home) already applied
+  /// [WorkspacePaneInsets.page].
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
@@ -90,6 +95,8 @@ class PluginManagementPage extends StatelessWidget {
           pageKey: AppKeys.pluginsWorkspace,
           title: context.l10n.pluginsTitle,
           subtitle: context.l10n.pluginsSubtitle,
+          showSubtitle: false,
+          embedded: embedded,
           nav: WorkspaceEnumNavPanel<PluginSection>(
             sections: PluginSection.values,
             current: section,

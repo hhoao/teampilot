@@ -77,6 +77,7 @@ class _WorkspaceConfigPanelState extends State<WorkspaceConfigPanel> {
         pageKey: AppKeys.workspaceConfigWorkspace,
         title: l10n.homeWorkspaceWorkspaceManagement,
         subtitle: widget.workspace.localizedName(l10n),
+        showSubtitle: false,
         onBack: _leaveManage,
         nav: WorkspaceConfigNavPanel(
           sections: sections,

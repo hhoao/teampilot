@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -12,6 +11,7 @@ import '../../models/app_session.dart';
 import '../../services/home_workspace/workspace_display_prefs_store.dart';
 import '../../services/home_workspace/workspace_favorites_store.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../widgets/settings/workspace_pane_header.dart';
 import 'workspace_sort.dart';
 import 'workspaces_tab.dart';
 
@@ -96,13 +96,7 @@ class _HomeAllWorkspacesPaneState extends State<HomeAllWorkspacesPane> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            l10n.homeWorkspaceAllWorkspaces,
-            style: TpTextStyles.of(context).xl,
-          ),
-          const SizedBox(height: 16),
-          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
-          const SizedBox(height: 16),
+          WorkspacePaneHeader(title: l10n.homeWorkspaceAllWorkspaces),
           Expanded(
             child:
                 WorkspacesTab(

@@ -45,6 +45,7 @@ class ExtensionManagementPage extends StatelessWidget {
   const ExtensionManagementPage({
     required this.section,
     this.onSelectSection,
+    this.embedded = false,
     super.key,
   });
 
@@ -53,6 +54,10 @@ class ExtensionManagementPage extends StatelessWidget {
   /// When set, section switches call this instead of route navigation — lets
   /// the page be embedded (e.g. in the workspace home) with local-state nav.
   final void Function(ExtensionSection target)? onSelectSection;
+
+  /// When true, skip page inset — parent (home) already applied
+  /// [WorkspacePaneInsets.page].
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
@@ -77,6 +82,8 @@ class ExtensionManagementPage extends StatelessWidget {
           pageKey: AppKeys.extensionsWorkspace,
           title: context.l10n.extensionsSettingsTitle,
           subtitle: context.l10n.extensionsSettingsDescription,
+          showSubtitle: false,
+          embedded: embedded,
           nav: WorkspaceEnumNavPanel<ExtensionSection>(
             sections: ExtensionSection.values,
             current: section,

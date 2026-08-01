@@ -7,7 +7,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
 import '../../services/hub_publish/hub_publish_record_store.dart';
 import 'package:shared_ui/shared_ui.dart';
-import '../../widgets/settings/workspace_hub_shell.dart';
+import '../../widgets/settings/workspace_pane_header.dart';
 import '../home_workspace/home_workspace_new_team_dialog.dart';
 import '../home_workspace/home_workspace_route.dart';
 import '../hub_publish/show_hub_publish_wizard.dart';
@@ -119,22 +119,16 @@ class _MyTeamsPageState extends State<MyTeamsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          WorkspaceHubTitleBar(
-            title: l10n.myTeamsTitle,
-            subtitle: l10n.myTeamsSubtitle,
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(28, 18, 28, 0),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                onPressed: () => showHomeNewTeamDialog(
-                  context,
-                  context.read<LaunchProfileCubit>(),
-                ),
-                icon: const Icon(Icons.add),
-                label: Text(l10n.homeWorkspaceNewTeam),
+          WorkspacePaneHeader(title: l10n.myTeamsTitle),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: () => showHomeNewTeamDialog(
+                context,
+                context.read<LaunchProfileCubit>(),
               ),
+              icon: const Icon(Icons.add),
+              label: Text(l10n.homeWorkspaceNewTeam),
             ),
           ),
           Expanded(
@@ -161,7 +155,7 @@ class _MyTeamsPageState extends State<MyTeamsPage> {
                 final highlightId = _highlightTeamId ?? state.selectedTeamId;
                 return GridView.builder(
                   key: ValueKey('my-teams-grid-$_recordsEpoch'),
-                  padding: const EdgeInsets.fromLTRB(28, 18, 28, 24),
+                  padding: const EdgeInsets.fromLTRB(0, 18, 0, 24),
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 380,
                     mainAxisExtent: 220,

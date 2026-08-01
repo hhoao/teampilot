@@ -272,6 +272,7 @@ class ConfigWorkspace extends StatelessWidget {
       pageKey: AppKeys.configWorkspace,
       title: l10n.settings,
       subtitle: l10n.settingsPageSubtitle,
+      showSubtitle: false,
       nav: ConfigNavPanel(
         section: currentSection,
         onSelectSection: (selected) {
