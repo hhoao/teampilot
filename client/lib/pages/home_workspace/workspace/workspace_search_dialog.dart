@@ -157,8 +157,10 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
 
     return TpDialogPageShell(
       title: l10n.workspaceSearchTitle,
+      mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+      fillBody: true,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        padding: _pageHostPadding(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -195,6 +197,13 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
       ),
     );
   }
+}
+
+EdgeInsets _pageHostPadding(BuildContext context) {
+  final narrow =
+      MediaQuery.sizeOf(context).width <
+      WorkspacePanePolicy.narrowBreakpointWidth;
+  return narrow ? const EdgeInsets.fromLTRB(16, 0, 16, 16) : EdgeInsets.zero;
 }
 
 class _Results extends StatelessWidget {

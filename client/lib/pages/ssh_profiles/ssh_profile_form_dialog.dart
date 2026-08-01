@@ -259,6 +259,8 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       title: _isEditing
           ? l10n.sshProfileFormTitleEdit
           : l10n.sshProfileFormTitleNew,
+      mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+      fillBody: true,
       onClose: busy ? null : () => Navigator.of(context).pop(),
       child: TpForm(
         key: _formKey,
@@ -267,7 +269,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                padding: _pageHostPaddingH(context),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -350,7 +352,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: _pageHostPadding(context),
               child: TpDialogActions(
                 children: [
                   TextButton(
@@ -445,4 +447,18 @@ class _TwoColRow extends StatelessWidget {
       ],
     );
   }
+}
+
+EdgeInsets _pageHostPadding(BuildContext context) {
+  final narrow =
+      MediaQuery.sizeOf(context).width <
+      WorkspacePanePolicy.narrowBreakpointWidth;
+  return narrow ? const EdgeInsets.fromLTRB(16, 0, 16, 16) : EdgeInsets.zero;
+}
+
+EdgeInsets _pageHostPaddingH(BuildContext context) {
+  final narrow =
+      MediaQuery.sizeOf(context).width <
+      WorkspacePanePolicy.narrowBreakpointWidth;
+  return narrow ? const EdgeInsets.fromLTRB(16, 0, 16, 0) : EdgeInsets.zero;
 }

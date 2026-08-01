@@ -309,6 +309,8 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
       },
       child: TpDialogPageShell(
         title: title,
+        mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+        fillBody: true,
         onClose: _onCancel,
         child: TpForm(
           key: _formKey,
@@ -317,12 +319,12 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
             children: [
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  padding: _pageHostPaddingH(context),
                   child: _buildBody(context),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                padding: _pageHostPadding(context),
                 child: TpDialogActions(
                   children: [
                     TextButton(
@@ -486,6 +488,20 @@ Map<String, Object?> _filterCommonSchemaProps(Map<String, Object?> schema) {
         entry.key.toString(): entry.value,
   };
   return {...schema, 'properties': filtered};
+}
+
+EdgeInsets _pageHostPadding(BuildContext context) {
+  final narrow =
+      MediaQuery.sizeOf(context).width <
+      WorkspacePanePolicy.narrowBreakpointWidth;
+  return narrow ? const EdgeInsets.fromLTRB(16, 0, 16, 16) : EdgeInsets.zero;
+}
+
+EdgeInsets _pageHostPaddingH(BuildContext context) {
+  final narrow =
+      MediaQuery.sizeOf(context).width <
+      WorkspacePanePolicy.narrowBreakpointWidth;
+  return narrow ? const EdgeInsets.fromLTRB(16, 0, 16, 0) : EdgeInsets.zero;
 }
 
 extension _FirstOrNull<T> on Iterable<T> {

@@ -329,6 +329,8 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
       title: _isEditing
           ? l10n.expertEditorEditTitle
           : l10n.expertEditorCreateTitle,
+      mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+      fillBody: true,
       child: TpForm(
         key: _formKey,
         child: Column(
@@ -336,7 +338,7 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                padding: _pageHostPaddingH(context),
                 child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -434,7 +436,7 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: _pageHostPadding(context),
               child: TpDialogActions(
                 children: [
                   TextButton(
@@ -454,6 +456,20 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
       ),
     );
   }
+}
+
+EdgeInsets _pageHostPadding(BuildContext context) {
+  final narrow =
+      MediaQuery.sizeOf(context).width <
+      WorkspacePanePolicy.narrowBreakpointWidth;
+  return narrow ? const EdgeInsets.fromLTRB(16, 0, 16, 16) : EdgeInsets.zero;
+}
+
+EdgeInsets _pageHostPaddingH(BuildContext context) {
+  final narrow =
+      MediaQuery.sizeOf(context).width <
+      WorkspacePanePolicy.narrowBreakpointWidth;
+  return narrow ? const EdgeInsets.fromLTRB(16, 0, 16, 0) : EdgeInsets.zero;
 }
 
 class _ExpertEditorDepSummaryRow extends StatelessWidget {

@@ -1,7 +1,8 @@
 # Mobile drawer width + page Dialogs (TeamPilot)
 
 **Date:** 2026-07-30  
-**Status:** Approved (spec review); awaiting user review of written file  
+**Status:** Approved  
+**Amended by:** [2026-08-01-tp-dialog-page-shell-wide-chrome-design.md](./2026-08-01-tp-dialog-page-shell-wide-chrome-design.md)  
 **Product:** TeamPilot (`client/`)  
 **Package:** `shared_ui` (Tp* design system) + teampilot hosts  
 **Builds on:** [2026-07-29-mobile-hidden-drawer-design.md](./2026-07-29-mobile-hidden-drawer-design.md)  
@@ -205,22 +206,20 @@ showTpDialog(
 );
 ```
 
-### `TpDialogPageShell` (simple page chrome only)
+### `TpDialogPageShell` (simple page chrome)
 
 Hard rules (testable):
 
 - Used **only** for simple (non-NavShell) page Dialogs.
-- Fills the overlay size when placed as the `showGeneralDialog` child.
-- **No** card border radius; relies on parent surface for zero gutter.
-- Top: `SafeArea(top: true)` app bar row — title + close (+ optional trailing).
-- Body: `SafeArea(bottom: true)` (or padding from `MediaQuery.padding.bottom`); scrolls; keyboard insets handled by the scrollable body (`viewInsets`).
-- Footer actions: use `TpDialogPinnedLayout` inside the shell when needed so actions stay above the home indicator.
-- System back / close → pop the dialog route (`Navigator.pop`).
-- Default `barrierDismissible` for settings-like hosts: **false** (host passes explicitly).
+- **Narrow:** fills the fullscreen overlay; `TpDialogMobileNavBar`; `Expanded` + `SafeArea(top: false)` body; no theme contentPadding from the shell.
+- **Wide:** desktop card chrome via the **same** widget — `TpDialogHeader` (`showDividerBelow: false`), theme content padding; default shrink-wrap unless `fillBody: true`. See [2026-08-01 wide chrome](./2026-08-01-tp-dialog-page-shell-wide-chrome-design.md).
+- Never wrap `TpDialogNavShell`.
+- `mobileBreakpoint` must match the paired `showTpDialog` call.
 
 ### Wide + `page`
 
-Still a constrained **card** (`maxWidth` / `maxHeight` as today).  
+Still a constrained **card** (`maxWidth` / `maxHeight` as today) with **zero** outer content padding.
+Simple pages rely on `TpDialogPageShell`’s wide branch for header, padding, and height.
 **Wide + page + NavShell** = card containing side-by-side nav|body — not a fullscreen page.
 
 ### Classification (host policy)

@@ -180,10 +180,13 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
       },
       child: TpDialogPageShell(
         title: l10n.mcpOAuthConnectTitle(widget.server.name),
+        mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+        fillBody: false,
         onClose: finishing ? () {} : _cancel,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          padding: _pageHostPadding(context),
           child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(l10n.mcpOAuthConnectHint),
@@ -267,6 +270,13 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
       ),
     );
   }
+}
+
+EdgeInsets _pageHostPadding(BuildContext context) {
+  final narrow =
+      MediaQuery.sizeOf(context).width <
+      WorkspacePanePolicy.narrowBreakpointWidth;
+  return narrow ? const EdgeInsets.fromLTRB(16, 0, 16, 16) : EdgeInsets.zero;
 }
 
 bool mcpServerShowsOAuthConnect(McpServer server) {

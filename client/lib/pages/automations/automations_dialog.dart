@@ -69,9 +69,12 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final hostPad = _pageHostPadding(context);
 
     return TpDialogPageShell(
       title: l10n.automationsTitle,
+      mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+      fillBody: true,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -106,7 +109,7 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        padding: hostPad,
         child: AutomationsListBody(
           listScope: widget.listScope,
           enabledFilter: _enabledFilter,
@@ -115,6 +118,13 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
       ),
     );
   }
+}
+
+EdgeInsets _pageHostPadding(BuildContext context) {
+  final narrow =
+      MediaQuery.sizeOf(context).width <
+      WorkspacePanePolicy.narrowBreakpointWidth;
+  return narrow ? const EdgeInsets.fromLTRB(16, 0, 16, 16) : EdgeInsets.zero;
 }
 
 /// Opens [AutomationsDialog] from the workspace sidebar or session menu.

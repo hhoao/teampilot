@@ -310,14 +310,14 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
     final l10n = context.l10n;
     final styles = TpTextStyles.of(context);
 
-    return TpDialogPageShell(
-      title: l10n.homeWorkspaceNewTeam,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    final isNarrow =
+        MediaQuery.sizeOf(context).width <
+        WorkspacePanePolicy.narrowBreakpointWidth;
+
+    final body = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
           TpSegmentedPicker<_TeamCreationMethod>(
             alignment: Alignment.center,
             customWidths: const [156, 120],
@@ -464,8 +464,21 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
             ],
           ),
         ],
-      ),
-      ),
+      );
+
+    return TpDialogPageShell(
+      title: l10n.homeWorkspaceNewTeam,
+      mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+      fillBody: false,
+      titleAlignment: Alignment.center,
+      // Narrow: scroll inside Expanded PageShell. Wide: intrinsic Column so the
+      // card shrink-wraps (outer SingleChildScrollView would expand to maxHeight).
+      child: isNarrow
+          ? SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: body,
+            )
+          : body,
     );
   }
 }

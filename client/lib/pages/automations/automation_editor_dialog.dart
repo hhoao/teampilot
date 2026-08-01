@@ -401,6 +401,8 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
 
     return TpDialogPageShell(
       title: title,
+      mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+      fillBody: true,
       child: TpForm(
         key: _formKey,
         child: Column(
@@ -408,7 +410,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                padding: _pageHostPadding(context),
                 child: AutomationEditorFormBody(
                   isScheduledMessage: _isScheduledMessage,
                   nameController: _nameCtl,
@@ -453,7 +455,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: _pageHostPadding(context),
               child: TpDialogActions(
                 children: [
                   TextButton(
@@ -469,4 +471,11 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       ),
     );
   }
+}
+
+EdgeInsets _pageHostPadding(BuildContext context) {
+  final narrow =
+      MediaQuery.sizeOf(context).width <
+      WorkspacePanePolicy.narrowBreakpointWidth;
+  return narrow ? const EdgeInsets.fromLTRB(16, 0, 16, 16) : EdgeInsets.zero;
 }

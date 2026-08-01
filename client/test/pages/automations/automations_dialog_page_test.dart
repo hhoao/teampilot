@@ -119,4 +119,25 @@ void main() {
     expect(find.byType(TpDialogPageShell), findsOneWidget);
     expect(find.byType(Dialog), findsNothing);
   });
+
+  testWidgets('wide: desktop PageShell header (not mobile nav)', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    addTearDown(setup.cubit.close);
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    addTearDown(chatCubit.close);
+
+    await _openAutomations(
+      tester,
+      viewport: const Size(1200, 800),
+      automationCubit: setup.cubit,
+      chatCubit: chatCubit,
+    );
+
+    expect(find.byType(TpDialogPageShell), findsOneWidget);
+    expect(find.byType(Dialog), findsOneWidget);
+    expect(find.byType(TpDialogHeader), findsOneWidget);
+    expect(find.byType(TpDialogMobileNavBar), findsNothing);
+  });
 }

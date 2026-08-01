@@ -25,6 +25,8 @@ class RunConfigurationsDialog extends StatelessWidget {
 
     return TpDialogPageShell(
       title: l10n.runConfigureLaunchItems,
+      mobileBreakpoint: WorkspacePanePolicy.narrowBreakpointWidth,
+      fillBody: true,
       trailing: TpIconButton(
         key: const Key('run-configurations-add'),
         icon: Icons.add_rounded,
@@ -32,7 +34,7 @@ class RunConfigurationsDialog extends StatelessWidget {
         onTap: () => unawaited(_create(context)),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        padding: _pageHostPadding(context),
         child: _RunConfigurationsListBody(workspaceId: workspaceId),
       ),
     );
@@ -44,6 +46,13 @@ class RunConfigurationsDialog extends StatelessWidget {
       workspaceId: workspaceId,
     );
   }
+}
+
+EdgeInsets _pageHostPadding(BuildContext context) {
+  final narrow =
+      MediaQuery.sizeOf(context).width <
+      WorkspacePanePolicy.narrowBreakpointWidth;
+  return narrow ? const EdgeInsets.fromLTRB(16, 0, 16, 16) : EdgeInsets.zero;
 }
 
 /// Opens the add-configuration editor (defaults to Shell Script; type is a
