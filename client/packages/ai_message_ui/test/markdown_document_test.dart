@@ -228,6 +228,17 @@ void main() {
     expect(b.alt, 'A');
   });
 
+  test('ImageRun is distinguishable and supports equality', () {
+    const a = ImageRun(src: 'a.png', alt: 'A');
+    const b = ImageRun(src: 'a.png', alt: 'A');
+    const c = ImageRun(src: 'b.png', alt: 'B');
+
+    expect(a, isA<ImageRun>());
+    expect(a, equals(b));
+    expect(a.hashCode, b.hashCode);
+    expect(a, isNot(equals(c)));
+  });
+
   test('RawLiteralBlock replaces UnsupportedBlock', () {
     const b = RawLiteralBlock(rawMarkdown: '<div>');
     expect(b.kind, MarkdownBlockKind.rawLiteral);

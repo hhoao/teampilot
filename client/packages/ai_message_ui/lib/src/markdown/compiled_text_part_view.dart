@@ -213,11 +213,30 @@ class CompiledTextPartView extends StatelessWidget {
           style: style,
           onTapLink: onTapLink,
         ),
-      ImageBlock(:final src, :final alt) => MarkdownBody(
-          data: '![${alt ?? ''}]($src)',
-          styleSheet: aiTheme.markdown.toMarkdownStyleSheet(),
-          onTapLink: onTapLink,
-          selectable: false,
+      ImageBlock(:final src, :final alt) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.image_outlined,
+                size: (style.body.fontSize ?? 14) + 2,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  alt ?? src,
+                  style: style.body.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  strutStyle: _forcedStrut(style.body),
+                ),
+              ),
+            ],
+          ),
         ),
       RawLiteralBlock(:final rawMarkdown) => MarkdownBody(
           data: rawMarkdown,
