@@ -16,6 +16,8 @@ CompiledMarkdownStyle buildAppCompiledMarkdownStyle(
   ThemeData theme, {
   Color? mutedSurface,
   double codeBlockRadius = 12,
+  double blockSpacing = 24,
+  double listItemSpacing = 8,
 }) {
   final fonts = theme.extension<TpFontTheme>() ?? TpFontTheme.fallback;
   final styles = TpTextStyles(theme);
@@ -26,13 +28,12 @@ CompiledMarkdownStyle buildAppCompiledMarkdownStyle(
     fontFamilyFallback: fonts.uiFontFamilyFallback,
   );
 
-  final body = withUi(styles.md);
-  final muted = mutedSurface ??
-      scheme.surfaceContainerHighest.withValues(alpha: 0.55);
+  final body = withUi(styles.mdRelaxed.copyWith(height: 1.65));
+  final muted =
+      mutedSurface ?? scheme.surfaceContainerHighest.withValues(alpha: 0.55);
   final inlineCode = body.copyWith(
     fontFamily: fonts.monoFontFamily,
     fontFamilyFallback: fonts.monoFontFamilyFallback,
-    backgroundColor: muted.withValues(alpha: 0.55),
   );
   final codeBlock = styles.mono.copyWith(color: scheme.onSurface);
 
@@ -55,12 +56,19 @@ CompiledMarkdownStyle buildAppCompiledMarkdownStyle(
     codeBlock: codeBlock,
     codeLanguage: withUi(styles.mutedSm),
     listBullet: body,
-    blockquote: withUi(styles.mutedMd),
+    blockquote: withUi(
+      styles.mdRelaxed.copyWith(
+        color: scheme.onSurfaceVariant,
+        height: 1.65,
+      ),
+    ),
     tableHead: withUi(styles.mdSemibold),
     tableBody: body,
     mutedSurface: muted,
     borderColor: scheme.outlineVariant.withValues(alpha: 0.55),
     codeBlockRadius: codeBlockRadius,
+    blockSpacing: blockSpacing,
+    listItemSpacing: listItemSpacing,
   );
 }
 
@@ -71,7 +79,5 @@ MarkdownStyleSheet buildAppMarkdownStyleSheet(ThemeData theme) {
 
 /// Default [AiMessageTheme] for the app shell; chat routes override layout tokens.
 AiMessageTheme buildAppAiMessageTheme(ThemeData theme) {
-  return AiMessageTheme(
-    markdown: buildAppCompiledMarkdownStyle(theme),
-  );
+  return AiMessageTheme(markdown: buildAppCompiledMarkdownStyle(theme));
 }

@@ -52,6 +52,8 @@ jobs:
           channel: stable
           cache: true
 
+      - uses: ./.github/actions/apply-flutter-patches
+
       - name: Activate fastforge
         run: dart pub global activate fastforge
 
@@ -95,6 +97,8 @@ jobs:
         with:
           channel: stable
           cache: true
+
+      - uses: ./.github/actions/apply-flutter-patches
 
       - name: Install fastforge + appdmg
         run: |
@@ -141,6 +145,8 @@ jobs:
         with:
           channel: stable
           cache: true
+
+      - uses: ./.github/actions/apply-flutter-patches
 
       - name: Activate fastforge
         run: dart pub global activate fastforge
@@ -267,6 +273,8 @@ jobs:
         with:
           channel: stable
           cache: true
+
+      - uses: ./.github/actions/apply-flutter-patches
 
       - name: Accept Android SDK licenses
         run: yes | flutter doctor --android-licenses

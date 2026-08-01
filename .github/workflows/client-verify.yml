@@ -6,18 +6,22 @@ on:
     paths:
       - "client/**"
       - "tools/mock_model_gateway/**"
+      - "tool/flutter_patches/**"
       - ".gitmodules"
       - ".github/workflows/client-verify.yml"
       - ".github/workflows/release.yml"
       - ".github/workflows/auto-tag.yml"
+      - ".github/actions/apply-flutter-patches/**"
   pull_request:
     paths:
       - "client/**"
       - "tools/mock_model_gateway/**"
+      - "tool/flutter_patches/**"
       - ".gitmodules"
       - ".github/workflows/client-verify.yml"
       - ".github/workflows/release.yml"
       - ".github/workflows/auto-tag.yml"
+      - ".github/actions/apply-flutter-patches/**"
 
 concurrency:
   group: client-verify-${{ github.workflow }}-${{ github.ref }}
@@ -84,6 +88,8 @@ jobs:
           channel: stable
           cache: true
 
+      - uses: ./.github/actions/apply-flutter-patches
+
       - name: Accept Android SDK licenses
         if: matrix.platform == 'android'
         run: yes | flutter doctor --android-licenses
@@ -141,6 +147,8 @@ jobs:
         with:
           channel: stable
           cache: true
+
+      - uses: ./.github/actions/apply-flutter-patches
 
       - name: Resolve Flutter packages
         run: flutter pub get

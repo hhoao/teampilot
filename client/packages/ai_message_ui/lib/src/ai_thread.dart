@@ -7,6 +7,7 @@ import 'package:flutter/scheduler.dart';
 import 'ai_message_view.dart';
 import 'message_action_bar.dart';
 import 'part_registry.dart';
+import 'selection_height_style.dart';
 import 'strings.dart';
 import 'theme.dart';
 
@@ -468,7 +469,8 @@ class _AiThreadState extends State<AiThread> {
       case AiThreadStatus.idle:
         final aiTheme = AiMessageTheme.of(context);
         final sentinelCount = widget.hasOlder ? 1 : 0;
-        return SelectionArea(
+        return AiLineSpacedSelectionStyle(
+          child: SelectionArea(
           contextMenuBuilder: widget.selectionContextMenuBuilder,
           child: Stack(
             children: [
@@ -523,6 +525,7 @@ class _AiThreadState extends State<AiThread> {
               if (_showScrollToBottom && _listVisible)
                 _buildScrollToBottomButton(context),
             ],
+          ),
           ),
         );
     }

@@ -29,6 +29,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(SelectionArea), findsOneWidget);
+    expect(find.byType(AiLineSpacedSelectionStyle), findsOneWidget);
     expect(find.textContaining('First paragraph'), findsOneWidget);
   });
 

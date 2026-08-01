@@ -6,7 +6,7 @@ For contributors and maintainers. End-user overview: [README.md](../README.md). 
 
 | Item | Notes |
 |------|--------|
-| [Flutter](https://docs.flutter.dev/get-started/install) | **stable** channel; SDK `^3.8.1` in `client` |
+| [Flutter](https://docs.flutter.dev/get-started/install) | **stable** channel; SDK `^3.8.1` in `client`. After install/upgrade run `./tool/flutter_patches/apply_flutter_patches.sh` (see [Flutter SDK patches](flutter-patches.md)). |
 | Git submodules | Required on first clone for vendored `client/packages/` |
 | An agent CLI | At least one of `claude` / `codex` / `opencode` / `cursor` / `flashskyai` on **PATH** (or set in app settings) when exercising team terminals locally |
 | Targets | **Linux / macOS / Windows / Android** (same as CI) |
@@ -17,7 +17,11 @@ For contributors and maintainers. End-user overview: [README.md](../README.md). 
 git clone <repo-url>
 cd teampilot
 git submodule update --init --recursive
+./tool/flutter_patches/apply_flutter_patches.sh   # required Flutter SDK patches
 ```
+
+The apply script is idempotent (safe to re-run). CI applies the same step after
+`flutter-action`. Convention: [Flutter SDK patches](flutter-patches.md).
 
 ## Local development
 

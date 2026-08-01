@@ -1,0 +1,12 @@
+name: Apply Flutter SDK patches
+description: >
+  Apply TeamPilot Flutter SDK patches under tool/flutter_patches/
+  (required for SelectionArea line-spacing selection highlight).
+
+runs:
+  using: composite
+  steps:
+    - name: Apply Flutter SDK patches
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: bash tool/flutter_patches/apply_flutter_patches.sh

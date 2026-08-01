@@ -18,6 +18,7 @@ export 'src/parts/subagent_preview_scaffold.dart';
 export 'src/parts/tool_call_part_view.dart';
 export 'src/parts/tool_group_view.dart';
 export 'src/selection_dead_zone.dart';
+export 'src/selection_height_style.dart';
 export 'src/strings.dart';
 export 'src/edit/edit_line_highlighter.dart';
 export 'src/edit/edit_tool_card.dart' show EditToolCard, previewEditHunkLines;

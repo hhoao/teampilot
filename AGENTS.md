@@ -8,6 +8,7 @@ Guidance for Claude Code and other AI assistants working in this repository.
 |------|---------|
 | [README.md](README.md) (English) / [README.zh.md](README.zh.md) (简体中文) | User-facing |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Clone, commands, tests, packaging, CI |
+| [docs/flutter-patches.md](docs/flutter-patches.md) | Mandatory Flutter SDK patches (apply / add / CI) |
 | [docs/CODE_QUALITY.md](docs/CODE_QUALITY.md) | File size, layering, tests, Extension conventions |
 | [docs/DEBUGGING.md](docs/DEBUGGING.md) | Systematic debugging process |
 | [docs/PERFORMANCE.md](docs/PERFORMANCE.md) | Progressive paint / UX jank optimization (`TpDeferred*`) |

@@ -26,8 +26,15 @@ void main() {
     expect(sheet.code?.fontFamily, mono.monoFontFamily);
     expect(sheet.code?.fontFamilyFallback, mono.monoFontFamilyFallback);
     expect(sheet.code?.fontFamily, isNot('monospace'));
+    expect(sheet.code?.backgroundColor, isNull);
     expect(sheet.p?.fontFamily, fonts.uiFamily);
     expect(sheet.code?.fontSize, sheet.p?.fontSize);
     expect(sheet.code?.height, sheet.p?.height);
+    expect(sheet.p?.height, 1.65);
+    expect(sheet.blockSpacing, 24);
+    expect(
+      buildAppCompiledMarkdownStyle(theme).listItemSpacing,
+      8,
+    );
   });
 }

@@ -1,0 +1,282 @@
+diff --git a/packages/flutter/lib/src/rendering/paragraph.dart b/packages/flutter/lib/src/rendering/paragraph.dart
+index 97a41dafb8d..98a6cf72546 100644
+--- a/packages/flutter/lib/src/rendering/paragraph.dart
++++ b/packages/flutter/lib/src/rendering/paragraph.dart
+@@ -352,6 +352,7 @@ class RenderParagraph extends RenderBox
+     ui.TextHeightBehavior? textHeightBehavior,
+     List<RenderBox>? children,
+     Color? selectionColor,
++    ui.BoxHeightStyle selectionHeightStyle = ui.BoxHeightStyle.tight,
+     SelectionRegistrar? registrar,
+   }) : assert(text.debugAssertIsValid()),
+        assert(maxLines == null || maxLines > 0),
+@@ -362,6 +363,7 @@ class RenderParagraph extends RenderBox
+        _softWrap = softWrap,
+        _overflow = overflow,
+        _selectionColor = selectionColor,
++       _selectionHeightStyle = selectionHeightStyle,
+        _textPainter = TextPainter(
+          text: text,
+          textAlign: textAlign,
+@@ -757,6 +759,25 @@ class RenderParagraph extends RenderBox
+     }
+   }
+ 
++  /// Controls the height of painted selection highlights.
++  ///
++  /// Defaults to [ui.BoxHeightStyle.tight]. See [DefaultSelectionStyle.selectionHeightStyle].
++  ui.BoxHeightStyle get selectionHeightStyle => _selectionHeightStyle;
++  ui.BoxHeightStyle _selectionHeightStyle;
++
++  set selectionHeightStyle(ui.BoxHeightStyle value) {
++    if (_selectionHeightStyle == value) {
++      return;
++    }
++    _selectionHeightStyle = value;
++    if (_lastSelectableFragments?.any(
++          (_SelectableFragment fragment) => fragment.value.hasSelection,
++        ) ??
++        false) {
++      markNeedsPaint();
++    }
++  }
++
+   Offset _getOffsetForPosition(TextPosition position) {
+     return getOffsetForCaret(position, Rect.zero) + Offset(0, getFullHeightForCaret(position));
+   }
+@@ -3568,7 +3589,10 @@ class _SelectableFragment
+       final selectionPaint = Paint()
+         ..style = PaintingStyle.fill
+         ..color = paragraph.selectionColor!;
+-      for (final TextBox textBox in paragraph.getBoxesForSelection(selection)) {
++      for (final TextBox textBox in paragraph.getBoxesForSelection(
++        selection,
++        boxHeightStyle: paragraph.selectionHeightStyle,
++      )) {
+         context.canvas.drawRect(textBox.toRect().shift(offset), selectionPaint);
+       }
+     }
+diff --git a/packages/flutter/lib/src/widgets/basic.dart b/packages/flutter/lib/src/widgets/basic.dart
+index 95c9ceadaf1..2327d16348b 100644
+--- a/packages/flutter/lib/src/widgets/basic.dart
++++ b/packages/flutter/lib/src/widgets/basic.dart
+@@ -11,7 +11,13 @@ library;
+ import 'dart:math' as math;
+ import 'dart:ui'
+     as ui
+-    show Image, ImageFilter, SemanticsHitTestBehavior, SemanticsInputType, TextHeightBehavior;
++    show
++        BoxHeightStyle,
++        Image,
++        ImageFilter,
++        SemanticsHitTestBehavior,
++        SemanticsInputType,
++        TextHeightBehavior;
+ 
+ import 'package:flutter/animation.dart';
+ import 'package:flutter/foundation.dart';
+@@ -6625,6 +6631,7 @@ class RichText extends MultiChildRenderObjectWidget {
+     this.textHeightBehavior,
+     this.selectionRegistrar,
+     this.selectionColor,
++    this.selectionHeightStyle = ui.BoxHeightStyle.tight,
+   }) : assert(maxLines == null || maxLines > 0),
+        assert(selectionRegistrar == null || selectionColor != null),
+        assert(
+@@ -6734,6 +6741,12 @@ class RichText extends MultiChildRenderObjectWidget {
+   /// widgets.
+   final Color? selectionColor;
+ 
++  /// Controls how tall the selection highlight is.
++  ///
++  /// Defaults to [ui.BoxHeightStyle.tight]. See
++  /// [DefaultSelectionStyle.selectionHeightStyle].
++  final ui.BoxHeightStyle selectionHeightStyle;
++
+   @override
+   RenderParagraph createRenderObject(BuildContext context) {
+     assert(textDirection != null || debugCheckHasDirectionality(context));
+@@ -6751,6 +6764,7 @@ class RichText extends MultiChildRenderObjectWidget {
+       locale: locale ?? Localizations.maybeLocaleOf(context),
+       registrar: selectionRegistrar,
+       selectionColor: selectionColor,
++      selectionHeightStyle: selectionHeightStyle,
+     );
+   }
+ 
+@@ -6770,7 +6784,8 @@ class RichText extends MultiChildRenderObjectWidget {
+       ..textHeightBehavior = textHeightBehavior
+       ..locale = locale ?? Localizations.maybeLocaleOf(context)
+       ..registrar = selectionRegistrar
+-      ..selectionColor = selectionColor;
++      ..selectionColor = selectionColor
++      ..selectionHeightStyle = selectionHeightStyle;
+   }
+ 
+   @override
+diff --git a/packages/flutter/lib/src/widgets/default_selection_style.dart b/packages/flutter/lib/src/widgets/default_selection_style.dart
+index 9709700d312..15d25f65e57 100644
+--- a/packages/flutter/lib/src/widgets/default_selection_style.dart
++++ b/packages/flutter/lib/src/widgets/default_selection_style.dart
+@@ -8,6 +8,8 @@
+ /// @docImport 'text.dart';
+ library;
+ 
++import 'dart:ui' show BoxHeightStyle;
++
+ import 'basic.dart';
+ import 'framework.dart';
+ import 'inherited_theme.dart';
+@@ -33,6 +35,7 @@ class DefaultSelectionStyle extends InheritedTheme {
+     this.cursorColor,
+     this.selectionColor,
+     this.mouseCursor,
++    this.selectionHeightStyle,
+     required super.child,
+   });
+ 
+@@ -48,6 +51,7 @@ class DefaultSelectionStyle extends InheritedTheme {
+     : cursorColor = null,
+       selectionColor = null,
+       mouseCursor = null,
++      selectionHeightStyle = null,
+       super(child: const _NullWidget());
+ 
+   /// Creates a default selection style that overrides the selection styles in
+@@ -60,6 +64,7 @@ class DefaultSelectionStyle extends InheritedTheme {
+     Color? cursorColor,
+     Color? selectionColor,
+     MouseCursor? mouseCursor,
++    BoxHeightStyle? selectionHeightStyle,
+     required Widget child,
+   }) {
+     return Builder(
+@@ -70,6 +75,7 @@ class DefaultSelectionStyle extends InheritedTheme {
+           cursorColor: cursorColor ?? parent.cursorColor,
+           selectionColor: selectionColor ?? parent.selectionColor,
+           mouseCursor: mouseCursor ?? parent.mouseCursor,
++          selectionHeightStyle: selectionHeightStyle ?? parent.selectionHeightStyle,
+           child: child,
+         );
+       },
+@@ -96,6 +102,21 @@ class DefaultSelectionStyle extends InheritedTheme {
+   /// If this property is null, [SystemMouseCursors.text] will be used.
+   final MouseCursor? mouseCursor;
+ 
++  /// Controls how tall the selection highlight is for [SelectionArea] / [Text]
++  /// descendants.
++  ///
++  /// When null, [Text] under a [SelectionArea] paints with
++  /// [BoxHeightStyle.tight] (glyph bounds only — ignores [TextStyle.height]).
++  ///
++  /// Prefer [BoxHeightStyle.includeLineSpacingMiddle] when selection should
++  /// cover the full line box including line spacing (browser-like).
++  ///
++  /// See also:
++  ///  * [EditableText.selectionHeightStyle], which configures the same for
++  ///    editable text.
++  ///  * https://github.com/flutter/flutter/issues/161010
++  final BoxHeightStyle? selectionHeightStyle;
++
+   /// The closest instance of this class that encloses the given context.
+   ///
+   /// If no such instance exists, returns an instance created by
+@@ -117,6 +138,7 @@ class DefaultSelectionStyle extends InheritedTheme {
+       cursorColor: cursorColor,
+       selectionColor: selectionColor,
+       mouseCursor: mouseCursor,
++      selectionHeightStyle: selectionHeightStyle,
+       child: child,
+     );
+   }
+@@ -125,7 +147,8 @@ class DefaultSelectionStyle extends InheritedTheme {
+   bool updateShouldNotify(DefaultSelectionStyle oldWidget) {
+     return cursorColor != oldWidget.cursorColor ||
+         selectionColor != oldWidget.selectionColor ||
+-        mouseCursor != oldWidget.mouseCursor;
++        mouseCursor != oldWidget.mouseCursor ||
++        selectionHeightStyle != oldWidget.selectionHeightStyle;
+   }
+ }
+ 
+diff --git a/packages/flutter/lib/src/widgets/text.dart b/packages/flutter/lib/src/widgets/text.dart
+index a3aa5fde862..3bf4569a3e5 100644
+--- a/packages/flutter/lib/src/widgets/text.dart
++++ b/packages/flutter/lib/src/widgets/text.dart
+@@ -13,7 +13,7 @@
+ library;
+ 
+ import 'dart:math';
+-import 'dart:ui' as ui show TextHeightBehavior;
++import 'dart:ui' as ui show BoxHeightStyle, TextHeightBehavior;
+ 
+ import 'package:flutter/foundation.dart';
+ import 'package:flutter/rendering.dart';
+@@ -773,6 +773,9 @@ class Text extends StatelessWidget {
+               selectionColor ??
+               DefaultSelectionStyle.of(context).selectionColor ??
+               DefaultSelectionStyle.defaultColor,
++          selectionHeightStyle:
++              DefaultSelectionStyle.of(context).selectionHeightStyle ??
++              ui.BoxHeightStyle.tight,
+           text: effectiveTextSpan,
+         ),
+       );
+@@ -796,6 +799,9 @@ class Text extends StatelessWidget {
+             selectionColor ??
+             DefaultSelectionStyle.of(context).selectionColor ??
+             DefaultSelectionStyle.defaultColor,
++        selectionHeightStyle:
++            DefaultSelectionStyle.of(context).selectionHeightStyle ??
++            ui.BoxHeightStyle.tight,
+         text: effectiveTextSpan,
+       );
+     }
+@@ -868,6 +874,7 @@ class _SelectableTextContainer extends StatefulWidget {
+     required this.textWidthBasis,
+     this.textHeightBehavior,
+     required this.selectionColor,
++    required this.selectionHeightStyle,
+   });
+ 
+   final TextSpan text;
+@@ -882,6 +889,7 @@ class _SelectableTextContainer extends StatefulWidget {
+   final TextWidthBasis textWidthBasis;
+   final ui.TextHeightBehavior? textHeightBehavior;
+   final Color selectionColor;
++  final ui.BoxHeightStyle selectionHeightStyle;
+ 
+   @override
+   State<_SelectableTextContainer> createState() => _SelectableTextContainerState();
+@@ -922,6 +930,7 @@ class _SelectableTextContainerState extends State<_SelectableTextContainer> {
+         textWidthBasis: widget.textWidthBasis,
+         textHeightBehavior: widget.textHeightBehavior,
+         selectionColor: widget.selectionColor,
++        selectionHeightStyle: widget.selectionHeightStyle,
+         text: widget.text,
+       ),
+     );
+@@ -943,6 +952,7 @@ class _RichText extends StatelessWidget {
+     required this.textWidthBasis,
+     this.textHeightBehavior,
+     required this.selectionColor,
++    required this.selectionHeightStyle,
+   });
+ 
+   final GlobalKey? textKey;
+@@ -958,6 +968,7 @@ class _RichText extends StatelessWidget {
+   final TextWidthBasis textWidthBasis;
+   final ui.TextHeightBehavior? textHeightBehavior;
+   final Color selectionColor;
++  final ui.BoxHeightStyle selectionHeightStyle;
+ 
+   @override
+   Widget build(BuildContext context) {
+@@ -976,6 +987,7 @@ class _RichText extends StatelessWidget {
+       textHeightBehavior: textHeightBehavior,
+       selectionRegistrar: registrar,
+       selectionColor: selectionColor,
++      selectionHeightStyle: selectionHeightStyle,
+       text: text,
+     );
+   }

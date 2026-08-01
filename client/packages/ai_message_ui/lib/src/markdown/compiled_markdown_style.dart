@@ -28,6 +28,7 @@ class CompiledMarkdownStyle {
     required this.borderColor,
     required this.codeBlockRadius,
     this.blockSpacing = 12,
+    this.listItemSpacing = 4,
     this.listIndent = 24,
   });
 
@@ -88,6 +89,9 @@ class CompiledMarkdownStyle {
   final Color borderColor;
   final double codeBlockRadius;
   final double blockSpacing;
+  /// Extra gap between list items (and heading → list). Independent of
+  /// [blockSpacing] so paragraph gaps can grow without loosening lists.
+  final double listItemSpacing;
   final double listIndent;
 
   TextStyle headingStyle(int level) {

@@ -516,7 +516,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
             child: child!,
           );
         },
-        child: SelectionArea(
+        child: AiLineSpacedSelectionStyle(
+          child: SelectionArea(
           contextMenuBuilder: buildAiThreadSelectionContextMenu,
           child: SingleChildScrollView(
             controller: _scrollController,
@@ -593,6 +594,7 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                 );
               },
             ),
+          ),
           ),
         ),
       ),

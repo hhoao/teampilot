@@ -29,19 +29,27 @@ class CompiledTextPartView extends StatelessWidget {
     final resolved = style ?? aiTheme.markdown;
 
     final children = <Widget>[];
+    final gapsBefore = <double>[];
     final blocks = document.blocks;
+    ContentBlock? previousBlock;
     var i = 0;
     while (i < blocks.length) {
       final block = blocks[i];
+      final gap = previousBlock == null
+          ? 0.0
+          : _blockGap(previousBlock, block, resolved);
       if (_isMergeableTextual(block)) {
         final mergeEnd = _mergeableRunEnd(blocks, i);
-        children.add(
-          _buildMergedTextual(blocks.sublist(i, mergeEnd), resolved),
-        );
+        final merged = blocks.sublist(i, mergeEnd);
+        children.add(_buildMergedTextual(merged, resolved));
+        gapsBefore.add(gap);
+        previousBlock = merged.last;
         i = mergeEnd;
         continue;
       }
       children.add(_buildBlock(context, block, resolved, theme, aiTheme));
+      gapsBefore.add(gap);
+      previousBlock = block;
       i++;
     }
 
@@ -52,11 +60,24 @@ class CompiledTextPartView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (var c = 0; c < children.length; c++) ...[
-          if (c > 0) SizedBox(height: resolved.blockSpacing),
+          if (gapsBefore[c] > 0) SizedBox(height: gapsBefore[c]),
           children[c],
         ],
       ],
     );
+  }
+
+  /// Heading → list stays on the list rhythm; other block pairs use
+  /// [blockSpacing] (paragraph ↔ code, list ↔ paragraph, …).
+  double _blockGap(
+    ContentBlock previous,
+    ContentBlock next,
+    CompiledMarkdownStyle style,
+  ) {
+    if (previous is HeadingBlock && next is ListBlock) {
+      return style.listItemSpacing;
+    }
+    return style.blockSpacing;
   }
 
   bool _isMergeableTextual(ContentBlock block) =>
@@ -77,7 +98,14 @@ class CompiledTextPartView extends StatelessWidget {
     final spans = <InlineSpan>[];
     for (var i = 0; i < blocks.length; i++) {
       if (i > 0) {
-        spans.add(TextSpan(text: '\n\n', style: style.body));
+        // Blank-line advance equals [blockSpacing] (not body line-height).
+        final fontSize = style.body.fontSize ?? 14.0;
+        spans.add(
+          TextSpan(
+            text: '\n\n',
+            style: style.body.copyWith(height: style.blockSpacing / fontSize),
+          ),
+        );
       }
       final block = blocks[i];
       if (block is HeadingBlock) {
@@ -279,7 +307,8 @@ class _CompiledList extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (var i = 0; i < items.length; i++) ...[
-          if (i > 0) SizedBox(height: style.blockSpacing * 0.35),
+          if (i > 0 && style.listItemSpacing > 0)
+            SizedBox(height: style.listItemSpacing),
           _buildItem(items[i], i),
         ],
       ],
@@ -320,7 +349,8 @@ class _CompiledList extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           row,
-          SizedBox(height: style.blockSpacing * 0.35),
+          if (style.listItemSpacing > 0)
+            SizedBox(height: style.listItemSpacing),
           for (final child in item.children)
             switch (child) {
               ListBlock(:final ordered, :final items) => _CompiledList(
