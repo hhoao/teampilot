@@ -4,6 +4,7 @@ import '../ir/markdown_document.dart';
 import '../registry/block_widget_registry.dart';
 import '../registry/markdown_resolvers.dart';
 import '../tokens/markdown_tokens.dart';
+import 'inline_spans.dart';
 
 /// Semantic markdown renderer: Column layout with kind-based inter-block gaps.
 class MarkdownView extends StatelessWidget {
@@ -28,21 +29,51 @@ class MarkdownView extends StatelessWidget {
     final reg = registry ?? BlockWidgetRegistry.builtIn();
     final children = <Widget>[];
     MarkdownBlock? previous;
+    var i = 0;
 
-    for (final block in blocks) {
-      if (previous != null) {
-        final gap = gapBetween(previous.kind, block.kind, tokens);
-        if (gap > 0) {
-          children.add(SizedBox(height: gap));
+    while (i < blocks.length) {
+      final block = blocks[i];
+
+      if (block is ParagraphBlock) {
+        var end = i + 1;
+        while (end < blocks.length && blocks[end] is ParagraphBlock) {
+          end++;
         }
+        final run = blocks.sublist(i, end).cast<ParagraphBlock>();
+
+        _addGapIfNeeded(children, previous, block, tokens);
+        children.add(
+          run.length == 1
+              ? buildParagraph(run.first, tokens, resolvers)
+              : buildMergedParagraphs(run, tokens, resolvers),
+        );
+        previous = run.last;
+        i = end;
+        continue;
       }
+
+      _addGapIfNeeded(children, previous, block, tokens);
       children.add(reg.build(block, tokens, resolvers));
       previous = block;
+      i++;
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
+  }
+
+  void _addGapIfNeeded(
+    List<Widget> children,
+    MarkdownBlock? previous,
+    MarkdownBlock next,
+    MarkdownTokens tokens,
+  ) {
+    if (previous == null) return;
+    final gap = gapBetween(previous.kind, next.kind, tokens);
+    if (gap > 0) {
+      children.add(SizedBox(height: gap));
+    }
   }
 }

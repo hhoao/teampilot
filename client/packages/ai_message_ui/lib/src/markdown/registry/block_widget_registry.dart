@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../ir/markdown_document.dart';
+import '../render/inline_spans.dart';
 import '../tokens/markdown_tokens.dart';
 import 'markdown_resolvers.dart';
 
@@ -35,14 +36,12 @@ class BlockWidgetRegistry {
   factory BlockWidgetRegistry.builtIn() {
     final registry = BlockWidgetRegistry._();
 
-    registry.register<ParagraphBlock>((block, tokens, _) {
-      final b = block as ParagraphBlock;
-      return Text(_plainText(b.runs), style: tokens.body);
+    registry.register<ParagraphBlock>((block, tokens, resolvers) {
+      return buildParagraph(block as ParagraphBlock, tokens, resolvers);
     });
 
-    registry.register<HeadingBlock>((block, tokens, _) {
-      final b = block as HeadingBlock;
-      return Text(_plainText(b.runs), style: _headingStyle(tokens, b.level));
+    registry.register<HeadingBlock>((block, tokens, resolvers) {
+      return buildHeading(block as HeadingBlock, tokens, resolvers);
     });
 
     registry.register<ListBlock>((block, tokens, _) {
@@ -52,7 +51,7 @@ class BlockWidgetRegistry {
         children: [
           for (final item in b.items)
             Text(
-              '• ${_plainText(item.runs)}',
+              '• ${plainTextFromRuns(item.runs)}',
               style: tokens.body,
             ),
         ],
@@ -88,38 +87,4 @@ class BlockWidgetRegistry {
 
     return registry;
   }
-}
-
-TextStyle _headingStyle(MarkdownTokens tokens, int level) {
-  return switch (level) {
-    1 => tokens.h1,
-    2 => tokens.h2,
-    3 => tokens.h3,
-    4 => tokens.h4,
-    5 => tokens.h5,
-    _ => tokens.h6,
-  };
-}
-
-String _plainText(List<InlineRun> runs) {
-  final buffer = StringBuffer();
-  for (final run in runs) {
-    switch (run) {
-      case TextRun(:final text):
-        buffer.write(text);
-      case StrongRun(:final children):
-        buffer.write(_plainText(children));
-      case EmphasisRun(:final children):
-        buffer.write(_plainText(children));
-      case StrikeRun(:final children):
-        buffer.write(_plainText(children));
-      case CodeRun(:final text):
-        buffer.write(text);
-      case LinkRun(:final children):
-        buffer.write(_plainText(children));
-      case ImageRun(:final alt):
-        buffer.write(alt ?? '');
-    }
-  }
-  return buffer.toString();
 }
