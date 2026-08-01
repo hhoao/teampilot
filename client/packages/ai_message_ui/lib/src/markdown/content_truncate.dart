@@ -1,4 +1,4 @@
-import 'content_ir.dart';
+import 'ir/markdown_document.dart';
 
 /// Budget approximating Claude Code webview `oYe` default maxHeight ≈ 250px.
 class ContentCollapseBudget {
@@ -22,14 +22,14 @@ class TruncatedMessageContent {
     required this.wasTruncated,
   });
 
-  final MessageContentDocument document;
+  final MarkdownDocument document;
   final bool wasTruncated;
 }
 
 /// Prefix of [full] within [budget]. Omits widgets Flutter would still layout
 /// under a CSS-style maxHeight clip.
 TruncatedMessageContent truncateMessageContent(
-  MessageContentDocument full, {
+  MarkdownDocument full, {
   ContentCollapseBudget budget = ContentCollapseBudget.claudeAligned,
 }) {
   final blocks = full.blocks;
@@ -37,7 +37,7 @@ TruncatedMessageContent truncateMessageContent(
     return TruncatedMessageContent(document: full, wasTruncated: false);
   }
 
-  final out = <ContentBlock>[];
+  final out = <MarkdownBlock>[];
   var chars = 0;
   var wasTruncated = false;
 
@@ -83,39 +83,39 @@ TruncatedMessageContent truncateMessageContent(
   }
 
   return TruncatedMessageContent(
-    document: MessageContentDocument(blocks: List.unmodifiable(out)),
+    document: MarkdownDocument(blocks: List.unmodifiable(out)),
     wasTruncated: true,
   );
 }
 
-({ContentBlock block, bool wasTruncated}) _clipBlockToChars(
-  ContentBlock block,
+({MarkdownBlock block, bool wasTruncated}) _clipBlockToChars(
+  MarkdownBlock block,
   int maxChars,
 ) {
   return switch (block) {
     ParagraphBlock(:final runs) => () {
         final clipped = _clipRuns(runs, maxChars);
         return (
-          block: ParagraphBlock(runs: clipped.runs) as ContentBlock,
+          block: ParagraphBlock(runs: clipped.runs) as MarkdownBlock,
           wasTruncated: clipped.wasTruncated,
         );
       }(),
     HeadingBlock(:final level, :final runs) => () {
         final clipped = _clipRuns(runs, maxChars);
         return (
-          block: HeadingBlock(level: level, runs: clipped.runs) as ContentBlock,
+          block: HeadingBlock(level: level, runs: clipped.runs) as MarkdownBlock,
           wasTruncated: clipped.wasTruncated,
         );
       }(),
     CodeBlock(:final language, :final text) => () {
         if (text.length <= maxChars) {
-          return (block: block as ContentBlock, wasTruncated: false);
+          return (block: block as MarkdownBlock, wasTruncated: false);
         }
         return (
           block: CodeBlock(
             language: language,
             text: '${text.substring(0, maxChars)}…',
-          ) as ContentBlock,
+          ) as MarkdownBlock,
           wasTruncated: true,
         );
       }(),
@@ -165,13 +165,13 @@ TruncatedMessageContent truncateMessageContent(
   return (runs: out, wasTruncated: wasTruncated);
 }
 
-int _estimateBlockChars(ContentBlock block) {
+int _estimateBlockChars(MarkdownBlock block) {
   return switch (block) {
     ParagraphBlock(:final runs) => _estimateRunsChars(runs),
     HeadingBlock(:final runs) => _estimateRunsChars(runs),
     CodeBlock(:final text) => text.length,
     HorizontalRuleBlock() => 0,
-    UnsupportedBlock(:final rawMarkdown) => rawMarkdown.length,
+    RawLiteralBlock(:final rawMarkdown) => rawMarkdown.length,
     BlockquoteBlock(:final blocks) =>
       blocks.fold<int>(0, (sum, b) => sum + _estimateBlockChars(b)),
     ListBlock(:final items) => items.fold<int>(0, (sum, item) {
@@ -191,6 +191,7 @@ int _estimateBlockChars(ContentBlock block) {
         }
         return n;
       }(),
+    ImageBlock(:final src, :final alt) => src.length + (alt?.length ?? 0),
   };
 }
 
@@ -204,6 +205,7 @@ int _estimateRunsChars(List<InlineRun> runs) {
       EmphasisRun(:final children) => _estimateRunsChars(children),
       StrikeRun(:final children) => _estimateRunsChars(children),
       LinkRun(:final children) => _estimateRunsChars(children),
+      ImageRun(:final src, :final alt) => src.length + (alt?.length ?? 0),
     };
   }
   return n;

@@ -76,8 +76,6 @@ dependencies:
   flutter_local_notifications: ^20.1.0
   flutter_native_splash: any
   pasteboard: ^0.5.0
-  flutter_markdown_plus:
-    path: packages/flutter_markdown_plus
   panes:
     path: packages/panes
   photo_view: ^0.15.0

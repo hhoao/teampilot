@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import '../edit/edit_tool_card.dart';
 import '../shell/shell_tool_card.dart';
 import '../markdown/compiled_markdown_chrome.dart';
-import '../markdown/compiled_markdown_style.dart';
+import '../markdown/tokens/markdown_tokens.dart';
 import '../strings.dart';
 import '../theme.dart';
 import '../tool_file_actions.dart';
@@ -187,7 +187,7 @@ class _LegacyToolTrigger extends StatelessWidget {
   final AiToolCallPart part;
   final bool cancelled;
   final Color triggerColor;
-  final CompiledMarkdownStyle markdown;
+  final MarkdownTokens markdown;
   final AiMessageStrings strings;
   final bool dense;
   final bool open;
@@ -264,7 +264,7 @@ class _SubagentToolTrigger extends StatelessWidget {
   final AiToolCallPart part;
   final bool cancelled;
   final Color triggerColor;
-  final CompiledMarkdownStyle markdown;
+  final MarkdownTokens markdown;
   final Future<void> Function(String toolCallId) onOpenSubagent;
   final bool dense;
   final bool open;
@@ -378,7 +378,7 @@ class _SummaryToolTrigger extends StatelessWidget {
   final AiToolFileTarget target;
   final bool cancelled;
   final Color triggerColor;
-  final CompiledMarkdownStyle markdown;
+  final MarkdownTokens markdown;
   final AiToolFileActions actions;
   final bool dense;
   final bool open;

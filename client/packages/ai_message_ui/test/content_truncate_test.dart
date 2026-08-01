@@ -1,10 +1,10 @@
-import 'package:ai_message_ui/src/markdown/content_ir.dart';
+import 'package:ai_message_ui/src/markdown/ir/markdown_document.dart';
 import 'package:ai_message_ui/src/markdown/content_truncate.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('claudeAligned budget clips large tables', () {
-    final doc = MessageContentDocument(
+    final doc = MarkdownDocument(
       blocks: [
         TableBlock(
           headers: const [
@@ -28,7 +28,7 @@ void main() {
   });
 
   test('short doc unchanged', () {
-    final doc = MessageContentDocument(
+    final doc = MarkdownDocument(
       blocks: [ParagraphBlock(runs: [TextRun('hi')])],
     );
     final result = truncateMessageContent(doc);

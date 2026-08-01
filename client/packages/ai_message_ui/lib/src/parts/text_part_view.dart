@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../history_render_scope.dart';
-import '../markdown/compiled_text_part_view.dart';
 import '../markdown/content_compiler.dart';
-import '../markdown/content_ir.dart';
+import '../markdown/ir/markdown_document.dart';
 import '../markdown/content_truncate.dart';
+import '../markdown/registry/markdown_resolvers.dart';
+import '../markdown/render/markdown_view.dart';
 import '../strings.dart';
+import '../theme.dart';
 
 export '../markdown/streaming_markdown.dart';
 
 /// Streaming-safe markdown aligned with assistant-ui MarkdownText / aui-md.
 ///
-/// Compiles GFM via [compileMessageContent] (cached) and renders with
-/// [CompiledTextPartView]. Under [AiHistoryRenderScope], long content follows
-/// Claude Code webview `oYe` (budgeted IR + Show more / Show less) — widgets
-/// beyond the budget are omitted so Flutter does not layout them.
+/// Compiles GFM via [compileMarkdown] (cached) and renders with
+/// [MarkdownView] (compact profile from [AiMessageTheme.markdown]). Under
+/// [AiHistoryRenderScope], long content follows Claude Code webview `oYe`
+/// (budgeted IR + Show more / Show less) — widgets beyond the budget are omitted
+/// so Flutter does not layout them.
 class AiTextPartView extends StatelessWidget {
   const AiTextPartView({
     required this.text,
@@ -30,10 +32,10 @@ class AiTextPartView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final document = compileMessageContent(text);
+    final document = compileMarkdown(text);
     final scope = AiHistoryRenderScope.maybeOf(context);
     if (scope == null) {
-      return CompiledTextPartView(
+      return _ChatMarkdownView(
         document: document,
         onTapLink: onTapLink,
       );
@@ -46,6 +48,33 @@ class AiTextPartView extends StatelessWidget {
   }
 }
 
+MarkdownResolvers _chatResolvers(MarkdownTapLinkCallback? onTapLink) {
+  if (onTapLink == null) return const MarkdownResolvers();
+  return MarkdownResolvers(
+    onLinkTap: (href) => onTapLink('', href, ''),
+  );
+}
+
+class _ChatMarkdownView extends StatelessWidget {
+  const _ChatMarkdownView({
+    required this.document,
+    this.onTapLink,
+  });
+
+  final MarkdownDocument document;
+  final MarkdownTapLinkCallback? onTapLink;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AiMessageTheme.of(context);
+    return MarkdownView(
+      document: document,
+      tokens: theme.markdown,
+      resolvers: _chatResolvers(onTapLink),
+    );
+  }
+}
+
 /// Claude Code `oYe`-aligned expandable markdown (IR omit, not CSS clip).
 class _ExpandableHistoryMarkdown extends StatefulWidget {
   const _ExpandableHistoryMarkdown({
@@ -54,7 +83,7 @@ class _ExpandableHistoryMarkdown extends StatefulWidget {
     this.onTapLink,
   });
 
-  final MessageContentDocument document;
+  final MarkdownDocument document;
   final ContentCollapseBudget budget;
   final MarkdownTapLinkCallback? onTapLink;
 
@@ -81,7 +110,7 @@ class _ExpandableHistoryMarkdownState extends State<_ExpandableHistoryMarkdown> 
       budget: widget.budget,
     );
     if (!truncated.wasTruncated) {
-      return CompiledTextPartView(
+      return _ChatMarkdownView(
         document: widget.document,
         onTapLink: widget.onTapLink,
       );
@@ -95,7 +124,7 @@ class _ExpandableHistoryMarkdownState extends State<_ExpandableHistoryMarkdown> 
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        CompiledTextPartView(
+        _ChatMarkdownView(
           document: shown,
           onTapLink: widget.onTapLink,
         ),

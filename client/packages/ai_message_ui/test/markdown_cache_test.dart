@@ -5,32 +5,32 @@ void main() {
   setUp(clearMessageContentCache);
 
   test('same markdown reuses identical cached document', () {
-    final a = compileMessageContent('hello **world**');
-    final b = compileMessageContent('hello **world**');
+    final a = compileMarkdown('hello **world**');
+    final b = compileMarkdown('hello **world**');
     expect(identical(a, b), isTrue);
     expect(messageContentCacheHits, 1);
     expect(messageContentCacheLength, 1);
   });
 
   test('different markdown creates separate cache entries', () {
-    compileMessageContent('one');
-    compileMessageContent('two');
+    compileMarkdown('one');
+    compileMarkdown('two');
     expect(messageContentCacheLength, 2);
     expect(messageContentCacheHits, 0);
   });
 
   test('evicts oldest when over maxEntries (64)', () {
     for (var i = 0; i < 64; i++) {
-      compileMessageContent('slot-$i');
+      compileMarkdown('slot-$i');
     }
     expect(messageContentCacheLength, 64);
 
-    compileMessageContent('slot-overflow');
+    compileMarkdown('slot-overflow');
     expect(messageContentCacheLength, 64);
 
     // Oldest key 'slot-0' should be gone; compiling it is a miss then insert.
     final beforeHits = messageContentCacheHits;
-    compileMessageContent('slot-0');
+    compileMarkdown('slot-0');
     expect(messageContentCacheHits, beforeHits);
     expect(messageContentCacheLength, 64);
   });

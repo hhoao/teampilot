@@ -1,13 +1,13 @@
 import 'package:ai_message_ui/src/markdown/content_compiler.dart';
-import 'package:ai_message_ui/src/markdown/content_ir.dart';
+import 'package:ai_message_ui/src/markdown/ir/markdown_document.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  bool hasUnsupported(MessageContentDocument doc) =>
-      doc.blocks.any((b) => b is UnsupportedBlock);
+  bool hasUnsupported(MarkdownDocument doc) =>
+      doc.blocks.any((b) => b is RawLiteralBlock);
 
   test('compiles heading', () {
-    final doc = compileMessageContent('## Hello world');
+    final doc = compileMarkdown('## Hello world');
     expect(hasUnsupported(doc), isFalse);
     expect(doc.blocks, hasLength(1));
     expect(doc.blocks.single, isA<HeadingBlock>());
@@ -17,7 +17,7 @@ void main() {
   });
 
   test('compiles paragraph with bold and link', () {
-    final doc = compileMessageContent(
+    final doc = compileMarkdown(
       'See [link](https://example.com) and **bold**.',
     );
     expect(hasUnsupported(doc), isFalse);
@@ -35,7 +35,7 @@ void main() {
   });
 
   test('compiles fenced code block', () {
-    final doc = compileMessageContent('```dart\nprint(1);\n```');
+    final doc = compileMarkdown('```dart\nprint(1);\n```');
     expect(hasUnsupported(doc), isFalse);
     expect(doc.blocks.single, isA<CodeBlock>());
     final code = doc.blocks.single as CodeBlock;
@@ -44,7 +44,7 @@ void main() {
   });
 
   test('compiles indented code block', () {
-    final doc = compileMessageContent('    code line\n');
+    final doc = compileMarkdown('    code line\n');
     expect(hasUnsupported(doc), isFalse);
     expect(doc.blocks.single, isA<CodeBlock>());
     final code = doc.blocks.single as CodeBlock;
@@ -53,7 +53,7 @@ void main() {
   });
 
   test('compiles GFM table with bold cell', () {
-    final doc = compileMessageContent(
+    final doc = compileMarkdown(
       '| A | B |\n| --- | --- |\n| x | **y** |\n',
     );
     expect(hasUnsupported(doc), isFalse);
@@ -71,17 +71,19 @@ void main() {
     );
   });
 
-  test('GFM table with image in cell becomes unsupported', () {
-    final doc = compileMessageContent(
+  test('GFM table with image in cell compiles', () {
+    final doc = compileMarkdown(
       '| A | B |\n| --- | --- |\n| x | ![alt](x.png) |\n',
     );
-    expect(doc.blocks.single, isA<UnsupportedBlock>());
-    final block = doc.blocks.single as UnsupportedBlock;
-    expect(block.rawMarkdown, contains('![alt](x.png)'));
+    expect(hasUnsupported(doc), isFalse);
+    expect(doc.blocks.single, isA<TableBlock>());
+    final table = doc.blocks.single as TableBlock;
+    expect(table.rows.single[1].runs.single, isA<ImageRun>());
+    expect((table.rows.single[1].runs.single as ImageRun).src, 'x.png');
   });
 
   test('compiles nested list', () {
-    final doc = compileMessageContent('- a\n  - b\n');
+    final doc = compileMarkdown('- a\n  - b\n');
     expect(hasUnsupported(doc), isFalse);
     expect(doc.blocks.single, isA<ListBlock>());
     final list = doc.blocks.single as ListBlock;
@@ -95,7 +97,7 @@ void main() {
   });
 
   test('compiles task list checked and unchecked', () {
-    final doc = compileMessageContent('- [x] done\n- [ ] todo\n');
+    final doc = compileMarkdown('- [x] done\n- [ ] todo\n');
     expect(hasUnsupported(doc), isFalse);
     expect(doc.blocks.single, isA<ListBlock>());
     final list = doc.blocks.single as ListBlock;
@@ -107,7 +109,7 @@ void main() {
   });
 
   test('compiles blockquote', () {
-    final doc = compileMessageContent('> quoted **text**\n');
+    final doc = compileMarkdown('> quoted **text**\n');
     expect(hasUnsupported(doc), isFalse);
     expect(doc.blocks.single, isA<BlockquoteBlock>());
     final quote = doc.blocks.single as BlockquoteBlock;
@@ -118,39 +120,47 @@ void main() {
   });
 
   test('compiles thematic break', () {
-    final doc = compileMessageContent('---\n');
+    final doc = compileMarkdown('---\n');
     expect(hasUnsupported(doc), isFalse);
     expect(doc.blocks.single, isA<HorizontalRuleBlock>());
   });
 
-  test('heading with inline image becomes unsupported', () {
-    final doc = compileMessageContent('## Hello ![alt](x.png)');
-    expect(doc.blocks.single, isA<UnsupportedBlock>());
-    final block = doc.blocks.single as UnsupportedBlock;
-    expect(block.rawMarkdown, '## Hello ![alt](x.png)');
-  });
-
-  test('images become unsupported', () {
-    final doc = compileMessageContent('![alt](x.png)\n');
-    expect(doc.blocks, isNotEmpty);
-    expect(doc.blocks.any((b) => b is UnsupportedBlock), isTrue);
-  });
-
-  test('list item with inline image promotes unsupported child', () {
-    final doc = compileMessageContent('- ![alt](x.png)\n');
+  test('heading with inline image compiles ImageRun', () {
+    final doc = compileMarkdown('## Hello ![alt](x.png)');
     expect(hasUnsupported(doc), isFalse);
+    expect(doc.blocks.single, isA<HeadingBlock>());
+    final runs = (doc.blocks.single as HeadingBlock).runs;
+    expect(runs.whereType<ImageRun>(), isNotEmpty);
+    expect(runs.whereType<ImageRun>().single.src, 'x.png');
+  });
+
+  test('images compile to ImageBlock not RawLiteral', () {
+    final doc = compileMarkdown('![alt](x.png)');
+    expect(doc.blocks.single, isA<ImageBlock>());
+    expect((doc.blocks.single as ImageBlock).src, 'x.png');
+    expect((doc.blocks.single as ImageBlock).alt, 'alt');
+  });
+
+  test('inline image in paragraph compiles to ImageRun', () {
+    final doc = compileMarkdown('hi ![a](b.png) there');
+    final p = doc.blocks.single as ParagraphBlock;
+    expect(p.runs.whereType<ImageRun>(), isNotEmpty);
+    expect(p.runs.whereType<ImageRun>().single.src, 'b.png');
+    expect(p.runs.whereType<ImageRun>().single.alt, 'a');
+  });
+
+  test('image inside list item compiles (not RawLiteral)', () {
+    final doc = compileMarkdown('- ![a](b.png)');
+    expect(doc.blocks.whereType<RawLiteralBlock>(), isEmpty);
     expect(doc.blocks.single, isA<ListBlock>());
     final item = (doc.blocks.single as ListBlock).items.single;
-    expect(item.children.single, isA<UnsupportedBlock>());
-    expect(
-      (item.children.single as UnsupportedBlock).rawMarkdown,
-      '![alt](x.png)',
-    );
+    expect(item.runs.whereType<ImageRun>(), isNotEmpty);
+    expect(item.runs.whereType<ImageRun>().single.src, 'b.png');
   });
 
   test('raw HTML becomes unsupported', () {
-    final doc = compileMessageContent('<div>hi</div>\n');
+    final doc = compileMarkdown('<div>hi</div>\n');
     expect(doc.blocks, isNotEmpty);
-    expect(doc.blocks.any((b) => b is UnsupportedBlock), isTrue);
+    expect(doc.blocks.any((b) => b is RawLiteralBlock), isTrue);
   });
 }

@@ -1,46 +1,57 @@
 import 'package:ai_message_ui/ai_message_ui.dart';
-import 'package:ai_message_ui/src/markdown/compiled_markdown_style.dart';
-import 'package:ai_message_ui/src/markdown/compiled_text_part_view.dart';
-import 'package:ai_message_ui/src/markdown/content_ir.dart';
+import 'package:ai_message_ui/src/markdown/ir/markdown_document.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('compiled paragraphs use forced strut like MarkdownBody', (
+  testWidgets('paragraphs use forced strut for uniform line boxes', (
     tester,
   ) async {
-    final s = CompiledMarkdownStyle.test();
-    final body = s.body.copyWith(height: 1.65);
-    final style = CompiledMarkdownStyle(
+    final base = MarkdownTokens.test(blockGap: 24, listItemGap: 8);
+    final body = base.body.copyWith(height: 1.65);
+    final tokens = MarkdownTokens(
       body: body,
-      h1: s.h1,
-      h2: s.h2,
-      h3: s.h3,
-      h4: s.h4,
-      h5: s.h5,
-      h6: s.h6,
-      link: s.link,
+      h1: base.h1,
+      h2: base.h2,
+      h3: base.h3,
+      h4: base.h4,
+      h5: base.h5,
+      h6: base.h6,
+      link: base.link,
       inlineCode: body,
-      codeBlock: s.codeBlock,
-      codeLanguage: s.codeLanguage,
+      codeBlock: base.codeBlock,
+      codeLanguage: base.codeLanguage,
       listBullet: body,
-      blockquote: s.blockquote,
-      tableHead: s.tableHead,
+      blockquote: base.blockquote,
+      tableHead: base.tableHead,
       tableBody: body,
-      mutedSurface: s.mutedSurface,
-      borderColor: s.borderColor,
-      codeBlockRadius: s.codeBlockRadius,
-      blockSpacing: 24,
-      listItemSpacing: 8,
+      mutedSurface: base.mutedSurface,
+      borderColor: base.borderColor,
+      codeBlockRadius: base.codeBlockRadius,
+      tableCellsPadding: base.tableCellsPadding,
+      tableHeadBackground: base.tableHeadBackground,
+      tableBodyBackground: base.tableBodyBackground,
+      headingBottom: base.headingBottom,
+      paragraphGap: base.paragraphGap,
+      blockGap: 24,
+      listItemGap: 8,
+      listIndent: base.listIndent,
+      ruleGap: base.ruleGap,
+      h1TopSpacing: base.h1TopSpacing,
+      h2TopSpacing: base.h2TopSpacing,
+      h3TopSpacing: base.h3TopSpacing,
+      h4TopSpacing: base.h4TopSpacing,
+      h5TopSpacing: base.h5TopSpacing,
+      h6TopSpacing: base.h6TopSpacing,
     );
 
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: SelectionArea(
-            child: CompiledTextPartView(
-              style: style,
-              document: const MessageContentDocument(
+            child: MarkdownView(
+              tokens: tokens,
+              document: const MarkdownDocument(
                 blocks: [
                   ParagraphBlock(
                     runs: [
@@ -67,14 +78,14 @@ void main() {
   testWidgets('list bullet is selection-disabled; body keeps hanging indent', (
     tester,
   ) async {
-    final style = CompiledMarkdownStyle.test();
+    final tokens = MarkdownTokens.test();
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: SelectionArea(
-            child: CompiledTextPartView(
-              style: style,
-              document: const MessageContentDocument(
+            child: MarkdownView(
+              tokens: tokens,
+              document: const MarkdownDocument(
                 blocks: [
                   ListBlock(
                     ordered: false,

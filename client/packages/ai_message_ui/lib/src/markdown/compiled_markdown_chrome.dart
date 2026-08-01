@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'compiled_markdown_style.dart';
+import 'tokens/markdown_tokens.dart';
 
-/// Chrome typography derived from host [CompiledMarkdownStyle] tokens.
-extension CompiledMarkdownChrome on CompiledMarkdownStyle {
+/// Chrome typography derived from host [MarkdownTokens].
+extension MarkdownTokensChrome on MarkdownTokens {
   TextStyle toolTrigger(
     Color color, {
     bool cancelled = false,

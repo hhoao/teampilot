@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'markdown/compiled_markdown_style.dart';
+import 'markdown/tokens/markdown_tokens.dart';
 
 /// Theme tokens aligned with assistant-ui Thread / Message / ToolFallback.
 ///
 /// Hosts **must** supply [markdown] from their warmup-aligned typography
-/// (TeamPilot: [buildAppCompiledMarkdownStyle]). Package tests use
+/// (TeamPilot: [buildAppMarkdownTokens]). Package tests use
 /// [AiMessageTheme.test].
 @immutable
 class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
@@ -29,7 +29,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     this.cotExpandToolsOnOpen = false,
   });
 
-  /// Product / test fixture with [CompiledMarkdownStyle.test] typography.
+  /// Product / test fixture with [MarkdownTokens.test] typography.
   factory AiMessageTheme.test({
     ColorScheme? scheme,
     Color? userBubbleColor,
@@ -49,7 +49,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     bool cotExpandToolsOnOpen = false,
   }) {
     return AiMessageTheme(
-      markdown: CompiledMarkdownStyle.test(
+      markdown: MarkdownTokens.test(
         scheme: scheme,
         codeBlockRadius: codeBlockRadius,
       ),
@@ -71,8 +71,8 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     );
   }
 
-  /// Single source for compiled markdown + [MarkdownBody] fallback styles.
-  final CompiledMarkdownStyle markdown;
+  /// Single source for markdown typography + spacing tokens.
+  final MarkdownTokens markdown;
 
   final Color? userBubbleColor;
   final Color? userBubbleForeground;
@@ -116,7 +116,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
 
   @override
   AiMessageTheme copyWith({
-    CompiledMarkdownStyle? markdown,
+    MarkdownTokens? markdown,
     Color? userBubbleColor,
     Color? userBubbleForeground,
     Color? mutedSurface,
