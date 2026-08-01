@@ -132,7 +132,7 @@ Add strings for: apply hunk tooltip, dirty-discard confirm, apply/save failure, 
 | Layer | Cases |
 |-------|--------|
 | Unit `DiffHunkApplier` | insert / delete / modify; head/tail; empty; multi-apply; invalid block |
-| Cubit | apply writes + reload; dirty confirm cancel; write failure leaves state; File tab reload after Diff write; File Save blocked/confirmed when Diff dirty |
+| Cubit | apply writes + reload; dirty confirm cancel; dirty confirm → restore `lastLoadedCanonical` → clear dirty → apply → write/reload; write failure leaves state; File tab reload after Diff write; File Save blocked/confirmed when Diff dirty |
 | Widget | unstaged SxS shows `>>`; staged / unified do not; tap invokes apply |
 
 ## Rollout
