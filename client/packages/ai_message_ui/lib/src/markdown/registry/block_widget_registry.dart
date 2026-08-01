@@ -4,6 +4,7 @@ import '../ir/markdown_document.dart';
 import '../render/inline_spans.dart';
 import '../render/list_blockquote_blocks.dart';
 import '../render/markdown_view.dart';
+import '../render/table_code_hr_blocks.dart';
 import '../tokens/markdown_tokens.dart';
 import 'markdown_resolvers.dart';
 
@@ -76,17 +77,16 @@ class BlockWidgetRegistry {
       );
     });
 
-    registry.register<HorizontalRuleBlock>((_, __, ___) {
-      return const Text('HorizontalRuleBlock');
+    registry.register<HorizontalRuleBlock>((_, tokens, __) {
+      return buildHorizontalRule(tokens);
     });
 
     registry.register<CodeBlock>((block, tokens, _) {
-      final b = block as CodeBlock;
-      return Text(b.text, style: tokens.codeBlock);
+      return buildCodeBlock(block as CodeBlock, tokens);
     });
 
-    registry.register<TableBlock>((_, __, ___) {
-      return const Text('TableBlock');
+    registry.register<TableBlock>((block, tokens, resolvers) {
+      return buildTable(block as TableBlock, tokens, resolvers);
     });
 
     registry.register<ImageBlock>((block, _, __) {
