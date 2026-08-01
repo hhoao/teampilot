@@ -1480,6 +1480,13 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "0.18.0"
+  tp_markdown:
+    dependency: "direct main"
+    description:
+      path: "packages/tp_markdown"
+      relative: true
+    source: path
+    version: "0.1.0"
   typed_data:
     dependency: transitive
     description:

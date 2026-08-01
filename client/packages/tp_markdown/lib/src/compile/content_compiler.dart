@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:markdown/markdown.dart' as md;
 
-import 'ir/markdown_document.dart';
+import '../ir/markdown_document.dart';
 import 'streaming_markdown.dart';
 
 const int _kMessageContentCacheMax = 64;

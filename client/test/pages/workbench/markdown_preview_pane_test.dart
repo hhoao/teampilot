@@ -8,6 +8,7 @@ import 'package:teampilot/theme/app_font_resolver.dart';
 import 'package:teampilot/theme/app_markdown_style_sheet.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
+import 'package:tp_markdown/tp_markdown.dart';
 
 const _readmeFixture = '''
 # TeamPilot

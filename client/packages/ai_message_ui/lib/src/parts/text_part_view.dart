@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:tp_markdown/tp_markdown.dart';
 
 import '../history_render_scope.dart';
-import '../markdown/content_compiler.dart';
-import '../markdown/ir/markdown_document.dart';
-import '../markdown/content_truncate.dart';
-import '../markdown/registry/markdown_resolvers.dart';
-import '../markdown/render/markdown_view.dart';
 import '../strings.dart';
 import '../theme.dart';
 
-export '../markdown/streaming_markdown.dart';
+/// Used by [AiTextPartView.onTapLink].
+typedef MarkdownTapLinkCallback = void Function(
+  String text,
+  String? href,
+  String title,
+);
 
 /// Streaming-safe markdown aligned with assistant-ui MarkdownText / aui-md.
 ///
@@ -55,6 +56,11 @@ MarkdownResolvers _chatResolvers(MarkdownTapLinkCallback? onTapLink) {
   );
 }
 
+MarkdownStrings _chatMarkdownStrings(BuildContext context) {
+  final s = AiMessageStrings.of(context);
+  return MarkdownStrings(copy: s.copy, copied: s.copied, code: s.code);
+}
+
 class _ChatMarkdownView extends StatelessWidget {
   const _ChatMarkdownView({
     required this.document,
@@ -71,6 +77,7 @@ class _ChatMarkdownView extends StatelessWidget {
       document: document,
       tokens: theme.markdown,
       resolvers: _chatResolvers(onTapLink),
+      strings: _chatMarkdownStrings(context),
     );
   }
 }

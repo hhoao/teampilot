@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'package:tp_markdown/tp_markdown.dart';
 
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/editor_cubit.dart';

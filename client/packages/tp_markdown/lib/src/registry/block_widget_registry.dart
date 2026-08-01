@@ -6,6 +6,7 @@ import '../render/inline_spans.dart';
 import '../render/list_blockquote_blocks.dart';
 import '../render/markdown_view.dart';
 import '../render/table_code_hr_blocks.dart';
+import '../strings.dart';
 import '../tokens/markdown_tokens.dart';
 import 'markdown_resolvers.dart';
 
@@ -13,6 +14,7 @@ typedef BlockWidgetBuilder = Widget Function(
   MarkdownBlock block,
   MarkdownTokens tokens,
   MarkdownResolvers resolvers,
+  MarkdownStrings strings,
 );
 
 /// Maps block types to widget builders for [MarkdownView].
@@ -29,10 +31,11 @@ class BlockWidgetRegistry {
     MarkdownBlock block,
     MarkdownTokens tokens,
     MarkdownResolvers resolvers,
+    MarkdownStrings strings,
   ) {
     final builder = _builders[block.runtimeType];
     if (builder != null) {
-      return builder(block, tokens, resolvers);
+      return builder(block, tokens, resolvers, strings);
     }
     return Text(block.runtimeType.toString());
   }
@@ -44,57 +47,61 @@ class BlockWidgetRegistry {
       MarkdownDocument document,
       MarkdownTokens tokens,
       MarkdownResolvers resolvers,
+      MarkdownStrings strings,
     ) {
       return MarkdownView(
         document: document,
         tokens: tokens,
         resolvers: resolvers,
+        strings: strings,
         registry: registry,
       );
     }
 
-    registry.register<ParagraphBlock>((block, tokens, resolvers) {
+    registry.register<ParagraphBlock>((block, tokens, resolvers, _) {
       return buildParagraph(block as ParagraphBlock, tokens, resolvers);
     });
 
-    registry.register<HeadingBlock>((block, tokens, resolvers) {
+    registry.register<HeadingBlock>((block, tokens, resolvers, _) {
       return buildHeading(block as HeadingBlock, tokens, resolvers);
     });
 
-    registry.register<ListBlock>((block, tokens, resolvers) {
+    registry.register<ListBlock>((block, tokens, resolvers, strings) {
       return buildList(
         block as ListBlock,
         tokens,
         resolvers,
-        nestedView: (document) => buildNestedView(document, tokens, resolvers),
+        nestedView: (document) =>
+            buildNestedView(document, tokens, resolvers, strings),
       );
     });
 
-    registry.register<BlockquoteBlock>((block, tokens, resolvers) {
+    registry.register<BlockquoteBlock>((block, tokens, resolvers, strings) {
       return buildBlockquote(
         block as BlockquoteBlock,
         tokens,
-        nestedView: (document) => buildNestedView(document, tokens, resolvers),
+        nestedView: (document) =>
+            buildNestedView(document, tokens, resolvers, strings),
       );
     });
 
-    registry.register<HorizontalRuleBlock>((_, tokens, __) {
+    registry.register<HorizontalRuleBlock>((_, tokens, __, ___) {
       return buildHorizontalRule(tokens);
     });
 
-    registry.register<CodeBlock>((block, tokens, _) {
+    registry.register<CodeBlock>((block, tokens, _, __) {
       return buildCodeBlock(block as CodeBlock, tokens);
     });
 
-    registry.register<TableBlock>((block, tokens, resolvers) {
+    registry.register<TableBlock>((block, tokens, resolvers, _) {
       return buildTable(block as TableBlock, tokens, resolvers);
     });
 
-    registry.register<ImageBlock>((block, tokens, resolvers) {
+    registry.register<ImageBlock>((block, tokens, resolvers, _) {
       return buildImageBlock(block as ImageBlock, tokens, resolvers);
     });
 
-    registry.register<RawLiteralBlock>((block, tokens, _) {
+    registry.register<RawLiteralBlock>((block, tokens, _, __) {
       return buildRawLiteralBlock(block as RawLiteralBlock, tokens);
     });
 

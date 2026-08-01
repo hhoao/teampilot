@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'tokens/markdown_tokens.dart';
+import 'package:tp_markdown/tp_markdown.dart';
 
 /// Chrome typography derived from host [MarkdownTokens].
 extension MarkdownTokensChrome on MarkdownTokens {

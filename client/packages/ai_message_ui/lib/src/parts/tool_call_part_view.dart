@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import '../edit/edit_tool_card.dart';
 import '../shell/shell_tool_card.dart';
 import '../markdown/compiled_markdown_chrome.dart';
-import '../markdown/tokens/markdown_tokens.dart';
+import 'package:tp_markdown/tp_markdown.dart';
 import '../strings.dart';
 import '../theme.dart';
 import '../tool_file_actions.dart';

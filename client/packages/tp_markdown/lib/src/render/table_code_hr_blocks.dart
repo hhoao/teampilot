@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../strings.dart';
 import '../ir/markdown_document.dart';
 import '../registry/markdown_resolvers.dart';
+import '../strings.dart';
 import '../tokens/markdown_tokens.dart';
 import 'inline_spans.dart';
 
@@ -141,7 +141,7 @@ class _MarkdownCodeBlockState extends State<_MarkdownCodeBlock> {
 
   @override
   Widget build(BuildContext context) {
-    final strings = AiMessageStrings.of(context);
+    final strings = MarkdownStrings.of(context);
     final muted = widget.tokens.mutedSurface;
     final radius = widget.tokens.codeBlockRadius;
     final borderColor = widget.tokens.borderColor;

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
+import 'package:tp_markdown/tp_markdown.dart';
 
 import '../../cubits/ai_history_cubit.dart';
 import '../../cubits/agent_attention_cubit.dart';

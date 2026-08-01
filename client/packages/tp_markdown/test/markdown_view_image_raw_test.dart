@@ -1,7 +1,6 @@
 import 'dart:convert';
 
-import 'package:ai_message_ui/ai_message_ui.dart';
-import 'package:ai_message_ui/src/markdown/content_compiler.dart';
+import 'package:tp_markdown/tp_markdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

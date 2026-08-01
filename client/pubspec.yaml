@@ -31,6 +31,8 @@ dependencies:
     path: packages/ai_message_core
   ai_message_ui:
     path: packages/ai_message_ui
+  tp_markdown:
+    path: packages/tp_markdown
   shared_ui:
     path: packages/shared_ui
   teampilot_tree_sitter:

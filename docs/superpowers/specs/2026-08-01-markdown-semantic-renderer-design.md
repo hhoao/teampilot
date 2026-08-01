@@ -31,7 +31,7 @@ Token tuning alone cannot fix a dual layout engine.
 
 | Topic | Decision |
 |-------|----------|
-| Approach | Evolve `ai_message_ui` IR (not a greenfield `markdown_kit` package) |
+| Approach | Semantic IR path (initially in `ai_message_ui`; **extracted** to `tp_markdown` — see `2026-08-02-tp-markdown-package-design.md`) |
 | Surfaces | Chat + file preview both call the same renderer |
 | Profiles | `MarkdownProfile.document` (preview / README) and `.compact` (chat) |
 | Spacing | Inter-block **gap matrix** by `MarkdownBlockKind`; block widgets do not add competing outer margins |

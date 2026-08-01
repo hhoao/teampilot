@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'markdown/tokens/markdown_tokens.dart';
+import 'package:tp_markdown/tp_markdown.dart';
 
 /// Theme tokens aligned with assistant-ui Thread / Message / ToolFallback.
 ///

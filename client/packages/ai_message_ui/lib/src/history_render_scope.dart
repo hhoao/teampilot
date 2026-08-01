@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 
-import 'markdown/content_truncate.dart';
+import 'package:tp_markdown/tp_markdown.dart';
 
 /// History-review render policy (Claude Code webview-aligned).
 ///

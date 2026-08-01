@@ -2,6 +2,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tp_markdown/tp_markdown.dart';
 
 /// Edit chrome must reuse [MarkdownTokens] fingerprints (size/weight/
 /// family). Ad-hoc `fontSize - 1` / bare `TextStyle(fontSize: 11)` miss host

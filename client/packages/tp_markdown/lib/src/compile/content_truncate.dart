@@ -1,4 +1,4 @@
-import 'ir/markdown_document.dart';
+import '../ir/markdown_document.dart';
 
 /// Budget approximating Claude Code webview `oYe` default maxHeight ≈ 250px.
 class ContentCollapseBudget {

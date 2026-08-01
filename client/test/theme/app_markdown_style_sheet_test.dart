@@ -6,8 +6,8 @@ import 'package:teampilot/theme/app_fonts.dart';
 import 'package:teampilot/theme/app_markdown_style_sheet.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
-import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'package:tp_markdown/tp_markdown.dart';
 
 void main() {
   ThemeData themeForTest() {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../ir/markdown_document.dart';
 import '../registry/block_widget_registry.dart';
 import '../registry/markdown_resolvers.dart';
+import '../strings.dart';
 import '../tokens/markdown_tokens.dart';
 import 'inline_spans.dart';
 
@@ -13,12 +14,14 @@ class MarkdownView extends StatelessWidget {
     required this.document,
     required this.tokens,
     this.resolvers = const MarkdownResolvers(),
+    this.strings = MarkdownStrings.english,
     this.registry,
   });
 
   final MarkdownDocument document;
   final MarkdownTokens tokens;
   final MarkdownResolvers resolvers;
+  final MarkdownStrings strings;
   final BlockWidgetRegistry? registry;
 
   @override
@@ -53,14 +56,17 @@ class MarkdownView extends StatelessWidget {
       }
 
       _addGapIfNeeded(children, previous, block, tokens);
-      children.add(reg.build(block, tokens, resolvers));
+      children.add(reg.build(block, tokens, resolvers, strings));
       previous = block;
       i++;
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
+    return MarkdownStringsScope(
+      strings: strings,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
     );
   }
 

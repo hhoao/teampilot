@@ -5,7 +5,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
 import '../markdown/compiled_markdown_chrome.dart';
-import '../markdown/tokens/markdown_tokens.dart';
+import 'package:tp_markdown/tp_markdown.dart';
 import '../parts/expandable_tool_card.dart';
 import '../parts/fade_expand_body.dart';
 import '../theme.dart';

@@ -1,5 +1,5 @@
-name: ai_message_ui
-description: Flutter Thread/Message/Part UI for ai_message_core.
+name: tp_markdown
+description: Semantic GFM markdown — compile to IR, kind-based layout, Flutter MarkdownView.
 version: 0.1.0
 publish_to: none
 
@@ -10,10 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  ai_message_core:
-    path: ../ai_message_core
-  tp_markdown:
-    path: ../tp_markdown
+  markdown: ^7.3.0
 
 dev_dependencies:
   flutter_test:

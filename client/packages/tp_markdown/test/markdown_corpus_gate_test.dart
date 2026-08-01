@@ -1,7 +1,6 @@
+import 'package:tp_markdown/tp_markdown.dart';
 import 'dart:io';
 
-import 'package:ai_message_ui/src/markdown/content_compiler.dart';
-import 'package:ai_message_ui/src/markdown/ir/markdown_document.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -12,7 +11,7 @@ void main() {
   Directory corpusDirectory() {
     final candidates = [
       Directory('test/fixtures/markdown_corpus'),
-      Directory('packages/ai_message_ui/test/fixtures/markdown_corpus'),
+      Directory('packages/tp_markdown/test/fixtures/markdown_corpus'),
     ];
     for (final dir in candidates) {
       if (dir.existsSync()) return dir;
