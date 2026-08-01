@@ -5,7 +5,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
 import '../markdown/compiled_markdown_chrome.dart';
-import '../markdown/compiled_markdown_style.dart';
+import '../markdown/tokens/markdown_tokens.dart';
 import '../parts/expandable_tool_card.dart';
 import '../parts/fade_expand_body.dart';
 import '../theme.dart';
@@ -26,7 +26,7 @@ class ShellToolCard extends StatelessWidget {
   final AiToolCallPart part;
   final AiShellToolTarget shell;
   final Color triggerColor;
-  final CompiledMarkdownStyle markdown;
+  final MarkdownTokens markdown;
   final bool dense;
   final bool open;
   final VoidCallback onToggle;
@@ -113,7 +113,7 @@ class ShellToolCardHost extends StatelessWidget {
   final AiToolCallPart part;
   final AiShellToolTarget shell;
   final Color triggerColor;
-  final CompiledMarkdownStyle markdown;
+  final MarkdownTokens markdown;
   final bool dense;
   final bool open;
   final VoidCallback onToggle;
@@ -152,7 +152,7 @@ class _ShellTerminalBody extends StatelessWidget {
   final String command;
   final Color panelColor;
   final double radius;
-  final CompiledMarkdownStyle markdown;
+  final MarkdownTokens markdown;
   final Color accentColor;
   final bool open;
   final VoidCallback onToggle;

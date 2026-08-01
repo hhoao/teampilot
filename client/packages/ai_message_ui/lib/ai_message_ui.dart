@@ -24,7 +24,6 @@ export 'src/edit/edit_line_highlighter.dart';
 export 'src/edit/edit_tool_card.dart' show EditToolCard, previewEditHunkLines;
 export 'src/tool_file_actions.dart';
 export 'src/tool_subagent_actions.dart';
-export 'src/markdown/compiled_markdown_style.dart';
 export 'src/markdown/ir/markdown_block_kind.dart';
 export 'src/markdown/ir/markdown_document.dart';
 export 'src/markdown/tokens/markdown_profile.dart';

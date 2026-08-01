@@ -4,7 +4,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/material.dart';
 
 import '../markdown/compiled_markdown_chrome.dart';
-import '../markdown/compiled_markdown_style.dart';
+import '../markdown/tokens/markdown_tokens.dart';
 import '../parts/expandable_tool_card.dart';
 import '../parts/fade_expand_body.dart';
 import '../selection_dead_zone.dart';
@@ -60,7 +60,7 @@ class EditToolCard extends StatelessWidget {
   final AiEditHunk hunk;
   final AiToolFileActions actions;
   final Color triggerColor;
-  final CompiledMarkdownStyle markdown;
+  final MarkdownTokens markdown;
   final bool dense;
   final bool open;
   final VoidCallback onToggle;
@@ -184,7 +184,7 @@ class _EditDiffPanel extends StatelessWidget {
   final List<AiEditLine> lines;
   final Color panelColor;
   final double radius;
-  final CompiledMarkdownStyle markdown;
+  final MarkdownTokens markdown;
   final AiEditLineHighlighter highlighter;
   final bool open;
   final VoidCallback onToggle;

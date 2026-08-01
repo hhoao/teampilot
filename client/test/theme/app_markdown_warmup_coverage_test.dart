@@ -7,6 +7,7 @@ import 'package:teampilot/theme/app_markdown_style_sheet.dart';
 import 'package:teampilot/theme/app_text_styles_warmup.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
+import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 void main() {
@@ -17,7 +18,8 @@ void main() {
       platform: TargetPlatform.linux,
     );
     final theme = bootstrapThemeForTextWarmup(fonts);
-    final sheet = buildAppMarkdownStyleSheet(theme);
+    final tokens = buildAppMarkdownTokens(theme, MarkdownProfile.document);
+    final sheet = tokens.toMarkdownStyleSheet();
     final warmupKeys = TpGlyphWarmup.dedupeByShapeKey(
       textStylesForThemeWarmup(theme),
     ).map(TpGlyphWarmup.shapeKey).toSet();
@@ -41,15 +43,14 @@ void main() {
 
     // Edit tool chrome: codeBlock (+ color only) and badge = codeLanguage + w600
     // (same shape as toolTrigger / smSemibold).
-    final markdown = buildAppCompiledMarkdownStyle(theme);
     expect(
-      warmupKeys.contains(TpGlyphWarmup.shapeKey(markdown.codeBlock)),
+      warmupKeys.contains(TpGlyphWarmup.shapeKey(tokens.codeBlock)),
       isTrue,
     );
     expect(
       warmupKeys.contains(
         TpGlyphWarmup.shapeKey(
-          markdown.codeLanguage.copyWith(fontWeight: FontWeight.w600),
+          tokens.codeLanguage.copyWith(fontWeight: FontWeight.w600),
         ),
       ),
       isTrue,
@@ -69,12 +70,12 @@ void main() {
       null,
       fonts,
     );
-    final sheet = buildAppMarkdownStyleSheet(theme);
+    final tokens = buildAppMarkdownTokens(theme, MarkdownProfile.document);
     final mono = theme.extension<TpFontTheme>()!;
     final bodySize = theme.textTheme.bodyMedium!.fontSize;
 
-    expect(sheet.code?.fontFamily, mono.monoFontFamily);
-    expect(sheet.code?.fontSize, bodySize);
-    expect(sheet.code?.fontSize, isNot(bodySize! * 0.85));
+    expect(tokens.inlineCode.fontFamily, mono.monoFontFamily);
+    expect(tokens.inlineCode.fontSize, bodySize);
+    expect(tokens.inlineCode.fontSize, isNot(bodySize! * 0.85));
   });
 }

@@ -3,21 +3,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-/// Text styles [buildAppCompiledMarkdownStyle] paints — boot glyph warmup.
+/// Text styles [buildAppMarkdownTokens] paints — boot glyph warmup.
 List<TextStyle> appMarkdownTextStyles(ThemeData theme) {
-  return buildAppCompiledMarkdownStyle(theme).textStylesForWarmup;
+  return buildAppMarkdownTokens(theme, MarkdownProfile.document)
+      .textStylesForWarmup;
 }
 
-/// Host [CompiledMarkdownStyle] bound to [TpTextStyles] + [TpFontTheme].
+/// Host [MarkdownTokens] bound to [TpTextStyles] + [TpFontTheme].
 ///
 /// Uses only warmup-covered size/weight variants — no ad-hoc sizes that miss
 /// the glyph cache. Install on [AiMessageTheme.markdown].
-CompiledMarkdownStyle buildAppCompiledMarkdownStyle(
-  ThemeData theme, {
+MarkdownTokens buildAppMarkdownTokens(
+  ThemeData theme,
+  MarkdownProfile profile, {
   Color? mutedSurface,
   double codeBlockRadius = 12,
-  double blockSpacing = 28,
-  double listItemSpacing = 8,
 }) {
   final fonts = theme.extension<TpFontTheme>() ?? TpFontTheme.fallback;
   final styles = TpTextStyles(theme);
@@ -37,7 +37,42 @@ CompiledMarkdownStyle buildAppCompiledMarkdownStyle(
   );
   final codeBlock = styles.mono.copyWith(color: scheme.onSurface);
 
-  return CompiledMarkdownStyle(
+  final (
+    h1Top,
+    h2Top,
+    h3Top,
+    h4Top,
+    h5Top,
+    h6Top,
+    paragraphGap,
+    blockGap,
+    ruleGap,
+  ) = switch (profile) {
+    MarkdownProfile.document => (
+        40.0,
+        36.0,
+        32.0,
+        28.0,
+        28.0,
+        28.0,
+        16.0,
+        28.0,
+        28.0,
+      ),
+    MarkdownProfile.compact => (
+        16.0,
+        12.0,
+        8.0,
+        8.0,
+        8.0,
+        8.0,
+        12.0,
+        12.0,
+        12.0,
+      ),
+  };
+
+  return MarkdownTokens(
     body: body,
     // Size ladder (Material text theme): display → xl → lg → md.
     // Prefer warmup-covered TpTextStyles tokens over ad-hoc fontSize.
@@ -69,26 +104,33 @@ CompiledMarkdownStyle buildAppCompiledMarkdownStyle(
     mutedSurface: muted,
     borderColor: scheme.outlineVariant.withValues(alpha: 0.45),
     codeBlockRadius: codeBlockRadius,
-    blockSpacing: blockSpacing,
-    listItemSpacing: listItemSpacing,
     tableCellsPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
     tableHeadBackground: scheme.onSurface.withValues(alpha: 0.04),
     tableBodyBackground: Colors.transparent,
-    h1TopSpacing: 40,
-    h2TopSpacing: 36,
-    h3TopSpacing: 32,
-    h4TopSpacing: 28,
-    h5TopSpacing: 28,
-    h6TopSpacing: 28,
+    headingBottom: 8,
+    paragraphGap: paragraphGap,
+    blockGap: blockGap,
+    listItemGap: 8,
+    listIndent: 24,
+    ruleGap: ruleGap,
+    h1TopSpacing: h1Top,
+    h2TopSpacing: h2Top,
+    h3TopSpacing: h3Top,
+    h4TopSpacing: h4Top,
+    h5TopSpacing: h5Top,
+    h6TopSpacing: h6Top,
   );
 }
 
-/// [MarkdownBody] / file-preview sheet derived from the compiled host styles.
+/// [MarkdownBody] file-preview sheet — document profile until Task 7.
 MarkdownStyleSheet buildAppMarkdownStyleSheet(ThemeData theme) {
-  return buildAppCompiledMarkdownStyle(theme).toMarkdownStyleSheet();
+  return buildAppMarkdownTokens(theme, MarkdownProfile.document)
+      .toMarkdownStyleSheet();
 }
 
 /// Default [AiMessageTheme] for the app shell; chat routes override layout tokens.
 AiMessageTheme buildAppAiMessageTheme(ThemeData theme) {
-  return AiMessageTheme(markdown: buildAppCompiledMarkdownStyle(theme));
+  return AiMessageTheme(
+    markdown: buildAppMarkdownTokens(theme, MarkdownProfile.compact),
+  );
 }

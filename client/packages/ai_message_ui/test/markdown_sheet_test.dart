@@ -5,108 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('CompiledMarkdownStyle.toMarkdownStyleSheet maps core tokens', () {
-    final theme = ThemeData(
-      colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-      useMaterial3: true,
-    );
-    final markdown = CompiledMarkdownStyle.test(scheme: theme.colorScheme);
-    final sheet = markdown.toMarkdownStyleSheet();
-
-    expect(sheet.a?.color, theme.colorScheme.primary);
-    expect(sheet.a?.decoration, TextDecoration.underline);
-    expect(sheet.tableHead?.fontWeight, FontWeight.w600);
-    expect(sheet.tableBorder, isNotNull);
-    expect(sheet.tableHeadCellsDecoration, isA<BoxDecoration>());
-    expect(
-      (sheet.tableHeadCellsDecoration! as BoxDecoration).color,
-      isNotNull,
-    );
-    expect(sheet.tableCellsPadding, isNotNull);
-    expect(sheet.p, markdown.body);
-    expect(sheet.code, markdown.inlineCode);
-  });
-
-  test('CompiledMarkdownStyle table chrome maps to sheet (defaults + override)', () {
-    final theme = ThemeData(
-      colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-      useMaterial3: true,
-    );
-    final defaults = CompiledMarkdownStyle.test(scheme: theme.colorScheme);
-    final defaultSheet = defaults.toMarkdownStyleSheet();
-
-    expect(
-      defaultSheet.tableCellsPadding,
-      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-    );
-    // tableHeadBackground is Color? — null means resolve to mutedSurface@0.85
-    expect(
-      (defaultSheet.tableHeadCellsDecoration! as BoxDecoration).color,
-      defaults.mutedSurface.withValues(alpha: 0.85),
-    );
-    expect(defaultSheet.h1Padding, const EdgeInsets.only(top: 16));
-    expect(defaultSheet.h2Padding, const EdgeInsets.only(top: 12));
-    expect(defaultSheet.h3Padding, const EdgeInsets.only(top: 8));
-
-    const padding = EdgeInsets.symmetric(horizontal: 14, vertical: 8);
-    final head = theme.colorScheme.onSurface.withValues(alpha: 0.04);
-    // Construct with new named params on test() / constructor — no copyWith.
-    final custom = CompiledMarkdownStyle.test(
-      scheme: theme.colorScheme,
-      tableCellsPadding: padding,
-      tableHeadBackground: head,
-      tableBodyBackground: Colors.transparent,
-    );
-    final sheet = custom.toMarkdownStyleSheet();
-    expect(sheet.tableCellsPadding, padding);
-    expect(
-      (sheet.tableHeadCellsDecoration! as BoxDecoration).color,
-      head,
-    );
-    expect(sheet.tableCellsDecoration, isA<BoxDecoration>());
-    expect(
-      (sheet.tableCellsDecoration! as BoxDecoration).color,
-      Colors.transparent,
-    );
-  });
-
-  test('headingTopSpacing maps into MarkdownStyleSheet paddings', () {
-    final base = CompiledMarkdownStyle.test();
-    final custom = CompiledMarkdownStyle(
-      body: base.body,
-      h1: base.h1,
-      h2: base.h2,
-      h3: base.h3,
-      h4: base.h4,
-      h5: base.h5,
-      h6: base.h6,
-      link: base.link,
-      inlineCode: base.inlineCode,
-      codeBlock: base.codeBlock,
-      codeLanguage: base.codeLanguage,
-      listBullet: base.listBullet,
-      blockquote: base.blockquote,
-      tableHead: base.tableHead,
-      tableBody: base.tableBody,
-      mutedSurface: base.mutedSurface,
-      borderColor: base.borderColor,
-      codeBlockRadius: base.codeBlockRadius,
-      h1TopSpacing: 40,
-      h2TopSpacing: 36,
-      h3TopSpacing: 32,
-    );
-    final sheet = custom.toMarkdownStyleSheet();
-    expect(sheet.h1Padding, const EdgeInsets.only(top: 40));
-    expect(sheet.h2Padding, const EdgeInsets.only(top: 36));
-    expect(sheet.h3Padding, const EdgeInsets.only(top: 32));
-    expect(custom.headingTopSpacing(2), 36);
-  });
-
   testWidgets('CompiledTextPartView table uses style table chrome', (tester) async {
-    final base = CompiledMarkdownStyle.test();
     const padding = EdgeInsets.symmetric(horizontal: 14, vertical: 8);
     const head = Color(0x14000000);
-    final style = CompiledMarkdownStyle(
+    final base = MarkdownTokens.test();
+    final tokens = MarkdownTokens(
       body: base.body,
       h1: base.h1,
       h2: base.h2,
@@ -128,13 +31,25 @@ void main() {
       tableCellsPadding: padding,
       tableHeadBackground: head,
       tableBodyBackground: Colors.transparent,
+      headingBottom: base.headingBottom,
+      paragraphGap: base.paragraphGap,
+      blockGap: base.blockGap,
+      listItemGap: base.listItemGap,
+      listIndent: base.listIndent,
+      ruleGap: base.ruleGap,
+      h1TopSpacing: base.h1TopSpacing,
+      h2TopSpacing: base.h2TopSpacing,
+      h3TopSpacing: base.h3TopSpacing,
+      h4TopSpacing: base.h4TopSpacing,
+      h5TopSpacing: base.h5TopSpacing,
+      h6TopSpacing: base.h6TopSpacing,
     );
 
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: CompiledTextPartView(
-            style: style,
+            style: tokens,
             document: const MarkdownDocument(
               blocks: [
                 TableBlock(

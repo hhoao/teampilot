@@ -1307,8 +1307,9 @@ class _SessionChatViewState extends State<SessionChatView> {
                                     in Theme.of(context).extensions.values)
                                   if (ext is! AiMessageTheme) ext,
                                 AiMessageTheme.of(context).copyWith(
-                                  markdown: buildAppCompiledMarkdownStyle(
+                                  markdown: buildAppMarkdownTokens(
                                     Theme.of(context),
+                                    MarkdownProfile.compact,
                                     mutedSurface: cs.surfaceContainerHighest
                                         .withValues(alpha: 0.55),
                                   ),

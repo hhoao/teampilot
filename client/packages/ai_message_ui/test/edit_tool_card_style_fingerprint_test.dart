@@ -3,14 +3,14 @@ import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Edit chrome must reuse [CompiledMarkdownStyle] fingerprints (size/weight/
+/// Edit chrome must reuse [MarkdownTokens] fingerprints (size/weight/
 /// family). Ad-hoc `fontSize - 1` / bare `TextStyle(fontSize: 11)` miss host
 /// glyph warmup and stall expand on Linux fontconfig.
 void main() {
   testWidgets(
     'edit gutter/prefix/badge match markdown codeBlock/codeLanguage shape',
     (tester) async {
-      final markdown = CompiledMarkdownStyle.test();
+      final markdown = MarkdownTokens.test();
       final mono = markdown.codeBlock;
 
       await tester.pumpWidget(
