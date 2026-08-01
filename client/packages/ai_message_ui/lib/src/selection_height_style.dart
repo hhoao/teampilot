@@ -15,7 +15,9 @@ class AiLineSpacedSelectionStyle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultSelectionStyle(
-      selectionHeightStyle: BoxHeightStyle.includeLineSpacingMiddle,
+      // Top puts line-spacing into each box's top edge so wrapped lines overlap
+      // slightly; combined with the SDK paint gap-close this removes hairlines.
+      selectionHeightStyle: BoxHeightStyle.includeLineSpacingTop,
       child: child,
     );
   }

@@ -1,5 +1,5 @@
 diff --git a/packages/flutter/lib/src/rendering/paragraph.dart b/packages/flutter/lib/src/rendering/paragraph.dart
-index 97a41dafb8d..98a6cf72546 100644
+index 97a41dafb8d..fa0b1326697 100644
 --- a/packages/flutter/lib/src/rendering/paragraph.dart
 +++ b/packages/flutter/lib/src/rendering/paragraph.dart
 @@ -352,6 +352,7 @@ class RenderParagraph extends RenderBox
@@ -44,18 +44,38 @@ index 97a41dafb8d..98a6cf72546 100644
    Offset _getOffsetForPosition(TextPosition position) {
      return getOffsetForCaret(position, Rect.zero) + Offset(0, getFullHeightForCaret(position));
    }
-@@ -3568,7 +3589,10 @@ class _SelectableFragment
+@@ -3568,8 +3589,29 @@ class _SelectableFragment
        final selectionPaint = Paint()
          ..style = PaintingStyle.fill
          ..color = paragraph.selectionColor!;
 -      for (final TextBox textBox in paragraph.getBoxesForSelection(selection)) {
-+      for (final TextBox textBox in paragraph.getBoxesForSelection(
+-        context.canvas.drawRect(textBox.toRect().shift(offset), selectionPaint);
++      final List<ui.TextBox> boxes = paragraph.getBoxesForSelection(
 +        selection,
 +        boxHeightStyle: paragraph.selectionHeightStyle,
-+      )) {
-         context.canvas.drawRect(textBox.toRect().shift(offset), selectionPaint);
++      );
++      // Close hairline gaps between stacked line boxes (font metrics / rounding
++      // can leave a visible seam even with includeLineSpacing*).
++      final List<Rect> rects = <Rect>[
++        for (final ui.TextBox textBox in boxes) textBox.toRect().shift(offset),
++      ]..sort((Rect a, Rect b) => a.top.compareTo(b.top));
++      for (var i = 1; i < rects.length; i++) {
++        final Rect prev = rects[i - 1];
++        final Rect curr = rects[i];
++        final double gap = curr.top - prev.bottom;
++        final bool overlapsX =
++            prev.left < curr.right && curr.left < prev.right;
++        if (overlapsX && gap > 0 && gap <= 2.0) {
++          final double mid = (prev.bottom + curr.top) / 2;
++          rects[i - 1] = Rect.fromLTRB(prev.left, prev.top, prev.right, mid);
++          rects[i] = Rect.fromLTRB(curr.left, mid, curr.right, curr.bottom);
++        }
++      }
++      for (final Rect rect in rects) {
++        context.canvas.drawRect(rect, selectionPaint);
        }
      }
+     if (_startHandleLayerLink != null && value.startSelectionPoint != null) {
 diff --git a/packages/flutter/lib/src/widgets/basic.dart b/packages/flutter/lib/src/widgets/basic.dart
 index 95c9ceadaf1..2327d16348b 100644
 --- a/packages/flutter/lib/src/widgets/basic.dart
@@ -115,7 +135,7 @@ index 95c9ceadaf1..2327d16348b 100644
  
    @override
 diff --git a/packages/flutter/lib/src/widgets/default_selection_style.dart b/packages/flutter/lib/src/widgets/default_selection_style.dart
-index 9709700d312..15d25f65e57 100644
+index 9709700d312..3a3a7e4b096 100644
 --- a/packages/flutter/lib/src/widgets/default_selection_style.dart
 +++ b/packages/flutter/lib/src/widgets/default_selection_style.dart
 @@ -8,6 +8,8 @@
@@ -169,7 +189,7 @@ index 9709700d312..15d25f65e57 100644
 +  /// When null, [Text] under a [SelectionArea] paints with
 +  /// [BoxHeightStyle.tight] (glyph bounds only — ignores [TextStyle.height]).
 +  ///
-+  /// Prefer [BoxHeightStyle.includeLineSpacingMiddle] when selection should
++  /// Prefer [BoxHeightStyle.includeLineSpacingTop] when selection should
 +  /// cover the full line box including line spacing (browser-like).
 +  ///
 +  /// See also:
