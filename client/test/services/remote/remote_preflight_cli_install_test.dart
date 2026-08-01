@@ -6,6 +6,25 @@ import 'package:teampilot/services/cli/registry/capabilities/remote_cli_locator_
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/remote/remote_preflight_cli_install.dart';
 
+bool _isTermuxProbe(String command) =>
+    command.startsWith('sh -c') &&
+    command.contains('is_termux=0') &&
+    command.contains('TERMUX=1') &&
+    command.contains('TERMUX=0');
+
+bool _isNodeBootstrap(String command) =>
+    command.startsWith('sh -c') &&
+    command.contains('com.hhoa.teampilot/toolchain/node');
+
+bool _isBareNpmLocate(String command) =>
+    command == 'command -v npm' ||
+    command == "bash -ilc 'command -v npm'" ||
+    command == "zsh -ilc 'command -v npm'" ||
+    (command.startsWith('sh -c') &&
+        command.contains('export PATH=') &&
+        command.contains('command -v npm') &&
+        !_isNodeBootstrap(command));
+
 void main() {
   final profile = SshProfile(
     id: 'p1',
@@ -28,12 +47,15 @@ void main() {
       final path = await install(
         run: (command) async {
           calls.add(command);
-          if (command.contains('command -v npm')) {
-            return const SshCommandResult(exitCode: 1, stdout: '');
+          if (_isTermuxProbe(command)) {
+            return const SshCommandResult(exitCode: 0, stdout: 'TERMUX=0\n');
           }
-          if (command.startsWith('sh -c') &&
-              command.contains('com.hhoa.teampilot/toolchain/node')) {
+          // Bootstrap scripts embed `command -v npm`; match them first.
+          if (_isNodeBootstrap(command)) {
             return const SshCommandResult(exitCode: 0, stdout: '10.0.0\n');
+          }
+          if (_isBareNpmLocate(command)) {
+            return const SshCommandResult(exitCode: 1, stdout: '');
           }
           if (command.contains('npm install -g --prefix') &&
               command.contains('@anthropic-ai/claude-code')) {
@@ -53,7 +75,8 @@ void main() {
 
       expect(path, '/home/dev/.local/bin/claude');
 
-      expect(calls.any((c) => c.startsWith('sh -c')), isTrue);
+      expect(calls.any(_isTermuxProbe), isTrue);
+      expect(calls.any(_isNodeBootstrap), isTrue);
       expect(
         calls.any(
           (c) =>
@@ -77,16 +100,18 @@ void main() {
       await expectLater(
         () => install(
           run: (command) async {
-            if (command.contains('command -v npm')) {
-              return const SshCommandResult(exitCode: 1, stdout: '');
+            if (_isTermuxProbe(command)) {
+              return const SshCommandResult(exitCode: 0, stdout: 'TERMUX=0\n');
             }
-            if (command.startsWith('sh -c') &&
-                command.contains('com.hhoa.teampilot/toolchain/node')) {
+            if (_isNodeBootstrap(command)) {
               return const SshCommandResult(
                 exitCode: 1,
                 stdout: '',
                 stderr: 'curl: (22) The requested URL returned error: 403',
               );
+            }
+            if (_isBareNpmLocate(command)) {
+              return const SshCommandResult(exitCode: 1, stdout: '');
             }
             return const SshCommandResult(exitCode: 1, stdout: '');
           },

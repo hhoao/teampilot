@@ -46,7 +46,6 @@ void main() {
     const uiZoom = 1.0 / dpr;
 
     final textBaseline = dpr;
-    final iconMult = TpIconSizes.resolveIconMultiplier(textBaseline: textBaseline);
     final pairedIcon = TpIconSizes.iconSizeForTextFontSize(
       bodyLargeBase * textBaseline,
       textBaseAtScale1: bodyLargeBase,
@@ -70,8 +69,12 @@ void main() {
     const textBaseline = 1.0;
     const typography = 1.2;
     const uiZoom = 0.68;
+    const expectedPairedRatio =
+        (TpIconSizes.mdBase * TpIconSizes.baselineScale) /
+        AppTypographyScale.bodyLargeBase;
 
-    final labelFont = AppTypographyScale.bodyLargeBase * textBaseline * typography;
+    final labelFont =
+        AppTypographyScale.bodyLargeBase * textBaseline * typography;
     final pairedIcon = TpIconSizes.iconSizeForTextFontSize(
       labelFont,
       textBaseAtScale1: AppTypographyScale.bodyLargeBase,
@@ -79,12 +82,10 @@ void main() {
     final toolbarIcon = TpIconSizes.mdBase *
         TpIconSizes.resolveIconMultiplier(textBaseline: textBaseline);
 
-    final pairedRatio =
-        (pairedIcon * uiZoom) / (labelFont * uiZoom);
-    final toolbarRatio =
-        (toolbarIcon * uiZoom) / (labelFont * uiZoom);
+    final pairedRatio = (pairedIcon * uiZoom) / (labelFont * uiZoom);
+    final toolbarRatio = (toolbarIcon * uiZoom) / (labelFont * uiZoom);
 
-    expect(pairedRatio, closeTo(1.485, 0.001));
+    expect(pairedRatio, closeTo(expectedPairedRatio, 0.001));
     expect(toolbarRatio, lessThan(pairedRatio));
   });
 }

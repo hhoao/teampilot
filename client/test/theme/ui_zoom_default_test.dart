@@ -14,21 +14,31 @@ void main() {
   });
 
   test(
-    'autoUiZoomForDevicePixelRatio skips 1/dpr on mobile (logical px)',
+    'autoUiZoomForDevicePixelRatio uses mobile standard baseline',
     () {
+      // Product lock: denser than desktop 1.0 so more chrome fits on phone.
+      expect(kMobileUiZoomBaseline, 0.7);
       expect(
         autoUiZoomForDevicePixelRatio(
           3.0,
           compensateDisplayScaling: false,
         ),
-        1.0,
+        kMobileUiZoomBaseline,
       );
       expect(
         autoUiZoomForDevicePixelRatio(
           2.0,
           compensateDisplayScaling: false,
         ),
-        1.0,
+        kMobileUiZoomBaseline,
+      );
+      expect(
+        resolveRelativeScale(
+          scaleId: 'standard',
+          customMultiplier: 1.0,
+          baseline: kMobileUiZoomBaseline,
+        ),
+        kMobileUiZoomBaseline,
       );
     },
   );
@@ -50,6 +60,8 @@ void main() {
   test(
     'autoTextScaleForSystem uses mobile baseline when not compensating',
     () {
+      // Product lock: larger than desktop 1.0 for touch readability.
+      expect(kMobileTextScaleBaseline, 1.3);
       expect(
         autoTextScaleForSystem(
           1.0,
