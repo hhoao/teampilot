@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../history_render_scope.dart';
 import '../markdown/content_compiler.dart';
@@ -14,7 +13,7 @@ export '../markdown/streaming_markdown.dart';
 
 /// Streaming-safe markdown aligned with assistant-ui MarkdownText / aui-md.
 ///
-/// Compiles GFM via [compileMessageContent] (cached) and renders with
+/// Compiles GFM via [compileMarkdown] (cached) and renders with
 /// [MarkdownView] (compact profile from [AiMessageTheme.markdown]). Under
 /// [AiHistoryRenderScope], long content follows Claude Code webview `oYe`
 /// (budgeted IR + Show more / Show less) — widgets beyond the budget are omitted
@@ -33,7 +32,7 @@ class AiTextPartView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final document = compileMessageContent(text);
+    final document = compileMarkdown(text);
     final scope = AiHistoryRenderScope.maybeOf(context);
     if (scope == null) {
       return _ChatMarkdownView(

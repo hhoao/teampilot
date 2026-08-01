@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:ai_message_ui/src/markdown/content_compiler.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -74,8 +73,9 @@ void main() {
     expect(find.byType(SelectableText), findsOneWidget);
   });
 
-  testWidgets('GFM fixture document has zero MarkdownBody in tree',
-      (tester) async {
+  testWidgets('GFM fixture document renders via MarkdownView only', (
+    tester,
+  ) async {
     const source = '''
 # Heading
 
@@ -112,7 +112,6 @@ void main() {}
       ),
     );
 
-    expect(find.byType(MarkdownBody), findsNothing);
     expect(find.byType(MarkdownView), findsOneWidget);
   });
 }

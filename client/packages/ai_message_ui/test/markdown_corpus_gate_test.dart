@@ -65,7 +65,7 @@ void main() {
     var clean = 0;
     for (final file in files) {
       final markdown = file.readAsStringSync();
-      final doc = compileMessageContent(markdown);
+      final doc = compileMarkdown(markdown);
       if (unsupportedInDocument(doc) == 0) {
         clean++;
       }
@@ -83,8 +83,8 @@ void main() {
 
   test('identical prepared markdown returns identical cached document', () {
     const markdown = '## Cached heading\n\nHello **world**.';
-    final first = compileMessageContent(markdown);
-    final second = compileMessageContent(markdown);
+    final first = compileMarkdown(markdown);
+    final second = compileMarkdown(markdown);
     expect(identical(first, second), isTrue);
     expect(messageContentCacheHits, 1);
     expect(messageContentCacheLength, 1);

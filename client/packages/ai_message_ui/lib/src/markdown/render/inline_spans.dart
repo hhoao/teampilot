@@ -6,8 +6,8 @@ import '../registry/markdown_resolvers.dart';
 import '../tokens/markdown_tokens.dart';
 import 'image_raw_blocks.dart';
 
-/// Match [flutter_markdown_plus] `_buildRichText`: force a uniform line box so
-/// mixed CJK / Latin / mono weights cannot open selection seams between wraps.
+/// Force a uniform line box so mixed CJK / Latin / mono weights cannot open
+/// selection seams between wraps.
 StrutStyle forcedStrut(TextStyle style) {
   return StrutStyle(
     fontFamily: style.fontFamily,

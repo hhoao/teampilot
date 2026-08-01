@@ -1,11 +1,10 @@
 import 'package:ai_message_ui/ai_message_ui.dart';
-import 'package:ai_message_ui/src/markdown/compiled_text_part_view.dart';
 import 'package:ai_message_ui/src/markdown/ir/markdown_document.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('compiled paragraphs use forced strut like MarkdownBody', (
+  testWidgets('paragraphs use forced strut for uniform line boxes', (
     tester,
   ) async {
     final base = MarkdownTokens.test(blockGap: 24, listItemGap: 8);
@@ -50,8 +49,8 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: SelectionArea(
-            child: CompiledTextPartView(
-              style: tokens,
+            child: MarkdownView(
+              tokens: tokens,
               document: const MarkdownDocument(
                 blocks: [
                   ParagraphBlock(
@@ -84,8 +83,8 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: SelectionArea(
-            child: CompiledTextPartView(
-              style: tokens,
+            child: MarkdownView(
+              tokens: tokens,
               document: const MarkdownDocument(
                 blocks: [
                   ListBlock(

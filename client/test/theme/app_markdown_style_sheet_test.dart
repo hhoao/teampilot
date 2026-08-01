@@ -82,14 +82,4 @@ void main() {
     expect(compact.paragraphGap, 12);
     expect(compact.blockGap, 12);
   });
-
-  test('buildAppMarkdownStyleSheet bridges document tokens for file preview', () {
-    final theme = themeForTest();
-    final sheet = buildAppMarkdownStyleSheet(theme);
-    final tokens = buildAppMarkdownTokens(theme, MarkdownProfile.document);
-
-    expect(sheet.p, tokens.body);
-    expect(sheet.blockSpacing, tokens.blockGap);
-    expect(sheet.h1Padding, EdgeInsets.only(top: tokens.h1TopSpacing));
-  });
 }

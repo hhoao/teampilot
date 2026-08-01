@@ -19,7 +19,6 @@ void main() {
     );
     final theme = bootstrapThemeForTextWarmup(fonts);
     final tokens = buildAppMarkdownTokens(theme, MarkdownProfile.document);
-    final sheet = tokens.toMarkdownStyleSheet();
     final warmupKeys = TpGlyphWarmup.dedupeByShapeKey(
       textStylesForThemeWarmup(theme),
     ).map(TpGlyphWarmup.shapeKey).toSet();
@@ -35,11 +34,25 @@ void main() {
       );
     }
 
-    // Spot-check sheet fields still resolve to those styles.
-    expect(warmupKeys.contains(TpGlyphWarmup.shapeKey(sheet.p!)), isTrue);
-    expect(warmupKeys.contains(TpGlyphWarmup.shapeKey(sheet.code!)), isTrue);
-    expect(warmupKeys.contains(TpGlyphWarmup.shapeKey(sheet.em!)), isTrue);
-    expect(warmupKeys.contains(TpGlyphWarmup.shapeKey(sheet.strong!)), isTrue);
+    // Spot-check token fields still resolve to warmed styles.
+    expect(warmupKeys.contains(TpGlyphWarmup.shapeKey(tokens.body)), isTrue);
+    expect(warmupKeys.contains(TpGlyphWarmup.shapeKey(tokens.codeBlock)), isTrue);
+    expect(
+      warmupKeys.contains(
+        TpGlyphWarmup.shapeKey(
+          tokens.body.copyWith(fontStyle: FontStyle.italic),
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      warmupKeys.contains(
+        TpGlyphWarmup.shapeKey(
+          tokens.body.copyWith(fontWeight: FontWeight.w600),
+        ),
+      ),
+      isTrue,
+    );
 
     // Edit tool chrome: codeBlock (+ color only) and badge = codeLanguage + w600
     // (same shape as toolTrigger / smSemibold).

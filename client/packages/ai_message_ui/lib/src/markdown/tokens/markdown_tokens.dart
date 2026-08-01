@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../ir/markdown_block_kind.dart';
 
@@ -185,58 +184,6 @@ class MarkdownTokens {
         tableHead,
         tableBody,
       ];
-
-  /// Temporary [MarkdownBody] bridge for raw-literal fallback and file preview
-  /// until all surfaces use [MarkdownView] (Tasks 6–7).
-  MarkdownStyleSheet toMarkdownStyleSheet() {
-    return MarkdownStyleSheet(
-      p: body,
-      h1: h1,
-      h2: h2,
-      h3: h3,
-      h4: h4,
-      h5: h5,
-      h6: h6,
-      a: link,
-      code: inlineCode,
-      em: body.copyWith(fontStyle: FontStyle.italic),
-      strong: body.copyWith(fontWeight: FontWeight.w600),
-      del: body.copyWith(decoration: TextDecoration.lineThrough),
-      listBullet: listBullet,
-      blockquote: blockquote,
-      tableHead: tableHead,
-      tableBody: tableBody,
-      checkbox: body,
-      blockSpacing: blockGap,
-      listIndent: listIndent,
-      h1Padding: EdgeInsets.only(top: h1TopSpacing),
-      h2Padding: EdgeInsets.only(top: h2TopSpacing),
-      h3Padding: EdgeInsets.only(top: h3TopSpacing),
-      h4Padding: EdgeInsets.only(top: h4TopSpacing),
-      h5Padding: EdgeInsets.only(top: h5TopSpacing),
-      h6Padding: EdgeInsets.only(top: h6TopSpacing),
-      codeblockDecoration: BoxDecoration(
-        color: mutedSurface,
-        borderRadius: BorderRadius.circular(codeBlockRadius),
-      ),
-      codeblockPadding: EdgeInsets.zero,
-      blockquoteDecoration: BoxDecoration(
-        border: Border(
-          left: BorderSide(color: borderColor, width: 3),
-        ),
-      ),
-      blockquotePadding: const EdgeInsets.only(left: 12),
-      tableHeadAlign: TextAlign.start,
-      tableBorder: TableBorder.all(color: borderColor, width: 1),
-      tableColumnWidth: const IntrinsicColumnWidth(),
-      tableCellsPadding: tableCellsPadding,
-      tableHeadCellsDecoration: BoxDecoration(
-        color: tableHeadBackground ?? mutedSurface.withValues(alpha: 0.85),
-      ),
-      tableCellsDecoration: BoxDecoration(color: tableBodyBackground),
-      tablePadding: const EdgeInsets.symmetric(vertical: 8),
-    );
-  }
 }
 
 bool _isHeading(MarkdownBlockKind kind) {

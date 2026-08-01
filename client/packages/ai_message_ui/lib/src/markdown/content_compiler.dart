@@ -53,10 +53,6 @@ MarkdownDocument compileMarkdown(String markdown) {
   return compiled;
 }
 
-/// Back-compat alias; prefer [compileMarkdown].
-MarkdownDocument compileMessageContent(String markdown) =>
-    compileMarkdown(markdown);
-
 MarkdownBlock _compileTopLevel(md.Node node) {
   if (node is md.Text) {
     final text = node.textContent;
@@ -452,7 +448,7 @@ String _reconstructUnsupported(md.Node node) {
     return node.textContent;
   }
   if (node is md.Element) {
-    // Best-effort: prefer textContent for MarkdownBody fallback.
+    // Best-effort: prefer textContent for raw-literal fallback.
     final text = node.textContent;
     if (text.isNotEmpty) return text;
     return '<${node.tag}>';

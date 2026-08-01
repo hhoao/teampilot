@@ -1,6 +1,5 @@
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 /// Text styles [buildAppMarkdownTokens] paints — boot glyph warmup.
@@ -120,12 +119,6 @@ MarkdownTokens buildAppMarkdownTokens(
     h5TopSpacing: h5Top,
     h6TopSpacing: h6Top,
   );
-}
-
-/// [MarkdownBody] file-preview sheet — document profile until Task 7.
-MarkdownStyleSheet buildAppMarkdownStyleSheet(ThemeData theme) {
-  return buildAppMarkdownTokens(theme, MarkdownProfile.document)
-      .toMarkdownStyleSheet();
 }
 
 /// Default [AiMessageTheme] for the app shell; chat routes override layout tokens.

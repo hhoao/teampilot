@@ -1,7 +1,6 @@
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -49,7 +48,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   GoogleFonts.config.allowRuntimeFetching = false;
 
-  testWidgets('markdown file preview renders MarkdownView not MarkdownBody', (
+  testWidgets('markdown file preview renders MarkdownView', (
     tester,
   ) async {
     final theme = _themeForTest();
@@ -66,7 +65,6 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(MarkdownBody), findsNothing);
     expect(find.byType(MarkdownView), findsOneWidget);
     expect(find.byType(SelectionArea), findsOneWidget);
     expect(find.byType(SingleChildScrollView), findsOneWidget);

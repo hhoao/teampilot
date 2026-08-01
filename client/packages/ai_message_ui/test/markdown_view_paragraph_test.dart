@@ -172,4 +172,38 @@ void main() {
     expect(richTexts, hasLength(1));
     expect(richTexts.single.textSpan?.style?.fontSize, tokens.h2.fontSize);
   });
+
+  testWidgets('link tap calls onLinkTap resolver', (tester) async {
+    String? tappedHref;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MarkdownView(
+            document: const MarkdownDocument(
+              blocks: [
+                ParagraphBlock(
+                  runs: [
+                    TextRun('See '),
+                    LinkRun(
+                      url: 'https://example.com',
+                      children: [TextRun('docs')],
+                    ),
+                    TextRun('.'),
+                  ],
+                ),
+              ],
+            ),
+            tokens: MarkdownTokens.test(),
+            resolvers: MarkdownResolvers(
+              onLinkTap: (href) => tappedHref = href,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.textContaining('docs'));
+    await tester.pump();
+    expect(tappedHref, 'https://example.com');
+  });
 }

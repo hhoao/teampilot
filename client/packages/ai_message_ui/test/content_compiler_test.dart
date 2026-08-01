@@ -7,7 +7,7 @@ void main() {
       doc.blocks.any((b) => b is RawLiteralBlock);
 
   test('compiles heading', () {
-    final doc = compileMessageContent('## Hello world');
+    final doc = compileMarkdown('## Hello world');
     expect(hasUnsupported(doc), isFalse);
     expect(doc.blocks, hasLength(1));
     expect(doc.blocks.single, isA<HeadingBlock>());
@@ -17,7 +17,7 @@ void main() {
   });
 
   test('compiles paragraph with bold and link', () {
-    final doc = compileMessageContent(
+    final doc = compileMarkdown(
       'See [link](https://example.com) and **bold**.',
     );
     expect(hasUnsupported(doc), isFalse);
@@ -35,7 +35,7 @@ void main() {
   });
 
   test('compiles fenced code block', () {
-    final doc = compileMessageContent('```dart\nprint(1);\n```');
+    final doc = compileMarkdown('```dart\nprint(1);\n```');
     expect(hasUnsupported(doc), isFalse);
     expect(doc.blocks.single, isA<CodeBlock>());
     final code = doc.blocks.single as CodeBlock;
@@ -44,7 +44,7 @@ void main() {
   });
 
   test('compiles indented code block', () {
-    final doc = compileMessageContent('    code line\n');
+    final doc = compileMarkdown('    code line\n');
     expect(hasUnsupported(doc), isFalse);
     expect(doc.blocks.single, isA<CodeBlock>());
     final code = doc.blocks.single as CodeBlock;
@@ -53,7 +53,7 @@ void main() {
   });
 
   test('compiles GFM table with bold cell', () {
-    final doc = compileMessageContent(
+    final doc = compileMarkdown(
       '| A | B |\n| --- | --- |\n| x | **y** |\n',
     );
     expect(hasUnsupported(doc), isFalse);
@@ -83,7 +83,7 @@ void main() {
   });
 
   test('compiles nested list', () {
-    final doc = compileMessageContent('- a\n  - b\n');
+    final doc = compileMarkdown('- a\n  - b\n');
     expect(hasUnsupported(doc), isFalse);
     expect(doc.blocks.single, isA<ListBlock>());
     final list = doc.blocks.single as ListBlock;
@@ -97,7 +97,7 @@ void main() {
   });
 
   test('compiles task list checked and unchecked', () {
-    final doc = compileMessageContent('- [x] done\n- [ ] todo\n');
+    final doc = compileMarkdown('- [x] done\n- [ ] todo\n');
     expect(hasUnsupported(doc), isFalse);
     expect(doc.blocks.single, isA<ListBlock>());
     final list = doc.blocks.single as ListBlock;
@@ -109,7 +109,7 @@ void main() {
   });
 
   test('compiles blockquote', () {
-    final doc = compileMessageContent('> quoted **text**\n');
+    final doc = compileMarkdown('> quoted **text**\n');
     expect(hasUnsupported(doc), isFalse);
     expect(doc.blocks.single, isA<BlockquoteBlock>());
     final quote = doc.blocks.single as BlockquoteBlock;
@@ -120,7 +120,7 @@ void main() {
   });
 
   test('compiles thematic break', () {
-    final doc = compileMessageContent('---\n');
+    final doc = compileMarkdown('---\n');
     expect(hasUnsupported(doc), isFalse);
     expect(doc.blocks.single, isA<HorizontalRuleBlock>());
   });
@@ -159,7 +159,7 @@ void main() {
   });
 
   test('raw HTML becomes unsupported', () {
-    final doc = compileMessageContent('<div>hi</div>\n');
+    final doc = compileMarkdown('<div>hi</div>\n');
     expect(doc.blocks, isNotEmpty);
     expect(doc.blocks.any((b) => b is RawLiteralBlock), isTrue);
   });
