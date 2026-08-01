@@ -80,18 +80,18 @@ class CompiledTextPartView extends StatelessWidget {
     );
   }
 
-  /// Heading → list stays on the list rhythm; incoming headings use
-  /// [CompiledMarkdownStyle.headingTopSpacing]; other pairs use [blockSpacing].
+  /// Heading → following block uses [headingBottomSpacing] (Orca ~0.5em);
+  /// incoming headings use [headingTopSpacing]; other pairs use [blockSpacing].
   double _blockGap(
     ContentBlock previous,
     ContentBlock next,
     CompiledMarkdownStyle style,
   ) {
-    if (previous is HeadingBlock && next is ListBlock) {
-      return style.listItemSpacing;
-    }
     if (next is HeadingBlock) {
       return style.headingTopSpacing(next.level);
+    }
+    if (previous is HeadingBlock) {
+      return style.headingBottomSpacing;
     }
     return style.blockSpacing;
   }
@@ -114,12 +114,15 @@ class CompiledTextPartView extends StatelessWidget {
     final spans = <InlineSpan>[];
     for (var i = 0; i < blocks.length; i++) {
       if (i > 0) {
-        // Blank-line advance: headings get headingTopSpacing; else blockSpacing.
+        // Blank-line advance: heading top / heading bottom / blockSpacing.
         final fontSize = style.body.fontSize ?? 14.0;
+        final prev = blocks[i - 1];
         final next = blocks[i];
         final gap = next is HeadingBlock
             ? style.headingTopSpacing(next.level)
-            : style.blockSpacing;
+            : prev is HeadingBlock
+                ? style.headingBottomSpacing
+                : style.blockSpacing;
         spans.add(
           TextSpan(
             text: '\n\n',

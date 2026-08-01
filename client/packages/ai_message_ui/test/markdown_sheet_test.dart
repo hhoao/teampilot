@@ -44,9 +44,18 @@ void main() {
       (defaultSheet.tableHeadCellsDecoration! as BoxDecoration).color,
       defaults.mutedSurface.withValues(alpha: 0.85),
     );
-    expect(defaultSheet.h1Padding, const EdgeInsets.only(top: 16));
-    expect(defaultSheet.h2Padding, const EdgeInsets.only(top: 12));
-    expect(defaultSheet.h3Padding, const EdgeInsets.only(top: 8));
+    expect(
+      defaultSheet.h1Padding,
+      const EdgeInsets.only(top: 16, bottom: 8),
+    );
+    expect(
+      defaultSheet.h2Padding,
+      const EdgeInsets.only(top: 12, bottom: 8),
+    );
+    expect(
+      defaultSheet.h3Padding,
+      const EdgeInsets.only(top: 8, bottom: 8),
+    );
 
     const padding = EdgeInsets.symmetric(horizontal: 14, vertical: 8);
     final head = theme.colorScheme.onSurface.withValues(alpha: 0.04);
@@ -94,12 +103,23 @@ void main() {
       h1TopSpacing: 40,
       h2TopSpacing: 36,
       h3TopSpacing: 32,
+      headingBottomSpacing: 10,
     );
     final sheet = custom.toMarkdownStyleSheet();
-    expect(sheet.h1Padding, const EdgeInsets.only(top: 40));
-    expect(sheet.h2Padding, const EdgeInsets.only(top: 36));
-    expect(sheet.h3Padding, const EdgeInsets.only(top: 32));
+    expect(
+      sheet.h1Padding,
+      const EdgeInsets.only(top: 40, bottom: 10),
+    );
+    expect(
+      sheet.h2Padding,
+      const EdgeInsets.only(top: 36, bottom: 10),
+    );
+    expect(
+      sheet.h3Padding,
+      const EdgeInsets.only(top: 32, bottom: 10),
+    );
     expect(custom.headingTopSpacing(2), 36);
+    expect(custom.headingBottomSpacing, 10);
   });
 
   testWidgets('CompiledTextPartView table uses style table chrome', (tester) async {

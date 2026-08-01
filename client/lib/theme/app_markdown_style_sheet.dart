@@ -80,6 +80,7 @@ CompiledMarkdownStyle buildAppCompiledMarkdownStyle(
     h4TopSpacing: 28,
     h5TopSpacing: 28,
     h6TopSpacing: 28,
+    headingBottomSpacing: 8,
   );
 }
 

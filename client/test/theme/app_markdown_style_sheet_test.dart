@@ -45,13 +45,23 @@ void main() {
     expect(sheet.h1?.height, 1.3);
     expect(sheet.h1?.letterSpacing, -0.02);
     expect(sheet.h2?.height, 1.3);
-    expect(sheet.h1Padding, const EdgeInsets.only(top: 40));
-    expect(sheet.h2Padding, const EdgeInsets.only(top: 36));
-    expect(sheet.h3Padding, const EdgeInsets.only(top: 32));
+    expect(
+      sheet.h1Padding,
+      const EdgeInsets.only(top: 40, bottom: 8),
+    );
+    expect(
+      sheet.h2Padding,
+      const EdgeInsets.only(top: 36, bottom: 8),
+    );
+    expect(
+      sheet.h3Padding,
+      const EdgeInsets.only(top: 32, bottom: 8),
+    );
 
     final compiled = buildAppCompiledMarkdownStyle(theme);
     expect(compiled.h1TopSpacing, 40);
     expect(compiled.h2TopSpacing, 36);
+    expect(compiled.headingBottomSpacing, 8);
     expect(
       compiled.borderColor,
       theme.colorScheme.outlineVariant.withValues(alpha: 0.45),

@@ -36,6 +36,7 @@ class CompiledMarkdownStyle {
     this.h4TopSpacing = 8,
     this.h5TopSpacing = 8,
     this.h6TopSpacing = 8,
+    this.headingBottomSpacing = 8,
     this.tableCellsPadding =
         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
     this.tableHeadBackground,
@@ -117,6 +118,8 @@ class CompiledMarkdownStyle {
   final double h4TopSpacing;
   final double h5TopSpacing;
   final double h6TopSpacing;
+  /// Space below a heading before the next block (Orca ~0.5em).
+  final double headingBottomSpacing;
   final EdgeInsets tableCellsPadding;
   final Color? tableHeadBackground;
   final Color tableBodyBackground;
@@ -186,12 +189,30 @@ class CompiledMarkdownStyle {
       checkbox: body,
       blockSpacing: blockSpacing,
       listIndent: listIndent,
-      h1Padding: EdgeInsets.only(top: h1TopSpacing),
-      h2Padding: EdgeInsets.only(top: h2TopSpacing),
-      h3Padding: EdgeInsets.only(top: h3TopSpacing),
-      h4Padding: EdgeInsets.only(top: h4TopSpacing),
-      h5Padding: EdgeInsets.only(top: h5TopSpacing),
-      h6Padding: EdgeInsets.only(top: h6TopSpacing),
+      h1Padding: EdgeInsets.only(
+        top: h1TopSpacing,
+        bottom: headingBottomSpacing,
+      ),
+      h2Padding: EdgeInsets.only(
+        top: h2TopSpacing,
+        bottom: headingBottomSpacing,
+      ),
+      h3Padding: EdgeInsets.only(
+        top: h3TopSpacing,
+        bottom: headingBottomSpacing,
+      ),
+      h4Padding: EdgeInsets.only(
+        top: h4TopSpacing,
+        bottom: headingBottomSpacing,
+      ),
+      h5Padding: EdgeInsets.only(
+        top: h5TopSpacing,
+        bottom: headingBottomSpacing,
+      ),
+      h6Padding: EdgeInsets.only(
+        top: h6TopSpacing,
+        bottom: headingBottomSpacing,
+      ),
       codeblockDecoration: BoxDecoration(
         color: mutedSurface,
         borderRadius: BorderRadius.circular(codeBlockRadius),
