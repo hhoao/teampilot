@@ -94,8 +94,11 @@ void main() {
     );
   });
 
-  testWidgets('standard buttons use onSurface foreground', (tester) async {
-    final theme = buildDarkTheme();
+  testWidgets('filled buttons use white; outline/text keep onSurface', (
+    tester,
+  ) async {
+    // Amber/forest compute black onPrimary; filled chrome still wants white.
+    final theme = buildLightTheme('amber');
     await tester.pumpWidget(
       MaterialApp(
         theme: theme,
@@ -104,6 +107,7 @@ void main() {
             children: [
               FilledButton(onPressed: () {}, child: const Text('filled')),
               FilledButton.tonal(onPressed: () {}, child: const Text('tonal')),
+              ElevatedButton(onPressed: () {}, child: const Text('elevated')),
               OutlinedButton(onPressed: () {}, child: const Text('outlined')),
               TextButton(onPressed: () {}, child: const Text('text')),
             ],
@@ -118,8 +122,9 @@ void main() {
     }
 
     final onSurface = theme.colorScheme.onSurface;
-    expect(fg('filled'), onSurface);
-    expect(fg('tonal'), onSurface);
+    expect(fg('filled'), Colors.white);
+    expect(fg('tonal'), Colors.white);
+    expect(fg('elevated'), Colors.white);
     expect(fg('outlined'), onSurface);
     expect(fg('text'), onSurface);
   });

@@ -8,7 +8,12 @@ typedef AppButtonThemes = ({
   TextButtonThemeData text,
 });
 
-/// Geometry + onSurface foreground for [size] (default medium = theme).
+/// White label/icon on primary-filled chrome (light + dark; ignores [onPrimary]
+/// which is black for amber/forest seeds).
+const Color kFilledButtonForeground = Colors.white;
+
+/// Geometry for [size] (default medium = theme). Does not set foreground —
+/// filled chrome uses [kFilledButtonForeground]; outline/text use onSurface.
 ///
 /// Pass as `style:` on a button to opt into small/large without fighting the
 /// global theme (widget style merges over theme).
@@ -20,7 +25,6 @@ ButtonStyle appButtonStyle(
   return _buttonGeometry(
     metrics: control.metricsFor(size),
     radius: control.radius,
-    onSurface: Theme.of(context).colorScheme.onSurface,
   );
 }
 
@@ -31,7 +35,6 @@ AppButtonThemes buildAppButtonThemes({
   final geometry = _buttonGeometry(
     metrics: control.medium,
     radius: control.radius,
-    onSurface: flexTheme.colorScheme.onSurface,
   );
   final fallbackShape = ButtonStyle(
     shape: WidgetStatePropertyAll(
@@ -39,20 +42,44 @@ AppButtonThemes buildAppButtonThemes({
     ),
   );
 
-  ButtonStyle merge(ButtonStyle? base) =>
-      base == null ? fallbackShape.merge(geometry) : base.merge(geometry);
+  ButtonStyle merge(ButtonStyle? base, {Color? foreground}) {
+    var style = base == null ? fallbackShape.merge(geometry) : base.merge(geometry);
+    if (foreground != null) {
+      style = style.merge(
+        ButtonStyle(
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.disabled)) {
+              return foreground.withValues(alpha: 0.38);
+            }
+            return foreground;
+          }),
+        ),
+      );
+    }
+    return style;
+  }
+
+  final onSurface = flexTheme.colorScheme.onSurface;
 
   return (
     filled: FilledButtonThemeData(
-      style: merge(flexTheme.filledButtonTheme.style),
+      style: merge(
+        flexTheme.filledButtonTheme.style,
+        foreground: kFilledButtonForeground,
+      ),
     ),
     outlined: OutlinedButtonThemeData(
-      style: merge(flexTheme.outlinedButtonTheme.style),
+      style: merge(flexTheme.outlinedButtonTheme.style, foreground: onSurface),
     ),
     elevated: ElevatedButtonThemeData(
-      style: merge(flexTheme.elevatedButtonTheme.style),
+      style: merge(
+        flexTheme.elevatedButtonTheme.style,
+        foreground: kFilledButtonForeground,
+      ),
     ),
-    text: TextButtonThemeData(style: merge(flexTheme.textButtonTheme.style)),
+    text: TextButtonThemeData(
+      style: merge(flexTheme.textButtonTheme.style, foreground: onSurface),
+    ),
   );
 }
 
@@ -62,11 +89,11 @@ AppButtonThemes buildAppButtonThemes({
 /// metrics. Outline inputs use a taller [TpControlMetrics.input] track so their
 /// contentPadding is not collapsed.
 ///
-/// Labels/icons use [ColorScheme.onSurface]. Shape is a modest rounded rect.
+/// Shape is a modest rounded rect. Foreground is applied per button kind in
+/// [buildAppButtonThemes].
 ButtonStyle _buttonGeometry({
   required TpControlSizeMetrics metrics,
   required double radius,
-  required Color onSurface,
 }) {
   return ButtonStyle(
     minimumSize: WidgetStatePropertyAll(
@@ -83,11 +110,5 @@ ButtonStyle _buttonGeometry({
     shape: WidgetStatePropertyAll(
       RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
     ),
-    foregroundColor: WidgetStateProperty.resolveWith((states) {
-      if (states.contains(WidgetState.disabled)) {
-        return onSurface.withValues(alpha: 0.38);
-      }
-      return onSurface;
-    }),
   );
 }

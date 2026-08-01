@@ -45,7 +45,7 @@ const _palettes = <String, _Palette>{
   'graphite': (
     /// Mid cool gray so controls contrast on near-black dark surfaces; the
     /// near-black [#2E3033] is reserved for [logoPrimary] only.
-    primary: Color(0xFF8B939E),
+    primary: Color.fromARGB(255, 165, 165, 165),
     secondary: Color(0xFF38CFA2),
     error: Color(0xFFFF7A7A),
     logoPrimary: Color(0xFF2E3033),
@@ -109,6 +109,7 @@ Color themePresetSwatchSecondary(String presetId) =>
 
 const _subThemes = FlexSubThemesData(
   defaultRadius: 10,
+
   /// Match [TpControlMetrics.radiusBase] — rounded rect, not stadium/pill.
   filledButtonRadius: 8,
   outlinedButtonRadius: 8,
@@ -134,8 +135,9 @@ SwitchThemeData buildAppSwitchTheme({
   required Brightness brightness,
   SwitchThemeData? base,
 }) {
-  final selectedThumb =
-      brightness == Brightness.light ? Colors.white : Colors.black;
+  final selectedThumb = brightness == Brightness.light
+      ? Colors.white
+      : Colors.black;
   final fallback = base ?? const SwitchThemeData();
   return fallback.copyWith(
     thumbColor: WidgetStateProperty.resolveWith((states) {
@@ -165,11 +167,11 @@ ThemeData buildLightTheme([
 ]) => _applyTypography(
   FlexThemeData.light(
     colors: _flexSchemeColors(normalizeThemeColorPreset(themeColorPreset)),
-    surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
+    surfaceMode: FlexSurfaceMode.level,
 
     /// Higher blend: scaffold / cards pick up more of the seed colors so
     /// presets change the whole UI, not only primary-filled controls.
-    blendLevel: 30,
+    blendLevel: 15,
     subThemesData: _subThemes,
     useMaterial3: true,
   ),
@@ -245,11 +247,7 @@ List<ThemeExtension<dynamic>> _appThemeExtensions({
     textTheme: textTheme,
     extensions: [fontTheme, typographyTheme],
   );
-  return [
-    fontTheme,
-    typographyTheme,
-    buildAppAiMessageTheme(bootstrap),
-  ];
+  return [fontTheme, typographyTheme, buildAppAiMessageTheme(bootstrap)];
 }
 
 ThemeData _withSoftenedForeground(ThemeData base) {
@@ -276,7 +274,10 @@ ThemeData _applyTypography(
   final resolvedIconScale =
       iconScale ??
       AppTypographyScale(
-        multiplier: TpIconSizes.resolveIconMultiplier(textBaseline: 1.0),
+        multiplier: TpIconSizes.resolveIconMultiplier(
+          effectiveTextMultiplier: typographyScale.multiplier,
+          textBaseline: 1.0,
+        ),
       );
   final typographyTheme = AppTypographyTheme.fromScale(typographyScale);
   final control = TpControlMetrics.fromScale(typographyScale.multiplier);
@@ -301,7 +302,10 @@ ThemeData _applyTypography(
     return flexTheme.copyWith(
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      iconTheme: TpIconSizes.iconTheme(scheme, scale: resolvedIconScale.multiplier),
+      iconTheme: TpIconSizes.iconTheme(
+        scheme,
+        scale: resolvedIconScale.multiplier,
+      ),
       textTheme: textTheme,
       switchTheme: buildAppSwitchTheme(
         brightness: flexTheme.brightness,
@@ -361,7 +365,10 @@ ThemeData _applyTypography(
   return flexTheme.copyWith(
     visualDensity: VisualDensity.compact,
     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    iconTheme: TpIconSizes.iconTheme(scheme, scale: resolvedIconScale.multiplier),
+    iconTheme: TpIconSizes.iconTheme(
+      scheme,
+      scale: resolvedIconScale.multiplier,
+    ),
     textTheme: mergedTextTheme,
     primaryTextTheme: primaryTextTheme,
     switchTheme: buildAppSwitchTheme(

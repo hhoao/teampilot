@@ -833,6 +833,7 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
   double? _cachedTypographyCustomMultiplier;
   double? _cachedEffectiveTextMult;
   double? _cachedIconMultiplier;
+  double? _cachedTextBaseline;
   String? _cachedUiFontId;
   String? _cachedMonoFontId;
 
@@ -862,9 +863,11 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
       baseline: textBaseline,
     );
     final iconMultiplier = TpIconSizes.resolveIconMultiplier(
+      effectiveTextMultiplier: effectiveTextMult,
       textBaseline: textBaseline,
     );
     _cachedIconMultiplier = iconMultiplier;
+    _cachedTextBaseline = textBaseline;
     if (_lightTheme != null &&
         _darkTheme != null &&
         _cachedColorPreset == widget.colorPreset &&
@@ -963,9 +966,9 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
                   ),
                 ),
               );
-              // TpTheme inside UiZoom so icon tokens and labels share the zoom
+              // TpTheme wraps UiZoom so icon tokens and labels share the zoom
               // canvas. Spacing stays at design baseline; controlScale tracks
-              // text size; iconScale tracks OS baseline only (see resolveIconMultiplier).
+              // text size; iconScale tracks in-app text delta only (not OS/dpr).
               final scheme = Theme.of(context).colorScheme;
               content = TpTheme(
                 data: TpThemeData.fromColorScheme(
@@ -973,6 +976,7 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
                   scale: 1.0,
                   iconScale: _cachedIconMultiplier ?? 1.0,
                   controlScale: _cachedEffectiveTextMult ?? 1.0,
+                  textBaseline: _cachedTextBaseline ?? 1.0,
                   toast: TpToastTheme.fromColorScheme(
                     scheme,
                     backgroundColor: scheme.workspaceCard,
