@@ -862,6 +862,7 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
       baseline: textBaseline,
     );
     final iconMultiplier = TpIconSizes.resolveIconMultiplier(
+      effectiveTextMultiplier: effectiveTextMult,
       textBaseline: textBaseline,
     );
     _cachedIconMultiplier = iconMultiplier;
