@@ -44,11 +44,59 @@ Future<void> loadFontsFor(ResolvedFonts fonts) async {
     await _loadBundledUi();
   }
 
+  // Color emoji must be FontLoader-registered; fontconfig name alone is not
+  // enough on Flutter Linux (and runtime Google Fonts fetch is disabled).
+  await _loadColorEmoji(fonts);
+
   if (fonts.uiNeedsInstalledLoad) {
     await _loadInstalledFamily(fonts.uiFamily);
   }
   if (fonts.monoNeedsInstalledLoad) {
     await _loadInstalledFamily(fonts.monoFamily);
+  }
+}
+
+Future<void> _loadColorEmoji(ResolvedFonts fonts) async {
+  final chain = <String>{
+    ...fonts.uiFallback,
+    ...fonts.monoFallback,
+  };
+  final wantsBundled = chain.contains(AppFontResolver.bundledColorEmojiFamily) ||
+      chain.contains(AppFontResolver.bundledColorEmojiGoogleFamily);
+  if (!wantsBundled) return;
+  if (_loadedFamilies.contains(AppFontResolver.bundledColorEmojiFamily) ||
+      _loadedFamilies.contains(AppFontResolver.bundledColorEmojiGoogleFamily)) {
+    return;
+  }
+
+  // Prefer bundled google_fonts asset (Flutter-compatible CBDT). Many distro
+  // NotoColorEmoji.ttf builds paint as monochrome under Flutter/Skia.
+  try {
+    await GoogleFonts.pendingFonts([GoogleFonts.notoColorEmoji()]);
+    _loadedFamilies.add(AppFontResolver.bundledColorEmojiFamily);
+    _loadedFamilies.add(AppFontResolver.bundledColorEmojiGoogleFamily);
+    return;
+  } on Object catch (error, stackTrace) {
+    appLogger.w(
+      'Failed to load bundled color emoji font (Noto Color Emoji)',
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
+
+  try {
+    final loaded = await SystemFonts().loadFont(
+      AppFontResolver.bundledColorEmojiFamily,
+    );
+    if (loaded != null) {
+      _loadedFamilies.add(AppFontResolver.bundledColorEmojiFamily);
+    }
+  } on Object catch (error, stackTrace) {
+    appLogger.w(
+      'Failed to load system color emoji font',
+      error: error,
+      stackTrace: stackTrace,
+    );
   }
 }
 

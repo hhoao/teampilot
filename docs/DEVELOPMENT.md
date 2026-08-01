@@ -30,7 +30,7 @@ Work inside `client`:
 ```bash
 cd client
 flutter pub get
-dart run tool/sync_bundled_google_fonts.dart   # first run / after clean: Noto Sans SC (~50MB, gitignored)
+dart run tool/sync_bundled_google_fonts.dart   # first run / after clean: Noto Sans SC + Noto Color Emoji (~75MB, gitignored)
 dart run tool/sync_material_icons.dart      # file type icons: regenerates lib/utils/ui/file_icon_mapping.g.dart and assets/file_icons/*.svg
 dart run native_splash_screen_cli gen         # Linux/Windows native splash sources (gitignored; required before desktop build)
 flutter run -d linux      # or macos, windows, android

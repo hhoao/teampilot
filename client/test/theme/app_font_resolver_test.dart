@@ -86,6 +86,45 @@ void main() {
     expect(win.monoFamily, 'Consolas');
   });
 
+  test('UI and mono fallbacks include platform color emoji fonts', () {
+    final linux = AppFontResolver.resolve(
+      uiFontId: 'notoSansSc',
+      monoFontId: 'jetbrainsMono',
+      platform: TargetPlatform.linux,
+    );
+    // Bundled / FontLoader family (not fontconfig "Noto Color Emoji").
+    expect(linux.uiFallback, contains('NotoColorEmoji'));
+    expect(linux.monoFallback, contains('NotoColorEmoji'));
+    expect(
+      linux.uiFallback.indexOf('NotoColorEmoji'),
+      lessThan(linux.uiFallback.indexOf('sans-serif')),
+    );
+
+    final mac = AppFontResolver.resolve(
+      uiFontId: 'system',
+      monoFontId: 'system',
+      platform: TargetPlatform.macOS,
+    );
+    expect(mac.uiFallback, contains('Apple Color Emoji'));
+    expect(mac.monoFallback, contains('Apple Color Emoji'));
+
+    final win = AppFontResolver.resolve(
+      uiFontId: 'system',
+      monoFontId: 'system',
+      platform: TargetPlatform.windows,
+    );
+    expect(win.uiFallback, contains('Segoe UI Emoji'));
+    expect(win.monoFallback, contains('Segoe UI Emoji'));
+
+    final android = AppFontResolver.resolve(
+      uiFontId: 'system',
+      monoFontId: 'system',
+      platform: TargetPlatform.android,
+    );
+    expect(android.uiFallback, contains('NotoColorEmoji'));
+    expect(android.monoFallback, contains('NotoColorEmoji'));
+  });
+
   test('installed ids resolve to family key without collapsing to system', () {
     InstalledFontEnumerator.clearCache();
     final r = AppFontResolver.resolve(

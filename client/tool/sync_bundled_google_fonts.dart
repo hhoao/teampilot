@@ -91,6 +91,21 @@ const _ubuntuSansMonoBundled =
       ),
     ];
 
+/// Color emoji ([google_fonts] Noto Color Emoji / family [NotoColorEmoji]).
+///
+/// ~25MB — gitignored like Noto Sans SC; required because
+/// [GoogleFonts.config.allowRuntimeFetching] is false and Flutter Linux does
+/// not reliably paint system color-emoji via fontconfig alone.
+const _notoColorEmojiBundled =
+    <({String sha256Hex, int byteLength, String assetFileName})>[
+      (
+        sha256Hex:
+            '91e9d923f168f51f1113b6119adb6b2d11014206b8729ee41d96258513cc7d6a',
+        byteLength: 25096164,
+        assetFileName: 'NotoColorEmoji-Regular.ttf',
+      ),
+    ];
+
 Future<void> main(List<String> args) async {
   final force = args.contains('--force');
 
@@ -114,6 +129,11 @@ Future<void> main(List<String> args) async {
 
   print('== UI — Noto Sans SC ==');
   for (final spec in _notoSansScBundled) {
+    await _syncGstaticFont(googleFontsDir, spec, force);
+  }
+
+  print('\n== Emoji — Noto Color Emoji ==');
+  for (final spec in _notoColorEmojiBundled) {
     await _syncGstaticFont(googleFontsDir, spec, force);
   }
 

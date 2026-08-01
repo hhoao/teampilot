@@ -113,6 +113,29 @@ abstract final class AppFontResolver {
     );
   }
 
+  /// Platform color-emoji faces for [fontFamilyFallback] chains.
+  ///
+  /// Primary UI/mono faces (Noto Sans SC, JetBrains, …) do not cover emoji.
+  /// Linux/Android use the FontLoader family [bundledColorEmojiFamily] (system
+  /// basename / Google Fonts), not fontconfig's spaced "Noto Color Emoji".
+  static const String bundledColorEmojiFamily = 'NotoColorEmoji';
+
+  /// Google Fonts registers the face as `{family}_regular` via [FontLoader].
+  static const String bundledColorEmojiGoogleFamily = 'NotoColorEmoji_regular';
+
+  static List<String> colorEmojiFallback(TargetPlatform platform) {
+    return switch (platform) {
+      TargetPlatform.iOS || TargetPlatform.macOS => const [
+        'Apple Color Emoji',
+      ],
+      TargetPlatform.windows => const ['Segoe UI Emoji'],
+      _ => const [
+        bundledColorEmojiFamily,
+        bundledColorEmojiGoogleFamily,
+      ],
+    };
+  }
+
   /// Platform mono fallback chain (primary excluded). Used by bundled mono,
   /// system mono, and [AppFonts.monoFamilyFallback].
   ///
@@ -121,22 +144,26 @@ abstract final class AppFontResolver {
   /// fontconfig often maps `monospace` (even under `lang=zh`) to
   /// *Noto Sans Mono CJK JP*, whose Japanese `locl` forms misplace Chinese
   /// punctuation — and once JP covers CJK, later SC fallbacks never run.
+  /// Color emoji is inserted before `monospace` for the same reason.
   static List<String> monoCjkFallback(TargetPlatform platform) {
+    final emoji = colorEmojiFallback(platform);
     return switch (platform) {
-      TargetPlatform.macOS => const [
+      TargetPlatform.macOS => [
         'Monaco',
         'Courier New',
         'Noto Sans Mono CJK SC',
+        ...emoji,
         'monospace',
       ],
-      TargetPlatform.windows => const [
+      TargetPlatform.windows => [
         'Cascadia Mono',
         'Courier New',
         'Courier',
         'Noto Sans Mono CJK SC',
+        ...emoji,
         'monospace',
       ],
-      TargetPlatform.linux => const [
+      TargetPlatform.linux => [
         'JetBrains Mono',
         'Cascadia Mono',
         'Fira Code',
@@ -148,17 +175,20 @@ abstract final class AppFontResolver {
         'DejaVu Sans Mono',
         'Liberation Mono',
         'Noto Sans Mono CJK SC',
+        ...emoji,
         'monospace',
       ],
-      TargetPlatform.android => const [
+      TargetPlatform.android => [
         'Noto Sans Mono CJK SC',
         'Noto Sans CJK SC',
+        ...emoji,
         'monospace',
       ],
-      _ => const [
+      _ => [
         'Noto Sans Mono CJK SC',
         'Noto Sans CJK SC',
         'WenQuanYi Zen Hei Mono',
+        ...emoji,
         'monospace',
       ],
     };
@@ -193,27 +223,42 @@ abstract final class AppFontResolver {
   static ({String family, List<String> fallback}) _systemUi(
     TargetPlatform platform,
   ) {
+    final emoji = colorEmojiFallback(platform);
     return switch (platform) {
       TargetPlatform.macOS => (
         family: 'PingFang SC',
-        fallback: const [
+        fallback: [
           '.AppleSystemUIFont',
           'Heiti SC',
           'Helvetica Neue',
+          ...emoji,
           'sans-serif',
         ],
       ),
       TargetPlatform.windows => (
         family: 'Segoe UI',
-        fallback: const ['Microsoft YaHei', 'Segoe UI Emoji', 'sans-serif'],
+        fallback: [
+          'Microsoft YaHei',
+          ...emoji,
+          'sans-serif',
+        ],
       ),
       TargetPlatform.android => (
         family: 'sans-serif',
-        fallback: const ['Noto Sans CJK SC', 'Droid Sans Fallback'],
+        fallback: [
+          'Noto Sans CJK SC',
+          'Droid Sans Fallback',
+          ...emoji,
+        ],
       ),
       _ => (
         family: 'Noto Sans',
-        fallback: const ['Noto Sans CJK SC', 'WenQuanYi Zen Hei', 'sans-serif'],
+        fallback: [
+          'Noto Sans CJK SC',
+          'WenQuanYi Zen Hei',
+          ...emoji,
+          'sans-serif',
+        ],
       ),
     };
   }
@@ -231,21 +276,23 @@ abstract final class AppFontResolver {
     return switch (platform) {
       TargetPlatform.macOS => (
         family: 'Menlo',
-        fallback: const [
+        fallback: [
           ubuntuSansMonoFamily,
           'PingFang SC',
           'Heiti SC',
           'Noto Sans Mono CJK SC',
+          ...colorEmojiFallback(platform),
           'monospace',
         ],
       ),
       TargetPlatform.windows => (
         family: 'Consolas',
-        fallback: const [
+        fallback: [
           ubuntuSansMonoFamily,
           'Cascadia Mono',
           'Microsoft YaHei',
           'Noto Sans Mono CJK SC',
+          ...colorEmojiFallback(platform),
           'monospace',
         ],
       ),
