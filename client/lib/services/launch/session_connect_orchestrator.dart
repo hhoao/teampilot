@@ -7,10 +7,11 @@ import '../../models/team_roster_slot.dart';
 import '../../models/workspace.dart';
 import '../../utils/team/team_member_naming.dart';
 import '../cli/installer_types.dart';
+import '../cli/registry/capabilities/post_manifest_flush_capability.dart';
+import '../cli/registry/cli_tool_registry.dart';
 import '../cli/registry/mcp_writers/claude_project_mcp_cleanup.dart';
 import '../cli/preset_resolver.dart';
 import '../provider/config_profile_service.dart';
-import '../provider/cursor/cursor_member_home_passthrough.dart';
 import '../session/session_continue_overrides_apply.dart';
 import '../session/session_lifecycle_service.dart';
 import '../storage/runtime_context.dart';
@@ -22,6 +23,7 @@ import 'launch_manifest_paths.dart';
 import 'manifest_executor.dart';
 import 'session_runtime_plan.dart';
 import 'session_runtime_plan_builder.dart';
+import 'work_plane_script_runner.dart';
 import 'workspace_provision_coordinator.dart';
 
 export '../provider/config_profile_service.dart' show TeamLaunchOutcome;
@@ -40,7 +42,8 @@ class SessionConnectOrchestrator {
     required this.homeContext,
     required this.manifestExecutor,
     required this.runtimePlanBuilder,
-  });
+    CliToolRegistry? registry,
+  }) : registry = registry ?? CliToolRegistry.builtIn();
 
   final SessionLifecycleService lifecycle;
   final WorkspaceProvisionCoordinator workspaceProvision;
@@ -48,6 +51,7 @@ class SessionConnectOrchestrator {
   final RuntimeContext Function() homeContext;
   final ManifestExecutor manifestExecutor;
   final SessionRuntimePlanBuilder runtimePlanBuilder;
+  final CliToolRegistry registry;
 
   Future<
     ({ShellLaunchSpec shellLaunch, List<String> warnings, String remoteCliPath})
@@ -288,34 +292,46 @@ class SessionConnectOrchestrator {
       CliInstallPhase.syncingRemoteWorkspace,
       detail: 'manifest-flush',
     );
+    final flushStarted = DateTime.now();
+    // SSH/Termux work plane (including Android home-on-SSH): batch via one
+    // remote script. Local/WSL keep per-op apply. Off-home still expands
+    // control-plane copies first inside ManifestExecutor.
+    final workSshProfileId = launchTarget.sshProfileId?.trim();
     await manifestExecutor.flush(
       manifest: staged.manifest,
       targetFs: workContext.fs,
       sourceFs: offHome ? homeContext().fs : workContext.fs,
-      sshProfileId: offHome ? launchTarget.sshProfileId : null,
+      sshProfileId: (workSshProfileId != null && workSshProfileId.isNotEmpty)
+          ? workSshProfileId
+          : null,
+    );
+    appLogger.d(
+      '[session-launch] manifest-flush done '
+      'session=${session.sessionId} ops=${staged.manifest.entries.length} '
+      'sshBatch=${workSshProfileId != null && workSshProfileId.isNotEmpty} '
+      'ms=${DateTime.now().difference(flushStarted).inMilliseconds}',
     );
 
-    if (offHome && cli == CliTool.cursor) {
-      final memberHome = staged.outcome.environment['HOME']?.trim() ?? '';
-      final realHome = workContext.home.trim();
-      if (memberHome.isNotEmpty && realHome.isNotEmpty) {
-        report(
-          CliInstallPhase.syncingRemoteWorkspace,
-          detail: 'cursor-home-passthrough',
-        );
-        appLogger.d(
-          '[session-launch] cursor home passthrough begin '
-          'session=${session.sessionId} realHome=$realHome',
-        );
-        await CursorMemberHomePassthrough(fs: workContext.fs).mirror(
-          realHomeRoot: realHome,
-          memberHomeRoot: memberHome,
-        );
-        appLogger.d(
-          '[session-launch] cursor home passthrough done '
-          'session=${session.sessionId}',
-        );
-      }
+    final postFlush = registry.capability<PostManifestFlushCapability>(cli);
+    if (postFlush != null) {
+      await postFlush.afterManifestFlush(
+        PostManifestFlushContext(
+          workFs: workContext.fs,
+          workHome: workContext.home,
+          environment: staged.outcome.environment,
+          remoteRunner: SshWorkPlaneScriptRunner.tryCreate(
+            sshProfileId: workSshProfileId,
+            sshClientFactory: manifestExecutor.sshClientFactory,
+            profileById: manifestExecutor.profileById,
+          ),
+          reportDetail: (detail) {
+            report(
+              CliInstallPhase.syncingRemoteWorkspace,
+              detail: detail,
+            );
+          },
+        ),
+      );
     }
 
     final environment = offHome

@@ -39,6 +39,32 @@ void main() {
   }
 
   group('CursorMemberHomePassthrough', () {
+    test('remote mirror script links home entries and skips .cursor', () {
+      final script = CursorMemberHomePassthrough.buildRemoteMirrorScript(
+        realHomeRoot: realHome,
+        memberHomeRoot: memberHome,
+      );
+
+      expect(script, contains("real_home='/home/user'"));
+      expect(
+        script,
+        contains("member_home='/tp/workspace/ws/runtime/planner/cursor/home'"),
+      );
+      expect(script, contains(r'mkdir -p -- "$member_home/.config/cursor"'));
+      expect(script, contains(r'find "$real_home"'));
+      expect(script, contains("! -name '.cursor'"));
+      expect(script, contains('ln -sfn'));
+      expect(script, contains(".config"));
+    });
+
+    test('remote mirror script no-ops when homes match', () {
+      final script = CursorMemberHomePassthrough.buildRemoteMirrorScript(
+        realHomeRoot: realHome,
+        memberHomeRoot: realHome,
+      );
+      expect(script.trim(), isEmpty);
+    });
+
     test('symlinks real-home entries except .cursor', () async {
       await seedRealHome();
       await fs.ensureDir(memberHome);

@@ -25,6 +25,7 @@ import '../installer/cursor_installer_capability.dart';
 import '../config_profile/cursor_config_profile_capability.dart';
 import '../../session_lifecycle/cursor/cursor_session_lifecycle_capability.dart';
 import '../capabilities/cli_session_lifecycle_capability.dart';
+import '../capabilities/post_manifest_flush_capability.dart';
 import '../headless/cursor_headless_run_capability.dart';
 import '../../../provider/cursor/cursor_provider_form_capability.dart';
 import '../capabilities/member_config_inspection_capability.dart';
@@ -33,6 +34,7 @@ import '../capabilities/resource_capability.dart';
 import '../capabilities/turn_interrupt_capability.dart';
 import '../mcp_writers/cursor_mcp_config_writer.dart';
 import '../plugin_provisioners/cursor_plugin_provisioner.dart';
+import '../post_flush/cursor_post_manifest_flush_capability.dart';
 import '../resources/cursor_resource_capability.dart';
 
 /// Cursor CLI (`cursor-agent`). Standalone and mixed-mode (HOME isolation +
@@ -63,6 +65,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.mcpConfigWriter = const CursorMcpConfigWriter(),
     this.turnInterrupt = const CtrlCTurnInterrupt(),
     this.aiHistory = const CursorAiHistoryCapability(),
+    this.postManifestFlush = const CursorPostManifestFlushCapability(),
     ProviderCredentialCapability? providerCredential,
   }) : providerModel = providerModel ?? CursorProviderModelCapability(),
        providerCredential =
@@ -93,6 +96,7 @@ final class CursorCliTool implements CliToolDefinition {
   final RemoteCliLocatorCapability remoteCliLocator;
   final TurnInterruptCapability turnInterrupt;
   final CursorAiHistoryCapability aiHistory;
+  final PostManifestFlushCapability postManifestFlush;
 
   @override
   CliTool get id => CliTool.cursor;
@@ -125,5 +129,6 @@ final class CursorCliTool implements CliToolDefinition {
     mcpConfigWriter,
     turnInterrupt,
     aiHistory,
+    postManifestFlush,
   ];
 }

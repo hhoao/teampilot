@@ -70,6 +70,7 @@ SessionConnectOrchestrator buildSessionConnectOrchestrator({
     homeContext: homeContext,
     manifestExecutor: manifestExecutor,
     runtimePlanBuilder: runtimePlanBuilder,
+    registry: registry,
   );
 }
 

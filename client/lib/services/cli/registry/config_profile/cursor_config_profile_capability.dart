@@ -105,11 +105,11 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       busIdle: null,
       forceTeamLeadDelegateMode: false,
       mixed: false,
-      // Off-home staging uses ManifestFilesystem + local catalog reads.
-      // Mirroring local $HOME would list the control-plane home and stage
-      // symlinks that point at local paths on the remote host. Skip here;
-      // session connect applies remote passthrough on the work FS after flush.
-      realHomeRoot: ctx.crossMachine ? null : paths.home,
+      // Always defer real-$HOME passthrough to SessionConnectOrchestrator after
+      // manifest flush. Staging via ManifestFilesystem would SFTP-list the work
+      // home (slow on Android SSH). Post-flush uses one remote find+ln script
+      // when an SSH profile is available, otherwise the local FS mirror.
+      realHomeRoot: null,
     );
 
     await _provisionWorkspaceTrust(ctx: ctx, homeRoot: home);
