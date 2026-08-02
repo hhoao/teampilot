@@ -194,14 +194,10 @@ class AppKeys {
   static const workspaceConfigWorkspace = Key('workspace-config-workspace');
   static const teamConfigHub = Key('team-config-hub');
   static const teamConfigWorkspace = Key('team-config-workspace');
-  static const skillsHub = Key('skills-hub');
   static const skillsWorkspace = Key('skills-workspace');
-  static const pluginsHub = Key('plugins-hub');
   static const pluginsWorkspace = Key('plugins-workspace');
-  static const mcpHub = Key('mcp-hub');
   static const mcpWorkspace = Key('mcp-workspace');
   static const mcpFormDetail = Key('mcp-form-detail');
-  static const extensionsHub = Key('extensions-hub');
   static const extensionsWorkspace = Key('extensions-workspace');
   static const memberConfigWorkspace = Key('member-config-workspace');
   static const llmConfigWorkspace = Key('llm-config-workspace');
