@@ -50,6 +50,21 @@ class CliExecutableDiscovery {
     return located;
   }
 
+  Future<String?> locateLocalCli(
+    CliTool cli, {
+    ProcessRunner runner = cliToolDefaultProcessRun,
+    bool includeShellFallback = true,
+  }) async {
+    final resolver = _registry.capability<ExecutableResolverCapability>(cli);
+    if (resolver == null) return null;
+    final path = await CliToolLocator(resolver.defaultExecutableName).locate(
+      runner: runner,
+      includeShellFallback: includeShellFallback,
+    );
+    final trimmed = path?.trim() ?? '';
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
   Future<Map<CliTool, String>> locateRemote({
     required SshCommandRunner run,
   }) async {

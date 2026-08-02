@@ -35,4 +35,37 @@ void main() {
 
     expect(located, isEmpty);
   });
+
+  test('locateLocalTool finds node via which', () async {
+    final discovery = ToolchainExecutableDiscovery(
+      detectGit: () async => const GitInstallResult.notFound('skip'),
+      processRunner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+        if (arguments.isNotEmpty && arguments.first == 'node') {
+          return ProcessResult(0, 0, '/usr/bin/node', '');
+        }
+        return ProcessResult(0, 1, '', '');
+      },
+    );
+    final path = await discovery.locateLocalTool(
+      SessionPreferences.toolchainNode,
+    );
+    expect(path, '/usr/bin/node');
+  });
+
+  test('locateLocalTool finds git via detectGit', () async {
+    final discovery = ToolchainExecutableDiscovery(
+      detectGit: () async => const GitInstallResult.found('/usr/bin/git'),
+    );
+    final path = await discovery.locateLocalTool(
+      SessionPreferences.toolchainGit,
+    );
+    expect(path, '/usr/bin/git');
+  });
+
+  test('locateLocalTool returns null for unknown toolId', () async {
+    final discovery = ToolchainExecutableDiscovery(
+      detectGit: () async => const GitInstallResult.notFound('skip'),
+    );
+    expect(await discovery.locateLocalTool('unknown'), isNull);
+  });
 }

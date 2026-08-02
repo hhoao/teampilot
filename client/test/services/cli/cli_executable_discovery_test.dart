@@ -74,4 +74,30 @@ void main() {
 
     expect(located, '/remote/bin/claude');
   });
+
+  test('locateLocalCli returns path for one CLI', () async {
+    final discovery = CliExecutableDiscovery();
+    final path = await discovery.locateLocalCli(
+      CliTool.claude,
+      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+        if (executable == 'which' || executable == 'where') {
+          return ProcessResult(0, 0, '/opt/bin/${arguments.single}\n', '');
+        }
+        return ProcessResult(1, 1, '', '');
+      },
+    );
+    expect(path, '/opt/bin/claude');
+  });
+
+  test('locateLocalCli returns null when missing', () async {
+    final discovery = CliExecutableDiscovery();
+    final path = await discovery.locateLocalCli(
+      CliTool.codex,
+      includeShellFallback: false,
+      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+        return ProcessResult(1, 1, '', '');
+      },
+    );
+    expect(path, isNull);
+  });
 }

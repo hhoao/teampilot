@@ -3602,6 +3602,30 @@ abstract class AppLocalizations {
   /// **'Reset'**
   String get cliExecutablePathReset;
 
+  /// No description provided for @cliExecutablePathLocate.
+  ///
+  /// In en, this message translates to:
+  /// **'Locate'**
+  String get cliExecutablePathLocate;
+
+  /// No description provided for @cliExecutablePathLocateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not find {name} on PATH.'**
+  String cliExecutablePathLocateFailed(String name);
+
+  /// No description provided for @cliExecutablePathLocateSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Located {name} at {path}.'**
+  String cliExecutablePathLocateSuccess(String name, String path);
+
+  /// No description provided for @cliExecutablePathLocateRemoteUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote locate is not supported for this tool.'**
+  String get cliExecutablePathLocateRemoteUnsupported;
+
   /// No description provided for @cliExecutablePathUsing.
   ///
   /// In en, this message translates to:

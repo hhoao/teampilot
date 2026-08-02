@@ -830,6 +830,19 @@
   "cliExecutablePathBrowse": "Browse…",
   "cliExecutablePathApply": "Apply",
   "cliExecutablePathReset": "Reset",
+  "cliExecutablePathLocate": "Locate",
+  "cliExecutablePathLocateFailed": "Could not find {name} on PATH.",
+  "@cliExecutablePathLocateFailed": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "cliExecutablePathLocateSuccess": "Located {name} at {path}.",
+  "@cliExecutablePathLocateSuccess": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "path": { "type": "String" }
+    }
+  },
+  "cliExecutablePathLocateRemoteUnsupported": "Remote locate is not supported for this tool.",
   "cliExecutablePathUsing": "Using: ",
   "cliExecutablePathUsingFallback": "Using PATH lookup",
   "cliInstallButton": "Install",

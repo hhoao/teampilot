@@ -1869,6 +1869,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cliExecutablePathReset => '重置';
 
   @override
+  String get cliExecutablePathLocate => '定位';
+
+  @override
+  String cliExecutablePathLocateFailed(String name) {
+    return '未能在 PATH 上找到 $name。';
+  }
+
+  @override
+  String cliExecutablePathLocateSuccess(String name, String path) {
+    return '已定位 $name：$path。';
+  }
+
+  @override
+  String get cliExecutablePathLocateRemoteUnsupported => '远程工作面不支持定位此工具。';
+
+  @override
   String get cliExecutablePathUsing => '当前生效：';
 
   @override

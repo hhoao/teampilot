@@ -1962,6 +1962,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cliExecutablePathReset => 'Reset';
 
   @override
+  String get cliExecutablePathLocate => 'Locate';
+
+  @override
+  String cliExecutablePathLocateFailed(String name) {
+    return 'Could not find $name on PATH.';
+  }
+
+  @override
+  String cliExecutablePathLocateSuccess(String name, String path) {
+    return 'Located $name at $path.';
+  }
+
+  @override
+  String get cliExecutablePathLocateRemoteUnsupported =>
+      'Remote locate is not supported for this tool.';
+
+  @override
   String get cliExecutablePathUsing => 'Using: ';
 
   @override

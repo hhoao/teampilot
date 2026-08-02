@@ -8,9 +8,11 @@ import 'package:teampilot/models/session_preferences.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/config/cli_config_section.dart';
+import 'package:teampilot/pages/config/cli_executable_path_settings_row.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
@@ -45,6 +47,44 @@ Widget _wrap(SessionPreferencesCubit cubit) {
         supportedLocales: AppLocalizations.supportedLocales,
         home: const Scaffold(
           body: CliConfigWorkspace(showHeading: false),
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _wrapRow(
+  SessionPreferencesCubit cubit, {
+  Future<String?> Function()? locateOverride,
+}) {
+  return MultiRepositoryProvider(
+    providers: [
+      RepositoryProvider<ConnectionModeService>(
+        create: (_) => ConnectionModeService(
+          defaultTargetResolver: RuntimeTarget.local,
+          hasSshProfiles: () => false,
+        ),
+      ),
+    ],
+    child: BlocProvider.value(
+      value: cubit,
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: CliExecutablePathSettingsRow(
+            cubit: cubit,
+            cli: CliTool.claude,
+            title: 'Claude Code',
+            subtitle: 'Path to the Claude Code CLI',
+            fieldKey: AppKeys.claudeCliExecutablePathField,
+            browseKey: AppKeys.claudeCliExecutablePathBrowseButton,
+            resetKey: AppKeys.claudeCliExecutablePathResetButton,
+            debouncerTag: 'claude_cli_executable_path_test',
+            installKey: AppKeys.claudeCliInstallButton,
+            showDividerBelow: false,
+            locateOverride: locateOverride,
+          ),
         ),
       ),
     ),
@@ -110,5 +150,74 @@ void main() {
 
     expect(find.byKey(AppKeys.gitToolchainInstallButton), findsNothing);
     expect(find.byKey(AppKeys.nodeToolchainInstallButton), findsNothing);
+  });
+
+  testWidgets('shows Locate when CLI path is empty', (tester) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pump();
+
+    final button = find.byKey(AppKeys.cursorCliExecutablePathResetButton);
+    expect(button, findsOneWidget);
+    expect(
+      find.descendant(of: button, matching: find.text('Locate')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: button, matching: find.text('Reset')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('shows Reset when CLI path is configured', (tester) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+    await cubit.setCliExecutablePathFor(CliTool.cursor, '/custom/cursor-agent');
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pump();
+
+    final button = find.byKey(AppKeys.cursorCliExecutablePathResetButton);
+    expect(
+      find.descendant(of: button, matching: find.text('Reset')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Locate success writes and persists path', (tester) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+    await tester.pumpWidget(
+      _wrapRow(cubit, locateOverride: () async => '/found/claude'),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(AppKeys.claudeCliExecutablePathResetButton));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(cubit.configuredExecutablePath(CliTool.claude), '/found/claude');
+    expect(find.text('Reset'), findsOneWidget);
+    AppToast.dismiss();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+  });
+
+  testWidgets('Locate failure leaves path empty and keeps Install', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+    await tester.pumpWidget(
+      _wrapRow(cubit, locateOverride: () async => null),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(AppKeys.claudeCliExecutablePathResetButton));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(cubit.configuredExecutablePath(CliTool.claude), isEmpty);
+    expect(find.text('Locate'), findsOneWidget);
+    expect(find.byKey(AppKeys.claudeCliInstallButton), findsOneWidget);
+    AppToast.dismiss();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
   });
 }

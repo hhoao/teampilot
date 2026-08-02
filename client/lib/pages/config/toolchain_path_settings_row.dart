@@ -7,8 +7,10 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/session_preferences.dart';
+import '../../services/app/connection_mode_service.dart';
 import '../../services/cli/cli_installer_service.dart';
 import '../../services/cli/git_installer.dart';
+import '../../services/cli/toolchain_executable_discovery.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/cli_install_progress_panel.dart';
 import 'session_config_constants.dart';
@@ -33,6 +35,7 @@ class ToolchainPathSettingsRow extends StatefulWidget {
     required this.debouncerTag,
     required this.showDividerBelow,
     this.leadingIcon = Icons.build_outlined,
+    this.locateOverride,
   });
 
   final SessionPreferencesCubit cubit;
@@ -57,6 +60,9 @@ class ToolchainPathSettingsRow extends StatefulWidget {
   /// Icon shown in the title leading position.
   final IconData leadingIcon;
 
+  /// Test seam: when non-null, used instead of discovery (local only).
+  final Future<String?> Function()? locateOverride;
+
   @override
   State<ToolchainPathSettingsRow> createState() =>
       _ToolchainPathSettingsRowState();
@@ -68,6 +74,7 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
   late final Debouncer _persistDebouncer;
   String _lastSyncedPath = '';
   bool _isInstalling = false;
+  bool _isLocating = false;
   GitInstallPhase? _installPhase;
   final List<String> _installLog = [];
 
@@ -159,10 +166,63 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
     await widget.cubit.setToolchainPath(widget.toolId, '');
   }
 
+  Future<void> _locate() async {
+    if (_isLocating || _isInstalling) return;
+    setState(() => _isLocating = true);
+    try {
+      final connectionMode = context.read<ConnectionModeService>();
+      if (connectionMode.isRemoteWorkPlane) {
+        if (!mounted) return;
+        AppToast.show(
+          context,
+          message: context.l10n.cliExecutablePathLocateRemoteUnsupported,
+          variant: TpToastVariant.error,
+        );
+        return;
+      }
+      final path = (await _resolveLocatePath())?.trim() ?? '';
+      if (!mounted) return;
+      if (path.isEmpty) {
+        AppToast.show(
+          context,
+          message: context.l10n.cliExecutablePathLocateFailed(widget.title),
+          variant: TpToastVariant.error,
+        );
+        return;
+      }
+      _persistDebouncer.cancel();
+      _controller.text = path;
+      await widget.cubit.setToolchainPath(widget.toolId, path);
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: context.l10n.cliExecutablePathLocateSuccess(
+          widget.title,
+          path,
+        ),
+        variant: TpToastVariant.success,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: context.l10n.cliExecutablePathLocateFailed(widget.title),
+        variant: TpToastVariant.error,
+      );
+    } finally {
+      if (mounted) setState(() => _isLocating = false);
+    }
+  }
+
+  Future<String?> _resolveLocatePath() async {
+    if (widget.locateOverride != null) return widget.locateOverride!();
+    return ToolchainExecutableDiscovery().locateLocalTool(widget.toolId);
+  }
+
   // ---- install --------------------------------------------------------------
 
   Future<void> _install() async {
-    if (_isInstalling) return;
+    if (_isInstalling || _isLocating) return;
     setState(() {
       _isInstalling = true;
       _installPhase = GitInstallPhase.checking;
@@ -289,6 +349,7 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
           widget.toolId,
           widget.fallbackExecutable,
         );
+    final locatingOrInstalling = _isLocating || _isInstalling;
 
     return TpPreferenceStack(
       title: widget.title,
@@ -318,7 +379,7 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
               if (showInstallButton) ...[
                 OutlinedButton.icon(
                   key: widget.installKey,
-                  onPressed: _isInstalling ? null : _install,
+                  onPressed: locatingOrInstalling ? null : _install,
                   icon: _isInstalling
                       ? const SizedBox(
                           width: 16,
@@ -339,7 +400,7 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
               ],
               OutlinedButton.icon(
                 key: widget.browseKey,
-                onPressed: _pickFile,
+                onPressed: locatingOrInstalling ? null : _pickFile,
                 icon: Icon(
                   Icons.folder_open_outlined,
                   size: context.tpIconSizes.md,
@@ -349,8 +410,20 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
               const SizedBox(width: 6),
               TextButton(
                 key: widget.resetKey,
-                onPressed: isFallback ? null : _reset,
-                child: Text(l10n.cliExecutablePathReset),
+                onPressed: locatingOrInstalling
+                    ? null
+                    : (isFallback ? _locate : _reset),
+                child: _isLocating
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(
+                        isFallback
+                            ? l10n.cliExecutablePathLocate
+                            : l10n.cliExecutablePathReset,
+                      ),
               ),
             ],
           ),

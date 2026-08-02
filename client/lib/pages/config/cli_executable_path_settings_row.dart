@@ -11,7 +11,9 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import '../../services/app/connection_mode_service.dart';
+import '../../services/cli/cli_executable_discovery.dart';
 import '../../services/cli/cli_installer_service.dart';
+import '../../services/cli/remote_cli_locator.dart';
 import '../../services/ssh/ssh_client_factory.dart';
 import '../../services/termux/termux_transport_profile.dart';
 import '../../utils/debounce/debounce.dart';
@@ -32,6 +34,7 @@ class CliExecutablePathSettingsRow extends StatefulWidget {
     required this.debouncerTag,
     required this.showDividerBelow,
     this.installKey,
+    this.locateOverride,
   });
 
   final SessionPreferencesCubit cubit;
@@ -45,6 +48,9 @@ class CliExecutablePathSettingsRow extends StatefulWidget {
   final bool showDividerBelow;
   final Key? installKey;
 
+  /// Test seam: when non-null, used instead of discovery.
+  final Future<String?> Function()? locateOverride;
+
   @override
   State<CliExecutablePathSettingsRow> createState() =>
       CliExecutablePathSettingsRowState();
@@ -57,6 +63,7 @@ class CliExecutablePathSettingsRowState
   late final Debouncer _persistDebouncer;
   String _lastSyncedPath = '';
   bool _isInstalling = false;
+  bool _isLocating = false;
   CliInstallPhase? _installPhase;
   final List<String> _installLog = [];
 
@@ -138,6 +145,62 @@ class CliExecutablePathSettingsRowState
     _persistDebouncer.cancel();
     _controller.clear();
     await widget.cubit.setCliExecutablePathFor(widget.cli, '');
+  }
+
+  Future<void> _locate() async {
+    if (_isLocating || _isInstalling) return;
+    setState(() => _isLocating = true);
+    try {
+      final path = (await _resolveLocatePath())?.trim() ?? '';
+      if (!mounted) return;
+      if (path.isEmpty) {
+        AppToast.show(
+          context,
+          message: context.l10n.cliExecutablePathLocateFailed(widget.title),
+          variant: TpToastVariant.error,
+        );
+        return;
+      }
+      _persistDebouncer.cancel();
+      _controller.text = path;
+      await widget.cubit.setCliExecutablePathFor(widget.cli, path);
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: context.l10n.cliExecutablePathLocateSuccess(
+          widget.title,
+          path,
+        ),
+        variant: TpToastVariant.success,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: context.l10n.cliExecutablePathLocateFailed(widget.title),
+        variant: TpToastVariant.error,
+      );
+    } finally {
+      if (mounted) setState(() => _isLocating = false);
+    }
+  }
+
+  Future<String?> _resolveLocatePath() async {
+    if (widget.locateOverride != null) return widget.locateOverride!();
+    final connectionMode = context.read<ConnectionModeService>();
+    if (connectionMode.isRemoteWorkPlane) {
+      final profile = _remoteSshProfile(context, connectionMode);
+      // No SSH/Termux profile selected — fail without probing PATH.
+      if (profile == null) return null;
+      final client = await context.read<SshClientFactory>().clientForStorage(
+        profile,
+      );
+      return CliExecutableDiscovery().locateRemoteCli(
+        cli: widget.cli,
+        run: RemoteCliLocator.runnerForClient(client),
+      );
+    }
+    return CliExecutableDiscovery().locateLocalCli(widget.cli);
   }
 
   Future<void> _installCli() async {
@@ -229,6 +292,7 @@ class CliExecutablePathSettingsRowState
         widget.installKey != null &&
         fieldEmpty &&
         !widget.cubit.hasKnownCliExecutable(widget.cli);
+    final locatingOrInstalling = _isLocating || _isInstalling;
 
     return TpPreferenceStack(
       title: widget.title,
@@ -264,7 +328,7 @@ class CliExecutablePathSettingsRowState
               if (showInstallButton) ...[
                 OutlinedButton.icon(
                   key: widget.installKey,
-                  onPressed: _isInstalling ? null : _installCli,
+                  onPressed: locatingOrInstalling ? null : _installCli,
                   icon: _isInstalling
                       ? const SizedBox(
                           width: 16,
@@ -285,7 +349,9 @@ class CliExecutablePathSettingsRowState
               ],
               OutlinedButton.icon(
                 key: widget.browseKey,
-                onPressed: isRemoteWorkPlane ? null : _pickFile,
+                onPressed: (isRemoteWorkPlane || locatingOrInstalling)
+                    ? null
+                    : _pickFile,
                 icon: Icon(
                   Icons.folder_open_outlined,
                   size: context.tpIconSizes.md,
@@ -295,8 +361,20 @@ class CliExecutablePathSettingsRowState
               const SizedBox(width: 6),
               TextButton(
                 key: widget.resetKey,
-                onPressed: isFallback ? null : _reset,
-                child: Text(l10n.cliExecutablePathReset),
+                onPressed: locatingOrInstalling
+                    ? null
+                    : (isFallback ? _locate : _reset),
+                child: _isLocating
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(
+                        isFallback
+                            ? l10n.cliExecutablePathLocate
+                            : l10n.cliExecutablePathReset,
+                      ),
               ),
             ],
           ),

@@ -37,4 +37,22 @@ class ToolchainExecutableDiscovery {
 
     return located;
   }
+
+  Future<String?> locateLocalTool(String toolId) async {
+    if (toolId == SessionPreferences.toolchainGit) {
+      final git = await _detectGit();
+      final gitPath = git.executablePath?.trim() ?? '';
+      if (git.success && gitPath.isNotEmpty) return gitPath;
+      return null;
+    }
+    if (toolId == SessionPreferences.toolchainNode) {
+      final node = await CliToolLocator('node').locate(
+        runner: _processRunner,
+        includeShellFallback: true,
+      );
+      final nodePath = node?.trim() ?? '';
+      return nodePath.isEmpty ? null : nodePath;
+    }
+    return null;
+  }
 }
