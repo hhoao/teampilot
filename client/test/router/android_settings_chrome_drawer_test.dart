@@ -85,6 +85,10 @@ void main() {
 
     expect(find.byType(TpSidebarTrigger), findsNothing);
     expect(find.byType(BackButton), findsOneWidget);
+    expect(find.byType(TpMobileLeading), findsOneWidget);
+
+    final backRect = tester.getRect(find.byType(BackButton));
+    expect(backRect.left, greaterThanOrEqualTo(TpMobileChrome.leadingInset));
     expect(find.text('Automations'), findsNothing);
 
     final gesture = await tester.startGesture(const Offset(2, 400));

@@ -116,4 +116,22 @@ void main() {
     expect(find.byType(WorkspaceLandingHeaderRow), findsOneWidget);
     expect(find.byType(WorkspaceComposeCard), findsOneWidget);
   });
+
+  testWidgets('narrow landing back left edge respects mobile leading inset', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpLanding(tester);
+
+    final back = find.byKey(AppKeys.workspaceChatLandingBackButton);
+    expect(back, findsOneWidget);
+    expect(
+      tester.getRect(back).left,
+      greaterThanOrEqualTo(TpMobileChrome.leadingInset),
+    );
+  });
 }
