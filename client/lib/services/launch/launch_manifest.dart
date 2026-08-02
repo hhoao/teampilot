@@ -60,6 +60,7 @@ class LaunchManifest {
 
   final p.Context pathContext;
   final List<LaunchManifestEntry> entries = [];
+  final Set<String> _ensuredDirs = {};
 
   /// Config file bodies only (last write per path wins).
   Map<String, String> get files {
@@ -75,6 +76,7 @@ class LaunchManifest {
   void ensureDir(String path) {
     final trimmed = path.trim();
     if (trimmed.isEmpty) return;
+    if (!_ensuredDirs.add(trimmed)) return;
     entries.add(ManifestEnsureDir(trimmed));
   }
 
@@ -107,6 +109,9 @@ class LaunchManifest {
   void removeRecursive(String path) {
     final trimmed = path.trim();
     if (trimmed.isEmpty) return;
+    _ensuredDirs.removeWhere(
+      (dir) => dir == trimmed || pathContext.isWithin(trimmed, dir),
+    );
     entries.add(ManifestRemoveRecursive(trimmed));
   }
 
@@ -114,12 +119,32 @@ class LaunchManifest {
     final src = from.trim();
     final dest = to.trim();
     if (src.isEmpty || dest.isEmpty) return;
+    _ensuredDirs.removeWhere(
+      (dir) => dir == src || pathContext.isWithin(src, dir),
+    );
     entries.add(ManifestRename(from: src, to: dest));
   }
 
   LaunchManifest copyWithEntries(List<LaunchManifestEntry> next) {
     final copy = LaunchManifest(pathContext: pathContext);
-    copy.entries.addAll(next);
+    for (final entry in next) {
+      switch (entry) {
+        case ManifestEnsureDir(:final path):
+          copy.ensureDir(path);
+        case ManifestWriteFile(:final path, :final content):
+          copy.writeFile(path, content);
+        case ManifestSymlink(:final linkPath, :final target):
+          copy.symlink(linkPath: linkPath, target: target);
+        case ManifestCopyFile(:final source, :final destination):
+          copy.copyFile(source: source, destination: destination);
+        case ManifestCopyTree(:final source, :final destination):
+          copy.copyTree(source: source, destination: destination);
+        case ManifestRemoveRecursive(:final path):
+          copy.removeRecursive(path);
+        case ManifestRename(:final from, :final to):
+          copy.rename(from: from, to: to);
+      }
+    }
     return copy;
   }
 }

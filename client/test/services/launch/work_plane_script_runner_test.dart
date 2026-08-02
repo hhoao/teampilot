@@ -6,99 +6,93 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
-import 'package:teampilot/services/launch/launch_manifest.dart';
-import 'package:teampilot/services/launch/manifest_executor.dart';
+import 'package:teampilot/services/launch/work_plane_script_runner.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 
-import '../../support/in_memory_filesystem.dart';
-
 void main() {
-  test('ssh manifest flush keeps storage pool alive', () async {
-    var createCount = 0;
+  test('SshWorkPlaneScriptRunner runs script on storage plane', () async {
+    String? ran;
     const profile = SshProfile(
       id: 'p1',
       name: 'dev',
       host: 'example.com',
       username: 'alice',
     );
-
-    final factory = SshClientFactory(
-      credentialStore: InMemorySshCredentialStore(),
-      knownHostRepository: InMemorySshKnownHostRepository(),
-      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
-        createCount += 1;
-        return _RunnableClient();
-      },
-    );
-
-    await factory.clientForStorage(profile);
-    expect(factory.hasLiveStorageClient(profile.id), isTrue);
-    expect(createCount, 1);
-
-    final manifest = LaunchManifest()..writeFile('/tmp/cursor/settings.json', '{}');
-    final executor = ManifestExecutor(
-      sshClientFactory: factory,
-      profileById: (_) => profile,
-    );
-
-    await executor.flush(
-      manifest: manifest,
-      targetFs: InMemoryFilesystem(),
-      sourceFs: InMemoryFilesystem(),
-      sshProfileId: profile.id,
-    );
-
-    expect(createCount, 1);
-    expect(factory.hasLiveStorageClient(profile.id), isTrue);
-  });
-
-  test('same-host ssh flush runs remote cp without expanding copies', () async {
-    String? ranScript;
-    const profile = SshProfile(
-      id: 'p1',
-      name: 'dev',
-      host: 'example.com',
-      username: 'alice',
-    );
-
     final factory = SshClientFactory(
       credentialStore: InMemorySshCredentialStore(),
       knownHostRepository: InMemorySshKnownHostRepository(),
       connector: (profile, {timeout = const Duration(seconds: 10)}) async {
         return _RunnableClient(
           onRun: (command) {
-            ranScript = command;
+            ran = command;
           },
         );
       },
     );
 
-    final fs = InMemoryFilesystem();
-    final manifest = LaunchManifest()
-      ..copyTree(source: '/src/tree', destination: '/dst/tree')
-      ..symlink(linkPath: '/dst/home/.npm', target: '/root/.npm');
-
-    await ManifestExecutor(
+    final runner = SshWorkPlaneScriptRunner(
       sshClientFactory: factory,
-      profileById: (_) => profile,
-    ).flush(
-      manifest: manifest,
-      targetFs: fs,
-      sourceFs: fs,
-      sshProfileId: profile.id,
+      profile: profile,
+    );
+    await runner.runScript('echo hi', operation: 'test-op');
+
+    expect(ran, 'echo hi');
+    expect(factory.hasLiveStorageClient(profile.id), isTrue);
+  });
+
+  test('SshWorkPlaneScriptRunner.tryCreate returns null without profile', () {
+    expect(
+      SshWorkPlaneScriptRunner.tryCreate(
+        sshProfileId: null,
+        sshClientFactory: null,
+        profileById: null,
+      ),
+      isNull,
+    );
+  });
+
+  test('SshWorkPlaneScriptRunner throws on non-zero exit', () async {
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return _RunnableClient(exitCode: 7, stderr: 'boom');
+      },
     );
 
-    expect(ranScript, isNotNull);
-    expect(ranScript, contains("cp -R -- '/src/tree/.' '/dst/tree'"));
-    expect(ranScript, contains("ln -sf '/root/.npm' '/dst/home/.npm'"));
-    expect(ranScript, isNot(contains('cat >')));
+    final runner = SshWorkPlaneScriptRunner(
+      sshClientFactory: factory,
+      profile: profile,
+    );
+    await expectLater(
+      runner.runScript('false', operation: 'cursor-home-passthrough'),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('cursor-home-passthrough'),
+        ),
+      ),
+    );
   });
 }
 
 class _RunnableClient extends SSHClient {
-  _RunnableClient({this.onRun}) : super(_FakeSSHSocket(), username: 'test');
+  _RunnableClient({
+    this.onRun,
+    this.exitCode = 0,
+    this.stderr = '',
+  }) : super(_FakeSSHSocket(), username: 'test');
 
   final void Function(String command)? onRun;
+  final int exitCode;
+  final String stderr;
 
   @override
   Future<void> get authenticated => Future.value();
@@ -115,8 +109,8 @@ class _RunnableClient extends SSHClient {
     return SSHRunResult(
       output: Uint8List(0),
       stdout: Uint8List(0),
-      stderr: Uint8List(0),
-      exitCode: 0,
+      stderr: Uint8List.fromList(this.stderr.codeUnits),
+      exitCode: exitCode,
       exitSignal: null,
     );
   }
@@ -174,5 +168,5 @@ class _NoopSink implements StreamSink<List<int>> {
   Future<void> close() async {}
 
   @override
-  Future<void> get done async {}
+  Future get done async {}
 }

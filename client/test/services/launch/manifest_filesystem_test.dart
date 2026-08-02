@@ -132,6 +132,21 @@ void main() {
     );
   });
 
+  group('LaunchManifest', () {
+    test('ensureDir dedupes repeated paths', () {
+      final manifest = LaunchManifest()
+        ..ensureDir('/a')
+        ..ensureDir('/a/b')
+        ..ensureDir('/a')
+        ..ensureDir('/a/b');
+
+      expect(
+        manifest.entries.whereType<ManifestEnsureDir>().map((e) => e.path),
+        ['/a', '/a/b'],
+      );
+    });
+  });
+
   group('ManifestExecutor', () {
     test(
       'flush throws when copy source is missing across filesystems',
@@ -164,6 +179,31 @@ void main() {
       final script = ManifestExecutor.debugBuildApplyScript(manifest);
       expect(script, contains(content));
       expect(script.split("<<'").length, greaterThan(1));
+    });
+
+    test('ssh same-host script keeps remote copyTree and symlink ops', () {
+      final manifest = LaunchManifest()
+        ..ensureDir('/session/home')
+        ..symlink(linkPath: '/session/home/.cache', target: '/root/.cache')
+        ..copyTree(source: '/cli-defaults/cursor', destination: '/session/cursor')
+        ..copyFile(
+          source: '/cli-defaults/cursor/settings.json',
+          destination: '/session/cursor/settings.json',
+        );
+
+      final script = ManifestExecutor.debugBuildApplyScript(manifest);
+      expect(script, contains("ln -sf '/root/.cache' '/session/home/.cache'"));
+      expect(
+        script,
+        contains("cp -R -- '/cli-defaults/cursor/.' '/session/cursor'"),
+      );
+      expect(
+        script,
+        contains(
+          "cp -f -- '/cli-defaults/cursor/settings.json' "
+          "'/session/cursor/settings.json'",
+        ),
+      );
     });
 
     test('flush applies remove and rename on target', () async {

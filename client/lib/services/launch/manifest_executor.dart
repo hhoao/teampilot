@@ -6,8 +6,8 @@ import '../../models/ssh_profile.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
 import '../ssh/ssh_client_factory.dart';
-import '../ssh/ssh_run_result.dart';
 import 'launch_manifest.dart';
+import 'work_plane_script_runner.dart';
 
 /// Applies a staged [LaunchManifest] in one batch (local disk or SSH script).
 class ManifestExecutor {
@@ -22,16 +22,19 @@ class ManifestExecutor {
     required Filesystem sourceFs,
     String? sshProfileId,
   }) async {
-    if (sshProfileId != null &&
-        sshProfileId.isNotEmpty &&
-        sshClientFactory != null &&
-        profileById != null) {
-      final profile = profileById!(sshProfileId);
-      if (profile != null) {
-        final expanded = await _expandCopies(manifest, sourceFs);
-        await _flushViaSsh(profile: profile, manifest: expanded);
-        return;
-      }
+    final runner = SshWorkPlaneScriptRunner.tryCreate(
+      sshProfileId: sshProfileId,
+      sshClientFactory: sshClientFactory,
+      profileById: profileById,
+    );
+    if (runner != null) {
+      // Same work FS (Android/SSH home): apply mkdir/ln/cp on the remote in
+      // one script. Cross-machine off-home still expands local copies first.
+      final toApply = identical(sourceFs, targetFs)
+          ? manifest
+          : await _expandCopies(manifest, sourceFs);
+      await _flushViaSsh(runner: runner, manifest: toApply);
+      return;
     }
     await _flushLocal(
       manifest: manifest,
@@ -69,28 +72,17 @@ class ManifestExecutor {
   }
 
   Future<void> _flushViaSsh({
-    required SshProfile profile,
+    required WorkPlaneScriptRunner runner,
     required LaunchManifest manifest,
   }) async {
     final script = _buildApplyScript(manifest);
     appLogger.d(
       '[session-launch] manifest flush via ssh ops=${manifest.entries.length}',
     );
-    final client = await sshClientFactory!.createEphemeralClient(profile);
-    try {
-      await client.authenticated;
-      final result = await client.runWithResult(script, stderr: true);
-      if (sshRunFailed(result)) {
-        final stderr = utf8.decode(result.stderr, allowMalformed: true);
-        throw StateError(
-          'Failed to apply launch manifest on ${profile.host}: $stderr',
-        );
-      }
-    } finally {
-      if (!client.isClosed) {
-        client.close();
-      }
-    }
+    await runner.runScript(
+      script,
+      operation: 'Launch manifest apply',
+    );
   }
 
   /// Expands copy ops into concrete file writes for SSH (sources read on control plane).
@@ -203,9 +195,22 @@ class ManifestExecutor {
           buffer
             ..writeln('mkdir -p $dir')
             ..writeln('mv ${_shellQuote(from)} ${_shellQuote(to)}');
-        case ManifestCopyFile():
-        case ManifestCopyTree():
-          break;
+        case ManifestCopyFile(:final source, :final destination):
+          final dir = _shellQuote(_dirname(destination));
+          buffer
+            ..writeln('mkdir -p $dir')
+            ..writeln(
+              'cp -f -- ${_shellQuote(source)} ${_shellQuote(destination)}',
+            );
+        case ManifestCopyTree(:final source, :final destination):
+          buffer
+            ..writeln('mkdir -p ${_shellQuote(_dirname(destination))}')
+            ..writeln('rm -rf ${_shellQuote(destination)}')
+            ..writeln('mkdir -p ${_shellQuote(destination)}')
+            ..writeln(
+              'cp -R -- ${_shellQuote('$source/.')} '
+              '${_shellQuote(destination)}',
+            );
       }
     }
     return buffer.toString();
