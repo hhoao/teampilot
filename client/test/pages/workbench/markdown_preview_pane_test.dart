@@ -44,7 +44,11 @@ Widget _previewPaneFixture(
         child: SelectionArea(
           child: MarkdownView(
             document: compileMarkdown(markdown),
-            tokens: buildAppMarkdownTokens(theme, MarkdownProfile.document),
+            tokens: buildAppMarkdownTokens(
+              theme,
+              MarkdownProfile.document,
+              width: TpBreakpoints.xxl,
+            ),
             resolvers: const MarkdownResolvers(),
           ),
         ),
@@ -115,8 +119,16 @@ void main() {
     tester,
   ) async {
     final theme = _themeForTest();
-    final document = buildAppMarkdownTokens(theme, MarkdownProfile.document);
-    final compact = buildAppMarkdownTokens(theme, MarkdownProfile.compact);
+    final document = buildAppMarkdownTokens(
+      theme,
+      MarkdownProfile.document,
+      width: TpBreakpoints.xxl,
+    );
+    final compact = buildAppMarkdownTokens(
+      theme,
+      MarkdownProfile.compact,
+      width: TpBreakpoints.xxl,
+    );
     final fixture = compileMarkdown(_readmeFixture);
 
     Future<List<double>> headingTopHeights(MarkdownTokens tokens) async {
@@ -137,9 +149,18 @@ void main() {
     final documentHeights = await headingTopHeights(document);
     final compactHeights = await headingTopHeights(compact);
 
-    expect(documentHeights, contains(document.h2TopSpacing));
-    expect(compactHeights, contains(compact.h2TopSpacing));
-    expect(document.h2TopSpacing, greaterThan(compact.h2TopSpacing));
+    expect(
+      documentHeights,
+      contains(document.marginOf(MarkdownBlockKind.heading2).top),
+    );
+    expect(
+      compactHeights,
+      contains(compact.marginOf(MarkdownBlockKind.heading2).top),
+    );
+    expect(
+      document.marginOf(MarkdownBlockKind.heading2).top,
+      greaterThan(compact.marginOf(MarkdownBlockKind.heading2).top),
+    );
     expect(documentHeights.length, compactHeights.length);
   });
 }

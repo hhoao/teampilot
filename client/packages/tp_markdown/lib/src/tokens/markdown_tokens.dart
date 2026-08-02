@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../ir/markdown_block_kind.dart';
@@ -27,18 +29,22 @@ class MarkdownTokens {
     required this.tableCellsPadding,
     required this.tableHeadBackground,
     required this.tableBodyBackground,
-    required this.headingBottom,
-    required this.paragraphGap,
-    required this.blockGap,
+    required this.paragraphMargin,
+    required this.h1Margin,
+    required this.h2Margin,
+    required this.h3Margin,
+    required this.h4Margin,
+    required this.h5Margin,
+    required this.h6Margin,
+    required this.listMargin,
+    required this.blockquoteMargin,
+    required this.codeMargin,
+    required this.tableMargin,
+    required this.horizontalRuleMargin,
+    required this.imageMargin,
+    required this.rawLiteralMargin,
     required this.listItemGap,
     required this.listIndent,
-    required this.ruleGap,
-    required this.h1TopSpacing,
-    required this.h2TopSpacing,
-    required this.h3TopSpacing,
-    required this.h4TopSpacing,
-    required this.h5TopSpacing,
-    required this.h6TopSpacing,
     this.strongWeight = FontWeight.w700,
     this.emphasisFontStyle = FontStyle.italic,
     this.strikeDecoration = TextDecoration.lineThrough,
@@ -51,18 +57,22 @@ class MarkdownTokens {
     EdgeInsets? tableCellsPadding,
     Color? tableHeadBackground,
     Color? tableBodyBackground,
-    double headingBottom = 8,
-    double paragraphGap = 12,
-    double blockGap = 12,
+    EdgeInsets? paragraphMargin,
+    EdgeInsets? h1Margin,
+    EdgeInsets? h2Margin,
+    EdgeInsets? h3Margin,
+    EdgeInsets? h4Margin,
+    EdgeInsets? h5Margin,
+    EdgeInsets? h6Margin,
+    EdgeInsets? listMargin,
+    EdgeInsets? blockquoteMargin,
+    EdgeInsets? codeMargin,
+    EdgeInsets? tableMargin,
+    EdgeInsets? horizontalRuleMargin,
+    EdgeInsets? imageMargin,
+    EdgeInsets? rawLiteralMargin,
     double listItemGap = 4,
     double listIndent = 24,
-    double ruleGap = 12,
-    double h1TopSpacing = 16,
-    double h2TopSpacing = 12,
-    double h3TopSpacing = 8,
-    double h4TopSpacing = 8,
-    double h5TopSpacing = 8,
-    double h6TopSpacing = 8,
     FontWeight strongWeight = FontWeight.w700,
     FontStyle emphasisFontStyle = FontStyle.italic,
     TextDecoration strikeDecoration = TextDecoration.lineThrough,
@@ -101,18 +111,24 @@ class MarkdownTokens {
           const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       tableHeadBackground: tableHeadBackground,
       tableBodyBackground: tableBodyBackground ?? Colors.transparent,
-      headingBottom: headingBottom,
-      paragraphGap: paragraphGap,
-      blockGap: blockGap,
+      paragraphMargin:
+          paragraphMargin ?? const EdgeInsets.only(bottom: 12),
+      h1Margin: h1Margin ?? const EdgeInsets.only(top: 16, bottom: 8),
+      h2Margin: h2Margin ?? const EdgeInsets.only(top: 12, bottom: 8),
+      h3Margin: h3Margin ?? const EdgeInsets.only(top: 8, bottom: 8),
+      h4Margin: h4Margin ?? const EdgeInsets.only(top: 8, bottom: 8),
+      h5Margin: h5Margin ?? const EdgeInsets.only(top: 8, bottom: 8),
+      h6Margin: h6Margin ?? const EdgeInsets.only(top: 8, bottom: 8),
+      listMargin: listMargin ?? const EdgeInsets.only(bottom: 12),
+      blockquoteMargin: blockquoteMargin ?? const EdgeInsets.only(bottom: 12),
+      codeMargin: codeMargin ?? const EdgeInsets.only(bottom: 12),
+      tableMargin: tableMargin ?? const EdgeInsets.only(bottom: 12),
+      horizontalRuleMargin:
+          horizontalRuleMargin ?? const EdgeInsets.only(bottom: 12),
+      imageMargin: imageMargin ?? const EdgeInsets.only(bottom: 12),
+      rawLiteralMargin: rawLiteralMargin ?? const EdgeInsets.only(bottom: 12),
       listItemGap: listItemGap,
       listIndent: listIndent,
-      ruleGap: ruleGap,
-      h1TopSpacing: h1TopSpacing,
-      h2TopSpacing: h2TopSpacing,
-      h3TopSpacing: h3TopSpacing,
-      h4TopSpacing: h4TopSpacing,
-      h5TopSpacing: h5TopSpacing,
-      h6TopSpacing: h6TopSpacing,
       strongWeight: strongWeight,
       emphasisFontStyle: emphasisFontStyle,
       strikeDecoration: strikeDecoration,
@@ -140,18 +156,22 @@ class MarkdownTokens {
   final EdgeInsets tableCellsPadding;
   final Color? tableHeadBackground;
   final Color tableBodyBackground;
-  final double headingBottom;
-  final double paragraphGap;
-  final double blockGap;
+  final EdgeInsets paragraphMargin;
+  final EdgeInsets h1Margin;
+  final EdgeInsets h2Margin;
+  final EdgeInsets h3Margin;
+  final EdgeInsets h4Margin;
+  final EdgeInsets h5Margin;
+  final EdgeInsets h6Margin;
+  final EdgeInsets listMargin;
+  final EdgeInsets blockquoteMargin;
+  final EdgeInsets codeMargin;
+  final EdgeInsets tableMargin;
+  final EdgeInsets horizontalRuleMargin;
+  final EdgeInsets imageMargin;
+  final EdgeInsets rawLiteralMargin;
   final double listItemGap;
   final double listIndent;
-  final double ruleGap;
-  final double h1TopSpacing;
-  final double h2TopSpacing;
-  final double h3TopSpacing;
-  final double h4TopSpacing;
-  final double h5TopSpacing;
-  final double h6TopSpacing;
 
   /// [StrongRun] weight applied onto the surrounding base.
   final FontWeight strongWeight;
@@ -162,14 +182,22 @@ class MarkdownTokens {
   /// [StrikeRun] decoration applied onto the surrounding base.
   final TextDecoration strikeDecoration;
 
-  double headingTop(int level) {
-    return switch (level) {
-      1 => h1TopSpacing,
-      2 => h2TopSpacing,
-      3 => h3TopSpacing,
-      4 => h4TopSpacing,
-      5 => h5TopSpacing,
-      _ => h6TopSpacing,
+  EdgeInsets marginOf(MarkdownBlockKind kind) {
+    return switch (kind) {
+      MarkdownBlockKind.paragraph => paragraphMargin,
+      MarkdownBlockKind.heading1 => h1Margin,
+      MarkdownBlockKind.heading2 => h2Margin,
+      MarkdownBlockKind.heading3 => h3Margin,
+      MarkdownBlockKind.heading4 => h4Margin,
+      MarkdownBlockKind.heading5 => h5Margin,
+      MarkdownBlockKind.heading6 => h6Margin,
+      MarkdownBlockKind.list => listMargin,
+      MarkdownBlockKind.blockquote => blockquoteMargin,
+      MarkdownBlockKind.code => codeMargin,
+      MarkdownBlockKind.table => tableMargin,
+      MarkdownBlockKind.horizontalRule => horizontalRuleMargin,
+      MarkdownBlockKind.image => imageMargin,
+      MarkdownBlockKind.rawLiteral => rawLiteralMargin,
     };
   }
 
@@ -230,31 +258,6 @@ class MarkdownTokens {
       ];
 }
 
-bool _isHeading(MarkdownBlockKind kind) {
-  return switch (kind) {
-    MarkdownBlockKind.heading1 ||
-    MarkdownBlockKind.heading2 ||
-    MarkdownBlockKind.heading3 ||
-    MarkdownBlockKind.heading4 ||
-    MarkdownBlockKind.heading5 ||
-    MarkdownBlockKind.heading6 =>
-      true,
-    _ => false,
-  };
-}
-
-int _headingLevel(MarkdownBlockKind kind) {
-  return switch (kind) {
-    MarkdownBlockKind.heading1 => 1,
-    MarkdownBlockKind.heading2 => 2,
-    MarkdownBlockKind.heading3 => 3,
-    MarkdownBlockKind.heading4 => 4,
-    MarkdownBlockKind.heading5 => 5,
-    MarkdownBlockKind.heading6 => 6,
-    _ => throw ArgumentError.value(kind, 'kind', 'not a heading'),
-  };
-}
-
 /// Inter-block vertical gap from [previous] to [next] block kinds.
 double gapBetween(
   MarkdownBlockKind? previous,
@@ -262,15 +265,7 @@ double gapBetween(
   MarkdownTokens t,
 ) {
   if (previous == null) return 0;
-  if (_isHeading(next)) return t.headingTop(_headingLevel(next));
-  if (_isHeading(previous)) return t.headingBottom;
-  if (previous == MarkdownBlockKind.paragraph &&
-      next == MarkdownBlockKind.paragraph) {
-    return t.paragraphGap;
-  }
-  if (previous == MarkdownBlockKind.horizontalRule ||
-      next == MarkdownBlockKind.horizontalRule) {
-    return t.ruleGap;
-  }
-  return t.blockGap;
+  final prevBottom = t.marginOf(previous).bottom;
+  final nextTop = t.marginOf(next).top;
+  return math.max(prevBottom, nextTop);
 }

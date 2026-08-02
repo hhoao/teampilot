@@ -6,7 +6,7 @@ void main() {
   testWidgets('paragraphs use forced strut for uniform line boxes', (
     tester,
   ) async {
-    final base = MarkdownTokens.test(blockGap: 24, listItemGap: 8);
+    final base = MarkdownTokens.test(listItemGap: 8);
     final body = base.body.copyWith(height: 1.65);
     final tokens = MarkdownTokens(
       body: body,
@@ -30,18 +30,22 @@ void main() {
       tableCellsPadding: base.tableCellsPadding,
       tableHeadBackground: base.tableHeadBackground,
       tableBodyBackground: base.tableBodyBackground,
-      headingBottom: base.headingBottom,
-      paragraphGap: base.paragraphGap,
-      blockGap: 24,
+      paragraphMargin: base.paragraphMargin,
+      h1Margin: base.h1Margin,
+      h2Margin: base.h2Margin,
+      h3Margin: base.h3Margin,
+      h4Margin: base.h4Margin,
+      h5Margin: base.h5Margin,
+      h6Margin: base.h6Margin,
+      listMargin: base.listMargin,
+      blockquoteMargin: base.blockquoteMargin,
+      codeMargin: base.codeMargin,
+      tableMargin: base.tableMargin,
+      horizontalRuleMargin: base.horizontalRuleMargin,
+      imageMargin: base.imageMargin,
+      rawLiteralMargin: base.rawLiteralMargin,
       listItemGap: 8,
       listIndent: base.listIndent,
-      ruleGap: base.ruleGap,
-      h1TopSpacing: base.h1TopSpacing,
-      h2TopSpacing: base.h2TopSpacing,
-      h3TopSpacing: base.h3TopSpacing,
-      h4TopSpacing: base.h4TopSpacing,
-      h5TopSpacing: base.h5TopSpacing,
-      h6TopSpacing: base.h6TopSpacing,
     );
 
     await tester.pumpWidget(

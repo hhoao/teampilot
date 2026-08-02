@@ -648,6 +648,8 @@ class _MarkdownPreviewPaneState extends State<_MarkdownPreviewPane> {
                   tokens: buildAppMarkdownTokens(
                     theme,
                     MarkdownProfile.document,
+                    // v1: window width, not preview pane width.
+                    width: MediaQuery.sizeOf(context).width,
                   ),
                   resolvers: resolvers,
                 ),

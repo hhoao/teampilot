@@ -78,9 +78,11 @@ void main() {
     expect(_richTextContains(heading, 'More'), isFalse);
   });
 
-  testWidgets('merged paragraphs skip paragraphGap SizedBox', (tester) async {
+  testWidgets('merged paragraphs skip paragraph margin SizedBox', (tester) async {
     const paragraphGap = 17.0;
-    final tokens = MarkdownTokens.test(paragraphGap: paragraphGap);
+    final tokens = MarkdownTokens.test(
+      paragraphMargin: const EdgeInsets.only(bottom: paragraphGap),
+    );
 
     await tester.pumpWidget(
       MaterialApp(
@@ -119,9 +121,16 @@ void main() {
     expect(blankLine.style?.height, closeTo(paragraphGap / fontSize, 0.001));
   });
 
-  testWidgets('paragraph then code uses blockGap SizedBox', (tester) async {
-    const blockGap = 22.0;
-    final tokens = MarkdownTokens.test(blockGap: blockGap);
+  testWidgets('paragraph then code uses collapsed margin SizedBox', (
+    tester,
+  ) async {
+    const paragraphBottom = 15.0;
+    const codeTop = 22.0;
+    const expectedGap = 22.0;
+    final tokens = MarkdownTokens.test(
+      paragraphMargin: const EdgeInsets.only(bottom: paragraphBottom),
+      codeMargin: const EdgeInsets.only(top: codeTop),
+    );
 
     await tester.pumpWidget(
       MaterialApp(
@@ -144,7 +153,7 @@ void main() {
         .map((s) => s.height)
         .whereType<double>()
         .toList();
-    expect(sizedBoxHeights, contains(blockGap));
+    expect(sizedBoxHeights, contains(expectedGap));
   });
 
   testWidgets('heading uses token heading style in Text.rich', (tester) async {
@@ -259,6 +268,36 @@ void main() {
     walk(rich.text);
     expect(sawWidgetSpan, isFalse);
     expect(sawLinkSpan, isTrue);
+  });
+
+  testWidgets('block with horizontal margin is padded', (tester) async {
+    final tokens = MarkdownTokens.test(
+      paragraphMargin: const EdgeInsets.only(left: 12, right: 8, bottom: 16),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MarkdownView(
+            document: const MarkdownDocument(
+              blocks: [
+                ParagraphBlock(runs: [TextRun('Hello')]),
+              ],
+            ),
+            tokens: tokens,
+          ),
+        ),
+      ),
+    );
+
+    final padding = tester
+        .widgetList<Padding>(find.byType(Padding))
+        .map((p) => p.padding)
+        .whereType<EdgeInsets>()
+        .where(
+          (e) =>
+              e.left == 12 && e.right == 8 && e.top == 0 && e.bottom == 0,
+        );
+    expect(padding, isNotEmpty);
   });
 
   testWidgets('tappable link uses click mouse cursor under SelectionArea', (

@@ -26,7 +26,11 @@ void main() {
 
   test('document profile exposes Orca-like rhythm', () {
     final theme = themeForTest();
-    final tokens = buildAppMarkdownTokens(theme, MarkdownProfile.document);
+    final tokens = buildAppMarkdownTokens(
+      theme,
+      MarkdownProfile.document,
+      width: TpBreakpoints.xxl,
+    );
     final mono = theme.extension<TpFontTheme>()!;
 
     expect(tokens.body.height, 1.7);
@@ -46,16 +50,24 @@ void main() {
     expect(tokens.h1.height, 1.3);
     expect(tokens.h1.letterSpacing, -0.02);
     expect(tokens.h2.height, 1.3);
-    expect(tokens.h1TopSpacing, 40);
-    expect(tokens.h2TopSpacing, 36);
-    expect(tokens.h3TopSpacing, 32);
-    expect(tokens.h4TopSpacing, 28);
-    expect(tokens.h5TopSpacing, 28);
-    expect(tokens.h6TopSpacing, 28);
-    expect(tokens.headingBottom, 8);
-    expect(tokens.paragraphGap, 16);
-    expect(tokens.blockGap, 28);
-    expect(tokens.ruleGap, 28);
+    expect(tokens.marginOf(MarkdownBlockKind.heading1).top, 40);
+    expect(tokens.marginOf(MarkdownBlockKind.heading1).bottom, 8);
+    expect(tokens.marginOf(MarkdownBlockKind.heading2).top, 36);
+    expect(tokens.marginOf(MarkdownBlockKind.heading2).bottom, 8);
+    expect(tokens.marginOf(MarkdownBlockKind.heading3).top, 32);
+    expect(tokens.marginOf(MarkdownBlockKind.heading3).bottom, 8);
+    expect(tokens.marginOf(MarkdownBlockKind.heading4).top, 28);
+    expect(tokens.marginOf(MarkdownBlockKind.heading4).bottom, 8);
+    expect(tokens.marginOf(MarkdownBlockKind.heading5).top, 28);
+    expect(tokens.marginOf(MarkdownBlockKind.heading5).bottom, 8);
+    expect(tokens.marginOf(MarkdownBlockKind.heading6).top, 28);
+    expect(tokens.marginOf(MarkdownBlockKind.heading6).bottom, 8);
+    expect(tokens.marginOf(MarkdownBlockKind.paragraph).bottom, 16);
+    expect(tokens.marginOf(MarkdownBlockKind.code).bottom, 28);
+    expect(tokens.marginOf(MarkdownBlockKind.list).bottom, 28);
+    expect(tokens.marginOf(MarkdownBlockKind.blockquote).bottom, 28);
+    expect(tokens.marginOf(MarkdownBlockKind.table).bottom, 28);
+    expect(tokens.marginOf(MarkdownBlockKind.horizontalRule).bottom, 28);
     expect(tokens.listIndent, 24);
     expect(
       tokens.borderColor,
@@ -74,16 +86,59 @@ void main() {
 
   test('compact profile is tighter than document headings', () {
     final theme = themeForTest();
-    final document = buildAppMarkdownTokens(theme, MarkdownProfile.document);
-    final compact = buildAppMarkdownTokens(theme, MarkdownProfile.compact);
+    final document = buildAppMarkdownTokens(
+      theme,
+      MarkdownProfile.document,
+      width: TpBreakpoints.xxl,
+    );
+    final compact = buildAppMarkdownTokens(
+      theme,
+      MarkdownProfile.compact,
+      width: TpBreakpoints.xxl,
+    );
 
-    expect(compact.h1TopSpacing, lessThan(document.h1TopSpacing));
-    expect(compact.h2TopSpacing, lessThan(document.h2TopSpacing));
-    expect(compact.paragraphGap, lessThan(document.paragraphGap));
-    expect(compact.blockGap, lessThan(document.blockGap));
-    expect(compact.h1TopSpacing, 16);
-    expect(compact.h2TopSpacing, 12);
-    expect(compact.paragraphGap, 12);
-    expect(compact.blockGap, 12);
+    expect(
+      compact.marginOf(MarkdownBlockKind.heading1).top,
+      lessThan(document.marginOf(MarkdownBlockKind.heading1).top),
+    );
+    expect(
+      compact.marginOf(MarkdownBlockKind.heading2).top,
+      lessThan(document.marginOf(MarkdownBlockKind.heading2).top),
+    );
+    expect(
+      compact.marginOf(MarkdownBlockKind.paragraph).bottom,
+      lessThan(document.marginOf(MarkdownBlockKind.paragraph).bottom),
+    );
+    expect(
+      compact.marginOf(MarkdownBlockKind.code).bottom,
+      lessThan(document.marginOf(MarkdownBlockKind.code).bottom),
+    );
+    expect(compact.marginOf(MarkdownBlockKind.heading1).top, 16);
+    expect(compact.marginOf(MarkdownBlockKind.heading2).top, 12);
+    expect(compact.marginOf(MarkdownBlockKind.paragraph).bottom, 12);
+    expect(compact.marginOf(MarkdownBlockKind.code).bottom, 12);
+  });
+
+  test('document margins scale with width between sm and xxl', () {
+    final theme = themeForTest();
+    final sm = buildAppMarkdownTokens(
+      theme,
+      MarkdownProfile.document,
+      width: TpBreakpoints.sm,
+    );
+    final xxl = buildAppMarkdownTokens(
+      theme,
+      MarkdownProfile.document,
+      width: TpBreakpoints.xxl,
+    );
+
+    expect(
+      sm.marginOf(MarkdownBlockKind.heading1).top,
+      lessThan(xxl.marginOf(MarkdownBlockKind.heading1).top),
+    );
+    expect(
+      sm.marginOf(MarkdownBlockKind.paragraph).bottom,
+      lessThan(xxl.marginOf(MarkdownBlockKind.paragraph).bottom),
+    );
   });
 }

@@ -34,7 +34,7 @@ Semantic markdown (compile → IR → `MarkdownView`) lives inside `ai_message_u
 | In `tp_markdown` | Stays in `ai_message_ui` | Stays in app host |
 |------------------|--------------------------|-------------------|
 | `ir/` | `compiled_markdown_chrome.dart` (tool/reasoning chrome) | `buildAppMarkdownTokens` |
-| `tokens/` (`MarkdownTokens`, `MarkdownProfile`, `gapBetween`) | Thread/Part views wiring | Preview `SelectionArea` chrome |
+| `tokens/` (`MarkdownTokens`, `MarkdownProfile`, `marginOf`, collapse `gapBetween` — see `2026-08-02-markdown-block-margins-design.md`) | Thread/Part views wiring | Preview `SelectionArea` chrome |
 | `compile/` (`compileMarkdown`, streaming, cache, **history truncate**) | `AiMessageStrings` → map into `MarkdownStrings` | |
 | `render/` (`MarkdownView` + block widgets) | | |
 | `registry/` (`BlockWidgetRegistry`, `MarkdownResolvers`) | | |
@@ -69,7 +69,7 @@ package:markdown (GFM AST)
 
 - **Block widgets:** `BlockWidgetRegistry` (override / extend built-ins).
 - **Resolvers:** links + images.
-- **Tokens:** value object; profiles drive gap matrix only.
+- **Tokens:** value object; profiles drive per-kind `marginOf` + collapse `gapBetween` only.
 - **Strings:** `MarkdownStrings` (copy / copied / code) — no Material l10n dependency inside the package.
 - Future: compile plugins / math / mermaid via registry — not in this extract.
 

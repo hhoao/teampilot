@@ -1302,6 +1302,8 @@ class _SessionChatViewState extends State<SessionChatView> {
                                   markdown: buildAppMarkdownTokens(
                                     Theme.of(context),
                                     MarkdownProfile.compact,
+                                    // v1: window width, not chat column width.
+                                    width: MediaQuery.sizeOf(context).width,
                                     mutedSurface: cs.surfaceContainerHighest
                                         .withValues(alpha: 0.55),
                                   ),
