@@ -26,11 +26,87 @@ import '../../services/selection_ai/selection_ask_ai_fab_host.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../services/workspace/workspace_tools_scope.dart';
 import '../../theme/app_markdown_style_sheet.dart' show buildAppMarkdownTokens;
-import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/workbench/file_diff_surface_toggle.dart';
 import '../../widgets/workbench/markdown_view_mode_toggle.dart';
 import 'file_editor_image_preview.dart';
+
+/// Shell fill for file preview — matches floating panel / window chrome
+/// ([ColorScheme.surface]) so toolbar, code, and markdown share one plane.
+Color _fileEditorShellColor(ColorScheme cs) => cs.surface;
+
+/// File-preview chrome insets — domain anchors on top of [TpWidthScale].
+///
+/// Only set the stops you care about (often `sm` + `xxl`); the rest lerp.
+class _FileEditorInsets {
+  const _FileEditorInsets({
+    required this.codeMargin,
+    required this.markdownPadding,
+    required this.toolbarPadding,
+    required this.lineNumberPadding,
+    required this.gutterGap,
+  });
+
+  final EdgeInsets codeMargin;
+  final EdgeInsets markdownPadding;
+  final EdgeInsets toolbarPadding;
+  final EdgeInsets lineNumberPadding;
+  final double gutterGap;
+
+  static const _codeMargin = TpScaledEdgeInsets(
+    sm: EdgeInsets.zero,
+    xxl: EdgeInsets.fromLTRB(16, 10, 16, 16),
+  );
+
+  static const _markdownPadding = TpScaledEdgeInsets(
+    sm: EdgeInsets.fromLTRB(16, 12, 16, 24),
+    xxl: EdgeInsets.fromLTRB(64, 48, 64, 48),
+  );
+
+  static const _toolbarPadding = TpScaledEdgeInsets(
+    sm: EdgeInsets.fromLTRB(8, 0, 8, 0),
+    xxl: EdgeInsets.fromLTRB(28, 0, 28, 0),
+  );
+
+  static const _lineNumberPadding = TpScaledEdgeInsets(
+    sm: EdgeInsets.only(left: 6, right: 6),
+    xxl: EdgeInsets.only(left: 16, right: 12),
+  );
+
+  static const _gutterGap = TpScaledDouble(sm: 10, xxl: 24);
+
+  /// Mid-band defaults when no [TpWidthValueHost] is above.
+  static final comfortable = _FileEditorInsets.forWidth(TpBreakpoints.md);
+
+  factory _FileEditorInsets.forWidth(double width) {
+    return _FileEditorInsets(
+      codeMargin: _codeMargin.forWidth(width),
+      markdownPadding: _markdownPadding.forWidth(width),
+      toolbarPadding: _toolbarPadding.forWidth(width),
+      lineNumberPadding: _lineNumberPadding.forWidth(width),
+      gutterGap: _gutterGap.forWidth(width),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is _FileEditorInsets &&
+        codeMargin == other.codeMargin &&
+        markdownPadding == other.markdownPadding &&
+        toolbarPadding == other.toolbarPadding &&
+        lineNumberPadding == other.lineNumberPadding &&
+        gutterGap == other.gutterGap;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    codeMargin,
+    markdownPadding,
+    toolbarPadding,
+    lineNumberPadding,
+    gutterGap,
+  );
+}
 
 /// Center-pane file editor for one path (no inner tab bar).
 class FileEditorSurface extends StatelessWidget {
@@ -46,9 +122,10 @@ class FileEditorSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final shell = _fileEditorShellColor(cs);
     if (isImagePreviewPath(path)) {
       return ColoredBox(
-        color: cs.workspaceCard,
+        color: shell,
         child: FileEditorImagePreview(workspaceId: workspaceId, path: path),
       );
     }
@@ -74,16 +151,23 @@ class FileEditorSurface extends StatelessWidget {
         listener: (context, state) =>
             _onFileEditorDiffSnackbar(context, state.snackbarMessage),
         child: ColoredBox(
-          color: cs.workspaceCard,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _FileEditorToolbar(workspaceId: workspaceId, path: path),
-              const Divider(height: 1),
-              Expanded(
-                child: _FileEditorBody(workspaceId: workspaceId, path: path),
-              ),
-            ],
+          color: shell,
+          child: TpWidthValueHost<_FileEditorInsets>(
+            resolve: _FileEditorInsets.forWidth,
+            fallback: _FileEditorInsets.comfortable,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _FileEditorToolbar(workspaceId: workspaceId, path: path),
+                const Divider(height: 1),
+                Expanded(
+                  child: _FileEditorBody(
+                    workspaceId: workspaceId,
+                    path: path,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -164,10 +248,11 @@ class _FileEditorToolbar extends StatelessWidget {
     final canToggleDiff = gitCubitForAbsolutePath(context, path) != null;
     final isMarkdown = isMarkdownEditorPath(path);
     final opener = context.read<WorkbenchEditorOpener>();
+    final insets = TpWidthValueScope.of<_FileEditorInsets>(context);
     return SizedBox(
       height: 36,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        padding: insets.toolbarPadding,
         child: Row(
           children: [
             Expanded(
@@ -341,12 +426,19 @@ class _CodeEditorPaneState extends State<_CodeEditorPane> {
   @override
   Widget build(BuildContext context) {
     final editor = context.read<EditorCubit>();
+    final shell = _fileEditorShellColor(Theme.of(context).colorScheme);
+    final insets = TpWidthValueScope.of<_FileEditorInsets>(context);
     final codeEditor = CodeEditor(
       key:
           editor.editorKeyFor(widget.workspaceId, widget.path) ??
           ValueKey(widget.path),
       controller: widget.controller,
       readOnly: widget.readOnly,
+      // Margin wraps line numbers + field; padding is field-only (re-editor).
+      margin: insets.codeMargin,
+      // Gap between padded line-number column and code (like VS Code gutter).
+      sperator: SizedBox(width: insets.gutterGap),
+      padding: const EdgeInsets.fromLTRB(4, 5, 5, 5),
       toolbarController: FileEditorContextMenuController(
         onMenuOpenChanged: _setMenuOpen,
         workspaceId: widget.workspaceId,
@@ -355,17 +447,21 @@ class _CodeEditorPaneState extends State<_CodeEditorPane> {
       style: codeEditorStyleFor(
         context,
         widget.path,
+        backgroundColor: shell,
         tokenProvider: editor.tokenProviderFor(widget.workspaceId, widget.path),
       ),
       wordWrap: false,
       indicatorBuilder:
           (context, editingController, chunkController, notifier) {
-            return _LineNumberWithViewportBinder(
-              controller: editingController,
-              notifier: notifier,
-              session: editor.documentSessionFor(
-                widget.workspaceId,
-                widget.path,
+            return Padding(
+              padding: insets.lineNumberPadding,
+              child: _LineNumberWithViewportBinder(
+                controller: editingController,
+                notifier: notifier,
+                session: editor.documentSessionFor(
+                  widget.workspaceId,
+                  widget.path,
+                ),
               ),
             );
           },
@@ -456,8 +552,10 @@ class _MarkdownPreviewPaneState extends State<_MarkdownPreviewPane> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final shell = _fileEditorShellColor(theme.colorScheme);
     final opener = context.read<WorkbenchEditorOpener>();
     final roots = WorkspaceToolsScope.maybeOf(context)?.roots ?? const [];
+    final insets = TpWidthValueScope.of<_FileEditorInsets>(context);
     final resolvers = MarkdownResolvers(
       onLinkTap: (href) {
         unawaited(
@@ -479,14 +577,17 @@ class _MarkdownPreviewPaneState extends State<_MarkdownPreviewPane> {
     // SelectionArea must sit *inside* the scroll content. As an ancestor it
     // enables edge auto-scroll while selecting, which yanks long previews to
     // the top (flutter/flutter#110917).
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-      child: AiLineSpacedSelectionStyle(
-        child: SelectionArea(
-          child: MarkdownView(
-            document: compileMarkdown(_data),
-            tokens: buildAppMarkdownTokens(theme, MarkdownProfile.document),
-            resolvers: resolvers,
+    return ColoredBox(
+      color: shell,
+      child: SingleChildScrollView(
+        padding: insets.markdownPadding,
+        child: AiLineSpacedSelectionStyle(
+          child: SelectionArea(
+            child: MarkdownView(
+              document: compileMarkdown(_data),
+              tokens: buildAppMarkdownTokens(theme, MarkdownProfile.document),
+              resolvers: resolvers,
+            ),
           ),
         ),
       ),

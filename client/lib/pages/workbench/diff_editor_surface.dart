@@ -136,7 +136,8 @@ class _DiffEditorSurfaceState extends State<DiffEditorSurface> {
     final cs = Theme.of(context).colorScheme;
     if (tab == null) {
       return ColoredBox(
-        color: cs.workspaceCard,
+        // Same plane as file preview / floating chrome ([ColorScheme.surface]).
+        color: cs.workspaceCardChrome(WorkspacePageChrome.workspace),
         child: Center(child: Text(context.l10n.diffNoChanges)),
       );
     }

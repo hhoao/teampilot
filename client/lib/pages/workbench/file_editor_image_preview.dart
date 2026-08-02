@@ -9,7 +9,6 @@ import 'package:photo_view/photo_view.dart';
 
 import '../../cubits/editor_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/workspace_surface_layers.dart';
 
 /// Workbench file-tab surface for bitmap image preview (zoom via photo_view).
 class FileEditorImagePreview extends StatefulWidget {
@@ -223,7 +222,8 @@ class _FileEditorImagePreviewState extends State<FileEditorImagePreview> {
           maxScale: _maxScale,
           // Contained for large images; open/reset clamp upscale to 1:1.
           initialScale: PhotoViewComputedScale.contained,
-          backgroundDecoration: BoxDecoration(color: cs.workspaceCard),
+          // Match [FileEditorSurface] shell / floating window chrome.
+          backgroundDecoration: BoxDecoration(color: cs.surface),
           scaleStateCycle: (_) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
