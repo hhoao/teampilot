@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('heading then list gap is headingBottom not blockGap', (tester) async {
+  testWidgets('heading then list gap uses collapsed margins', (tester) async {
     final tokens = MarkdownTokens.test(
-      headingBottom: 8,
-      blockGap: 28,
+      h2Margin: const EdgeInsets.only(top: 36, bottom: 8),
+      listMargin: const EdgeInsets.only(bottom: 28),
     );
     await tester.pumpWidget(
       MaterialApp(
@@ -36,7 +36,7 @@ void main() {
         .map((s) => s.height)
         .whereType<double>()
         .toList();
-    expect(heights, contains(tokens.headingBottom));
-    expect(heights, isNot(contains(tokens.blockGap)));
+    expect(heights, contains(8));
+    expect(heights, isNot(contains(28)));
   });
 }
