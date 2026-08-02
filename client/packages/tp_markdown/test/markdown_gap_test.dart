@@ -7,9 +7,6 @@ void main() {
     final t = MarkdownTokens.test(
       paragraphMargin: const EdgeInsets.only(bottom: 16),
       h2Margin: const EdgeInsets.only(top: 36, bottom: 8),
-      listMargin: const EdgeInsets.only(bottom: 28),
-      codeMargin: const EdgeInsets.only(bottom: 28),
-      horizontalRuleMargin: const EdgeInsets.only(bottom: 28),
     );
     expect(gapBetween(null, MarkdownBlockKind.paragraph, t), 0);
     expect(
@@ -30,8 +27,7 @@ void main() {
     );
     expect(
       gapBetween(MarkdownBlockKind.heading1, MarkdownBlockKind.paragraph, t),
-      // h1 defaults from test factory
-      greaterThanOrEqualTo(0),
+      8, // default h1 bottom
     );
   });
 
