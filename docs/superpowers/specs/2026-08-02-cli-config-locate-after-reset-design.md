@@ -94,6 +94,7 @@ Extend `cli_config_section_test.dart` (and/or row-level widget tests):
 2. Non-empty configured path → Reset label; Locate absent.
 3. Locate success (injectable locator / fake discovery) → field + prefs path updated; button becomes Reset.
 4. Locate failure → field stays empty; Install still shown when unknown.
+5. Remote work plane + toolchain Locate → `cliExecutablePathLocateRemoteUnsupported` toast; field stays empty.
 
 Mock process / discovery via constructor injection on discovery classes or optional locator callbacks on the row if needed for tests — follow existing `SessionPreferencesCubit(locatedExecutables: …)` patterns; avoid real `Process.run` in widget tests.
 
