@@ -2,7 +2,12 @@ import 'dart:ui' show BoxHeightStyle;
 
 import 'package:flutter/material.dart';
 
-/// Applies browser-like selection highlight height for [SelectionArea] text.
+/// Applies line-spaced selection highlight height for [SelectionArea] text.
+///
+/// Uses [BoxHeightStyle.includeLineSpacingMiddle] so extra [TextStyle.height]
+/// leading is split above/below the glyphs (less “empty top, tight bottom”
+/// than [BoxHeightStyle.includeLineSpacingTop], while still covering wrap
+/// seams better than [BoxHeightStyle.tight]).
 ///
 /// Requires Flutter with [DefaultSelectionStyle.selectionHeightStyle]
 /// (`docs/flutter-patches.md`). Nested [Theme] must forward the ambient
@@ -17,9 +22,9 @@ class AiLineSpacedSelectionStyle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultSelectionStyle(
-      // Top includes line-spacing; Skia still only overlaps ~0.1px — the SDK
-      // paint path forces ≥0.5px overlap so DPR/AA cannot leave a hairline.
-      selectionHeightStyle: BoxHeightStyle.includeLineSpacingTop,
+      // Middle balances padding; framework paint honors this style and joins
+      // residual wrap seams (see selection_height_style.patch).
+      selectionHeightStyle: BoxHeightStyle.includeLineSpacingMiddle,
       child: child,
     );
   }

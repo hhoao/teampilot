@@ -52,7 +52,7 @@ void main() {
       );
       expect(
         paragraph.selectionHeightStyle,
-        ui.BoxHeightStyle.includeLineSpacingTop,
+        ui.BoxHeightStyle.includeLineSpacingMiddle,
       );
 
       final boxes = paragraph.getBoxesForSelection(

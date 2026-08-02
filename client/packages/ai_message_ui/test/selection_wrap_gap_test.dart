@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Documents why chat selection can still show a hairline between wrapped
-/// lines after [BoxHeightStyle.includeLineSpacingTop]: Skia boxes only
-/// overlap by ~0.1px, which snaps to an abutting edge under common DPRs.
+/// [BoxHeightStyle.includeLineSpacingMiddle] keeps wrap line-boxes nearly
+/// abutting (not tight’s ~9px gap). Unlike [BoxHeightStyle.includeLineSpacingTop],
+/// Middle often retains a usable negative gap after common DPR snaps.
 void main() {
-  testWidgets('includeLineSpacingTop leaves sub-pixel wrap gaps', (tester) async {
+  testWidgets('includeLineSpacingMiddle covers wrap line spacing', (
+    tester,
+  ) async {
     const style = TextStyle(fontSize: 14, height: 1.65);
     const text = 'updateAwaitingAssistant, 未匹配的 optimistic pending';
     await tester.pumpWidget(
@@ -18,7 +20,8 @@ void main() {
             child: SizedBox(
               width: 180,
               child: DefaultSelectionStyle(
-                selectionHeightStyle: ui.BoxHeightStyle.includeLineSpacingTop,
+                selectionHeightStyle:
+                    ui.BoxHeightStyle.includeLineSpacingMiddle,
                 child: SelectionArea(
                   child: const Text(text, style: style),
                 ),
@@ -30,8 +33,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final paragraph = tester.renderObject<RenderParagraph>(find.byType(RichText));
-    expect(paragraph.selectionHeightStyle, ui.BoxHeightStyle.includeLineSpacingTop);
+    final paragraph = tester.renderObject<RenderParagraph>(
+      find.byType(RichText),
+    );
+    expect(
+      paragraph.selectionHeightStyle,
+      ui.BoxHeightStyle.includeLineSpacingMiddle,
+    );
 
     final boxes = paragraph.getBoxesForSelection(
       TextSelection(baseOffset: 0, extentOffset: text.length),
@@ -42,23 +50,23 @@ void main() {
     final rects = boxes.map((b) => b.toRect()).toList()
       ..sort((a, b) => a.top.compareTo(b.top));
 
-    // Not the old 9px tight gap — line boxes nearly abut / barely overlap.
+    // Not the old 9px tight gap — line boxes nearly abut / overlap.
     for (var i = 1; i < rects.length; i++) {
       final gap = rects[i].top - rects[i - 1].bottom;
       expect(gap.abs(), lessThan(1.0), reason: 'pair $i gap=$gap');
     }
 
-    // DPR snap turns ~0.1 overlap into a zero gap (AA hairline risk).
+    // Middle typically keeps overlap after 2x snap (Top often abutted at 0).
     const dpr = 2.0;
     double snap(double v) => (v * dpr).round() / dpr;
-    final snappedGaps = <double>[];
     for (var i = 1; i < rects.length; i++) {
-      snappedGaps.add(snap(rects[i].top) - snap(rects[i - 1].bottom));
+      final snappedGap =
+          snap(rects[i].top) - snap(rects[i - 1].bottom);
+      expect(
+        snappedGap,
+        lessThan(0),
+        reason: 'pair $i should still overlap after snap: $snappedGap',
+      );
     }
-    expect(
-      snappedGaps.any((g) => g >= 0),
-      isTrue,
-      reason: 'at least one abutting edge after snap: $snappedGaps',
-    );
   });
 }

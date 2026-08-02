@@ -51,7 +51,7 @@ When `apply` fails with “does not apply cleanly”:
 
 | Patch | Purpose | Upstream |
 |-------|---------|----------|
-| `selection_height_style.patch` | `DefaultSelectionStyle.selectionHeightStyle`; Theme/MaterialApp forward it; paint upgrades tight→line-spaced + joins ≤12px wrap gaps | [flutter#161010](https://github.com/flutter/flutter/issues/161010) |
+| `selection_height_style.patch` | `DefaultSelectionStyle.selectionHeightStyle`; Theme/MaterialApp forward it; paint uses ambient style (tight→Middle); join wrap seams without widening short lines | [flutter#161010](https://github.com/flutter/flutter/issues/161010) |
 
 When an upstream fix ships on **stable**, delete that `.patch` and drop any
 app-only wrappers that existed solely for the workaround (if no longer needed).
@@ -59,5 +59,7 @@ app-only wrappers that existed solely for the workaround (if no longer needed).
 ## App wiring
 
 Product code that **requires** a patched API must fail to compile without the
-patch (no silent fallback). Example: chat uses `AiLineSpacedSelectionStyle`,
-which sets `DefaultSelectionStyle.selectionHeightStyle`.
+patch (no silent fallback). Example: chat / markdown preview uses
+`AiLineSpacedSelectionStyle`, which sets
+`DefaultSelectionStyle.selectionHeightStyle` to
+`BoxHeightStyle.includeLineSpacingMiddle` (balanced line-spacing vs top-biased).

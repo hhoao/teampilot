@@ -27,7 +27,7 @@ index 4595a4705f1..c777456282a 100644
        ),
      );
 diff --git a/packages/flutter/lib/src/rendering/paragraph.dart b/packages/flutter/lib/src/rendering/paragraph.dart
-index 97a41dafb8d..4e12c9e8cd8 100644
+index 97a41dafb8d..1bc5a7ab705 100644
 --- a/packages/flutter/lib/src/rendering/paragraph.dart
 +++ b/packages/flutter/lib/src/rendering/paragraph.dart
 @@ -352,6 +352,7 @@ class RenderParagraph extends RenderBox
@@ -84,21 +84,26 @@ index 97a41dafb8d..4e12c9e8cd8 100644
        selectionRects.add(textBox.toRect());
      }
      final selectionCollapsed = selectionStart == selectionEnd;
-@@ -3568,9 +3592,70 @@ class _SelectableFragment
+@@ -3568,9 +3592,77 @@ class _SelectableFragment
        final selectionPaint = Paint()
          ..style = PaintingStyle.fill
          ..color = paragraph.selectionColor!;
 -      for (final TextBox textBox in paragraph.getBoxesForSelection(selection)) {
 -        context.canvas.drawRect(textBox.toRect().shift(offset), selectionPaint);
-+      // Always paint full line boxes. tight leaves ~9px seams at height 1.65;
-+      // includeLineSpacing* still leaves hairlines under UiZoom / partial wraps.
++      // Honor DefaultSelectionStyle.selectionHeightStyle (app may choose
++      // Middle for balanced padding). tight still leaves ~9px seams at
++      // height 1.65 — upgrade to Middle. Seam merge below closes residual
++      // hairlines under UiZoom / partial wraps.
++      final ui.BoxHeightStyle paintHeightStyle =
++          paragraph.selectionHeightStyle == ui.BoxHeightStyle.tight
++              ? ui.BoxHeightStyle.includeLineSpacingMiddle
++              : paragraph.selectionHeightStyle;
 +      final List<ui.TextBox> boxes = paragraph.getBoxesForSelection(
 +        selection,
-+        boxHeightStyle: ui.BoxHeightStyle.max,
++        boxHeightStyle: paintHeightStyle,
 +      );
-+      // Merge vertically-near boxes into continuous fills. Partial multi-line
-+      // selections often have line boxes that barely share X; still close the
-+      // vertical seam so drag-select matches select-all.
++      // Close residual vertical hairlines between wrap lines without widening
++      // shorter lines to max(right) — that painted trailing blank selection.
 +      final List<Rect> rects = <Rect>[
 +        for (final ui.TextBox textBox in boxes) textBox.toRect().shift(offset),
 +      ]..sort((Rect a, Rect b) {
@@ -115,39 +120,41 @@ index 97a41dafb8d..4e12c9e8cd8 100644
 +        }
 +        final Rect prev = merged.last;
 +        final double gap = curr.top - prev.bottom;
-+        final bool overlapsX =
-+            prev.left < curr.right && curr.left < prev.right;
 +        if (gap > maxJoinGap) {
 +          merged.add(curr);
 +          continue;
 +        }
-+        if (overlapsX) {
++        final double prevMidY = (prev.top + prev.bottom) / 2;
++        final double currMidY = (curr.top + curr.bottom) / 2;
++        final bool sameLine =
++            (currMidY - prevMidY).abs() < math.min(prev.height, curr.height) * 0.5;
++        if (sameLine) {
++          // Adjacent runs on one line (bold/mono mixes): horizontal union.
 +          merged[merged.length - 1] = Rect.fromLTRB(
 +            math.min(prev.left, curr.left),
-+            prev.top,
++            math.min(prev.top, curr.top),
 +            math.max(prev.right, curr.right),
 +            math.max(prev.bottom, curr.bottom),
 +          );
-+        } else {
-+          // L-shaped partial selection: keep separate rects but erase the
-+          // horizontal white seam between stacked wraps.
-+          final double mid = (prev.bottom + curr.top) / 2;
-+          final double half = seamOverlap / 2;
-+          merged[merged.length - 1] = Rect.fromLTRB(
-+            prev.left,
-+            prev.top,
-+            prev.right,
-+            math.max(prev.bottom, mid + half),
-+          );
-+          merged.add(
-+            Rect.fromLTRB(
-+              curr.left,
-+              math.min(curr.top, mid - half),
-+              curr.right,
-+              curr.bottom,
-+            ),
-+          );
++          continue;
 +        }
++        // Stacked wraps: close the vertical seam only; keep each line width.
++        final double mid = (prev.bottom + curr.top) / 2;
++        final double half = seamOverlap / 2;
++        merged[merged.length - 1] = Rect.fromLTRB(
++          prev.left,
++          prev.top,
++          prev.right,
++          math.max(prev.bottom, mid + half),
++        );
++        merged.add(
++          Rect.fromLTRB(
++            curr.left,
++            math.min(curr.top, mid - half),
++            curr.right,
++            curr.bottom,
++          ),
++        );
 +      }
 +      final Path highlight = Path()..fillType = PathFillType.nonZero;
 +      for (final Rect rect in merged) {
@@ -216,7 +223,7 @@ index 95c9ceadaf1..2327d16348b 100644
  
    @override
 diff --git a/packages/flutter/lib/src/widgets/default_selection_style.dart b/packages/flutter/lib/src/widgets/default_selection_style.dart
-index 9709700d312..3a3a7e4b096 100644
+index 9709700d312..386869eb8d0 100644
 --- a/packages/flutter/lib/src/widgets/default_selection_style.dart
 +++ b/packages/flutter/lib/src/widgets/default_selection_style.dart
 @@ -8,6 +8,8 @@
@@ -260,7 +267,7 @@ index 9709700d312..3a3a7e4b096 100644
            child: child,
          );
        },
-@@ -96,6 +102,21 @@ class DefaultSelectionStyle extends InheritedTheme {
+@@ -96,6 +102,22 @@ class DefaultSelectionStyle extends InheritedTheme {
    /// If this property is null, [SystemMouseCursors.text] will be used.
    final MouseCursor? mouseCursor;
  
@@ -270,8 +277,9 @@ index 9709700d312..3a3a7e4b096 100644
 +  /// When null, [Text] under a [SelectionArea] paints with
 +  /// [BoxHeightStyle.tight] (glyph bounds only — ignores [TextStyle.height]).
 +  ///
-+  /// Prefer [BoxHeightStyle.includeLineSpacingTop] when selection should
-+  /// cover the full line box including line spacing (browser-like).
++  /// Prefer [BoxHeightStyle.includeLineSpacingMiddle] (or Top/Bottom) when
++  /// selection should cover the full line box including line spacing
++  /// (browser-like; Middle balances padding above/below glyphs).
 +  ///
 +  /// See also:
 +  ///  * [EditableText.selectionHeightStyle], which configures the same for
@@ -282,7 +290,7 @@ index 9709700d312..3a3a7e4b096 100644
    /// The closest instance of this class that encloses the given context.
    ///
    /// If no such instance exists, returns an instance created by
-@@ -117,6 +138,7 @@ class DefaultSelectionStyle extends InheritedTheme {
+@@ -117,6 +139,7 @@ class DefaultSelectionStyle extends InheritedTheme {
        cursorColor: cursorColor,
        selectionColor: selectionColor,
        mouseCursor: mouseCursor,
@@ -290,7 +298,7 @@ index 9709700d312..3a3a7e4b096 100644
        child: child,
      );
    }
-@@ -125,7 +147,8 @@ class DefaultSelectionStyle extends InheritedTheme {
+@@ -125,7 +148,8 @@ class DefaultSelectionStyle extends InheritedTheme {
    bool updateShouldNotify(DefaultSelectionStyle oldWidget) {
      return cursorColor != oldWidget.cursorColor ||
          selectionColor != oldWidget.selectionColor ||

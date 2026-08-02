@@ -20,10 +20,12 @@ Follow the Flutter team’s recommended architecture:
 3. `_SelectableFragment.paint` uses that style in `getBoxesForSelection`.
 4. `Theme` / `MaterialApp` forward ambient `selectionHeightStyle` (nested
    `Theme()` / color-only `DefaultSelectionStyle` must not wipe it to `tight`).
-5. Paint falls back: if style is still `tight`, use `includeLineSpacingTop`;
-   also join residual gaps up to 12px within one paragraph.
+5. Paint uses ambient `selectionHeightStyle` (not a hardcoded `max`); if still
+   `tight`, upgrade to `includeLineSpacingMiddle`; close residual wrap
+   hairlines ≤12px **without** expanding shorter lines to `max(right)`
+   (that painted trailing blank selection on wraps).
 6. TeamPilot chat wraps `SelectionArea` with
-   `DefaultSelectionStyle(selectionHeightStyle: BoxHeightStyle.includeLineSpacingTop)`
+   `DefaultSelectionStyle(selectionHeightStyle: BoxHeightStyle.includeLineSpacingMiddle)`
    via `AiLineSpacedSelectionStyle` (also markdown file preview).
 
 Do **not** replace `SelectionArea` with per-leaf `SelectableText` (breaks
