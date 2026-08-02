@@ -641,6 +641,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceRecentlyClosed => '最近关闭';
 
   @override
+  String get homeWorkspaceOpenTabs => '已打开';
+
+  @override
   String get homeWorkspaceRecentlyClosedEmpty => '暂无最近关闭的工作区';
 
   @override

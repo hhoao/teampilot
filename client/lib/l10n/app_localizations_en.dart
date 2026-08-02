@@ -666,6 +666,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceRecentlyClosed => 'Recently closed';
 
   @override
+  String get homeWorkspaceOpenTabs => 'Open';
+
+  @override
   String get homeWorkspaceRecentlyClosedEmpty =>
       'No recently closed workspaces';
 
