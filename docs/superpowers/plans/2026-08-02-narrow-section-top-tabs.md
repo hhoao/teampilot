@@ -225,6 +225,10 @@ const WorkspaceAdaptiveSectionPage({
 2. Else if `compactSectionTabs && MediaQuery.sizeOf(context).width < WorkspacePanePolicy.narrowBreakpointWidth` → compact shell (header + optional `WorkspaceSectionTabBar` when `items!.length > 1` + body). Build selectedIndex from first `selected` item; `onSelect` → that item’s callback. For Android standalone (`!embedded`), suppress duplicate `WorkspacePaneHeader` title text when AppBar already shows title (pass `showTitle: false` or omit header title — keep tabs).
 3. Else → `WorkspaceHubDesktopShell` with `nav: nav ?? _navFromItems(items!)`.
 
+**Android duplicate title:** `WorkspacePaneHeader` may not have `showTitle` today — either add an optional flag, omit the header widget on Android `!embedded` (tabs + body only under AppBar), or pass an empty title. Prefer omitting/hiding pane title on Android standalone rather than inventing unused API surface.
+
+Also add one regression test: Adaptive **without** `compactSectionTabs` on a simulated Android path still body-only (reuse existing `useAndroidHubNavigation` test pattern / override if the suite already mocks platform).
+
 Helper `_navFromItems`:
 
 ```dart
