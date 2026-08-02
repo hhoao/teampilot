@@ -10,6 +10,7 @@ import '../../utils/ui/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_section_host.dart';
+import '../../widgets/settings/workspace_section_nav_item.dart';
 import 'skill_discovery_section.dart';
 import 'skill_installed_section.dart';
 import 'skill_repos_section.dart';
@@ -84,13 +85,16 @@ class SkillManagementPage extends StatelessWidget {
         subtitle: context.l10n.skillsSubtitle,
         showSubtitle: false,
         embedded: embedded,
-        nav: WorkspaceEnumNavPanel<SkillSection>(
-          sections: SkillSection.values,
-          current: section,
-          basePath: '/skills',
-          descriptor: (s) => s,
-          onSelect: select,
-        ),
+        compactSectionTabs: true,
+        items: [
+          for (final s in SkillSection.values)
+            WorkspaceSectionNavItem(
+              label: s.title(context.l10n),
+              icon: skillSectionIcon(s),
+              selected: s == section,
+              onSelect: () => select(s),
+            ),
+        ],
         body: switch (section) {
           SkillSection.installed => BlocBuilder<SkillCubit, SkillState>(
             builder: (context, state) => SkillInstalledSection(

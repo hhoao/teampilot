@@ -10,6 +10,7 @@ import '../../utils/ui/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_section_host.dart';
+import '../../widgets/settings/workspace_section_nav_item.dart';
 import 'extension_installed_section.dart';
 import 'extension_section.dart';
 
@@ -84,13 +85,16 @@ class ExtensionManagementPage extends StatelessWidget {
           subtitle: context.l10n.extensionsSettingsDescription,
           showSubtitle: false,
           embedded: embedded,
-          nav: WorkspaceEnumNavPanel<ExtensionSection>(
-            sections: ExtensionSection.values,
-            current: section,
-            basePath: '/extensions',
-            descriptor: (s) => s,
-            onSelect: select,
-          ),
+          compactSectionTabs: true,
+          items: [
+            for (final s in ExtensionSection.values)
+              WorkspaceSectionNavItem(
+                label: s.title(context.l10n),
+                icon: extensionSectionIcon(s),
+                selected: s == section,
+                onSelect: () => select(s),
+              ),
+          ],
           body: ExtensionInstalledSection(state: state),
         );
       },

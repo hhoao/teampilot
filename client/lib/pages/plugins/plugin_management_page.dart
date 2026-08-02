@@ -10,6 +10,7 @@ import '../../utils/ui/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_section_host.dart';
+import '../../widgets/settings/workspace_section_nav_item.dart';
 import 'plugin_discovery_section.dart';
 import 'plugin_installed_section.dart';
 import 'plugin_marketplaces_section.dart';
@@ -97,13 +98,16 @@ class PluginManagementPage extends StatelessWidget {
           subtitle: context.l10n.pluginsSubtitle,
           showSubtitle: false,
           embedded: embedded,
-          nav: WorkspaceEnumNavPanel<PluginSection>(
-            sections: PluginSection.values,
-            current: section,
-            basePath: '/plugins',
-            descriptor: (s) => s,
-            onSelect: select,
-          ),
+          compactSectionTabs: true,
+          items: [
+            for (final s in PluginSection.values)
+              WorkspaceSectionNavItem(
+                label: s.title(context.l10n),
+                icon: pluginSectionIcon(s),
+                selected: s == section,
+                onSelect: () => select(s),
+              ),
+          ],
           body: sectionBody,
         );
       },
