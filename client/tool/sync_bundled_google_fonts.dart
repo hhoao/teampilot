@@ -61,8 +61,9 @@ const _jetbrainsMonoNerdBundled =
             'f01031f40e48dc29e1112e6b0b0450a2c6cd097f3f35cfff05c55cb311f8034c',
         byteLength: 2470116,
         assetFileName: 'JetBrainsMonoNerdFontMono-Regular.ttf',
+        // Pin a release tag — nerd-fonts master paths move between releases.
         downloadUrl:
-            'https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/patched-fonts/JetBrainsMono/Ligatures/Regular/JetBrainsMonoNerdFontMono-Regular.ttf',
+            'https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.4.0/patched-fonts/JetBrainsMono/Ligatures/Regular/JetBrainsMonoNerdFontMono-Regular.ttf',
       ),
       (
         sha256Hex:
@@ -70,7 +71,7 @@ const _jetbrainsMonoNerdBundled =
         byteLength: 2473884,
         assetFileName: 'JetBrainsMonoNerdFontMono-Bold.ttf',
         downloadUrl:
-            'https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/patched-fonts/JetBrainsMono/Ligatures/Bold/JetBrainsMonoNerdFontMono-Bold.ttf',
+            'https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.4.0/patched-fonts/JetBrainsMono/Ligatures/Bold/JetBrainsMonoNerdFontMono-Bold.ttf',
       ),
     ];
 

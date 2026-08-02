@@ -44,7 +44,12 @@ echo "Flutter SDK: $FLUTTER_ROOT"
 
 shopt -s nullglob
 # Stable order so multi-patch stacks apply deterministically.
-mapfile -t patches < <(printf '%s\n' "$PATCH_DIR"/*.patch | LC_ALL=C sort)
+# Avoid `mapfile` — macOS ships Bash 3.2 which lacks it (CI runners too).
+patches=()
+while IFS= read -r patch; do
+  [[ -n "$patch" ]] || continue
+  patches+=("$patch")
+done < <(printf '%s\n' "$PATCH_DIR"/*.patch | LC_ALL=C sort)
 if ((${#patches[@]} == 0)); then
   echo "error: no *.patch files in $PATCH_DIR" >&2
   exit 1
