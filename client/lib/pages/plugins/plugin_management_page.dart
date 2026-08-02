@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/plugin_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../utils/ui/app_keys.dart';
-import '../../utils/debounce/debounce.dart';
-import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_section_host.dart';
 import '../../widgets/settings/workspace_section_nav_item.dart';
 import 'plugin_discovery_section.dart';
@@ -17,31 +14,6 @@ import 'plugin_marketplaces_section.dart';
 import 'plugin_section.dart';
 
 export 'plugin_section.dart';
-
-class PluginManagementHubPage extends StatelessWidget {
-  const PluginManagementHubPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return WorkspaceHubPage(
-      pageKey: AppKeys.pluginsHub,
-      title: l10n.pluginsTitle,
-      subtitle: l10n.pluginsSubtitle,
-      entries: [
-        for (final section in PluginSection.values)
-          WorkspaceHubEntry(
-            title: section.title(l10n),
-            icon: pluginSectionIcon(section),
-            onTap: throttledTap(
-              'plugin_hub_${section.name}',
-              () => context.push(section.routePath('/plugins')),
-            ),
-          ),
-      ],
-    );
-  }
-}
 
 class PluginManagementPage extends StatelessWidget {
   const PluginManagementPage({

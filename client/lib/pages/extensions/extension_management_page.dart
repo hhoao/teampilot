@@ -1,46 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/extension_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../utils/ui/app_keys.dart';
-import '../../utils/debounce/debounce.dart';
-import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_section_host.dart';
 import '../../widgets/settings/workspace_section_nav_item.dart';
 import 'extension_installed_section.dart';
 import 'extension_section.dart';
 
 export 'extension_section.dart';
-
-/// Android hub: a list entry per Extensions section.
-class ExtensionManagementHubPage extends StatelessWidget {
-  const ExtensionManagementHubPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return WorkspaceHubPage(
-      pageKey: AppKeys.extensionsHub,
-      title: l10n.extensionsSettingsTitle,
-      subtitle: l10n.extensionsSettingsDescription,
-      entries: [
-        for (final section in ExtensionSection.values)
-          WorkspaceHubEntry(
-            title: section.title(l10n),
-            icon: extensionSectionIcon(section),
-            onTap: throttledTap(
-              'extension_hub_${section.name}',
-              () => context.push(section.routePath('/extensions')),
-            ),
-          ),
-      ],
-    );
-  }
-}
 
 class ExtensionManagementPage extends StatelessWidget {
   const ExtensionManagementPage({
