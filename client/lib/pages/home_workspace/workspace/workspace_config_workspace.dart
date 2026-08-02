@@ -10,11 +10,11 @@ import '../../../utils/ui/app_keys.dart';
 import '../../../utils/workspace/workspace_chrome_profile.dart';
 import '../../../utils/workspace/workspace_display_name.dart';
 import '../../../widgets/settings/workspace_section_host.dart';
+import '../../../widgets/settings/workspace_section_nav_item.dart';
 import 'config/workspace_extensions_section.dart';
 import 'config/workspace_mcp_section.dart';
 import 'config/workspace_plugins_section.dart';
 import 'config/workspace_skills_section.dart';
-import 'workspace_config_nav_panel.dart';
 import 'workspace_config_section.dart';
 import 'workspace_info_section.dart';
 import '../home_workspace_route.dart';
@@ -79,12 +79,16 @@ class _WorkspaceConfigPanelState extends State<WorkspaceConfigPanel> {
         subtitle: widget.workspace.localizedName(l10n),
         showSubtitle: false,
         onBack: _leaveManage,
-        nav: WorkspaceConfigNavPanel(
-          sections: sections,
-          section: section,
-          l10n: l10n,
-          onSelect: (s) => context.go(_managePath(s)),
-        ),
+        compactSectionTabs: true,
+        items: [
+          for (final s in sections)
+            WorkspaceSectionNavItem(
+              label: s.title(l10n),
+              icon: workspaceConfigSectionIcon(s),
+              selected: s == section,
+              onSelect: () => context.go(_managePath(s)),
+            ),
+        ],
         body: KeyedSubtree(
           key: ValueKey(section),
           child: _ProjectConfigBody(
