@@ -751,10 +751,7 @@ class SessionShellConnector {
     Function(void Function(CliInstallProgress progress)? onProgress)
     prepare,
   }) async {
-    final hostLabel = usesSshTransport(launchTarget.kind)
-        ? (_host.shellFactory.profileFor(launchTarget)?.host.trim() ??
-              launchTarget.id)
-        : '';
+    final hostLabel = _provisionHostLabel(launchTarget);
     MemberRemoteProvisionProgress? latest;
 
     void reportMemberProgress(CliInstallProgress progress) {
@@ -1005,5 +1002,22 @@ class SessionShellConnector {
     final session = await SshMemberSession.open(factory, profile);
     tab.memberSshSessions[memberKey] = session;
     return session;
+  }
+
+  /// Human-readable SSH host for provision UI. Never surfaces raw `ssh:<uuid>`.
+  String _provisionHostLabel(RuntimeTarget launchTarget) {
+    if (!usesSshTransport(launchTarget.kind)) return '';
+    final profile = _host.shellFactory.profileFor(launchTarget);
+    final name = profile?.name.trim() ?? '';
+    if (name.isNotEmpty) return name;
+    final host = profile?.host.trim() ?? '';
+    if (host.isNotEmpty) return host;
+    final label = launchTarget.label.trim();
+    if (label.isNotEmpty &&
+        label != launchTarget.id &&
+        !label.startsWith('ssh:')) {
+      return label;
+    }
+    return '';
   }
 }

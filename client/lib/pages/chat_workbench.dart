@@ -651,11 +651,11 @@ class _ChatWorkbenchBody extends StatelessWidget {
     required String memberId,
   }) {
     final mid = memberId.trim();
-    if (mid.isEmpty) return mid;
+    if (mid.isEmpty) return '';
     final member = team?.members.where((m) => m.id == mid).firstOrNull;
-    if (member == null) return mid;
+    if (member == null) return '';
     final name = member.name.trim();
-    return name.isNotEmpty ? name : mid;
+    return name.isNotEmpty ? name : '';
   }
 
   Widget _buildSessionChatView(

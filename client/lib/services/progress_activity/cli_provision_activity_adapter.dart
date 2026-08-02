@@ -61,7 +61,7 @@ class CliProvisionActivityAdapter {
   void _applyProgress(String activityId, CliInstallProgress progress) {
     final detail = progress.detail?.trim();
     final phaseLabel = _phaseLabel(progress.phase);
-    final subtitle = detail != null && detail.isNotEmpty
+    final subtitle = isUserFacingCliInstallDetail(detail)
         ? '$phaseLabel — $detail'
         : phaseLabel;
     _cubit.update(activityId, subtitle: subtitle);

@@ -813,6 +813,13 @@
   "cliInstallProgressInstallingCli": "正在安装 CLI…",
   "cliInstallProgressLocatingExecutable": "正在定位 CLI 可执行文件…",
   "cliInstallProgressSyncingRemoteWorkspace": "正在同步远程工作区…",
+  "sessionRemoteProvisionPreparing": "正在准备远程环境…",
+  "sessionRemoteProvisionPreparingOnHost": "正在准备远程环境（{host}）",
+  "@sessionRemoteProvisionPreparingOnHost": {
+    "placeholders": {
+      "host": { "type": "String" }
+    }
+  },
   "sessionRemoteProvisionTitle": "正在准备 {member}（{host}）",
   "@sessionRemoteProvisionTitle": {
     "placeholders": {

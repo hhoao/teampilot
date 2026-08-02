@@ -50,4 +50,13 @@ void main() {
       'Syncing remote workspace',
     );
   });
+
+  test('isUserFacingCliInstallDetail hides internal stage tags', () {
+    expect(isUserFacingCliInstallDetail(null), isFalse);
+    expect(isUserFacingCliInstallDetail(''), isFalse);
+    expect(isUserFacingCliInstallDetail('stage-session'), isFalse);
+    expect(isUserFacingCliInstallDetail('manifest-flush'), isFalse);
+    expect(isUserFacingCliInstallDetail('connecting'), isFalse);
+    expect(isUserFacingCliInstallDetail('npm install -g @cursor'), isTrue);
+  });
 }

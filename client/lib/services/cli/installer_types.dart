@@ -116,6 +116,23 @@ typedef SshCliInstallRunner =
 
 typedef CliInstallProgressCallback = void Function(CliInstallProgress progress);
 
+/// Internal provision stage tags — fine for logs, not for end-user UI.
+bool isUserFacingCliInstallDetail(String? detail) {
+  final trimmed = detail?.trim() ?? '';
+  if (trimmed.isEmpty) return false;
+  const internal = <String>{
+    'connecting',
+    'stage-session',
+    'manifest-flush',
+    'cursor-home-passthrough',
+    'materialize',
+    'workspace-config',
+    'resolve-work-ctx',
+    'ensure-cli',
+  };
+  return !internal.contains(trimmed);
+}
+
 String? firstInstallerOutputLine(CliInstallerCommandResult result) {
   if (result.exitCode != 0) return null;
   final line = result.stdout.split('\n').first.trim();

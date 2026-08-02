@@ -3680,6 +3680,18 @@ abstract class AppLocalizations {
   /// **'Syncing remote workspace…'**
   String get cliInstallProgressSyncingRemoteWorkspace;
 
+  /// No description provided for @sessionRemoteProvisionPreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing remote environment…'**
+  String get sessionRemoteProvisionPreparing;
+
+  /// No description provided for @sessionRemoteProvisionPreparingOnHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing remote environment ({host})'**
+  String sessionRemoteProvisionPreparingOnHost(String host);
+
   /// No description provided for @sessionRemoteProvisionTitle.
   ///
   /// In en, this message translates to:

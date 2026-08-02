@@ -2007,6 +2007,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Syncing remote workspace…';
 
   @override
+  String get sessionRemoteProvisionPreparing => 'Preparing remote environment…';
+
+  @override
+  String sessionRemoteProvisionPreparingOnHost(String host) {
+    return 'Preparing remote environment ($host)';
+  }
+
+  @override
   String sessionRemoteProvisionTitle(String member, String host) {
     return 'Preparing $member on $host';
   }

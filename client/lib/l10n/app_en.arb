@@ -852,6 +852,13 @@
   "cliInstallProgressInstallingCli": "Installing CLI…",
   "cliInstallProgressLocatingExecutable": "Locating CLI executable…",
   "cliInstallProgressSyncingRemoteWorkspace": "Syncing remote workspace…",
+  "sessionRemoteProvisionPreparing": "Preparing remote environment…",
+  "sessionRemoteProvisionPreparingOnHost": "Preparing remote environment ({host})",
+  "@sessionRemoteProvisionPreparingOnHost": {
+    "placeholders": {
+      "host": { "type": "String" }
+    }
+  },
   "sessionRemoteProvisionTitle": "Preparing {member} on {host}",
   "@sessionRemoteProvisionTitle": {
     "placeholders": {

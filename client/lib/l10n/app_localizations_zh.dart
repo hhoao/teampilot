@@ -1912,6 +1912,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cliInstallProgressSyncingRemoteWorkspace => '正在同步远程工作区…';
 
   @override
+  String get sessionRemoteProvisionPreparing => '正在准备远程环境…';
+
+  @override
+  String sessionRemoteProvisionPreparingOnHost(String host) {
+    return '正在准备远程环境（$host）';
+  }
+
+  @override
   String sessionRemoteProvisionTitle(String member, String host) {
     return '正在准备 $member（$host）';
   }
