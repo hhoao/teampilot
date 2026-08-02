@@ -63,11 +63,20 @@ class WslHostProcessStarter implements HostProcessStarter {
 
   @override
   Future<ProcessRunHandle> start(HostRunRequest request) {
+    final env = request.environment;
+    final executable = env != null && env.isNotEmpty ? 'env' : request.executable;
+    final arguments = env != null && env.isNotEmpty
+        ? [
+            ...env.entries.map((e) => '${e.key}=${e.value}'),
+            request.executable,
+            ...request.arguments,
+          ]
+        : request.arguments;
     final args = HostWslArgv.processInvocation(
       distro: _distro,
       workingDirectory: request.workingDirectory,
-      executable: request.executable,
-      arguments: request.arguments,
+      executable: executable,
+      arguments: arguments,
     );
     return _spawner(
       executable: 'wsl.exe',

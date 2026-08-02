@@ -99,6 +99,45 @@ void main() {
         ]),
       );
     });
+
+    test('forwards environment into WSL env prefix', () async {
+      final calls = <List<String>>[];
+      final starter = WslHostProcessStarter(
+        distro: 'Ubuntu',
+        spawner:
+            ({
+              required executable,
+              required arguments,
+              workingDirectory,
+              environment,
+              includeParentEnvironment = true,
+            }) async {
+              calls.add([executable, ...arguments]);
+              return _FakeProcessRunHandle();
+            },
+      );
+
+      await starter.start(
+        const HostRunRequest(
+          executable: '/usr/bin/cursor-agent',
+          arguments: ['login'],
+          environment: {'HOME': '/home/u'},
+        ),
+      );
+
+      expect(
+        calls.single,
+        containsAll([
+          'wsl.exe',
+          '-d',
+          'Ubuntu',
+          'env',
+          'HOME=/home/u',
+          '/usr/bin/cursor-agent',
+          'login',
+        ]),
+      );
+    });
   });
 
   group('RemoteHostProcessStarter', () {

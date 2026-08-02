@@ -90,6 +90,47 @@ void main() {
         ]),
       );
     });
+
+    test('forwards environment into WSL env prefix', () async {
+      final calls = <List<String>>[];
+      final runner = WslHostOneShotRunner(
+        distro: 'Ubuntu',
+        processRunner:
+            (
+              exe,
+              args, {
+              workingDirectory,
+              environment,
+              includeParentEnvironment = true,
+              stdoutEncoding,
+              stderrEncoding,
+            }) async {
+              calls.add([exe, ...args]);
+              return ProcessResult(0, 0, '', '');
+            },
+      );
+
+      await runner.run(
+        const HostRunRequest(
+          executable: '/usr/bin/cursor-agent',
+          arguments: ['logout'],
+          environment: {'HOME': '/home/u'},
+        ),
+      );
+
+      expect(
+        calls.single,
+        containsAll([
+          'wsl.exe',
+          '-d',
+          'Ubuntu',
+          'env',
+          'HOME=/home/u',
+          '/usr/bin/cursor-agent',
+          'logout',
+        ]),
+      );
+    });
   });
 
   group('RemoteHostOneShotRunner', () {
