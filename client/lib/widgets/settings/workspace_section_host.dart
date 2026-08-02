@@ -104,14 +104,18 @@ class WorkspaceAdaptiveSectionPage extends StatelessWidget {
     this.onBack,
     this.embedded = false,
     super.key,
-  }) : assert(
-         !compactSectionTabs || (items != null && items.isNotEmpty),
-         'compactSectionTabs requires non-empty items',
-       ),
-       assert(
-         compactSectionTabs || nav != null,
-         'legacy mode requires nav',
-       );
+  }) {
+    final sectionItems = items;
+    if (compactSectionTabs && (sectionItems == null || sectionItems.isEmpty)) {
+      throw ArgumentError(
+        'compactSectionTabs requires non-empty items',
+        'items',
+      );
+    }
+    if (!compactSectionTabs && nav == null) {
+      throw ArgumentError('legacy mode requires nav', 'nav');
+    }
+  }
 
   final Key pageKey;
   final String title;

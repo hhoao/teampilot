@@ -7,6 +7,7 @@ import 'package:teampilot/widgets/split_layout.dart';
 import 'package:teampilot/widgets/settings/workspace_hub_shell.dart';
 import 'package:teampilot/widgets/settings/workspace_pane_insets.dart';
 import 'package:teampilot/services/workspace/workspace_pane_policy.dart';
+import 'package:teampilot/widgets/settings/workspace_section_compact_shell.dart';
 import 'package:teampilot/widgets/settings/workspace_section_host.dart';
 import 'package:teampilot/widgets/settings/workspace_section_nav_item.dart';
 import 'package:teampilot/widgets/settings/workspace_section_navigation.dart';
@@ -306,6 +307,56 @@ void main() {
     expect(find.text('Installed'), findsOneWidget);
     expect(find.text('Discovery'), findsOneWidget);
     expect(find.text('Body'), findsOneWidget);
+  });
+
+  testWidgets('compact tabs: tap invokes item onSelect', (tester) async {
+    var selectedLabel = '';
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      wrap(
+        WorkspaceAdaptiveSectionPage(
+          pageKey: const Key('p'),
+          title: 'Skills',
+          compactSectionTabs: true,
+          items: [
+            WorkspaceSectionNavItem(
+              label: 'Installed',
+              selected: true,
+              onSelect: () => selectedLabel = 'Installed',
+            ),
+            WorkspaceSectionNavItem(
+              label: 'Discovery',
+              selected: false,
+              onSelect: () => selectedLabel = 'Discovery',
+            ),
+          ],
+          body: const Text('Body'),
+        ),
+        width: 400,
+        height: 800,
+      ),
+    );
+    await tester.tap(find.text('Discovery'));
+    expect(selectedLabel, 'Discovery');
+  });
+
+  test('compact tabs: Android standalone hides pane header', () {
+    expect(
+      workspaceSectionCompactShowHeader(androidHub: true, embedded: false),
+      isFalse,
+    );
+    expect(
+      workspaceSectionCompactShowHeader(androidHub: true, embedded: true),
+      isTrue,
+    );
+    expect(
+      workspaceSectionCompactShowHeader(androidHub: false, embedded: false),
+      isTrue,
+    );
   });
 
   testWidgets('compact tabs: wide still splits', (tester) async {

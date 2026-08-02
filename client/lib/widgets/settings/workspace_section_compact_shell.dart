@@ -1,11 +1,18 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
+import 'package:meta/meta.dart';
 
+import '../../services/app/platform_utils.dart';
 import 'workspace_pane_header.dart';
 import 'workspace_pane_insets.dart';
 import 'workspace_section_nav_item.dart';
 import 'workspace_section_tab_bar.dart';
+
+@visibleForTesting
+bool workspaceSectionCompactShowHeader({
+  required bool androidHub,
+  required bool embedded,
+}) =>
+    !(androidHub && !embedded);
 
 class WorkspaceSectionCompactShell extends StatelessWidget {
   const WorkspaceSectionCompactShell({
@@ -32,7 +39,10 @@ class WorkspaceSectionCompactShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final showHeader = !(Platform.isAndroid && !embedded);
+    final showHeader = workspaceSectionCompactShowHeader(
+      androidHub: useAndroidHubNavigation(context),
+      embedded: embedded,
+    );
     final showTabs = items.length > 1;
     final selectedIndex = _selectedIndex(items);
 
