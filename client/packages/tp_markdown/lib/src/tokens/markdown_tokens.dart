@@ -122,7 +122,7 @@ class MarkdownTokens {
       listMargin: listMargin ?? const EdgeInsets.only(bottom: 12),
       blockquoteMargin: blockquoteMargin ?? const EdgeInsets.only(bottom: 12),
       codeMargin: codeMargin ?? const EdgeInsets.only(bottom: 12),
-      tableMargin: tableMargin ?? const EdgeInsets.only(bottom: 12),
+      tableMargin: tableMargin ?? const EdgeInsets.symmetric(vertical: 12),
       horizontalRuleMargin:
           horizontalRuleMargin ?? const EdgeInsets.only(bottom: 12),
       imageMargin: imageMargin ?? const EdgeInsets.only(bottom: 12),

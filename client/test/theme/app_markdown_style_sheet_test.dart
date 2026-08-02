@@ -66,7 +66,12 @@ void main() {
     expect(tokens.marginOf(MarkdownBlockKind.code).bottom, 28);
     expect(tokens.marginOf(MarkdownBlockKind.list).bottom, 28);
     expect(tokens.marginOf(MarkdownBlockKind.blockquote).bottom, 28);
+    expect(tokens.marginOf(MarkdownBlockKind.table).top, 28);
     expect(tokens.marginOf(MarkdownBlockKind.table).bottom, 28);
+    expect(
+      tokens.marginOf(MarkdownBlockKind.table).top,
+      tokens.marginOf(MarkdownBlockKind.table).bottom,
+    );
     expect(tokens.marginOf(MarkdownBlockKind.horizontalRule).bottom, 28);
     expect(tokens.listIndent, 24);
     expect(

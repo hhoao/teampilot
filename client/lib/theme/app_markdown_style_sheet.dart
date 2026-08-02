@@ -175,7 +175,12 @@ MarkdownTokens buildAppMarkdownTokens(
     listMargin: blockMargin,
     blockquoteMargin: blockMargin,
     codeMargin: blockMargin,
-    tableMargin: blockMargin,
+    // Table chrome: equal top/bottom so heading→table isn't glued (collapse
+    // uses max(heading.bottom, table.top); top:0 left only 8px).
+    tableMargin: EdgeInsets.only(
+      top: blockMargin.bottom,
+      bottom: blockMargin.bottom,
+    ),
     horizontalRuleMargin: ruleMargin,
     imageMargin: blockMargin,
     rawLiteralMargin: blockMargin,
