@@ -6,8 +6,11 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/widgets/split_layout.dart';
 import 'package:teampilot/widgets/settings/workspace_hub_shell.dart';
 import 'package:teampilot/widgets/settings/workspace_pane_insets.dart';
+import 'package:teampilot/services/workspace/workspace_pane_policy.dart';
 import 'package:teampilot/widgets/settings/workspace_section_host.dart';
+import 'package:teampilot/widgets/settings/workspace_section_nav_item.dart';
 import 'package:teampilot/widgets/settings/workspace_section_navigation.dart';
+import 'package:teampilot/widgets/settings/workspace_section_tab_bar.dart';
 
 enum _TestSection { alpha, beta }
 
@@ -40,16 +43,35 @@ class _TestSectionDescriptor implements WorkspaceSectionDescriptor {
 }
 
 void main() {
-  Widget wrap(Widget child) {
+  Widget wrap(
+    Widget child, {
+    double width = 900,
+    double height = 600,
+  }) {
     return MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: BlocProvider(
         create: (_) => LayoutCubit(),
-        child: Scaffold(body: SizedBox(width: 900, height: 600, child: child)),
+        child: Scaffold(
+          body: SizedBox(width: width, height: height, child: child),
+        ),
       ),
     );
   }
+
+  const compactItems = [
+    WorkspaceSectionNavItem(
+      label: 'Installed',
+      selected: true,
+      onSelect: _noop,
+    ),
+    WorkspaceSectionNavItem(
+      label: 'Discovery',
+      selected: false,
+      onSelect: _noop,
+    ),
+  ];
 
   testWidgets('desktop shell shows title bar and split body', (tester) async {
     await tester.pumpWidget(
@@ -259,6 +281,115 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('alpha'));
     expect(selected, _TestSection.alpha);
+  });
+
+  testWidgets('compact tabs: narrow shows tab strip not split', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      wrap(
+        WorkspaceAdaptiveSectionPage(
+          pageKey: const Key('p'),
+          title: 'Skills',
+          compactSectionTabs: true,
+          items: compactItems,
+          body: const Text('Body'),
+        ),
+        width: 400,
+        height: 800,
+      ),
+    );
+    expect(find.byType(WorkspaceSplitShell), findsNothing);
+    expect(find.text('Installed'), findsOneWidget);
+    expect(find.text('Discovery'), findsOneWidget);
+    expect(find.text('Body'), findsOneWidget);
+  });
+
+  testWidgets('compact tabs: wide still splits', (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      wrap(
+        WorkspaceAdaptiveSectionPage(
+          pageKey: const Key('p'),
+          title: 'Skills',
+          compactSectionTabs: true,
+          items: compactItems,
+          body: const Text('Body'),
+        ),
+        width: 1200,
+        height: 800,
+      ),
+    );
+    expect(find.byType(WorkspaceSplitShell), findsOneWidget);
+  });
+
+  testWidgets('compact tabs: single item hides strip', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      wrap(
+        WorkspaceAdaptiveSectionPage(
+          pageKey: const Key('p'),
+          title: 'Extensions',
+          compactSectionTabs: true,
+          items: const [
+            WorkspaceSectionNavItem(
+              label: 'Installed',
+              selected: true,
+              onSelect: _noop,
+            ),
+          ],
+          body: const Text('Body'),
+        ),
+        width: 400,
+        height: 800,
+      ),
+    );
+    expect(find.byType(WorkspaceSectionTabBar), findsNothing);
+    expect(find.text('Body'), findsOneWidget);
+  });
+
+  test(
+    'legacy adaptive without compactSectionTabs uses android body-only branch',
+    () {
+      expect(
+        workspaceAdaptiveSectionLayout(
+          compactSectionTabs: false,
+          androidHubNavigation: true,
+          viewportWidth: 400,
+        ),
+        WorkspaceAdaptiveSectionLayout.androidBodyOnly,
+      );
+      expect(
+        workspaceAdaptiveSectionLayout(
+          compactSectionTabs: false,
+          androidHubNavigation: true,
+          viewportWidth: 1200,
+        ),
+        WorkspaceAdaptiveSectionLayout.androidBodyOnly,
+      );
+    },
+  );
+
+  test('compact tabs narrow uses compact branch even on android hub path', () {
+    expect(
+      workspaceAdaptiveSectionLayout(
+        compactSectionTabs: true,
+        androidHubNavigation: true,
+        viewportWidth: WorkspacePanePolicy.narrowBreakpointWidth - 1,
+      ),
+      WorkspaceAdaptiveSectionLayout.compactTabs,
+    );
   });
 
   testWidgets('composite nav panel with footer lays out and scrolls', (
