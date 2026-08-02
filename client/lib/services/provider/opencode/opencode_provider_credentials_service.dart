@@ -3,19 +3,14 @@ import 'dart:io';
 
 import '../../../models/claude_credential_link_result.dart';
 import '../../../models/credential_action_result.dart';
-import '../../cli/cli_invocation.dart';
+import '../../host/host_one_shot_runner.dart';
 import '../../io/filesystem.dart';
 import '../../session/launch_command_builder.dart';
+import '../credential_host_request.dart';
 import '../credential_process_result.dart';
+import '../provider_credential_host_runner.dart';
 import 'opencode_auth_artifacts.dart';
 import 'opencode_data_layout.dart';
-
-typedef OpencodeCredentialProcessRunner =
-    Future<ProcessResult> Function(
-      String executable,
-      List<String> arguments, {
-      Map<String, String>? environment,
-    });
 
 class OpencodeProviderCredentialsService {
   OpencodeProviderCredentialsService({
@@ -23,28 +18,20 @@ class OpencodeProviderCredentialsService {
     required String basePath,
     this.opencodeExecutable = 'opencode',
     String? Function()? resolveOpencodeExecutable,
-    OpencodeCredentialProcessRunner? processRunner,
+    ProviderCredentialHostRunner? hostRunner,
     OpencodeDataLayout? layout,
   }) : _fs = fs,
        _basePath = basePath.trim(),
        _resolveOpencodeExecutable = resolveOpencodeExecutable,
-       _processRunner = processRunner ?? _defaultProcessRunner,
+       _hostRunner = hostRunner,
        _layout = layout ?? const OpencodeDataLayout();
 
   final Filesystem _fs;
   final String _basePath;
   final String opencodeExecutable;
   final String? Function()? _resolveOpencodeExecutable;
-  final OpencodeCredentialProcessRunner _processRunner;
+  final ProviderCredentialHostRunner? _hostRunner;
   final OpencodeDataLayout _layout;
-
-  static Future<ProcessResult> _defaultProcessRunner(
-    String executable,
-    List<String> arguments, {
-    Map<String, String>? environment,
-  }) {
-    return Process.run(executable, arguments, environment: environment);
-  }
 
   String providerDir(String providerId) => _fs.pathContext.join(
     _basePath,
@@ -224,27 +211,29 @@ class OpencodeProviderCredentialsService {
     return opencodeExecutable;
   }
 
-  Future<ProcessResult> _runOpencode(
+  ProviderCredentialHostRunner get _runner =>
+      _hostRunner ?? ProviderCredentialHostRunner.forAppStorage();
+
+  Future<HostRunResult> _runOpencode(
     List<String> subcommand, {
     required String providerId,
+    required bool login,
     Map<String, String> platformEnv = const {},
   }) async {
-    final executable = _resolvedOpencodeExecutable();
-    final invocation = CliInvocation.fromExecutable(executable);
-    final env = {
-      ...platformEnv,
-      ...loginEnvironment(providerId, useWslPaths: invocation.usesWsl),
-    };
-    final launch = CliInvocation.resolveProcessLaunch(
-      executable: executable,
+    final preferencePath = _resolvedOpencodeExecutable();
+    final request = CredentialHostRequest.build(
+      preferencePath: preferencePath,
       subcommand: subcommand,
-      environment: env,
+      environment: {
+        ...platformEnv,
+        ...loginEnvironment(
+          providerId,
+          useWslPaths: CredentialHostRequest.usePosixCliPaths(preferencePath),
+        ),
+      },
     );
-    return _processRunner(
-      launch.executable,
-      launch.arguments,
-      environment: launch.environment,
-    );
+    final runner = _runner;
+    return login ? runner.runLogin(request) : runner.run(request);
   }
 
   Future<CredentialActionResult> runAuthLogin(
@@ -261,9 +250,10 @@ class OpencodeProviderCredentialsService {
         ['providers', 'login', '-p', providerId],
         providerId: providerId,
         platformEnv: platformEnv,
+        login: true,
       );
       return loginCommandResult(
-        result: result,
+        hostResult: result,
         ready: (await probe(providerId)).isReady,
         executable: executable,
         clearIncompleteCredentials: () =>

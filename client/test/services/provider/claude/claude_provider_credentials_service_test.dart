@@ -1,13 +1,42 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/claude_credential_link_result.dart';
 import 'package:teampilot/services/cli/cli_invocation.dart';
+import 'package:teampilot/services/host/host_one_shot_runner.dart';
+import 'package:teampilot/services/host/host_process_starter.dart';
+import 'package:teampilot/services/host/process_run_handle.dart';
 import 'package:teampilot/services/provider/claude/claude_provider_credentials_service.dart';
 import 'package:teampilot/services/provider/credential_binding.dart';
+import 'package:teampilot/services/provider/provider_credential_host_runner.dart';
 
 import '../../../support/in_memory_filesystem.dart';
+
+class _ExitZeroHandle implements ProcessRunHandle {
+  @override
+  Future<int> get exitCode => Future.value(0);
+
+  @override
+  Stream<List<int>> get stdout => const Stream.empty();
+
+  @override
+  Stream<List<int>> get stderr => const Stream.empty();
+
+  @override
+  void kill() {}
+}
+
+class _CapturingStreamingStarter implements HostProcessStarter {
+  _CapturingStreamingStarter(this.onStart);
+
+  final void Function(HostRunRequest request) onStart;
+
+  @override
+  Future<ProcessRunHandle> start(HostRunRequest request) async {
+    onStart(request);
+    return _ExitZeroHandle();
+  }
+}
 
 void main() {
   late InMemoryFilesystem fs;
@@ -332,25 +361,21 @@ void main() {
   });
 
   test('runAuthLogin uses global config dir when linked', () async {
-    String? capturedExecutable;
-    List<String>? capturedArgs;
-    Map<String, String>? capturedEnv;
+    HostRunRequest? capturedRequest;
+    const preferencePath = 'wsl.exe /home/user/.local/bin/claude';
+    final invocation = CliInvocation.fromExecutable(preferencePath);
 
     final wslService = ClaudeProviderCredentialsService(
       fs: fs,
       basePath: base,
-      resolveClaudeExecutable: () => 'wsl.exe /home/user/.local/bin/claude',
+      resolveClaudeExecutable: () => preferencePath,
       resolveHomeDirectory: () => home,
-      processRunner: (executable, arguments, {environment}) async {
-        capturedExecutable = executable;
-        capturedArgs = arguments;
-        capturedEnv = environment;
-        return ProcessResult(0, 0, '', '');
-      },
-    );
-
-    final invocation = CliInvocation.fromExecutable(
-      'wsl.exe /home/user/.local/bin/claude',
+      hostRunner: ProviderCredentialHostRunner(
+        oneShot: () => throw StateError('one-shot should not be called for login'),
+        streaming: () => _CapturingStreamingStarter((request) {
+          capturedRequest = request;
+        }),
+      ),
     );
 
     final loginResult = await wslService.runAuthLogin(
@@ -359,34 +384,30 @@ void main() {
       homeDirectory: home,
     );
     expect(loginResult.ok, isFalse);
-    expect(capturedExecutable, 'wsl.exe');
-    expect(capturedArgs, isNotNull);
-    expect(capturedArgs, containsAll(const ['auth', 'login']));
-    expect(capturedArgs, contains('/home/user/.local/bin/claude'));
-
+    expect(capturedRequest, isNotNull);
+    expect(capturedRequest!.arguments, containsAll(const ['auth', 'login']));
     if (invocation.usesWsl) {
-      expect(capturedArgs!.first, 'env');
-      expect(capturedArgs, contains('CLAUDE_CONFIG_DIR=/home/user/.claude'));
-      expect(capturedArgs, contains('CCGUI_CLI_LOGIN_AUTHORIZED=1'));
-      expect(capturedEnv, isNull);
+      expect(capturedRequest!.executable, '/home/user/.local/bin/claude');
     } else {
-      expect(capturedArgs!.first, '/home/user/.local/bin/claude');
-      expect(capturedEnv, isNotNull);
-      expect(capturedEnv!['CLAUDE_CONFIG_DIR'], '$home/.claude');
-      expect(capturedEnv!['CCGUI_CLI_LOGIN_AUTHORIZED'], '1');
+      expect(capturedRequest!.executable, 'wsl.exe');
+      expect(capturedRequest!.arguments, contains('/home/user/.local/bin/claude'));
     }
+    expect(capturedRequest!.environment!['CLAUDE_CONFIG_DIR'], '$home/.claude');
+    expect(capturedRequest!.environment!['CCGUI_CLI_LOGIN_AUTHORIZED'], '1');
   });
 
   test('runAuthLogin uses provider dir when isolated', () async {
-    Map<String, String>? capturedEnv;
+    HostRunRequest? capturedRequest;
 
     final nativeService = ClaudeProviderCredentialsService(
       fs: fs,
       basePath: base,
-      processRunner: (executable, arguments, {environment}) async {
-        capturedEnv = environment;
-        return ProcessResult(0, 0, '', '');
-      },
+      hostRunner: ProviderCredentialHostRunner(
+        oneShot: () => throw StateError('one-shot should not be called for login'),
+        streaming: () => _CapturingStreamingStarter((request) {
+          capturedRequest = request;
+        }),
+      ),
     );
 
     await nativeService.runAuthLogin(
@@ -394,7 +415,7 @@ void main() {
       binding: CredentialBindingKind.isolated,
     );
     expect(
-      capturedEnv!['CLAUDE_CONFIG_DIR'],
+      capturedRequest!.environment!['CLAUDE_CONFIG_DIR'],
       fs.pathContext.join(base, 'providers', 'claude', 'work'),
     );
   });

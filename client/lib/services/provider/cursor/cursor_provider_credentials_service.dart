@@ -3,11 +3,9 @@ import 'dart:io';
 
 import '../../../models/claude_credential_link_result.dart';
 import '../../../models/credential_action_result.dart';
-import '../../cli/cli_invocation.dart';
 import '../../host/host_one_shot_runner.dart';
 import '../../io/filesystem.dart';
-import '../../storage/app_storage.dart';
-import '../../storage/runtime_context.dart';
+import '../credential_host_request.dart';
 import '../credential_process_result.dart';
 import '../provider_credential_host_runner.dart';
 import 'cursor_auth_artifacts.dart';
@@ -332,65 +330,6 @@ class CursorProviderCredentialsService {
     return cursorExecutable;
   }
 
-  bool _usePosixCliPaths(String preferencePath) {
-    if (AppStorage.isInstalled) {
-      final mode = AppStorage.context.mode;
-      if (mode == StorageBackendMode.wsl || mode == StorageBackendMode.ssh) {
-        return true;
-      }
-    }
-    return CliInvocation.fromExecutable(preferencePath).usesWsl;
-  }
-
-  String _hostExecutable(String preferencePath) {
-    final invocation = CliInvocation.fromExecutable(preferencePath);
-    if (!invocation.usesWsl) return invocation.executable;
-    final linuxExecutable = _wslLinuxExecutable(invocation.prefixArgs);
-    return linuxExecutable ?? preferencePath;
-  }
-
-  List<String> _hostArguments(
-    String preferencePath,
-    List<String> subcommand,
-  ) {
-    final invocation = CliInvocation.fromExecutable(preferencePath);
-    if (!invocation.usesWsl) {
-      return [...invocation.prefixArgs, ...subcommand];
-    }
-    final linuxExecutable = _wslLinuxExecutable(invocation.prefixArgs);
-    if (linuxExecutable == null) return subcommand;
-    final index = invocation.prefixArgs.indexOf(linuxExecutable);
-    final trailing =
-        index < 0 ? const <String>[] : invocation.prefixArgs.sublist(index + 1);
-    return [...trailing, ...subcommand];
-  }
-
-  String? _wslLinuxExecutable(List<String> prefixArgs) {
-    for (final arg in prefixArgs.reversed) {
-      if (arg.startsWith('/')) return arg;
-    }
-    return prefixArgs.isEmpty ? null : prefixArgs.last;
-  }
-
-  HostRunRequest _buildHostRunRequest({
-    required String preferencePath,
-    required List<String> subcommand,
-    required String providerId,
-    Map<String, String> platformEnv = const {},
-  }) {
-    return HostRunRequest(
-      executable: _hostExecutable(preferencePath),
-      arguments: _hostArguments(preferencePath, subcommand),
-      environment: {
-        ...platformEnv,
-        ...loginEnvironment(
-          providerId,
-          useWslPaths: _usePosixCliPaths(preferencePath),
-        ),
-      },
-    );
-  }
-
   ProviderCredentialHostRunner get _runner =>
       _hostRunner ?? ProviderCredentialHostRunner.forAppStorage();
 
@@ -401,11 +340,16 @@ class CursorProviderCredentialsService {
     Map<String, String> platformEnv = const {},
   }) async {
     final preferencePath = _resolvedCursorExecutable();
-    final request = _buildHostRunRequest(
+    final request = CredentialHostRequest.build(
       preferencePath: preferencePath,
       subcommand: subcommand,
-      providerId: providerId,
-      platformEnv: platformEnv,
+      environment: {
+        ...platformEnv,
+        ...loginEnvironment(
+          providerId,
+          useWslPaths: CredentialHostRequest.usePosixCliPaths(preferencePath),
+        ),
+      },
     );
     final runner = _runner;
     return login ? runner.runLogin(request) : runner.run(request);
