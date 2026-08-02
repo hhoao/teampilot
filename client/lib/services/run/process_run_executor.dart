@@ -2,12 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../models/runtime_target.dart';
 import '../host/host_shell_argv.dart';
 import '../host/host_wsl_argv.dart';
+import '../host/process_run_handle.dart';
 import '../session/launch_command_builder.dart';
 import '../storage/remote_file_store.dart';
 import 'run_target_resolver.dart';
@@ -24,14 +24,6 @@ class ProcessRunOutput {
   final String sessionId;
   final String category;
   final String data;
-}
-
-/// Abstraction over a spawned child process for tests and production.
-abstract class ProcessRunHandle {
-  Future<int> get exitCode;
-  Stream<List<int>> get stdout;
-  Stream<List<int>> get stderr;
-  void kill();
 }
 
 /// Injected process starter — keeps [ProcessRunExecutor] free of raw
@@ -52,54 +44,6 @@ typedef SshProcessSpawner =
       required String sshProfileId,
       required String shellCommand,
     });
-
-class _ProcessRunHandle implements ProcessRunHandle {
-  _ProcessRunHandle(this._process);
-
-  final Process _process;
-
-  @override
-  Future<int> get exitCode => _process.exitCode;
-
-  @override
-  Stream<List<int>> get stdout => _process.stdout;
-
-  @override
-  Stream<List<int>> get stderr => _process.stderr;
-
-  @override
-  void kill() => _process.kill();
-}
-
-/// [ProcessRunHandle] over a dartssh2 [SSHSession] (non-PTY exec).
-class SshProcessRunHandle implements ProcessRunHandle {
-  SshProcessRunHandle(this._session);
-
-  final SSHSession _session;
-
-  @override
-  Future<int> get exitCode async {
-    await _session.done;
-    return _session.exitCode ?? 0;
-  }
-
-  @override
-  Stream<List<int>> get stdout => _session.stdout.map(_asList);
-
-  @override
-  Stream<List<int>> get stderr => _session.stderr.map(_asList);
-
-  @override
-  void kill() {
-    try {
-      _session.kill(SSHSignal.KILL);
-    } catch (_) {
-      _session.close();
-    }
-  }
-
-  static List<int> _asList(Uint8List data) => data;
-}
 
 class ProcessRunResult {
   const ProcessRunResult({
@@ -285,6 +229,6 @@ class ProcessRunExecutor {
       runInShell: runInShell,
       includeParentEnvironment: includeParentEnvironment,
     );
-    return _ProcessRunHandle(process);
+    return LocalProcessRunHandle(process);
   }
 }

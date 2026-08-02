@@ -17,6 +17,7 @@ import 'launch_adapter_client.dart';
 import 'launch_config_store.dart';
 import 'launch_type_registrar.dart';
 import 'launch_type_registry.dart';
+import '../host/process_run_handle.dart';
 import 'process_run_executor.dart';
 import 'run_platform.dart';
 import 'run_session_manager.dart';
