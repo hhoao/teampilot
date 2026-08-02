@@ -41,6 +41,8 @@ import '../../widgets/run/run_toolbar.dart';
 import '../../widgets/ssh/ssh_home_disconnected_banner.dart';
 import '../../widgets/termux/termux_disconnected_banner.dart';
 import '../floating_workspace/floating_workspace_host.dart';
+import '../../repositories/session_repository.dart';
+import 'home_new_workspace_dialog.dart';
 import 'home_workspace_body_stack.dart';
 import 'home_workspace_tab_scope.dart';
 import 'home_workspace_title_bar.dart';
@@ -492,6 +494,15 @@ class _HomeShellState extends State<HomeShell> {
                   onCloseTab: (tabKey) => unawaited(_closeTab(tabKey)),
                   onReopenClosedTab: (tabKey) =>
                       unawaited(_reopenClosedTab(tabKey)),
+                  onCreateWorkspace: () {
+                    unawaited(
+                      showHomeNewWorkspaceDialog(
+                        context,
+                        chatCubit: context.read<ChatCubit>(),
+                        repository: context.read<SessionRepository>(),
+                      ),
+                    );
+                  },
                 ),
                 const TermuxDisconnectedBanner(),
                 const SshHomeDisconnectedBanner(),
@@ -538,6 +549,7 @@ class _HomeShellTitleBar extends StatelessWidget {
     required this.onSelectTab,
     required this.onCloseTab,
     required this.onReopenClosedTab,
+    required this.onCreateWorkspace,
   });
 
   final String location;
@@ -547,6 +559,7 @@ class _HomeShellTitleBar extends StatelessWidget {
   final ValueChanged<String> onSelectTab;
   final ValueChanged<String> onCloseTab;
   final ValueChanged<String> onReopenClosedTab;
+  final VoidCallback onCreateWorkspace;
 
   @override
   Widget build(BuildContext context) {
@@ -585,6 +598,7 @@ class _HomeShellTitleBar extends StatelessWidget {
       onSelectTab: onSelectTab,
       onCloseTab: onCloseTab,
       onReopenClosedTab: onReopenClosedTab,
+      onCreateWorkspace: onCreateWorkspace,
     );
   }
 
